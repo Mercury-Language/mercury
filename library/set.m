@@ -233,6 +233,8 @@
     % map(F, S) =
     %   list_to_set(list.map(F, to_sorted_list(S))).
     %
+:- pred set.map(pred(T1, T2), set(T1), set(T2)).
+:- mode set.map(in(pred(in, out) is det), in, out) is det.
 :- func set.map(func(T1) = T2, set(T1)) = set(T2).
 
     % set.map_fold(P, S0, S, A0, A) :-
@@ -487,6 +489,11 @@ set.difference(S1, S2) = S3 :-
 
 set.count(S) = N :-
     set.count(S, N).
+
+set.map(P, S1, S2) :-
+    set.to_sorted_list(S1, L1),
+    list.map(P, L1, L2),
+    set.list_to_set(L2, S2).
 
 set.map(F, S1) = S2 :-
     S2 = set.list_to_set(list.map(F, set.to_sorted_list(S1))).

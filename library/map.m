@@ -1,15 +1,15 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: map.m.
 % Main author: fjh, conway.
 % Stability: high.
-% 
+%
 % This file provides the 'map' ADT.
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key, Data) pairs which allows you to look up any Data item given the
@@ -18,7 +18,7 @@
 % The implementation is using balanced binary trees, as provided by
 % tree234.m.  Virtually all the predicates in this file just
 % forward the work to the corresponding predicate in tree234.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -606,8 +606,8 @@ map.search(Map, K, V) :-
     tree234.search(Map, K, V).
 
 map.lookup(Map, K, V) :-
-    ( tree234.search(Map, K, V1) ->
-        V = V1
+    ( tree234.search(Map, K, VPrime) ->
+        V = VPrime
     ;
         report_lookup_error("map.lookup: key not found", K, V)
     ).
@@ -616,9 +616,9 @@ map.lower_bound_search(Map, SearchK, K, V) :-
     tree234.lower_bound_search(Map, SearchK, K, V).
 
 map.lower_bound_lookup(Map, SearchK, K, V) :-
-    ( tree234.lower_bound_search(Map, SearchK, K1, V1) ->
-        K = K1,
-        V = V1
+    ( tree234.lower_bound_search(Map, SearchK, KPrime, VPrime) ->
+        K = KPrime,
+        V = VPrime
     ;
         report_lookup_error("map.lower_bound_lookup: key not found",
             SearchK, V)
@@ -628,9 +628,9 @@ map.upper_bound_search(Map, SearchK, K, V) :-
     tree234.upper_bound_search(Map, SearchK, K, V).
 
 map.upper_bound_lookup(Map, SearchK, K, V) :-
-    ( tree234.upper_bound_search(Map, SearchK, K1, V1) ->
-        K = K1,
-        V = V1
+    ( tree234.upper_bound_search(Map, SearchK, KPrime, VPrime) ->
+        K = KPrime,
+        V = VPrime
     ;
         report_lookup_error("map.upper_bound_lookup: key not found",
             SearchK, V)
@@ -644,51 +644,34 @@ map.insert(Map0, K, V, Map) :-
     tree234.insert(Map0, K, V, Map).
 
 map.det_insert(Map0, K, V, Map) :-
-    ( tree234.insert(Map0, K, V, Map1) ->
-        Map = Map1
+    ( tree234.insert(Map0, K, V, MapPrime) ->
+        Map = MapPrime
     ;
         report_lookup_error("map.det_insert: key already present", K, V)
     ).
 
-map.det_insert_from_corresponding_lists(Map0, Ks, Vs, Map) :-
-    (
-        Ks = [Key | Keys],
-        Vs = [Value | Values]
-    ->
-        map.det_insert(Map0, Key, Value, Map1),
-        map.det_insert_from_corresponding_lists(Map1, Keys, Values,
-            Map)
-    ;
-        Ks = [],
-        Vs = []
-    ->
-        Map = Map0
-    ;
-        error("map.det_insert_from_corresponding_lists - " ++
-            "lists do not correspond")
-    ).
+map.det_insert_from_corresponding_lists(Map, [], [], Map).
+map.det_insert_from_corresponding_lists(_, [], [_ | _], _) :-
+    error("map.det_insert_from_corresponding_lists - lists do not correspond").
+map.det_insert_from_corresponding_lists(_, [_ | _], [], _) :-
+    error("map.det_insert_from_corresponding_lists - lists do not correspond").
+map.det_insert_from_corresponding_lists(Map0, [K | Ks], [V | Vs], Map) :-
+    map.det_insert(Map0, K, V, Map1),
+    map.det_insert_from_corresponding_lists(Map1, Ks, Vs, Map).
 
 map.det_insert_from_assoc_list(Map, [], Map).
 map.det_insert_from_assoc_list(Map0, [K - V | KVs], Map) :-
     map.det_insert(Map0, K, V, Map1),
     map.det_insert_from_assoc_list(Map1, KVs, Map).
 
-map.set_from_corresponding_lists(Map0, Ks, Vs, Map) :-
-    (
-        Ks = [Key | Keys],
-        Vs = [Value | Values]
-    ->
-        map.set(Map0, Key, Value, Map1),
-        map.set_from_corresponding_lists(Map1, Keys, Values, Map)
-    ;
-        Ks = [],
-        Vs = []
-    ->
-        Map = Map0
-    ;
-        error("map.set_from_corresponding_lists - " ++
-            "lists do not correspond")
-    ).
+map.set_from_corresponding_lists(Map, [], [], Map).
+map.set_from_corresponding_lists(_, [], [_ | _], _) :-
+    error("map.set_from_corresponding_lists - lists do not correspond").
+map.set_from_corresponding_lists(_, [_ | _], [], _) :-
+    error("map.set_from_corresponding_lists - lists do not correspond").
+map.set_from_corresponding_lists(Map0, [K | Ks], [V | Vs], Map) :-
+    map.set(Map0, K, V, Map1),
+    map.set_from_corresponding_lists(Map1, Ks, Vs, Map).
 
 map.set_from_assoc_list(Map, [], Map).
 map.set_from_assoc_list(Map0, [K - V | KVs], Map) :-
@@ -699,8 +682,8 @@ map.update(Map0, K, V, Map) :-
     tree234.update(Map0, K, V, Map).
 
 map.det_update(Map0, K, V, Map) :-
-    ( tree234.update(Map0, K, V, Map1) ->
-        Map = Map1
+    ( tree234.update(Map0, K, V, MapPrime) ->
+        Map = MapPrime
     ;
         report_lookup_error("map.det_update: key not found", K, V)
     ).
@@ -709,13 +692,10 @@ map.transform_value(P, K, !Map) :-
     tree234.transform_value(P, K, !Map).
 
 map.det_transform_value(P, K, !Map) :-
-    (
-        map.transform_value(P, K, !.Map, NewMap)
-    ->
+    ( map.transform_value(P, K, !.Map, NewMap) ->
         !:Map = NewMap
     ;
-        report_lookup_error("map.det_transform_value: key not found",
-            K)
+        report_lookup_error("map.det_transform_value: key not found", K)
     ).
 
 map.det_transform_value(F, K, Map0) = Map :-
@@ -760,9 +740,9 @@ map.remove(Map0, Key, Value, Map) :-
     tree234.remove(Map0, Key, Value, Map).
 
 map.det_remove(Map0, Key, Value, Map) :-
-    ( tree234.remove(Map0, Key, Value1, Map1) ->
-        Value = Value1,
-        Map = Map1
+    ( tree234.remove(Map0, Key, ValuePrime, MapPrime) ->
+        Value = ValuePrime,
+        Map = MapPrime
     ;
         report_lookup_error("map.det_remove: key not found", Key, Value)
     ).
@@ -840,8 +820,8 @@ map.select(Original, KeySet, NewMap) :-
     map.init(NewMap0),
     map.select_2(KeyList, Original, NewMap0, NewMap).
 
-:- pred map.select_2(list(K)::in, map(K, V)::in, map(K, V)::in,
-    map(K, V)::out) is det.
+:- pred map.select_2(list(K)::in, map(K, V)::in,
+    map(K, V)::in, map(K, V)::out) is det.
 :- pragma type_spec(map.select_2/4, K = var(_)).
 
 map.select_2([], _Original, New, New).
@@ -987,16 +967,13 @@ map.common_subset_2(AssocList1, AssocList2, Common0) = Common :-
             ;
                 Common1 = Common0
             ),
-            Common = map.common_subset_2(AssocTail1, AssocTail2,
-                Common1)
+            Common = map.common_subset_2(AssocTail1, AssocTail2, Common1)
         ;
             R = (<),
-            Common = map.common_subset_2(AssocTail1, AssocList2,
-                Common0)
+            Common = map.common_subset_2(AssocTail1, AssocList2, Common0)
         ;
             R = (>),
-            Common = map.common_subset_2(AssocList1, AssocTail2,
-                Common0)
+            Common = map.common_subset_2(AssocList1, AssocTail2, Common0)
         )
     ).
 
@@ -1010,10 +987,8 @@ map.union(CommonPred, Map1, Map2, Common) :-
 
 :- pred map.union_2(assoc_list(K, V), assoc_list(K, V), pred(V, V, V),
     map(K, V), map(K, V)).
-:- mode map.union_2(in, in, pred(in, in, out) is semidet, in, out)
-    is semidet.
-:- mode map.union_2(in, in, pred(in, in, out) is det, in, out)
-    is det.
+:- mode map.union_2(in, in, pred(in, in, out) is semidet, in, out) is semidet.
+:- mode map.union_2(in, in, pred(in, in, out) is det, in, out) is det.
 
 map.union_2(AssocList1, AssocList2, CommonPred, !Common) :-
     (
