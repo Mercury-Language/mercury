@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,15 +33,16 @@
 
 :- implementation.
 
-:- import_module hlds.passes_aux.
+% :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ilasm.
 :- import_module ml_backend.il_peephole.
 :- import_module ml_backend.mlds_to_il.
 :- import_module ml_backend.mlds_to_managed.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
@@ -54,8 +55,10 @@
 
 output_mlds(MLDS, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(ModuleName, ".il", yes, ILAsmFile, !IO),
-    output_to_file(ILAsmFile, output_assembler(MLDS), Result, !IO),
+    module_name_to_file_name(ModuleName, ".il", do_create_dirs,
+        ILAsmFile, !IO),
+    output_to_file_return_result(ILAsmFile, output_assembler(MLDS), Result,
+        !IO),
 
     (
         Result = yes(ForeignLangs),
@@ -81,7 +84,7 @@ output_foreign_file(MLDS, ForeignLang, !IO) :-
     ->
         handle_foreign_lang(ForeignLang, CodeGenerator),
         module_name_to_file_name(ForeignModuleName, Extension,
-            yes, File, !IO),
+            do_create_dirs, File, !IO),
         output_to_file(File,
             (pred(di, uo) is det --> CodeGenerator(MLDS)), !IO)
     ;

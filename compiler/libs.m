@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003, 2005 The University of Melbourne.
+% Copyright (C) 2002-2003, 2005, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,6 +24,7 @@
 % Generic algorithms and data structures that are not quite useful enough
 % to go in the standard library.
 :- include_module atsort.
+:- include_module file_util.
 :- include_module graph_colour.
 :- include_module tree.
 

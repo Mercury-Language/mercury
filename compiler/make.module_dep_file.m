@@ -17,7 +17,7 @@
 :- module make.module_dep_file.
 :- interface.
 
-:- import_module parse_tree.modules.
+:- import_module parse_tree.module_imports.
 
 :- import_module io.
 :- import_module maybe.
@@ -40,10 +40,15 @@
 :- implementation.
 
 :- import_module libs.globals.
+:- import_module libs.file_util.
 :- import_module libs.process_util.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.read_modules.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 
@@ -136,12 +141,13 @@ do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
     % leading to an infinite loop. Just using module_name_to_file_name
     % will fail if the module name doesn't match the file name, but
     % that case is handled below.
-    module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
+    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+        SourceFileName, !IO),
     get_file_timestamp([dir.this_directory], SourceFileName,
         MaybeSourceFileTimestamp, !Info, !IO),
 
     module_name_to_file_name(ModuleName, make_module_dep_file_extension,
-        no, DepFileName, !IO),
+        do_not_create_dirs, DepFileName, !IO),
     globals.io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
     get_file_timestamp(SearchDirs, DepFileName, MaybeDepFileTimestamp,
         !Info, !IO),
@@ -250,7 +256,7 @@ write_module_dep_file(Imports0, !IO) :-
 do_write_module_dep_file(Imports, !IO) :-
     ModuleName = Imports ^ module_name,
     module_name_to_file_name(ModuleName, make_module_dep_file_extension,
-        yes, ProgDepFile, !IO),
+        do_create_dirs, ProgDepFile, !IO),
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
         ProgDepResult = ok(ProgDepStream),
@@ -413,7 +419,7 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
                 ContainsForeignExport = contains_foreign_export
             ;
                 ContainsForeignExportStr = "no_foreign_export",
-                ContainsForeignExport = no_foreign_export
+                ContainsForeignExport = contains_no_foreign_export
             ),
 
             HasMainTerm = term.functor(term.atom(HasMainStr), [], _),
@@ -423,7 +429,7 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
         ->
             (
                 ForeignLanguages = [],
-                ContainsForeignCode = no_foreign_code
+                ContainsForeignCode = contains_no_foreign_code
             ;
                 ForeignLanguages = [_ | _],
                 ContainsForeignCode = contains_foreign_code(
@@ -512,7 +518,7 @@ read_module_dependencies_remake(RebuildModuleDeps, ModuleName, Msg, !Info,
 
 read_module_dependencies_remake_msg(ModuleName, Msg, !IO) :-
     module_name_to_file_name(ModuleName, make_module_dep_file_extension,
-        no, ModuleDepsFile, !IO),
+        do_not_create_dirs, ModuleDepsFile, !IO),
     io.write_string("Error reading file `", !IO),
     io.write_string(ModuleDepsFile, !IO),
     io.write_string("', rebuilding: ", !IO),
@@ -527,24 +533,22 @@ parse_sym_name_list(term.functor(term.atom("{}"), Args, _), SymNames) :-
             sym_name_and_args(Arg, SymName, [])
         ), Args, SymNames).
 
-    % The module_name given must be the top level module in
-    % the source file. get_module_dependencies ensures this by
-    % making the dependencies for all parent modules of the
-    % requested module first.
+    % The module_name given must be the top level module in the source file.
+    % get_module_dependencies ensures this by making the dependencies
+    % for all parent modules of the requested module first.
+    %
 :- pred make_module_dependencies(module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_dependencies(ModuleName, !Info, !IO) :-
-    Search = no,
-    ReturnTimestamp = yes,
-
     redirect_output(ModuleName, MaybeErrorStream, !Info, !IO),
     (
         MaybeErrorStream = yes(ErrorStream),
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
-        read_mod(ModuleName, ".m",
-            "Getting dependencies for module", Search, ReturnTimestamp,
-            Items, Error, SourceFileName, _, !IO),
+        % XXX Why ask for the timestamp if we then ignore it?
+        read_module(ModuleName, ".m", "Getting dependencies for module",
+            do_not_search, do_return_timestamp, Items, Error, SourceFileName,
+            _, !IO),
         ( Error = fatal_module_errors ->
             io.set_output_stream(OldOutputStream, _, !IO),
             io.write_string("** Error: error reading file `", !IO),
@@ -562,8 +566,8 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
                 !IO),
             unredirect_output(ModuleName, ErrorStream, !Info, !IO),
             globals.io_set_option(output_compile_error_lines, int(Lines), !IO),
-            module_name_to_file_name(ModuleName, ".err", no, ErrFileName,
-                !IO),
+            module_name_to_file_name(ModuleName, ".err", do_not_create_dirs,
+                ErrFileName, !IO),
             io.remove_file(ErrFileName, _, !IO),
             !:Info = !.Info ^ module_dependencies ^ elem(ModuleName) := no
         ;

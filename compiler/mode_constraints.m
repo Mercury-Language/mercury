@@ -73,6 +73,7 @@
 % :- import_module mode_robdd.tfeir.
 :- import_module mode_robdd.tfeirn.
 :- import_module parse_tree.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
@@ -191,9 +192,8 @@ process_module(!ModuleInfo, !IO) :-
 dump_abstract_constraints(ModuleInfo, ConstraintVarset, ModeConstraints,
         !IO) :-
     hlds_module.module_info_get_name(ModuleInfo, ModuleName),
-    CreateDirectories = yes,
-    parse_tree.modules.module_name_to_file_name(ModuleName,
-        ".mode_constraints", CreateDirectories, FileName, !IO),
+    module_name_to_file_name(ModuleName, ".mode_constraints", do_create_dirs,
+        FileName, !IO),
     OutputFile = FileName,
 
     io.open_output(OutputFile, IOResult, !IO),

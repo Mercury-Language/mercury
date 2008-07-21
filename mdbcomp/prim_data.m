@@ -1,4 +1,3 @@
-%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2008 The University of Melbourne.
@@ -62,6 +61,14 @@
     ;       qualified(sym_name, string).
 
 :- type module_name == sym_name.
+
+    % get_ancestors(ModuleName) =  ParentDeps:
+    %
+    % ParentDeps is the list of ancestor modules for this module, oldest first;
+    % e.g. if the ModuleName is `foo.bar.baz', then ParentDeps would be
+    % [`foo', `foo.bar'].
+    %
+:- func get_ancestors(module_name) = list(module_name).
 
     % A proc_label is a data structure a backend can use to as the basis
     % of the label used as the entry point of a procedure.
@@ -134,6 +141,8 @@
     %
 :- func get_special_pred_id_arity(special_pred_id) = int.
 
+%-----------------------------------------------------------------------------%
+
     % string_to_sym_name_sep(String, Separator) = SymName:
     %
     % Convert a string, possibly prefixed with module qualifiers (separated
@@ -169,12 +178,89 @@
     %
 :- pred is_submodule(module_name::in, module_name::in) is semidet.
 
+    % Given a symbol name, return its unqualified name.
+    %
+:- func unqualify_name(sym_name) = string.
+
+    % sym_name_get_module_name(SymName) = ModName:
+    %
+    % Given a symbol name, return the module qualifiers(s).
+    % Fails if the symbol is unqualified.
+    %
+:- pred sym_name_get_module_name(sym_name::in, module_name::out) is semidet.
+
+    % sym_name_get_module_name_default(SymName, DefaultModName, ModName):
+    %
+    % Given a symbol name, return the module qualifier(s).
+    % If the symbol is unqualified, then return the specified default
+    % module name.
+    %
+:- pred sym_name_get_module_name_default(sym_name::in, module_name::in,
+    module_name::out) is det.
+
+    % match_sym_name(PartialSymName, CompleteSymName):
+    %
+    % Succeeds iff there is some sequence of module qualifiers
+    % which when prefixed to PartialSymName gives CompleteSymName.
+    %
+:- pred match_sym_name(sym_name::in, sym_name::in) is semidet.
+
+    % remove_sym_name_prefix(SymName0, Prefix, SymName)
+    % succeeds iff
+    %   SymName and SymName0 have the same module qualifier
+    %   and the unqualified part of SymName0 has the given prefix
+    %   and the unqualified part of SymName is the unqualified
+    %       part of SymName0 with the prefix removed.
+    %
+:- pred remove_sym_name_prefix(sym_name, string, sym_name).
+:- mode remove_sym_name_prefix(in, in, out) is semidet.
+:- mode remove_sym_name_prefix(out, in, in) is det.
+
+    % remove_sym_name_suffix(SymName0, Suffix, SymName)
+    % succeeds iff
+    %   SymName and SymName0 have the same module qualifier
+    %   and the unqualified part of SymName0 has the given suffix
+    %   and the unqualified part of SymName is the unqualified
+    %       part of SymName0 with the suffix removed.
+    %
+:- pred remove_sym_name_suffix(sym_name::in, string::in, sym_name::out)
+    is semidet.
+
+    % add_sym_name_suffix(SymName0, Suffix, SymName)
+    % succeeds iff
+    %   SymName and SymName0 have the same module qualifier
+    %   and the unqualified part of SymName is the unqualified
+    %       part of SymName0 with the suffix added.
+    %
+:- pred add_sym_name_suffix(sym_name::in, string::in, sym_name::out) is det.
+
+    % transform_sym_base_name(TransformFunc, SymName0) = SymName
+    % succeeds iff
+    %   SymName and SymName0 have the same module qualifier
+    %   and the unqualified part of SymName is the result of applying
+    %   TransformFunc to the unqualified part of SymName0.
+    %
+:- func transform_sym_base_name(func(string) = string, sym_name) = sym_name.
+
     % insert_module_qualifier(ModuleName, SymName0) = SymName:
     %
     % Prepend the specified ModuleName onto the module qualifiers in SymName0,
     % giving SymName.
     %
 :- func insert_module_qualifier(string, sym_name) = sym_name.
+
+    % Given a sym_name return the top level qualifier of that name.
+    %
+:- func outermost_qualifier(sym_name) = string.
+
+:- func add_outermost_qualifier(string, sym_name) = sym_name.
+
+    % Remove and return the top level qualifier of a sym_name.
+    %
+:- pred strip_outermost_qualifier(sym_name::in,
+    string::out, sym_name::out) is semidet.
+
+%-----------------------------------------------------------------------------%
 
     % Returns all the modules which are automatically imported.
     %
@@ -282,6 +368,16 @@
 
 %-----------------------------------------------------------------------------%
 
+get_ancestors(ModuleName) = get_ancestors_2(ModuleName, []).
+
+:- func get_ancestors_2(module_name, list(module_name)) = list(module_name).
+
+get_ancestors_2(unqualified(_), Ancestors) = Ancestors.
+get_ancestors_2(qualified(Parent, _), Ancestors0) =
+    get_ancestors_2(Parent, [Parent | Ancestors0]).
+
+%-----------------------------------------------------------------------------%
+
 string_to_sym_name_sep(String, ModuleSeparator) = Result :-
     % This would be simpler if we had a string.rev_sub_string_search/3 pred.
     % With that, we could search for underscores right-to-left, and construct
@@ -311,11 +407,74 @@ sym_name_to_string_sep(qualified(ModuleSym, Name), Separator) = QualName :-
 
 sym_name_to_string(SymName) = sym_name_to_string_sep(SymName, ".").
 
+unqualify_name(unqualified(Name)) = Name.
+unqualify_name(qualified(_ModuleName, Name)) = Name.
+
+sym_name_get_module_name(unqualified(_), _) :- fail.
+sym_name_get_module_name(qualified(ModuleName, _), ModuleName).
+
+sym_name_get_module_name_default(SymName, DefaultModuleName, ModuleName) :-
+    (
+        SymName = unqualified(_),
+        ModuleName = DefaultModuleName
+    ;
+        SymName = qualified(ModuleName, _)
+    ).
+
+    % match_sym_name(PartialSymName, CompleteSymName):
+    %
+    % Succeeds iff there is some sequence of module qualifiers
+    % which when prefixed to PartialSymName gives CompleteSymName.
+    %
+match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
+    match_sym_name(Module1, Module2).
+match_sym_name(unqualified(Name), unqualified(Name)).
+match_sym_name(unqualified(Name), qualified(_, Name)).
+
+remove_sym_name_prefix(qualified(Module, Name0), Prefix,
+        qualified(Module, Name)) :-
+    string.append(Prefix, Name, Name0).
+remove_sym_name_prefix(unqualified(Name0), Prefix, unqualified(Name)) :-
+    string.append(Prefix, Name, Name0).
+
+remove_sym_name_suffix(qualified(Module, Name0), Suffix,
+        qualified(Module, Name)) :-
+    string.remove_suffix(Name0, Suffix, Name).
+remove_sym_name_suffix(unqualified(Name0), Suffix, unqualified(Name)) :-
+    string.remove_suffix(Name0, Suffix, Name).
+
+add_sym_name_suffix(qualified(Module, Name0), Suffix,
+        qualified(Module, Name)) :-
+    string.append(Name0, Suffix, Name).
+add_sym_name_suffix(unqualified(Name0), Suffix, unqualified(Name)) :-
+    string.append(Name0, Suffix, Name).
+
+transform_sym_base_name(TransformFunc, qualified(Module, Name0)) =
+        qualified(Module, TransformFunc(Name0)).
+transform_sym_base_name(TransformFunc, unqualified(Name0)) =
+        unqualified(TransformFunc(Name0)).
+
 insert_module_qualifier(ModuleName, unqualified(PlainName)) =
         qualified(unqualified(ModuleName), PlainName).
 insert_module_qualifier(ModuleName, qualified(ModuleQual0, PlainName)) =
         qualified(ModuleQual, PlainName) :-
     insert_module_qualifier(ModuleName, ModuleQual0) = ModuleQual.
+
+outermost_qualifier(unqualified(Name)) = Name.
+outermost_qualifier(qualified(Module, _Name)) = outermost_qualifier(Module).
+
+add_outermost_qualifier(Qual, unqualified(Name)) =
+        qualified(unqualified(Qual), Name).
+add_outermost_qualifier(Qual, qualified(Module, Name)) =
+        qualified(add_outermost_qualifier(Qual, Module), Name).
+
+strip_outermost_qualifier(qualified(unqualified(OuterQual), Name),
+        OuterQual, unqualified(Name)).
+strip_outermost_qualifier(qualified(Module @ qualified(_, _), Name),
+        OuterQual, qualified(RemainingQual, Name)) :-
+    strip_outermost_qualifier(Module, OuterQual, RemainingQual).
+
+%-----------------------------------------------------------------------------%
 
 is_submodule(SymName, SymName).
 is_submodule(qualified(SymNameA, _), SymNameB) :-

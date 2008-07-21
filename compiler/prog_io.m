@@ -56,6 +56,7 @@
 :- module parse_tree.prog_io.
 :- interface.
 
+:- import_module libs.file_util.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
@@ -63,7 +64,6 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_util.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -74,19 +74,14 @@
 
 % This module (prog_io) exports the following predicates:
 
-:- type file_name == string.
-:- type dir_name == string.
-
-    % Open a source or interface file, returning `ok(FileInfo)' on success
-    % (where FileInfo is information about the file such as the file name
-    % or the directory in which it was found), or `error(Message)' on failure.
-:- type open_file(FileInfo) == pred(maybe_error(FileInfo), io, io).
-:- inst open_file == (pred(out, di, uo) is det).
-
 :- type module_error
     --->    no_module_errors        % no errors
     ;       some_module_errors      % some syntax errors
     ;       fatal_module_errors.    % couldn't open the file
+
+:- type maybe_return_timestamp
+    --->    do_return_timestamp
+    ;       do_not_return_timestamp.
 
     % read_module(OpenFile, FileName, DefaultModuleName, ReturnTimestamp,
     %   MaybeFileInfo, ActualModuleName, Program, Specs, Error,
@@ -104,9 +99,9 @@
     % Specs is a list of warning/error messages. Program is the parse tree.
     %
 :- pred read_module(open_file(FileInfo)::in(open_file),
-    module_name::in, bool::in, maybe(FileInfo)::out, module_name::out,
-    list(item)::out, list(error_spec)::out, module_error::out,
-    maybe(io.res(timestamp))::out, io::di, io::uo) is det.
+    module_name::in, maybe_return_timestamp::in, maybe(FileInfo)::out,
+    module_name::out, list(item)::out, list(error_spec)::out,
+    module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
 :- pred read_module_if_changed(open_file(FileInfo)::in(open_file),
     module_name::in, timestamp::in, maybe(FileInfo)::out, module_name::out,
@@ -128,22 +123,6 @@
     %
 :- pred check_module_has_expected_name(file_name::in, module_name::in,
     module_name::in, io::di, io::uo) is det.
-
-    % search_for_file(Dirs, FileName, FoundFileName, !IO):
-    %
-    % Search Dirs for FileName, opening the file if it is found,
-    % and returning the path name of the file that was found.
-    %
-:- pred search_for_file(list(dir_name)::in, file_name::in,
-    maybe_error(file_name)::out, io::di, io::uo) is det.
-
-    % search_for_file_returning_dir(Dirs, FileName, FoundDirName, !IO):
-    %
-    % Search Dirs for FileName, opening the file if it is found, and returning
-    % the name of the directory in which the file was found.
-    %
-:- pred search_for_file_returning_dir(list(dir_name)::in, file_name::in,
-    maybe_error(dir_name)::out, io::di, io::uo) is det.
 
     % search_for_module_source(Dirs, InterfaceDirs, ModuleName,
     %   FoundSourceFileName, !IO):
@@ -287,7 +266,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_dcg.
 :- import_module parse_tree.prog_io_goal.
@@ -302,6 +281,7 @@
 :- import_module recompilation.version.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module dir.
 :- import_module int.
 :- import_module map.
@@ -314,19 +294,21 @@
 
 %-----------------------------------------------------------------------------%
 
-read_module(OpenFile, DefaultModuleName, ReturnTimestamp, FileData, ModuleName,
-        Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
+read_module(OpenFile, DefaultModuleName, ReturnTimestamp, FileData,
+        ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
     read_module_2(OpenFile, DefaultModuleName, no, ReturnTimestamp,
         FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO).
 
-read_module_if_changed(OpenFile, DefaultModuleName, OldTimestamp, FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
-    read_module_2(OpenFile, DefaultModuleName, yes(OldTimestamp), yes,
+read_module_if_changed(OpenFile, DefaultModuleName, OldTimestamp, FileData,
+        ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
+    read_module_2(OpenFile, DefaultModuleName, yes(OldTimestamp),
+        do_return_timestamp,
         FileData, ModuleName, Items, Specs, Error,MaybeModuleTimestamp, !IO).
 
 read_opt_file(FileName, DefaultModuleName, Items, Specs, Error, !IO) :-
     globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
-    read_module_2(search_for_file(Dirs, FileName), DefaultModuleName, no, no,
-        _, ModuleName, Items, Specs, Error, _, !IO),
+    read_module_2(search_for_file(Dirs, FileName), DefaultModuleName, no,
+        do_not_return_timestamp, _, ModuleName, Items, Specs, Error, _, !IO),
     check_module_has_expected_name(FileName, DefaultModuleName, ModuleName,
         !IO).
 
@@ -350,9 +332,9 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName, !IO) :-
     % late-input modes.)
     %
 :- pred read_module_2(open_file(T)::in(open_file), module_name::in,
-    maybe(timestamp)::in, bool::in, maybe(T)::out, module_name::out,
-    list(item)::out, list(error_spec)::out, module_error::out,
-    maybe(io.res(timestamp))::out, io::di, io::uo) is det.
+    maybe(timestamp)::in, maybe_return_timestamp::in, maybe(T)::out,
+    module_name::out, list(item)::out, list(error_spec)::out,
+    module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
 read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
         MaybeFileData, ModuleName, Items, Specs, Error,
@@ -363,7 +345,7 @@ read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
         OpenResult = ok(FileData),
         MaybeFileData = yes(FileData),
         (
-            ReturnTimestamp = yes,
+            ReturnTimestamp = do_return_timestamp,
             io.input_stream_name(InputStreamName, !IO),
             io.file_modification_time(InputStreamName, TimestampResult, !IO),
             (
@@ -374,7 +356,7 @@ read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
                 MaybeModuleTimestamp = yes(error(IOError))
             )
         ;
-            ReturnTimestamp = no,
+            ReturnTimestamp = do_not_return_timestamp,
             MaybeModuleTimestamp = no
         ),
         (
@@ -409,52 +391,6 @@ read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
             [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
         Specs = [Spec],
         Error = fatal_module_errors
-    ).
-
-search_for_file(Dirs, FileName, Result, !IO) :-
-    search_for_file_returning_dir(Dirs, FileName, Result0, !IO),
-    (
-        Result0 = ok(Dir),
-        ( dir.this_directory(Dir) ->
-            PathName = FileName
-        ;
-            PathName = dir.make_path_name(Dir, FileName)
-        ),
-        Result = ok(PathName)
-    ;
-        Result0 = error(Message),
-        Result = error(Message)
-    ).
-
-search_for_file_returning_dir(Dirs, FileName, Result, !IO) :-
-    search_for_file_returning_dir_2(Dirs, FileName, MaybeDir, !IO),
-    (
-        MaybeDir = yes(Dir),
-        Result = ok(Dir)
-    ;
-        MaybeDir = no,
-        Msg = "cannot find `" ++ FileName ++ "' in directories " ++
-            string.join_list(", ", Dirs),
-        Result = error(Msg)
-    ).
-
-:- pred search_for_file_returning_dir_2(list(dir_name)::in,
-    file_name::in, maybe(dir_name)::out, io::di, io::uo) is det.
-
-search_for_file_returning_dir_2([], _FileName, no, !IO).
-search_for_file_returning_dir_2([Dir | Dirs], FileName, MaybeDir, !IO) :-
-    ( dir.this_directory(Dir) ->
-        ThisFileName = FileName
-    ;
-        ThisFileName = dir.make_path_name(Dir, FileName)
-    ),
-    io.see(ThisFileName, SeeResult0, !IO),
-    (
-        SeeResult0 = ok,
-        MaybeDir = yes(Dir)
-    ;
-        SeeResult0 = error(_),
-        search_for_file_returning_dir_2(Dirs, FileName, MaybeDir, !IO)
     ).
 
 search_for_module_source(Dirs, InterfaceDirs,
@@ -496,7 +432,8 @@ search_for_module_source(Dirs, InterfaceDirs,
                 MaybeFileName = error(find_source_error(ModuleName,
                                     Dirs, yes(SourceFileName2)))
             ;
-                module_name_to_file_name(ModuleName, ".int", no, IntFile, !IO),
+                module_name_to_file_name(ModuleName, ".int",
+                    do_not_create_dirs, IntFile, !IO),
                 search_for_file_returning_dir(InterfaceDirs, IntFile,
                     MaybeIntDir, !IO),
                 ( MaybeIntDir = ok(_) ->
@@ -543,16 +480,15 @@ find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
     module_name::in, maybe_error(file_name)::out, io::di, io::uo) is det.
 
 search_for_module_source_2(Dirs, ModuleName, PartialModuleName, Result, !IO) :-
-    module_name_to_file_name(PartialModuleName, ".m", no, FileName, !IO),
+    module_name_to_file_name(PartialModuleName, ".m", do_not_create_dirs,
+        FileName, !IO),
     search_for_file(Dirs, FileName, Result0, !IO),
     (
         Result0 = ok(_),
         Result = Result0
     ;
         Result0 = error(_),
-        (
-            PartialModuleName1 = drop_one_qualifier(PartialModuleName)
-        ->
+        ( PartialModuleName1 = drop_one_qualifier(PartialModuleName) ->
             search_for_module_source_2(Dirs, ModuleName, PartialModuleName1,
                 Result, !IO)
         ;
@@ -974,7 +910,7 @@ read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Items,
             !:Items = [Item | !.Items]
         ; ModuleDefn = md_end_module(NestedModuleName) ->
             root_module_name(RootModuleName),
-            sym_name_get_module_name(NestedModuleName, RootModuleName,
+            sym_name_get_module_name_default(NestedModuleName, RootModuleName,
                 ParentModuleName),
             !:ModuleName = ParentModuleName,
             !:Items = [Item | !.Items]
@@ -1333,7 +1269,7 @@ process_decl(DefaultModuleName, VarSet, "end_module", [ModuleName],
     % of the previous default module name.
 
     root_module_name(RootModuleName),
-    sym_name_get_module_name(DefaultModuleName, RootModuleName,
+    sym_name_get_module_name_default(DefaultModuleName, RootModuleName,
         ParentOfDefaultModuleName),
     parse_module_name(ParentOfDefaultModuleName, VarSet, ModuleName, Result0),
     (

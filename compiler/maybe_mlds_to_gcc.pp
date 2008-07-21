@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 2001, 2003-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,7 +55,7 @@ maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 
 #else
 
-:- import_module parse_tree.prog_out.
+:- import_module libs.file_util.
 :- import_module string.
 
 maybe_mlds_to_gcc__run_gcc_backend(_ModuleName, CallBack, CallBackOutput) -->

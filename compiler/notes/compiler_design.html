@@ -85,7 +85,7 @@ Taking all this into account, the structure looks like this:
 <li> The next level down is all of the different passes of the compiler.
      In general, we try to stick by the principle that later passes can
      depend on data structures defined in earlier passes, but not vice
-     versa.  
+     versa.
      <ul type=disc>
      <li> front-end
           <ul type=disc>
@@ -185,10 +185,10 @@ stored in the io.state, using the type globals defined in globals.m.
 Support for `--make' is in the make.m package,
 which contains the following modules:
 
-<dl> 
+<dl>
 
 <dt> make.m
-	<dd> 
+	<dd>
 	Categorizes targets passed on the command line and passes
 	them to the appropriate module to be built.
 
@@ -199,7 +199,7 @@ which contains the following modules:
 
 <dt> make.module_target.m
 	<dd>
-	Handles targets built by a compilation action associated 
+	Handles targets built by a compilation action associated
 	with a single module, for example making interface files,
 
 <dt> make.dependencies.m
@@ -258,7 +258,7 @@ such as pretty-printing.
 	data structures that result, and predicates for manipulating them.
 
 <li> <p> stage 2 parsing - convert terms to `items'
-         (declarations, clauses, etc.) 
+         (declarations, clauses, etc.)
 
 	<p>
 	The result of this stage is a parse tree that has a one-to-one
@@ -270,7 +270,7 @@ such as pretty-printing.
 	prog_io_typeclass.m (which handles typeclass and instance
 	declarations) and prog_io_util.m (which defines predicates and types
 	needed by the other prog_io*.m modules.
-	
+
 	<p>
 
 	The modules prog_out.m and mercury_to_mercury.m contain predicates
@@ -294,9 +294,32 @@ such as pretty-printing.
 <li><p> imports and exports are handled at this point (modules.m)
 
 	<p>
+	read_module.m has code to read in modules in the form of .m,
+	.int, .opt etc files.
+
+	<p>
 	modules.m has the code to write out `.int', `.int2', `.int3',
 	`.d' and `.dep' files.
-	
+
+	<p>
+	write_deps_file.m writes out Makefile fragments.
+
+	<p>
+	file_names.m does conversions between module names and file names.
+
+	<p>
+	module_cmds.m handles the commands for manipulating interface files of
+	various kinds.
+
+	<p>
+	module_imports.m contains the module_imports type and its access
+	predicates, and the predicates that compute various sorts of
+	direct dependencies (those caused by imports) between modules.
+
+	<p>
+	deps_map.m contains the data structure for recording indirect
+	dependencies between modules, and the predicates for creating it.
+
 	<p>
 	source_file_map.m contains code to read, write and search
 	the mapping between module names and file names.
@@ -306,8 +329,8 @@ such as pretty-printing.
 	<p>
 	module_qual.m -  <br>
 	Adds module qualifiers to all types insts and modes,
-	checking that a given type, inst or mode exists and that 
-	there is only possible match.  This is done here because 
+	checking that a given type, inst or mode exists and that
+	there is only possible match.  This is done here because
 	it must be done before the `.int' and `.int2' interface files
 	are written. This also checks whether imports are really needed
 	in the interface.
@@ -323,10 +346,10 @@ such as pretty-printing.
 	  are module qualified in make_hlds.m.
  	<li> constructors occurring in predicate and function mode declarations
  	  are module qualified during type checking.
- 	<li> predicate and function calls and constructors within goals 
+ 	<li> predicate and function calls and constructors within goals
  	  are module qualified during mode analysis.
 	</ul>
- 
+
 
 <li><p> reading and writing of optimization interfaces
      (intermod.m and trans_opt.m -- these are part of the
@@ -581,7 +604,7 @@ so that the compiler does the right thing for options such as
 
 <dt> checking typeclass instances (check_typeclass.m)
 	<dd>
-	check_typeclass.m both checks that instance declarations satisfy all 
+	check_typeclass.m both checks that instance declarations satisfy all
 	the appropriate superclass constraints
 	(including functional dependencies)
 	and performs a source-to-source transformation on the
@@ -592,11 +615,11 @@ so that the compiler does the right thing for options such as
 	(ie. that the instance methods match those expected by the typeclass
 	declaration).
 	During the transformation,
-	pred_ids and proc_ids are assigned to the methods for each instance. 
+	pred_ids and proc_ids are assigned to the methods for each instance.
 
 	<p>
 	While checking that the superclasses of a class are satisfied
-	by the instance declaration, a set of constraint_proofs are built up 
+	by the instance declaration, a set of constraint_proofs are built up
 	for the superclass constraints. These are used by polymorphism.m when
 	generating the base_typeclass_info for the instance.
 
@@ -616,7 +639,7 @@ so that the compiler does the right thing for options such as
 	(i.e. that the set of function symbols
 	in the bound list for the inst are a subset of the allowed function
 	symbols for at least one type in scope).
-	
+
 	<p>
 	A warning is issued if it finds any user defined bound insts not
 	consistent with any types in scope.
@@ -672,7 +695,7 @@ so that the compiler does the right thing for options such as
 	<p>
 
 <dt> purity analysis
-	
+
 	<dd>
 	purity.m is responsible for purity checking, as well as
 	defining the <CODE>purity</CODE> type and a few public
@@ -704,10 +727,10 @@ so that the compiler does the right thing for options such as
 	can properly reorder code involving existential types.
 	(It also needs to come before simplification so that simplify.m's
 	optimization of goals with no output variables doesn't do the
-	wrong thing for goals whose only output is the type_info for 
+	wrong thing for goals whose only output is the type_info for
 	an existentially quantified type parameter.)
 	<p>
-	This phase also 
+	This phase also
 	converts higher-order predicate terms into lambda expressions,
 	and copies the clauses to the proc_infos in preparation for
 	mode analysis.
@@ -726,7 +749,7 @@ so that the compiler does the right thing for options such as
 
 	<dd>
 	<ul>
-	<li> modes.m is the main mode analysis module.  
+	<li> modes.m is the main mode analysis module.
 	  It checks that the code is mode-correct, reordering it
 	  if necessary, and annotates each goal with a delta-instmap
 	  that specifies the changes in instantiatedness of each
@@ -740,10 +763,10 @@ so that the compiler does the right thing for options such as
 
 	  The following sub-modules are used:
 		<dl>
-		<dt> mode_info.m 
+		<dt> mode_info.m
 			<dd>
 			(the main data structure for mode analysis)
-		<dt> delay_info.m 
+		<dt> delay_info.m
 			<dd>
 			(a sub-component of the mode_info data
 			structure used for storing the information
@@ -826,7 +849,7 @@ so that the compiler does the right thing for options such as
 	<p>
 
 <dt> indexing and determinism analysis
- 
+
 	<dd>
 	<ul>
 	<li> switch_detection.m transforms into switches those disjunctions
@@ -912,8 +935,8 @@ This is the transform_hlds.m package.
 
 <p>
 
-The first pass of this stage does tabling transformations (table_gen.m). 
-This involves the insertion of several calls to tabling predicates 
+The first pass of this stage does tabling transformations (table_gen.m).
+This involves the insertion of several calls to tabling predicates
 defined in mercury_builtin.m and the addition of some scaffolding structure.
 Note that this pass can change the evaluation methods of some procedures to
 eval_table_io, so it should come before any passes that require definitive
@@ -1015,7 +1038,7 @@ Minimal model tabling analysis. (tabling_analysis.m)
 <ul>
 <li>
 	This pass annotates each goal in a module with information about
-	whether the goal calls procedures that are evaluated using 
+	whether the goal calls procedures that are evaluated using
 	minimal model tabling.  This information can be used to reduce
 	the overhead of minimal model tabling.
 
@@ -1071,7 +1094,7 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   <li> pd_info.m contains a state type for deforestation.
   <li> pd_term.m contains predicates to check that the deforestation
        algorithm terminates.
-  <li> pd_util.m contains various utility predicates. 
+  <li> pd_util.m contains various utility predicates.
   </ul>
 
 <li> issue warnings about unused arguments from predicates, and create
@@ -1155,7 +1178,7 @@ This is the ll_backend.m package.
 
 <h4> 3a. LLDS-specific HLDS -&gt; HLDS transformations </h4>
 
-Before LLDS code generation, there are a few more passes which 
+Before LLDS code generation, there are a few more passes which
 annotate the HLDS with information used for LLDS code generation,
 or perform LLDS-specific transformations on the HLDS:
 
@@ -1417,7 +1440,7 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
 
 <li> base_typeclass_info.m
   (in the backend_libs.m package, since it is shared with the MLDS back-end)
-  generates the base_typeclass_info structures that 
+  generates the base_typeclass_info structures that
   list the methods of a class for each instance declaration. These are added to
   the RTTI data structures, which are part of the LLDS.
 
@@ -1493,7 +1516,7 @@ Thus we have a pass which transforms the HLDS to handle trailing:
      trail operations before each choice point, when execution
      resumes after backtracking, and whenever we do a commit.
      The trail operations are represented as (and implemented as)
-     calls to impure procedures defined in library/private_builtin.m. 
+     calls to impure procedures defined in library/private_builtin.m.
 <li> add_heap_ops.m is very similar to add_trail_ops.m;
      it inserts code to do heap reclamation on backtracking.
 </ul>
@@ -1563,8 +1586,8 @@ so that mlds_to_gcc.m will be linked in iff the GCC back-end is available.
 The MLDS-&gt;IL backend is broken into several submodules.
 <ul>
 <li> mlds_to_ilasm.m converts MLDS to IL assembler and writes it to a .il file.
-<li> mlds_to_il.m converts MLDS to IL 
-<li> ilds.m contains representations of IL  
+<li> mlds_to_il.m converts MLDS to IL
+<li> ilds.m contains representations of IL
 <li> ilasm.m contains output routines for writing IL to assembler.
 <li> il_peephole.m performs peephole optimization on IL instructions.
 </ul>
@@ -1735,6 +1758,11 @@ The following modules are part of the libs.m package.
 
 	<dl>
 
+	<dt> file_util.m:
+		<dd>
+		Predicates to deal with files, such as searching for a file
+		in a list of directories.
+
 	<dt> process_util.m:
 		<dd>
 		Predicates to deal with process creation and signal handling.
@@ -1803,6 +1831,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2008-04-03 05:26:46 $ by $Author: wangp $@cs.mu.oz.au. <br>
+Last update was $Date: 2008-07-21 03:10:25 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

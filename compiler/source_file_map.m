@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,13 +11,17 @@
 % 
 % Maintain a mapping from module name to source file name.
 % 
+% The reason why this module is in the parse_tree package is that discovering
+% what module is stored in a file requires reading the ":- module" declaration
+% in that file.
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.source_file_map.
 :- interface.
 
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_io.
+:- import_module libs.file_util.
 
 :- import_module bool.
 :- import_module io.
@@ -48,7 +52,8 @@
 :- implementation.
 
 :- import_module libs.globals.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 
 :- import_module char.
@@ -248,3 +253,5 @@ write_source_file_map_2(MapStream, FileName, SeenModules0, SeenModules, !IO) :-
 :- func modules_file_name = string.
 
 modules_file_name = "Mercury.modules".
+
+%-----------------------------------------------------------------------------%

@@ -371,10 +371,10 @@
 :- import_module check_hlds.type_util.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 

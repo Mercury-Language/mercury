@@ -127,7 +127,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.         % undesirable dependency
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_type.

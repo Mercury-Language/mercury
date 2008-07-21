@@ -96,7 +96,8 @@
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_util.
 
@@ -669,12 +670,14 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     ForeignExportDecls = foreign_export_decls(ForeignDecls, C_ExportDecls),
     module_info_get_exported_enums(ModuleInfo, ExportedEnums),
     HeaderExt = ".mh",
-    module_name_to_file_name(ModuleName, HeaderExt, yes, FileName, !IO),
+    module_name_to_file_name(ModuleName, HeaderExt, do_create_dirs,
+        FileName, !IO),
     io.open_output(FileName ++ ".tmp", Result, !IO),
     (
         Result = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
-        module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
+        module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+            SourceFileName, !IO),
         library.version(Version),
         io.write_strings([
             "/*\n",

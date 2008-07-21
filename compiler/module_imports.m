@@ -1,0 +1,664 @@
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1996-2008 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+%
+% File: module_imports.m.
+% Main author: fjh.
+%
+% This module contains the data structure for recording module imports
+% and its access predicates.
+%-----------------------------------------------------------------------------%
+
+:- module parse_tree.module_imports.
+:- interface.
+
+:- import_module libs.file_util.
+:- import_module libs.globals.
+:- import_module libs.timestamp.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_io.    % for module_error;
+                                        % undesirable dependency
+
+:- import_module list.
+:- import_module map.
+:- import_module maybe.
+:- import_module pair.
+
+    % When doing smart recompilation record for each module the suffix of
+    % the file that was read and the modification time of the file.
+    %
+:- type module_timestamps == map(module_name, module_timestamp).
+:- type module_timestamp
+    --->    module_timestamp(
+                suffix          :: string,
+                timestamp       :: timestamp,
+                need_qualifier  :: need_qualifier
+            ).
+
+    % The `module_imports' structure holds information about
+    % a module and the modules that it imports.
+    %
+    % Note that we build this structure up as we go along.
+    % When generating the dependencies (for `--generate-dependencies'), the
+    % two fields that hold the direct imports do not include the imports via
+    % ancestors when the module is first read in; the ancestor imports are
+    % added later, once all the modules have been read in.  Similarly the
+    % indirect imports field is initially set to the empty list and filled
+    % in later.
+    %
+    % When compiling or when making interface files, the same sort of thing
+    % applies: initially all the list(module_name) fields except the public
+    % children field are set to empty lists, and then we add ancestor
+    % modules and imported modules to their respective lists as we process
+    % the interface files for those imported or ancestor modules.
+    %
+:- type module_imports
+    --->    module_imports(
+                % The source file.
+                source_file_name            :: file_name,
+
+                % The name of the top-level module in the source file
+                % containing the module that we are compiling.
+                source_file_module_name     :: module_name,
+
+                % The module (or sub-module) that we are compiling.
+                module_name                 :: module_name,
+
+                % The list of ancestor modules it inherits.
+                parent_deps                 :: list(module_name),
+
+                % The list of modules it directly imports in the interface
+                % (imports via ancestors count as direct).
+                int_deps                    :: list(module_name),
+
+                % The list of modules it directly imports in the
+                % implementation.
+                impl_deps                   :: list(module_name),
+
+                % The list of modules it indirectly imports.
+                indirect_deps               :: list(module_name),
+
+                children                    :: list(module_name),
+
+                % The list of its public children, i.e. child modules that
+                % it includes in the interface section.
+                public_children             :: list(module_name),
+
+                % The modules included in the same source file. This field
+                % is only set for the top-level module in each file.
+                nested_children             :: list(module_name),
+
+                % The list of filenames for fact tables in this module.
+                fact_table_deps             :: list(string),
+
+                % Whether or not the module contains foreign code, and if yes,
+                % which languages they use.
+                has_foreign_code            :: contains_foreign_code,
+
+                % The `:- pragma foreign_import_module' declarations.
+                foreign_import_modules      :: foreign_import_module_info_list,
+
+                % Does the module contain any `:- pragma foreign_export'
+                % declarations?
+                contains_foreign_export     :: contains_foreign_export,
+
+                % The contents of the module and its imports.
+                items                       :: list(item),
+
+                % Whether an error has been encountered when reading in
+                % this module.
+                error                       :: module_error,
+
+                % If we are doing smart recompilation, we need to keep
+                % the timestamps of the modules read in.
+                maybe_timestamps            :: maybe(module_timestamps),
+
+                % Does this module contain main/2?
+                has_main                    :: has_main,
+
+                % The directory containing the module source.
+                module_dir                  :: dir_name
+            ).
+
+:- pred module_imports_get_source_file_name(module_imports::in, file_name::out)
+    is det.
+:- pred module_imports_get_module_name(module_imports::in, module_name::out)
+    is det.
+:- pred module_imports_get_impl_deps(module_imports::in,
+    list(module_name)::out) is det.
+:- pred module_imports_get_items(module_imports::in, list(item)::out) is det.
+:- pred module_imports_get_error(module_imports::in, module_error::out) is det.
+
+:- pred module_imports_set_items(list(item)::in,
+    module_imports::in, module_imports::out) is det.
+:- pred module_imports_set_error(module_error::in,
+    module_imports::in, module_imports::out) is det.
+
+    % Set the interface dependencies.
+    %
+:- pred module_imports_set_int_deps(list(module_name)::in,
+    module_imports::in, module_imports::out) is det.
+
+    % Set the implementation dependencies.
+    %
+:- pred module_imports_set_impl_deps(list(module_name)::in,
+    module_imports::in, module_imports::out) is det.
+
+    % Set the indirect dependencies.
+    %
+:- pred module_imports_set_indirect_deps(list(module_name)::in,
+    module_imports::in, module_imports::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
+    %   Error, Globals, ModuleName - Items, ModuleImports).
+    %
+:- pred init_dependencies(file_name::in, module_name::in,
+    list(module_name)::in, module_error::in, globals::in,
+    pair(module_name, list(item))::in, module_imports::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % get_dependencies(Items, ImportDeps, UseDeps):
+    %
+    % Get the list of modules that a list of items (explicitly) depends on.
+    % ImportDeps is the list of modules imported using `:- import_module',
+    % UseDeps is the list of modules imported using `:- use_module'.
+    % N.B. Typically you also need to consider the module's implicit
+    % dependencies (see get_implicit_dependencies/3), its parent modules
+    % (see get_ancestors/1) and possibly also the module's child modules
+    % (see get_children/2). You may also need to consider indirect
+    % dependencies.
+    %
+:- pred get_dependencies(list(item)::in, list(module_name)::out,
+    list(module_name)::out) is det.
+
+    % get_dependencies_int_imp(Items, IntImportDeps, IntUseDeps,
+    %   ImpImportDeps, ImpUseDeps):
+    %
+    % Get the list of modules that a list of items (explicitly) depends on.
+    %
+    % IntImportDeps is the list of modules imported using `:- import_module'
+    % in the interface, and ImpImportDeps those modules imported in the
+    % implementation. IntUseDeps is the list of modules imported using
+    % `:- use_module' in the interface, and ImpUseDeps those modules imported
+    % in the implementation.
+    %
+    % N.B. Typically you also need to consider the module's implicit
+    % dependencies (see get_implicit_dependencies/3), its parent modules
+    % (see get_ancestors/1) and possibly also the module's child modules
+    % (see get_children/2). You may also need to consider indirect
+    % dependencies.
+    %
+    % N.B This predicate assumes that any declarations between the `:- module'
+    % and the first `:- interface' or `:- implementation' are in the
+    % implementation.
+    %
+:- pred get_dependencies_int_imp(list(item)::in,
+    list(module_name)::out, list(module_name)::out,
+    list(module_name)::out, list(module_name)::out) is det.
+
+    % get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps):
+    %
+    % Get the list of builtin modules (e.g. "public_builtin",
+    % "private_builtin") that a list of items may implicitly depend on.
+    % ImportDeps is the list of modules which should be automatically
+    % implicitly imported as if via `:- import_module', and UseDeps is
+    % the list which should be automatically implicitly imported as if via
+    % `:- use_module'.
+    %
+:- pred get_implicit_dependencies(list(item)::in, globals::in,
+    list(module_name)::out, list(module_name)::out) is det.
+
+:- pred add_implicit_imports(list(item)::in, globals::in,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out) is det.
+
+    % Get the fact table dependencies for a module.
+    %
+:- pred get_fact_table_dependencies(list(item)::in, list(string)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module libs.compiler_util.
+:- import_module libs.options.
+:- import_module parse_tree.modules.    % undesirable dependency
+
+:- import_module bool.
+:- import_module dir.
+:- import_module set.
+:- import_module term.
+
+module_imports_get_source_file_name(Module, Module ^ source_file_name).
+module_imports_get_module_name(Module, Module ^ module_name).
+module_imports_get_impl_deps(Module, Module ^ impl_deps).
+module_imports_get_items(Module, Module ^ items).
+module_imports_get_error(Module, Module ^ error).
+module_imports_set_items(Items, Module, Module ^ items := Items).
+module_imports_set_error(Error, Module, Module ^ error := Error).
+module_imports_set_int_deps(IntDeps, Module, Module ^ int_deps := IntDeps).
+module_imports_set_impl_deps(ImplDeps, Module,
+        Module ^ impl_deps := ImplDeps).
+module_imports_set_indirect_deps(IndirectDeps, Module,
+        Module ^ indirect_deps := IndirectDeps).
+
+%-----------------------------------------------------------------------------%
+
+init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
+        Error, Globals, ModuleName - Items, ModuleImports) :-
+    ParentDeps = get_ancestors(ModuleName),
+
+    get_dependencies(Items, ImplImportDeps0, ImplUseDeps0),
+    add_implicit_imports(Items, Globals,
+        ImplImportDeps0, ImplImportDeps,
+        ImplUseDeps0, ImplUseDeps),
+    list.append(ImplImportDeps, ImplUseDeps, ImplementationDeps),
+
+    get_interface(ModuleName, no, Items, InterfaceItems),
+    get_dependencies(InterfaceItems,
+        InterfaceImportDeps0, InterfaceUseDeps0),
+    add_implicit_imports(InterfaceItems, Globals,
+        InterfaceImportDeps0, InterfaceImportDeps,
+        InterfaceUseDeps0, InterfaceUseDeps),
+    list.append(InterfaceImportDeps, InterfaceUseDeps, InterfaceDeps),
+
+    % We don't fill in the indirect dependencies yet.
+    IndirectDeps = [],
+
+    get_children(Items, IncludeDeps),
+    get_children(InterfaceItems, InterfaceIncludeDeps),
+
+    ( ModuleName = SourceFileModuleName ->
+        list.delete_all(NestedModuleNames, ModuleName, NestedDeps)
+    ;
+        NestedDeps = []
+    ),
+
+    get_fact_table_dependencies(Items, FactTableDeps),
+
+    % Figure out whether the items contain foreign code.
+    get_item_list_foreign_code(Globals, Items, LangSet,
+        ForeignImports0, ContainsPragmaExport),
+    ( set.empty(LangSet) ->
+        ContainsForeignCode = contains_no_foreign_code
+    ;
+        ContainsForeignCode = contains_foreign_code(LangSet)
+    ),
+
+    % If this module contains `:- pragma foreign_export' or
+    % `:- pragma foreign_type' declarations, importing modules
+    % may need to import its `.mh' file.
+    get_foreign_self_imports(Items, SelfImportLangs),
+    ForeignSelfImports = list.map(
+        (func(Lang) = foreign_import_module_info(Lang, ModuleName,
+            term.context_init)),
+        SelfImportLangs),
+    ForeignImports = ForeignSelfImports ++ ForeignImports0,
+
+    % Work out whether the items contain main/2.
+    (
+        list.member(Item, Items),
+        Item = item_pred_decl(ItemPredDecl),
+        ItemPredDecl = item_pred_decl_info(_, _, _, _, pf_predicate, Name,
+            [_, _], WithType, _, _, _, _, _, _),
+        unqualify_name(Name) = "main",
+
+        % XXX We should allow `main/2' to be declared using `with_type`,
+        % but equivalences haven't been expanded at this point. The `has_main'
+        % field is only used for some special case handling of the module
+        % containing main for the IL backend (we generate a `.exe' file
+        % rather than a `.dll' file). This would arguably be better done
+        % by generating a `.dll' file as normal, and a separate `.exe' file
+        % containing initialization code and a call to `main/2', as we do
+        % with the `_init.c' file in the C backend.
+        WithType = no
+    ->
+        HasMain = has_main
+    ;
+        HasMain = no_main
+    ),
+
+    ModuleImports = module_imports(FileName, SourceFileModuleName,
+        ModuleName, ParentDeps, InterfaceDeps,
+        ImplementationDeps, IndirectDeps, IncludeDeps,
+        InterfaceIncludeDeps, NestedDeps, FactTableDeps,
+        ContainsForeignCode, ForeignImports, ContainsPragmaExport,
+        [], Error, no, HasMain, dir.this_directory).
+
+%-----------------------------------------------------------------------------%
+
+get_dependencies(Items, ImportDeps, UseDeps) :-
+    get_dependencies_implementation(Items,
+        [], IntImportDeps, [], IntUseDeps, [], ImpImportDeps, [], ImpUseDeps),
+    ImportDeps = IntImportDeps ++ ImpImportDeps,
+    UseDeps = IntUseDeps ++ ImpUseDeps.
+
+get_dependencies_int_imp(Items, IntImportDeps, IntUseDeps,
+        ImpImportDeps, ImpUseDeps) :-
+    get_dependencies_implementation(Items,
+        [], IntImportDeps, [], IntUseDeps, [], ImpImportDeps, [], ImpUseDeps).
+
+:- pred get_dependencies_implementation(list(item)::in,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out) is det.
+
+get_dependencies_implementation([],
+        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
+get_dependencies_implementation([Item | Items],
+        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
+    ( Item = item_module_defn(ItemModuleDefn) ->
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ( ModuleDefn = md_interface ->
+            get_dependencies_interface(Items,
+                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
+        ;
+            ( ModuleDefn = md_import(Modules) ->
+                !:ImpImportDeps = !.ImpImportDeps ++ Modules
+            ; ModuleDefn = md_use(Modules) ->
+                !:ImpUseDeps = !.ImpUseDeps ++ Modules
+            ;
+                true
+            ),
+            get_dependencies_implementation(Items,
+                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
+        )
+    ;
+        get_dependencies_implementation(Items,
+            !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
+    ).
+
+:- pred get_dependencies_interface(list(item)::in,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out) is det.
+
+get_dependencies_interface([],
+        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
+get_dependencies_interface([Item | Items],
+        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
+    ( Item = item_module_defn(ItemModuleDefn) ->
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ( ModuleDefn = md_implementation ->
+            get_dependencies_implementation(Items,
+                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
+        ;
+            ( ModuleDefn = md_import(Modules) ->
+                !:IntImportDeps = !.IntImportDeps ++ Modules
+            ; ModuleDefn = md_use(Modules) ->
+                !:IntUseDeps = !.IntUseDeps ++ Modules
+            ;
+                true
+            ),
+            get_dependencies_interface(Items,
+                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
+        )
+    ;
+        get_dependencies_interface(Items,
+            !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps) :-
+    add_implicit_imports(Items, Globals, [], ImportDeps, [], UseDeps).
+
+add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
+    !:ImportDeps = [mercury_public_builtin_module | !.ImportDeps],
+    !:UseDeps = [mercury_private_builtin_module | !.UseDeps],
+    items_need_imports(Items, no, ItemsNeedTabling,
+        no, ItemsNeedTablingStatistics, no, ItemsNeedSTM),
+    % We should include mercury_table_builtin_module if the Items contain
+    % a tabling pragma, or if one of --use-minimal-model (either kind) and
+    % --trace-table-io is specified. In the former case, we may also need
+    % to import mercury_table_statistics_module.
+    (
+        ItemsNeedTabling = yes,
+        !:UseDeps = [mercury_table_builtin_module | !.UseDeps],
+        (
+            ItemsNeedTablingStatistics = yes,
+            !:UseDeps = [mercury_table_statistics_module | !.UseDeps]
+        ;
+            ItemsNeedTablingStatistics = no
+        )
+    ;
+        ItemsNeedTabling = no,
+        expect(unify(ItemsNeedTablingStatistics, no), this_file,
+            "add_implicit_imports: tabling statistics without tabling"),
+        (
+            % These forms of tabling cannot ask for statistics.
+            (
+                globals.lookup_bool_option(Globals,
+                    use_minimal_model_stack_copy, yes)
+            ;
+                globals.lookup_bool_option(Globals,
+                    use_minimal_model_own_stacks, yes)
+            ;
+                globals.lookup_bool_option(Globals, trace_table_io, yes)
+            )
+        ->
+            !:UseDeps = [mercury_table_builtin_module | !.UseDeps]
+        ;
+            true
+        )
+    ),
+    (
+        ItemsNeedSTM = yes,
+        !:UseDeps = [mercury_stm_builtin_module, mercury_exception_module,
+            mercury_univ_module | !.UseDeps]
+    ;
+        ItemsNeedSTM = no
+    ),
+    globals.lookup_bool_option(Globals, profile_deep, Deep),
+    (
+        Deep = yes,
+        !:UseDeps = [mercury_profiling_builtin_module | !.UseDeps]
+    ;
+        Deep = no
+    ),
+    (
+        (
+            globals.lookup_bool_option(Globals,
+                record_term_sizes_as_words, yes)
+        ;
+            globals.lookup_bool_option(Globals,
+                record_term_sizes_as_cells, yes)
+        )
+    ->
+        !:UseDeps = [mercury_term_size_prof_builtin_module | !.UseDeps]
+    ;
+        true
+    ),
+    globals.get_target(Globals, Target),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    (
+        Target = target_c,
+        HighLevelCode = no,
+        Parallel = yes
+    ->
+        !:UseDeps = [mercury_par_builtin_module | !.UseDeps]
+    ;
+        true
+    ),
+    globals.lookup_bool_option(Globals, use_regions, UseRegions),
+    (
+        UseRegions = yes,
+        !:UseDeps = [mercury_region_builtin_module | !.UseDeps]
+    ;
+        UseRegions = no
+    ),
+    globals.lookup_bool_option(Globals, source_to_source_debug, SSDB),
+    (
+        SSDB = yes,
+        !:UseDeps = [mercury_ssdb_builtin_module | !.UseDeps]
+    ;
+        SSDB = no
+    ).
+
+:- pred items_need_imports(list(item)::in,
+    bool::in, bool::out, bool::in, bool::out, bool::in, bool::out) is det.
+
+items_need_imports([], !ItemsNeedTabling,
+        !ItemsNeedTablingStatistics, !ItemsNeedSTM).
+items_need_imports([Item | Items], !ItemsNeedTabling,
+        !ItemsNeedTablingStatistics, !ItemsNeedSTM) :-
+    (
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(_, Pragma, _),
+        Pragma = pragma_tabled(_, _, _, _, _, MaybeAttributes)
+    ->
+        !:ItemsNeedTabling = yes,
+        (
+            MaybeAttributes = no,
+            % We cannot be done yet. If !.ItemsNeedTablingStatistics and
+            % !.ItemsNeedSTM were already both `yes', !.ItemsNeedTabling
+            % would have been too, and we would have stopped before looking
+            % at this item.
+            items_need_imports(Items, !ItemsNeedTabling,
+                !ItemsNeedTablingStatistics, !ItemsNeedSTM)
+        ;
+            MaybeAttributes = yes(Attributes),
+            StatsAttr = Attributes ^ table_attr_statistics,
+            (
+                StatsAttr = table_gather_statistics,
+                !:ItemsNeedTablingStatistics = yes,
+                (
+                    !.ItemsNeedSTM = yes
+                    % There is nothing left to search for; stop recursing.
+                ;
+                    !.ItemsNeedSTM = no,
+                    items_need_imports(Items, !ItemsNeedTabling,
+                        !ItemsNeedTablingStatistics, !ItemsNeedSTM)
+                )
+            ;
+                StatsAttr = table_dont_gather_statistics
+            )
+        )
+    ;
+        Item = item_clause(ItemClause),
+        Body = ItemClause ^ cl_body,
+        goal_contains_stm_atomic(Body) = yes
+    ->
+        !:ItemsNeedSTM = yes,
+        (
+            !.ItemsNeedTabling = yes,
+            !.ItemsNeedTablingStatistics = yes
+        ->
+            % There is nothing left to search for; stop recursing.
+            true
+        ;
+            items_need_imports(Items, !ItemsNeedTabling,
+                !ItemsNeedTablingStatistics, !ItemsNeedSTM)
+        )
+    ;
+        items_need_imports(Items, !ItemsNeedTabling,
+            !ItemsNeedTablingStatistics, !ItemsNeedSTM)
+    ).
+
+:- func goal_contains_stm_atomic(goal) = bool.
+
+goal_contains_stm_atomic(GoalExpr - _Context) = ContainsAtomic :-
+    (
+        ( GoalExpr = true_expr
+        ; GoalExpr = fail_expr
+        ),
+        ContainsAtomic = no
+    ;
+        ( GoalExpr = conj_expr(SubGoalA, SubGoalB)
+        ; GoalExpr = par_conj_expr(SubGoalA, SubGoalB)
+        ; GoalExpr = disj_expr(SubGoalA, SubGoalB)
+        ),
+        ContainsAtomic = two_goals_contain_stm_atomic(SubGoalA, SubGoalB)
+    ;
+        ( GoalExpr = some_expr(_, SubGoal)
+        ; GoalExpr = all_expr(_, SubGoal)
+        ; GoalExpr = some_state_vars_expr(_, SubGoal)
+        ; GoalExpr = all_state_vars_expr(_, SubGoal)
+        ; GoalExpr = promise_purity_expr(_, _, SubGoal)
+        ; GoalExpr = promise_equivalent_solutions_expr(_, _, _, SubGoal)
+        ; GoalExpr = promise_equivalent_solution_sets_expr(_, _, _, SubGoal)
+        ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _,
+            SubGoal)
+        ; GoalExpr = trace_expr(_, _, _, _, SubGoal)
+        ),
+        ContainsAtomic = goal_contains_stm_atomic(SubGoal)
+    ;
+        ( GoalExpr = implies_expr(SubGoalA, SubGoalB)
+        ; GoalExpr = equivalent_expr(SubGoalA, SubGoalB)
+        ),
+        ContainsAtomic = two_goals_contain_stm_atomic(SubGoalA, SubGoalB)
+    ;
+        GoalExpr = not_expr(SubGoal),
+        ContainsAtomic = goal_contains_stm_atomic(SubGoal)
+    ;
+        GoalExpr = if_then_else_expr(_, _, Cond, Then, Else),
+        ContainsAtomic = three_goals_contain_stm_atomic(Cond, Then, Else)
+    ;
+        GoalExpr = atomic_expr(_, _, _, _, _),
+        ContainsAtomic = yes
+    ;
+        ( GoalExpr = event_expr(_, _)
+        ; GoalExpr = call_expr(_, _, _)
+        ; GoalExpr = unify_expr(_, _, _)
+        ),
+        ContainsAtomic = no
+    ).
+
+:- func two_goals_contain_stm_atomic(goal, goal) = bool.
+
+two_goals_contain_stm_atomic(GoalA, GoalB) = ContainsAtomic :-
+    ( goal_contains_stm_atomic(GoalA) = yes ->
+        ContainsAtomic = yes
+    ;
+        ContainsAtomic = goal_contains_stm_atomic(GoalB)
+    ).
+
+:- func three_goals_contain_stm_atomic(goal, goal, goal) = bool.
+
+three_goals_contain_stm_atomic(GoalA, GoalB, GoalC) = ContainsAtomic :-
+    ( goal_contains_stm_atomic(GoalA) = yes ->
+        ContainsAtomic = yes
+    ;
+        ContainsAtomic = two_goals_contain_stm_atomic(GoalB, GoalC)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_fact_table_dependencies(Items, Deps) :-
+    get_fact_table_dependencies_2(Items, [], Deps).
+
+:- pred get_fact_table_dependencies_2(list(item)::in, list(string)::in,
+    list(string)::out) is det.
+
+get_fact_table_dependencies_2([], !Deps).
+get_fact_table_dependencies_2([Item | Items], !Deps) :-
+    (
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(_, Pragma, _),
+        Pragma = pragma_fact_table(_SymName, _Arity, FileName)
+    ->
+        !:Deps = [FileName | !.Deps]
+    ;
+        true
+    ),
+    get_fact_table_dependencies_2(Items, !Deps).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "module_imports.m".
+
+%-----------------------------------------------------------------------------%

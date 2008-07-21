@@ -154,22 +154,23 @@
 :- import_module parse_tree.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.rtti.		% for rtti.addr_to_string.
+:- import_module backend_libs.rtti.	% for rtti.addr_to_string.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.	% for proc_id_to_int and invalid_pred_id
+:- import_module libs.file_util.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module ml_backend.ml_code_util.% for ml_gen_public_field_decl_flags,
-				% which is used by the code that handles
-				% derived classes
+:- import_module ml_backend.ml_code_util.
+	% For ml_gen_public_field_decl_flags, which is used by the code
+	% that handles derived classes.
 :- import_module ml_backend.ml_util.
 :- import_module ml_backend.mlds_to_c.	% to handle C foreign_code
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
@@ -193,8 +194,10 @@ mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput) -->
 		PicExt = ".s",
 		PicOpt = ""
 	},
-	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
-	module_name_to_file_name(ModuleName, PicExt, yes, AsmFileName),
+	module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+		SourceFileName),
+	module_name_to_file_name(ModuleName, PicExt, do_create_dirs,
+		AsmFileName),
 	% XXX should use new gcc_* options rather than
 	% reusing cflags, c_optimize
 	globals__io_lookup_bool_option(statistics, Statistics),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,12 +45,13 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
@@ -72,8 +73,10 @@
 
 output_elds(ModuleInfo, ELDS, !IO) :-
     Name = ELDS ^ elds_name,
-    module_name_to_file_name(Name, ".erl", yes, SourceFileName, !IO),
-    module_name_to_file_name(Name, ".hrl", yes, HeaderFileName, !IO),
+    module_name_to_file_name(Name, ".erl", do_create_dirs, SourceFileName,
+        !IO),
+    module_name_to_file_name(Name, ".hrl", do_create_dirs, HeaderFileName,
+        !IO),
     output_to_file(SourceFileName, output_erl_file(ModuleInfo, ELDS,
         SourceFileName), !IO),
     % Avoid updating the timestamp on the `.hrl' file if it hasn't changed.

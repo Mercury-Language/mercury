@@ -147,20 +147,20 @@
     % get_target_timestamp(Search, TargetFile, Timestamp)
     %
     % Find the timestamp for the given target file.
-    % `Search' should be `yes' if the file could be part of an
+    % `Search' should be `do_search' if the file could be part of an
     % installed library.
     %
-:- pred get_target_timestamp(bool::in, target_file::in,
+:- pred get_target_timestamp(maybe_search::in, target_file::in,
     maybe_error(timestamp)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
     % get_file_name(Search, TargetFile, FileName).
     %
     % Compute a file name for the given target file.
-    % `Search' should be `yes' if the file could be part of an
+    % `Search' should be `do_search' if the file could be part of an
     % installed library.
     %
-:- pred get_file_name(bool::in, target_file::in, file_name::out,
+:- pred get_file_name(maybe_search::in, target_file::in, file_name::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Find the timestamp of the first file matching the given
@@ -206,7 +206,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func make_target_file_list(list(module_name), module_target_type) = 
+:- func make_target_file_list(list(module_name), module_target_type) =
     list(target_file).
 
 :- func make_dependency_list(list(module_name), module_target_type)
@@ -232,15 +232,18 @@
 %
 
     % Apply the given predicate if `--debug-make' is set.
+    % XXX Do we need this, now that we have trace goals?
     %
 :- pred debug_msg(pred(io, io)::(pred(di, uo) is det), io::di, io::uo) is det.
 
     % Apply the given predicate if `--verbose-make' is set.
+    % XXX Do we need this, now that we have trace goals?
     %
 :- pred verbose_msg(pred(io, io)::(pred(di, uo) is det),
     io::di, io::uo) is det.
 
     % Apply the given predicate if the given boolean option is set to `yes'.
+    % XXX Do we need this, now that we have trace goals?
     %
 :- pred verbose_msg(option::in, pred(io, io)::(pred(di, uo) is det),
     io::di, io::uo) is det.
@@ -249,12 +252,12 @@
     %
 :- pred debug_file_msg(target_file::in, string::in, io::di, io::uo) is det.
 
-:- pred write_dependency_file(dependency_file::in, io::di, io::uo) is det.
+:- pred make_write_dependency_file(dependency_file::in, io::di, io::uo) is det.
 
-:- pred write_dependency_file_list(list(dependency_file)::in, io::di, io::uo)
-    is det.
+:- pred make_write_dependency_file_list(list(dependency_file)::in,
+    io::di, io::uo) is det.
 
-:- pred write_target_file(target_file::in, io::di, io::uo) is det.
+:- pred make_write_target_file(target_file::in, io::di, io::uo) is det.
 
     % Write a message "Making <filename>" if `--verbose-make' is set.
     %
@@ -312,6 +315,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 :- import_module libs.process_util.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
@@ -843,7 +847,8 @@ unredirect_output(ModuleName, ErrorOutputStream, !Info, !IO) :-
     io.open_input(TmpErrorFileName, TmpErrorInputRes, !IO),
     (
         TmpErrorInputRes = ok(TmpErrorInputStream),
-        module_name_to_file_name(ModuleName, ".err", yes, ErrorFileName, !IO),
+        module_name_to_file_name(ModuleName, ".err", do_create_dirs,
+            ErrorFileName, !IO),
         ( set.member(ModuleName, !.Info ^ error_file_modules) ->
             io.open_append(ErrorFileName, ErrorFileRes, !IO)
         ;
@@ -855,8 +860,8 @@ unredirect_output(ModuleName, ErrorOutputStream, !Info, !IO) :-
                 LinesToWrite, !IO),
             io.output_stream(CurrentOutputStream, !IO),
             io.input_stream_foldl2_io(TmpErrorInputStream,
-                write_error_char(ErrorFileOutputStream, CurrentOutputStream),
-                LinesToWrite, TmpFileInputRes, !IO),
+                make_write_error_char(ErrorFileOutputStream,
+                    CurrentOutputStream), LinesToWrite, TmpFileInputRes, !IO),
             (
                 TmpFileInputRes = ok(_)
             ;
@@ -891,10 +896,10 @@ unredirect_output(ModuleName, ErrorOutputStream, !Info, !IO) :-
     ),
     io.remove_file(TmpErrorFileName, _, !IO).
 
-:- pred write_error_char(io.output_stream::in, io.output_stream::in,
+:- pred make_write_error_char(io.output_stream::in, io.output_stream::in,
     char::in, int::in, int::out, io::di, io::uo) is det.
 
-write_error_char(FullOutputStream, PartialOutputStream, Char,
+make_write_error_char(FullOutputStream, PartialOutputStream, Char,
         !LinesRemaining, !IO) :-
     io.write_char(FullOutputStream, Char, !IO),
     ( !.LinesRemaining > 0 ->
@@ -922,42 +927,46 @@ get_timestamp_file_timestamp(target_file(ModuleName, FileType),
         MaybeTimestamp, !Info, !IO) :-
     globals.io_get_globals(Globals, !IO),
     ( TimestampExt = timestamp_extension(Globals, FileType) ->
-        module_name_to_file_name(ModuleName, TimestampExt, no, FileName, !IO)
+        module_name_to_file_name(ModuleName, TimestampExt, do_not_create_dirs,
+            FileName, !IO)
     ;
-        module_target_to_file_name(ModuleName, FileType, no, FileName, !IO)
+        module_target_to_file_name(ModuleName, FileType, do_not_create_dirs,
+            FileName, !IO)
     ),
 
-    % We should only ever look for timestamp files
-    % in the current directory. Timestamp files are
-    % only used when processing a module, and only
-    % modules in the current directory are processed.
+    % We should only ever look for timestamp files in the current directory.
+    % Timestamp files are only used when processing a module, and only modules
+    % in the current directory are processed.
     SearchDirs = [dir.this_directory],
     get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO).
 
-get_dependency_timestamp(dep_file(FileName, MaybeOption), MaybeTimestamp,
-        !Info, !IO) :-
+get_dependency_timestamp(DependencyFile, MaybeTimestamp, !Info, !IO) :-
     (
-        MaybeOption = yes(Option),
-        globals.io_lookup_accumulating_option(Option, SearchDirs, !IO)
+        DependencyFile = dep_file(FileName, MaybeOption),
+        (
+            MaybeOption = yes(Option),
+            globals.io_lookup_accumulating_option(Option, SearchDirs, !IO)
+        ;
+            MaybeOption = no,
+            SearchDirs = [dir.this_directory]
+        ),
+        get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO)
     ;
-        MaybeOption = no,
-        SearchDirs = [dir.this_directory]
-    ),
-    get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO).
-get_dependency_timestamp(dep_target(Target), MaybeTimestamp, !Info, !IO) :-
-    get_target_timestamp(yes, Target, MaybeTimestamp0, !Info, !IO),
-    (
-        Target = target_file(_, module_target_c_header(header_mih)),
-        MaybeTimestamp0 = ok(_)
-    ->
-        % Don't rebuild the `.o' file if an irrelevant part of a
-        % `.mih' file has changed. If a relevant part of a `.mih'
-        % file changed, the interface files of the imported module
-        % must have changed in a way that would force the `.c' and
-        % `.o' files of the current module to be rebuilt.
-        MaybeTimestamp = ok(oldest_timestamp)
-    ;
-        MaybeTimestamp = MaybeTimestamp0
+        DependencyFile = dep_target(Target),
+        get_target_timestamp(do_search, Target, MaybeTimestamp0, !Info, !IO),
+        (
+            Target = target_file(_, module_target_c_header(header_mih)),
+            MaybeTimestamp0 = ok(_)
+        ->
+            % Don't rebuild the `.o' file if an irrelevant part of a
+            % `.mih' file has changed. If a relevant part of a `.mih'
+            % file changed, the interface files of the imported module
+            % must have changed in a way that would force the `.c' and
+            % `.o' files of the current module to be rebuilt.
+            MaybeTimestamp = ok(oldest_timestamp)
+        ;
+            MaybeTimestamp = MaybeTimestamp0
+        )
     ).
 
 get_target_timestamp(Search, TargetFile, MaybeTimestamp, !Info, !IO) :-
@@ -975,9 +984,9 @@ get_target_timestamp(Search, TargetFile, MaybeTimestamp, !Info, !IO) :-
     % `.analysis_status' file says the `.analysis' file is invalid then we
     % treat it as out of date.
     %
-:- pred get_target_timestamp_analysis_registry(bool::in, target_file::in,
-    file_name::in, maybe_error(timestamp)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred get_target_timestamp_analysis_registry(maybe_search::in,
+    target_file::in, file_name::in, maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_target_timestamp_analysis_registry(Search, TargetFile, FileName,
         MaybeTimestamp, !Info, !IO) :-
@@ -999,18 +1008,18 @@ get_target_timestamp_analysis_registry(Search, TargetFile, FileName,
         )
     ).
 
-:- pred get_target_timestamp_2(bool::in, target_file::in, file_name::in,
-    maybe_error(timestamp)::out, make_info::in, make_info::out,
+:- pred get_target_timestamp_2(maybe_search::in, target_file::in,
+    file_name::in, maybe_error(timestamp)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 get_target_timestamp_2(Search, TargetFile, FileName, MaybeTimestamp,
         !Info, !IO) :-
     TargetFile = target_file(ModuleName, FileType),
     (
-        Search = yes,
+        Search = do_search,
         get_search_directories(FileType, SearchDirs, !IO)
     ;
-        Search = no,
+        Search = do_not_search,
         SearchDirs = [dir.this_directory]
     ),
     get_file_timestamp(SearchDirs, FileName, MaybeTimestamp0, !Info, !IO),
@@ -1055,7 +1064,8 @@ get_file_name(Search, TargetFile, FileName, !Info, !IO) :-
 
             % Something has gone wrong generating the dependencies,
             % so just take a punt (which probably won't work).
-            module_name_to_file_name(ModuleName, ".m", no, FileName, !IO)
+            module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+                FileName, !IO)
         )
     ;
         globals.io_get_globals(Globals, !IO),
@@ -1063,18 +1073,19 @@ get_file_name(Search, TargetFile, FileName, !Info, !IO) :-
         (
             MaybeExt = yes(Ext),
             (
-                Search = yes,
+                Search = do_search,
                 module_name_to_search_file_name_cache(ModuleName, Ext,
                     FileName, !Info, !IO)
             ;
-                Search = no,
+                Search = do_not_search,
                 % Not common enough to cache.
-                module_name_to_file_name(ModuleName, Ext, no, FileName, !IO)
+                module_name_to_file_name(ModuleName, Ext, do_not_create_dirs,
+                    FileName, !IO)
             )
         ;
             MaybeExt = no,
-            module_target_to_file_name_maybe_search(ModuleName, FileType, no,
-                Search, FileName, !IO)
+            module_target_to_file_name_maybe_search(ModuleName, FileType,
+                do_not_create_dirs, Search, FileName, !IO)
         )
     ).
 
@@ -1157,7 +1168,8 @@ make_remove_target_file(VerboseOption, target_file(ModuleName, FileType),
 
 make_remove_target_file(VerboseOption, ModuleName, FileType, !Info, !IO) :-
     globals.io_get_globals(Globals, !IO),
-    module_target_to_file_name(ModuleName, FileType, no, FileName, !IO),
+    module_target_to_file_name(ModuleName, FileType, do_not_create_dirs,
+        FileName, !IO),
     make_remove_file(VerboseOption, FileName, !Info, !IO),
     ( TimestampExt = timestamp_extension(Globals, FileType) ->
         make_remove_file(VerboseOption, ModuleName, TimestampExt, !Info, !IO)
@@ -1166,7 +1178,8 @@ make_remove_target_file(VerboseOption, ModuleName, FileType, !Info, !IO) :-
     ).
 
 make_remove_file(VerboseOption, ModuleName, Ext, !Info, !IO) :-
-    module_name_to_file_name(ModuleName, Ext, no, FileName, !IO),
+    module_name_to_file_name(ModuleName, Ext, do_not_create_dirs, FileName,
+        !IO),
     make_remove_file(VerboseOption, FileName, !Info, !IO).
 
 make_remove_file(VerboseOption, FileName, !Info, !IO) :-
@@ -1184,7 +1197,7 @@ report_remove_file(FileName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-make_target_file_list(ModuleNames, FileType) = 
+make_target_file_list(ModuleNames, FileType) =
     list.map((func(ModuleName) = target_file(ModuleName, FileType)),
         ModuleNames).
 
@@ -1225,36 +1238,40 @@ target_extension(_, module_target_fact_table_object(_, _)) = no.
 
 linked_target_file_name(ModuleName, executable, FileName, !IO) :-
     globals.io_lookup_string_option(executable_file_extension, Ext, !IO),
-    module_name_to_file_name(ModuleName, Ext, no, FileName, !IO).
+    module_name_to_file_name(ModuleName, Ext,
+        do_not_create_dirs, FileName, !IO).
 linked_target_file_name(ModuleName, static_library, FileName, !IO) :-
     globals.io_lookup_string_option(library_extension, Ext, !IO),
-    module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName, !IO).
+    module_name_to_lib_file_name("lib", ModuleName, Ext,
+        do_not_create_dirs, FileName, !IO).
 linked_target_file_name(ModuleName, shared_library, FileName, !IO) :-
     globals.io_lookup_string_option(shared_library_extension, Ext, !IO),
-    module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName, !IO).
+    module_name_to_lib_file_name("lib", ModuleName, Ext,
+        do_not_create_dirs, FileName, !IO).
 linked_target_file_name(ModuleName, java_archive, FileName, !IO) :-
-    module_name_to_file_name(ModuleName, ".jar", no, FileName, !IO).
+    module_name_to_file_name(ModuleName, ".jar",
+        do_not_create_dirs, FileName, !IO).
 linked_target_file_name(ModuleName, erlang_archive, FileName, !IO) :-
-    module_name_to_lib_file_name("lib", ModuleName, ".beams", no, FileName,
-        !IO).
+    module_name_to_lib_file_name("lib", ModuleName, ".beams",
+        do_not_create_dirs, FileName, !IO).
 
 :- pred module_target_to_file_name(module_name::in, module_target_type::in,
-    bool::in, file_name::out, io::di, io::uo) is det.
+    maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
 
 module_target_to_file_name(ModuleName, TargetType, MkDir, FileName, !IO) :-
-    module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, no,
-        FileName, !IO).
+    module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir,
+        do_not_search, FileName, !IO).
 
 :- pred module_target_to_search_file_name(module_name::in,
     module_target_type::in, file_name::out, io::di, io::uo) is det.
 
 module_target_to_search_file_name(ModuleName, TargetType, FileName, !IO) :-
-    module_target_to_file_name_maybe_search(ModuleName, TargetType, no, yes,
-        FileName, !IO).
+    module_target_to_file_name_maybe_search(ModuleName, TargetType,
+        do_not_create_dirs, do_search, FileName, !IO).
 
 :- pred module_target_to_file_name_maybe_search(module_name::in,
-    module_target_type::in, bool::in, bool::in, file_name::out,
-    io::di, io::uo) is det.
+    module_target_type::in, maybe_create_dirs::in, maybe_search::in,
+    file_name::out, io::di, io::uo) is det.
 
 module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, Search,
         FileName, !IO) :-
@@ -1263,10 +1280,10 @@ module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, Search,
     (
         MaybeExt = yes(Ext),
         (
-            Search = yes,
+            Search = do_search,
             module_name_to_search_file_name(ModuleName, Ext, FileName, !IO)
         ;
-            Search = no,
+            Search = do_not_search,
             module_name_to_file_name(ModuleName, Ext, MkDir, FileName, !IO)
         )
     ;
@@ -1457,27 +1474,28 @@ verbose_msg(Option, P, !IO) :-
 debug_file_msg(TargetFile, Msg, !IO) :-
     debug_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
-            write_target_file(TargetFile, !IO),
+            make_write_target_file(TargetFile, !IO),
             io.write_string(": ", !IO),
             io.write_string(Msg, !IO),
             io.nl(!IO)
         ), !IO).
 
-write_dependency_file(dep_target(TargetFile), !IO) :-
-    write_target_file(TargetFile, !IO).
-write_dependency_file(dep_file(FileName, _), !IO) :-
+make_write_dependency_file(dep_target(TargetFile), !IO) :-
+    make_write_target_file(TargetFile, !IO).
+make_write_dependency_file(dep_file(FileName, _), !IO) :-
     io.write_string(FileName, !IO).
 
-write_dependency_file_list([], !IO).
-write_dependency_file_list([DepFile | DepFiles], !IO) :-
+make_write_dependency_file_list([], !IO).
+make_write_dependency_file_list([DepFile | DepFiles], !IO) :-
     io.write_string("\t", !IO),
-    write_dependency_file(DepFile, !IO),
+    make_write_dependency_file(DepFile, !IO),
     io.nl(!IO),
-    write_dependency_file_list(DepFiles, !IO).
+    make_write_dependency_file_list(DepFiles, !IO).
 
-write_target_file(TargetFile, !IO) :-
+make_write_target_file(TargetFile, !IO) :-
     TargetFile = target_file(ModuleName, FileType),
-    module_target_to_file_name(ModuleName, FileType, no, FileName, !IO),
+    module_target_to_file_name(ModuleName, FileType, do_not_create_dirs,
+        FileName, !IO),
     io.write_string(FileName, !IO).
 
 maybe_make_linked_target_message(TargetFile, !IO) :-
@@ -1497,7 +1515,7 @@ maybe_make_target_message_to_stream(OutputStream, TargetFile, !IO) :-
         (pred(!.IO::di, !:IO::uo) is det :-
             io.set_output_stream(OutputStream, OldOutputStream, !IO),
             io.write_string("Making ", !IO),
-            write_target_file(TargetFile, !IO),
+            make_write_target_file(TargetFile, !IO),
             io.nl(!IO),
             io.set_output_stream(OldOutputStream, _, !IO)
         ), !IO).
@@ -1513,7 +1531,7 @@ maybe_reanalyse_modules_message(!IO) :-
 
 target_file_error(TargetFile, !IO) :-
     io.write_string("** Error making `", !IO),
-    write_target_file(TargetFile, !IO),
+    make_write_target_file(TargetFile, !IO),
     io.write_string("'.\n", !IO).
 
 file_error(TargetFile, !IO) :-
@@ -1527,7 +1545,7 @@ maybe_warn_up_to_date_target(Target, !Info, !IO) :-
         Warn = yes,
         ( set.member(Target, !.Info ^ command_line_targets) ->
             io.write_string("** Nothing to be done for `", !IO),
-            write_module_or_linked_target(Target, !IO),
+            make_write_module_or_linked_target(Target, !IO),
             io.write_string("'.\n", !IO)
         ;
             true
@@ -1542,18 +1560,18 @@ maybe_symlink_or_copy_linked_target_message(Target, !IO) :-
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
             io.write_string("Made symlink/copy of ", !IO),
-            write_module_or_linked_target(Target, !IO),
+            make_write_module_or_linked_target(Target, !IO),
             io.write_string("\n", !IO)
         ), !IO).
 
-:- pred write_module_or_linked_target(pair(module_name, target_type)::in,
+:- pred make_write_module_or_linked_target(pair(module_name, target_type)::in,
     io::di, io::uo) is det.
 
-write_module_or_linked_target(ModuleName - FileType, !IO) :-
+make_write_module_or_linked_target(ModuleName - FileType, !IO) :-
     (
         FileType = module_target(ModuleTargetType),
         TargetFile = target_file(ModuleName, ModuleTargetType),
-        write_target_file(TargetFile, !IO)
+        make_write_target_file(TargetFile, !IO)
     ;
         FileType = linked_target(LinkedTargetType),
         linked_target_file_name(ModuleName, LinkedTargetType, FileName, !IO),

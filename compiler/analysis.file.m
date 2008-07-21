@@ -106,7 +106,7 @@
 
 :- import_module libs.compiler_util.
 :- import_module parse_tree.
-:- import_module parse_tree.modules.    % XXX unwanted dependency
+:- import_module parse_tree.module_cmds.        % XXX unwanted dependency
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 

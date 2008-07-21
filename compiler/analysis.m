@@ -315,8 +315,8 @@
 :- import_module analysis.file.
 :- import_module libs.
 :- import_module libs.compiler_util.
-:- import_module parse_tree.            % XXX unwanted dependency
-:- import_module parse_tree.modules.    % XXX unwanted dependency
+:- import_module parse_tree.                % XXX unwanted dependency
+:- import_module parse_tree.module_cmds.    % XXX unwanted dependency
 
 :- import_module map.
 :- import_module string.

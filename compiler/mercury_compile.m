@@ -37,16 +37,18 @@
 
 :- implementation.
 
-    %
-    % the main compiler passes (mostly in order of execution)
-    %
+    % The main compiler passes (mostly in order of execution).
 
-    % semantic analysis
+    % Semantic analysis.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.module_imports.
 :- import_module parse_tree.modules.
+:- import_module parse_tree.read_modules.
 :- import_module parse_tree.source_file_map.
+:- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.equiv_type.
@@ -64,7 +66,7 @@
 :- import_module check_hlds.stratify.
 :- import_module check_hlds.simplify.
 
-    % high-level HLDS transformations
+    % High-level HLDS transformations.
 :- import_module check_hlds.check_typeclass.
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.trans_opt.
@@ -106,7 +108,7 @@
 
 :- import_module transform_hlds.rbmm.
 
-    % the LLDS back-end
+    % The LLDS back-end.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.dupproc.
 :- import_module ll_backend.follow_code.
@@ -123,7 +125,7 @@
 :- import_module ll_backend.store_alloc.
 :- import_module ll_backend.transform_llds.
 
-    % the bytecode back-end
+    % The bytecode back-end.
 :- import_module bytecode_backend.bytecode_gen.
 :- import_module bytecode_backend.bytecode.
 
@@ -133,7 +135,7 @@
 :- import_module ll_backend.llds_to_x86_64_out.
 %:- import_module ll_backend.x86_64_instrs.
 
-    % the MLDS back-end
+    % The MLDS back-end.
 :- import_module ml_backend.add_trail_ops.         % HLDS -> HLDS
 :- import_module ml_backend.add_heap_ops.          % HLDS -> HLDS
 :- import_module ml_backend.mark_static_terms.     % HLDS -> HLDS
@@ -149,13 +151,13 @@
 :- import_module ml_backend.maybe_mlds_to_gcc.     % MLDS -> GCC back-end
 :- import_module ml_backend.ml_util.               % MLDS utility predicates
 
-    % the Erlang back-end
+    % The Erlang back-end.
 :- import_module erl_backend.elds.
 :- import_module erl_backend.elds_to_erlang.
 :- import_module erl_backend.erl_code_gen.
 :- import_module erl_backend.erl_rtti.
 
-    % miscellaneous compiler modules
+    % Miscellaneous compiler modules.
 :- import_module check_hlds.goal_path.
 :- import_module check_hlds.inst_check.
 :- import_module check_hlds.unused_imports.
@@ -174,6 +176,7 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
@@ -181,11 +184,11 @@
 :- import_module recompilation.usage.
 :- import_module transform_hlds.dependency_graph.
 
-    % inter-module analysis framework
+    % Inter-module analysis framework.
 :- import_module analysis.
 :- import_module transform_hlds.mmc_analysis.
 
-    % compiler library modules
+    % Compiler library modules.
 :- import_module backend_libs.base_typeclass_info.
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.export.
@@ -195,13 +198,14 @@
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module libs.trace_params.
 
-    % library modules
+    % Library modules.
 :- import_module assoc_list.
 :- import_module benchmarking.
 :- import_module bool.
@@ -640,10 +644,11 @@ compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
         file_name_to_module_name(Module, ModuleName),
         globals.io_lookup_bool_option(pic, Pic, !IO),
         AsmExt = (Pic = yes -> ".pic_s" ; ".s"),
-        module_name_to_file_name(ModuleName, AsmExt, yes, AsmFile, !IO),
+        module_name_to_file_name(ModuleName, AsmExt, do_create_dirs,
+            AsmFile, !IO),
         ( ModuleName \= FirstModuleName ->
-            module_name_to_file_name(FirstModuleName, AsmExt, no, FirstAsmFile,
-                !IO),
+            module_name_to_file_name(FirstModuleName, AsmExt,
+                do_not_create_dirs, FirstAsmFile, !IO),
             do_rename_file(FirstAsmFile, AsmFile, Result, !IO)
         ;
             Result = ok
@@ -934,8 +939,8 @@ file_or_module_to_module_name(fm_file(FileName)) = ModuleName :-
     file_name_to_module_name(FileName, ModuleName).
 file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
 
-:- pred read_module_or_file(file_or_module::in, bool::in, module_name::out,
-    file_name::out, maybe(timestamp)::out, list(item)::out,
+:- pred read_module_or_file(file_or_module::in, maybe_return_timestamp::in,
+    module_name::out, file_name::out, maybe(timestamp)::out, list(item)::out,
     module_error::out, read_modules::in, read_modules::out,
     io::di, io::uo) is det.
 
@@ -951,20 +956,19 @@ read_module_or_file(fm_module(ModuleName), ReturnTimestamp,
         % Avoid rereading the module if it was already read
         % by recompilation_version.m.
         find_read_module(!.ReadModules, ModuleName, ".m", ReturnTimestamp,
-            Items0, MaybeTimestamp0, Error0, FileName0)
+            ItemsPrime, MaybeTimestampPrime, ErrorPrime, FileNamePrime)
     ->
         map.delete(!.ReadModules, ModuleName - ".m", !:ReadModules),
-        FileName = FileName0,
-        Items = Items0,
-        Error = Error0,
-        MaybeTimestamp = MaybeTimestamp0
+        FileName = FileNamePrime,
+        Items = ItemsPrime,
+        Error = ErrorPrime,
+        MaybeTimestamp = MaybeTimestampPrime
     ;
         % We don't search `--search-directories' for source files
         % because that can result in the generated interface files
         % being created in the wrong directory.
-        Search = no,
-        read_mod(ModuleName, ".m", "Reading module", Search, ReturnTimestamp,
-            Items, Error, FileName, MaybeTimestamp, !IO)
+        read_module(ModuleName, ".m", "Reading module", do_not_search,
+            ReturnTimestamp, Items, Error, FileName, MaybeTimestamp, !IO)
     ),
     globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_report_stats(Stats, !IO).
@@ -980,19 +984,18 @@ read_module_or_file(fm_file(FileName), ReturnTimestamp, ModuleName,
         % Avoid rereading the module if it was already read
         % by recompilation_version.m.
         find_read_module(!.ReadModules, DefaultModuleName, ".m",
-            ReturnTimestamp, Items0, MaybeTimestamp0, Error0, _)
+            ReturnTimestamp, ItemsPrime, MaybeTimestampPrime, ErrorPrime, _)
     ->
         map.delete(!.ReadModules, ModuleName - ".m", !:ReadModules),
         ModuleName = DefaultModuleName,
-        Items = Items0,
-        Error = Error0,
-        MaybeTimestamp = MaybeTimestamp0
+        Items = ItemsPrime,
+        Error = ErrorPrime,
+        MaybeTimestamp = MaybeTimestampPrime
     ;
         % We don't search `--search-directories' for source files
         % because that can result in the generated interface files
         % being created in the wrong directory.
-        Search = no,
-        read_mod_from_file(FileName, ".m", "Reading file", Search,
+        read_module_from_file(FileName, ".m", "Reading file", do_not_search,
             ReturnTimestamp, Items, Error, ModuleName, MaybeTimestamp, !IO),
 
         % XXX If the module name doesn't match the file name, the compiler
@@ -1030,6 +1033,11 @@ read_module_or_file(fm_file(FileName), ReturnTimestamp, ModuleName,
     maybe_report_stats(Stats, !IO),
     string.append(FileName, ".m", SourceFileName).
 
+:- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
+
+version_numbers_return_timestamp(no) = do_not_return_timestamp.
+version_numbers_return_timestamp(yes) = do_return_timestamp.
+
 :- pred process_module(options_variables::in, list(string)::in,
     file_or_module::in, list(string)::out, list(string)::out,
     io::di, io::uo) is det.
@@ -1050,13 +1058,15 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
     (
         ( MakeInterface = yes ->
             ProcessModule = make_interface,
-            ReturnTimestamp = GenerateVersionNumbers
+            ReturnTimestamp =
+                version_numbers_return_timestamp(GenerateVersionNumbers)
         ; MakeShortInterface = yes ->
             ProcessModule = make_short_interface,
-            ReturnTimestamp = no
+            ReturnTimestamp = do_not_return_timestamp
         ; MakePrivateInterface = yes ->
             ProcessModule = make_private_interface,
-            ReturnTimestamp = GenerateVersionNumbers
+            ReturnTimestamp =
+                version_numbers_return_timestamp(GenerateVersionNumbers)
         ;
             fail
         )
@@ -1068,6 +1078,7 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             true
         ;
             split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
+            % XXX _NumErrors
             write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
             list.foldl(apply_process_module(ProcessModule,
@@ -1078,13 +1089,13 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
     ;
         ConvertToMercury = yes
     ->
-        read_module_or_file(FileOrModule, no, ModuleName, _, _, Items, Error,
-            map.init, _, !IO),
+        read_module_or_file(FileOrModule, do_not_return_timestamp,
+            ModuleName, _, _, Items, Error, map.init, _, !IO),
         ( halt_at_module_error(HaltSyntax, Error) ->
             true
         ;
-            module_name_to_file_name(ModuleName, ".ugly", yes, OutputFileName,
-                !IO),
+            module_name_to_file_name(ModuleName, ".ugly", do_create_dirs,
+                OutputFileName, !IO),
             convert_to_mercury(ModuleName, OutputFileName, Items, !IO)
         ),
         ModulesToLink = [],
@@ -1180,8 +1191,9 @@ process_module_2_no_fact_table(FileOrModule, MaybeModulesToRecompile,
 
 process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         ModulesToLink, FactTableObjFiles, !IO) :-
-    read_module_or_file(FileOrModule, yes, ModuleName, FileName,
-        MaybeTimestamp, Items, Error, ReadModules0, ReadModules, !IO),
+    read_module_or_file(FileOrModule, do_return_timestamp,
+        ModuleName, FileName, MaybeTimestamp, Items, Error,
+        ReadModules0, ReadModules, !IO),
     globals.io_get_globals(Globals, !IO),
     globals.lookup_bool_option(Globals, halt_at_syntax_errors, HaltSyntax),
     ( halt_at_module_error(HaltSyntax, Error) ->
@@ -1366,7 +1378,8 @@ usual_find_target_files(CompilationTarget, TargetSuffix, TopLevelModuleName,
         % in the `.s' file of the top-level module.
         TargetFiles = []
     ;
-        module_name_to_file_name(ModuleName, TargetSuffix, yes, FileName, !IO),
+        module_name_to_file_name(ModuleName, TargetSuffix, do_create_dirs,
+            FileName, !IO),
         TargetFiles = [FileName]
     ).
 
@@ -1418,8 +1431,8 @@ find_timestamp_files_2(CompilationTarget, TimestampSuffix,
         % the `.s' file of the top-level module.
         TimestampFiles = []
     ;
-        module_name_to_file_name(ModuleName, TimestampSuffix, yes, FileName,
-            !IO),
+        module_name_to_file_name(ModuleName, TimestampSuffix, do_create_dirs,
+            FileName, !IO),
         TimestampFiles = [FileName]
     ).
 
@@ -1601,7 +1614,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     % is interrupted after the new output file is written but before the new
     % `.used' file is written.
 
-    module_name_to_file_name(ModuleName, ".used", no, UsageFileName, !IO),
+    module_name_to_file_name(ModuleName, ".used", do_not_create_dirs,
+        UsageFileName, !IO),
     io.remove_file(UsageFileName, _, !IO),
 
     module_info_get_num_errors(!.HLDS, NumErrors),
@@ -1647,8 +1661,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             ;
                 TargetCodeOnly = no,
                 io.output_stream(OutputStream, !IO),
-                module_name_to_file_name(ModuleName, ".java", no, JavaFile,
-                    !IO),
+                module_name_to_file_name(ModuleName, ".java",
+                    do_not_create_dirs, JavaFile, !IO),
                 compile_target_code.compile_java_file(OutputStream, JavaFile,
                     Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
@@ -1687,12 +1701,13 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                     TargetCodeOnly = yes
                 ;
                     TargetCodeOnly = no,
-                    module_name_to_file_name(ModuleName, ".c", no, C_File,
-                        !IO),
+                    module_name_to_file_name(ModuleName, ".c",
+                        do_not_create_dirs, C_File, !IO),
                     get_linked_target_type(TargetType, !IO),
                     get_object_code_type(TargetType, PIC, !IO),
                     maybe_pic_object_file_extension(PIC, Obj, !IO),
-                    module_name_to_file_name(ModuleName, Obj, yes, O_File, !IO),
+                    module_name_to_file_name(ModuleName, Obj,
+                        do_create_dirs, O_File, !IO),
                     io.output_stream(OutputStream, !IO),
                     compile_target_code.compile_c_file(OutputStream, PIC,
                         C_File, O_File, CompileOK, !IO),
@@ -1745,9 +1760,11 @@ mercury_compile_asm_c_code(ModuleName, !IO) :-
     get_linked_target_type(TargetType, !IO),
     get_object_code_type(TargetType, PIC, !IO),
     maybe_pic_object_file_extension(PIC, Obj, !IO),
-    module_name_to_file_name(ModuleName, ".c", no, CCode_C_File, !IO),
+    module_name_to_file_name(ModuleName, ".c", do_not_create_dirs,
+        CCode_C_File, !IO),
     ForeignModuleName = foreign_language_module_name(ModuleName, lang_c),
-    module_name_to_file_name(ForeignModuleName, Obj, yes, CCode_O_File, !IO),
+    module_name_to_file_name(ForeignModuleName, Obj, do_create_dirs,
+        CCode_O_File, !IO),
     io.output_stream(OutputStream, !IO),
     compile_target_code.compile_c_file(OutputStream, PIC,
         CCode_C_File, CCode_O_File, CompileOK, !IO),
@@ -1919,7 +1936,8 @@ invoke_module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap,
     maybe_write_string(Verbose, "% Module qualifying items...\n", !IO),
     maybe_flush_output(Verbose, !IO),
     globals.io_get_globals(Globals, !IO),
-    module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+        FileName, !IO),
     module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap,
         Globals, ModuleName, yes(FileName), EventSpecFileName, MQInfo,
         UndefTypes, UndefModes, [], Specs),
@@ -2365,7 +2383,8 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             true
         ),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(ModuleName, ".opt", yes, OptName, !IO),
+        module_name_to_file_name(ModuleName, ".opt", do_create_dirs,
+            OptName, !IO),
         update_interface(OptName, !IO),
         touch_interface_datestamp(ModuleName, ".optdate", !IO)
     ;
@@ -3606,8 +3625,8 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
         ShowDepGraph = yes,
         maybe_write_string(Verbose, "% Writing dependency graph...", !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(ModuleName, ".dependency_graph", yes,
-            FileName, !IO),
+        module_name_to_file_name(ModuleName, ".dependency_graph",
+            do_create_dirs, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -3645,7 +3664,8 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
             "% Outputing profiling call graph...", !IO),
         maybe_flush_output(Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(ModuleName, ".prof", yes, ProfFileName, !IO),
+        module_name_to_file_name(ModuleName, ".prof", do_create_dirs,
+            ProfFileName, !IO),
         io.open_output(ProfFileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -3819,15 +3839,16 @@ maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !DumpInfo, !IO) :-
         bytecode_gen.gen_module(HLDS1, _HLDS2, Bytecode, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
-        module_name_to_file_name(ModuleName, ".bytedebug", yes, BytedebugFile,
-            !IO),
+        module_name_to_file_name(ModuleName, ".bytedebug", do_create_dirs,
+            BytedebugFile, !IO),
         maybe_write_string(Verbose, "% Writing bytecodes to `", !IO),
         maybe_write_string(Verbose, BytedebugFile, !IO),
         maybe_write_string(Verbose, "'...", !IO),
         maybe_flush_output(Verbose, !IO),
         debug_bytecode_file(BytedebugFile, Bytecode, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
-        module_name_to_file_name(ModuleName, ".mbc", yes, BytecodeFile, !IO),
+        module_name_to_file_name(ModuleName, ".mbc", do_create_dirs,
+            BytecodeFile, !IO),
         maybe_write_string(Verbose, "% Writing bytecodes to `", !IO),
         maybe_write_string(Verbose, BytecodeFile, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -4867,7 +4888,7 @@ combine_chunks_2([Chunk | Chunks], ModuleName, Num, [Module | Modules]) :-
 output_llds(ModuleName, LLDS0, ComplexityProcs, StackLayoutLabels,
         Verbose, Stats, !IO) :-
     maybe_write_string(Verbose, "% Writing output to `", !IO),
-    module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO),
+    module_name_to_file_name(ModuleName, ".c", do_create_dirs, FileName, !IO),
     maybe_write_string(Verbose, FileName, !IO),
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
@@ -4884,8 +4905,9 @@ c_to_obj(ErrorStream, ModuleName, Succeeded, !IO) :-
     get_linked_target_type(LinkedTargetType, !IO),
     get_object_code_type(LinkedTargetType, PIC, !IO),
     maybe_pic_object_file_extension(PIC, Obj, !IO),
-    module_name_to_file_name(ModuleName, ".c", no, C_File, !IO),
-    module_name_to_file_name(ModuleName, Obj, yes, O_File, !IO),
+    module_name_to_file_name(ModuleName, ".c", do_not_create_dirs,
+        C_File, !IO),
+    module_name_to_file_name(ModuleName, Obj, do_create_dirs, O_File, !IO),
     compile_target_code.compile_c_file(ErrorStream, PIC, C_File, O_File,
         Succeeded, !IO).
 
@@ -5156,8 +5178,8 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
     StageNumStr = stage_num_str(StageNum),
     ( should_dump_stage(StageNum, StageNumStr, StageName, DumpHLDSStages) ->
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name(ModuleName, ".hlds_dump", yes, BaseFileName,
-            !IO),
+        module_name_to_file_name(ModuleName, ".hlds_dump", do_create_dirs,
+            BaseFileName, !IO),
         DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName
             ++ UserFileSuffix,
         (
@@ -5185,7 +5207,7 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
         !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
     ; should_dump_stage(StageNum, StageNumStr, StageName, DumpTraceStages) ->
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name(ModuleName, ".trace_counts", yes,
+        module_name_to_file_name(ModuleName, ".trace_counts", do_create_dirs,
             BaseFileName, !IO),
         DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName
             ++ UserFileSuffix,
@@ -5289,8 +5311,8 @@ maybe_dump_mlds(MLDS, StageNum, StageName, !IO) :-
     ( should_dump_stage(StageNum, StageNumStr, StageName, VerboseDumpStages) ->
         maybe_write_string(Verbose, "% Dumping out raw MLDS...\n", !IO),
         ModuleName = mlds_get_module_name(MLDS),
-        module_name_to_file_name(ModuleName, ".mlds_dump", yes, BaseFileName,
-            !IO),
+        module_name_to_file_name(ModuleName, ".mlds_dump", do_create_dirs,
+            BaseFileName, !IO),
         string.append_list([BaseFileName, ".", StageNumStr, "-", StageName],
             DumpFile),
         dump_mlds(DumpFile, MLDS, !IO),

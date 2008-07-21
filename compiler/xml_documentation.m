@@ -42,7 +42,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.source_file_map.
 
@@ -84,7 +84,8 @@
 
 xml_documentation(ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".xml", yes, FileName, !IO),
+    module_name_to_file_name(ModuleName, ".xml", do_create_dirs, FileName,
+        !IO),
 
     lookup_module_source_file(ModuleName, SrcFileName, !IO),
     io.open_input(SrcFileName, SrcResult, !IO),

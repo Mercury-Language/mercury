@@ -1071,7 +1071,7 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin, Status,
         ClassProofs, ClassConstraintMap, ClausesInfo, VarNameRemap,
         PredInfo) :-
     PredName = unqualify_name(SymName),
-    sym_name_get_module_name(SymName, ModuleName, PredModuleName),
+    sym_name_get_module_name_default(SymName, ModuleName, PredModuleName),
     type_vars_list(ArgTypes, TVars),
     list.delete_elems(TVars, ExistQVars, HeadTypeParams),
     Attributes = [],

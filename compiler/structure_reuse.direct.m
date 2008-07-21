@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,10 +54,10 @@
 
 :- import_module analysis.
 :- import_module hlds.passes_aux.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- import_module transform_hlds.ctgc.util.

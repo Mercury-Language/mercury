@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2003, 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -68,7 +68,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module list.
@@ -107,8 +106,8 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
         ;
             TypeCtor = type_ctor(QualTypeName, Arity),
             TypeName = unqualify_name(QualTypeName),
-            sym_name_get_module_name(QualTypeName, unqualified("builtin"),
-                TypeModule),
+            sym_name_get_module_name_default(QualTypeName,
+                unqualified("builtin"), TypeModule),
             RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
@@ -171,8 +170,8 @@ construct_type_info(Type, TypeInfo) :-
         ;
             TypeCtor = type_ctor(QualTypeName, Arity),
             TypeName = unqualify_name(QualTypeName),
-            sym_name_get_module_name(QualTypeName, unqualified("builtin"),
-                TypeModule),
+            sym_name_get_module_name_default(QualTypeName,
+                unqualified("builtin"), TypeModule),
             RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
             generate_plain_args(TypeArgs, TypeInfoArgs),
             expect(check_arity(TypeInfoArgs, Arity),

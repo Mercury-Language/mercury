@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: make.program_target.m.
 % Main author: stayl.
-% 
+%
 % Build targets which relate to whole programs or libraries.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module make.program_target.
@@ -40,12 +40,15 @@
 :- implementation.
 
 :- import_module analysis.
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 :- import_module libs.process_util.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.module_cmds.
+:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
@@ -91,7 +94,7 @@ make_linked_target(LinkedTargetFile, LinkedTargetSucceeded, !Info, !IO) :-
             LibgradeCheckSucceeded = yes
         ),
 
-        ( 
+        (
             LibgradeCheckSucceeded = yes,
             % When using `--intermodule-analysis', perform an analysis pass
             % first.  The analysis of one module may invalidate the results of
@@ -181,10 +184,10 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
             ObjModules, ForeignObjTargetsList, !Info, !IO),
         ForeignObjTargets = list.condense(ForeignObjTargetsList),
 
-        % Ensure all interface files are present before continuing.  This
-        % prevents a problem when two parallel branches try to generate the
-        % same missing interface file later.
-        %
+        % Ensure all interface files are present before continuing.
+        % This prevents a problem when two parallel branches try to generate
+        % the same missing interface file later.
+
         make_all_interface_files(AllModulesList, IntsSucceeded, !Info, !IO),
         ( IntsSucceeded = no, KeepGoing = no ->
             BuildDepsSucceeded = no
@@ -469,8 +472,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
     ;
         DepsResult = deps_up_to_date,
         MsgTarget = MainModuleName - linked_target(FileType),
-        globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs,
-            !IO),
+        globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
         (
             UseGradeSubdirs = yes,
             post_link_make_symlink_or_copy(ErrorStream,
@@ -534,8 +536,8 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         ),
         list.map_foldl(
             (pred(ObjModule::in, ObjToLink::out, !.IO::di, !:IO::uo) is det :-
-                module_name_to_file_name(ObjModule,
-                    ObjExtToUse, no, ObjToLink, !IO)
+                module_name_to_file_name(ObjModule, ObjExtToUse,
+                    do_not_create_dirs, ObjToLink, !IO)
             ), ObjModules, ObjList, !IO),
 
         % LinkObjects may contain `.a' files which must come
@@ -742,7 +744,10 @@ make_all_interface_files(AllModules, Succeeded, !Info, !IO) :-
 build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
         !Info, !IO) :-
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
-    ( Succeeded0 = no, KeepGoing = no ->
+    (
+        Succeeded0 = no,
+        KeepGoing = no
+    ->
         Succeeded = no
     ;
         % Ensure all interface files are present before continuing.  This
@@ -750,7 +755,10 @@ build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
         % same missing interface file later.
         % (Although we can't actually build analysis files in parallel yet.)
         make_all_interface_files(AllModules, Succeeded1, !Info, !IO),
-        ( Succeeded1 = no, KeepGoing = no ->
+        (
+            Succeeded1 = no,
+            KeepGoing = no
+        ->
             Succeeded = no
         ;
             build_analysis_files_1(MainModuleName, AllModules,
@@ -773,7 +781,7 @@ build_analysis_files_1(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
         LocalModulesOpts, !Info, !IO),
     (
         Succeeded0 = yes,
-        build_analysis_files_2(MainModuleName, TargetModules, 
+        build_analysis_files_2(MainModuleName, TargetModules,
             LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
     ;
         Succeeded0 = no,
@@ -791,7 +799,7 @@ build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
         make_module_target_extra_options(LocalModulesOpts),
         make_dependency_list(TargetModules, module_target_analysis_registry),
         Succeeded1, !Info, !IO),
-    % Maybe we should have an option to reanalyse cliques before moving 
+    % Maybe we should have an option to reanalyse cliques before moving
     % upwards in the dependency graph?
 
     % Find which module analysis files are suboptimal or invalid.
@@ -928,17 +936,17 @@ build_c_library(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
             SharedLibsSupported = no,
             SharedLibsSucceeded = yes
         ),
-        % We can only build the .init file if we have succesfully
-        % built the .c files.
+        % We can only build the .init file if we have succesfully built
+        % the .c files.
         (
             SharedLibsSucceeded = yes,
             % Errors while making the .init file should be very rare.
             io.output_stream(ErrorStream, !IO),
-            make_library_init_file(ErrorStream, MainModuleName,
-                AllModules, Succeeded, !IO)
+            make_library_init_file(ErrorStream, MainModuleName, AllModules,
+                Succeeded, !IO)
         ;
             SharedLibsSucceeded = no,
-            Succeeded = no 
+            Succeeded = no
         )
     ;
         StaticSucceeded = no,
@@ -964,8 +972,8 @@ build_erlang_library(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
         Succeeded0 = yes,
         % Errors while making the .init file should be very rare.
         io.output_stream(ErrorStream, !IO),
-        make_erlang_library_init_file(ErrorStream, MainModuleName,
-            AllModules, Succeeded, !IO)
+        make_erlang_library_init_file(ErrorStream, MainModuleName, AllModules,
+            Succeeded, !IO)
     ;
         Succeeded0 = no,
         Succeeded = no
@@ -1056,7 +1064,8 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
             ),
             % XXX Should we test
             % Imports ^ contains_foreign_export = contains_foreign_export?
-            module_name_to_file_name(ModuleName, ".mh", no, FileName, !IO),
+            module_name_to_file_name(ModuleName, ".mh", do_not_create_dirs,
+                FileName, !IO),
             install_file(FileName, LibDir/"inc", HeaderSucceeded1, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
@@ -1066,7 +1075,8 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         ;
             Target = target_erlang,
-            module_name_to_file_name(ModuleName, ".hrl", no, FileName, !IO),
+            module_name_to_file_name(ModuleName, ".hrl", do_not_create_dirs,
+                FileName, !IO),
             install_file(FileName, LibDir/"inc", HeaderSucceeded, !IO)
         ;
             ( Target = target_java
@@ -1260,7 +1270,8 @@ install_library_grade_files(LinkSucceeded0, GradeDir, ModuleName, AllModules,
 install_grade_init(GradeDir, ModuleName, Succeeded, !IO) :-
     globals.io_lookup_string_option(install_prefix, Prefix, !IO),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
-    module_name_to_file_name(ModuleName, ".init", no, InitFileName, !IO),
+    module_name_to_file_name(ModuleName, ".init", do_not_create_dirs,
+        InitFileName, !IO),
     install_file(InitFileName, GradeModulesDir, Succeeded, !IO).
 
     % Install the `.opt', `.analysis' and `.mih' files for the current grade.
@@ -1291,8 +1302,7 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
             install_subdir_file(LinkSucceeded, GradeIncDir, ModuleName, "mih",
                 HeaderSucceeded1, !IO),
 
-            % This is needed so that the file will be
-            % found in Mmake's VPATH.
+            % This is needed so that the file will be found in Mmake's VPATH.
             IntDir = LibDir/"ints",
             install_subdir_file(LinkSucceeded, IntDir, ModuleName, "mih",
                 HeaderSucceeded2, !IO),
@@ -1322,7 +1332,7 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
             IntermodAnalysis = no,
             IntermodAnalysisSucceeded = yes
         ),
-        
+
         Succeeded = HeaderSucceeded `and` OptSucceeded `and`
             IntermodAnalysisSucceeded
     ;
@@ -1339,7 +1349,8 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
 
 install_subdir_file(SubdirLinkSucceeded, InstallDir, ModuleName, Ext,
         Succeeded, !IO) :-
-    module_name_to_file_name(ModuleName, "." ++ Ext, no, FileName, !IO),
+    module_name_to_file_name(ModuleName, "." ++ Ext, do_not_create_dirs,
+        FileName, !IO),
     install_file(FileName, InstallDir, Succeeded1, !IO),
     (
         SubdirLinkSucceeded = no,
@@ -1358,11 +1369,10 @@ maybe_install_library_file(Linkage, FileName, InstallDir, Succeeded, !IO) :-
     globals.io_lookup_accumulating_option(lib_linkages, LibLinkages, !IO),
     ( list.member(Linkage, LibLinkages) ->
         install_file(FileName, InstallDir, Succeeded0, !IO),
-        %
+
         % We need to update the archive index after we copy a .a file to
         % the installation directory because the linkers on some OSs
         % complain if we don't.
-        % 
         (
             Linkage = "static",
             Succeeded0 = yes
@@ -1370,7 +1380,7 @@ maybe_install_library_file(Linkage, FileName, InstallDir, Succeeded, !IO) :-
             % Since mmc --make uses --use-subdirs the above FileName will
             % be directory qualified.  We don't care about the build
             % directory here so we strip that qualification off.
-            %
+
             BaseFileName = dir.det_basename(FileName),
             generate_archive_index(BaseFileName, InstallDir, Succeeded, !IO)
         ;
@@ -1549,8 +1559,7 @@ maybe_make_grade_clean(Clean, ModuleName, AllModules, !Info, !IO) :-
 make_grade_clean(ModuleName, AllModules, !Info, !IO) :-
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Cleaning up grade-dependent files for `",
-                !IO),
+            io.write_string("Cleaning up grade-dependent files for `", !IO),
             write_sym_name(ModuleName, !IO),
             io.write_string("'in grade ", !IO),
             globals.io_get_globals(Globals, !IO),
@@ -1593,7 +1602,7 @@ make_main_module_realclean(ModuleName, !Info, !IO) :-
     linked_target_file_name(ModuleName, erlang_archive,
         ThisDirErlangArchiveFileName, !IO),
     % XXX this symlink should not be necessary anymore for `mmc --make'
-    module_name_to_file_name(ModuleName, ".init", no,
+    module_name_to_file_name(ModuleName, ".init", do_not_create_dirs,
         ThisDirInitFileName, !IO),
     globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
 
@@ -1657,7 +1666,7 @@ make_module_clean(ModuleName, !Info, !IO) :-
     list.foldl2(
         (pred(FactTableFile::in, !.Info::in, !:Info::out, di, uo) is det -->
             fact_table_file_name(ModuleName, FactTableFile,
-                ".c", no, FactTableCFile),
+                ".c", do_not_create_dirs, FactTableCFile),
             make_remove_file(very_verbose, FactTableCFile, !Info)
         ), FactTableFiles, !Info, !IO),
 
@@ -1706,11 +1715,11 @@ make_module_realclean(ModuleName, !Info, !IO) :-
         ), !IO),
     list.foldl2(make_remove_target_file(very_verbose, ModuleName),
         [
-            module_target_private_interface, 
-            module_target_long_interface, 
+            module_target_private_interface,
+            module_target_long_interface,
             module_target_short_interface,
-            module_target_unqualified_short_interface, 
-            module_target_intermodule_interface, 
+            module_target_unqualified_short_interface,
+            module_target_intermodule_interface,
             module_target_analysis_registry,
             module_target_c_header(header_mh),
             module_target_erlang_header
@@ -1725,7 +1734,7 @@ make_module_realclean(ModuleName, !Info, !IO) :-
 %
 % Check that the Mercury libraries required to build a linked target
 % are installed in the selected grade.
-%             
+%
 
     % Check that all Mercury libraries required by the linked target are
     % installed in the selected grade.
@@ -1781,7 +1790,7 @@ check_stdlib_is_installed(Grade, Succeeded, !IO) :-
         MaybeStdLibDir = no,
         Succeeded = yes
     ).
- 
+
 :- pred check_library_is_installed(list(string)::in, string::in,
     string::in, bool::in, bool::out, io::di, io::uo) is det.
 
@@ -1791,9 +1800,9 @@ check_library_is_installed(Dirs, Grade, LibName, !Succeeded, !IO) :-
             io.format("Checking that %s is installed in grade `%s'.\n",
                 [s(LibName), s(Grade)], !IO)
         ), !IO),
-    % We check for the presence of a library in a particular grade by
-    % seeing whether its .init file.  This will work because all
-    % libraries have a grade dependent .init file.
+    % We check for the presence of a library in a particular grade by seeing
+    % whether its .init file exists.  This will work because all libraries
+    % have a grade dependent .init file.
     InitFileName = LibName ++ ".init",
     search_for_file(Dirs, InitFileName, SearchResult, !IO),
     (
@@ -1808,7 +1817,7 @@ check_library_is_installed(Dirs, Grade, LibName, !Succeeded, !IO) :-
             "%s: error: the library `%s' cannot be found in grade `%s'.\n",
             [s(ProgName), s(LibName), s(Grade)], !IO),
         !:Succeeded = no
-    ). 
+    ).
 
 %-----------------------------------------------------------------------------%
 

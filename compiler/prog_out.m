@@ -23,17 +23,9 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
-
-:- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
-:- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.
-:- pred maybe_flush_output(bool::in, io::di, io::uo) is det.
-
-:- pred report_error(string::in, io::di, io::uo) is det.
-:- pred report_error(io.output_stream::in, string::in, io::di, io::uo) is det.
 
     % Write out the information in term context (at the moment, just
     % the line number) in a form suitable for the beginning of an
@@ -163,31 +155,6 @@
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-maybe_report_stats(yes, !IO) :-
-    io.report_stats(!IO).
-maybe_report_stats(no, !IO).
-
-maybe_write_string(yes, String, !IO) :-
-    io.write_string(String, !IO).
-maybe_write_string(no, _, !IO).
-
-maybe_flush_output(yes, !IO) :-
-    io.flush_output(!IO).
-maybe_flush_output(no, !IO).
-
-report_error(ErrorMessage, !IO) :-
-    io.write_string("Error: ", !IO),
-    io.write_string(ErrorMessage, !IO),
-    io.write_string("\n", !IO),
-    io.set_exit_status(1, !IO).
-
-report_error(Stream, ErrorMessage, !IO) :-
-    io.set_output_stream(Stream, OldStream, !IO),
-    report_error(ErrorMessage, !IO),
-    io.set_output_stream(OldStream, _, !IO).
-
 %-----------------------------------------------------------------------------%
 
 write_context(Context, !IO) :-

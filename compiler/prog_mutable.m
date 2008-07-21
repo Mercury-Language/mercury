@@ -418,7 +418,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.

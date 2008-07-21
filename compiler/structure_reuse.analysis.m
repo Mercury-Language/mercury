@@ -97,15 +97,15 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
@@ -664,7 +664,8 @@ annotate_in_use_information(_PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 
 make_opt_int(!ModuleInfo, !IO) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
+    module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
+        OptFileName, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Appending structure_reuse pragmas to ",
         !IO),

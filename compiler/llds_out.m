@@ -190,6 +190,7 @@
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.rtti_out.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
@@ -228,7 +229,7 @@ decl_set_is_member(DeclId, DeclSet) :-
 
 output_llds(CFile, ComplexityProcs, StackLayoutLabels, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
-    module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO),
+    module_name_to_file_name(ModuleName, ".c", do_create_dirs, FileName, !IO),
     io.open_output(FileName, Result, !IO),
     (
         Result = ok(FileStream),
@@ -287,7 +288,8 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
         UserInitPredCNames, UserFinalPredCNames),
     library.version(Version),
     io.set_output_stream(FileStream, OutputStream, !IO),
-    module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
+    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+        SourceFileName, !IO),
     output_c_file_intro_and_grade(SourceFileName, Version, !IO),
     module_gather_env_var_names(Modules, set.init, EnvVarNameSet),
     EnvVarNames = set.to_sorted_list(EnvVarNameSet),

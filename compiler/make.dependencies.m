@@ -168,6 +168,8 @@
 
 :- implementation.
 
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
@@ -1220,21 +1222,22 @@ check_dependencies_debug_unbuilt(TargetFileName, UnbuiltDependencies, !IO) :-
     io.write_string(": dependencies could not be built.\n\t", !IO),
     io.write_list(UnbuiltDependencies, ",\n\t",
         (pred((DepTarget - DepStatus)::in, !.IO::di, !:IO::uo) is det :-
-            write_dependency_file(DepTarget, !IO),
+            make_write_dependency_file(DepTarget, !IO),
             io.write_string(" - ", !IO),
-            write_dependency_status(DepStatus, !IO)
+            make_write_dependency_status(DepStatus, !IO)
         ), !IO),
     io.nl(!IO).
 
-:- pred write_dependency_status(dependency_status::in, io::di, io::uo) is det.
+:- pred make_write_dependency_status(dependency_status::in, io::di, io::uo)
+    is det.
 
-write_dependency_status(deps_status_not_considered, !IO) :-
+make_write_dependency_status(deps_status_not_considered, !IO) :-
     io.write_string("deps_status_not_considered", !IO).
-write_dependency_status(deps_status_being_built, !IO) :-
+make_write_dependency_status(deps_status_being_built, !IO) :-
     io.write_string("deps_status_being_built", !IO).
-write_dependency_status(deps_status_up_to_date, !IO) :-
+make_write_dependency_status(deps_status_up_to_date, !IO) :-
     io.write_string("deps_status_up_to_date", !IO).
-write_dependency_status(deps_status_error, !IO) :-
+make_write_dependency_status(deps_status_error, !IO) :-
     io.write_string("deps_status_error", !IO).
 
 check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
@@ -1259,7 +1262,7 @@ check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
             DepTimestamps, !Info, !IO),
 
         check_dependency_timestamps(TargetFileName, MaybeTimestamp,
-            BuildDepsSucceeded, DepFiles, write_dependency_file,
+            BuildDepsSucceeded, DepFiles, make_write_dependency_file,
             DepTimestamps, DepsResult, !IO)
     ).
 
@@ -1386,20 +1389,20 @@ debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
                 compare((>), DepTimestamp, Timestamp)
             )
         ), NewerDeps),
-    write_dependency_file_and_timestamp_list(NewerDeps, !IO).
+    make_write_dependency_file_and_timestamp_list(NewerDeps, !IO).
 
-:- pred write_dependency_file_and_timestamp_list(
+:- pred make_write_dependency_file_and_timestamp_list(
     list({T, maybe_error(timestamp)})::in, io::di, io::uo) is det.
 
-write_dependency_file_and_timestamp_list([], !IO).
-write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
+make_write_dependency_file_and_timestamp_list([], !IO).
+make_write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
     Head = {DepFile, MaybeTimestamp},
     io.write_char('\t', !IO),
     io.write(DepFile, !IO),
     io.write_char(' ', !IO),
     io.write(MaybeTimestamp, !IO),
     io.nl(!IO),
-    write_dependency_file_and_timestamp_list(Tail, !IO).
+    make_write_dependency_file_and_timestamp_list(Tail, !IO).
 
 dependency_status(dep_file(FileName, _) @ Dep, Status, !Info, !IO) :-
     ( version_hash_table.search(!.Info ^ dependency_status, Dep, Status0) ->
@@ -1440,7 +1443,8 @@ dependency_status(dep_target(Target) @ Dep, Status, !Info, !IO) :-
                 % Targets from libraries are always considered to be
                 % up-to-date if they exist.
 
-                get_target_timestamp(yes, Target, MaybeTimestamp, !Info, !IO),
+                get_target_timestamp(do_search, Target, MaybeTimestamp,
+                    !Info, !IO),
                 (
                     MaybeTimestamp = ok(_),
                     Status = deps_status_up_to_date
@@ -1448,7 +1452,7 @@ dependency_status(dep_target(Target) @ Dep, Status, !Info, !IO) :-
                     MaybeTimestamp = error(Error),
                     Status = deps_status_error,
                     io.write_string("** Error: file `", !IO),
-                    write_target_file(Target, !IO),
+                    make_write_target_file(Target, !IO),
                     io.write_string("' not found: ", !IO),
                     io.write_string(Error, !IO),
                     io.nl(!IO)

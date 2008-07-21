@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,10 +53,16 @@
 
 % Transformations that act on the parse tree,
 % and stuff relating to the module system.
+:- include_module deps_map.
 :- include_module equiv_type.
-:- include_module modules.
+:- include_module file_names.
+:- include_module module_cmds.
+:- include_module module_imports.
 :- include_module module_qual.
+:- include_module modules.
+:- include_module read_modules.
 :- include_module source_file_map.
+:- include_module write_deps_file.
 
 % (Note that intermod and trans_opt also contain routines that
 % act on the parse tree, but those modules are considered part

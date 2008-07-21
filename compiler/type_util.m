@@ -361,7 +361,7 @@
 %-----------------------------------------------------------------------------%
 
 type_ctor_module(_ModuleInfo, type_ctor(TypeSymName, _Arity)) = ModuleName :-
-    sym_name_get_module_name(TypeSymName, unqualified(""), ModuleName).
+    sym_name_get_module_name_default(TypeSymName, unqualified(""), ModuleName).
 
 type_ctor_name(_ModuleInfo, type_ctor(TypeSymName, _Arity)) =
     unqualify_name(TypeSymName).

@@ -81,8 +81,8 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -92,6 +92,8 @@
                                          % handles derived classes
 :- import_module ml_backend.ml_type_gen. % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
@@ -132,7 +134,8 @@ output_mlds(MLDS, Suffix, !IO) :-
 
 output_c_file(MLDS, Suffix, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(ModuleName, ".c" ++ Suffix, yes, SourceFile, !IO),
+    module_name_to_file_name(ModuleName, ".c" ++ Suffix, do_create_dirs,
+        SourceFile, !IO),
     Indent = 0,
     output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS), !IO).
 
@@ -145,10 +148,10 @@ output_header_file(MLDS, Suffix, !IO) :-
     % changed.
 
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(ModuleName, ".mih" ++ Suffix ++ ".tmp", yes,
-        TmpHeaderFile, !IO),
-    module_name_to_file_name(ModuleName, ".mih" ++ Suffix, yes,
-        HeaderFile, !IO),
+    module_name_to_file_name(ModuleName, ".mih" ++ Suffix ++ ".tmp",
+        do_create_dirs, TmpHeaderFile, !IO),
+    module_name_to_file_name(ModuleName, ".mih" ++ Suffix,
+        do_create_dirs, HeaderFile, !IO),
     Indent = 0,
     output_to_file(TmpHeaderFile, mlds_output_hdr_file(Indent, MLDS), !IO),
     update_interface(HeaderFile, !IO).
@@ -523,7 +526,8 @@ mlds_output_src_end(Indent, ModuleName, !IO) :-
 
 mlds_output_auto_gen_comment(ModuleName, !IO) :-
     library.version(Version),
-    module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
+    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+        SourceFileName, !IO),
     output_c_file_intro_and_grade(SourceFileName, Version, !IO),
     io.nl(!IO).
 

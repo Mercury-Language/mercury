@@ -106,8 +106,8 @@
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_pred.           % for pred_proc_id.
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -115,7 +115,7 @@
 :- import_module ml_backend.ml_code_util.  % for ml_gen_local_var_decl_flags.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
-:- import_module parse_tree.modules.       % for mercury_std_library_name.
+:- import_module parse_tree.file_names.    % for mercury_std_library_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
@@ -142,8 +142,8 @@ output_mlds(ModuleInfo, MLDS, !IO) :-
     % that's why we don't call mercury_module_name_to_mlds here.
     ModuleName = mlds_get_module_name(MLDS),
     JavaSafeModuleName = valid_module_name(ModuleName),
-    module_name_to_file_name(JavaSafeModuleName, ".java", yes, JavaSourceFile,
-        !IO),
+    module_name_to_file_name(JavaSafeModuleName, ".java", do_create_dirs,
+        JavaSourceFile, !IO),
     Indent = 0,
     output_to_file(JavaSourceFile,
         output_java_src_file(ModuleInfo, Indent, MLDS), !IO).
@@ -1143,7 +1143,8 @@ output_src_end(Indent, ModuleName, !IO) :-
 
 output_auto_gen_comment(ModuleName, !IO)  :-
     library.version(Version),
-    module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
+    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+        SourceFileName, !IO),
     io.write_string("//\n//\n// Automatically generated from ", !IO),
     io.write_string(SourceFileName, !IO),
     io.write_string(" by the Mercury Compiler,\n", !IO),

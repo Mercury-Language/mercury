@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -381,7 +381,7 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     % will be inferred automatically.
 
     module_info_get_name(!.ModuleInfo, ModuleName0),
-    sym_name_get_module_name(PredName, ModuleName0, ModuleName),
+    sym_name_get_module_name_default(PredName, ModuleName0, ModuleName),
     list.length(Modes, Arity),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     (

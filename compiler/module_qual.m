@@ -130,7 +130,7 @@
 
 :- import_module libs.compiler_util.
 :- import_module libs.options.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -1439,7 +1439,8 @@ qualify_instance_body(ClassName, InstanceBody0, InstanceBody) :-
             Ms = M0s
         ;
             ClassName = qualified(_, _),
-            sym_name_get_module_name(ClassName, unqualified(""), Module),
+            sym_name_get_module_name_default(ClassName, unqualified(""),
+                Module),
             Qualify = (pred(M0::in, M::out) is det :-
                 M0 = instance_method(A, Method0, C, D, E),
                 add_module_qualifier(Module, Method0, Method),

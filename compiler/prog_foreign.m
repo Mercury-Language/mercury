@@ -186,7 +186,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
 
 :- import_module char.
 :- import_module int.

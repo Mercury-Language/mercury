@@ -70,13 +70,14 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.liveness.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
@@ -912,7 +913,8 @@ ss_fixpoint_table_get_final_as_semidet(PPId, T, SharingAs_Status) :-
 
 make_opt_int(ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
+    module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
+        OptFileName, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Appending structure_sharing pragmas to ",
         !IO),

@@ -56,7 +56,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.module_imports.
 
 :- import_module bool.
 :- import_module io.
@@ -83,14 +83,17 @@
 :- implementation.
 
 :- import_module hlds.hlds_pred.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
@@ -114,8 +117,8 @@
 
 write_trans_opt_file(Module, !IO) :-
     module_info_get_name(Module, ModuleName),
-    module_name_to_file_name(ModuleName, ".trans_opt.tmp", yes, TmpOptName,
-        !IO),
+    module_name_to_file_name(ModuleName, ".trans_opt.tmp", do_create_dirs,
+        TmpOptName, !IO),
     io.open_output(TmpOptName, Result, !IO),
     (
         Result = error(Error),
@@ -178,7 +181,8 @@ write_trans_opt_file(Module, !IO) :-
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(Stream, !IO),
 
-        module_name_to_file_name(ModuleName, ".trans_opt", no, OptName, !IO),
+        module_name_to_file_name(ModuleName, ".trans_opt", do_not_create_dirs,
+            OptName, !IO),
         update_interface(OptName, !IO),
         touch_interface_datestamp(ModuleName, ".trans_opt_date", !IO)
     ).

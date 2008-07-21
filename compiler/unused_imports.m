@@ -53,6 +53,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 
@@ -70,7 +71,8 @@
 unused_imports(ModuleInfo, !:Specs, !IO) :-
     !:Specs = [],
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs, FileName,
+        !IO),
 
     % Each parent module of the current module imports are inherited by
     % this module so we have to add the used modules of the parents to

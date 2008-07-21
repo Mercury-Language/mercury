@@ -879,9 +879,28 @@
             % interface file for use in smart recompilation.
 
 %-----------------------------------------------------------------------------%
+
+:- type contains_foreign_code
+    --->    contains_foreign_code(set(foreign_language))
+    ;       contains_no_foreign_code
+    ;       contains_foreign_code_unknown.
+
+:- type contains_foreign_export
+    --->    contains_foreign_export
+    ;       contains_no_foreign_export.
+
+:- pred get_item_list_foreign_code(globals::in, list(item)::in,
+    set(foreign_language)::out, foreign_import_module_info_list::out,
+    contains_foreign_export::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module parse_tree.prog_foreign.
+
+:- import_module map.
 
 %-----------------------------------------------------------------------------%
 
@@ -980,6 +999,129 @@ set_mutable_var_constant(Constant, !Attributes) :-
     !:Attributes = !.Attributes ^ mutable_constant := Constant.
 set_mutable_var_thread_local(ThreadLocal, !Attributes) :-
     !:Attributes = !.Attributes ^ mutable_thread_local := ThreadLocal.
+
+%-----------------------------------------------------------------------------%
+
+:- type module_foreign_info
+    --->    module_foreign_info(
+                used_foreign_languages      :: set(foreign_language),
+                foreign_proc_languages      :: map(sym_name, foreign_language),
+                all_foreign_import_modules  :: foreign_import_module_info_list,
+                module_has_foreign_export   :: contains_foreign_export
+            ).
+
+get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
+        ContainsPragmaExport) :-
+    Info0 = module_foreign_info(set.init, map.init, [],
+        contains_no_foreign_export),
+    list.foldl(get_item_foreign_code(Globals), Items, Info0, Info),
+    Info = module_foreign_info(LangSet0, LangMap, ForeignImports,
+        ContainsPragmaExport),
+    ForeignProcLangs = map.values(LangMap),
+    LangSet = set.insert_list(LangSet0, ForeignProcLangs).
+
+:- pred get_item_foreign_code(globals::in, item::in,
+    module_foreign_info::in, module_foreign_info::out) is det.
+
+get_item_foreign_code(Globals, Item, !Info) :-
+    ( Item = item_pragma(ItemPragma) ->
+        ItemPragma = item_pragma_info(_, Pragma, Context),
+        do_get_item_foreign_code(Globals, Pragma, Context, !Info)
+    ; Item = item_mutable(_) ->
+        % Mutables introduce foreign_procs, but mutable declarations
+        % won't have been expanded by the time we get here so we need
+        % to handle them separately.
+        % XXX mutables are currently only implemented for the C backends
+        % but we should handle the Java/IL backends here as well.
+        % (See do_get_item_foreign_code for details/5).
+        !:Info = !.Info ^ used_foreign_languages :=
+            set.insert(!.Info ^ used_foreign_languages, lang_c)
+    ; ( Item = item_initialise(_) ; Item = item_finalise(_) ) ->
+        % Intialise/finalise declarations introduce export pragmas, but
+        % again they won't have been expanded by the time we get here.
+        % XXX we don't currently support these on non-C backends.
+        !:Info = !.Info ^ used_foreign_languages :=
+            set.insert(!.Info ^ used_foreign_languages, lang_c),
+        !:Info = !.Info ^ module_has_foreign_export := contains_foreign_export
+    ;
+        true
+    ).
+
+:- pred do_get_item_foreign_code(globals::in, pragma_type::in,
+    prog_context::in, module_foreign_info::in, module_foreign_info::out)
+    is det.
+
+do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
+    globals.get_backend_foreign_languages(Globals, BackendLangs),
+    globals.get_target(Globals, Target),
+
+    % The code here should match the way that mlds_to_gcc.m decides whether
+    % or not to call mlds_to_c.m.  XXX Note that we do NOT count foreign_decls
+    % here. We only link in a foreign object file if mlds_to_gcc called
+    % mlds_to_c.m to generate it, which it will only do if there is some
+    % foreign_code, not just foreign_decls. Counting foreign_decls here
+    % causes problems with intermodule optimization.
+    (
+        Pragma = pragma_foreign_code(Lang, _),
+        list.member(Lang, BackendLangs)
+    ->
+        Info = Info0 ^ used_foreign_languages :=
+            set.insert(Info0 ^ used_foreign_languages, Lang)
+    ;
+        Pragma = pragma_foreign_proc(Attrs, Name, _, _, _, _, _)
+    ->
+        NewLang = get_foreign_language(Attrs),
+        ( OldLang = Info0 ^ foreign_proc_languages ^ elem(Name) ->
+            % is it better than an existing one?
+            (
+                yes = prefer_foreign_language(Globals, Target,
+                    OldLang, NewLang)
+            ->
+                Info = Info0 ^ foreign_proc_languages ^ elem(Name) := NewLang
+            ;
+                Info = Info0
+            )
+        ;
+            % is it one of the languages we support?
+            ( list.member(NewLang, BackendLangs) ->
+                Info = Info0 ^ foreign_proc_languages ^ elem(Name) := NewLang
+            ;
+                Info = Info0
+            )
+        )
+    ;
+        % XXX `pragma export' should not be treated as foreign, but currently
+        % mlds_to_gcc.m doesn't handle that declaration, and instead just
+        % punts it on to mlds_to_c.m, thus generating C code for it,
+        % rather than assembler code. So we need to treat `pragma export'
+        % like the other pragmas for foreign code.
+        Pragma = pragma_foreign_export(Lang, _, _, _, _),
+        list.member(Lang, BackendLangs)
+    ->
+        Info1 = Info0 ^ used_foreign_languages :=
+            set.insert(Info0 ^ used_foreign_languages, Lang),
+        Info = Info1 ^ module_has_foreign_export :=
+            contains_foreign_export
+    ;
+        Pragma = pragma_foreign_import_module(Lang, Import),
+        list.member(Lang, BackendLangs)
+    ->
+        Info = Info0 ^ all_foreign_import_modules :=
+            [foreign_import_module_info(Lang, Import, Context) |
+                Info0 ^ all_foreign_import_modules]
+    ;
+        % We generate some C code for fact tables, so we need to treat modules
+        % containing fact tables as if they contain foreign code.
+        ( Target = target_asm
+        ; Target = target_c
+        ),
+        Pragma = pragma_fact_table(_, _, _)
+    ->
+        Info = Info0 ^ used_foreign_languages :=
+            set.insert(Info0 ^ used_foreign_languages, lang_c)
+    ;
+        Info = Info0
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

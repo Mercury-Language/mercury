@@ -165,7 +165,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 :- import_module recompilation.
 
 :- import_module int.
@@ -723,7 +722,8 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         PredName = special_pred_name(spec_pred_init, TypeCtor),
         module_info_get_name(ModuleInfo, ModuleName),
         TypeCtor = type_ctor(TypeSymName, _TypeArity),
-        sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
+        sym_name_get_module_name_default(TypeSymName, ModuleName,
+            TypeModuleName),
         InitPred = qualified(TypeModuleName, PredName),
         PredId   = invalid_pred_id,
         ModeId   = invalid_proc_id,

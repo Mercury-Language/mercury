@@ -28,70 +28,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Given a symbol name, return its unqualified name.
-    %
-:- func unqualify_name(sym_name) = string.
-
-    % sym_name_get_module_name(SymName) = ModName:
-    %
-    % Given a symbol name, return the module qualifiers(s).
-    % Fails if the symbol is unqualified.
-    %
-:- pred sym_name_get_module_name(sym_name::in, module_name::out) is semidet.
-
-    % sym_name_get_module_name(SymName, DefaultModName, ModName):
-    %
-    % Given a symbol name, return the module qualifier(s).
-    % If the symbol is unqualified, then return the specified default
-    % module name.
-    %
-:- pred sym_name_get_module_name(sym_name::in, module_name::in,
-    module_name::out) is det.
-
-    % match_sym_name(PartialSymName, CompleteSymName):
-    %
-    % Succeeds iff there is some sequence of module qualifiers
-    % which when prefixed to PartialSymName gives CompleteSymName.
-    %
-:- pred match_sym_name(sym_name::in, sym_name::in) is semidet.
-
-    % remove_sym_name_prefix(SymName0, Prefix, SymName)
-    % succeeds iff
-    %   SymName and SymName0 have the same module qualifier
-    %   and the unqualified part of SymName0 has the given prefix
-    %   and the unqualified part of SymName is the unqualified
-    %       part of SymName0 with the prefix removed.
-    %
-:- pred remove_sym_name_prefix(sym_name, string, sym_name).
-:- mode remove_sym_name_prefix(in, in, out) is semidet.
-:- mode remove_sym_name_prefix(out, in, in) is det.
-
-    % remove_sym_name_suffix(SymName0, Suffix, SymName)
-    % succeeds iff
-    %   SymName and SymName0 have the same module qualifier
-    %   and the unqualified part of SymName0 has the given suffix
-    %   and the unqualified part of SymName is the unqualified
-    %       part of SymName0 with the suffix removed.
-    %
-:- pred remove_sym_name_suffix(sym_name::in, string::in, sym_name::out)
-    is semidet.
-
-    % add_sym_name_suffix(SymName0, Suffix, SymName)
-    % succeeds iff
-    %   SymName and SymName0 have the same module qualifier
-    %   and the unqualified part of SymName is the unqualified
-    %       part of SymName0 with the suffix added.
-    %
-:- pred add_sym_name_suffix(sym_name::in, string::in, sym_name::out) is det.
-
-    % transform_sym_base_name(TransformFunc, SymName0) = SymName
-    % succeeds iff
-    %   SymName and SymName0 have the same module qualifier
-    %   and the unqualified part of SymName is the result of applying
-    %   TransformFunc to the unqualified part of SymName0.
-    %
-:- func transform_sym_base_name(func(string) = string, sym_name) = sym_name.
-
     % Given a possible module qualified sym_name and a list of
     % argument types and a context, construct a term. This is
     % used to construct types.
@@ -101,17 +37,6 @@
 
 :- pred construct_qualified_term(sym_name::in, list(term(T))::in,
     prog_context::in, term(T)::out) is det.
-
-    % Given a sym_name return the top level qualifier of that name.
-    %
-:- func outermost_qualifier(sym_name) = string.
-
-:- func add_outermost_qualifier(string, sym_name) = sym_name.
-
-    % Remove and return the top level qualifier of a sym_name.
-    %
-:- pred strip_outermost_qualifier(sym_name::in,
-    string::out, sym_name::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -295,15 +220,6 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-unqualify_name(unqualified(Name)) = Name.
-unqualify_name(qualified(_ModuleName, Name)) = Name.
-
-sym_name_get_module_name(unqualified(_), _) :- fail.
-sym_name_get_module_name(qualified(ModuleName, _), ModuleName).
-
-sym_name_get_module_name(unqualified(_), ModuleName, ModuleName).
-sym_name_get_module_name(qualified(ModuleName, _PredName), _, ModuleName).
-
 construct_qualified_term(qualified(Module, Name), Args, Context, Term) :-
     construct_qualified_term(Module, [], Context, ModuleTerm),
     UnqualifiedTerm = term.functor(term.atom(Name), Args, Context),
@@ -315,20 +231,6 @@ construct_qualified_term(unqualified(Name), Args, Context, Term) :-
 construct_qualified_term(SymName, Args, Term) :-
     term.context_init(Context),
     construct_qualified_term(SymName, Args, Context, Term).
-
-outermost_qualifier(unqualified(Name)) = Name.
-outermost_qualifier(qualified(Module, _Name)) = outermost_qualifier(Module).
-
-add_outermost_qualifier(Qual, unqualified(Name)) =
-        qualified(unqualified(Qual), Name).
-add_outermost_qualifier(Qual, qualified(Module, Name)) =
-        qualified(add_outermost_qualifier(Qual, Module), Name).
-
-strip_outermost_qualifier(qualified(unqualified(OuterQual), Name),
-        OuterQual, unqualified(Name)).
-strip_outermost_qualifier(qualified(Module @ qualified(_, _), Name),
-        OuterQual, qualified(RemainingQual, Name)) :-
-    strip_outermost_qualifier(Module, OuterQual, RemainingQual).
 
 %-----------------------------------------------------------------------------%
 
@@ -550,43 +452,6 @@ rename_in_var(OldVar, NewVar, Var0, Var) :-
     ;
         Var = Var0
     ).
-
-%-----------------------------------------------------------------------------%
-
-    % match_sym_name(PartialSymName, CompleteSymName):
-    %
-    % Succeeds iff there is some sequence of module qualifiers
-    % which when prefixed to PartialSymName gives CompleteSymName.
-    %
-match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
-    match_sym_name(Module1, Module2).
-match_sym_name(unqualified(Name), unqualified(Name)).
-match_sym_name(unqualified(Name), qualified(_, Name)).
-
-%-----------------------------------------------------------------------------%
-
-remove_sym_name_prefix(qualified(Module, Name0), Prefix,
-        qualified(Module, Name)) :-
-    string.append(Prefix, Name, Name0).
-remove_sym_name_prefix(unqualified(Name0), Prefix, unqualified(Name)) :-
-    string.append(Prefix, Name, Name0).
-
-remove_sym_name_suffix(qualified(Module, Name0), Suffix,
-        qualified(Module, Name)) :-
-    string.remove_suffix(Name0, Suffix, Name).
-remove_sym_name_suffix(unqualified(Name0), Suffix, unqualified(Name)) :-
-    string.remove_suffix(Name0, Suffix, Name).
-
-add_sym_name_suffix(qualified(Module, Name0), Suffix,
-        qualified(Module, Name)) :-
-    string.append(Name0, Suffix, Name).
-add_sym_name_suffix(unqualified(Name0), Suffix, unqualified(Name)) :-
-    string.append(Name0, Suffix, Name).
-
-transform_sym_base_name(TransformFunc, qualified(Module, Name0)) =
-        qualified(Module, TransformFunc(Name0)).
-transform_sym_base_name(TransformFunc, unqualified(Name0)) =
-        unqualified(TransformFunc(Name0)).
 
 %-----------------------------------------------------------------------------%
 

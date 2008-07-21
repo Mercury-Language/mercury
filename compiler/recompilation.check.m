@@ -16,9 +16,9 @@
 :- module recompilation.check.
 :- interface.
 
+:- import_module libs.file_util.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.modules.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.read_modules.
 
 :- import_module io.
 :- import_module list.
@@ -69,7 +69,11 @@
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.module_cmds.
+:- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -111,7 +115,8 @@ should_recompile(ModuleName, FindTargetFiles, FindTimestampFiles,
 should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
         ModuleName, !Info, !IO) :-
     !:Info = (!.Info ^ module_name := ModuleName) ^ sub_modules := [],
-    module_name_to_file_name(ModuleName, ".used", no, UsageFileName, !IO),
+    module_name_to_file_name(ModuleName, ".used", do_not_create_dirs,
+        UsageFileName, !IO),
     io.open_input(UsageFileName, MaybeVersionStream, !IO),
     (
         MaybeVersionStream = ok(VersionStream0),
@@ -246,7 +251,7 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
         IsSubModule = no,
         % If the module has changed, recompile.
         ModuleName = !.Info ^ module_name,
-        read_mod_if_changed(ModuleName, ".m", "Reading module", yes,
+        read_module_if_changed(ModuleName, ".m", "Reading module", do_search,
             RecordedTimestamp, Items, Error, FileName, MaybeNewTimestamp, !IO),
         (
             MaybeNewTimestamp = yes(NewTimestamp),
@@ -663,18 +668,19 @@ check_imported_module(Term, !Info, !IO) :-
         % If we're checking a sub-module, don't re-read interface files
         % read for other modules checked during this compilation.
         !.Info ^ is_inline_sub_module = yes,
-        find_read_module(!.Info ^ read_modules, ImportedModuleName,
-            Suffix, yes, Items0, MaybeNewTimestamp0, Error0, FileName0)
+        find_read_module(!.Info ^ read_modules, ImportedModuleName, Suffix,
+            do_return_timestamp, ItemsPrime, MaybeNewTimestampPrime,
+            ErrorPrime, FileNamePrime)
     ->
-        Items = Items0,
-        MaybeNewTimestamp = MaybeNewTimestamp0,
-        Error = Error0,
-        FileName = FileName0,
+        Items = ItemsPrime,
+        MaybeNewTimestamp = MaybeNewTimestampPrime,
+        Error = ErrorPrime,
+        FileName = FileNamePrime,
         Recorded = bool.yes
     ;
         Recorded = bool.no,
-        read_mod_if_changed(ImportedModuleName, Suffix,
-            "Reading interface file for module", yes, RecordedTimestamp,
+        read_module_if_changed(ImportedModuleName, Suffix,
+            "Reading interface file for module", do_search, RecordedTimestamp,
             Items, Error, FileName, MaybeNewTimestamp, !IO)
     ),
     (

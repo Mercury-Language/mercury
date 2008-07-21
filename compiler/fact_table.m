@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,13 +103,15 @@
 :- import_module hlds.code_model.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -214,8 +216,8 @@ fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
     (
         SeeResult = ok,
         module_info_get_name(ModuleInfo, ModuleName),
-        fact_table_file_name(ModuleName, FileName, ".c", yes, OutputFileName,
-            !IO),
+        fact_table_file_name(ModuleName, FileName, ".c", do_create_dirs,
+            OutputFileName, !IO),
         open_output_handle_error(yes(Context), OutputFileName, OpenResult,
             !IO),
         (

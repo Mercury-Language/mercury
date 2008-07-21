@@ -18,8 +18,8 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.module_imports.
 
 :- import_module assoc_list.
 :- import_module io.
@@ -87,10 +87,12 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -121,7 +123,8 @@ write_usage_file(ModuleInfo, NestedSubModules,
             !IO),
 
         module_info_get_name(ModuleInfo, ModuleName),
-        module_name_to_file_name(ModuleName, ".used", yes, FileName, !IO),
+        module_name_to_file_name(ModuleName, ".used", do_create_dirs,
+            FileName, !IO),
         io.open_output(FileName, FileResult, !IO),
         (
             FileResult = ok(Stream0),

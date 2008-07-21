@@ -100,7 +100,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -248,7 +248,8 @@ process_module(!ModuleInfo, !Specs, !IO) :-
         IntermodAnalysis = no
     ->
         module_info_get_name(!.ModuleInfo, ModuleName),
-        module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
+        module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
+            OptFileName, !IO),
         io.open_append(OptFileName, OptFileRes, !IO),
         (
             OptFileRes = ok(OptFile),

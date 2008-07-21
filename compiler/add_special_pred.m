@@ -74,7 +74,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.
@@ -370,7 +369,8 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     (
         SpecialPredId = spec_pred_init,
         TypeCtor = type_ctor(TypeSymName, _TypeArity),
-        sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
+        sym_name_get_module_name_default(TypeSymName, ModuleName,
+            TypeModuleName),
         PredName = qualified(TypeModuleName, Name)
     ;
         ( SpecialPredId = spec_pred_unify

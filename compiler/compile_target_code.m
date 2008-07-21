@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,12 +16,12 @@
 :- module backend_libs.compile_target_code.
 :- interface.
 
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io.
-:- import_module parse_tree.modules.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.file_util.
+:- import_module parse_tree.
+:- import_module parse_tree.module_imports.
+:- import_module parse_tree.prog_data.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
@@ -215,6 +215,9 @@
 :- import_module libs.timestamp.
 :- import_module libs.trace_params.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.module_cmds.
+:- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 
@@ -225,8 +228,9 @@
 %-----------------------------------------------------------------------------%
 
 il_assemble(ErrorStream, ModuleName, HasMain, Succeeded, !IO) :-
-    module_name_to_file_name(ModuleName, ".il", no, IL_File, !IO),
-    module_name_to_file_name(ModuleName, ".dll", yes, DllFile, !IO),
+    module_name_to_file_name(ModuleName, ".il", do_not_create_dirs, IL_File,
+        !IO),
+    module_name_to_file_name(ModuleName, ".dll", do_create_dirs, DllFile, !IO),
 
     % If the module contains main/2 then we it should be built as an
     % executable. Unfortunately C# code may refer to the dll
@@ -235,7 +239,8 @@ il_assemble(ErrorStream, ModuleName, HasMain, Succeeded, !IO) :-
     il_assemble(ErrorStream, IL_File, DllFile, no_main, DllSucceeded, !IO),
     ( 
         HasMain = has_main,
-        module_name_to_file_name(ModuleName, ".exe", yes, ExeFile, !IO),
+        module_name_to_file_name(ModuleName, ".exe", do_create_dirs, ExeFile,
+            !IO),
         il_assemble(ErrorStream, IL_File, ExeFile, HasMain, ExeSucceeded, !IO),
         Succeeded = DllSucceeded `and` ExeSucceeded
     ;
@@ -333,7 +338,8 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
         Imports ^ int_deps ++ Imports ^ impl_deps ++ ForeignDeps),
     list.map_foldl(
         (pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(Mod, ".dll", no, FileName, IO0, IO),
+            module_name_to_file_name(Mod, ".dll", do_not_create_dirs,
+                FileName, IO0, IO),
             Result = [Prefix, FileName, " "]
         ), ReferencedDlls, ReferencedDllsList, !IO),
     ReferencedDllsStr = string.append_list(
@@ -351,9 +357,9 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
 % Any changes there may also require changes here, and vice versa.
 
 compile_c_file(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
-    module_name_to_file_name(ModuleName, ".c", yes, C_File, !IO),
+    module_name_to_file_name(ModuleName, ".c", do_create_dirs, C_File, !IO),
     maybe_pic_object_file_extension(PIC, ObjExt, !IO),
-    module_name_to_file_name(ModuleName, ObjExt, yes, O_File, !IO),
+    module_name_to_file_name(ModuleName, ObjExt, do_create_dirs, O_File, !IO),
     compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO).
 
 compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
@@ -922,9 +928,10 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
         GCCFLAGS_FOR_ASM = "",
         GCCFLAGS_FOR_PIC = ""
     ),
-    module_name_to_file_name(ModuleName, AsmExt, no, AsmFile, !IO),
+    module_name_to_file_name(ModuleName, AsmExt, do_not_create_dirs, AsmFile,
+        !IO),
     maybe_pic_object_file_extension(PIC, ObjExt, !IO),
-    module_name_to_file_name(ModuleName, ObjExt, yes, ObjFile, !IO),
+    module_name_to_file_name(ModuleName, ObjExt, do_create_dirs, ObjFile, !IO),
 
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Assembling `", !IO),
@@ -1027,12 +1034,13 @@ make_erlang_library_init_file(ErrorStream, MainModuleName, AllModules,
 
 make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
         MkInit, Succeeded, !IO) :-
-    module_name_to_file_name(MainModuleName, ".init.tmp", yes, TmpInitFileName,
-        !IO),
+    module_name_to_file_name(MainModuleName, ".init.tmp", do_create_dirs,
+        TmpInitFileName, !IO),
     io.open_output(TmpInitFileName, InitFileRes, !IO),
     (
         InitFileRes = ok(InitFileStream),
-        list.map_foldl(module_name_to_file_name_ext(TargetExt, no),
+        list.map_foldl(
+            module_name_to_file_name_ext(TargetExt, do_not_create_dirs),
             AllModules, AllTargetFilesList, !IO),
         join_quoted_string_list(AllTargetFilesList, "", "\n", "",
             TargetFileNames),
@@ -1082,8 +1090,8 @@ make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
         ),
 
         io.close_output(InitFileStream, !IO),
-        module_name_to_file_name(MainModuleName, ".init", yes, InitFileName,
-            !IO),
+        module_name_to_file_name(MainModuleName, ".init", do_create_dirs,
+            InitFileName, !IO),
         update_interface_return_succeeded(InitFileName, Succeeded1, !IO),
         Succeeded2 = Succeeded0 `and` Succeeded1,
         (
@@ -1097,8 +1105,8 @@ make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
                 io.set_output_stream(ErrorStream, OutputStream, !IO),
                 globals.io_set_option(use_subdirs, bool(no), !IO),
                 globals.io_set_option(use_grade_subdirs, bool(no), !IO),
-                module_name_to_file_name(MainModuleName, ".init", no,
-                    UserDirFileName, !IO),
+                module_name_to_file_name(MainModuleName, ".init",
+                    do_not_create_dirs, UserDirFileName, !IO),
                 globals.io_set_option(use_subdirs, bool(yes), !IO),
                 globals.io_set_option(use_grade_subdirs, bool(yes), !IO),
                 % Remove the target of the symlink/copy in case it already
@@ -1128,8 +1136,8 @@ make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
         Succeeded = no
     ).
 
-:- pred module_name_to_file_name_ext(string::in, bool::in, module_name::in, 
-    file_name::out, io::di, io::uo) is det.
+:- pred module_name_to_file_name_ext(string::in, maybe_create_dirs::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
 
 module_name_to_file_name_ext(Ext, MkDir, ModuleName, FileName, !IO) :-
     module_name_to_file_name(ModuleName, Ext, MkDir, FileName, !IO).
@@ -1268,7 +1276,7 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
     get_object_code_type(executable, PIC, !IO),
     maybe_pic_object_file_extension(PIC, ObjExt, !IO),
 
-    module_name_to_file_name(ModuleName, "_init" ++ ObjExt, yes,
+    module_name_to_file_name(ModuleName, "_init" ++ ObjExt, do_create_dirs,
         InitObjFileName, !IO),
     CompileCInitFile =
         (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
@@ -1312,7 +1320,7 @@ make_erlang_program_init_file(ErrorStream, ModuleName, ModuleNames, Result,
         ".erl", StdInitFileNames, StdTraceInitFileNames,
         SourceDebugInitFileNames, ModuleNameOption, MaybeInitTargetFile, !IO),
 
-    module_name_to_file_name(ModuleName, "_init.beam", yes,
+    module_name_to_file_name(ModuleName, "_init.beam", do_create_dirs,
         InitObjFileName, !IO),
     CompileErlangInitFile =
         (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
@@ -1336,10 +1344,10 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
     globals.io_get_globals(Globals, !IO),
     compute_grade(Globals, Grade),
 
-    module_name_to_file_name(ModuleName, "_init" ++ TargetExt, yes,
+    module_name_to_file_name(ModuleName, "_init" ++ TargetExt, do_create_dirs,
         InitTargetFileName, !IO),
 
-    list.map_foldl(module_name_to_file_name_ext(TargetExt, no),
+    list.map_foldl(module_name_to_file_name_ext(TargetExt, do_not_create_dirs),
         ModuleNames, TargetFileNameList, !IO),
     join_quoted_string_list(TargetFileNameList, "", "", " ", TargetFileNames),
 
@@ -1583,26 +1591,28 @@ link_output_filename(LinkTargetType, ModuleName, Ext, OutputFileName, !IO) :-
     (
         LinkTargetType = static_library,
         globals.io_lookup_string_option(library_extension, Ext, !IO),
-        module_name_to_lib_file_name("lib", ModuleName, Ext, yes,
+        module_name_to_lib_file_name("lib", ModuleName, Ext, do_create_dirs,
             OutputFileName, !IO)
     ;
         LinkTargetType = shared_library,
         globals.io_lookup_string_option(shared_library_extension, Ext, !IO),
-        module_name_to_lib_file_name("lib", ModuleName, Ext, yes,
+        module_name_to_lib_file_name("lib", ModuleName, Ext, do_create_dirs,
             OutputFileName, !IO)
     ;
         LinkTargetType = java_archive,
         Ext = ".jar",
-        module_name_to_file_name(ModuleName, Ext, yes, OutputFileName, !IO)
+        module_name_to_file_name(ModuleName, Ext, do_create_dirs,
+            OutputFileName, !IO)
     ;
         LinkTargetType = erlang_archive,
         Ext = ".beams",
-        module_name_to_lib_file_name("lib", ModuleName, Ext, yes,
+        module_name_to_lib_file_name("lib", ModuleName, Ext, do_create_dirs,
             OutputFileName, !IO)
     ;
         LinkTargetType = executable,
         globals.io_lookup_string_option(executable_file_extension, Ext, !IO),
-        module_name_to_file_name(ModuleName, Ext, yes, OutputFileName, !IO)
+        module_name_to_file_name(ModuleName, Ext, do_create_dirs,
+            OutputFileName, !IO)
     ).
 
 :- pred link_exe_or_shared_lib(io.output_stream::in,
@@ -2066,15 +2076,16 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         globals.io_set_option(use_grade_subdirs, bool(no), !IO),
         ( 
             LinkTargetType = executable,
-            module_name_to_file_name(ModuleName, Ext, no, UserDirFileName, !IO)
+            module_name_to_file_name(ModuleName, Ext, do_not_create_dirs,
+                UserDirFileName, !IO)
         ;
             ( LinkTargetType = static_library
             ; LinkTargetType = shared_library
             ; LinkTargetType = java_archive
             ; LinkTargetType = erlang_archive
             ),
-            module_name_to_lib_file_name("lib", ModuleName, Ext, no,
-                UserDirFileName, !IO)
+            module_name_to_lib_file_name("lib", ModuleName, Ext,
+                do_not_create_dirs, UserDirFileName, !IO)
         ),
         globals.io_set_option(use_subdirs, bool(yes), !IO),
         globals.io_set_option(use_grade_subdirs, bool(yes), !IO),
@@ -2140,8 +2151,8 @@ process_link_library(MercuryLibDirs, LibName, LinkerOpt, !Succeeded, !IO) :-
         globals.io_lookup_string_option(library_extension, LibExt, !IO),
 
         globals.io_set_option(use_grade_subdirs, bool(no), !IO),
-        module_name_to_lib_file_name("lib", LibModuleName, LibExt, no,
-            LibFileName, !IO),
+        module_name_to_lib_file_name("lib", LibModuleName, LibExt,
+            do_not_create_dirs, LibFileName, !IO),
         globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
 
         io.input_stream(InputStream, !IO),
@@ -2428,7 +2439,8 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
 join_module_list([], _Extension, [], !IO).
 join_module_list([Module | Modules], Extension, [FileName | Rest], !IO) :-
     file_name_to_module_name(dir.basename_det(Module), ModuleName),
-    module_name_to_file_name(ModuleName, Extension, no, FileName, !IO),
+    module_name_to_file_name(ModuleName, Extension, do_not_create_dirs,
+        FileName, !IO),
     join_module_list(Modules, Extension, Rest, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -2437,7 +2449,8 @@ make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
     % Pass the main module first.
     list.map_foldl(
         (pred(Module::in, FileName::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(Module, ".m", no, FileName, IO0, IO)
+            module_name_to_file_name(Module, ".m", do_not_create_dirs,
+                FileName, IO0, IO)
         ),
         [MainModule | list.delete_all(AllModules, MainModule)],
         ModuleNameStrings, !IO),

@@ -70,10 +70,12 @@
 :- implementation.
 
 :- import_module analysis.
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.process_util.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
@@ -174,12 +176,12 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
 
                 debug_msg(
                    (pred(!.IO::di, !:IO::uo) is det :-
-                        write_target_file(TargetFile, !IO),
+                        make_write_target_file(TargetFile, !IO),
                         io.write_string(": dependencies:\n", !IO),
                         dependency_file_index_set_to_plain_set(!.Info,
                             DepFiles0, PlainSet),
-                        write_dependency_file_list(to_sorted_list(PlainSet),
-                            !IO)
+                        make_write_dependency_file_list(
+                            to_sorted_list(PlainSet), !IO)
                 ), !IO),
 
                 globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
@@ -229,14 +231,14 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
         Succeeded = yes
     ;
         Status = deps_status_being_built,
-        ( 
+        (
             TargetFile = target_file(_FileName, FileType),
             FileType = module_target_foreign_il_asm(_Lang)
         ->
             io.write_string("Error: circular dependency detected " ++
                 "while building\n", !IO),
             io.write_string("  `", !IO),
-            write_dependency_file(Dep, !IO),
+            make_write_dependency_file(Dep, !IO),
             io.write_string("'.\n", !IO),
             io.write_string("  This is due to a forbidden " ++
                 "foreign_import_module cycle.\n", !IO),
@@ -265,7 +267,7 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 
     % Check that the target files exist.
 
-    list.map_foldl2(get_target_timestamp(no), TouchedTargetFiles,
+    list.map_foldl2(get_target_timestamp(do_not_search), TouchedTargetFiles,
         TargetTimestamps, !Info, !IO),
     (
         MakeDepsSuccess = no,
@@ -305,7 +307,8 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
                 MaybeOldestTimestamp = list.foldl(find_oldest_timestamp,
                     TouchedFileTimestamps, MaybeOldestTimestamp0),
 
-                get_file_name(no, TargetFile, TargetFileName, !Info, !IO),
+                get_file_name(do_not_search, TargetFile, TargetFileName,
+                    !Info, !IO),
                 check_dependencies(TargetFileName, MaybeOldestTimestamp,
                     MakeDepsSuccess, DepFilesToMake, DepsResult, !Info, !IO)
             )
@@ -484,7 +487,8 @@ build_object_code(ModuleName, target_asm, PIC, ErrorStream, _Imports,
         Succeeded, !IO).
 build_object_code(ModuleName, target_java, _, ErrorStream, _Imports, Succeeded,
         !IO) :-
-    module_name_to_file_name(ModuleName, ".java", yes, JavaFile, !IO),
+    module_name_to_file_name(ModuleName, ".java", do_create_dirs, JavaFile,
+        !IO),
     compile_target_code.compile_java_file(ErrorStream, JavaFile,
         Succeeded, !IO).
 build_object_code(ModuleName, target_il, _, ErrorStream, Imports, Succeeded,
@@ -496,7 +500,8 @@ build_object_code(_ModuleName, target_x86_64, _, _ErrorStream, _Imports,
     sorry(this_file, "NYI mmc --make and target x86_64").
 build_object_code(ModuleName, target_erlang, _, ErrorStream, _Imports,
         Succeeded, !IO) :-
-    module_name_to_file_name(ModuleName, ".erl", yes, ErlangFile, !IO),
+    module_name_to_file_name(ModuleName, ".erl", do_create_dirs, ErlangFile,
+        !IO),
     compile_target_code.compile_erlang_file(ErrorStream, ErlangFile,
         Succeeded, !IO).
 
@@ -555,8 +560,10 @@ foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
         unexpected(this_file, "unsupported foreign language")
     ),
     ObjExt = get_object_extension(Globals, PIC),
-    module_name_to_file_name(ForeignModName, SrcExt, yes, SrcFileName, !IO),
-    module_name_to_file_name(ForeignModName, ObjExt, yes, ObjFileName, !IO),
+    module_name_to_file_name(ForeignModName, SrcExt, do_create_dirs,
+        SrcFileName, !IO),
+    module_name_to_file_name(ForeignModName, ObjExt, do_create_dirs,
+        ObjFileName, !IO),
     ForeignCodeFile = foreign_code_file(Lang, SrcFileName, ObjFileName).
 
 :- pred fact_table_foreign_code_file(module_name::in, pic::in, string::in,
@@ -566,8 +573,10 @@ fact_table_foreign_code_file(ModuleName, PIC, FactTableName, ForeignCodeFile,
         !IO) :-
     globals.io_get_globals(Globals, !IO),
     ObjExt = get_object_extension(Globals, PIC),
-    fact_table_file_name(ModuleName, FactTableName, ".c", yes, CFile, !IO),
-    fact_table_file_name(ModuleName, FactTableName, ObjExt, yes, ObjFile, !IO),
+    fact_table_file_name(ModuleName, FactTableName, ".c", do_create_dirs,
+        CFile, !IO),
+    fact_table_file_name(ModuleName, FactTableName, ObjExt, do_create_dirs,
+        ObjFile, !IO),
     ForeignCodeFile = foreign_code_file(lang_c, CFile, ObjFile).
 
 :- func get_object_extension(globals, pic) = string.
@@ -692,7 +701,7 @@ record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
 
-    list.map_foldl2(get_file_name(no), TouchedTargetFiles,
+    list.map_foldl2(get_file_name(do_not_search), TouchedTargetFiles,
         TouchedTargetFileNames, !Info, !IO),
 
     some [!Timestamps] (
@@ -797,7 +806,7 @@ compilation_task(_, module_target_foreign_object(PIC, Lang)) =
     foreign_code_to_object_code(PIC, Lang) - get_pic_flags(PIC).
 compilation_task(_, module_target_fact_table_object(PIC, FactTable)) =
     fact_table_code_to_object_code(PIC, FactTable) - get_pic_flags(PIC).
-compilation_task(_, module_target_xml_doc) = 
+compilation_task(_, module_target_xml_doc) =
     process_module(task_make_xml_doc) - ["--make-xml-doc"].
 
 :- func get_pic_flags(pic) = list(string).
@@ -965,8 +974,8 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
             is det :-
         TouchedTargetFile = target_file(TargetModuleName, TargetFileType),
         ( TimestampExt = timestamp_extension(Globals, TargetFileType) ->
-            module_name_to_file_name(TargetModuleName, TimestampExt, no,
-                TimestampFile, !IO),
+            module_name_to_file_name(TargetModuleName, TimestampExt,
+                do_not_create_dirs, TimestampFile, !IO),
             list.cons(TimestampFile, !TimestampFiles)
         ;
             true
@@ -988,14 +997,13 @@ touched_files(TargetFile, fact_table_code_to_object_code(PIC, FactTableName),
     TargetFile = target_file(ModuleName, _),
     globals.io_get_globals(Globals, !IO),
     ObjExt = get_object_extension(Globals, PIC),
-    fact_table_file_name(ModuleName, FactTableName, ObjExt, yes,
+    fact_table_file_name(ModuleName, FactTableName, ObjExt, do_create_dirs,
         FactTableObjectFile, !IO).
 
 external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
-    %
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
-    %
+
     maybe_pic_object_file_extension(PIC, ObjExt, !IO),
     globals.io_get_target(CompilationTarget, !IO),
     ModuleName = Imports ^ module_name,
@@ -1006,10 +1014,10 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
     ->
         module_name_to_file_name(
             foreign_language_module_name(ModuleName, lang_c),
-            ".c", no, CCodeFileName, !IO),
+            ".c", do_not_create_dirs, CCodeFileName, !IO),
         module_name_to_file_name(
             foreign_language_module_name(ModuleName, lang_c),
-            ObjExt, no, ObjFileName, !IO),
+            ObjExt, do_not_create_dirs, ObjFileName, !IO),
         ForeignFiles0 = [foreign_code_file(lang_c, CCodeFileName, ObjFileName)]
     ;
         CompilationTarget = target_il,
@@ -1022,9 +1030,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
         ForeignFiles0 = []
     ),
 
-    %
     % Find externally compiled foreign code files for fact tables.
-    %
     (
         ( CompilationTarget = target_c
         ; CompilationTarget = target_asm
@@ -1033,9 +1039,9 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
             (pred(FactTableFile::in, FactTableForeignFile::out, di, uo)
                     is det -->
                 fact_table_file_name(ModuleName, FactTableFile,
-                    ".c", no, FactTableCFile),
+                    ".c", do_not_create_dirs, FactTableCFile),
                 fact_table_file_name(ModuleName, FactTableFile,
-                    ObjExt, no, FactTableObjFile),
+                    ObjExt, do_not_create_dirs, FactTableObjFile),
                 { FactTableForeignFile = foreign_code_file(lang_c,
                     FactTableCFile, FactTableObjFile) }
             ), Imports ^ fact_table_deps, FactTableForeignFiles, !IO),
@@ -1058,9 +1064,9 @@ external_foreign_code_files_for_il(ModuleName, Language, ForeignFiles, !IO) :-
         ForeignModuleName = foreign_language_module_name(ModuleName, Language),
         ForeignExt = foreign_language_file_extension(Language)
     ->
-        module_name_to_file_name(ForeignModuleName, ForeignExt, yes,
+        module_name_to_file_name(ForeignModuleName, ForeignExt, do_create_dirs,
             ForeignFileName, !IO),
-        module_name_to_file_name(ForeignModuleName, ".dll", yes,
+        module_name_to_file_name(ForeignModuleName, ".dll", do_create_dirs,
             ForeignDLLFileName, !IO),
         ForeignFiles = [foreign_code_file(Language, ForeignFileName,
             ForeignDLLFileName)]

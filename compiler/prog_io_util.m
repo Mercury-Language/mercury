@@ -676,7 +676,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         sym_name_and_args(Term, QualifiedName, Args1),
         (
             BuiltinModule = mercury_public_builtin_module,
-            sym_name_get_module_name(QualifiedName, unqualified(""),
+            sym_name_get_module_name_default(QualifiedName, unqualified(""),
                 BuiltinModule),
             % If the term is qualified with the `builtin' module
             % then it may be one of the simple builtin insts.

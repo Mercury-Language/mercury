@@ -41,171 +41,23 @@
 :- module parse_tree.modules.
 :- interface.
 
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
+:- import_module parse_tree.read_modules.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module digraph.
 :- import_module io.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
-:- import_module pair.
-:- import_module set.
-
-%-----------------------------------------------------------------------------%
-
-    % Succeeds iff the module referred to by the module name is one
-    % of the modules in the standard library.
-    %
-:- pred mercury_std_library_module_name(module_name::in) is semidet.
-
-    % module_name_to_file_name(Module, Extension, Mkdir, FileName):
-    %
-    % Convert a module name and file extension to the corresponding file name.
-    % If `MkDir' is yes, then create any directories needed.
-    %
-    % Currently we use the convention that the module `foo.bar.baz' should be
-    % named `foo.bar.baz.m', and allow other naming conventions with the
-    % `-f' option.
-    %
-    % Note that this predicate is also used to create some "phony" Makefile
-    % targets that do not have corresponding files, e.g. `<foo>.clean'.
-    %
-:- pred module_name_to_file_name(module_name::in, string::in, bool::in,
-    file_name::out, io::di, io::uo) is det.
-
-    % module_name_to_search_file_name(Module, Extension, FileName):
-    %
-    % As above, but for a file which might be in an installed library,
-    % not the current directory.
-    %
-    % With `--use-grade-subdirs', the current directory's `.mih' files are in
-    % `Mercury/<grade>/<arch>/Mercury/mihs', and those for installed libraries
-    % are in `<prefix>/lib/mercury/lib/<grade>/<arch>/inc/Mercury/mihs'.
-    %
-    % handle_options.m sets up the `--c-include-directory' options so that
-    % the name `<module>.mih' should be used in a context which requires
-    % searching for the `.mih files, for example in a C file.
-    %
-    % module_name_to_file_name would return
-    % `Mercury/<grade>/<arch>/Mercury/mihs/<module>.mihs',
-    % which would be used when writing or removing the `.mih' file.
-    %
-:- pred module_name_to_search_file_name(module_name::in, string::in,
-    file_name::out, io::di, io::uo) is det.
-
-    % module_name_to_lib_file_name(Prefix, Module, Extension, MkDir,
-    %       FileName):
-    %
-    % Like module_name_to_file_name, but also allows a prefix.
-    %
-    % Used for creating library names, e.g. `lib<foo>.$A' and `lib<foo>.so'.
-    %
-:- pred module_name_to_lib_file_name(string::in, module_name::in, string::in,
-    bool::in, file_name::out, io::di, io::uo) is det.
-
-    % fact_table_file_name(Module, FactTableFileName, Ext, MkDir, FileName):
-    % Returns the filename to use when compiling fact table files.
-    % If 'MkDir' is yes, then create any directories needed.
-    %
-:- pred fact_table_file_name(module_name::in, file_name::in, string::in,
-    bool::in, file_name::out, io::di, io::uo) is det.
-
-    % Convert a file name (excluding the trailing `.m') to the corresponding
-    % module name.
-    %
-:- pred file_name_to_module_name(file_name::in, module_name::out) is det.
-
-    % Convert a module name to a file name stem (e.g. foo.bar.baz).
-    %
-:- pred module_name_to_file_name(module_name::in, file_name::out) is det.
-
-    % Convert a module name to something that is suitable
-    % for use as a variable name in makefiles.
-    %
-:- pred module_name_to_make_var_name(module_name::in, string::out) is det.
-
-    % Generate the list of .NET DLLs which could be referred to by this module
-    % (including the module itself).
-    %
-    % If we are compiling a module within the standard library we should
-    % reference the runtime DLLs and all other library DLLs.  If we are
-    % outside the library we should just reference mercury.dll (which will
-    % contain all the DLLs).
-    %
-:- func referenced_dlls(module_name, list(module_name)) = list(module_name).
-
-%-----------------------------------------------------------------------------%
-
-    % read_mod(ModuleName, Extension, Descr, Search, ReturnTimestamp,
-    %       Items, Error, SourceFileName, MaybeTimestamp):
-    % Given a module name and a file extension (e.g. `.m', `.int', or `int2'),
-    % read in the list of items in that file.
-    %
-    % If Extension is ".m", and ModuleName is a nested module, then try
-    % searching for different filenames: for modules such as `foo.bar.baz.m'
-    % search first for `foo.bar.baz.m', then `bar.baz.m', then `baz.m'.
-    % If Search is yes, search all directories given by the option
-    % search_directories for the module.
-    % If ReturnTimestamp is yes, attempt to return the modification time
-    % of the file in MaybeTimestamp.
-    % If the actual module name (as determined by the `:- module' declaration)
-    % does not match the specified module name, then report an error message.
-    % Return the actual source file name found (excluding the directory part).
-    %
-    % N.B. This reads a module given the module name. If you want to read
-    % a module given the file name, use `read_mod_from_file'.
-    %
-:- pred read_mod(module_name::in, string::in, string::in, bool::in, bool::in,
-    list(item)::out, module_error::out, file_name::out,
-    maybe(timestamp)::out, io::di, io::uo) is det.
-
-    % read_mod_if_changed(ModuleName, Extension, Descr, Search,
-    %   OldTimestamp, Items, Error, SourceFileName, MaybeTimestamp):
-    %
-    % If the timestamp of the file specified by the given module name and
-    % file extension is newer than OldTimestamp, read the file, returning
-    % the new timestamp.
-    %
-    % If the file was read, MaybeTimestamp will contain the new timestamp.
-    % If the timestamp was unchanged, MaybeTimestamp will be
-    % `yes(OldTimestamp)'. If the file could not be read, MaybeTimestamp
-    % will be `no'.
-    %
-:- pred read_mod_if_changed(module_name::in, string::in, string::in, bool::in,
-    timestamp::in, list(item)::out, module_error::out, file_name::out,
-    maybe(timestamp)::out, io::di, io::uo) is det.
-
-    % Similar to read_mod, but doesn't return error messages.
-    %
-:- pred read_mod_ignore_errors(module_name::in, string::in, string::in,
-    bool::in, bool::in, list(item)::out, module_error::out, file_name::out,
-    maybe(timestamp)::out, io::di, io::uo) is det.
-
-    % read_mod_from_file(SourceFileName, Extension, Descr, Search,
-    %   ReturnTimestamp, Items, Error, ModuleName, MaybeTimestamp):
-    %
-    % Given a file name and a file extension (e.g. `.m', `.int', or `int2'),
-    % read in the list of items in that file.
-    % If Search is yes, search all directories given by the option
-    % search_directories for the module.
-    % If ReturnTimestamp is yes, attempt to return the modification time
-    % of the file in MaybeTimestamp. Return the module name (as determined
-    % by the `:- module' declaration, if any).
-    %
-    % N.B.  This reads a module given the file name. If you want to read a
-    % module given the module name, use `read_mod'.
-    %
-:- pred read_mod_from_file(file_name::in, string::in, string::in, bool::in,
-    bool::in, list(item)::out, module_error::out, module_name::out,
-    maybe(timestamp)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -235,172 +87,6 @@
     %
 :- pred make_short_interface(file_name::in, module_name::in, list(item)::in,
     io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
-%
-% The `module_imports' structure
-%
-
-    % The `module_imports' structure holds information about
-    % a module and the modules that it imports.
-    %
-    % Note that we build this structure up as we go along.
-    % When generating the dependencies (for `--generate-dependencies'), the
-    % two fields that hold the direct imports do not include the imports via
-    % ancestors when the module is first read in; the ancestor imports are
-    % added later, once all the modules have been read in.  Similarly the
-    % indirect imports field is initially set to the empty list and filled
-    % in later.
-    %
-    % When compiling or when making interface files, the same sort of thing
-    % applies: initially all the list(module_name) fields except the public
-    % children field are set to empty lists, and then we add ancestor
-    % modules and imported modules to their respective lists as we process
-    % the interface files for those imported or ancestor modules.
-    %
-:- type module_imports
-    --->    module_imports(
-                % The source file.
-                source_file_name            :: file_name,
-
-                % The name of the top-level module in the source file
-                % containing the module that we are compiling.
-                source_file_module_name     :: module_name,
-
-                % The module (or sub-module) that we are compiling.
-                module_name                 :: module_name,
-
-                % The list of ancestor modules it inherits.
-                parent_deps                 :: list(module_name),
-
-                % The list of modules it directly imports in the interface
-                % (imports via ancestors count as direct).
-                int_deps                    :: list(module_name),
-
-                % The list of modules it directly imports in the
-                % implementation.
-                impl_deps                   :: list(module_name),
-
-                % The list of modules it indirectly imports.
-                indirect_deps               :: list(module_name),
-
-                children                    :: list(module_name),
-
-                % The list of its public children, i.e. child modules that
-                % it includes in the interface section.
-                public_children             :: list(module_name),
-
-                % The modules included in the same source file. This field
-                % is only set for the top-level module in each file.
-                nested_children             :: list(module_name),
-
-                % The list of filenames for fact tables in this module.
-                fact_table_deps             :: list(string),
-
-                % Whether or not the module contains foreign code, and if yes,
-                % which languages they use.
-                has_foreign_code            :: contains_foreign_code,
-
-                % The `:- pragma foreign_import_module' declarations.
-                foreign_import_modules      :: foreign_import_module_info_list,
-
-                % Does the module contain any `:- pragma foreign_export'
-                % declarations?
-                contains_foreign_export     :: contains_foreign_export,
-
-                % The contents of the module and its imports.
-                items                       :: list(item),
-
-                % Whether an error has been encountered when reading in
-                % this module.
-                error                       :: module_error,
-
-                % If we are doing smart recompilation, we need to keep
-                % the timestamps of the modules read in.
-                maybe_timestamps            :: maybe(module_timestamps),
-
-                % Does this module contain main/2?
-                has_main                    :: has_main,
-
-                % The directory containing the module source.
-                module_dir                  :: dir_name
-            ).
-
-:- type contains_foreign_code
-    --->    contains_foreign_code(set(foreign_language))
-    ;       no_foreign_code
-    ;       unknown.
-
-:- type contains_foreign_export
-    --->    contains_foreign_export
-    ;       no_foreign_export.
-
-    % When doing smart recompilation record for each module the suffix of
-    % the file that was read and the modification time of the file.
-    %
-:- type module_timestamps == map(module_name, module_timestamp).
-:- type module_timestamp
-    --->    module_timestamp(
-                suffix          :: string,
-                timestamp       :: timestamp,
-                need_qualifier  :: need_qualifier
-            ).
-
-    % recompilation_check.m records each file read to avoid reading it
-    % again. The string is the suffix of the file name.
-    %
-:- type read_modules == map(pair(module_name, string), read_module).
-
-:- type read_module
-    --->    read_module(
-                module_timestamp,
-                list(item),
-                module_error,
-                file_name
-            ).
-
-    % find_read_module(ReadModules, ModuleName, Suffix, ReturnTimestamp,
-    %   Items, MaybeTimestamp, Error, FileName)
-    %
-    % Check whether a file was read during recompilation checking.
-    %
-:- pred find_read_module(read_modules::in, module_name::in, string::in,
-    bool::in, list(item)::out, maybe(timestamp)::out, module_error::out,
-    file_name::out) is semidet.
-
-%-----------------------------------------------------------------------------%
-%
-% Access predicates for the module_imports structure
-%
-
-:- pred module_imports_get_source_file_name(module_imports::in, file_name::out)
-    is det.
-:- pred module_imports_get_module_name(module_imports::in, module_name::out)
-    is det.
-:- pred module_imports_get_impl_deps(module_imports::in,
-    list(module_name)::out) is det.
-:- pred module_imports_get_items(module_imports::in, list(item)::out) is det.
-:- pred module_imports_get_error(module_imports::in, module_error::out) is det.
-
-:- pred module_imports_set_items(list(item)::in,
-    module_imports::in, module_imports::out) is det.
-:- pred module_imports_set_error(module_error::in,
-    module_imports::in, module_imports::out) is det.
-
-    % Set the interface dependencies.
-    %
-:- pred module_imports_set_int_deps(list(module_name)::in,
-    module_imports::in, module_imports::out) is det.
-
-    % Set the implementation dependencies.
-    %
-:- pred module_imports_set_impl_deps(list(module_name)::in,
-    module_imports::in, module_imports::out) is det.
-
-    % Set the indirect dependencies.
-    %
-:- pred module_imports_set_indirect_deps(list(module_name)::in,
-    module_imports::in, module_imports::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -569,20 +255,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % write_dependency_file(Module, AllDeps, MaybeTransOptDeps):
-    %
-    % Write out the per-module makefile dependencies (`.d') file for the
-    % specified module. AllDeps is the set of all module names which the
-    % generated code for this module might depend on, i.e. all that have been
-    % used or imported, directly or indirectly, into this module, including
-    % via .opt or .trans_opt files, and including parent modules of nested
-    % modules. MaybeTransOptDeps is a list of module names which the
-    % `.trans_opt' file may depend on.  This is set to `no' if the
-    % dependency list is not available.
-    %
-:- pred write_dependency_file(module_imports::in, set(module_name)::in,
-    maybe(list(module_name))::in, io::di, io::uo) is det.
-
     % maybe_read_dependency_file(ModuleName, MaybeTransOptDeps):
     %
     % If transitive intermodule optimization has been enabled, then read
@@ -639,98 +311,31 @@
 :- type lookup_module_imports == (func(module_name) = module_imports).
 :- mode lookup_module_imports == in(func(in) = out is det).
 
-    % get_dependencies(Items, ImportDeps, UseDeps):
-    %
-    % Get the list of modules that a list of items (explicitly) depends on.
-    % ImportDeps is the list of modules imported using `:- import_module',
-    % UseDeps is the list of modules imported using `:- use_module'.
-    % N.B. Typically you also need to consider the module's implicit
-    % dependencies (see get_implicit_dependencies/3), its parent modules
-    % (see get_ancestors/1) and possibly also the module's child modules
-    % (see get_children/2). You may also need to consider indirect
-    % dependencies.
-    %
-:- pred get_dependencies(list(item)::in, list(module_name)::out,
-    list(module_name)::out) is det.
-
-    % get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps):
-    %
-    % Get the list of builtin modules (e.g. "public_builtin",
-    % "private_builtin") that a list of items may implicitly depend on.
-    % ImportDeps is the list of modules which should be automatically
-    % implicitly imported as if via `:- import_module', and UseDeps is
-    % the list which should be automatically implicitly imported as if via
-    % `:- use_module'.
-    %
-:- pred get_implicit_dependencies(list(item)::in, globals::in,
-    list(module_name)::out, list(module_name)::out) is det.
-
-    % get_ancestors(ModuleName) =  ParentDeps:
-    %
-    % ParentDeps is the list of ancestor modules for this module, oldest first;
-    % e.g. if the ModuleName is `foo.bar.baz', then ParentDeps would be
-    % [`foo', `foo.bar'].
-    %
-:- func get_ancestors(module_name) = list(module_name).
-
-    % init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
-    %   Error, Globals, ModuleName - Items, ModuleImports).
-    %
-:- pred init_dependencies(file_name::in, module_name::in,
-    list(module_name)::in, module_error::in, globals::in,
-    pair(module_name, list(item))::in, module_imports::out) is det.
-
 %-----------------------------------------------------------------------------%
+%
+% These predicates are exported for use by module_imports.m.
+%
+% XXX They shouldn't be needed; the representation of the program should have
+% all this information readily accessible.
 
-    % touch_interface_datestamp(ModuleName, Ext):
+    % get_children(Items, IncludeDeps):
     %
-    % Touch the datestamp file `ModuleName.Ext'. Datestamp files
-    % are used to record when each of the interface files was last
-    % updated.
+    % IncludeDeps is the list of sub-modules declared with `:- include_module'
+    % in Items.
     %
-:- pred touch_interface_datestamp(module_name::in, string::in,
-    io::di, io::uo) is det.
+:- pred get_children(list(item)::in, list(module_name)::out) is det.
 
-    % touch_datestamp(FileName):
+    % Given a module (well, a list of items), extract the interface
+    % part of that module, i.e. all the items between `:- interface'
+    % and `:- implementation'.
+    % The bodies of instance definitions are removed because
+    % the instance methods have not yet been module qualified.
     %
-    % Update the modification time for the given file,
-    % clobbering the contents of the file.
-    %
-:- pred touch_datestamp(file_name::in, io::di, io::uo) is det.
+:- pred get_interface(module_name::in, bool::in,
+    list(item)::in, list(item)::out) is det.
 
-    % update_interface_return_succeeded(FileName, Succeeded):
-    %
-    % Call the shell script mercury_update_interface to update the
-    % interface file FileName from FileName.tmp if it has changed.
-    %
-:- pred update_interface_return_succeeded(file_name::in, bool::out,
-    io::di, io::uo) is det.
-
-:- pred update_interface(file_name::in, io::di, io::uo) is det.
-
-    % maybe_make_symlink(TargetFile, LinkName, Result):
-    %
-    % If `--use-symlinks' is set, attempt to make LinkName a
-    % symlink pointing to LinkTarget.
-    %
-:- pred maybe_make_symlink(file_name::in, file_name::in, bool::out,
-    io::di, io::uo) is det.
-
-    % copy_file(Source, Destination, Succeeded).
-    %
-    % XXX This belongs in the standard library.
-    %
-:- pred copy_file(file_name::in, file_name::in, io.res::out,
-    io::di, io::uo) is det.
-
-    % make_symlink_or_copy_file(LinkTarget, LinkName, Succeeded):
-    %
-    % Attempt to make LinkName a symlink pointing to LinkTarget,
-    % copying LinkTarget to LinkName if that fails (or if
-    % `--use-symlinks' is not set).
-    %
-:- pred make_symlink_or_copy_file(file_name::in, file_name::in, bool::out,
-    io::di, io::uo) is det.
+:- pred get_foreign_self_imports(list(item)::in, list(foreign_language)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -748,61 +353,6 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
-%
-% Java command-line tools utilities
-%
-
-    % Create a shell script with the same name as the given module to invoke
-    % Java with the appropriate options on the class of the same name.
-    %
-:- pred create_java_shell_script(module_name::in, bool::out,
-    io::di, io::uo) is det.
-
-    % Strip away the path prefix for a list of .class files.
-    %
-:- pred list_class_files_for_jar(module_name::in, string::in, string::out,
-    io::di, io::uo) is det.
-
-    % Get the value of the Java class path from the environment. (Normally
-    % it will be obtained from the CLASSPATH environment variable, but if
-    % that isn't present then the java.class.path variable may be used instead.
-    % This is used for the Java back-end, which doesn't support environment
-    % variables properly.)
-    %
-:- pred get_env_classpath(string::out, io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
-%
-% Erlang utilities
-%
-
-    % To avoid namespace collisions between Mercury standard modules and
-    % Erlang standard modules, we pretend the Mercury standard modules are in
-    % a "mercury" supermodule.  This function returns ModuleName with the
-    % extra qualifier if it is a standard library module.  Otherwise it
-    % returns it unchanged.
-    %
-:- func erlang_module_name(module_name) = module_name.
-
-    % Create a shell script with the same name as the given module to invoke
-    % the Erlang runtime system and execute the main/2 predicate in that
-    % module.
-    %
-:- pred create_erlang_shell_script(module_name::in, bool::out, io::di, io::uo)
-    is det.
-
-%-----------------------------------------------------------------------------%
-
-    % get_install_name_option(FileName, Option, !IO):
-    %
-    % Get the option string for setting the install-name of the shared library
-    % FileName. This is only used for systems which support the install-name
-    % option for shared libraries (such as Darwin).
-    %
-:- pred get_install_name_option(string::in, string::out, io::di, io::uo)
-    is det.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -812,6 +362,8 @@
 :- import_module libs.handle_options.
 :- import_module libs.options.
 :- import_module make.              % XXX undesirable dependency
+:- import_module parse_tree.deps_map.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_foreign.
@@ -820,6 +372,8 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.source_file_map.
+:- import_module parse_tree.module_cmds.
+:- import_module parse_tree.write_deps_file.
 :- import_module recompilation.version.
 
 :- import_module char.
@@ -827,7 +381,10 @@
 :- import_module getopt_io.
 :- import_module int.
 :- import_module library.
+:- import_module map.
 :- import_module multi_map.
+:- import_module pair.
+:- import_module set.
 :- import_module solutions.
 :- import_module sparse_bitset.
 :- import_module string.
@@ -836,457 +393,6 @@
 :- import_module term.
 :- import_module unit.
 :- import_module varset.
-
-%-----------------------------------------------------------------------------%
-
-mercury_std_library_module_name(unqualified(Name)) :-
-    mercury_std_library_module(Name).
-mercury_std_library_module_name(qualified(Module, Name)) :-
-    module_name_to_file_name(qualified(Module, Name), ModuleNameStr),
-    mercury_std_library_module(ModuleNameStr).
-mercury_std_library_module_name(qualified(Module, Name)) :-
-    strip_outermost_qualifier(qualified(Module, Name), "mercury", ModuleName),
-    module_name_to_file_name(ModuleName, ModuleNameStr),
-    mercury_std_library_module(ModuleNameStr).
-
-module_name_to_search_file_name(ModuleName, Ext, FileName, !IO) :-
-    module_name_to_file_name_2(ModuleName, Ext, yes, no, FileName, !IO).
-
-module_name_to_file_name(ModuleName, Ext, MkDir, FileName, !IO) :-
-    module_name_to_file_name_2(ModuleName, Ext, no, MkDir, FileName,
-        !IO).
-
-:- pred module_name_to_file_name_2(module_name::in, string::in,
-    bool::in, bool::in, file_name::out, io::di, io::uo) is det.
-
-module_name_to_file_name_2(ModuleName0, Ext, Search, MkDir, FileName, !IO) :-
-    ( Ext = ".m" ->
-        % Look up the module in the module->file mapping.
-        source_file_map.lookup_module_source_file(ModuleName0, FileName, !IO)
-    ;
-        (
-            ( string.suffix(Ext, ".erl")
-            ; string.suffix(Ext, ".hrl")
-            ; string.suffix(Ext, ".beam")
-            )
-        ->
-            % Erlang uses `.' as a package separator and expects a module
-            % `a.b.c' to be in a file `a/b/c.erl'.  Rather than that, we use
-            % a flat namespace with `__' as module separators.
-            Sep = "__",
-            ModuleName = erlang_module_name(ModuleName0)
-        ;
-            Sep = ".",
-            ModuleName = ModuleName0
-        ),
-        string.append(sym_name_to_string_sep(ModuleName, Sep), Ext, BaseName),
-        choose_file_name(ModuleName, BaseName, Ext, Search, MkDir, FileName,
-            !IO)
-    ).
-
-module_name_to_lib_file_name(Prefix, ModuleName, Ext, MkDir, FileName, !IO) :-
-    BaseFileName = sym_name_to_string(ModuleName),
-    string.append_list([Prefix, BaseFileName, Ext], BaseName),
-    choose_file_name(ModuleName, BaseName, Ext, no, MkDir, FileName, !IO).
-
-fact_table_file_name(ModuleName, FactTableFileName, Ext, MkDir, FileName,
-        !IO) :-
-    extra_link_obj_file_name(ModuleName, FactTableFileName, Ext, MkDir,
-        FileName, !IO).
-
-    % extra_link_obj_file_name(Module, ExtraLinkObjName,
-    %   Ext, MkDir, FileName):
-    % Returns the filename to use when compiling extra objects that must be
-    % linked into the executable (currently used only for fact tables).
-    % If `MkDir' is yes, make any directories necessary.
-    %
-:- pred extra_link_obj_file_name(module_name::in, file_name::in, string::in,
-    bool::in, file_name::out, io::di, io::uo) is det.
-
-extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, MkDir, FileName,
-        !IO) :-
-    string.append(ExtraLinkObjName, Ext, BaseName),
-    choose_file_name(ModuleName, BaseName, Ext, no, MkDir, FileName, !IO).
-
-:- pred choose_file_name(module_name::in, string::in, string::in, bool::in,
-    bool::in, file_name::out, io::di, io::uo) is det.
-
-choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_string_option(Globals, library_extension, LibExt),
-    globals.lookup_string_option(Globals, shared_library_extension,
-        SharedLibExt),
-    (
-        (
-            UseSubdirs = no
-        ;
-            % If we're searching for (rather than writing) a `.mih' file,
-            % use the plain file name.  This is so that searches for files
-            % in installed libraries will work.  `--c-include-directory' is
-            % set so that searches for files in the current directory will
-            % work.
-            % Similarly for `.hrl' files.  We set `--erlang-include-directory'
-            % for those.
-            %
-            Search = yes,
-            ( Ext = ".mih"
-            ; Ext = ".mih.tmp"
-            ; Ext = ".hrl"
-            ; Ext = ".hrl.tmp"
-            )
-        )
-    ->
-        FileName = BaseName
-    ;
-        %
-        % The source files, the final executables, library files (including
-        % .init files) output files intended for use by the user, and phony
-        % Mmake targets names go in the current directory
-        %
-        \+ (
-            UseGradeSubdirs = yes,
-            file_is_arch_or_grade_dependent(Globals, Ext)
-        ),
-        (
-            % Executable files.
-            ( Ext = ""
-            ; Ext = ".exe"
-            ; Ext = ".dll"
-            % Library files.
-            ; Ext = ".a"
-            ; Ext = ".$A"
-            ; Ext = ".so"
-            ; Ext = ".dylib"
-            ; Ext = ".$(EXT_FOR_SHARED_LIB)"
-            ; Ext = ".jar"
-            ; Ext = ".beams"
-            ; Ext = ".init"
-                    % mercury_update_interface
-                    % requires the `.init.tmp' files to
-                    % be in the same directory as the
-                    % `.init' files.
-            ; Ext = ".init.tmp"
-
-            % output files intended for use by the user
-            % (the .h_dump* and .c_dump* MLDS dumps
-            % also fit into this category, but for
-            % efficiency, to keep this as a switch,
-            % we deal with them below)
-            ; Ext = ".mh"
-                    % mercury_update_interface
-                    % requires the `.mh.tmp' files to
-                    % be in the same directory as the
-                    % `.mh' files.
-            ; Ext = ".mh.tmp"
-            ; Ext = ".err"
-            ; Ext = ".ugly"
-            ; Ext = ".hlds_dump"
-            ; Ext = ".mlds_dump"
-            ; Ext = ".dependency_graph"
-            ; Ext = ".order"
-            % Mmake targets
-            ; Ext = ".clean"
-            ; Ext = ".realclean"
-            ; Ext = ".depend"
-            ; Ext = ".install_ints"
-            ; Ext = ".install_opts"
-            ; Ext = ".install_hdrs"
-            ; Ext = ".install_grade_hdrs"
-            ; Ext = ".check"
-            ; Ext = ".ints"
-            ; Ext = ".int3s"
-            ; Ext = ".ss"
-            ; Ext = ".pic_ss"
-            ; Ext = ".ils"
-            ; Ext = ".javas"
-            ; Ext = ".classes"
-            ; Ext = ".erls"
-            ; Ext = ".beams"
-            ; Ext = ".opts"
-            ; Ext = ".trans_opts"
-            )
-        ;
-            % Output files intended for use by the user.
-            %
-            ( string.prefix(Ext, ".c_dump")
-            ; string.prefix(Ext, ".mih_dump")
-            )
-        )
-    ->
-        FileName = BaseName
-    ;
-        %
-        % We need to handle a few cases specially.
-        %
-        (
-            ( Ext = ".dir/*.o"
-            ; Ext = ".dir/*.$O"
-            )
-        ->
-            SubDirName = "dirs"
-        ;
-            % .$O, .pic_o and .lpic_o files need to go in the
-            % same directory, so that using
-            % .$(EXT_FOR_PIC_OBJECTS) will work.
-            ( Ext = ".o"
-            ; Ext = ".$O"
-            ; Ext = ".lpic_o"
-            ; Ext = ".pic_o"
-            ; Ext = "$(EXT_FOR_PIC_OBJECTS)"
-            ; Ext = "_init.o"
-            ; Ext = "_init.$O"
-            ; Ext = "_init.lpic_o"
-            ; Ext = "_init.pic_o"
-            ; Ext = "_init.$(EXT_FOR_PIC_OBJECTS)"
-            )
-        ->
-            SubDirName = "os"
-        ;
-            % _init.c, _init.s, _init.o etc. files
-            % go in the cs, ss, os etc. subdirectories
-            string.append("_init.", ExtName, Ext)
-        ->
-            string.append(ExtName, "s", SubDirName)
-        ;
-            % .int.tmp, .opt.tmp, etc. files
-            % need to go in the ints, opts, etc. subdirectories
-            string.append(".", ExtName0, Ext),
-            string.remove_suffix(ExtName0, ".tmp", ExtName)
-        ->
-            string.append(ExtName, "s", SubDirName)
-        ;
-            % `.dv' files go in the `deps' subdirectory,
-            % along with the `.dep' files
-            Ext = ".dv"
-        ->
-            SubDirName = "deps"
-        ;
-            % Static and shared libraries go in the `lib' subdirectory.
-            ( Ext = LibExt
-            ; Ext = SharedLibExt
-            )
-        ->
-            SubDirName = "lib"
-        ;
-            % The usual case: `*.foo' files go in the `foos' subdirectory.
-            string.append(".", ExtName, Ext)
-        ->
-            string.append(ExtName, "s", SubDirName)
-        ;
-            Ext = ""
-        ->
-            SubDirName = "bin"
-        ;
-            string.append_list(["unknown extension `", Ext, "'"], ErrorMsg),
-            unexpected(this_file, ErrorMsg)
-        ),
-        make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO)
-    ).
-
-file_name_to_module_name(FileName, ModuleName) :-
-    ModuleName = string_to_sym_name(FileName).
-
-module_name_to_file_name(ModuleName, FileName) :-
-    FileName = sym_name_to_string(ModuleName).
-
-module_name_to_make_var_name(ModuleName, MakeVarName) :-
-    MakeVarName = sym_name_to_string(ModuleName).
-
-maybe_make_symlink(LinkTarget, LinkName, Result, !IO) :-
-    globals.io_lookup_bool_option(use_symlinks, UseSymLinks, !IO),
-    (
-        UseSymLinks = yes,
-        io.remove_file_recursively(LinkName, _, !IO),
-        io.make_symlink(LinkTarget, LinkName, LinkResult, !IO),
-        Result = ( if LinkResult = ok then yes else no )
-    ;
-        UseSymLinks = no,
-        Result = no
-    ).
-
-copy_file(Source, Destination, Res, !IO) :-
-    % Try to use the system's cp command in order to preserve metadata.
-    globals.io_lookup_string_option(install_command, InstallCommand, !IO),
-    Command = string.join_list("   ", list.map(quote_arg,
-        [InstallCommand, Source, Destination])),
-    io.output_stream(OutputStream, !IO),
-    invoke_system_command(OutputStream, cmd_verbose, Command, Succeeded, !IO),
-    (
-        Succeeded = yes,
-        Res = ok
-    ;
-        Succeeded = no,
-        io.open_binary_input(Source, SourceRes, !IO),
-        (
-            SourceRes = ok(SourceStream),
-            io.open_binary_output(Destination, DestRes, !IO),
-            (
-                DestRes = ok(DestStream),
-                WriteByte = io.write_byte(DestStream),
-                io.binary_input_stream_foldl_io(SourceStream, WriteByte, Res,
-                    !IO),
-                io.close_binary_input(SourceStream, !IO),
-                io.close_binary_output(DestStream, !IO)
-            ;
-                DestRes = error(Error),
-                Res = error(Error)
-            )
-        ;
-            SourceRes = error(Error),
-            Res = error(Error)
-        )
-    ).
-
-make_symlink_or_copy_file(SourceFileName, DestinationFileName, Succeeded,
-        !IO) :-
-    globals.io_lookup_bool_option(use_symlinks, UseSymLinks, !IO),
-    (
-        UseSymLinks = yes,
-        LinkOrCopy = "linking",
-        io.make_symlink(SourceFileName, DestinationFileName, Result, !IO)
-    ;
-        UseSymLinks = no,
-        LinkOrCopy = "copying",
-        copy_file(SourceFileName, DestinationFileName, Result, !IO)
-    ),
-    (
-        Result = ok,
-        Succeeded = yes
-    ;
-        Result = error(Error),
-        Succeeded = no,
-        io.progname_base("mercury_compile", ProgName, !IO),
-        io.write_string(ProgName, !IO),
-        io.write_string(": error ", !IO),
-        io.write_string(LinkOrCopy, !IO),
-        io.write_string(" `", !IO),
-        io.write_string(SourceFileName, !IO),
-        io.write_string("' to `", !IO),
-        io.write_string(DestinationFileName, !IO),
-        io.write_string("': ", !IO),
-        io.write_string(io.error_message(Error), !IO),
-        io.nl(!IO),
-        io.flush_output(!IO)
-    ).
-
-:- pred make_file_name(dir_name::in, bool::in, bool::in, file_name::in,
-    string::in, file_name::out, io::di, io::uo) is det.
-
-make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_string_option(Globals, fullarch, FullArch),
-    (
-        UseGradeSubdirs = yes,
-        file_is_arch_or_grade_dependent(Globals, Ext),
-        %
-        % If we're searching for (rather than writing) the file, just search
-        % in Mercury/<ext>s. This is so that searches for files in installed
-        % libraries work.  `--intermod-directories' is set so this will
-        % work.
-        %
-        \+ (
-            Search = yes,
-            ( Ext = ".opt"
-            ; Ext = ".trans_opt"
-            ; Ext = ".analysis"
-            ; Ext = ".imdg"
-            ; Ext = ".request"
-            )
-        )
-    ->
-        grade_directory_component(Globals, Grade),
-
-        % The extra "Mercury" is needed so we can use `--intermod-directory
-        % Mercury/<grade>/<fullarch>' and `--c-include
-        % Mercury/<grade>/<fullarch>' to find the local `.opt' and `.mih'
-        % files without messing up the search for the files for installed
-        % libraries.
-        DirComponents = ["Mercury", Grade, FullArch, "Mercury", SubDirName]
-    ;
-        DirComponents = ["Mercury", SubDirName]
-    ),
-    (
-        MkDir = yes,
-        DirName = dir.relative_path_name_from_components(DirComponents),
-        make_directory(DirName, _, !IO)
-    ;
-        MkDir = no
-    ),
-    Components = DirComponents ++ [BaseName],
-    FileName = dir.relative_path_name_from_components(Components).
-
-:- pred file_is_arch_or_grade_dependent(globals::in, string::in) is semidet.
-
-file_is_arch_or_grade_dependent(_, Ext) :-
-    file_is_arch_or_grade_dependent_2(Ext).
-file_is_arch_or_grade_dependent(Globals, Ext0) :-
-    string.append(Ext, ".tmp", Ext0), % for mercury_update_interface.
-    file_is_arch_or_grade_dependent(Globals, Ext).
-file_is_arch_or_grade_dependent(Globals, Ext) :-
-    globals.lookup_string_option(Globals, executable_file_extension, Ext).
-file_is_arch_or_grade_dependent(Globals, Ext) :-
-    (
-        globals.lookup_string_option(Globals,
-            object_file_extension, ObjExt)
-    ;
-        globals.lookup_string_option(Globals,
-            pic_object_file_extension, ObjExt)
-    ;
-        globals.lookup_string_option(Globals,
-            link_with_pic_object_file_extension, ObjExt)
-    ),
-    ( Ext = ObjExt
-    ; Ext = "_init" ++ ObjExt
-    ).
-file_is_arch_or_grade_dependent(Globals, Ext) :-
-    globals.lookup_string_option(Globals, library_extension, LibExt),
-    Ext = LibExt.
-file_is_arch_or_grade_dependent(Globals, Ext) :-
-    globals.lookup_string_option(Globals, shared_library_extension, Ext).
-
-:- pred file_is_arch_or_grade_dependent_2(string::in) is semidet.
-
-    % The `.used' file isn't grade dependent itself, but it contains
-    % information collected while compiling a grade-dependent
-    % `.c', `il', etc file.
-file_is_arch_or_grade_dependent_2(".used").
-file_is_arch_or_grade_dependent_2(".opt").
-file_is_arch_or_grade_dependent_2(".optdate").
-file_is_arch_or_grade_dependent_2(".trans_opt").
-file_is_arch_or_grade_dependent_2(".trans_opt_date").
-file_is_arch_or_grade_dependent_2(".analysis").
-file_is_arch_or_grade_dependent_2(".analysis_date").
-file_is_arch_or_grade_dependent_2(".imdg").
-file_is_arch_or_grade_dependent_2(".init").
-file_is_arch_or_grade_dependent_2(".request").
-file_is_arch_or_grade_dependent_2(".mih").
-file_is_arch_or_grade_dependent_2(".c").
-file_is_arch_or_grade_dependent_2(".c_date").
-file_is_arch_or_grade_dependent_2(".s").
-file_is_arch_or_grade_dependent_2(".s_date").
-file_is_arch_or_grade_dependent_2(".pic_s").
-file_is_arch_or_grade_dependent_2(".pic_s_date").
-file_is_arch_or_grade_dependent_2(".il").
-file_is_arch_or_grade_dependent_2(".il_date").
-file_is_arch_or_grade_dependent_2(".java").
-file_is_arch_or_grade_dependent_2(".java_date").
-file_is_arch_or_grade_dependent_2(".class").
-file_is_arch_or_grade_dependent_2(".erl").
-file_is_arch_or_grade_dependent_2(".erl_date").
-file_is_arch_or_grade_dependent_2(".beam").
-file_is_arch_or_grade_dependent_2(".beams").
-file_is_arch_or_grade_dependent_2(".hrl").
-file_is_arch_or_grade_dependent_2(".dir").
-file_is_arch_or_grade_dependent_2(".dll").
-file_is_arch_or_grade_dependent_2(".$A").
-file_is_arch_or_grade_dependent_2(".a").
-file_is_arch_or_grade_dependent_2("_init.c").
-file_is_arch_or_grade_dependent_2("_init.$O").
-file_is_arch_or_grade_dependent_2("_init.erl").
-file_is_arch_or_grade_dependent_2("_init.beam").
 
 %-----------------------------------------------------------------------------%
 %
@@ -1305,14 +411,16 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
     % Check whether we succeeded.
     % XXX zs: why does this code not check for fatal_module_errors?
     ( Error = some_module_errors ->
-        module_name_to_file_name(ModuleName, ".int0", no, FileName, !IO),
+        module_name_to_file_name(ModuleName, ".int0", do_not_create_dirs,
+            FileName, !IO),
         io.write_strings(["Error reading interface files.\n",
             "`", FileName, "' not written.\n"], !IO)
     ;
         % Module-qualify all items.
         module_imports_get_items(Module, Items1),
         globals.io_get_globals(Globals, !IO),
-        module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+        module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+            FileName, !IO),
         module_qualify_items(Items1, Items2, map.init, _, Globals, ModuleName,
             yes(FileName), "", _, _, _, [], Specs),
         (
@@ -1426,16 +534,18 @@ make_interface(SourceFileName, SourceFileModuleName, ModuleName,
         module_imports_get_items(Module0, !:InterfaceItems),
         % XXX zs: why does this code not check for fatal_module_errors?
         ( Error = some_module_errors ->
-            module_name_to_file_name(ModuleName, ".int", no, IntFileName, !IO),
-            module_name_to_file_name(ModuleName, ".int2", no, Int2FileName,
-                !IO),
+            module_name_to_file_name(ModuleName, ".int", do_not_create_dirs,
+                IntFileName, !IO),
+            module_name_to_file_name(ModuleName, ".int2", do_not_create_dirs,
+                Int2FileName, !IO),
             io.write_strings(["Error reading short interface files.\n",
                 "`", IntFileName, "' and ",
                 "`", Int2FileName, "' not written.\n"], !IO)
         ;
             % Module-qualify all items.
             globals.io_get_globals(Globals, !IO),
-            module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+            module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+                FileName, !IO),
             module_qualify_items(!InterfaceItems, map.init, _, Globals,
                 ModuleName, yes(FileName), "", _, _, _, [], Specs),
 
@@ -1445,8 +555,8 @@ make_interface(SourceFileName, SourceFileModuleName, ModuleName,
             write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors,
                 !IO),
             ( NumErrors > 0 ->
-                module_name_to_file_name(ModuleName, ".int", no, IntFileName,
-                    !IO),
+                module_name_to_file_name(ModuleName, ".int",
+                    do_not_create_dirs, IntFileName, !IO),
                 io.write_strings(["`", IntFileName, "' ", "not written.\n"],
                     !IO)
             ;
@@ -2159,7 +1269,7 @@ get_modules_from_constraint_arg_type(ArgType, !Modules) :-
             ArgType = higher_order_type(Args0, MaybeRetType, _, _),
             (
                 MaybeRetType = yes(RetType),
-                Args = [ RetType  | Args0 ]
+                Args = [RetType  | Args0]
             ;
                 MaybeRetType = no,
                 Args = Args0
@@ -2395,7 +1505,8 @@ check_int_for_no_exports([Item | Items], ModuleName, !IO) :-
 :- pred warn_no_exports(module_name::in, io::di, io::uo) is det.
 
 warn_no_exports(ModuleName, !IO) :-
-    module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+        FileName, !IO),
     Context = context_init(FileName, 1),
     Severity = severity_conditional(warn_nothing_exported, yes,
         severity_warning, no),
@@ -2427,9 +1538,10 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
         InterfaceItems0, !IO) :-
     % Create (e.g.) `foo.int.tmp'.
     string.append(Suffix, ".tmp", TmpSuffix),
-    module_name_to_file_name(ModuleName, Suffix, yes, OutputFileName, !IO),
-    module_name_to_file_name(ModuleName, TmpSuffix, no, TmpOutputFileName,
-        !IO),
+    module_name_to_file_name(ModuleName, Suffix, do_create_dirs,
+        OutputFileName, !IO),
+    module_name_to_file_name(ModuleName, TmpSuffix, do_not_create_dirs,
+        TmpOutputFileName, !IO),
     globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
     globals.io_set_option(line_numbers, bool(no), !IO),
     globals.io_lookup_bool_option(generate_item_version_numbers,
@@ -2441,9 +1553,10 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
             MaybeTimestamp = yes(Timestamp),
 
             % Read in the previous version of the file.
-            read_mod_ignore_errors(ModuleName, Suffix,
-                "Reading old interface for module", yes, no,
-                OldItems, OldError, _OldIntFileName, _OldTimestamp, !IO),
+            read_module_ignore_errors(ModuleName, Suffix,
+                "Reading old interface for module",
+                do_search, do_not_return_timestamp, OldItems, OldError,
+                _OldIntFileName, _OldTimestamp, !IO),
             ( OldError = no_module_errors ->
                 MaybeOldItems = yes(OldItems)
             ;
@@ -2483,168 +1596,6 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
     globals.io_set_option(line_numbers, bool(LineNumbers), !IO),
     update_interface(OutputFileName, !IO).
 
-update_interface(OutputFileName, !IO) :-
-    update_interface_return_succeeded(OutputFileName, Succeeded, !IO),
-    (
-        Succeeded = no,
-        report_error("problem updating interface files.", !IO)
-    ;
-        Succeeded = yes
-    ).
-
-update_interface_return_succeeded(OutputFileName, Succeeded, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose, "% Updating interface:\n", !IO),
-    TmpOutputFileName = OutputFileName ++ ".tmp",
-    io.open_binary_input(OutputFileName, OutputFileRes, !IO),
-    (
-        OutputFileRes = ok(OutputFileStream),
-        io.open_binary_input(TmpOutputFileName, TmpOutputFileRes, !IO),
-        (
-            TmpOutputFileRes = ok(TmpOutputFileStream),
-            binary_input_stream_cmp(OutputFileStream, TmpOutputFileStream,
-                FilesDiffer, !IO),
-            io.close_binary_input(OutputFileStream, !IO),
-            io.close_binary_input(TmpOutputFileStream, !IO),
-            (
-                FilesDiffer = ok(ok(no)),
-                Succeeded = yes,
-                maybe_write_string(Verbose, "% ", !IO),
-                maybe_write_string(Verbose, OutputFileName, !IO),
-                maybe_write_string(Verbose, "' has not changed.\n", !IO),
-                io.remove_file(TmpOutputFileName, _, !IO)
-            ;
-                FilesDiffer = ok(ok(yes)),
-                update_interface_create_file("CHANGED", OutputFileName,
-                    TmpOutputFileName, Succeeded, !IO)
-            ;
-                FilesDiffer = ok(error(TmpFileError)),
-                Succeeded = no,
-                io.write_string("Error reading `", !IO),
-                io.write_string(TmpOutputFileName, !IO),
-                io.write_string("': ", !IO),
-                io.write_string(io.error_message(TmpFileError), !IO),
-                io.nl(!IO)
-            ;
-                FilesDiffer = error(_, _),
-                update_interface_create_file("been CREATED", OutputFileName,
-                    TmpOutputFileName, Succeeded, !IO)
-            )
-        ;
-
-            TmpOutputFileRes = error(TmpOutputFileError),
-            Succeeded = no,
-            io.close_binary_input(OutputFileStream, !IO),
-            io.write_string("Error creating `", !IO),
-            io.write_string(OutputFileName, !IO),
-            io.write_string("': ", !IO),
-            io.write_string(io.error_message(TmpOutputFileError), !IO),
-            io.nl(!IO)
-        )
-    ;
-        OutputFileRes = error(_),
-        update_interface_create_file("been CREATED", OutputFileName,
-            TmpOutputFileName, Succeeded, !IO)
-    ).
-
-:- pred binary_input_stream_cmp_2(io.binary_input_stream::in, int::in,
-    bool::out, io.res(bool)::in, io.res(bool)::out,
-    io::di, io::uo) is det.
-
-binary_input_stream_cmp_2(TmpOutputFileStream, Byte, Continue, _, Differ,
-        !IO) :-
-    io.read_byte(TmpOutputFileStream, TmpByteResult, !IO),
-    (
-        TmpByteResult = ok(TmpByte),
-        ( TmpByte = Byte ->
-            Differ = ok(no),
-            Continue = yes
-        ;
-            Differ = ok(yes),
-            Continue = no
-        )
-    ;
-        TmpByteResult = eof,
-        Differ = ok(yes),
-        Continue = no
-    ;
-        TmpByteResult = error(TmpByteError),
-        Differ = error(TmpByteError) : io.res(bool),
-        Continue = no
-    ).
-
-:- pred binary_input_stream_cmp(io.binary_input_stream::in,
-    io.binary_input_stream::in, io.maybe_partial_res(io.res(bool))::out,
-    io::di, io::uo) is det.
-
-binary_input_stream_cmp(OutputFileStream, TmpOutputFileStream, FilesDiffer,
-        !IO) :-
-    io.binary_input_stream_foldl2_io_maybe_stop(OutputFileStream,
-        binary_input_stream_cmp_2(TmpOutputFileStream),
-        ok(no), FilesDiffer0, !IO),
-
-    % Check whether there is anything left in TmpOutputFileStream
-    ( FilesDiffer0 = ok(ok(no)) ->
-        io.read_byte(TmpOutputFileStream, TmpByteResult2, !IO),
-        (
-            TmpByteResult2 = ok(_),
-            FilesDiffer = ok(ok(yes))
-        ;
-            TmpByteResult2 = eof,
-            FilesDiffer = FilesDiffer0
-        ;
-            TmpByteResult2 = error(Error),
-            FilesDiffer = ok(error(Error))
-        )
-    ;
-        FilesDiffer = FilesDiffer0
-    ).
-
-:- pred update_interface_create_file(string::in, string::in, string::in,
-    bool::out, io::di, io::uo) is det.
-
-update_interface_create_file(Msg, OutputFileName, TmpOutputFileName, Succeeded,
-        !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose,
-        "% `" ++ OutputFileName ++ "' has " ++ Msg ++ ".\n", !IO),
-    copy_file(TmpOutputFileName, OutputFileName, MoveRes, !IO),
-    (
-        MoveRes = ok,
-        Succeeded = yes
-    ;
-        MoveRes = error(MoveError),
-        Succeeded = no,
-        io.write_string("Error creating `" ++ OutputFileName ++ "': " ++
-            io.error_message(MoveError), !IO),
-        io.nl(!IO)
-    ),
-    io.remove_file(TmpOutputFileName, _, !IO).
-
-%-----------------------------------------------------------------------------%
-
-touch_interface_datestamp(ModuleName, Ext, !IO) :-
-    module_name_to_file_name(ModuleName, Ext, yes, OutputFileName, !IO),
-    touch_datestamp(OutputFileName, !IO).
-
-touch_datestamp(OutputFileName, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose,
-        "% Touching `" ++ OutputFileName ++ "'... ", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_output(OutputFileName, Result, !IO),
-    (
-        Result = ok(OutputStream),
-        io.write_string(OutputStream, "\n", !IO),
-        io.close_output(OutputStream, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        Result = error(IOError),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_string("\nError opening `" ++ OutputFileName
-            ++ "' for output: " ++ IOErrorMessage ++ ".\n", !IO)
-    ).
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -2653,7 +1604,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
         Error, !IO) :-
     % Find out which modules this one depends on.
     AncestorModules = get_ancestors(ModuleName),
-    get_dependencies(Items0, IntImportedModules0, IntUsedModules0,
+    get_dependencies_int_imp(Items0, IntImportedModules0, IntUsedModules0,
         ImpImportedModules0, ImpUsedModules0),
 
     ImportedModules0 = IntImportedModules0 ++ ImpImportedModules0,
@@ -2662,7 +1613,8 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
     some [!Specs] (
         !:Specs = [],
 
-        module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+        module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+            FileName, !IO),
         warn_if_import_self_or_ancestor(ModuleName, FileName, AncestorModules,
             ImportedModules0, UsedModules0, !Specs),
 
@@ -2694,7 +1646,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
         % exported_to_submodules.  We do that by splitting out the
         % implementation declarations and putting them in a special
         % `:- private_interface' section.
-        %
+
         get_children(Items0, Children),
         (
             Children = [],
@@ -2815,7 +1767,7 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
         Items0, !:Module, Error, !IO) :-
     % Find out which modules this one depends on.
     ParentDeps = get_ancestors(ModuleName),
-    get_dependencies(Items0, IntImportDeps0, IntUseDeps0,
+    get_dependencies_int_imp(Items0, IntImportDeps0, IntUseDeps0,
         ImpImportDeps, ImpUseDeps),
 
     % Construct the initial module import structure.
@@ -2906,47 +1858,6 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 
 %-----------------------------------------------------------------------------%
 
-find_read_module(ReadModules, ModuleName, Suffix, ReturnTimestamp,
-        Items, MaybeTimestamp, Error, FileName) :-
-    map.search(ReadModules, ModuleName - Suffix, ReadModule),
-    ReadModule = read_module(ModuleTimestamp, Items, Error, FileName),
-    (
-        ReturnTimestamp = yes,
-        ModuleTimestamp = module_timestamp(_, Timestamp, _),
-        MaybeTimestamp = yes(Timestamp)
-    ;
-        ReturnTimestamp = no,
-        MaybeTimestamp = no
-    ).
-
-:- pred init_module_imports(file_name::in, module_name::in, module_name::in,
-    list(item)::in, list(module_name)::in, list(module_name)::in,
-    list(string)::in, maybe(module_timestamps)::in, module_imports::out)
-    is det.
-
-init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
-        Items0, PublicChildren, NestedChildren, FactDeps,
-        MaybeTimestamps, Module) :-
-    maybe_add_foreign_import_module(ModuleName, Items0, Items),
-    Module = module_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, [], [], [], [], [], PublicChildren,
-        NestedChildren, FactDeps, unknown, [],
-        no_foreign_export, Items, no_module_errors,
-        MaybeTimestamps, no_main, dir.this_directory).
-
-module_imports_get_source_file_name(Module, Module ^ source_file_name).
-module_imports_get_module_name(Module, Module ^ module_name).
-module_imports_get_impl_deps(Module, Module ^ impl_deps).
-module_imports_get_items(Module, Module ^ items).
-module_imports_get_error(Module, Module ^ error).
-module_imports_set_items(Items, Module, Module ^ items := Items).
-module_imports_set_error(Error, Module, Module ^ error := Error).
-module_imports_set_int_deps(IntDeps, Module, Module ^ int_deps := IntDeps).
-module_imports_set_impl_deps(ImplDeps, Module,
-        Module ^ impl_deps := ImplDeps).
-module_imports_set_indirect_deps(IndirectDeps, Module,
-        Module ^ indirect_deps := IndirectDeps).
-
 append_pseudo_decl(PseudoDecl, Module0, Module) :-
     Items0 = Module0 ^ items,
     list.append(Items0, [make_pseudo_decl(PseudoDecl)], Items),
@@ -2957,233 +1868,6 @@ make_pseudo_decl(PseudoDecl) = Item :-
     Item = item_module_defn(ItemModuleDefn).
 
 %-----------------------------------------------------------------------------%
-
-get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps) :-
-    add_implicit_imports(Items, Globals, [], ImportDeps, [], UseDeps).
-
-:- pred add_implicit_imports(list(item)::in, globals::in,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out) is det.
-
-add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
-    !:ImportDeps = [mercury_public_builtin_module | !.ImportDeps],
-    !:UseDeps = [mercury_private_builtin_module | !.UseDeps],
-    items_need_imports(Items, no, ItemsNeedTabling,
-        no, ItemsNeedTablingStatistics, no, ItemsNeedSTM),
-    % We should include mercury_table_builtin_module if the Items contain
-    % a tabling pragma, or if one of --use-minimal-model (either kind) and
-    % --trace-table-io is specified. In the former case, we may also need
-    % to import mercury_table_statistics_module.
-    (
-        ItemsNeedTabling = yes,
-        !:UseDeps = [mercury_table_builtin_module | !.UseDeps],
-        (
-            ItemsNeedTablingStatistics = yes,
-            !:UseDeps = [mercury_table_statistics_module | !.UseDeps]
-        ;
-            ItemsNeedTablingStatistics = no
-        )
-    ;
-        ItemsNeedTabling = no,
-        expect(unify(ItemsNeedTablingStatistics, no), this_file,
-            "add_implicit_imports: tabling statistics without tabling"),
-        (
-            % These forms of tabling cannot ask for statistics.
-            (
-                globals.lookup_bool_option(Globals,
-                    use_minimal_model_stack_copy, yes)
-            ;
-                globals.lookup_bool_option(Globals,
-                    use_minimal_model_own_stacks, yes)
-            ;
-                globals.lookup_bool_option(Globals, trace_table_io, yes)
-            )
-        ->
-            !:UseDeps = [mercury_table_builtin_module | !.UseDeps]
-        ;
-            true
-        )
-    ),
-    (
-        ItemsNeedSTM = yes,
-        !:UseDeps = [mercury_stm_builtin_module, mercury_exception_module,
-            mercury_univ_module | !.UseDeps]
-    ;
-        ItemsNeedSTM = no
-    ),
-    globals.lookup_bool_option(Globals, profile_deep, Deep),
-    (
-        Deep = yes,
-        !:UseDeps = [mercury_profiling_builtin_module | !.UseDeps]
-    ;
-        Deep = no
-    ),
-    (
-        (
-            globals.lookup_bool_option(Globals,
-                record_term_sizes_as_words, yes)
-        ;
-            globals.lookup_bool_option(Globals,
-                record_term_sizes_as_cells, yes)
-        )
-    ->
-        !:UseDeps = [mercury_term_size_prof_builtin_module | !.UseDeps]
-    ;
-        true
-    ),
-    globals.get_target(Globals, Target),
-    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    globals.lookup_bool_option(Globals, parallel, Parallel),
-    (
-        Target = target_c,
-        HighLevelCode = no,
-        Parallel = yes
-    ->
-        !:UseDeps = [mercury_par_builtin_module | !.UseDeps]
-    ;
-        true
-    ),
-    globals.lookup_bool_option(Globals, use_regions, UseRegions),
-    (
-        UseRegions = yes,
-        !:UseDeps = [mercury_region_builtin_module | !.UseDeps]
-    ;
-        UseRegions = no
-    ),
-    globals.lookup_bool_option(Globals, source_to_source_debug, SSDB),
-    (
-        SSDB = yes,
-        !:UseDeps = [mercury_ssdb_builtin_module | !.UseDeps]
-    ;
-        SSDB = no
-    ).
-
-:- pred items_need_imports(list(item)::in,
-    bool::in, bool::out, bool::in, bool::out, bool::in, bool::out) is det.
-
-items_need_imports([], !ItemsNeedTabling,
-        !ItemsNeedTablingStatistics, !ItemsNeedSTM).
-items_need_imports([Item | Items], !ItemsNeedTabling,
-        !ItemsNeedTablingStatistics, !ItemsNeedSTM) :-
-    (
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
-        Pragma = pragma_tabled(_, _, _, _, _, MaybeAttributes)
-    ->
-        !:ItemsNeedTabling = yes,
-        (
-            MaybeAttributes = no,
-            % We cannot be done yet. If !.ItemsNeedTablingStatistics and
-            % !.ItemsNeedSTM were already both `yes', !.ItemsNeedTabling
-            % would have been too, and we would have stopped before looking
-            % at this item.
-            items_need_imports(Items, !ItemsNeedTabling,
-                !ItemsNeedTablingStatistics, !ItemsNeedSTM)
-        ;
-            MaybeAttributes = yes(Attributes),
-            StatsAttr = Attributes ^ table_attr_statistics,
-            (
-                StatsAttr = table_gather_statistics,
-                !:ItemsNeedTablingStatistics = yes,
-                (
-                    !.ItemsNeedSTM = yes
-                    % There is nothing left to search for; stop recursing.
-                ;
-                    !.ItemsNeedSTM = no,
-                    items_need_imports(Items, !ItemsNeedTabling,
-                        !ItemsNeedTablingStatistics, !ItemsNeedSTM)
-                )
-            ;
-                StatsAttr = table_dont_gather_statistics
-            )
-        )
-    ;
-        Item = item_clause(ItemClause),
-        Body = ItemClause ^ cl_body,
-        goal_contains_stm_atomic(Body) = yes
-    ->
-        !:ItemsNeedSTM = yes,
-        (
-            !.ItemsNeedTabling = yes,
-            !.ItemsNeedTablingStatistics = yes
-        ->
-            % There is nothing left to search for; stop recursing.
-            true
-        ;
-            items_need_imports(Items, !ItemsNeedTabling,
-                !ItemsNeedTablingStatistics, !ItemsNeedSTM)
-        )
-    ;
-        items_need_imports(Items, !ItemsNeedTabling,
-            !ItemsNeedTablingStatistics, !ItemsNeedSTM)
-    ).
-
-:- func goal_contains_stm_atomic(goal) = bool.
-
-goal_contains_stm_atomic(GoalExpr - _Context) = ContainsAtomic :-
-    (
-        ( GoalExpr = true_expr
-        ; GoalExpr = fail_expr
-        ),
-        ContainsAtomic = no
-    ;
-        ( GoalExpr = conj_expr(SubGoalA, SubGoalB)
-        ; GoalExpr = par_conj_expr(SubGoalA, SubGoalB)
-        ; GoalExpr = disj_expr(SubGoalA, SubGoalB)
-        ),
-        ContainsAtomic = two_goals_contain_stm_atomic(SubGoalA, SubGoalB)
-    ;
-        ( GoalExpr = some_expr(_, SubGoal)
-        ; GoalExpr = all_expr(_, SubGoal)
-        ; GoalExpr = some_state_vars_expr(_, SubGoal)
-        ; GoalExpr = all_state_vars_expr(_, SubGoal)
-        ; GoalExpr = promise_purity_expr(_, _, SubGoal)
-        ; GoalExpr = promise_equivalent_solutions_expr(_, _, _, SubGoal)
-        ; GoalExpr = promise_equivalent_solution_sets_expr(_, _, _, SubGoal)
-        ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _,
-            SubGoal)
-        ; GoalExpr = trace_expr(_, _, _, _, SubGoal)
-        ),
-        ContainsAtomic = goal_contains_stm_atomic(SubGoal)
-    ;
-        ( GoalExpr = implies_expr(SubGoalA, SubGoalB)
-        ; GoalExpr = equivalent_expr(SubGoalA, SubGoalB)
-        ),
-        ContainsAtomic = two_goals_contain_stm_atomic(SubGoalA, SubGoalB)
-    ;
-        GoalExpr = not_expr(SubGoal),
-        ContainsAtomic = goal_contains_stm_atomic(SubGoal)
-    ;
-        GoalExpr = if_then_else_expr(_, _, Cond, Then, Else),
-        ContainsAtomic = three_goals_contain_stm_atomic(Cond, Then, Else)
-    ;
-        GoalExpr = atomic_expr(_, _, _, _, _),
-        ContainsAtomic = yes
-    ;
-        ( GoalExpr = event_expr(_, _)
-        ; GoalExpr = call_expr(_, _, _)
-        ; GoalExpr = unify_expr(_, _, _)
-        ),
-        ContainsAtomic = no
-    ).
-
-:- func two_goals_contain_stm_atomic(goal, goal) = bool.
-
-two_goals_contain_stm_atomic(GoalA, GoalB) = ContainsAtomic :-
-    ( goal_contains_stm_atomic(GoalA) = yes ->
-        ContainsAtomic = yes
-    ;
-        ContainsAtomic = goal_contains_stm_atomic(GoalB)
-    ).
-
-:- func three_goals_contain_stm_atomic(goal, goal, goal) = bool.
-
-three_goals_contain_stm_atomic(GoalA, GoalB, GoalC) = ContainsAtomic :-
-    ( goal_contains_stm_atomic(GoalA) = yes ->
-        ContainsAtomic = yes
-    ;
-        ContainsAtomic = two_goals_contain_stm_atomic(GoalB, GoalC)
-    ).
 
     % Warn if a module imports itself, or an ancestor.
     %
@@ -3312,780 +1996,13 @@ wrap_symname(ModuleName) = sym_name(ModuleName).
 
 %-----------------------------------------------------------------------------%
 
-write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
-    Module = module_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ParentDeps, IntDeps, ImplDeps, IndirectDeps,
-        _Children, InclDeps, NestedDeps, FactDeps0,
-        ContainsForeignCode, ForeignImports0, _ContainsForeignExport,
-        Items, _Error, _Timestamps, _HasMain, _Dir),
-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    module_name_to_make_var_name(ModuleName, MakeVarName),
-    module_name_to_file_name(ModuleName, ".d", yes, DependencyFileName, !IO),
-    module_name_to_file_name(ModuleName, ".trans_opt_date", no,
-        TransOptDateFileName, !IO),
-    %
-    % To avoid problems with concurrent updates of `.d' files
-    % during parallel makes, we first create the file with a
-    % temporary name, and then rename it to the desired name
-    % when we've finished.
-    %
-    io.make_temp(dir.dirname(DependencyFileName), "tmp_d",
-        TmpDependencyFileName, !IO),
-    maybe_write_string(Verbose, "% Writing auto-dependency file `", !IO),
-    maybe_write_string(Verbose, DependencyFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_output(TmpDependencyFileName, Result, !IO),
-    (
-        Result = error(IOError),
-        maybe_write_string(Verbose, " failed.\n", !IO),
-        maybe_flush_output(Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.append_list(["error opening temporary file `",
-            TmpDependencyFileName, "' for output: ",
-            IOErrorMessage], Message),
-        report_error(Message, !IO)
-    ;
-        Result = ok(DepStream),
-        list.append(IntDeps, ImplDeps, LongDeps0),
-        ShortDeps0 = IndirectDeps,
-        set.list_to_set(LongDeps0, LongDepsSet0),
-        set.delete(LongDepsSet0, ModuleName, LongDepsSet),
-        set.list_to_set(ShortDeps0, ShortDepsSet0),
-        set.difference(ShortDepsSet0, LongDepsSet, ShortDepsSet1),
-        set.delete(ShortDepsSet1, ModuleName, ShortDepsSet),
-        set.to_sorted_list(LongDepsSet, LongDeps),
-        set.to_sorted_list(ShortDepsSet, ShortDeps),
-        set.to_sorted_list(AllDepsSet, AllDeps),
-        list.sort_and_remove_dups(FactDeps0, FactDeps),
-
-        (
-            MaybeTransOptDeps = yes(TransOptDeps0),
-            set.list_to_set(TransOptDeps0, TransOptDepsSet0),
-            set.intersect(TransOptDepsSet0, LongDepsSet, TransOptDepsSet),
-            set.to_sorted_list(TransOptDepsSet, TransOptDateDeps),
-            %
-            % Note that maybe_read_dependency_file searches for
-            % this exact pattern.
-            %
-            io.write_strings(DepStream, [TransOptDateFileName, " :"], !IO),
-            write_dependencies_list(TransOptDateDeps, ".trans_opt", DepStream,
-                !IO)
-        ;
-            MaybeTransOptDeps = no
-        ),
-
-        (
-            FactDeps = [_ | _],
-            io.write_strings(DepStream,
-                ["\n\n", MakeVarName, ".fact_tables ="], !IO),
-            write_file_dependencies_list(FactDeps, "", DepStream, !IO),
-            io.nl(DepStream, !IO),
-            globals.io_lookup_bool_option(assume_gmake, AssumeGmake, !IO),
-            (
-                AssumeGmake = yes,
-                io.write_strings(DepStream, [
-                    "\n\n", MakeVarName,
-                    ".fact_tables.os = $(", MakeVarName,
-                    ".fact_tables:%=$(os_subdir)%.$O)\n\n",
-                    MakeVarName,
-                    ".fact_tables.cs = $(", MakeVarName,
-                    ".fact_tables:%=$(cs_subdir)%.c)\n\n"
-                ], !IO)
-            ;
-                AssumeGmake = no,
-                io.write_strings(DepStream,
-                    [MakeVarName, ".fact_tables.cs ="], !IO),
-                write_fact_table_dependencies_list(ModuleName,
-                    FactDeps, ".c", DepStream, !IO),
-                io.write_strings(DepStream, ["\n\n",
-                    MakeVarName, ".fact_tables.os ="], !IO),
-                write_fact_table_dependencies_list(ModuleName,
-                    FactDeps, ".$O", DepStream, !IO),
-                io.nl(DepStream, !IO)
-            )
-        ;
-            FactDeps = []
-        ),
-
-        ( string.remove_suffix(SourceFileName, ".m", SourceFileBase) ->
-            ErrFileName = SourceFileBase ++ ".err"
-        ;
-            unexpected(this_file, "source file doesn't end in `.m'")
-        ),
-        module_name_to_file_name(ModuleName, ".optdate", no, OptDateFileName,
-            !IO),
-        module_name_to_file_name(ModuleName, ".c_date", no, CDateFileName,
-            !IO),
-        module_name_to_file_name(ModuleName, ".s_date", no, AsmDateFileName,
-            !IO),
-        module_name_to_file_name(ModuleName, ".pic_s_date", no,
-            PicAsmDateFileName, !IO),
-        module_name_to_file_name(ModuleName, ".$O", no, ObjFileName, !IO),
-        module_name_to_file_name(ModuleName, ".il_date", no, ILDateFileName,
-            !IO),
-        module_name_to_file_name(ModuleName, ".java_date", no,
-            JavaDateFileName, !IO),
-        % XXX Why is the extension hardcoded to .pic_o here?  That looks
-        % wrong.  It should probably be .$(EXT_FOR_PIC_OBJECT) - juliensf.
-        module_name_to_file_name(ModuleName, ".pic_o", no, PicObjFileName,
-            !IO),
-        module_name_to_file_name(ModuleName, ".int0", no, Int0FileName, !IO),
-        io.write_strings(DepStream, ["\n\n",
-            OptDateFileName, " ",
-            TransOptDateFileName, " ",
-            ErrFileName, " ",
-            CDateFileName, " ",
-            AsmDateFileName, " ",
-            PicAsmDateFileName, " ",
-            ILDateFileName, " ",
-            JavaDateFileName
-        ], !IO),
-        io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-        % If the module contains nested sub-modules then `.int0'
-        % file must first be built.
-        (
-            InclDeps = [_ | _],
-            io.write_strings(DepStream, [" ", Int0FileName], !IO)
-        ;
-            InclDeps = []
-        ),
-        write_dependencies_list(ParentDeps, ".int0", DepStream, !IO),
-        write_dependencies_list(LongDeps, ".int", DepStream, !IO),
-        write_dependencies_list(ShortDeps, ".int2", DepStream, !IO),
-
-        NestedExts = [
-            ".optdate",
-            ".trans_opt_date",
-            ".c_date",
-            ".s_date",
-            ".pic_s_date",
-            ".dir/*.$O",
-            ".il_date",
-            ".java_date"],
-
-        % If a module contains nested-submodules then we need to build
-        % the nested children before attempting to build the parent module.
-        (
-            NestedDeps = []
-        ;
-            NestedDeps = [_ | _],
-            Write = (pred(Ext::in, !.LIO::di, !:LIO::uo) is det :-
-                module_name_to_file_name(ModuleName, Ext, no, ExtName, !LIO),
-                io.write_strings(DepStream, ["\n\n", ExtName, " : "], !LIO),
-                write_dependencies_list(NestedDeps, Ext, DepStream, !LIO)
-            ),
-            list.foldl(Write, NestedExts, !IO)
-        ),
-        (
-            FactDeps = [_ | _],
-            io.write_strings(DepStream, [
-                " \\\n\t$(", MakeVarName, ".fact_tables)\n\n",
-                "$(", MakeVarName, ".fact_tables.os) : $(",
-                MakeVarName, ".fact_tables) ",
-                SourceFileName, "\n\n",
-                "$(", MakeVarName, ".fact_tables.cs) : ",
-                ObjFileName, "\n"
-            ], !IO)
-        ;
-            FactDeps = []
-        ),
-
-        globals.io_lookup_bool_option(use_opt_files, UseOptFiles, !IO),
-        globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
-        globals.io_lookup_accumulating_option(intermod_directories,
-            IntermodDirs, !IO),
-
-        % If intermodule_optimization is enabled then all the .mh files
-        % must exist because it is possible that the .c file imports them
-        % directly or indirectly.
-        (
-            Intermod = yes,
-            io.write_strings(DepStream, ["\n\n", ObjFileName, " : "], !IO),
-            write_dependencies_list(AllDeps, ".mh", DepStream, !IO)
-        ;
-            Intermod = no
-        ),
-        (
-            ( Intermod = yes
-            ; UseOptFiles = yes
-            )
-        ->
-            io.write_strings(DepStream, [
-                "\n\n",
-                TransOptDateFileName, " ",
-                ErrFileName, " ",
-                CDateFileName, " ",
-                AsmDateFileName, " ",
-                PicAsmDateFileName, " ",
-                ILDateFileName, " ",
-                JavaDateFileName, " : "
-            ], !IO),
-
-            % The target (e.g. C) file only depends on the .opt files
-            % from the current directory, so that inter-module optimization
-            % works when the .opt files for the library are unavailable.
-            % This is only necessary because make doesn't allow conditional
-            % dependencies. The dependency on the current module's .opt file
-            % is to make sure the module gets type-checked without having
-            % the definitions of abstract types from other modules.
-            %
-            % XXX The code here doesn't correctly handle dependencies
-            % on `.int' and `.int2' files needed by the `.opt' files.
-            globals.io_lookup_bool_option(transitive_optimization, TransOpt,
-                !IO),
-            globals.io_lookup_bool_option(use_trans_opt_files, UseTransOpt,
-                !IO),
-
-            (
-                ( TransOpt = yes
-                ; UseTransOpt = yes
-                )
-            ->
-                bool.not(UseTransOpt, BuildOptFiles),
-                get_both_opt_deps(BuildOptFiles, [ModuleName | LongDeps],
-                    IntermodDirs, OptDeps, TransOptDeps, !IO),
-                OptInt0Deps = sort_and_remove_dups(
-                    condense(list.map(get_ancestors, OptDeps))),
-                write_dependencies_list(OptDeps, ".opt", DepStream, !IO),
-                write_dependencies_list(OptInt0Deps, ".int0", DepStream, !IO),
-
-                io.write_strings(DepStream, [
-                    "\n\n",
-                    ErrFileName, " ",
-                    CDateFileName, " ",
-                    AsmDateFileName, " ",
-                    PicAsmDateFileName, " ",
-                    ILDateFileName, " ",
-                    JavaDateFileName, " : "
-                ], !IO),
-                write_dependencies_list(TransOptDeps, ".trans_opt", DepStream,
-                    !IO)
-            ;
-                bool.not(UseOptFiles, BuildOptFiles),
-                get_opt_deps(BuildOptFiles, [ModuleName | LongDeps],
-                    IntermodDirs, ".opt", OptDeps, !IO),
-                OptInt0Deps = sort_and_remove_dups(
-                    condense(list.map(get_ancestors, OptDeps))),
-                write_dependencies_list(OptDeps, ".opt", DepStream, !IO),
-                write_dependencies_list(OptInt0Deps, ".int0", DepStream, !IO)
-            )
-        ;
-            true
-        ),
-
-        globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
-        globals.io_get_target(CompilationTarget, !IO),
-        (
-            HighLevelCode = yes,
-            CompilationTarget = target_c
-        ->
-            % For --high-level-code with --target c, we need to make sure that
-            % we generate the header files for imported modules before
-            % compiling the C files, since the generated C files
-            % #include those header files.
-
-            io.write_strings(DepStream, [
-                "\n\n",
-                PicObjFileName, " ",
-                ObjFileName, " :"
-            ], !IO),
-            write_dependencies_list(AllDeps, ".mih", DepStream, !IO)
-        ;
-            true
-        ),
-
-        % We need to tell make how to make the header files. The header files
-        % are actually built by the same command that creates the .c or .s
-        % file, so we just make them depend on the .c or .s files.
-        % This is needed for the --high-level-code rule above, and for
-        % the rules introduced for `:- pragma foreign_import_module'
-        % declarations. In some grades the header file won't actually be built
-        % (e.g. LLDS grades for modules not containing `:- pragma export'
-        % declarations), but this rule won't do any harm.
-
-        module_name_to_file_name(ModuleName, ".c", no, CFileName, !IO),
-        module_name_to_file_name(ModuleName, ".s", no, AsmFileName, !IO),
-        module_name_to_file_name(ModuleName, ".mh", no, HeaderFileName, !IO),
-        module_name_to_file_name(ModuleName, ".mih", no, HeaderFileName2, !IO),
-        io.write_strings(DepStream, [
-            "\n\n",
-            "ifeq ($(TARGET_ASM),yes)\n",
-            HeaderFileName, " ", HeaderFileName2, " : ", AsmFileName, "\n",
-            "else\n",
-            HeaderFileName, " ",  HeaderFileName2, " : ", CFileName, "\n",
-            "endif"
-        ], !IO),
-
-        %
-        % The `.module_dep' file is made as a side effect of
-        % creating the `.c', `.s', `.il', or `.java'.
-        %
-        module_name_to_file_name(ModuleName, ".il", no, ILFileName, !IO),
-        module_name_to_file_name(ModuleName, ".java", no, JavaFileName, !IO),
-        module_name_to_file_name(ModuleName, make_module_dep_file_extension,
-            no, ModuleDepFileName, !IO),
-        io.write_strings(DepStream, [
-            "\n\n",
-            "ifeq ($(TARGET_ASM),yes)\n",
-            ModuleDepFileName, " : ", AsmFileName, "\n",
-            "else\n",
-            " ifeq ($(findstring il,$(GRADE)),il)\n",
-            ModuleDepFileName, " : ", ILFileName, "\n",
-            "  ifeq ($(findstring java,$(GRADE)),java)\n",
-            ModuleDepFileName, " : ", JavaFileName, "\n",
-            "  else\n",
-            ModuleDepFileName, " : ", CFileName, "\n",
-            "  endif\n",
-            " endif\n",
-            "endif"
-        ], !IO),
-
-        % The .date and .date0 files depend on the .int0 files for the parent
-        % modules, and the .int3 files for the directly and indirectly imported
-        % modules.
-        %
-        % For nested sub-modules, the `.date' files for the parent modules
-        % also depend on the same things as the `.date' files for this module,
-        % since all the `.date' files will get produced by a single mmc
-        % command. Similarly for `.date0' files, except these don't depend
-        % on the `.int0' files, because when doing the
-        % `--make-private-interface' for nested modules, mmc will process
-        % the modules in outermost to innermost order so as to produce each
-        % `.int0' file before it is needed.
-
-        module_name_to_file_name(ModuleName, ".date", no, DateFileName, !IO),
-        module_name_to_file_name(ModuleName, ".date0", no, Date0FileName, !IO),
-        io.write_strings(DepStream, [
-            "\n\n", DateFileName, " ",
-            Date0FileName
-        ], !IO),
-        write_dependencies_list(ParentDeps, ".date", DepStream, !IO),
-        io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-        write_dependencies_list(ParentDeps, ".int0", DepStream, !IO),
-        write_dependencies_list(LongDeps, ".int3", DepStream, !IO),
-        write_dependencies_list(ShortDeps, ".int3", DepStream, !IO),
-
-        io.write_strings(DepStream, ["\n\n", Date0FileName], !IO),
-        write_dependencies_list(ParentDeps, ".date0", DepStream, !IO),
-        io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-        write_dependencies_list(LongDeps, ".int3", DepStream, !IO),
-        write_dependencies_list(ShortDeps, ".int3", DepStream, !IO),
-        io.write_string(DepStream, "\n\n", !IO),
-
-        % If we can pass the module name rather than the file name, then do so.
-        % `--smart-recompilation' doesn't work if the file name is passed
-        % and the module name doesn't match the file name.
-
-        have_source_file_map(HaveMap, !IO),
-        (
-            HaveMap = yes,
-            module_name_to_file_name(SourceFileModuleName, ModuleArg)
-        ;
-            HaveMap = no,
-            ModuleArg = SourceFileName
-        ),
-
-        globals.io_get_target(Target, !IO),
-        globals.io_lookup_bool_option(sign_assembly, SignAssembly, !IO),
-        globals.io_get_globals(Globals, !IO),
-
-        % If we are on the IL backend, add the dependency that the
-        % top level dll of a nested module hierachy depends on all
-        % of it sub-modules dlls, as they are referenced from
-        % inside the top level dll.
-        % XXX Do we need to do the same for Java?
-
-        module_name_to_file_name(ModuleName, ".dll", no, DllFileName, !IO),
-        module_name_to_file_name(ModuleName, ".class", no, ClassFileName, !IO),
-        module_name_to_file_name(ModuleName, ".beam", no, BeamFileName, !IO),
-        SubModules = submodules(ModuleName, AllDeps),
-        (
-            Target = target_il,
-            SubModules = [_ | _]
-        ->
-            io.write_strings(DepStream, [DllFileName, " : "], !IO),
-            write_dll_dependencies_list(SubModules, "", DepStream, !IO),
-            io.nl(DepStream, !IO)
-        ;
-            true
-        ),
-
-        (
-            ContainsForeignCode = contains_foreign_code(LangSet),
-            ForeignImports = ForeignImports0
-        ;
-            ContainsForeignCode = unknown,
-            get_item_list_foreign_code(Globals, Items, LangSet,
-                ForeignImports1, _),
-            % If we're generating the `.dep' file, ForeignImports0 will contain
-            % a conservative approximation to the set of foreign imports
-            % needed which will include imports required by imported modules.
-            (
-                ForeignImports0 = [],
-                ForeignImports = ForeignImports1
-            ;
-                ForeignImports0 = [_ | _],
-                ForeignImports = ForeignImports0
-            )
-        ;
-            ContainsForeignCode = no_foreign_code,
-            set.init(LangSet),
-            ForeignImports = ForeignImports0
-        ),
-
-        % Handle dependencies introduced by
-        % `:- pragma foreign_import_module' declarations.
-
-        list.filter_map(
-            (pred(ForeignImportMod::in, Import::out) is semidet :-
-                Import = foreign_import_module_name_from_module(
-                    ForeignImportMod, SourceFileModuleName),
-
-                % XXX We can't include mercury.dll as mmake can't find it,
-                % but we know that it exists.
-                Import \= unqualified("mercury")
-            ), ForeignImports, ForeignImportedModules),
-        (
-            ForeignImportedModules = []
-        ;
-            ForeignImportedModules = [_ | _],
-            (
-                Target = target_il,
-                ForeignImportTargets = [DllFileName],
-                ForeignImportExt = ".dll"
-            ;
-                Target = target_java,
-                ForeignImportTargets = [ClassFileName],
-                ForeignImportExt = ".java"
-            ;
-                Target = target_erlang,
-                ForeignImportTargets = [BeamFileName],
-                ForeignImportExt = ".hrl"
-            ;
-                Target = target_c,
-                % NOTE: for C (and asm) the possible targets might be a .o
-                % file _or_ a .pic_o file.  We need to include dependencies
-                % for the latter otherwise invoking mmake with a <module>.pic_o
-                % target will break.
-                ForeignImportTargets = [ObjFileName, PicObjFileName],
-                ForeignImportExt = ".mh"
-            ;
-                Target = target_asm,
-                ForeignImportTargets = [ObjFileName, PicObjFileName],
-                ForeignImportExt = ".mh"
-            ;
-                % XXX These are just the C ones at the moment.
-                Target = target_x86_64,
-                ForeignImportTargets = [ObjFileName, PicObjFileName],
-                ForeignImportExt = ".mh"
-            ),
-            WriteForeignImportTarget = (pred(ForeignImportTarget::in,
-                    !.IO::di, !:IO::uo) is det :-
-                io.write_string(DepStream, "\n\n", !IO),
-                io.write_string(DepStream, ForeignImportTarget, !IO),
-                io.write_string(DepStream, " : ", !IO),
-                write_dependencies_list(ForeignImportedModules,
-                    ForeignImportExt, DepStream, !IO),
-                io.write_string(DepStream, "\n\n", !IO)
-            ),
-            list.foldl(WriteForeignImportTarget, ForeignImportTargets,
-                !IO)
-        ),
-
-        (
-            Target = target_il,
-            not set.empty(LangSet)
-        ->
-            Langs = set.to_sorted_list(LangSet),
-            list.foldl(write_foreign_dependency_for_il(DepStream,
-                ModuleName, AllDeps, ForeignImports), Langs, !IO)
-        ;
-            true
-        ),
-
-        % If we are signing the assembly, then we will need the strong key
-        % to sign the il file with so add a dependency that the il file
-        % requires the strong name file `mercury.sn'. Also add the variable
-        % ILASM_KEYFLAG-<module> which is used to build the command line
-        % for ilasm.
-        (
-            Target = target_il,
-            SignAssembly = yes
-        ->
-            module_name_to_make_var_name(ModuleName, ModuleNameString),
-            module_name_to_file_name(ModuleName, ".il", no, IlFileName, !IO),
-
-            io.write_strings(DepStream, [
-                "ILASM_KEYFLAG-", ModuleNameString,
-                    " = /keyf=mercury.sn\n",
-                IlFileName, " : mercury.sn\n"], !IO)
-        ;
-            true
-        ),
-
-        module_name_to_file_name(ModuleName, ".int", no, IntFileName, !IO),
-        module_name_to_file_name(ModuleName, ".int2", no, Int2FileName, !IO),
-        module_name_to_file_name(ModuleName, ".int3", no, Int3FileName, !IO),
-        module_name_to_file_name(ModuleName, ".opt", no, OptFileName, !IO),
-        module_name_to_file_name(ModuleName, ".trans_opt", no,
-            TransOptFileName, !IO),
-        module_name_to_file_name(ModuleName, ".date3", no, Date3FileName, !IO),
-
-        % We add some extra dependencies to the generated `.d' files, so that
-        % local `.int', `.opt', etc. files shadow the installed versions
-        % properly (e.g. for when you're trying to build a new version
-        % of an installed library). This saves the user from having to add
-        % these explicitly if they have multiple libraries installed
-        % in the same installation hierarchy which aren't independent (e.g.
-        % one uses another). These extra dependencies are necessary due to
-        % the way the combination of search paths and pattern rules
-        % works in Make.
-        %
-        % Be very careful about changing the following rules. The `@:' is a
-        % silent do-nothing command. It is used to force GNU Make to recheck
-        % the timestamp on the target file.  (It is a pity that GNU Make
-        % doesn't have a way of handling these sorts of rules in a
-        % nicer manner.)
-
-        io.write_strings(DepStream, [
-            "\n",
-            Int0FileName, " : ", Date0FileName, "\n",
-            "\t@:\n",
-            IntFileName, " : ", DateFileName, "\n",
-            "\t@:\n",
-            Int2FileName, " : ", DateFileName, "\n",
-            "\t@:\n",
-            Int3FileName, " : ", Date3FileName, "\n",
-            "\t@:\n",
-            OptFileName, " : ", OptDateFileName, "\n",
-            "\t@:\n",
-            TransOptFileName, " : ", TransOptDateFileName, "\n",
-            "\t@:\n"
-        ], !IO),
-
-        globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
-        (
-            UseSubdirs = yes,
-            io.nl(DepStream, !IO),
-            list.foldl(write_subdirs_shorthand_rule(DepStream, ModuleName),
-                [".c", ".$O", ".pic_o", ".s", ".pic_s",
-                ".java", ".class", ".il", ".dll"], !IO)
-        ;
-            UseSubdirs = no
-        ),
-
-        ( SourceFileName \= default_source_file(ModuleName) ->
-            % The pattern rules in Mmake.rules won't work, since the source
-            % file name doesn't match the expected source file name for this
-            % module name. This can occur due to just the use of different
-            % source file names, or it can be due to the use of nested modules.
-            % So we need to output hard-coded rules in this case.
-            %
-            % The rules output below won't work in the case of nested modules
-            % with parallel makes, because it will end up invoking the same
-            % command twice (since it produces two output files) at the same
-            % time.
-            %
-            % Any changes here will require corresponding changes to
-            % scripts/Mmake.rules. See that file for documentation
-            % on these rules.
-
-            io.write_strings(DepStream, [
-                "\n",
-                Date0FileName, " : ", SourceFileName, "\n",
-                "\t$(MCPI) $(ALL_GRADEFLAGS) ",
-                    "$(ALL_MCPIFLAGS) ", ModuleArg, "\n",
-                DateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCI) $(ALL_GRADEFLAGS) $(ALL_MCIFLAGS) ",
-                    ModuleArg, "\n",
-                Date3FileName, " : ", SourceFileName, "\n",
-                "\t$(MCSI) $(ALL_GRADEFLAGS) $(ALL_MCSIFLAGS) ",
-                    ModuleArg, "\n",
-                OptDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) ",
-                    ModuleArg, "\n",
-                TransOptDateFileName, " : ", SourceFileName,
-                    "\n",
-                "\t$(MCTOI) $(ALL_GRADEFLAGS) ",
-                    "$(ALL_MCTOIFLAGS) ", ModuleArg, "\n",
-                CDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    ModuleArg, " $(ERR_REDIRECT)\n",
-                "ifeq ($(TARGET_ASM),yes)\n",
-                AsmDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    "--target-code-only ", ModuleArg,
-                    " $(ERR_REDIRECT)\n",
-                PicAsmDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    "--target-code-only --pic ",
-                    "\\\n",
-                "\t\t--cflags ""$(GCCFLAGS_FOR_PIC)"" ",
-                    ModuleArg, " $(ERR_REDIRECT)\n",
-                "endif # TARGET_ASM\n",
-                ILDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    "--il-only ", ModuleArg,
-                    " $(ERR_REDIRECT)\n",
-                JavaDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    "--java-only ", ModuleArg,
-                    " $(ERR_REDIRECT)\n"
-            ], !IO)
-        ;
-            true
-        ),
-
-        io.close_output(DepStream, !IO),
-        io.rename_file(TmpDependencyFileName, DependencyFileName, Result3,
-            !IO),
-        (
-            Result3 = error(_),
-            % On some systems, we need to remove the existing file
-            % first, if any.  So try again that way.
-            io.remove_file(DependencyFileName, Result4, !IO),
-            (
-                Result4 = error(Error4),
-                maybe_write_string(Verbose, " failed.\n", !IO),
-                maybe_flush_output(Verbose, !IO),
-                io.error_message(Error4, ErrorMsg),
-                string.append_list(["can't remove file `", DependencyFileName,
-                    "': ", ErrorMsg], Message),
-                report_error(Message, !IO)
-            ;
-                Result4 = ok,
-                io.rename_file(TmpDependencyFileName, DependencyFileName,
-                    Result5, !IO),
-                (
-                    Result5 = error(Error5),
-                    maybe_write_string(Verbose, " failed.\n", !IO),
-                    maybe_flush_output(Verbose, !IO),
-                    io.error_message(Error5, ErrorMsg),
-                    string.append_list(["can't rename file `",
-                        TmpDependencyFileName, "' as `", DependencyFileName,
-                        "': ", ErrorMsg], Message),
-                    report_error(Message, !IO)
-                ;
-                    Result5 = ok,
-                    maybe_write_string(Verbose, " done.\n", !IO)
-                )
-            )
-        ;
-            Result3 = ok,
-            maybe_write_string(Verbose, " done.\n", !IO)
-        )
-    ).
-
-    % Generate the following dependency.  This dependency is
-    % needed because module__cpp_code.dll might refer to
-    % high level data in any of the mercury modules it
-    % imports plus itself.
-    % We also generate a dependency on the .il file, so that mmake
-    % knows we need to generate the .il file to get the foreign language
-    % source file (e.g. .cpp file).
-    %
-    % For example, for MC++ we generate:
-    %
-    %   <module>__cpp_code.dll : <module>.dll <imports>.dll
-    %   <module>__cpp_code.cpp : <module>.il
-    %
-    % (the rule to generate .dll from .cpp is a pattern rule in
-    % scripts/Mmake.rules).
-    %
-:- pred write_foreign_dependency_for_il(io.output_stream::in,sym_name::in,
-    list(module_name)::in, foreign_import_module_info_list::in,
-    foreign_language::in, io::di, io::uo) is det.
-
-write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
-        ForeignImports, ForeignLang, !IO) :-
-    (
-        ForeignModuleName = foreign_language_module_name(ModuleName,
-            ForeignLang),
-        ForeignExt = foreign_language_file_extension(ForeignLang)
-    ->
-        module_name_to_make_var_name(ForeignModuleName,
-            ForeignModuleNameString),
-        module_name_to_file_name(ForeignModuleName, ForeignExt, no,
-            ForeignFileName, !IO),
-        module_name_to_file_name(ModuleName, ".il", no, IlFileName, !IO),
-        module_name_to_file_name(ModuleName, ".dll", no, DllFileName, !IO),
-        module_name_to_file_name(ForeignModuleName, ".dll", no,
-            ForeignDllFileName, !IO),
-
-        io.write_strings(DepStream, [
-            ForeignDllFileName, " : ", DllFileName], !IO),
-            % XXX This change doesn't work correctly because
-            % mmake can't find the dlls which don't reside
-            % in the current directory.
-        % write_dll_dependencies_list(ModuleName, AllDeps, DepStream,
-        %   !IO),
-        io.nl(DepStream, !IO),
-
-        io.write_strings(DepStream, [
-            ForeignFileName, " : ", IlFileName, "\n\n"], !IO),
-
-        (
-            ForeignLang = lang_csharp,
-            % Store in the variable CSHARP_ASSEMBLY_REFS-foreign_code_name
-            % the command line argument to reference all the dlls the
-            % foreign code module references.
-            io.write_strings(DepStream,
-                ["CSHARP_ASSEMBLY_REFS-", ForeignModuleNameString, "="], !IO),
-            (
-                mercury_std_library_module_name(ModuleName)
-            ->
-                Prefix = "/addmodule:"
-            ;
-                Prefix = "/r:"
-            ),
-            ForeignDeps = list.map(
-                (func(M) = foreign_import_module_name_from_module(M,
-                    ModuleName)),
-                ForeignImports),
-            Deps = AllDeps ++ ForeignDeps,
-            write_dll_dependencies_list(referenced_dlls(ModuleName, Deps),
-                Prefix, DepStream, !IO),
-            io.nl(DepStream, !IO)
-        ;
-            ( ForeignLang = lang_c
-            ; ForeignLang = lang_java
-            ; ForeignLang = lang_il
-            ; ForeignLang = lang_erlang
-            )
-        )
-    ;
-        % This foreign language doesn't generate an external file
-        % so there are no dependencies to generate.
-        true
-    ).
-
-    % With `--use-subdirs', allow users to type `mmake module.c'
-    % rather than `mmake Mercury/cs/module.c'.
-    %
-:- pred write_subdirs_shorthand_rule(io.output_stream::in,
-    module_name::in, string::in, io::di, io::uo) is det.
-
-write_subdirs_shorthand_rule(DepStream, ModuleName, Ext, !IO) :-
-    module_name_to_file_name(ModuleName, ModuleStr),
-    module_name_to_file_name(ModuleName, Ext, no, Target, !IO),
-    ShorthandTarget = ModuleStr ++ Ext,
-    io.write_string(DepStream, ".PHONY: ", !IO),
-    io.write_string(DepStream, ShorthandTarget, !IO),
-    io.nl(DepStream, !IO),
-    io.write_string(DepStream, ShorthandTarget, !IO),
-    io.write_string(DepStream, ": ", !IO),
-    io.write_string(DepStream, Target, !IO),
-    io.nl(DepStream, !IO).
-
 maybe_read_dependency_file(ModuleName, MaybeTransOptDeps, !IO) :-
     globals.io_lookup_bool_option(transitive_optimization, TransOpt, !IO),
     (
         TransOpt = yes,
         globals.io_lookup_bool_option(verbose, Verbose, !IO),
-        module_name_to_file_name(ModuleName, ".d", no, DependencyFileName,
-            !IO),
+        module_name_to_file_name(ModuleName, ".d", do_not_create_dirs,
+            DependencyFileName, !IO),
         maybe_write_string(Verbose, "% Reading auto-dependency file `", !IO),
         maybe_write_string(Verbose, DependencyFileName, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -4095,7 +2012,7 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps, !IO) :-
             OpenResult = ok(Stream),
             io.set_input_stream(Stream, OldStream, !IO),
             module_name_to_file_name(ModuleName, ".trans_opt_date",
-                no, TransOptDateFileName0, !IO),
+                do_not_create_dirs, TransOptDateFileName0, !IO),
             string.to_char_list(TransOptDateFileName0,
                 TransOptDateFileName),
             list.append(TransOptDateFileName, [' ', ':'], SearchPattern),
@@ -4181,147 +2098,36 @@ read_dependency_file_get_modules(TransOptDeps, !IO) :-
         TransOptDeps = []
     ).
 
-    % get_both_opt_deps(Deps, Directories, OptDeps, TransOptDeps):
-    %
-    % For each dependency, search intermod_directories for a .m file.
-    % If it exists, add it to both output lists. Otherwise, if a .opt
-    % file exists, add it to the OptDeps list, and if a .trans_opt
-    % file exists, add it to the TransOptDeps list.
-    % If --use-opt-files is set, don't look for `.m' files, since
-    % we are not building `.opt' files, only using those which
-    % are available.
-    % XXX This won't find nested sub-modules.
-    % XXX Use `mmc --make' if that matters.
-    %
-:- pred get_both_opt_deps(bool::in, list(module_name)::in, list(string)::in,
-    list(module_name)::out, list(module_name)::out, io::di, io::uo) is det.
-
-get_both_opt_deps(_, [], _, [], [], !IO).
-get_both_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs,
-        !:OptDeps, !:TransOptDeps, !IO) :-
-    get_both_opt_deps(BuildOptFiles, Deps, IntermodDirs,
-        !:OptDeps, !:TransOptDeps, !IO),
-    (
-        BuildOptFiles = yes,
-        search_for_module_source(IntermodDirs, IntermodDirs,
-            Dep, Result1, !IO),
-        (
-            Result1 = ok(_),
-            !:OptDeps = [Dep | !.OptDeps],
-            !:TransOptDeps = [Dep | !.TransOptDeps],
-            io.seen(!IO),
-            Found = yes
-        ;
-            Result1 = error(_),
-            Found = no
-        )
-    ;
-        BuildOptFiles = no,
-        Found = no
-    ),
-    (
-        Found = no,
-        module_name_to_file_name(Dep, ".opt", no, OptName, !IO),
-        search_for_file(IntermodDirs, OptName, Result2, !IO),
-        (
-            Result2 = ok(_),
-            !:OptDeps = [Dep | !.OptDeps],
-            io.seen(!IO)
-        ;
-            Result2 = error(_)
-        ),
-        module_name_to_file_name(Dep, ".trans_opt", no, TransOptName, !IO),
-        search_for_file(IntermodDirs, TransOptName, Result3, !IO),
-        (
-            Result3 = ok(_),
-            !:TransOptDeps = [Dep | !.TransOptDeps],
-            io.seen(!IO)
-        ;
-            Result3 = error(_)
-        )
-    ;
-        Found = yes
-    ).
-
-    % For each dependency, search intermod_directories for a .Suffix
-    % file or a .m file, filtering out those for which the search fails.
-    % If --use-opt-files is set, only look for `.opt' files,
-    % not `.m' files.
-    % XXX This won't find nested sub-modules.
-    % XXX Use `mmc --make' if that matters.
-:- pred get_opt_deps(bool::in, list(module_name)::in, list(string)::in,
-    string::in, list(module_name)::out, io::di, io::uo) is det.
-
-get_opt_deps(_, [], _, _, [], !IO).
-get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, !:OptDeps,
-        !IO) :-
-    get_opt_deps(BuildOptFiles, Deps, IntermodDirs, Suffix, !:OptDeps, !IO),
-    (
-        BuildOptFiles = yes,
-        search_for_module_source(IntermodDirs, IntermodDirs,
-            Dep, Result1, !IO),
-        (
-            Result1 = ok(_),
-            !:OptDeps = [Dep | !.OptDeps],
-            Found = yes,
-            io.seen(!IO)
-        ;
-            Result1 = error(_),
-            Found = no
-        )
-    ;
-        BuildOptFiles = no,
-        Found = no
-    ),
-    (
-        Found = no,
-        module_name_to_search_file_name(Dep, Suffix, OptName, !IO),
-        search_for_file(IntermodDirs, OptName, Result2, !IO),
-        (
-            Result2 = ok(_),
-            !:OptDeps = [Dep | !.OptDeps],
-            io.seen(!IO)
-        ;
-            Result2 = error(_)
-        )
-    ;
-        Found = yes
-    ).
-
 %-----------------------------------------------------------------------------%
 
 generate_module_dependencies(ModuleName, !IO) :-
     map.init(DepsMap),
-    SearchIncludePath = no,
-    generate_dependencies(output_all_dependencies,
-        SearchIncludePath, ModuleName, DepsMap, !IO).
+    generate_dependencies(output_all_dependencies, do_not_search, ModuleName,
+        DepsMap, !IO).
 
 generate_file_dependencies(FileName, !IO) :-
     build_deps_map(FileName, ModuleName, DepsMap, !IO),
-    SearchIncludePath = no,
-    generate_dependencies(output_all_dependencies,
-        SearchIncludePath, ModuleName, DepsMap, !IO).
+    generate_dependencies(output_all_dependencies, do_not_search, ModuleName,
+        DepsMap, !IO).
 
 generate_module_dependency_file(ModuleName, !IO) :-
     map.init(DepsMap),
-    SearchIncludePath = yes,
-    generate_dependencies(output_d_file_only,
-        SearchIncludePath, ModuleName, DepsMap, !IO).
+    generate_dependencies(output_d_file_only, do_search, ModuleName,
+        DepsMap, !IO).
 
 generate_file_dependency_file(FileName, !IO) :-
     build_deps_map(FileName, ModuleName, DepsMap, !IO),
-    SearchIncludePath = yes,
-    generate_dependencies(output_d_file_only,
-        SearchIncludePath, ModuleName, DepsMap, !IO).
+    generate_dependencies(output_d_file_only, do_search, ModuleName,
+        DepsMap, !IO).
 
 :- pred build_deps_map(file_name::in, module_name::out, deps_map::out,
     io::di, io::uo) is det.
 
 build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
-    % read in the top-level file (to figure out its module name)
-    read_mod_from_file(FileName, ".m", "Reading file", no, no, Items, Error,
-        ModuleName, _, !IO),
-    string.append(FileName, ".m", SourceFileName),
+    % Read in the top-level file (to figure out its module name).
+    read_module_from_file(FileName, ".m", "Reading file", do_not_search,
+        do_not_return_timestamp, Items, Error, ModuleName, _, !IO),
+    SourceFileName = FileName ++ ".m",
     split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
     globals.io_get_globals(Globals, !IO),
     write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
@@ -4335,18 +2141,15 @@ build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
     --->    output_d_file_only
     ;       output_all_dependencies.
 
-:- pred generate_dependencies(generate_dependencies_mode::in, bool::in,
-    module_name::in, deps_map::in,
-    io::di, io::uo) is det.
+:- pred generate_dependencies(generate_dependencies_mode::in, maybe_search::in,
+    module_name::in, deps_map::in, io::di, io::uo) is det.
 
 generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
     % First, build up a map of the dependencies.
-    generate_deps_map(set.make_singleton_set(ModuleName), Search,
-        DepsMap0, DepsMap, !IO),
+    generate_deps_map(ModuleName, Search, DepsMap0, DepsMap, !IO),
 
-    %
     % Check whether we could read the main `.m' file.
-    %
+
     map.lookup(DepsMap, ModuleName, ModuleDep),
     ModuleDep = deps(_, ModuleImports),
     module_imports_get_error(ModuleImports, Error),
@@ -4357,8 +2160,7 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         report_error(Message, !IO)
     ;
         (
-            Mode = output_d_file_only,
-            true
+            Mode = output_d_file_only
         ;
             Mode = output_all_dependencies,
             module_imports_get_source_file_name(ModuleImports, SourceFileName),
@@ -4368,10 +2170,9 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
                 DepsMap, !IO)
         ),
 
-        %
         % Compute the interface deps graph and the implementation deps
         % graph from the deps map.
-        %
+
         digraph.init(IntDepsGraph0),
         digraph.init(ImplDepsGraph0),
         map.values(DepsMap, DepsList),
@@ -4380,12 +2181,11 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         maybe_output_imports_graph(ModuleName, IntDepsGraph, ImplDepsGraph,
             !IO),
 
-        %
         % Compute the trans-opt deps ordering, by doing an approximate
         % topological sort of the implementation deps, and then finding
         % the subset of those for which of those we have (or can make)
         % trans-opt files.
-        %
+
         digraph.atsort(ImplDepsGraph, ImplDepsOrdering0),
         maybe_output_module_order(ModuleName, ImplDepsOrdering0, !IO),
         list.map(set.to_sorted_list, ImplDepsOrdering0, ImplDepsOrdering),
@@ -4395,21 +2195,23 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         get_opt_deps(yes, TransOptDepsOrdering0, IntermodDirs, ".trans_opt",
             TransOptDepsOrdering, !IO),
 
-        % digraph.to_assoc_list(ImplDepsGraph, ImplDepsAL),
-        % print("ImplDepsAL:\n", !IO),
-        % write_list(ImplDepsAL, "\n", print, !IO), nl(!IO),
+        trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
+                io(!IO)]
+        (
+            digraph.to_assoc_list(ImplDepsGraph, ImplDepsAL),
+            print("ImplDepsAL:\n", !IO),
+            write_list(ImplDepsAL, "\n", print, !IO), nl(!IO)
+        ),
 
-        %
         % Compute the indirect dependencies: they are equal to the composition
         % of the implementation dependencies with the transitive closure of the
         % implementation dependencies.  (We used to take the transitive closure
         % of the interface dependencies, but we now include implementation
         % details in the interface files).
-        %
+
         digraph.tc(ImplDepsGraph, TransImplDepsGraph),
         digraph.compose(ImplDepsGraph, TransImplDepsGraph, IndirectDepsGraph),
 
-        %
         % Compute the indirect optimization dependencies: indirect
         % dependencies including those via `.opt' or `.trans_opt' files.
         % Actually we can't compute that, since we don't know
@@ -4418,7 +2220,7 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
         % and assume that the each module's `.opt' file might import any
         % of that module's implementation dependencies; in actual fact,
         % it will be some subset of that.
-        %
+
         digraph.tc(ImplDepsGraph, IndirectOptDepsGraph),
 
         (
@@ -4432,13 +2234,13 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
             ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
             TransOptDepsOrdering, DepsMap, !IO)
     ),
-    %
+
     % For Java, the main target is actually a shell script which will
     % set CLASSPATH appropriately and invoke java on the appropriate
     % .class file.  Rather than generating an Mmake rule to build this
     % file when it is needed, we just generate this file "mmake depend"
     % time, since that is simpler and probably more efficient anyway.
-    %
+
     globals.io_get_target(Target, !IO),
     (
         Target = target_java,
@@ -4458,7 +2260,8 @@ maybe_output_imports_graph(Module, IntDepsGraph, ImplDepsGraph, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     (
         ImportsGraph = yes,
-        module_name_to_file_name(Module, ".imports_graph", yes, FileName, !IO),
+        module_name_to_file_name(Module, ".imports_graph", do_create_dirs,
+            FileName, !IO),
         maybe_write_string(Verbose, "% Creating imports graph file `", !IO),
         maybe_write_string(Verbose, FileName, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -4493,12 +2296,10 @@ maybe_output_imports_graph(Module, IntDepsGraph, ImplDepsGraph, !IO) :-
 
 filter_imports_graph(A - B, DepsGraph) =
     (
-        %
         % Don't keep the edge if it points to a builtin-module or if the
         % relationship is between two standard library modules.
         % XXX it would be better to change this to be only keep those
         % edges for which the left-hand side is in the current directory.
-        %
         (
             any_mercury_builtin_module(B)
         ;
@@ -4528,7 +2329,7 @@ write_graph(Stream, Name, GenNodeName, Graph, !IO) :-
     gen_node_name(T)::in, T::in, io::di, io::uo) is det.
 
 write_node(Stream, GenNodeName, Node, !IO) :-
-        % Names can't contain "." so use "__"
+    % Names can't contain "." so use "__"
     io.write_string(Stream, GenNodeName(Node), !IO),
     io.write_string(Stream, ";\n", !IO).
 
@@ -4554,7 +2355,8 @@ maybe_output_module_order(Module, DepsOrdering, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     (
         Order = yes,
-        module_name_to_file_name(Module, ".order", yes, OrdFileName, !IO),
+        module_name_to_file_name(Module, ".order", do_create_dirs,
+            OrdFileName, !IO),
         maybe_write_string(Verbose, "% Creating module order file `", !IO),
         maybe_write_string(Verbose, OrdFileName, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -4585,6 +2387,7 @@ write_module_scc(Stream, SCC0, !IO) :-
     set.to_sorted_list(SCC0, SCC),
     io.write_list(Stream, SCC, "\n", prog_out.write_sym_name, !IO).
 
+% ZZZ
     % generate_dependencies_write_d_files(Modules, IntDepsRel, ImplDepsRel,
     %   IndirectDepsRel, IndirectOptDepsRel, TransOptOrder, DepsMap, !IO):
     %
@@ -4611,11 +2414,10 @@ generate_dependencies_write_d_files([Dep | Deps],
     some [!Module] (
         Dep = deps(_, !:Module),
 
-        %
         % Look up the interface/implementation/indirect dependencies
         % for this module from the respective dependency graphs,
         % and save them in the module_imports structure.
-        %
+
         module_imports_get_module_name(!.Module, ModuleName),
         get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
             IndirectOptDeps),
@@ -4657,16 +2459,15 @@ generate_dependencies_write_d_files([Dep | Deps],
         module_imports_set_impl_deps(ImplDeps, !Module),
         module_imports_set_indirect_deps(IndirectDeps, !Module),
 
-        %
         % Compute the trans-opt dependencies for this module. To avoid
         % the possibility of cycles, each module is only allowed to depend
         % on modules that occur later than it in the TransOptOrder.
-        %
+
         FindModule = (pred(OtherModule::in) is semidet :-
             ModuleName \= OtherModule
         ),
         list.takewhile(FindModule, TransOptOrder, _, TransOptDeps0),
-        ( TransOptDeps0 = [ _ | TransOptDeps1 ] ->
+        ( TransOptDeps0 = [_ | TransOptDeps1] ->
             % The module was found in the list.
             TransOptDeps = TransOptDeps1
         ;
@@ -4699,63 +2500,9 @@ get_dependencies_from_graph(DepsGraph0, ModuleName, Deps) :-
             digraph.lookup_vertex(DepsGraph, Key, Dep)
         ), DepsKeysSet, [], Deps).
 
-% This is the data structure we use to record the dependencies.
-% We keep a map from module name to information about the module.
-
-:- type deps_map == map(module_name, deps).
-:- type deps
-    --->    deps(
-                bool,       % have we processed this module yet?
-                module_imports
-            ).
-
     % (Module1 -> Module2) means Module1 is imported by Module2.
 :- type deps_graph == digraph(module_name).
 :- type deps_graph_key == digraph_key(module_name).
-
-:- pred generate_deps_map(set(module_name)::in, bool::in,
-    deps_map::in, deps_map::out, io::di, io::uo) is det.
-
-generate_deps_map(!.Modules, Search, !DepsMap, !IO) :-
-    ( set.remove_least(!.Modules, Module, !:Modules) ->
-        % Look up the module's dependencies, and determine whether
-        % it has been processed yet.
-        lookup_dependencies(Module, Search, Done, !DepsMap, ModuleImports,
-            !IO),
-
-        % If the module hadn't been processed yet, then add its imports,
-        % parents, and public children to the list of dependencies we need
-        % to generate, and mark it as having been processed.
-        (
-            Done = no,
-            map.set(!.DepsMap, Module, deps(yes, ModuleImports), !:DepsMap),
-            ForeignImportedModules =
-                list.map(
-                    (func(foreign_import_module_info(_, ImportedModule, _))
-                        = ImportedModule),
-                    ModuleImports ^ foreign_import_modules),
-            list.condense(
-                [ModuleImports ^ parent_deps,
-                ModuleImports ^ int_deps,
-                ModuleImports ^ impl_deps,
-                ModuleImports ^ public_children, % a.k.a. incl_deps
-                ForeignImportedModules],
-                ModulesToAdd),
-            % We could keep a list of the modules we have already processed
-            % and subtract it from ModulesToAddSet here, but doing that
-            % actually leads to a small slowdown.
-            set.list_to_set(ModulesToAdd, ModulesToAddSet),
-            set.union(ModulesToAddSet, !Modules)
-        ;
-            Done = yes
-        ),
-        % Recursively process the remaining modules.
-        generate_deps_map(!.Modules, Search, !DepsMap, !IO)
-    ;
-        % If we can't remove the smallest, then the set of modules to be
-        % processed is empty.
-        true
-    ).
 
     % Construct a pair of dependency graphs (the interface dependencies
     % and the implementation dependencies) for all the modules in the program.
@@ -4793,23 +2540,20 @@ add_module_relations(LookupModuleImports, ModuleName, !IntDepsGraph,
 
 module_imports_to_deps_graph(ModuleImports, LookupModuleImports,
         !IntDepsGraph, !ImplDepsGraph) :-
-    %
     % Add interface dependencies to the interface deps graph.
     %
-    % Note that we need to do this both for the interface imports
-    % of this module and for the *implementation* imports of
-    % its ancestors.  This is because if this module is defined
-    % in the implementation section of its parent, then the
-    % interface of this module may depend on things
+    % Note that we need to do this both for the interface imports of this
+    % module and for the *implementation* imports of its ancestors.
+    % This is because if this module is defined in the implementation section
+    % of its parent, then the interface of this module may depend on things
     % imported only by its parent's implementation.
     %
-    % If this module was actually defined in the interface
-    % section of one of its ancestors, then it should only
-    % depend on the interface imports of that ancestor,
-    % so the dependencies added here are in fact more
-    % conservative than they need to be in that case.
-    % However, that should not be a major problem.
-    %
+    % If this module was actually defined in the interface section of one
+    % of its ancestors, then it should only depend on the interface imports
+    % of that ancestor, so the dependencies added here are in fact more
+    % conservative than they need to be in that case. However, that should
+    % not be a major problem.
+
     ModuleName = ModuleImports ^ module_name,
     ParentDeps = ModuleImports ^ parent_deps,
     digraph.add_vertex(ModuleName, IntModuleKey, !IntDepsGraph),
@@ -4817,16 +2561,14 @@ module_imports_to_deps_graph(ModuleImports, LookupModuleImports,
     add_parent_impl_deps_list(LookupModuleImports, IntModuleKey, ParentDeps,
         !IntDepsGraph),
 
-    %
     % Add implementation dependencies to the impl. deps graph.
-    % (The implementation dependencies are a superset of the
-    % interface dependencies.)
+    % (The implementation dependencies are a superset of the interface
+    % dependencies.)
     %
-    % Note that we need to do this both for the imports
-    % of this module and for the imports of its parents,
-    % because this module may depend on things imported
-    % only by its parents.
-    %
+    % Note that we need to do this both for the imports of this module
+    % and for the imports of its parents, because this module may depend on
+    % things imported only by its parents.
+
     digraph.add_vertex(ModuleName, ImplModuleKey, !ImplDepsGraph),
     add_impl_deps(ImplModuleKey, ModuleImports, !ImplDepsGraph),
     add_parent_impl_deps_list(LookupModuleImports, ImplModuleKey, ParentDeps,
@@ -4885,1236 +2627,7 @@ add_dep(ModuleKey, Dep, !DepsGraph) :-
     digraph.add_vertex(Dep, DepKey, !DepsGraph),
     digraph.add_edge(ModuleKey, DepKey, !DepsGraph).
 
-:- type submodule_kind
-    --->    toplevel
-    ;       nested_submodule
-    ;       separate_submodule.
-
-    % Check if a module is a top-level module, a nested sub-module,
-    % or a separate sub-module.
-    %
-:- func get_submodule_kind(module_name, deps_map) = submodule_kind.
-
-get_submodule_kind(ModuleName, DepsMap) = Kind :-
-    Ancestors = get_ancestors(ModuleName),
-    ( list.last(Ancestors, Parent) ->
-        map.lookup(DepsMap, ModuleName, deps(_, ModuleImports)),
-        map.lookup(DepsMap, Parent, deps(_, ParentImports)),
-        ModuleFileName = ModuleImports ^ source_file_name,
-        ParentFileName = ParentImports ^ source_file_name,
-        ( ModuleFileName = ParentFileName ->
-            Kind = nested_submodule
-        ;
-            Kind = separate_submodule
-        )
-    ;
-        Kind = toplevel
-    ).
-
 %-----------------------------------------------------------------------------%
-
-    % Write out the `.dv' file, using the information collected in the
-    % deps_map data structure.
-    %
-:- pred generate_dependencies_write_dv_file(file_name::in, module_name::in,
-    deps_map::in, io::di, io::uo) is det.
-
-generate_dependencies_write_dv_file(SourceFileName, ModuleName, DepsMap,
-        !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    module_name_to_file_name(ModuleName, ".dv", yes, DvFileName, !IO),
-    maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
-    maybe_write_string(Verbose, DvFileName, !IO),
-    maybe_write_string(Verbose, "'...\n", !IO),
-    io.open_output(DvFileName, DvResult, !IO),
-    (
-        DvResult = ok(DvStream),
-        generate_dv_file(SourceFileName, ModuleName, DepsMap, DvStream, !IO),
-        io.close_output(DvStream, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO)
-    ;
-        DvResult = error(IOError),
-        maybe_write_string(Verbose, " failed.\n", !IO),
-        maybe_flush_output(Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.append_list(["error opening file `", DvFileName,
-            "' for output: ", IOErrorMessage], DvMessage),
-        report_error(DvMessage, !IO)
-    ).
-
-    % Write out the `.dep' file, using the information collected in the
-    % deps_map data structure.
-    %
-:- pred generate_dependencies_write_dep_file(file_name::in, module_name::in,
-    deps_map::in, io::di, io::uo) is det.
-
-generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap,
-        !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    module_name_to_file_name(ModuleName, ".dep", yes, DepFileName, !IO),
-    maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
-    maybe_write_string(Verbose, DepFileName, !IO),
-    maybe_write_string(Verbose, "'...\n", !IO),
-    io.open_output(DepFileName, DepResult, !IO),
-    (
-        DepResult = ok(DepStream),
-        generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO),
-        io.close_output(DepStream, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO)
-    ;
-        DepResult = error(IOError),
-        maybe_write_string(Verbose, " failed.\n", !IO),
-        maybe_flush_output(Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.append_list(["error opening file `", DepFileName,
-            "' for output: ", IOErrorMessage], DepMessage),
-        report_error(DepMessage, !IO)
-    ).
-
-:- pred compare_module_names(module_name::in, module_name::in,
-    comparison_result::out) is det.
-
-compare_module_names(Sym1, Sym2, Result) :-
-    Str1 = sym_name_to_string(Sym1),
-    Str2 = sym_name_to_string(Sym2),
-    compare(Result, Str1, Str2).
-
-:- pred generate_dv_file(file_name::in, module_name::in, deps_map::in,
-    io.output_stream::in, io::di, io::uo) is det.
-
-generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
-    io.write_string(DepStream,
-        "# Automatically generated dependency variables for module `", !IO),
-    ModuleNameString = sym_name_to_string(ModuleName),
-    io.write_string(DepStream, ModuleNameString, !IO),
-    io.write_string(DepStream, "'\n", !IO),
-    io.write_string(DepStream, "# generated from source file `", !IO),
-    io.write_string(DepStream, SourceFileName, !IO),
-    io.write_string(DepStream, "'\n", !IO),
-
-    library.version(Version),
-    io.write_string(DepStream,
-        "# Generated by the Mercury compiler, version ", !IO),
-    io.write_string(DepStream, Version, !IO),
-    io.write_string(DepStream, ".\n\n", !IO),
-
-    map.keys(DepsMap, Modules0),
-    select_ok_modules(Modules0, DepsMap, Modules1),
-    list.sort(compare_module_names, Modules1, Modules),
-
-    module_name_to_make_var_name(ModuleName, MakeVarName),
-    list.map(get_source_file(DepsMap), Modules, SourceFiles0),
-    list.sort_and_remove_dups(SourceFiles0, SourceFiles),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".ms =", !IO),
-    write_file_dependencies_list(SourceFiles, ".m", DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".errs =", !IO),
-    write_file_dependencies_list(SourceFiles, ".err", DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".mods =", !IO),
-    write_dependencies_list(Modules, "", DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    % The modules for which we need to generate .int0 files.
-    ModulesWithSubModules = list.filter(
-      (pred(Module::in) is semidet :-
-          map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-          ModuleImports ^ children = [_ | _]
-      ), Modules),
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".parent_mods =", !IO),
-    write_dependencies_list(ModulesWithSubModules, "", DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    globals.io_get_target(Target, !IO),
-    (
-        Target = target_il,
-        ForeignModulesAndExts = foreign_modules(Modules, DepsMap)
-    ;
-        ( Target = target_c
-        ; Target = target_java
-        ; Target = target_asm
-        ; Target = target_x86_64
-        ; Target = target_erlang
-        ),
-        ForeignModulesAndExts = []
-    ),
-    ForeignModules = assoc_list.keys(ForeignModulesAndExts),
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".foreign =", !IO),
-    write_dependencies_list(ForeignModules, "", DepStream, !IO),
-    io.write_string(DepStream, "\n\n", !IO),
-
-    globals.io_lookup_bool_option(assume_gmake, Gmake, !IO),
-    (
-        Gmake = yes,
-        string.append(MakeVarName, ".mods", ModsVarName),
-        Basis = yes(ModsVarName - ""),
-
-        string.append(MakeVarName, ".foreign", ForeignVarName),
-        ForeignBasis = yes(ForeignVarName - ""),
-
-        string.append(MakeVarName, ".parent_mods", ParentModsVarName),
-        ParentBasis = yes(ParentModsVarName - "")
-    ;
-        Gmake = no,
-        Basis = no,
-        ForeignBasis = no,
-        ParentBasis = no
-    ),
-
-    get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs),
-
-    MakeFileName = (pred(M - E::in, F::out, IO0::di, IO::uo) is det :-
-        module_name_to_file_name(M, E, yes, F0, IO0, IO),
-        F = "$(os_subdir)" ++ F0
-    ),
-
-    list.map_foldl(MakeFileName, ForeignModulesAndExts, ForeignFileNames,
-        !IO),
-
-    % .foreign_cs are the source files which have had foreign code placed
-    % in them.
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".foreign_cs = ", !IO),
-    write_file_dependencies_list(ForeignFileNames, "", DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    % The dlls that contain the foreign_code.
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".foreign_dlls = ", !IO),
-    write_compact_dependencies_list(ForeignModules, "$(dlls_subdir)",
-        ".dll", ForeignBasis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".init_cs = ", !IO),
-    write_compact_dependencies_list(Modules, "$(cs_subdir)", ".c",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".cs = $(", !IO),
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".init_cs) ", !IO),
-    write_extra_link_dependencies_list(ExtraLinkObjs, ".c", DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".dlls = ", !IO),
-    write_compact_dependencies_list(Modules, "$(dlls_subdir)", ".dll",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_ss = ", !IO),
-    write_compact_dependencies_list(Modules, "$(ss_subdir)", ".s",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_pic_ss = ", !IO),
-    write_compact_dependencies_list(Modules, "$(pic_ss_subdir)", ".pic_s",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_s_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(s_dates_subdir)",
-        ".s_date", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_pic_s_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(pic_s_dates_subdir)",
-        ".pic_s_date", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_os = ", !IO),
-    write_compact_dependencies_list(Modules, "$(os_subdir)", ".$O",
-        Basis, DepStream, !IO),
-    write_extra_link_dependencies_list(ExtraLinkObjs, ".$O", DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_pic_os = ", !IO),
-    write_compact_dependencies_list(Modules, "$(os_subdir)",
-        ".$(EXT_FOR_PIC_OBJECTS)", Basis, DepStream, !IO),
-    write_extra_link_dependencies_list(ExtraLinkObjs,
-        ".$(EXT_FOR_PIC_OBJECTS)", DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    IsNested = (pred(Mod::in) is semidet :-
-        get_submodule_kind(Mod, DepsMap) = nested_submodule
-    ),
-    (
-        % For --target asm, we only generate separate object files
-        % for top-level modules and separate sub-modules, not for
-        % nested sub-modules.
-        Target = target_asm,
-        list.filter(IsNested, Modules, NestedModules, MainModules),
-        NestedModules = [_ | _]
-    ->
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".ss = ", !IO),
-        write_dependencies_list(MainModules, ".s", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_ss = ", !IO),
-        write_dependencies_list(MainModules, ".pic_s", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".s_dates = ", !IO),
-        write_dependencies_list(MainModules, ".s_date", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_s_dates = ", !IO),
-        write_dependencies_list(MainModules, ".pic_s_date", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".os = ", !IO),
-        write_dependencies_list(MainModules, ".$O", DepStream, !IO),
-        write_extra_link_dependencies_list(ExtraLinkObjs, ".$O", DepStream,
-            !IO),
-        io.write_string(DepStream, "\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_os = ", !IO),
-        write_dependencies_list(MainModules, ".$(EXT_FOR_PIC_OBJECTS)",
-            DepStream, !IO),
-        write_extra_link_dependencies_list(ExtraLinkObjs,
-            ".$(EXT_FOR_PIC_OBJECTS)", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO)
-    ;
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".ss = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_ss)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_ss = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_pic_ss)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".s_dates = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_s_dates)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_s_dates = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_pic_s_dates)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".os = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_os)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_os = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_pic_os)\n", !IO)
-    ),
-
-    %
-    % $(foo.cs_or_ss) contains the names of the generated intermediate
-    % files between `.m' and `.o' files. This is used in foo.dep
-    % to make sure the intermediate files are generated before the
-    % object files, so that errors are reported as soon as possible.
-    %
-    % If TARGET_ASM=yes, we define $(foo.cs_or_ss) to be $(foo.ss),
-    % otherwise it is defined to be $(foo.cs).
-    %
-    io.write_strings(DepStream, [
-        "ifeq ($(TARGET_ASM),yes)\n",
-        MakeVarName, ".cs_or_ss =$(", MakeVarName, ".ss)\n",
-        "else\n",
-        MakeVarName, ".cs_or_ss =$(", MakeVarName, ".cs)\n",
-        "endif\n\n"
-    ], !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".useds = ", !IO),
-    write_compact_dependencies_list(Modules, "$(useds_subdir)", ".used",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".ils = ", !IO),
-    write_compact_dependencies_list(Modules, "$(ils_subdir)", ".il",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".javas = ", !IO),
-    write_compact_dependencies_list(Modules, "$(javas_subdir)", ".java",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".classes = ", !IO),
-    write_compact_dependencies_list(Modules, "$(classes_subdir)", ".class",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, " ", !IO),
-    % The Java compiler creates a .class file for each class
-    % within the original .java file.  The filenames of all
-    % these can be matched with `module\$*.class', hence the
-    % "\\$$*.class" below.
-    % If no such files exist, Make will use the pattern verbatim,
-    % so we enclose the pattern in a `wildcard' function to prevent this.
-    % XXX This relies on GNU Make.
-    io.write_string(DepStream, "$(wildcard ", !IO),
-    write_compact_dependencies_list(Modules, "$(classes_subdir)",
-        "\\$$*.class", Basis, DepStream, !IO),
-    io.write_string(DepStream, ")\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".dirs = ", !IO),
-    write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".dir_os = ", !IO),
-    write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir/*.$O",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(dates_subdir)", ".date",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".date0s = ", !IO),
-    write_compact_dependencies_list(Modules, "$(date0s_subdir)", ".date0",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".date3s = ", !IO),
-    write_compact_dependencies_list(Modules, "$(date3s_subdir)", ".date3",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".optdates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(optdates_subdir)",
-        ".optdate", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".trans_opt_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(trans_opt_dates_subdir)",
-        ".trans_opt_date", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".c_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(c_dates_subdir)",
-        ".c_date", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".il_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(il_dates_subdir)",
-        ".il_date", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".java_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(java_dates_subdir)",
-        ".java_date", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".ds = ", !IO),
-    write_compact_dependencies_list(Modules, "$(ds_subdir)", ".d",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".module_deps = ", !IO),
-    write_compact_dependencies_list(Modules, "$(module_deps_subdir)",
-        make_module_dep_file_extension, Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".mihs = ", !IO),
-    globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
-    (
-        HighLevelCode = yes,
-        (
-            ( Target = target_c
-            ; Target = target_asm
-            ),
-            % For the `--target c' MLDS back-end, we generate `.mih' files
-            % for every module.  Likewise for the `--target asm' back-end.
-            % (For the `--target asm' back-end, we previously used to do
-            % that only for modules that contain C code, but this caused
-            % trouble when trying to interoperate between compiled with
-            % `--target c' and code compiled with `--target asm', so now we
-            % generate them unconditionally.)
-            write_compact_dependencies_list(Modules,
-                "$(mihs_subdir)", ".mih", Basis, DepStream, !IO)
-        ;
-            % For the IL and Java targets, currently we don't generate
-            % `.mih' files at all; although perhaps we should...
-            ( Target = target_il
-            ; Target = target_java
-            ; Target = target_erlang
-            )
-        ;
-            Target = target_x86_64,
-            unexpected(this_file, "--highlevel-code with --target x86_64")
-        )
-    ;
-        % For the LLDS back-end, we don't use `.mih' files at all
-        HighLevelCode = no
-    ),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".mhs = ", !IO),
-    (
-        ( Target = target_c
-        ; Target = target_asm
-        ; Target = target_x86_64
-        ),
-        write_compact_dependencies_list(Modules, "", ".mh", Basis,
-            DepStream, !IO)
-    ;
-        ( Target = target_il
-        ; Target = target_java
-        ; Target = target_erlang
-        )
-    ),
-    io.write_string(DepStream, "\n", !IO),
-
-    % The `<module>.all_mihs' variable is like `<module>.mihs' except
-    % that it contains header files for all the modules, regardless
-    % of the grade or --target option.  It is used by the rule for
-    % `mmake realclean', which should remove anything that could have
-    % been automatically generated, even if the grade or --target option
-    % has changed.
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_mihs = ", !IO),
-    write_compact_dependencies_list(Modules, "$(mihs_subdir)", ".mih",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    % The `<module>.all_mhs' variable is like `<module>.mhs' except
-    % that it contains header files for all the modules, as for
-    % `<module>.all_mihs' above.
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_mhs = ", !IO),
-    write_compact_dependencies_list(Modules, "", ".mh", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".ints = ", !IO),
-    write_compact_dependencies_list(Modules, "$(ints_subdir)", ".int",
-        Basis, DepStream, !IO),
-    write_compact_dependencies_separator(Basis, DepStream, !IO),
-    write_compact_dependencies_list(Modules, "$(int2s_subdir)", ".int2",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    % `.int0' files are only generated for modules with sub-modules.
-    % XXX ... or at least they should be.  Currently we end up generating
-    % .int0 files for nested submodules that don't have any children.
-    % (We do the correct thing for separate sub-modules.)
-    %
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".int0s = ", !IO),
-    write_compact_dependencies_list(ModulesWithSubModules, "$(int0s_subdir)",
-         ".int0", ParentBasis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    % XXX The `<module>.all_int0s' variables is like `<module>.int0s' except
-    % that it contains .int0 files for all modules, regardless of whether
-    % they should have been created or not.  It is used by the rule for
-    % `mmake realclean' to ensure that we clean up all the .int0 files,
-    % including the ones that were accidently created by the bug described
-    % above.
-    %
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_int0s = ", !IO),
-    write_compact_dependencies_list(Modules, "$(int0s_subdir)", ".int0",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".int3s = ", !IO),
-    write_compact_dependencies_list(Modules, "$(int3s_subdir)", ".int3",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".opts = ", !IO),
-    write_compact_dependencies_list(Modules, "$(opts_subdir)", ".opt",
-        Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".trans_opts = ", !IO),
-    write_compact_dependencies_list(Modules, "$(trans_opts_subdir)",
-        ".trans_opt", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".analysiss = ", !IO),
-    write_compact_dependencies_list(Modules, "$(analysiss_subdir)",
-        ".analysis", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".requests = ", !IO),
-    write_compact_dependencies_list(Modules, "$(requests_subdir)",
-        ".request", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".imdgs = ", !IO),
-    write_compact_dependencies_list(Modules, "$(imdgs_subdir)",
-        ".imdg", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".profs = ", !IO),
-    write_compact_dependencies_list(Modules, "", ".prof", Basis, DepStream,
-        !IO),
-    io.write_string(DepStream, "\n\n", !IO).
-
-:- pred generate_dep_file(file_name::in, module_name::in, deps_map::in,
-    io.output_stream::in, io::di, io::uo) is det.
-
-generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
-    io.write_string(DepStream,
-        "# Automatically generated dependencies for module `", !IO),
-    ModuleNameString = sym_name_to_string(ModuleName),
-    io.write_string(DepStream, ModuleNameString, !IO),
-    io.write_string(DepStream, "'\n", !IO),
-    io.write_string(DepStream,
-        "# generated from source file `", !IO),
-    io.write_string(DepStream, SourceFileName, !IO),
-    io.write_string(DepStream, "'\n", !IO),
-
-    library.version(Version),
-    io.write_string(DepStream,
-        "# Generated by the Mercury compiler, version ", !IO),
-    io.write_string(DepStream, Version, !IO),
-    io.write_string(DepStream, ".\n\n", !IO),
-
-    module_name_to_make_var_name(ModuleName, MakeVarName),
-
-    module_name_to_file_name(ModuleName, ".init", yes, InitFileName, !IO),
-    module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName, !IO),
-    module_name_to_file_name(ModuleName, "_init.s", no, InitAsmFileName, !IO),
-    module_name_to_file_name(ModuleName, "_init.$O", yes, InitObjFileName,
-        !IO),
-    module_name_to_file_name(ModuleName, "_init.pic_o", yes,
-        InitPicObjFileName, !IO),
-
-    % Note we have to do some ``interesting'' hacks to get
-    % `$(ALL_MLLIBS_DEP)' to work in the dependency list
-    % (and not complain about undefined variables).
-    % These hacks rely on features of GNU Make, so should not be used
-    % if we cannot assume we are using GNU Make.
-    globals.io_lookup_bool_option(assume_gmake, Gmake, !IO),
-    (
-        Gmake = yes,
-        append_list(["\\\n\t\t$(foreach @,", MakeVarName,
-            ",$(ALL_MLLIBS_DEP))"],
-            All_MLLibsDepString),
-        append_list(["\\\n\t\t$(foreach @,", MakeVarName,
-            ",$(ALL_MLOBJS))"],
-            All_MLObjsString),
-        append_list([
-        "\\\n\t\t$(patsubst %.o,%.$(EXT_FOR_PIC_OBJECTS),$(foreach @,",
-            MakeVarName, ",$(ALL_MLOBJS)))"],
-            All_MLPicObjsString)
-    ;
-        Gmake = no,
-        All_MLLibsDepString = "$(ALL_MLLIBS_DEP)",
-        All_MLObjsString = "$(ALL_MLOBJS)",
-        All_MLPicObjsString = "$(ALL_MLPICOBJS)"
-    ),
-
-    %
-    % When compiling to C, we want to include $(foo.cs) first in
-    % the dependency list, before $(foo.os).
-    % This is not strictly necessary, since the .$O files themselves depend
-    % on the .c files, but want to do it to ensure that Make will try to
-    % create all the C files first, thus detecting errors early,
-    % rather than first spending time compiling C files to .$O,
-    % which could be a waste of time if the program contains errors.
-    %
-    % When compiling to assembler, we want to do the same kind of
-    % thing, for the same reason, but with the `.s' files rather
-    % than the `.c' files.
-    %
-
-    module_name_to_file_name(ModuleName, "", no, ExeFileName, !IO),
-
-    IfIL = ["ifeq ($(findstring il,$(GRADE)),il)\n"],
-    ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe\n",
-        ExeFileName, ".exe : ", "$(", MakeVarName, ".dlls) ",
-        "$(", MakeVarName, ".foreign_dlls)\n"],
-    Else = ["else\n"],
-    IfJava = [" ifeq ($(findstring java,$(GRADE)),java)\n"],
-    JavaMainRule = [ExeFileName, " : $(", MakeVarName, ".classes)\n"],
-    Else2 = [" else\n"],
-    EndIf2 = [" endif\n"],
-
-    % XXX the output here is GNU Make-specific
-    io.write_strings(DepStream, [
-        "ifneq ($(EXT_FOR_EXE),)\n",
-        ".PHONY : ", ExeFileName, "\n",
-        ExeFileName, " : ", ExeFileName, "$(EXT_FOR_EXE)\n",
-        "endif\n"
-    ], !IO),
-
-    MainRule =
-        [ExeFileName, "$(EXT_FOR_EXE) : $(", MakeVarName, ".cs_or_ss) ",
-            "$(", MakeVarName, ".os) ", InitObjFileName, " ",
-            All_MLObjsString, " ", All_MLLibsDepString, "\n",
-        "\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) ",
-            "-o ", ExeFileName, "$(EXT_FOR_EXE) ", InitObjFileName, " \\\n",
-        "\t\t$(", MakeVarName, ".os) ", All_MLObjsString, " $(ALL_MLLIBS)\n"],
-    EndIf = ["endif\n"],
-
-    globals.io_get_target(Target, !IO),
-    (
-        Gmake = yes,
-        Rules = IfIL ++ ILMainRule ++ Else ++
-            IfJava ++ JavaMainRule ++ Else2 ++
-            MainRule ++ EndIf2 ++ EndIf
-    ;
-        Gmake = no,
-        (
-            Target = target_il,
-            Rules = ILMainRule
-        ;
-            Target = target_java,
-            Rules = JavaMainRule
-        ;
-            Target = target_erlang,
-            % XXX not yet
-            Rules = []
-        ;
-            ( Target = target_c
-            ; Target = target_asm
-            ; Target = target_x86_64    % XXX this is only provisional.
-            ),
-            Rules = MainRule
-        )
-    ),
-    io.write_strings(DepStream, Rules, !IO),
-
-    globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
-    (
-        Intermod = yes,
-        string.append_list(["$(", MakeVarName, ".opts) "], MaybeOptsVar)
-    ;
-        Intermod = no,
-        MaybeOptsVar = ""
-    ),
-    globals.io_lookup_bool_option(transitive_optimization, TransOpt, !IO),
-    (
-        TransOpt = yes,
-        string.append_list(["$(", MakeVarName, ".trans_opts) "],
-            MaybeTransOptsVar)
-    ;
-        TransOpt = no,
-        MaybeTransOptsVar = ""
-    ),
-    globals.io_lookup_bool_option(generate_mmc_make_module_dependencies,
-        MmcMakeDeps, !IO),
-    (
-        MmcMakeDeps = yes,
-        string.append_list(["$(", MakeVarName, ".module_deps) "],
-            MaybeModuleDepsVar)
-    ;
-        MmcMakeDeps = no,
-        MaybeModuleDepsVar = ""
-    ),
-
-    module_name_to_lib_file_name("lib", ModuleName, "", no, LibTargetName,
-        !IO),
-    module_name_to_lib_file_name("lib", ModuleName, ".$A", yes, LibFileName,
-        !IO),
-    module_name_to_lib_file_name("lib", ModuleName,
-        ".$(EXT_FOR_SHARED_LIB)", yes, SharedLibFileName, !IO),
-    module_name_to_lib_file_name("lib", ModuleName,
-        ".$(EXT_FOR_SHARED_LIB)", no, MaybeSharedLibFileName, !IO),
-    module_name_to_file_name(ModuleName, ".jar", no, JarFileName, !IO),
-
-    %
-    % Set up the installed name for shared libraries.
-    %
-    globals.io_lookup_bool_option(shlib_linker_use_install_name,
-        UseInstallName, !IO),
-    (
-        UseInstallName = yes,
-        get_install_name_option(SharedLibFileName, InstallNameOpt, !IO)
-    ;
-        UseInstallName = no,
-        InstallNameOpt = ""
-    ),
-
-    AllInts = [
-        "$(", MakeVarName, ".ints) ",
-        "$(", MakeVarName, ".int3s) ",
-        MaybeOptsVar, MaybeTransOptsVar,
-        InitFileName, "\n\n"
-    ],
-    ILLibRule = [
-        LibTargetName, " : ", "$(", MakeVarName, ".dlls) ",
-            "$(", MakeVarName, ".foreign_dlls) \\\n\t\t"
-        | AllInts
-    ],
-    JavaLibRule = [
-        LibTargetName, " : ", JarFileName, " \\\n\t\t"
-        | AllInts
-    ],
-    LibRule = [
-        LibTargetName, " : ", LibFileName, " ",
-        MaybeSharedLibFileName, " \\\n\t\t"
-        | AllInts
-    ],
-    (
-        Gmake = yes,
-        LibRules = IfIL ++ ILLibRule ++ Else ++
-            IfJava ++ JavaLibRule ++ Else2 ++
-            LibRule ++ EndIf2 ++ EndIf
-    ;
-        Gmake = no,
-        (
-            Target = target_il,
-            LibRules = ILLibRule
-        ;
-            Target = target_java,
-            LibRules = JavaLibRule
-        ;
-            Target = target_erlang,
-            % XXX not done yet
-            LibRules = []
-        ;
-            ( Target = target_c
-            ; Target = target_asm
-            ; Target = target_x86_64    % XXX This is only provisional.
-            ),
-            LibRules = LibRule
-        )
-    ),
-    io.write_strings(DepStream, [
-        ".PHONY : ", LibTargetName, "\n" |
-        LibRules
-    ], !IO),
-
-    io.write_strings(DepStream, [
-        "ifneq ($(EXT_FOR_SHARED_LIB),$A)\n",
-        SharedLibFileName, " : $(", MakeVarName, ".cs_or_ss) ",
-            "$(", MakeVarName, ".pic_os) ",
-            All_MLPicObjsString, " ", All_MLLibsDepString, "\n",
-        "\t$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) ",
-            "-- ", InstallNameOpt, " $(ALL_LD_LIBFLAGS) -o ",
-            SharedLibFileName, " \\\n",
-        "\t\t$(", MakeVarName, ".pic_os) ", All_MLPicObjsString,
-            " $(ALL_MLLIBS)\n",
-        "endif\n\n"
-    ], !IO),
-
-    io.write_strings(DepStream, [
-        LibFileName, " : $(", MakeVarName, ".cs_or_ss) ",
-            "$(", MakeVarName, ".os) ", All_MLObjsString, "\n",
-        "\trm -f ", LibFileName, "\n",
-        "\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)", LibFileName, " ",
-            "$(", MakeVarName, ".os) ", All_MLObjsString, "\n",
-        "\t$(RANLIB) $(ALL_RANLIBFLAGS) ", LibFileName, "\n\n"
-    ], !IO),
-
-    ClassFiles = "$(" ++ MakeVarName ++ ".classes)",
-    list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles, !IO),
-    io.write_strings(DepStream, [
-        JarFileName, " : ", "$(", MakeVarName, ".classes)\n",
-        "\t$(JAR) $(JAR_CREATE_FLAGS) ", JarFileName, " ",
-        ListClassFiles, "\n\n"
-    ], !IO),
-
-    module_name_to_file_name(ModuleName, ".dep", no, DepFileName, !IO),
-    module_name_to_file_name(ModuleName, ".dv", no, DvFileName, !IO),
-
-    io.write_strings(DepStream, [
-        InitFileName, " : ", DepFileName, " $(", MakeVarName, ".cs)\n",
-        "\techo > ", InitFileName, "\n"
-    ], !IO),
-    io.write_strings(DepStream, [
-        "\t$(MKLIBINIT) ", "$(", MakeVarName, ".cs)", " >> ",
-        InitFileName, "\n"
-    ], !IO),
-
-    % $(EXTRA_INIT_COMMAND) should expand to a command to
-    % generate extra entries in the `.init' file for a library.
-    % It may expand to the empty string.
-    io.write_string(DepStream, "\t$(EXTRA_INIT_COMMAND) >> ", !IO),
-    io.write_string(DepStream, InitFileName, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    % The `force-module_init' dependency forces the commands for
-    % the `module_init.c' rule to be run every time the rule
-    % is considered.
-    ModuleFileName = sym_name_to_string(ModuleName),
-    ForceC2InitTarget = "force-" ++ ModuleFileName ++ "_init",
-    TmpInitCFileName = InitCFileName ++ ".tmp",
-    io.write_strings(DepStream, [
-        ForceC2InitTarget, " :\n\n",
-        InitCFileName, " : ", ForceC2InitTarget, " $(", MakeVarName, ".cs)\n",
-        "\t@$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) ",
-            "--init-c-file ", TmpInitCFileName,
-            " $(", MakeVarName, ".init_cs) $(ALL_C2INITARGS)\n",
-        "\t@mercury_update_interface ", InitCFileName, "\n\n"
-    ], !IO),
-
-    module_name_to_lib_file_name("lib", ModuleName, ".install_ints", no,
-        LibInstallIntsTargetName, !IO),
-    (
-        Intermod = yes,
-        OptStr = " opt"
-    ;
-        Intermod = no,
-        OptStr = ""
-    ),
-    (
-        Intermod = yes,
-        map.member(DepsMap, _, deps(_, Imports)),
-        Imports ^ children = [_ | _]
-    ->
-        % The `.int0' files only need to be installed with
-        % `--intermodule-optimization'.
-        Int0Str = " int0",
-        MaybeInt0sVar = "$(" ++ MakeVarName ++ ".int0s) "
-    ;
-        Int0Str = "",
-        MaybeInt0sVar = ""
-    ),
-    (
-        TransOpt = yes,
-        TransOptStr = " trans_opt"
-    ;
-        TransOpt = no,
-        TransOptStr = ""
-    ),
-    (
-        MmcMakeDeps = yes,
-        DepStr = " module_dep"
-    ;
-        MmcMakeDeps = no,
-        DepStr = ""
-    ),
-
-    io.write_strings(DepStream, [
-        ".PHONY : ", LibInstallIntsTargetName, "\n",
-        LibInstallIntsTargetName, " : $(", MakeVarName, ".ints) $(",
-            MakeVarName, ".int3s) ", MaybeInt0sVar, MaybeOptsVar,
-            MaybeTransOptsVar, MaybeModuleDepsVar,
-            " install_lib_dirs\n",
-        "\tfiles=""$(", MakeVarName, ".ints) $(", MakeVarName,
-            ".int3s) ", MaybeInt0sVar, MaybeOptsVar,
-            MaybeTransOptsVar, MaybeModuleDepsVar, """; \\\n",
-        "\tfor file in $$files; do \\\n",
-        "\t\ttarget=""$(INSTALL_INT_DIR)/`basename $$file`""; \\\n",
-        "\t\tif cmp -s ""$$file"" ""$$target""; then \\\n",
-        "\t\t\techo \"$$target unchanged\"; \\\n",
-        "\t\telse \\\n",
-        "\t\t\techo \"installing $$target\"; \\\n",
-        "\t\t\t$(INSTALL) ""$$file"" ""$$target""; \\\n",
-        "\t\tfi; \\\n",
-        "\tdone\n",
-        "\t# The following is needed to support the `--use-subdirs' option\n",
-        "\t# We try using `$(LN_S)', but if that fails, then we just use\n",
-        "\t# `$(INSTALL)'.\n",
-        "\tfor ext in int int2 int3",
-        Int0Str, OptStr, TransOptStr, DepStr,
-        "; do \\\n",
-        "\t\tdir=""$(INSTALL_INT_DIR)/Mercury/$${ext}s""; \\\n",
-        "\t\trm -rf ""$$dir""; \\\n",
-        "\t\t$(LN_S) .. ""$$dir"" || { \\\n",
-        "\t\t\t{ [ -d ""$$dir"" ] || \\\n",
-        "\t\t\t$(INSTALL_MKDIR) ""$$dir""; } && \\\n",
-        "\t\t\t$(INSTALL) ""$(INSTALL_INT_DIR)""/*.$$ext ""$$dir""; \\\n",
-        "\t\t} || exit 1; \\\n",
-        "\tdone\n\n"
-    ], !IO),
-
-    %
-    % XXX  Note that we install the `.opt' and `.trans_opt' files
-    % in two places: in the `lib/$(GRADE)/opts' directory, so
-    % that mmc will find them, and also in the `ints' directory,
-    % so that Mmake will find them.  That's not ideal, but it works.
-    %
-    module_name_to_lib_file_name("lib", ModuleName,
-        ".install_opts", no, LibInstallOptsTargetName, !IO),
-    io.write_strings(DepStream,
-        [".PHONY : ", LibInstallOptsTargetName, "\n",
-        LibInstallOptsTargetName, " : "], !IO),
-    (
-        Intermod = no,
-        TransOpt = no
-    ->
-        io.write_string(DepStream, "\n\t@:\n\n", !IO)
-    ;
-        io.write_strings(DepStream, [
-        MaybeOptsVar, MaybeTransOptsVar, "install_grade_dirs\n",
-        "\tfiles=""", MaybeOptsVar, MaybeTransOptsVar, """; \\\n",
-        "\tfor file in $$files; do \\\n",
-        "\t\ttarget=""$(INSTALL_GRADE_INT_DIR)/`basename $$file`"";\\\n",
-        "\t\tif cmp -s ""$$file"" ""$$target""; then \\\n",
-        "\t\t\techo \"$$target unchanged\"; \\\n",
-        "\t\telse \\\n",
-        "\t\t\techo \"installing $$target\"; \\\n",
-        "\t\t\t$(INSTALL) ""$$file"" ""$$target""; \\\n",
-        "\t\tfi; \\\n",
-        "\tdone\n",
-        "\t# The following is needed to support the `--use-subdirs' option\n",
-        "\t# We try using `$(LN_S)', but if that fails, then we just use\n",
-        "\t# `$(INSTALL)'.\n",
-        "\tfor ext in ",
-        OptStr, TransOptStr,
-        "; do \\\n",
-        "\t\tdir=""$(INSTALL_GRADE_INT_DIR)/Mercury/$${ext}s""; \\\n",
-        "\t\trm -rf ""$$dir""; \\\n",
-        "\t\t$(LN_S) .. ""$$dir"" || { \\\n",
-        "\t\t\t{ [ -d ""$$dir"" ] || \\\n",
-        "\t\t\t\t$(INSTALL_MKDIR) ""$$dir""; } && \\\n",
-        "\t\t\t$(INSTALL) ""$(INSTALL_GRADE_INT_DIR)""/*.$$ext \\\n",
-        "\t\t\t\t""$$dir""; \\\n",
-        "\t\t} || exit 1; \\\n",
-        "\tdone\n\n"
-        ], !IO)
-    ),
-
-    %
-    % XXX  Note that we install the header files in two places:
-    % in the `lib/inc' or `lib/$(GRADE)/$(FULLARCH)/inc' directory,
-    % so that the C compiler will find them, and also in the `ints'
-    % directory, so that Mmake will find them.  That's not ideal,
-    % but it works.
-    %
-    % (A better fix would be to change the VPATH setting
-    % in scripts/Mmake.vars.in so that Mmake also searches
-    % the `lib/$(GRADE)/$(FULLARCH)/inc' directory, but doing
-    % that properly is non-trivial.)
-    %
-    module_name_to_lib_file_name("lib", ModuleName,
-        ".install_hdrs", no, LibInstallHdrsTargetName, !IO),
-    io.write_strings(DepStream, [
-        ".PHONY : ", LibInstallHdrsTargetName, "\n",
-        LibInstallHdrsTargetName, " : ",
-            "$(", MakeVarName, ".mhs) ",
-            "install_lib_dirs\n",
-        "ifeq ($(", MakeVarName, ".mhs),)\n",
-        "\t@:\n",
-        "else\n",
-        "\tfor hdr in $(", MakeVarName, ".mhs); do \\\n",
-        "\t\t$(INSTALL) $$hdr $(INSTALL_INT_DIR); \\\n",
-        "\t\t$(INSTALL) $$hdr $(INSTALL_INC_DIR); \\\n",
-        "\tdone\n",
-        "endif\n\n"], !IO),
-
-    module_name_to_lib_file_name("lib", ModuleName,
-        ".install_grade_hdrs", no, LibInstallGradeHdrsTargetName, !IO),
-    io.write_strings(DepStream, [
-        ".PHONY : ", LibInstallGradeHdrsTargetName, "\n",
-        LibInstallGradeHdrsTargetName, " : ",
-            "$(", MakeVarName, ".mihs) ",
-            "install_grade_dirs\n",
-    "ifeq ($(", MakeVarName, ".mihs),)\n",
-    "\t@:\n",
-    "else\n",
-    "\tfor hdr in $(", MakeVarName, ".mihs); do \\\n",
-    "\t\t$(INSTALL) $$hdr $(INSTALL_INT_DIR); \\\n",
-    "\t\t$(INSTALL) $$hdr $(INSTALL_GRADE_INC_DIR); \\\n",
-    "\tdone\n",
-    "\t# The following is needed to support the `--use-subdirs' option\n",
-    "\t# We try using `$(LN_S)', but if that fails, then we just use\n",
-    "\t# `$(INSTALL)'.\n",
-    "\trm -rf $(INSTALL_GRADE_INC_SUBDIR)\n",
-    "\t$(LN_S) .. $(INSTALL_GRADE_INC_SUBDIR) || { \\\n",
-    "\t\t{ [ -d $(INSTALL_GRADE_INC_SUBDIR) ] || \\\n",
-    "\t\t\t$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_SUBDIR); \\\n",
-    "\t\t} && \\\n",
-    "\t\t$(INSTALL) $(INSTALL_GRADE_INC_DIR)/*.mih \\\n",
-    "\t\t\t$(INSTALL_GRADE_INC_SUBDIR); \\\n",
-    "\t} || exit 1\n",
-    "\trm -rf $(INSTALL_INT_DIR)/Mercury/mihs\n",
-    "\t$(LN_S) .. $(INSTALL_INT_DIR)/Mercury/mihs || { \\\n",
-    "\t\t{ [ -d $(INSTALL_INT_DIR)/Mercury/mihs ] || \\\n",
-    "\t\t\t$(INSTALL_MKDIR) \\\n",
-    "\t\t\t$(INSTALL_INT_DIR)/Mercury/mihs; \\\n",
-    "\t\t} && \\\n",
-    "\t\t$(INSTALL) $(INSTALL_GRADE_INC_DIR)/*.mih \\\n",
-    "\t\t\t$(INSTALL_INT_DIR); \\\n",
-    "\t} || exit 1\n",
-    "endif\n\n"], !IO),
-
-    module_name_to_file_name(ModuleName, ".check", no, CheckTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".ints", no, IntsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".int3s", no, Int3sTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".opts", no, OptsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".trans_opts", no,
-        TransOptsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".ss", no, SsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".pic_ss", no, PicSsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".ils", no, ILsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".javas", no, JavasTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".classes", no, ClassesTargetName,
-        !IO),
-
-    % We need to explicitly mention
-    % $(foo.pic_ss) somewhere in the Mmakefile, otherwise it
-    % won't build properly with --target asm: GNU Make's pattern rule
-    % algorithm will try to use the .m -> .c_date -> .c -> .pic_o rule chain
-    % rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
-    % So don't remove the pic_ss target here.
-
-    io.write_strings(DepStream, [
-        ".PHONY : ", CheckTargetName, "\n",
-        CheckTargetName, " : $(", MakeVarName, ".errs)\n\n",
-        ".PHONY : ", IntsTargetName, "\n",
-        IntsTargetName, " : $(", MakeVarName, ".dates)\n\n",
-        ".PHONY : ", Int3sTargetName, "\n",
-        Int3sTargetName, " : $(", MakeVarName, ".date3s)\n\n",
-        ".PHONY : ", OptsTargetName, "\n",
-        OptsTargetName, " : $(", MakeVarName, ".optdates)\n\n",
-        ".PHONY : ", TransOptsTargetName, "\n",
-        TransOptsTargetName, " : $(", MakeVarName,
-            ".trans_opt_dates)\n\n",
-        ".PHONY : ", SsTargetName, "\n",
-        SsTargetName, " : $(", MakeVarName, ".ss)\n\n",
-        ".PHONY : ", PicSsTargetName, "\n",
-        PicSsTargetName, " : $(", MakeVarName, ".pic_ss)\n\n",
-        ".PHONY : ", ILsTargetName, "\n",
-        ILsTargetName, " : $(", MakeVarName, ".ils)\n\n",
-        ".PHONY : ", JavasTargetName, "\n",
-        JavasTargetName, " : $(", MakeVarName, ".javas)\n\n",
-        ".PHONY : ", ClassesTargetName, "\n",
-        ClassesTargetName, " : $(", MakeVarName, ".classes)\n\n"
-    ], !IO),
-
-    %
-    % If you change the clean targets below, please also update the
-    % documentation in doc/user_guide.texi.
-    %
-    % XXX The use of xargs in the clean targets doesn't handle
-    % special characters in the file names correctly.  This is
-    % currently not a problem in practice as we never generate
-    % names containing special characters, any fix for this problem
-    % will also require a fix in `mmake.in'.
-    %
-
-    module_name_to_file_name(ModuleName, ".clean", no, CleanTargetName, !IO),
-    io.write_strings(DepStream, [
-        "clean_local : ", CleanTargetName, "\n"
-    ], !IO),
-    io.write_strings(DepStream, [
-        ".PHONY : ", CleanTargetName, "\n",
-        CleanTargetName, " :\n",
-        "\t-echo $(", MakeVarName, ".dirs) | xargs rm -rf \n",
-        "\t-echo $(", MakeVarName, ".cs) ", InitCFileName,
-            " | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".mihs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_ss) ", InitAsmFileName,
-            " | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_pic_ss) ",
-            InitAsmFileName, " | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_os) ", InitObjFileName,
-            " | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_pic_os) ",
-            InitPicObjFileName, " | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".c_dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".il_dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".java_dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_s_dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_pic_s_dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".useds) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".ils) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".javas) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".profs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".errs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".foreign_cs) | xargs rm -f\n"
-    ], !IO),
-
-    io.write_string(DepStream, "\n", !IO),
-
-    module_name_to_file_name(ModuleName, ".realclean", no,
-        RealCleanTargetName, !IO),
-    io.write_strings(DepStream, [
-        "realclean_local : ", RealCleanTargetName, "\n"
-    ], !IO),
-    io.write_strings(DepStream, [
-        ".PHONY : ", RealCleanTargetName, "\n",
-        RealCleanTargetName, " : ", CleanTargetName, "\n",
-        "\t-echo $(", MakeVarName, ".dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".date0s) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".date3s) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".optdates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".trans_opt_dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".ints) | xargs rm -f\n",
-        % XXX This should acutally be .int0s but we need to make sure that
-        % we delete any spurious .int0 files created for nested sub-modules.
-        % For further details see the XXX comments above.
-        "\t-echo $(", MakeVarName, ".all_int0s) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".int3s) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".opts) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".trans_opts) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".analysiss) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".requests) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".imdgs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".ds) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".module_deps) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_mhs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_mihs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".dlls) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".foreign_dlls) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".classes) | xargs rm -f\n"
-    ], !IO),
-    io.write_strings(DepStream, [
-        "\t-rm -f ",
-            ExeFileName, "$(EXT_FOR_EXE) ",
-            InitFileName, " ",
-            LibFileName, " ",
-            SharedLibFileName, " ",
-            JarFileName, " ",
-            DepFileName, " ",
-            DvFileName, "\n\n"
-    ], !IO).
-
-:- pred get_source_file(deps_map::in, module_name::in, file_name::out) is det.
-
-get_source_file(DepsMap, ModuleName, FileName) :-
-    map.lookup(DepsMap, ModuleName, Deps),
-    Deps = deps(_, ModuleImports),
-    module_imports_get_source_file_name(ModuleImports, SourceFileName),
-    ( string.remove_suffix(SourceFileName, ".m", SourceFileBase) ->
-        FileName = SourceFileBase
-    ;
-        unexpected(this_file, "source file name doesn't end in `.m'")
-    ).
 
 :- pred append_to_init_list(io.output_stream::in, file_name::in,
     module_name::in, io::di, io::uo) is det.
@@ -6137,24 +2650,6 @@ append_to_init_list(DepStream, InitFileName, Module, !IO) :-
 modules_that_need_headers(Modules, DepsMap) =
     list.filter(module_needs_header(DepsMap), Modules).
 
-    % Find out which modules will generate as external foreign
-    % language files.
-    % We return the module names and file extensions.
-    %
-:- func foreign_modules(list(module_name), deps_map)
-    = assoc_list(module_name, string).
-
-foreign_modules(Modules, DepsMap) = ForeignModules :-
-    P = (pred(M::in, FMs::out) is semidet :-
-        module_has_foreign(DepsMap, M, LangList),
-        FMs = list.filter_map((func(L) = (NewM - Ext) is semidet :-
-            NewM = foreign_language_module_name(M, L),
-            Ext = foreign_language_file_extension(L)
-        ), LangList)
-    ),
-    list.filter_map(P, Modules, ForeignModulesList),
-    ForeignModules = list.condense(ForeignModulesList).
-
     % Succeed iff we need to generate a C header file for the specified
     % module, assuming we're compiling with `--target asm'.
     %
@@ -6164,716 +2659,6 @@ module_needs_header(DepsMap, Module) :-
     map.lookup(DepsMap, Module, deps(_, ModuleImports)),
     ModuleImports ^ has_foreign_code = contains_foreign_code(Langs),
     set.member(lang_c, Langs).
-
-    % Succeed iff we need to generate a foreign language output file
-    % for the specified module.
-    %
-:- pred module_has_foreign(deps_map::in, module_name::in,
-    list(foreign_language)::out) is semidet.
-
-module_has_foreign(DepsMap, Module, LangList) :-
-    map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    ModuleImports ^ has_foreign_code = contains_foreign_code(Langs),
-    LangList = set.to_sorted_list(Langs).
-
-    % get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs):
-    %
-    % Find any extra .$O files that should be linked into the executable.
-    % These include fact table object files and object files for foreign
-    % code that can't be generated inline for this target.
-    %
-:- pred get_extra_link_objects(list(module_name)::in, deps_map::in,
-    compilation_target::in, assoc_list(file_name, module_name)::out)
-    is det.
-
-get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) :-
-    get_extra_link_objects_2(Modules, DepsMap, Target, [], ExtraLinkObjs0),
-    list.reverse(ExtraLinkObjs0, ExtraLinkObjs).
-
-:- pred get_extra_link_objects_2(list(module_name)::in, deps_map::in,
-    compilation_target::in,
-    assoc_list(file_name, module_name)::in,
-    assoc_list(file_name, module_name)::out) is det.
-
-get_extra_link_objects_2([], _DepsMap, _Target, !ExtraLinkObjs).
-get_extra_link_objects_2([Module | Modules], DepsMap, Target,
-        !ExtraLinkObjs) :-
-    map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    %
-    % Handle object files for fact tables
-    %
-    FactDeps = ModuleImports ^ fact_table_deps,
-    list.length(FactDeps, NumFactDeps),
-    list.duplicate(NumFactDeps, Module, ModuleList),
-    assoc_list.from_corresponding_lists(FactDeps, ModuleList, FactTableObjs),
-    %
-    % Handle object files for foreign code.
-    % XXX currently we only support `C' foreign code.
-    %
-    (
-        Target = target_asm,
-        ModuleImports ^ has_foreign_code = contains_foreign_code(Langs),
-        set.member(lang_c, Langs)
-    ->
-        FileName = sym_name_to_string(Module),
-        NewLinkObjs = [(FileName ++ "__c_code") - Module | FactTableObjs]
-    ;
-        NewLinkObjs = FactTableObjs
-    ),
-    list.append(NewLinkObjs, !ExtraLinkObjs),
-    get_extra_link_objects_2(Modules, DepsMap, Target, !ExtraLinkObjs).
-
-:- type module_foreign_info --->
-    module_foreign_info(
-        used_foreign_languages          :: set(foreign_language),
-        foreign_proc_languages          :: map(sym_name, foreign_language),
-        all_foreign_import_module_info  :: foreign_import_module_info_list,
-        module_contains_foreign_export  :: contains_foreign_export
-    ).
-
-:- pred get_item_list_foreign_code(globals::in, list(item)::in,
-    set(foreign_language)::out, foreign_import_module_info_list::out,
-    contains_foreign_export::out) is det.
-
-get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
-        ContainsPragmaExport) :-
-    Info0 = module_foreign_info(set.init, map.init, [], no_foreign_export),
-    list.foldl(get_item_foreign_code(Globals), Items, Info0, Info),
-    Info = module_foreign_info(LangSet0, LangMap, ForeignImports,
-        ContainsPragmaExport),
-    ForeignProcLangs = map.values(LangMap),
-    LangSet = set.insert_list(LangSet0, ForeignProcLangs).
-
-:- pred get_item_foreign_code(globals::in, item::in,
-    module_foreign_info::in, module_foreign_info::out) is det.
-
-get_item_foreign_code(Globals, Item, !Info) :-
-    ( Item = item_pragma(ItemPragma) ->
-        ItemPragma = item_pragma_info(_, Pragma, Context),
-        do_get_item_foreign_code(Globals, Pragma, Context, !Info)
-    ; Item = item_mutable(_) ->
-        % Mutables introduce foreign_procs, but mutable declarations
-        % won't have been expanded by the time we get here so we need
-        % to handle them separately.
-        % XXX mutables are currently only implemented for the C backends
-        % but we should handle the Java/IL backends here as well.
-        % (See do_get_item_foreign_code for details/5).
-        !:Info = !.Info ^ used_foreign_languages :=
-            set.insert(!.Info ^ used_foreign_languages, lang_c)
-    ; ( Item = item_initialise(_) ; Item = item_finalise(_) ) ->
-        % Intialise/finalise declarations introduce export pragmas, but
-        % again they won't have been expanded by the time we get here.
-        % XXX we don't currently support these on non-C backends.
-        !:Info = !.Info ^ used_foreign_languages :=
-            set.insert(!.Info ^ used_foreign_languages, lang_c),
-        !:Info = !.Info ^ module_contains_foreign_export :=
-            contains_foreign_export
-    ;
-        true
-    ).
-
-:- pred do_get_item_foreign_code(globals::in, pragma_type::in,
-    prog_context::in, module_foreign_info::in, module_foreign_info::out)
-    is det.
-
-do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
-    globals.get_backend_foreign_languages(Globals, BackendLangs),
-    globals.get_target(Globals, Target),
-
-    % The code here should match the way that mlds_to_gcc.m decides whether
-    % or not to call mlds_to_c.m.  XXX Note that we do NOT count foreign_decls
-    % here. We only link in a foreign object file if mlds_to_gcc called
-    % mlds_to_c.m to generate it, which it will only do if there is some
-    % foreign_code, not just foreign_decls. Counting foreign_decls here
-    % causes problems with intermodule optimization.
-    (
-        Pragma = pragma_foreign_code(Lang, _),
-        list.member(Lang, BackendLangs)
-    ->
-        Info = Info0 ^ used_foreign_languages :=
-            set.insert(Info0 ^ used_foreign_languages, Lang)
-    ;
-        Pragma = pragma_foreign_proc(Attrs, Name, _, _, _, _, _)
-    ->
-        NewLang = get_foreign_language(Attrs),
-        ( OldLang = Info0 ^ foreign_proc_languages ^ elem(Name) ->
-            % is it better than an existing one?
-            (
-                yes = prefer_foreign_language(Globals, Target,
-                    OldLang, NewLang)
-            ->
-                Info = Info0 ^ foreign_proc_languages ^ elem(Name) := NewLang
-            ;
-                Info = Info0
-            )
-        ;
-            % is it one of the languages we support?
-            ( list.member(NewLang, BackendLangs) ->
-                Info = Info0 ^ foreign_proc_languages ^ elem(Name) := NewLang
-            ;
-                Info = Info0
-            )
-        )
-    ;
-        % XXX `pragma export' should not be treated as foreign, but currently
-        % mlds_to_gcc.m doesn't handle that declaration, and instead just
-        % punts it on to mlds_to_c.m, thus generating C code for it,
-        % rather than assembler code. So we need to treat `pragma export'
-        % like the other pragmas for foreign code.
-        Pragma = pragma_foreign_export(Lang, _, _, _, _),
-        list.member(Lang, BackendLangs)
-    ->
-        Info1 = Info0 ^ used_foreign_languages :=
-            set.insert(Info0 ^ used_foreign_languages, Lang),
-        Info = Info1 ^ module_contains_foreign_export :=
-            contains_foreign_export
-    ;
-        Pragma = pragma_foreign_import_module(Lang, Import),
-        list.member(Lang, BackendLangs)
-    ->
-        Info = Info0 ^ all_foreign_import_module_info :=
-            [foreign_import_module_info(Lang, Import, Context) |
-                Info0 ^ all_foreign_import_module_info]
-    ;
-        % We generate some C code for fact tables,
-        % so we need to treat modules containing
-        % fact tables as if they contain foreign
-        % code.
-        ( Target = target_asm
-        ; Target = target_c
-        ),
-        Pragma = pragma_fact_table(_, _, _)
-    ->
-        Info = Info0 ^ used_foreign_languages :=
-            set.insert(Info0 ^ used_foreign_languages, lang_c)
-    ;
-        Info = Info0
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred select_ok_modules(list(module_name)::in, deps_map::in,
-    list(module_name)::out) is det.
-
-select_ok_modules([], _, []).
-select_ok_modules([Module | Modules0], DepsMap, Modules) :-
-    map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    module_imports_get_error(ModuleImports, Error),
-    ( Error = fatal_module_errors ->
-        Modules = Modules1
-    ;
-        Modules = [Module | Modules1]
-    ),
-    select_ok_modules(Modules0, DepsMap, Modules1).
-
-%-----------------------------------------------------------------------------%
-
-:- pred write_dependencies_list(list(module_name)::in, string::in,
-    io.output_stream::in, io::di, io::uo) is det.
-
-write_dependencies_list([], _, _, !IO).
-write_dependencies_list([Module | Modules], Suffix, DepStream, !IO) :-
-    module_name_to_file_name(Module, Suffix, no, FileName, !IO),
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, FileName, !IO),
-    write_dependencies_list(Modules, Suffix, DepStream, !IO).
-
-referenced_dlls(Module, DepModules0) = Modules :-
-    DepModules = [Module | DepModules0],
-
-        % If we are not compiling a module in the mercury
-        % std library then replace all the std library dlls with
-        % one reference to mercury.dll.
-    (
-        mercury_std_library_module_name(Module)
-    ->
-            % In the standard library we need to add the
-            % runtime dlls.
-        Modules = list.remove_dups(
-            [unqualified("mercury_dotnet"), unqualified("mercury_il")
-                | DepModules])
-    ;
-        F = (func(M) =
-            (
-                mercury_std_library_module_name(M)
-            ->
-                unqualified("mercury")
-            ;
-                    % A sub module is located in the top level assembly.
-                unqualified(outermost_qualifier(M))
-            )
-        ),
-        Modules = list.remove_dups(list.map(F, DepModules))
-    ).
-
-    % submodules(Module, Imports):
-    %
-    % Returns the list of submodules from Imports which are sub-modules of
-    % Module, if Module is a top level module and not in the std library.
-    % Otherwise it returns the empty list.
-    %
-:- func submodules(module_name, list(module_name)) = list(module_name).
-
-submodules(Module, Modules0) = Modules :-
-    (
-        Module = unqualified(Str),
-        \+ mercury_std_library_module_name(Module)
-    ->
-        P = (pred(M::in) is semidet :-
-            Str = outermost_qualifier(M),
-            M \= Module
-        ),
-        list.filter(P, Modules0, Modules)
-    ;
-        Modules = []
-    ).
-
-:- pred write_dll_dependencies_list(list(module_name)::in,
-    string::in, io.output_stream::in, io::di, io::uo) is det.
-
-write_dll_dependencies_list(Modules, Prefix, DepStream, !IO) :-
-    list.foldl(write_dll_dependency(DepStream, Prefix), Modules, !IO).
-
-:- pred write_dll_dependency(io.output_stream::in, string::in,
-    module_name::in, io::di, io::uo) is det.
-
-write_dll_dependency(DepStream, Prefix, Module, !IO) :-
-    module_name_to_file_name(Module, ".dll", no, FileName, !IO),
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, Prefix, !IO),
-    io.write_string(DepStream, FileName, !IO).
-
-:- pred write_fact_table_dependencies_list(module_name::in,
-    list(file_name)::in, string::in, io.output_stream::in,
-    io::di, io::uo) is det.
-
-write_fact_table_dependencies_list(_, [], _, _, !IO).
-write_fact_table_dependencies_list(Module, [FactTable | FactTables], Suffix,
-        DepStream, !IO) :-
-    fact_table_file_name(Module, FactTable, Suffix, no, FileName, !IO),
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, FileName, !IO),
-    write_fact_table_dependencies_list(Module, FactTables, Suffix,
-        DepStream, !IO).
-
-:- pred write_extra_link_dependencies_list(
-    assoc_list(file_name, module_name)::in, string::in,
-    io.output_stream::in, io::di, io::uo) is det.
-
-write_extra_link_dependencies_list([], _, _, !IO).
-write_extra_link_dependencies_list([ExtraLink - Module | ExtraLinks], Suffix,
-        DepStream, !IO) :-
-    extra_link_obj_file_name(Module, ExtraLink, Suffix, no, FileName, !IO),
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, FileName, !IO),
-    write_extra_link_dependencies_list(ExtraLinks, Suffix, DepStream, !IO).
-
-:- pred write_file_dependencies_list(list(string)::in, string::in,
-    io.output_stream::in, io::di, io::uo) is det.
-
-write_file_dependencies_list([], _, _, !IO).
-write_file_dependencies_list([FileName | FileNames], Suffix, DepStream, !IO) :-
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, FileName, !IO),
-    io.write_string(DepStream, Suffix, !IO),
-    write_file_dependencies_list(FileNames, Suffix, DepStream, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred write_compact_dependencies_list(list(module_name)::in, string::in,
-    string::in, maybe(pair(string))::in, io.output_stream::in,
-    io::di, io::uo) is det.
-
-write_compact_dependencies_list(Modules, Prefix, Suffix, Basis, DepStream,
-        !IO) :-
-    (
-        Basis = yes(VarName - OldSuffix),
-        io.write_string(DepStream, "$(", !IO),
-        io.write_string(DepStream, VarName, !IO),
-        io.write_string(DepStream, ":%", !IO),
-        io.write_string(DepStream, OldSuffix, !IO),
-        io.write_string(DepStream, "=", !IO),
-        io.write_string(DepStream, Prefix, !IO),
-        io.write_string(DepStream, "%", !IO),
-        io.write_string(DepStream, Suffix, !IO),
-        io.write_string(DepStream, ")", !IO)
-    ;
-        Basis = no,
-        write_dependencies_list(Modules, Suffix, DepStream, !IO)
-    ).
-
-:- pred write_compact_dependencies_separator(maybe(pair(string))::in,
-    io.output_stream::in, io::di, io::uo) is det.
-
-write_compact_dependencies_separator(no, _DepStream, !IO).
-write_compact_dependencies_separator(yes(_), DepStream, !IO) :-
-    io.write_string(DepStream, " ", !IO).
-
-%-----------------------------------------------------------------------------%
-
-    % Look up a module in the dependency map.
-    % If we don't know its dependencies, read the module and
-    % save the dependencies in the dependency map.
-    %
-:- pred lookup_dependencies(module_name::in, bool::in, bool::out,
-    deps_map::in, deps_map::out, module_imports::out, io::di, io::uo) is det.
-
-lookup_dependencies(Module, Search, Done, !DepsMap, ModuleImports, !IO) :-
-    ( map.search(!.DepsMap, Module, deps(DonePrime, ModuleImportsPrime)) ->
-        Done = DonePrime,
-        ModuleImports = ModuleImportsPrime
-    ;
-        read_dependencies(Module, Search, ModuleImportsList, !IO),
-        list.foldl(insert_into_deps_map, ModuleImportsList, !DepsMap),
-        map.lookup(!.DepsMap, Module, deps(Done, ModuleImports))
-    ).
-
-    % insert_into_deps_map/3:
-    %
-    % Insert a new entry into the deps_map. If the module already occurred
-    % in the deps_map, then we just replace the old entry (presumed to be
-    % a dummy entry) with the new one.
-    %
-    % This can only occur for sub-modules which have been imported before
-    % their parent module was imported: before reading a module and
-    % inserting it into the deps map, we check if it was already there,
-    % but when we read in the module, we try to insert not just that module
-    % but also all the nested sub-modules inside that module. If a sub-module
-    % was previously imported, then it may already have an entry in the
-    % deps_map. However, unless the sub-module is defined both as a separate
-    % sub-module and also as a nested sub-module, the previous entry will be
-    % a dummy entry that we inserted after trying to read the source file
-    % and failing.
-    %
-    % Note that the case where a module is defined as both a separate
-    % sub-module and also as a nested sub-module is caught in
-    % split_into_submodules.
-    %
-:- pred insert_into_deps_map(module_imports::in, deps_map::in, deps_map::out)
-    is det.
-
-insert_into_deps_map(ModuleImports, DepsMap0, DepsMap) :-
-    module_imports_get_module_name(ModuleImports, ModuleName),
-    map.set(DepsMap0, ModuleName, deps(no, ModuleImports), DepsMap).
-
-    % Read a module to determine the (direct) dependencies of that module
-    % and any nested sub-modules it contains.
-    %
-:- pred read_dependencies(module_name::in, bool::in, list(module_imports)::out,
-    io::di, io::uo) is det.
-
-read_dependencies(ModuleName, Search, ModuleImportsList, !IO) :-
-    read_mod_ignore_errors(ModuleName, ".m",
-        "Getting dependencies for module", Search, no, Items0, Error,
-        FileName0, _, !IO),
-    globals.io_get_globals(Globals, !IO),
-    (
-        Items0 = [],
-        Error = fatal_module_errors
-    ->
-        read_mod_ignore_errors(ModuleName, ".int",
-            "Getting dependencies for module interface", Search,
-            no, Items, _Error, FileName, _, !IO),
-        SubModuleList = [ModuleName - Items]
-    ;
-        FileName = FileName0,
-        Items = Items0,
-        split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
-    ),
-    assoc_list.keys(SubModuleList, SubModuleNames),
-    list.map(init_dependencies(FileName, ModuleName, SubModuleNames,
-        Error, Globals), SubModuleList, ModuleImportsList).
-
-init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
-        Error, Globals, ModuleName - Items, ModuleImports) :-
-    ParentDeps = get_ancestors(ModuleName),
-
-    get_dependencies(Items, ImplImportDeps0, ImplUseDeps0),
-    add_implicit_imports(Items, Globals,
-        ImplImportDeps0, ImplImportDeps,
-        ImplUseDeps0, ImplUseDeps),
-    list.append(ImplImportDeps, ImplUseDeps, ImplementationDeps),
-
-    get_interface(ModuleName, no, Items, InterfaceItems),
-    get_dependencies(InterfaceItems,
-        InterfaceImportDeps0, InterfaceUseDeps0),
-    add_implicit_imports(InterfaceItems, Globals,
-        InterfaceImportDeps0, InterfaceImportDeps,
-        InterfaceUseDeps0, InterfaceUseDeps),
-    list.append(InterfaceImportDeps, InterfaceUseDeps, InterfaceDeps),
-
-    % We don't fill in the indirect dependencies yet.
-    IndirectDeps = [],
-
-    get_children(Items, IncludeDeps),
-    get_children(InterfaceItems, InterfaceIncludeDeps),
-
-    ( ModuleName = SourceFileModuleName ->
-        list.delete_all(NestedModuleNames, ModuleName, NestedDeps)
-    ;
-        NestedDeps = []
-    ),
-
-    get_fact_table_dependencies(Items, FactTableDeps),
-
-    % Figure out whether the items contain foreign code.
-    get_item_list_foreign_code(Globals, Items, LangSet,
-        ForeignImports0, ContainsPragmaExport),
-    ( set.empty(LangSet) ->
-        ContainsForeignCode = no_foreign_code
-    ;
-        ContainsForeignCode = contains_foreign_code(LangSet)
-    ),
-
-    % If this module contains `:- pragma foreign_export' or
-    % `:- pragma foreign_type' declarations, importing modules
-    % may need to import its `.mh' file.
-    get_foreign_self_imports(Items, SelfImportLangs),
-    ForeignSelfImports = list.map(
-        (func(Lang) = foreign_import_module_info(Lang, ModuleName,
-            term.context_init)),
-        SelfImportLangs),
-    ForeignImports = ForeignSelfImports ++ ForeignImports0,
-
-    % Work out whether the items contain main/2.
-    (
-        list.member(Item, Items),
-        Item = item_pred_decl(ItemPredDecl),
-        ItemPredDecl = item_pred_decl_info(_, _, _, _, pf_predicate, Name,
-            [_, _], WithType, _, _, _, _, _, _),
-        unqualify_name(Name) = "main",
-
-        % XXX We should allow `main/2' to be declared using
-        % `with_type`, but equivalences haven't been expanded
-        % at this point. The `has_main' field is only used for
-        % some special case handling of the module containing
-        % main for the IL backend (we generate a `.exe' file
-        % rather than a `.dll' file). This would arguably be
-        % better done by generating a `.dll' file as normal,
-        % and a separate `.exe' file containing initialization
-        % code and a call to `main/2', as we do with the `_init.c'
-        % file in the C backend.
-        WithType = no
-    ->
-        HasMain = has_main
-    ;
-        HasMain = no_main
-    ),
-
-    ModuleImports = module_imports(FileName, SourceFileModuleName,
-        ModuleName, ParentDeps, InterfaceDeps,
-        ImplementationDeps, IndirectDeps, IncludeDeps,
-        InterfaceIncludeDeps, NestedDeps, FactTableDeps,
-        ContainsForeignCode, ForeignImports, ContainsPragmaExport,
-        [], Error, no, HasMain, dir.this_directory).
-
-%-----------------------------------------------------------------------------%
-
-:- pred read_mod(read_modules::in, module_name::in, string::in, string::in,
-    bool::in, bool::in, list(item)::out, module_error::out, file_name::out,
-    maybe(timestamp)::out, io::di, io::uo) is det.
-
-read_mod(ReadModules, ModuleName, Extension, Descr, Search, ReturnTimestamp,
-        Items, Error, FileName, MaybeTimestamp, !IO) :-
-    (
-        find_read_module(ReadModules, ModuleName, Extension, ReturnTimestamp,
-            Items0, MaybeTimestamp0, Error0, FileName0)
-    ->
-        Error = Error0,
-        Items = Items0,
-        MaybeTimestamp = MaybeTimestamp0,
-        FileName = FileName0
-    ;
-        read_mod(ModuleName, Extension, Descr, Search, ReturnTimestamp,
-            Items, Error, FileName, MaybeTimestamp, !IO)
-    ).
-
-read_mod(ModuleName, Extension, Descr, Search, ReturnTimestamp,
-        Items, Error, FileName, MaybeTimestamp, !IO) :-
-    read_mod_2(no, ModuleName, Extension, Descr, Search,
-        no, ReturnTimestamp, Items, Error, FileName, MaybeTimestamp, !IO).
-
-read_mod_if_changed(ModuleName, Extension, Descr, Search, OldTimestamp,
-        Items, Error, FileName, MaybeTimestamp, !IO) :-
-    read_mod_2(no, ModuleName, Extension, Descr, Search,
-        yes(OldTimestamp), yes, Items, Error,
-        FileName, MaybeTimestamp, !IO).
-
-read_mod_ignore_errors(ModuleName, Extension, Descr, Search, ReturnTimestamp,
-        Items, Error, FileName, MaybeTimestamp, !IO) :-
-    read_mod_2(yes, ModuleName, Extension, Descr, Search,
-        no, ReturnTimestamp, Items, Error, FileName, MaybeTimestamp, !IO).
-
-:- pred read_mod_2(bool::in, module_name::in, string::in, string::in,
-    bool::in, maybe(timestamp)::in, bool::in, list(item)::out,
-    module_error::out, file_name::out, maybe(timestamp)::out,
-    io::di, io::uo) is det.
-
-read_mod_2(IgnoreErrors, ModuleName, Extension, Descr, Search,
-        MaybeOldTimestamp, ReturnTimestamp, Items, Error, FileName,
-        MaybeTimestamp, !IO) :-
-    (
-        Search = yes,
-        module_name_to_search_file_name(ModuleName, Extension, FileName0, !IO)
-    ;
-        Search = no,
-        module_name_to_file_name(ModuleName, Extension, no, FileName0, !IO)
-    ),
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    maybe_write_string(VeryVerbose, "% ", !IO),
-    maybe_write_string(VeryVerbose, Descr, !IO),
-    maybe_write_string(VeryVerbose, " `", !IO),
-    maybe_write_string(VeryVerbose, FileName0, !IO),
-    maybe_write_string(VeryVerbose, "'... ", !IO),
-    maybe_flush_output(VeryVerbose, !IO),
-
-    globals.io_lookup_accumulating_option(search_directories,
-        InterfaceSearchDirs, !IO),
-    (
-        Search = yes,
-        SearchDirs = InterfaceSearchDirs
-    ;
-        Search = no,
-        SearchDirs = [dir.this_directory]
-    ),
-    ( Extension = ".m" ->
-        % For `.m' files we need to deal with the case where
-        % the module name does not match the file name, or where
-        % a partial match occurs in the current directory but the
-        % full match occurs in a search directory.
-        %
-        OpenFile = search_for_module_source(SearchDirs,
-                        InterfaceSearchDirs, ModuleName)
-    ;
-        OpenFile = search_for_file(SearchDirs, FileName0)
-    ),
-    (
-        MaybeOldTimestamp = yes(OldTimestamp),
-        prog_io.read_module_if_changed(OpenFile, ModuleName, OldTimestamp,
-            MaybeFileName, ActualModuleName, Items, Specs, Error,
-            MaybeTimestamp0, !IO)
-    ;
-        MaybeOldTimestamp = no,
-        prog_io.read_module(OpenFile, ModuleName, ReturnTimestamp,
-            MaybeFileName, ActualModuleName, Items, Specs, Error,
-            MaybeTimestamp0, !IO)
-    ),
-
-    (
-        MaybeFileName = yes(FileName)
-    ;
-        MaybeFileName = no,
-        FileName = FileName0
-    ),
-    check_module_has_expected_name(FileName, ModuleName, ActualModuleName,
-        !IO),
-
-    check_timestamp(FileName0, MaybeTimestamp0, MaybeTimestamp, !IO),
-    (
-        IgnoreErrors = yes,
-        (
-            Error = fatal_module_errors,
-            Items = []
-        ->
-            maybe_write_string(VeryVerbose, "not found.\n", !IO)
-        ;
-            maybe_write_string(VeryVerbose, "done.\n", !IO)
-        )
-    ;
-        IgnoreErrors = no,
-        (
-            Error = fatal_module_errors,
-            maybe_write_string(VeryVerbose, "fatal error(s).\n", !IO),
-            io.set_exit_status(1, !IO)
-        ;
-            Error = some_module_errors,
-            maybe_write_string(VeryVerbose, "parse error(s).\n", !IO),
-            io.set_exit_status(1, !IO)
-        ;
-            Error = no_module_errors,
-            maybe_write_string(VeryVerbose, "successful parse.\n", !IO)
-        ),
-        globals.io_get_globals(Globals, !IO),
-        % XXX _NumWarnings _NumErrors
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
-    ).
-
-read_mod_from_file(FileName, Extension, Descr, Search, ReturnTimestamp,
-        Items, Error, ModuleName, MaybeTimestamp, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    maybe_write_string(VeryVerbose, "% ", !IO),
-    maybe_write_string(VeryVerbose, Descr, !IO),
-    maybe_write_string(VeryVerbose, " `", !IO),
-    maybe_write_string(VeryVerbose, FileName, !IO),
-    maybe_write_string(VeryVerbose, "'... ", !IO),
-    maybe_flush_output(VeryVerbose, !IO),
-    string.append(FileName, Extension, FullFileName),
-    ( dir.basename(FileName, BaseFileNamePrime) ->
-        BaseFileName = BaseFileNamePrime
-    ;
-        BaseFileName = ""
-    ),
-    file_name_to_module_name(BaseFileName, DefaultModuleName),
-    (
-        Search = yes,
-        globals.io_lookup_accumulating_option(search_directories,
-            SearchDirs, !IO)
-    ;
-        Search = no,
-        SearchDirs = [dir.this_directory]
-    ),
-    OpenFile = search_for_file(SearchDirs, FullFileName),
-    prog_io.read_module(OpenFile, DefaultModuleName, ReturnTimestamp,
-        _, ModuleName, Items, Specs, Error, MaybeTimestamp0, !IO),
-    check_timestamp(FullFileName, MaybeTimestamp0, MaybeTimestamp, !IO),
-    (
-        Error = fatal_module_errors,
-        maybe_write_string(VeryVerbose, "fatal error(s).\n", !IO),
-        io.set_exit_status(1, !IO)
-    ;
-        Error = some_module_errors,
-        maybe_write_string(VeryVerbose, "parse error(s).\n", !IO),
-        io.set_exit_status(1, !IO)
-    ;
-        Error = no_module_errors,
-        maybe_write_string(VeryVerbose, "successful parse.\n", !IO)
-    ),
-    globals.io_get_globals(Globals, !IO),
-    % XXX _NumWarnings _NumErrors
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
-
-:- pred check_timestamp(file_name::in, maybe(io.res(timestamp))::in,
-    maybe(timestamp)::out, io::di, io::uo) is det.
-
-check_timestamp(FileName, MaybeTimestamp0, MaybeTimestamp, !IO) :-
-    (
-        MaybeTimestamp0 = yes(ok(Timestamp)),
-        MaybeTimestamp = yes(Timestamp)
-    ;
-        MaybeTimestamp0 = yes(error(IOError)),
-        MaybeTimestamp = no,
-        globals.io_lookup_bool_option(smart_recompilation, SmartRecompilation,
-            !IO),
-        (
-            SmartRecompilation = yes,
-            report_modification_time_warning(FileName, IOError, !IO)
-        ;
-            SmartRecompilation = no
-        )
-    ;
-        MaybeTimestamp0 = no,
-        MaybeTimestamp = no
-    ).
-
-% :- pred combine_module_errors(module_error, module_error, module_error).
-% :- mode combine_module_errors(in, in, out) is det.
-%
-% combine_module_errors(fatal, _, fatal).
-% combine_module_errors(yes, fatal, fatal).
-% combine_module_errors(yes, yes, yes).
-% combine_module_errors(yes, no, yes).
-% combine_module_errors(no, Error, Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -6895,9 +2680,9 @@ process_module_private_interfaces(ReadModules, [Ancestor | Ancestors],
     ;
         ModItems0 = !.Module ^ items,
         ModError0 = !.Module ^ error,
-        maybe_to_bool(!.Module ^ maybe_timestamps, ReturnTimestamp),
-        read_mod(ReadModules, Ancestor, ".int0",
-            "Reading private interface for module", yes,
+        maybe_return_timestamp(!.Module ^ maybe_timestamps, ReturnTimestamp),
+        maybe_read_module(ReadModules, Ancestor, ".int0",
+            "Reading private interface for module", do_search,
             ReturnTimestamp, PrivateIntItems, PrivateIntError,
             _AncestorFileName, MaybeTimestamp, !IO),
 
@@ -6938,7 +2723,7 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
     ModuleName = !.Module ^ module_name,
     ModImplementationImports0 = !.Module ^ impl_deps,
     (
-        % have we already read it?
+        % Have we already read it?
         ( Import = ModuleName
         ; list.member(Import, !.Module ^ parent_deps)
         ; list.member(Import, !.Module ^ int_deps)
@@ -6951,13 +2736,13 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
     ;
         ModItems0 = !.Module ^ items,
         ModError0 = !.Module ^ error,
-        maybe_to_bool(!.Module ^ maybe_timestamps, ReturnTimestamp),
-        read_mod(ReadModules, Import, Ext,
-            "Reading interface for module", yes, ReturnTimestamp,
+        maybe_return_timestamp(!.Module ^ maybe_timestamps, ReturnTimestamp),
+        maybe_read_module(ReadModules, Import, Ext,
+            "Reading interface for module", do_search, ReturnTimestamp,
             LongIntItems, LongIntError, _LongIntFileName,
             MaybeTimestamp, !IO),
 
-        get_dependencies(LongIntItems,
+        get_dependencies_int_imp(LongIntItems,
             IndirectImports1, IndirectUses1,
             ImplIndirectImports1, ImplIndirectUses1),
         replace_section_decls(IntStatusItem, ImpStatusItem,
@@ -7133,15 +2918,15 @@ process_module_short_interfaces(ReadModules, [Import | Imports], Ext,
     ;
         ModItems0 = !.Module ^ items,
         ModError0 = !.Module ^ error,
-        maybe_to_bool(!.Module ^ maybe_timestamps, ReturnTimestamp),
-        read_mod(ReadModules, Import, Ext,
-            "Reading short interface for module", yes,
+        maybe_return_timestamp(!.Module ^ maybe_timestamps, ReturnTimestamp),
+        maybe_read_module(ReadModules, Import, Ext,
+            "Reading short interface for module", do_search,
             ReturnTimestamp, ShortIntItems, ShortIntError,
             _ImportFileName, MaybeTimestamp, !IO),
         maybe_record_timestamp(Import, Ext, must_be_qualified,
             MaybeTimestamp, !Module),
 
-        get_dependencies(ShortIntItems, IntImports1, IntUses1,
+        get_dependencies_int_imp(ShortIntItems, IntImports1, IntUses1,
             ImpImports1, ImpUses1),
         replace_section_decls(IntStatusItem, ImpStatusItem,
             ShortIntItems, Items),
@@ -7195,23 +2980,6 @@ maybe_add_int_error(InterfaceError, ModError0, ModError) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-get_ancestors(ModuleName) = get_ancestors_2(ModuleName, []).
-
-:- func get_ancestors_2(module_name, list(module_name)) = list(module_name).
-
-get_ancestors_2(unqualified(_), Ancestors) = Ancestors.
-get_ancestors_2(qualified(Parent, _), Ancestors0) =
-    get_ancestors_2(Parent, [Parent | Ancestors0]).
-
-%-----------------------------------------------------------------------------%
-
-    % get_children(Items, IncludeDeps):
-    %
-    % IncludeDeps is the list of sub-modules declared with `:- include_module'
-    % in Items.
-    %
-:- pred get_children(list(item)::in, list(module_name)::out) is det.
 
 get_children(Items, IncludeDeps) :-
     get_children_2(Items, [], IncludeDeps).
@@ -7286,131 +3054,6 @@ get_accessible_children_2(!.Visible, [Item | Items], !IncludeDeps) :-
         true
     ),
     get_accessible_children_2(!.Visible, Items, !IncludeDeps).
-
-%-----------------------------------------------------------------------------%
-
-get_dependencies(Items, ImportDeps, UseDeps) :-
-    get_dependencies_implementation(Items,
-        [], IntImportDeps, [], IntUseDeps, [], ImpImportDeps, [], ImpUseDeps),
-    ImportDeps = IntImportDeps ++ ImpImportDeps,
-    UseDeps = IntUseDeps ++ ImpUseDeps.
-
-    % get_dependencies(Items, IntImportDeps, IntUseDeps,
-    %   ImpImportDeps, ImpUseDeps):
-    %
-    % Get the list of modules that a list of items (explicitly) depends on.
-    %
-    % IntImportDeps is the list of modules imported using `:- import_module'
-    % in the interface, and ImpImportDeps those modules imported in the
-    % implementation. IntUseDeps is the list of modules imported using
-    % `:- use_module' in the interface, and ImpUseDeps those modules imported
-    % in the implementation.
-    %
-    % N.B. Typically you also need to consider the module's implicit
-    % dependencies (see get_implicit_dependencies/3), its parent modules
-    % (see get_ancestors/1) and possibly also the module's child modules
-    % (see get_children/2). You may also need to consider indirect
-    % dependencies.
-    %
-    % N.B This predicate assumes that any declarations between the `:- module'
-    % and the first `:- interface' or `:- implementation' are in the
-    % implementation.
-    %
-:- pred get_dependencies(list(item)::in,
-    list(module_name)::out, list(module_name)::out,
-    list(module_name)::out, list(module_name)::out) is det.
-
-get_dependencies(Items, IntImportDeps, IntUseDeps,
-        ImpImportDeps, ImpUseDeps) :-
-    get_dependencies_implementation(Items,
-        [], IntImportDeps, [], IntUseDeps, [], ImpImportDeps, [], ImpUseDeps).
-
-:- pred get_dependencies_implementation(list(item)::in,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out) is det.
-
-get_dependencies_implementation([],
-        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
-get_dependencies_implementation([Item | Items],
-        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
-    ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
-        ( ModuleDefn = md_interface ->
-            get_dependencies_interface(Items,
-                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-        ;
-            ( ModuleDefn = md_import(Modules) ->
-                !:ImpImportDeps = !.ImpImportDeps ++ Modules
-            ; ModuleDefn = md_use(Modules) ->
-                !:ImpUseDeps = !.ImpUseDeps ++ Modules
-            ;
-                true
-            ),
-            get_dependencies_implementation(Items,
-                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-        )
-    ;
-        get_dependencies_implementation(Items,
-            !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-    ).
-
-:- pred get_dependencies_interface(list(item)::in,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out) is det.
-
-get_dependencies_interface([],
-        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
-get_dependencies_interface([Item | Items],
-        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
-    ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
-        ( ModuleDefn = md_implementation ->
-            get_dependencies_implementation(Items,
-                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-        ;
-            ( ModuleDefn = md_import(Modules) ->
-                !:IntImportDeps = !.IntImportDeps ++ Modules
-            ; ModuleDefn = md_use(Modules) ->
-                !:IntUseDeps = !.IntUseDeps ++ Modules
-            ;
-                true
-            ),
-            get_dependencies_interface(Items,
-                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-        )
-    ;
-        get_dependencies_interface(Items,
-            !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-    % Get the fact table dependencies for a module.
-    %
-:- pred get_fact_table_dependencies(list(item)::in, list(string)::out) is det.
-
-get_fact_table_dependencies(Items, Deps) :-
-    get_fact_table_dependencies_2(Items, [], Deps).
-
-:- pred get_fact_table_dependencies_2(list(item)::in, list(string)::in,
-    list(string)::out) is det.
-
-get_fact_table_dependencies_2([], !Deps).
-get_fact_table_dependencies_2([Item | Items], !Deps) :-
-    (
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
-        Pragma = pragma_fact_table(_SymName, _Arity, FileName)
-    ->
-        !:Deps = [FileName | !.Deps]
-    ;
-        true
-    ),
-    get_fact_table_dependencies_2(Items, !Deps).
 
 %-----------------------------------------------------------------------------%
 
@@ -7651,15 +3294,6 @@ report_non_abstract_instance_in_interface(Context, !Specs) :-
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-    % Given a module (well, a list of items), extract the interface
-    % part of that module, i.e. all the items between `:- interface'
-    % and `:- implementation'.
-    % The bodies of instance definitions are removed because
-    % the instance methods have not yet been module qualified.
-    %
-:- pred get_interface(module_name::in, bool::in,
-    list(item)::in, list(item)::out) is det.
-
 get_interface(ModuleName, IncludeImplTypes, Items0, Items) :-
     AddToImpl = (func(_, ImplItems) = ImplItems),
     get_interface_and_implementation_2(IncludeImplTypes, Items0, no,
@@ -7681,6 +3315,24 @@ get_interface_and_implementation(ModuleName, IncludeImplTypes,
     maybe_add_foreign_import_module(ModuleName,
         InterfaceItems0, InterfaceItems).
 
+:- pred init_module_imports(file_name::in, module_name::in, module_name::in,
+    list(item)::in, list(module_name)::in, list(module_name)::in,
+    list(string)::in, maybe(module_timestamps)::in, module_imports::out)
+    is det.
+
+init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
+        Items0, PublicChildren, NestedChildren, FactDeps,
+        MaybeTimestamps, Module) :-
+    % XXX The reason why init_module_imports is here and not in
+    % module_imports.m is this call. This should be fixed, preferably
+    % by changing the module_imports structure.
+    maybe_add_foreign_import_module(ModuleName, Items0, Items),
+    Module = module_imports(SourceFileName, SourceFileModuleName,
+        ModuleName, [], [], [], [], [], PublicChildren,
+        NestedChildren, FactDeps, contains_foreign_code_unknown, [],
+        contains_no_foreign_export, Items, no_module_errors,
+        MaybeTimestamps, no_main, dir.this_directory).
+
 :- pred maybe_add_foreign_import_module(module_name::in,
     list(item)::in, list(item)::out) is det.
 
@@ -7696,9 +3348,6 @@ make_foreign_import(ModuleName, Lang) = Item :-
     Pragma = pragma_foreign_import_module(Lang, ModuleName),
     ItemPragma = item_pragma_info(Origin, Pragma, term.context_init),
     Item = item_pragma(ItemPragma).
-
-:- pred get_foreign_self_imports(list(item)::in, list(foreign_language)::out)
-    is det.
 
 get_foreign_self_imports(Items, Langs) :-
     list.foldl(accumulate_item_foreign_import_langs, Items, set.init, LangSet),
@@ -8595,10 +4244,11 @@ compare_by_symname(ItemA, ItemB, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_to_bool(maybe(T)::in, bool::out) is det.
+:- pred maybe_return_timestamp(maybe(T)::in, maybe_return_timestamp::out)
+    is det.
 
-maybe_to_bool(yes(_), yes).
-maybe_to_bool(no, no).
+maybe_return_timestamp(yes(_), do_return_timestamp).
+maybe_return_timestamp(no, do_not_return_timestamp).
 
 :- pred maybe_record_timestamp(module_name::in, string::in, need_qualifier::in,
     maybe(timestamp)::in, module_imports::in, module_imports::out) is det.
@@ -8618,299 +4268,6 @@ maybe_record_timestamp(ModuleName, Suffix, NeedQualifier,
     ;
         !.Module ^ maybe_timestamps = no
     ).
-
-:- pred report_modification_time_warning(file_name::in, io.error::in,
-    io::di, io::uo) is det.
-
-report_modification_time_warning(SourceFileName, Error, !IO) :-
-    globals.io_set_option(smart_recompilation, bool(no), !IO),
-    globals.io_set_option(generate_item_version_numbers, bool(no), !IO),
-    globals.io_lookup_bool_option(warn_smart_recompilation, Warn, !IO),
-    (
-        Warn = yes,
-        io.write_string("Warning: cannot find modification time for ", !IO),
-        io.write_string(SourceFileName, !IO),
-        io.write_string(":\n", !IO),
-        io.error_message(Error, Msg),
-        io.write_string("  ", !IO),
-        io.write_string(Msg, !IO),
-        io.write_string(".\n", !IO),
-        io.write_string("  Smart recompilation will not work.\n", !IO),
-        globals.io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
-        (
-            HaltAtWarn = yes,
-            io.set_exit_status(1, !IO)
-        ;
-            HaltAtWarn = no
-        )
-    ;
-        Warn = no
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Java command-line utilities.
-%
-
-create_java_shell_script(MainModuleName, Succeeded, !IO) :-
-    % XXX Extension should be ".bat" on Windows
-    Extension = "",
-    module_name_to_file_name(MainModuleName, Extension, no, FileName, !IO),
-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose, "% Generating shell script `" ++
-        FileName ++ "'...\n", !IO),
-
-    module_name_to_file_name(MainModuleName, ".class", no, ClassFileName, !IO),
-    DirName = dir.dirname(ClassFileName),
-
-    % XXX PathSeparator should be ";" on Windows
-    PathSeparator = ":",
-    globals.io_lookup_accumulating_option(java_classpath, Java_Incl_Dirs0,
-        !IO),
-    % We prepend the .class files' directory and the current CLASSPATH.
-    Java_Incl_Dirs = [DirName, "$CLASSPATH" | Java_Incl_Dirs0],
-    ClassPath = string.join_list(PathSeparator, Java_Incl_Dirs),
-
-    globals.io_lookup_string_option(java_interpreter, Java, !IO),
-    module_name_to_file_name(MainModuleName, "", no, Name_No_Extn, !IO),
-
-    io.open_output(FileName, OpenResult, !IO),
-    (
-        OpenResult = ok(ShellScript),
-        % XXX On Windows we should output a .bat file instead
-        io.write_string(ShellScript, "#!/bin/sh\n", !IO),
-        io.write_string(ShellScript, "CLASSPATH=" ++ ClassPath ++ " ", !IO),
-        io.write_string(ShellScript, Java ++ " ", !IO),
-        io.write_string(ShellScript, Name_No_Extn ++ "\n", !IO),
-        io.close_output(ShellScript, !IO),
-        io.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
-        (
-            ChmodResult = ok(Status),
-            ( Status = 0 ->
-                Succeeded = yes,
-                maybe_write_string(Verbose, "% done.\n", !IO)
-            ;
-                unexpected(this_file, "chmod exit status != 0"),
-                Succeeded = no
-            )
-        ;
-            ChmodResult = error(Message),
-            unexpected(this_file, io.error_message(Message)),
-            Succeeded = no
-        )
-    ;
-        OpenResult = error(Message),
-        unexpected(this_file, io.error_message(Message)),
-        Succeeded = no
-    ).
-
-list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles, !IO) :-
-    globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
-    AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
-    (
-        AnySubdirs = yes,
-        module_name_to_file_name(ModuleName, ".class", no, ClassFile, !IO),
-        ClassSubdir = dir.dirname(ClassFile),
-        % Here we use the `-C' option of jar to change directory during
-        % execution, then use sed to strip away the Mercury/classs/
-        % prefix to the class files.
-        % Otherwise, the class files would be stored as
-        %   Mercury/classs/*.class
-        % within the jar file, which is not what we want.
-        % XXX It would be nice to avoid this dependency on sed.
-        ListClassFiles = "-C " ++ ClassSubdir ++ " \\\n" ++
-            "\t\t`echo "" " ++ ClassFiles ++ """" ++
-            " | sed 's| '" ++ ClassSubdir ++ "/| |'`"
-    ;
-        AnySubdirs = no,
-        ListClassFiles = ClassFiles
-    ).
-
-get_env_classpath(Classpath, !IO) :-
-    io.get_environment_var("CLASSPATH", MaybeCP, !IO),
-    (
-        MaybeCP = yes(Classpath)
-    ;
-        MaybeCP = no,
-        io.get_environment_var("java.class.path", MaybeJCP, !IO),
-        (
-            MaybeJCP = yes(Classpath)
-        ;
-            MaybeJCP = no,
-            Classpath = ""
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Erlang utilities
-%
-
-erlang_module_name(ModuleName) =
-    (if mercury_std_library_module_name(ModuleName) then
-        add_outermost_qualifier("mercury", ModuleName)
-    else
-        ModuleName
-    ).
-
-create_erlang_shell_script(MainModuleName, Succeeded, !IO) :-
-    Extension = "",
-    module_name_to_file_name(MainModuleName, Extension, no, ScriptFileName,
-        !IO),
-    globals.io_get_globals(Globals, !IO),
-    grade_directory_component(Globals, GradeDir),
-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose, "% Generating shell script `" ++
-        ScriptFileName ++ "'...\n", !IO),
-
-    globals.io_lookup_string_option(erlang_object_file_extension, BeamExt,
-        !IO),
-    module_name_to_file_name(MainModuleName, BeamExt, no, BeamFileName, !IO),
-    BeamDirName = dir.dirname(BeamFileName),
-    module_name_to_file_name(MainModuleName, BeamBaseNameNoExt),
-
-    % Add `-pa <dir>' option to find the standard library.
-    % (-pa adds the directory to the beginning of the list of paths to search
-    % for .beam files)
-    globals.io_lookup_maybe_string_option(
-        mercury_standard_library_directory, MaybeStdLibDir, !IO),
-    (
-        MaybeStdLibDir = yes(StdLibDir),
-        StdLibBeamsPath = StdLibDir/"lib"/GradeDir/"libmer_std.beams",
-        SearchStdLib = pa_option(yes, StdLibBeamsPath),
-        % Added by elds_to_erlang.m
-        MainFunc = "mercury__main_wrapper"
-    ;
-        MaybeStdLibDir = no,
-        SearchStdLib = "",
-        MainFunc = "main_2_p_0"
-    ),
-
-    % Add `-pa <dir>' options to find any other libraries specified by the user.
-    globals.io_lookup_accumulating_option(
-        mercury_library_directories, MercuryLibDirs0, !IO),
-    MercuryLibDirs = list.map((func(LibDir) = LibDir/"lib"/GradeDir),
-        MercuryLibDirs0),
-    globals.io_lookup_accumulating_option(link_libraries,
-        LinkLibrariesList0, !IO),
-    list.map_foldl2(find_erlang_library_path(MercuryLibDirs),
-        LinkLibrariesList0, LinkLibrariesList, yes, LibrariesSucceeded,
-        !IO),
-    (
-        LibrariesSucceeded = yes,
-        % Remove symlink in the way, if any.
-        io.remove_file(ScriptFileName, _, !IO),
-        io.open_output(ScriptFileName, OpenResult, !IO),
-        (
-            OpenResult = ok(ShellScript),
-
-            globals.io_lookup_string_option(erlang_interpreter, Erlang, !IO),
-            SearchLibs = string.append_list(list.map(pa_option(yes),
-                list.sort_and_remove_dups(LinkLibrariesList))),
-
-            % XXX main_2_p_0 is not necessarily in the main module itself and
-            % could be in a submodule.  We don't handle that yet.
-            SearchProg = pa_option(no, """$DIR""/" ++ quote_arg(BeamDirName)),
-
-            % Write the shell script.
-            % Note we need to use '-extra' instead of '--' for "-flag" and
-            % "+flag" arguments to be pass through to the Mercury program.
-            io.write_strings(ShellScript, [
-                "#!/bin/sh\n",
-                "# Generated by the Mercury compiler.\n",
-                "DIR=`dirname ""$0""`\n",
-                "exec ", Erlang, " -noshell \\\n",
-                SearchStdLib, SearchLibs, SearchProg,
-                " -s ", BeamBaseNameNoExt, " ", MainFunc,
-                " -s init stop -extra ""$@""\n"
-            ], !IO),
-            io.close_output(ShellScript, !IO),
-
-            % Set executable bit.
-            io.call_system("chmod a+x " ++ ScriptFileName, ChmodResult, !IO),
-            (
-                ChmodResult = ok(Status),
-                ( Status = 0 ->
-                    Succeeded = yes,
-                    maybe_write_string(Verbose, "% done.\n", !IO)
-                ;
-                    unexpected(this_file, "chmod exit status != 0"),
-                    Succeeded = no
-                )
-            ;
-                ChmodResult = error(Message),
-                unexpected(this_file, io.error_message(Message)),
-                Succeeded = no
-            )
-        ;
-            OpenResult = error(Message),
-            unexpected(this_file, io.error_message(Message)),
-            Succeeded = no
-        )
-    ;
-        LibrariesSucceeded = no,
-        Succeeded = no
-    ).
-
-:- pred find_erlang_library_path(list(dir_name)::in, string::in, string::out,
-    bool::in, bool::out, io::di, io::uo) is det.
-
-find_erlang_library_path(MercuryLibDirs, LibName, LibPath, !Succeeded, !IO) :-
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
-    file_name_to_module_name(LibName, LibModuleName),
-    globals.io_set_option(use_grade_subdirs, bool(no), !IO),
-    module_name_to_lib_file_name("lib", LibModuleName, ".beams", no,
-        LibFileName, !IO),
-    globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
-
-    io.input_stream(InputStream, !IO),
-    search_for_file_returning_dir(MercuryLibDirs, LibFileName,
-        SearchResult, !IO),
-    (
-        SearchResult = ok(DirName),
-        LibPath = DirName/LibFileName,
-        io.set_input_stream(InputStream, LibInputStream, !IO),
-        io.close_input(LibInputStream, !IO)
-    ;
-        SearchResult = error(Error),
-        LibPath = "",
-        write_error_pieces_maybe_with_context(no, 0, [words(Error)], !IO),
-        !:Succeeded = no
-    ).
-
-:- func pa_option(bool, dir_name) = string.
-
-pa_option(Quote, Dir0) = " -pa " ++ Dir ++ " \\\n" :-
-    (
-        Quote = yes,
-        Dir = quote_arg(Dir0)
-    ;
-        Quote = no,
-        Dir = Dir0
-    ).
-
-%-----------------------------------------------------------------------------%
-
-% Changes to the following predicate may require similar changes to
-% make.program_target.install_library_grade_files/9.
-
-get_install_name_option(OutputFileName, InstallNameOpt, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    globals.lookup_string_option(Globals, shlib_linker_install_name_flag,
-        InstallNameFlag),
-    globals.lookup_string_option(Globals, shlib_linker_install_name_path,
-        InstallNamePath0),
-    ( InstallNamePath0 = "" ->
-        globals.lookup_string_option(Globals, install_prefix, InstallPrefix),
-        grade_directory_component(Globals, GradeDir),
-        InstallNamePath = InstallPrefix / "lib" / "mercury" / "lib" / GradeDir
-    ;
-        InstallNamePath = InstallNamePath0
-    ),
-    InstallNameOpt = InstallNameFlag ++ InstallNamePath / OutputFileName.
 
 %-----------------------------------------------------------------------------%
 

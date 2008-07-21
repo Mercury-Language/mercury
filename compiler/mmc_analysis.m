@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2006 University of Melbourne.
+% Copyright (C) 2003-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,12 +45,12 @@
 
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
@@ -114,7 +114,7 @@
     maybe_error(string)::out, io::di, io::uo) is det.
 
 mmc_module_name_to_read_file_name(ModuleName, Ext, MaybeFileName, !IO) :-
-    modules.module_name_to_search_file_name(ModuleName, Ext, FileName0, !IO),
+    module_name_to_search_file_name(ModuleName, Ext, FileName0, !IO),
     globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
     search_for_file(Dirs, FileName0, MaybeFileName, !IO),
     (
@@ -129,7 +129,7 @@ mmc_module_name_to_read_file_name(ModuleName, Ext, MaybeFileName, !IO) :-
     string::out, io::di, io::uo) is det.
 
 mmc_module_name_to_write_file_name(ModuleName, Ext, FileName, !IO) :-
-    module_name_to_file_name(ModuleName, Ext, yes, FileName, !IO).
+    module_name_to_file_name(ModuleName, Ext, do_create_dirs, FileName, !IO).
 
 module_name_func_id(ModuleInfo, proc(PredId, ProcId), PredModule, FuncId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),

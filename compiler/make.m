@@ -22,12 +22,12 @@
 :- include_module make.options_file.
 :- include_module make.util.
 
+:- import_module libs.file_util.
 :- import_module make.options_file.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
-:- import_module parse_tree.modules.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.module_imports.
 
 :- import_module io.
 :- import_module list.
@@ -71,6 +71,7 @@
 :- import_module make.module_target.
 :- import_module make.program_target.
 :- import_module make.util.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.error_util.
 :- import_module top_level.                 % XXX unwanted dependency
 :- import_module top_level.mercury_compile. % XXX unwanted dependency
