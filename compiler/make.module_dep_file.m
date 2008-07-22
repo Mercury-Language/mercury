@@ -307,9 +307,12 @@ do_write_module_dep_file(Imports, !IO) :-
                 mercury_output_bracketed_sym_name(ForeignImport, !IO)
             ), !IO),
         io.write_string("},\n\t", !IO),
-        io.write(Imports ^ contains_foreign_export, !IO),
+        contains_foreign_export_to_string(Imports ^ contains_foreign_export,
+            ContainsForeignExportStr),
+        io.write_string(ContainsForeignExportStr, !IO),
         io.write_string(",\n\t", !IO),
-        io.write(Imports ^ has_main, !IO),
+        has_main_to_string(Imports ^ has_main, HasMainStr),
+        io.write_string(HasMainStr, !IO),
         io.write_string("\n).\n", !IO),
         io.set_output_stream(OldOutputStream, _, !IO),
         io.close_output(ProgDepStream, !IO)
@@ -319,6 +322,35 @@ do_write_module_dep_file(Imports, !IO) :-
         io.write_strings(["Error opening ", ProgDepFile,
             " for output: ", Msg, "\n"], !IO),
         io.set_exit_status(1, !IO)
+    ).
+
+:- pred contains_foreign_export_to_string(contains_foreign_export, string).
+:- mode contains_foreign_export_to_string(in, out) is det.
+:- mode contains_foreign_export_to_string(out, in) is semidet.
+
+contains_foreign_export_to_string(ContainsForeignExport,
+        ContainsForeignExportStr) :-
+    (
+        ContainsForeignExport = contains_foreign_export,
+        ContainsForeignExportStr = "contains_foreign_export"
+    ;
+        ContainsForeignExport = contains_no_foreign_export,
+        % Yes, without the "contains_" prefix.  Don't change it unless you mean
+        % to break compatibility with older .module_dep files.
+        ContainsForeignExportStr = "no_foreign_export"
+    ).
+
+:- pred has_main_to_string(has_main, string).
+:- mode has_main_to_string(in, out) is det.
+:- mode has_main_to_string(out, in) is semidet.
+
+has_main_to_string(HasMain, HasMainStr) :-
+    (
+        HasMain = has_main,
+        HasMainStr = "has_main"
+    ;
+        HasMain = no_main,
+        HasMainStr = "no_main"
     ).
 
 :- pred read_module_dependencies_search(rebuild_module_deps::in,
@@ -414,18 +446,11 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
 
             ContainsForeignExportTerm =
                 term.functor(term.atom(ContainsForeignExportStr), [], _),
-            (
-                ContainsForeignExportStr = "contains_foreign_export",
-                ContainsForeignExport = contains_foreign_export
-            ;
-                ContainsForeignExportStr = "no_foreign_export",
-                ContainsForeignExport = contains_no_foreign_export
-            ),
+            contains_foreign_export_to_string(ContainsForeignExport,
+                ContainsForeignExportStr),
 
             HasMainTerm = term.functor(term.atom(HasMainStr), [], _),
-            ( HasMainStr = "has_main", HasMain = has_main
-            ; HasMainStr = "no_main", HasMain = no_main
-            )
+            has_main_to_string(HasMain, HasMainStr)
         ->
             (
                 ForeignLanguages = [],
