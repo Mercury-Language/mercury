@@ -85,6 +85,7 @@
 :- import_module transform_hlds.ctgc.util.
 :- import_module transform_hlds.dependency_graph.
 
+:- import_module bimap.
 :- import_module bool.
 :- import_module int.
 :- import_module io.
@@ -183,7 +184,7 @@ indirect_reuse_rerun_analyse_scc(SharingTable, SCC, !ModuleInfo,
     list(pred_proc_id)::out) is det.
 
 extend_scc_with_reuse_procs(ReuseTable, SCC, ExtendedSCC) :-
-    ReuseVersionMap = ReuseTable ^ reuse_version_map,
+    ReuseVersionMap = bimap.forward_map(ReuseTable ^ reuse_version_map),
     solutions(
         (pred(NewPPId::out) is nondet :-
             member(OrigPPId, SCC),

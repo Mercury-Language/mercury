@@ -53,7 +53,9 @@
 :- import_module analysis.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module transform_hlds.ctgc.structure_reuse.domain.
 
+:- import_module bool.
 :- import_module io. 
 
 %-----------------------------------------------------------------------------%
@@ -87,6 +89,9 @@
 :- instance partial_order(structure_reuse_func_info, structure_reuse_answer).
 :- instance to_term(structure_reuse_answer).
 
+:- pred structure_reuse_answer_harsher_than_in_analysis_registry(
+    module_info::in, reuse_as_table::in, pred_proc_id::in, bool::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -116,12 +121,14 @@
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.mmc_analysis.
 
+:- import_module bimap.
 :- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
+:- import_module string.
 :- import_module svmap.
 :- import_module term.
 
@@ -246,9 +253,8 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
         MakeAnalysisRegistry = yes,
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
-            CondReuseRevMap = map.reverse_map(ReuseVersionMap),
             map.foldl(
-                record_structure_reuse_results(!.ModuleInfo, CondReuseRevMap),
+                record_structure_reuse_results(!.ModuleInfo, ReuseVersionMap),
                 ReuseInfoMap, !AnalysisInfo),
             set.fold(handle_structure_reuse_dependency(!.ModuleInfo),
                 DepProcs, !AnalysisInfo),
@@ -265,7 +271,7 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
     % remove them if they were created from exported procedures (so would be
     % exported themselves). 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-    map.foldl(
+    bimap.foldl(
         remove_useless_reuse_proc(!.ModuleInfo, VeryVerbose, ReuseInfoMap),
         ReuseVersionMap, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
@@ -903,21 +909,16 @@ reuse_answer_from_term(Term, Answer) :-
 %
 
 :- pred record_structure_reuse_results(module_info::in,
-    map(pred_proc_id, set(ppid_no_clobbers))::in, pred_proc_id::in,
+    bimap(ppid_no_clobbers, pred_proc_id)::in, pred_proc_id::in,
     reuse_as_and_status::in, analysis_info::in, analysis_info::out) is det.
 
-record_structure_reuse_results(ModuleInfo, CondReuseReverseMap,
-        PPId, ReuseAs_Status, !AnalysisInfo) :-
-    ( map.search(CondReuseReverseMap, PPId, Set) ->
+record_structure_reuse_results(ModuleInfo, CondReuseMap, PPId, ReuseAs_Status,
+        !AnalysisInfo) :-
+    ( bimap.reverse_search(CondReuseMap, Key, PPId) ->
         % PPId is a conditional reuse procedure created from another procedure.
         % We need to record the result using the name of the original
         % procedure.
-        ( set.singleton_set(Set, Elem) ->
-            Elem = ppid_no_clobbers(RecordPPId, NoClobbers)
-        ;
-            unexpected(this_file,
-                "record_structure_reuse_results: non-singleton set")
-        )
+        Key = ppid_no_clobbers(RecordPPId, NoClobbers)
     ;
         RecordPPId = PPId,
         NoClobbers = []
@@ -939,27 +940,33 @@ record_structure_reuse_results_2(ModuleInfo, PPId, NoClobbers, ReuseAs_Status,
         for_analysis_framework, ShouldWrite),
     (
         ShouldWrite = yes,
-        ( reuse_as_no_reuses(ReuseAs) ->
-            Answer = structure_reuse_answer_no_reuse
-        ; reuse_as_all_unconditional_reuses(ReuseAs) ->
-            Answer = structure_reuse_answer_unconditional
-        ; reuse_as_conditional_reuses(ReuseAs) ->
-            module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo,
-                ProcInfo),
-            proc_info_get_headvars(ProcInfo, HeadVars),
-            proc_info_get_vartypes(ProcInfo, VarTypes),
-            map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
-            Answer = structure_reuse_answer_conditional(HeadVars,
-                HeadVarTypes, ReuseAs)
-        ;
-            unexpected(this_file, "record_structure_reuse_results")
-        ),
+        reuse_as_to_structure_reuse_answer(ModuleInfo, PPId, ReuseAs, Answer),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, structure_reuse_call(NoClobbers),
             Answer, Status, !AnalysisInfo)
     ;
         ShouldWrite = no
     ).
+
+:- pred reuse_as_to_structure_reuse_answer(module_info::in, pred_proc_id::in,
+    reuse_as::in, structure_reuse_answer::out) is det.
+
+reuse_as_to_structure_reuse_answer(ModuleInfo, PPId, ReuseAs, Answer) :-
+    ( reuse_as_no_reuses(ReuseAs) ->
+         Answer = structure_reuse_answer_no_reuse
+     ; reuse_as_all_unconditional_reuses(ReuseAs) ->
+         Answer = structure_reuse_answer_unconditional
+     ; reuse_as_conditional_reuses(ReuseAs) ->
+         module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo,
+             ProcInfo),
+         proc_info_get_headvars(ProcInfo, HeadVars),
+         proc_info_get_vartypes(ProcInfo, VarTypes),
+         map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
+         Answer = structure_reuse_answer_conditional(HeadVars,
+             HeadVarTypes, ReuseAs)
+     ;
+         unexpected(this_file, "reuse_as_to_structure_reuse_answer")
+     ).
 
 :- pred handle_structure_reuse_dependency(module_info::in,
     ppid_no_clobbers::in, analysis_info::in, analysis_info::out) is det.
@@ -1020,6 +1027,72 @@ should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
     ;
         ShouldWrite = no
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% for structure_reuse.versions
+%
+
+structure_reuse_answer_harsher_than_in_analysis_registry(ModuleInfo,
+        ReuseTable, ReusePPId, Harsher) :-
+    module_info_get_analysis_info(ModuleInfo, AnalysisInfo), 
+
+    % Find the original pred_proc_id and no-clobber list that this reuse
+    % procedure was made for.
+    reuse_as_table_reverse_search_reuse_version_proc(ReuseTable, ReusePPId,
+        OrigPPId, NoClobbers),
+
+    % Look up the old result.
+    module_name_func_id(ModuleInfo, OrigPPId, ModuleName, FuncId),
+    module_info_proc_info(ModuleInfo, OrigPPId, ProcInfo),
+    FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
+    Call = structure_reuse_call(NoClobbers),
+    analysis.lookup_best_result(AnalysisInfo, ModuleName, FuncId, FuncInfo,
+        Call, MaybeOldResult),
+    (
+        MaybeOldResult = yes(analysis_result(OldCall, OldAnswer, _)),
+        equivalent(FuncInfo, Call, OldCall)
+    ->
+        % Compare with the new result.
+        lookup_new_structure_reuse_answer(ModuleInfo, ReuseTable, ReusePPId,
+            NewAnswer),
+        ( more_precise_than(FuncInfo, NewAnswer, OldAnswer) ->
+            Harsher = yes,
+            trace [
+                compile_time(flag("harsher_answer_check")),
+                runtime(env("HARSHER_ANSWER_CHECK")),
+                io(!IO)
+            ] (
+                io.write_string("Structure reuse answer for ", !IO),
+                write_pred_proc_id(ModuleInfo, ReusePPId, !IO),
+                io.write_string(" has harsher conditions than listed " ++
+                    "in analysis file.\n", !IO),
+                io.write_string("was: ", !IO),
+                io.write(OldAnswer, !IO),
+                io.nl(!IO),
+                io.write_string("now: ", !IO),
+                io.write(NewAnswer, !IO),
+                io.nl(!IO)
+            )
+        ;
+            Harsher = no
+        )
+    ;
+        Harsher = no
+    ).
+
+:- pred lookup_new_structure_reuse_answer(module_info::in, reuse_as_table::in,
+    pred_proc_id::in, structure_reuse_answer::out) is det.
+
+lookup_new_structure_reuse_answer(ModuleInfo, ReuseTable, ReusePPId,
+        NewAnswer) :-
+    ( reuse_as_table_search(ReuseTable, ReusePPId, ReuseAs_Status) ->
+        ReuseAs_Status = reuse_as_and_status(NewReuseAs, _)
+    ;
+        unexpected(this_file, "lookup_new_structure_reuse_answer")
+    ),
+    reuse_as_to_structure_reuse_answer(ModuleInfo, ReusePPId, NewReuseAs,
+        NewAnswer).
 
 %-----------------------------------------------------------------------------%
 

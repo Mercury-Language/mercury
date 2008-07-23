@@ -24,6 +24,7 @@
 :- import_module transform_hlds.ctgc.livedata.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 
+:- import_module bimap.
 :- import_module bool. 
 :- import_module io. 
 :- import_module map. 
@@ -214,7 +215,7 @@
                 reuse_info_map      :: map(pred_proc_id, reuse_as_and_status),
                 % Maps pred_proc_ids to their reuse information and status.
 
-                reuse_version_map   :: map(ppid_no_clobbers, pred_proc_id)
+                reuse_version_map   :: bimap(ppid_no_clobbers, pred_proc_id)
                 % Maps original procedures and associated no-clobber argument
                 % lists to the reuse version procedures already created.
             ).
@@ -242,6 +243,9 @@
 
 :- pred reuse_as_table_search_reuse_version_proc(reuse_as_table::in,
     pred_proc_id::in, list(int)::in, pred_proc_id::out) is semidet.
+
+:- pred reuse_as_table_reverse_search_reuse_version_proc(reuse_as_table::in,
+    pred_proc_id::in, pred_proc_id::out, list(int)::out) is det.
 
 :- pred reuse_as_table_set(pred_proc_id::in, reuse_as_and_status::in, 
     reuse_as_table::in, reuse_as_table::out) is det.
@@ -919,14 +923,23 @@ to_structure_reuse_condition(Condition) = StructureReuseCondition :-
 % reuse_as_table
 %
 
-reuse_as_table_init = reuse_as_table(map.init, map.init).
+reuse_as_table_init = reuse_as_table(map.init, bimap.init).
 
 reuse_as_table_search(Table, PPId, ReuseAs_Status) :-
     map.search(Table ^ reuse_info_map, PPId, ReuseAs_Status).
 
 reuse_as_table_search_reuse_version_proc(Table, PPId, NoClobbers, NewPPId) :-
-    map.search(Table ^ reuse_version_map, ppid_no_clobbers(PPId, NoClobbers),
+    bimap.search(Table ^ reuse_version_map, ppid_no_clobbers(PPId, NoClobbers),
         NewPPId).
+
+reuse_as_table_reverse_search_reuse_version_proc(Table, NewPPId,
+        OrigPPId, NoClobbers) :-
+    ( bimap.reverse_search(Table ^ reuse_version_map, Key, NewPPId) ->
+        Key = ppid_no_clobbers(OrigPPId, NoClobbers)
+    ;
+        unexpected(this_file,
+            "reuse_as_table_reverse_search_reuse_version_proc")
+    ).
 
 reuse_as_table_set(PPId, ReuseAs_Status, !Table) :- 
     T0 = !.Table ^ reuse_info_map,
@@ -935,7 +948,7 @@ reuse_as_table_set(PPId, ReuseAs_Status, !Table) :-
 
 reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId, !Table) :- 
     T0 = !.Table ^ reuse_version_map,
-    map.det_insert(T0, ppid_no_clobbers(PPId, NoClobbers), NewPPId, T),
+    bimap.det_insert(T0, ppid_no_clobbers(PPId, NoClobbers), NewPPId, T),
     !Table ^ reuse_version_map := T.
 
 reuse_as_table_maybe_dump(DoDump, ModuleInfo, Table, !IO) :-

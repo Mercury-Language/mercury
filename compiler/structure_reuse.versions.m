@@ -66,10 +66,15 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
+:- import_module transform_hlds.ctgc.structure_reuse.analysis.
 
+:- import_module bimap.
+:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -102,7 +107,7 @@ generate_reuse_name(ModuleInfo, PPId, NoClobbers) = ReuseName :-
     %
 create_reuse_procedures(!ReuseTable, !ModuleInfo) :-
     % Get the list of conditional reuse procedures already created.
-    ExistingReusePPIds = map.values(!.ReuseTable ^ reuse_version_map),
+    ExistingReusePPIds = bimap.coordinates(!.ReuseTable ^ reuse_version_map),
     ExistingReusePPIdsSet = set.from_list(ExistingReusePPIds),
 
     map.foldl2(divide_reuse_procs(ExistingReusePPIdsSet),
@@ -118,9 +123,9 @@ create_reuse_procedures(!ReuseTable, !ModuleInfo) :-
     % Process all the goals to update the reuse annotations.  In the reuse
     % versions of procedures we can take advantage of potential reuse
     % opportunities.
-    list.foldl(process_proc(convert_potential_reuse, !.ReuseTable),
+    list.foldl(check_cond_process_proc(convert_potential_reuse, !.ReuseTable),
         ReuseCondPPIds, !ModuleInfo),
-    list.foldl(process_proc(convert_potential_reuse, !.ReuseTable),
+    list.foldl(check_cond_process_proc(convert_potential_reuse, !.ReuseTable),
         ExistingReusePPIds, !ModuleInfo),
 
     % In the original procedures, only the unconditional reuse opportunities
@@ -234,6 +239,50 @@ create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
 :- type convert_potential_reuse
     --->    convert_potential_reuse
     ;       leave_potential_reuse.
+
+    % When generating target code, we may find a set of reuse conditions on a
+    % procedure which are *harsher* than the reuse conditions that we found
+    % during the `--make-analysis-registry' step.  This can happen due extra
+    % analysis information gathered for other modules in the meantime.  In that
+    % case, we may have external callers to the procedure which have verified
+    % only against the *laxer* reuse conditions.
+    %
+    % Hence we need to be careful that we don't generate any code which
+    % violates the weaker reuse conditions.  One (conservative) way to do that
+    % is to ignore all the potential reuse annotations and only use the
+    % unconditional reuse annotations.
+    %
+    % XXX the same problem occurs with `--intermodule-optimisation'
+    % 
+:- pred check_cond_process_proc(convert_potential_reuse::in,
+    reuse_as_table::in, pred_proc_id::in, module_info::in, module_info::out)
+    is det.
+
+check_cond_process_proc(ConvertPotentialReuse, ReuseTable, ReusePPId,
+        !ModuleInfo) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
+    globals.lookup_bool_option(Globals, make_analysis_registry,
+        MakeAnalysisReg),
+    (
+        IntermodAnalysis = yes,
+        MakeAnalysisReg = no
+    ->
+        structure_reuse_answer_harsher_than_in_analysis_registry(!.ModuleInfo,
+            ReuseTable, ReusePPId, IsHarsher)
+    ;
+        IsHarsher = no
+    ),
+    (
+        IsHarsher = yes,
+        % Ignoring potential reuse is equivalent to having only unconditional
+        % structure reuse.
+        process_proc(leave_potential_reuse, ReuseTable, ReusePPId, !ModuleInfo)
+    ;
+        IsHarsher = no,
+        process_proc(ConvertPotentialReuse, ReuseTable, ReusePPId, !ModuleInfo)
+    ).
 
     % Process the goal of the procedure with the given pred_proc_id so that
     % all potential reuses are replaced by real reuses, and all calls to
