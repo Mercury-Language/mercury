@@ -81,6 +81,8 @@
 :- import_module analysis.
 :- import_module libs.compiler_util.
 :- import_module libs.trace_params.
+:- import_module mdbcomp.
+:- import_module mdbcomp.feedback.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
@@ -187,12 +189,12 @@ postprocess_options(error(ErrorMessage), [ErrorMessage], !IO).
 postprocess_options(ok(OptionTable0), Errors, !IO) :-
     check_option_values(OptionTable0, OptionTable, Target, GC_Method,
         TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, C_CompilerType, [], CheckErrors),
+        MaybeThreadSafe, C_CompilerType, FeedbackInfo, [], CheckErrors, !IO),
     (
         CheckErrors = [],
         postprocess_options_2(OptionTable, Target, GC_Method,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
-            TraceSuppress, MaybeThreadSafe, C_CompilerType,
+            TraceSuppress, MaybeThreadSafe, C_CompilerType, FeedbackInfo,
             [], Errors, !IO)
     ;
         CheckErrors = [_ | _],
@@ -203,12 +205,12 @@ postprocess_options(ok(OptionTable0), Errors, !IO) :-
     compilation_target::out, gc_method::out, tags_method::out,
     termination_norm::out, termination_norm::out, trace_level::out,
     trace_suppress_items::out, may_be_thread_safe::out,
-    c_compiler_type::out,
-    list(string)::in, list(string)::out) is det.
+    c_compiler_type::out, feedback_info::out,
+    list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, !Errors) :-
+        C_CompilerType, FeedbackInfo, !Errors, !IO) :-
     map.lookup(!.OptionTable, target, Target0),
     (
         Target0 = string(TargetStr),
@@ -354,6 +356,24 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         add_error("Invalid argument to option " ++
             "`--c-compiler-type'\n\t(must be" ++
             "`gcc', `lcc', `cl, or `unknown').", !Errors)
+    ),
+    map.lookup(!.OptionTable, feedback_file, FeedbackFile0),
+    (
+        FeedbackFile0 = string(FeedbackFile),
+        FeedbackFile \= ""
+    ->
+        read_feedback_file(FeedbackFile, FeedbackReadResult, !IO),
+        (
+            FeedbackReadResult = ok(FeedbackInfo)
+        ;
+            FeedbackReadResult = error(Error),
+            read_error_message_string(FeedbackFile, Error, ErrorMessage),
+            add_error(ErrorMessage, !Errors),
+            FeedbackInfo = init_feedback_info
+        )
+    ;
+        % No feedback info.
+        FeedbackInfo = init_feedback_info
     ). 
         
 :- pred add_error(string::in, list(string)::in, list(string)::out) is det.
@@ -368,15 +388,15 @@ add_error(Error, Errors0, Errors) :-
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
     termination_norm::in, trace_level::in, trace_suppress_items::in,
-    may_be_thread_safe::in, c_compiler_type::in,
+    may_be_thread_safe::in, c_compiler_type::in, feedback_info::in,
     list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, !Errors, !IO) :-
+        C_CompilerType, FeedbackInfo, !Errors, !IO) :-
     globals_io_init(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, !IO),
+        C_CompilerType, FeedbackInfo, !IO),
 
     some [!Globals] (
         globals.io_get_globals(!:Globals, !IO),
@@ -457,6 +477,34 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.lookup_bool_option(!.Globals, highlevel_data, HighLevelData),
         globals.lookup_bool_option(!.Globals,
             automatic_intermodule_optimization, AutoIntermodOptimization),
+
+        % Implicit parallelism requires feedback information, however this
+        % error should only be shown in a parallel grade, otherwise implicit
+        % parallelism should be disabled.
+        globals.lookup_bool_option(!.Globals, implicit_parallelism,
+            ImplicitParallelism),
+        (
+            ImplicitParallelism = yes,
+            globals.lookup_bool_option(!.Globals, parallel, Parallel),
+            (
+                Parallel = yes,
+                globals.lookup_string_option(!.Globals, feedback_file,
+                    FeedbackFile),
+                (
+                    FeedbackFile = ""
+                ->
+                    add_error("'--implicit-parallelism' requires '--feedback'", 
+                        !Errors)
+                ;
+                    true
+                )
+            ;
+                Parallel = no,
+                globals.set_option(implicit_parallelism, bool(no), !Globals)
+            )
+        ;
+            ImplicitParallelism = no
+        ),
 
         % Generating IL implies:
         %   - gc_method `automatic' and no heap reclamation on failure

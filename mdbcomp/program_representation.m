@@ -285,6 +285,27 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Describe a call site.
+    %
+:- type call_site
+    --->    call_site(
+                caller                  :: string_proc_label,
+                slot                    :: int,
+                call_type_and_callee    :: call_type_and_callee
+            ).
+
+    % The type and callee of call.  The callee is only availbie for plain
+    % calls.
+    %
+:- type call_type_and_callee
+    --->    callback_call
+    ;       higher_order_call
+    ;       method_call
+    ;       plain_call(string_proc_label)
+    ;       special_call.
+
+%-----------------------------------------------------------------------------%
+
 % We can think of the goal that defines a procedure to be a tree, whose leaves
 % are primitive goals and whose interior nodes are compound goals. These two
 % types describe the position of a goal in this tree. A goal_path_step type

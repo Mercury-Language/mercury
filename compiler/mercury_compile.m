@@ -4125,50 +4125,28 @@ maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, parallel, Parallel),
-    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.lookup_bool_option(Globals, implicit_parallelism,
         ImplicitParallelism),
-    globals.lookup_string_option(Globals, feedback_file,
-        FeedbackFile),
-    ( FeedbackFile = "" ->
-        % No feedback file has been specified.
-        true
-    ;
+    (
+        ImplicitParallelism = yes,
+        maybe_write_string(Verbose, "% Applying implicit " ++
+            "parallelism...\n", !IO),
+        maybe_flush_output(Verbose, !IO),
+        apply_implicit_parallelism_transformation(!.HLDS, MaybeHLDS),
         (
-            % If this is false, no implicit parallelism is to be introduced.
-            Parallel = yes,
-
-            % If this is false, then the user hasn't asked for implicit
-            % parallelism.
-            ImplicitParallelism = yes,
-
-            % Our mechanism for implicit parallelism only works for the low
-            % level backend.
-            HighLevelCode = no
-        ->
-            globals.get_target(Globals, Target),
-            (
-                Target = target_c,
-                maybe_write_string(Verbose, "% Applying implicit " ++
-                    "parallelism...\n", !IO),
-                maybe_flush_output(Verbose, !IO),
-                apply_implicit_parallelism_transformation(!HLDS,
-                    FeedbackFile, !IO),
-                maybe_write_string(Verbose, "% done.\n", !IO),
-                maybe_report_stats(Stats, !IO)
-            ;
-                ( Target = target_il
-                ; Target = target_java
-                ; Target = target_asm
-                ; Target = target_x86_64
-                ; Target = target_erlang
-                )
-                % Leave the HLDS alone. We cannot implement parallelism.
-            )
+            MaybeHLDS = yes(!:HLDS)
         ;
-            true
-        )
+            MaybeHLDS = no,
+            io.write_string(
+                "Insufficiant feedback information for implicit parallelism.",
+                !IO),
+            io.set_exit_status(1, !IO)
+        ),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        % The user hasn't asked for implicit parallelism.
+        ImplicitParallelism = no
     ).
 
 :- pred maybe_control_granularity(bool::in, bool::in,

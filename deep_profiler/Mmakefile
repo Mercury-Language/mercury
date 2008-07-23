@@ -58,6 +58,7 @@ VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 #-----------------------------------------------------------------------------#
 
 MDBCOMP_MODULES = \
+	feedback.m \
 	mdbcomp.m \
 	prim_data.m \
 	program_representation.m \
