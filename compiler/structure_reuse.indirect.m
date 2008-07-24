@@ -585,14 +585,12 @@ indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-
             % It's possible that the called procedure had "unconditional
             % reuse only" previously but has since gained reuse conditions.
         ),
-        % Only need to re-verify calls to procedures for which we have the
-        % code.
-        module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
-        ( pred_info_is_imported(CalleePredInfo) ->
-            Verify = no
-        ;
-            Verify = yes
-        )
+        Verify = yes
+        % For imported procedures, even though we know its reuse information
+        % can't have changed since the last pass (so verification is guaranteed
+        % to succeed a second time), we still need to call
+        % `verify_indirect_reuse' so that its conditions will be added to the
+        % reuse_as.
     ),
     (
         Verify = yes,
