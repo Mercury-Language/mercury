@@ -1534,7 +1534,7 @@ parse_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes, Det) :-
         Groundness = ho_any
     ),
     parse_pred_expr_args(PredArgsList, Args, Modes),
-    inst_var_constraints_are_consistent_in_modes(Modes).
+    inst_var_constraints_are_self_consistent_in_modes(Modes).
 
 parse_dcg_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes,
         Det) :-
@@ -1550,7 +1550,7 @@ parse_dcg_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes,
         Groundness = ho_any
     ),
     parse_dcg_pred_expr_args(PredArgsList, Args, Modes),
-    inst_var_constraints_are_consistent_in_modes(Modes).
+    inst_var_constraints_are_self_consistent_in_modes(Modes).
 
 parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
     % Parse a func expression with specified modes and determinism.
@@ -1571,7 +1571,7 @@ parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
         parse_lambda_arg(RetTerm, RetArg, RetMode),
         list.append(Args0, [RetArg], Args),
         list.append(Modes0, [RetMode], Modes),
-        inst_var_constraints_are_consistent_in_modes(Modes)
+        inst_var_constraints_are_self_consistent_in_modes(Modes)
     ;
         % The argument modes default to `in',
         % the return mode defaults to `out'.
@@ -1606,7 +1606,7 @@ parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
     RetMode = OutMode,
     Det = detism_det,
     list.append(Modes0, [RetMode], Modes),
-    inst_var_constraints_are_consistent_in_modes(Modes),
+    inst_var_constraints_are_self_consistent_in_modes(Modes),
     list.append(Args0, [RetTerm], Args1),
     list.map(term.coerce, Args1, Args).
 

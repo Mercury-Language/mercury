@@ -1,3 +1,5 @@
+func_errors.m:010: Error: function arguments have modes, but function result
+func_errors.m:010:   does not.
 func_errors.m:010: Error: some but not all arguments have modes.
 func_errors.m:011: Error: function arguments have modes, but function result
 func_errors.m:011:   does not.

@@ -478,11 +478,11 @@ convert_mode_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 
 convert_mode(AllowConstrainedInstVar, Term, Mode) :-
     (
-        Term = term.functor(term.atom(">>"), [InstA, InstB], _)
+        Term = term.functor(term.atom(">>"), [InstTermA, InstTermB], _)
     ->
-        convert_inst(AllowConstrainedInstVar, InstA, ConvertedInstA),
-        convert_inst(AllowConstrainedInstVar, InstB, ConvertedInstB),
-        Mode = (ConvertedInstA -> ConvertedInstB)
+        convert_inst(AllowConstrainedInstVar, InstTermA, InstA),
+        convert_inst(AllowConstrainedInstVar, InstTermB, InstB),
+        Mode = (InstA -> InstB)
     ;
         % Handle higher-order predicate modes:
         % a mode of the form
@@ -769,15 +769,21 @@ convert_bound_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 convert_bound_inst(AllowConstrainedInstVar, InstTerm,
         bound_functor(ConsId, Args)) :-
     InstTerm = term.functor(Functor, Args0, _),
-    ( Functor = term.atom(_) ->
+    (
+        Functor = term.atom(_),
         sym_name_and_args(InstTerm, SymName, Args1),
         list.length(Args1, Arity),
         ConsId = cons(SymName, Arity)
-    ; Functor = term.implementation_defined(_) ->
+    ;
+        Functor = term.implementation_defined(_),
         % Implementation-defined literals should not appear in inst
         % definitions.
         fail
     ;
+        ( Functor = term.integer(_)
+        ; Functor = term.float(_)
+        ; Functor = term.string(_)
+        ),
         Args1 = Args0,
         list.length(Args1, Arity),
         ConsId = make_functor_cons_id(Functor, Arity)
