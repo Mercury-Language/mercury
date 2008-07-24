@@ -217,6 +217,13 @@ subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
                 type_contains_subtype(ModuleInfo, SubTypeB, SubTypeA),
                 subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension0)
             ->
+                % Don't succeed for something like:
+                %   A   = [typesel(foo)],
+                %   B   = [typesel(bar)],
+                %   Ext = [typesel(foo)]
+                % i.e.
+                %   [typesel(bar), typesel(foo)] = [typesel(bar)]
+                Extension0 \= A,
                 Extension = Extension0
             ;
                 % Assume we select node according to the A selector, then check
