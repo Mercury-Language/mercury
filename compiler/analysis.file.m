@@ -36,7 +36,9 @@
     % read_module_analysis_results(AnalysisInfo, ModuleName, AnalysisResults,
     %   !IO)
     %
-    % Read the analysis results from a `.analysis' file.
+    % Read the analysis results from a `.analysis' file,
+    % or from the analysis file cache (if enabled, and the cache file is
+    % up-to-date).
     %
 :- pred read_module_analysis_results(analysis_info::in, module_name::in,
     module_analysis_map(some_analysis_result)::out, io::di, io::uo) is det.
@@ -45,6 +47,7 @@
     %   !IO)
     %
     % Write the analysis results for a module to its `.analysis' file.
+    % Optionally, also write the cache copy of the analysis file.
     %
 :- pred write_module_analysis_results(analysis_info::in,
     module_name::in, module_analysis_map(some_analysis_result)::in,
@@ -98,13 +101,19 @@
 
 :- import_module bool.
 :- import_module char.
+:- import_module dir.
 :- import_module exception.
 :- import_module parser.
 :- import_module term.
 :- import_module term_io.
+:- import_module type_desc.
+:- import_module univ.
 :- import_module varset.
 
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.pickle.
 :- import_module parse_tree.
 :- import_module parse_tree.module_cmds.        % XXX unwanted dependency
 :- import_module parse_tree.prog_io.
@@ -255,8 +264,46 @@ read_module_analysis_results(Info, ModuleName, ModuleResults, !IO) :-
         analysis_registry_suffix, MaybeAnalysisFileName, !IO),
     (
         MaybeAnalysisFileName = ok(AnalysisFileName),
-        read_module_analysis_results_2(Compiler, AnalysisFileName,
-            ModuleResults, !IO)
+
+        % If analysis file caching is enabled, and the cache file exists and is
+        % up-to-date, then read from the cache instead.
+        globals.io_lookup_string_option(analysis_file_cache_dir, CacheDir,
+            !IO),
+        ( CacheDir \= "" ->
+            CacheFileName = make_cache_filename(CacheDir, AnalysisFileName),
+            io.file_modification_time(AnalysisFileName, AnalysisTimeResult,
+                !IO),
+            io.file_modification_time(CacheFileName, CacheTimeResult, !IO),
+            (
+                AnalysisTimeResult = ok(AnalysisTime),
+                CacheTimeResult = ok(CacheTime),
+                CacheTime @>= AnalysisTime
+            ->
+                Unpicklers = init_analysis_unpicklers(Compiler),
+                unpickle_from_file(Unpicklers, CacheFileName, UnpickleResult,
+                    !IO),
+                (
+                    UnpickleResult = ok(ModuleResults)
+                ;
+                    UnpickleResult = error(Error),
+                    io.write_string("Error reading ", !IO),
+                    io.write_string(CacheFileName, !IO),
+                    io.write_string(": ", !IO),
+                    io.write_string(io.error_message(Error), !IO),
+                    io.nl(!IO),
+                    read_module_analysis_results_2(Compiler, AnalysisFileName,
+                        ModuleResults, !IO),
+                    write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
+                )
+            ;
+                read_module_analysis_results_2(Compiler, AnalysisFileName,
+                    ModuleResults, !IO),
+                write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
+            )
+        ;
+            read_module_analysis_results_2(Compiler, AnalysisFileName,
+                ModuleResults, !IO)
+        )
     ;
         MaybeAnalysisFileName = error(_),
         ModuleResults = map.init
@@ -615,7 +662,20 @@ write_module_analysis_results(Info, ModuleName, ModuleResults, !IO) :-
     ToTmp = yes,
     write_analysis_file(Info ^ compiler, ModuleName, analysis_registry_suffix,
         ToTmp, write_result_entry, ModuleResults, FileName, !IO),
-    update_interface(FileName, !IO).
+    update_interface_return_changed(FileName, Result, !IO),
+
+    % If analysis file caching is turned on, write the internal represention of
+    % the module results to disk right now.
+    globals.io_lookup_string_option(analysis_file_cache_dir, CacheDir, !IO),
+    (
+        CacheDir \= "",
+        Result = interface_new_or_changed
+    ->
+        CacheFileName = make_cache_filename(CacheDir, FileName),
+        write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
+    ;
+        true
+    ).
 
 :- pred write_result_entry
     `with_type` write_entry(some_analysis_result)
@@ -699,8 +759,8 @@ write_module_analysis_requests(Info, ModuleName, ModuleRequests, !IO) :-
 write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
     Request = analysis_request(Call, CallerModule),
     (
-        analysis_type(_ : unit(Call), _ : unit(Answer)) =
-            analyses(Compiler, AnalysisName)
+        analysis_type(_ : unit(Call), _ : unit(Answer))
+            = analyses(Compiler, AnalysisName)
     ->
         VersionNumber = analysis_version_number(_ : Call, _ :  Answer)
     ;
@@ -852,6 +912,145 @@ empty_request_file(Info, ModuleName, !IO) :-
         io.nl(!IO)
     ), !IO),
     io.remove_file(RequestFileName, _, !IO).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% Analysis file caching
+%
+% An analysis cache file stores a binary representation of the parsed
+% information in the corresponding .analysis file.  In some cases, the binary
+% format can be faster to read than the usual representation.  The textual
+% analysis files are portable, more stable (doesn't depend on compiler
+% internals) and easier to debug, hence the reason we don't just use the
+% binary files exclusively.
+%
+
+:- func make_cache_filename(string, string) = string.
+
+make_cache_filename(Dir, FileName) = CacheFileName :-
+    Components = string.split_at_separator(dir_sep, FileName),
+    EscFileName = string.join_list(":", Components),
+    CacheFileName = Dir / EscFileName.
+
+:- pred dir_sep(char::in) is semidet.
+
+dir_sep(Char) :-
+    dir.is_directory_separator(Char).
+
+:- pred write_analysis_cache_file(string::in,
+    module_analysis_map(some_analysis_result)::in, io::di, io::uo) is det.
+
+write_analysis_cache_file(CacheFileName, ModuleResults, !IO) :-
+    % Write to a temporary file first and only move it into place once it is
+    % complete.
+    TmpFileName = CacheFileName ++ ".tmp",
+    io.tell_binary(TmpFileName, TellRes, !IO),
+    (
+        TellRes = ok,
+        pickle(init_analysis_picklers, ModuleResults, !IO),
+        io.told_binary(!IO),
+        io.rename_file(TmpFileName, CacheFileName, RenameRes, !IO),
+        (
+            RenameRes = ok
+        ;
+            RenameRes = error(Error),
+            io.write_string("Error renaming ", !IO),
+            io.write_string(CacheFileName, !IO),
+            io.write_string(": ", !IO),
+            io.write_string(io.error_message(Error), !IO),
+            io.nl(!IO),
+            io.remove_file(TmpFileName, _, !IO)
+        )
+    ;
+        TellRes = error(Error),
+        unexpected(this_file, "pickle_to_file: " ++ io.error_message(Error))
+    ).
+
+:- func init_analysis_picklers = picklers.
+
+init_analysis_picklers = Pickles :-
+    some [!Pickles] (
+        !:Pickles = init_picklers,
+        Dummy = 'new some_analysis_result'(any_call, dummy_answer, optimal),
+        Type = type_ctor(type_of(Dummy)),
+        register_pickler(Type, pickle_analysis_result, !Pickles),
+        Pickles = !.Pickles
+    ).
+
+:- pred pickle_analysis_result(picklers::in, univ::in, io::di, io::uo) is det.
+
+pickle_analysis_result(Pickles, Univ, !IO) :-
+    det_univ_to_type(Univ, some_analysis_result(Call, Answer, Status)),
+    Name = analysis_name(Call, Answer),
+    pickle(Pickles, Name, !IO),
+    pickle(Pickles, Call, !IO),
+    pickle(Pickles, Answer, !IO),
+    pickle(Pickles, Status, !IO).
+
+:- func init_analysis_unpicklers(Compiler) = unpicklers
+    <= compiler(Compiler).
+
+init_analysis_unpicklers(Compiler) = Unpicklers :-
+    some [!Unpicklers] (
+        !:Unpicklers = init_unpicklers,
+        Dummy = 'new some_analysis_result'(any_call, dummy_answer, optimal),
+        Type = type_ctor(type_of(Dummy)),
+        register_unpickler(Type, unpickle_analysis_result(Compiler),
+            !Unpicklers),
+        Unpicklers = !.Unpicklers
+    ).
+
+:- pred unpickle_analysis_result(Compiler::in, unpicklers::in,
+    unpickle_handle::in, type_desc::in, univ::out,
+    unpickle_state::di, unpickle_state::uo) is det
+    <= compiler(Compiler).
+
+unpickle_analysis_result(Compiler, Unpicklers, Handle, _Type, Univ, !State) :-
+    unpickle(Unpicklers, Handle, Name : string, !State),
+    (
+        analysis_type(_ : unit(Call), _ : unit(Answer))
+            = analyses(Compiler, Name)
+    ->
+        unpickle(Unpicklers, Handle, Call : Call, !State),
+        unpickle(Unpicklers, Handle, Answer : Answer, !State),
+        unpickle(Unpicklers, Handle, Status, !State),
+        Result = 'new some_analysis_result'(Call, Answer, Status),
+        type_to_univ(Result, Univ)
+    ;
+        unexpected(this_file, "unpickle_analysis_result: " ++ Name)
+    ).
+
+% This is only needed so we can get the type_ctor_desc of
+% `some_analysis_result' without referring to a real analysis.
+
+:- type dummy_answer
+    --->    dummy_answer.
+
+:- instance answer_pattern(no_func_info, dummy_answer) where [].
+:- instance partial_order(no_func_info, dummy_answer) where [
+    ( more_precise_than(no_func_info, _, _) :-
+        semidet_fail
+    ),
+    equivalent(no_func_info, dummy_answer, dummy_answer)
+].
+:- instance to_term(dummy_answer) where [
+    ( to_term(dummy_answer) = Term :-
+        Term = term.functor(atom("dummy"), [], context_init)
+    ),
+    ( from_term(Term, dummy_answer) :-
+        Term = term.functor(atom("dummy"), [], _)
+    )
+].
+
+:- instance analysis(no_func_info, any_call, dummy_answer) where [
+    analysis_name(_, _) = "dummy",
+    analysis_version_number(_, _) = 1,
+    preferred_fixpoint_type(_, _) = greatest_fixpoint,
+    bottom(_, _) = dummy_answer,
+    top(_, _) = dummy_answer,
+    get_func_info(_, _, _, _, _, no_func_info)
+].
 
 %-----------------------------------------------------------------------------%
 :- end_module analysis.file.

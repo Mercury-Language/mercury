@@ -60,7 +60,7 @@
 %-----------------------------------------------------------------------------%
 
 make_linked_target(LinkedTargetFile, LinkedTargetSucceeded, !Info, !IO) :-
-    LinkedTargetFile = linked_target_file(MainModuleName, FileType),
+    LinkedTargetFile = linked_target_file(_MainModuleName, FileType),
     (
         FileType = shared_library,
         ExtraOptions = ["--compile-to-shared-lib"]
@@ -93,39 +93,47 @@ make_linked_target(LinkedTargetFile, LinkedTargetSucceeded, !Info, !IO) :-
             LibgradeCheck = no,
             LibgradeCheckSucceeded = yes
         ),
-
         (
             LibgradeCheckSucceeded = yes,
-            % When using `--intermodule-analysis', perform an analysis pass
-            % first.  The analysis of one module may invalidate the results of
-            % a module we analysed earlier, so this step must be carried out
-            % until all the `.analysis' files are in a valid state before we
-            % can continue.
-            globals.io_lookup_bool_option(intermodule_analysis,
-                IntermodAnalysis, !IO),
-            (
-                IntermodAnalysis = yes,
-                make_misc_target_builder(
-                    MainModuleName - misc_target_build_analyses,
-                    ExtraOptions, IntermodAnalysisSucceeded, !Info, !IO)
-            ;
-                IntermodAnalysis = no,
-                IntermodAnalysisSucceeded = yes
-            )
-        ;
-            LibgradeCheckSucceeded = no,
-            IntermodAnalysisSucceeded = no
-        ),
-
-        (
-            IntermodAnalysisSucceeded = yes,
-            build_with_module_options(MainModuleName, ExtraOptions,
-                make_linked_target_2(LinkedTargetFile),
+            maybe_with_analysis_cache_dir(
+                make_linked_target_1(LinkedTargetFile, ExtraOptions),
                 LinkedTargetSucceeded, !Info, !IO)
         ;
-            IntermodAnalysisSucceeded = no,
+            LibgradeCheckSucceeded = no,
             LinkedTargetSucceeded = no
         )
+    ).
+
+:- pred make_linked_target_1(linked_target_file::in, list(string)::in,
+    bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
+
+make_linked_target_1(LinkedTargetFile, ExtraOptions, Succeeded, !Info, !IO) :-
+    LinkedTargetFile = linked_target_file(MainModuleName, _FileType),
+
+    % When using `--intermodule-analysis', perform an analysis pass
+    % first.  The analysis of one module may invalidate the results of
+    % a module we analysed earlier, so this step must be carried out
+    % until all the `.analysis' files are in a valid state before we
+    % can continue.
+    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis, !IO),
+    (
+        IntermodAnalysis = yes,
+        make_misc_target_builder(
+            MainModuleName - misc_target_build_analyses,
+            ExtraOptions, IntermodAnalysisSucceeded, !Info, !IO)
+    ;
+        IntermodAnalysis = no,
+        IntermodAnalysisSucceeded = yes
+    ),
+
+    (
+        IntermodAnalysisSucceeded = yes,
+        build_with_module_options(MainModuleName, ExtraOptions,
+            make_linked_target_2(LinkedTargetFile),
+            Succeeded, !Info, !IO)
+    ;
+        IntermodAnalysisSucceeded = no,
+        Succeeded = no
     ).
 
 :- pred make_linked_target_2(linked_target_file::in, list(string)::in,
@@ -663,22 +671,26 @@ make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
         ( Succeeded0 = no, KeepGoing = no ->
             Succeeded = no
         ;
-            foldl2_maybe_stop_at_error(KeepGoing,
-                make_module_target,
-                make_dependency_list(TargetModules, ModuleTargetType),
+            maybe_with_analysis_cache_dir(
+                foldl2_maybe_stop_at_error(KeepGoing,
+                    make_module_target,
+                    make_dependency_list(TargetModules, ModuleTargetType)),
                 Succeeded1, !Info, !IO),
             Succeeded = Succeeded0 `and` Succeeded1
         )
     ;
         TargetType = misc_target_build_analyses,
-        build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
-            !Info, !IO)
+        maybe_with_analysis_cache_dir(
+            build_analysis_files(MainModuleName, AllModules, Succeeded0),
+            Succeeded, !Info, !IO)
     ;
         TargetType = misc_target_build_library,
         make_all_interface_files(AllModules, IntSucceeded, !Info, !IO),
         (
             IntSucceeded = yes,
-            build_library(MainModuleName, AllModules, Succeeded, !Info, !IO)
+            maybe_with_analysis_cache_dir(
+                build_library(MainModuleName, AllModules),
+                Succeeded, !Info, !IO)
         ;
             IntSucceeded = no,
             Succeeded = no
@@ -734,6 +746,98 @@ make_all_interface_files(AllModules, Succeeded, !Info, !IO) :-
         foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
         [ShortInts, LongInts, OptFiles],
         Succeeded, !Info, !IO).
+
+%-----------------------------------------------------------------------------%
+
+    % If `--analysis-file-cache' is enabled, create a temporary directory for
+    % holding analysis cache files and pass that to child processes.
+    % After P is finished, remove the cache directory completely.
+    %
+:- pred maybe_with_analysis_cache_dir(build0(make_info)::in(build0),
+    bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
+
+maybe_with_analysis_cache_dir(P, Succeeded, !Info, !IO) :-
+    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis, !IO),
+    globals.io_lookup_bool_option(analysis_file_cache, Caching, !IO),
+    globals.io_lookup_string_option(analysis_file_cache_dir, CacheDir0, !IO),
+    CacheDirOption = "--analysis-file-cache-dir",
+    (
+        (
+            IntermodAnalysis = no
+        ;
+            Caching = no
+        ;
+            % Cache directory given on command line.
+            CacheDir0 \= ""
+        ;
+            % Analysis file cache directory already set up in a parent call.
+            list.member(CacheDirOption, !.Info ^ option_args)
+        )
+    ->
+        P(Succeeded, !Info, !IO)
+    ;
+        create_analysis_cache_dir(Succeeded0, CacheDir, !IO),
+        (
+            Succeeded0 = yes,
+            OrigOptionArgs = !.Info ^ option_args,
+            % Pass the name of the cache directory to child processes
+            !Info ^ option_args := OrigOptionArgs ++
+                [CacheDirOption, CacheDir],
+            build_with_check_for_interrupt(P, remove_cache_dir(CacheDir),
+                Succeeded, !Info, !IO),
+            remove_cache_dir(CacheDir, !Info, !IO),
+            !Info ^ option_args := OrigOptionArgs
+        ;
+            Succeeded0 = no,
+            Succeeded = no
+        )
+    ).
+
+:- pred create_analysis_cache_dir(bool::out, string::out, io::di, io::uo)
+    is det.
+
+create_analysis_cache_dir(Succeeded, CacheDir, !IO) :-
+    choose_cache_dir_name(CacheDir, !IO),
+    verbose_msg(verbose_make,
+        io.format("Creating %s\n", [s(CacheDir)]), !IO),
+    dir.make_directory(CacheDir, MakeRes, !IO),
+    (
+        MakeRes = ok,
+        Succeeded = yes
+    ;
+        MakeRes = error(Error),
+        io.write_string("Error: making directory ", !IO),
+        io.write_string(CacheDir, !IO),
+        io.write_string(": ", !IO),
+        io.write_string(io.error_message(Error), !IO),
+        io.nl(!IO),
+        Succeeded = no
+    ).
+
+:- pred choose_cache_dir_name(string::out, io::di, io::uo) is det.
+
+choose_cache_dir_name(DirName, !IO) :-
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    globals.lookup_string_option(Globals, fullarch, FullArch),
+    (
+        UseGradeSubdirs = yes,
+        grade_directory_component(Globals, Grade),
+        DirComponents = ["Mercury", Grade, FullArch, "Mercury",
+            "analysis_cache"]
+    ;
+        UseGradeSubdirs = no,
+        DirComponents = ["Mercury", "analysis_cache"]
+    ),
+    DirName = dir.relative_path_name_from_components(DirComponents).
+
+:- pred remove_cache_dir(string::in, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+remove_cache_dir(CacheDir, !Info, !IO) :-
+    verbose_msg(verbose_make,
+        io.format("Removing %s\n", [s(CacheDir)]), !IO),
+    io.remove_file_recursively(CacheDir, _, !IO).
 
 %-----------------------------------------------------------------------------%
 

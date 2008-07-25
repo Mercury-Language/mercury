@@ -26,6 +26,7 @@
 :- include_module atsort.
 :- include_module file_util.
 :- include_module graph_colour.
+:- include_module pickle.
 :- include_module tree.
 
 % OS interfaces not provided by the standard library.

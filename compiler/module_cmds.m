@@ -25,11 +25,18 @@
 
 %-----------------------------------------------------------------------------%
 
-    % update_interface_return_succeeded(FileName, Succeeded):
+:- type update_interface_result
+    --->    interface_new_or_changed
+    ;       interface_unchanged
+    ;       interface_error.
+
+    % update_interface_return_changed(FileName, Result):
     %
-    % Call the shell script mercury_update_interface to update the
-    % interface file FileName from FileName.tmp if it has changed.
+    % Update the interface file FileName from FileName.tmp if it has changed.
     %
+:- pred update_interface_return_changed(file_name::in,
+    update_interface_result::out, io::di, io::uo) is det.
+
 :- pred update_interface_return_succeeded(file_name::in, bool::out,
     io::di, io::uo) is det.
 
@@ -186,6 +193,18 @@ update_interface(OutputFileName, !IO) :-
     ).
 
 update_interface_return_succeeded(OutputFileName, Succeeded, !IO) :-
+    update_interface_return_changed(OutputFileName, Result, !IO),
+    (
+        ( Result = interface_new_or_changed
+        ; Result = interface_unchanged
+        ),
+        Succeeded = yes
+    ;
+        Result = interface_error,
+        Succeeded = no
+    ).
+
+update_interface_return_changed(OutputFileName, Result, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Updating interface:\n", !IO),
     TmpOutputFileName = OutputFileName ++ ".tmp",
@@ -201,7 +220,7 @@ update_interface_return_succeeded(OutputFileName, Succeeded, !IO) :-
             io.close_binary_input(TmpOutputFileStream, !IO),
             (
                 FilesDiffer = ok(ok(no)),
-                Succeeded = yes,
+                Result = interface_unchanged,
                 maybe_write_string(Verbose, "% ", !IO),
                 maybe_write_string(Verbose, OutputFileName, !IO),
                 maybe_write_string(Verbose, "' has not changed.\n", !IO),
@@ -209,10 +228,10 @@ update_interface_return_succeeded(OutputFileName, Succeeded, !IO) :-
             ;
                 FilesDiffer = ok(ok(yes)),
                 update_interface_create_file("CHANGED", OutputFileName,
-                    TmpOutputFileName, Succeeded, !IO)
+                    TmpOutputFileName, Result, !IO)
             ;
                 FilesDiffer = ok(error(TmpFileError)),
-                Succeeded = no,
+                Result = interface_error,
                 io.write_string("Error reading `", !IO),
                 io.write_string(TmpOutputFileName, !IO),
                 io.write_string("': ", !IO),
@@ -221,12 +240,12 @@ update_interface_return_succeeded(OutputFileName, Succeeded, !IO) :-
             ;
                 FilesDiffer = error(_, _),
                 update_interface_create_file("been CREATED", OutputFileName,
-                    TmpOutputFileName, Succeeded, !IO)
+                    TmpOutputFileName, Result, !IO)
             )
         ;
 
             TmpOutputFileRes = error(TmpOutputFileError),
-            Succeeded = no,
+            Result = interface_error,
             io.close_binary_input(OutputFileStream, !IO),
             io.write_string("Error creating `", !IO),
             io.write_string(OutputFileName, !IO),
@@ -237,13 +256,13 @@ update_interface_return_succeeded(OutputFileName, Succeeded, !IO) :-
     ;
         OutputFileRes = error(_),
         update_interface_create_file("been CREATED", OutputFileName,
-            TmpOutputFileName, Succeeded, !IO)
+            TmpOutputFileName, Result, !IO)
     ).
 
 :- pred update_interface_create_file(string::in, string::in, string::in,
-    bool::out, io::di, io::uo) is det.
+    update_interface_result::out, io::di, io::uo) is det.
 
-update_interface_create_file(Msg, OutputFileName, TmpOutputFileName, Succeeded,
+update_interface_create_file(Msg, OutputFileName, TmpOutputFileName, Result,
         !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose,
@@ -251,10 +270,10 @@ update_interface_create_file(Msg, OutputFileName, TmpOutputFileName, Succeeded,
     copy_file(TmpOutputFileName, OutputFileName, MoveRes, !IO),
     (
         MoveRes = ok,
-        Succeeded = yes
+        Result = interface_new_or_changed
     ;
         MoveRes = error(MoveError),
-        Succeeded = no,
+        Result = interface_error,
         io.write_string("Error creating `" ++ OutputFileName ++ "': " ++
             io.error_message(MoveError), !IO),
         io.nl(!IO)

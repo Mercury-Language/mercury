@@ -533,6 +533,7 @@
     ;       transitive_optimization
     ;       intermodule_analysis
     ;       analysis_repeat
+    ;       analysis_file_cache
 
     %   - HLDS
     ;       allow_inlining
@@ -868,6 +869,7 @@
     ;       fullarch
     ;       cross_compiling
     ;       local_module_id
+    ;       analysis_file_cache_dir
     ;       compiler_sufficiently_recent
             % This option is used to test that the compiler is sufficiently
             % recent when no other test can easily be constructed in
@@ -1311,6 +1313,7 @@ option_defaults_2(special_optimization_option, [
     transitive_optimization             -   bool(no),
     intermodule_analysis                -   bool(no),
     analysis_repeat                     -   int(0),
+    analysis_file_cache                 -   bool(no),
     termination_check                   -   bool(no),
     verbose_check_termination           -   bool(no),
     structure_sharing_analysis          -   bool(no), 
@@ -1685,6 +1688,7 @@ option_defaults_2(miscellaneous_option, [
     fullarch                            -   string(""),
     cross_compiling                     -   bool(no),
     local_module_id                     -   accumulating([]),
+    analysis_file_cache_dir             -   string(""),
     compiler_sufficiently_recent        -   bool(no),
     experiment                          -   string(""),
     feedback_file                       -   string("")
@@ -2109,6 +2113,7 @@ long_option("transitive-intermodule-optimisation",
 long_option("trans-intermod-opt",   transitive_optimization).
 long_option("intermodule-analysis", intermodule_analysis).
 long_option("analysis-repeat",      analysis_repeat).
+long_option("analysis-file-cache",  analysis_file_cache).
 
 % HLDS->HLDS optimizations
 long_option("inlining",             inlining).
@@ -2539,6 +2544,7 @@ long_option("filenames-from-stdin", filenames_from_stdin).
 long_option("fullarch",             fullarch).
 long_option("cross-compiling",      cross_compiling).
 long_option("local-module-id",      local_module_id).
+long_option("analysis-file-cache-dir",  analysis_file_cache_dir).
 long_option("bug-intermod-2002-06-13",  compiler_sufficiently_recent).
 long_option("bug-intermod-2006-09-28",  compiler_sufficiently_recent).
 long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
@@ -4372,6 +4378,10 @@ options_help_optimization -->
         "\tThe maximum number of times to repeat analyses of",
         "\tsuboptimal modules with `--intermodule-analysis'",
         "\t(default: 0)."
+        % This is commented out as this feature is still experimental.
+%       "--analysis-file-cache",
+%       "\tEnable caching of parsed analysis files. This may",
+%       "\timprove compile times with `--intermodule-analysis'."
     ]).
 
 :- pred options_help_hlds_hlds_optimization(io::di, io::uo) is det.
@@ -5191,6 +5201,8 @@ options_help_misc -->
         "\tplatform the compiler is running on.",
 
         % The `--local-module-id' option is used by `mmc --make'.
+        % The `--analysis-file-cache-dir' option is used by `mmc --make'.
+
         "--feedback-file",
         "\tUse the specified profiling feedback file which may currently",
         "\tonly be processed for implicit parallelism."

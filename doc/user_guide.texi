@@ -8019,6 +8019,12 @@ The maximum number of times to repeat analyses of suboptimal modules with
 @samp{--intermodule-analyses} (default: 0).  This option only works with
 @samp{mmc --make}.
 
+@c This feature is still experimental.
+@c @item --analysis-file-cache
+@c @findex --analysis-file-cache
+@c Enable caching of parsed analysis files. This may
+@c improve compile times with @samp{--intermodule-analysis}.
+
 @end table
 
 @node High-level (HLDS -> HLDS) optimization options
