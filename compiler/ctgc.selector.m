@@ -79,9 +79,14 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module map.
 :- import_module pair.
+:- import_module queue.
+:- import_module set.
+:- import_module solutions.
 :- import_module string.
+:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -238,24 +243,50 @@ subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
     %
     % Succeed iff starting from FromType we can reach a node ToType.
     %
+    % XXX I didn't think about type variables when writing this.
+    %
 :- pred type_contains_subtype(module_info::in, mer_type::in, mer_type::in)
     is semidet.
 
 type_contains_subtype(ModuleInfo, FromType, ToType) :-
-    type_contains_subtype_2(ModuleInfo, FromType, ToType, []).
-
-:- pred type_contains_subtype_2(module_info::in, mer_type::in, mer_type::in,
-    list(mer_type)::in) is semidet.
-
-type_contains_subtype_2(ModuleInfo, FromType, ToType, SeenTypes0) :-
-    (
-        FromType = ToType
+    ( FromType = ToType ->
+        true
     ;
-        SeenTypes = [FromType | SeenTypes0],
-        cons_id_arg_types(ModuleInfo, FromType, _ConsId, ArgTypes),
-        list.member(ArgType, ArgTypes),
-        not list.member(ArgType, SeenTypes),
-        type_contains_subtype_2(ModuleInfo, ArgType, ToType, SeenTypes)
+        queue.put(queue.init, FromType, Queue0),
+        type_contains_subtype_2(ModuleInfo, ToType, Queue0, _Queue,
+            set.init, _SeenTypes, Contains),
+        Contains = yes
+    ).
+
+:- pred type_contains_subtype_2(module_info::in, mer_type::in,
+    queue(mer_type)::in, queue(mer_type)::out,
+    set(mer_type)::in, set(mer_type)::out, bool::out) is det.
+
+type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
+    ( queue.get(!.Queue, FromType, !:Queue) ->
+        ( set.contains(!.SeenTypes, FromType) ->
+            type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes,
+                Contains)
+        ;
+            svset.insert(FromType, !SeenTypes),
+            solutions(
+                (pred(ConsIdArgTypes::out) is nondet :-
+                    cons_id_arg_types(ModuleInfo, FromType, _ConsId,
+                        ConsIdArgTypes),
+                    ConsIdArgTypes = [_ | _]
+                ),
+                ArgTypesLists),
+            list.condense(ArgTypesLists, ArgTypes),
+            ( list.member(ToType, ArgTypes) ->
+                Contains = yes
+            ;
+                queue.put_list(!.Queue, ArgTypes, !:Queue),
+                type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes,
+                    Contains)
+            )
+        )
+    ;
+        Contains = no
     ).
 
 type_of_node(ModuleInfo, StartType, Selector, SubType) :-
