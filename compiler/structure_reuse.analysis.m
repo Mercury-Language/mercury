@@ -553,7 +553,8 @@ process_intermod_analysis_imported_reuse_answer(PPId, PredInfo, ProcInfo,
         ImportedResult, !ModuleInfo, !ReuseTable) :-
     ImportedResult = analysis_result(Call, Answer, ResultStatus),
     Call = structure_reuse_call(NoClobbers),
-    structure_reuse_answer_to_domain(PredInfo, ProcInfo, Answer, Domain),
+    pred_info_get_arg_types(PredInfo, HeadVarTypes),
+    structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer, Domain),
     ReuseAs = from_structure_reuse_domain(Domain),
     ReuseAs_Status = reuse_as_and_status(ReuseAs, ResultStatus),
     (
@@ -573,11 +574,11 @@ process_intermod_analysis_imported_reuse_answer(PPId, PredInfo, ProcInfo,
             !ReuseTable)
     ).
 
-:- pred structure_reuse_answer_to_domain(pred_info::in,
+:- pred structure_reuse_answer_to_domain(list(mer_type)::in,
     proc_info::in, structure_reuse_answer::in, structure_reuse_domain::out)
     is det.
 
-structure_reuse_answer_to_domain(PredInfo, ProcInfo, Answer, Reuse) :-
+structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer, Reuse) :-
     (
         Answer = structure_reuse_answer_no_reuse,
         Reuse = has_no_reuse
@@ -586,14 +587,12 @@ structure_reuse_answer_to_domain(PredInfo, ProcInfo, Answer, Reuse) :-
         Reuse = has_only_unconditional_reuse
     ;
         Answer = structure_reuse_answer_conditional(ImpHeadVars, ImpTypes,
-            ImpReuseAs),
+            ImpReuseConditions),
         proc_info_get_headvars(ProcInfo, HeadVars),
-        pred_info_get_arg_types(PredInfo, HeadVarTypes),
         map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
         ( type_unify_list(ImpTypes, HeadVarTypes, [], map.init, TypeSubst) ->
-            ImpReuseDomain = to_structure_reuse_domain(ImpReuseAs),
             rename_structure_reuse_domain(VarRenaming, TypeSubst,
-                ImpReuseDomain, Reuse)
+                has_conditional_reuse(ImpReuseConditions), Reuse)
         ;
             unexpected(this_file,
                 "structure_reuse_answer_to_domain: type_unify_list failed")
@@ -757,15 +756,19 @@ write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
     --->    structure_reuse_answer_no_reuse
     ;       structure_reuse_answer_unconditional
     ;       structure_reuse_answer_conditional(
-                prog_vars,
-                list(mer_type),
-                reuse_as
+                srac_vars   :: prog_vars,
+                srac_types  :: list(mer_type),
+                srac_conds  :: structure_reuse_conditions
+                % We cannot keep this as a reuse_as.  When the analysis answers
+                % are loaded, we don't have enough information to rename the
+                % variables in the .analysis answer to the correct variables
+                % for the proc_info that the reuse_as will be used with.
             ).
 
 :- type structure_reuse_func_info
     --->    structure_reuse_func_info(
-                module_info,
-                proc_info
+                srfi_module :: module_info,
+                srfi_proc   :: proc_info
             ).
 
 :- func analysis_name = string.
@@ -776,7 +779,7 @@ analysis_name = "structure_reuse".
     structure_reuse_answer) where
 [
     analysis_name(_, _) = analysis_name,
-    analysis_version_number(_, _) = 2,
+    analysis_version_number(_, _) = 3,
     preferred_fixpoint_type(_, _) = greatest_fixpoint,
     bottom(_, _) = structure_reuse_answer_no_reuse,
     ( top(_, _) = _ :-
@@ -836,10 +839,18 @@ analysis_name = "structure_reuse".
             Answer1 = structure_reuse_answer_unconditional,
             Answer2 = structure_reuse_answer_no_reuse
         ;
-            Answer1 = structure_reuse_answer_conditional(_, _, ReuseAs1),
-            Answer2 = structure_reuse_answer_conditional(_, _, ReuseAs2),
-            % XXX can we implement this more efficiently?
+            Answer1 = structure_reuse_answer_conditional(_, _, _),
+            Answer2 = structure_reuse_answer_conditional(_, _, _),
             FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
+            proc_info_get_headvars(ProcInfo, HeadVars),
+            proc_info_get_vartypes(ProcInfo, VarTypes),
+            map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
+            structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer1,
+                Reuse1),
+            structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer2,
+                Reuse2),
+            ReuseAs1 = from_structure_reuse_domain(Reuse1),
+            ReuseAs2 = from_structure_reuse_domain(Reuse2),
             reuse_as_subsumed_by(ModuleInfo, ProcInfo, ReuseAs1, ReuseAs2),
             not reuse_as_subsumed_by(ModuleInfo, ProcInfo, ReuseAs2, ReuseAs1)
         )
@@ -849,10 +860,18 @@ analysis_name = "structure_reuse".
         (
             Answer1 = Answer2
         ;
-            Answer1 = structure_reuse_answer_conditional(_, _, ReuseAs1),
-            Answer2 = structure_reuse_answer_conditional(_, _, ReuseAs2),
-            % XXX can we implement this more efficiently?
+            Answer1 = structure_reuse_answer_conditional(_, _, _),
+            Answer2 = structure_reuse_answer_conditional(_, _, _),
             FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
+            proc_info_get_headvars(ProcInfo, HeadVars),
+            proc_info_get_vartypes(ProcInfo, VarTypes),
+            map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
+            structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer1,
+                Reuse1),
+            structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer2,
+                Reuse2),
+            ReuseAs1 = from_structure_reuse_domain(Reuse1),
+            ReuseAs2 = from_structure_reuse_domain(Reuse2),
             reuse_as_subsumed_by(ModuleInfo, ProcInfo, ReuseAs2, ReuseAs1),
             reuse_as_subsumed_by(ModuleInfo, ProcInfo, ReuseAs1, ReuseAs2)
         )
@@ -874,13 +893,13 @@ reuse_answer_to_term(Answer) = Term :-
         Answer = structure_reuse_answer_unconditional,
         Term = term.functor(atom("uncond"), [], term.context_init)
     ;
-        Answer = structure_reuse_answer_conditional(HeadVars, Types, ReuseAs),
-        ReuseDomain = to_structure_reuse_domain(ReuseAs),
+        Answer = structure_reuse_answer_conditional(HeadVars, Types,
+            Conditions),
         type_to_term(HeadVars, HeadVarsTerm),
         type_to_term(Types, TypesTerm),
-        type_to_term(ReuseDomain, ReuseDomainTerm),
+        type_to_term(Conditions, ConditionsTerm),
         Term = term.functor(atom("cond"),
-            [HeadVarsTerm, TypesTerm, ReuseDomainTerm], term.context_init)
+            [HeadVarsTerm, TypesTerm, ConditionsTerm], term.context_init)
     ).
 
 :- pred reuse_answer_from_term(term::in, structure_reuse_answer::out)
@@ -895,12 +914,12 @@ reuse_answer_from_term(Term, Answer) :-
         Answer = structure_reuse_answer_unconditional
     ;
         Term = functor(atom("cond"),
-            [HeadVarsTerm, TypesTerm, ReuseDomainTerm], _),
+            [HeadVarsTerm, TypesTerm, ConditionsTerm], _),
         term_to_type(HeadVarsTerm, HeadVars),
         term_to_type(TypesTerm, Types),
-        term_to_type(ReuseDomainTerm, ReuseDomain),
-        ReuseAs = from_structure_reuse_domain(ReuseDomain),
-        Answer = structure_reuse_answer_conditional(HeadVars, Types, ReuseAs)
+        term_to_type(ConditionsTerm, Conditions),
+        Answer = structure_reuse_answer_conditional(HeadVars, Types,
+            Conditions)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -952,21 +971,22 @@ record_structure_reuse_results_2(ModuleInfo, PPId, NoClobbers, ReuseAs_Status,
     reuse_as::in, structure_reuse_answer::out) is det.
 
 reuse_as_to_structure_reuse_answer(ModuleInfo, PPId, ReuseAs, Answer) :-
-    ( reuse_as_no_reuses(ReuseAs) ->
-         Answer = structure_reuse_answer_no_reuse
-     ; reuse_as_all_unconditional_reuses(ReuseAs) ->
-         Answer = structure_reuse_answer_unconditional
-     ; reuse_as_conditional_reuses(ReuseAs) ->
-         module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo,
-             ProcInfo),
-         proc_info_get_headvars(ProcInfo, HeadVars),
-         proc_info_get_vartypes(ProcInfo, VarTypes),
-         map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
-         Answer = structure_reuse_answer_conditional(HeadVars,
-             HeadVarTypes, ReuseAs)
-     ;
-         unexpected(this_file, "reuse_as_to_structure_reuse_answer")
-     ).
+    Reuse = to_structure_reuse_domain(ReuseAs),
+    (
+        Reuse = has_no_reuse,
+        Answer = structure_reuse_answer_no_reuse
+    ;
+        Reuse = has_only_unconditional_reuse,
+        Answer = structure_reuse_answer_unconditional
+    ;
+        Reuse = has_conditional_reuse(Conditions),
+        module_info_proc_info(ModuleInfo, PPId, ProcInfo),
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
+        Answer = structure_reuse_answer_conditional(HeadVars, HeadVarTypes,
+            Conditions)
+    ).
 
 :- pred handle_structure_reuse_dependency(module_info::in,
     ppid_no_clobbers::in, analysis_info::in, analysis_info::out) is det.

@@ -324,18 +324,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- interface.
-
-    % The intention was for this type to be hidden, but we need to expose it
-    % for structure_sharing.m to convert between `structure_sharing_answer'
-    % and `sharing_as'.
-    %
 :- type sharing_as
     --->    sharing_as_real_as(sharing_set)
     ;       sharing_as_bottom
     ;       sharing_as_top(set(top_feedback)).
-
-:- implementation.
 
 %-----------------------------------------------------------------------------%
 

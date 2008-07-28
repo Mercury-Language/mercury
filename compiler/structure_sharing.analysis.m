@@ -285,8 +285,9 @@ process_intermod_analysis_imported_sharing_in_proc(ModuleInfo, AnalysisInfo,
         (
             MaybeBestResult = yes(analysis_result(_Call, Answer,
                 ResultStatus)),
-            structure_sharing_answer_to_domain(PPId, PredInfo, !.ProcInfo,
-                Answer, Sharing),
+            pred_info_get_arg_types(PredInfo, HeadVarTypes),
+            structure_sharing_answer_to_domain(yes(PPId), HeadVarTypes,
+                !.ProcInfo, Answer, Sharing),
             proc_info_set_structure_sharing(
                 structure_sharing_domain_and_status(Sharing, ResultStatus),
                 !ProcInfo),
@@ -296,29 +297,35 @@ process_intermod_analysis_imported_sharing_in_proc(ModuleInfo, AnalysisInfo,
         )
     ).
 
-:- pred structure_sharing_answer_to_domain(pred_proc_id::in, pred_info::in,
-    proc_info::in, structure_sharing_answer::in, structure_sharing_domain::out)
-    is det.
+:- pred structure_sharing_answer_to_domain(maybe(pred_proc_id)::in,
+    list(mer_type)::in, proc_info::in, structure_sharing_answer::in,
+    structure_sharing_domain::out) is det.
 
-structure_sharing_answer_to_domain(PPId, PredInfo, ProcInfo, Answer, Sharing)
-        :-
+structure_sharing_answer_to_domain(MaybePPId, HeadVarTypes, ProcInfo, Answer,
+        Sharing) :-
     (
         Answer = structure_sharing_answer_bottom,
         Sharing = structure_sharing_bottom
     ;
         Answer = structure_sharing_answer_top,
-        Sharing = structure_sharing_top(set.make_singleton_set(
-            top_from_lookup(shroud_pred_proc_id(PPId))))
+        (
+            MaybePPId = yes(PPId),
+            TopReason = set.make_singleton_set(
+                top_from_lookup(shroud_pred_proc_id(PPId)))
+        ;
+            MaybePPId = no,
+            TopReason = set.init
+        ),
+        Sharing = structure_sharing_top(TopReason)
     ;
         Answer = structure_sharing_answer_real(ImpHeadVars, ImpTypes,
-            ImpSharingAs),
+            ImpSharingPairs),
         proc_info_get_headvars(ProcInfo, HeadVars),
-        pred_info_get_arg_types(PredInfo, HeadVarTypes),
         map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
         ( type_unify_list(ImpTypes, HeadVarTypes, [], map.init, TypeSubst) ->
-            ImpSharingDomain = to_structure_sharing_domain( ImpSharingAs),
-            rename_structure_sharing_domain(VarRenaming, TypeSubst,
-                ImpSharingDomain, Sharing)
+            rename_structure_sharing(VarRenaming, TypeSubst, ImpSharingPairs,
+                SharingPairs),
+            Sharing = structure_sharing_real(SharingPairs)
         ;
             unexpected(this_file,
                 "structure_sharing_answer_to_domain: type_unify_list failed")
@@ -1003,15 +1010,20 @@ write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
     --->    structure_sharing_answer_bottom
     ;       structure_sharing_answer_top
     ;       structure_sharing_answer_real(
-                prog_vars,
-                list(mer_type),
-                sharing_as
+                ssar_vars       :: prog_vars,
+                ssar_types      :: list(mer_type),
+                ssar_sharing    :: structure_sharing
+                % We cannot keep this as a sharing_as.  When the analysis
+                % answers are loaded, we don't have enough information to
+                % rename the variables in the .analysis answer to the correct
+                % variables for the proc_info that the sharing_as will be used
+                % with.
             ).
 
 :- type structure_sharing_func_info
     --->    structure_sharing_func_info(
-                module_info,
-                proc_info
+                ssfi_module     :: module_info,
+                ssfi_proc       :: proc_info
             ).
 
 :- func analysis_name = string.
@@ -1022,7 +1034,7 @@ analysis_name = "structure_sharing".
     structure_sharing_answer) where
 [
     analysis_name(_, _) = analysis_name,
-    analysis_version_number(_, _) = 1,
+    analysis_version_number(_, _) = 2,
     preferred_fixpoint_type(_, _) = greatest_fixpoint,
     bottom(_, _) = structure_sharing_answer_bottom,
     top(_, _) = structure_sharing_answer_top,
@@ -1063,10 +1075,16 @@ analysis_name = "structure_sharing".
         % Fast path (maybe).
         Answer1 \= Answer2,
 
-        % XXX can we implement this more efficiently?
         FuncInfo = structure_sharing_func_info(ModuleInfo, ProcInfo),
-        SharingAs1 = structure_sharing_answer_to_sharing_as(Answer1),
-        SharingAs2 = structure_sharing_answer_to_sharing_as(Answer2),
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
+        structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
+            Answer1, Sharing1),
+        structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
+            Answer2, Sharing2),
+        SharingAs1 = from_structure_sharing_domain(Sharing1),
+        SharingAs2 = from_structure_sharing_domain(Sharing2),
         sharing_as_is_subsumed_by(ModuleInfo, ProcInfo,
             SharingAs1, SharingAs2),
         not sharing_as_is_subsumed_by(ModuleInfo, ProcInfo,
@@ -1079,9 +1097,15 @@ analysis_name = "structure_sharing".
             Answer1 = Answer2
         ;
             FuncInfo = structure_sharing_func_info(ModuleInfo, ProcInfo),
-            SharingAs1 = structure_sharing_answer_to_sharing_as(Answer1),
-            SharingAs2 = structure_sharing_answer_to_sharing_as(Answer2),
-            % XXX can we implement this more efficiently?
+            proc_info_get_headvars(ProcInfo, HeadVars),
+            proc_info_get_vartypes(ProcInfo, VarTypes),
+            map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
+            structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
+                Answer1, Sharing1),
+            structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
+                Answer2, Sharing2),
+            SharingAs1 = from_structure_sharing_domain(Sharing1),
+            SharingAs2 = from_structure_sharing_domain(Sharing2),
             sharing_as_is_subsumed_by(ModuleInfo, ProcInfo,
                 SharingAs2, SharingAs1),
             sharing_as_is_subsumed_by(ModuleInfo, ProcInfo,
@@ -1089,21 +1113,6 @@ analysis_name = "structure_sharing".
         )
     )
 ].
-
-:- func structure_sharing_answer_to_sharing_as(structure_sharing_answer) =
-    sharing_as.
-
-structure_sharing_answer_to_sharing_as(Answer) = SharingAs :-
-    (
-        Answer = structure_sharing_answer_bottom,
-        SharingAs = sharing_as_init
-    ;
-        Answer = structure_sharing_answer_top,
-        % No feedback is okay because we won't be using it.
-        SharingAs = sharing_as_top_no_feedback
-    ;
-        Answer = structure_sharing_answer_real(_, _, SharingAs)
-    ).
 
 :- instance to_term(structure_sharing_answer) where [
     func(to_term/1) is sharing_answer_to_term,
@@ -1120,13 +1129,12 @@ sharing_answer_to_term(Answer) = Term :-
         Answer = structure_sharing_answer_top,
         Term = term.functor(atom("t"), [], context_init)
     ;
-        Answer = structure_sharing_answer_real(HeadVars, Types, SharingAs),
-        SharingDomain = to_structure_sharing_domain(SharingAs),
+        Answer = structure_sharing_answer_real(HeadVars, Types, SharingPairs),
         type_to_term(HeadVars, HeadVarsTerm),
         type_to_term(Types, TypesTerm),
-        type_to_term(SharingDomain, SharingDomainTerm),
+        type_to_term(SharingPairs, SharingPairsTerm),
         Term = term.functor(atom("sharing"),
-            [HeadVarsTerm, TypesTerm, SharingDomainTerm], context_init)
+            [HeadVarsTerm, TypesTerm, SharingPairsTerm], context_init)
     ).
 
 :- pred sharing_answer_from_term(term::in, structure_sharing_answer::out)
@@ -1141,12 +1149,11 @@ sharing_answer_from_term(Term, Answer) :-
         Answer = structure_sharing_answer_top
     ;
         Term = term.functor(atom("sharing"),
-            [HeadVarsTerm, TypesTerm, SharingDomainTerm], _),
+            [HeadVarsTerm, TypesTerm, SharingPairsTerm], _),
         term_to_type(HeadVarsTerm, HeadVars),
         term_to_type(TypesTerm, Types),
-        term_to_type(SharingDomainTerm, SharingDomain),
-        SharingAs = from_structure_sharing_domain(SharingDomain),
-        Answer = structure_sharing_answer_real(HeadVars, Types, SharingAs)
+        term_to_type(SharingPairsTerm, SharingPairs),
+        Answer = structure_sharing_answer_real(HeadVars, Types, SharingPairs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1183,25 +1190,25 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
             sharing_as_table_search(PPId, SharingAsTable,
                 sharing_as_and_status(SharingAsPrime, StatusPrime))
         ->
-            SharingAs = SharingAsPrime,
+            Sharing = to_structure_sharing_domain(SharingAsPrime),
             Status0 = StatusPrime
         ;
             % Probably an exported `:- external' procedure.
             bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo,
                 ProcInfo)
         ->
-            SharingAs = sharing_as_bottom,
+            Sharing = structure_sharing_bottom,
             Status0 = optimal
         ;
-            SharingAs = sharing_as_top(set.init),
+            Sharing = structure_sharing_top(set.init),
             Status0 = optimal
         ),
         (
-            SharingAs = sharing_as_bottom,
+            Sharing = structure_sharing_bottom,
             Answer = structure_sharing_answer_bottom,
             Status = optimal
         ;
-            SharingAs = sharing_as_top(Reasons),
+            Sharing = structure_sharing_top(Reasons),
             Answer = structure_sharing_answer_top,
             % If the procedure contains a generic or foreign foreign call, or
             % it calls a procedure in a non-local module for which we have no
@@ -1229,12 +1236,12 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
                 io.nl(!IO)
             )
         ;
-            SharingAs = sharing_as_real_as(_),
+            Sharing = structure_sharing_real(SharingPairs),
             proc_info_get_headvars(ProcInfo, HeadVars),
             proc_info_get_vartypes(ProcInfo, VarTypes),
             map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
             Answer = structure_sharing_answer_real(HeadVars, HeadVarTypes,
-                SharingAs),
+                SharingPairs),
             Status = Status0
         ),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
