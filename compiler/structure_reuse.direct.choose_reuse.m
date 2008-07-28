@@ -478,24 +478,34 @@ process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO):-
         maybe_write_string(VeryVerbose, "% Reuse results: \n", !IO),
         maybe_dump_match_table(VeryVerbose, MatchTable, Match, !IO),
 
+        OldGoal = !.Goal,
+        OldReuseAs = !.ReuseAs,
+
         % Realise the reuses by explicitly annotating the procedure goal.
-        %
         annotate_reuses_in_goal(Background, Match, !Goal),
-        %
+
         % Remove the deconstructions from the available map of dead cells.
-        %
         remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable),
 
         % Add the conditions involved in the reuses to the existing
         % conditions.
-        %
         ModuleInfo = Background ^ back_module_info,
         ProcInfo   = Background ^ back_proc_info,
         reuse_as_least_upper_bound(ModuleInfo, ProcInfo,
             match_get_condition(Background, Match), !ReuseAs),
 
+        % If there would be too many reuse conditions on this procedure
+        % by taking the reuse opportunity, just drop it.
+        globals.io_lookup_int_option(structure_reuse_max_conditions,
+            MaxConditions, !IO),
+        ( reuse_as_count_conditions(!.ReuseAs) > MaxConditions ->
+            !:Goal = OldGoal,
+            !:ReuseAs = OldReuseAs
+        ;
+            true
+        ),
+
         % Process the goal for further reuse-matches.
-        %
         process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO)
     ).
 

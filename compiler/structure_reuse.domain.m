@@ -111,6 +111,7 @@
 :- pred reuse_as_no_reuses(reuse_as::in) is semidet.
 :- pred reuse_as_all_unconditional_reuses(reuse_as::in) is semidet.
 :- pred reuse_as_conditional_reuses(reuse_as::in) is semidet.
+:- func reuse_as_count_conditions(reuse_as) = int.
 
     % reuse_as_rename_using_module_info(ModuleInfo, PPId,
     %   ActualVars, ActualTypes, CallerTypeVarSet, CallerHeadTypeParams,
@@ -479,6 +480,10 @@ reuse_as_and_status_subsumed_by(ModuleInfo, ProcInfo,
 reuse_as_no_reuses(no_reuse).
 reuse_as_all_unconditional_reuses(unconditional).
 reuse_as_conditional_reuses(conditional(_)).
+
+reuse_as_count_conditions(no_reuse) = 0.
+reuse_as_count_conditions(unconditional) = 0.
+reuse_as_count_conditions(conditional(Conds)) = list.length(Conds).
 
 reuse_as_rename_using_module_info(ModuleInfo, PPId, ActualArgs, ActualTypes,
         CallerTypeVarSet, CallerHeadTypeParams, FormalReuse, ActualReuse) :- 

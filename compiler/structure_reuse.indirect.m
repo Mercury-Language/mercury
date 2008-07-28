@@ -301,6 +301,11 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
                 sr_fixpoint_table_get_short_description(PPId,
                     !.FixpointTable),
                 !IO),
+            io.nl(!IO),
+
+            NumConditions = reuse_as_count_conditions(IrInfo ^ reuse_as),
+            io.write_string("% Number of conditions: ", !IO),
+            io.write_int(NumConditions, !IO),
             io.nl(!IO)
         )
     ;
@@ -333,6 +338,7 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
                 sharing_table   :: sharing_as_table,
                 reuse_table     :: reuse_as_table,
                 headvars        :: list(prog_var),
+                max_conditions  :: int,
                 very_verbose    :: bool,
                 debug_indirect  :: bool
             ).
@@ -367,12 +373,14 @@ ir_background_info_init(ModuleInfo, PPId, PredInfo, ProcInfo, SharingTable,
     HeadVarsOfInterest = remove_typeinfo_vars(Vartypes, HeadVars),
 
     module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_int_option(Globals, structure_reuse_max_conditions,
+        MaxConditions),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     globals.lookup_bool_option(Globals, debug_indirect_reuse, DebugIndirect),
 
     BG = ir_background_info(ModuleInfo, PPId, PredInfo, ProcInfo,
-        SharingTable, ReuseTable, HeadVarsOfInterest, VeryVerbose,
-        DebugIndirect).
+        SharingTable, ReuseTable, HeadVarsOfInterest, MaxConditions,
+        VeryVerbose, DebugIndirect).
 
 :- func ir_analysis_info_init(pred_proc_id, sr_fixpoint_table, dep_procs,
     set(sr_request), set(sr_request)) = ir_analysis_info.
@@ -594,9 +602,20 @@ indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-
     ),
     (
         Verify = yes,
+
+        % Attempt to limit the number of reuse conditions on a procedure.
+        % If there are too many conditions already, don't make any more
+        % calls to reuse procedures which have conditions on them.
+        MaxConditions = BaseInfo ^ max_conditions,
+        ( reuse_as_count_conditions(!.IrInfo ^ reuse_as) >= MaxConditions ->
+            CondReuseHandling = ignore_conditional_reuse
+        ;
+            CondReuseHandling = allow_conditional_reuse
+        ),
         NoClobbers = [],
         verify_indirect_reuse(BaseInfo, proc(CalleePredId, CalleeProcId),
-            NoClobbers, CalleeArgs, GoalInfo0, GoalInfo, !IrInfo),
+            NoClobbers, CalleeArgs, CondReuseHandling, GoalInfo0, GoalInfo,
+            !IrInfo),
         !:Goal = hlds_goal(GoalExpr0, GoalInfo)
     ;
         Verify = no
@@ -703,6 +722,10 @@ update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
 % Verification of a reuse calls
 %
 
+:- type conditional_reuse_handling
+    --->    allow_conditional_reuse
+    ;       ignore_conditional_reuse.
+
 :- type verify_indirect_reuse_reason
     --->    callee_has_no_reuses
     ;       callee_has_only_unconditional_reuse
@@ -712,14 +735,15 @@ update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
     ;       reuse_is_conditional.
 
 :- pred verify_indirect_reuse(ir_background_info::in, pred_proc_id::in,
-    list(int)::in, prog_vars::in, hlds_goal_info::in, hlds_goal_info::out,
+    list(int)::in, prog_vars::in, conditional_reuse_handling::in,
+    hlds_goal_info::in, hlds_goal_info::out,
     ir_analysis_info::in, ir_analysis_info::out) is det.
 
     % CalleePPId refers to the original procedure, not the procedure of any
     % reuse version of another procedure.
     %
 verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
-        !GoalInfo, !IrInfo) :-
+        CondReuseHandling, !GoalInfo, !IrInfo) :-
     % Find the reuse information of the called procedure in the reuse table:
     % XXX if we can't find an exact match for NoClobbers, we could try
     % procedures which have no-clobber sets which are supersets of NoClobbers.
@@ -751,6 +775,7 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
                 !IO)
         )
     ;
+        CondReuseHandling = allow_conditional_reuse,
         % With a conditional reuse, we need to check the conditions. If they
         % are satisfied, these conditions need to be translated to the callers
         % environment. This translation can result in the reuse being
@@ -772,6 +797,9 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers,
                 CalleeArgs, FormalReuseAs, !GoalInfo, !IrInfo)
         )
+    ;
+        CondReuseHandling = ignore_conditional_reuse,
+        goal_info_set_reuse(no_possible_reuse, !GoalInfo)
     ).
 
 :- pred verify_indirect_reuse_conditional(ir_background_info::in,
@@ -807,7 +835,7 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
                 CalleePPId, NotDeadArgNums, _ReusePPId)
         ->
             verify_indirect_reuse(BaseInfo, CalleePPId, NotDeadArgNums,
-                CalleeArgs, !GoalInfo, !IrInfo)
+                CalleeArgs, allow_conditional_reuse, !GoalInfo, !IrInfo)
         ;
             % Request another version of the procedure.
             add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule,

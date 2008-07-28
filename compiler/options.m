@@ -614,6 +614,7 @@
     ;       structure_reuse_analysis
     ;           structure_reuse_constraint
     ;           structure_reuse_constraint_arg
+    ;           structure_reuse_max_conditions
     ;           structure_reuse_repeat
 
     % Stuff for the old termination analyser.
@@ -1321,6 +1322,7 @@ option_defaults_2(special_optimization_option, [
     structure_reuse_analysis            -   bool(no), 
     structure_reuse_constraint        -   string("within_n_cells_difference"),
     structure_reuse_constraint_arg      -   int(0),
+    structure_reuse_max_conditions      -   int(10),
     structure_reuse_repeat              -   int(0),
     termination                         -   bool(no),
     termination_single_args             -   int(0),
@@ -2268,6 +2270,7 @@ long_option("structure-reuse-constraint", structure_reuse_constraint).
 long_option("ctgc-constraint",      structure_reuse_constraint).
 long_option("structure-reuse-constraint-arg", structure_reuse_constraint_arg).
 long_option("ctgc-constraint-arg",  structure_reuse_constraint_arg).
+long_option("structure-reuse-max-conditions", structure_reuse_max_conditions).
 long_option("structure-reuse-repeat", structure_reuse_repeat).
 
 % HLDS->LLDS optimizations
@@ -3645,6 +3648,11 @@ options_help_ctgc -->
         "\tSpecify the maximum difference in arities between the terms that",
         "\tcan be reused, and the terms that reuse these terms.",
         "\t(default: 0)"
+
+% This option is for developers only.
+%       "--structure-reuse-max-conditions",
+%       "\tSoft limit on the number of reuse conditions to accumulate",
+%       "\tfor a procedure. (default: 10)"
     ]).
 
 :- pred options_help_termination(io::di, io::uo) is det.
