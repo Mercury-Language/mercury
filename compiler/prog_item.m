@@ -39,7 +39,16 @@
 
 %-----------------------------------------------------------------------------%
 %
-% This is how programs (and parse errors) are represented
+% This is how programs (and parse errors) are represented.
+%
+% The sequence number fields in the item-kind-specific types are intended to
+% allow the recreation of the original item sequence after we have processed
+% it into more complex data structures. Negative sequence numbers represent
+% items that were not in the original read-in sequence, but which were added
+% by the compiler. It is possible for two items to have the same sequence
+% number if one original item (e.g. one that imports two or more modules)
+% is later split apart (e.g. into several items that each import only one
+% module).
 %
 
 :- type compilation_unit
@@ -103,7 +112,8 @@
 :- type item_module_defn_info
     --->    item_module_defn_info(
                 module_defn_module_defn         :: module_defn,
-                module_defn_context             :: prog_context
+                module_defn_context             :: prog_context,
+                module_defn_seq_num             :: int
             ).
 
 :- type item_clause_info
@@ -114,7 +124,8 @@
                 cl_predname                     :: sym_name,
                 cl_head_args                    :: list(prog_term),
                 cl_body                         :: goal,
-                cl_context                      :: prog_context
+                cl_context                      :: prog_context,
+                cl_seq_num                      :: int
             ).
 
 :- type item_type_defn_info
@@ -127,7 +138,8 @@
                 td_ctor_args                    :: list(type_param),
                 td_ctor_defn                    :: type_defn,
                 td_cond                         :: condition,
-                td_context                      :: prog_context
+                td_context                      :: prog_context,
+                td_seq_num                      :: int
             ).
 
 :- type item_inst_defn_info
@@ -139,7 +151,8 @@
                 id_inst_args                    :: list(inst_var),
                 id_inst_defn                    :: inst_defn,
                 id_cond                         :: condition,
-                id_context                      :: prog_context
+                id_context                      :: prog_context,
+                id_seq_num                      :: int
             ).
 
 :- type item_mode_defn_info
@@ -151,7 +164,8 @@
                 md_mode_args                    :: list(inst_var),
                 md_mode_defn                    :: mode_defn,
                 md_cond                         :: condition,
-                md_context                      :: prog_context
+                md_context                      :: prog_context,
+                md_seq_num                      :: int
             ).
 
 :- type item_pred_decl_info
@@ -176,7 +190,8 @@
                 pf_cond                         :: condition,
                 pf_purity                       :: purity,
                 pf_class_context                :: prog_constraints,
-                pf_context                      :: prog_context
+                pf_context                      :: prog_context,
+                pf_seq_num                      :: int
             ).
 
 :- type item_mode_decl_info
@@ -193,14 +208,16 @@
                 pfm_maybe_with_inst             :: maybe(mer_inst),
                 pfm_maybe_detism                :: maybe(determinism),
                 pfm_cond                        :: condition,
-                pfm_context                     :: prog_context
+                pfm_context                     :: prog_context,
+                pfm_seq_num                     :: int
             ).
 
 :- type item_pragma_info
     --->    item_pragma_info(
                 pragma_origin                   :: item_origin,
                 pragma_type                     :: pragma_type,
-                pragma_context                  :: prog_context
+                pragma_context                  :: prog_context,
+                pragma_seq_num                  :: int
             ).
 
 :- type item_promise_info
@@ -209,7 +226,8 @@
                 prom_clause                     :: goal,
                 prom_varset                     :: prog_varset,
                 prom_univ_quant_vars            :: prog_vars,
-                prom_context                    :: prog_context
+                prom_context                    :: prog_context,
+                prom_seq_num                    :: int
             ).
 
 :- type item_typeclass_info
@@ -220,7 +238,8 @@
                 tc_class_params                 :: list(tvar),
                 tc_class_methods                :: class_interface,
                 tc_varset                       :: tvarset,
-                tc_context                      :: prog_context
+                tc_context                      :: prog_context,
+                tc_seq_num                      :: int
             ).
 
 :- type item_instance_info
@@ -231,7 +250,8 @@
                 ci_method_instances             :: instance_body,
                 ci_varset                       :: tvarset,
                 ci_module_containing_instance   :: module_name,
-                ci_context                      :: prog_context
+                ci_context                      :: prog_context,
+                ci_seq_num                      :: int
             ).
 
 :- type item_initialise_info
@@ -240,7 +260,8 @@
                 init_origin                     :: item_origin,
                 init_name                       :: sym_name,
                 init_arity                      :: arity,
-                init_context                    :: prog_context
+                init_context                    :: prog_context,
+                init_seq_num                    :: int
             ).
 
 :- type item_finalise_info
@@ -249,7 +270,8 @@
                 final_origin                    :: item_origin,
                 final_name                      :: sym_name,
                 final_arity                     :: arity,
-                final_context                   :: prog_context
+                final_context                   :: prog_context,
+                final_seq_num                   :: int
             ).
 
 :- type item_mutable_info
@@ -261,7 +283,8 @@
                 mut_inst                        :: mer_inst,
                 mut_attrs                       :: mutable_var_attributes,
                 mut_varset                      :: prog_varset,
-                mut_context                     :: prog_context
+                mut_context                     :: prog_context,
+                mut_seq_num                     :: int
             ).
 
 :- type item_nothing_info
@@ -271,7 +294,8 @@
                 % XXX Instead of maybe(item_warning), this should be
                 % maybe(error_spec).
                 nothing_maybe_warning           :: maybe(item_warning),
-                nothing_context                 :: prog_context
+                nothing_context                 :: prog_context,
+                nothing_seq_num                 :: int
             ).
 
 :- func get_item_context(item) = prog_context.
@@ -1025,7 +1049,7 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
 
 get_item_foreign_code(Globals, Item, !Info) :-
     ( Item = item_pragma(ItemPragma) ->
-        ItemPragma = item_pragma_info(_, Pragma, Context),
+        ItemPragma = item_pragma_info(_, Pragma, Context, _),
         do_get_item_foreign_code(Globals, Pragma, Context, !Info)
     ; Item = item_mutable(_) ->
         % Mutables introduce foreign_procs, but mutable declarations

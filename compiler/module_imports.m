@@ -309,7 +309,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         list.member(Item, Items),
         Item = item_pred_decl(ItemPredDecl),
         ItemPredDecl = item_pred_decl_info(_, _, _, _, pf_predicate, Name,
-            [_, _], WithType, _, _, _, _, _, _),
+            [_, _], WithType, _, _, _, _, _, _, _),
         unqualify_name(Name) = "main",
 
         % XXX We should allow `main/2' to be declared using `with_type`,
@@ -358,7 +358,7 @@ get_dependencies_implementation([],
 get_dependencies_implementation([Item | Items],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
     ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         ( ModuleDefn = md_interface ->
             get_dependencies_interface(Items,
                 !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
@@ -389,7 +389,7 @@ get_dependencies_interface([],
 get_dependencies_interface([Item | Items],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
     ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         ( ModuleDefn = md_implementation ->
             get_dependencies_implementation(Items,
                 !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
@@ -516,7 +516,7 @@ items_need_imports([Item | Items], !ItemsNeedTabling,
         !ItemsNeedTablingStatistics, !ItemsNeedSTM) :-
     (
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
         Pragma = pragma_tabled(_, _, _, _, _, MaybeAttributes)
     ->
         !:ItemsNeedTabling = yes,
@@ -646,7 +646,7 @@ get_fact_table_dependencies_2([], !Deps).
 get_fact_table_dependencies_2([Item | Items], !Deps) :-
     (
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
         Pragma = pragma_fact_table(_SymName, _Arity, FileName)
     ->
         !:Deps = [FileName | !.Deps]

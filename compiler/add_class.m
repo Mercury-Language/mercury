@@ -75,7 +75,7 @@
 
 module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-
     ItemTypeClassInfo = item_typeclass_info(Constraints, FunDeps, Name, Vars,
-        Interface, VarSet, Context),
+        Interface, VarSet, Context, _SeqNum),
     module_info_get_class_table(!.ModuleInfo, Classes0),
     list.length(Vars, ClassArity),
     ClassId = class_id(Name, ClassArity),
@@ -653,7 +653,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
 produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         !ModuleInfo, !QualInfo, !ClausesInfo, !Specs) :-
     InstanceClause = item_clause_info(_Origin, CVarSet, ClausePredOrFunc,
-        PredName, HeadTerms0, Body, _ClauseContext),
+        PredName, HeadTerms0, Body, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
     % instead of aborting.
     expect(unify(PredOrFunc, ClausePredOrFunc), this_file,

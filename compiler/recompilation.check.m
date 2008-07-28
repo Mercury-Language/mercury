@@ -699,10 +699,12 @@ check_imported_module(Term, !Info, !IO) :-
             MaybeUsedItemsTerm = yes(UsedItemsTerm),
             Items = [InterfaceItem, VersionNumberItem | OtherItems],
             InterfaceItem = item_module_defn(InterfaceItemModuleDefn),
-            InterfaceItemModuleDefn = item_module_defn_info(md_interface, _),
+            InterfaceItemModuleDefn =
+                item_module_defn_info(md_interface, _, _),
             VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
             VersionNumberItemModuleDefn =
-                item_module_defn_info(md_version_numbers(_, VersionNumbers), _)
+                item_module_defn_info(md_version_numbers(_, VersionNumbers),
+                _, _)
         ->
             check_module_used_items(ImportedModuleName, NeedQualifier,
                 RecordedTimestamp, UsedItemsTerm, VersionNumbers,
@@ -866,7 +868,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         unexpected(this_file, "check_for_ambiguities: clause")
     ;
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(_, Name, Params, Body, _, _),
+        ItemTypeDefn = item_type_defn_info(_, Name, Params, Body, _, _, _),
         Arity = list.length(Params),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, type_abstract_item, Name, Arity, NeedsCheck,
@@ -880,18 +882,18 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         )
     ;
         Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(_, Name, Params, _, _, _),
+        ItemInstDefn = item_inst_defn_info(_, Name, Params, _, _, _, _),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, inst_item, Name, list.length(Params), _, !Info)
     ;
         Item = item_mode_defn(ItemModeDefn),
-        ItemModeDefn = item_mode_defn_info(_, Name, Params, _, _, _),
+        ItemModeDefn = item_mode_defn_info(_, Name, Params, _, _, _, _),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, mode_item, Name, list.length(Params), _, !Info)
     ;
         Item = item_typeclass(ItemTypeClass),
         ItemTypeClass = item_typeclass_info(_, _, Name, Params, Interface,
-            _, _),
+            _, _, _),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, typeclass_item, Name, list.length(Params),
             NeedsCheck, !Info),
@@ -907,7 +909,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
     ;
         Item = item_pred_decl(ItemPredDecl),
         ItemPredDecl = item_pred_decl_info(_, _, _, _, PredOrFunc, Name, Args,
-            WithType, _, _, _, _, _, _),
+            WithType, _, _, _, _, _, _, _),
         check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
             VersionNumbers, PredOrFunc, Name, Args, WithType, !Info)
     ;
@@ -1140,24 +1142,26 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
     type_ctor::in, type_defn::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_type_defn_ambiguity_with_functor(_, _, parse_tree_abstract_type(_),
-    !Info).
-check_type_defn_ambiguity_with_functor(_, _, parse_tree_eqv_type(_), !Info).
-check_type_defn_ambiguity_with_functor(NeedQualifier, TypeCtor,
-        parse_tree_du_type(Ctors, _), !Info) :-
-    list.foldl(check_functor_ambiguities(NeedQualifier, TypeCtor), Ctors,
-        !Info).
-check_type_defn_ambiguity_with_functor(_, _, parse_tree_foreign_type(_, _, _),
-    !Info).
-check_type_defn_ambiguity_with_functor(_, _, parse_tree_solver_type(_, _),
-    !Info).
+check_type_defn_ambiguity_with_functor(NeedQualifier, TypeCtor, TypeDefn,
+        !Info) :-
+    (
+        ( TypeDefn = parse_tree_abstract_type(_)
+        ; TypeDefn = parse_tree_eqv_type(_)
+        ; TypeDefn = parse_tree_foreign_type(_, _, _)
+        ; TypeDefn = parse_tree_solver_type(_, _)
+        )
+    ;
+        TypeDefn = parse_tree_du_type(Ctors, _),
+        list.foldl(check_functor_ambiguities(NeedQualifier, TypeCtor), Ctors,
+            !Info)
+    ).
 
 :- pred check_functor_ambiguities(need_qualifier::in, type_ctor::in,
     constructor::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities(NeedQualifier, TypeCtor, ctor(_, _, Name, Args, _),
-        !Info) :-
+check_functor_ambiguities(NeedQualifier, TypeCtor, Ctor, !Info) :-
+    Ctor = ctor(_, _, Name, Args, _),
     TypeCtorItem = type_ctor_to_item_name(TypeCtor),
     ResolvedCtor = resolved_functor_constructor(TypeCtorItem),
     Arity = list.length(Args),

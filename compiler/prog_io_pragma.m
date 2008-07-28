@@ -32,7 +32,7 @@
     % necessarily a pragma item.
     %
 :- pred parse_pragma(module_name::in, varset::in, list(term)::in,
-    prog_context::in, maybe1(item)::out) is semidet.
+    prog_context::in, int::in, maybe1(item)::out) is semidet.
 
     % Parse a term that represents a foreign language.
     %
@@ -63,26 +63,26 @@
 
 %-----------------------------------------------------------------------------%
 
-parse_pragma(ModuleName, VarSet, PragmaTerms, Context, Result) :-
+parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeItem) :-
     (
         PragmaTerms = [SinglePragmaTerm0],
         parse_type_decl_where_part_if_present(non_solver_type, ModuleName,
-            VarSet, SinglePragmaTerm0, SinglePragmaTerm, WherePartResult),
+            VarSet, SinglePragmaTerm0, SinglePragmaTerm, MaybeWherePart),
         SinglePragmaTerm = term.functor(term.atom(PragmaName), PragmaArgs,
             _Context),
         parse_pragma_type(ModuleName, PragmaName, PragmaArgs, SinglePragmaTerm,
-            VarSet, Context, Result0)
+            VarSet, Context, SeqNum, MaybeItem0)
     ->
         (
             % The code to process `where' attributes will return an error
             % result if solver attributes are given for a non-solver type.
             % Because this is a non-solver type, if the unification with
-            % WhereResult succeeds then _NoSolverTypeDetails is guaranteed to
-            % be `no'.
-            WherePartResult = ok2(_NoSolverTypeDetails, MaybeUserEqComp),
+            % MaybeWherePart succeeds then _SolverTypeDetails is guaranteed
+            % to be `no'.
+            MaybeWherePart = ok2(_SolverTypeDetails, MaybeUserEqComp),
             (
                 MaybeUserEqComp = yes(_),
-                Result0 = ok1(Item0)
+                MaybeItem0 = ok1(Item0)
             ->
                 (
                     Item0 = item_type_defn(ItemTypeDefn0),
@@ -93,7 +93,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, Result) :-
                         parse_tree_foreign_type(Type, MaybeUserEqComp,
                             Assertions),
                     Item = item_type_defn(ItemTypeDefn),
-                    Result = ok1(Item)
+                    MaybeItem = ok1(Item)
                 ;
                     Pieces = [words("Error: unexpected"),
                         quote("where equality/comparison is"),
@@ -101,14 +101,14 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, Result) :-
                     Spec = error_spec(severity_error, phase_term_to_parse_tree,
                         [simple_msg(get_term_context(SinglePragmaTerm0),
                             [always(Pieces)])]),
-                    Result = error1([Spec])
+                    MaybeItem = error1([Spec])
                 )
             ;
-                Result = Result0
+                MaybeItem = MaybeItem0
             )
         ;
-            WherePartResult = error2(Specs),
-            Result = error1(Specs)
+            MaybeWherePart = error2(Specs),
+            MaybeItem = error1(Specs)
         )
     ;
         fail
@@ -117,63 +117,67 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, Result) :-
 %----------------------------------------------------------------------------%
 
 :- pred parse_pragma_type(module_name::in, string::in, list(term)::in,
-    term::in, varset::in, prog_context::in, maybe1(item)::out) is semidet.
+    term::in, varset::in, prog_context::in, int::in, maybe1(item)::out)
+    is semidet.
 
 parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
-        Context, Result) :-
+        Context, SeqNum, MaybeItem) :-
     (
         PragmaName = "source_file",
-        parse_pragma_source_file(PragmaTerms, ErrorTerm, Context, Result)
+        parse_pragma_source_file(PragmaTerms, ErrorTerm,
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "foreign_type",
         parse_pragma_foreign_type(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "foreign_decl",
         parse_pragma_foreign_decl_pragma(ModuleName, PragmaName,
-            PragmaTerms, ErrorTerm, VarSet, Context, Result)
+            PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "c_header_code",
         parse_pragma_c_header_code(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "foreign_code",
         parse_pragma_foreign_code_pragma(ModuleName, PragmaName,
-            PragmaTerms, ErrorTerm, VarSet, Context, Result)
+            PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "foreign_proc",
         parse_pragma_foreign_proc_pragma(ModuleName, PragmaName,
-            PragmaTerms, ErrorTerm, VarSet, Context, Result)
+            PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "foreign_export_enum",
         parse_pragma_foreign_export_enum(PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "foreign_enum",
         parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "foreign_export",
         parse_pragma_foreign_export(PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "c_code",
         parse_pragma_c_code(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "c_import_module",
-        parse_pragma_c_import_module(PragmaTerms, ErrorTerm, Context, Result)
+        parse_pragma_c_import_module(PragmaTerms, ErrorTerm,
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "foreign_import_module",
         parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "import",
         parse_pragma_import(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "export",
-        parse_pragma_export(PragmaTerms, ErrorTerm, VarSet, Context, Result)
+        parse_pragma_export(PragmaTerms, ErrorTerm, VarSet,
+            Context, SeqNum, MaybeItem)
     ;
         (
             PragmaName = "inline",
@@ -217,13 +221,13 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
                 Pragma = pragma_mode_check_clauses(Name, Arity))
         ),
         parse_simple_pragma(ModuleName, PragmaName, MakePragma,
-            PragmaTerms, ErrorTerm, VarSet, Context, Result)
+            PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "reserve_tag",
         MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
             Pragma = pragma_reserve_tag(Name, Arity)),
         parse_simple_type_pragma(ModuleName, PragmaName, MakePragma,
-            PragmaTerms, ErrorTerm, VarSet, Context, Result)
+            PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
     ;
         (
             PragmaName = "memo",
@@ -240,51 +244,51 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
             EvalMethod = eval_minimal(stack_copy)
         ),
         parse_tabling_pragma(ModuleName, PragmaName, EvalMethod,
-            PragmaTerms, ErrorTerm, VarSet, Context, Result)
+            PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "unused_args",
         parse_pragma_unused_args(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "type_spec",
         parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "fact_table",
-        parse_pragma_fact_table(ModuleName, PragmaTerms, ErrorTerm,
-            VarSet, Context, Result)
+        parse_pragma_fact_table(ModuleName, PragmaTerms, ErrorTerm, VarSet,
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "termination_info",
         parse_pragma_termination_info(ModuleName, PragmaTerms, ErrorTerm,
-            VarSet, Context, Result)
+            VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "termination2_info",
         parse_pragma_termination2_info(ModuleName, PragmaTerms, ErrorTerm,
-            VarSet, Context, Result)
+            VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "structure_sharing",
         parse_pragma_structure_sharing(ModuleName, PragmaTerms, ErrorTerm,
-            VarSet, Context, Result)
+            VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "structure_reuse",
         parse_pragma_structure_reuse(ModuleName, PragmaTerms, ErrorTerm,
-            VarSet, Context, Result)
+            VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "exceptions",
         parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "trailing_info",
         parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "mm_tabling_info",
         parse_pragma_mm_tabling_info(ModuleName, PragmaTerms, ErrorTerm,
-            VarSet, Context, Result)
+            VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "require_feature_set",
         parse_pragma_require_feature_set(PragmaTerms, VarSet, ErrorTerm,
-            Context, Result)
+            Context, SeqNum, MaybeItem)
     ).
 
 %----------------------------------------------------------------------------%
@@ -295,15 +299,15 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
 % predicates for related xxxs together.
 
 :- pred parse_pragma_source_file(list(term)::in, term::in, prog_context::in,
-    maybe1(item)::out) is det.
+    int::in, maybe1(item)::out) is det.
 
-parse_pragma_source_file(PragmaTerms, ErrorTerm, Context, Result) :-
+parse_pragma_source_file(PragmaTerms, ErrorTerm, Context, SeqNum, MaybeItem) :-
     ( PragmaTerms = [SourceFileTerm] ->
         ( SourceFileTerm = term.functor(term.string(SourceFile), [], _) ->
             Pragma = pragma_source_file(SourceFile),
-            ItemPragma = item_pragma_info(user, Pragma, Context),
+            ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
-            Result = ok1(Item)
+            MaybeItem = ok1(Item)
         ;
             Pieces = [words("Error: the argument of a"),
                 quote(":- pragma source_file"),
@@ -311,21 +315,21 @@ parse_pragma_source_file(PragmaTerms, ErrorTerm, Context, Result) :-
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(SourceFileTerm),
                     [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma source_file"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_foreign_type(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_foreign_type(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     (
         (
             PragmaTerms = [LangTerm, MercuryTypeTerm, ForeignTypeTerm],
@@ -358,9 +362,9 @@ parse_pragma_foreign_type(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
                             MercuryTypeSymName, MercuryParams,
                             parse_tree_foreign_type(ForeignType, no,
                                 Assertions),
-                            cond_true, Context),
+                            cond_true, Context, SeqNum),
                         Item = item_type_defn(ItemTypeDefn),
-                        Result = ok1(Item)
+                        MaybeItem = ok1(Item)
                     ;
                         MaybeAssertionTerm = yes(ErrorAssertionTerm)
                     ->
@@ -371,7 +375,7 @@ parse_pragma_foreign_type(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
                             phase_term_to_parse_tree,
                             [simple_msg(get_term_context(ErrorAssertionTerm),
                                 [always(Pieces)])]),
-                        Result = error1([Spec])
+                        MaybeItem = error1([Spec])
                     ;
                         unexpected(this_file,
                             "parse_pragma_type: unexpected failure of " ++
@@ -379,42 +383,43 @@ parse_pragma_foreign_type(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
                     )
                 ;
                     MaybeTypeDefnHead = error2(Specs),
-                    Result = error1(Specs)
+                    MaybeItem = error1(Specs)
                 )
             ;
                 MaybeForeignType = error1(Specs),
-                Result = error1(Specs)
+                MaybeItem = error1(Specs)
             )
         ;
             Pieces = [words("Error: invalid foreign language in"),
                 quote(":- pragma foreign_type"), words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(LangTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma foreign_type"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_c_header_code(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_c_header_code(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     ( PragmaTerms = [term.functor(_, _, Context) | _] ->
         LangC = term.functor(term.string("C"), [], Context),
         parse_pragma_foreign_decl_pragma(ModuleName, "c_header_code",
-            [LangC | PragmaTerms], ErrorTerm, VarSet, Context, Result)
+            [LangC | PragmaTerms], ErrorTerm, VarSet, Context, SeqNum,
+            MaybeItem)
     ;
         Pieces = [words("Error: wrong number or unexpected variable in"),
             quote(":- pragma c_header_code"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 %----------------------------------------------------------------------------%
@@ -423,10 +428,10 @@ parse_pragma_c_header_code(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
 %
 
 :- pred parse_pragma_foreign_export_enum(list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_foreign_export_enum(PragmaTerms, ErrorTerm, VarSet, Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     (
         (
             PragmaTerms = [LangTerm, MercuryTypeTerm],
@@ -460,20 +465,20 @@ parse_pragma_foreign_export_enum(PragmaTerms, ErrorTerm, VarSet, Context,
                             Overrides
                         ),
                         ItemPragma = item_pragma_info(user, PragmaExportEnum,
-                            Context),
+                            Context, SeqNum),
                         Item = item_pragma(ItemPragma),
-                        Result = ok1(Item)
+                        MaybeItem = ok1(Item)
                     ;
                         MaybeOverrides = error1(Specs),
-                        Result = error1(Specs)
+                        MaybeItem = error1(Specs)
                     )
                 ;
                     MaybeAttributes = error1(Specs),
-                    Result = error1(Specs)
+                    MaybeItem = error1(Specs)
                 )
             ;
                 MaybeType = error2(Specs),
-                Result = error1(Specs)
+                MaybeItem = error1(Specs)
             )
         ;
             Pieces = [words("Error: invalid foreign language in"),
@@ -482,27 +487,27 @@ parse_pragma_foreign_export_enum(PragmaTerms, ErrorTerm, VarSet, Context,
             % XXX Get_term_context(LangTerm) would be better.
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma foreign_export_enum"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_export_enum_type(term::in, maybe2(sym_name, arity)::out) is det.
 
-parse_export_enum_type(TypeTerm, Result) :-
+parse_export_enum_type(TypeTerm, MaybeNameAndArity) :-
     ( parse_name_and_arity(TypeTerm, Name, Arity) ->
-        Result = ok2(Name, Arity)
+        MaybeNameAndArity = ok2(Name, Arity)
     ;
         Pieces = [words("Error: expected name/arity for type in"),
             quote(":- pragma foreign_export_enum"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
-        Result = error2([Spec])
+        MaybeNameAndArity = error2([Spec])
     ).
 
 :- pred maybe_parse_export_enum_overrides(varset::in, maybe(term)::in,
@@ -623,17 +628,17 @@ process_export_enum_attribute(ee_attr_upper(MakeUpperCase), !Attributes) :-
 :- pred parse_export_enum_attr(varset::in, term::in,
     maybe1(collected_export_enum_attribute)::out) is det.
 
-parse_export_enum_attr(VarSet, Term, Result) :-
+parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
     (
         Term = functor(atom("prefix"), Args, _),
         Args = [ ForeignNameTerm ],
         ForeignNameTerm = functor(string(Prefix), [], _)
     ->
-        Result = ok1(ee_attr_prefix(yes(Prefix)))
+        MaybeAttribute = ok1(ee_attr_prefix(yes(Prefix)))
     ;
         Term = functor(atom("uppercase"), [], _)
     ->
-        Result = ok1(ee_attr_upper(uppercase_export_enum))
+        MaybeAttribute = ok1(ee_attr_upper(uppercase_export_enum))
     ;
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: unrecognised attribute in"),
@@ -641,7 +646,7 @@ parse_export_enum_attr(VarSet, Term, Result) :-
             words(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeAttribute = error1([Spec])
     ).
 
 %----------------------------------------------------------------------------%
@@ -650,9 +655,10 @@ parse_export_enum_attr(VarSet, Term, Result) :-
 %
 
 :- pred parse_pragma_foreign_enum(list(term)::in, term::in, varset::in,
-    prog_context::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
+parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
+        MaybeItem) :-
     ( PragmaTerms = [LangTerm, MercuryTypeTerm, ValuesTerm] ->
         ( parse_foreign_language(LangTerm, ForeignLanguage) ->
             parse_export_enum_type(MercuryTypeTerm, MaybeType),
@@ -669,16 +675,16 @@ parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
                     PragmaForeignImportEnum = pragma_foreign_enum(
                         ForeignLanguage, TypeName, TypeArity, Values),
                     ItemPragma = item_pragma_info(user,
-                        PragmaForeignImportEnum, Context),
+                        PragmaForeignImportEnum, Context, SeqNum),
                     Item = item_pragma(ItemPragma),
-                    Result = ok1(Item)
+                    MaybeItem = ok1(Item)
                 ;
                     MaybeValues = error1(Specs),
-                    Result = error1(Specs)
+                    MaybeItem = error1(Specs)
                 )
             ;
                 MaybeType = error2(Specs),
-                Result = error1(Specs)
+                MaybeItem = error1(Specs)
             )
         ;
             Pieces = [words("Error: invalid foreign language in"),
@@ -687,14 +693,14 @@ parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
             % XXX We should use the context of LangTerm.
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma foreign_export_enum"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 %----------------------------------------------------------------------------%
@@ -703,23 +709,25 @@ parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
 %
 
 :- pred parse_pragma_foreign_export(list(term)::in, term::in, varset::in,
-    prog_context::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_foreign_export(PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
+parse_pragma_foreign_export(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
+        MaybeItem) :-
     ( PragmaTerms = [LangTerm, PredAndModesTerm, FunctionTerm] ->
         ( FunctionTerm = term.functor(term.string(Function), [], _) ->
             ContextPieces = [words("In"),
                 quote(":- pragma foreign_export"), words("declaration")],
             parse_pred_or_func_and_arg_modes(no, PredAndModesTerm,
-                ErrorTerm, VarSet, ContextPieces, PredAndModesResult),
+                ErrorTerm, VarSet, ContextPieces, MaybePredAndModes),
             (
-                PredAndModesResult = ok2(PredName - PredOrFunc, Modes),
+                MaybePredAndModes = ok2(PredName - PredOrFunc, Modes),
                 ( parse_foreign_language(LangTerm, ForeignLanguage) ->
                     Pragma = pragma_foreign_export(ForeignLanguage, PredName,
                         PredOrFunc, Modes, Function),
-                    ItemPragma = item_pragma_info(user, Pragma, Context),
+                    ItemPragma = item_pragma_info(user, Pragma, Context,
+                        SeqNum),
                     Item = item_pragma(ItemPragma),
-                    Result = ok1(Item)
+                    MaybeItem = ok1(Item)
                 ;
                     Pieces = [words("Error: invalid foreign language in"),
                         quote(":- pragma foreign_export"),
@@ -727,11 +735,11 @@ parse_pragma_foreign_export(PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
                     Spec = error_spec(severity_error, phase_term_to_parse_tree,
                         [simple_msg(get_term_context(LangTerm),
                             [always(Pieces)])]),
-                    Result = error1([Spec])
+                    MaybeItem = error1([Spec])
                 )
             ;
-                PredAndModesResult = error2(Specs),
-                Result = error1(Specs)
+                MaybePredAndModes = error2(Specs),
+                MaybeItem = error1(Specs)
             )
         ;
             % XXX Why this wording?
@@ -742,23 +750,23 @@ parse_pragma_foreign_export(PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(PredAndModesTerm),
                     [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma foreign_export"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 %----------------------------------------------------------------------------%
 
 :- pred parse_pragma_c_code(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_c_code(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     % pragma c_code is almost as if we have written foreign_code
     % or foreign_proc with the language set to "C".
     % There are a few differences (error messages, some deprecated
@@ -770,64 +778,68 @@ parse_pragma_c_code(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
     ->
         LangC = term.functor(term.string("C"), [], FirstContext),
         parse_pragma_foreign_code_pragma(ModuleName, "c_code",
-            [LangC | PragmaTerms], ErrorTerm, VarSet, Context, Result)
+            [LangC | PragmaTerms], ErrorTerm, VarSet, Context, SeqNum,
+            MaybeItem)
     ;
         % arity > 1 (same as foreign_proc)
         PragmaTerms = [term.functor(_, _, FirstContext) | _]
     ->
         LangC = term.functor(term.string("C"), [], FirstContext),
         parse_pragma_foreign_proc_pragma(ModuleName, "c_code",
-            [LangC | PragmaTerms], ErrorTerm, VarSet, Context, Result)
+            [LangC | PragmaTerms], ErrorTerm, VarSet, Context, SeqNum,
+            MaybeItem)
     ;
         Pieces = [words("Error: wrong number of arguments"),
             words("or unexpected variable in"),
             quote(":- pragma c_code"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_c_import_module(list(term)::in, term::in,
-    prog_context::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_c_import_module(PragmaTerms, ErrorTerm, Context, Result) :-
+parse_pragma_c_import_module(PragmaTerms, ErrorTerm, Context, SeqNum,
+        MaybeItem) :-
     (
         PragmaTerms = [ImportTerm],
         sym_name_and_args(ImportTerm, Import, [])
     ->
         Pragma = pragma_foreign_import_module(lang_c, Import),
-        ItemPragma = item_pragma_info(user, Pragma, Context),
+        ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
-        Result = ok1(Item)
+        MaybeItem = ok1(Item)
     ;
         Pieces = [words("Error: wrong number of arguments"),
             words("or invalid module name in"),
             quote(":- pragma c_import_module"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_foreign_import_module(list(term)::in, term::in,
-    prog_context::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm, Context, Result) :-
+parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm, Context, SeqNum,
+        MaybeItem) :-
     (
         PragmaTerms = [LangTerm, ImportTerm],
         sym_name_and_args(ImportTerm, Import, [])
     ->
         ( parse_foreign_language(LangTerm, Language) ->
             Pragma = pragma_foreign_import_module(Language, Import),
-            ItemPragma = item_pragma_info(user, Pragma, Context),
+            ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
-            Result = ok1(Item)
+            MaybeItem = ok1(Item)
         ;
             Pieces = [words("Error: invalid foreign language in"),
                 quote(":- pragma foreign_import_module"),
                 words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(LangTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         Pieces = [words("Error: wrong number of arguments"),
@@ -836,14 +848,14 @@ parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm, Context, Result) :-
             words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_import(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_import(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     % XXX We assume all imports are C.
     ForeignLanguage = lang_c,
     (
@@ -852,13 +864,14 @@ parse_pragma_import(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
             FlagsContextPieces = [words("In second argument of"),
                 quote(":- pragma import/3"), words("declaration:")],
             parse_pragma_foreign_proc_attributes_term(ForeignLanguage,
-                "import", VarSet, FlagsTerm, FlagsContextPieces, FlagsResult)
+                "import", VarSet, FlagsTerm, FlagsContextPieces,
+                MaybeAttributes)
         ;
             PragmaTerms = [PredAndModesTerm, FunctionTerm],
             Flags0 = default_attributes(ForeignLanguage),
             % Pragma import uses legacy purity behaviour.
             set_legacy_purity_behaviour(yes, Flags0, Flags),
-            FlagsResult = ok1(Flags)
+            MaybeAttributes = ok1(Flags)
         )
     ->
         ( FunctionTerm = term.functor(term.string(Function), [], _) ->
@@ -866,23 +879,24 @@ parse_pragma_import(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
                 quote(":- pragma import"), words("declaration:")],
             parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm,
                 ErrorTerm, VarSet, PredAndModesContextPieces,
-                PredAndArgModesResult),
+                MaybePredAndArgModes),
             (
-                PredAndArgModesResult = ok2(PredName - PredOrFunc, ArgModes),
+                MaybePredAndArgModes = ok2(PredName - PredOrFunc, ArgModes),
                 (
-                    FlagsResult = ok1(Attributes),
+                    MaybeAttributes = ok1(Attributes),
                     Pragma = pragma_import(PredName, PredOrFunc, ArgModes,
                         Attributes, Function),
-                    ItemPragma = item_pragma_info(user, Pragma, Context),
+                    ItemPragma = item_pragma_info(user, Pragma, Context,
+                        SeqNum),
                     Item = item_pragma(ItemPragma),
-                    Result = ok1(Item)
+                    MaybeItem = ok1(Item)
                 ;
-                    FlagsResult = error1(FlagsSpecs),
-                    Result = error1(FlagsSpecs)
+                    MaybeAttributes = error1(FlagsSpecs),
+                    MaybeItem = error1(FlagsSpecs)
                 )
             ;
-                PredAndArgModesResult = error2(Specs),
-                Result = error1(Specs)
+                MaybePredAndArgModes = error2(Specs),
+                MaybeItem = error1(Specs)
             )
         ;
             Pieces = [words("Error: expected pragma"),
@@ -891,36 +905,37 @@ parse_pragma_import(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(PredAndModesTerm),
                     [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma import"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_export(list(term)::in, term::in, varset::in,
-    prog_context::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_export(PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
+parse_pragma_export(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
+        MaybeItem) :-
     ( PragmaTerms = [PredAndModesTerm, FunctionTerm] ->
         ( FunctionTerm = term.functor(term.string(Function), [], _) ->
-            ContextPieces = [words("In"),
-                quote(":- pragma export"), words("declaration:")],
+            ContextPieces = [words("In"), quote(":- pragma export"),
+                words("declaration:")],
             parse_pred_or_func_and_arg_modes(no, PredAndModesTerm, ErrorTerm,
-                VarSet, ContextPieces, PredAndModesResult),
+                VarSet, ContextPieces, MaybePredAndModes),
             (
-                PredAndModesResult = ok2(PredName - PredOrFunc, Modes),
+                MaybePredAndModes = ok2(PredName - PredOrFunc, Modes),
                 Pragma = pragma_foreign_export(lang_c, PredName, PredOrFunc,
                     Modes, Function),
-                ItemPragma = item_pragma_info(user, Pragma, Context),
+                ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
-                Result = ok1(Item)
+                MaybeItem = ok1(Item)
             ;
-                PredAndModesResult = error2(Specs),
-                Result = error1(Specs)
+                MaybePredAndModes = error2(Specs),
+                MaybeItem = error1(Specs)
             )
         ;
             % XXX Why this wording?
@@ -930,57 +945,56 @@ parse_pragma_export(PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(PredAndModesTerm),
                     [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma export"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_unused_args(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_unused_args(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     % pragma unused_args should never appear in user programs,
     % only in .opt files.
     (
-        PragmaTerms = [PredOrFuncTerm, PredNameTerm,
-            term.functor(term.integer(Arity), [], _),
-            term.functor(term.integer(ModeNum), [], _),
-            UnusedArgsTerm
-        ],
+        PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
+            UnusedArgsTerm],
+        ArityTerm = term.functor(term.integer(Arity), [], _),
+        ModeNumTerm = term.functor(term.integer(ModeNum), [], _),
         parse_predicate_or_function(PredOrFuncTerm, PredOrFunc),
         ContextPieces = [words("In"), quote(":- pragma unused_args"),
             words("declaration:")],
         parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
-            VarSet, ContextPieces, PredNameResult),
-        PredNameResult = ok2(PredName, []),
-        convert_int_list(VarSet, UnusedArgsTerm, UnusedArgsResult),
-        UnusedArgsResult = ok1(UnusedArgs)
+            VarSet, ContextPieces, MaybePredName),
+        MaybePredName = ok2(PredName, []),
+        convert_int_list(VarSet, UnusedArgsTerm, MaybeUnusedArgs),
+        MaybeUnusedArgs = ok1(UnusedArgs)
     ->
         Pragma = pragma_unused_args(PredOrFunc, PredName, Arity, ModeNum,
             UnusedArgs),
-        ItemPragma = item_pragma_info(user, Pragma, Context),
+        ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
-        Result = ok1(Item)
+        MaybeItem = ok1(Item)
     ;
         % XXX Improve this message.
         Pieces = [words("Error in"), quote(":- pragma unused_args"),
             suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_type_spec(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet0, Context,
-        Result) :-
+parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
+        SeqNum, MaybeItem) :-
     (
         (
             PragmaTerms = [PredAndModesTerm, TypeSubnTerm],
@@ -997,7 +1011,7 @@ parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet0, Context,
             % only if it isn't used.
             NameContextPieces = [],
             parse_implicitly_qualified_term(ModuleName, SpecNameTerm,
-                ErrorTerm, VarSet0, NameContextPieces, NameResult),
+                ErrorTerm, VarSet, NameContextPieces, NameResult),
             NameResult = ok2(SpecName, []),
             MaybeName = yes(SpecName)
         )
@@ -1005,14 +1019,15 @@ parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet0, Context,
         ArityOrModesContextPieces = [words("In"), quote(":- pragma type_spec"),
             words("declaration:")],
         parse_arity_or_modes(ModuleName, PredAndModesTerm, ErrorTerm,
-            VarSet0, ArityOrModesContextPieces, ArityOrModesResult),
+            VarSet, ArityOrModesContextPieces, MaybeArityOrModes),
         (
-            ArityOrModesResult = ok1(arity_or_modes(PredName, Arity,
-                MaybePredOrFunc, MaybeModes)),
+            MaybeArityOrModes = ok1(ArityOrModes),
+            ArityOrModes = arity_or_modes(PredName, Arity, MaybePredOrFunc,
+                MaybeModes),
             conjunction_to_list(TypeSubnTerm, TypeSubnList),
 
             % The varset is actually a tvarset.
-            varset.coerce(VarSet0, TVarSet),
+            varset.coerce(VarSet, TVarSet),
             ( list.map(convert_type_spec_pair, TypeSubnList, TypeSubn) ->
                 (
                     MaybeName = yes(SpecializedName0),
@@ -1026,76 +1041,76 @@ parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet0, Context,
                 ),
                 Pragma = pragma_type_spec(PredName, SpecializedName, Arity,
                     MaybePredOrFunc, MaybeModes, TypeSubn, TVarSet, set.init),
-                ItemPragma = item_pragma_info(user, Pragma, Context),
+                ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
-                Result = ok1(Item)
+                MaybeItem = ok1(Item)
             ;
                 Pieces = [words("Error: expected type substitution in"),
                     quote(":- pragma type_spec"), words("declaration."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(TypeSubnTerm),
                         [always(Pieces)])]),
-                Result = error1([Spec])
+                MaybeItem = error1([Spec])
             )
         ;
-            ArityOrModesResult = error1(Specs),
-            Result = error1(Specs)
+            MaybeArityOrModes = error1(Specs),
+            MaybeItem = error1(Specs)
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma type_spec"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_fact_table(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_fact_table(ModuleName, PragmaTerms, ErrorTerm,
-        VarSet, Context, Result) :-
+        VarSet, Context, SeqNum, MaybeItem) :-
     ( PragmaTerms = [PredAndArityTerm, FileNameTerm] ->
         parse_pred_name_and_arity(ModuleName, "fact_table",
-            PredAndArityTerm, ErrorTerm, VarSet, NameArityResult),
+            PredAndArityTerm, ErrorTerm, VarSet, MaybeNameAndArity),
         (
-            NameArityResult = ok2(PredName, Arity),
+            MaybeNameAndArity = ok2(PredName, Arity),
             ( FileNameTerm = term.functor(term.string(FileName), [], _) ->
                 Pragma = pragma_fact_table(PredName, Arity, FileName),
-                ItemPragma = item_pragma_info(user, Pragma, Context),
+                ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
-                Result = ok1(Item)
+                MaybeItem = ok1(Item)
             ;
                 Pieces = [words("Error: expected string"),
                     words("for fact table filename."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(FileNameTerm),
                         [always(Pieces)])]),
-                Result = error1([Spec])
+                MaybeItem = error1([Spec])
             )
         ;
-            NameArityResult = error2(Specs),
-            Result = error1(Specs)
+            MaybeNameAndArity = error2(Specs),
+            MaybeItem = error1(Specs)
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma fact_table"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_termination_info(module_name::in, list(term)::in,
-    term::in, varset::in, prog_context::in, maybe1(item)::out) is det.
+    term::in, varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_termination_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-        Context, Result) :-
+        Context, SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredAndModesTerm0, ArgSizeTerm, TerminationTerm],
         ContextPieces = [words("In"),
             quote(":- pragma termination_info"), words("declaration:")],
         parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
-            ErrorTerm, VarSet, ContextPieces, NameAndModesResult),
-        NameAndModesResult = ok2(PredName - PredOrFunc, ModeList),
+            ErrorTerm, VarSet, ContextPieces, MaybeNameAndModes),
+        MaybeNameAndModes = ok2(PredName - PredOrFunc, ModeList),
         ArgSizeTerm = term.functor(term.atom(ArgSizeFunctor),
             ArgSizeArgTerms, _),
         (
@@ -1127,22 +1142,22 @@ parse_pragma_termination_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
     ->
         Pragma = pragma_termination_info(PredOrFunc, PredName, ModeList,
             MaybeArgSizeInfo, MaybeTerminationInfo),
-        ItemPragma = item_pragma_info(user, Pragma, Context),
+        ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
-        Result = ok1(Item)
+        MaybeItem = ok1(Item)
     ;
         Pieces = [words("Syntax error in"),
             quote(":- pragma termination_info"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_termination2_info(module_name::in, list(term)::in,
-    term::in, varset::in, prog_context::in, maybe1(item)::out) is det.
+    term::in, varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_termination2_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-        Context, Result) :-
+        Context, SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredAndModesTerm0, SuccessArgSizeTerm,
             FailureArgSizeTerm, TerminationTerm],
@@ -1169,30 +1184,30 @@ parse_pragma_termination2_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
     ->
         Pragma = pragma_termination2_info(PredOrFunc, PredName, ModeList,
             SuccessArgSizeInfo, FailureArgSizeInfo, MaybeTerminationInfo),
-        ItemPragma = item_pragma_info(user, Pragma, Context),
+        ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
-        Result = ok1(Item)
+        MaybeItem = ok1(Item)
     ;
         Pieces = [words("Syntax error in"),
             quote(":- pragma termination2_info"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_structure_sharing(module_name::in, list(term)::in,
-    term::in, varset::in, prog_context::in, maybe1(item)::out) is det.
+    term::in, varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_structure_sharing(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-        Context, Result) :-
+        Context, SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredAndModesTerm0, HeadVarsTerm,
             HeadVarTypesTerm, SharingInformationTerm],
         ModesContextPieces = [words("In"),
             quote(":- pragma structure_sharing"), words("declaration:")],
         parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
-            ErrorTerm, VarSet, ModesContextPieces, NameAndModesResult),
-        NameAndModesResult = ok2(PredName - PredOrFunc, ModeList),
+            ErrorTerm, VarSet, ModesContextPieces, MaybeNameAndModes),
+        MaybeNameAndModes = ok2(PredName - PredOrFunc, ModeList),
 
         % Parse the head variables:
         HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
@@ -1219,30 +1234,30 @@ parse_pragma_structure_sharing(ModuleName, PragmaTerms, ErrorTerm, VarSet,
     ->
         Pragma = pragma_structure_sharing(PredOrFunc, PredName, ModeList,
             HeadVars, Types, MaybeSharingAs),
-        ItemPragma = item_pragma_info(user, Pragma, Context),
+        ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
-        Result = ok1(Item)
+        MaybeItem = ok1(Item)
     ;
         Pieces = [words("Syntax error in"),
             quote(":- pragma structure_sharing"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_structure_reuse(module_name::in, list(term)::in,
-    term::in, varset::in, prog_context::in, maybe1(item)::out) is det.
+    term::in, varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_structure_reuse(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-        Context, Result) :-
+        Context, SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredAndModesTerm0, HeadVarsTerm,
             HeadVarTypesTerm, MaybeStructureReuseTerm],
         ReuseContextPieces = [words("In"), quote(":- pragma structure_reuse"),
             words("declaration:")],
         parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
-            ErrorTerm, VarSet, ReuseContextPieces, NameAndModesResult),
-        NameAndModesResult = ok2(PredName - PredOrFunc, ModeList),
+            ErrorTerm, VarSet, ReuseContextPieces, MaybeNameAndModes),
+        MaybeNameAndModes = ok2(PredName - PredOrFunc, ModeList),
 
         % Parse the head variables:
         HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
@@ -1258,7 +1273,7 @@ parse_pragma_structure_reuse(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             ReuseArgTerms, _),
         (
             ReuseFunctor = "not_available",
-            % XXX Why don't we test ReusegArgTerms?
+            % XXX Why don't we test ReuseArgTerms?
             MaybeStructureReuse = no
         ;
             ReuseFunctor = "yes",
@@ -1269,22 +1284,22 @@ parse_pragma_structure_reuse(ModuleName, PragmaTerms, ErrorTerm, VarSet,
     ->
         Pragma = pragma_structure_reuse(PredOrFunc, PredName, ModeList,
             HeadVars, Types, MaybeStructureReuse),
-        ItemPragma = item_pragma_info(user, Pragma, Context),
+        ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
-        Result = ok1(Item)
+        MaybeItem = ok1(Item)
     ;
         Pieces = [words("Syntax error in"),
             quote(":- pragma structure_reuse"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_exceptions(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
             ThrowStatusTerm],
@@ -1294,8 +1309,8 @@ parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
         ContextPieces = [words("In"), quote(":- pragma exceptions"),
             words("declaration:")],
         parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
-            VarSet, ContextPieces, PredNameResult),
-        PredNameResult = ok2(PredName, []),
+            VarSet, ContextPieces, MaybePredNameAndArgs),
+        MaybePredNameAndArgs = ok2(PredName, []),
         ThrowStatusTerm = term.functor(term.atom(ThrowStatusFunctor),
             ThrowStatusArgTerms, _),
         (
@@ -1323,22 +1338,22 @@ parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
     ->
         Pragma = pragma_exceptions(PredOrFunc, PredName, Arity, ModeNum,
             ThrowStatus),
-        ItemPragma = item_pragma_info(user, Pragma, Context),
+        ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
-        Result = ok1(Item)
+        MaybeItem = ok1(Item)
     ;
         Pieces = [words("Error in"),
             quote(":- pragma exceptions"), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_trailing_info(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
             TrailingStatusTerm],
@@ -1348,8 +1363,8 @@ parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
         ContextPieces = [words("In"), quote(":- pragma trailing_info"),
             words("declaration:")],
         parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
-            VarSet, ContextPieces, PredNameResult),
-        PredNameResult = ok2(PredName, []),
+            VarSet, ContextPieces, MaybePredNameAndArgs),
+        MaybePredNameAndArgs = ok2(PredName, []),
         TrailingStatusTerm = term.functor(term.atom(TrailingStatusFunctor),
             [], _),
         (
@@ -1365,22 +1380,22 @@ parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
     ->
         Pragma = pragma_trailing_info(PredOrFunc, PredName, Arity, ModeNum,
             TrailingStatus),
-        ItemPragma = item_pragma_info(user, Pragma, Context),
+        ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
-        Result = ok1(Item)
+        MaybeItem = ok1(Item)
     ;
         Pieces = [words("Error in"), quote(":- pragma trailing_info"),
             suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_mm_tabling_info(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_mm_tabling_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-        Context, Result) :-
+        Context, SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
             MM_TablingStatusTerm],
@@ -1390,8 +1405,8 @@ parse_pragma_mm_tabling_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         ContextPieces = [words("In"), quote(":- pragma mm_tabling_info"),
             words("declaration:")],
         parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
-            VarSet, ContextPieces, PredNameResult),
-        PredNameResult = ok2(PredName, []),
+            VarSet, ContextPieces, MaybePredNameAndArgs),
+        MaybePredNameAndArgs = ok2(PredName, []),
         MM_TablingStatusTerm = term.functor(term.atom(MM_TablingStatusFunctor),
             [], _),
         (
@@ -1407,22 +1422,22 @@ parse_pragma_mm_tabling_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
     ->
         Pragma = pragma_mm_tabling_info(PredOrFunc, PredName, Arity, ModeNum,
             MM_TablingStatus),
-        ItemPragma = item_pragma_info(user, Pragma, Context),
+        ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
-        Result = ok1(Item)
+        MaybeItem = ok1(Item)
     ;
         Pieces = [words("Error in"), quote(":- pragma mm_tabling_info"),
             suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_require_feature_set(list(term)::in, varset::in, term::in,
-    prog_context::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_require_feature_set(PragmaTerms, VarSet, ErrorTerm, Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     ( PragmaTerms = [FeatureListTerm] ->
         UnrecognizedPieces = [words("Error: expected a feature"), nl],
         convert_maybe_list("features", yes(VarSet), FeatureListTerm,
@@ -1444,31 +1459,32 @@ parse_pragma_require_feature_set(PragmaTerms, VarSet, ErrorTerm, Context,
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(FeatureListTerm),
                         [always(Pieces)])]),
-                Result = error1([Spec])
+                MaybeItem = error1([Spec])
             ;
                 (
                     FeatureList = [],
-                    ItemNothing = item_nothing_info(no, Context),
+                    ItemNothing = item_nothing_info(no, Context, SeqNum),
                     Item = item_nothing(ItemNothing)
                 ;
                     FeatureList = [_ | _],
                     FeatureSet = set.from_list(FeatureList),
                     Pragma = pragma_require_feature_set(FeatureSet),
-                    ItemPragma = item_pragma_info(user, Pragma, Context),
+                    ItemPragma = item_pragma_info(user, Pragma, Context,
+                        SeqNum),
                     Item = item_pragma(ItemPragma)
                 ),
-                Result = ok1(Item)
+                MaybeItem = ok1(Item)
             )
         ;
             MaybeFeatureList = error1(Specs),
-            Result = error1(Specs)
+            MaybeItem = error1(Specs)
         )
     ;
         Pieces = [words("Syntax error in"),
             quote(":- pragma require_feature_set"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 %----------------------------------------------------------------------------%
@@ -1498,55 +1514,57 @@ parse_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
 :- pred parse_foreign_language_type(term::in, varset::in, foreign_language::in,
     maybe1(foreign_language_type)::out) is det.
 
-parse_foreign_language_type(InputTerm, VarSet, Language, Result) :-
+parse_foreign_language_type(InputTerm, VarSet, Language,
+        MaybeForeignLangType) :-
     (
         Language = lang_il,
         ( InputTerm = term.functor(term.string(ILTypeName), [], _) ->
-            parse_il_type_name(ILTypeName, InputTerm, VarSet, Result)
+            parse_il_type_name(ILTypeName, InputTerm, VarSet,
+                MaybeForeignLangType)
         ;
             InputTermStr = describe_error_term(VarSet, InputTerm),
             Pieces = [words("Error: invalid backend specification"),
                 quote(InputTermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeForeignLangType = error1([Spec])
         )
     ;
         Language = lang_c,
         ( InputTerm = term.functor(term.string(CTypeName), [], _) ->
-            Result = ok1(c(c_type(CTypeName)))
+            MaybeForeignLangType = ok1(c(c_type(CTypeName)))
         ;
             InputTermStr = describe_error_term(VarSet, InputTerm),
             Pieces = [words("Error: invalid backend specification"),
                 quote(InputTermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeForeignLangType = error1([Spec])
         )
     ;
         Language = lang_java,
         ( InputTerm = term.functor(term.string(JavaTypeName), [], _) ->
-            Result = ok1(java(java_type(JavaTypeName)))
+            MaybeForeignLangType = ok1(java(java_type(JavaTypeName)))
         ;
             InputTermStr = describe_error_term(VarSet, InputTerm),
             Pieces = [words("Error: invalid backend specification"),
                 quote(InputTermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeForeignLangType = error1([Spec])
         )
     ;
         Language = lang_erlang,
         ( InputTerm = term.functor(term.string(_ErlangTypeName), [], _) ->
             % XXX should we check if the type is blank?
-            Result = ok1(erlang(erlang_type))
+            MaybeForeignLangType = ok1(erlang(erlang_type))
         ;
             InputTermStr = describe_error_term(VarSet, InputTerm),
             Pieces = [words("Error: invalid backend specification"),
                 quote(InputTermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeForeignLangType = error1([Spec])
         )
     ;
         Language = lang_csharp,
@@ -1554,7 +1572,7 @@ parse_foreign_language_type(InputTerm, VarSet, Language, Result) :-
             words("unable to parse backend type."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeForeignLangType = error1([Spec])
     ).
 
 :- pred parse_il_type_name(string::in, term::in, varset::in,
@@ -1673,11 +1691,11 @@ parse_foreign_type_assertion(Term, Assertion) :-
     % This predicate parses both c_header_code and foreign_decl pragmas.
     %
 :- pred parse_pragma_foreign_decl_pragma(module_name::in, string::in,
-    list(term)::in, term::in, varset::in, prog_context::in,
+    list(term)::in, term::in, varset::in, prog_context::in, int::in,
     maybe1(item)::out) is det.
 
 parse_pragma_foreign_decl_pragma(_ModuleName, PragmaName, PragmaTerms,
-        ErrorTerm, VarSet, Context, Result) :-
+        ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
     InvalidDeclPieces = [words("Error: invalid"),
         quote(":- pragma " ++ PragmaName), words("declaration:")],
     (
@@ -1693,9 +1711,9 @@ parse_pragma_foreign_decl_pragma(_ModuleName, PragmaName, PragmaTerms,
             ( HeaderTerm = term.functor(term.string(HeaderCode), [], _) ->
                 Pragma = pragma_foreign_decl(ForeignLanguage, IsLocal,
                     HeaderCode),
-                ItemPragma = item_pragma_info(user, Pragma, Context),
+                ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
-                Result = ok1(Item)
+                MaybeItem = ok1(Item)
             ;
                 Pieces = InvalidDeclPieces ++
                     [words("expected string for foreign declaration code."),
@@ -1703,7 +1721,7 @@ parse_pragma_foreign_decl_pragma(_ModuleName, PragmaName, PragmaTerms,
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(HeaderTerm),
                         [always(Pieces)])]),
-                Result = error1([Spec])
+                MaybeItem = error1([Spec])
             )
         ;
             Pieces = InvalidDeclPieces ++
@@ -1711,7 +1729,7 @@ parse_pragma_foreign_decl_pragma(_ModuleName, PragmaName, PragmaTerms,
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(LangTerm),
                     [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         TermStr = describe_error_term(VarSet, ErrorTerm),
@@ -1719,7 +1737,7 @@ parse_pragma_foreign_decl_pragma(_ModuleName, PragmaName, PragmaTerms,
             words("declaration:"), words(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
     % This predicate parses both c_code and foreign_code pragmas.
@@ -1727,11 +1745,11 @@ parse_pragma_foreign_decl_pragma(_ModuleName, PragmaName, PragmaTerms,
     % is handled in parse_pragma_foreign_proc_pragma below.
     %
 :- pred parse_pragma_foreign_code_pragma(module_name::in, string::in,
-    list(term)::in, term::in, varset::in, prog_context::in,
+    list(term)::in, term::in, varset::in, prog_context::in, int::in,
     maybe1(item)::out) is det.
 
 parse_pragma_foreign_code_pragma(_ModuleName, PragmaName, PragmaTerms,
-        ErrorTerm, _VarSet, Context, Result) :-
+        ErrorTerm, _VarSet, Context, SeqNum, MaybeItem) :-
     InvalidDeclPrefix = [words("Error: invalid"),
         quote(":- pragma " ++ PragmaName), words("declaration:")],
     ( PragmaTerms = [LangTerm, CodeTerm] ->
@@ -1763,29 +1781,29 @@ parse_pragma_foreign_code_pragma(_ModuleName, PragmaName, PragmaTerms,
         (
             Specs = [],
             Pragma = pragma_foreign_code(ForeignLanguage, Code),
-            ItemPragma = item_pragma_info(user, Pragma, Context),
+            ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
-            Result = ok1(Item)
+            MaybeItem = ok1(Item)
         ;
             Specs = [_ | _],
-            Result = error1(Specs)
+            MaybeItem = error1(Specs)
         )
     ;
         Pieces = InvalidDeclPrefix ++
             [words("wrong number of arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
     % This predicate parses both c_code and foreign_proc pragmas.
     %
 :- pred parse_pragma_foreign_proc_pragma(module_name::in, string::in,
-    list(term)::in, term::in, varset::in, prog_context::in,
+    list(term)::in, term::in, varset::in, prog_context::in, int::in,
     maybe1(item)::out) is det.
 
 parse_pragma_foreign_proc_pragma(ModuleName, PragmaName, PragmaTerms,
-        ErrorTerm, VarSet, Context, Result) :-
+        ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
     InvalidDeclPrefix = [words("Error: invalid"),
         quote(":- pragma " ++ PragmaName), words("declaration:")],
     (
@@ -1807,12 +1825,14 @@ parse_pragma_foreign_proc_pragma(ModuleName, PragmaName, PragmaTerms,
                 RestTerms = [PredAndVarsTerm, CodeTerm],
                 parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName,
                     PragmaName, VarSet, PredAndVarsTerm, CodeTerm, ErrorTerm,
-                    ForeignLanguage, InvalidDeclPrefix, Context, RestResult)
+                    ForeignLanguage, InvalidDeclPrefix, Context, SeqNum,
+                    MaybeRestItem)
             ;
                 RestTerms = [PredAndVarsTerm, FlagsTerm, CodeTerm],
                 parse_pragma_ordinary_foreign_proc_pragma(ModuleName,
                     PragmaName, VarSet, PredAndVarsTerm, FlagsTerm, CodeTerm,
-                    ForeignLanguage, InvalidDeclPrefix, Context, RestResult)
+                    ForeignLanguage, InvalidDeclPrefix, Context, SeqNum,
+                    MaybeRestItem)
             ;
                 RestTerms = [PredAndVarsTerm, FlagsTerm, FieldsTerm,
                     FirstTerm, LaterTerm],
@@ -1823,35 +1843,37 @@ parse_pragma_foreign_proc_pragma(ModuleName, PragmaName, PragmaTerms,
                 parse_pragma_model_non_foreign_proc_pragma(ModuleName,
                     PragmaName, VarSet, PredAndVarsTerm, FlagsTerm,
                     FieldsTerm, FirstTerm, LaterTerm, SharedTerm,
-                    ForeignLanguage, InvalidDeclPrefix, Context, RestResult)
+                    ForeignLanguage, InvalidDeclPrefix, Context, SeqNum,
+                    MaybeRestItem)
             ;
                 RestTerms = [PredAndVarsTerm, FlagsTerm, FieldsTerm,
                     FirstTerm, LaterTerm, SharedTerm],
                 parse_pragma_model_non_foreign_proc_pragma(ModuleName,
                     PragmaName, VarSet, PredAndVarsTerm, FlagsTerm,
                     FieldsTerm, FirstTerm, LaterTerm, SharedTerm,
-                    ForeignLanguage, InvalidDeclPrefix, Context, RestResult)
+                    ForeignLanguage, InvalidDeclPrefix, Context, SeqNum,
+                    MaybeRestItem)
             )
         ->
             (
-                RestResult = ok1(Item),
+                MaybeRestItem = ok1(Item),
                 (
                     LangSpecs = [],
-                    Result = ok1(Item)
+                    MaybeItem = ok1(Item)
                 ;
                     LangSpecs = [_ | _],
-                    Result = error1(LangSpecs)
+                    MaybeItem = error1(LangSpecs)
                 )
             ;
-                RestResult = error1(RestSpecs),
-                Result = error1(LangSpecs ++ RestSpecs)
+                MaybeRestItem = error1(RestSpecs),
+                MaybeItem = error1(LangSpecs ++ RestSpecs)
             )
         ;
             Pieces = InvalidDeclPrefix ++
                 [words("wrong number of arguments."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         PragmaTerms = [],
@@ -1860,16 +1882,17 @@ parse_pragma_foreign_proc_pragma(ModuleName, PragmaName, PragmaTerms,
             [words("wrong number of arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_ordinary_foreign_proc_pragma_old(module_name::in,
     string::in, varset::in, term::in, term::in, term::in, foreign_language::in,
-    list(format_component)::in, prog_context::in, maybe1(item)::out) is det.
+    list(format_component)::in, prog_context::in, int::in, maybe1(item)::out)
+    is det.
 
 parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName, PragmaName, VarSet,
         PredAndVarsTerm, CodeTerm, ErrorTerm, ForeignLanguage,
-        InvalidDeclPrefix, Context, Result) :-
+        InvalidDeclPrefix, Context, SeqNum, MaybeItem) :-
     % XXX We should issue a warning; this syntax is deprecated. We will
     % continue to accept this if c_code is used, but not with foreign_code.
     ( PragmaName = "c_code" ->
@@ -1878,7 +1901,7 @@ parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName, PragmaName, VarSet,
         ( CodeTerm = term.functor(term.string(Code), [], CodeContext) ->
             Impl = fc_impl_ordinary(Code, yes(CodeContext)),
             parse_pragma_foreign_code(ModuleName, Attributes,
-                PredAndVarsTerm, Impl, VarSet, Context, Result)
+                PredAndVarsTerm, Impl, VarSet, Context, SeqNum, MaybeItem)
         ;
             Pieces = InvalidDeclPrefix ++
                 [words("expecting either"), quote("may_call_mercury"),
@@ -1886,23 +1909,24 @@ parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName, PragmaName, VarSet,
                 words("and a string for foreign code."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(CodeTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeItem = error1([Spec])
         )
     ;
         Pieces = InvalidDeclPrefix ++
             [words("does not say whether it can call Mercury."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- pred parse_pragma_ordinary_foreign_proc_pragma(module_name::in, string::in,
     varset::in, term::in, term::in, term::in, foreign_language::in,
-    list(format_component)::in, prog_context::in, maybe1(item)::out) is det.
+    list(format_component)::in, prog_context::in, int::in, maybe1(item)::out)
+    is det.
 
 parse_pragma_ordinary_foreign_proc_pragma(ModuleName, PragmaName, VarSet,
         SecondTerm, ThirdTerm, CodeTerm, ForeignLanguage, InvalidDeclPrefix,
-        Context, Result) :-
+        Context, SeqNum, MaybeItem) :-
     CodeContext = get_term_context(CodeTerm),
     ( CodeTerm = term.functor(term.string(CodePrime), [], _) ->
         Code = CodePrime,
@@ -1961,20 +1985,21 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, PragmaName, VarSet,
         Specs = [],
         Impl = fc_impl_ordinary(Code, yes(CodeContext)),
         parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm,
-            Impl, VarSet, Context, Result)
+            Impl, VarSet, Context, SeqNum, MaybeItem)
     ;
         Specs = [_ | _],
-        Result = error1(Specs)
+        MaybeItem = error1(Specs)
     ).
 
 :- pred parse_pragma_model_non_foreign_proc_pragma(module_name::in, string::in,
     varset::in, term::in, term::in, term::in, term::in, term::in,
     term::in, foreign_language::in, list(format_component)::in,
-    prog_context::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_model_non_foreign_proc_pragma(ModuleName, PragmaName, VarSet,
         PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm, LaterTerm,
-        SharedTerm, ForeignLanguage, InvalidDeclPrefix, Context, Result) :-
+        SharedTerm, ForeignLanguage, InvalidDeclPrefix, Context, SeqNum,
+        MaybeItem) :-
     FlagsContextPieces = InvalidDeclPrefix ++
         [lower_case_next_if_not_first, words("Invalid third argument:")],
     parse_pragma_foreign_proc_attributes_term(ForeignLanguage, PragmaName,
@@ -2081,81 +2106,83 @@ parse_pragma_model_non_foreign_proc_pragma(ModuleName, PragmaName, VarSet,
             First, yes(FirstContext), Later, yes(LaterContext),
             Treatment, Shared, yes(SharedContext)),
         parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm,
-            Impl, VarSet, Context, Result)
+            Impl, VarSet, Context, SeqNum, MaybeItem)
     ;
         Specs = [_ | _],
-        Result = error1(Specs)
+        MaybeItem = error1(Specs)
     ).
 
     % This parses a pragma that refers to a predicate or function.
     %
 :- pred parse_simple_pragma(module_name::in, string::in,
     pred(sym_name, int, pragma_type)::(pred(in, in, out) is det),
-    list(term)::in, term::in, varset::in, prog_context::in, maybe1(item)::out)
-    is det.
+    list(term)::in, term::in, varset::in, prog_context::in, int::in,
+    maybe1(item)::out) is det.
 
 parse_simple_pragma(ModuleName, PragmaName, MakePragma, PragmaTerms, ErrorTerm,
-        VarSet, Context, Result) :-
+        VarSet, Context, SeqNum, MaybeItem) :-
     parse_simple_pragma_base(ModuleName, PragmaName, "predicate or function",
-        MakePragma, PragmaTerms, ErrorTerm, VarSet, Context, Result).
+        MakePragma, PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
+        MaybeItem).
 
     % This parses a pragma that refers to type.
     %
 :- pred parse_simple_type_pragma(module_name::in, string::in,
     pred(sym_name, int, pragma_type)::(pred(in, in, out) is det),
-    list(term)::in, term::in, varset::in, prog_context::in, maybe1(item)::out)
-    is det.
+    list(term)::in, term::in, varset::in, prog_context::in, int::in,
+    maybe1(item)::out) is det.
 
 parse_simple_type_pragma(ModuleName, PragmaName, MakePragma,
-        PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
+        PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
     parse_simple_pragma_base(ModuleName, PragmaName, "type", MakePragma,
-        PragmaTerms, ErrorTerm, VarSet, Context, Result).
+        PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem).
 
     % This parses a pragma that refers to symbol name / arity.
     %
 :- pred parse_simple_pragma_base(module_name::in, string::in, string::in,
     pred(sym_name, int, pragma_type)::(pred(in, in, out) is det),
-    list(term)::in, term::in, varset::in, prog_context::in, maybe1(item)::out)
-    is det.
+    list(term)::in, term::in, varset::in, prog_context::in, int::in,
+    maybe1(item)::out) is det.
 
 parse_simple_pragma_base(ModuleName, PragmaName, NameKind, MakePragma,
-        PragmaTerms, ErrorTerm, VarSet, Context, Result) :-
+        PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
     ( PragmaTerms = [PredAndArityTerm] ->
         parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
-            PredAndArityTerm, PredAndArityTerm, VarSet, NameArityResult),
+            PredAndArityTerm, PredAndArityTerm, VarSet, MaybeNameAndArity),
         (
-            NameArityResult = ok2(PredName, Arity),
+            MaybeNameAndArity = ok2(PredName, Arity),
             MakePragma(PredName, Arity, Pragma),
-            ItemPragma = item_pragma_info(user, Pragma, Context),
+            ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
-            Result = ok1(Item)
+            MaybeItem = ok1(Item)
         ;
-            NameArityResult = error2(Specs),
-            Result = error1(Specs)
+            MaybeNameAndArity = error2(Specs),
+            MaybeItem = error1(Specs)
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma " ++ PragmaName), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
    ).
 
 :- pred parse_pred_name_and_arity(module_name::in, string::in, term::in,
     term::in, varset::in, maybe2(sym_name, arity)::out) is det.
 
 parse_pred_name_and_arity(ModuleName, PragmaName, NameAndArityTerm, ErrorTerm,
-        VarSet, Result) :-
+        VarSet, MaybeNameAndArity) :-
     parse_simple_name_and_arity(ModuleName, PragmaName,
-        "predicate or function", NameAndArityTerm, ErrorTerm, VarSet, Result).
+        "predicate or function", NameAndArityTerm, ErrorTerm, VarSet,
+        MaybeNameAndArity).
 
 :- pred parse_simple_name_and_arity(module_name::in, string::in, string::in,
     term::in, term::in, varset::in, maybe2(sym_name, arity)::out) is det.
 
 parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
-        NameAndArityTerm, ErrorTerm, VarSet, Result) :-
+        NameAndArityTerm, ErrorTerm, VarSet, MaybeNameAndArity) :-
     ( parse_name_and_arity(ModuleName, NameAndArityTerm, Name, Arity) ->
-        Result = ok2(Name, Arity)
+        MaybeNameAndArity = ok2(Name, Arity)
     ;
         NameAndArityTermStr = describe_error_term(VarSet, NameAndArityTerm),
         Pieces = [words("Error: expected"), words(NameKind),
@@ -2164,7 +2191,7 @@ parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
             suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error2([Spec])
+        MaybeNameAndArity = error2([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2339,7 +2366,8 @@ process_attribute(coll_may_duplicate(MayDuplicate), !Attrs) :-
 
 check_required_attributes(lang_c, Attrs, _CP, _Term) = ok1(Attrs).
 check_required_attributes(lang_csharp, Attrs, _CP, _Term) = ok1(Attrs).
-check_required_attributes(lang_il, Attrs, ContextPieces, Term) = Result :-
+check_required_attributes(lang_il, Attrs, ContextPieces, Term) =
+        MaybeAttributes :-
     MaxStackAttrs = list.filter_map(
         (func(X) = X is semidet :-
             X = max_stack_size(_)),
@@ -2351,10 +2379,10 @@ check_required_attributes(lang_il, Attrs, ContextPieces, Term) = Result :-
             nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeAttributes = error1([Spec])
     ;
         MaxStackAttrs = [_ | _],
-        Result = ok1(Attrs)
+        MaybeAttributes = ok1(Attrs)
     ).
 check_required_attributes(lang_java, Attrs, _CP, _Term) = ok1(Attrs).
 check_required_attributes(lang_erlang, Attrs, _CP, _Term) = ok1(Attrs).
@@ -2587,43 +2615,43 @@ parse_ordinary_despite_detism(
     %
 :- pred parse_pragma_foreign_code(module_name::in,
     pragma_foreign_proc_attributes::in, term::in, pragma_foreign_code_impl::in,
-    varset::in, prog_context::in, maybe1(item)::out) is det.
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
-        PragmaImpl, VarSet0, Context, Result) :-
+        PragmaImpl, VarSet, Context, SeqNum, MaybeItem) :-
     ContextPieces = [words("In"), quote(":- pragma c_code"),
         words("declaration:")],
     parse_pred_or_func_and_args_general(yes(ModuleName), PredAndVarsTerm0,
-        PredAndVarsTerm0, VarSet0, ContextPieces, PredAndArgsResult),
+        PredAndVarsTerm0, VarSet, ContextPieces, MaybePredAndArgs),
     (
-        PredAndArgsResult = ok2(PredName, VarList0 - MaybeRetTerm),
+        MaybePredAndArgs = ok2(PredName, VarList0 - MaybeRetTerm),
+        % Is this a function or a predicate?
         (
-            % Is this a function or a predicate?
-            MaybeRetTerm = yes(FuncResultTerm0)
-        ->
+            MaybeRetTerm = yes(FuncResultTerm0),
             PredOrFunc = pf_function,
-            list.append(VarList0, [FuncResultTerm0], VarList)
+            VarList = VarList0 ++ [FuncResultTerm0]
         ;
+            MaybeRetTerm = no,
             PredOrFunc = pf_predicate,
             VarList = VarList0
         ),
-        parse_pragma_c_code_varlist(VarSet0, VarList, VarsResult),
+        parse_pragma_c_code_varlist(VarSet, VarList, MaybePragmaVars),
         (
-            VarsResult = ok1(PragmaVars),
-            varset.coerce(VarSet0, ProgVarSet),
-            varset.coerce(VarSet0, InstVarSet),
+            MaybePragmaVars = ok1(PragmaVars),
+            varset.coerce(VarSet, ProgVarSet),
+            varset.coerce(VarSet, InstVarSet),
             Pragma = pragma_foreign_proc(Flags, PredName, PredOrFunc,
                 PragmaVars, ProgVarSet, InstVarSet, PragmaImpl),
-            ItemPragma = item_pragma_info(user, Pragma, Context),
+            ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
-            Result = ok1(Item)
+            MaybeItem = ok1(Item)
         ;
-            VarsResult = error1(Specs),
-            Result = error1(Specs)
+            MaybePragmaVars = error1(Specs),
+            MaybeItem = error1(Specs)
         )
     ;
-        PredAndArgsResult = error2(Specs),
-        Result = error1(Specs)
+        MaybePredAndArgs = error2(Specs),
+        MaybeItem = error1(Specs)
     ).
 
     % Parse the variable list in the pragma c code declaration.
@@ -2633,7 +2661,7 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
     maybe1(list(pragma_var))::out) is det.
 
 parse_pragma_c_code_varlist(_, [], ok1([])).
-parse_pragma_c_code_varlist(VarSet, [HeadTerm | TailTerm], Result):-
+parse_pragma_c_code_varlist(VarSet, [HeadTerm | TailTerm], MaybePragmaVars):-
     (
         HeadTerm = term.functor(term.atom("::"), [VarTerm, ModeTerm], _),
         VarTerm = term.variable(Var, VarContext)
@@ -2642,22 +2670,23 @@ parse_pragma_c_code_varlist(VarSet, [HeadTerm | TailTerm], Result):-
             ( convert_mode(allow_constrained_inst_var, ModeTerm, Mode0) ->
                 constrain_inst_vars_in_mode(Mode0, Mode),
                 term.coerce_var(Var, ProgVar),
-                HeadVar = pragma_var(ProgVar, VarName, Mode,
+                HeadPragmaVar = pragma_var(ProgVar, VarName, Mode,
                     native_if_possible),
-                parse_pragma_c_code_varlist(VarSet, TailTerm, TailResult),
+                parse_pragma_c_code_varlist(VarSet, TailTerm,
+                    MaybeTailPragmaVars),
                 (
-                    TailResult = ok1(TailVars),
-                    Result = ok1([HeadVar | TailVars])
+                    MaybeTailPragmaVars = ok1(TailPragmaVars),
+                    MaybePragmaVars = ok1([HeadPragmaVar | TailPragmaVars])
                 ;
-                    TailResult = error1(_),
-                    Result = TailResult
+                    MaybeTailPragmaVars = error1(_),
+                    MaybePragmaVars = MaybeTailPragmaVars
                 )
             ;
                 Pieces = [words("Error: unknown mode in pragma c_code."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(ModeTerm),
                         [always(Pieces)])]),
-                Result = error1([Spec])
+                MaybePragmaVars = error1([Spec])
             )
         ;
             % If the variable wasn't in the varset it must be an
@@ -2666,22 +2695,22 @@ parse_pragma_c_code_varlist(VarSet, [HeadTerm | TailTerm], Result):-
                 words("anonymous `_' variable in pragma c_code."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(VarContext, [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybePragmaVars = error1([Spec])
         )
     ;
         Pieces = [words("Error: arguments are not in the form"),
             quote("Var :: mode"), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybePragmaVars = error1([Spec])
     ).
 
 :- pred parse_tabling_pragma(module_name::in, string::in, eval_method::in,
-    list(term)::in, term::in, varset::in, prog_context::in, maybe1(item)::out)
-    is det.
+    list(term)::in, term::in, varset::in, prog_context::in, int::in,
+    maybe1(item)::out) is det.
 
 parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
-        ErrorTerm, VarSet, Context, Result) :-
+        ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
     (
         (
             PragmaTerms = [PredAndModesTerm0],
@@ -2694,17 +2723,18 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
         ContextPieces = [words("In"), quote(":- pragma " ++ PragmaName),
             words("declaration:")],
         parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm,
-            VarSet, ContextPieces, ArityModesResult),
+            VarSet, ContextPieces, MaybeArityOrModes),
         (
-            ArityModesResult = ok1(arity_or_modes(PredName, Arity,
-                MaybePredOrFunc, MaybeModes)),
+            MaybeArityOrModes = ok1(ArityOrModes),
+            ArityOrModes = arity_or_modes(PredName, Arity, MaybePredOrFunc,
+                MaybeModes),
             (
                 MaybeAttrs = no,
                 Pragma = pragma_tabled(TablingType, PredName, Arity,
                     MaybePredOrFunc, MaybeModes, no),
-                ItemPragma = item_pragma_info(user, Pragma, Context),
+                ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
-                Result = ok1(Item)
+                MaybeItem = ok1(Item)
             ;
                 MaybeAttrs = yes(AttrsListTerm),
                 UnrecognizedPieces =
@@ -2722,28 +2752,29 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                         Pragma = pragma_tabled(TablingType, PredName,
                             Arity, MaybePredOrFunc, MaybeModes,
                             yes(Attributes)),
-                        ItemPragma = item_pragma_info(user, Pragma, Context),
+                        ItemPragma = item_pragma_info(user, Pragma, Context,
+                            SeqNum),
                         Item = item_pragma(ItemPragma),
-                        Result = ok1(Item)
+                        MaybeItem = ok1(Item)
                     ;
                         MaybeAttributes = error1(Specs),
-                        Result = error1(Specs)
+                        MaybeItem = error1(Specs)
                     )
                 ;
                     MaybeAttributeList = error1(Specs),
-                    Result = error1(Specs)
+                    MaybeItem = error1(Specs)
                 )
             )
         ;
-            ArityModesResult = error1(Specs),
-            Result = error1(Specs)
+            MaybeArityOrModes = error1(Specs),
+            MaybeItem = error1(Specs)
         )
     ;
         Pieces = [words("Error: wrong number of arguments in"),
             quote(":- pragma " ++ PragmaName), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeItem = error1([Spec])
     ).
 
 :- type single_tabling_attribute
@@ -2973,7 +3004,7 @@ parse_arg_tabling_method(term.functor(term.atom("output"), [], _), no).
     list(format_component)::in, maybe1(arity_or_modes)::out) is det.
 
 parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
-        ContextPieces, Result) :-
+        ContextPieces, MaybeArityOrModes) :-
     (
         % Is this a simple pred/arity pragma.
         PredAndModesTerm0 = term.functor(term.atom("/"),
@@ -2988,19 +3019,19 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
                 ok2(PredName, [])),
             ArityTerm = term.functor(term.integer(Arity), [], _)
         ->
-            Result = ok1(arity_or_modes(PredName, Arity, no, no))
+            MaybeArityOrModes = ok1(arity_or_modes(PredName, Arity, no, no))
         ;
             Pieces = ContextPieces ++ [lower_case_next_if_not_first,
                 words("Error: expected predname/arity."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-            Result = error1([Spec])
+            MaybeArityOrModes = error1([Spec])
         )
     ;
         parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
-            PredAndModesTerm0, VarSet, ContextPieces, PredAndModesResult),
+            PredAndModesTerm0, VarSet, ContextPieces, MaybePredAndModes),
         (
-            PredAndModesResult = ok2(PredName - PredOrFunc, Modes),
+            MaybePredAndModes = ok2(PredName - PredOrFunc, Modes),
             list.length(Modes, Arity0),
             (
                 PredOrFunc = pf_function,
@@ -3009,11 +3040,12 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
                 PredOrFunc = pf_predicate,
                 Arity = Arity0
             ),
-            Result = ok1(arity_or_modes(PredName, Arity, yes(PredOrFunc),
-                yes(Modes)))
+            ArityOrModes = arity_or_modes(PredName, Arity, yes(PredOrFunc),
+                yes(Modes)),
+            MaybeArityOrModes = ok1(ArityOrModes)
         ;
-            PredAndModesResult = error2(Specs),
-            Result = error1(Specs)
+            MaybePredAndModes = error2(Specs),
+            MaybeArityOrModes = error1(Specs)
         )
     ).
 
@@ -3026,11 +3058,11 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
     maybe_pred_or_func_modes::out) is det.
 
 parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
-        ErrorTerm, VarSet, ContextPieces, Result) :-
+        ErrorTerm, VarSet, ContextPieces, MaybeNameAndModes) :-
     parse_pred_or_func_and_args_general(MaybeModuleName, PredAndModesTerm,
-        ErrorTerm, VarSet, ContextPieces, PredAndArgsResult),
+        ErrorTerm, VarSet, ContextPieces, MaybePredAndArgs),
     (
-        PredAndArgsResult = ok2(PredName, ArgModeTerms - MaybeRetModeTerm),
+        MaybePredAndArgs = ok2(PredName, ArgModeTerms - MaybeRetModeTerm),
         (
             convert_mode_list(allow_constrained_inst_var, ArgModeTerms,
                 ArgModes0)
@@ -3043,29 +3075,29 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
                 ->
                     ArgModes1 = ArgModes0 ++ [RetMode],
                     list.map(constrain_inst_vars_in_mode, ArgModes1, ArgModes),
-                    Result = ok2(PredName - pf_function, ArgModes)
+                    MaybeNameAndModes = ok2(PredName - pf_function, ArgModes)
                 ;
                     Pieces = [words("Error in return mode in")] ++
                         ContextPieces ++ [suffix("."), nl],
                     Spec = error_spec(severity_error, phase_term_to_parse_tree,
                         [simple_msg(get_term_context(ErrorTerm),
                             [always(Pieces)])]),
-                    Result = error2([Spec])
+                    MaybeNameAndModes = error2([Spec])
                 )
             ;
                 MaybeRetModeTerm = no,
-                Result = ok2(PredName - pf_predicate, ArgModes0)
+                MaybeNameAndModes = ok2(PredName - pf_predicate, ArgModes0)
             )
         ;
             Pieces = [words("Error in arguments modes in")] ++
                 ContextPieces ++ [suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-            Result = error2([Spec])
+            MaybeNameAndModes = error2([Spec])
         )
     ;
-        PredAndArgsResult = error2(Specs),
-        Result = error2(Specs)
+        MaybePredAndArgs = error2(Specs),
+        MaybeNameAndModes = error2(Specs)
     ).
 
 :- pred convert_bool(term::in, bool::out) is semidet.
@@ -3272,18 +3304,18 @@ convert_type_spec_pair(Term, TypeSpec) :-
 :- pred parse_arg_size_constraints(term::in,
     maybe1(maybe(list(arg_size_constr)))::out) is semidet.
 
-parse_arg_size_constraints(ArgSizeTerm, Result) :-
+parse_arg_size_constraints(ArgSizeTerm, MaybeMaybeArgSizeConstraints) :-
     (
         ArgSizeTerm = term.functor(term.atom("not_set"), [], _),
-        Result = ok1(no)
+        MaybeMaybeArgSizeConstraints = ok1(no)
     ;
         ArgSizeTerm = term.functor(term.atom("constraints"),
             [Constraints0], _),
         UnrecognizedPieces = [words("Error: expected constraint."), nl],
         convert_list("arg size constraints", no, Constraints0,
-            parse_arg_size_constraint, UnrecognizedPieces, ConstraintsResult),
-        ConstraintsResult = ok1(Constraints),
-        Result = ok1(yes(Constraints))
+            parse_arg_size_constraint, UnrecognizedPieces, MaybeConstraints),
+        MaybeConstraints = ok1(Constraints),
+        MaybeMaybeArgSizeConstraints = ok1(yes(Constraints))
     ).
 
 :- pred parse_arg_size_constraint(term::in, arg_size_constr::out) is semidet.
@@ -3328,10 +3360,10 @@ parse_rational(Term, Rational) :-
 :- pred parse_required_feature(term::in,
     maybe1(required_feature)::out) is semidet.
 
-parse_required_feature(ReqFeatureTerm, Result) :-
+parse_required_feature(ReqFeatureTerm, MaybeReqFeature) :-
     ReqFeatureTerm = term.functor(term.atom(Functor), [], _),
     string_to_required_feature(Functor, ReqFeature),
-    Result = ok1(ReqFeature).
+    MaybeReqFeature = ok1(ReqFeature).
 
 :- pred string_to_required_feature(string::in, required_feature::out)
     is semidet.

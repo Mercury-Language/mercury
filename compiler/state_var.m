@@ -1188,10 +1188,10 @@ expand_method_bsvs(IM0) = IM :-
 
 expand_item_bsvs(ItemClause0) = ItemClause :-
     ItemClause0 = item_clause_info(Origin, VarSet, PredOrFunc, SymName,
-        Args0, Body, Context),
+        Args0, Body, Context, SeqNum),
     Args = expand_bang_state_var_args(Args0),
     ItemClause = item_clause_info(Origin, VarSet, PredOrFunc, SymName,
-        Args, Body, Context).
+        Args, Body, Context, SeqNum).
 
 %-----------------------------------------------------------------------------%
 

@@ -35,7 +35,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred parse_dcg_clause(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
     % parse_dcg_pred_goal(GoalTerm, MaybeGoal, DCGVarInitial, DCGVarFinal,
     %   !Varset):
@@ -62,7 +62,7 @@
 %-----------------------------------------------------------------------------%
 
 parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
-        Result) :-
+        SeqNum, MaybeItem) :-
     varset.coerce(VarSet0, ProgVarSet0),
     new_dcg_var(ProgVarSet0, ProgVarSet1, counter.init(0), Counter0,
         DCG_0_Var),
@@ -76,10 +76,10 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
         parse_implicitly_qualified_term(ModuleName, DCG_Head, DCG_Body,
             VarSet0, HeadContextPieces, HeadResult),
         process_dcg_clause(HeadResult, ProgVarSet, DCG_0_Var, DCG_Var, Body,
-            DCG_Context, Result)
+            DCG_Context, SeqNum, MaybeItem)
     ;
         MaybeBody = error1(Specs),
-        Result = error1(Specs)
+        MaybeItem = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -713,16 +713,17 @@ term_list_append_term(List0, Term, List) :-
     ).
 
 :- pred process_dcg_clause(maybe_functor::in, prog_varset::in, prog_var::in,
-    prog_var::in, goal::in, prog_context::in, maybe1(item)::out) is det.
+    prog_var::in, goal::in, prog_context::in, int::in, maybe1(item)::out)
+    is det.
 
 process_dcg_clause(MaybeFunctor, VarSet, Var0, Var, Body, Context,
-        MaybeItem) :-
+        SeqNum, MaybeItem) :-
     (
         MaybeFunctor = ok2(Name, Args0),
         list.map(term.coerce, Args0, Args1),
         Args = Args1 ++ [variable(Var0, Context), variable(Var, Context)],
         ItemClause = item_clause_info(user, VarSet, pf_predicate, Name, Args,
-            Body, Context),
+            Body, Context, SeqNum),
         Item = item_clause(ItemClause),
         MaybeItem = ok1(Item)
     ;

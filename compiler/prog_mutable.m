@@ -441,12 +441,14 @@ unsafe_get_pred_decl(ModuleName, Name, Type, Inst, Context)
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     UnsafeGetPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet,
         ExistQVars, pf_predicate,
         mutable_unsafe_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_semipure, Constraints, Context),
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_semipure, Constraints, Context, -1),
     UnsafeGetPredDeclItem = item_pred_decl(UnsafeGetPredDecl).
 
 unsafe_set_pred_decl(ModuleName, Name, Type, Inst, Context)
@@ -456,12 +458,14 @@ unsafe_set_pred_decl(ModuleName, Name, Type, Inst, Context)
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     UnsafeSetPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet,
         ExistQVars, pf_predicate,
         mutable_unsafe_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_impure, Constraints, Context),
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_impure, Constraints, Context, -1),
     UnsafeSetPredDeclItem = item_pred_decl(UnsafeSetPredDecl).
 
 lock_pred_decl(ModuleName, Name, Context) = LockPredDeclItem :-
@@ -470,11 +474,12 @@ lock_pred_decl(ModuleName, Name, Context) = LockPredDeclItem :-
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     LockPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
-        pf_predicate, mutable_lock_pred_sym_name(ModuleName, Name),
-        [],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_impure, Constraints, Context),
+        pf_predicate, mutable_lock_pred_sym_name(ModuleName, Name), [],
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_impure, Constraints, Context, -1),
     LockPredDeclItem = item_pred_decl(LockPredDecl).
 
 unlock_pred_decl(ModuleName, Name, Context) = UnlockPredDeclItem :-
@@ -483,11 +488,12 @@ unlock_pred_decl(ModuleName, Name, Context) = UnlockPredDeclItem :-
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     UnlockPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
-        pf_predicate, mutable_unlock_pred_sym_name(ModuleName, Name),
-        [],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_impure, Constraints, Context),
+        pf_predicate, mutable_unlock_pred_sym_name(ModuleName, Name), [],
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_impure, Constraints, Context, -1),
     UnlockPredDeclItem = item_pred_decl(UnlockPredDecl).
 
 %-----------------------------------------------------------------------------%
@@ -498,11 +504,13 @@ std_get_pred_decl(ModuleName, Name, Type, Inst, Context) = GetPredDeclItem :-
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     GetPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
         pf_predicate, mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_semipure, Constraints, Context),
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_semipure, Constraints, Context, -1),
     GetPredDeclItem = item_pred_decl(GetPredDecl).
 
 std_set_pred_decl(ModuleName, Name, Type, Inst, Context) = SetPredDeclItem :-
@@ -511,11 +519,13 @@ std_set_pred_decl(ModuleName, Name, Type, Inst, Context) = SetPredDeclItem :-
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     SetPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
         pf_predicate, mutable_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_impure, Constraints, Context),
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_impure, Constraints, Context, -1),
     SetPredDeclItem = item_pred_decl(SetPredDecl).
 
 constant_get_pred_decl(ModuleName, Name, Type, Inst, Context)
@@ -525,11 +535,13 @@ constant_get_pred_decl(ModuleName, Name, Type, Inst, Context)
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     GetPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
         pf_predicate, mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_pure, Constraints, Context),
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_pure, Constraints, Context, -1),
     GetPredDeclItem = item_pred_decl(GetPredDecl).
 
 constant_set_pred_decl(ModuleName, Name, Type, Inst, Context)
@@ -539,11 +551,13 @@ constant_set_pred_decl(ModuleName, Name, Type, Inst, Context)
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     SetPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
         pf_predicate, mutable_secret_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_impure, Constraints, Context),
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_impure, Constraints, Context, -1),
     SetPredDeclItem = item_pred_decl(SetPredDecl).
 
 io_get_pred_decl(ModuleName, Name, Type, Inst, Context) = GetPredDeclItem :-
@@ -552,13 +566,15 @@ io_get_pred_decl(ModuleName, Name, Type, Inst, Context) = GetPredDeclItem :-
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     GetPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
         pf_predicate, mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst)),
         type_and_mode(io_state_type, di_mode),
         type_and_mode(io_state_type, uo_mode)],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_pure, Constraints, Context),
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_pure, Constraints, Context, -1),
     GetPredDeclItem = item_pred_decl(GetPredDecl).
 
 io_set_pred_decl(ModuleName, Name, Type, Inst, Context) = SetPredDeclItem :-
@@ -567,13 +583,15 @@ io_set_pred_decl(ModuleName, Name, Type, Inst, Context) = SetPredDeclItem :-
     ExistQVars = [],
     Constraints = constraints([], []),
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     SetPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
         pf_predicate, mutable_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst)),
         type_and_mode(io_state_type, di_mode),
         type_and_mode(io_state_type, uo_mode)],
-        no /* with_type */, no /* with_inst */, yes(detism_det),
-        cond_true /* condition */, purity_pure, Constraints, Context),
+        WithType, WithInst, yes(detism_det),
+        cond_true, purity_pure, Constraints, Context, -1),
     SetPredDeclItem = item_pred_decl(SetPredDecl).
 
 mutable_init_pred_decl(ModuleName, Name, Context) = InitPredDeclItem :-
@@ -582,14 +600,14 @@ mutable_init_pred_decl(ModuleName, Name, Context) = InitPredDeclItem :-
     ExistQVars = [],
     Constraints = constraints([], []),
     ArgDecls = [],
+    Condition = cond_true,
     WithType = no,
     WithInst = no,
-    Condition = cond_true,
     Origin = compiler(mutable_decl),
     InitPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
         pf_predicate, mutable_init_pred_sym_name(ModuleName, Name), ArgDecls,
         WithType, WithInst, yes(detism_det), Condition,
-        purity_impure, Constraints, Context),
+        purity_impure, Constraints, Context, -1),
     InitPredDeclItem = item_pred_decl(InitPredDecl).
 
 mutable_pre_init_pred_decl(ModuleName, Name, Context) = PreInitPredDeclItem :-
@@ -598,15 +616,15 @@ mutable_pre_init_pred_decl(ModuleName, Name, Context) = PreInitPredDeclItem :-
     ExistQVars = [],
     Constraints = constraints([], []),
     ArgDecls = [],
-    WithType = no,
-    WithInst = no,
     Condition = cond_true,
     Origin = compiler(mutable_decl),
+    WithType = no,
+    WithInst = no,
     PreInitPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet,
         ExistQVars, pf_predicate,
         mutable_pre_init_pred_sym_name(ModuleName, Name),
         ArgDecls, WithType, WithInst, yes(detism_det), Condition,
-        purity_impure, Constraints, Context),
+        purity_impure, Constraints, Context, -1),
     PreInitPredDeclItem = item_pred_decl(PreInitPredDecl).
 
 %-----------------------------------------------------------------------------%

@@ -372,7 +372,7 @@ add_pass_1_type_defn(ItemTypeDefnInfo, !Status, !ModuleInfo, !Specs) :-
     % into ordinary constructions/deconstructions, but preserve the
     % corresponding impurity annotations.
     ItemTypeDefnInfo = item_type_defn_info(TVarSet, SymName, TypeParams,
-        TypeDefn, _Cond, Context),
+        TypeDefn, _Cond, Context, _SeqNum),
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
         add_solver_type_decl_items(TVarSet, SymName, TypeParams,
             SolverTypeDetails, Context, !Status, !ModuleInfo, !Specs),
@@ -389,7 +389,7 @@ add_pass_1_type_defn(ItemTypeDefnInfo, !Status, !ModuleInfo, !Specs) :-
 add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs) :-
     ItemPredDecl = item_pred_decl_info(Origin, TypeVarSet, InstVarSet,
         ExistQVars, PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
-        MaybeDet, _Cond, Purity, ClassContext, Context),
+        MaybeDet, _Cond, Purity, ClassContext, Context, _SeqNum),
     init_markers(Markers0),
 
     % If this predicate was added as a result of the mutable transformation
@@ -423,7 +423,7 @@ add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs) :-
 
 add_pass_1_mode_decl(ItemModeDecl, Status, !ModuleInfo, !Specs) :-
     ItemModeDecl = item_mode_decl_info(VarSet, MaybePredOrFunc, PredName,
-        Modes, _WithInst, MaybeDet, _Cond, Context),
+        Modes, _WithInst, MaybeDet, _Cond, Context, _SeqNum),
     (
         MaybePredOrFunc = yes(PredOrFunc),
         Status = item_status(ImportStatus, _),
@@ -443,7 +443,7 @@ add_pass_1_mode_decl(ItemModeDecl, Status, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs) :-
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _SeqNum),
     ( module_defn_update_import_status(ModuleDefn, StatusPrime) ->
         !:Status = StatusPrime
     ; ModuleDefn = md_import(ModuleSpecifiers) ->
@@ -501,7 +501,7 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
     % We add the initialise decl and the foreign_decl on the second pass and
     % the foreign_proc clauses on the third pass.
     Item = item_mutable_info(Name, Type, _InitValue, Inst, MutAttrs,
-        _MutVarset, Context),
+        _MutVarset, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     DefinedThisModule = status_defined_in_this_module(ImportStatus),
     (
@@ -657,7 +657,7 @@ add_module_specifiers(Specifiers, IStat, !ModuleInfo) :-
 add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _SeqNum),
         ( module_defn_update_import_status(ModuleDefn, NewStatus) ->
             !:Status = NewStatus
         ;
@@ -702,7 +702,7 @@ add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs) :-
 
 add_pass_2_type_defn(ItemTypeDefn, Status, !ModuleInfo, !Specs) :-
     ItemTypeDefn = item_type_defn_info(VarSet, Name, Args, TypeDefn, Cond,
-        Context),
+        Context, _SeqNum),
     module_add_type_defn(VarSet, Name, Args, TypeDefn, Cond, Context,
         Status, !ModuleInfo, !Specs),
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
@@ -719,7 +719,7 @@ add_pass_2_type_defn(ItemTypeDefn, Status, !ModuleInfo, !Specs) :-
 add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
     ItemPredDecl = item_pred_decl_info(_Origin, _TypeVarSet, _InstVarSet,
         _ExistQVars, PredOrFunc, SymName, TypesAndModes, _WithType, _WithInst,
-        _MaybeDet, _Cond, _Purity, _ClassContext, _Context),
+        _MaybeDet, _Cond, _Purity, _ClassContext, _Context, _SeqNum),
     % Add default modes for function declarations, if necessary.
     (
         PredOrFunc = pf_predicate
@@ -747,7 +747,7 @@ add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
 
 add_pass_2_instance(ItemInstance, Status, !ModuleInfo, !Specs) :-
     ItemInstance = item_instance_info(Constraints, Name, Types, Body, VarSet,
-        InstanceModuleName, Context),
+        InstanceModuleName, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     (
         Body = instance_body_abstract,
@@ -766,7 +766,7 @@ add_pass_2_instance(ItemInstance, Status, !ModuleInfo, !Specs) :-
 add_pass_2_initialise(ItemInitialise, Status, !ModuleInfo, !Specs) :-
     % These are processed properly during pass 3, we just do some
     % error checking at this point.
-    ItemInitialise = item_initialise_info(Origin, _, _, Context),
+    ItemInitialise = item_initialise_info(Origin, _, _, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
         (
@@ -799,7 +799,7 @@ add_pass_2_initialise(ItemInitialise, Status, !ModuleInfo, !Specs) :-
 add_pass_2_finalise(ItemFinalise, Status, !ModuleInfo, !Specs) :-
     % There are processed properly during pass 3, we just do some error
     % checking at this point.
-    ItemFinalise = item_finalise_info(Origin, _, _, Context),
+    ItemFinalise = item_finalise_info(Origin, _, _, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
         (
@@ -821,7 +821,7 @@ add_pass_2_finalise(ItemFinalise, Status, !ModuleInfo, !Specs) :-
 
 add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
     ItemMutable = item_mutable_info(Name, _Type, _InitTerm, Inst,
-        MutAttrs, _MutVarset, Context),
+        MutAttrs, _MutVarset, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
         error_is_exported(Context, "`mutable' declaration", !Specs)
@@ -875,7 +875,8 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
                 SetPredName = mutable_set_pred_sym_name(ModuleName, Name),
                 IOSetPromisePurePragma = pragma_promise_pure(SetPredName, 3),
                 IOSetPromisePureItemPragma = item_pragma_info(
-                    compiler(mutable_decl), IOSetPromisePurePragma, Context),
+                    compiler(mutable_decl), IOSetPromisePurePragma, Context,
+                    -1),
                 add_pragma(IOSetPromisePureItemPragma, Status, _,
                     !ModuleInfo, !Specs)
             ;
@@ -1038,7 +1039,7 @@ add_item_pass_3(Item, !Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ItemClause = item_clause_info(Origin, VarSet, PredOrFunc,
-        PredName, Args, Body, Context),
+        PredName, Args, Body, Context, _SeqNum),
     ( Status = status_exported ->
         (
             Origin = user,
@@ -1082,7 +1083,7 @@ add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_type_defn(ItemTypeDefn, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ItemTypeDefn = item_type_defn_info(_TVarSet, SymName, TypeParams, TypeDefn,
-        _Cond, Context),
+        _Cond, Context, _SeqNum),
     % If this is a solver type, then we need to also add the clauses for
     % the compiler generated inst cast predicate (the declaration for which
     % was added in pass 1). We should only add the clauses if this is the
@@ -1107,7 +1108,7 @@ add_pass_3_type_defn(ItemTypeDefn, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_pred_decl(ItemPredDecl, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ItemPredDecl = item_pred_decl_info(_, _, _, _, PredOrFunc, SymName,
-        TypesAndModes, _WithType, _WithInst, _, _, _, _, Context),
+        TypesAndModes, _WithType, _WithInst, _, _, _, _, Context, _SeqNum),
     (
         PredOrFunc = pf_predicate
     ;
@@ -1125,7 +1126,7 @@ add_pass_3_pred_decl(ItemPredDecl, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
         !Specs) :-
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, _Context, _SeqNum),
     ( ModuleDefn = md_version_numbers(ModuleName, ModuleVersionNumbers) ->
         % Record the version numbers for each imported module
         % if smart recompilation is enabled.
@@ -1149,7 +1150,7 @@ add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
-    ItemPragma = item_pragma_info(Origin, Pragma, Context),
+    ItemPragma = item_pragma_info(Origin, Pragma, Context, _SeqNum),
     (
         Pragma = pragma_foreign_proc(Attributes, Pred, PredOrFunc,
             Vars, ProgVarSet, InstVarSet, PragmaImpl),
@@ -1280,7 +1281,7 @@ add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_promise(ItemPromise, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ItemPromise = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
-        Context),
+        Context, _SeqNum),
     % If the outermost universally quantified variables are placed in the head
     % of the dummy predicate, the typechecker will avoid warning about unbound
     % type variables as this implicitly adds a universal quantification of the
@@ -1307,7 +1308,8 @@ add_pass_3_promise(ItemPromise, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
         !Specs) :-
-    ItemInitialise = item_initialise_info(Origin, SymName, Arity, Context),
+    ItemInitialise = item_initialise_info(Origin, SymName, Arity, Context,
+        _SeqNum),
     Origin = user,
 
     % To handle a `:- initialise initpred.' declaration for C backends we need
@@ -1351,7 +1353,7 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
                 ExportPragma = pragma_foreign_export(ExportLang, SymName,
                     pf_predicate, [di_mode, uo_mode], CName),
                 ExportItemPragma = item_pragma_info(compiler(initialise_decl),
-                    ExportPragma, Context),
+                    ExportPragma, Context, -1),
                 ExportItem = item_pragma(ExportItemPragma),
                 add_item_pass_3(ExportItem, Status, _,
                     !ModuleInfo, !QualInfo, !Specs)
@@ -1373,7 +1375,7 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
                 ExportPragma = pragma_foreign_export(ExportLang, SymName,
                     pf_predicate, [], CName),
                 ExportItemPragma = item_pragma_info(compiler(initialise_decl),
-                    ExportPragma, Context),
+                    ExportPragma, Context, -1),
                 ExportItem = item_pragma(ExportItemPragma),
                 add_item_pass_3(ExportItem, Status, _,
                     !ModuleInfo, !QualInfo, !Specs)
@@ -1405,7 +1407,8 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
     ).
 add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
         !Specs) :-
-    ItemInitialise = item_initialise_info(Origin, SymName, Arity, Context),
+    ItemInitialise = item_initialise_info(Origin, SymName, Arity, Context,
+        _SeqNum),
     Origin = compiler(Details),
 
     % The compiler introduces initialise declarations that call impure
@@ -1420,7 +1423,7 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
         ExportPragma = pragma_foreign_export(ExportLang, SymName, pf_predicate,
             [], CName),
         ExportItemPragma = item_pragma_info(compiler(mutable_decl),
-            ExportPragma, Context),
+            ExportPragma, Context, -1),
         ExportItem = item_pragma(ExportItemPragma),
         add_item_pass_3(ExportItem, Status, _,
             !ModuleInfo, !QualInfo, !Specs)
@@ -1440,7 +1443,8 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
-    ItemFinalise = item_finalise_info(Origin, SymName, Arity, Context),
+    ItemFinalise = item_finalise_info(Origin, SymName, Arity, Context,
+        _SeqNum),
 
     % To handle a `:- finalise finalpred.' declaration for C backends we need
     % to:
@@ -1492,7 +1496,7 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
                 ExportPragma = pragma_foreign_export(ExportLang, SymName,
                     pf_predicate, [di_mode, uo_mode], CName),
                 ExportItemPragma = item_pragma_info(compiler(finalise_decl),
-                    ExportPragma, Context),
+                    ExportPragma, Context, -1),
                 ExportItem = item_pragma(ExportItemPragma),
                 add_item_pass_3(ExportItem, Status, _,
                     !ModuleInfo, !QualInfo, !Specs)
@@ -1514,7 +1518,7 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
                 ExportPragma = pragma_foreign_export(ExportLang, SymName,
                     pf_predicate, [], CName),
                 ExportItemPragma = item_pragma_info(compiler(finalise_decl),
-                    ExportPragma, Context),
+                    ExportPragma, Context, -1),
                 ExportItem = item_pragma(ExportItemPragma),
                 add_item_pass_3(ExportItem, Status, _,
                     !ModuleInfo, !QualInfo, !Specs)
@@ -1560,7 +1564,7 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ItemMutable = item_mutable_info(MercuryMutableName, Type, _InitTerm, _Inst,
-        MutAttrs, _MutVarset, Context),
+        MutAttrs, _MutVarset, Context, _SeqNum),
 
     % The transformation here is documented in the comments at the
     % beginning of prog_mutable.m.
@@ -1728,7 +1732,7 @@ get_c_mutable_global_foreign_decl(ModuleInfo, Type, TargetMutableName,
     DeclPragma =
         pragma_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody),
     DeclItemPragma = item_pragma_info(compiler(mutable_decl), DeclPragma,
-        Context),
+        Context, -1),
     DeclItem = item_pragma(DeclItemPragma).
 
     % Create the C foreign_defn for the mutable.
@@ -1775,7 +1779,7 @@ get_c_mutable_global_foreign_defn(ModuleInfo, Type, TargetMutableName,
         TypeName, " ", TargetMutableName, ";\n" | LockDefn]),
     DefnPragma = pragma_foreign_code(lang_c, DefnBody),
     DefnItemPragma = item_pragma_info(compiler(mutable_decl), DefnPragma,
-        Context),
+        Context, -1),
     DefnItem = item_pragma(DefnItemPragma).
 
 :- func global_foreign_type_name(bool, foreign_language, module_info,
@@ -1796,7 +1800,7 @@ add_c_mutable_preds(ItemMutableInfo, TargetMutableName, !Status, !ModuleInfo,
         !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ItemMutableInfo = item_mutable_info(MercuryMutableName, Type, InitTerm,
-        Inst, MutAttrs, MutVarset, Context),
+        Inst, MutAttrs, MutVarset, Context, _SeqNum),
     IsConstant = mutable_var_constant(MutAttrs),
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
 
@@ -1864,7 +1868,7 @@ add_c_constant_mutable_access_preds(TargetMutableName,
         fc_impl_ordinary("X = " ++ TargetMutableName ++ ";", yes(Context))
     ),
     ConstantGetItemPragma = item_pragma_info(compiler(mutable_decl),
-        ConstantGetForeignProc, Context),
+        ConstantGetForeignProc, Context, -1),
     ConstantGetItem = item_pragma(ConstantGetItemPragma),
     add_item_pass_3(ConstantGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -1880,7 +1884,7 @@ add_c_constant_mutable_access_preds(TargetMutableName,
         fc_impl_ordinary(TargetMutableName ++ " = X;", yes(Context))
     ),
     ConstantSetItemPragma = item_pragma_info(compiler(mutable_decl),
-        ConstantSetForeignProc, Context),
+        ConstantSetForeignProc, Context, -1),
     ConstantSetItem = item_pragma(ConstantSetItemPragma),
     add_item_pass_3(ConstantSetItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
@@ -1926,7 +1930,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         fc_impl_ordinary(LockForeignProcBody, yes(Context))
     ),
     LockItemPragma = item_pragma_info(compiler(mutable_decl),
-        LockForeignProc, Context),
+        LockForeignProc, Context, -1),
     LockItem = item_pragma(LockItemPragma),
     add_item_pass_3(LockItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -1954,7 +1958,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         fc_impl_ordinary(UnlockForeignProcBody, yes(Context))
     ),
     UnlockItemPragma = item_pragma_info(compiler(mutable_decl),
-        UnlockForeignProc, Context),
+        UnlockForeignProc, Context, -1),
     UnlockItem = item_pragma(UnlockItemPragma),
     add_item_pass_3(UnlockItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -1980,7 +1984,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         fc_impl_ordinary(UnsafeGetCode, yes(Context))
     ),
     UnsafeGetItemPragma = item_pragma_info(compiler(mutable_decl),
-        UnsafeGetForeignProc, Context),
+        UnsafeGetForeignProc, Context, -1),
     UnsafeGetItem = item_pragma(UnsafeGetItemPragma),
     add_item_pass_3(UnsafeGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -2031,7 +2035,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         fc_impl_ordinary(TrailCode ++ SetCode, yes(Context))
     ),
     UnsafeSetItemPragma = item_pragma_info(compiler(mutable_decl),
-        UnsafeSetForeignProc, Context),
+        UnsafeSetForeignProc, Context, -1),
     UnsafeSetItem = item_pragma(UnsafeSetItemPragma),
     add_item_pass_3(UnsafeSetItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
@@ -2067,14 +2071,9 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs, Context,
     StdGetBody = promise_purity_expr(dont_make_implicit_promises,
         purity_semipure, GetBody) - Context,
 
-    StdGetItemClause = item_clause_info(
-        compiler(mutable_decl),
-        ProgVarSet0,
-        pf_predicate,
-        GetPredName,
-        [variable(X, context_init)],
-        StdGetBody,
-        Context
+    StdGetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet0,
+        pf_predicate, GetPredName, [variable(X, context_init)], StdGetBody,
+        Context, -1
     ),
     StdSetItem = item_clause(StdSetItemClause),
     add_item_pass_3(StdGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
@@ -2089,14 +2088,9 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs, Context,
     StdSetBody = goal_list_to_conj(Context,
         [CallLock, StdSetCallUnsafeSet, CallUnlock]),
 
-    StdSetItemClause = item_clause_info(
-        compiler(mutable_decl),
-        ProgVarSet0,
-        pf_predicate,
-        SetPredName,
-        [variable(X, context_init)],
-        StdSetBody,
-        Context
+    StdSetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet0,
+        pf_predicate, SetPredName, [variable(X, context_init)], StdSetBody,
+        Context, -1
     ),
     StdGetItem = item_clause(StdGetItemClause),
     add_item_pass_3(StdSetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
@@ -2111,14 +2105,10 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs, Context,
             purity_pure, GetBody) - Context,
 
         Ctxt = context_init,
-        IOGetItemClause = item_clause_info(
-            compiler(mutable_decl),
-            ProgVarSet,
-            pf_predicate,
-            GetPredName,
+        IOGetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet,
+            pf_predicate, GetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-            IOGetBody,
-            Context
+            IOGetBody, Context, -1
         ),
         IOGetItem = item_clause(IOGetItemClause),
         add_item_pass_3(IOGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
@@ -2131,14 +2121,10 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs, Context,
 
         IOSetBody = StdSetBody,
 
-        IOSetItemClause = item_clause_info(
-            compiler(mutable_decl),
-            ProgVarSet,
-            pf_predicate,
-            SetPredName,
+        IOSetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet,
+            pf_predicate, SetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-            IOSetBody,
-            Context
+            IOSetBody, Context, -1
         ),
         IOSetItem = item_clause(IOSetItemClause),
         add_item_pass_3(IOSetItem, !Status, !ModuleInfo, !QualInfo, !Specs)
@@ -2164,7 +2150,7 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
     InitPredArity = 0,
 
     InitItemInitialise = item_initialise_info(compiler(mutable_decl),
-        InitPredName, InitPredArity, Context),
+        InitPredName, InitPredArity, Context, -1),
     InitItem = item_initialise(InitItemInitialise),
     add_item_pass_3(InitItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -2204,7 +2190,7 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
             fc_impl_ordinary(PreInitCode, yes(Context))
         ),
         PreInitItemPragma = item_pragma_info(compiler(mutable_decl),
-            PreInitForeignProc, Context),
+            PreInitForeignProc, Context, -1),
         PreInitItem = item_pragma(PreInitItemPragma),
         add_item_pass_3(PreInitItem, !Status, !ModuleInfo, !QualInfo,
             !Specs),
@@ -2212,22 +2198,15 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
         CallPreInitExpr =
             call_expr(PreInitPredName, [], purity_impure) - Context,
         CallSetPredExpr =
-            call_expr(InitSetPredName, [InitTerm], purity_impure)
-                - Context,
+            call_expr(InitSetPredName, [InitTerm], purity_impure) - Context,
         InitClauseExpr = conj_expr(CallPreInitExpr, CallSetPredExpr)
             - Context
     ),
 
     % See the comments for prog_io.parse_mutable_decl for the reason
     % why we _must_ use MutVarset here.
-    PredItemClause = item_clause_info(compiler(mutable_decl),
-        MutVarset,
-        pf_predicate,
-        InitPredName,
-        [],
-        InitClauseExpr,
-        Context
-    ),
+    PredItemClause = item_clause_info(compiler(mutable_decl), MutVarset,
+        pf_predicate, InitPredName, [], InitClauseExpr, Context, -1),
     PredItem = item_clause(PredItemClause),
     add_item_pass_3(PredItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
@@ -2245,7 +2224,7 @@ add_erlang_mutable_preds(ItemMutable, TargetMutableName,
         !Status, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ItemMutable = item_mutable_info(MutableName, _Type, InitTerm, Inst,
-        MutAttrs, MutVarset, Context),
+        MutAttrs, MutVarset, Context, _SeqNum),
     IsConstant = mutable_var_constant(MutAttrs),
     (
         IsConstant = yes,
@@ -2295,7 +2274,7 @@ add_erlang_constant_mutable_access_preds(TargetMutableName,
         fc_impl_ordinary(GetCode, yes(Context))
     ),
     ConstantGetItemPragma = item_pragma_info(compiler(mutable_decl),
-        ConstantGetForeignProc, Context),
+        ConstantGetForeignProc, Context, -1),
     ConstantGetItem = item_pragma(ConstantGetItemPragma),
     add_item_pass_3(ConstantGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -2310,7 +2289,7 @@ add_erlang_constant_mutable_access_preds(TargetMutableName,
         fc_impl_ordinary(SetCode, yes(Context))
     ),
     ConstantSetItemPragma = item_pragma_info(compiler(mutable_decl),
-        ConstantSetForeignProc, Context),
+        ConstantSetForeignProc, Context, -1),
     ConstantSetItem = item_pragma(ConstantSetItemPragma),
     add_item_pass_3(ConstantSetItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
@@ -2356,7 +2335,7 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         fc_impl_ordinary(GetCode, yes(Context))
     ),
     GetItemPragma = item_pragma_info(compiler(mutable_decl), GetForeignProc,
-        Context),
+        Context, -1),
     GetItem = item_pragma(GetItemPragma),
     add_item_pass_3(GetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -2382,7 +2361,7 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         fc_impl_ordinary(SetCode, yes(Context))
     ),
     SetItemPragma = item_pragma_info(compiler(mutable_decl), SetForeignProc,
-        Context),
+        Context, -1),
     SetItem = item_pragma(SetItemPragma),
     add_item_pass_3(SetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -2400,15 +2379,10 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         IOGetBody = promise_purity_expr(dont_make_implicit_promises,
             purity_pure, CallSemipureGet) - Context,
 
-        IOGetItemClause = item_clause_info(
-            compiler(mutable_decl),
-            ProgVarSet,
-            pf_predicate,
-            GetPredName,
+        IOGetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet,
+            pf_predicate, GetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-            IOGetBody,
-            Context
-        ),
+            IOGetBody, Context, -1),
         IOGetItem = item_clause(IOGetItemClause),
         add_item_pass_3(IOGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -2419,15 +2393,10 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         % stage 2.)
         CallImpureSet = call_expr(SetPredName, [variable(X, Context)],
             purity_impure) - Context,
-        IOSetItemClause = item_clause_info(
-            compiler(mutable_decl),
-            ProgVarSet,
-            pf_predicate,
-            SetPredName,
+        IOSetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet,
+            pf_predicate, SetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-            CallImpureSet,
-            Context
-        ),
+            CallImpureSet, Context, -1),
         IOSetItem = item_clause(IOSetItemClause),
         add_item_pass_3(IOSetItem, !Status, !ModuleInfo, !QualInfo, !Specs)
     ;
@@ -2468,7 +2437,7 @@ add_erlang_mutable_initialisation(ModuleName, MutableName,
     InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
     InitPredArity = 0,
     InitItemInitialise = item_initialise_info(compiler(mutable_decl),
-        InitPredName, InitPredArity, Context),
+        InitPredName, InitPredArity, Context, -1),
     InitItem = item_initialise(InitItemInitialise),
     add_item_pass_3(InitItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
@@ -2476,13 +2445,10 @@ add_erlang_mutable_initialisation(ModuleName, MutableName,
     %
     % See the comments for prog_io.parse_mutable_decl for the reason
     % why we _must_ use MutVarset here.
-    PredItemClause = item_clause_info(compiler(mutable_decl),
-        MutVarset,
-        pf_predicate,
-        InitPredName,
-        [],
+    PredItemClause = item_clause_info(compiler(mutable_decl), MutVarset,
+        pf_predicate, InitPredName, [],
         call_expr(InitSetPredName, [InitTerm], purity_impure) - Context,
-        Context
+        Context, -1
     ),
     PredItem = item_clause(PredItemClause),
     add_item_pass_3(PredItem, !Status, !ModuleInfo, !QualInfo, !Specs).

@@ -480,7 +480,7 @@ make_any_instances_abstract(Item0, Item) :-
 handle_mutable_in_private_interface(ModuleName, Item, !Items) :-
     ( Item = item_mutable(ItemMutable) ->
         ItemMutable = item_mutable_info(MutableName, Type, _Value, Inst, Attrs,
-            _Varset, Context),
+            _Varset, Context, _SeqNum),
         ConstantInterface = mutable_var_constant(Attrs),
         (
             ConstantInterface = yes,
@@ -623,7 +623,7 @@ strip_imported_items(Items0, Items) :-
 strip_imported_items_2([], !RevItems).
 strip_imported_items_2([Item | Items], !RevItems) :-
     ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
             ( ModuleDefn = md_imported(_)
             ; ModuleDefn = md_used(_)
@@ -661,7 +661,7 @@ strip_assertions([], []).
 strip_assertions([Head | Tail], Items) :-
     (
         Head = item_promise(ItemPromise),
-        ItemPromise = item_promise_info(promise_type_true, _, _, _, _)
+        ItemPromise = item_promise_info(promise_type_true, _, _, _, _, _)
     ->
         strip_assertions(Tail, Items)
     ;
@@ -789,7 +789,7 @@ wrap_type_defn_item(ItemTypeDefn) = item_type_defn(ItemTypeDefn).
 wrap_import_module_spec(ModuleSpecInDefn) = Item :-
     ModuleSpecInDefn = module_specifier_in_defn(Context, ModuleSpec),
     ModuleDefn = md_import([ModuleSpec]),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, -1),
     Item = item_module_defn(ItemModuleDefn).
 
 :- func wrap_use_module_spec(module_specifier_in_defn) = item.
@@ -797,7 +797,7 @@ wrap_import_module_spec(ModuleSpecInDefn) = Item :-
 wrap_use_module_spec(ModuleSpecInDefn) = Item :-
     ModuleSpecInDefn = module_specifier_in_defn(Context, ModuleSpec),
     ModuleDefn = md_use([ModuleSpec]),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, -1),
     Item = item_module_defn(ItemModuleDefn).
 
 :- pred do_standardize_impl_items(list(item)::in, bool::in, bool::out,
@@ -811,7 +811,7 @@ do_standardize_impl_items([], !Unexpected, !RevRemainderItems,
 do_standardize_impl_items([Item | Items], !Unexpected,
         !RevRemainderItems, !ImportSpecs, !UseSpecs, !TypeDefns) :-
     ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _),
         (
             ModuleDefn = md_import(ImportModules),
             ( ImportModules = [ModuleSpec] ->
@@ -878,8 +878,8 @@ insert_module_spec(Context, NewModuleSpec, [Head | Tail], Result) :-
 
 insert_type_defn(New, [], [New]).
 insert_type_defn(New, [Head | Tail], Result) :-
-    New = item_type_defn_info(_, NewSymName, NewParams, _, _, _),
-    Head = item_type_defn_info(_, HeadSymName, HeadParams, _, _, _),
+    New = item_type_defn_info(_, NewSymName, NewParams, _, _, _, _),
+    Head = item_type_defn_info(_, HeadSymName, HeadParams, _, _, _, _),
     compare(CompareSymName, NewSymName, HeadSymName),
     (
         (
@@ -935,7 +935,7 @@ strip_unnecessary_impl_imports(NecessaryImports, !Items) :-
 
 is_not_unnecessary_impl_import(NecessaryImports, Item) :-
     ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
             ( ModuleDefn = md_use(Modules)
             ; ModuleDefn = md_import(Modules)
@@ -969,7 +969,7 @@ strip_unnecessary_impl_types(NecessaryTypeCtors, !Items) :-
 
 is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
     ( Item = item_type_defn(ItemTypeDefn) ->
-        ItemTypeDefn = item_type_defn_info(_, SymName, Params, _, _, _),
+        ItemTypeDefn = item_type_defn_info(_, SymName, Params, _, _, _, _),
         TypeCtor = type_ctor(SymName, list.length(Params)),
         set.member(TypeCtor, NecessaryTypeCtors)
     ;
@@ -1142,7 +1142,7 @@ gather_type_defns_2(!.InInterface, [Item | Items],
         !RevIntItems, !RevImplItems, !IntTypesMap, !ImplTypesMap) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
             ModuleDefn = md_interface,
             NewInInterface = yes
@@ -1155,7 +1155,7 @@ gather_type_defns_2(!.InInterface, [Item | Items],
     ;
         Item = item_type_defn(ItemTypeDefn)
     ->
-        ItemTypeDefn = item_type_defn_info(_, Name, Args, Body, _, _),
+        ItemTypeDefn = item_type_defn_info(_, Name, Args, Body, _, _, _),
         TypeCtor = type_ctor(Name, length(Args)),
         (
             !.InInterface = yes,
@@ -1292,7 +1292,7 @@ strip_local_foreign_enum_pragmas(IntTypeMap, !ImplItems) :-
 foreign_enum_is_local(TypeDefnMap, Item) :-
     (
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
         Pragma = pragma_foreign_enum(_Lang, TypeName, TypeArity, _Values)
     ->
         % We only add a pragma foreign_enum pragma to the interface file
@@ -1320,7 +1320,7 @@ check_for_clauses_in_interface([Item0 | Items0], Items, !Specs) :-
         check_for_clauses_in_interface(Items0, Items, !Specs)
     ;
         Item0 = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, Context),
+        ItemPragma = item_pragma_info(_, Pragma, Context, _),
         AllowedInInterface = pragma_allowed_in_interface(Pragma),
         (
             AllowedInInterface = no,
@@ -1383,7 +1383,7 @@ split_clauses_and_decls([], [], []).
 split_clauses_and_decls([Item | Items], !:ClauseItems, !:InterfaceItems) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         ( ModuleDefn = md_interface
         ; ModuleDefn = md_implementation
         )
@@ -1394,7 +1394,7 @@ split_clauses_and_decls([Item | Items], !:ClauseItems, !:InterfaceItems) :-
             Item = item_clause(_)
         ;
             Item = item_pragma(ItemPragma),
-            ItemPragma = item_pragma_info(_, Pragma, _),
+            ItemPragma = item_pragma_info(_, Pragma, _, _),
             pragma_allowed_in_interface(Pragma) = no
         ;
             Item = item_initialise(_)
@@ -1491,7 +1491,7 @@ check_int_for_no_exports([Item | Items], ModuleName, !IO) :-
             Item = item_nothing(_)
         ;
             Item = item_module_defn(ItemModuleDefn),
-            ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+            ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
             ModuleDefn \= md_include_module(_)
         )
     ->
@@ -1568,13 +1568,13 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
                 InterfaceItems0, MaybeOldItems, VersionNumbers),
             VersionNumberItemModuleDefn = item_module_defn_info(
                 md_version_numbers(ModuleName, VersionNumbers),
-                term.context_init),
+                term.context_init, -1),
             VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
             (
                 InterfaceItems0 = [FirstItem | InterfaceItems1],
                 FirstItem = item_module_defn(FirstItemModuleDefn),
                 FirstItemModuleDefn =
-                    item_module_defn_info(FirstModuleDefn, _),
+                    item_module_defn_info(FirstModuleDefn, _, _),
                 FirstModuleDefn = md_interface
             ->
                 InterfaceItems = [FirstItem, VersionNumberItem
@@ -1864,7 +1864,7 @@ append_pseudo_decl(PseudoDecl, Module0, Module) :-
     Module = Module0 ^ items := Items.
 
 make_pseudo_decl(PseudoDecl) = Item :-
-    ItemModuleDefn = item_module_defn_info(PseudoDecl, term.context_init),
+    ItemModuleDefn = item_module_defn_info(PseudoDecl, term.context_init, -1),
     Item = item_module_defn(ItemModuleDefn).
 
 %-----------------------------------------------------------------------------%
@@ -2807,7 +2807,7 @@ check_module_accessibility(ModuleName, AccessibleSubModules, Items,
             % so we need to search the item list again to find them.
             FindImports = (pred(Item::in, ImportInfo::out) is semidet :-
                 Item = item_module_defn(ItemModuleDefn),
-                ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
+                ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _),
                 (
                     ModuleDefn = md_import(ItemModuleSpecs),
                     DeclName = "import_module"
@@ -2955,7 +2955,7 @@ replace_section_decls(IntStatusItem, ImpStatusItem, !Items) :-
 replace_section_decl(IntStatusItem, ImpStatusItem, Item0, Item) :-
     (
         Item0 = item_module_defn(ItemModuleDefn0),
-        ItemModuleDefn0 = item_module_defn_info(ModuleDefn0, _),
+        ItemModuleDefn0 = item_module_defn_info(ModuleDefn0, _, _),
         (
             ModuleDefn0 = md_interface,
             ItemPrime = IntStatusItem
@@ -2991,7 +2991,7 @@ get_children_2([], !IncludeDeps).
 get_children_2([Item | Items], !IncludeDeps) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         ModuleDefn = md_include_module(Modules)
     ->
         !:IncludeDeps = !.IncludeDeps ++ Modules
@@ -3016,7 +3016,7 @@ get_accessible_children(Items, IncludeDeps) :-
 get_accessible_children_2(_, [], !IncludeDeps).
 get_accessible_children_2(!.Visible, [Item | Items], !IncludeDeps) :-
     ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
             ( ModuleDefn = md_abstract_imported
             ; ModuleDefn = md_opt_imported
@@ -3115,7 +3115,7 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         % Check for a `module' declaration, which signals the start
         % of a nested module.
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
         ModuleDefn = md_module(SubModuleName)
     ->
         % Parse in the items for the nested submodule.
@@ -3133,14 +3133,14 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         % Replace the nested submodule with an `include_module' declaration.
         IncludeSubModModuleDefn = md_include_module([SubModuleName]),
         IncludeSubModItemModuleDefn = item_module_defn_info(
-            IncludeSubModModuleDefn, Context),
+            IncludeSubModModuleDefn, Context, SeqNum),
         IncludeSubModItem = item_module_defn(IncludeSubModItemModuleDefn),
         ThisModuleItems = [IncludeSubModItem | ThisModuleItems0],
         OtherItems = Items3
     ;
         % Check for a matching `end_module' declaration.
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _Context),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _Context, _),
         ModuleDefn = md_end_module(EndModuleName),
         EndModuleName = ModuleName
     ->
@@ -3155,7 +3155,8 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         % interface section, and report an error if there is an
         % `implementation' section inside an `interface' section.
         ( Item = item_module_defn(ItemModuleDefn) ->
-            ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
+            ItemModuleDefn = item_module_defn_info(ModuleDefn, Context,
+                _SeqNum),
             ( ModuleDefn = md_interface ->
                 !:InInterface = yes
             ; ModuleDefn = md_implementation ->
@@ -3249,7 +3250,7 @@ report_duplicate_modules(Duplicates, Items, !Specs) :-
 is_duplicate_error(Duplicates, Items, SubModuleName - Context) :-
     list.member(Item, Items),
     Item = item_module_defn(ItemModuleDefn),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _),
     (
         ModuleDefn = md_module(SubModuleName)
     ;
@@ -3346,7 +3347,7 @@ maybe_add_foreign_import_module(ModuleName, Items0, Items) :-
 make_foreign_import(ModuleName, Lang) = Item :-
     Origin = compiler(foreign_imports),
     Pragma = pragma_foreign_import_module(Lang, ModuleName),
-    ItemPragma = item_pragma_info(Origin, Pragma, term.context_init),
+    ItemPragma = item_pragma_info(Origin, Pragma, term.context_init, -1),
     Item = item_pragma(ItemPragma).
 
 get_foreign_self_imports(Items, Langs) :-
@@ -3369,7 +3370,7 @@ get_interface_and_implementation_2(IncludeImplTypes, [Item | Rest],
         !.InInterface, !RevIntItems, AddImplItem, !RevImplItems) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         ( ModuleDefn = md_interface
         ; ModuleDefn = md_implementation
         ; ModuleDefn = md_imported(_)
@@ -3491,7 +3492,7 @@ include_in_short_interface(Item) = Include :-
         Include = yes
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
         % XXX This if-then-else should be a switch, or (even better)
         % we should take pragma_foreign_import_modules out of the pragma items
         % and given them their own item type.
@@ -3567,7 +3568,7 @@ item_needs_foreign_imports(Item) = Langs :-
         )
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
         (
             Pragma = pragma_import(_, _, _, _, _),
             % `:- pragma import' is only supported for C.
@@ -3642,7 +3643,7 @@ include_in_int_file_implementation(Item) = Include :-
         Include = yes
     ;
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
             % XXX Some of these should yield an exception.
             ( ModuleDefn = md_module(_)
@@ -3668,7 +3669,7 @@ include_in_int_file_implementation(Item) = Include :-
         )
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
         (
             ( Pragma = pragma_foreign_import_module(_, _)
             ; Pragma = pragma_foreign_enum(_, _, _, _)
@@ -3847,7 +3848,7 @@ maybe_strip_import_decls(!Items) :-
             (pred(ThisItem::in) is semidet :-
                 \+ (
                     ThisItem = item_pragma(ThisItemPragma),
-                    ThisItemPragma = item_pragma_info(_, Pragma, _),
+                    ThisItemPragma = item_pragma_info(_, Pragma, _, _),
                     Pragma = pragma_foreign_import_module(_, _)
                 )
             ),
@@ -3881,7 +3882,7 @@ order_items(Items0, Items) :-
 
 interface_or_import_marker(Item) :-
     Item = item_module_defn(ItemModuleDefn),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
     ( ModuleDefn = md_interface
     ; ModuleDefn = md_implementation
     ).
@@ -3895,7 +3896,7 @@ not_import_or_use_item(Item) :-
 
 import_or_use_item(Item) :-
     Item = item_module_defn(ItemModuleDefn),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
     ( ModuleDefn = md_import(_)
     ; ModuleDefn = md_use(_)
     ).
@@ -3919,28 +3920,28 @@ filter_unnecessary_flips([Item1, Item2 | Items0], CurPos, Items) :-
     (
         CurPos = in_interface,
         Item1 = item_module_defn(ItemModuleDefn1),
-        ItemModuleDefn1 = item_module_defn_info(md_implementation, _),
+        ItemModuleDefn1 = item_module_defn_info(md_implementation, _, _),
         Item2 = item_module_defn(ItemModuleDefn2),
-        ItemModuleDefn2 = item_module_defn_info(md_interface, _)
+        ItemModuleDefn2 = item_module_defn_info(md_interface, _, _)
     ->
         filter_unnecessary_flips(Items0, CurPos, Items)
     ;
         CurPos = in_implementation,
         Item1 = item_module_defn(ItemModuleDefn1),
-        ItemModuleDefn1 = item_module_defn_info(md_interface, _),
+        ItemModuleDefn1 = item_module_defn_info(md_interface, _, _),
         Item2 = item_module_defn(ItemModuleDefn2),
-        ItemModuleDefn2 = item_module_defn_info(md_implementation, _)
+        ItemModuleDefn2 = item_module_defn_info(md_implementation, _, _)
     ->
         filter_unnecessary_flips(Items0, CurPos, Items)
     ;
         (
             Item1 = item_module_defn(ItemModuleDefn1),
-            ItemModuleDefn1 = item_module_defn_info(md_implementation, _)
+            ItemModuleDefn1 = item_module_defn_info(md_implementation, _, _)
         ->
             NextPos = in_implementation
         ;
             Item1 = item_module_defn(ItemModuleDefn1),
-            ItemModuleDefn1 = item_module_defn_info(md_interface, _)
+            ItemModuleDefn1 = item_module_defn_info(md_interface, _, _)
         ->
             NextPos = in_interface
         ;
@@ -3996,7 +3997,7 @@ do_order_items([Item0 | Items0], OrderedItems) :-
 :- pred import_or_use(item::in) is semidet.
 
 import_or_use(item_module_defn(ItemModuleDefn)) :-
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
     ( ModuleDefn = md_import(_)
     ; ModuleDefn = md_use(_)
     ).
@@ -4022,11 +4023,11 @@ is_reorderable(Item) :-
 reorderable_item(Item) = Reorderable :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         Reorderable = reorderable_module_defn(ModuleDefn)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
         Reorderable = reorderable_pragma_type(Pragma)
     ;
         ( Item = item_type_defn(_)
@@ -4125,11 +4126,11 @@ is_chunkable(Item) :-
 chunkable_item(Item) = Chunkable :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         Chunkable = chunkable_module_defn(ModuleDefn)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
         Chunkable = chunkable_pragma_type(Pragma)
     ;
         ( Item = item_clause(_)

@@ -197,7 +197,7 @@
 %-----------------------------------------------------------------------------%
 
 add_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
-    ItemPragma = item_pragma_info(Origin, Pragma, Context),
+    ItemPragma = item_pragma_info(Origin, Pragma, Context, _SeqNum),
     % Check for invalid pragmas in the `interface' section.
     !.Status = item_status(ImportStatus, _),
     Allowed = pragma_allowed_in_interface(Pragma),
@@ -2784,7 +2784,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     StatsPredDecl = item_pred_decl_info(Origin, VarSet0, InstVarSet,
         ExistQVars, pf_predicate, StatsPredSymName, ArgDecls,
         WithType, WithInst, yes(detism_det), Condition, purity_pure,
-        Constraints, Context),
+        Constraints, Context, -1),
     StatsPredDeclItem = item_pred_decl(StatsPredDecl),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
     add_item_decl_pass_1(StatsPredDeclItem, _, ItemStatus0, _,
@@ -2813,7 +2813,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         StatsPragma = pragma_foreign_proc(!.Attrs, StatsPredSymName,
             pf_predicate, [Arg1, Arg2, Arg3], !.VarSet, InstVarSet, StatsImpl),
         StatsPragmaInfo = item_pragma_info(compiler(pragma_memo_attribute),
-            StatsPragma, Context),
+            StatsPragma, Context, -1),
         StatsImplItem = item_pragma(StatsPragmaInfo)
     ),
     % XXX Instead of calling add_item_pass_3, we should call what *it* calls.
@@ -2844,7 +2844,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
     ResetPredDecl = item_pred_decl_info(Origin, VarSet0, InstVarSet,
         ExistQVars, pf_predicate, ResetPredSymName, ArgDecls,
         WithType, WithInst, yes(detism_det), Condition, purity_pure,
-        Constraints, Context),
+        Constraints, Context, -1),
     ResetPredDeclItem = item_pred_decl(ResetPredDecl),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
     add_item_decl_pass_1(ResetPredDeclItem, _, ItemStatus0, _,
@@ -2868,7 +2868,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         ResetPragma = pragma_foreign_proc(!.Attrs, ResetPredSymName,
             pf_predicate, [Arg1, Arg2], !.VarSet, InstVarSet, ResetImpl),
         ResetPragmaInfo = item_pragma_info(compiler(pragma_memo_attribute),
-            ResetPragma, Context),
+            ResetPragma, Context, -1),
         ResetImplItem = item_pragma(ResetPragmaInfo)
     ),
     % XXX Instead of calling add_item_pass_3, we should call what *it* calls.
