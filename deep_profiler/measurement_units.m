@@ -1,0 +1,320 @@
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2008 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+%
+% File: measurement_units.m.
+% Author: pbone.
+%
+% This module contains a memory, time and percentage abstract data types and
+% predicates and functions for using them.
+%
+%-----------------------------------------------------------------------------%
+
+:- module measurement_units.
+
+:- interface.
+
+:- import_module int.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
+%
+% Memory
+%
+
+    % Units avalible for measuring memory in.
+    %
+:- type memory_units
+    --->    units_words
+    ;       units_bytes.
+
+%-----------------------------------------------------------------------------%
+
+    % Memory abstract data type.
+    %
+    % This type represents an amount of computer memory while abstracting away
+    % how the memory is measured.
+    %
+:- type memory.
+
+%-----------------------------------------------------------------------------%
+
+    % memory_words(Words, BytesPerWord) = Memory
+    % 
+    % Convert number of words words to memory type.
+    %
+:- func memory_words(int, int) = memory.
+
+%-----------------------------------------------------------------------------%
+
+    % Division for memory units.  Use of this function may return continous
+    % units.
+:- func (memory) / (int) = (memory) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Format a memory value using the given units.
+    %
+    % The third argument is the number of decimal places to show.
+    %
+:- func format_memory(memory, memory_units, int) = string.
+
+%-----------------------------------------------------------------------------%
+%
+% Percent
+%
+    
+    % Percent abstract data type.
+    % 
+:- type percent.
+
+%-----------------------------------------------------------------------------%
+
+    % Convert from float between 0.0 and 1.0 (inclusive) and percent type.
+    % Input of values outside the range above will throw exceptions.
+    %
+:- func percent(float) = percent.
+
+%-----------------------------------------------------------------------------%
+
+    % Format a percentage.  Prints the percentage with one decimal place and a
+    % '%' symbol.
+    %
+:- func format_percent(percent) = string.
+
+%-----------------------------------------------------------------------------%
+%
+% Time
+%
+    
+    % Time abstract data type.
+    % 
+:- type time.
+
+%-----------------------------------------------------------------------------%
+
+    % ticks_to_time(Ticks, TicksPerSec, Time)
+    %
+    % Converts profiler ticks to time,
+    %
+:- pred ticks_to_time(int::in, int::in, time::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % time_percall(Time, Calls, TimePercall)
+    %
+    % Time / Calls = TimePerCall.
+    %
+:- pred time_percall(time::in, int::in, time::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Format a time, this prints the time in the most readable units for its
+    % magnitude.  One or two letters follow the time to describe the units.
+    %
+    % Currently supported units are seconds; milli, micro, nano and pico
+    % seconds.  For micro seconds a letter u is used rather than the greek
+    % letter mu.
+    %
+:- func format_time(time) = string.
+
+%-----------------------------------------------------------------------------%
+% 
+% Code for formatting numbers.
+%
+
+    % Format an integer and place commas between groups of three digits.
+    %
+:- func commas(int) = string.
+
+    % Format a floating point number, placing commas between groups of three
+    % digits in the integer part.
+    %
+:- func decimal_fraction(string, float) = string.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module char.
+:- import_module exception.
+:- import_module float.
+:- import_module list.
+:- import_module math.
+:- import_module require.
+
+%-----------------------------------------------------------------------------%
+% 
+% Memory
+%
+
+:- type memory
+    --->    memory_words(
+                words       :: float,
+                word_size   :: int
+            ).
+
+%-----------------------------------------------------------------------------%
+
+memory_words(WordsI, BytesPerWord) = memory_words(WordsF, BytesPerWord) :-
+    WordsF = float(WordsI).
+
+%-----------------------------------------------------------------------------%
+
+    % Divison operator.
+memory_words(Nom, BPW) / Denom = 
+memory_words(Nom / float(Denom), BPW).
+
+%-----------------------------------------------------------------------------%
+
+format_memory(memory_words(Words, BPW), units_bytes, Decimals) =  
+    format_number(Decimals, Words * float(BPW)).
+format_memory(memory_words(Words, _), units_words, Decimals) = 
+    format_number(Decimals, Words).
+
+%-----------------------------------------------------------------------------%
+% 
+% Percent
+%
+
+:- type percent
+    --->    percent_float(float).
+
+%-----------------------------------------------------------------------------%
+
+percent(P) = percent_float(P) :-
+    ( (P >= 0.0, P =< 1.0) ->
+        true
+    ; 
+        throw(software_error(
+            "Percentage value out of range 0.0 to 1.0 (inclusive)"))
+    ).
+
+%-----------------------------------------------------------------------------%
+
+format_percent(percent_float(P)) = String :-
+    string.format("%.2f", [f(P*100.0)], String).
+
+%-----------------------------------------------------------------------------%
+% 
+% Time. 
+%
+
+    % Time is stored in seconds using a float.
+    %
+:- type time
+    --->    time_sec(float).
+
+%-----------------------------------------------------------------------------%
+
+ticks_to_time(Ticks, TicksPerSec, Time) :-
+    SecPerTick = 1.0/float(TicksPerSec),
+    Time = time_sec(float(Ticks) * SecPerTick).
+
+%-----------------------------------------------------------------------------%
+
+time_percall(time_sec(Time), Calls, time_sec(Time/float(Calls))).
+
+%-----------------------------------------------------------------------------%
+
+:- func milli = float.
+milli = 0.001.
+
+:- func micro = float.
+micro = 0.000001.
+
+:- func nano = float.
+nano = 0.000000001.
+
+:- func pico = float.
+pico = 0.000000000001.
+
+%
+% TODO: When there is no resolution beyond 10ms since there is a clock tick
+% every 10ms, the decimal points on some of these numbers should not be shown.
+% However it's probably useful to show at least 2 decimal points when the value
+% is within the range 1-10 seconds.
+%
+% TODO: If the display system supports printing the greek letter mu, then it
+% should be used rather than the latin letter u.
+%
+format_time(time_sec(F)) = String :-
+    ( F < nano ->
+        % Print in ps.
+        string.format("%.1fps", [f(F / pico)], String)
+    ; F < micro ->
+        % Print in ns.
+        string.format("%.1fns", [f(F / nano)], String)
+    ; F < milli ->
+        % Print in us.
+        string.format("%.1fus", [f(F / micro)], String)
+    ; F < 1.0 ->
+        % Print in ms.
+        string.format("%.1fms", [f(F / milli)], String)
+    ;
+        % Print in seconds.
+        string.format("%.1fs", [f(F)], String)
+    ).
+
+%-----------------------------------------------------------------------------%
+% 
+% Code for formatting numbers.
+%
+
+commas(Num) = Str :-
+    string.format("%d", [i(Num)], Str0),
+    add_commas_intstr(Str0, Str).
+
+%-----------------------------------------------------------------------------%
+
+decimal_fraction(Format, Measure) = Representation :-
+    string.format(Format, [f(Measure)], Str0),
+    string.split_at_char('.', Str0) = SubStrings,
+    (
+        SubStrings = [WholeString0, FractionString]
+    ->
+        add_commas_intstr(WholeString0, WholeString),
+        Representation = WholeString ++ "." ++ FractionString
+    ;
+        % If there are no decimal symbols in the number, try to work with it as
+        % an integer.
+        SubStrings = [WholeString]
+    ->
+        add_commas_intstr(WholeString, Representation)
+    ;    
+        error("decimal_fraction: Didn't split on decimal point properly")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_commas_intstr(string::in, string::out) is det.
+
+add_commas_intstr(Str0, Str) :-
+    string.to_char_list(Str0, Chars0),
+    reverse(Chars0, RevChars0),
+    string.from_char_list(reverse(add_commas(RevChars0)), Str).
+
+:- func add_commas(list(char)) = list(char).
+
+add_commas([]) = [].
+add_commas([C]) = [C].
+add_commas([C, D]) = [C, D].
+add_commas([C, D, E]) = [C, D, E].
+add_commas([C, D, E, F | R]) = [C, D, E, (',') | add_commas([F | R])].
+
+%-----------------------------------------------------------------------------%
+
+:- func format_number(int, float) = string.
+
+format_number(Decimals, Num) = String :-
+    Format = "%." ++ string(Decimals) ++ "f",
+    decimal_fraction(Format, Num) = String.
+
+%-----------------------------------------------------------------------------%
+:- end_module measurement_units.
+%-----------------------------------------------------------------------------%

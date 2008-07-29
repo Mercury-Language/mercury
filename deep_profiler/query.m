@@ -27,6 +27,7 @@
 :- module query.
 :- interface.
 
+:- import_module measurement_units.
 :- import_module profile.
 
 :- import_module bool.
@@ -131,7 +132,8 @@
 
                 pref_time           :: time_format,
 
-                % Whether we should show modules/procs that haven't been called.
+                % Whether we should show modules/procs that haven't been
+                % called.
                 pref_inactive       :: inactive_items
             ).
 
@@ -162,10 +164,6 @@
     --->    no_memory
     ;       memory(memory_units)
     ;       memory_and_percall(memory_units).
-
-:- type memory_units
-    --->    units_words
-    ;       units_bytes.
 
 :- type fields
     --->    fields(
@@ -257,9 +255,12 @@
 
 :- implementation.
 
+:- import_module create_report.
+:- import_module display_report.
 :- import_module exclude.
 :- import_module html_format.
 :- import_module measurements.
+:- import_module report.
 :- import_module top_procs.
 :- import_module util.
 
@@ -300,18 +301,29 @@ try_exec(Cmd, Pref, Deep, HTML, !IO) :-
 :- pred exec(cmd::in, preferences::in, deep::in, string::out,
     io::di, io::uo) is det.
 
-exec(deep_cmd_restart, _Pref, _Deep, _HTML, !IO) :-
-    % Our caller is supposed to filter out restart commands.
-    error("exec: found restart command").
-exec(deep_cmd_quit, _Pref, Deep, HTML, !IO) :-
-    HTML = string.format(
-        "<H3>Shutting down deep profile server for %s.</H3>\n",
-        [s(Deep ^ data_file_name)]).
-exec(deep_cmd_timeout(TimeOut), _Pref, _Deep, HTML, !IO) :-
-    HTML = string.format("<H3>Timeout set to %d minutes</H3>\n", [i(TimeOut)]).
-exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = deep_cmd_menu,
-    HTML = generate_menu_page(Cmd, Pref, Deep).
+exec(Cmd, Prefs, Deep, HTML, !IO) :-
+    ( Cmd = deep_cmd_quit
+    ; Cmd = deep_cmd_timeout(_)
+    ; Cmd = deep_cmd_restart
+    ; Cmd = deep_cmd_menu
+    ; Cmd = deep_cmd_top_procs(_, _, _, _)
+    ),
+    create_report(Cmd, Deep, Report),
+    display_report(Deep, Prefs, Report, Display),
+    htmlize_display(Deep, Display, HTML).
+
+% Old deep profiler cgi code.  This should remain supported until all the deep
+% profiler reports have been updated to use the new datastructures.
+%
+
+%exec(Cmd, Pref, Deep, HTML, !IO) :-
+%    Cmd = deep_cmd_menu,
+%    HTML = generate_menu_page(Cmd, Pref, Deep).
+%exec(Cmd, Pref, Deep, HTML, !IO) :-
+%    Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
+%    HTML = generate_top_procs_page(Cmd, Limit, CostKind, InclDesc, Scope,
+%        Pref, Deep).
+
 exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_root(MaybePercent),
     deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
@@ -370,10 +382,6 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             "There is no procedure with that number.\n" ++
             page_footer(Cmd, Pref, Deep)
     ).
-exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
-    HTML = generate_top_procs_page(Cmd, Limit, CostKind, InclDesc, Scope,
-        Pref, Deep).
 exec(deep_cmd_proc_static(PSI), _Pref, Deep, HTML, !IO) :-
     HTML = generate_proc_static_debug_page(PSI, Deep).
 exec(deep_cmd_proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
