@@ -860,6 +860,7 @@
     ;       intermod_directories
     ;       use_search_directories_for_intermod
     ;       libgrade_install_check
+    ;       show_make_times
 
     % Miscellaneous Options
     ;       filenames_from_stdin
@@ -1678,7 +1679,8 @@ option_defaults_2(build_system_option, [
     search_directories                  -   accumulating(["."]),
     intermod_directories                -   accumulating([]),
     use_search_directories_for_intermod -   bool(yes),
-    libgrade_install_check              -   bool(yes)
+    libgrade_install_check              -   bool(yes),
+    show_make_times                     -   bool(no)
 ]).
 option_defaults_2(miscellaneous_option, [
     % Miscellaneous Options
@@ -2534,7 +2536,7 @@ long_option("intermod-directory",   intermod_directories).
 long_option("use-search-directories-for-intermod",
                     use_search_directories_for_intermod).
 long_option("libgrade-install-check", libgrade_install_check).
-        
+long_option("show-make-times",      show_make_times).
 
 % misc options
 long_option("typecheck-ambiguity-warn-limit",
@@ -5176,7 +5178,9 @@ options_help_build_system -->
         "--no-libgrade-install-check",
         "\tDo not check that libraries have been installed before",
         "\tattempting to use them.  (This option is only meaningful with",
-        "\t`mmc --make'.)"
+        "\t`mmc --make'.)",
+        "--show-make-times",
+        "\tReport run times for commands executed by `mmc --make'."
     ]).
 
 :- pred options_help_misc(io::di, io::uo) is det.

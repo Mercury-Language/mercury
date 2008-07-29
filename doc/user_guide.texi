@@ -8896,6 +8896,11 @@ current directory.
 @samp{--use-grade-subdirs} does not work with Mmake (it does
 work with @samp{mmc --make}).
 
+@sp 1
+@item --show-make-times
+@findex --show-make-times
+Report run times for commands executed by @samp{mmc --make}.
+
 @end table
 
 @node Miscellaneous options

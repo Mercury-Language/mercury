@@ -81,6 +81,7 @@
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module dir.
+:- import_module float.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%
@@ -376,13 +377,32 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
                 MaybeArgFileName = no
             )
         ),
+
+    get_real_milliseconds(Time0, !IO),
     build_with_check_for_interrupt(
         build_with_module_options_and_output_redirect(ModuleName,
             ExtraOptions ++ TaskOptions,
             build_target_2(ModuleName, Task, MaybeArgFileName, Imports)),
         Cleanup, Succeeded, !Info, !IO),
     record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
-        TouchedFiles, !Info, !IO).
+        TouchedFiles, !Info, !IO),
+    get_real_milliseconds(Time, !IO),
+
+    globals.io_lookup_bool_option(show_make_times, ShowMakeTimes, !IO),
+    (
+        ShowMakeTimes = yes,
+        DiffSecs = float(Time - Time0) / 1000.0,
+        % Avoid cluttering the screen with short running times.
+        ( DiffSecs >= 0.4 ->
+            io.write_string("Making ", !IO),
+            make_write_target_file(TargetFile, !IO),
+            io.format(" took %.2fs\n", [f(DiffSecs)], !IO)
+        ;
+            true
+        )
+    ;
+        ShowMakeTimes = no
+    ).
 
 :- pred build_target_2(module_name::in, compilation_task_type::in,
     maybe(file_name)::in, module_imports::in, list(string)::in,

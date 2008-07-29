@@ -297,6 +297,13 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Timing
+%
+
+:- pred get_real_milliseconds(int::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%
 % Hash functions
 %
 
@@ -1581,6 +1588,19 @@ make_write_module_or_linked_target(ModuleName - FileType, !IO) :-
         unexpected(this_file,
             "maybe_warn_up_to_date_target: misc_target")
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Timing
+%
+
+:- pragma foreign_proc("C",
+    get_real_milliseconds(Time::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    Time = MR_get_real_milliseconds();
+    IO = IO0;
+").
 
 %-----------------------------------------------------------------------------%
 %
