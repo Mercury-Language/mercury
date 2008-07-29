@@ -31,6 +31,7 @@
 :- implementation.
 
 :- import_module array_util.
+:- import_module exception.
 :- import_module io_combinator.
 :- import_module measurements.
 :- import_module mdbcomp.
@@ -135,7 +136,7 @@ read_deep_id_string(Res, !IO) :-
 % This must the same string as the one written by MR_write_out_deep_id_string
 % in runtime/mercury_deep_profiling.c.
 
-deep_id_string = "Mercury deep profiler data version 4\n".
+deep_id_string = "Mercury deep profiler data version 5\n".
 
 :- func init_deep(int, int, int, int, int, int, int, int, int, int, int)
     = initial_deep.
@@ -167,7 +168,7 @@ init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec, InstrumentQuanta,
             )),
         array.init(MaxPS + 1,
             proc_static(dummy_proc_id, "", "", "", "", -1, no,
-                array([]), not_zeroed))
+                array([]), array([]), not_zeroed))
     ).
 
 :- pred read_nodes(initial_deep::in, maybe_error(initial_deep)::out,
@@ -290,45 +291,54 @@ read_proc_static(Res, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading proc_static.\n", !IO)
     ),
-    io_combinator.maybe_error_sequence_6(
+    io_combinator.maybe_error_sequence_7(
         read_ptr(ps),
         read_proc_id,
         read_string,
         read_num,
         read_deep_byte,
         read_num,
+        read_num,
         (pred(PSI0::in, Id0::in, F0::in, L0::in, I0::in,
-                N0::in, Stuff0::out) is det :-
-            Stuff0 = ok({PSI0, Id0, F0, L0, I0, N0})
+                NCS0::in, NCP0::in, Stuff0::out) is det :-
+            Stuff0 = ok({PSI0, Id0, F0, L0, I0, NCS0, NCP0})
         ),
         Res1, !IO),
     (
-        Res1 = ok({PSI, Id, FileName, LineNumber, Interface, N}),
-        read_n_things(N, read_ptr(css), Res2, !IO),
+        Res1 = ok({PSI, Id, FileName, LineNumber, Interface, NCS, NCP}),
+        read_n_things(NCS, read_ptr(css), Res2, !IO),
         (
             Res2 = ok(CSSIs),
-            CSSPtrs = list.map(make_cssptr, CSSIs),
-            DeclModule = decl_module(Id),
-            RefinedStr = refined_proc_id_to_string(Id),
-            RawStr = raw_proc_id_to_string(Id),
-            ( Interface = 0 ->
-                IsInInterface = no
+            read_n_things(NCP, read_coverage_point, Res3, !IO), 
+            (
+                Res3 = ok(CoveragePoints),
+                CSSPtrs = list.map(make_cssptr, CSSIs),
+                DeclModule = decl_module(Id),
+                RefinedStr = refined_proc_id_to_string(Id),
+                RawStr = raw_proc_id_to_string(Id),
+                ( Interface = 0 ->
+                    IsInInterface = no
+                ;
+                    IsInInterface = yes
+                ),
+                % The `not_zeroed' for whether the procedure's proc_static
+                % is ever zeroed is the default. The startup phase will set it
+                % to `zeroed' in the proc_statics which are ever zeroed.
+                ProcStatic = proc_static(Id, DeclModule,
+                    RefinedStr, RawStr, FileName, LineNumber,
+                    IsInInterface, array(CSSPtrs), array(CoveragePoints), 
+                    not_zeroed),
+                Res = ok2(ProcStatic, PSI),
+                trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
+                    io.write_string("read proc_static ", !IO),
+                    io.write_int(PSI, !IO),
+                    io.write_string(": ", !IO),
+                    io.write(ProcStatic, !IO),
+                    io.write_string("\n", !IO)
+                )
             ;
-                IsInInterface = yes
-            ),
-            % The `not_zeroed' for whether the procedure's proc_static
-            % is ever zeroed is the default. The startup phase will set it
-            % to `zeroed' in the proc_statics which are ever zeroed.
-            ProcStatic = proc_static(Id, DeclModule,
-                RefinedStr, RawStr, FileName, LineNumber,
-                IsInInterface, array(CSSPtrs), not_zeroed),
-            Res = ok2(ProcStatic, PSI),
-            trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-                io.write_string("read proc_static ", !IO),
-                io.write_int(PSI, !IO),
-                io.write_string(": ", !IO),
-                io.write(ProcStatic, !IO),
-                io.write_string("\n", !IO)
+                Res3 = error(Err),
+                Res = error2(Err)
             )
         ;
             Res2 = error(Err),
@@ -401,6 +411,21 @@ read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
                 DefModule, Name, Arity, Mode))
         ),
         Res, !IO).
+
+:- pred read_coverage_point(maybe_error(coverage_point)::out, io::di, io::uo) 
+    is det.
+
+read_coverage_point(Res, !IO) :-
+    io_combinator.maybe_error_sequence_3(
+        read_string,
+        read_cp_type,
+        read_num,
+        (pred(GoalPathString::in, CPType::in, CPCount::in, CP::out) is det :-
+            goal_path_from_string_det(GoalPathString, GoalPath),
+            CP = ok(coverage_point(CPCount, GoalPath, CPType))
+        ),
+        Res, !IO).
+
 
 :- func raw_proc_id_to_string(string_proc_label) = string.
 
@@ -972,6 +997,31 @@ read_ptr(_Kind, Res, !IO) :-
         io.write(Res, !IO),
         io.write_string("\n", !IO)
     ).
+
+
+:- pred read_cp_type(maybe_error(cp_type)::out, io::di, io::uo) is det.
+
+read_cp_type(MaybeRes, !IO) :-
+    read_num(MaybeRes0, !IO),
+    (
+        MaybeRes0 = ok(Res0),
+        num_to_cp_type(Res0, Res),
+        MaybeRes = ok(Res)
+    ;
+        MaybeRes0 = error(Msg),
+        MaybeRes = error(Msg)
+    ).
+
+
+:- pred num_to_cp_type(int::in, cp_type::out) is det.
+
+:- pragma foreign_proc("C", num_to_cp_type(Int::in, CPType::out),
+    [will_not_call_mercury, thread_safe, promise_pure], "
+
+        CPType = Int;
+
+    ").
+
 
 :- pred read_num(maybe_error(int)::out, io::di, io::uo) is det.
 

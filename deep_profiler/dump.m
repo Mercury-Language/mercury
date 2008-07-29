@@ -536,7 +536,8 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
         )
     ->
         ProcStatic = proc_static(Id, DeclModule, RefinedId, RawId,
-            FileName, LineNumber, InInterface, Sites, IsZeroed),
+            FileName, LineNumber, InInterface, Sites, CoveragePoints, 
+            IsZeroed),
         IdStr = dump_proc_id(Id),
         io.format("ps%d:\n", [i(Index)], !IO),
         io.format("\tps_id\t\t= %s", [s(IdStr)], !IO),
@@ -572,6 +573,7 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
         ),
         io.format("\t%s\n", [s(IsZeroStr)], !IO),
         array_foldl_from_0(dump_proc_static_call_sites, Sites, !IO),
+        array_foldl_from_0(dump_coverage_point, CoveragePoints, !IO),
         io.nl(!IO)
     ;
         true
@@ -583,6 +585,17 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
 dump_proc_static_call_sites(Slot, CSSPtr, !IO) :-
     CSSPtr = call_site_static_ptr(CSSI),
     io.format("\tps_site[%d]: css%d\n", [i(Slot), i(CSSI)], !IO).
+
+
+:- pred dump_coverage_point(int::in, coverage_point::in, io::di, io::uo) 
+    is det.
+
+dump_coverage_point(Num, CoveragePoint, !IO) :-
+    CoveragePoint = coverage_point(Count, Path, Type),
+    goal_path_to_string(Path) = PathString,
+    io.format("\tcoverage_point[%d]: %s, %s: %d\n", 
+        [i(Num), s(string(Type)), s(PathString), i(Count)], !IO).
+
 
 %----------------------------------------------------------------------------%
 

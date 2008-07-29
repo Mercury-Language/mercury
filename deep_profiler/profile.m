@@ -162,15 +162,16 @@
 
 :- type proc_static
     --->    proc_static(
-                ps_id           :: string_proc_label, % procedure ID
-                ps_decl_module  :: string,      % declaring module
-                ps_refined_id   :: string,      % refined procedure id
-                ps_raw_id       :: string,      % raw procedure id
-                ps_file_name    :: string,      % file name of proc
-                ps_line_number  :: int,         % line number of proc
-                ps_in_interface :: bool,        % is in interface?
-                ps_sites        :: array(call_site_static_ptr),
-                ps_is_zeroed    :: is_zeroed
+                ps_id               :: string_proc_label, % procedure ID
+                ps_decl_module      :: string,      % declaring module
+                ps_refined_id       :: string,      % refined procedure id
+                ps_raw_id           :: string,      % raw procedure id
+                ps_file_name        :: string,      % file name of proc
+                ps_line_number      :: int,         % line number of proc
+                ps_in_interface     :: bool,        % is in interface?
+                ps_sites            :: array(call_site_static_ptr),
+                ps_coverage_points  :: array(coverage_point),
+                ps_is_zeroed        :: is_zeroed
             ).
 
 :- type call_site_dynamic
@@ -223,6 +224,23 @@
 :- type call_site_caller
     --->    call_site_caller(
                 call_site_static_ptr
+            ).
+
+    % This is similar to the coverage_point type in
+    % mdbcomp/program_representation.m, however it includes an integer count
+    % of how often execution reached this point in the program.
+    %
+:- type coverage_point
+    --->    coverage_point(
+                int,
+                    % The number of times execution reached this point,
+                goal_path,
+                    % Identifies the goal that this coverage point is near.  If
+                    % cp_type is cp_type_branch_arm the coverage point is
+                    % immediately before this goal, otherwise it is immediately
+                    % after.
+                cp_type
+                    % The type of this coverage point.
             ).
 
 :- pred is_call_site_kind(int::in, call_site_kind::out) is semidet.

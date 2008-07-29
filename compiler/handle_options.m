@@ -1156,6 +1156,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         option_implies(target_debug, strip, bool(no), !Globals),
 
+
+        % Coverage profiling requires deep profiling.
+        option_implies(coverage_profiling, profile_deep, bool(yes),
+            !Globals),
+        
         % Inlining happens before the deep profiling transformation, so if
         % we allowed inlining to happen, then we would lose all profiling
         % information about the inlined calls - this is not usually what we
@@ -2103,6 +2108,7 @@ postprocess_options_lowlevel(!Globals) :-
     ),
     globals.set_option(static_code_addresses, bool(StaticCodeAddrs), !Globals).
 
+    
     % option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue):
     % If the SourceBoolOption is set to yes, then the ImpliedOption is set
     % to ImpliedOptionValue.
@@ -2837,9 +2843,12 @@ char_is_not(A, B) :-
 
 :- pred convert_dump_alias(string::in, string::out) is semidet.
 
-convert_dump_alias("ALL", "abcdfgilmnprstuvzBCDIMPRSTUZ").
-convert_dump_alias("allD", "abcdfgilmnprstuvzBCDMPT").
-convert_dump_alias("all", "abcdfgilmnprstuvzBCMPSTZ").
+%
+% none of the 'all' aliases actually include all the options,
+%
+convert_dump_alias("ALL", "abcdEfgilmnprstuvzBCDIMPRSTUZ").
+convert_dump_alias("allD", "abcdEfgilmnprstuvzBCDMPT").
+convert_dump_alias("all", "abcdEfgilmnprstuvzBCMPSTZ").
 convert_dump_alias("most", "bcdfgilmnprstuvzP").
 convert_dump_alias("trans", "bcdglmnstuvz").
 convert_dump_alias("mintrans", "bcdglmnstvz").

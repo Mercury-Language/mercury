@@ -1683,7 +1683,8 @@ attribute_list_to_attributes(Attributes, Attributes).
                 proc_static_file_name   :: string,
                 proc_static_line_number :: int,
                 proc_is_in_interface    :: bool,
-                call_site_statics       :: list(call_site_static_data)
+                call_site_statics       :: list(call_site_static_data),
+                coverage_points         :: list(coverage_point_info) 
             ).
 
     % The hlds_deep_excp_vars gives the variables that hold the values returned

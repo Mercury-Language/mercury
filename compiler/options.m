@@ -293,6 +293,21 @@
             % cycle detection should be used for deep profiling. Actually,
             % we only want to use the `yes' value, but we keep support for
             % the `no' value for benchmarks for the paper.
+    
+            % Perform coverage profiling, (enables deep profiling).
+    ;       coverage_profiling
+   
+            % What types of coverage points to instrument the code with.
+    ;       profile_deep_coverage_may_fail
+    ;       profile_deep_coverage_multi
+    ;       profile_deep_coverage_any
+    ;       profile_deep_coverage_branch_ite
+    ;       profile_deep_coverage_branch_switch
+    ;       profile_deep_coverage_branch_disj
+
+            % Tunables for the coverage profiling pass.
+    ;       profile_deep_coverage_use_portcounts
+    ;       profile_deep_coverage_use_trivial
 
     ;       use_zeroing_for_ho_cycles
     ;       use_lots_of_ho_specialization
@@ -1140,6 +1155,15 @@ option_defaults_2(compilation_model_option, [
     profile_memory                      -   bool(no),
     profile_deep                        -   bool(no),
     use_activation_counts               -   bool(no),
+    coverage_profiling                  -   bool(no),
+    profile_deep_coverage_may_fail      -   bool(yes),
+    profile_deep_coverage_multi         -   bool(yes),
+    profile_deep_coverage_any           -   bool(yes),
+    profile_deep_coverage_branch_ite    -   bool(yes),
+    profile_deep_coverage_branch_switch -   bool(yes),
+    profile_deep_coverage_branch_disj   -   bool(yes),
+    profile_deep_coverage_use_portcounts -  bool(yes),
+    profile_deep_coverage_use_trivial   -   bool(yes),
     use_zeroing_for_ho_cycles           -   bool(yes),
     use_lots_of_ho_specialization       -   bool(no),
     deep_profile_tail_recursion         -   bool(no),
@@ -1957,6 +1981,24 @@ long_option("profile-time",         profile_time).
 long_option("profile-memory",       profile_memory).
 long_option("profile-deep",         profile_deep).
 long_option("use-activation-counts",    use_activation_counts).
+long_option("coverage-profiling", 
+                    coverage_profiling).
+long_option("profile-deep-coverage-may-fail",
+                    profile_deep_coverage_may_fail).
+long_option("profile-deep-coverage-multi", 
+                    profile_deep_coverage_multi).
+long_option("profile-deep-coverage-any", 
+                    profile_deep_coverage_any).
+long_option("profile-deep-coverage-branch-ite",
+                    profile_deep_coverage_branch_ite).
+long_option("profile-deep-coverage-branch-switch",
+                    profile_deep_coverage_branch_switch).
+long_option("profile-deep-coverage-branch-disj",
+                    profile_deep_coverage_branch_disj).
+long_option("profile-deep-coverage-use-portcounts",
+                    profile_deep_coverage_use_portcounts).
+long_option("profile-deep-coverage-use-trivial",
+                    profile_deep_coverage_use_trivial).
 long_option("use-zeroing-for-ho-cycles",
                     use_zeroing_for_ho_cycles).
 long_option("use-lots-of-ho-specialization",
@@ -3878,6 +3920,36 @@ options_help_compilation_model -->
 %       "--profile-memory\t\t(grade modifier: `.profmem')",
 %       "\tSimilar to `--memory-profiling', except that it only",
 %       "\tgathers memory usage information, not call counts.",
+        
+        "--coverage-profiling",
+        "\tEnable coverage profiling, implies --deep-profiling (above).",
+
+%       "Switches to effect coverage profiling (part of deep profiling). ",
+%       "they enable different types of coverage points.",
+
+%       "--profile-deep-coverage-may-fail",
+%       "\tEnable coverage points after goals that may fail.",
+%       "--profile-deep-coverage-multi",
+%       "\tEnable coverage points after goals that may succeed more than ",
+%       "\tonce.",
+%       "--profile-deep-coverage-any",
+%       "\tEnable coverage points after goals that may succeed more than ",
+%       "\tonce or fail.",
+%       "--profile-deep-coverage-branch-if",
+%       "\tEnable coverage points at the beginning of if branches.",
+%       "--profile-deep-coverage-branch-switch",
+%       "\tEnable coverage points at the beginning of switch branches.",
+%       "--profile-deep-coverage-branch-disj",
+%       "\tEnable coverage points at the beginning of disjunction branches.",
+
+%       "Switches to tune the coverage profiling pass, useful for ",
+%       "debugging.",
+%       
+%       "--no-profile-deep-coverage-use-portcounts",
+%       "\tTurn off usage of port counts in the deep profilier to provide",
+%       "\tsome coverage information.",
+%       "--no-profile-deep-coverage-use-trivial",
+%       "\tTurn off usage of trivial goal information",
 
         "--record-term-sizes-as-words\t\t(grade modifier: `.tsw')",
         "\tAugment each heap cells with its size in words.",

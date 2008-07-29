@@ -564,6 +564,12 @@ dump_layout_name(proc_static(RttiProcLabel)) =
     "proc_static(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(proc_static_call_sites(RttiProcLabel)) =
     "proc_static_call_sites(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
+dump_layout_name(proc_static_coverage_point_static(RttiProcLabel)) =
+    "proc_static_coverage_point_static(" ++ dump_rttiproclabel(RttiProcLabel) 
+        ++ ")".
+dump_layout_name(proc_static_coverage_point_dynamic(RttiProcLabel)) =
+    "proc_static_coverage_point_dynamic(" ++ dump_rttiproclabel(RttiProcLabel) 
+        ++ ")".
 dump_layout_name(table_io_decl(RttiProcLabel)) =
     "table_io_decl(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 

@@ -234,6 +234,12 @@
     %
 :- pred flatten_conj(hlds_goals::in, hlds_goals::out) is det.
 
+    % Create a conjunction of the specified type using the specified goals,
+    % This fills in the hlds_goal_info.
+    %
+:- pred create_conj_from_list(list(hlds_goal)::in, conj_type::in,
+    hlds_goal::out) is det.
+
     % Create a conjunction of the specified type using the specified two goals.
     % This fills in the hlds_goal_info.
     %
@@ -1329,7 +1335,15 @@ flatten_conj([Goal | Goals0], Goals) :-
 %-----------------------------------------------------------------------------%
 
 create_conj(GoalA, GoalB, Type, ConjGoal) :-
-    GoalsInConj = [ GoalA, GoalB ],
+    create_conj_from_list([GoalA, GoalB], Type, ConjGoal).
+
+create_conj_from_list(GoalsInConj, Type, ConjGoal) :-
+    (
+        GoalsInConj = [ GoalA | _ ]
+    ;
+        GoalsInConj = [],
+        unexpected(this_file, "create_conj_from_list: empty conjunction")
+    ),
     ConjGoalExpr = conj(Type, GoalsInConj),
     goal_list_nonlocals(GoalsInConj, NonLocals),
     goal_list_instmap_delta(GoalsInConj, InstMapDelta),

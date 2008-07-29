@@ -55,8 +55,25 @@ struct MR_ProfilingMetrics_Struct {
 #endif
 };
 
+/*
+** The coverage point types.  Please update the enum and type within
+** mdbcomp/program_representation.m when updating this structure.
+*/
+typedef enum {
+	MR_cp_type_solns_may_fail,
+	MR_cp_type_solns_multi,
+	MR_cp_type_solns_any,
+	MR_cp_type_branch_arm
+} MR_CPType; 
+
+typedef struct {
+	const char				*MR_cp_goal_path;
+	const MR_CPType			MR_cp_type;
+} MR_CoveragePointStatic;
+
+
 struct MR_CallSiteStatic_Struct {
-    	MR_CallSiteKind				MR_css_kind;
+	MR_CallSiteKind				MR_css_kind;
 	MR_ProcLayout				*MR_css_callee_ptr_if_known;
 	MR_ConstString				MR_css_type_subst_if_known;
 	MR_ConstString				MR_css_file_name;
@@ -69,7 +86,7 @@ struct MR_ProcStatic_Struct {
 	int					MR_ps_line_number;
 	int					MR_ps_is_in_interface;
 	int					MR_ps_num_call_sites;
-	const MR_CallSiteStatic			*MR_ps_call_sites;
+	const MR_CallSiteStatic 		*MR_ps_call_sites;
 #ifdef MR_USE_ACTIVATION_COUNTS
 	int					MR_ps_activation_count;
 #endif
@@ -77,6 +94,21 @@ struct MR_ProcStatic_Struct {
 	int					MR_ps_cur_csd_stack_slot;
 	int					MR_ps_next_csd_stack_slot;
 	int					MR_ps_old_outermost_stack_slot;
+
+	/*
+	** The number of coverage points in a procedure and static information
+	** about them are fixed at compile time, so they are associated with
+	** proc statics rather than proc dynamics.
+	*/
+	const MR_Unsigned			MR_ps_num_coverage_points;
+	const MR_CoveragePointStatic * const	MR_ps_coverage_points_static;
+	
+	/*
+	** Coverage data is kept in the ProcStatic structure initially, at a
+	** later stage more fine-grained coverage idata may be associated with
+	** ProcDynamic if performance is not affected too much.
+	*/
+	MR_Unsigned * const			MR_ps_coverage_points;
 };
 
 struct MR_CallSiteDynamic_Struct {

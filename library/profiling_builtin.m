@@ -107,6 +107,8 @@
 
 :- impure pred reset_activation_info_sr(proc_dynamic::in) is det.
 
+:- impure pred increment_coverage_point_count(proc_layout::in, int::in) is det.
+
 :- type call_site_nums_2
     --->    call_site_nums_2(int, int).
 
@@ -801,6 +803,23 @@
     MR_fatal_error(""reset_activation_info_sr: deep profiling not enabled"");
 #endif
 }").
+
+%---------------------------------------------------------------------------%
+% instance of increment_coverage_point_counto
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    increment_coverage_point_count(_ProcLayout::in, _CPIndex::in),
+    [thread_safe, will_not_call_mercury],
+"{
+/*
+ * This builtin is only ever used when code is instrumented with an inline
+ * version,  from complier/deep_profiling.m
+ */
+MR_fatal_error(
+    ""increment_coverage_point_count: builtin cannot be called normally"");
+}").
+
 
 %---------------------------------------------------------------------------%
 % instances of save_recursion_depth_N

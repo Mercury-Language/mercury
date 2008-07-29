@@ -287,6 +287,9 @@ typedef enum node_kind {
 #define MR_FIXED_SIZE_INT_BYTES 4
 
 static  void    MR_write_csd_ptr(FILE *fp, const MR_CallSiteDynamic *csd);
+static  void    MR_write_out_coverage_point(FILE *fp, 
+                    const MR_CoveragePointStatic *cp_static, 
+                    const MR_Unsigned *cp);
 static  void    MR_write_ptr(FILE *fp, MR_NodeKind kind, const int node_id);
 static  void    MR_write_kind(FILE *fp, MR_CallSiteKind kind);
 static  void    MR_write_byte(FILE *fp, const char byte);
@@ -682,7 +685,7 @@ static void
 MR_write_out_deep_id_string(FILE *fp)
 {
     /* Must be the same as deep_id_string in deep_profiler/read_profile.m */
-    const char  *id_string = "Mercury deep profiler data version 4\n";
+    const char  *id_string = "Mercury deep profiler data version 5\n";
 
     fputs(id_string, fp);
 }
@@ -897,7 +900,12 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
     MR_write_num(deep_fp, ps->MR_ps_line_number);
     MR_write_byte(deep_fp, ps->MR_ps_is_in_interface);
     MR_write_num(deep_fp, ps->MR_ps_num_call_sites);
+    MR_write_num(deep_fp, ps->MR_ps_num_coverage_points);
 
+    /*
+    ** Write out pointers to Call Site Statics.  These are read in with the
+    ** proc static.
+    */
     for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
         (void) MR_insert_call_site_static(&ps->MR_ps_call_sites[i], &css_id,
             NULL, MR_FALSE);
@@ -913,6 +921,30 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
         MR_write_ptr(deep_fp, kind_css, css_id);
     }
 
+    /*
+    ** Write out coverage points.  This is read in as part of the proc static.
+    **/
+    /* TODO: Don't know if MR_Unsigned will work with MR_write_num() will work
+    ** on 64bit machines, depends on size of unsigned.
+    */
+    for (i = 0; i < ps->MR_ps_num_coverage_points; i++)
+    {
+#ifdef MR_DEEP_PROFILING_DEBUG
+        if (debug_fp != NULL) {
+            fprintf(debug_fp, "in proc_static %p/%p/%d, coverage point %d\n",
+                proc_layout, ps, ps_id, i);
+        }
+#endif
+        
+        MR_write_out_coverage_point(deep_fp, 
+            &ps->MR_ps_coverage_points_static[i], &ps->MR_ps_coverage_points[i]);
+    }
+    
+    
+    /*
+    ** Write out the actual call site statics,  These are read in after the
+    ** proc static, not as part of it.
+    */
     for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
 #ifdef MR_DEEP_PROFILING_DEBUG
         if (debug_fp != NULL) {
@@ -1330,6 +1362,24 @@ MR_write_csd_ptr(FILE *fp, const MR_CallSiteDynamic *csd)
 
     MR_write_ptr(fp, kind_csd, csd_id);
 }
+
+
+static void
+MR_write_out_coverage_point(FILE *fp, const MR_CoveragePointStatic *cp_static,
+    const MR_Unsigned *cp)
+{
+#ifdef  MR_DEEP_PROFILING_DETAIL_DEBUG
+    if (debug_fp != NULL) {
+        fprintf(debug_fp, "coverage point: %s,%d: %d\n", 
+            cp_static->MR_cp_goal_path, cp_static->MR_cp_type, *cp);
+    }
+#endif
+
+    MR_write_string(fp, cp_static->MR_cp_goal_path),
+    MR_write_num(fp, cp_static->MR_cp_type),
+    MR_write_num(fp, *cp);
+}
+
 
 static void
 MR_write_ptr(FILE *fp, MR_NodeKind kind, int node_id)

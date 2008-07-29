@@ -495,6 +495,34 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type coverage_point_info
+    --->    coverage_point_info(
+                goal_path,
+                    % Identifies the goal that this coverage point is near.  If
+                    % cp_type is cp_type_branch_arm the coverage point is
+                    % immediately before this goal, otherwise it is immediately
+                    % after.
+                cp_type
+                    % The type of this coverage point.
+            ).
+
+% This enumeration specifies the type of coverage point.  A branch arm is an
+% arm of an if-then-else, switch or disj goal, the type can be determined by
+% the goal_path above.
+:- type cp_type
+    --->    cp_type_solns_may_fail
+    ;       cp_type_solns_multi
+    ;       cp_type_solns_any
+    ;       cp_type_branch_arm.
+
+
+    % Gives the value in C for this coverage point type.
+    %
+:- pred coverage_point_type_c_value(cp_type::in, string::out) is det.
+
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module char.
@@ -1427,5 +1455,28 @@ pred_is_external("backjump", "builtin_backjump", 1).
             break;
     }
 ").
+
+
+%-----------------------------------------------------------------------------%
+
+%
+% Please keep runtime/mercury_deep_profiling.h updated when modifing this
+% section.
+%
+
+coverage_point_type_c_value(cp_type_solns_may_fail,
+    "MR_cp_type_solns_may_fail").
+coverage_point_type_c_value(cp_type_solns_multi, "MR_cp_type_solns_multi").
+coverage_point_type_c_value(cp_type_solns_any, "MR_cp_type_solns_any").
+coverage_point_type_c_value(cp_type_branch_arm, "MR_cp_type_branch_arm").
+
+:- pragma foreign_enum("C", cp_type/0,
+    [
+        cp_type_solns_may_fail - "MR_cp_type_solns_may_fail",
+        cp_type_solns_multi    - "MR_cp_type_solns_multi",
+        cp_type_solns_any      - "MR_cp_type_solns_any",
+        cp_type_branch_arm     - "MR_cp_type_branch_arm"
+    ]).
+
 
 %-----------------------------------------------------------------------------%

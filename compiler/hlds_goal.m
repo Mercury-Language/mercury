@@ -1073,6 +1073,25 @@
 
 :- type missed_message == string.
 
+
+    % Information used by the deep profilier to preform coverage profiling.
+    % Predicates to operate on these types exist in deep_profiling.m
+    %
+:- type goal_trivial
+    --->    goal_is_trivial
+    ;       goal_is_nontrivial.
+   
+:- type goal_has_port_counts
+    --->    goal_has_port_counts
+    ;       goal_does_not_have_port_counts.
+
+:- type dp_goal_info
+    --->    dp_goal_info(
+                goal_trivial,
+                goal_has_port_counts
+            ).
+
+
 :- pred goal_info_init(hlds_goal_info::out) is det.
 :- pred goal_info_init(prog_context::in, hlds_goal_info::out) is det.
 :- pred goal_info_init(set(prog_var)::in, instmap_delta::in, determinism::in,
@@ -1106,6 +1125,7 @@
 :- func goal_info_get_maybe_lfu(hlds_goal_info) = maybe(set(prog_var)).
 :- func goal_info_get_maybe_lbu(hlds_goal_info) = maybe(set(prog_var)).
 :- func goal_info_get_maybe_reuse(hlds_goal_info) = maybe(reuse_description).
+:- func goal_info_get_maybe_dp_info(hlds_goal_info) = maybe(dp_goal_info).
 
 :- pred goal_info_set_determinism(determinism::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -1139,6 +1159,8 @@
     hlds_goal_info::out) is det.
 :- pred goal_info_set_reuse(reuse_description::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
+:- pred goal_info_set_maybe_dp_info(maybe(dp_goal_info)::in, hlds_goal_info::in,
+    hlds_goal_info::out) is det.
 
     % The following functions produce an 'unexpected' error when the
     % requested values have not been set.
@@ -1147,6 +1169,7 @@
 :- func goal_info_get_lfu(hlds_goal_info) = set(prog_var).
 :- func goal_info_get_lbu(hlds_goal_info) = set(prog_var).
 :- func goal_info_get_reuse(hlds_goal_info) = reuse_description.
+:- func goal_info_get_dp_info(hlds_goal_info) = dp_goal_info.
 
 :- pred goal_info_get_occurring_vars(hlds_goal_info::in, set(prog_var)::out)
     is det.
@@ -1731,7 +1754,9 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
 
                 egi_maybe_rbmm          :: maybe(rbmm_goal_info),
 
-                egi_maybe_mode_constr   :: maybe(mode_constr_goal_info)
+                egi_maybe_mode_constr   :: maybe(mode_constr_goal_info),
+
+                egi_maybe_dp            :: maybe(dp_goal_info)
             ).
 
 :- pragma inline(goal_info_init/1).
@@ -1778,7 +1803,7 @@ goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
 
 hlds_goal_extra_info_init(Context) = ExtraInfo :-
     HO_Values = map.init,
-    ExtraInfo = extra_goal_info(Context, HO_Values, no, no, no).
+    ExtraInfo = extra_goal_info(Context, HO_Values, no, no, no, no).
 
 :- func ctgc_goal_info_init = ctgc_goal_info.
 
@@ -1800,6 +1825,7 @@ goal_info_get_maybe_rbmm(GoalInfo) = GoalInfo ^ gi_extra ^ egi_maybe_rbmm.
 goal_info_get_maybe_mode_constr(GoalInfo) =
     GoalInfo ^ gi_extra ^ egi_maybe_mode_constr.
 goal_info_get_maybe_ctgc(GoalInfo) = GoalInfo ^ gi_extra ^ egi_maybe_ctgc.
+goal_info_get_maybe_dp_info(GoalInfo) = GoalInfo ^ gi_extra ^ egi_maybe_dp.
 
 goal_info_set_determinism(Determinism, !GoalInfo) :-
     !GoalInfo ^ gi_determinism := Determinism.
@@ -1825,6 +1851,8 @@ goal_info_set_maybe_mode_constr(ModeConstrInfo, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := ModeConstrInfo.
 goal_info_set_maybe_ctgc(CTGCInfo, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := CTGCInfo.
+goal_info_set_maybe_dp_info(DPInfo, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_maybe_dp := DPInfo.
 
     % The code-gen non-locals are always the same as the
     % non-locals when structure reuse is not being performed.
@@ -2093,6 +2121,17 @@ goal_info_get_reuse(GoalInfo) = Reuse :-
         unexpected(this_file,
             "Requesting reuse information while CTGC field not set.")
     ).
+
+goal_info_get_dp_info(GoalInfo) = DPInfo :-
+    MaybeDPInfo = goal_info_get_maybe_dp_info(GoalInfo),
+    (
+        MaybeDPInfo = yes(DPInfo)
+    ;
+        MaybeDPInfo = no,
+        unexpected(this_file,
+            "Requesting dp_info while maybe_dp_info field not set.")
+    ).
+
 
 %-----------------------------------------------------------------------------%
 
@@ -2442,7 +2481,7 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
     ),
 
     ExtraInfo0 = extra_goal_info(Context, HO_Values, MaybeCTGC0, MaybeRBMM0,
-        MaybeMCI0),
+        MaybeMCI0, MaybeDPInfo0),
     (
         MaybeCTGC0 = no,
         MaybeCTGC = no
@@ -2501,8 +2540,9 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
             MakeVisible, NeedVisible),
         MaybeMCI = yes(MCI)
     ),
+    MaybeDPInfo = MaybeDPInfo0,
     ExtraInfo = extra_goal_info(Context, HO_Values, MaybeCTGC, MaybeRBMM,
-        MaybeMCI),
+        MaybeMCI, MaybeDPInfo),
 
     !:GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
         Features, GoalPath, CodeGenInfo, ExtraInfo).

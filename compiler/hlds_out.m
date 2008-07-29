@@ -1441,6 +1441,32 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
+    ( string.contains_char(Verbose, 'E') ->
+        MaybeDPInfo = goal_info_get_maybe_dp_info(GoalInfo),
+        (
+            MaybeDPInfo = yes(dp_goal_info(Trivial, HasPortCounts)),
+            write_indent(Indent, !IO),
+            (
+                Trivial = goal_is_trivial,
+                io.write_string("% Goal is trivial, ", !IO)
+            ;
+                Trivial = goal_is_nontrivial,
+                io.write_string("% Goal is non-trivial, ", !IO)
+            ),
+            (
+                HasPortCounts = goal_has_port_counts,
+                io.write_string("Goal has port counts avalible.\n", !IO)
+            ;
+                HasPortCounts = goal_does_not_have_port_counts,
+                io.write_string("Goal does not have port counts avalible.\n", 
+                    !IO)
+            )
+        ;
+            MaybeDPInfo = no
+        )
+    ;
+        true
+    ),
     write_goal_2(GoalExpr, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
         TypeQual, !IO),
     ( string.contains_char(Verbose, 'i') ->

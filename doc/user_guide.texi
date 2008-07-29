@@ -6830,6 +6830,7 @@ A - argument passing information,
 B - mode constraint information,
 C - clause information,
 D - instmap deltas of goals,
+E - deep profiling information,
 G - compile-time garbage collection information,
 I - imported predicates,
 M - mode and inst information,
@@ -7539,6 +7540,70 @@ This option is only supported by the C back-ends.
 @cindex Deep profiling
 Enable deep profiling by inserting the appropriate hooks in the generated code.
 This option is only supported by the low-level C back-end.
+
+@ignore
+    Coverage profiling is experimental, some options below tune coverage
+    profiling however they are intended for developers.
+
+@sp 1
+@item @code{--coverage-profiling} (grades: any grade containing @samp{.profdeep})
+@findex --coverage-profiling
+@cindex Coverage Profiling
+Enable coverage profiling by inserting coverage points used to measure how
+execution moves through a procedure.  This option is only supported by the
+low-level C back-end.
+        
+@sp 1
+
+Switches to effect coverage profiling (part of deep profiling).  they enable
+different types of coverage points.
+
+@sp 1
+@item @code{--profile-deep-coverage-may-fail}
+@findex --profile-deep-coverage-may-fail
+Enable coverage points after goals that may fail.
+
+@sp 1
+@item @code{--profile-deep-coverage-multi}
+@findex --profile-deep-coverage-multi
+Enable coverage points after goals that may succeed more than once.
+
+@sp 1
+@item @code{--profile-deep-coverage-any}
+@findex --profile-deep-coverage-any
+Enable coverage points after goals that may succeed more than once or fail.
+
+@sp 1
+@item @code{--profile-deep-coverage-branch-if}
+@findex --profile-deep-coverage-branch-if
+Enable coverage points at the beginning of if branches.
+
+@sp 1
+@item @code{--profile-deep-coverage-branch-switch}
+@findex --profile-deep-coverage-branch-switch
+Enable coverage points at the beginning of switch branches.
+
+@sp 1
+@item @code{--profile-deep-coverage-branch-disj}
+@findex --profile-deep-coverage-branch-disj
+Enable coverage points at the beginning of disjunction branches.
+
+@sp 1
+Switches to tune the coverage profiling pass, useful for 
+debugging.
+
+@sp 1
+@item @code{--no-profile-deep-coverage-use-portcounts}
+@findex --no-profile-deep-coverage-use-portcounts
+Turn off usage of port counts in the deep profilier to provide some coverage
+information.
+
+@sp
+@item @code{--no-profile-deep-coverage-use-trivial}
+@findex --no-profile-deep-coverage-use-trivial
+Turn off usage of trivial goal information
+
+@end ignore
 
 @ignore
 	The following are basically useless, hence undocumented.

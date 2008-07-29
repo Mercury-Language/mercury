@@ -253,7 +253,9 @@
     ;       module_common_layout(module_name)
     ;       module_layout(module_name)
     ;       proc_static(rtti_proc_label)
-    ;       proc_static_call_sites(rtti_proc_label).
+    ;       proc_static_call_sites(rtti_proc_label)
+    ;       proc_static_coverage_point_static(rtti_proc_label)
+    ;       proc_static_coverage_point_dynamic(rtti_proc_label).
 
 :- type label_layout_details
     --->    label_layout_details(proc_label, int, label_vars).

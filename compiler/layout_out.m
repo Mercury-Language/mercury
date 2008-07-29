@@ -438,6 +438,18 @@ output_layout_name(Data, !IO) :-
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
         output_proc_label_no_prefix(ProcLabel, !IO)
     ;
+        Data = proc_static_coverage_point_static(RttiProcLabel),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_proc_static_coverage_points_static__", !IO),
+        ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+        output_proc_label_no_prefix(ProcLabel, !IO)
+    ;
+        Data = proc_static_coverage_point_dynamic(RttiProcLabel),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_proc_static_coverage_points_dynamic__", !IO),
+        ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+        output_proc_label_no_prefix(ProcLabel, !IO)
+    ;
         Data = table_io_decl(RttiProcLabel),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_table_io_decl__", !IO),
@@ -611,6 +623,16 @@ output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
         output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
+        Name = proc_static_coverage_point_static(_RttiProcLabel),
+        io.write_string("static const MR_CoveragePointStatic ", !IO),
+        output_layout_name(Name, !IO),
+        io.write_string("[]", !IO)
+    ;
+        Name = proc_static_coverage_point_dynamic(_RttiProcLabel),
+        io.write_string("static MR_Unsigned ", !IO),
+        output_layout_name(Name, !IO),
+        io.write_string("[]", !IO)
+    ;
         Name = table_io_decl(_RttiProcLabel),
         io.write_string("static const MR_TableIoDecl ", !IO),
         output_layout_name(Name, !IO)
@@ -649,6 +671,8 @@ layout_name_would_include_code_addr(module_common_layout(_)) = no.
 layout_name_would_include_code_addr(module_layout(_)) = no.
 layout_name_would_include_code_addr(proc_static(_)) = no.
 layout_name_would_include_code_addr(proc_static_call_sites(_)) = no.
+layout_name_would_include_code_addr(proc_static_coverage_point_static(_)) = no.
+layout_name_would_include_code_addr(proc_static_coverage_point_dynamic(_)) = no.
 layout_name_would_include_code_addr(table_io_decl(_)) = no.
 
 :- func label_vars_to_type(label_vars) = string.
@@ -2098,9 +2122,18 @@ output_proc_static_data_defn(RttiProcLabel, ProcLayoutProcStatic,
     ProcLayoutProcStatic = proc_layout_proc_static(HLDSProcStatic,
         DeepExcpVars),
     HLDSProcStatic = hlds_proc_static(FileName, LineNumber, IsInInterface,
-        CallSites),
+        CallSites, CoveragePoints),
+   
+    % Write out data the proc static will reference.
     list.foldl2(output_call_site_static_decl, CallSites, !DeclSet, !IO),
     output_call_site_static_array(RttiProcLabel, CallSites, !DeclSet, !IO),
+    output_coverage_point_static_array(RttiProcLabel, CoveragePoints, !DeclSet,
+        !IO),
+    length(CoveragePoints, NumCoveragePoints),
+    output_coverage_point_dynamic_array(RttiProcLabel, NumCoveragePoints, 
+        !DeclSet, !IO),
+
+    % Write out the proc static.
     LayoutName = proc_static(RttiProcLabel),
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(LayoutName, yes, !IO),
@@ -2132,7 +2165,16 @@ output_proc_static_data_defn(RttiProcLabel, ProcLayoutProcStatic,
     io.write_int(MiddleCSDSlot, !IO),
     io.write_string(",\n", !IO),
     io.write_int(OldOutermostSlot, !IO),
-    io.write_string("\n};\n", !IO),
+    io.write_string(",\n", !IO),
+    io.write_int(NumCoveragePoints, !IO),
+    io.write_string(",\n", !IO),
+    CoveragePointStaticName = proc_static_coverage_point_static(RttiProcLabel),
+    output_layout_name(CoveragePointStaticName, !IO),
+    io.write_string(",\n", !IO),
+    CoveragePointDynamicName = 
+        proc_static_coverage_point_dynamic(RttiProcLabel),
+    output_layout_name(CoveragePointDynamicName, !IO),
+    io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
 
 :- pred output_call_site_static_array(rtti_proc_label::in,
@@ -2210,6 +2252,52 @@ output_call_site_static_decl(CallSiteStatic, !DeclSet, !IO) :-
     ;
         CallSiteStatic = callback(_, _, _)
     ).
+
+%-----------------------------------------------------------------------------%
+
+
+% Write out a C representation of the coverage point static data.
+:- pred output_coverage_point_static_array(rtti_proc_label::in, 
+    list(coverage_point_info)::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
+
+output_coverage_point_static_array(RttiProcLabel, CoveragePoints, !DeclSet,
+        !IO) :- 
+    LayoutName = proc_static_coverage_point_static(RttiProcLabel),
+    io.write_string("\n", !IO),
+    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    io.write_string(" = {\n", !IO),
+    list.foldl(output_coverage_point_static, CoveragePoints, !IO),
+    io.write_string("};\n", !IO),
+    decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
+
+
+:- pred output_coverage_point_static(coverage_point_info::in, io::di, io::uo) 
+    is det.
+
+output_coverage_point_static(coverage_point_info(GoalPath, CPType), !IO) :-
+    io.write_string("{ """, !IO),
+    GoalPathString = goal_path_to_string(GoalPath),
+    io.write_string(GoalPathString, !IO),
+    io.write_string(""", ", !IO),
+    coverage_point_type_c_value(CPType, CPTypeCValue),
+    io.write_string(CPTypeCValue, !IO),
+    io.write_string(" },\n", !IO).
+
+
+:- pred output_coverage_point_dynamic_array(rtti_proc_label::in, int::in, 
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_coverage_point_dynamic_array(RttiProcLabel, NumCoveragePoints, !DeclSet, !IO) :-
+    LayoutName = proc_static_coverage_point_dynamic(RttiProcLabel),
+    io.write_string("\n", !IO),
+    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    io.write_string(" = {\n", !IO),
+    duplicate(NumCoveragePoints, "0,", Zeros),
+    io.write_strings(Zeros, !IO),
+    io.write_string("};\n", !IO),
+    decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
+
 
 %-----------------------------------------------------------------------------%
 
