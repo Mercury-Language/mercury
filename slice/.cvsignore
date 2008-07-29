@@ -22,6 +22,7 @@ mcov
 *.optdate
 SLICE_FLAGS
 Mercury
+feedback.m
 mdbcomp.m
 prim_data.m
 program_representation.m

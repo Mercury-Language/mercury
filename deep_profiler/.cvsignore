@@ -29,6 +29,7 @@ DEEP_FLAGS
 *.opt
 *.optdate
 config.log
+feedback.m
 mdbcomp.m
 prim_data.m
 program_representation.m
