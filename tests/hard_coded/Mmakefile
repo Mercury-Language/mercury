@@ -352,6 +352,7 @@ endif
 # grades.
 ifeq "$(findstring debug,$(GRADE))" ""
 	CTGC_PROGS = \
+		bad_direct_reuse \
 		bad_indirect_reuse \
 		bad_indirect_reuse2 \
 		bad_indirect_reuse2b \

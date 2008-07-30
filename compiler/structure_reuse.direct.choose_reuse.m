@@ -911,9 +911,12 @@ beta_value = 1.
 
 verify_match(Background, NewVar, NewCons, NewArgs, PP, !Match) :-
     DeconSpecs = !.Match ^ decon_specs,
-    list.filter_map(compute_reuse_type(Background, NewVar, NewCons, NewArgs),
-        DeconSpecs, ReuseTypes),
     (
+        % The construction must be compatible with *all* deconstruction specs.
+        % Otherwise we may try to reuse a cell which is only compatible through
+        % one code path but not another.
+        list.map(compute_reuse_type(Background, NewVar, NewCons, NewArgs),
+            DeconSpecs, ReuseTypes),
         ReuseType = glb_reuse_types(ReuseTypes) % Can Fail.
     ->
         ConSpec = con(PP, ReuseType),
