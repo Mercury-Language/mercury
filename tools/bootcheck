@@ -1568,6 +1568,14 @@ then
             > ${tests_prefix}tests/.mgnuc_copts
 
         all_test_dirs="
+            analysis
+            analysis/ctgc
+            analysis/excp
+            analysis/ext
+            analysis/sharing
+            analysis/table
+            analysis/trail
+            analysis/unused_args
             benchmarks
             debugger
             debugger/declarative

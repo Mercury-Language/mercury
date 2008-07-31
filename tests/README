@@ -20,6 +20,9 @@ NOTE: if you add a new (sub)directory to the test suite then you
       may need to update the value of the variable `all_test_dirs'
       in tools/bootcheck.
 
+analysis
+	This directory is for testing the intermodule analysis framework.
+
 benchmarks
 	This directory contains Mercury versions of the benchmarks.
 
