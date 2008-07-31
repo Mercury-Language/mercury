@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002-2007 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -128,19 +128,30 @@
 
 :- pred tree234.foldl(pred(K, V, A, A), tree234(K, V), A, A).
 :- mode tree234.foldl(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode tree234.foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode tree234.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
 :- mode tree234.foldl(pred(in, in, in, out) is semidet, in, in, out)
     is semidet.
-:- mode tree234.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode tree234.foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo)
+    is semidet.
+:- mode tree234.foldl(pred(in, in, di, uo) is semidet, in, di, uo)
+    is semidet.
 
 :- pred tree234.foldl2(pred(K, V, A, A, B, B), tree234(K, V), A, A, B, B).
 :- mode tree234.foldl2(pred(in, in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode tree234.foldl2(pred(in, in, in, out, in, out) is semidet,
-    in, in, out, in, out) is semidet.
+:- mode tree234.foldl2(pred(in, in, in, out, mdi, muo) is det,
+    in, in, out, mdi, muo) is det.
 :- mode tree234.foldl2(pred(in, in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
 :- mode tree234.foldl2(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
+:- mode tree234.foldl2(pred(in, in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode tree234.foldl2(pred(in, in, in, out, mdi, muo) is semidet,
+    in, in, out, mdi, muo) is semidet.
+:- mode tree234.foldl2(pred(in, in, in, out, di, uo) is semidet,
+    in, in, out, di, uo) is semidet.
 
 :- pred tree234.foldl3(pred(K, V, A, A, B, B, C, C), tree234(K, V),
 	A, A, B, B, C, C).
@@ -176,9 +187,14 @@
 
 :- pred tree234.foldr(pred(K, V, A, A), tree234(K, V), A, A).
 :- mode tree234.foldr(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode tree234.foldr(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode tree234.foldr(pred(in, in, di, uo) is det, in, di, uo) is det.
 :- mode tree234.foldr(pred(in, in, in, out) is semidet, in, in, out)
     is semidet.
-:- mode tree234.foldr(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode tree234.foldr(pred(in, in, mdi, muo) is semidet, in, mdi, muo)
+    is semidet.
+:- mode tree234.foldr(pred(in, in, di, uo) is semidet, in, di, uo)
+    is semidet.
 
 :- pred tree234.foldr2(pred(K, V, A, A, B, B), tree234(K, V), A, A, B, B).
 :- mode tree234.foldr2(pred(in, in, in, out, in, out) is det,

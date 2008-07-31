@@ -263,15 +263,20 @@
 :- func set.fold(func(T, A) = A, set(T), A) = A.
 
 :- pred set.fold(pred(T, A, A), set(T), A, A).
-:- mode set.fold(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode set.fold(pred(in, in, out) is det, in, in, out) is det.
+:- mode set.fold(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode set.fold(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode set.fold(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode set.fold(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode set.fold(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 
 :- pred set.fold2(pred(T, A, A, B, B), set(T), A, A, B, B).
-:- mode set.fold2(pred(in, in, out, di, uo) is det, in,
-    in, out, di, uo) is det.
 :- mode set.fold2(pred(in, in, out, in, out) is det, in,
     in, out, in, out) is det.
+:- mode set.fold2(pred(in, in, out, mdi, muo) is det, in,
+    in, out, mdi, muo) is det.
+:- mode set.fold2(pred(in, in, out, di, uo) is det, in,
+    in, out, di, uo) is det.
 :- mode set.fold2(pred(in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
 

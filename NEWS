@@ -30,6 +30,9 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We have added extra modes to many of the fold style predicates in the
+  library in order to better support (mostly-)unique accumulators.
+
 * A module for handling directed graphs, digraph.m, has been added.  This
   supersedes relation.m and svrelation.m in that has a more consistent
   interface (which supports state variable notation), provides more type

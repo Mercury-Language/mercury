@@ -647,8 +647,16 @@
     list(A), list(B), list(C), D, D).
 :- mode list.map_corresponding_foldl(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
+:- mode list.map_corresponding_foldl(pred(in, in, out, mdi, muo) is det,
+    in, in, out, mdi, muo) is det.
 :- mode list.map_corresponding_foldl(pred(in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
+:- mode list.map_corresponding_foldl(pred(in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode list.map_corresponding_foldl(pred(in, in, out, mdi, muo) is semidet,
+    in, in, out, mdi, muo) is semidet.
+:- mode list.map_corresponding_foldl(pred(in, in, out, di, uo) is semidet,
+    in, in, out, di, uo) is semidet.
 
     % Like list.map_corresponding_foldl/6 except that it has two
     % accumulators.
@@ -692,10 +700,13 @@
 :- pred list.foldl(pred(L, A, A), list(L), A, A).
 :- mode list.foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list.foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode list.foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode list.foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode list.foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode list.foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
 :- mode list.foldl(pred(in, in, out) is multi, in, in, out) is multi.
 :- mode list.foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode list.foldl(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
 :- mode list.foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode list.foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
@@ -707,11 +718,15 @@
     % value in End.
     %
 :- pred list.foldr(pred(L, A, A), list(L), A, A).
-:- mode list.foldr(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list.foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode list.foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode list.foldr(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list.foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode list.foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode list.foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode list.foldr(pred(in, in, out) is multi, in, in, out) is multi.
 :- mode list.foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode list.foldr(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
 :- mode list.foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode list.foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
@@ -725,18 +740,22 @@
 :- pred list.foldl2(pred(L, A, A, Z, Z), list(L), A, A, Z, Z).
 :- mode list.foldl2(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode list.foldl2(pred(in, in, out, in, out) is cc_multi,
-    in, in, out, in, out) is cc_multi.
-:- mode list.foldl2(pred(in, in, out, in, out) is semidet,
-    in, in, out, in, out) is semidet.
-:- mode list.foldl2(pred(in, in, out, in, out) is nondet,
-    in, in, out, in, out) is nondet.
 :- mode list.foldl2(pred(in, in, out, mdi, muo) is det,
     in, in, out, mdi, muo) is det.
 :- mode list.foldl2(pred(in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
 :- mode list.foldl2(pred(in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
+:- mode list.foldl2(pred(in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode list.foldl2(pred(in, in, out, mdi, muo) is semidet,
+    in, in, out, mdi, muo) is semidet.
+:- mode list.foldl2(pred(in, in, out, in, out) is nondet,
+    in, in, out, in, out) is nondet.
+:- mode list.foldl2(pred(in, in, out, mdi, muo) is nondet,
+    in, in, out, mdi, muo) is nondet.
+:- mode list.foldl2(pred(in, in, out, in, out) is cc_multi,
+    in, in, out, in, out) is cc_multi.
 :- mode list.foldl2(pred(in, in, out, mdi, muo) is cc_multi,
     in, in, out, mdi, muo) is cc_multi.
 :- mode list.foldl2(pred(in, in, out, di, uo) is cc_multi,
@@ -753,12 +772,18 @@
     A, A, B, B, C, C).
 :- mode list.foldl3(pred(in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
+:- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, mdi, muo) is det.
 :- mode list.foldl3(pred(in, in, out, in, out, in, out) is cc_multi,
     in, in, out, in, out, in, out) is cc_multi.
 :- mode list.foldl3(pred(in, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out) is semidet.
+:- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, mdi, muo) is semidet.
 :- mode list.foldl3(pred(in, in, out, in, out, in, out) is nondet,
     in, in, out, in, out, in, out) is nondet.
+:- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is nondet,
+    in, in, out, in, out, mdi, muo) is nondet.
 :- mode list.foldl3(pred(in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
 :- mode list.foldl3(pred(in, in, out, in, out, di, uo) is cc_multi,
@@ -773,16 +798,22 @@
     A, A, B, B, C, C, D, D).
 :- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out, in, out) is det.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is cc_multi,
-    in, in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is semidet,
-    in, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is nondet,
-    in, in, out, in, out, in, out, in, out) is nondet.
+:- mode list.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, mdi, muo) is det.
 :- mode list.foldl4(pred(in, in, out, in, out, in, out, di, uo) is det,
     in, in, out, in, out, in, out, di, uo) is det.
+:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is cc_multi,
+    in, in, out, in, out, in, out, in, out) is cc_multi.
 :- mode list.foldl4(pred(in, in, out, in, out, in, out, di, uo) is cc_multi,
     in, in, out, in, out, in, out, di, uo) is cc_multi.
+:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out) is semidet.
+:- mode list.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is nondet,
+    in, in, out, in, out, in, out, in, out) is nondet.
+:- mode list.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is nondet,
+    in, in, out, in, out, in, out, mdi, muo) is nondet.
 
     % list.foldl5(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5)
     % Does the same job as list.foldl, but with five accumulators.
@@ -794,18 +825,27 @@
 :- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
     is det,
     in, in, out, in, out, in, out, in, out, in, out) is det.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
-    is cc_multi,
-    in, in, out, in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
-    is semidet,
-    in, in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
-    is nondet,
-    in, in, out, in, out, in, out, in, out, in, out) is nondet.
+:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+    is det,
+    in, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, di, uo)
     is det,
     in, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
+    is semidet,
+    in, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+    is semidet,
+    in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
+    is nondet,
+    in, in, out, in, out, in, out, in, out, in, out) is nondet.
+:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+    is nondet,
+    in, in, out, in, out, in, out, in, out, mdi, muo) is nondet.
+:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
+    is cc_multi,
+    in, in, out, in, out, in, out, in, out, in, out) is cc_multi.
 :- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, di, uo)
     is cc_multi,
     in, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
@@ -844,14 +884,22 @@
 :- pred list.foldl_corresponding(pred(A, B, C, C), list(A), list(B), C, C).
 :- mode list.foldl_corresponding(pred(in, in, in, out) is det,
     in, in, in, out) is det.
-:- mode list.foldl_corresponding(pred(in, in, in, out) is cc_multi,
-    in, in, in, out) is cc_multi.
-:- mode list.foldl_corresponding(pred(in, in, in, out) is semidet,
-    in, in, in, out) is semidet.
-:- mode list.foldl_corresponding(pred(in, in, in, out) is nondet,
-    in, in, in, out) is nondet.
+:- mode list.foldl_corresponding(pred(in, in, mdi, muo) is det,
+    in, in, mdi, muo) is det.
 :- mode list.foldl_corresponding(pred(in, in, di, uo) is det,
     in, in, di, uo) is det.
+:- mode list.foldl_corresponding(pred(in, in, in, out) is semidet,
+    in, in, in, out) is semidet.
+:- mode list.foldl_corresponding(pred(in, in, mdi, muo) is semidet,
+    in, in, mdi, muo) is semidet.
+:- mode list.foldl_corresponding(pred(in, in, di, uo) is semidet,
+    in, in, di, uo) is semidet.
+:- mode list.foldl_corresponding(pred(in, in, in, out) is nondet,
+    in, in, in, out) is nondet.
+:- mode list.foldl_corresponding(pred(in, in, mdi, muo) is nondet,
+    in, in, mdi, muo) is nondet.
+:- mode list.foldl_corresponding(pred(in, in, in, out) is cc_multi,
+    in, in, in, out) is cc_multi.
 :- mode list.foldl_corresponding(pred(in, in, di, uo) is cc_multi,
     in, in, di, uo) is cc_multi.
 
@@ -863,14 +911,22 @@
     C, C, D, D).
 :- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is det,
     in, in, in, out, in, out) is det.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is cc_multi,
-    in, in, in, out, in, out) is cc_multi.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is semidet,
-    in, in, in, out, in, out) is semidet.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is nondet,
-    in, in, in, out, in, out) is nondet.
+:- mode list.foldl2_corresponding(pred(in, in, in, out, mdi, muo) is det,
+    in, in, in, out, mdi, muo) is det.
 :- mode list.foldl2_corresponding(pred(in, in, in, out, di, uo) is det,
     in, in, in, out, di, uo) is det.
+:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is semidet,
+    in, in, in, out, in, out) is semidet.
+:- mode list.foldl2_corresponding(pred(in, in, in, out, mdi, muo) is semidet,
+    in, in, in, out, mdi, muo) is semidet.
+:- mode list.foldl2_corresponding(pred(in, in, in, out, di, uo) is semidet,
+    in, in, in, out, di, uo) is semidet.
+:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is nondet,
+    in, in, in, out, in, out) is nondet.
+:- mode list.foldl2_corresponding(pred(in, in, in, out, mdi, muo) is nondet,
+    in, in, in, out, mdi, muo) is nondet.
+:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is cc_multi,
+    in, in, in, out, in, out) is cc_multi.
 :- mode list.foldl2_corresponding(pred(in, in, in, out, di, uo) is cc_multi,
     in, in, in, out, di, uo) is cc_multi.
 
@@ -881,11 +937,23 @@
 :- pred list.foldl3_corresponding(pred(A, B, C, C, D, D, E, E),
     list(A), list(B), C, C, D, D, E, E).
 :- mode list.foldl3_corresponding(
-    pred(in, in, in, out, in, out, in, out) is det, in, in, in, out, in, out,
-    in, out) is det.
+    pred(in, in, in, out, in, out, in, out) is det, in, in, in, out,
+    in, out, in, out) is det.
 :- mode list.foldl3_corresponding(
-    pred(in, in, in, out, in, out, di, uo) is det, in, in, in, out, in, out,
-    di, uo) is det.
+    pred(in, in, in, out, in, out, mdi, muo) is det, in, in, in, out,
+    in, out, mdi, muo) is det.
+:- mode list.foldl3_corresponding(
+    pred(in, in, in, out, in, out, di, uo) is det, in, in, in, out,
+    in, out, di, uo) is det.
+:- mode list.foldl3_corresponding(
+    pred(in, in, in, out, in, out, in, out) is semidet, in, in, in, out,
+    in, out, in, out) is semidet.
+:- mode list.foldl3_corresponding(
+    pred(in, in, in, out, in, out, mdi, muo) is semidet, in, in, in, out,
+    in, out, mdi, muo) is semidet.
+:- mode list.foldl3_corresponding(
+    pred(in, in, in, out, in, out, di, uo) is semidet, in, in, in, out,
+    in, out, di, uo) is semidet.
 
     % list.foldl_corresponding3(P, As, Bs, Cs, !Acc):
     % Like list.foldl_corresponding but folds over three corresponding
@@ -895,10 +963,16 @@
     list(A), list(B), list(C), D, D).
 :- mode list.foldl_corresponding3(pred(in, in, in, in, out) is det,
     in, in, in, in, out) is det.
+:- mode list.foldl_corresponding3(pred(in, in, in, mdi, muo) is det,
+    in, in, in, mdi, muo) is det.
 :- mode list.foldl_corresponding3(pred(in, in, in, di, uo) is det,
     in, in, in, di, uo) is det.
 :- mode list.foldl_corresponding3(pred(in, in, in, in, out) is semidet,
     in, in, in, in, out) is semidet.
+:- mode list.foldl_corresponding3(pred(in, in, in, mdi, muo) is semidet,
+    in, in, in, mdi, muo) is semidet.
+:- mode list.foldl_corresponding3(pred(in, in, in, di, uo) is semidet,
+    in, in, in, di, uo) is semidet.
 
     % list.foldl2_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2):
     % like list.foldl_corresponding3 but with two accumulators.
@@ -956,13 +1030,9 @@
     is det.
 :- mode list.map_foldl(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
     is det.
-:- mode list.map_foldl(pred(in, out, di, uo) is cc_multi, in, out, di, uo)
-    is cc_multi.
-:- mode list.map_foldl(pred(in, out, in, out) is cc_multi, in, out, in, out)
-    is cc_multi.
-:- mode list.map_foldl(pred(in, out, mdi, muo) is cc_multi, in, out, mdi, muo)
-    is cc_multi.
 :- mode list.map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
+    is semidet.
+:- mode list.map_foldl(pred(in, out, mdi, muo) is semidet, in, out, mdi, muo)
     is semidet.
 :- mode list.map_foldl(pred(in, out, di, uo) is semidet, in, out, di, uo)
     is semidet.
@@ -970,23 +1040,39 @@
     is semidet.
 :- mode list.map_foldl(pred(in, out, in, out) is nondet, in, out, in, out)
     is nondet.
-
+:- mode list.map_foldl(pred(in, out, mdi, muo) is nondet, in, out, mdi, muo)
+    is nondet.
+:- mode list.map_foldl(pred(in, out, in, out) is cc_multi, in, out, in, out)
+    is cc_multi.
+:- mode list.map_foldl(pred(in, out, mdi, muo) is cc_multi, in, out, mdi, muo)
+    is cc_multi.
+:- mode list.map_foldl(pred(in, out, di, uo) is cc_multi, in, out, di, uo)
+    is cc_multi.
+    
     % Same as list.map_foldl, but with two mapped outputs.
     %
 :- pred list.map2_foldl(pred(L, M, N, A, A), list(L), list(M), list(N),
     A, A).
-:- mode list.map2_foldl(pred(in, out, out, di, uo) is det, in, out, out,
-    di, uo) is det.
 :- mode list.map2_foldl(pred(in, out, out, in, out) is det, in, out, out,
     in, out) is det.
-:- mode list.map2_foldl(pred(in, out, out, di, uo) is cc_multi, in, out, out,
-    di, uo) is cc_multi.
-:- mode list.map2_foldl(pred(in, out, out, in, out) is cc_multi, in, out, out,
-    in, out) is cc_multi.
+:- mode list.map2_foldl(pred(in, out, out, mdi, muo) is det, in, out, out,
+    mdi, muo) is det.
+:- mode list.map2_foldl(pred(in, out, out, di, uo) is det, in, out, out,
+    di, uo) is det.
 :- mode list.map2_foldl(pred(in, out, out, in, out) is semidet, in, out, out,
     in, out) is semidet.
+:- mode list.map2_foldl(pred(in, out, out, mdi, muo) is semidet, in, out, out,
+    mdi, muo) is semidet.
+:- mode list.map2_foldl(pred(in, out, out, di, uo) is semidet, in, out, out,
+    di, uo) is semidet.
 :- mode list.map2_foldl(pred(in, out, out, in, out) is nondet, in, out, out,
     in, out) is nondet.
+:- mode list.map2_foldl(pred(in, out, out, mdi, muo) is nondet, in, out, out,
+    mdi, muo) is nondet.
+:- mode list.map2_foldl(pred(in, out, out, in, out) is cc_multi, in, out, out,
+    in, out) is cc_multi.
+:- mode list.map2_foldl(pred(in, out, out, di, uo) is cc_multi, in, out, out,
+    di, uo) is cc_multi.
 
     % Same as list.map_foldl, but with two accumulators.
     %

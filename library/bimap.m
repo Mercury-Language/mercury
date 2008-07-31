@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999, 2004-2006 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999, 2004-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -250,8 +250,11 @@
 :- func bimap.foldl(func(K, V, A) = A, bimap(K, V), A) = A.
 :- pred bimap.foldl(pred(K, V, A, A), bimap(K, V), A, A).
 :- mode bimap.foldl(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode bimap.foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode bimap.foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode bimap.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode bimap.foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode bimap.foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode bimap.foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 
     % Perform a traversal of the bimap, applying an accumulator predicate
     % with two accumulators for each key-value pair. (Although no more

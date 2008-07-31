@@ -291,14 +291,20 @@
 :- func map.foldl(func(K, V, A) = A, map(K, V), A) = A.
 :- pred map.foldl(pred(K, V, A, A), map(K, V), A, A).
 :- mode map.foldl(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode map.foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode map.foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode map.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode map.foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode map.foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode map.foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 
 :- func map.foldr(func(K, V, A) = A, map(K, V), A) = A.
 :- pred map.foldr(pred(K, V, A, A), map(K, V), A, A).
 :- mode map.foldr(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode map.foldr(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode map.foldr(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode map.foldr(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode map.foldr(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode map.foldr(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode map.foldr(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with two accumulators for each key-value pair.
@@ -308,12 +314,18 @@
 :- pred map.foldl2(pred(K, V, A, A, B, B), map(K, V), A, A, B, B).
 :- mode map.foldl2(pred(in, in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode map.foldl2(pred(in, in, in, out, in, out) is semidet,
-    in, in, out, in, out) is semidet.
+:- mode map.foldl2(pred(in, in, in, out, mdi, muo) is det,
+    in, in, out, mdi, muo) is det.
 :- mode map.foldl2(pred(in, in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
 :- mode map.foldl2(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
+:- mode map.foldl2(pred(in, in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode map.foldl2(pred(in, in, in, out, mdi, muo) is semidet,
+    in, in, out, mdi, muo) is semidet.
+:- mode map.foldl2(pred(in, in, in, out, di, uo) is semidet,
+    in, in, out, di, uo) is semidet.
 
 :- pred map.foldr2(pred(K, V, A, A, B, B), map(K, V), A, A, B, B).
 :- mode map.foldr2(pred(in, in, in, out, in, out) is det,
