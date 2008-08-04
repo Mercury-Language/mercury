@@ -37,7 +37,9 @@
 
 :- import_module measurement_units.
 
+:- import_module array.
 :- import_module bool.
+:- import_module counter.
 :- import_module float.
 :- import_module int.
 :- import_module list.
@@ -49,16 +51,45 @@
 
 report_to_display(Deep, Prefs, Report) = Display :-
     (
-        Report = report_message(Msg),
+        Report = report_message(message_info(Msg)),
         Display = display(no, [display_message(Msg)])
     ;
-        Report = report_menu(QuantaPerSec, UserQuanta, InstQuanta,
-            NumCallseqs, NumCSD, NumCSS, NumPD, NumPS, NumClique),
-        display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta,
-            NumCallseqs, NumCSD, NumCSS, NumPD, NumPS, NumClique, Display)
+        Report = report_menu(MaybeMenuInfo),
+        (
+            MaybeMenuInfo = ok(MenuInfo),
+            display_report_menu(Deep, MenuInfo, Display)
+        ;
+            MaybeMenuInfo = error(Msg),
+            Display = display(no, [display_message(Msg)])
+        )
     ;
-        Report = report_top_procs(Ordering, TopProcs),
-        display_report_top_procs(Prefs, Ordering, TopProcs, Display)
+        Report = report_top_procs(MaybeTopProcsInfo),
+        (
+            MaybeTopProcsInfo = ok(TopProcsInfo),
+            display_report_top_procs(Prefs, TopProcsInfo, Display)
+        ;
+            MaybeTopProcsInfo = error(Msg),
+            Display = display(no, [display_message(Msg)])
+        )
+    ;
+        Report = report_proc_static_dump(MaybeProcStaticDumpInfo),
+        (
+            MaybeProcStaticDumpInfo = ok(ProcStaticDumpInfo),
+            display_report_proc_static_dump(ProcStaticDumpInfo, Display)
+        ;
+            MaybeProcStaticDumpInfo = error(Msg),
+            Display = display(no, [display_message(Msg)])
+        )
+    ;
+        Report = report_proc_dynamic_dump(MaybeProcDynamicDumpInfo),
+        (
+            MaybeProcDynamicDumpInfo = ok(ProcDynamicDumpInfo),
+            display_report_proc_dynamic_dump(Deep, Prefs, ProcDynamicDumpInfo,
+                Display)
+        ;
+            MaybeProcDynamicDumpInfo = error(Msg),
+            Display = display(no, [display_message(Msg)])
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -66,12 +97,12 @@ report_to_display(Deep, Prefs, Report) = Display :-
 % Code to display menu report.
 %
 
-:- pred display_report_menu(deep::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, int::in, int::in, int::in, display::out)
-    is det.
+:- pred display_report_menu(deep::in, menu_info::in, display::out) is det.
 
-display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta, NumCallseqs,
-        NumCSD, NumCSS, NumPD, NumPS, NumClique, Display) :-
+display_report_menu(Deep, MenuInfo, Display) :-
+    MenuInfo = menu_info(QuantaPerSec, UserQuanta, InstQuanta,
+        NumCallseqs, NumCSD, NumCSS, NumPD, NumPS, NumClique),
+
     ShouldDisplayTimes = should_display_times(Deep),
 
     % Display the links section of the report.
@@ -159,18 +190,18 @@ display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta, NumCallseqs,
 
     % Display the table section of the report.
     ProfilingStatistics =
-        [("Quanta per second:"          - QuantaPerSec),
-        ("Quanta in user code:"         - UserQuanta),
-        ("Quanta in instrumentation:"   - InstQuanta),
-        ("Call sequence numbers:"       - NumCallseqs),
-        ("CallSiteDyanic structures:"   - NumCSD),
-        ("ProcDynamic structures:"      - NumPD),
-        ("CallSiteStatic structures:"   - NumCSS),
-        ("ProcStatic structures:"       - NumPS),
-        ("Cliques:"                     - NumClique)],
+        [("Quanta per second:"          - i(QuantaPerSec)),
+        ("Quanta in user code:"         - i(UserQuanta)),
+        ("Quanta in instrumentation:"   - i(InstQuanta)),
+        ("Call sequence numbers:"       - i(NumCallseqs)),
+        ("CallSiteDyanic structures:"   - i(NumCSD)),
+        ("ProcDynamic structures:"      - i(NumPD)),
+        ("CallSiteStatic structures:"   - i(NumCSS)),
+        ("ProcStatic structures:"       - i(NumPS)),
+        ("Cliques:"                     - i(NumClique))],
 
-    list.map(make_menu_table_row, ProfilingStatistics, Rows),
-    Table = table(table_class_menu, 2, no, Rows),
+    Rows = list.map(make_labelled_table_row, ProfilingStatistics),
+    Table = table(table_class_plain, 2, no, Rows),
 
     % Display the Controls section of the report.
     Controls = display_list(list_class_horizontal, no, cmds_menu_restart_quit),
@@ -180,34 +211,17 @@ display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta, NumCallseqs,
         [Links, display_table(Table), Controls]).
 
 %-----------------------------------------------------------------------------%
-
-    % Make a table row as used in the menu report.
-    %
-:- pred make_menu_table_row(pair(string, int)::in, table_row::out) is det.
-
-make_menu_table_row((Label - Value), Row) :-
-    Row = table_row([table_cell(s(Label)), table_cell(i(Value))]).
-
-%-----------------------------------------------------------------------------%
-
-    % Make a link for use in the menu report.
-    %
-:- pred make_command_link(pair(cmd, string)::in, display_item::out) is det.
-
-make_command_link((Cmd - Label), Item) :-
-    Item = display_command_link(deep_link(Cmd, no, Label, link_class_link)).
-
-%-----------------------------------------------------------------------------%
 %
 % Code to display a top procedures report.
 %
 
     % Create a display_report structure for a top_procedures report.
     %
-:- pred display_report_top_procs(preferences::in, report_ordering::in,
-    list(perf_row_data(report_proc))::in, display::out) is det.
+:- pred display_report_top_procs(preferences::in, top_procs_info::in,
+    display::out) is det.
 
-display_report_top_procs(Prefs, Ordering, TopProcs, Display) :-
+display_report_top_procs(Prefs, TopProcsInfo, Display) :-
+    TopProcsInfo = top_procs_info(Ordering, TopProcs),
     Ordering = report_ordering(DisplayLimit, CostKind, InclDesc, Scope),
     Desc = cost_criteria_to_description(CostKind, InclDesc, Scope),
     Title = "Top procedures " ++ Desc,
@@ -234,6 +248,111 @@ display_report_top_procs(Prefs, Ordering, TopProcs, Display) :-
 
     Display = display(yes(Title),
         [TableAndLabel, Controls1, Controls2, Controls3, Controls4]).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to display proc_static and proc_dynamic dumps.
+%
+
+    % Create a display_report structure for a proc_static_dump report.
+    %
+:- pred display_report_proc_static_dump(proc_static_dump_info::in,
+    display::out) is det.
+
+display_report_proc_static_dump(ProcStaticDumpInfo, Display) :-
+    ProcStaticDumpInfo = proc_static_dump_info(PSPtr, RawName, RefinedName,
+        FileName, LineNumber, NumCallSites),
+    PSPtr = proc_static_ptr(PSI),
+    string.format("Dump of proc_static %d", [i(PSI)], Title),
+
+    Values =
+        [("Raw name:"               - s(RawName)),
+        ("Refined name:"            - s(RefinedName)),
+        ("File name:"               - s(FileName)),
+        ("Line number:"             - i(LineNumber)),
+        ("Number of call sites:"    - i(NumCallSites))],
+
+    Rows = list.map(make_labelled_table_row, Values),
+    Table = table(table_class_plain, 2, no, Rows),
+    Display = display(yes(Title), [display_table(Table)]).
+
+    % Create a display_report structure for a proc_dynamic_dump report.
+    %
+:- pred display_report_proc_dynamic_dump(deep::in, preferences::in,
+    proc_dynamic_dump_info::in, display::out) is det.
+
+display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
+    ProcDynamicDumpInfo = proc_dynamic_dump_info(PDPtr, PSPtr,
+        RawName, RefinedName, CallSites),
+    PDPtr = proc_dynamic_ptr(PDI),
+    PSPtr = proc_static_ptr(PSI),
+    string.format("Dump of proc_dynamic %d", [i(PDI)], Title),
+
+    ProcStaticLink = deep_link(deep_cmd_proc_static(PSI), yes(Prefs),
+        string.int_to_string(PSI), link_class_link),
+    MainValues =
+        [("Proc static:"            - l(ProcStaticLink)),
+        ("Raw name:"                - s(RawName)),
+        ("Refined name:"            - s(RefinedName))],
+
+    MainRows = list.map(make_labelled_table_row, MainValues),
+    MainTable = table(table_class_plain, 2, no, MainRows),
+
+    list.map_foldl(dump_psd_call_site(Prefs), CallSites, CallSitesRowsList,
+        counter.init(1), _),
+    list.condense(CallSitesRowsList, CallSitesRows),
+    CallSitesTitle = "Call site dynamics:",
+    CallSitesTable =
+        table(table_class_plain, 2, no, CallSitesRows),
+
+    Display = display(yes(Title),
+        [display_table(MainTable), display_message(CallSitesTitle),
+        display_table(CallSitesTable)]).
+
+:- pred dump_psd_call_site(preferences::in,
+    call_site_array_slot::in, list(table_row)::out,
+    counter::in, counter::out) is det.
+
+dump_psd_call_site(Prefs, CallSite, Rows, !CallSiteCounter) :-
+    counter.allocate(CallSiteNum, !CallSiteCounter),
+    CallSiteNumCell = table_cell(i(CallSiteNum)),
+    (
+        CallSite = slot_normal(CSDPtr),
+        CSDPtr = call_site_dynamic_ptr(CSDI),
+        CSDLink = deep_link(deep_cmd_call_site_dynamic(CSDI), yes(Prefs),
+            string.int_to_string(CSDI), link_class_link),
+        CSDCell = table_cell(l(CSDLink)),
+        FirstRow = table_row([CallSiteNumCell, CSDCell]),
+        Rows = [FirstRow]
+    ;
+        CallSite = slot_multi(IsZeroed, CSDPtrArray),
+        (
+            IsZeroed = zeroed,
+            IsZeroedStr = "zeroed"
+        ;
+            IsZeroed = not_zeroed,
+            IsZeroedStr = "not_zeroed"
+        ),
+        array.to_list(CSDPtrArray, CSDPtrs),
+        NumCSDPtrs = list.length(CSDPtrs),
+        string.format("multi, %d csds (%s)", [i(NumCSDPtrs), s(IsZeroedStr)],
+            MultiCellStr),
+        MultiCell = table_cell(s(MultiCellStr)),
+        FirstRow = table_row([CallSiteNumCell, MultiCell]),
+        list.map(dump_psd_call_site_multi_entry(Prefs), CSDPtrs, LaterRows),
+        Rows = [FirstRow | LaterRows]
+    ).
+
+:- pred dump_psd_call_site_multi_entry(preferences::in,
+    call_site_dynamic_ptr::in, table_row::out) is det.
+
+dump_psd_call_site_multi_entry(Prefs, CSDPtr, Row) :-
+    CSDPtr = call_site_dynamic_ptr(CSDI),
+    CSDLink = deep_link(deep_cmd_call_site_dynamic(CSDI), yes(Prefs),
+        string.int_to_string(CSDI), link_class_link),
+    CSDCell = table_cell(l(CSDLink)),
+    EmptyCell = table_cell(s("")),
+    Row = table_row([EmptyCell, CSDCell]).
 
 %-----------------------------------------------------------------------------%
 
@@ -344,61 +463,64 @@ total = s("Total").
 
 %-----------------------------------------------------------------------------%
 
-:- func make_link(report_ordering, preferences, string, cost_kind,
-    include_descendants, measurement_scope) = deep_link.
+:- func top_procs_self_link(table_info, cost_kind) = table_data.
 
-make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope) =
-    make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope,
-        link_class_link).
+top_procs_self_link(TableInfo, CostKind) =
+    top_procs_make_table_link(TableInfo, "Self",
+        CostKind, self, overall).
 
-:- func make_link(report_ordering, preferences, string, cost_kind,
-    include_descendants, measurement_scope, link_class) = deep_link.
+:- func top_procs_self_percall_link(table_info, cost_kind) = table_data.
 
-    % It might be nice to improve this so that if a user is looking up a
-    % different cost kind compared to the current run it resets the display
-    % limit.  This requires more thought, as different values may not make
-    % sense for different limits.  So perhaps it's best to only reset the limit
-    % if it was a range that didn't start at one.
-    %
-make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope, Class) = Link :-
-    DisplayLimit = Ordering ^ display_limit,
-    Link = deep_link(
-        deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
-        yes(Prefs), Label, Class).
+top_procs_self_percall_link(TableInfo, CostKind) =
+    top_procs_make_table_link(TableInfo, "/call",
+        CostKind, self, per_call).
 
-:- func make_table_link(table_info, string, cost_kind, include_descendants,
-    measurement_scope) = table_data.
+:- func top_procs_total_link(table_info, cost_kind) = table_data.
 
-make_table_link(TableInfo, Label, CostKind, InclDesc, Scope) =
-        l(make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope)) :-
-    Ordering = TableInfo ^ table_ordering,
-    Prefs = TableInfo ^ prefs.
+top_procs_total_link(TableInfo, CostKind) =
+    top_procs_make_table_link(TableInfo, "Total",
+        CostKind, self_and_desc, overall).
+
+:- func top_procs_total_percall_link(table_info, cost_kind) = table_data.
+
+top_procs_total_percall_link(TableInfo, CostKind) =
+    top_procs_make_table_link(TableInfo, "/call",
+        CostKind, self_and_desc, per_call).
+
+:- func top_procs_time_link(table_info) = table_data.
+
+top_procs_time_link(TableInfo) =
+    top_procs_make_table_link(TableInfo, "Time",
+        cost_time, self, overall).
+
+:- func top_procs_total_time_link(table_info) = table_data.
+
+top_procs_total_time_link(TableInfo) =
+    top_procs_make_table_link(TableInfo, "Time",
+        cost_time, self_and_desc, overall).
 
 %-----------------------------------------------------------------------------%
 
-:- func self_link(table_info, cost_kind) = table_data.
-self_link(TableInfo, CostKind) = Link :-
-    make_table_link(TableInfo, "Self", CostKind, self, overall) = Link.
+:- func top_procs_make_table_link(table_info, string, cost_kind,
+    include_descendants, measurement_scope) = table_data.
 
-:- func self_percall_link(table_info, cost_kind) = table_data.
-self_percall_link(TableInfo, CostKind) = Link :-
-    make_table_link(TableInfo, "/call", CostKind, self, per_call) = Link.
+top_procs_make_table_link(TableInfo, Label, CostKind, InclDesc, Scope)
+        = TableData :-
+    Ordering = TableInfo ^ table_ordering,
+    Prefs = TableInfo ^ prefs,
+    DisplayLimit = Ordering ^ display_limit,
+    Cmd = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
+    Link = deep_link(Cmd, yes(Prefs), Label, link_class_link),
+    TableData = l(Link).
 
-:- func total_link(table_info, cost_kind) = table_data.
-total_link(TableInfo, CostKind) =
-    make_table_link(TableInfo, "Total", CostKind, self_and_desc, overall).
+:- func top_procs_make_link(report_ordering, preferences, string, cost_kind,
+    include_descendants, measurement_scope, link_class) = deep_link.
 
-:- func total_percall_link(table_info, cost_kind) = table_data.
-total_percall_link(TableInfo, CostKind) =
-    make_table_link(TableInfo, "/call", CostKind, self_and_desc, per_call).
-
-:- func time_link(table_info) = table_data.
-time_link(TableInfo) =
-    make_table_link(TableInfo, "Time", cost_time, self, overall).
-
-:- func total_time_link(table_info) = table_data.
-total_time_link(TableInfo) =
-    make_table_link(TableInfo, "Time", cost_time, self_and_desc, overall).
+top_procs_make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope, Class)
+        = Link :-
+    DisplayLimit = Ordering ^ display_limit,
+    Cmd = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
+    Link = deep_link(Cmd, yes(Prefs), Label, Class).
 
 %-----------------------------------------------------------------------------%
 
@@ -545,7 +667,8 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
         MemoryCells = []
     ;
         ( MemoryFields = memory(Units)
-        ; MemoryFields = memory_and_percall(Units) ),
+        ; MemoryFields = memory_and_percall(Units)
+        ),
         SelfMemCell = table_cell(m(RowData ^ self_mem, Units, 0)),
         SelfMemPercallCell =
             table_cell(m(RowData ^ self_mem_percall, Units, 2)),
@@ -585,12 +708,12 @@ proc_to_cell(TableInfo, ReportProc, table_cell(Data)) :-
 
 proc_table_time_header(TableInfo, Fields, MaybeHeaderCell) :-
     TimeFields = Fields ^ time_fields,
-    Self = self_link(TableInfo, cost_time),
-    Time = time_link(TableInfo),
-    SelfPercall = self_percall_link(TableInfo, cost_time),
-    Total = total_link(TableInfo, cost_time),
-    TotalTime = total_time_link(TableInfo),
-    TotalPercall = total_percall_link(TableInfo, cost_time),
+    Self = top_procs_self_link(TableInfo, cost_time),
+    Time = top_procs_time_link(TableInfo),
+    SelfPercall = top_procs_self_percall_link(TableInfo, cost_time),
+    Total = top_procs_total_link(TableInfo, cost_time),
+    TotalTime = top_procs_total_time_link(TableInfo),
+    TotalPercall = top_procs_total_percall_link(TableInfo, cost_time),
 
     (
         TimeFields = no_time,
@@ -634,8 +757,10 @@ proc_table_time_header(TableInfo, Fields, MaybeHeaderCell) :-
 proc_table_ports_header(TableInfo, Fields, MaybePortsHeader) :-
     (
         Fields ^ port_fields = port,
-        Calls = make_table_link(TableInfo, "Calls", cost_calls, self, overall),
-        Redos = make_table_link(TableInfo, "Redos", cost_redos, self, overall),
+        Calls = top_procs_make_table_link(TableInfo, "Calls",
+            cost_calls, self, overall),
+        Redos = top_procs_make_table_link(TableInfo, "Redos",
+            cost_redos, self, overall),
         MaybePortsHeader = yes(table_header_group("Port counts",
             [Calls, s("Exits"), s("Fails"), Redos, s("Excps")],
             table_col_class_port_counts))
@@ -651,8 +776,8 @@ proc_table_ports_header(TableInfo, Fields, MaybePortsHeader) :-
 
 proc_table_callseqs_header(TableInfo, Fields, MaybeCallseqsHeader) :-
     Callseqs = Fields ^ callseqs_fields,
-    Self = self_link(TableInfo, cost_callseqs),
-    Total = total_link(TableInfo, cost_callseqs),
+    Self = top_procs_self_link(TableInfo, cost_callseqs),
+    Total = top_procs_total_link(TableInfo, cost_callseqs),
     (
         Callseqs = no_callseqs,
         MaybeCallseqsHeader = no
@@ -662,8 +787,10 @@ proc_table_callseqs_header(TableInfo, Fields, MaybeCallseqsHeader) :-
             SubTitles = [Self, percent_label, Total, percent_label]
         ;
             Callseqs = callseqs_and_percall,
-            SelfPercall = self_percall_link(TableInfo, cost_callseqs),
-            TotalPercall = total_percall_link(TableInfo, cost_callseqs),
+            SelfPercall =
+                top_procs_self_percall_link(TableInfo, cost_callseqs),
+            TotalPercall =
+                top_procs_total_percall_link(TableInfo, cost_callseqs),
             SubTitles =
                 [Self, percent_label, SelfPercall,
                 Total, percent_label, TotalPercall]
@@ -679,8 +806,8 @@ proc_table_callseqs_header(TableInfo, Fields, MaybeCallseqsHeader) :-
 
 proc_table_allocations_header(TableInfo, Fields, MaybeHeader) :-
     AllocFields = Fields ^ alloc_fields,
-    Self = self_link(TableInfo, cost_allocs),
-    Total = total_link(TableInfo, cost_allocs),
+    Self = top_procs_self_link(TableInfo, cost_allocs),
+    Total = top_procs_total_link(TableInfo, cost_allocs),
     (
         AllocFields = no_alloc,
         MaybeHeader = no
@@ -690,8 +817,10 @@ proc_table_allocations_header(TableInfo, Fields, MaybeHeader) :-
             SubTitles = [Self, percent_label, Total, percent_label]
         ;
             AllocFields = alloc_and_percall,
-            SelfPercall = self_percall_link(TableInfo, cost_allocs),
-            TotalPercall = total_percall_link(TableInfo, cost_allocs),
+            SelfPercall =
+                top_procs_self_percall_link(TableInfo, cost_allocs),
+            TotalPercall =
+                top_procs_total_percall_link(TableInfo, cost_allocs),
             SubTitles =
                 [Self, percent_label, SelfPercall,
                 Total, percent_label, TotalPercall]
@@ -707,8 +836,8 @@ proc_table_allocations_header(TableInfo, Fields, MaybeHeader) :-
 
 proc_table_memory_header(TableInfo, Fields, MaybeHeader) :-
     Memory = Fields ^ memory_fields,
-    Self = self_link(TableInfo, cost_words),
-    Total = total_link(TableInfo, cost_words),
+    Self = top_procs_self_link(TableInfo, cost_words),
+    Total = top_procs_total_link(TableInfo, cost_words),
     Percent = percent_label,
     (
         Memory = no_memory,
@@ -719,8 +848,8 @@ proc_table_memory_header(TableInfo, Fields, MaybeHeader) :-
             SubTitles = [Self, Percent, Total, Percent]
         ;
             Memory = memory_and_percall(Units),
-            SelfPercall = self_percall_link(TableInfo, cost_words),
-            TotalPercall = total_percall_link(TableInfo, cost_words),
+            SelfPercall = top_procs_self_percall_link(TableInfo, cost_words),
+            TotalPercall = top_procs_total_percall_link(TableInfo, cost_words),
             SubTitles =
                 [Self, Percent, SelfPercall,
                 Total, Percent, TotalPercall]
@@ -736,7 +865,6 @@ proc_table_memory_header(TableInfo, Fields, MaybeHeader) :-
             table_col_class_memory))
     ).
 
-
     % Build a header for a table of procedures.
     %
 :- pred proc_table_header(table_info::in, int::out, table_header::out) is det.
@@ -751,9 +879,9 @@ proc_table_header(TableInfo, NumCols, Header) :-
         !:Cols = [],
         (
             Ranked = ranked,
-            table_add_header_col(
+            RankedHeaderCell =
                 table_header_cell(s("Rank"), table_col_class_ordinal_rank),
-                !Cols, !NumCols)
+            table_add_header_col(RankedHeaderCell, !Cols, !NumCols)
         ;
             Ranked = non_ranked
         ),
@@ -816,9 +944,8 @@ make_sort_control(Ordering, Prefs, CostKind, display_command_link(Control)) :-
     InclDesc = Ordering ^ incl_desc,
     Scope = Ordering ^ scope,
     cost_kind_label(CostKind, Label),
-    Control =
-        make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope,
-            link_class_control).
+    Control = top_procs_make_link(Ordering, Prefs, Label, CostKind, InclDesc,
+        Scope, link_class_control).
 
 %-----------------------------------------------------------------------------%
 
@@ -841,9 +968,10 @@ incldesc_and_scope_controls(Prefs, Ordering, ControlsList) :-
         InclDescLabel = "Exclude descendants",
         InclDesc = self
     ),
-    InclDescControl = deep_link(
+    InclDescCmd =
         deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, CurrentScope),
-        yes(Prefs), InclDescLabel, link_class_control),
+    InclDescControl = deep_link(InclDescCmd, yes(Prefs), InclDescLabel,
+        link_class_control),
 
     % Build Scope Control.
     (
@@ -855,9 +983,11 @@ incldesc_and_scope_controls(Prefs, Ordering, ControlsList) :-
         ScopeLabel = "Count overall cost",
         Scope = overall
     ),
-    ScopeControl = deep_link(
+
+    ScopeCmd =
         deep_cmd_top_procs(DisplayLimit, CostKind, CurrentInclDesc, Scope),
-        yes(Prefs), ScopeLabel, link_class_control),
+    ScopeControl = deep_link(ScopeCmd, yes(Prefs), ScopeLabel,
+        link_class_control),
 
     list.map(link_to_display, [InclDescControl, ScopeControl], Controls),
     ControlsList = display_list(list_class_horizontal, no, Controls).
@@ -868,7 +998,7 @@ incldesc_and_scope_controls(Prefs, Ordering, ControlsList) :-
 :- pred link_to_display(deep_link::in, display_item::out) is det.
 
 link_to_display(Link, Display) :-
-    display_command_link(Link) = Display.
+    Display = display_command_link(Link).
 
 %-----------------------------------------------------------------------------%
 
@@ -1117,7 +1247,21 @@ not_unify(A, B) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Make a mercury list of display items into a display item representing
+    % Make a table row with two columns: a label and a value.
+    %
+:- func make_labelled_table_row(pair(string, table_data)) = table_row.
+
+make_labelled_table_row(Label - Value) =
+    table_row([table_cell(s(Label)), table_cell(Value)]).
+
+    % Make a link for use in the menu report.
+    %
+:- pred make_command_link(pair(cmd, string)::in, display_item::out) is det.
+
+make_command_link(Cmd - Label, Item) :-
+    Item = display_command_link(deep_link(Cmd, no, Label, link_class_link)).
+
+    % Make a Mercury list of display items into a display item representing
     % a horizontal list of these items.
     %
 :- pred make_horizontal_list(list(display_item)::in, display_item::out) is det.

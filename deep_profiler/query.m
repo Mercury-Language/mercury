@@ -306,6 +306,8 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
     ; Cmd = deep_cmd_restart
     ; Cmd = deep_cmd_menu
     ; Cmd = deep_cmd_top_procs(_, _, _, _)
+    ; Cmd = deep_cmd_proc_static(_)
+    ; Cmd = deep_cmd_proc_dynamic(_)
     ),
     create_report(Cmd, Deep, Report),
     Display = report_to_display(Deep, Prefs, Report),
@@ -322,6 +324,10 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
 %    Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
 %    HTML = generate_top_procs_page(Cmd, Limit, CostKind, InclDesc, Scope,
 %        Pref, Deep).
+% exec(deep_cmd_proc_static(PSI), _Pref, Deep, HTML, !IO) :-
+%     HTML = generate_proc_static_debug_page(PSI, Deep).
+% exec(deep_cmd_proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
+%     HTML = generate_proc_dynamic_debug_page(PDI, Deep).
 
 exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_root(MaybePercent),
@@ -381,10 +387,6 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             "There is no procedure with that number.\n" ++
             page_footer(Cmd, Pref, Deep)
     ).
-exec(deep_cmd_proc_static(PSI), _Pref, Deep, HTML, !IO) :-
-    HTML = generate_proc_static_debug_page(PSI, Deep).
-exec(deep_cmd_proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
-    HTML = generate_proc_dynamic_debug_page(PDI, Deep).
 exec(deep_cmd_call_site_static(CSSI), _Pref, Deep, HTML, !IO) :-
     HTML = generate_call_site_static_debug_page(CSSI, Deep).
 exec(deep_cmd_call_site_dynamic(CSDI), _Pref, Deep, HTML, !IO) :-
@@ -2289,8 +2291,10 @@ default_fields(Deep) = Fields :-
         Time = no_time
     ),
     Fields = fields(port, Time, callseqs, no_alloc, memory(units_words)).
+
 all_fields = fields(port, ticks_and_time_and_percall, callseqs_and_percall,
     alloc, memory(units_words)).
+
 default_box = box.
 default_colour_scheme = colour_column_groups.
 default_ancestor_limit = yes(5).
@@ -2302,6 +2306,7 @@ default_scope = overall.
 default_contour = no_contour.
 default_time_format = scale_by_thousands.
 default_inactive_items = inactive_items(inactive_hide, inactive_hide).
+
 %-----------------------------------------------------------------------------%
 
 :- func cmd_separator_char = char.
@@ -2419,8 +2424,7 @@ preferences_to_string(Pref) = PrefStr :-
         c(pref_separator_char), s(order_criteria_to_string(Order)),
         c(pref_separator_char), s(contour_to_string(Contour)),
         c(pref_separator_char), s(time_format_to_string(Time)),
-        c(pref_separator_char),
-        s(inactive_items_to_string(InactiveItems))
+        c(pref_separator_char), s(inactive_items_to_string(InactiveItems))
     ]).
 
 string_to_cmd(QueryString, DefaultCmd) = Cmd :-
@@ -2528,8 +2532,7 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
     split(QueryString, pref_separator_char, Pieces),
     (
         Pieces = [FieldsStr, BoxStr, ColourStr, MaybeAncestorLimitStr,
-            SummarizeStr, OrderStr, ContourStr, TimeStr,
-            InactiveItemsStr],
+            SummarizeStr, OrderStr, ContourStr, TimeStr, InactiveItemsStr],
         string_to_fields(FieldsStr, Fields),
         string_to_box(BoxStr, Box),
         string_to_colour_scheme(ColourStr, Colour),

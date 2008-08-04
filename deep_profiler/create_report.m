@@ -47,22 +47,35 @@ create_report(Cmd, Deep, Report) :-
         Cmd = deep_cmd_quit,
         Msg = string.format("Shutting down deep profile server for %s.",
             [s(Deep ^ data_file_name)]),
-        Report = report_message(Msg)
+        MessageInfo = message_info(Msg),
+        Report = report_message(MessageInfo)
     ;
         Cmd = deep_cmd_timeout(Timeout),
         Msg = string.format("Timeout set to %d minutes.", [i(Timeout)]),
-        Report = report_message(Msg)
+        MessageInfo = message_info(Msg),
+        Report = report_message(MessageInfo)
     ;
         Cmd = deep_cmd_menu,
         Deep ^ profile_stats = profile_stats(NumCSD, NumCSS, NumPD, NumPS,
             QuantaPerSec, InstrumentationQuanta, UserQuanta, NumCallsequs,
             _, _),
         NumCliques = array.max(Deep ^ clique_members),
-        Report = report_menu(QuantaPerSec, UserQuanta, InstrumentationQuanta,
-            NumCallsequs, NumCSD, NumCSS, NumPD, NumPS, NumCliques)
+        MenuInfo = menu_info(QuantaPerSec, UserQuanta, InstrumentationQuanta,
+            NumCallsequs, NumCSD, NumCSS, NumPD, NumPS, NumCliques),
+        Report = report_menu(ok(MenuInfo))
     ;
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
-        create_top_procs_report(Deep, Limit, CostKind, InclDesc, Scope, Report)
+        create_top_procs_report(Deep, Limit, CostKind, InclDesc, Scope,
+            MaybeTopProcsInfo),
+        Report = report_top_procs(MaybeTopProcsInfo)
+    ;
+        Cmd = deep_cmd_proc_static(PSI),
+        generate_proc_static_dump_report(Deep, PSI, MaybeProcStaticDumpInfo),
+        Report = report_proc_static_dump(MaybeProcStaticDumpInfo)
+    ;
+        Cmd = deep_cmd_proc_dynamic(PDI),
+        generate_proc_dynamic_dump_report(Deep, PDI, MaybeProcDynamicDumpInfo),
+        Report = report_proc_dynamic_dump(MaybeProcDynamicDumpInfo)
     ;
         Cmd = deep_cmd_restart,
         error("create_report/3", "unexpected restart command")
@@ -73,8 +86,6 @@ create_report(Cmd, Deep, Report) :-
         ; Cmd = deep_cmd_proc_callers(_, _, _)
         ; Cmd = deep_cmd_modules
         ; Cmd = deep_cmd_module(_)
-        ; Cmd = deep_cmd_proc_static(_)
-        ; Cmd = deep_cmd_proc_dynamic(_)
         ; Cmd = deep_cmd_call_site_static(_)
         ; Cmd = deep_cmd_call_site_dynamic(_)
         ; Cmd = deep_cmd_raw_clique(_)
@@ -91,9 +102,11 @@ create_report(Cmd, Deep, Report) :-
     % parameters.
     %
 :- pred create_top_procs_report(deep::in, display_limit::in, cost_kind::in,
-    include_descendants::in, measurement_scope::in, deep_report::out) is det.
+    include_descendants::in, measurement_scope::in,
+    maybe_error(top_procs_info)::out) is det.
 
-create_top_procs_report(Deep, Limit, CostKind, InclDesc0, Scope0, Report) :-
+create_top_procs_report(Deep, Limit, CostKind, InclDesc0, Scope0,
+        MaybeTopProcsInfo) :-
     (
         CostKind = cost_calls,
         % Counting calls is incompatible both with self_and_desc
@@ -113,12 +126,56 @@ create_top_procs_report(Deep, Limit, CostKind, InclDesc0, Scope0, Report) :-
     MaybeTopPSIs = find_top_procs(CostKind, InclDesc, Scope, Limit, Deep),
     (
         MaybeTopPSIs = error(ErrorMessage),
-        Report = report_message("Internal error: " ++ ErrorMessage)
+        MaybeTopProcsInfo = error("Internal error: " ++ ErrorMessage)
     ;
         MaybeTopPSIs = ok(TopPSIs),
         Ordering = report_ordering(Limit, CostKind, InclDesc, Scope),
         list.map(psi_to_perf_row_data(Deep), TopPSIs, RowData),
-        Report = report_top_procs(Ordering, RowData)
+        TopProcsInfo = top_procs_info(Ordering, RowData),
+        MaybeTopProcsInfo = ok(TopProcsInfo)
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to build the dump reports.
+%
+
+:- pred generate_proc_static_dump_report(deep::in, int::in,
+    maybe_error(proc_static_dump_info)::out) is det.
+
+generate_proc_static_dump_report(Deep, PSI, MaybeProcStaticDumpInfo) :-
+    PSPtr = proc_static_ptr(PSI),
+    ( valid_proc_static_ptr(Deep, PSPtr) ->
+        deep_lookup_proc_statics(Deep, PSPtr, PS),
+        RawName = PS ^ ps_raw_id,
+        RefinedName = PS ^ ps_refined_id,
+        FileName = PS ^ ps_file_name,
+        LineNumber = PS ^ ps_line_number,
+        array.max(PS ^ ps_sites, NumCallSites),
+        ProcStaticDumpInfo = proc_static_dump_info(PSPtr, RawName, RefinedName,
+            FileName, LineNumber, NumCallSites),
+        MaybeProcStaticDumpInfo = ok(ProcStaticDumpInfo)
+    ;
+        MaybeProcStaticDumpInfo = error("invalid proc_static index")
+    ).
+
+:- pred generate_proc_dynamic_dump_report(deep::in, int::in,
+    maybe_error(proc_dynamic_dump_info)::out) is det.
+
+generate_proc_dynamic_dump_report(Deep, PDI, MaybeProcDynamicDumpInfo) :-
+    PDPtr = proc_dynamic_ptr(PDI),
+    ( valid_proc_dynamic_ptr(Deep, PDPtr) ->
+        deep_lookup_proc_dynamics(Deep, PDPtr, PD),
+        PD = proc_dynamic(PSPtr, CallSiteArray),
+        deep_lookup_proc_statics(Deep, PSPtr, PS),
+        RawName = PS ^ ps_raw_id,
+        RefinedName = PS ^ ps_refined_id,
+        array.to_list(CallSiteArray, CallSites),
+        ProcDynamicDumpInfo = proc_dynamic_dump_info(PDPtr, PSPtr,
+            RawName, RefinedName, CallSites),
+        MaybeProcDynamicDumpInfo = ok(ProcDynamicDumpInfo)
+    ;
+        MaybeProcDynamicDumpInfo = error("invalid proc_dynamic index")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -237,28 +294,18 @@ percent_from_ints(Nom, Denom) = percent(divide_ints(Nom, Denom)).
 :- pred psptr_to_report_proc(deep::in, proc_static_ptr::in, report_proc::out)
     is det.
 
-psptr_to_report_proc(Deep, PSPtr, report_proc(PSPtr, Filename, Lineno, Name))
-        :-
-    proc_static_get_proc_info(Deep, PSPtr, Filename, Lineno, Name).
-
-%-----------------------------------------------------------------------------%
-
-    % Get appropriate source location information for a proc static pointer.
-    %
-:- pred proc_static_get_proc_info(deep::in, proc_static_ptr::in, string::out,
-    int::out, string::out) is det.
-
-proc_static_get_proc_info(Deep, PSPtr, FileName, LineNumber, Name) :-
+psptr_to_report_proc(Deep, PSPtr, Report) :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         FileName = PS ^ ps_file_name,
         LineNumber = PS ^ ps_line_number,
-        Name = PS ^ ps_refined_id
+        RefinedName = PS ^ ps_refined_id
     ;
         FileName = "",
         LineNumber = 0,
-        Name = "mercury_runtime"
-    ).
+        RefinedName = "mercury_runtime"
+    ),
+    Report = report_proc(PSPtr, FileName, LineNumber, RefinedName).
 
 %-----------------------------------------------------------------------------%
 %

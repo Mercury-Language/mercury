@@ -110,7 +110,7 @@
     ;       table_empty_cell.
 
 :- type table_class
-    --->    table_class_menu
+    --->    table_class_plain
     ;       table_class_top_procs.
 
 :- type table_col_class
@@ -204,7 +204,6 @@
 :- implementation.
 
 :- import_module int.
-
 
 table_maybe_add_header_col(no, !Cols, !NumCols).
 

@@ -261,7 +261,7 @@ css_style_html =
                 margin: 5px;
                 text-decoration: none;
             }
-            table.menu
+            table.plain
             {
                 border-style: none;
             }
@@ -625,7 +625,7 @@ table_col_class_to_string(table_col_class_ticks_and_times, "ticks_and_times").
 
 :- func table_class_to_string(table_class) = string.
 
-table_class_to_string(table_class_menu) = "menu".
+table_class_to_string(table_class_plain) = "plain".
 table_class_to_string(table_class_top_procs) = "top_procs".
 
 %-----------------------------------------------------------------------------%

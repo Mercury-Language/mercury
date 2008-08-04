@@ -21,6 +21,7 @@
 :- interface.
 
 :- import_module list.
+:- import_module maybe.
 :- import_module string.
 
 :- import_module measurement_units.
@@ -33,11 +34,22 @@
 %-----------------------------------------------------------------------------%
 
 :- type deep_report
-    --->    report_message(string)
+    --->    report_message(message_info)
+    ;       report_menu(maybe_error(menu_info))
+    ;       report_top_procs(maybe_error(top_procs_info))
+    ;       report_proc_static_dump(maybe_error(proc_static_dump_info))
+    ;       report_proc_dynamic_dump(maybe_error(proc_dynamic_dump_info)).
+
+:- type message_info
+    --->    message_info(
                 % A simple message, this may be used in response to the
                 % 'shutdown' and similar queries.
 
-    ;       report_menu(
+                string
+            ).
+
+:- type menu_info
+    --->    menu_info(
                 % Statistics about the deep profiling data. Gives simple
                 % information about the size of the program and its runtime.
                 % These statistics are displayed on the menu of the mdprof_cgi
@@ -52,14 +64,36 @@
                 num_pd                      :: int,
                 num_ps                      :: int,
                 num_clique                  :: int
-            )
-    ;       report_top_procs(
+            ).
+
+:- type top_procs_info
+    --->    top_procs_info(
                 % Information about the most expensive procedures. The ordering
                 % field defines what measurements are used to select and order
                 % the procedures in this report.
 
                 ordering                    :: report_ordering,
                 top_procs                   :: list(perf_row_data(report_proc))
+            ).
+
+:- type proc_static_dump_info
+    --->    proc_static_dump_info(
+                psdi_psptr                  :: proc_static_ptr,
+                psdi_raw_name               :: string,
+                psdi_refined_name           :: string,
+                psdi_filename               :: string,
+                psdi_linenumber             :: int,
+                % Should we list the call_site_statics themselves?
+                psdi_num_call_sites         :: int
+            ).
+
+:- type proc_dynamic_dump_info
+    --->    proc_dynamic_dump_info(
+                pddi_pdptr                  :: proc_dynamic_ptr,
+                pddi_psptr                  :: proc_static_ptr,
+                pddi_ps_raw_name            :: string,
+                pddi_ps_refined_name        :: string,
+                pddi_call_sites             :: list(call_site_array_slot)
             ).
 
 :- type perf_row_data(T)
