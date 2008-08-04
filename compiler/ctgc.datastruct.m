@@ -144,8 +144,8 @@ datastruct_subsumed_by_return_selector(ModuleInfo, ProcInfo, Data1, Data2,
     Data2 = selected_cel(Var, Sel2),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    selector.subsumed_by(ModuleInfo, already_normalized, Sel1, Sel2, Type,
-        Extension).
+    selector_subsumed_by(ModuleInfo, already_normalized,
+        Sel1, Sel2, Type, Extension).
 
 datastruct_subsumed_by(ModuleInfo, ProcInfo, Data1, Data2) :-
     datastruct_subsumed_by_return_selector(ModuleInfo, ProcInfo, Data1, Data2,

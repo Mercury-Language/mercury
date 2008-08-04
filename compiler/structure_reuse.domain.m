@@ -392,14 +392,15 @@ reuse_condition_subsumed_by(ModuleInfo, ProcInfo, Cond1, Cond2) :-
         %
         set.subset(Nodes1, Nodes2),
 
-        datastructs_subsumed_by_list(ModuleInfo, ProcInfo, LocalUse1, 
-            LocalUse2),
-        sharing_as_is_subsumed_by(ModuleInfo, 
-            ProcInfo, LocalSharing1, LocalSharing2)
+        datastructs_subsumed_by_list(ModuleInfo, ProcInfo,
+            LocalUse1, LocalUse2),
+        sharing_as_is_subsumed_by(ModuleInfo, ProcInfo,
+            LocalSharing1, LocalSharing2)
     ).
 
 :- pred reuse_condition_subsumed_by_list(module_info::in, proc_info::in,
     reuse_condition::in, reuse_conditions::in) is semidet.
+
 reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, Cond, [Cond1|Rest]) :-
     (
         reuse_condition_subsumed_by(ModuleInfo, ProcInfo, Cond, Cond1)
@@ -409,6 +410,7 @@ reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, Cond, [Cond1|Rest]) :-
         
 :- pred reuse_conditions_subsume_reuse_condition(module_info::in,
     proc_info::in, reuse_conditions::in, reuse_condition::in) is semidet.
+
 reuse_conditions_subsume_reuse_condition(ModuleInfo, ProcInfo, Conds, Cond):-
     reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, Cond, Conds).
 
@@ -448,7 +450,6 @@ reuse_as_short_description(unconditional) = "uncond".
 reuse_as_short_description(conditional(Conds)) = "cond(" ++ Size ++ ")" :- 
     Size = string.int_to_string(list.length(Conds)).
       
-
 reuse_as_subsumed_by(ModuleInfo, ProcInfo, FirstReuseAs, SecondReuseAs) :- 
     (
         FirstReuseAs = no_reuse

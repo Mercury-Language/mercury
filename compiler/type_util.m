@@ -200,7 +200,7 @@
 :- pred get_cons_id_arg_types(module_info::in, mer_type::in,
     cons_id::in, list(mer_type)::out) is det.
 
-    % The same as gget_cons_id_arg_types except that it fails rather than
+    % The same as get_cons_id_arg_types except that it fails rather than
     % aborting if the functor is existentially typed.
     %
 :- pred get_cons_id_non_existential_arg_types(module_info::in,

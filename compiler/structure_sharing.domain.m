@@ -313,13 +313,16 @@
 :- import_module transform_hlds.ctgc.util.
 
 :- import_module assoc_list.
+:- import_module exception.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
-:- import_module string.
 :- import_module solutions.
+:- import_module string.
 :- import_module svmap.
 :- import_module svset.
+:- import_module unit.
+:- import_module univ.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -417,8 +420,24 @@ sharing_as_comb(ModuleInfo, ProcInfo, NewSharing, OldSharing) = ResultSharing :-
         NewSharing = sharing_as_real_as(NewSharingSet),
         (
             OldSharing = sharing_as_real_as(OldSharingSet),
-            ResultSharing = wrap(sharing_set_comb(ModuleInfo, ProcInfo,
-                NewSharingSet, OldSharingSet))
+            promise_equivalent_solutions [MaybeExcp] (
+                try((pred(CombSet::out) is det :-
+                    CombSet = sharing_set_comb(ModuleInfo, ProcInfo,
+                        NewSharingSet, OldSharingSet)
+                ), MaybeExcp)
+            ),
+            (
+                MaybeExcp = succeeded(SharingSet),
+                ResultSharing = wrap(SharingSet)
+            ;
+                MaybeExcp = exception(Excp),
+                ( univ_to_type(Excp, encounter_existential_subtype) ->
+                    Reason = top_cannot_improve("existential subtype"),
+                    ResultSharing = sharing_as_top_sharing(Reason)
+                ;
+                    rethrow(MaybeExcp)
+                )
+            )
         ;
             OldSharing = sharing_as_bottom,
             ResultSharing = NewSharing
@@ -715,9 +734,24 @@ sharing_as_least_upper_bound(ModuleInfo, ProcInfo, Sharing1, Sharing2)
             Sharing = Sharing2
         ;
             Sharing2 = sharing_as_real_as(SharingSet2),
-            Sharing = sharing_as_real_as(
-                sharing_set_least_upper_bound(ModuleInfo,
-                ProcInfo, SharingSet1, SharingSet2))
+            promise_equivalent_solutions [MaybeExcp] (
+                try((pred(SharingSet3::out) is det :-
+                    SharingSet3 = sharing_set_least_upper_bound(ModuleInfo,
+                        ProcInfo, SharingSet1, SharingSet2)
+                ), MaybeExcp)
+            ),
+            (
+                MaybeExcp = succeeded(SharingSet),
+                Sharing = sharing_as_real_as(SharingSet)
+            ;
+                MaybeExcp = exception(Excp),
+                ( univ_to_type(Excp, encounter_existential_subtype) ->
+                    Reason = top_cannot_improve("existential subtype"),
+                    Sharing = sharing_as_top_sharing(Reason)
+                ;
+                    rethrow(MaybeExcp)
+                )
+            )
         )
     ).
 
@@ -1496,7 +1530,7 @@ sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet,
         ] (
             check_normalized(ModuleInfo, Type1, Sel)
         ),
-        selector.subsumed_by(ModuleInfo, already_normalized,
+        selector_subsumed_by(ModuleInfo, already_normalized,
             Sel1, Sel, Type1, Extension),
         map.search(SelSharingMap, Sel, datastructures(_, DatastructureSet)),
 
@@ -1510,7 +1544,7 @@ sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet,
             ] (
                 check_normalized(ModuleInfo, Type2, DatastructureSel)
             ),
-            selector.subsumed_by(ModuleInfo, already_normalized,
+            selector_subsumed_by(ModuleInfo, already_normalized,
                 Sel2, DatastructureSel, Type2, Extension)
         )
     ).
@@ -1558,7 +1592,7 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
                 ] (
                     check_normalized(ModuleInfo, Type1, Selector)
                 ),
-                selector.subsumed_by(ModuleInfo, already_normalized,
+                selector_subsumed_by(ModuleInfo, already_normalized,
                     Selector, Sel1, Type1, Extension),
                 map.search(SelSharingMap, Selector, Dataset),
                 Dataset = datastructures(_, Datastructs),
@@ -1572,7 +1606,7 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
                         ] (
                             check_normalized(ModuleInfo, Type2, DSel)
                         ),
-                        selector.subsumed_by(ModuleInfo, already_normalized,
+                        selector_subsumed_by(ModuleInfo, already_normalized,
                             DSel, Sel2, Type2, Extension),
                         Pair = datastruct_init_with_selector(Var1, Selector)
                             - D
@@ -1897,8 +1931,8 @@ basic_closure(ModuleInfo, ProcInfo, Type, NewDataSet, OldDataSet,
 
     (
         % NewSel <= OldSel ie, \exists Extension: OldSel.Extension = NewSel.
-        selector.subsumed_by(ModuleInfo, already_normalized, NewSel, OldSel,
-            Type, Extension)
+        selector_subsumed_by(ModuleInfo, already_normalized,
+            NewSel, OldSel, Type, Extension)
     ->
         data_set_termshift(ModuleInfo, ProcInfo, OldDataSet, Extension,
             TermShiftedOldDataSet),
@@ -1906,8 +1940,8 @@ basic_closure(ModuleInfo, ProcInfo, Type, NewDataSet, OldDataSet,
             NewDataSet)
     ;
         % OldSel <= NewSel ie, \exists Extension: NewSel.Extension = OldSel.
-        selector.subsumed_by(ModuleInfo, already_normalized, OldSel, NewSel,
-            Type, Extension)
+        selector_subsumed_by(ModuleInfo, already_normalized,
+            OldSel, NewSel, Type, Extension)
     ->
         data_set_termshift(ModuleInfo, ProcInfo, NewDataSet, Extension,
             TermShiftedNewDataSet),
@@ -1936,8 +1970,8 @@ selector_sharing_set_extend_datastruct_2(ModuleInfo, ProcInfo, VarType,
     % to all the datastructs associated with Selector, and add them
     % to the set of datastructs collected.
     (
-        selector.subsumed_by(ModuleInfo, need_normalization, BaseSelector,
-            Selector, VarType, Extension)
+        selector_subsumed_by(ModuleInfo, need_normalization,
+            BaseSelector, Selector, VarType, Extension)
     ->
         data_set_termshift(ModuleInfo, ProcInfo, Dataset0, Extension, Dataset),
         Dataset = datastructures(_, Data),

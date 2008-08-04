@@ -23,6 +23,12 @@
 
 %-----------------------------------------------------------------------------%
 
+    % An exception of this type is thrown a procedure would need to know the
+    % type of a existentially typed node to proceed.
+    %
+:- type encounter_existential_subtype
+    --->    encounter_existential_subtype.
+
 :- type normalization
     --->    need_normalization
     ;       already_normalized.
@@ -38,7 +44,8 @@
     %
 :- pred selector_termshift(selector::in, selector::in, selector::out) is det.
 
-    % subsumed_by(ModuleInfo, Selector1, Selector2, Type, Extension).
+    % selector_subsumed_by(ModuleInfo, Normalization,
+    %   Selector1, Selector2, Type, Extension).
     %
     % Succeeds iff Selector1 is subsumed by Selector2. This means that
     % Selector2 is more general than Selector1, hence, there exists an
@@ -46,7 +53,7 @@
     %
     % The type specifies the type of the term to which the selectors refer.
     %
-:- pred subsumed_by(module_info::in, normalization::in,
+:- pred selector_subsumed_by(module_info::in, normalization::in,
     selector::in, selector::in, mer_type::in, selector::out) is semidet.
 
     % Using the type information of the variable to which the given selector
@@ -80,6 +87,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module exception.
 :- import_module map.
 :- import_module pair.
 :- import_module queue.
@@ -119,7 +127,7 @@ selector_init_from_list(Types)
 selector_termshift(S1, S2, S) :-
     list.append(S1, S2, S).
 
-subsumed_by(ModuleInfo, Normalization, S1, S2, MainType, Extension):-
+selector_subsumed_by(ModuleInfo, Normalization, S1, S2, MainType, Extension) :-
     % First make sure that both selectors are in a normalized form.
     (
         Normalization = already_normalized,
@@ -137,9 +145,9 @@ subsumed_by(ModuleInfo, Normalization, S1, S2, MainType, Extension):-
         only_term_selectors(NormS2)
     ->
         % Easy case.
-        selector_subsumed_by(NormS1, NormS2, Extension)
+        term_selector_subsumed_by(NormS1, NormS2, Extension)
     ;
-        subsumed_by_2(ModuleInfo, NormS1, NormS2, MainType, Extension)
+        selector_subsumed_by_2(ModuleInfo, NormS1, NormS2, MainType, Extension)
     ).
 
 :- pred only_term_selectors(selector::in) is semidet.
@@ -151,19 +159,19 @@ only_term_selectors([H | T]) :-
 
     % Both selectors must only contain term selectors.
     %
-:- pred selector_subsumed_by(selector::in, selector::in, selector::out)
+:- pred term_selector_subsumed_by(selector::in, selector::in, selector::out)
     is semidet.
 
-selector_subsumed_by(S1, S2, Extension):-
+term_selector_subsumed_by(S1, S2, Extension) :-
     list.append(S2, Extension, S1).
 
-    % The general case of subsumed_by, where either selector may contain type
-    % selectors.
+    % The general case of selector_subsumed_by, where either selector may
+    % contain type selectors.
     %
-:- pred subsumed_by_2(module_info::in, selector::in, selector::in,
+:- pred selector_subsumed_by_2(module_info::in, selector::in, selector::in,
     mer_type::in, selector::out) is semidet.
 
-subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
+selector_subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
     (
         B = [],
         Extension = A
@@ -179,7 +187,7 @@ subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
             ConsIdA = ConsIdB,
             IndexA = IndexB,
             SubType = det_select_subtype(ModuleInfo, Type, ConsIdA, IndexA),
-            subsumed_by_2(ModuleInfo, AT, BT, SubType, Extension)
+            selector_subsumed_by_2(ModuleInfo, AT, BT, SubType, Extension)
         ;
             % If one selector has a term selector at the current position but
             % the other has a type selector, we select the node dictated by the
@@ -190,10 +198,10 @@ subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
             SubTypeA = det_select_subtype(ModuleInfo, Type, ConsIdA, IndexA),
             ( SubTypeA = SubTypeB ->
                 % Both selectors agree on the subtype to select.
-                subsumed_by_2(ModuleInfo, AT, BT, SubTypeA, Extension)
+                selector_subsumed_by_2(ModuleInfo, AT, BT, SubTypeA, Extension)
             ;
                 type_contains_subtype(ModuleInfo, SubTypeA, SubTypeB),
-                subsumed_by_2(ModuleInfo, AT, B, SubTypeA, Extension)
+                selector_subsumed_by_2(ModuleInfo, AT, B, SubTypeA, Extension)
             )
         ;
             % Symmetric with the previous case.
@@ -202,10 +210,10 @@ subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
             SubTypeB = det_select_subtype(ModuleInfo, Type, ConsIdB, IndexB),
             ( SubTypeA = SubTypeB ->
                 % Both selectors agree on the subtype to select.
-                subsumed_by_2(ModuleInfo, AT, BT, SubTypeB, Extension)
+                selector_subsumed_by_2(ModuleInfo, AT, BT, SubTypeB, Extension)
             ;
                 type_contains_subtype(ModuleInfo, SubTypeB, SubTypeA),
-                subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension)
+                selector_subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension)
             )
         ;
             AH = typesel(SubTypeA),
@@ -215,12 +223,12 @@ subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
             ->
                 % Both selectors begin with type selectors and agree on the
                 % subtype to select.
-                subsumed_by_2(ModuleInfo, AT, BT, SubTypeB, Extension)
+                selector_subsumed_by_2(ModuleInfo, AT, BT, SubTypeB, Extension)
             ;
                 % Assume we select node according to the B selector, then check
                 % that the rest of B subsumes A.
                 type_contains_subtype(ModuleInfo, SubTypeB, SubTypeA),
-                subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension0)
+                selector_subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension0)
             ->
                 % Don't succeed for something like:
                 %   A   = [typesel(foo)],
@@ -234,7 +242,7 @@ subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
                 % Assume we select node according to the A selector, then check
                 % that B subsumes the rest of A.
                 type_contains_subtype(ModuleInfo, SubTypeA, SubTypeB),
-                subsumed_by_2(ModuleInfo, AT, B, SubTypeA, Extension)
+                selector_subsumed_by_2(ModuleInfo, AT, B, SubTypeA, Extension)
             )
         )
     ).
@@ -304,7 +312,7 @@ type_of_node(ModuleInfo, StartType, Selector, SubType) :-
         SubType = StartType
     ).
 
-    % det_select_subtype(ModuleInfo, Type, ConsID, Position) = SubType.
+    % select_subtype(ModuleInfo, Type, ConsID, Position) = SubType.
     % Determine the type of the type node selected from the type tree Type,
     % selecting the specific constructor (ConsId), at position Position.
     % Position counts starting from 1.
@@ -315,7 +323,7 @@ det_select_subtype(ModuleInfo, Type, ConsID, Position) = SubType :-
     ( select_subtype(ModuleInfo, Type, ConsID, Position, SubType0) ->
         SubType = SubType0
     ;
-        unexpected(this_file, "select_subtype: existential subtype")
+        throw(encounter_existential_subtype)
     ).
 
 :- pred select_subtype(module_info::in, mer_type::in, cons_id::in, int::in,
@@ -430,11 +438,9 @@ selector_apply_widening(ModuleInfo, MainType, Selector0, Selector) :-
         ( type_of_node(ModuleInfo, MainType, Selector0, SubType) ->
             Selector = [typesel(SubType)]
         ;
-            % The node is existentially typed. Try for the type of the node's
-            % parent instead.
-            list.det_split_last(Selector0, ParentSelector, _),
-            selector_apply_widening(ModuleInfo, MainType, ParentSelector,
-                Selector)
+            % The node is existentially typed.  Let's just leave the selector
+            % as-is.
+            Selector = Selector0
         )
     ).
 
