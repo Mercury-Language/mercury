@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -172,124 +172,155 @@ filename_mangle_2([First | Rest]) = MangledChars :-
     ).
 
 send_term(ToPipeName, Debug, Data, !IO) :-
-    io.open_output(ToPipeName, Res, !IO),
+    io.open_output(ToPipeName, ToPipeRes, !IO),
     (
-        Res = ok(ToStream),
+        ToPipeRes = ok(ToStream),
         io.write(ToStream, Data, !IO),
         io.write_string(ToStream, ".\n", !IO),
         io.close_output(ToStream, !IO)
     ;
-        Res = error(_),
-        error("send_term: couldn't open pipe")
+        ToPipeRes = error(ToPipeError),
+        io.error_message(ToPipeError, ToPipeErrorMsg),
+        string.format("send_term: couldn't open pipe %s: %s",
+            [s(ToPipeName), s(ToPipeErrorMsg)], ToPipeMsg),
+        error(ToPipeMsg)
     ),
     (
         Debug = yes,
-        io.open_output("/tmp/.send_term", Res2, !IO),
+        DebugFileName = "/tmp/.send_term",
+        io.open_output(DebugFileName, DebugRes, !IO),
         (
-            Res2 = ok(DebugStream),
+            DebugRes = ok(DebugStream),
             io.write(DebugStream, Data, !IO),
             io.write_string(DebugStream, ".\n", !IO),
             io.close_output(DebugStream, !IO)
         ;
-            Res2 = error(_),
-            error("send_term: couldn't debug")
+            DebugRes = error(DebugError),
+            io.error_message(DebugError, DebugErrorMsg),
+            string.format("send_term: couldn't open debug file %s: %s",
+                [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
+            error(DebugMsg)
         )
     ;
         Debug = no
     ).
 
 send_string(ToPipeName, Debug, Data, !IO) :-
-    io.open_output(ToPipeName, Res, !IO),
+    io.open_output(ToPipeName, ToPipeRes, !IO),
     (
-        Res = ok(ToStream),
+        ToPipeRes = ok(ToStream),
         io.write_string(ToStream, Data, !IO),
         io.close_output(ToStream, !IO)
     ;
-        Res = error(_),
-        error("send_string: couldn't open pipe")
+        ToPipeRes = error(ToPipeError),
+        io.error_message(ToPipeError, ToPipeErrorMsg),
+        string.format("send_term: couldn't open pipe %s: %s",
+            [s(ToPipeName), s(ToPipeErrorMsg)], ToPipeMsg),
+        error(ToPipeMsg)
     ),
     (
         Debug = yes,
-        io.open_output("/tmp/.send_string", Res2, !IO),
+        DebugFileName = "/tmp/.send_string",
+        io.open_output(DebugFileName, DebugRes, !IO),
         (
-            Res2 = ok(DebugStream),
+            DebugRes = ok(DebugStream),
             io.write_string(DebugStream, Data, !IO),
             io.close_output(DebugStream, !IO)
         ;
-            Res2 = error(_),
-            error("send_string: couldn't debug")
+            DebugRes = error(DebugError),
+            io.error_message(DebugError, DebugErrorMsg),
+            string.format("send_term: couldn't open debug file %s: %s",
+                [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
+            error(DebugMsg)
         )
     ;
         Debug = no
     ).
 
 recv_term(FromPipeName, Debug, Resp, !IO) :-
-    io.open_input(FromPipeName, Res0, !IO),
+    io.open_input(FromPipeName, FromPipeRes, !IO),
     (
-        Res0 = ok(FromStream),
-        io.read(FromStream, Res1, !IO),
+        FromPipeRes = ok(FromStream),
+        io.read(FromStream, ReadRes, !IO),
         (
-            Res1 = ok(Resp0),
-            Resp = Resp0
+            ReadRes = ok(Resp)
         ;
-            Res1 = eof,
-            error("recv_term: read failed")
+            ReadRes = eof,
+            error("recv_term: read failed: premature eof")
         ;
-            Res1 = error(_, _),
-            error("recv_term: read failed")
+            ReadRes = error(ReadErrorMsg, ReadErrorLineNumber),
+            string.format("recv_term: read failed at line %d: %s",
+                [i(ReadErrorLineNumber), s(ReadErrorMsg)], ReadMsg),
+            error(ReadMsg)
         ),
         io.close_input(FromStream, !IO),
         (
             Debug = yes,
-            io.open_output("/tmp/.recv_term", Res2, !IO),
+            DebugFileName = "/tmp/.recv_term",
+            io.open_output(DebugFileName, DebugRes, !IO),
             (
-                Res2 = ok(DebugStream),
-                io.write(DebugStream, Res1, !IO),
+                DebugRes = ok(DebugStream),
+                io.write(DebugStream, ReadRes, !IO),
                 io.write_string(DebugStream, ".\n", !IO),
                 io.close_output(DebugStream, !IO)
             ;
-                Res2 = error(_),
-                error("recv_term: couldn't debug")
+                DebugRes = error(DebugError),
+                io.error_message(DebugError, DebugErrorMsg),
+                string.format("recv_term: couldn't open debug file %s: %s",
+                    [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
+                error(DebugMsg)
             )
         ;
             Debug = no
         )
     ;
-        Res0 = error(_),
-        error("recv_term: couldn't open pipe")
+        FromPipeRes = error(FromPipeError),
+        io.error_message(FromPipeError, FromPipeErrorMsg),
+        string.format("recv_term: couldn't open pipe %s: %s",
+            [s(FromPipeName), s(FromPipeErrorMsg)], FromPipeMsg),
+        error(FromPipeMsg)
     ).
 
 recv_string(FromPipeName, Debug, Resp, !IO) :-
-    io.open_input(FromPipeName, Res0, !IO),
+    io.open_input(FromPipeName, FromPipeRes, !IO),
     (
-        Res0 = ok(FromStream),
-        io.read_file_as_string(FromStream, Res1, !IO),
+        FromPipeRes = ok(FromStream),
+        io.read_file_as_string(FromStream, ReadRes, !IO),
         (
-            Res1 = ok(Resp0),
-            Resp = Resp0
+            ReadRes = ok(Resp)
         ;
-            Res1 = error(_, _),
-            error("recv_string: read failed")
+            ReadRes = error(_, ReadError),
+            io.error_message(ReadError, ReadErrorMsg),
+            string.format("recv_string: read failed: %s",
+                [s(ReadErrorMsg)], ReadMsg),
+            error(ReadMsg)
         ),
         io.close_input(FromStream, !IO),
         (
             Debug = yes,
-            io.open_output("/tmp/.recv_string", Res2, !IO),
+            DebugFileName = "/tmp/.recv_string",
+            io.open_output(DebugFileName, DebugRes, !IO),
             (
-                Res2 = ok(DebugStream),
-                io.write(DebugStream, Res1, !IO),
+                DebugRes = ok(DebugStream),
+                io.write(DebugStream, ReadRes, !IO),
                 io.write_string(DebugStream, ".\n", !IO),
                 io.close_output(DebugStream, !IO)
             ;
-                Res2 = error(_),
-                error("recv_string: couldn't debug")
+                DebugRes = error(DebugError),
+                io.error_message(DebugError, DebugErrorMsg),
+                string.format("recv_string: couldn't open debug file %s: %s",
+                    [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
+                error(DebugMsg)
             )
         ;
             Debug = no
         )
     ;
-        Res0 = error(_),
-        error("recv_term: couldn't open pipe")
+        FromPipeRes = error(FromPipeError),
+        io.error_message(FromPipeError, FromPipeErrorMsg),
+        string.format("recv_string: couldn't open pipe %s: %s",
+            [s(FromPipeName), s(FromPipeErrorMsg)], FromPipeMsg),
+        error(FromPipeMsg)
     ).
 
 %-----------------------------------------------------------------------------%

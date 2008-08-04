@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: feedback.m.
 % Main author: pbone.
-% 
+%
 % This module defines data structures for representing feedback information
 % as well as procedures for reading and writing feedback files.  It is
 % included in the compiler and in any tools that generate feedback data.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -37,28 +37,32 @@
 %-----------------------------------------------------------------------------%
 
     % This type is used as a key for the data that may be fed back into the
-    % compiler.  When making changes to this structure be sure to increment the
-    % file format version number towards the bottom of this file.
+    % compiler.
+    %
+    % NOTE: When making changes to this structure, be sure to increment
+    % the file format version number towards the bottom of this file.
     %
 :- type feedback_type
     --->    feedback_type_calls_above_threshold_sorted.
-                % Feedback data of this type represents a list of
-                % calli sites sorted in decending order of mean/median
-                % call cost where that cost is greater than a given
-                % threshold.  Mean or median costs are used.
-               
+            % Feedback data of this type represents a list of call sites
+            % sorted in descending order of mean or median call cost where
+            % that cost is greater than a given threshold.
 
 %-----------------------------------------------------------------------------%
 
-    % This type stores the data that may be fed back into the compiler.  Each
-    % constructor here corresponds to a value of the above type.  When making
-    % changes to this structure or structures in mdbcomp.program_representation
-    % be sure to increment the file format version number towards the bottom of
-    % this file.
+    % This type stores the data that may be fed back into the compiler.
+    % Each constructor here corresponds to a constructor of the feedback_type
+    % type.
     %
-    % TODO: Somehow need to constrain the instantiations of this type so that
-    % they are always paired with instantitations of the above type, and
-    % hopefuly the compiler can assert this.
+    % TODO: We need a mechanism to ensure that the answer for a given query
+    % (a value of type feedback_type) is always the corresponding value
+    % in this type. The right solution would be to represent a query as
+    % a partially instantiated data structure that we later fill in,
+    % but Mercury doesn't yet let us do that.
+    %
+    % NOTE: When making changes to this structure or structures in
+    % mdbcomp.program_representation, be sure to increment the file format
+    % version number towards the bottom of this file.
     %
 :- type feedback_data
     --->    feedback_data_calls_above_threshold_sorted(
@@ -90,18 +94,18 @@
     %
     % To query the feedback files 'get' will give a value for a given info type
     % if it exists.
-    % 
+    %
 :- pred get_feedback_data(feedback_type::in, maybe(feedback_data)::out,
     feedback_info::in) is det.
-    
+
 %-----------------------------------------------------------------------------%
 
     % read_feedback_file(Path, FeedbackState, !IO)
     %
-    % This predicate reads in feedback data from a specified file.  It should
-    % be called once per compiler invocation.
+    % This predicate reads in feedback data from a specified file.
+    % It should be called once per compiler invocation.
     %
-:- pred read_feedback_file(string::in, 
+:- pred read_feedback_file(string::in,
     feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
 
 :- type feedback_read_result(T)
@@ -113,7 +117,8 @@
     ;       read_error(io.error)
     ;       parse_error(
                 message     :: string,
-                line_no     :: int)
+                line_no     :: int
+            )
     ;       unexpected_eof
     ;       incorrect_version
     ;       incorrect_first_line
@@ -138,19 +143,19 @@
 %-----------------------------------------------------------------------------%
 
     % init_feedback_info = FeedbackState
-    % 
+    %
     % Create a new empty feedback state.
     %
 :- func init_feedback_info = feedback_info.
 
 %-----------------------------------------------------------------------------%
 
-    % write_feedback_file(Path, ProgName, FeedbackState, FeedbackWriteResult, 
+    % write_feedback_file(Path, ProgName, FeedbackState, FeedbackWriteResult,
     %   !IO)
     %
     % Write out the feedback data to a given file name.
     %
-:- pred write_feedback_file(string::in, string::in, feedback_info::in, 
+:- pred write_feedback_file(string::in, string::in, feedback_info::in,
     feedback_write_result::out, io::di, io::uo) is det.
 
 :- type feedback_write_result
@@ -178,9 +183,7 @@
 
 get_feedback_data(Type, MaybeData, Info) :-
     Info = feedback_info(Map),
-    (
-        map.search(Map, Type, Data)
-    ->
+    ( map.search(Map, Type, Data) ->
         MaybeData = yes(Data)
     ;
         MaybeData = no
@@ -205,17 +208,16 @@ read_feedback_file(Path, ReadResultFeedbackInfo, !IO) :-
         %
         IOResStream = ok(Stream),
         some [!Result] (
-            %
             % Read each part of the file and continue reading of this is
             % succesful.  read_cont takes care of this logic.
-            %
-            read_check_line(feedback_first_line, incorrect_first_line, Stream, 
+
+            read_check_line(feedback_first_line, incorrect_first_line, Stream,
                 unit, !:Result, !IO),
             maybe_read(
-                read_check_line(feedback_version, incorrect_version, Stream), 
+                read_check_line(feedback_version, incorrect_version, Stream),
                 !Result, !IO),
             maybe_read(
-                read_no_check_line(Stream), 
+                read_no_check_line(Stream),
                 !Result, !IO),
             maybe_read(read_data(Stream), !Result, !IO),
             ReadResultFeedbackInfo = !.Result
@@ -226,11 +228,11 @@ read_feedback_file(Path, ReadResultFeedbackInfo, !IO) :-
         ReadResultFeedbackInfo = error(open_error(ErrorCode))
     ).
 
-    % If the result so far is successful, call the colsure and return it's
+    % If the result so far is successful, call the closure and return its
     % result.  Otherwise return the accumulated result without calling the
-    % colsure.
+    % closure.
     %
-:- pred maybe_read(pred(A, feedback_read_result(B), io, io), 
+:- pred maybe_read(pred(A, feedback_read_result(B), io, io),
     feedback_read_result(A), feedback_read_result(B), io, io).
 :- mode maybe_read(pred(in, out, di, uo) is det,
     in, out, di, uo) is det.
@@ -246,8 +248,8 @@ maybe_read(Pred, Result0, Result, !IO) :-
 
     % Read and check a line of the file.
     %
-:- pred read_check_line(string::in, feedback_read_error::in, 
-    io.input_stream::in, unit::in, feedback_read_result(unit)::out, 
+:- pred read_check_line(string::in, feedback_read_error::in,
+    io.input_stream::in, unit::in, feedback_read_result(unit)::out,
     io::di, io::uo) is det.
 
 read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
@@ -256,7 +258,8 @@ read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
         IOResultLine = ok(Line),
         (
             ( Line = TestLine
-            ; Line = TestLine ++ "\n")
+            ; Line = TestLine ++ "\n"
+            )
         ->
             Result = ok(unit)
         ;
@@ -272,7 +275,7 @@ read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
 
     % Read and don't check a line of the file.
     %
-:- pred read_no_check_line(io.input_stream::in, unit::in, 
+:- pred read_no_check_line(io.input_stream::in, unit::in,
     feedback_read_result(unit)::out, io::di, io::uo) is det.
 
 read_no_check_line(Stream, _, Result, !IO) :-
@@ -290,7 +293,7 @@ read_no_check_line(Stream, _, Result, !IO) :-
 
     % Read the feedback data from the file.
     %
-:- pred read_data(io.input_stream::in, unit::in, 
+:- pred read_data(io.input_stream::in, unit::in,
     feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
 
 read_data(Stream, _, Result, !IO) :-
@@ -324,7 +327,8 @@ read_or_create(Path, Feedback, !IO) :-
 read_error_message_string(File, Error, Message) :-
     (
         ( Error = open_error(Code)
-        ; Error = read_error(Code) ),
+        ; Error = read_error(Code)
+        ),
         error_message(Code, MessagePart)
     ;
         Error = parse_error(ParseMessage, Line),
@@ -340,13 +344,14 @@ read_error_message_string(File, Error, Message) :-
         MessagePart = "Incorrect file format"
     ;
         Error = incorrect_program_name,
-        MessagePart = "Program name didn't match, is this the right feedback file?"
+        MessagePart =
+            "Program name didn't match, is this the right feedback file?"
     ),
     string.format("%s: %s\n", [s(File), s(MessagePart)], Message).
 
 %-----------------------------------------------------------------------------%
 
-:- pred display_read_error(string::in, feedback_read_error::in, 
+:- pred display_read_error(string::in, feedback_read_error::in,
     io::di, io::uo) is det.
 
 display_read_error(File, Error, !IO) :-
@@ -363,20 +368,18 @@ write_feedback_file(Path, ProgName, Feedback, Res, !IO) :-
     io.open_output(Path, OpenRes, !IO),
     (
         OpenRes = ok(Stream),
-        promise_equivalent_solutions [!:IO, ExcpRes] 
-            try_io(write2(Stream, ProgName, Feedback), ExcpRes, !IO),
+        promise_equivalent_solutions [!:IO, ExcpRes] (
+            try_io(write_feedback_file_2(Stream, ProgName, Feedback),
+                ExcpRes, !IO)
+        ),
         (
             ExcpRes = succeeded(_),
             Res = ok
         ;
             ExcpRes = exception(ExcpUniv),
-            
-            %
-            % If the exception is not a type we exected then re-throw it.
-            %
-            (
-                univ_to_type(ExcpUniv, Excp)
-            ->
+
+            % If the exception is not of a type we expected, then re-throw it.
+            ( univ_to_type(ExcpUniv, Excp) ->
                 Res = write_error(Excp)
             ;
                 rethrow(ExcpRes)
@@ -385,15 +388,16 @@ write_feedback_file(Path, ProgName, Feedback, Res, !IO) :-
     ;
         OpenRes = error(ErrorCode),
         Res = open_error(ErrorCode)
-    ). 
+    ).
 
-    % Write out the data.  This is called by try IO to catch any exceptions
-    % that close_output and other predicates may throw.
+    % Write out the data. This is called by try_io to catch any exceptions
+    % that close_output and the other predicates we call here (e.g. io.write)
+    % may throw.
     %
-:- pred write2(output_stream::in, string::in, feedback_info::in, unit::out, 
-    io::di, io::uo) is det.
+:- pred write_feedback_file_2(output_stream::in, string::in, feedback_info::in,
+    unit::out, io::di, io::uo) is det.
 
-write2(Stream, ProgName, Feedback, unit, !IO) :-
+write_feedback_file_2(Stream, ProgName, Feedback, unit, !IO) :-
     io.write_string(Stream, feedback_first_line, !IO),
     io.nl(Stream, !IO),
     io.write_string(Stream, feedback_version, !IO),

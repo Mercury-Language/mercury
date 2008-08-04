@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2007 The University of Melbourne.
+% Copyright (C) 2001, 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -118,25 +118,34 @@ read_call_graph(FileName, Res, !IO) :-
     io::di, io::uo) is det.
 
 read_deep_id_string(Res, !IO) :-
-    read_n_byte_string(string.length(deep_id_string), Res0, !IO),
+    read_line(string.length(deep_id_string), LineRes, !IO),
     (
-        Res0 = ok(String),
-        ( String = deep_id_string ->
+        LineRes = ok(Line),
+        ( Line = deep_id_string ->
             Res = ok(deep_id_string)
+        ; string.prefix(Line, deep_id_prefix) ->
+            Res = error("version number mismatch")
         ;
             Res = error("not a deep profiling data file")
         )
     ;
-        Res0 = error(Err),
+        LineRes = error(Err),
         Res = error(Err)
     ).
 
+    % Return the string identifying a file as a deep profiling data file.
+    % This must the same string as the one written by the function
+    % MR_write_out_deep_id_string in runtime/mercury_deep_profiling.c.
+    %
 :- func deep_id_string = string.
 
-% This must the same string as the one written by MR_write_out_deep_id_string
-% in runtime/mercury_deep_profiling.c.
-
 deep_id_string = "Mercury deep profiler data version 5\n".
+
+    % Return the part of deep_id_string that is version independent.
+    %
+:- func deep_id_prefix = string.
+
+deep_id_prefix = "Mercury deep profiler data version".
 
 :- func init_deep(int, int, int, int, int, int, int, int, int, int, int)
     = initial_deep.
@@ -309,7 +318,7 @@ read_proc_static(Res, !IO) :-
         read_n_things(NCS, read_ptr(css), Res2, !IO),
         (
             Res2 = ok(CSSIs),
-            read_n_things(NCP, read_coverage_point, Res3, !IO), 
+            read_n_things(NCP, read_coverage_point, Res3, !IO),
             (
                 Res3 = ok(CoveragePoints),
                 CSSPtrs = list.map(make_cssptr, CSSIs),
@@ -326,7 +335,7 @@ read_proc_static(Res, !IO) :-
                 % to `zeroed' in the proc_statics which are ever zeroed.
                 ProcStatic = proc_static(Id, DeclModule,
                     RefinedStr, RawStr, FileName, LineNumber,
-                    IsInInterface, array(CSSPtrs), array(CoveragePoints), 
+                    IsInInterface, array(CSSPtrs), array(CoveragePoints),
                     not_zeroed),
                 Res = ok2(ProcStatic, PSI),
                 trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
@@ -412,7 +421,7 @@ read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
         ),
         Res, !IO).
 
-:- pred read_coverage_point(maybe_error(coverage_point)::out, io::di, io::uo) 
+:- pred read_coverage_point(maybe_error(coverage_point)::out, io::di, io::uo)
     is det.
 
 read_coverage_point(Res, !IO) :-
@@ -425,7 +434,6 @@ read_coverage_point(Res, !IO) :-
             CP = ok(coverage_point(CPCount, GoalPath, CPType))
         ),
         Res, !IO).
-
 
 :- func raw_proc_id_to_string(string_proc_label) = string.
 
@@ -945,6 +953,46 @@ read_n_things(N, ThingReader, Things0, Res, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred read_line(int::in, maybe_error(string)::out, io::di, io::uo) is det.
+
+read_line(Limit, Res, !IO) :-
+    read_line_acc(Limit, [], Res, !IO).
+
+:- pred read_line_acc(int::in, list(char)::in, maybe_error(string)::out,
+    io::di, io::uo) is det.
+
+read_line_acc(Limit, !.RevChars, Res, !IO) :-
+    ( Limit > 0 ->
+        read_byte(ByteRes, !IO),
+        (
+            ByteRes = ok(Byte),
+            ( char.to_int(Char, Byte) ->
+                % Include the newline in the string.
+                !:RevChars = [Char | !.RevChars],
+                ( Char = '\n' ->
+                    list.reverse(!.RevChars, Chars),
+                    string.from_char_list(Chars, Str),
+                    Res = ok(Str)
+                ;
+                    read_line_acc(Limit - 1, !.RevChars, Res, !IO)
+                )
+            ;
+                Res = error("unexpected end of file")
+            )
+        ;
+            ByteRes = eof,
+            Res = error("unexpected end of file")
+        ;
+            ByteRes = error(Err),
+            io.error_message(Err, Msg),
+            Res = error(Msg)
+        )
+    ;
+        list.reverse(!.RevChars, Chars),
+        string.from_char_list(Chars, Str),
+        Res = ok(Str)
+    ).
+
 :- pred read_string(maybe_error(string)::out,
     io::di, io::uo) is det.
 
@@ -966,11 +1014,11 @@ read_string(Res, !IO) :-
     io::di, io::uo) is det.
 
 read_n_byte_string(Length, Res, !IO) :-
-    read_n_bytes(Length, Res1, !IO),
+    read_n_bytes(Length, NByteRes, !IO),
     (
-        Res1 = ok(Bytes),
+        NByteRes = ok(Bytes),
         (
-            map((pred(I::in, C::out) is semidet :- char.to_int(C, I)),
+            list.map((pred(I::in, C::out) is semidet :- char.to_int(C, I)),
                 Bytes, Chars)
         ->
             string.from_char_list(Chars, Str),
@@ -979,7 +1027,7 @@ read_n_byte_string(Length, Res, !IO) :-
             Res = error("string contained bad char")
         )
     ;
-        Res1 = error(Err),
+        NByteRes = error(Err),
         Res = error(Err)
     ),
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
@@ -991,13 +1039,12 @@ read_n_byte_string(Length, Res, !IO) :-
 :- pred read_ptr(ptr_kind::in, maybe_error(int)::out, io::di, io::uo) is det.
 
 read_ptr(_Kind, Res, !IO) :-
-    read_num1(0, Res, !IO),
+    read_num(Res, !IO),
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("ptr ", !IO),
         io.write(Res, !IO),
         io.write_string("\n", !IO)
     ).
-
 
 :- pred read_cp_type(maybe_error(cp_type)::out, io::di, io::uo) is det.
 
@@ -1012,37 +1059,35 @@ read_cp_type(MaybeRes, !IO) :-
         MaybeRes = error(Msg)
     ).
 
-
 :- pred num_to_cp_type(int::in, cp_type::out) is det.
 
-:- pragma foreign_proc("C", num_to_cp_type(Int::in, CPType::out),
-    [will_not_call_mercury, thread_safe, promise_pure], "
-
-        CPType = Int;
-
-    ").
-
+:- pragma foreign_proc("C",
+    num_to_cp_type(Int::in, CPType::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    CPType = Int;
+").
 
 :- pred read_num(maybe_error(int)::out, io::di, io::uo) is det.
 
 read_num(Res, !IO) :-
-    read_num1(0, Res, !IO),
+    read_num_acc(0, Res, !IO),
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("num ", !IO),
         io.write(Res, !IO),
         io.write_string("\n", !IO)
     ).
 
-:- pred read_num1(int::in, maybe_error(int)::out,
+:- pred read_num_acc(int::in, maybe_error(int)::out,
     io::di, io::uo) is det.
 
-read_num1(Num0, Res, !IO) :-
+read_num_acc(Num0, Res, !IO) :-
     read_byte(Res0, !IO),
     (
         Res0 = ok(Byte),
         Num1 = (Num0 << 7) \/ (Byte /\ 0x7F),
         ( Byte /\ 0x80 \= 0 ->
-            read_num1(Num1, Res, !IO)
+            read_num_acc(Num1, Res, !IO)
         ;
             Res = ok(Num1)
         )
@@ -1066,12 +1111,12 @@ fixed_size_int_bytes = 4.
     io::di, io::uo) is det.
 
 read_fixed_size_int(Res, !IO) :-
-    read_fixed_size_int1(fixed_size_int_bytes, 0, 0, Res, !IO).
+    read_fixed_size_int_acc(fixed_size_int_bytes, 0, 0, Res, !IO).
 
-:- pred read_fixed_size_int1(int::in, int::in, int::in, maybe_error(int)::out,
-    io::di, io::uo) is det.
+:- pred read_fixed_size_int_acc(int::in, int::in, int::in,
+    maybe_error(int)::out, io::di, io::uo) is det.
 
-read_fixed_size_int1(BytesLeft, Num0, ShiftBy, Res, !IO) :-
+read_fixed_size_int_acc(BytesLeft, Num0, ShiftBy, Res, !IO) :-
     ( BytesLeft =< 0 ->
         Res = ok(Num0)
     ;
@@ -1079,7 +1124,7 @@ read_fixed_size_int1(BytesLeft, Num0, ShiftBy, Res, !IO) :-
         (
             Res0 = ok(Byte),
             Num1 = Num0 \/ ( Byte << ShiftBy),
-            read_fixed_size_int1(BytesLeft - 1, Num1, ShiftBy + 8, Res, !IO)
+            read_fixed_size_int_acc(BytesLeft - 1, Num1, ShiftBy + 8, Res, !IO)
         ;
             Res0 = error(Err),
             Res = error(Err)
@@ -1090,27 +1135,27 @@ read_fixed_size_int1(BytesLeft, Num0, ShiftBy, Res, !IO) :-
     io::di, io::uo) is det.
 
 read_n_bytes(N, Res, !IO) :-
-    read_n_bytes(N, [], Res0, !IO),
+    read_n_bytes_acc(N, [], Res0, !IO),
     (
         Res0 = ok(Bytes0),
-        reverse(Bytes0, Bytes),
+        list.reverse(Bytes0, Bytes),
         Res = ok(Bytes)
     ;
         Res0 = error(Err),
         Res = error(Err)
     ).
 
-:- pred read_n_bytes(int::in, list(int)::in, maybe_error(list(int))::out,
+:- pred read_n_bytes_acc(int::in, list(int)::in, maybe_error(list(int))::out,
     io::di, io::uo) is det.
 
-read_n_bytes(N, Bytes0, Res, !IO) :-
+read_n_bytes_acc(N, RevBytes0, Res, !IO) :-
     ( N =< 0 ->
-        Res = ok(Bytes0)
+        Res = ok(RevBytes0)
     ;
         read_deep_byte(Res0, !IO),
         (
             Res0 = ok(Byte),
-            read_n_bytes(N - 1, [Byte | Bytes0], Res, !IO)
+            read_n_bytes_acc(N - 1, [Byte | RevBytes0], Res, !IO)
         ;
             Res0 = error(Err),
             Res = error(Err)

@@ -1,11 +1,11 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mdprof_cgi.m.
 % Author of initial version: conway.
 % Author of this version: zs.
@@ -378,7 +378,7 @@ handle_query_from_new_server(Cmd, PrefInd, FileName,
         release_lock(Debug, MutexFile, !IO),
         remove_want_file(WantFile, !IO),
         io.set_exit_status(1, !IO),
-        io.format("error reading data file: %s\n", [s(Error)], !IO)
+        io.format("error reading %s: %s\n", [s(FileName), s(Error)], !IO)
     ).
 
     % Become the new server. Delete the mutex and want files when we get out
@@ -493,7 +493,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
 
     ( Cmd0 = deep_cmd_restart ->
         read_and_startup(Deep0 ^ server_name_port, Deep0 ^ script_name,
-            [Deep0 ^ data_file_name], Canonical, MaybeStartupStream, [], 
+            [Deep0 ^ data_file_name], Canonical, MaybeStartupStream, [],
             MaybeDeep, !IO),
         (
             MaybeDeep = ok(Deep),

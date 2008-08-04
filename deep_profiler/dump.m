@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,15 +38,13 @@
                 do_dump_prop_measurements   :: dump_prop_measurements
             ).
 
-
     % This type is used to describe if a restricted set of "css" and "ps"
     % structures should be shown, (those for code that was executed), or if all
     % "css" and "ps" structures should be shown.
     %
-:- type show_restricted_dump 
+:- type show_restricted_dump
     --->        show_restricted_dump
     ;           show_complete_dump.
-
 
     % This type indicates the arrays in the deep profile data that may be
     % printed.
@@ -57,14 +55,12 @@
     ;           pd
     ;           ps.
 
-    
     % show_stats describes whether to show some statistics and the root node
     % in the dump.
     %
 :- type show_stats
     --->        show_stats
-    ;           dont_show_stats.
-
+    ;           do_not_show_stats.
 
     % Types to specifiy if cliques, rev (proc static to caller) links and
     % propagated measurements should be dumpped by dump_deep/3.
@@ -81,13 +77,11 @@
     --->        dump_prop_measurements
     ;           do_not_dump_prop_measurements.
 
-
 %-----------------------------------------------------------------------------%
-    
+
     % returns the default dump options.
     %
 :- func default_dump_options = dump_options.
-
 
     % dump_array_options will take a list of strings for the accumulating
     % dump options and produce a set if possible.
@@ -95,19 +89,17 @@
     % A deterministic version is avalible that will throw an exception if
     % a string cannot be converted to a option.
     %
-:- pred dump_array_options(list(string)::in, set(dumpable_array)::out) 
+:- pred dump_array_options(list(string)::in, set(dumpable_array)::out)
     is semidet.
 :- pred det_dump_array_options(list(string)::in, set(dumpable_array)::out)
     is det.
 
-    
     % dump_array_options_to_dump_options takes a list of strings of the
     % accumulating array dump options and create a dump_options structure
     % based on the default plus these spacific array options.
     %
 :- pred dump_array_options_to_dump_options(list(string)::in,
     dump_options::out) is det.
-
 
     % dump_initial_deep(InitialDeep, DumpOptions, !IO):
     %
@@ -153,7 +145,6 @@ default_dump_options = DumpOptions :-
     DumpOptions = dump_options(show_complete_dump, all_array_options,
         show_stats, dump_cliques, dump_rev_links, dump_prop_measurements).
 
-
 det_dump_array_options(Strings, DumpArrayOptions) :-
     (
         dump_array_options_special(Strings, DumpArrayOptionsSpecial)
@@ -169,11 +160,10 @@ dump_array_options(Strings, DumpArrayOptions) :-
         dump_array_options_special(Strings, DumpArrayOptionsSpecial)
     ->
         DumpArrayOptions = DumpArrayOptionsSpecial
-    ; 
+    ;
         string_list_to_sym_set(string_to_dumpable_array, Strings,
             DumpArrayOptions)
     ).
-
 
     % Handle special cases in the list of array options.
     %
@@ -183,21 +173,17 @@ dump_array_options(Strings, DumpArrayOptions) :-
 dump_array_options_special([], all_array_options).
 dump_array_options_special(["all"], all_array_options).
 
-
 dump_array_options_to_dump_options(Strings, DumpOptions) :-
     det_dump_array_options(Strings, DumpArrayOptions),
     DumpOptions = default_dump_options ^ do_arrays := DumpArrayOptions.
-      
-
 
 :- pred string_list_to_sym_set(pred(string, X), list(string), set(X)).
 :- mode string_list_to_sym_set(pred(in, out) is det, in, out) is det.
 :- mode string_list_to_sym_set(pred(in, out) is semidet, in, out) is semidet.
 
-string_list_to_sym_set(StrToSym, List0, Set) :-
-    map(StrToSym, List0, List),
+string_list_to_sym_set(StrToSym, StrList, Set) :-
+    list.map(StrToSym, StrList, List),
     list_to_set(List, Set).
-
 
 :- pred det_string_to_dumpable_array(string::in, dumpable_array::out) is det.
 
@@ -208,7 +194,6 @@ det_string_to_dumpable_array(String, Array) :-
         error("Invalid array name in dump options: " ++ String)
     ).
 
-
 :- pred string_to_dumpable_array(string::in, dumpable_array::out) is semidet.
 
 string_to_dumpable_array("csd", csd).
@@ -216,12 +201,10 @@ string_to_dumpable_array("css", css).
 string_to_dumpable_array("pd", pd).
 string_to_dumpable_array("ps", ps).
 
-
 :- func all_array_options = set(dumpable_array).
 
 all_array_options = Set :-
     Set = set.list_to_set([csd, css, pd, ps]).
-
 
 %----------------------------------------------------------------------------%
 %
@@ -240,12 +223,12 @@ dump_initial_deep(InitialDeep, DumpOptions, !IO) :-
         Restriction = none
     ),
     ShowStats = DumpOptions ^ do_stats,
-    ( 
+    (
         ShowStats = show_stats,
         dump_init_profile_stats(Stats, !IO),
         dump_init_root(InitRoot, !IO)
     ;
-        ShowStats = dont_show_stats
+        ShowStats = do_not_show_stats
     ),
     ( should_dump(DumpOptions, csd) ->
         dump_init_call_site_dynamics(CSDs, !IO)
@@ -536,7 +519,7 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
         )
     ->
         ProcStatic = proc_static(Id, DeclModule, RefinedId, RawId,
-            FileName, LineNumber, InInterface, Sites, CoveragePoints, 
+            FileName, LineNumber, InInterface, Sites, CoveragePoints,
             IsZeroed),
         IdStr = dump_proc_id(Id),
         io.format("ps%d:\n", [i(Index)], !IO),
@@ -586,16 +569,14 @@ dump_proc_static_call_sites(Slot, CSSPtr, !IO) :-
     CSSPtr = call_site_static_ptr(CSSI),
     io.format("\tps_site[%d]: css%d\n", [i(Slot), i(CSSI)], !IO).
 
-
-:- pred dump_coverage_point(int::in, coverage_point::in, io::di, io::uo) 
+:- pred dump_coverage_point(int::in, coverage_point::in, io::di, io::uo)
     is det.
 
 dump_coverage_point(Num, CoveragePoint, !IO) :-
     CoveragePoint = coverage_point(Count, Path, Type),
     goal_path_to_string(Path) = PathString,
-    io.format("\tcoverage_point[%d]: %s, %s: %d\n", 
+    io.format("\tcoverage_point[%d]: %s, %s: %d\n",
         [i(Num), s(string(Type)), s(PathString), i(Count)], !IO).
-
 
 %----------------------------------------------------------------------------%
 
@@ -647,19 +628,18 @@ dump_deep(Deep, DumpOptions, !IO) :-
     ;
         DumpCliques = do_not_dump_cliques
     ),
-    ( 
+    (
         DumpRevLinks = dump_rev_links,
         dump_deep_rev_links(Deep, !IO)
     ;
         DumpRevLinks = do_not_dump_rev_links
     ),
-    ( 
+    (
         DumpPropMeasurements = dump_prop_measurements,
         dump_deep_prop_measurements(Deep, !IO)
     ;
         DumpPropMeasurements = do_not_dump_prop_measurements
     ).
-
 
 %----------------------------------------------------------------------------%
 

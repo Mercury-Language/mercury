@@ -9,8 +9,8 @@
 % File: measurement_units.m.
 % Author: pbone.
 %
-% This module contains a memory, time and percentage abstract data types and
-% predicates and functions for using them.
+% This module contains abstract data types for representing memory, time
+% and percentages, and predicates and functions for operating on them.
 %
 %-----------------------------------------------------------------------------%
 
@@ -26,7 +26,7 @@
 % Memory
 %
 
-    % Units avalible for measuring memory in.
+    % Units for measuring memory.
     %
 :- type memory_units
     --->    units_words
@@ -44,15 +44,16 @@
 %-----------------------------------------------------------------------------%
 
     % memory_words(Words, BytesPerWord) = Memory
-    % 
+    %
     % Convert number of words words to memory type.
     %
 :- func memory_words(int, int) = memory.
 
 %-----------------------------------------------------------------------------%
 
-    % Division for memory units.  Use of this function may return continous
+    % Division for memory units. Use of this function may return fractions of
     % units.
+    %
 :- func (memory) / (int) = (memory) is det.
 
 %-----------------------------------------------------------------------------%
@@ -67,9 +68,9 @@
 %
 % Percent
 %
-    
+
     % Percent abstract data type.
-    % 
+    %
 :- type percent.
 
 %-----------------------------------------------------------------------------%
@@ -81,7 +82,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Format a percentage.  Prints the percentage with one decimal place and a
+    % Format a percentage. Prints the percentage with one decimal place and a
     % '%' symbol.
     %
 :- func format_percent(percent) = string.
@@ -90,9 +91,9 @@
 %
 % Time
 %
-    
+
     % Time abstract data type.
-    % 
+    %
 :- type time.
 
 %-----------------------------------------------------------------------------%
@@ -123,7 +124,7 @@
 :- func format_time(time) = string.
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Code for formatting numbers.
 %
 
@@ -149,7 +150,7 @@
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Memory
 %
 
@@ -167,18 +168,18 @@ memory_words(WordsI, BytesPerWord) = memory_words(WordsF, BytesPerWord) :-
 %-----------------------------------------------------------------------------%
 
     % Divison operator.
-memory_words(Nom, BPW) / Denom = 
+memory_words(Nom, BPW) / Denom =
 memory_words(Nom / float(Denom), BPW).
 
 %-----------------------------------------------------------------------------%
 
-format_memory(memory_words(Words, BPW), units_bytes, Decimals) =  
+format_memory(memory_words(Words, BPW), units_bytes, Decimals) =
     format_number(Decimals, Words * float(BPW)).
-format_memory(memory_words(Words, _), units_words, Decimals) = 
+format_memory(memory_words(Words, _), units_words, Decimals) =
     format_number(Decimals, Words).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Percent
 %
 
@@ -187,22 +188,24 @@ format_memory(memory_words(Words, _), units_words, Decimals) =
 
 %-----------------------------------------------------------------------------%
 
-percent(P) = percent_float(P) :-
-    ( (P >= 0.0, P =< 1.0) ->
-        true
-    ; 
-        throw(software_error(
-            "Percentage value out of range 0.0 to 1.0 (inclusive)"))
+percent(P) = PF :-
+    (
+        0.0 =< P,
+        P =< 1.0
+    ->
+        PF = percent_float(P)
+    ;
+        error("Percentage value out of range 0.0 to 1.0 (inclusive)")
     ).
 
 %-----------------------------------------------------------------------------%
 
 format_percent(percent_float(P)) = String :-
-    string.format("%.2f", [f(P*100.0)], String).
+    string.format("%.2f", [f(P * 100.0)], String).
 
 %-----------------------------------------------------------------------------%
-% 
-% Time. 
+%
+% Time.
 %
 
     % Time is stored in seconds using a float.
@@ -234,7 +237,6 @@ nano = 0.000000001.
 :- func pico = float.
 pico = 0.000000000001.
 
-%
 % TODO: When there is no resolution beyond 10ms since there is a clock tick
 % every 10ms, the decimal points on some of these numbers should not be shown.
 % However it's probably useful to show at least 2 decimal points when the value
@@ -242,7 +244,7 @@ pico = 0.000000000001.
 %
 % TODO: If the display system supports printing the greek letter mu, then it
 % should be used rather than the latin letter u.
-%
+
 format_time(time_sec(F)) = String :-
     ( F < nano ->
         % Print in ps.
@@ -262,12 +264,12 @@ format_time(time_sec(F)) = String :-
     ).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Code for formatting numbers.
 %
 
 commas(Num) = Str :-
-    string.format("%d", [i(Num)], Str0),
+    string.int_to_string(Num, Str0),
     add_commas_intstr(Str0, Str).
 
 %-----------------------------------------------------------------------------%
@@ -281,12 +283,12 @@ decimal_fraction(Format, Measure) = Representation :-
         add_commas_intstr(WholeString0, WholeString),
         Representation = WholeString ++ "." ++ FractionString
     ;
-        % If there are no decimal symbols in the number, try to work with it as
-        % an integer.
+        % If there are no decimal symbols in the number, try to work with it
+        % as an integer.
         SubStrings = [WholeString]
     ->
         add_commas_intstr(WholeString, Representation)
-    ;    
+    ;
         error("decimal_fraction: Didn't split on decimal point properly")
     ).
 
@@ -296,7 +298,7 @@ decimal_fraction(Format, Measure) = Representation :-
 
 add_commas_intstr(Str0, Str) :-
     string.to_char_list(Str0, Chars0),
-    reverse(Chars0, RevChars0),
+    list.reverse(Chars0, RevChars0),
     string.from_char_list(reverse(add_commas(RevChars0)), Str).
 
 :- func add_commas(list(char)) = list(char).

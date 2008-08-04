@@ -286,11 +286,11 @@
     % RBMM is enabled.
     %
 :- func mercury_region_builtin_module = sym_name.
-    
+
     % Returns the name of the module containing builtins for software
     % transactional memory.
     % This module is automatically imported iff STM is used in a module.
-    % 
+    %
 :- func mercury_stm_builtin_module = sym_name.
 
     % Returns the name of the module implementing exceptions.

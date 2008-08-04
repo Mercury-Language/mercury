@@ -1,11 +1,11 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005-2007 The University of Melbourne.
+% Copyright (C) 2001, 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: top_procs.m.
 % Author: zs.
 %
@@ -13,6 +13,7 @@
 %
 % For comparisons on costs, we sort highest first. For comparisons on names and
 % contexts, we sort lowest first. This is consistently what users want.
+%
 %-----------------------------------------------------------------------------%
 
 :- module top_procs.
@@ -679,7 +680,7 @@ threshold_value_ps_time_both(Deep, Threshold, PSI) :-
     TotalQuanta = OwnQuanta + DescQuanta,
     float(TotalQuanta) > Threshold.
 
-:- pred threshold_value_ps_callseqs_self(deep::in, float::in, int::in) 
+:- pred threshold_value_ps_callseqs_self(deep::in, float::in, int::in)
     is semidet.
 
 threshold_value_ps_callseqs_self(Deep, Threshold, PSI) :-
@@ -688,7 +689,7 @@ threshold_value_ps_callseqs_self(Deep, Threshold, PSI) :-
     OwnCallSeqs = callseqs(Own),
     float(OwnCallSeqs) > Threshold.
 
-:- pred threshold_value_ps_callseqs_both(deep::in, float::in, int::in) 
+:- pred threshold_value_ps_callseqs_both(deep::in, float::in, int::in)
     is semidet.
 
 threshold_value_ps_callseqs_both(Deep, Threshold, PSI) :-

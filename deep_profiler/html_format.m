@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,15 +11,12 @@
 %
 % This module contains code that sets the format of the HTML tables
 % we generate for individual queries.
-%
-% This module makes many calls to string.append.  In the C backends
-% string.append is linear time over the length of both input strings when
-% called in in, in, out mode.  If we build a long string from many short
-% strings the cost will be quadratic.  It may be better to build a data
-% structure with cords to describe how strings should be appended and then
-% use calls to string.append_list at a final stage to construct a single
-% string from the cord of strings.  There are alternative approaches that
-% should reduce the final cost to linear.
+
+% This module appends many strings. Since string.append takes time that is
+% linear over the length of both input strings, building a long string
+% from many short strings would take quadratic time. This is why we represent
+% HTML as a cord of strings instead. This cord is then converted to a list of
+% strings and then a single list just before being given to the browser.
 %
 %-----------------------------------------------------------------------------%
 
@@ -33,18 +30,25 @@
 :- import_module display.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module list.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
 
+:- type html == cord(string).
+
+:- func html_to_string(html) = string.
+
+%-----------------------------------------------------------------------------%
+
     % Construct a complete HTML page from the given display structure.
     %
-    % The first parameter is used to geather extra information from the deep
+    % The first parameter is used to gather extra information from the deep
     % profile, for example the name of the Deep.data file to build the URLs
     % from.
     %
-:- pred htmlize_display(deep::in, display::in, string::out) is det.
+:- func htmlize_display(deep, display) = html.
 
 %-----------------------------------------------------------------------------%
 
@@ -183,19 +187,42 @@
 
 %-----------------------------------------------------------------------------%
 
-htmlize_display(Deep, display(MaybeTitle, Content), HTML) :-
-    maybe_title_to_title(Deep, MaybeTitle, Title),
-    deep_to_http_context(Deep, HTTPContext),
-    map_join_html("</div><div>", item_to_html(HTTPContext), Content, Body),
-    string.format(html_template, [s(Title), s(Body)], HTML).
+html_to_string(HTML) = Str :-
+    string.append_list(cord.list(HTML), Str).
 
-:- func html_template = string.
-html_template = 
-"<!DOCTYPE HTML PUBLIC ""-//W3C//DTD HTML 4.01//EN""
-""http://www.w3.org/TR/html4/strict.dtd"">
-<html>
-    <head>
-        <title>%s</title>
+%-----------------------------------------------------------------------------%
+
+htmlize_display(Deep, display(MaybeSubTitle, Items)) = HTML :-
+    MainTitle = str_to_html("Mercury Deep Profile for ") ++
+        str_to_html(Deep ^ data_file_name),
+    (
+        MaybeSubTitle = no,
+        Title = MainTitle
+    ;
+        MaybeSubTitle = yes(Subtitle),
+        Title = MainTitle ++ str_to_html(" - ") ++ str_to_html(Subtitle)
+    ),
+    TitleHTML = wrap_tags("<title>", "</title>", Title),
+    deep_to_http_context(Deep, HTTPContext),
+    map_join_html(item_to_html("<div>\n", "</div>\n", HTTPContext),
+        Items, ItemsHTML),
+    HTML = doc_type_html ++
+        wrap_tags("<html>", "</html>",
+            wrap_tags("<head>", "</head>", TitleHTML ++ css_style_html) ++
+            wrap_tags("<body>", "</body>", ItemsHTML)
+        ).
+
+:- func doc_type_html = html.
+
+doc_type_html =
+    str_to_html(
+        "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"
+        \"http://www.w3.org/TR/html4/strict.dtd\">").
+
+:- func css_style_html = html.
+
+css_style_html =
+    str_to_html("
         <style type=\"text/css\">
             td.allocations
             {
@@ -213,8 +240,8 @@ html_template =
             {
                 text-align: right;
             }
-            td.ordinal_rank 
-            { 
+            td.ordinal_rank
+            {
                 text-align: right;
             }
             td.port_counts
@@ -229,17 +256,17 @@ html_template =
             {
                 text-align: right;
             }
-            a.control 
-            { 
-                margin: 5px; 
-                text-decoration: none; 
+            a.control
+            {
+                margin: 5px;
+                text-decoration: none;
             }
             table.menu
-            { 
-                border-style: none; 
+            {
+                border-style: none;
             }
-            table.top_procs 
-            { 
+            table.top_procs
+            {
                 border-width: 1px 1px 1px 1px;
                 border-spacing: 2px;
                 border-style: outset outset outset outset;
@@ -257,73 +284,78 @@ html_template =
                 border-style: inset inset inset inset;
             }
         </style>
-    </head>
-    <body>
-    <div>
-    %s
-    </div>
-    </body>
-</html>".
+").
 
 %-----------------------------------------------------------------------------%
-    
+
     % Convert a display item into a HTML snippet.
     %
-:- pred item_to_html(http_context::in, display_item::in, string::out) is det.
+:- func item_to_html(string, string, http_context, display_item) = html.
 
-item_to_html(_, display_message(Message), HTML) :-
-    HTML = "<h3>" ++ Message ++ "</h3>\n".
-
-item_to_html(HTTPContext, display_table(Table), HTML) :-
-    table_to_html(HTTPContext, Table, HTML).
-
-item_to_html(HTTPContext, display_list(Class, MaybeTitle, Items), HTML) :-
-    some [!HTML]
+item_to_html(StartTag, EndTag, HTTPContext, Item) = HTML :-
     (
+        Item = display_message(Message),
+        HTML = wrap_tags(StartTag, EndTag,
+            wrap_tags("<h3>", "</h3>\n", str_to_html(Message)))
+    ;
+        Item = display_command_link(DeepLink),
+        HTML = wrap_tags(StartTag, EndTag,
+            link_to_html(HTTPContext, DeepLink))
+    ;
+        Item = display_table(Table),
+        HTML = wrap_tags(StartTag, EndTag,
+            table_to_html(HTTPContext, Table))
+    ;
+        Item = display_list(Class, MaybeTitle, Items),
         (
             MaybeTitle = yes(Title),
-            !:HTML = "<span id=""list_title"">" ++ Title ++ "</span>",
+            TitleStartTag = "<span id=\"list_title\">",
+            TitleEndTag = "</span>",
+            TitleHTML = wrap_tags(TitleStartTag, TitleEndTag,
+                str_to_html(Title)),
             (
-                Class = list_class_vertical_bullets
+                Class = list_class_vertical_bullets,
+                PostTitleHTML = empty_html
             ;
                 ( Class = list_class_horizontal
-                ; Class = list_class_vertical_no_bullets ),
-                !:HTML = !.HTML ++ "<br>"
+                ; Class = list_class_vertical_no_bullets
+                ),
+                PostTitleHTML = str_to_html("<br>")
             )
         ;
             MaybeTitle = no,
-            !:HTML = ""
+            TitleHTML = empty_html,
+            PostTitleHTML = empty_html
         ),
         (
             Class = list_class_vertical_bullets,
-            Delim = "</li>\n<li>",
-            !:HTML = !.HTML ++ "<ul><li>"
+            OutsideStartTag = "<ul>",
+            OutsideEndTag = "<ul>\n",
+            InnerStartTag = "<li>",         % XXX add \n?
+            InnerEndTag = "</li>\n",
+            Separator = empty_html
         ;
             Class = list_class_vertical_no_bullets,
-            Delim = "<br>"
+            OutsideStartTag = "",
+            OutsideEndTag = "\n",
+            InnerStartTag = "",
+            InnerEndTag = "",               % XXX add \n?
+            Separator = str_to_html("<br>\n")
         ;
             Class = list_class_horizontal,
-            Delim = " "
+            OutsideStartTag = "",
+            OutsideEndTag = "\n",
+            InnerStartTag = "",
+            InnerEndTag = "",
+            Separator = str_to_html(" ")
         ),
-        map_join_html(Delim, item_to_html(HTTPContext), Items, HTML_Items),
-        !:HTML = !.HTML ++ HTML_Items,
-        (
-            Class = list_class_vertical_bullets,
-            HTML_End = "</li></ul>\n"
-        ;
-            Class = list_class_vertical_no_bullets,
-            HTML_End = "<br>\n"
-        ;
-            Class = list_class_horizontal,
-            HTML_End = "\n"
-        ),
-        !:HTML = !.HTML ++ HTML_End, 
-        HTML = !.HTML
+        sep_map_join_html(Separator,
+            item_to_html(InnerStartTag, InnerEndTag, HTTPContext), Items,
+            InnerItemsHTML),
+        ItemsHTML = wrap_tags(OutsideStartTag, OutsideEndTag, InnerItemsHTML),
+        HTML = wrap_tags(StartTag, EndTag,
+            TitleHTML ++ PostTitleHTML ++ ItemsHTML)
     ).
-
-item_to_html(HTTPContext, display_command_link(DeepLink), HTML) :-
-    link_to_html(HTTPContext, DeepLink, HTML).
-
 
 %-----------------------------------------------------------------------------%
 %
@@ -333,8 +365,8 @@ item_to_html(HTTPContext, display_command_link(DeepLink), HTML) :-
     % The number of rows to be used for a table header.
     %
 :- type table_header_rows
-    --->    one
-    ;       two.
+    --->    one_header_row
+    ;       two_header_rows.
 
     % A mapping of column numbers to classes.
     %
@@ -344,108 +376,120 @@ item_to_html(HTTPContext, display_command_link(DeepLink), HTML) :-
 
     % Create a HTML table entity from the given table description.
     %
-:- pred table_to_html(http_context::in, table::in, string::out) is det.
+:- func table_to_html(http_context, table) = html.
 
-table_to_html(HTTPContext, table(Class, NumCols, MaybeHeader, Rows), HTML) :-
-    table_class_to_string(Class, ClassStr),
-    Open = "<table class=\"" ++ ClassStr ++ "\">\n",
-    Close = "</table>\n",
-    
+table_to_html(HTTPContext, Table) = HTML :-
+    Table = table(Class, NumCols, MaybeHeader, BodyRows),
+
+    ClassStr = table_class_to_string(Class),
+    TableStartTag = "<table class=\"" ++ ClassStr ++ "\">\n",
+    TableEndTag = "</table>\n",
+
     % Build a header row.
     (
         MaybeHeader = yes(table_header(THCells)),
-        foldl3(table_header_num_rows_and_classmap, THCells, one, THNumRows,
-            0, _, map.init, ClassMap),
+        list.foldl3(table_header_num_rows_and_classmap, THCells,
+            one_header_row, THNumRows, 0, _, map.init, ClassMap),
         MaybeClassMap = yes(ClassMap),
-        map_join_html(table_header_cell_to_html_row_1(HTTPContext, THNumRows), 
-            THCells, HeaderHTML0),
-        HeaderHTML1 = "<tr>" ++ HeaderHTML0 ++ "</tr>\n",
+        map_join_html(table_header_cell_to_html_row_1(HTTPContext, THNumRows),
+            THCells, InnerHeaderRowOneHTML),
+        HeaderRowOneHTML =
+            wrap_tags("<tr>", "</tr>\n", InnerHeaderRowOneHTML),
         (
-            THNumRows = one,
-            HeaderHTML2 = HeaderHTML1
+            THNumRows = one_header_row,
+            HeaderRowTwoHTML = empty_html
         ;
-            THNumRows = two,
+            THNumRows = two_header_rows,
             map_join_html(table_header_cell_to_html_row_2(HTTPContext),
-                THCells, HeaderHTML11),
-            HeaderHTML2 = HeaderHTML1 ++ "<tr>" ++ HeaderHTML11 ++ "</tr>\n"
+                THCells, InnerHeaderRowTwoHTML),
+            HeaderRowTwoHTML =
+                wrap_tags("<tr>", "</tr>\n", InnerHeaderRowTwoHTML)
         ),
-        HeaderHTML = HeaderHTML2 ++ 
-            format("<tr><td colspan=\"%d\"/></tr>\n", [i(NumCols)])
+        InnerHeaderRowThree =
+            string.format("<td colspan=\"%d\"/>", [i(NumCols)]),
+        HeaderRowThreeHTML =
+            wrap_tags("<tr>", "</tr>\n",  str_to_html(InnerHeaderRowThree)),
+        HeaderHTML = HeaderRowOneHTML ++ HeaderRowTwoHTML ++ HeaderRowThreeHTML
     ;
         MaybeHeader = no,
         MaybeClassMap = no,
-        HeaderHTML = ""
+        HeaderHTML = empty_html
     ),
 
     % Build the table rows.
-    map_join_html(table_row_to_html(HTTPContext, MaybeClassMap, NumCols), Rows,
-        RowsHTML),
+    map_join_html(table_row_to_html(HTTPContext, MaybeClassMap, NumCols),
+        BodyRows, BodyRowsHTML),
 
     % Construct the table.
-    HTML = Open ++ HeaderHTML ++ RowsHTML ++ Close.
+    HTML = wrap_tags(TableStartTag, TableEndTag, HeaderHTML ++ BodyRowsHTML).
 
 %-----------------------------------------------------------------------------%
 
     % Return the HTML entity for a table header cell.
     %
-:- pred table_header_cell_to_html_row_1(http_context::in,
-    table_header_rows::in, table_header_cell::in, string::out) is det.
+:- func table_header_cell_to_html_row_1(http_context,
+    table_header_rows, table_header_cell) = html.
 
-table_header_cell_to_html_row_1(HTTPContext, HeaderNumRows, Cell, HTML) :-
+table_header_cell_to_html_row_1(HTTPContext, HeaderNumRows, Cell) = HTML :-
     (
         Cell = table_header_cell(Contents, Class),
         (
-            HeaderNumRows = one,
+            HeaderNumRows = one_header_row,
             RowSpan = "1"
         ;
-            HeaderNumRows = two,
+            HeaderNumRows = two_header_rows,
             RowSpan = "2"
         ),
         ColSpan = "1",
-        table_data_to_string(HTTPContext, Contents, ContentsString)
+        ContentsHTML = table_data_to_html(HTTPContext, Contents)
     ;
         Cell = table_header_group(Title, SubHeaderCells, Class),
         RowSpan = "1",
-        length(SubHeaderCells, NumSubHeaderCells),
-        ColSpan = string(NumSubHeaderCells),
-        ContentsString = Title    
+        list.length(SubHeaderCells, NumSubHeaderCells),
+        ColSpan = string.int_to_string(NumSubHeaderCells),
+        ContentsHTML = str_to_html(Title)
     ),
 
     table_col_class_to_string(Class, ClassStr),
-    string.format("<th rowspan=\"%s\" colspan=\"%s\" class=\"%s\">", 
-        [s(RowSpan), s(ColSpan), s(ClassStr)], Open),
-    HTML = Open ++ ContentsString ++ "</th>".
+    StartTag = string.format("<th rowspan=\"%s\" colspan=\"%s\" class=\"%s\">",
+        [s(RowSpan), s(ColSpan), s(ClassStr)]),
+    EndTag = "</th>",
+    HTML = wrap_tags(StartTag, EndTag, ContentsHTML).
 
 %-----------------------------------------------------------------------------%
 
-:- pred table_header_cell_to_html_row_2(http_context::in,
-    table_header_cell::in, string::out) is det.
+:- func table_header_cell_to_html_row_2(http_context, table_header_cell)
+    = html.
 
-table_header_cell_to_html_row_2(_, table_header_cell(_, _), "").
-
-table_header_cell_to_html_row_2(HTTPContext,
-    table_header_group(_, Cells, Class), HTML) :-
-    map_join_html((pred(Cell0::in, Cell::out) is det :-
-            table_data_to_string(HTTPContext, Cell0, Cell1),
-            wrap_in_th_tags(Class, Cell1, Cell)),
-        Cells, HTML).
+table_header_cell_to_html_row_2(HTTPContext, HeaderCell) = HTML :-
+    (
+        HeaderCell = table_header_cell(_, _),
+        HTML = empty_html
+    ;
+        HeaderCell = table_header_group(_, Cells, Class),
+        map_join_html(table_data_to_th_html(HTTPContext, Class), Cells, HTML)
+    ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred wrap_in_th_tags(table_col_class::in, string::in, string::out) is det.
+:- func table_data_to_th_html(http_context, table_col_class, table_data)
+    = html.
 
-wrap_in_th_tags(Class, In, Out) :-
+table_data_to_th_html(HTTPContext, Class, TableData) = HTML :-
     table_col_class_to_string(Class, ClassStr),
-    string.format("<th class\"%s\">%s</th>", [s(ClassStr), s(In)], Out).
+    TableDataHTML = table_data_to_html(HTTPContext, TableData),
+    StartTag = string.format("<th class=\"%s\">", [s(ClassStr)]),
+    EndTag = "</th>",
+    HTML = wrap_tags(StartTag, EndTag, TableDataHTML).
 
 %-----------------------------------------------------------------------------%
 
     % Determine how many rows the table header requires, and a map between
-    % column numbers and classes.  This should be used with foldl3 and
+    % column numbers and classes. This should be used with foldl3 and
     % takes a number of accumulator values.
     %
 :- pred table_header_num_rows_and_classmap(table_header_cell::in,
-    table_header_rows::in, table_header_rows::out, 
+    table_header_rows::in, table_header_rows::out,
     int::in, int::out, col_class_map::in, col_class_map::out) is det.
 
 table_header_num_rows_and_classmap(Cell, !NumRows, !ColNum, !ClassMap) :-
@@ -457,18 +501,18 @@ table_header_num_rows_and_classmap(Cell, !NumRows, !ColNum, !ClassMap) :-
     ;
         Cell = table_header_group(_, Subtitles, Class),
         length(Subtitles, NumSubCols),
-        !:NumRows = two,
+        !:NumRows = two_header_rows,
         table_col_class_to_string(Class, ClassStr),
-        % fold_up is inclusive of the higher number,
-        fold_up(insert_col_classmap(ClassStr), 
-            !.ColNum, !.ColNum + NumSubCols - 1, 
+        % fold_up is inclusive of the higher number.
+        fold_up(insert_col_classmap(ClassStr),
+            !.ColNum, !.ColNum + NumSubCols - 1,
             !ClassMap)
     ),
     !:ColNum = !.ColNum + NumSubCols.
 
 %-----------------------------------------------------------------------------%
 
-:- pred insert_col_classmap(string::in, int::in, 
+:- pred insert_col_classmap(string::in, int::in,
     col_class_map::in, col_class_map::out) is det.
 
 insert_col_classmap(Value, Key, !Map) :-
@@ -478,67 +522,80 @@ insert_col_classmap(Value, Key, !Map) :-
 
     % Build a row of a HTML table from the table_row type.
     %
-:- pred table_row_to_html(http_context::in, maybe(col_class_map)::in, int::in,
-    table_row::in, string::out) is det.
+:- func table_row_to_html(http_context, maybe(col_class_map), int, table_row)
+    = html.
 
-table_row_to_html(HTTPContext, _, NumCols,
-        table_section_header(Content), HTML) :-
-    table_data_to_string(HTTPContext, Content, Text),
-    string.format("<tr><td colspan=\"%d\">%s</td></tr>",
-        [i(NumCols), s(Text)], HTML).
-
-table_row_to_html(HTTPContext, ColClassMap, _, table_row(Cells), HTML) :-
-    map_join_html_count(table_cell_to_html(HTTPContext, ColClassMap), 0, Cells,
-        "", HTML0),
-    HTML = "<tr>" ++ HTML0 ++ "</tr>".
-
-%-----------------------------------------------------------------------------%
-
-:- pred table_cell_to_html(http_context::in, maybe(col_class_map)::in, int::in,
-    table_cell::in, string::out) is det.
-
-table_cell_to_html(_, _, _, table_empty_cell, "<td/>").
-
-table_cell_to_html(HTTPContext, MaybeClassMap, ColNum, table_cell(Data), HTML)
-        :-
+table_row_to_html(HTTPContext, MaybeColClassMap, NumCols, TableRow) = HTML :-
     (
-        MaybeClassMap = yes(ClassMap),
-        ( map.search(ClassMap, ColNum, ClassPrime) ->
-            ClassStr = ClassPrime
-        ;
-            throw(software_error(string.format(
-                "Class map had no class for col %d, check table structure",
-                [i(ColNum)])))
-        )
+        TableRow = table_section_header(Contents),
+        ContentsHTML = table_data_to_html(HTTPContext, Contents),
+        StartTag = string.format("<tr><td colspan=\"%d\">", [i(NumCols)]),
+        EndTag = "</td></tr>",
+        HTML = wrap_tags(StartTag, EndTag, ContentsHTML)
     ;
-        MaybeClassMap = no,
-        ( table_data_class(Data, ClassP) ->
-            Class = ClassP
-        ;
-            Class = default_table_col_class
-        ),
-        table_col_class_to_string(Class, ClassStr)
-    ),
-    table_data_to_string(HTTPContext, Data, Text),
-    string.format("<td class=\"%s\">%s</td>", [s(ClassStr), s(Text)], HTML). 
+        TableRow = table_row(Cells),
+        map_join_html_count(table_cell_to_html(HTTPContext, MaybeColClassMap),
+            0, Cells, InnerHTML),
+        HTML = wrap_tags("<tr>", "</tr>", InnerHTML)
+    ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred table_data_to_string(http_context::in, table_data::in, string::out) 
-    is det.
+:- func table_cell_to_html(http_context, maybe(col_class_map), int, table_cell)
+    = html.
 
-table_data_to_string(_, f(Float), two_decimal_fraction(Float)).
-table_data_to_string(_, i(Int), commas(Int)).
-table_data_to_string(HTTPCtxt, l(Link), HTML) :- 
-    link_to_html(HTTPCtxt, Link, HTML).
-table_data_to_string(_, m(Mem, Units, Decimals),
-    format_memory(Mem, Units, Decimals)).
-table_data_to_string(_, p(Percent), format_percent(Percent)).
-table_data_to_string(_, s(String), escape_break_html_string(String)).
-table_data_to_string(_, t(Time), format_time(Time)).
+table_cell_to_html(HTTPContext, MaybeClassMap, ColNum, Cell) = HTML :-
+    (
+        Cell = table_empty_cell,
+        HTML = str_to_html("<td/>")
+    ;
+        Cell = table_cell(CellData),
+        (
+            MaybeClassMap = yes(ClassMap),
+            ( map.search(ClassMap, ColNum, ClassStrPrime) ->
+                ClassStr = ClassStrPrime
+            ;
+                Msg = string.format(
+                    "Class map had no class for col %d, check table structure",
+                    [i(ColNum)]),
+                error(Msg)
+            )
+        ;
+            MaybeClassMap = no,
+            ( table_data_class(CellData, ClassPrime) ->
+                Class = ClassPrime
+            ;
+                Class = default_table_col_class
+            ),
+            table_col_class_to_string(Class, ClassStr)
+        ),
+        CellHTML = table_data_to_html(HTTPContext, CellData),
+        StartTag = string.format("<td class=\"%s\">", [s(ClassStr)]),
+        EndTag = "</td>",
+        HTML = wrap_tags(StartTag, EndTag, CellHTML)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- func table_data_to_html(http_context, table_data) = html.
+
+table_data_to_html(_, f(Float)) =
+    str_to_html(two_decimal_fraction(Float)).
+table_data_to_html(_, i(Int)) =
+    str_to_html(commas(Int)).
+table_data_to_html(HTTPCtxt, l(Link)) =
+    link_to_html(HTTPCtxt, Link).
+table_data_to_html(_, m(Mem, Units, Decimals)) =
+    str_to_html(format_memory(Mem, Units, Decimals)).
+table_data_to_html(_, p(Percent)) =
+    str_to_html(format_percent(Percent)).
+table_data_to_html(_, s(String)) =
+    str_to_html(escape_break_html_string(String)).
+table_data_to_html(_, t(Time)) =
+    str_to_html(format_time(Time)).
 
     % This predicate is used when a table class map couldn't be built from the
-    % header of the table (perhaps there was no header).  It it provides a
+    % header of the table (perhaps there was no header). It it provides a
     % class for some data that class is used, otherwise the default class is
     % assumed.
     %
@@ -566,24 +623,14 @@ table_col_class_to_string(table_col_class_port_counts, "port_counts").
 table_col_class_to_string(table_col_class_proc, "proc").
 table_col_class_to_string(table_col_class_ticks_and_times, "ticks_and_times").
 
-:- pred table_class_to_string(table_class::in, string::out) is det.
+:- func table_class_to_string(table_class) = string.
 
-table_class_to_string(table_class_menu, "menu").
-table_class_to_string(table_class_top_procs, "top_procs").
-
-%-----------------------------------------------------------------------------%
-%
-% Link Related Predicates.
-%
-
-:- pred link_class_to_string(link_class::in, string::out) is det.
-
-link_class_to_string(link_class_link, "default").
-link_class_to_string(link_class_control, "control").
+table_class_to_string(table_class_menu) = "menu".
+table_class_to_string(table_class_top_procs) = "top_procs".
 
 %-----------------------------------------------------------------------------%
 
-    % Information about the HTTP session.  This is used to create HTTP links as
+    % Information about the HTTP session. This is used to create HTTP links
     % below.
     %
 :- type http_context
@@ -597,20 +644,21 @@ link_class_to_string(link_class_control, "control").
 
     % Transform a deep link into HTML.
     %
-:- pred link_to_html(http_context::in, deep_link::in, string::out) is det.
+:- func link_to_html(http_context, deep_link) = html.
 
-link_to_html(HTTPContext, deep_link(Cmd, MaybePrefs, Label, Class), HTML) :-
-    link_class_to_string(Class, ClassStr),
+link_to_html(HTTPContext, Link) = HTML :-
+    Link = deep_link(Cmd, MaybePrefs, Label, Class),
     deep_cmd_to_url(HTTPContext, Cmd, MaybePrefs, URL),
     (
         Class = link_class_control,
-        FormatString = "<a class=""%s"" href=""%s"">[%s]</a>"
+        FormatString = "<a class=\"control\" href=\"%s\">[%s]</a>"
     ;
         Class = link_class_link,
-        FormatString = "<a class=""%s"" href=""%s"">%s</a>"
+        FormatString = "<a class=\"link\" href=\"%s\">%s</a>"
     ),
-    string.format(FormatString, 
-        [ s(ClassStr), s(URL), s(escape_break_html_string(Label)) ], HTML).
+    string.format(FormatString,
+        [s(URL), s(escape_break_html_string(Label))], HTMLStr),
+    HTML = str_to_html(HTMLStr).
 
 %-----------------------------------------------------------------------------%
 
@@ -635,90 +683,97 @@ deep_cmd_to_url(HTTPContext, Cmd, MaybePrefs, URL) :-
     CmdStr = cmd_to_string(Cmd),
     (
         MaybePrefs = no,
-        string.format("http://%s%s?%s&%s", 
-            [ s(HostAndPort), s(Script), s(CmdStr), s(DataFile) ], URL)
+        string.format("http://%s%s?%s&%s",
+            [s(HostAndPort), s(Script), s(CmdStr), s(DataFile)], URL)
     ;
         MaybePrefs = yes(Prefs),
         PrefStr = preferences_to_string(Prefs),
-        string.format("http://%s%s?%s&%s&%s", 
-            [s(HostAndPort), s(Script), s(CmdStr), s(PrefStr), s(DataFile)], 
+        string.format("http://%s%s?%s&%s&%s",
+            [s(HostAndPort), s(Script), s(CmdStr), s(PrefStr), s(DataFile)],
             URL)
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Generic html helper predicates.
+% Generic HTML helper predicates.
 %
 
-    % Join two HTML snippits with the given delimiter.
-    %
-:- pred html_join(string::in, string::in, string::in, string::out) is det.
+:- func wrap_tags(string, string, html) = html.
 
-html_join(Delim, H1, H2, H) :-
-    H = string.append_list([H1, Delim, "\n", H2]).
+wrap_tags(StartTag, EndTag, InnerHTML) =
+    str_to_html(StartTag) ++ InnerHTML ++ str_to_html(EndTag).
 
-%-----------------------------------------------------------------------------%
+:- func empty_html = html.
 
-    % This predicate builds the concatentation of Acc and ASs where each AS
-    % is MapPred(A, AS), the Delim is placed between concatentated strings.
-    %
-:- pred map_join_html_acc(string, pred(A, string), list(A), string, string).
-:- mode map_join_html_acc(in, pred(in, out) is det, in, in, out) is det.
+empty_html = cord.empty.
 
-map_join_html_acc(_, _, [], Result, Result).
-map_join_html_acc(Delim, MapPred, [ X | XS ], Acc0, Out) :-
-    MapPred(X, Y),
-    html_join(Delim, Acc0, Y, Acc),
-    map_join_html_acc(Delim, MapPred, XS, Acc, Out).
+:- func nl_html = html.
 
-    % For each A do MapPred(A, S) and return the concatenation of Ss
-    % seperated by Delim. 
-    %
-:- pred map_join_html(string, pred(A, string), list(A), string).
-:- mode map_join_html(in, pred(in, out) is det, in, out) is det.
+nl_html = str_to_html("\n").
 
-map_join_html(_, _, [], "").
-map_join_html(Delim, MapPred, [ X | XS ], Result) :-
-    MapPred(X, Str),
-    map_join_html_acc(Delim, MapPred, XS, Str, Result).
+:- func str_to_html(string) = html.
 
-    % For each A do MapPred(A, S) and concatenate all Ss.
-    %
-:- pred map_join_html(pred(A, string), list(A), string).
-:- mode map_join_html(pred(in, out) is det, in, out) is det.
-
-map_join_html(MapPred, List, Result) :-
-    map_join_html("", MapPred, List, Result).
-    
-    % This predicate is the same as above except that it passes an integer
-    % to the higher order call, the integer is incremented on each
-    % recursion.
-    %
-:- pred map_join_html_count(pred(int, A, string), int, list(A), string,
-    string).
-:- mode map_join_html_count(pred(in, in, out) is det, in, in, in, out) 
-    is det.
-
-map_join_html_count(_, _, [], Result, Result).
-map_join_html_count(MapPred, N, [ X | XS ], Acc0, Out) :-
-    MapPred(N, X, Y),
-    html_join("", Acc0, Y, Acc),
-    map_join_html_count(MapPred, N+1, XS, Acc, Out).
+str_to_html(Str) = cord.singleton(Str).
 
 %-----------------------------------------------------------------------------%
 
-    % Format a title for the given website.  It will be the common title,
-    % followed by an optional subtitle seperated by - 
+    % For each A, compute S = MapFunc(A), and concatenate all Ss.
     %
-:- pred maybe_title_to_title(deep::in, maybe(string)::in, string::out) 
-    is det.  
+:- pred map_join_html((func(A) = html)::in, list(A)::in, html::out) is det.
 
-maybe_title_to_title(Deep, yes(Subtitle), Title) :-
-    maybe_title_to_title(Deep, no, MainTitle),
-    Title = MainTitle ++ " - " ++ Subtitle.
+map_join_html(MapFunc, List, HTML) :-
+    sep_map_join_html(empty_html, MapFunc, List, HTML).
 
-maybe_title_to_title(Deep, no, Title) :-
-    Title = "Mercury Deep Profile for " ++ Deep ^ data_file_name.
+    % For each A, compute S = MapFunc(A), and concatenate all Ss
+    % after putting Separator between them.
+    %
+:- pred sep_map_join_html(html::in, (func(A) = html)::in,
+    list(A)::in, html::out) is det.
+
+sep_map_join_html(_, _, [], empty_html).
+sep_map_join_html(Separator, MapFunc, [Head | Tail], HTML) :-
+    HeadHTML = MapFunc(Head),
+    sep_map_join_html_acc(Separator, MapFunc, Tail, HeadHTML, HTML).
+
+:- pred sep_map_join_html_acc(html::in, (func(A) = html)::in, list(A)::in,
+    html::in, html::out) is det.
+
+sep_map_join_html_acc(_, _, [], !HTML).
+sep_map_join_html_acc(Separator, MapFunc, [Head | Tail], !HTML) :-
+    HeadHTML = MapFunc(Head),
+    !:HTML = !.HTML ++ Separator ++ HeadHTML,
+    sep_map_join_html_acc(Separator, MapFunc, Tail, !HTML).
+
+    % For each A, compute S = MapFunc(N, A), and concatenate all Ss.
+    % N is the ordinal number of the element in the list.
+    %
+:- pred map_join_html_count((func(int, A) = html)::in, int::in, list(A)::in,
+    html::out) is det.
+
+map_join_html_count(MapFunc, N, List, HTML) :-
+    sep_map_join_html_count(empty_html, MapFunc, N, List, HTML).
+
+    % For each A, compute S = MapFunc(N, A), and concatenate all Ss
+    % after putting Separator between them.
+    % N is the ordinal number of the element in the list.
+    %
+:- pred sep_map_join_html_count(html::in, (func(int, A) = html)::in,
+    int::in, list(A)::in, html::out) is det.
+
+sep_map_join_html_count(_, _, _, [], empty_html).
+sep_map_join_html_count(Separator, MapFunc, N, [Head | Tail], HTML) :-
+    HeadHTML = MapFunc(N, Head),
+    sep_map_join_html_count_acc(Separator, MapFunc, N + 1, Tail,
+        HeadHTML, HTML).
+
+:- pred sep_map_join_html_count_acc(html::in, (func(int, A) = html)::in,
+    int::in, list(A)::in, html::in, html::out) is det.
+
+sep_map_join_html_count_acc(_, _, _, [], !HTML).
+sep_map_join_html_count_acc(Separator, MapFunc, N, [Head | Tail], !HTML) :-
+    HeadHTML = MapFunc(N, Head),
+    !:HTML = !.HTML ++ Separator ++ HeadHTML,
+    sep_map_join_html_count_acc(Separator, MapFunc, N + 1, Tail, !HTML).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1065,8 +1120,9 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         CallSeqs1Fields = Fields ^ callseqs_fields := no_callseqs,
         CallSeqs1Pref = Pref ^ pref_fields := CallSeqs1Fields,
         CallSeqs1Msg = "[No call sequence number info]",
-        CallSeqs1Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(deep_cmd_pref_to_url(CallSeqs1Pref, Deep, Cmd)),
+        CallSeqs1Toggle =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(deep_cmd_pref_to_url(CallSeqs1Pref, Deep, Cmd)),
                 s(CallSeqs1Msg)])
     ),
     ( Fields ^ callseqs_fields = callseqs ->
@@ -1075,8 +1131,9 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         CallSeqs2Fields = Fields ^ callseqs_fields := callseqs,
         CallSeqs2Pref = Pref ^ pref_fields := CallSeqs2Fields,
         CallSeqs2Msg = "[Call sequence numbers]",
-        CallSeqs2Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(deep_cmd_pref_to_url(CallSeqs2Pref, Deep, Cmd)),
+        CallSeqs2Toggle =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(deep_cmd_pref_to_url(CallSeqs2Pref, Deep, Cmd)),
                 s(CallSeqs2Msg)])
     ),
     ( Fields ^ callseqs_fields = callseqs_and_percall ->
@@ -1085,8 +1142,9 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         CallSeqs3Fields = Fields ^ callseqs_fields := callseqs_and_percall,
         CallSeqs3Pref = Pref ^ pref_fields := CallSeqs3Fields,
         CallSeqs3Msg = "[Call sequence numbers including per-call]",
-        CallSeqs3Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(deep_cmd_pref_to_url(CallSeqs3Pref, Deep, Cmd)),
+        CallSeqs3Toggle =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(deep_cmd_pref_to_url(CallSeqs3Pref, Deep, Cmd)),
                 s(CallSeqs3Msg)])
     ),
     ( Fields ^ alloc_fields = no_alloc ->
@@ -1122,8 +1180,10 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Memory1Fields = Fields ^ memory_fields := no_memory,
         Memory1Pref = Pref ^ pref_fields := Memory1Fields,
         Memory1Msg = "[No memory info]",
-        Memory1Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(deep_cmd_pref_to_url(Memory1Pref, Deep, Cmd)), s(Memory1Msg)])
+        Memory1Toggle =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(deep_cmd_pref_to_url(Memory1Pref, Deep, Cmd)),
+                s(Memory1Msg)])
     ),
     ( Fields ^ memory_fields = memory(units_words) ->
         Memory2Toggle = ""
@@ -1131,8 +1191,10 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Memory2Fields = Fields ^ memory_fields := memory(units_words),
         Memory2Pref = Pref ^ pref_fields := Memory2Fields,
         Memory2Msg = "[Words]",
-        Memory2Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(deep_cmd_pref_to_url(Memory2Pref, Deep, Cmd)), s(Memory2Msg)])
+        Memory2Toggle =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(deep_cmd_pref_to_url(Memory2Pref, Deep, Cmd)),
+                s(Memory2Msg)])
     ),
     ( Fields ^ memory_fields = memory(units_bytes) ->
         Memory3Toggle = ""
@@ -1140,8 +1202,10 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Memory3Fields = Fields ^ memory_fields := memory(units_bytes),
         Memory3Pref = Pref ^ pref_fields := Memory3Fields,
         Memory3Msg = "[Bytes]",
-        Memory3Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(deep_cmd_pref_to_url(Memory3Pref, Deep, Cmd)), s(Memory3Msg)])
+        Memory3Toggle =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(deep_cmd_pref_to_url(Memory3Pref, Deep, Cmd)),
+                s(Memory3Msg)])
     ),
     ( Fields ^ memory_fields = memory_and_percall(units_words) ->
         Memory4Toggle = ""
@@ -1150,8 +1214,10 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
             memory_and_percall(units_words),
         Memory4Pref = Pref ^ pref_fields := Memory4Fields,
         Memory4Msg = "[Words and per-call words]",
-        Memory4Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(deep_cmd_pref_to_url(Memory4Pref, Deep, Cmd)), s(Memory4Msg)])
+        Memory4Toggle =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(deep_cmd_pref_to_url(Memory4Pref, Deep, Cmd)),
+                s(Memory4Msg)])
     ),
     ( Fields ^ memory_fields = memory_and_percall(units_bytes) ->
         Memory5Toggle = ""
@@ -1160,16 +1226,20 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
             memory_and_percall(units_bytes),
         Memory5Pref = Pref ^ pref_fields := Memory5Fields,
         Memory5Msg = "[Bytes and per-call bytes]",
-        Memory5Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(deep_cmd_pref_to_url(Memory5Pref, Deep, Cmd)), s(Memory5Msg)])
+        Memory5Toggle =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(deep_cmd_pref_to_url(Memory5Pref, Deep, Cmd)),
+                s(Memory5Msg)])
     ),
     ( Fields = default_fields(Deep) ->
         DefaultToggle = ""
     ;
         DefaultMsg  = "[Restore defaults]",
         DefaultPref = Pref ^ pref_fields := default_fields(Deep),
-        DefaultToggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(deep_cmd_pref_to_url(DefaultPref, Deep, Cmd)), s(DefaultMsg)])
+        DefaultToggle =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(deep_cmd_pref_to_url(DefaultPref, Deep, Cmd)),
+                s(DefaultMsg)])
     ),
     HTML =
         "<strong>Toggle fields:</strong>\n" ++
@@ -1481,8 +1551,9 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
         ; CostKind = cost_words
         ),
         MsgCallSeqs = "[Sort by call sequence numbers]",
-        ToggleCallSeqs = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(UpdateCriteria(cost_callseqs, InclDesc, Scope)),
+        ToggleCallSeqs =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(UpdateCriteria(cost_callseqs, InclDesc, Scope)),
                 s(MsgCallSeqs)])
     ;
         CostKind = cost_callseqs,
@@ -1496,8 +1567,10 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
         ; CostKind = cost_words
         ),
         MsgAllocs = "[Sort by allocations]",
-        ToggleAllocs = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
-            [s(UpdateCriteria(cost_allocs, InclDesc, Scope)), s(MsgAllocs)])
+        ToggleAllocs =
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
+                [s(UpdateCriteria(cost_allocs, InclDesc, Scope)),
+                s(MsgAllocs)])
     ;
         CostKind = cost_allocs,
         ToggleAllocs = ""

@@ -21,17 +21,16 @@
 :- import_module profile.
 :- import_module report.
 
-% XXX: This include should be removed or replaced.  Some datastructes such as
-% preferences are currenty defined in query, the should be moved into a
-% different module so that this module doesn't need to include the whole of
-% query.
+% XXX: This include should be removed or replaced.  Some data structures
+% such as preferences are currently defined in query, they should be moved
+% into a different module so that this module doesn't need to include
+% the whole of query.
 :- import_module query.
 
 %-----------------------------------------------------------------------------%
 
-:- pred display_report(deep::in, preferences::in, deep_report::in,
-    display::out) is det.
-    
+:- func report_to_display(deep, preferences, deep_report) = display.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -48,40 +47,42 @@
 
 %-----------------------------------------------------------------------------%
 
-display_report(_, _, report_message(Msg), Display) :-
-    Display = display(no, [display_message(Msg)]).
-
-display_report(Deep, _, Report, Display) :-
-    Report = report_menu(QuantaPerSec, UserQuanta, InstQuanta, NumCallsequs,
-        NumCSD, NumCSS, NumPD, NumPS, NumClique),
-    display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta,
-        NumCallsequs, NumCSD, NumCSS, NumPD, NumPS, NumClique, Display).
-
-display_report(_, Prefs, report_top_procs(Ordering, TopProcs), Display) :-
-    display_report_top_procs(Prefs, Ordering, TopProcs, Display).
+report_to_display(Deep, Prefs, Report) = Display :-
+    (
+        Report = report_message(Msg),
+        Display = display(no, [display_message(Msg)])
+    ;
+        Report = report_menu(QuantaPerSec, UserQuanta, InstQuanta,
+            NumCallseqs, NumCSD, NumCSS, NumPD, NumPS, NumClique),
+        display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta,
+            NumCallseqs, NumCSD, NumCSS, NumPD, NumPS, NumClique, Display)
+    ;
+        Report = report_top_procs(Ordering, TopProcs),
+        display_report_top_procs(Prefs, Ordering, TopProcs, Display)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
-% Code to display menu report..
+% Code to display menu report.
 %
 
 :- pred display_report_menu(deep::in, int::in, int::in, int::in, int::in,
     int::in, int::in, int::in, int::in, int::in, display::out)
     is det.
 
-display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta, NumCallsequs,
+display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta, NumCallseqs,
         NumCSD, NumCSS, NumPD, NumPS, NumClique, Display) :-
     ShouldDisplayTimes = should_display_times(Deep),
-    
+
     % Display the links section of the report.
-    LinksExploration = 
-        [(deep_cmd_root(no) - 
+    LinksExploration =
+        [(deep_cmd_root(no) -
             "Exploring the call graph, starting at the root."),
-         (deep_cmd_root(yes(90)) - 
+         (deep_cmd_root(yes(90)) -
             "Exploring the call graph, starting at the action."),
          (deep_cmd_modules -
             "Exploring the program module by module.")],
-    
+
     (
         ShouldDisplayTimes = yes,
         LinksTopProcsByLimitTime =
@@ -94,8 +95,8 @@ display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta, NumCallsequs,
         ShouldDisplayTimes = no,
         LinksTopProcsByLimitTime = []
     ),
-    
-    LinksTopProcsByLimit =  
+
+    LinksTopProcsByLimit =
         [(deep_cmd_top_procs(rank_range(1, 100), cost_callseqs, self,
                 overall) -
             "Top 100 most expensive procedures: callseqs, self."),
@@ -107,10 +108,10 @@ display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta, NumCallsequs,
          (deep_cmd_top_procs(rank_range(1, 100), cost_words, self_and_desc,
                 overall) -
             "Top 100 most expensive procedures: words, self+descendants.")],
-    
+
     (
         ShouldDisplayTimes = yes,
-        LinksTopProcsByPercentTime = 
+        LinksTopProcsByPercentTime =
             [(deep_cmd_top_procs(threshold_percent(0.1), cost_time, self,
                     overall) -
                 "Procedures above 0.1% threshold: time, self."),
@@ -125,55 +126,57 @@ display_report_menu(Deep, QuantaPerSec, UserQuanta, InstQuanta, NumCallsequs,
         ShouldDisplayTimes = no,
         LinksTopProcsByPercentTime = []
     ),
-    
-    LinksTopProcsByPercent = 
-        [(deep_cmd_top_procs(threshold_percent(0.1), cost_callseqs, self, 
+
+    LinksTopProcsByPercent =
+        [(deep_cmd_top_procs(threshold_percent(0.1), cost_callseqs, self,
                 overall) -
             "Procedures above 0.1% threshold: callseqs, self."),
-         (deep_cmd_top_procs(threshold_percent(1.0), cost_callseqs, 
-                self_and_desc, overall) - 
+         (deep_cmd_top_procs(threshold_percent(1.0), cost_callseqs,
+                self_and_desc, overall) -
             "Procedures above 1% threshold: callseqs, self+descendants."),
-         (deep_cmd_top_procs(threshold_value(1000000.0), cost_callseqs, 
+         (deep_cmd_top_procs(threshold_value(1000000.0), cost_callseqs,
                 self_and_desc, overall) -
             ("Procedures above 1,000,000 callseqs threshold: callseqs, " ++
                 "self+descendants.")),
-         (deep_cmd_top_procs(threshold_percent(0.1), cost_words, self, 
+         (deep_cmd_top_procs(threshold_percent(0.1), cost_words, self,
                 overall) -
             "Procedures above 0.1% threshold: words, self."),
-         % 2M words is chosen arbitrary because it is 8MB on ia32
-         (deep_cmd_top_procs(threshold_percent(1.0), cost_words, 
+         (deep_cmd_top_procs(threshold_percent(1.0), cost_words,
                 self_and_desc, overall) -
             "Procedures above 1% threshold: words, self+descendants."),
-         (deep_cmd_top_procs(threshold_value(float(1024 * 1024 * 2)), 
+         % 2M words is chosen because it is 8MB on ia32.
+         (deep_cmd_top_procs(threshold_value(float(1024 * 1024 * 2)),
                 cost_words, self_and_desc, overall) -
             "Procedures above 2M words threshold: words, self+descendants.")],
-    
-    LinkCmds = LinksExploration ++ 
-        LinksTopProcsByLimitTime ++ LinksTopProcsByLimit ++ 
+
+    LinkCmds = LinksExploration ++
+        LinksTopProcsByLimitTime ++ LinksTopProcsByLimit ++
         LinksTopProcsByPercentTime ++ LinksTopProcsByPercent,
-    map(make_command_link, LinkCmds, LinksList),
-    Links = display_list(list_class_vertical_bullets, 
-        yes("You can start exploring the deep profile at the following" ++ 
+    list.map(make_command_link, LinkCmds, LinksList),
+    Links = display_list(list_class_vertical_bullets,
+        yes("You can start exploring the deep profile at the following" ++
             " points."), LinksList),
 
     % Display the table section of the report.
-    ProfilingStatistics = [("Quanta per second:"           - QuantaPerSec),
-                           ("Quanta in user code:"         - UserQuanta),
-                           ("Quanta in instrumentation:"   - InstQuanta),
-                           ("Call sequence numbers:"       - NumCallsequs),
-                           ("CallSiteDyanic structures:"   - NumCSD),
-                           ("ProcDynamic structures:"      - NumPD),
-                           ("CallSiteStatic structures:"   - NumCSS),
-                           ("ProcStatic structures:"       - NumPS),
-                           ("Cliques:"                     - NumClique)],
-    map(make_menu_table_row, ProfilingStatistics, Rows),
+    ProfilingStatistics =
+        [("Quanta per second:"          - QuantaPerSec),
+        ("Quanta in user code:"         - UserQuanta),
+        ("Quanta in instrumentation:"   - InstQuanta),
+        ("Call sequence numbers:"       - NumCallseqs),
+        ("CallSiteDyanic structures:"   - NumCSD),
+        ("ProcDynamic structures:"      - NumPD),
+        ("CallSiteStatic structures:"   - NumCSS),
+        ("ProcStatic structures:"       - NumPS),
+        ("Cliques:"                     - NumClique)],
+
+    list.map(make_menu_table_row, ProfilingStatistics, Rows),
     Table = table(table_class_menu, 2, no, Rows),
 
     % Display the Controls section of the report.
     Controls = display_list(list_class_horizontal, no, cmds_menu_restart_quit),
 
     % Construct the complete representation of what to display.
-    Display = display(yes("Deep profiler menu"), 
+    Display = display(yes("Deep profiler menu"),
         [Links, display_table(Table), Controls]).
 
 %-----------------------------------------------------------------------------%
@@ -202,38 +205,34 @@ make_command_link((Cmd - Label), Item) :-
     % Create a display_report structure for a top_procedures report.
     %
 :- pred display_report_top_procs(preferences::in, report_ordering::in,
-    list(row_data(report_proc))::in, display::out) is det.
+    list(perf_row_data(report_proc))::in, display::out) is det.
 
 display_report_top_procs(Prefs, Ordering, TopProcs, Display) :-
-    Ordering = report_ordering(DisplayLimit, CostKind, InclDesc, Scope), 
+    Ordering = report_ordering(DisplayLimit, CostKind, InclDesc, Scope),
     Desc = cost_criteria_to_description(CostKind, InclDesc, Scope),
-    Title = "Top procedures " ++ Desc, 
+    Title = "Top procedures " ++ Desc,
 
-    %
-    % Build table
-    %
+    % Build table.
     top_procs_table(Prefs, Ordering, TopProcs, Table),
-    DisplayTable = display_table(Table), 
+    DisplayTable = display_table(Table),
     TableAndLabel = display_list(list_class_vertical_no_bullets,
         yes(Title), [DisplayTable]),
 
-    %
-    % Build controls at bottom of page
-    %
+    % Build controls at bottom of page.
     Cmd = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
     sort_controls(Prefs, Ordering, SortControls),
     incldesc_and_scope_controls(Prefs, Ordering, InclDescScope),
     Controls1 = display_list(list_class_vertical_no_bullets, no,
         [SortControls, InclDescScope]),
-    
+
     field_controls(Prefs, Cmd, Controls2),
-    
+
     display_controls(Prefs, Cmd, Controls3),
 
-    Controls4 =  
+    Controls4 =
         display_list(list_class_horizontal, no, cmds_menu_restart_quit),
 
-    Display = display(yes(Title), 
+    Display = display(yes(Title),
         [TableAndLabel, Controls1, Controls2, Controls3, Controls4]).
 
 %-----------------------------------------------------------------------------%
@@ -288,7 +287,7 @@ scope_to_description(overall) = "overall".
             ).
 
 :- pred top_procs_table(preferences::in, report_ordering::in,
-    list(row_data(report_proc))::in, table::out) is det.
+    list(perf_row_data(report_proc))::in, table::out) is det.
 
 top_procs_table(Prefs, Ordering, TopProcs, Table) :-
     TableInfo = table_info(table_class_top_procs, ranked, Prefs, Ordering),
@@ -314,29 +313,42 @@ top_procs_table(Prefs, Ordering, TopProcs, Table) :-
 
     % Produce a table for all these procedures.
     %
-:- pred proc_table(table_info::in, list(row_data(report_proc))::in, table::out)
-    is det. 
+:- pred proc_table(table_info::in, list(perf_row_data(report_proc))::in,
+    table::out) is det.
 
 proc_table(TableInfo, TopProcs, Table) :-
     % Later add support for non-ranked tables.
     proc_table_header(TableInfo, NumCols, Header),
-    map_foldl(proc_table_row(TableInfo), TopProcs, Rows, 1, _),
+    list.map_foldl(proc_table_row(TableInfo), TopProcs, Rows, 1, _),
     Table = table(TableInfo ^ table_class, NumCols, yes(Header), Rows).
 
-    % Common column header strings.
-    %
+%-----------------------------------------------------------------------------%
+%
+% Common column header strings.
+%
+
 :- func percall = table_data.
 percall = s("/call").
+
 :- func percent_label = table_data.
 percent_label = s("%").
+
 :- func self = table_data.
 self = s("Self").
+
+:- func time = table_data.
+time = s("Time").
+
+:- func total = table_data.
+total = s("Total").
+
+%-----------------------------------------------------------------------------%
 
 :- func make_link(report_ordering, preferences, string, cost_kind,
     include_descendants, measurement_scope) = deep_link.
 
-make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope) = 
-    make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope, 
+make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope) =
+    make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope,
         link_class_link).
 
 :- func make_link(report_ordering, preferences, string, cost_kind,
@@ -357,10 +369,12 @@ make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope, Class) = Link :-
 :- func make_table_link(table_info, string, cost_kind, include_descendants,
     measurement_scope) = table_data.
 
-make_table_link(TableInfo, Label, CostKind, InclDesc, Scope) = 
+make_table_link(TableInfo, Label, CostKind, InclDesc, Scope) =
         l(make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope)) :-
     Ordering = TableInfo ^ table_ordering,
     Prefs = TableInfo ^ prefs.
+
+%-----------------------------------------------------------------------------%
 
 :- func self_link(table_info, cost_kind) = table_data.
 self_link(TableInfo, CostKind) = Link :-
@@ -375,7 +389,7 @@ total_link(TableInfo, CostKind) =
     make_table_link(TableInfo, "Total", CostKind, self_and_desc, overall).
 
 :- func total_percall_link(table_info, cost_kind) = table_data.
-total_percall_link(TableInfo, CostKind) = 
+total_percall_link(TableInfo, CostKind) =
     make_table_link(TableInfo, "/call", CostKind, self_and_desc, per_call).
 
 :- func time_link(table_info) = table_data.
@@ -386,17 +400,13 @@ time_link(TableInfo) =
 total_time_link(TableInfo) =
     make_table_link(TableInfo, "Time", cost_time, self_and_desc, overall).
 
-
-:- func time = table_data.
-time = s("Time").
-:- func total = table_data.
-total = s("Total").
+%-----------------------------------------------------------------------------%
 
     % Convert row data of procedures from the deep profiler into a table row
-    % accoding to the preferences.
+    % according to the preferences.
     %
-:- pred proc_table_row(table_info::in, 
-    row_data(report_proc)::in, table_row::out, int::in, int::out) is det.
+:- pred proc_table_row(table_info::in, perf_row_data(report_proc)::in,
+    table_row::out, int::in, int::out) is det.
 
 proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
     Ranked = TableInfo ^ table_ranked,
@@ -424,7 +434,8 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
         Fails = RowData ^ fails,
         Redos = RowData ^ redos,
         Excps = RowData ^ excps,
-        PortCells = [table_cell(i(Calls)), table_cell(i(Exits)),
+        PortCells =
+            [table_cell(i(Calls)), table_cell(i(Exits)),
             table_cell(i(Fails)), table_cell(i(Redos)),
             table_cell(i(Excps))]
     ;
@@ -448,11 +459,11 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
         TimePercallCell = table_cell(t(RowData ^ time_percall)),
         (
             TimeFields = ticks,
-            TimeCells = [SelfTicksCell, SelfTimePercentCell, 
+            TimeCells = [SelfTicksCell, SelfTimePercentCell,
                 TicksCell, TimePercentCell]
         ;
             TimeFields = time,
-            TimeCells = [SelfTimeCell, SelfTimePercentCell, 
+            TimeCells = [SelfTimeCell, SelfTimePercentCell,
                 TimeCell, TimePercentCell]
         ;
             TimeFields = ticks_and_time,
@@ -465,9 +476,11 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
                 TimeCell, TimePercentCell, TimePercallCell]
         ;
             TimeFields = ticks_and_time_and_percall,
-            TimeCells = [SelfTicksCell, SelfTimeCell, SelfTimePercentCell, 
-                    SelfTimePercallCell,
-                TicksCell, TimeCell, TimePercentCell, TimePercallCell]
+            TimeCells =
+                [SelfTicksCell, SelfTimeCell,
+                SelfTimePercentCell, SelfTimePercallCell,
+                TicksCell, TimeCell,
+                TimePercentCell, TimePercallCell]
         )
     ),
 
@@ -478,25 +491,28 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
         CallSeqsCells = []
     ;
         SelfCallseqsCell = table_cell(i(RowData ^ self_callseqs)),
-        SelfCallseqsPercentCell = 
+        SelfCallseqsPercentCell =
             table_cell(p(RowData ^ self_callseqs_percent)),
         CallseqsCell = table_cell(i(RowData ^ callseqs)),
         CallseqsPercentCell = table_cell(p(RowData ^ callseqs_percent)),
         (
             CallSeqsFields = callseqs,
-            CallSeqsCells = [SelfCallseqsCell, SelfCallseqsPercentCell,
+            CallSeqsCells =
+                [SelfCallseqsCell, SelfCallseqsPercentCell,
                 CallseqsCell, CallseqsPercentCell]
         ;
             CallSeqsFields = callseqs_and_percall,
-            SelfCallseqsPercallCell = 
+            SelfCallseqsPercallCell =
                 table_cell(f(RowData ^ self_callseqs_percall)),
             CallseqsPercallCell = table_cell(f(RowData ^ callseqs_percall)),
-            CallSeqsCells = [SelfCallseqsCell, SelfCallseqsPercentCell, 
-                    SelfCallseqsPercallCell,
-                CallseqsCell, CallseqsPercentCell, CallseqsPercallCell]
+            CallSeqsCells =
+                [SelfCallseqsCell, SelfCallseqsPercentCell,
+                SelfCallseqsPercallCell,
+                CallseqsCell, CallseqsPercentCell,
+                CallseqsPercallCell]
         )
     ),
-    
+
     % Build allocation info.
     AllocFields = Fields ^ alloc_fields,
     (
@@ -509,15 +525,16 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
         AllocsPercentCell = table_cell(p(RowData ^ allocs_percent)),
         (
             AllocFields = alloc,
-            AllocCells = [SelfAllocsCell, SelfAllocsPercentCell,
+            AllocCells =
+                [SelfAllocsCell, SelfAllocsPercentCell,
                 AllocsCell, AllocsPercentCell]
         ;
             AllocFields = alloc_and_percall,
-            SelfAllocsPercallCell = 
+            SelfAllocsPercallCell =
                 table_cell(f(RowData ^ self_allocs_percall)),
             AllocsPercallCell = table_cell(f(RowData ^ allocs_percall)),
-            AllocCells = [SelfAllocsCell, SelfAllocsPercentCell, 
-                    SelfAllocsPercallCell,
+            AllocCells =
+                [SelfAllocsCell, SelfAllocsPercentCell, SelfAllocsPercallCell,
                 AllocsCell, AllocsPercentCell, AllocsPercallCell]
         )
     ),
@@ -530,7 +547,7 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
         ( MemoryFields = memory(Units)
         ; MemoryFields = memory_and_percall(Units) ),
         SelfMemCell = table_cell(m(RowData ^ self_mem, Units, 0)),
-        SelfMemPercallCell = 
+        SelfMemPercallCell =
             table_cell(m(RowData ^ self_mem_percall, Units, 2)),
         MemCell = table_cell(m(RowData ^ mem, Units, 0)),
         MemPercallCell = table_cell(m(RowData ^ mem_percall, Units, 2)),
@@ -538,18 +555,19 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
         MemPercentCell = table_cell(p(RowData ^ mem_percent)),
         (
             MemoryFields = memory(_),
-            MemoryCells = [SelfMemCell, SelfMemPercentCell, 
+            MemoryCells =
+                [SelfMemCell, SelfMemPercentCell,
                 MemCell, MemPercentCell]
         ;
             MemoryFields = memory_and_percall(_),
-            MemoryCells = [SelfMemCell, SelfMemPercentCell, SelfMemPercallCell,
+            MemoryCells =
+                [SelfMemCell, SelfMemPercentCell, SelfMemPercallCell,
                 MemCell, MemPercentCell, MemPercallCell]
         )
     ),
 
-    Cells = RankCells ++ cons(ProcCell, PortCells ++ TimeCells ++ 
-        CallSeqsCells ++ AllocCells ++ MemoryCells). 
-
+    Cells = RankCells ++ cons(ProcCell, PortCells ++ TimeCells ++
+        CallSeqsCells ++ AllocCells ++ MemoryCells).
 
 :- pred proc_to_cell(table_info::in, report_proc::in, table_cell::out) is det.
 
@@ -558,8 +576,7 @@ proc_to_cell(TableInfo, ReportProc, table_cell(Data)) :-
     ReportProc = report_proc(PSPtr, _, _, Name),
     PSPtr = proc_static_ptr(PSIndex),
     Cmd = deep_cmd_proc(PSIndex),
-    Data = l(deep_link(Cmd, yes(Prefs), Name, link_class_link)). 
-
+    Data = l(deep_link(Cmd, yes(Prefs), Name, link_class_link)).
 
     % Create the table header cell for the timing fields.
     %
@@ -576,7 +593,7 @@ proc_table_time_header(TableInfo, Fields, MaybeHeaderCell) :-
     TotalPercall = total_percall_link(TableInfo, cost_time),
 
     (
-        TimeFields = no_time, 
+        TimeFields = no_time,
         MaybeHeaderCell = no
     ;
         (
@@ -587,20 +604,22 @@ proc_table_time_header(TableInfo, Fields, MaybeHeaderCell) :-
             TimeFields = time,
             Title = "Time",
             SubTitles = [Self, percent_label, Total, percent_label]
-        ; 
+        ;
             TimeFields = ticks_and_time,
             Title = "Clock ticks and times",
-            SubTitles = [Self, Time, percent_label, 
+            SubTitles = [Self, Time, percent_label,
                 Total, TotalTime, percent_label]
         ;
             TimeFields = time_and_percall,
             Title = "Time",
-            SubTitles = [Self, percent_label, SelfPercall, 
+            SubTitles =
+                [Self, percent_label, SelfPercall,
                 Total, percent_label, TotalPercall]
-        ; 
-            TimeFields = ticks_and_time_and_percall, 
+        ;
+            TimeFields = ticks_and_time_and_percall,
             Title = "Clock ticks and times",
-            SubTitles = [Self, Time, percent_label, SelfPercall, 
+            SubTitles =
+                [Self, Time, percent_label, SelfPercall,
                 Total, TotalTime, percent_label, TotalPercall]
         ),
         MaybeHeaderCell = yes(table_header_group(Title, SubTitles,
@@ -617,7 +636,7 @@ proc_table_ports_header(TableInfo, Fields, MaybePortsHeader) :-
         Fields ^ port_fields = port,
         Calls = make_table_link(TableInfo, "Calls", cost_calls, self, overall),
         Redos = make_table_link(TableInfo, "Redos", cost_redos, self, overall),
-        MaybePortsHeader = yes(table_header_group("Port counts", 
+        MaybePortsHeader = yes(table_header_group("Port counts",
             [Calls, s("Exits"), s("Fails"), Redos, s("Excps")],
             table_col_class_port_counts))
     ;
@@ -645,7 +664,8 @@ proc_table_callseqs_header(TableInfo, Fields, MaybeCallseqsHeader) :-
             Callseqs = callseqs_and_percall,
             SelfPercall = self_percall_link(TableInfo, cost_callseqs),
             TotalPercall = total_percall_link(TableInfo, cost_callseqs),
-            SubTitles = [Self, percent_label, SelfPercall, 
+            SubTitles =
+                [Self, percent_label, SelfPercall,
                 Total, percent_label, TotalPercall]
         ),
         MaybeCallseqsHeader = yes(table_header_group("Call sequence numbers",
@@ -672,7 +692,8 @@ proc_table_allocations_header(TableInfo, Fields, MaybeHeader) :-
             AllocFields = alloc_and_percall,
             SelfPercall = self_percall_link(TableInfo, cost_allocs),
             TotalPercall = total_percall_link(TableInfo, cost_allocs),
-            SubTitles = [Self, percent_label, SelfPercall, 
+            SubTitles =
+                [Self, percent_label, SelfPercall,
                 Total, percent_label, TotalPercall]
         ),
         MaybeHeader = yes(table_header_group("Memory allocations", SubTitles,
@@ -700,7 +721,8 @@ proc_table_memory_header(TableInfo, Fields, MaybeHeader) :-
             Memory = memory_and_percall(Units),
             SelfPercall = self_percall_link(TableInfo, cost_words),
             TotalPercall = total_percall_link(TableInfo, cost_words),
-            SubTitles = [Self, Percent, SelfPercall, 
+            SubTitles =
+                [Self, Percent, SelfPercall,
                 Total, Percent, TotalPercall]
         ),
         (
@@ -730,20 +752,21 @@ proc_table_header(TableInfo, NumCols, Header) :-
         (
             Ranked = ranked,
             table_add_header_col(
-                table_header_cell(s("Rank"), table_col_class_ordinal_rank), 
+                table_header_cell(s("Rank"), table_col_class_ordinal_rank),
                 !Cols, !NumCols)
         ;
             Ranked = non_ranked
         ),
-        table_add_header_col(table_header_cell(s("Procedure"),
-            table_col_class_proc), !Cols, !NumCols),
-        
+        ProcHeaderCell =
+            table_header_cell(s("Procedure"), table_col_class_proc),
+        table_add_header_col(ProcHeaderCell, !Cols, !NumCols),
+
         proc_table_ports_header(TableInfo, Fields, MaybePortsHeader),
         table_maybe_add_header_col(MaybePortsHeader, !Cols, !NumCols),
-        
+
         proc_table_time_header(TableInfo, Fields, MaybeTimeHeader),
         table_maybe_add_header_col(MaybeTimeHeader, !Cols, !NumCols),
-       
+
         proc_table_callseqs_header(TableInfo, Fields, MaybeCallseqsHeader),
         table_maybe_add_header_col(MaybeCallseqsHeader, !Cols, !NumCols),
 
@@ -753,7 +776,7 @@ proc_table_header(TableInfo, NumCols, Header) :-
 
         proc_table_memory_header(TableInfo, Fields, MaybeMemoryHeader),
         table_maybe_add_header_col(MaybeMemoryHeader, !Cols, !NumCols),
-        
+
         Header = table_header(reverse(!.Cols)),
         NumCols = !.NumCols
     ).
@@ -768,11 +791,11 @@ proc_table_header(TableInfo, NumCols, Header) :-
 :- pred sort_controls(preferences::in, report_ordering::in, display_item::out)
     is det.
 
-sort_controls(Prefs, Ordering, ControlsList) :- 
+sort_controls(Prefs, Ordering, ControlsList) :-
     CurrentCostKind = Ordering ^ cost_kind,
     Costs0 = [cost_calls, cost_redos, cost_time, cost_callseqs, cost_allocs,
         cost_words],
-    list.filter(not_unify(CurrentCostKind), Costs0, Costs1), 
+    list.filter(not_unify(CurrentCostKind), Costs0, Costs1),
     list.map(make_sort_control(Ordering, Prefs), Costs1, Controls),
 
     ControlsList = display_list(list_class_horizontal, no, Controls).
@@ -786,28 +809,28 @@ cost_kind_label(cost_callseqs, "Sort by call sequence numbers").
 cost_kind_label(cost_allocs, "Sort by allocations").
 cost_kind_label(cost_words, "Sort by words").
 
-:- pred make_sort_control(report_ordering::in, preferences::in, 
+:- pred make_sort_control(report_ordering::in, preferences::in,
     cost_kind::in, display_item::out) is det.
 
 make_sort_control(Ordering, Prefs, CostKind, display_command_link(Control)) :-
     InclDesc = Ordering ^ incl_desc,
     Scope = Ordering ^ scope,
     cost_kind_label(CostKind, Label),
-    Control = 
-        make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope, 
+    Control =
+        make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope,
             link_class_control).
 
 %-----------------------------------------------------------------------------%
 
     % Create the controls for which measurements to include.
     %
-:- pred incldesc_and_scope_controls(preferences::in, report_ordering::in, 
+:- pred incldesc_and_scope_controls(preferences::in, report_ordering::in,
     display_item::out) is det.
 
 incldesc_and_scope_controls(Prefs, Ordering, ControlsList) :-
     Ordering =
         report_ordering(DisplayLimit, CostKind, CurrentInclDesc, CurrentScope),
-    
+
     % Build InclDesc Control.
     (
         CurrentInclDesc = self,
@@ -819,9 +842,9 @@ incldesc_and_scope_controls(Prefs, Ordering, ControlsList) :-
         InclDesc = self
     ),
     InclDescControl = deep_link(
-            deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, CurrentScope),
-            yes(Prefs), InclDescLabel, link_class_control),
-        
+        deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, CurrentScope),
+        yes(Prefs), InclDescLabel, link_class_control),
+
     % Build Scope Control.
     (
         CurrentScope = overall,
@@ -833,10 +856,10 @@ incldesc_and_scope_controls(Prefs, Ordering, ControlsList) :-
         Scope = overall
     ),
     ScopeControl = deep_link(
-            deep_cmd_top_procs(DisplayLimit, CostKind, CurrentInclDesc, Scope),
-            yes(Prefs), ScopeLabel, link_class_control),
+        deep_cmd_top_procs(DisplayLimit, CostKind, CurrentInclDesc, Scope),
+        yes(Prefs), ScopeLabel, link_class_control),
 
-    map(link_to_display, [InclDescControl, ScopeControl], Controls), 
+    list.map(link_to_display, [InclDescControl, ScopeControl], Controls),
     ControlsList = display_list(list_class_horizontal, no, Controls).
 
     % Provide a predicate to be used as a higher order value that wraps the
@@ -849,7 +872,7 @@ link_to_display(Link, Display) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred display_controls(preferences::in, cmd::in, display_item::out) is det. 
+:- pred display_controls(preferences::in, cmd::in, display_item::out) is det.
 
 display_controls(Prefs, Cmd, ControlsList) :-
     Colour0 = Prefs ^ pref_colour,
@@ -880,19 +903,19 @@ display_controls(Prefs, Cmd, ControlsList) :-
     BoxControl = display_command_link(
         deep_link(Cmd, yes(BoxPrefs), BoxLabel, link_class_control)),
 
-    ControlsList = display_list(list_class_horizontal, no, 
+    ControlsList = display_list(list_class_horizontal, no,
         [ColourControl, BoxControl]).
 
 %-----------------------------------------------------------------------------%
 
     % Create the field controls section.
     %
-:- pred field_controls(preferences::in, cmd::in, display_item::out) is det. 
+:- pred field_controls(preferences::in, cmd::in, display_item::out) is det.
 
 field_controls(Prefs, Cmd, ControlsList) :-
     Fields = Prefs ^ pref_fields,
     Fields = fields(PortFields, TimeFields, CallseqsFields, AllocFields,
-        MemoryFields),  
+        MemoryFields),
 
     (
         PortFields = no_port,
@@ -925,7 +948,7 @@ field_controls(Prefs, Cmd, ControlsList) :-
     list.filter(not_unify(AllocFields), AllAllocFields, NewAllocFields),
     list.map(make_alloc_control(Cmd, Prefs), NewAllocFields, AllocControls),
     make_horizontal_list(AllocControls, AllocControlsList),
-   
+
     AllMemoryFields = [no_memory, memory(units_words), memory(units_bytes),
         memory_and_percall(units_words), memory_and_percall(units_bytes)],
     list.filter(not_unify(MemoryFields), AllMemoryFields, NewMemoryFields),
@@ -935,7 +958,7 @@ field_controls(Prefs, Cmd, ControlsList) :-
     Controls = [PortControl, TimeControlsList, CallseqsControlsList,
         AllocControlsList, MemoryControlsList],
 
-    ControlsList = display_list(list_class_vertical_no_bullets, 
+    ControlsList = display_list(list_class_vertical_no_bullets,
         yes("Toggle fields:"), Controls).
 
 %-----------------------------------------------------------------------------%
@@ -953,7 +976,7 @@ port_label(no_port, "No port counts").
     % preferences.  Makes a button to control which time fields are visible
     % depending on the third argument.
     %
-:- pred make_time_control(cmd::in, preferences::in, 
+:- pred make_time_control(cmd::in, preferences::in,
     time_fields::in, display_item::out) is det.
 
 make_time_control(Cmd, Prefs, TimeFields, Control) :-
@@ -983,7 +1006,7 @@ time_label(ticks_and_time_and_percall, "Ticks and times and per-call times").
     % preferences.  Makes a button to control which callseqs fields are visible
     % depending on the third argument.
     %
-:- pred make_callseqs_control(cmd::in, preferences::in, 
+:- pred make_callseqs_control(cmd::in, preferences::in,
     callseqs_fields::in, display_item::out) is det.
 
 make_callseqs_control(Cmd, Prefs, CallseqsFields, Control) :-
@@ -1005,7 +1028,7 @@ callseqs_label(callseqs_and_percall,
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_alloc_control(cmd::in, preferences::in, 
+:- pred make_alloc_control(cmd::in, preferences::in,
     alloc_fields::in, display_item::out) is det.
 
 make_alloc_control(Cmd, Prefs, AllocFields, Control) :-
@@ -1026,7 +1049,7 @@ alloc_label(alloc_and_percall, "Allocations and per-call allocations").
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_memory_control(cmd::in, preferences::in, 
+:- pred make_memory_control(cmd::in, preferences::in,
     memory_fields::in, display_item::out) is det.
 
 make_memory_control(Cmd, Prefs, MemoryFields, Control) :-
@@ -1054,8 +1077,8 @@ memory_label(memory_and_percall(units_bytes), "Bytes and per-call bytes").
 :- mode make_fields_control(pred(in, in, out) is det, pred(in, out) is det,
     in, in, in, out) is det.
 
-make_fields_control(UpdateFields, MakeLabel, Cmd, Prefs0, NewFields, Control)
-        :-
+make_fields_control(UpdateFields, MakeLabel, Cmd, Prefs0, NewFields,
+        Control) :-
     Fields0 = Prefs0 ^ pref_fields,
     UpdateFields(NewFields, Fields0, Fields),
     Prefs = Prefs0 ^ pref_fields := Fields,
@@ -1074,7 +1097,7 @@ make_fields_control(UpdateFields, MakeLabel, Cmd, Prefs0, NewFields, Control)
 :- func cmds_menu_restart_quit = list(display_item).
 
 cmds_menu_restart_quit = [Menu, Restart, Quit] :-
-    Menu = display_command_link(deep_link(deep_cmd_menu, no, "Menu", 
+    Menu = display_command_link(deep_link(deep_cmd_menu, no, "Menu",
         link_class_control)),
     Restart = display_command_link(deep_link(deep_cmd_restart, no, "Restart",
         link_class_control)),
@@ -1091,11 +1114,11 @@ cmds_menu_restart_quit = [Menu, Restart, Quit] :-
 
 not_unify(A, B) :-
     A \= B.
-    
+
 %-----------------------------------------------------------------------------%
-    
-    % Make a mercury list of display items into a display item representing a
-    % horizontal list of these items.
+
+    % Make a mercury list of display items into a display item representing
+    % a horizontal list of these items.
     %
 :- pred make_horizontal_list(list(display_item)::in, display_item::out) is det.
 

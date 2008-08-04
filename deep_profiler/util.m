@@ -1,15 +1,16 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005-2006 The University of Melbourne.
+% Copyright (C) 2001, 2005-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: util.m.
 % Authors: conway, zs.
 %
 % This module defines utility predicates for the CGI program.
+%
 %-----------------------------------------------------------------------------%
 
 :- module util.

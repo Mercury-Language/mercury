@@ -9,8 +9,7 @@
 % File: create_report.m.
 % Author: pbone.
 %
-% This module contains the create_report predicate that creates a report
-% from a deep data structure and a query.
+% This module creates a report from a deep data structure and a query.
 %
 %-----------------------------------------------------------------------------%
 
@@ -43,42 +42,45 @@
 
 %-----------------------------------------------------------------------------%
 
-create_report(deep_cmd_quit, Deep, Report) :-
-    Report = report_message(string.format(
-        "Shutting down deep profile server for %s.",
-        [s(Deep ^ data_file_name)])).
-
-create_report(deep_cmd_timeout(Timeout), _Deep, Report) :-
-    Report = report_message(string.format(
-        "Timeout set to %d minutes.", [i(Timeout)])).
-
-create_report(deep_cmd_restart, _, _) :-
-    error("create_report/3", "unexpected restart command").
-
-create_report(deep_cmd_menu, Deep, Report) :-
-    Deep ^ profile_stats = profile_stats(NumCSD, NumCSS, NumPD, NumPS,
-        QuantaPerSec, InstrumentationQuanta, UserQuanta, NumCallsequs, _, _),
-    NumClique = array.max(Deep ^ clique_members),
-    Report = report_menu(QuantaPerSec, UserQuanta, InstrumentationQuanta,
-        NumCallsequs, NumCSD, NumCSS, NumPD, NumPS, NumClique).
-
-create_report(deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope), Deep,
-        Report) :-
-    create_top_procs_report(Deep, Limit, CostKind, InclDesc, Scope, Report).
-
-create_report(Cmd, _, _) :-
-    ( Cmd = deep_cmd_root(_)
-    ; Cmd = deep_cmd_clique(_)
-    ; Cmd = deep_cmd_proc(_)
-    ; Cmd = deep_cmd_proc_callers(_, _, _)
-    ; Cmd = deep_cmd_modules
-    ; Cmd = deep_cmd_module(_)
-    ; Cmd = deep_cmd_proc_static(_)
-    ; Cmd = deep_cmd_proc_dynamic(_)
-    ; Cmd = deep_cmd_call_site_static(_)
-    ; Cmd = deep_cmd_call_site_dynamic(_)
-    ; Cmd = deep_cmd_raw_clique(_)),
-    error("create_report/3", "Command not supported: " ++ string(Cmd)).
+create_report(Cmd, Deep, Report) :-
+    (
+        Cmd = deep_cmd_quit,
+        Msg = string.format("Shutting down deep profile server for %s.",
+            [s(Deep ^ data_file_name)]),
+        Report = report_message(Msg)
+    ;
+        Cmd = deep_cmd_timeout(Timeout),
+        Msg = string.format("Timeout set to %d minutes.", [i(Timeout)]),
+        Report = report_message(Msg)
+    ;
+        Cmd = deep_cmd_menu,
+        Deep ^ profile_stats = profile_stats(NumCSD, NumCSS, NumPD, NumPS,
+            QuantaPerSec, InstrumentationQuanta, UserQuanta, NumCallsequs,
+            _, _),
+        NumCliques = array.max(Deep ^ clique_members),
+        Report = report_menu(QuantaPerSec, UserQuanta, InstrumentationQuanta,
+            NumCallsequs, NumCSD, NumCSS, NumPD, NumPS, NumCliques)
+    ;
+        Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
+        create_top_procs_report(Deep, Limit, CostKind, InclDesc, Scope, Report)
+    ;
+        Cmd = deep_cmd_restart,
+        error("create_report/3", "unexpected restart command")
+    ;
+        ( Cmd = deep_cmd_root(_)
+        ; Cmd = deep_cmd_clique(_)
+        ; Cmd = deep_cmd_proc(_)
+        ; Cmd = deep_cmd_proc_callers(_, _, _)
+        ; Cmd = deep_cmd_modules
+        ; Cmd = deep_cmd_module(_)
+        ; Cmd = deep_cmd_proc_static(_)
+        ; Cmd = deep_cmd_proc_dynamic(_)
+        ; Cmd = deep_cmd_call_site_static(_)
+        ; Cmd = deep_cmd_call_site_dynamic(_)
+        ; Cmd = deep_cmd_raw_clique(_)
+        ),
+        error("create_report/3", "Command not supported: " ++ string(Cmd))
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -115,25 +117,26 @@ create_top_procs_report(Deep, Limit, CostKind, InclDesc0, Scope0, Report) :-
     ;
         MaybeTopPSIs = ok(TopPSIs),
         Ordering = report_ordering(Limit, CostKind, InclDesc, Scope),
-        map(psi_to_row_data(Deep), TopPSIs, RowData),
+        list.map(psi_to_perf_row_data(Deep), TopPSIs, RowData),
         Report = report_top_procs(Ordering, RowData)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % For a Proc Static Index query the deep data and retrive the data to
-    % include in that row of the report.
+    % Lookup the proc_static structure with the given PSI index number
+    % and return performance information about it.
     %
-:- pred psi_to_row_data(deep::in, int::in, row_data(report_proc)::out) is det.
+:- pred psi_to_perf_row_data(deep::in, int::in,
+    perf_row_data(report_proc)::out) is det.
 
-psi_to_row_data(Deep, PSI, RowData) :-
+psi_to_perf_row_data(Deep, PSI, RowData) :-
     % Gather global deep profiling information.
     ProfileStats = Deep ^ profile_stats,
     TicksPerSec = ProfileStats ^ ticks_per_sec,
     WordSize = ProfileStats ^ word_size,
     Root = root_total_info(Deep),
 
-    PSPtr = wrap_proc_static_ptr(PSI),  
+    PSPtr = wrap_proc_static_ptr(PSI),
 
     % Retrive data.
     deep_lookup_ps_own(Deep, PSPtr, Own),
@@ -161,9 +164,9 @@ psi_to_row_data(Deep, PSI, RowData) :-
     RowData ^ self_time = SelfTime,
     RowData ^ self_time_percent = SelfTimePercent,
     RowData ^ self_time_percall = SelfTimePercall,
-   
+
     % Set times for self + descendants.
-    Ticks = SelfTicks + inherit_quanta(Desc), 
+    Ticks = SelfTicks + inherit_quanta(Desc),
     ticks_to_time(Ticks, TicksPerSec, Time),
     time_percall(Time, Calls, TimePercall),
     TimePercent = percent_from_ints(Ticks, TotalQuanta),
@@ -176,7 +179,7 @@ psi_to_row_data(Deep, PSI, RowData) :-
     TotalCallseqs = inherit_callseqs(Root),
     SelfCallseqs = callseqs(Own),
     RowData ^ self_callseqs = SelfCallseqs,
-    RowData ^ self_callseqs_percent = 
+    RowData ^ self_callseqs_percent =
         percent_from_ints(SelfCallseqs, TotalCallseqs),
     RowData ^ self_callseqs_percall = divide_ints(SelfCallseqs, Calls),
 
@@ -195,7 +198,7 @@ psi_to_row_data(Deep, PSI, RowData) :-
     RowData ^ allocs = Allocs,
     RowData ^ allocs_percent = percent_from_ints(Allocs, TotalAllocs),
     RowData ^ allocs_percall = divide_ints(Allocs, Calls),
-    
+
     % set memory information.
     TotalWords = inherit_words(Root),
     SelfWords = words(Own),
@@ -243,7 +246,7 @@ psptr_to_report_proc(Deep, PSPtr, report_proc(PSPtr, Filename, Lineno, Name))
     % Get appropriate source location information for a proc static pointer.
     %
 :- pred proc_static_get_proc_info(deep::in, proc_static_ptr::in, string::out,
-    int::out, string::out) is det. 
+    int::out, string::out) is det.
 
 proc_static_get_proc_info(Deep, PSPtr, FileName, LineNumber, Name) :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->

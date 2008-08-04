@@ -9,8 +9,8 @@
 % File: display.m.
 % Author: pbone.
 %
-% This module contains a data structure for displaying deep profiler
-% reports.  It may be versatile enough for other uses.
+% This module contains a data structure for displaying deep profiler reports.
+% It may be versatile enough for other uses.
 %
 %-----------------------------------------------------------------------------%
 
@@ -36,63 +36,63 @@
     --->    display_message(string)
     ;       display_table(table)
     ;       display_list(
+                % Class of the list, may be used to display the list.
                 list_class,
-                    % Class of the list, may be used to display the list.
 
+                % An optional title.
                 maybe(string),
-                    % An optional title.
- 
+
+                % Items within the list.
                 list(display_item)
-                    % Items within the list.
             )
     ;       display_command_link(deep_link).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Table specific structures.
 %
 
 :- type table
     --->    table(
+                % Enumeration of what the table stores, this can be used
+                % for layout hints.
                 table_class     :: table_class,
-                    % Enumeration of what the table stores, this can be used
-                    % for layout hints.
-    
-                table_num_cols  :: int,
-                    % The number of columns in the table.  If the number of
-                    % cells in any data row is not equal to this number the
-                    % table is not well formed. The number of cells in the
-                    % header may be smaller than this value when there are
-                    % header cells that span multiple sub-header cells.
 
+                % The number of columns in the table.  If the number of cells
+                % in any data row is not equal to this number, the table is not
+                % well formed. The number of cells in the header may be smaller
+                % than this value when there are header cells that span
+                % multiple sub-header cells.
+                table_num_cols  :: int,
+
+                % Header row of table.
                 table_header    :: maybe(table_header),
-                    % Header row of table.
-                
+
+                % The data in table.
                 table_rows      :: list(table_row)
-                    % Data in table,
             ).
 
 :- type table_header
     --->    table_header(
-                th_cells        :: list(table_header_cell)            
-            ). 
+                th_cells        :: list(table_header_cell)
+            ).
 
 :- type table_header_cell
     --->    table_header_cell(
+                % The table contents.
                 thc_contents    :: table_data,
-                    % The table contents.
 
+                % The class may be used by a layout to make decisions
+                % about how to paint this column.
                 thc_class       :: table_col_class
-                    % The class may be used by a layout to make decisions
-                    % about how to paint this column.
             )
     ;       table_header_group(
                 thg_title       :: string,
                 thg_subtitles   :: list(table_data),
-                
+
+                % The class may be used by a layout to make decisions
+                % about how to paint this column.
                 thg_class       :: table_col_class
-                    % The class may be used by a layout to make decisions
-                    % about how to paint this column.
             ).
 
 :- type table_row
@@ -132,21 +132,21 @@
     ;       i(int)
     ;       l(deep_link)
     ;       m(
+                % The amount of memory.
                 memory,
-                    % The amount of memory
-                    
-                memory_units,
-                    % The units to display memory in
 
+                % The units to display memory in.
+                memory_units,
+
+                % The number of decimal places to show.
                 int
-                    % The number of decimal places to show
             )
     ;       p(percent)
     ;       s(string)
     ;       t(time).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % List specific structures
 %
 
@@ -156,23 +156,23 @@
     ;       list_class_horizontal.
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Link specific structures
 %
 
 :- type deep_link
     --->    deep_link(
+                % The link command.
                 cmd,
-                    % The link command.
-               
-                maybe(preferences),
-                    % The preferences for the link command.
 
+                % The preferences for the link command.
+                maybe(preferences),
+
+                % A label for the link.
                 string,
-                    % A label for the link.
-                
+
+                % Class of the link may control how it is displayed.
                 link_class
-                    % Class of the link may control how it is displayed.
             ).
 
 :- type link_class
@@ -180,7 +180,7 @@
     ;       link_class_control.
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Predicates for working with display structures.
 %
 
@@ -188,14 +188,14 @@
     % the correct number of columns to the column count.
     %
 :- pred table_maybe_add_header_col(maybe(table_header_cell)::in,
-    list(table_header_cell)::in, list(table_header_cell)::out, 
+    list(table_header_cell)::in, list(table_header_cell)::out,
     int::in, int::out) is det.
 
     % Given a header this predicate adds it to the head of the list and adds
     % the correct number of columns to the column count.
     %
 :- pred table_add_header_col(table_header_cell::in,
-    list(table_header_cell)::in, list(table_header_cell)::out, 
+    list(table_header_cell)::in, list(table_header_cell)::out,
     int::in, int::out) is det.
 
 %-----------------------------------------------------------------------------%

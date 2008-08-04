@@ -1,11 +1,11 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: timeout.m.
 % Author: zs.
 %
@@ -23,6 +23,7 @@
 % created, but we don't want the parent process after the fork to delete them
 % while they are still in use by the child process. This is prevented by the
 % boolean flag process_is_detached_server.
+%
 %-----------------------------------------------------------------------------%
 
 :- module timeout.

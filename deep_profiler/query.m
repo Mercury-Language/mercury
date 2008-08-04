@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 2001-2003, 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,9 +61,9 @@
     ;       deep_cmd_module(string)
     ;       deep_cmd_top_procs(display_limit, cost_kind, include_descendants,
                 measurement_scope)
-    %
+
     % The following commands are for debugging.
-    %
+
     ;       deep_cmd_proc_static(int)
     ;       deep_cmd_proc_dynamic(int)
     ;       deep_cmd_call_site_static(int)
@@ -96,7 +96,7 @@
     ;       threshold_percent(float)
             % threshold(Percent): display procedures whose cost is at least
             % Percent% of the whole program's cost.
-    
+
     ;       threshold_value(float).
             % threshold_value(Value): display procedures whose cost is at least
             % this value.
@@ -148,7 +148,6 @@
     ;       ticks_and_time
     ;       time_and_percall
     ;       ticks_and_time_and_percall.
-
 
 :- type callseqs_fields
     --->    no_callseqs
@@ -301,7 +300,7 @@ try_exec(Cmd, Pref, Deep, HTML, !IO) :-
 :- pred exec(cmd::in, preferences::in, deep::in, string::out,
     io::di, io::uo) is det.
 
-exec(Cmd, Prefs, Deep, HTML, !IO) :-
+exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
     ( Cmd = deep_cmd_quit
     ; Cmd = deep_cmd_timeout(_)
     ; Cmd = deep_cmd_restart
@@ -309,12 +308,12 @@ exec(Cmd, Prefs, Deep, HTML, !IO) :-
     ; Cmd = deep_cmd_top_procs(_, _, _, _)
     ),
     create_report(Cmd, Deep, Report),
-    display_report(Deep, Prefs, Report, Display),
-    htmlize_display(Deep, Display, HTML).
+    Display = report_to_display(Deep, Prefs, Report),
+    HTML = htmlize_display(Deep, Display),
+    HTMLStr = html_to_string(HTML).
 
 % Old deep profiler cgi code.  This should remain supported until all the deep
-% profiler reports have been updated to use the new datastructures.
-%
+% profiler reports have been updated to use the data structures in report.m.
 
 %exec(Cmd, Pref, Deep, HTML, !IO) :-
 %    Cmd = deep_cmd_menu,
@@ -620,56 +619,56 @@ generate_menu_page(Cmd, Pref, Deep) = HTML :-
         ( ShouldDisplayTimes = yes ->
             "<li>\n" ++
             menu_item(Deep, Pref,
-                deep_cmd_top_procs(threshold_percent(0.1), cost_time, self, 
+                deep_cmd_top_procs(threshold_percent(0.1), cost_time, self,
                     overall),
                 "Procedures above 0.1% threshold: time, self.") ++
             "<li>\n" ++
             menu_item(Deep, Pref,
-                deep_cmd_top_procs(threshold_percent(1.0), cost_time, 
+                deep_cmd_top_procs(threshold_percent(1.0), cost_time,
                     self_and_desc, overall),
                 "Procedures above 1% threshold: time, self+descendants.") ++
             "<li>\n" ++
             menu_item(Deep, Pref,
-                deep_cmd_top_procs(threshold_value(100.0), cost_time, 
+                deep_cmd_top_procs(threshold_value(100.0), cost_time,
                     self_and_desc, overall),
-                "Procedures above 1 second threshold: " ++ 
+                "Procedures above 1 second threshold: " ++
                     "time, self+descendants.")
         ;
             ""
         ) ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold_percent(0.1), cost_callseqs, self, 
+            deep_cmd_top_procs(threshold_percent(0.1), cost_callseqs, self,
                 overall),
             "Procedures above 0.1% threshold: callseqs, self.") ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold_percent(1.0), cost_callseqs, 
+            deep_cmd_top_procs(threshold_percent(1.0), cost_callseqs,
                 self_and_desc, overall),
             "Procedures above 1% threshold: callseqs, self+descendants.")
             ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold_value(1000000.0), cost_callseqs, 
+            deep_cmd_top_procs(threshold_value(1000000.0), cost_callseqs,
                 self_and_desc, overall),
             "Procedures above 1,000,000 callseqs threshold: callseqs, " ++
                 "self+descendants.")
             ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold_percent(0.1), cost_words, self, 
+            deep_cmd_top_procs(threshold_percent(0.1), cost_words, self,
                 overall),
             "Procedures above 0.1% threshold: words, self.") ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold_percent(1.0), cost_words, 
+            deep_cmd_top_procs(threshold_percent(1.0), cost_words,
                 self_and_desc, overall),
             "Procedures above 1% threshold: words, self+descendants.")
             ++
         "<li>\n" ++
-        % 2M words is chosen arbitrary because it is 8MB on ia32
+        % 2M words is chosen because it is 8MB on ia32
         menu_item(Deep, Pref,
-            deep_cmd_top_procs(threshold_value(float(1024 * 1024 * 2)), 
+            deep_cmd_top_procs(threshold_value(float(1024 * 1024 * 2)),
                 cost_words, self_and_desc, overall),
             "Procedures above 2M words threshold: words, self+descendants.")
             ++
@@ -763,8 +762,7 @@ generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML, Percent, ActionPtrs) :-
         table_end(Pref) ++
         page_footer(Cmd, Pref, Deep).
 
-:- func generate_proc_page(cmd, proc_static_ptr, preferences, deep)
-    = string.
+:- func generate_proc_page(cmd, proc_static_ptr, preferences, deep) = string.
 
 generate_proc_page(Cmd, PSPtr, Pref, Deep) =
     page_banner(Cmd, Pref) ++

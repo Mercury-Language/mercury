@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,7 +58,7 @@ main(!IO) :-
         ;
             NeedsHelp = no,
             (
-                ( 
+                (
                     Args = [],
                     FileName = "Deep.data"
                 ;
@@ -102,7 +102,6 @@ main_2(DumpOptions, FileName, !IO) :-
 % Option processing
 %
 
-
     % Process options and the list of arrays to be dumped.
     %
 :- pred make_dump_options(option_table(option)::in, maybe(dump_options)::out)
@@ -118,15 +117,12 @@ make_dump_options(Options, MaybeDumpOptions) :-
         RestrictBool = no,
         Restrict = show_complete_dump
     ),
-    DumpOptions0 = default_dump_options ^ do_restricted := Restrict, 
-    (
-        dump_array_options(ArrayOptionStrs, ArrayOptions) 
-    ->
+    DumpOptions0 = default_dump_options ^ do_restricted := Restrict,
+    ( dump_array_options(ArrayOptionStrs, ArrayOptions) ->
         MaybeDumpOptions = yes(DumpOptions0 ^ do_arrays := ArrayOptions)
     ;
         MaybeDumpOptions = no
     ).
-
 
 :- type option
     --->    help
@@ -189,7 +185,6 @@ options_description =
     "\t\tDump reverse links.\n" ++
     "\t-D prop\n" ++
     "\t\tDump propagated measurement information.\n".
-
 
 %----------------------------------------------------------------------------%
 :- end_module mdprof_dump.

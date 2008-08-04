@@ -1,11 +1,11 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mdprof_test.m.
 % Author: zs.
 %
@@ -104,7 +104,7 @@ main2(ProgName, Args, Options, !IO) :-
         lookup_bool_option(Options, verbose, Verbose),
         lookup_accumulating_option(Options, dump, DumpStages),
         lookup_accumulating_option(Options, dump_options, DumpArrayOptionsStr),
-        dump_array_options_to_dump_options(DumpArrayOptionsStr, DumpOptions), 
+        dump_array_options_to_dump_options(DumpArrayOptionsStr, DumpOptions),
         server_name_port(Machine, !IO),
         script_name(ScriptName, !IO),
         (
@@ -130,8 +130,8 @@ main2(ProgName, Args, Options, !IO) :-
         ;
             Res = error(Error),
             io.set_exit_status(1, !IO),
-            io.format("%s: error reading data file: %s\n",
-                [s(ProgName), s(Error)], !IO)
+            io.format("%s: error reading %s: %s\n",
+                [s(ProgName), s(FileName), s(Error)], !IO)
         )
     ;
         io.set_exit_status(1, !IO),
@@ -176,8 +176,8 @@ verify_profile_2(ProgName, Options, FileName, !IO) :-
     ;
         Res = error(Error),
         io.set_exit_status(1, !IO),
-        io.format("%s: error reading data file: %s\n",
-            [s(ProgName), s(Error)], !IO)
+        io.format("%s: error reading %s: %s\n",
+            [s(ProgName), s(FileName), s(Error)], !IO)
     ).
 
 %-----------------------------------------------------------------------------%
