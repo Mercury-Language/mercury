@@ -62,7 +62,7 @@
 
 :- type module_name == sym_name.
 
-    % get_ancestors(ModuleName) =  ParentDeps:
+    % get_ancestors(ModuleName) = ParentDeps:
     %
     % ParentDeps is the list of ancestor modules for this module, oldest first;
     % e.g. if the ModuleName is `foo.bar.baz', then ParentDeps would be
@@ -80,7 +80,7 @@
     % as a qualifier to the label.
     %
     % The type string_proc_label in program_representation.m parallels this
-    % type, but differs from it in being used not inside the compiler by
+    % type, but differs from it in being used not inside the compiler but
     % outside, which means it needs to use different types for many fields.
     %
 :- type proc_label
@@ -431,48 +431,87 @@ match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
 match_sym_name(unqualified(Name), unqualified(Name)).
 match_sym_name(unqualified(Name), qualified(_, Name)).
 
-remove_sym_name_prefix(qualified(Module, Name0), Prefix,
-        qualified(Module, Name)) :-
-    string.append(Prefix, Name, Name0).
-remove_sym_name_prefix(unqualified(Name0), Prefix, unqualified(Name)) :-
-    string.append(Prefix, Name, Name0).
+remove_sym_name_prefix(SymName0, Prefix, SymName) :-
+    (
+        SymName0 = unqualified(Name0),
+        string.append(Prefix, Name, Name0),
+        SymName = unqualified(Name)
+    ;
+        SymName0 = qualified(Module, Name0),
+        string.append(Prefix, Name, Name0),
+        SymName = qualified(Module, Name)
+    ).
 
-remove_sym_name_suffix(qualified(Module, Name0), Suffix,
-        qualified(Module, Name)) :-
-    string.remove_suffix(Name0, Suffix, Name).
-remove_sym_name_suffix(unqualified(Name0), Suffix, unqualified(Name)) :-
-    string.remove_suffix(Name0, Suffix, Name).
+remove_sym_name_suffix(SymName0, Suffix, SymName) :-
+    (
+        SymName0 = unqualified(Name0),
+        string.remove_suffix(Name0, Suffix, Name),
+        SymName = unqualified(Name)
+    ;
+        SymName0 = qualified(Module, Name0),
+        string.remove_suffix(Name0, Suffix, Name),
+        SymName = qualified(Module, Name)
+    ).
 
-add_sym_name_suffix(qualified(Module, Name0), Suffix,
-        qualified(Module, Name)) :-
-    string.append(Name0, Suffix, Name).
-add_sym_name_suffix(unqualified(Name0), Suffix, unqualified(Name)) :-
-    string.append(Name0, Suffix, Name).
+add_sym_name_suffix(SymName0, Suffix, SymName) :-
+    (
+        SymName0 = unqualified(Name0),
+        string.append(Name0, Suffix, Name),
+        SymName = unqualified(Name)
+    ;
+        SymName0 = qualified(Module, Name0),
+        string.append(Name0, Suffix, Name),
+        SymName = qualified(Module, Name)
+    ).
 
-transform_sym_base_name(TransformFunc, qualified(Module, Name0)) =
-        qualified(Module, TransformFunc(Name0)).
-transform_sym_base_name(TransformFunc, unqualified(Name0)) =
-        unqualified(TransformFunc(Name0)).
+transform_sym_base_name(TransformFunc, SymName0) = SymName :-
+    (
+        SymName0 = unqualified(Name0),
+        SymName = unqualified(TransformFunc(Name0))
+    ;
+        SymName0 = qualified(Module, Name0),
+        SymName = qualified(Module, TransformFunc(Name0))
+    ).
 
-insert_module_qualifier(ModuleName, unqualified(PlainName)) =
-        qualified(unqualified(ModuleName), PlainName).
-insert_module_qualifier(ModuleName, qualified(ModuleQual0, PlainName)) =
-        qualified(ModuleQual, PlainName) :-
-    insert_module_qualifier(ModuleName, ModuleQual0) = ModuleQual.
+insert_module_qualifier(ModuleName, SymName0) = SymName :-
+    (
+        SymName0 = unqualified(Name),
+        SymName = qualified(unqualified(ModuleName), Name)
+    ;
+        SymName0 = qualified(ModuleSymName0, Name),
+        ModuleSymName = insert_module_qualifier(ModuleName, ModuleSymName0),
+        SymName = qualified(ModuleSymName, Name)
+    ).
 
-outermost_qualifier(unqualified(Name)) = Name.
-outermost_qualifier(qualified(Module, _Name)) = outermost_qualifier(Module).
+outermost_qualifier(SymName) = Name :-
+    (
+        SymName = unqualified(Name)
+    ;
+        SymName = qualified(ModuleSymName, _),
+        Name = outermost_qualifier(ModuleSymName)
+    ).
 
-add_outermost_qualifier(Qual, unqualified(Name)) =
-        qualified(unqualified(Qual), Name).
-add_outermost_qualifier(Qual, qualified(Module, Name)) =
-        qualified(add_outermost_qualifier(Qual, Module), Name).
+add_outermost_qualifier(ModuleName, SymName0) = SymName :-
+    (
+        SymName0 = unqualified(Name),
+        SymName = qualified(unqualified(ModuleName), Name)
+    ;
+        SymName0 = qualified(ModuleSymName0, Name),
+        ModuleSymName = add_outermost_qualifier(ModuleName, ModuleSymName0),
+        SymName = qualified(ModuleSymName, Name)
+    ).
 
-strip_outermost_qualifier(qualified(unqualified(OuterQual), Name),
-        OuterQual, unqualified(Name)).
-strip_outermost_qualifier(qualified(Module @ qualified(_, _), Name),
-        OuterQual, qualified(RemainingQual, Name)) :-
-    strip_outermost_qualifier(Module, OuterQual, RemainingQual).
+strip_outermost_qualifier(SymName0, OuterModuleName, SymName) :-
+    SymName0 = qualified(ModuleSymName0, Name),
+    (
+        ModuleSymName0 = unqualified(OuterModuleName),
+        SymName = unqualified(Name)
+    ;
+        ModuleSymName0 = qualified(_, _),
+        strip_outermost_qualifier(ModuleSymName0, OuterModuleName,
+            ModuleSymName),
+        SymName = qualified(ModuleSymName, Name)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -486,25 +525,26 @@ special_pred_name_arity(spec_pred_compare, "compare", "__Compare__", 3).
 special_pred_name_arity(spec_pred_init, "initialise", "__Initialise__", 1).
 
 get_special_pred_id_generic_name(Id) = Name :-
-        special_pred_name_arity(Id, Name, _, _).
+    special_pred_name_arity(Id, Name, _, _).
 
 get_special_pred_id_target_name(Id) = Name :-
-        special_pred_name_arity(Id, _, Name, _).
+    special_pred_name_arity(Id, _, Name, _).
 
 get_special_pred_id_arity(Id) = Arity :-
-        special_pred_name_arity(Id, _, _, Arity).
+    special_pred_name_arity(Id, _, _, Arity).
 
 all_builtin_modules = [
-        mercury_public_builtin_module,
-        mercury_private_builtin_module,
-        mercury_region_builtin_module,
-        mercury_stm_builtin_module,
-        mercury_table_builtin_module,
-        mercury_table_statistics_module,
-        mercury_profiling_builtin_module,
-        mercury_term_size_prof_builtin_module,
-        mercury_par_builtin_module,
-        mercury_ssdb_builtin_module].
+    mercury_public_builtin_module,
+    mercury_private_builtin_module,
+    mercury_region_builtin_module,
+    mercury_stm_builtin_module,
+    mercury_table_builtin_module,
+    mercury_table_statistics_module,
+    mercury_profiling_builtin_module,
+    mercury_term_size_prof_builtin_module,
+    mercury_par_builtin_module,
+    mercury_ssdb_builtin_module
+].
 
 % We may eventually want to put the standard library into a package "std":
 % mercury_public_builtin_module = qualified(unqualified("std"), "builtin").
