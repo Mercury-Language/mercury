@@ -210,17 +210,17 @@ htmlize_display(Deep, display(MaybeSubTitle, Items)) = HTML :-
     map_join_html(item_to_html("<div>\n", "</div>\n", HTTPContext),
         Items, ItemsHTML),
     HTML = doc_type_html ++
-        wrap_tags("<html>", "</html>\n",
-            wrap_tags("<head>", "</head>\n", TitleHTML ++ css_style_html) ++
-            wrap_tags("<body>", "</body>\n", HeadingHTML ++ ItemsHTML)
+        wrap_tags("<html>\n", "</html>\n",
+            wrap_tags("<head>\n", "</head>\n", TitleHTML ++ css_style_html) ++
+            wrap_tags("<body>\n", "</body>\n", HeadingHTML ++ ItemsHTML)
         ).
 
 :- func doc_type_html = html.
 
 doc_type_html =
     str_to_html(
-        "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"
-        \"http://www.w3.org/TR/html4/strict.dtd\">\n").
+        "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\n" ++
+        "\"http://www.w3.org/TR/html4/strict.dtd\">\n").
 
 :- func css_style_html = html.
 

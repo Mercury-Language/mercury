@@ -250,8 +250,6 @@ display_report_top_procs(Prefs, TopProcsInfo, Display) :-
     % Build table.
     top_procs_table(Prefs, Ordering, TopProcs, Table),
     DisplayTable = display_table(Table),
-    TableAndLabel = display_list(list_class_vertical_no_bullets,
-        yes(Title), [DisplayTable]),
 
     % Build controls at bottom of page.
     Cmd = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
@@ -268,7 +266,7 @@ display_report_top_procs(Prefs, TopProcsInfo, Display) :-
         display_list(list_class_horizontal, no, cmds_menu_restart_quit),
 
     Display = display(yes(Title),
-        [TableAndLabel, Controls1, Controls2, Controls3, Controls4]).
+        [DisplayTable, Controls1, Controls2, Controls3, Controls4]).
 
 %-----------------------------------------------------------------------------%
 %
