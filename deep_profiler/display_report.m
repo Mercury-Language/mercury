@@ -39,6 +39,7 @@
 
 :- import_module array.
 :- import_module bool.
+:- import_module cord.
 :- import_module counter.
 :- import_module float.
 :- import_module int.
@@ -88,6 +89,26 @@ report_to_display(Deep, Prefs, Report) = Display :-
                 Display)
         ;
             MaybeProcDynamicDumpInfo = error(Msg),
+            Display = display(no, [display_message(Msg)])
+        )
+    ;
+        Report = report_call_site_static_dump(MaybeCallSiteStaticDumpInfo),
+        (
+            MaybeCallSiteStaticDumpInfo = ok(CallSiteStaticDumpInfo),
+            display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo,
+                Display)
+        ;
+            MaybeCallSiteStaticDumpInfo = error(Msg),
+            Display = display(no, [display_message(Msg)])
+        )
+    ;
+        Report = report_call_site_dynamic_dump(MaybeCallSiteDynamicDumpInfo),
+        (
+            MaybeCallSiteDynamicDumpInfo = ok(CallSiteDynamicDumpInfo),
+            display_report_call_site_dynamic_dump(Prefs,
+                CallSiteDynamicDumpInfo, Display)
+        ;
+            MaybeCallSiteDynamicDumpInfo = error(Msg),
             Display = display(no, [display_message(Msg)])
         )
     ).
@@ -354,6 +375,98 @@ dump_psd_call_site_multi_entry(Prefs, CSDPtr, Row) :-
     EmptyCell = table_cell(s("")),
     Row = table_row([EmptyCell, CSDCell]).
 
+    % Create a display_report structure for a call_site_static_dump report.
+    %
+:- pred display_report_call_site_static_dump(preferences::in,
+    call_site_static_dump_info::in, display::out) is det.
+
+display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
+    CallSiteStaticDumpInfo = call_site_static_dump_info(CSSPtr,
+        ContainingPSPtr, SlotNumber, LineNumber, GoalPath, CallSiteKind),
+    CSSPtr = call_site_static_ptr(CSSI),
+    string.format("Dump of call_site_static %d", [i(CSSI)], Title),
+    ContainingPSPtr = proc_static_ptr(ContainingPSI),
+
+    ContainingProcStaticLink = deep_link(deep_cmd_proc_static(ContainingPSI),
+        yes(Prefs), string.int_to_string(ContainingPSI), link_class_link),
+
+    (
+        CallSiteKind = normal_call_and_callee(CalleePSPtr, TypeSpecDesc),
+        CalleePSPtr = proc_static_ptr(CalleePSI),
+        CalleeDesc0 = "normal, callee " ++ string.int_to_string(CalleePSI),
+        ( TypeSpecDesc = "" ->
+            CalleeDesc = CalleeDesc0
+        ;
+            CalleeDesc = CalleeDesc0 ++ " typespec " ++ TypeSpecDesc
+        ),
+        CalleeProcStaticLink = deep_link(deep_cmd_proc_static(CalleePSI),
+            yes(Prefs), CalleeDesc, link_class_link),
+        CallSiteKindData = l(CalleeProcStaticLink)
+    ;
+        CallSiteKind = special_call_and_no_callee,
+        CallSiteKindData = s("special_call")
+    ;
+        CallSiteKind = higher_order_call_and_no_callee,
+        CallSiteKindData = s("higher_order_call")
+    ;
+        CallSiteKind = method_call_and_no_callee,
+        CallSiteKindData = s("method_call")
+    ;
+        CallSiteKind = callback_and_no_callee,
+        CallSiteKindData = s("callback")
+    ),
+
+    Values =
+        [("Containing proc_static:" - l(ContainingProcStaticLink)),
+        ("Slot number:"             - i(SlotNumber)),
+        ("Line number:"             - i(LineNumber)),
+        ("Goal path:"               - s(GoalPath)),
+        ("Call site kind:"          - CallSiteKindData)],
+
+    Rows = list.map(make_labelled_table_row, Values),
+    Table = table(table_class_plain, 2, no, Rows),
+    Display = display(yes(Title), [display_table(Table)]).
+
+    % Create a display_report structure for a call_site_dynamic_dump report.
+    %
+:- pred display_report_call_site_dynamic_dump(preferences::in,
+    call_site_dynamic_dump_info::in, display::out) is det.
+
+display_report_call_site_dynamic_dump(Prefs, CallSiteStaticDumpInfo,
+        Display) :-
+    CallSiteStaticDumpInfo = call_site_dynamic_dump_info(CSDPtr,
+        CallerPSPtr, CalleePSPtr, RowData),
+    CSDPtr = call_site_dynamic_ptr(CSDI),
+    string.format("Dump of call_site_dynamic %d", [i(CSDI)], Title),
+
+    CallerPSPtr = proc_dynamic_ptr(CallerPSI),
+    CallerProcDynamicLink = deep_link(deep_cmd_proc_dynamic(CallerPSI),
+        yes(Prefs), string.int_to_string(CallerPSI), link_class_link),
+
+    CalleePSPtr = proc_dynamic_ptr(CalleePSI),
+    CalleeProcDynamicLink = deep_link(deep_cmd_proc_dynamic(CalleePSI),
+        yes(Prefs), string.int_to_string(CalleePSI), link_class_link),
+
+    FirstValues =
+        [("Caller proc_dynamic:"    - l(CallerProcDynamicLink)),
+        ("Callee proc_dynamic:"     - l(CalleeProcDynamicLink))],
+
+    FirstRows = list.map(make_labelled_table_row, FirstValues),
+    FirstTable = table(table_class_plain, 2, no, FirstRows),
+
+    % The value of Ordering here shouldn't matter.
+    Ordering = report_ordering(rank_range(1, 100), cost_time, self, overall),
+    TableInfo = table_info(table_class_boxed, non_ranked, Prefs, Ordering),
+
+    proc_table_header(TableInfo, NumCols, Header),
+    perf_table_row(TableInfo, call_site_desc_to_cell,
+        RowData, PerfRow, 1, _),
+    PerfTable =
+        table(TableInfo ^ table_class, NumCols, yes(Header), [PerfRow]),
+
+    Display = display(yes(Title),
+        [display_table(FirstTable), display_table(PerfTable)]).
+
 %-----------------------------------------------------------------------------%
 
     % Create a phrase describing how the top procedures may be sorted.
@@ -406,21 +519,18 @@ scope_to_description(overall) = "overall".
             ).
 
 :- pred top_procs_table(preferences::in, report_ordering::in,
-    list(perf_row_data(report_proc))::in, table::out) is det.
+    list(perf_row_data(proc_desc))::in, table::out) is det.
 
 top_procs_table(Prefs, Ordering, TopProcs, Table) :-
-    TableInfo = table_info(table_class_top_procs, ranked, Prefs, Ordering),
+    TableInfo = table_info(table_class_boxed, ranked, Prefs, Ordering),
     proc_table(TableInfo, TopProcs, Table).
 
 %-----------------------------------------------------------------------------%
 %
 % Code for creating procedure tables.
 %
-
-%
 % TODO: The code in this section should be generalised as new reports are added
-% which may have simliar tables.
-%
+% which may have similar tables.
 
     % Describes whether a table should be ranked or not,  This means that each
     % item has an ordinal number associated with it in an initial column
@@ -432,13 +542,14 @@ top_procs_table(Prefs, Ordering, TopProcs, Table) :-
 
     % Produce a table for all these procedures.
     %
-:- pred proc_table(table_info::in, list(perf_row_data(report_proc))::in,
+:- pred proc_table(table_info::in, list(perf_row_data(proc_desc))::in,
     table::out) is det.
 
 proc_table(TableInfo, TopProcs, Table) :-
     % Later add support for non-ranked tables.
     proc_table_header(TableInfo, NumCols, Header),
-    list.map_foldl(proc_table_row(TableInfo), TopProcs, Rows, 1, _),
+    list.map_foldl(perf_table_row(TableInfo, proc_desc_to_cell),
+        TopProcs, Rows, 1, _),
     Table = table(TableInfo ^ table_class, NumCols, yes(Header), Rows).
 
 %-----------------------------------------------------------------------------%
@@ -527,10 +638,13 @@ top_procs_make_link(Ordering, Prefs, Label, CostKind, InclDesc, Scope, Class)
     % Convert row data of procedures from the deep profiler into a table row
     % according to the preferences.
     %
-:- pred proc_table_row(table_info::in, perf_row_data(report_proc)::in,
-    table_row::out, int::in, int::out) is det.
+:- pred perf_table_row(table_info::in,
+    (func(table_info, Subject) = table_cell)::in,
+    perf_row_data(Subject)::in, table_row::out,
+    int::in, int::out) is det.
 
-proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
+perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
+        Rank, Rank + 1) :-
     Ranked = TableInfo ^ table_ranked,
     Prefs = TableInfo ^ prefs,
     Fields = Prefs ^ pref_fields,
@@ -545,7 +659,7 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
     ),
 
     % The name of the procedure,
-    proc_to_cell(TableInfo, RowData ^ subject, ProcCell),
+    SubjectCells = [SubjectCellFunc(TableInfo, RowData ^ subject)],
 
     % Build the port counts cells.
     PortFields = Fields ^ port_fields,
@@ -689,17 +803,8 @@ proc_table_row(TableInfo, RowData, table_row(Cells), Rank, Rank+1) :-
         )
     ),
 
-    Cells = RankCells ++ cons(ProcCell, PortCells ++ TimeCells ++
-        CallSeqsCells ++ AllocCells ++ MemoryCells).
-
-:- pred proc_to_cell(table_info::in, report_proc::in, table_cell::out) is det.
-
-proc_to_cell(TableInfo, ReportProc, table_cell(Data)) :-
-    Prefs = TableInfo ^ prefs,
-    ReportProc = report_proc(PSPtr, _, _, Name),
-    PSPtr = proc_static_ptr(PSIndex),
-    Cmd = deep_cmd_proc(PSIndex),
-    Data = l(deep_link(Cmd, yes(Prefs), Name, link_class_link)).
+    Cells = RankCells ++ SubjectCells ++ PortCells ++ TimeCells ++
+        CallSeqsCells ++ AllocCells ++ MemoryCells.
 
     % Create the table header cell for the timing fields.
     %
@@ -876,7 +981,7 @@ proc_table_header(TableInfo, NumCols, Header) :-
     some [!NumCols, !Cols]
     (
         !:NumCols = 0,
-        !:Cols = [],
+        !:Cols = cord.empty,
         (
             Ranked = ranked,
             RankedHeaderCell =
@@ -905,7 +1010,7 @@ proc_table_header(TableInfo, NumCols, Header) :-
         proc_table_memory_header(TableInfo, Fields, MaybeMemoryHeader),
         table_maybe_add_header_col(MaybeMemoryHeader, !Cols, !NumCols),
 
-        Header = table_header(reverse(!.Cols)),
+        Header = table_header(cord.list(!.Cols)),
         NumCols = !.NumCols
     ).
 
@@ -1244,6 +1349,29 @@ cmds_menu_restart_quit = [Menu, Restart, Quit] :-
 
 not_unify(A, B) :-
     A \= B.
+
+%-----------------------------------------------------------------------------%
+
+:- func proc_desc_to_cell(table_info, proc_desc) = table_cell.
+
+proc_desc_to_cell(TableInfo, ProcDesc) = table_cell(Data) :-
+    Prefs = TableInfo ^ prefs,
+    ProcDesc = proc_desc(PSPtr, _FileName, _LineNumber, RefinedName),
+    PSPtr = proc_static_ptr(PSI),
+    Cmd = deep_cmd_proc(PSI),
+    Data = l(deep_link(Cmd, yes(Prefs), RefinedName, link_class_link)).
+
+:- func call_site_desc_to_cell(table_info, call_site_desc) = table_cell.
+
+call_site_desc_to_cell(TableInfo, CallSiteDesc) = table_cell(Data) :-
+    Prefs = TableInfo ^ prefs,
+    CallSiteDesc = call_site_desc(CSSPtr, _ContainerPSPtr,
+        _FileName, _LineNumber, RefinedName, SlotNumber, GoalPath),
+    string.format("%s @ %s #%d", [s(RefinedName), s(GoalPath), i(SlotNumber)],
+        Name),
+    CSSPtr = call_site_static_ptr(CSSI),
+    Cmd = deep_cmd_call_site_static(CSSI),
+    Data = l(deep_link(Cmd, yes(Prefs), Name, link_class_link)).
 
 %-----------------------------------------------------------------------------%
 

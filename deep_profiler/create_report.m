@@ -77,6 +77,16 @@ create_report(Cmd, Deep, Report) :-
         generate_proc_dynamic_dump_report(Deep, PDI, MaybeProcDynamicDumpInfo),
         Report = report_proc_dynamic_dump(MaybeProcDynamicDumpInfo)
     ;
+        Cmd = deep_cmd_call_site_static(CSSI),
+        generate_call_site_static_dump_report(Deep, CSSI,
+            MaybeCallSiteStaticDumpInfo),
+        Report = report_call_site_static_dump(MaybeCallSiteStaticDumpInfo)
+    ;
+        Cmd = deep_cmd_call_site_dynamic(CSDI),
+        generate_call_site_dynamic_dump_report(Deep, CSDI,
+            MaybeCallSiteStaticDumpInfo),
+        Report = report_call_site_dynamic_dump(MaybeCallSiteStaticDumpInfo)
+    ;
         Cmd = deep_cmd_restart,
         error("create_report/3", "unexpected restart command")
     ;
@@ -86,8 +96,6 @@ create_report(Cmd, Deep, Report) :-
         ; Cmd = deep_cmd_proc_callers(_, _, _)
         ; Cmd = deep_cmd_modules
         ; Cmd = deep_cmd_module(_)
-        ; Cmd = deep_cmd_call_site_static(_)
-        ; Cmd = deep_cmd_call_site_dynamic(_)
         ; Cmd = deep_cmd_raw_clique(_)
         ),
         error("create_report/3", "Command not supported: " ++ string(Cmd))
@@ -147,11 +155,11 @@ generate_proc_static_dump_report(Deep, PSI, MaybeProcStaticDumpInfo) :-
     PSPtr = proc_static_ptr(PSI),
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         deep_lookup_proc_statics(Deep, PSPtr, PS),
-        RawName = PS ^ ps_raw_id,
-        RefinedName = PS ^ ps_refined_id,
-        FileName = PS ^ ps_file_name,
-        LineNumber = PS ^ ps_line_number,
-        array.max(PS ^ ps_sites, NumCallSites),
+        % Should we dump some other fields?
+        PS = proc_static(_ProcId, _DeclModule, RefinedName, RawName,
+            FileName, LineNumber, _InInterface, CallSites, _CoveragePoints,
+            _IsZeroed),
+        array.max(CallSites, NumCallSites),
         ProcStaticDumpInfo = proc_static_dump_info(PSPtr, RawName, RefinedName,
             FileName, LineNumber, NumCallSites),
         MaybeProcStaticDumpInfo = ok(ProcStaticDumpInfo)
@@ -178,97 +186,141 @@ generate_proc_dynamic_dump_report(Deep, PDI, MaybeProcDynamicDumpInfo) :-
         MaybeProcDynamicDumpInfo = error("invalid proc_dynamic index")
     ).
 
+:- pred generate_call_site_static_dump_report(deep::in, int::in,
+    maybe_error(call_site_static_dump_info)::out) is det.
+
+generate_call_site_static_dump_report(Deep, CSSI,
+        MaybeCallSiteStaticDumpInfo) :-
+    CSSPtr = call_site_static_ptr(CSSI),
+    ( valid_call_site_static_ptr(Deep, CSSPtr) ->
+        deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
+        CSS = call_site_static(ContainingPSPtr, SlotNumber, CallSiteKind,
+            LineNumber, GoalPath),
+        CallSiteStaticDumpInfo = call_site_static_dump_info(CSSPtr,
+            ContainingPSPtr, SlotNumber, LineNumber, GoalPath, CallSiteKind),
+        MaybeCallSiteStaticDumpInfo = ok(CallSiteStaticDumpInfo)
+    ;
+        MaybeCallSiteStaticDumpInfo = error("invalid call_site_static index")
+    ).
+
+:- pred generate_call_site_dynamic_dump_report(deep::in, int::in,
+    maybe_error(call_site_dynamic_dump_info)::out) is det.
+
+generate_call_site_dynamic_dump_report(Deep, CSDI,
+        MaybeCallSiteDynamicDumpInfo) :-
+    CSDPtr = call_site_dynamic_ptr(CSDI),
+    ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+        deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
+        CSD = call_site_dynamic(CallerPSPtr, CalleePSDPtr, Own),
+        Desc = zero_inherit_prof_info,
+        deep_lookup_call_site_static_map(Deep, CSDPtr, CSSPtr),
+        CallSiteDesc = describe_call_site(Deep, CSSPtr),
+        own_and_inherit_to_perf_row_data(Deep, CallSiteDesc, Own, Desc,
+            PerfRowData),
+        CallSiteDynamicDumpInfo = call_site_dynamic_dump_info(CSDPtr,
+            CallerPSPtr, CalleePSDPtr, PerfRowData),
+        MaybeCallSiteDynamicDumpInfo = ok(CallSiteDynamicDumpInfo)
+    ;
+        MaybeCallSiteDynamicDumpInfo = error("invalid call_site_dynamic index")
+    ).
+
 %-----------------------------------------------------------------------------%
 
     % Lookup the proc_static structure with the given PSI index number
     % and return performance information about it.
     %
-:- pred psi_to_perf_row_data(deep::in, int::in,
-    perf_row_data(report_proc)::out) is det.
+:- pred psi_to_perf_row_data(deep::in, int::in, perf_row_data(proc_desc)::out)
+    is det.
 
 psi_to_perf_row_data(Deep, PSI, RowData) :-
-    % Gather global deep profiling information.
+    PSPtr = proc_static_ptr(PSI),
+    ProcDesc = describe_proc(Deep, PSPtr),
+    deep_lookup_ps_own(Deep, PSPtr, Own),
+    deep_lookup_ps_desc(Deep, PSPtr, Desc),
+    own_and_inherit_to_perf_row_data(Deep, ProcDesc, Own, Desc, RowData).
+
+:- pred own_and_inherit_to_perf_row_data(deep::in, T::in,
+    own_prof_info::in, inherit_prof_info::in, perf_row_data(T)::out) is det.
+
+own_and_inherit_to_perf_row_data(Deep, Subject, Own, Desc, RowData) :-
+    % Look up global parameters and totals.
     ProfileStats = Deep ^ profile_stats,
     TicksPerSec = ProfileStats ^ ticks_per_sec,
     WordSize = ProfileStats ^ word_size,
+
     Root = root_total_info(Deep),
-
-    PSPtr = wrap_proc_static_ptr(PSI),
-
-    % Retrive data.
-    deep_lookup_ps_own(Deep, PSPtr, Own),
-    deep_lookup_ps_desc(Deep, PSPtr, Desc),
-
-    % Set Subject.
-    psptr_to_report_proc(Deep, PSPtr, ReportProc),
-    RowData ^ subject = ReportProc,
-
-    % Set port counts.
-    Calls = calls(Own), % Calls is needed below, so create a variable here.
-    RowData ^ calls = Calls,
-    RowData ^ exits = exits(Own),
-    RowData ^ fails = fails(Own),
-    RowData ^ redos = redos(Own),
-    RowData ^ excps = excps(Own),
-
-    % Set self times.
     TotalQuanta = inherit_quanta(Root),
+    TotalCallseqs = inherit_callseqs(Root),
+    TotalAllocs = inherit_allocs(Root),
+    TotalWords = inherit_words(Root),
+
+    % Port counts.
+    Calls = calls(Own),
+    Exits = exits(Own),
+    Fails = fails(Own),
+    Redos = redos(Own),
+    Excps = excps(Own),
+
+    % Self times.
     SelfTicks = quanta(Own),
     ticks_to_time(SelfTicks, TicksPerSec, SelfTime),
-    time_percall(SelfTime, Calls, SelfTimePercall),
     SelfTimePercent = percent_from_ints(SelfTicks, TotalQuanta),
-    RowData ^ self_ticks = quanta(Own),
-    RowData ^ self_time = SelfTime,
-    RowData ^ self_time_percent = SelfTimePercent,
-    RowData ^ self_time_percall = SelfTimePercall,
+    time_percall(SelfTime, Calls, SelfTimePerCall),
 
-    % Set times for self + descendants.
+    % Self + descendants times.
     Ticks = SelfTicks + inherit_quanta(Desc),
     ticks_to_time(Ticks, TicksPerSec, Time),
-    time_percall(Time, Calls, TimePercall),
     TimePercent = percent_from_ints(Ticks, TotalQuanta),
-    RowData ^ ticks = Ticks,
-    RowData ^ time = Time,
-    RowData ^ time_percent = TimePercent,
-    RowData ^ time_percall = TimePercall,
+    time_percall(Time, Calls, TimePerCall),
 
-    % Call sequence counts.
-    TotalCallseqs = inherit_callseqs(Root),
+    % Self call sequence counts.
     SelfCallseqs = callseqs(Own),
-    RowData ^ self_callseqs = SelfCallseqs,
-    RowData ^ self_callseqs_percent =
-        percent_from_ints(SelfCallseqs, TotalCallseqs),
-    RowData ^ self_callseqs_percall = divide_ints(SelfCallseqs, Calls),
+    SelfCallseqsPercent = percent_from_ints(SelfCallseqs, TotalCallseqs),
+    SelfCallseqsPerCall = divide_ints(SelfCallseqs, Calls),
 
+    % Self + descendants call sequence counts.
     Callseqs = callseqs(Own) + inherit_callseqs(Desc),
-    RowData ^ callseqs = Callseqs,
-    RowData ^ callseqs_percent = percent_from_ints(Callseqs, TotalCallseqs),
-    RowData ^ callseqs_percall = divide_ints(Callseqs, Calls),
+    CallseqsPercent = percent_from_ints(Callseqs, TotalCallseqs),
+    CallseqsPerCall = divide_ints(Callseqs, Calls),
 
-    % Set memory allocations.
-    TotalAllocs = inherit_allocs(Root),
+    % Self memory allocations.
     SelfAllocs = allocs(Own),
-    Allocs = SelfAllocs + inherit_allocs(Desc),
-    RowData ^ self_allocs = SelfAllocs,
-    RowData ^ self_allocs_percent = percent_from_ints(SelfAllocs, TotalAllocs),
-    RowData ^ self_allocs_percall = divide_ints(SelfAllocs, Calls),
-    RowData ^ allocs = Allocs,
-    RowData ^ allocs_percent = percent_from_ints(Allocs, TotalAllocs),
-    RowData ^ allocs_percall = divide_ints(Allocs, Calls),
+    SelfAllocsPercent = percent_from_ints(SelfAllocs, TotalAllocs),
+    SelfAllocsPerCall = divide_ints(SelfAllocs, Calls),
 
-    % set memory information.
-    TotalWords = inherit_words(Root),
+    % Self + descendants memory allocations.
+    Allocs = SelfAllocs + inherit_allocs(Desc),
+    AllocsPercent = percent_from_ints(Allocs, TotalAllocs),
+    AllocsPerCall = divide_ints(Allocs, Calls),
+
+    % Self memory words.
     SelfWords = words(Own),
     SelfMemory = memory_words(SelfWords, WordSize),
-    RowData ^ bytes_per_word = WordSize,
-    RowData ^ self_mem = SelfMemory,
-    RowData ^ self_mem_percent = percent_from_ints(SelfWords, TotalWords),
-    RowData ^ self_mem_percall = SelfMemory / Calls,
+    SelfMemoryPercent = percent_from_ints(SelfWords, TotalWords),
+    SelfMemoryPerCall = SelfMemory / Calls,
+
+    % Self + descendants memory words.
     Words = SelfWords + inherit_words(Desc),
     Memory = memory_words(Words, WordSize),
-    RowData ^ mem = Memory,
-    RowData ^ mem_percent = percent_from_ints(Words, TotalWords),
-    RowData ^ mem_percall = Memory / Calls.
+    MemoryPercent = percent_from_ints(Words, TotalWords),
+    MemoryPerCall = Memory / Calls,
+
+    RowData = perf_row_data(Subject,
+        Calls, Exits, Fails, Redos, Excps,
+
+        SelfTicks, SelfTime, SelfTimePercent, SelfTimePerCall,
+        Ticks, Time, TimePercent, TimePerCall,
+
+        SelfCallseqs, SelfCallseqsPercent, SelfCallseqsPerCall,
+        Callseqs, CallseqsPercent, CallseqsPerCall,
+
+        SelfAllocs, SelfAllocsPercent, SelfAllocsPerCall,
+        Allocs, AllocsPercent, AllocsPerCall,
+
+        WordSize,
+        SelfMemory, SelfMemoryPercent, SelfMemoryPerCall,
+        Memory, MemoryPercent, MemoryPerCall
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -291,10 +343,9 @@ percent_from_ints(Nom, Denom) = percent(divide_ints(Nom, Denom)).
 
     % Create a report_proc structure for a given proc static pointer.
     %
-:- pred psptr_to_report_proc(deep::in, proc_static_ptr::in, report_proc::out)
-    is det.
+:- func describe_proc(deep, proc_static_ptr) = proc_desc.
 
-psptr_to_report_proc(Deep, PSPtr, Report) :-
+describe_proc(Deep, PSPtr) = ProcDesc :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         FileName = PS ^ ps_file_name,
@@ -305,7 +356,30 @@ psptr_to_report_proc(Deep, PSPtr, Report) :-
         LineNumber = 0,
         RefinedName = "mercury_runtime"
     ),
-    Report = report_proc(PSPtr, FileName, LineNumber, RefinedName).
+    ProcDesc = proc_desc(PSPtr, FileName, LineNumber, RefinedName).
+
+    % Create a report_call_site structure for a given call site static pointer.
+    %
+:- func describe_call_site(deep, call_site_static_ptr) = call_site_desc.
+
+describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
+    ( valid_call_site_static_ptr(Deep, CSSPtr) ->
+        deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
+        CSS = call_site_static(ContainingPSPtr, SlotNumber, _Kind, LineNumber,
+            GoalPath),
+        deep_lookup_proc_statics(Deep, ContainingPSPtr, ContainingPS),
+        FileName = ContainingPS ^ ps_file_name,
+        RefinedName = ContainingPS ^ ps_refined_id
+    ;
+        ContainingPSPtr = dummy_proc_static_ptr,
+        FileName = "",
+        LineNumber = 0,
+        RefinedName = "mercury_runtime",
+        SlotNumber = -1,
+        GoalPath = ""
+    ),
+    CallSiteDesc = call_site_desc(CSSPtr, ContainingPSPtr,
+        FileName, LineNumber, RefinedName, SlotNumber, GoalPath).
 
 %-----------------------------------------------------------------------------%
 %

@@ -17,12 +17,13 @@
 :- module display.
 :- interface.
 
+:- import_module measurement_units.
+:- import_module query.
+
+:- import_module cord.
 :- import_module list.
 :- import_module maybe.
 :- import_module string.
-
-:- import_module measurement_units.
-:- import_module query.
 
 %-----------------------------------------------------------------------------%
 
@@ -111,7 +112,7 @@
 
 :- type table_class
     --->    table_class_plain
-    ;       table_class_top_procs.
+    ;       table_class_boxed.
 
 :- type table_col_class
     --->    table_col_class_allocations
@@ -184,18 +185,18 @@
 % Predicates for working with display structures.
 %
 
-    % If given a header this predicate adds it to the head of the list and adds
-    % the correct number of columns to the column count.
+    % If given a header, this predicate adds it to the end of the cord
+    % and adds the correct number of columns to the column count.
     %
 :- pred table_maybe_add_header_col(maybe(table_header_cell)::in,
-    list(table_header_cell)::in, list(table_header_cell)::out,
+    cord(table_header_cell)::in, cord(table_header_cell)::out,
     int::in, int::out) is det.
 
-    % Given a header this predicate adds it to the head of the list and adds
-    % the correct number of columns to the column count.
+    % Given a header, this predicate adds it to the end of the cord
+    % and adds the correct number of columns to the column count.
     %
 :- pred table_add_header_col(table_header_cell::in,
-    list(table_header_cell)::in, list(table_header_cell)::out,
+    cord(table_header_cell)::in, cord(table_header_cell)::out,
     int::in, int::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -206,20 +207,19 @@
 :- import_module int.
 
 table_maybe_add_header_col(no, !Cols, !NumCols).
-
 table_maybe_add_header_col(yes(HeaderCol), !Cols, !NumCols) :-
     table_add_header_col(HeaderCol, !Cols, !NumCols).
 
 table_add_header_col(Cell, !Cols, !NumCols) :-
     (
         Cell = table_header_cell(_, _),
-        ColsAddend = 1
+        CellCols = 1
     ;
         Cell = table_header_group(_, SubHeaders, _),
-        length(SubHeaders, ColsAddend)
+        list.length(SubHeaders, CellCols)
     ),
-    !:NumCols = !.NumCols + ColsAddend,
-    list.cons(Cell, !Cols).
+    !:Cols = cord.snoc(!.Cols, Cell),
+    !:NumCols = !.NumCols + CellCols.
 
 %-----------------------------------------------------------------------------%
 :- end_module display.

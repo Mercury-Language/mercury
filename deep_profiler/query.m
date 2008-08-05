@@ -308,6 +308,8 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
     ; Cmd = deep_cmd_top_procs(_, _, _, _)
     ; Cmd = deep_cmd_proc_static(_)
     ; Cmd = deep_cmd_proc_dynamic(_)
+    ; Cmd = deep_cmd_call_site_static(_)
+    ; Cmd = deep_cmd_call_site_dynamic(_)
     ),
     create_report(Cmd, Deep, Report),
     Display = report_to_display(Deep, Prefs, Report),
@@ -328,6 +330,10 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
 %     HTML = generate_proc_static_debug_page(PSI, Deep).
 % exec(deep_cmd_proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
 %     HTML = generate_proc_dynamic_debug_page(PDI, Deep).
+% exec(deep_cmd_call_site_static(CSSI), _Pref, Deep, HTML, !IO) :-
+%     HTML = generate_call_site_static_debug_page(CSSI, Deep).
+% exec(deep_cmd_call_site_dynamic(CSDI), _Pref, Deep, HTML, !IO) :-
+%     HTML = generate_call_site_dynamic_debug_page(CSDI, Deep).
 
 exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_root(MaybePercent),
@@ -387,10 +393,6 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             "There is no procedure with that number.\n" ++
             page_footer(Cmd, Pref, Deep)
     ).
-exec(deep_cmd_call_site_static(CSSI), _Pref, Deep, HTML, !IO) :-
-    HTML = generate_call_site_static_debug_page(CSSI, Deep).
-exec(deep_cmd_call_site_dynamic(CSDI), _Pref, Deep, HTML, !IO) :-
-    HTML = generate_call_site_dynamic_debug_page(CSDI, Deep).
 exec(deep_cmd_raw_clique(CI), _Pref, Deep, HTML, !IO) :-
     HTML = generate_clique_debug_page(CI, Deep).
 
@@ -1551,7 +1553,8 @@ call_site_dynamic_to_html(Pref, Deep, CallSiteDisplay, MaybeCallerCliquePtr,
     deep_lookup_csd_desc(Deep, CSDPtr, CallSiteDesc),
     deep_lookup_clique_index(Deep, CalleePDPtr, CalleeCliquePtr),
     call_site_dynamic_context(Deep, CSDPtr, FileName, LineNumber),
-    Context = string.format("%s:%d", [s(escape_break_html_string(FileName)), i(LineNumber)]),
+    Context = string.format("%s:%d",
+        [s(escape_break_html_string(FileName)), i(LineNumber)]),
     HTML = call_to_html(Pref, Deep, CallSiteDisplay, Context,
         CallerPDPtr, CalleePDPtr, MaybeCallerCliquePtr, CalleeCliquePtr),
     ProcName = escape_break_html_string(proc_dynamic_name(Deep, CalleePDPtr)),

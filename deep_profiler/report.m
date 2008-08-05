@@ -38,7 +38,11 @@
     ;       report_menu(maybe_error(menu_info))
     ;       report_top_procs(maybe_error(top_procs_info))
     ;       report_proc_static_dump(maybe_error(proc_static_dump_info))
-    ;       report_proc_dynamic_dump(maybe_error(proc_dynamic_dump_info)).
+    ;       report_proc_dynamic_dump(maybe_error(proc_dynamic_dump_info))
+    ;       report_call_site_static_dump(
+                maybe_error(call_site_static_dump_info))
+    ;       report_call_site_dynamic_dump(
+                maybe_error(call_site_dynamic_dump_info)).
 
 :- type message_info
     --->    message_info(
@@ -73,7 +77,7 @@
                 % the procedures in this report.
 
                 ordering                    :: report_ordering,
-                top_procs                   :: list(perf_row_data(report_proc))
+                top_procs                   :: list(perf_row_data(proc_desc))
             ).
 
 :- type proc_static_dump_info
@@ -94,6 +98,24 @@
                 pddi_ps_raw_name            :: string,
                 pddi_ps_refined_name        :: string,
                 pddi_call_sites             :: list(call_site_array_slot)
+            ).
+
+:- type call_site_static_dump_info
+    --->    call_site_static_dump_info(
+                cssdi_cssptr                :: call_site_static_ptr,
+                cssdi_containing_psptr      :: proc_static_ptr,
+                cssdi_slot_number           :: int,
+                cssdi_line_number           :: int,
+                cssdi_goal_path             :: string,
+                cssdi_callee                :: call_site_kind_and_callee
+            ).
+
+:- type call_site_dynamic_dump_info
+    --->    call_site_dynamic_dump_info(
+                csddi_csdptr                :: call_site_dynamic_ptr,
+                csddi_caller_pdptr          :: proc_dynamic_ptr,
+                csddi_callee_pdptr          :: proc_dynamic_ptr,
+                csddi_own_perf              :: perf_row_data(call_site_desc)
             ).
 
 :- type perf_row_data(T)
@@ -168,15 +190,29 @@
                 scope                       :: measurement_scope
             ).
 
-    % The representation of a procedure in the report structure, including
+    % The representation of a procedure in a report structure, including
     % information about its location in Mercury source code.
     %
-:- type report_proc
-    --->    report_proc(
+:- type proc_desc
+    --->    proc_desc(
                 proc_static_ptr             :: proc_static_ptr,
-                proc_filename               :: string,
-                proc_linenumber             :: int,
-                proc_name                   :: string
+                proc_file_name              :: string,
+                proc_line_number            :: int,
+                proc_refined_name           :: string
+            ).
+
+    % The representation of a call site in a report structure, including
+    % information about its location in Mercury source code.
+    %
+:- type call_site_desc
+    --->    call_site_desc(
+                call_site_static_ptr        :: call_site_static_ptr,
+                call_site_container         :: proc_static_ptr,
+                call_site_file_name         :: string,
+                call_site_line_number       :: int,
+                call_site_refined_name      :: string,
+                call_site_slot_number       :: int,
+                call_site_goal_path         :: string
             ).
 
 %-----------------------------------------------------------------------------%

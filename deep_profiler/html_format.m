@@ -197,19 +197,22 @@ htmlize_display(Deep, display(MaybeSubTitle, Items)) = HTML :-
         str_to_html(Deep ^ data_file_name),
     (
         MaybeSubTitle = no,
-        Title = MainTitle
+        Title = MainTitle,
+        HeadingHTML = empty_html
     ;
         MaybeSubTitle = yes(Subtitle),
-        Title = MainTitle ++ str_to_html(" - ") ++ str_to_html(Subtitle)
+        SubTitleHTML = str_to_html(Subtitle),
+        Title = MainTitle ++ str_to_html(" - ") ++ SubTitleHTML,
+        HeadingHTML = wrap_tags("<h3>", "</h3>\n", SubTitleHTML)
     ),
-    TitleHTML = wrap_tags("<title>", "</title>", Title),
+    TitleHTML = wrap_tags("<title>", "</title>\n", Title),
     deep_to_http_context(Deep, HTTPContext),
     map_join_html(item_to_html("<div>\n", "</div>\n", HTTPContext),
         Items, ItemsHTML),
     HTML = doc_type_html ++
-        wrap_tags("<html>", "</html>",
-            wrap_tags("<head>", "</head>", TitleHTML ++ css_style_html) ++
-            wrap_tags("<body>", "</body>", ItemsHTML)
+        wrap_tags("<html>", "</html>\n",
+            wrap_tags("<head>", "</head>\n", TitleHTML ++ css_style_html) ++
+            wrap_tags("<body>", "</body>\n", HeadingHTML ++ ItemsHTML)
         ).
 
 :- func doc_type_html = html.
@@ -217,11 +220,14 @@ htmlize_display(Deep, display(MaybeSubTitle, Items)) = HTML :-
 doc_type_html =
     str_to_html(
         "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"
-        \"http://www.w3.org/TR/html4/strict.dtd\">").
+        \"http://www.w3.org/TR/html4/strict.dtd\">\n").
 
 :- func css_style_html = html.
 
 css_style_html =
+    % XXX This ignores colour_column_groups. We should respect it,
+    % and process it either here, or when converting table columns to HTML.
+
     str_to_html("
         <style type=\"text/css\">
             td.allocations
@@ -265,19 +271,19 @@ css_style_html =
             {
                 border-style: none;
             }
-            table.top_procs
+            table.boxed
             {
                 border-width: 1px 1px 1px 1px;
                 border-spacing: 2px;
                 border-style: outset outset outset outset;
             }
-            table.top_procs th
+            table.boxed th
             {
                 border-width: 1px 1px 1px 1px;
                 padding: 3px 3px 3px 3px;
                 border-style: inset inset inset inset;
             }
-            table.top_procs td
+            table.boxed td
             {
                 border-width: 1px 1px 1px 1px;
                 padding: 3px 3px 3px 3px;
@@ -453,7 +459,7 @@ table_header_cell_to_html_row_1(HTTPContext, HeaderNumRows, Cell) = HTML :-
     table_col_class_to_string(Class, ClassStr),
     StartTag = string.format("<th rowspan=\"%s\" colspan=\"%s\" class=\"%s\">",
         [s(RowSpan), s(ColSpan), s(ClassStr)]),
-    EndTag = "</th>",
+    EndTag = "</th>\n",
     HTML = wrap_tags(StartTag, EndTag, ContentsHTML).
 
 %-----------------------------------------------------------------------------%
@@ -479,7 +485,7 @@ table_data_to_th_html(HTTPContext, Class, TableData) = HTML :-
     table_col_class_to_string(Class, ClassStr),
     TableDataHTML = table_data_to_html(HTTPContext, TableData),
     StartTag = string.format("<th class=\"%s\">", [s(ClassStr)]),
-    EndTag = "</th>",
+    EndTag = "</th>\n",
     HTML = wrap_tags(StartTag, EndTag, TableDataHTML).
 
 %-----------------------------------------------------------------------------%
@@ -505,8 +511,7 @@ table_header_num_rows_and_classmap(Cell, !NumRows, !ColNum, !ClassMap) :-
         table_col_class_to_string(Class, ClassStr),
         % fold_up is inclusive of the higher number.
         fold_up(insert_col_classmap(ClassStr),
-            !.ColNum, !.ColNum + NumSubCols - 1,
-            !ClassMap)
+            !.ColNum, !.ColNum + NumSubCols - 1, !ClassMap)
     ),
     !:ColNum = !.ColNum + NumSubCols.
 
@@ -530,13 +535,13 @@ table_row_to_html(HTTPContext, MaybeColClassMap, NumCols, TableRow) = HTML :-
         TableRow = table_section_header(Contents),
         ContentsHTML = table_data_to_html(HTTPContext, Contents),
         StartTag = string.format("<tr><td colspan=\"%d\">", [i(NumCols)]),
-        EndTag = "</td></tr>",
+        EndTag = "</td></tr>\n",
         HTML = wrap_tags(StartTag, EndTag, ContentsHTML)
     ;
         TableRow = table_row(Cells),
         map_join_html_count(table_cell_to_html(HTTPContext, MaybeColClassMap),
             0, Cells, InnerHTML),
-        HTML = wrap_tags("<tr>", "</tr>", InnerHTML)
+        HTML = wrap_tags("<tr>", "</tr>\n", InnerHTML)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -571,7 +576,7 @@ table_cell_to_html(HTTPContext, MaybeClassMap, ColNum, Cell) = HTML :-
         ),
         CellHTML = table_data_to_html(HTTPContext, CellData),
         StartTag = string.format("<td class=\"%s\">", [s(ClassStr)]),
-        EndTag = "</td>",
+        EndTag = "</td>\n",
         HTML = wrap_tags(StartTag, EndTag, CellHTML)
     ).
 
@@ -626,7 +631,7 @@ table_col_class_to_string(table_col_class_ticks_and_times, "ticks_and_times").
 :- func table_class_to_string(table_class) = string.
 
 table_class_to_string(table_class_plain) = "plain".
-table_class_to_string(table_class_top_procs) = "top_procs".
+table_class_to_string(table_class_boxed) = "boxed".
 
 %-----------------------------------------------------------------------------%
 
