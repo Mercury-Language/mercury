@@ -584,19 +584,19 @@ table_cell_to_html(HTTPContext, MaybeClassMap, ColNum, Cell) = HTML :-
 
 :- func table_data_to_html(http_context, table_data) = html.
 
-table_data_to_html(_, f(Float)) =
+table_data_to_html(_, td_f(Float)) =
     str_to_html(two_decimal_fraction(Float)).
-table_data_to_html(_, i(Int)) =
+table_data_to_html(_, td_i(Int)) =
     str_to_html(commas(Int)).
-table_data_to_html(HTTPCtxt, l(Link)) =
-    link_to_html(HTTPCtxt, Link).
-table_data_to_html(_, m(Mem, Units, Decimals)) =
+table_data_to_html(HTTPContext, td_l(Link)) =
+    link_to_html(HTTPContext, Link).
+table_data_to_html(_, td_m(Mem, Units, Decimals)) =
     str_to_html(format_memory(Mem, Units, Decimals)).
-table_data_to_html(_, p(Percent)) =
+table_data_to_html(_, td_p(Percent)) =
     str_to_html(format_percent(Percent)).
-table_data_to_html(_, s(String)) =
+table_data_to_html(_, td_s(String)) =
     str_to_html(escape_break_html_string(String)).
-table_data_to_html(_, t(Time)) =
+table_data_to_html(_, td_t(Time)) =
     str_to_html(format_time(Time)).
 
     % This predicate is used when a table class map couldn't be built from the
@@ -606,11 +606,11 @@ table_data_to_html(_, t(Time)) =
     %
 :- pred table_data_class(table_data::in, table_col_class::out) is semidet.
 
-table_data_class(f(_), table_col_class_number).
-table_data_class(i(_), table_col_class_number).
-table_data_class(m(_, _, _), table_col_class_number).
-table_data_class(p(_), table_col_class_number).
-table_data_class(t(_), table_col_class_number).
+table_data_class(td_f(_), table_col_class_number).
+table_data_class(td_i(_), table_col_class_number).
+table_data_class(td_m(_, _, _), table_col_class_number).
+table_data_class(td_p(_), table_col_class_number).
+table_data_class(td_t(_), table_col_class_number).
 
 :- func default_table_col_class = table_col_class.
 

@@ -211,15 +211,15 @@ display_report_menu(Deep, MenuInfo, Display) :-
 
     % Display the table section of the report.
     ProfilingStatistics =
-        [("Quanta per second:"          - i(QuantaPerSec)),
-        ("Quanta in user code:"         - i(UserQuanta)),
-        ("Quanta in instrumentation:"   - i(InstQuanta)),
-        ("Call sequence numbers:"       - i(NumCallseqs)),
-        ("CallSiteDyanic structures:"   - i(NumCSD)),
-        ("ProcDynamic structures:"      - i(NumPD)),
-        ("CallSiteStatic structures:"   - i(NumCSS)),
-        ("ProcStatic structures:"       - i(NumPS)),
-        ("Cliques:"                     - i(NumClique))],
+        [("Quanta per second:"          - td_i(QuantaPerSec)),
+        ("Quanta in user code:"         - td_i(UserQuanta)),
+        ("Quanta in instrumentation:"   - td_i(InstQuanta)),
+        ("Call sequence numbers:"       - td_i(NumCallseqs)),
+        ("CallSiteDyanic structures:"   - td_i(NumCSD)),
+        ("ProcDynamic structures:"      - td_i(NumPD)),
+        ("CallSiteStatic structures:"   - td_i(NumCSS)),
+        ("ProcStatic structures:"       - td_i(NumPS)),
+        ("Cliques:"                     - td_i(NumClique))],
 
     Rows = list.map(make_labelled_table_row, ProfilingStatistics),
     Table = table(table_class_plain, 2, no, Rows),
@@ -285,11 +285,11 @@ display_report_proc_static_dump(ProcStaticDumpInfo, Display) :-
     string.format("Dump of proc_static %d", [i(PSI)], Title),
 
     Values =
-        [("Raw name:"               - s(RawName)),
-        ("Refined name:"            - s(RefinedName)),
-        ("File name:"               - s(FileName)),
-        ("Line number:"             - i(LineNumber)),
-        ("Number of call sites:"    - i(NumCallSites))],
+        [("Raw name:"               - td_s(RawName)),
+        ("Refined name:"            - td_s(RefinedName)),
+        ("File name:"               - td_s(FileName)),
+        ("Line number:"             - td_i(LineNumber)),
+        ("Number of call sites:"    - td_i(NumCallSites))],
 
     Rows = list.map(make_labelled_table_row, Values),
     Table = table(table_class_plain, 2, no, Rows),
@@ -310,9 +310,9 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
     ProcStaticLink = deep_link(deep_cmd_proc_static(PSI), yes(Prefs),
         string.int_to_string(PSI), link_class_link),
     MainValues =
-        [("Proc static:"            - l(ProcStaticLink)),
-        ("Raw name:"                - s(RawName)),
-        ("Refined name:"            - s(RefinedName))],
+        [("Proc static:"            - td_l(ProcStaticLink)),
+        ("Raw name:"                - td_s(RawName)),
+        ("Refined name:"            - td_s(RefinedName))],
 
     MainRows = list.map(make_labelled_table_row, MainValues),
     MainTable = table(table_class_plain, 2, no, MainRows),
@@ -334,13 +334,13 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
 
 dump_psd_call_site(Prefs, CallSite, Rows, !CallSiteCounter) :-
     counter.allocate(CallSiteNum, !CallSiteCounter),
-    CallSiteNumCell = table_cell(i(CallSiteNum)),
+    CallSiteNumCell = table_cell(td_i(CallSiteNum)),
     (
         CallSite = slot_normal(CSDPtr),
         CSDPtr = call_site_dynamic_ptr(CSDI),
         CSDLink = deep_link(deep_cmd_call_site_dynamic(CSDI), yes(Prefs),
             string.int_to_string(CSDI), link_class_link),
-        CSDCell = table_cell(l(CSDLink)),
+        CSDCell = table_cell(td_l(CSDLink)),
         FirstRow = table_row([CallSiteNumCell, CSDCell]),
         Rows = [FirstRow]
     ;
@@ -356,7 +356,7 @@ dump_psd_call_site(Prefs, CallSite, Rows, !CallSiteCounter) :-
         NumCSDPtrs = list.length(CSDPtrs),
         string.format("multi, %d csds (%s)", [i(NumCSDPtrs), s(IsZeroedStr)],
             MultiCellStr),
-        MultiCell = table_cell(s(MultiCellStr)),
+        MultiCell = table_cell(td_s(MultiCellStr)),
         FirstRow = table_row([CallSiteNumCell, MultiCell]),
         list.map(dump_psd_call_site_multi_entry(Prefs), CSDPtrs, LaterRows),
         Rows = [FirstRow | LaterRows]
@@ -369,8 +369,8 @@ dump_psd_call_site_multi_entry(Prefs, CSDPtr, Row) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
     CSDLink = deep_link(deep_cmd_call_site_dynamic(CSDI), yes(Prefs),
         string.int_to_string(CSDI), link_class_link),
-    CSDCell = table_cell(l(CSDLink)),
-    EmptyCell = table_cell(s("")),
+    CSDCell = table_cell(td_l(CSDLink)),
+    EmptyCell = table_cell(td_s("")),
     Row = table_row([EmptyCell, CSDCell]).
 
     % Create a display_report structure for a call_site_static_dump report.
@@ -399,26 +399,26 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
         ),
         CalleeProcStaticLink = deep_link(deep_cmd_proc_static(CalleePSI),
             yes(Prefs), CalleeDesc, link_class_link),
-        CallSiteKindData = l(CalleeProcStaticLink)
+        CallSiteKindData = td_l(CalleeProcStaticLink)
     ;
         CallSiteKind = special_call_and_no_callee,
-        CallSiteKindData = s("special_call")
+        CallSiteKindData = td_s("special_call")
     ;
         CallSiteKind = higher_order_call_and_no_callee,
-        CallSiteKindData = s("higher_order_call")
+        CallSiteKindData = td_s("higher_order_call")
     ;
         CallSiteKind = method_call_and_no_callee,
-        CallSiteKindData = s("method_call")
+        CallSiteKindData = td_s("method_call")
     ;
         CallSiteKind = callback_and_no_callee,
-        CallSiteKindData = s("callback")
+        CallSiteKindData = td_s("callback")
     ),
 
     Values =
-        [("Containing proc_static:" - l(ContainingProcStaticLink)),
-        ("Slot number:"             - i(SlotNumber)),
-        ("Line number:"             - i(LineNumber)),
-        ("Goal path:"               - s(GoalPath)),
+        [("Containing proc_static:" - td_l(ContainingProcStaticLink)),
+        ("Slot number:"             - td_i(SlotNumber)),
+        ("Line number:"             - td_i(LineNumber)),
+        ("Goal path:"               - td_s(GoalPath)),
         ("Call site kind:"          - CallSiteKindData)],
 
     Rows = list.map(make_labelled_table_row, Values),
@@ -446,8 +446,8 @@ display_report_call_site_dynamic_dump(Prefs, CallSiteStaticDumpInfo,
         yes(Prefs), string.int_to_string(CalleePSI), link_class_link),
 
     FirstValues =
-        [("Caller proc_dynamic:"    - l(CallerProcDynamicLink)),
-        ("Callee proc_dynamic:"     - l(CalleeProcDynamicLink))],
+        [("Caller proc_dynamic:"    - td_l(CallerProcDynamicLink)),
+        ("Callee proc_dynamic:"     - td_l(CalleeProcDynamicLink))],
 
     FirstRows = list.map(make_labelled_table_row, FirstValues),
     FirstTable = table(table_class_plain, 2, no, FirstRows),
@@ -556,19 +556,19 @@ proc_table(TableInfo, TopProcs, Table) :-
 %
 
 :- func percall = table_data.
-percall = s("/call").
+percall = td_s("/call").
 
 :- func percent_label = table_data.
-percent_label = s("%").
+percent_label = td_s("%").
 
 :- func self = table_data.
-self = s("Self").
+self = td_s("Self").
 
 :- func time = table_data.
-time = s("Time").
+time = td_s("Time").
 
 :- func total = table_data.
-total = s("Total").
+total = td_s("Total").
 
 %-----------------------------------------------------------------------------%
 
@@ -620,7 +620,7 @@ top_procs_make_table_link(TableInfo, Label, CostKind, InclDesc, Scope)
     DisplayLimit = Ordering ^ display_limit,
     Cmd = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
     Link = deep_link(Cmd, yes(Prefs), Label, link_class_link),
-    TableData = l(Link).
+    TableData = td_l(Link).
 
 :- func top_procs_make_link(report_ordering, preferences, string, cost_kind,
     include_descendants, measurement_scope, link_class) = deep_link.
@@ -650,7 +650,7 @@ perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
     % An optional rank number.
     (
         Ranked = ranked,
-        RankCells = [table_cell(i(Rank))]
+        RankCells = [table_cell(td_i(Rank))]
     ;
         Ranked = non_ranked,
         RankCells = []
@@ -669,9 +669,9 @@ perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
         Redos = RowData ^ redos,
         Excps = RowData ^ excps,
         PortCells =
-            [table_cell(i(Calls)), table_cell(i(Exits)),
-            table_cell(i(Fails)), table_cell(i(Redos)),
-            table_cell(i(Excps))]
+            [table_cell(td_i(Calls)), table_cell(td_i(Exits)),
+            table_cell(td_i(Fails)), table_cell(td_i(Redos)),
+            table_cell(td_i(Excps))]
     ;
         PortFields = no_port,
         PortCells = []
@@ -683,14 +683,14 @@ perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
         TimeFields = no_time,
         TimeCells = []
     ;
-        SelfTicksCell = table_cell(i(RowData ^ self_ticks)),
-        SelfTimeCell = table_cell(t(RowData ^ self_time)),
-        SelfTimePercentCell = table_cell(p(RowData ^ self_time_percent)),
-        SelfTimePercallCell = table_cell(t(RowData ^ self_time_percall)),
-        TicksCell = table_cell(i(RowData ^ ticks)),
-        TimeCell = table_cell(t(RowData ^ time)),
-        TimePercentCell = table_cell(p(RowData ^ time_percent)),
-        TimePercallCell = table_cell(t(RowData ^ time_percall)),
+        SelfTicksCell = table_cell(td_i(RowData ^ self_ticks)),
+        SelfTimeCell = table_cell(td_t(RowData ^ self_time)),
+        SelfTimePercentCell = table_cell(td_p(RowData ^ self_time_percent)),
+        SelfTimePercallCell = table_cell(td_t(RowData ^ self_time_percall)),
+        TicksCell = table_cell(td_i(RowData ^ ticks)),
+        TimeCell = table_cell(td_t(RowData ^ time)),
+        TimePercentCell = table_cell(td_p(RowData ^ time_percent)),
+        TimePercallCell = table_cell(td_t(RowData ^ time_percall)),
         (
             TimeFields = ticks,
             TimeCells = [SelfTicksCell, SelfTimePercentCell,
@@ -724,11 +724,11 @@ perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
         CallSeqsFields = no_callseqs,
         CallSeqsCells = []
     ;
-        SelfCallseqsCell = table_cell(i(RowData ^ self_callseqs)),
+        SelfCallseqsCell = table_cell(td_i(RowData ^ self_callseqs)),
         SelfCallseqsPercentCell =
-            table_cell(p(RowData ^ self_callseqs_percent)),
-        CallseqsCell = table_cell(i(RowData ^ callseqs)),
-        CallseqsPercentCell = table_cell(p(RowData ^ callseqs_percent)),
+            table_cell(td_p(RowData ^ self_callseqs_percent)),
+        CallseqsCell = table_cell(td_i(RowData ^ callseqs)),
+        CallseqsPercentCell = table_cell(td_p(RowData ^ callseqs_percent)),
         (
             CallSeqsFields = callseqs,
             CallSeqsCells =
@@ -737,8 +737,8 @@ perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
         ;
             CallSeqsFields = callseqs_and_percall,
             SelfCallseqsPercallCell =
-                table_cell(f(RowData ^ self_callseqs_percall)),
-            CallseqsPercallCell = table_cell(f(RowData ^ callseqs_percall)),
+                table_cell(td_f(RowData ^ self_callseqs_percall)),
+            CallseqsPercallCell = table_cell(td_f(RowData ^ callseqs_percall)),
             CallSeqsCells =
                 [SelfCallseqsCell, SelfCallseqsPercentCell,
                 SelfCallseqsPercallCell,
@@ -753,10 +753,11 @@ perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
         AllocFields = no_alloc,
         AllocCells = []
     ;
-        SelfAllocsCell = table_cell(i(RowData ^ self_allocs)),
-        SelfAllocsPercentCell = table_cell(p(RowData ^ self_allocs_percent)),
-        AllocsCell = table_cell(i(RowData ^ allocs)),
-        AllocsPercentCell = table_cell(p(RowData ^ allocs_percent)),
+        SelfAllocsCell = table_cell(td_i(RowData ^ self_allocs)),
+        SelfAllocsPercentCell =
+            table_cell(td_p(RowData ^ self_allocs_percent)),
+        AllocsCell = table_cell(td_i(RowData ^ allocs)),
+        AllocsPercentCell = table_cell(td_p(RowData ^ allocs_percent)),
         (
             AllocFields = alloc,
             AllocCells =
@@ -765,8 +766,8 @@ perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
         ;
             AllocFields = alloc_and_percall,
             SelfAllocsPercallCell =
-                table_cell(f(RowData ^ self_allocs_percall)),
-            AllocsPercallCell = table_cell(f(RowData ^ allocs_percall)),
+                table_cell(td_f(RowData ^ self_allocs_percall)),
+            AllocsPercallCell = table_cell(td_f(RowData ^ allocs_percall)),
             AllocCells =
                 [SelfAllocsCell, SelfAllocsPercentCell, SelfAllocsPercallCell,
                 AllocsCell, AllocsPercentCell, AllocsPercallCell]
@@ -781,13 +782,13 @@ perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
         ( MemoryFields = memory(Units)
         ; MemoryFields = memory_and_percall(Units)
         ),
-        SelfMemCell = table_cell(m(RowData ^ self_mem, Units, 0)),
+        SelfMemCell = table_cell(td_m(RowData ^ self_mem, Units, 0)),
         SelfMemPercallCell =
-            table_cell(m(RowData ^ self_mem_percall, Units, 2)),
-        MemCell = table_cell(m(RowData ^ mem, Units, 0)),
-        MemPercallCell = table_cell(m(RowData ^ mem_percall, Units, 2)),
-        SelfMemPercentCell = table_cell(p(RowData ^ self_mem_percent)),
-        MemPercentCell = table_cell(p(RowData ^ mem_percent)),
+            table_cell(td_m(RowData ^ self_mem_percall, Units, 2)),
+        MemCell = table_cell(td_m(RowData ^ mem, Units, 0)),
+        MemPercallCell = table_cell(td_m(RowData ^ mem_percall, Units, 2)),
+        SelfMemPercentCell = table_cell(td_p(RowData ^ self_mem_percent)),
+        MemPercentCell = table_cell(td_p(RowData ^ mem_percent)),
         (
             MemoryFields = memory(_),
             MemoryCells =
@@ -865,7 +866,7 @@ proc_table_ports_header(TableInfo, Fields, MaybePortsHeader) :-
         Redos = top_procs_make_table_link(TableInfo, "Redos",
             cost_redos, self, overall),
         MaybePortsHeader = yes(table_header_group("Port counts",
-            [Calls, s("Exits"), s("Fails"), Redos, s("Excps")],
+            [Calls, td_s("Exits"), td_s("Fails"), Redos, td_s("Excps")],
             table_col_class_port_counts))
     ;
         Fields ^ port_fields = no_port,
@@ -983,13 +984,13 @@ proc_table_header(TableInfo, NumCols, Header) :-
         (
             Ranked = ranked,
             RankedHeaderCell =
-                table_header_cell(s("Rank"), table_col_class_ordinal_rank),
+                table_header_cell(td_s("Rank"), table_col_class_ordinal_rank),
             table_add_header_col(RankedHeaderCell, !Cols, !NumCols)
         ;
             Ranked = non_ranked
         ),
         ProcHeaderCell =
-            table_header_cell(s("Procedure"), table_col_class_proc),
+            table_header_cell(td_s("Procedure"), table_col_class_proc),
         table_add_header_col(ProcHeaderCell, !Cols, !NumCols),
 
         proc_table_ports_header(TableInfo, Fields, MaybePortsHeader),
@@ -1357,7 +1358,7 @@ proc_desc_to_cell(TableInfo, ProcDesc) = table_cell(Data) :-
     ProcDesc = proc_desc(PSPtr, _FileName, _LineNumber, RefinedName),
     PSPtr = proc_static_ptr(PSI),
     Cmd = deep_cmd_proc(PSI),
-    Data = l(deep_link(Cmd, yes(Prefs), RefinedName, link_class_link)).
+    Data = td_l(deep_link(Cmd, yes(Prefs), RefinedName, link_class_link)).
 
 :- func call_site_desc_to_cell(table_info, call_site_desc) = table_cell.
 
@@ -1369,7 +1370,7 @@ call_site_desc_to_cell(TableInfo, CallSiteDesc) = table_cell(Data) :-
         Name),
     CSSPtr = call_site_static_ptr(CSSI),
     Cmd = deep_cmd_call_site_static(CSSI),
-    Data = l(deep_link(Cmd, yes(Prefs), Name, link_class_link)).
+    Data = td_l(deep_link(Cmd, yes(Prefs), Name, link_class_link)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1378,7 +1379,7 @@ call_site_desc_to_cell(TableInfo, CallSiteDesc) = table_cell(Data) :-
 :- func make_labelled_table_row(pair(string, table_data)) = table_row.
 
 make_labelled_table_row(Label - Value) =
-    table_row([table_cell(s(Label)), table_cell(Value)]).
+    table_row([table_cell(td_s(Label)), table_cell(Value)]).
 
     % Make a link for use in the menu report.
     %

@@ -129,10 +129,10 @@
     % to align decimal points.
     %
 :- type table_data
-    --->    f(float)
-    ;       i(int)
-    ;       l(deep_link)
-    ;       m(
+    --->    td_f(float)
+    ;       td_i(int)
+    ;       td_l(deep_link)
+    ;       td_m(
                 % The amount of memory.
                 memory,
 
@@ -142,9 +142,9 @@
                 % The number of decimal places to show.
                 int
             )
-    ;       p(percent)
-    ;       s(string)
-    ;       t(time).
+    ;       td_p(percent)
+    ;       td_s(string)
+    ;       td_t(time).
 
 %-----------------------------------------------------------------------------%
 %
