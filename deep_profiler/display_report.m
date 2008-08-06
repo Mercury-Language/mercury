@@ -316,17 +316,19 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
 
     MainRows = list.map(make_labelled_table_row, MainValues),
     MainTable = table(table_class_plain, 2, no, MainRows),
+    MainTableItem = display_table(MainTable),
+
+    CallSitesTitle = "Call site dynamics:",
+    CallSitesTitleItem = display_message(CallSitesTitle),
 
     list.map_foldl(dump_psd_call_site(Prefs), CallSites, CallSitesRowsList,
         counter.init(1), _),
     list.condense(CallSitesRowsList, CallSitesRows),
-    CallSitesTitle = "Call site dynamics:",
-    CallSitesTable =
-        table(table_class_plain, 2, no, CallSitesRows),
+    CallSitesTable = table(table_class_plain, 2, no, CallSitesRows),
+    CallSitesTableItem = display_table(CallSitesTable),
 
     Display = display(yes(Title),
-        [display_table(MainTable), display_message(CallSitesTitle),
-        display_table(CallSitesTable)]).
+        [MainTableItem, CallSitesTitleItem, CallSitesTableItem]).
 
 :- pred dump_psd_call_site(preferences::in,
     call_site_array_slot::in, list(table_row)::out,
@@ -457,8 +459,7 @@ display_report_call_site_dynamic_dump(Prefs, CallSiteStaticDumpInfo,
     TableInfo = table_info(table_class_boxed, non_ranked, Prefs, Ordering),
 
     proc_table_header(TableInfo, NumCols, Header),
-    perf_table_row(TableInfo, call_site_desc_to_cell,
-        RowData, PerfRow, 1, _),
+    perf_table_row(TableInfo, call_site_desc_to_cell, RowData, PerfRow, 1, _),
     PerfTable =
         table(TableInfo ^ table_class, NumCols, yes(Header), [PerfRow]),
 
@@ -808,9 +809,9 @@ perf_table_row(TableInfo, SubjectCellFunc, RowData, table_row(Cells),
     % Create the table header cell for the timing fields.
     %
 :- pred proc_table_time_header(table_info::in, fields::in,
-    maybe(table_header_cell)::out) is det.
+    maybe(table_header_group)::out) is det.
 
-proc_table_time_header(TableInfo, Fields, MaybeHeaderCell) :-
+proc_table_time_header(TableInfo, Fields, MaybeHeaderGroup) :-
     TimeFields = Fields ^ time_fields,
     Self = top_procs_self_link(TableInfo, cost_time),
     Time = top_procs_time_link(TableInfo),
@@ -821,7 +822,7 @@ proc_table_time_header(TableInfo, Fields, MaybeHeaderCell) :-
 
     (
         TimeFields = no_time,
-        MaybeHeaderCell = no
+        MaybeHeaderGroup = no
     ;
         (
             TimeFields = ticks,
@@ -849,42 +850,44 @@ proc_table_time_header(TableInfo, Fields, MaybeHeaderCell) :-
                 [Self, Time, percent_label, SelfPercall,
                 Total, TotalTime, percent_label, TotalPercall]
         ),
-        MaybeHeaderCell = yes(table_header_group(Title, SubTitles,
-            table_col_class_ticks_and_times))
+        HeaderGroup = make_multi_table_header_group(Title, SubTitles,
+            table_column_class_ticks_and_times, table_set_style),
+        MaybeHeaderGroup = yes(HeaderGroup)
     ).
 
     % Build the ports section of the header if required.
     %
 :- pred proc_table_ports_header(table_info::in, fields::in,
-    maybe(table_header_cell)::out) is det.
+    maybe(table_header_group)::out) is det.
 
-proc_table_ports_header(TableInfo, Fields, MaybePortsHeader) :-
+proc_table_ports_header(TableInfo, Fields, MaybeHeaderGroup) :-
     (
+        Fields ^ port_fields = no_port,
+        MaybeHeaderGroup = no
+    ;
         Fields ^ port_fields = port,
         Calls = top_procs_make_table_link(TableInfo, "Calls",
             cost_calls, self, overall),
         Redos = top_procs_make_table_link(TableInfo, "Redos",
             cost_redos, self, overall),
-        MaybePortsHeader = yes(table_header_group("Port counts",
+        HeaderGroup = make_multi_table_header_group("Port counts",
             [Calls, td_s("Exits"), td_s("Fails"), Redos, td_s("Excps")],
-            table_col_class_port_counts))
-    ;
-        Fields ^ port_fields = no_port,
-        MaybePortsHeader = no
+            table_column_class_port_counts, table_set_style),
+        MaybeHeaderGroup = yes(HeaderGroup)
     ).
 
     % Create the table header cell for the call sequence count fields.
     %
 :- pred proc_table_callseqs_header(table_info::in, fields::in,
-    maybe(table_header_cell)::out) is det.
+    maybe(table_header_group)::out) is det.
 
-proc_table_callseqs_header(TableInfo, Fields, MaybeCallseqsHeader) :-
+proc_table_callseqs_header(TableInfo, Fields, MaybeHeaderGroup) :-
     Callseqs = Fields ^ callseqs_fields,
     Self = top_procs_self_link(TableInfo, cost_callseqs),
     Total = top_procs_total_link(TableInfo, cost_callseqs),
     (
         Callseqs = no_callseqs,
-        MaybeCallseqsHeader = no
+        MaybeHeaderGroup = no
     ;
         (
             Callseqs = callseqs,
@@ -899,22 +902,23 @@ proc_table_callseqs_header(TableInfo, Fields, MaybeCallseqsHeader) :-
                 [Self, percent_label, SelfPercall,
                 Total, percent_label, TotalPercall]
         ),
-        MaybeCallseqsHeader = yes(table_header_group("Call sequence numbers",
-            SubTitles, table_col_class_callseqs))
+        HeaderGroup = make_multi_table_header_group("Call sequence numbers",
+            SubTitles, table_column_class_callseqs, table_set_style),
+        MaybeHeaderGroup = yes(HeaderGroup)
     ).
 
     % Build the header for the allocations column group.
     %
 :- pred proc_table_allocations_header(table_info::in, fields::in,
-    maybe(table_header_cell)::out) is det.
+    maybe(table_header_group)::out) is det.
 
-proc_table_allocations_header(TableInfo, Fields, MaybeHeader) :-
+proc_table_allocations_header(TableInfo, Fields, MaybeHeaderGroup) :-
     AllocFields = Fields ^ alloc_fields,
     Self = top_procs_self_link(TableInfo, cost_allocs),
     Total = top_procs_total_link(TableInfo, cost_allocs),
     (
         AllocFields = no_alloc,
-        MaybeHeader = no
+        MaybeHeaderGroup = no
     ;
         (
             AllocFields = alloc,
@@ -929,23 +933,24 @@ proc_table_allocations_header(TableInfo, Fields, MaybeHeader) :-
                 [Self, percent_label, SelfPercall,
                 Total, percent_label, TotalPercall]
         ),
-        MaybeHeader = yes(table_header_group("Memory allocations", SubTitles,
-            table_col_class_allocations))
+        HeaderGroup = make_multi_table_header_group("Memory allocations",
+            SubTitles, table_column_class_allocations, table_set_style),
+        MaybeHeaderGroup = yes(HeaderGroup)
     ).
 
     % Build the header for the memory usage column group.
     %
 :- pred proc_table_memory_header(table_info::in, fields::in,
-    maybe(table_header_cell)::out) is det.
+    maybe(table_header_group)::out) is det.
 
-proc_table_memory_header(TableInfo, Fields, MaybeHeader) :-
+proc_table_memory_header(TableInfo, Fields, MaybeHeaderGroup) :-
     Memory = Fields ^ memory_fields,
     Self = top_procs_self_link(TableInfo, cost_words),
     Total = top_procs_total_link(TableInfo, cost_words),
     Percent = percent_label,
     (
         Memory = no_memory,
-        MaybeHeader = no
+        MaybeHeaderGroup = no
     ;
         (
             Memory = memory(Units),
@@ -965,8 +970,9 @@ proc_table_memory_header(TableInfo, Fields, MaybeHeader) :-
             Units = units_bytes,
             Title = "Memory bytes"
         ),
-        MaybeHeader = yes(table_header_group(Title, SubTitles,
-            table_col_class_memory))
+        HeaderGroup = make_multi_table_header_group(Title, SubTitles,
+            table_column_class_memory, table_set_style),
+        MaybeHeaderGroup = yes(HeaderGroup)
     ).
 
     % Build a header for a table of procedures.
@@ -977,37 +983,42 @@ proc_table_header(TableInfo, NumCols, Header) :-
     Prefs = TableInfo ^ prefs,
     Ranked = TableInfo ^ table_ranked,
     Fields = Prefs ^ pref_fields,
+
     some [!NumCols, !Cols]
     (
         !:NumCols = 0,
         !:Cols = cord.empty,
+
         (
             Ranked = ranked,
-            RankedHeaderCell =
-                table_header_cell(td_s("Rank"), table_col_class_ordinal_rank),
-            table_add_header_col(RankedHeaderCell, !Cols, !NumCols)
+            RankedHeaderGroup =
+                make_single_table_header_group(td_s("Rank"),
+                    table_column_class_ordinal_rank, table_do_not_set_style),
+            table_add_header_group(RankedHeaderGroup, !Cols, !NumCols)
         ;
             Ranked = non_ranked
         ),
-        ProcHeaderCell =
-            table_header_cell(td_s("Procedure"), table_col_class_proc),
-        table_add_header_col(ProcHeaderCell, !Cols, !NumCols),
+
+        ProcHeaderGroup =
+            make_single_table_header_group(td_s("Procedure"),
+                table_column_class_proc, table_do_not_set_style),
+        table_add_header_group(ProcHeaderGroup, !Cols, !NumCols),
 
         proc_table_ports_header(TableInfo, Fields, MaybePortsHeader),
-        table_maybe_add_header_col(MaybePortsHeader, !Cols, !NumCols),
+        table_maybe_add_header_group(MaybePortsHeader, !Cols, !NumCols),
 
         proc_table_time_header(TableInfo, Fields, MaybeTimeHeader),
-        table_maybe_add_header_col(MaybeTimeHeader, !Cols, !NumCols),
+        table_maybe_add_header_group(MaybeTimeHeader, !Cols, !NumCols),
 
         proc_table_callseqs_header(TableInfo, Fields, MaybeCallseqsHeader),
-        table_maybe_add_header_col(MaybeCallseqsHeader, !Cols, !NumCols),
+        table_maybe_add_header_group(MaybeCallseqsHeader, !Cols, !NumCols),
 
         proc_table_allocations_header(TableInfo, Fields,
             MaybeAllocationsHeader),
-        table_maybe_add_header_col(MaybeAllocationsHeader, !Cols, !NumCols),
+        table_maybe_add_header_group(MaybeAllocationsHeader, !Cols, !NumCols),
 
         proc_table_memory_header(TableInfo, Fields, MaybeMemoryHeader),
-        table_maybe_add_header_col(MaybeMemoryHeader, !Cols, !NumCols),
+        table_maybe_add_header_group(MaybeMemoryHeader, !Cols, !NumCols),
 
         Header = table_header(cord.list(!.Cols)),
         NumCols = !.NumCols

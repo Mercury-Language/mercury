@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -82,6 +82,10 @@
     % An O(1) operation.
     %
 :- func cord(T) ++ cord(T) = cord(T).
+
+    % Append together a list of cords.
+    %
+:- func cord_list_to_cord(list(cord(T))) = cord(T).
 
     %     head_tail(C0, X, C)  =>  list(C0) = [X | list(C)]
     % not head_tail(C0, _, _)  =>  C0 = empty
@@ -225,6 +229,12 @@ CA ++ CB = (      if CA = nil then CB
              else if CB = nil then CA
              else             branch(CA, CB)
            ).
+
+%-----------------------------------------------------------------------------%
+
+cord_list_to_cord([]) = nil.
+cord_list_to_cord([HeadCord | TailCords]) =
+    HeadCord ++ cord_list_to_cord(TailCords).
 
 %-----------------------------------------------------------------------------%
 

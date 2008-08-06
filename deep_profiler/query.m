@@ -313,7 +313,7 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
     ),
     create_report(Cmd, Deep, Report),
     Display = report_to_display(Deep, Prefs, Report),
-    HTML = htmlize_display(Deep, Display),
+    HTML = htmlize_display(Deep, Prefs, Display),
     HTMLStr = html_to_string(HTML).
 
 % Old deep profiler cgi code.  This should remain supported until all the deep

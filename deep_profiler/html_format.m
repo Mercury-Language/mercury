@@ -48,7 +48,7 @@
     % profile, for example the name of the Deep.data file to build the URLs
     % from.
     %
-:- func htmlize_display(deep, display) = html.
+:- func htmlize_display(deep, preferences, display) = html.
 
 %-----------------------------------------------------------------------------%
 
@@ -172,6 +172,7 @@
 
 :- implementation.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module exception.
@@ -179,6 +180,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module svmap.
@@ -192,26 +194,43 @@ html_to_string(HTML) = Str :-
 
 %-----------------------------------------------------------------------------%
 
-htmlize_display(Deep, display(MaybeSubTitle, Items)) = HTML :-
+htmlize_display(Deep, Prefs, Display) = HTML :-
+    Display = display(MaybeTitle, Items),
     MainTitle = str_to_html("Mercury Deep Profile for ") ++
         str_to_html(Deep ^ data_file_name),
     (
-        MaybeSubTitle = no,
-        Title = MainTitle,
+        MaybeTitle = no,
+        HeadTitle = MainTitle,
         HeadingHTML = empty_html
     ;
-        MaybeSubTitle = yes(Subtitle),
-        SubTitleHTML = str_to_html(Subtitle),
-        Title = MainTitle ++ str_to_html(" - ") ++ SubTitleHTML,
-        HeadingHTML = wrap_tags("<h3>", "</h3>\n", SubTitleHTML)
+        MaybeTitle = yes(Title),
+        TitleHTML = str_to_html(Title),
+        HeadTitle = MainTitle ++ str_to_html(" - ") ++ TitleHTML,
+        HeadingHTML = wrap_tags("<h3>", "</h3>\n", TitleHTML)
     ),
-    TitleHTML = wrap_tags("<title>", "</title>\n", Title),
+    HeadTitleHTML = wrap_tags("<title>", "</title>\n", HeadTitle),
+
     deep_to_http_context(Deep, HTTPContext),
+    StyleControlMap0 = default_style_control_map,
     map_join_html(item_to_html("<div>\n", "</div>\n", HTTPContext),
-        Items, ItemsHTML),
+        StyleControlMap0, StyleControlMap1, Items, ItemsHTML),
+
+    ColourScheme = Prefs ^ pref_colour,
+    (
+        ColourScheme = colour_column_groups,
+        StyleControlMap = StyleControlMap1
+    ;
+        ColourScheme = colour_none,
+        % Ignore the updates in StyleControlMap1. This works as long as
+        % all such updates implement the colouring of column groups.
+        StyleControlMap = default_style_control_map
+    ),
+
+    StyleHTML = css_style_html(StyleControlMap),
+
     HTML = doc_type_html ++
         wrap_tags("<html>\n", "</html>\n",
-            wrap_tags("<head>\n", "</head>\n", TitleHTML ++ css_style_html) ++
+            wrap_tags("<head>\n", "</head>\n", HeadTitleHTML ++ StyleHTML) ++
             wrap_tags("<body>\n", "</body>\n", HeadingHTML ++ ItemsHTML)
         ).
 
@@ -222,83 +241,45 @@ doc_type_html =
         "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\n" ++
         "\"http://www.w3.org/TR/html4/strict.dtd\">\n").
 
-:- func css_style_html = html.
+%-----------------------------------------------------------------------------%
 
-css_style_html =
+:- func css_style_html(style_control_map) = html.
+
+css_style_html(StyleControlMap) = HTML :-
     % XXX This ignores colour_column_groups. We should respect it,
     % and process it either here, or when converting table columns to HTML.
 
-    str_to_html("
-        <style type=\"text/css\">
-            td.allocations
-            {
-                text-align: right;
-            }
-            td.callseqs
-            {
-                text-align: right;
-            }
-            td.memory
-            {
-                text-align: right;
-            }
-            td.number
-            {
-                text-align: right;
-            }
-            td.ordinal_rank
-            {
-                text-align: right;
-            }
-            td.port_counts
-            {
-                text-align: right;
-            }
-            td.proc
-            {
-                text-align: left;
-            }
-            td.ticks_and_times
-            {
-                text-align: right;
-            }
-            a.control
-            {
-                margin: 5px;
-                text-decoration: none;
-            }
-            table.plain
-            {
-                border-style: none;
-            }
-            table.boxed
-            {
-                border-width: 1px 1px 1px 1px;
-                border-spacing: 2px;
-                border-style: outset outset outset outset;
-            }
-            table.boxed th
-            {
-                border-width: 1px 1px 1px 1px;
-                padding: 3px 3px 3px 3px;
-                border-style: inset inset inset inset;
-            }
-            table.boxed td
-            {
-                border-width: 1px 1px 1px 1px;
-                padding: 3px 3px 3px 3px;
-                border-style: inset inset inset inset;
-            }
-        </style>
-").
+    map.to_assoc_list(StyleControlMap, StyleControls),
+    ControlHTMLs = list.map(style_control_to_html, StyleControls),
+    ControlsHTML = append_htmls(ControlHTMLs),
+    HTML = wrap_tags("<style type=\"text/css\">\n", "</style>\n",
+        ControlsHTML).
+
+:- func style_control_to_html(pair(style_control, style_element_map)) = html.
+
+style_control_to_html(Control - StyleElementMap) = HTML :-
+    Control = style_control(ControlName),
+    StyleElements = map.to_assoc_list(StyleElementMap),
+    ElementHTMLs = list.map(style_element_to_html, StyleElements),
+    ElementsHTML = append_htmls(ElementHTMLs),
+    StartFragment = string.format("\t%s\n\t{\n", [s(ControlName)]),
+    EndFragment = "\t}\n",
+    HTML = wrap_tags(StartFragment, EndFragment, ElementsHTML).
+
+:- func style_element_to_html(pair(style_element, string)) = html.
+
+style_element_to_html(style_element(ElementName) - Value) =
+    str_to_html(string.format("\t\t%s: %s;\n", [s(ElementName), s(Value)])).
 
 %-----------------------------------------------------------------------------%
 
     % Convert a display item into a HTML snippet.
     %
-:- func item_to_html(string, string, http_context, display_item) = html.
+:- pred item_to_html(string::in, string::in, http_context::in,
+    style_control_map::in, style_control_map::out,
+    display_item::in, html::out) is det.
 
-item_to_html(StartTag, EndTag, HTTPContext, Item) = HTML :-
+item_to_html(StartTag, EndTag, HTTPContext, !StyleControlMap, Item, HTML) :-
     (
         Item = display_message(Message),
         HTML = wrap_tags(StartTag, EndTag,
@@ -309,8 +290,8 @@ item_to_html(StartTag, EndTag, HTTPContext, Item) = HTML :-
             link_to_html(HTTPContext, DeepLink))
     ;
         Item = display_table(Table),
-        HTML = wrap_tags(StartTag, EndTag,
-            table_to_html(HTTPContext, Table))
+        table_to_html(HTTPContext, !StyleControlMap, Table, TableHTML),
+        HTML = wrap_tags(StartTag, EndTag, TableHTML)
     ;
         Item = display_list(Class, MaybeTitle, Items),
         (
@@ -336,8 +317,8 @@ item_to_html(StartTag, EndTag, HTTPContext, Item) = HTML :-
         (
             Class = list_class_vertical_bullets,
             OutsideStartTag = "<ul>",
-            OutsideEndTag = "<ul>\n",
-            InnerStartTag = "<li>",         % XXX add \n?
+            OutsideEndTag = "</ul>\n",
+            InnerStartTag = "<li>",
             InnerEndTag = "</li>\n",
             Separator = empty_html
         ;
@@ -345,19 +326,19 @@ item_to_html(StartTag, EndTag, HTTPContext, Item) = HTML :-
             OutsideStartTag = "",
             OutsideEndTag = "\n",
             InnerStartTag = "",
-            InnerEndTag = "",               % XXX add \n?
+            InnerEndTag = "\n",
             Separator = str_to_html("<br>\n")
         ;
             Class = list_class_horizontal,
             OutsideStartTag = "",
             OutsideEndTag = "\n",
             InnerStartTag = "",
-            InnerEndTag = "",
+            InnerEndTag = "\n",
             Separator = str_to_html(" ")
         ),
         sep_map_join_html(Separator,
-            item_to_html(InnerStartTag, InnerEndTag, HTTPContext), Items,
-            InnerItemsHTML),
+            item_to_html(InnerStartTag, InnerEndTag, HTTPContext),
+            !StyleControlMap, Items, InnerItemsHTML),
         ItemsHTML = wrap_tags(OutsideStartTag, OutsideEndTag, InnerItemsHTML),
         HTML = wrap_tags(StartTag, EndTag,
             TitleHTML ++ PostTitleHTML ++ ItemsHTML)
@@ -376,16 +357,18 @@ item_to_html(StartTag, EndTag, HTTPContext, Item) = HTML :-
 
     % A mapping of column numbers to classes.
     %
-:- type col_class_map == map(int, string).
+:- type column_class_map == map(int, string).
 
 %-----------------------------------------------------------------------------%
 
     % Create a HTML table entity from the given table description.
     %
-:- func table_to_html(http_context, table) = html.
+:- pred table_to_html(http_context::in,
+    style_control_map::in, style_control_map::out,
+    table::in, html::out) is det.
 
-table_to_html(HTTPContext, Table) = HTML :-
-    Table = table(Class, NumCols, MaybeHeader, BodyRows),
+table_to_html(HTTPContext, !StyleControlMap, Table, HTML) :-
+    Table = table(Class, NumColumns, MaybeHeader, BodyRows),
 
     ClassStr = table_class_to_string(Class),
     TableStartTag = "<table class=\"" ++ ClassStr ++ "\">\n",
@@ -394,11 +377,12 @@ table_to_html(HTTPContext, Table) = HTML :-
     % Build a header row.
     (
         MaybeHeader = yes(table_header(THCells)),
-        list.foldl3(table_header_num_rows_and_classmap, THCells,
-            one_header_row, THNumRows, 0, _, map.init, ClassMap),
+        list.foldl5(table_header_num_rows_and_classmap, THCells,
+            one_header_row, THNumRows, 0, _, map.init, ClassMap,
+            0, _, !StyleControlMap),
         MaybeClassMap = yes(ClassMap),
-        map_join_html(table_header_cell_to_html_row_1(HTTPContext, THNumRows),
-            THCells, InnerHeaderRowOneHTML),
+        map_join_html(table_header_group_to_html_row_1(HTTPContext, THNumRows),
+            !StyleControlMap, THCells, InnerHeaderRowOneHTML),
         HeaderRowOneHTML =
             wrap_tags("<tr>", "</tr>\n", InnerHeaderRowOneHTML),
         (
@@ -406,13 +390,13 @@ table_to_html(HTTPContext, Table) = HTML :-
             HeaderRowTwoHTML = empty_html
         ;
             THNumRows = two_header_rows,
-            map_join_html(table_header_cell_to_html_row_2(HTTPContext),
-                THCells, InnerHeaderRowTwoHTML),
+            map_join_html(table_header_group_to_html_row_2(HTTPContext),
+                !StyleControlMap, THCells, InnerHeaderRowTwoHTML),
             HeaderRowTwoHTML =
                 wrap_tags("<tr>", "</tr>\n", InnerHeaderRowTwoHTML)
         ),
         InnerHeaderRowThree =
-            string.format("<td colspan=\"%d\"/>", [i(NumCols)]),
+            string.format("<td colspan=\"%d\"/>", [i(NumColumns)]),
         HeaderRowThreeHTML =
             wrap_tags("<tr>", "</tr>\n",  str_to_html(InnerHeaderRowThree)),
         HeaderHTML = HeaderRowOneHTML ++ HeaderRowTwoHTML ++ HeaderRowThreeHTML
@@ -423,8 +407,8 @@ table_to_html(HTTPContext, Table) = HTML :-
     ),
 
     % Build the table rows.
-    map_join_html(table_row_to_html(HTTPContext, MaybeClassMap, NumCols),
-        BodyRows, BodyRowsHTML),
+    map_join_html(table_row_to_html(HTTPContext, MaybeClassMap, NumColumns),
+        !StyleControlMap, BodyRows, BodyRowsHTML),
 
     % Construct the table.
     HTML = wrap_tags(TableStartTag, TableEndTag, HeaderHTML ++ BodyRowsHTML).
@@ -433,12 +417,15 @@ table_to_html(HTTPContext, Table) = HTML :-
 
     % Return the HTML entity for a table header cell.
     %
-:- func table_header_cell_to_html_row_1(http_context,
-    table_header_rows, table_header_cell) = html.
+:- pred table_header_group_to_html_row_1(http_context::in,
+    table_header_rows::in, style_control_map::in, style_control_map::out,
+    table_header_group::in, html::out) is det.
 
-table_header_cell_to_html_row_1(HTTPContext, HeaderNumRows, Cell) = HTML :-
+table_header_group_to_html_row_1(HTTPContext, HeaderNumRows, !StyleControlMap,
+        HeaderGroup, HTML) :-
+    HeaderGroup = table_header_group(Titles, ColumnClass, _SetStyle),
     (
-        Cell = table_header_cell(Contents, Class),
+        Titles = table_header_group_single(Title),
         (
             HeaderNumRows = one_header_row,
             RowSpan = "1"
@@ -446,110 +433,151 @@ table_header_cell_to_html_row_1(HTTPContext, HeaderNumRows, Cell) = HTML :-
             HeaderNumRows = two_header_rows,
             RowSpan = "2"
         ),
-        ColSpan = "1",
-        ContentsHTML = table_data_to_html(HTTPContext, Contents)
+        ColumnSpan = "1",
+        ContentsHTML = table_data_to_html(HTTPContext, Title)
     ;
-        Cell = table_header_group(Title, SubHeaderCells, Class),
+        Titles = table_header_group_multi(MainTitle, SubTitleCells),
         RowSpan = "1",
-        list.length(SubHeaderCells, NumSubHeaderCells),
-        ColSpan = string.int_to_string(NumSubHeaderCells),
-        ContentsHTML = str_to_html(Title)
+        list.length(SubTitleCells, NumSubTitleCells),
+        ColumnSpan = string.int_to_string(NumSubTitleCells),
+        ContentsHTML = str_to_html(MainTitle)
     ),
 
-    table_col_class_to_string(Class, ClassStr),
-    StartTag = string.format("<th rowspan=\"%s\" colspan=\"%s\" class=\"%s\">",
-        [s(RowSpan), s(ColSpan), s(ClassStr)]),
+    ColumnClassStr = table_column_class_to_string(ColumnClass),
+    StartTag = string.format(
+        "<th rowspan=\"%s\" colspan=\"%s\" class=\"%s\">",
+        [s(RowSpan), s(ColumnSpan), s(ColumnClassStr)]),
     EndTag = "</th>\n",
     HTML = wrap_tags(StartTag, EndTag, ContentsHTML).
 
 %-----------------------------------------------------------------------------%
 
-:- func table_header_cell_to_html_row_2(http_context, table_header_cell)
-    = html.
+:- pred table_header_group_to_html_row_2(http_context::in,
+    style_control_map::in, style_control_map::out,
+    table_header_group::in, html::out) is det.
 
-table_header_cell_to_html_row_2(HTTPContext, HeaderCell) = HTML :-
+table_header_group_to_html_row_2(HTTPContext, !StyleControlMap,
+        HeaderGroup, HTML) :-
+    HeaderGroup = table_header_group(Titles, ColumnClass, _SetStyle),
     (
-        HeaderCell = table_header_cell(_, _),
+        Titles = table_header_group_single(_),
         HTML = empty_html
     ;
-        HeaderCell = table_header_group(_, Cells, Class),
-        map_join_html(table_data_to_th_html(HTTPContext, Class), Cells, HTML)
+        Titles = table_header_group_multi(_, SubTitleCells),
+        map_join_html(table_data_to_th_html(HTTPContext, ColumnClass),
+            !StyleControlMap, SubTitleCells, HTML)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- func table_data_to_th_html(http_context, table_col_class, table_data)
-    = html.
+:- pred table_data_to_th_html(http_context::in, table_column_class::in,
+    style_control_map::in, style_control_map::out,
+    table_data::in, html::out) is det.
 
-table_data_to_th_html(HTTPContext, Class, TableData) = HTML :-
-    table_col_class_to_string(Class, ClassStr),
+table_data_to_th_html(HTTPContext, ColumnClass, !StyleControlMap,
+        TableData, HTML) :-
+    ColumnClassStr = table_column_class_to_string(ColumnClass),
     TableDataHTML = table_data_to_html(HTTPContext, TableData),
-    StartTag = string.format("<th class=\"%s\">", [s(ClassStr)]),
+    StartTag = string.format("<th class=\"%s\">", [s(ColumnClassStr)]),
     EndTag = "</th>\n",
     HTML = wrap_tags(StartTag, EndTag, TableDataHTML).
 
 %-----------------------------------------------------------------------------%
 
-    % Determine how many rows the table header requires, and a map between
-    % column numbers and classes. This should be used with foldl3 and
-    % takes a number of accumulator values.
+    % Determine how many rows the table header requires, and set up a map
+    % from column numbers to classes. Update the style control map for
+    % table header groups that specify table_set_style.
     %
-:- pred table_header_num_rows_and_classmap(table_header_cell::in,
+    % This should be used with list.foldl5.
+    %
+:- pred table_header_num_rows_and_classmap(table_header_group::in,
     table_header_rows::in, table_header_rows::out,
-    int::in, int::out, col_class_map::in, col_class_map::out) is det.
+    int::in, int::out, column_class_map::in, column_class_map::out,
+    int::in, int::out, style_control_map::in, style_control_map::out) is det.
 
-table_header_num_rows_and_classmap(Cell, !NumRows, !ColNum, !ClassMap) :-
+table_header_num_rows_and_classmap(HeaderGroup, !NumRows, !ColumnNumber,
+        !ClassMap, !HeaderGroupNumber, !StyleControlMap) :-
+    HeaderGroup = table_header_group(ColumnTitles, ColumnClass, SetStyle),
+    ColumnClassStr = table_column_class_to_string(ColumnClass),
     (
-        Cell = table_header_cell(_, Class),
-        table_col_class_to_string(Class, ClassStr),
-        svmap.det_insert(!.ColNum, ClassStr, !ClassMap),
-        NumSubCols = 1
+        ColumnTitles = table_header_group_single(_),
+        NumSubCols = 1,
+        svmap.det_insert(!.ColumnNumber, ColumnClassStr, !ClassMap)
     ;
-        Cell = table_header_group(_, Subtitles, Class),
-        length(Subtitles, NumSubCols),
+        ColumnTitles = table_header_group_multi(_, SubTitles),
+        list.length(SubTitles, NumSubCols),
         !:NumRows = two_header_rows,
-        table_col_class_to_string(Class, ClassStr),
         % fold_up is inclusive of the higher number.
-        fold_up(insert_col_classmap(ClassStr),
-            !.ColNum, !.ColNum + NumSubCols - 1, !ClassMap)
+        int.fold_up(insert_column_into_classmap(ColumnClassStr),
+            !.ColumnNumber, !.ColumnNumber + NumSubCols - 1, !ClassMap)
     ),
-    !:ColNum = !.ColNum + NumSubCols.
+    (
+        SetStyle = table_do_not_set_style
+    ;
+        SetStyle = table_set_style,
+        update_style_control_map(ColumnClass, !.HeaderGroupNumber,
+            !StyleControlMap),
+        !:HeaderGroupNumber = !.HeaderGroupNumber + 1
+    ),
+    !:ColumnNumber = !.ColumnNumber + NumSubCols.
 
-%-----------------------------------------------------------------------------%
+:- pred insert_column_into_classmap(string::in, int::in,
+    column_class_map::in, column_class_map::out) is det.
 
-:- pred insert_col_classmap(string::in, int::in,
-    col_class_map::in, col_class_map::out) is det.
-
-insert_col_classmap(Value, Key, !Map) :-
+insert_column_into_classmap(Value, Key, !Map) :-
     svmap.det_insert(Key, Value, !Map).
+
+:- pred update_style_control_map(table_column_class::in, int::in,
+    style_control_map::in, style_control_map::out) is det.
+
+update_style_control_map(ColumnClass, HeaderGroupNumber, !StyleControlMap) :-
+    ColumnClassStr = table_column_class_to_string(ColumnClass),
+    StyleControl = style_control("td." ++ ColumnClassStr),
+    StyleElement = style_element("background"),
+    ( HeaderGroupNumber /\ 1 = 0 ->
+        Colour = "LightGrey"
+    ;
+        Colour = "White"
+    ),
+    ( map.search(!.StyleControlMap, StyleControl, StyleElementMap0) ->
+        map.set(StyleElementMap0, StyleElement, Colour, StyleElementMap),
+        svmap.det_update(StyleControl, StyleElementMap, !StyleControlMap)
+    ;
+        map.det_insert(map.init, StyleElement, Colour, StyleElementMap),
+        svmap.det_insert(StyleControl, StyleElementMap, !StyleControlMap)
+    ).
 
 %-----------------------------------------------------------------------------%
 
     % Build a row of a HTML table from the table_row type.
     %
-:- func table_row_to_html(http_context, maybe(col_class_map), int, table_row)
-    = html.
+:- pred table_row_to_html(http_context::in, maybe(column_class_map)::in,
+    int::in, style_control_map::in, style_control_map::out,
+    table_row::in, html::out) is det.
 
-table_row_to_html(HTTPContext, MaybeColClassMap, NumCols, TableRow) = HTML :-
+table_row_to_html(HTTPContext, MaybeColClassMap, NumColumns, !StyleControlMap,
+        TableRow, HTML) :-
     (
         TableRow = table_section_header(Contents),
         ContentsHTML = table_data_to_html(HTTPContext, Contents),
-        StartTag = string.format("<tr><td colspan=\"%d\">", [i(NumCols)]),
+        StartTag = string.format("<tr><td colspan=\"%d\">", [i(NumColumns)]),
         EndTag = "</td></tr>\n",
         HTML = wrap_tags(StartTag, EndTag, ContentsHTML)
     ;
         TableRow = table_row(Cells),
         map_join_html_count(table_cell_to_html(HTTPContext, MaybeColClassMap),
-            0, Cells, InnerHTML),
+            !StyleControlMap, 0, Cells, InnerHTML),
         HTML = wrap_tags("<tr>", "</tr>\n", InnerHTML)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- func table_cell_to_html(http_context, maybe(col_class_map), int, table_cell)
-    = html.
+:- pred table_cell_to_html(http_context::in, maybe(column_class_map)::in,
+    style_control_map::in, style_control_map::out,
+    int::in, table_cell::in, html::out) is det.
 
-table_cell_to_html(HTTPContext, MaybeClassMap, ColNum, Cell) = HTML :-
+table_cell_to_html(HTTPContext, MaybeClassMap, !StyleControlMap, ColumnNum,
+        Cell, HTML) :-
     (
         Cell = table_empty_cell,
         HTML = str_to_html("<td/>")
@@ -557,25 +585,25 @@ table_cell_to_html(HTTPContext, MaybeClassMap, ColNum, Cell) = HTML :-
         Cell = table_cell(CellData),
         (
             MaybeClassMap = yes(ClassMap),
-            ( map.search(ClassMap, ColNum, ClassStrPrime) ->
-                ClassStr = ClassStrPrime
+            ( map.search(ClassMap, ColumnNum, ColumnClassStrPrime) ->
+                ColumnClassStr = ColumnClassStrPrime
             ;
                 Msg = string.format(
                     "Class map had no class for col %d, check table structure",
-                    [i(ColNum)]),
+                    [i(ColumnNum)]),
                 error(Msg)
             )
         ;
             MaybeClassMap = no,
-            ( table_data_class(CellData, ClassPrime) ->
-                Class = ClassPrime
+            ( table_data_class(CellData, ColumnClassPrime) ->
+                ColumnClass = ColumnClassPrime
             ;
-                Class = default_table_col_class
+                ColumnClass = default_table_column_class
             ),
-            table_col_class_to_string(Class, ClassStr)
+            ColumnClassStr = table_column_class_to_string(ColumnClass)
         ),
         CellHTML = table_data_to_html(HTTPContext, CellData),
-        StartTag = string.format("<td class=\"%s\">", [s(ClassStr)]),
+        StartTag = string.format("<td class=\"%s\">", [s(ColumnClassStr)]),
         EndTag = "</td>\n",
         HTML = wrap_tags(StartTag, EndTag, CellHTML)
     ).
@@ -604,34 +632,137 @@ table_data_to_html(_, td_t(Time)) =
     % class for some data that class is used, otherwise the default class is
     % assumed.
     %
-:- pred table_data_class(table_data::in, table_col_class::out) is semidet.
+:- pred table_data_class(table_data::in, table_column_class::out) is semidet.
 
-table_data_class(td_f(_), table_col_class_number).
-table_data_class(td_i(_), table_col_class_number).
-table_data_class(td_m(_, _, _), table_col_class_number).
-table_data_class(td_p(_), table_col_class_number).
-table_data_class(td_t(_), table_col_class_number).
+table_data_class(td_f(_), table_column_class_number).
+table_data_class(td_i(_), table_column_class_number).
+table_data_class(td_m(_, _, _), table_column_class_number).
+table_data_class(td_p(_), table_column_class_number).
+table_data_class(td_t(_), table_column_class_number).
 
-:- func default_table_col_class = table_col_class.
+:- func default_table_column_class = table_column_class.
 
-default_table_col_class = table_col_class_no_class.
+default_table_column_class = table_column_class_no_class.
 
-:- pred table_col_class_to_string(table_col_class::in, string::out) is det.
+:- func table_column_class_to_string(table_column_class) = string.
 
-table_col_class_to_string(table_col_class_allocations, "allocations").
-table_col_class_to_string(table_col_class_callseqs, "callseqs").
-table_col_class_to_string(table_col_class_memory, "memory").
-table_col_class_to_string(table_col_class_no_class, "default").
-table_col_class_to_string(table_col_class_number, "number").
-table_col_class_to_string(table_col_class_ordinal_rank, "ordinal_rank").
-table_col_class_to_string(table_col_class_port_counts, "port_counts").
-table_col_class_to_string(table_col_class_proc, "proc").
-table_col_class_to_string(table_col_class_ticks_and_times, "ticks_and_times").
+table_column_class_to_string(table_column_class_no_class) = "default".
+table_column_class_to_string(table_column_class_allocations) = "allocations".
+table_column_class_to_string(table_column_class_callseqs) = "callseqs".
+table_column_class_to_string(table_column_class_memory) = "memory".
+table_column_class_to_string(table_column_class_number) = "number".
+table_column_class_to_string(table_column_class_ordinal_rank) = "ordinal_rank".
+table_column_class_to_string(table_column_class_port_counts) = "port_counts".
+table_column_class_to_string(table_column_class_proc) = "proc".
+table_column_class_to_string(table_column_class_ticks_and_times) =
+    "ticks_and_times".
 
 :- func table_class_to_string(table_class) = string.
 
 table_class_to_string(table_class_plain) = "plain".
 table_class_to_string(table_class_boxed) = "boxed".
+
+%-----------------------------------------------------------------------------%
+
+    % A style element is a variable you can set for a given control.
+    % Examples include "text-align" and "background".
+    %
+:- type style_element
+    --->    style_element(string).
+
+    % Maps a style element to its value.
+    %
+:- type style_element_map == map(style_element, string).
+
+    % A style control is a category whose properties can be set independently.
+    % Examples include "td.allocations and "td.callseqs".
+    %
+:- type style_control
+    --->    style_control(string).
+
+    % Maps a style control to the style elements we should use for it.
+    %
+:- type style_control_map == map(style_control, style_element_map).
+
+    % Return the default style control map.
+    %
+:- func default_style_control_map = style_control_map.
+
+default_style_control_map =
+    map.from_assoc_list([
+        ( style_control("td.allocations") -
+            map.from_assoc_list([
+                style_element("text-align")     - "right"
+            ])
+        ),
+        ( style_control("td.callseqs") -
+            map.from_assoc_list([
+                style_element("text-align")     - "right"
+            ])
+        ),
+        ( style_control("td.memory") -
+            map.from_assoc_list([
+                style_element("text-align")     - "right"
+            ])
+        ),
+        ( style_control("td.number") -
+            map.from_assoc_list([
+                style_element("text-align")     - "right"
+            ])
+        ),
+        ( style_control("td.ordinal_rank") -
+            map.from_assoc_list([
+                style_element("text-align")     - "right"
+            ])
+        ),
+        ( style_control("td.port_counts") -
+            map.from_assoc_list([
+                style_element("text-align")     - "right"
+            ])
+        ),
+        ( style_control("td.proc") -
+            map.from_assoc_list([
+                style_element("text-align")     - "left"
+            ])
+        ),
+        ( style_control("td.ticks_and_times") -
+            map.from_assoc_list([
+                style_element("text-align")     - "right"
+            ])
+        ),
+        ( style_control("a.control") -
+            map.from_assoc_list([
+                style_element("margin")         - "5px",
+                style_element("text-decoration") - "none"
+            ])
+        ),
+        ( style_control("table.plain") -
+            map.from_assoc_list([
+                style_element("border-style")   - "none"
+            ])
+        ),
+        ( style_control("table.boxed") -
+            map.from_assoc_list([
+                style_element("border-width")   - "1px 1px 1px 1px",
+                style_element("border-spacing") - "2px",
+                style_element("border-style")   - "outset outset outset outset"
+            ])
+        ),
+        ( style_control("table.boxed th") -
+            map.from_assoc_list([
+                style_element("border-width")   - "1px 1px 1px 1px",
+                style_element("padding")        - "3px 3px 3px 3px",
+                style_element("border-style")   - "inset inset inset inset"
+            ])
+        ),
+        ( style_control("table.boxed td") -
+            map.from_assoc_list([
+                style_element("border-width")   - "1px 1px 1px 1px",
+                style_element("padding")        - "3px 3px 3px 3px",
+                style_element("border-style")   - "inset inset inset inset"
+            ])
+        )
+    ]).
 
 %-----------------------------------------------------------------------------%
 
@@ -703,6 +834,10 @@ deep_cmd_to_url(HTTPContext, Cmd, MaybePrefs, URL) :-
 % Generic HTML helper predicates.
 %
 
+:- func append_htmls(list(html)) = html.
+
+append_htmls(HTMLs) = cord_list_to_cord(HTMLs).
+
 :- func wrap_tags(string, string, html) = html.
 
 wrap_tags(StartTag, EndTag, InnerHTML) =
@@ -722,63 +857,88 @@ str_to_html(Str) = cord.singleton(Str).
 
 %-----------------------------------------------------------------------------%
 
-    % For each A, compute S = MapFunc(A), and concatenate all Ss.
+    % For each A, MapPred(!StyleControlMap, A, S), and concatenate all Ss.
     %
-:- pred map_join_html((func(A) = html)::in, list(A)::in, html::out) is det.
-
-map_join_html(MapFunc, List, HTML) :-
-    sep_map_join_html(empty_html, MapFunc, List, HTML).
-
-    % For each A, compute S = MapFunc(A), and concatenate all Ss
-    % after putting Separator between them.
-    %
-:- pred sep_map_join_html(html::in, (func(A) = html)::in,
+:- pred map_join_html(
+    pred(style_control_map, style_control_map, A, html)::
+        in(pred(in, out, in, out) is det),
+    style_control_map::in, style_control_map::out,
     list(A)::in, html::out) is det.
 
-sep_map_join_html(_, _, [], empty_html).
-sep_map_join_html(Separator, MapFunc, [Head | Tail], HTML) :-
-    HeadHTML = MapFunc(Head),
-    sep_map_join_html_acc(Separator, MapFunc, Tail, HeadHTML, HTML).
+map_join_html(MapPred, !StyleControlMap, List, HTML) :-
+    sep_map_join_html(empty_html, MapPred, !StyleControlMap, List, HTML).
 
-:- pred sep_map_join_html_acc(html::in, (func(A) = html)::in, list(A)::in,
-    html::in, html::out) is det.
+    % For each A, MapPred(!StyleControlMap, A, S), and concatenate all Ss
+    % after putting Separator between them.
+    %
+:- pred sep_map_join_html(html::in,
+    pred(style_control_map, style_control_map, A, html)::
+        in(pred(in, out, in, out) is det),
+    style_control_map::in, style_control_map::out,
+    list(A)::in, html::out) is det.
 
-sep_map_join_html_acc(_, _, [], !HTML).
-sep_map_join_html_acc(Separator, MapFunc, [Head | Tail], !HTML) :-
-    HeadHTML = MapFunc(Head),
+sep_map_join_html(_, _, !StyleControlMap, [], empty_html).
+sep_map_join_html(Separator, MapPred, !StyleControlMap, [Head | Tail], HTML) :-
+    MapPred(!StyleControlMap, Head, HeadHTML),
+    sep_map_join_html_acc(Separator, MapPred, !StyleControlMap, Tail,
+        HeadHTML, HTML).
+
+:- pred sep_map_join_html_acc(html::in,
+    pred(style_control_map, style_control_map, A, html)::
+        in(pred(in, out, in, out) is det),
+    style_control_map::in, style_control_map::out,
+     list(A)::in, html::in, html::out) is det.
+
+sep_map_join_html_acc(_, _, !StyleControlMap, [], !HTML).
+sep_map_join_html_acc(Separator, MapPred, !StyleControlMap, [Head | Tail],
+        !HTML) :-
+    MapPred(!StyleControlMap, Head, HeadHTML),
     !:HTML = !.HTML ++ Separator ++ HeadHTML,
-    sep_map_join_html_acc(Separator, MapFunc, Tail, !HTML).
+    sep_map_join_html_acc(Separator, MapPred, !StyleControlMap, Tail, !HTML).
 
-    % For each A, compute S = MapFunc(N, A), and concatenate all Ss.
+    % For each A, MapPred(!StyleControlMap, N, A, S), and concatenate all Ss.
     % N is the ordinal number of the element in the list.
     %
-:- pred map_join_html_count((func(int, A) = html)::in, int::in, list(A)::in,
-    html::out) is det.
+:- pred map_join_html_count(
+    pred(style_control_map, style_control_map, int, A, html)::
+        in(pred(in, out, in, in, out) is det),
+    style_control_map::in, style_control_map::out,
+    int::in, list(A)::in, html::out) is det.
 
-map_join_html_count(MapFunc, N, List, HTML) :-
-    sep_map_join_html_count(empty_html, MapFunc, N, List, HTML).
+map_join_html_count(MapPred, !StyleControlMap, N, List, HTML) :-
+    sep_map_join_html_count(empty_html, MapPred, !StyleControlMap, N, List,
+        HTML).
 
-    % For each A, compute S = MapFunc(N, A), and concatenate all Ss
+    % For each A, MapPred(!StyleControlMap, N, A, S), and concatenate all Ss
     % after putting Separator between them.
     % N is the ordinal number of the element in the list.
     %
-:- pred sep_map_join_html_count(html::in, (func(int, A) = html)::in,
+:- pred sep_map_join_html_count(html::in,
+    pred(style_control_map, style_control_map, int, A, html)::
+        in(pred(in, out, in, in, out) is det),
+    style_control_map::in, style_control_map::out,
     int::in, list(A)::in, html::out) is det.
 
-sep_map_join_html_count(_, _, _, [], empty_html).
-sep_map_join_html_count(Separator, MapFunc, N, [Head | Tail], HTML) :-
-    HeadHTML = MapFunc(N, Head),
-    sep_map_join_html_count_acc(Separator, MapFunc, N + 1, Tail,
-        HeadHTML, HTML).
+sep_map_join_html_count(_, _, !StyleControlMap, _, [], empty_html).
+sep_map_join_html_count(Separator, MapPred, !StyleControlMap, N,
+        [Head | Tail], HTML) :-
+    MapPred(!StyleControlMap, N, Head, HeadHTML),
+    sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap, N + 1,
+        Tail, HeadHTML, HTML).
 
-:- pred sep_map_join_html_count_acc(html::in, (func(int, A) = html)::in,
+:- pred sep_map_join_html_count_acc(html::in,
+    pred(style_control_map, style_control_map, int, A, html)::
+        in(pred(in, out, in, in, out) is det),
+    style_control_map::in, style_control_map::out,
     int::in, list(A)::in, html::in, html::out) is det.
 
-sep_map_join_html_count_acc(_, _, _, [], !HTML).
-sep_map_join_html_count_acc(Separator, MapFunc, N, [Head | Tail], !HTML) :-
-    HeadHTML = MapFunc(N, Head),
+sep_map_join_html_count_acc(_, _, !StyleControlMap, _, [], !HTML).
+sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap, N,
+        [Head | Tail], !HTML) :-
+    MapPred(!StyleControlMap, N, Head, HeadHTML),
     !:HTML = !.HTML ++ Separator ++ HeadHTML,
-    sep_map_join_html_count_acc(Separator, MapFunc, N + 1, Tail, !HTML).
+    sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap, N + 1,
+        Tail, !HTML).
 
 %-----------------------------------------------------------------------------%
 %

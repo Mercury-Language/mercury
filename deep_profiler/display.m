@@ -29,8 +29,8 @@
 
 :- type display
     --->    display(
-                title       :: maybe(string),
-                content     :: list(display_item)
+                display_title       :: maybe(string),
+                display_content     :: list(display_item)
             ).
 
 :- type display_item
@@ -59,42 +59,54 @@
                 % for layout hints.
                 table_class     :: table_class,
 
-                % The number of columns in the table.  If the number of cells
+                % The number of columns in the table. If the number of cells
                 % in any data row is not equal to this number, the table is not
                 % well formed. The number of cells in the header may be smaller
                 % than this value when there are header cells that span
                 % multiple sub-header cells.
                 table_num_cols  :: int,
 
-                % Header row of table.
+                % The header row of the table.
                 table_header    :: maybe(table_header),
 
-                % The data in table.
+                % The data in the table.
                 table_rows      :: list(table_row)
             ).
 
 :- type table_header
     --->    table_header(
-                th_cells        :: list(table_header_cell)
+                th_groups       :: list(table_header_group)
             ).
 
-:- type table_header_cell
-    --->    table_header_cell(
+:- type table_header_group
+    --->    table_header_group(
                 % The table contents.
-                thc_contents    :: table_data,
+                thg_titles      :: table_header_group_columns,
 
                 % The class may be used by a layout to make decisions
                 % about how to paint this column.
-                thc_class       :: table_col_class
-            )
-    ;       table_header_group(
-                thg_title       :: string,
-                thg_subtitles   :: list(table_data),
+                thg_class       :: table_column_class,
 
-                % The class may be used by a layout to make decisions
-                % about how to paint this column.
-                thg_class       :: table_col_class
+                thg_set_style   :: table_set_style
             ).
+
+:- type table_header_group_columns
+    --->    table_header_group_single(
+                % The header of the single column in the group.
+                thsc_title      :: table_data
+            )
+    ;       table_header_group_multi(
+                % The spanning header, which applies to all columns
+                % in the group.
+                thmc_title      :: string,
+
+                % The headers of the individual columns in the group.
+                thmc_subtitles  :: list(table_data)
+            ).
+
+:- type table_set_style
+    --->    table_set_style
+    ;       table_do_not_set_style.
 
 :- type table_row
     --->    table_row(
@@ -114,16 +126,16 @@
     --->    table_class_plain
     ;       table_class_boxed.
 
-:- type table_col_class
-    --->    table_col_class_allocations
-    ;       table_col_class_callseqs
-    ;       table_col_class_memory
-    ;       table_col_class_no_class
-    ;       table_col_class_number
-    ;       table_col_class_ordinal_rank
-    ;       table_col_class_port_counts
-    ;       table_col_class_proc
-    ;       table_col_class_ticks_and_times.
+:- type table_column_class
+    --->    table_column_class_allocations
+    ;       table_column_class_callseqs
+    ;       table_column_class_memory
+    ;       table_column_class_no_class
+    ;       table_column_class_number
+    ;       table_column_class_ordinal_rank
+    ;       table_column_class_port_counts
+    ;       table_column_class_proc
+    ;       table_column_class_ticks_and_times.
 
     % Table data can be specified by type to allow formatting, for example
     % to align decimal points.
@@ -145,6 +157,12 @@
     ;       td_p(percent)
     ;       td_s(string)
     ;       td_t(time).
+
+:- func make_single_table_header_group(table_data,
+    table_column_class, table_set_style) = table_header_group.
+
+:- func make_multi_table_header_group(string, list(table_data),
+    table_column_class, table_set_style) = table_header_group.
 
 %-----------------------------------------------------------------------------%
 %
@@ -185,18 +203,20 @@
 % Predicates for working with display structures.
 %
 
-    % If given a header, this predicate adds it to the end of the cord
-    % and adds the correct number of columns to the column count.
+    % If given a header for a (group of) columns, this predicate adds it
+    % to the end of the cord and adds the correct number of columns
+    % to the column count.
     %
-:- pred table_maybe_add_header_col(maybe(table_header_cell)::in,
-    cord(table_header_cell)::in, cord(table_header_cell)::out,
+:- pred table_maybe_add_header_group(maybe(table_header_group)::in,
+    cord(table_header_group)::in, cord(table_header_group)::out,
     int::in, int::out) is det.
 
-    % Given a header, this predicate adds it to the end of the cord
-    % and adds the correct number of columns to the column count.
+    % Given a header for a (group of) columns, this predicate adds it
+    % to the end of the cord and adds the correct number of columns
+    % to the column count.
     %
-:- pred table_add_header_col(table_header_cell::in,
-    cord(table_header_cell)::in, cord(table_header_cell)::out,
+:- pred table_add_header_group(table_header_group::in,
+    cord(table_header_group)::in, cord(table_header_group)::out,
     int::in, int::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -204,22 +224,41 @@
 
 :- implementation.
 
+:- import_module assoc_list.
 :- import_module int.
+:- import_module pair.
 
-table_maybe_add_header_col(no, !Cols, !NumCols).
-table_maybe_add_header_col(yes(HeaderCol), !Cols, !NumCols) :-
-    table_add_header_col(HeaderCol, !Cols, !NumCols).
+%-----------------------------------------------------------------------------%
 
-table_add_header_col(Cell, !Cols, !NumCols) :-
+make_single_table_header_group(ColumnTitle, ColumnClass, SetStyle) =
+    table_header_group(table_header_group_single(ColumnTitle),
+        ColumnClass, SetStyle).
+
+make_multi_table_header_group(MainTitle, SubTitles, ColumnClass, SetStyle) =
+    table_header_group(table_header_group_multi(MainTitle, SubTitles),
+        ColumnClass, SetStyle).
+
+%-----------------------------------------------------------------------------%
+
+table_maybe_add_header_group(MaybeHeaderGroup, !HeaderGroups, !NumColumns) :-
     (
-        Cell = table_header_cell(_, _),
-        CellCols = 1
+        MaybeHeaderGroup = yes(HeaderGroup),
+        table_add_header_group(HeaderGroup, !HeaderGroups, !NumColumns)
     ;
-        Cell = table_header_group(_, SubHeaders, _),
-        list.length(SubHeaders, CellCols)
+        MaybeHeaderGroup = no
+    ).
+
+table_add_header_group(HeaderGroup, !HeaderGroups, !NumColumns) :-
+    HeaderGroup = table_header_group(ColumnTitles, _, _),
+    (
+        ColumnTitles = table_header_group_single(_),
+        GroupColumns = 1
+    ;
+        ColumnTitles = table_header_group_multi(_, SubTitles),
+        list.length(SubTitles, GroupColumns)
     ),
-    !:Cols = cord.snoc(!.Cols, Cell),
-    !:NumCols = !.NumCols + CellCols.
+    !:HeaderGroups = cord.snoc(!.HeaderGroups, HeaderGroup),
+    !:NumColumns = !.NumColumns + GroupColumns.
 
 %-----------------------------------------------------------------------------%
 :- end_module display.
