@@ -111,7 +111,7 @@
 :- pragma type_spec(svmap.det_insert(in, in, in, out), K = int).
 
 :- pragma type_spec(svmap.set(in, in, in, out), K = var(_)).
-:- pragma type_spec(svmap.set(in, in, in, out), K = var(_)).
+:- pragma type_spec(svmap.set(in, in, in, out), K = int).
 
 :- pragma type_spec(svmap.update(in, in, in, out), K = var(_)).
 :- pragma type_spec(svmap.update(in, in, in, out), K = int).

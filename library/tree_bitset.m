@@ -309,20 +309,26 @@
 :- pragma type_spec(insert/2, T = var(_)).
 :- pragma type_spec(insert/2, T = int).
 
+:- pragma type_spec(insert/3, T = var(_)).
+:- pragma type_spec(insert/3, T = int).
+
 :- pragma type_spec(insert_list/2, T = var(_)).
 :- pragma type_spec(insert_list/2, T = int).
+
+:- pragma type_spec(insert_list/3, T = var(_)).
+:- pragma type_spec(insert_list/3, T = int).
 
 :- pragma type_spec(delete/2, T = var(_)).
 :- pragma type_spec(delete/2, T = int).
 
+:- pragma type_spec(delete/3, T = var(_)).
+:- pragma type_spec(delete/3, T = int).
+
 :- pragma type_spec(delete_list/2, T = var(_)).
 :- pragma type_spec(delete_list/2, T = int).
 
-:- pragma type_spec(foldr/3, T = int).
-:- pragma type_spec(foldr/3, T = var(_)).
-
-:- pragma type_spec(foldr/4, T = int).
-:- pragma type_spec(foldr/4, T = var(_)).
+:- pragma type_spec(delete_list/3, T = var(_)).
+:- pragma type_spec(delete_list/3, T = int).
 
 :- pragma type_spec(foldl/3, T = int).
 :- pragma type_spec(foldl/3, T = var(_)).
@@ -330,26 +336,11 @@
 :- pragma type_spec(foldl/4, T = int).
 :- pragma type_spec(foldl/4, T = var(_)).
 
-:- pragma type_spec(list_to_set/1, T = var(_)).
-:- pragma type_spec(list_to_set/1, T = int).
+:- pragma type_spec(foldr/3, T = int).
+:- pragma type_spec(foldr/3, T = var(_)).
 
-:- pragma type_spec(sorted_list_to_set/1, T = var(_)).
-:- pragma type_spec(sorted_list_to_set/1, T = int).
-
-:- pragma type_spec(to_sorted_list/1, T = var(_)).
-:- pragma type_spec(to_sorted_list/1, T = int).
-
-:- pragma type_spec(insert/3, T = var(_)).
-:- pragma type_spec(insert/3, T = int).
-
-:- pragma type_spec(insert_list/3, T = var(_)).
-:- pragma type_spec(insert_list/3, T = int).
-
-:- pragma type_spec(delete/3, T = var(_)).
-:- pragma type_spec(delete/3, T = int).
-
-:- pragma type_spec(delete_list/3, T = var(_)).
-:- pragma type_spec(delete_list/3, T = int).
+:- pragma type_spec(foldr/4, T = int).
+:- pragma type_spec(foldr/4, T = var(_)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
