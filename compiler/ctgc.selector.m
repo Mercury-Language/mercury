@@ -19,6 +19,7 @@
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.prog_data.
 
+:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -75,6 +76,10 @@
     %
 :- pred selector_apply_widening(module_info::in, mer_type::in,
     selector::in, selector::out) is det.
+
+    % Reset memoisation tables used by this module.
+    %
+:- pred reset_tables(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -260,12 +265,28 @@ type_contains_subtype(ModuleInfo, FromType, ToType) :-
     ( FromType = ToType ->
         true
     ;
-        queue.put(queue.init, FromType, Queue0),
-        type_contains_subtype_2(ModuleInfo, ToType, Queue0, _Queue,
-            set.init, _SeenTypes, Contains),
+        type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains),
         Contains = yes
     ).
 
+:- pred type_contains_subtype_1(module_info::in, mer_type::in, mer_type::in,
+    bool::out) is det.
+
+    % We assume that type definitions for a module don't change for the
+    % duration of the analysis.
+    %
+:- pragma memo(type_contains_subtype_1/4,
+    [allow_reset, specified([promise_implied, value, value, output])]).
+
+type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains) :-
+    queue.put(queue.init, FromType, Queue0),
+    type_contains_subtype_2(ModuleInfo, ToType, Queue0, _Queue,
+        set.init, _SeenTypes, Contains).
+
+    % We perform a breadth-first search, keeping track of the types that
+    % already seen, to avoid some really bad performance when performing
+    % structure sharing analysis on some modules.
+    %
 :- pred type_contains_subtype_2(module_info::in, mer_type::in,
     queue(mer_type)::in, queue(mer_type)::out,
     set(mer_type)::in, set(mer_type)::out, bool::out) is det.
@@ -475,6 +496,11 @@ branch_map_search([Type - Sel | TypeSels], KeyType, ValueSel):-
     ;
         branch_map_search(TypeSels, KeyType, ValueSel)
     ).
+
+%-----------------------------------------------------------------------------%
+
+reset_tables(!IO) :-
+    table_reset_for_type_contains_subtype_1_4(!IO).
 
 %-----------------------------------------------------------------------------%
 

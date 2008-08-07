@@ -112,6 +112,7 @@
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 :- import_module transform_hlds.ctgc.structure_reuse.indirect.
@@ -274,7 +275,9 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
     bimap.foldl(
         remove_useless_reuse_proc(!.ModuleInfo, VeryVerbose, ReuseInfoMap),
         ReuseVersionMap, PredTable0, PredTable),
-    module_info_set_predicate_table(PredTable, !ModuleInfo).
+    module_info_set_predicate_table(PredTable, !ModuleInfo),
+
+    selector.reset_tables(!IO).
 
 %-----------------------------------------------------------------------------%
 

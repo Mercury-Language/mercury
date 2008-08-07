@@ -82,6 +82,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.ctgc.util.
@@ -145,7 +146,9 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
         make_opt_int(!.ModuleInfo, !IO)
     ;
         true
-    ).
+    ),
+
+    selector.reset_tables(!IO).
 
 %-----------------------------------------------------------------------------%
 %
