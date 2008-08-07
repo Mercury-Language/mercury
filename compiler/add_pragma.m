@@ -2861,9 +2861,17 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         Arg1 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
         Arg2 = pragma_var(IO, "_IO", uo_mode, always_boxed),
 
-        Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
-            ProcId),
-        ResetCode = Global ++ ".MR_pt_tablenode.MR_integer = 0;",
+        module_info_get_globals(!.ModuleInfo, Globals),
+        current_grade_supports_tabling(Globals, IsTablingSupported),
+        (
+            IsTablingSupported = yes,
+            Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
+                ProcId),
+            ResetCode = Global ++ ".MR_pt_tablenode.MR_integer = 0;"
+        ;
+            IsTablingSupported = no,
+            ResetCode = ""
+        ),
         ResetImpl = fc_impl_ordinary(ResetCode, yes(Context)),
         ResetPragma = pragma_foreign_proc(!.Attrs, ResetPredSymName,
             pf_predicate, [Arg1, Arg2], !.VarSet, InstVarSet, ResetImpl),
