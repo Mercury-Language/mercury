@@ -236,6 +236,9 @@ Changes to the Mercury compiler:
 
 * We have added support for simultaneous execution of jobs with `mmc --make'.
 
+* We have added support for stack segments, which allows programs to grow
+  stacks on demand.
+
 * We have made it easier to use single-precision floats, which do not need
   to be boxed on 32-bit machines.
 
@@ -424,6 +427,12 @@ Changes to the Mercury compiler:
 
 * Simultaneous execution of jobs with `mmc --make' can be enabled with
   the `--jobs <n>' option.
+
+* The option `--stack-segments', or grade component `.stseg', causes
+  programs to execute using stack segments, where segments can be allocated
+  at runtime, instead of using fixed sized stacks.  The program won't run out
+  of stack space and stack sizes can be much smaller, but execution time will
+  be increased.
 
 * Single-precision floats can now be selected for the C backends by using the
   `.spf' grade component, or passing the `--single-prec-float' option to the

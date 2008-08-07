@@ -321,10 +321,6 @@ MR_stack_walk_succip_layout(MR_Code *success,
         success = (MR_Code *) MR_based_stackvar(*stack_trace_sp_ptr, 2);
         *stack_trace_sp_ptr = (MR_Word *)
             MR_based_stackvar(*stack_trace_sp_ptr, 1);
-    } else if (success == MR_ENTRY(MR_pop_nondetstack_segment)) {
-        success = MR_succip_slot(*stack_trace_curfr_ptr);
-        *stack_trace_curfr_ptr = (MR_Word *)
-            MR_based_framevar(*stack_trace_curfr_ptr, 1);
     }
 #endif /* !MR_HIGHLEVEL_CODE && MR_STACK_SEGMENTS */
 

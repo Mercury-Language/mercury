@@ -106,18 +106,20 @@
                 MR_zone_extend_threshold;                                     \
             incr = MR_NONDET_FIXED_SIZE + (n);                                \
             new_maxfr = MR_maxfr + incr;                                      \
-            if (new_maxfr > threshold) {                                      \
+            if (MR_maxfr < MR_CONTEXT(MR_ctxt_nondetstack_zone->MR_zone_min)  \
+                || new_maxfr > threshold)                                     \
+            {                                                                 \
                 MR_save_registers();                                          \
-                new_maxfr = MR_new_nondetstack_segment(MR_maxfr, incr);       \
+                MR_nondetstack_segment_extend_slow_path(MR_maxfr, incr);      \
                 MR_restore_registers();                                       \
-                MR_succip_word =                                              \
-                    (MR_Word) MR_ENTRY(MR_pop_nondetstack_segment);           \
+            } else {                                                          \
+                MR_maxfr_word = (MR_Word) new_maxfr;                          \
             }                                                                 \
-            MR_maxfr_word = (MR_Word) new_maxfr;                              \
         } while (0)
 
-  extern    MR_Word         *MR_new_detstack_segment(MR_Word *sp, int n);
-  extern    MR_Word         *MR_new_nondetstack_segment(MR_Word *maxfr, int n);
+  extern    MR_Word     *MR_new_detstack_segment(MR_Word *sp, int n);
+  extern    void        MR_nondetstack_segment_extend_slow_path(
+                            MR_Word *old_maxfr, int n);
 
 #else   /* !MR_STACK_SEGMENTS */
 

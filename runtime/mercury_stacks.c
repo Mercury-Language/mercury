@@ -202,7 +202,6 @@ MR_debug_zone_extend(FILE *fp, const char *when, const char *stackname,
 #ifdef  MR_STACK_SEGMENTS
 
 MR_declare_entry(MR_pop_detstack_segment);
-MR_declare_entry(MR_pop_nondetstack_segment);
 
 MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
 {
@@ -212,8 +211,9 @@ MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
 
     old_sp = sp;
 
+    /* We perform explicit overflow checks so redzones just waste space. */
     new_zone = MR_create_zone("detstack_segment", 0, MR_detstack_size, 0,
-        MR_detstack_zone_size, MR_default_handler);
+        0, MR_default_handler);
 
     list = MR_GC_malloc_uncollectable(sizeof(MR_MemoryZones));
 
@@ -221,8 +221,8 @@ MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
     printf("create new det segment: old zone: %p, old sp %p\n",
         MR_CONTEXT(MR_ctxt_detstack_zone), old_sp);
     printf("old sp: ");
-    MR_printdetstack(old_sp);
-    printf("old succip: ");
+    MR_printdetstack(stdout, old_sp);
+    printf(", old succip: ");
     MR_printlabel(stdout, MR_succip);
 #endif
 
@@ -244,25 +244,46 @@ MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
     printf("create new det segment: new zone: %p, new sp %p\n",
         MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp);
     printf("new sp: ");
-    MR_printdetstack(MR_sp);
-    printf("new succip: ");
+    MR_printdetstack(stdout, MR_sp);
+    printf(", new succip: ");
     MR_printlabel(stdout, MR_ENTRY(MR_pop_detstack_segment));
 #endif
 
     return MR_sp;
 }
 
-MR_Word *
-MR_new_nondetstack_segment(MR_Word *maxfr, int n)
+static  MR_MemoryZone   *MR_rewind_nondetstack_segments(MR_Word *maxfr);
+
+void
+MR_nondetstack_segment_extend_slow_path(MR_Word *old_maxfr, int incr)
 {
-    MR_Word         *old_maxfr;
+    MR_Word         *new_maxfr;
     MR_MemoryZones  *list;
     MR_MemoryZone   *new_zone;
 
-    old_maxfr = maxfr;
+    /*
+    ** Pop off the nondet stack segments until maxfr is within the bounds of
+    ** the top segment.
+    */
+    new_zone = MR_rewind_nondetstack_segments(old_maxfr);
 
-    new_zone = MR_create_zone("nondetstack_segment", 0, MR_nondetstack_size, 0,
-        MR_nondetstack_zone_size, MR_default_handler);
+    /* Try to make a frame on the top segment. */
+    new_maxfr = old_maxfr + incr;
+    if (new_maxfr < (MR_Word *) MR_CONTEXT(MR_ctxt_nondetstack_zone)->
+        MR_zone_extend_threshold)
+    {
+        MR_maxfr_word = (MR_Word) new_maxfr;
+        if (new_zone != NULL) {
+            MR_unget_zone(new_zone);
+        }
+        return;
+    }
+
+    if (new_zone == NULL) {
+        /* We perform explicit overflow checks so redzones just waste space. */
+        new_zone = MR_create_zone("nondetstack_segment", 0,
+            MR_nondetstack_size, 0, 0, MR_default_handler);
+    }
 
     list = MR_GC_malloc_uncollectable(sizeof(MR_MemoryZones));
 
@@ -270,9 +291,7 @@ MR_new_nondetstack_segment(MR_Word *maxfr, int n)
     printf("create new nondet segment: old zone: %p, old maxfr %p\n",
         MR_CONTEXT(MR_ctxt_nondetstack_zone), old_maxfr);
     printf("old maxfr: ");
-    MR_printnondetstack(old_maxfr);
-    printf("old succip: ");
-    MR_printlabel(stdout, MR_succip);
+    MR_printnondetstack(stdout, old_maxfr);
 #endif
 
     list->MR_zones_head = MR_CONTEXT(MR_ctxt_nondetstack_zone);
@@ -282,33 +301,59 @@ MR_new_nondetstack_segment(MR_Word *maxfr, int n)
     MR_CONTEXT(MR_ctxt_maxfr) =
         MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min;
 
-    MR_maxfr_word = (MR_Word) MR_CONTEXT(MR_ctxt_maxfr);
-
-    MR_mkframe("new_nondetstack_segment", 1, MR_ENTRY(MR_do_fail));
-    MR_framevar(1) = (MR_Word) old_maxfr;
-
-    MR_maxfr_word = (MR_Word) (MR_maxfr + (MR_NONDET_FIXED_SIZE + (n)));
+    MR_maxfr_word = (MR_Word) (MR_CONTEXT(MR_ctxt_maxfr) + incr);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
     printf("create new nondet segment: new zone: %p, new maxfr %p\n",
         MR_CONTEXT(MR_ctxt_nondetstack_zone), MR_maxfr);
     printf("new maxfr: ");
-    MR_printnondetstack(MR_maxfr);
-    printf("new succip: ");
-    MR_printlabel(stdout, MR_ENTRY(MR_pop_nondetstack_segment));
+    MR_printnondetstack(stdout, MR_maxfr);
 #endif
+}
 
-    return MR_maxfr;
+static MR_MemoryZone *
+MR_rewind_nondetstack_segments(MR_Word *maxfr)
+{
+    MR_MemoryZone   *reusable_zone;
+    MR_MemoryZone   *zone;
+    MR_MemoryZones  *list;
+
+    reusable_zone = NULL;
+
+    for (;;) {
+        zone = MR_CONTEXT(MR_ctxt_nondetstack_zone);
+        /*
+        ** XXX why is maxfr sometimes slightly past MR_zone_extend_threshold?
+        ** That's why we test against MR_zone_redzone.
+        */
+        if (maxfr >= zone->MR_zone_min &&
+            maxfr < (MR_Word *) zone->MR_zone_redzone)
+        {
+            break;
+        }
+
+        if (reusable_zone == NULL) {
+            reusable_zone = zone;
+        } else {
+            MR_unget_zone(zone);
+        }
+
+        list = MR_CONTEXT(MR_ctxt_prev_nondetstack_zones);
+        assert(list != NULL);
+        MR_CONTEXT(MR_ctxt_nondetstack_zone) = list->MR_zones_head;
+        MR_CONTEXT(MR_ctxt_prev_nondetstack_zones) = list->MR_zones_tail;
+        MR_GC_free(list);
+    }
+
+    return reusable_zone;
 }
 
 #endif  /* MR_STACK_SEGMENTS */
 
 MR_define_extern_entry(MR_pop_detstack_segment);
-MR_define_extern_entry(MR_pop_nondetstack_segment);
 
 MR_BEGIN_MODULE(stack_segment_module)
     MR_init_entry_an(MR_pop_detstack_segment);
-    MR_init_entry_an(MR_pop_nondetstack_segment);
 MR_BEGIN_CODE
 
 MR_define_entry(MR_pop_detstack_segment);
@@ -325,8 +370,8 @@ MR_define_entry(MR_pop_detstack_segment);
     printf("restore old det segment: old zone %p, old sp %p\n",
         MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp);
     printf("old sp: ");
-    MR_printdetstack(MR_sp);
-    printf("old succip: ");
+    MR_printdetstack(stdout, MR_sp);
+    printf(", old succip: ");
     MR_printlabel(stdout, MR_succip);
 #endif
 
@@ -342,8 +387,8 @@ MR_define_entry(MR_pop_detstack_segment);
     printf("restore old det segment: new zone %p, new sp %p\n",
         MR_CONTEXT(MR_ctxt_detstack_zone), orig_sp);
     printf("new sp: ");
-    MR_printdetstack(orig_sp);
-    printf("new succip: ");
+    MR_printdetstack(stdout, orig_sp);
+    printf(", new succip: ");
     MR_printlabel(stdout, orig_succip);
 #endif
 
@@ -352,49 +397,6 @@ MR_define_entry(MR_pop_detstack_segment);
 }
 #else   /* ! MR_STACK_SEGMENTS */
     MR_fatal_error("MR_pop_detstack_segment reached\n");
-#endif  /* MR_STACK_SEGMENTS */
-
-MR_define_entry(MR_pop_nondetstack_segment);
-#ifdef MR_STACK_SEGMENTS
-{
-    MR_MemoryZones  *list;
-    MR_Word         *orig_maxfr;
-    MR_Code         *orig_succip;
-
-    orig_maxfr = (MR_Word *) MR_stackvar(1);
-    orig_succip = (MR_Code *) MR_stackvar(2);
-
-#ifdef  MR_DEBUG_STACK_SEGMENTS
-    printf("restore old nondet segment: old zone %p, old maxfr %p\n",
-        MR_CONTEXT(MR_ctxt_nondetstack_zone), MR_maxfr);
-    printf("old maxfr: ");
-    MR_printnondetstack(MR_maxfr);
-    printf("old succip: ");
-    MR_printlabel(stdout, MR_succip);
-#endif
-
-    MR_unget_zone(MR_CONTEXT(MR_ctxt_nondetstack_zone));
-
-    list = MR_CONTEXT(MR_ctxt_prev_nondetstack_zones);
-    MR_CONTEXT(MR_ctxt_nondetstack_zone) = list->MR_zones_head;
-    MR_CONTEXT(MR_ctxt_prev_nondetstack_zones) = list->MR_zones_tail;
-    MR_CONTEXT(MR_ctxt_maxfr) = orig_maxfr;
-    MR_GC_free(list);
-
-#ifdef  MR_DEBUG_STACK_SEGMENTS
-    printf("restore old nondet segment: new zone %p, new maxfr %p\n",
-        MR_CONTEXT(MR_ctxt_nondetstack_zone), orig_maxfr);
-    printf("new maxfr: ");
-    MR_printnondetstack(orig_maxfr);
-    printf("new succip: ");
-    MR_printlabel(stdout, orig_succip);
-#endif
-
-    MR_maxfr_word = (MR_Word) orig_maxfr;
-    MR_GOTO(orig_succip);
-}
-#else   /* ! MR_STACK_SEGMENTS */
-    MR_fatal_error("MR_pop_nondetstack_segment reached\n");
 #endif  /* MR_STACK_SEGMENTS */
 
 MR_END_MODULE

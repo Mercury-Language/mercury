@@ -531,7 +531,6 @@ MR_construct_zone(const char *name, int id, MR_Word *base,
 {
     MR_MemoryZone   *zone;
     size_t          total_size;
-    int             res;
 
     if (base == NULL) {
         MR_fatal_error("MR_construct_zone called with NULL pointer");
@@ -652,6 +651,8 @@ MR_setup_redzones(MR_MemoryZone *zone)
     size = zone->MR_zone_desired_size;
     redsize = zone->MR_zone_redzone_size;
 
+    assert(size > redsize);
+
     /*
     ** setup the redzone
     */
@@ -660,6 +661,14 @@ MR_setup_redzones(MR_MemoryZone *zone)
         MR_round_up((MR_Unsigned) zone->MR_zone_bottom + size - redsize,
             MR_unit);
     zone->MR_zone_redzone_base = zone->MR_zone_redzone;
+
+    /*
+    ** When using small memory zones, the offset given by MR_next_offset()
+    ** might have us starting in the middle of the redzone.  Don't do that.
+    */
+    if (zone->MR_zone_min >= zone->MR_zone_redzone) {
+        zone->MR_zone_min = zone->MR_zone_bottom;
+    }
 
     res = MR_protect_pages((char *) zone->MR_zone_redzone, redsize + MR_unit,
         REDZONE_PROT);
@@ -697,6 +706,9 @@ MR_setup_redzones(MR_MemoryZone *zone)
 #if defined(MR_STACK_SEGMENTS) && !defined(MR_HIGHLEVEL_CODE)
     zone->MR_zone_extend_threshold = (char *) zone->MR_zone_end
         - MR_stack_margin_size;
+
+    assert((MR_Word *) zone->MR_zone_extend_threshold > zone->MR_zone_min);
+    assert((MR_Word *) zone->MR_zone_extend_threshold < zone->MR_zone_redzone);
 #endif
 }
 
