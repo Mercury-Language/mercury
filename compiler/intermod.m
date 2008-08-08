@@ -520,8 +520,22 @@ intermod_traverse_goal_expr(if_then_else(Vars, Cond0, Then0, Else0),
     bool.and_list([DoWrite1, DoWrite2, DoWrite3], DoWrite).
     % Inlineable exported pragma_foreign_code goals can't use any
     % non-exported types, so we just write out the clauses.
-intermod_traverse_goal_expr(Goal @ call_foreign_proc(_, _, _, _, _, _, _),
-        Goal, yes, !Info).
+intermod_traverse_goal_expr(Goal @ call_foreign_proc(Attrs, _, _, _, _, _, _),
+        Goal, DoWrite, !Info) :-
+    MaybeMayDuplicate = get_may_duplicate(Attrs),
+    (
+        MaybeMayDuplicate = yes(MayDuplicate),
+        (
+            MayDuplicate = proc_may_duplicate,
+            DoWrite = yes
+        ;
+            MayDuplicate = proc_may_not_duplicate,
+            DoWrite = no
+        )
+    ;
+        MaybeMayDuplicate = no,
+        DoWrite = yes
+    ).
 intermod_traverse_goal_expr(shorthand(ShortHand0), shorthand(ShortHand),
         DoWrite, !Info) :-
     (
