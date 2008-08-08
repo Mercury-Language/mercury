@@ -502,7 +502,8 @@ branch_map_search([Type - Sel | TypeSels], KeyType, ValueSel):-
 %-----------------------------------------------------------------------------%
 
 reset_tables(!IO) :-
-    table_reset_for_type_contains_subtype_1_4(!IO).
+    % table_reset_for_type_contains_subtype_1_4(!IO).
+    true.
 
 %-----------------------------------------------------------------------------%
 
