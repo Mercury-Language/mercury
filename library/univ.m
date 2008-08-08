@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,9 +103,9 @@ det_univ_to_type(Univ, X) :-
     ;
         UnivTypeName = type_name(univ_type(Univ)),
         ObjectTypeName = type_name(type_of(X)),
-        string.append_list(["det_univ_to_type: conversion failed\\n",
-            "\tUniv Type: ", UnivTypeName,
-            "\\n\tObject Type: ", ObjectTypeName], ErrorString),
+        string.append_list(["det_univ_to_type: conversion failed\n",
+            "\tUniv Type: ", UnivTypeName, "\n",
+            "\tObject Type: ", ObjectTypeName], ErrorString),
         error(ErrorString)
     ).
 
