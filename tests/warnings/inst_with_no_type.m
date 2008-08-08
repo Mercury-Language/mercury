@@ -86,7 +86,7 @@
 
 	% Even though t is defined in the implementation of
 	% inst_with_no_type_2 we should get a warning for the following
-	% insts, since the function symbol t is not user visible from 
+	% insts, since the function symbol ft is not user visible from
 	% this scope.
 	%
 :- inst t_no_match ---> ft.

@@ -125,13 +125,21 @@
 
 :- implementation.
 
-:- import_module array.
 :- import_module require.
 :- import_module int.
 
-    % array2d(Rows, Cols, Array)
+:- interface.
+
+    % This should be abstract, but needs to be exported for insts.
     %
-:- type array2d(T) ---> array2d(int, int, array(T)).
+:- type array2d(T)
+    --->    array2d(
+                int,        % rows
+                int,        % cols
+                array(T)    % array
+            ).
+
+:- implementation.
 
 %-----------------------------------------------------------------------------%
 

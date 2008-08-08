@@ -10,7 +10,7 @@
 % Main author: maclarty.
 %
 % This module exports a predicate that checks that each user defined inst is
-% consistant with at least one type in scope.
+% consistent with at least one type in scope.
 %
 % TODO:
 %   If we find an inst that is not consistent with any of the types in scope,
@@ -27,12 +27,13 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
-    % This predicate issues a warning for each user defined bound insts
-    % that is not consistant with at least one type in scope.
+    % This predicate issues a warning for each user defined bound inst
+    % that is not consistent with at least one type in scope.
     %
 :- pred check_insts_have_matching_types(module_info::in,
     io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -57,38 +58,58 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
+%-----------------------------------------------------------------------------%
+
 check_insts_have_matching_types(Module, !IO) :-
     module_info_get_inst_table(Module, InstTable),
     inst_table_get_user_insts(InstTable, UserInstTable),
     user_inst_table_get_inst_defns(UserInstTable, InstDefs),
     module_info_get_type_table(Module, TypeTable),
     AllTypeDefs = map.values(TypeTable),
-    list.filter(type_is_user_visible, AllTypeDefs, UserVisibleTypeDefs),
+    list.filter(type_is_user_visible(section_implementation), AllTypeDefs,
+        UserVisibleTypeDefs),
     InstIdDefPairs = map.to_assoc_list(InstDefs),
     list.filter(inst_is_defined_in_current_module, InstIdDefPairs,
         InstIdDefPairsForCurrentModule),
     FunctorsToTypeDefs = index_types_by_unqualified_functors(
         UserVisibleTypeDefs),
-    list.foldl_corresponding(check_inst(FunctorsToTypeDefs),
-        assoc_list.keys(InstIdDefPairsForCurrentModule),
-        assoc_list.values(InstIdDefPairsForCurrentModule), !IO).
+    list.foldl(check_inst(FunctorsToTypeDefs), InstIdDefPairsForCurrentModule,
+        !IO).
 
     % Returns yes if a type definition with the given import status
-    % is user visible in the current module.
+    % is user visible in a section of the current module.
     %
-:- func status_implies_type_defn_is_user_visible(import_status) = bool.
+:- func status_implies_type_defn_is_user_visible(section, import_status)
+    = bool.
 
-status_implies_type_defn_is_user_visible(status_imported(_)) =             yes.
-status_implies_type_defn_is_user_visible(status_external(_)) =             no.
-status_implies_type_defn_is_user_visible(status_abstract_imported) =       no.
-status_implies_type_defn_is_user_visible(status_pseudo_imported) =         no.
-status_implies_type_defn_is_user_visible(status_opt_imported) =            no.
-status_implies_type_defn_is_user_visible(status_exported) =                yes.
-status_implies_type_defn_is_user_visible(status_opt_exported) =            yes.
-status_implies_type_defn_is_user_visible(status_abstract_exported) =       yes.
-status_implies_type_defn_is_user_visible(status_pseudo_exported) =         yes.
-status_implies_type_defn_is_user_visible(status_exported_to_submodules) =  yes.
-status_implies_type_defn_is_user_visible(status_local) =                   yes.
+status_implies_type_defn_is_user_visible(Section, Status) = Visible :-
+    (
+        ( Status = status_imported(_)
+        ; Status = status_exported
+        ),
+        Visible = yes
+    ;
+        ( Status = status_external(_)
+        ; Status = status_abstract_imported
+        ; Status = status_pseudo_imported
+        ; Status = status_opt_imported
+        ),
+        Visible = no
+    ;
+        ( Status = status_opt_exported
+        ; Status = status_abstract_exported
+        ; Status = status_pseudo_exported
+        ; Status = status_exported_to_submodules
+        ; Status = status_local
+        ),
+        (
+            Section = section_interface,
+            Visible = no
+        ;
+            Section = section_implementation,
+            Visible = yes
+        )
+    ).
 
 :- pred inst_is_defined_in_current_module(pair(inst_id, hlds_inst_defn)::in)
     is semidet.
@@ -97,11 +118,11 @@ inst_is_defined_in_current_module(_ - InstDef) :-
     ImportStatus = InstDef ^ inst_status,
     status_defined_in_this_module(ImportStatus) = yes.
 
-:- pred type_is_user_visible(hlds_type_defn::in) is semidet.
+:- pred type_is_user_visible(section::in, hlds_type_defn::in) is semidet.
 
-type_is_user_visible(TypeDef) :-
+type_is_user_visible(Section, TypeDef) :-
     get_type_defn_status(TypeDef, ImportStatus),
-    status_implies_type_defn_is_user_visible(ImportStatus) = yes.
+    status_implies_type_defn_is_user_visible(Section, ImportStatus) = yes.
 
 :- type functors_to_types == multi_map(sym_name_and_arity, hlds_type_defn).
 
@@ -116,10 +137,10 @@ type_is_user_visible(TypeDef) :-
     ;       type_builtin(builtin_type)
     ;       type_tuple(arity).
 
-:- pred check_inst(functors_to_types::in, inst_id::in, hlds_inst_defn::in,
+:- pred check_inst(functors_to_types::in, pair(inst_id, hlds_inst_defn)::in,
     io::di, io::uo) is det.
 
-check_inst(FunctorsToTypes, InstId, InstDef, !IO) :-
+check_inst(FunctorsToTypes, InstId - InstDef, !IO) :-
     InstBody = InstDef ^ inst_body,
     (
         InstBody = eqv_inst(Inst),
@@ -154,19 +175,33 @@ check_inst(FunctorsToTypes, InstId, InstDef, !IO) :-
 :- pred maybe_issue_inst_check_warning(inst_id::in, hlds_inst_defn::in,
     list(list(type_defn_or_builtin))::in, io::di, io::uo) is det.
 
-maybe_issue_inst_check_warning(InstId, InstDef, MatchingTypeLists,
-        !IO) :-
-    ( if
+maybe_issue_inst_check_warning(InstId, InstDef, MatchingTypeLists, !IO) :-
+    InstImportStatus = InstDef ^ inst_status,
+    InstIsExported = status_is_exported_to_non_submodules(InstImportStatus),
+    (
         MatchingTypeLists = [MatchingTypeList | _],
         not (some [Type] (
+            % Check at least one type matched all the functors of the inst.
             list.member(Type, MatchingTypeList),
-            all [TypeList] (
-                list.member(TypeList, MatchingTypeLists)
-            =>
-                list.member(Type, TypeList)
+            type_matched_all_functors(Type, MatchingTypeLists),
+
+            % If the inst is exported then that type must be concrete outside
+            % of this module.
+            (
+                InstIsExported = yes,
+                (
+                    Type = type_def(TypeDefn),
+                    type_is_user_visible(section_interface, TypeDefn)
+                ;
+                    Type = type_builtin(_)
+                ;
+                    Type = type_tuple(_)
+                )
+            ;
+                InstIsExported = no
             )
         ))
-    then
+    ->
         Context = InstDef ^ inst_context,
         InstId = inst_id(InstName, InstArity),
         Warning = [
@@ -175,8 +210,18 @@ maybe_issue_inst_check_warning(InstId, InstDef, MatchingTypeLists,
             words("does not match any of the types in scope.")
         ],
         report_warning(Context, 0, Warning, !IO)
-    else
+    ;
         true
+    ).
+
+:- pred type_matched_all_functors(type_defn_or_builtin::in,
+    list(list(type_defn_or_builtin))::in) is semidet.
+
+type_matched_all_functors(Type, MatchingTypeLists) :-
+    all [TypeList] (
+        list.member(TypeList, MatchingTypeLists)
+    =>
+        list.member(Type, TypeList)
     ).
 
 :- pred find_types_for_functor(functors_to_types::in, bound_inst_functor::in,
@@ -315,4 +360,6 @@ constructor_to_sym_name_and_arity(ctor(_, _, Name, Args, _)) =
 
 multi_map_set(Value, Key, Map) = multi_map.set(Map, Key, Value).
 
+%-----------------------------------------------------------------------------%
 :- end_module check_hlds.inst_check.
+%-----------------------------------------------------------------------------%

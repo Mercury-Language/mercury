@@ -215,6 +215,10 @@
 
 %-----------------------------------------------------------------------------%
 
+:- interface.
+
+    % This should be abstract, but needs to be exported for insts.
+    %
 :- type hash_table(K, V)
     --->    ht(
                 num_buckets             :: int,
@@ -225,6 +229,8 @@
                 keys                    :: array(K),
                 values                  :: array(V)
             ).
+
+:- implementation.
 
 %-----------------------------------------------------------------------------%
 

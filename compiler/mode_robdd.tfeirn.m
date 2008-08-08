@@ -11,14 +11,16 @@
 %-----------------------------------------------------------------------------%
 
 :- module mode_robdd__tfeirn.
-
 :- interface.
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_constraint_robdd.
 
+:- import_module bool.
 :- import_module robdd.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 :- type tfeirn(T).
 :- type tfeirn == tfeirn(generic).
@@ -186,13 +188,13 @@
 :- func robdd_to_mode_robdd(robdd(T)) = tfeirn(T).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mode_robdd.equiv_vars.
 :- import_module mode_robdd.implications.
 
-:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -209,6 +211,10 @@
 %	tfeirn
 %	TFENIR
 
+:- interface.
+
+    % This should be abstract, but needs to be exported for insts.
+    %
 :- type tfeirn(T)
 	--->	mode_robdd(
 			true_vars :: vars(T),
@@ -218,6 +224,10 @@
 			robdd :: robdd(T),
 			normalised :: bool
 		).
+
+:- implementation.
+
+%-----------------------------------------------------------------------------%
 
 one = mode_robdd(init, init, init_equiv_vars, init_imp_vars, one, yes).
 

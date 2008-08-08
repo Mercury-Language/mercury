@@ -298,14 +298,16 @@
 :- import_module pair.
 :- import_module require.
 
+:- interface.
+
+    % This should be abstract, but needs to be exported for insts.
+    %
 :- type tree234(K, V)
     --->    empty
     ;       two(K, V, tree234(K, V), tree234(K, V))
     ;       three(K, V, K, V, tree234(K, V), tree234(K, V), tree234(K, V))
     ;       four(K, V, K, V, K, V, tree234(K, V), tree234(K, V),
                 tree234(K, V), tree234(K, V)).
-
-:- interface.
 
 :- inst uniq_tree234(K, V) ==
     unique((
