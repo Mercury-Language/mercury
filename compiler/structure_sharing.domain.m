@@ -1994,27 +1994,32 @@ selector_sharing_set_apply_widening(ModuleInfo, ProcInfo, ProgVar,
     map(selector, data_set)::out, int::in, int::out) is det.
 
 selector_sharing_set_apply_widening_2(ModuleInfo, ProcInfo, ProgVar,
-        Selector, DataSet, !DataMap, !DataMapSize) :-
+        Selector, DataSet0, !DataMap, !DataMapSize) :-
     % Widening of the associated datastructures.
-    data_set_apply_widening(ModuleInfo, ProcInfo, DataSet, DataSet1),
+    data_set_apply_widening(ModuleInfo, ProcInfo, DataSet0, DataSet1),
 
     % Widening of the ProgVar-Selector datastructure.
     datastruct_apply_widening(ModuleInfo, ProcInfo,
         datastruct_init_with_selector(ProgVar, Selector), NewDataStruct),
     NewSelector = NewDataStruct ^ sc_selector,
 
+    % Remove any occurrence of ProgVar-NewSelector in the data set, i.e. before
+    % widening the left- and right-hand sides of a sharing pair were different,
+    % but after widening they became identical.
+    data_set_delete_entry(NewDataStruct, DataSet1, DataSet2),
+
     % Check if NewSelector is already in the resulting DataMap, if so,
     % compute the least upper bound of the associated data_set's.
     ( map.search(!.DataMap, NewSelector, ExistingDataSet) ->
         ExistingDataSetSize = data_set_size(ExistingDataSet),
         DataSetFinal = data_set_least_upper_bound(ModuleInfo, ProcInfo,
-            DataSet1, ExistingDataSet),
+            DataSet2, ExistingDataSet),
         DataSetFinalSize = data_set_size(DataSetFinal),
         svmap.det_update(NewSelector, DataSetFinal, !DataMap),
         !:DataMapSize = !.DataMapSize - ExistingDataSetSize + DataSetFinalSize
     ;
-        svmap.det_insert(NewSelector, DataSet1, !DataMap),
-        !:DataMapSize = !.DataMapSize + data_set_size(DataSet1)
+        svmap.det_insert(NewSelector, DataSet2, !DataMap),
+        !:DataMapSize = !.DataMapSize + data_set_size(DataSet2)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2041,6 +2046,9 @@ selector_sharing_set_apply_widening_2(ModuleInfo, ProcInfo, ProgVar,
 
 :- pred data_set_new_entry(datastruct::in, data_set::in, data_set::out)
     is semidet.
+
+:- pred data_set_delete_entry(datastruct::in, data_set::in, data_set::out)
+    is det.
 
 :- func data_set_directed_closure(data_set, data_set) = structure_sharing.
 
@@ -2088,12 +2096,22 @@ data_set_add(DataSetA, DataSetB, DataSet) :-
     Data = set.union(DataA, DataB),
     DataSet = datastructures(set.count(Data), Data).
 
-data_set_new_entry(Datastruct,  DataSet0, DataSet) :-
+data_set_new_entry(Datastruct, DataSet0, DataSet) :-
     DataSet0 = datastructures(Size0, Datastructs0),
     \+ set.member(Datastruct, Datastructs0),
     set.insert(Datastructs0, Datastruct, Datastructs),
     Size = Size0 + 1,
     DataSet = datastructures(Size, Datastructs).
+
+data_set_delete_entry(Datastruct, DataSet0, DataSet) :-
+    DataSet0 = datastructures(Size0, Datastructs0),
+    ( set.contains(Datastructs0, Datastruct) ->
+        set.delete(Datastructs0, Datastruct, Datastructs),
+        Size = Size0 - 1,
+        DataSet = datastructures(Size, Datastructs)
+    ;
+        DataSet = DataSet0
+    ).
 
 data_set_directed_closure(FromData, ToData) = SharingPairs :-
     FromData = datastructures(_, DataSet1),
