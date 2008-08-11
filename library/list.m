@@ -1249,6 +1249,15 @@
 :- func list.filter(pred(X)::in(pred(in) is semidet), list(X)::in)
     = (list(X)::out) is det.
 
+    % list.negated_filter(Pred, List, FalseList) takes a closure with one
+    % input argument and for each member of List `X', calls the closure.
+    % Iff Pred(X) is false, then X is included in FalseList.
+    %
+:- pred list.negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in,
+    list(X)::out) is det.
+:- func list.negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in)
+    = (list(X)::out) is det.
+
     % list.filter(Pred, List, TrueList, FalseList) takes a closure with one
     % input argument and for each member of List `X', calls the closure.
     % Iff Pred(X) is true, then X is included in TrueList.
@@ -2338,8 +2347,23 @@ list.all_false(P, [X | Xs]) :-
     not P(X),
     list.all_false(P, Xs).
 
-list.filter(P, Xs, Ys) :-
-    list.filter(P, Xs, Ys, _).
+list.filter(_, [],  []).
+list.filter(P, [H | T], True) :-
+    list.filter(P, T, TrueTail),
+    ( P(H) ->
+        True = [H | TrueTail]
+    ;
+        True = TrueTail
+    ).
+
+list.negated_filter(_, [],  []).
+list.negated_filter(P, [H | T], False) :-
+    list.negated_filter(P, T, FalseTail),
+    ( P(H) ->
+        False = FalseTail
+    ;
+        False = [H | FalseTail]
+    ).
 
 list.filter(_, [],  [], []).
 list.filter(P, [H | T], True, False) :-
@@ -2617,8 +2641,11 @@ list.foldr(F, Xs, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     list.foldr(P, Xs, A, B).
 
-list.filter(P, Xs) = Ys :-
-    list.filter(P, Xs, Ys).
+list.filter(P, Xs) = Trues :-
+    list.filter(P, Xs, Trues).
+
+list.negated_filter(P, Xs) = Falses :-
+    list.negated_filter(P, Xs, Falses).
 
 list.filter_map(F, Xs) = Ys :-
     P = ( pred(X::in, Y::out) is semidet :- Y = F(X) ),
