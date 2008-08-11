@@ -275,10 +275,8 @@ type_contains_subtype(ModuleInfo, FromType, ToType) :-
     % We assume that type definitions for a module don't change for the
     % duration of the analysis.
     %
-    % XXX commented out for now as the table reset predicate gets opt-exported,
-    % referring to variables private to the module
-% :- pragma memo(type_contains_subtype_1/4,
-%     [allow_reset, specified([promise_implied, value, value, output])]).
+:- pragma memo(type_contains_subtype_1/4,
+    [allow_reset, specified([promise_implied, value, value, output])]).
 
 type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains) :-
     queue.put(queue.init, FromType, Queue0),
@@ -502,8 +500,7 @@ branch_map_search([Type - Sel | TypeSels], KeyType, ValueSel):-
 %-----------------------------------------------------------------------------%
 
 reset_tables(!IO) :-
-    % table_reset_for_type_contains_subtype_1_4(!IO).
-    true.
+    table_reset_for_type_contains_subtype_1_4(!IO).
 
 %-----------------------------------------------------------------------------%
 
