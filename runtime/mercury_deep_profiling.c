@@ -261,6 +261,7 @@ static  void    MR_write_out_profiling_tree_check_unwritten(FILE *check_fp);
 
 static  void    MR_write_out_deep_id_string(FILE *fp);
 static  void    MR_write_out_procrep_id_string(FILE *fp);
+static  void    MR_write_out_program_name(FILE *fp);
 
 static  void    MR_write_out_call_site_static(FILE *fp,
                     const MR_CallSiteStatic *css);
@@ -384,6 +385,7 @@ MR_write_out_profiling_tree(void)
     FILE                    *check_fp;
     int                     ticks_per_sec;
     unsigned                num_call_seqs;
+    long                    table_sizes_offset;
 
     deep_fp = fopen(MR_MDPROF_DATA_FILENAME, "wb+");
     if (deep_fp == NULL) {
@@ -409,8 +411,15 @@ MR_write_out_profiling_tree(void)
     }
 #endif
 
-    /* We overwrite these zeros (and the id string) after the seek below. */
     MR_write_out_deep_id_string(deep_fp);
+    MR_write_out_program_name(deep_fp);
+
+    /* We overwrite these zeros after seeking back to table_sizes_offset */
+    table_sizes_offset = ftell(deep_fp);
+    if (table_sizes_offset == -1) {
+        MR_deep_data_output_error("ftell failed for ",
+            MR_MDPROF_DATA_FILENAME);
+    }
     MR_write_fixed_size_int(deep_fp, 0);
     MR_write_fixed_size_int(deep_fp, 0);
     MR_write_fixed_size_int(deep_fp, 0);
@@ -465,12 +474,11 @@ MR_write_out_profiling_tree(void)
         MR_address_of_write_out_proc_statics != NULL);
     (*MR_address_of_write_out_proc_statics)(deep_fp, procrep_fp);
 
-    if (fseek(deep_fp, 0L, SEEK_SET) != 0) {
-        MR_deep_data_output_error("cannot seek to start of",
+    if (fseek(deep_fp, table_sizes_offset, SEEK_SET) != 0) {
+        MR_deep_data_output_error("cannot seek to header of",
             MR_MDPROF_DATA_FILENAME);
     }
 
-    MR_write_out_deep_id_string(deep_fp);
     MR_write_fixed_size_int(deep_fp, MR_call_site_dynamic_table->last_id);
     MR_write_fixed_size_int(deep_fp, MR_call_site_static_table->last_id);
     MR_write_fixed_size_int(deep_fp, MR_proc_dynamic_table->last_id);
@@ -685,9 +693,15 @@ static void
 MR_write_out_deep_id_string(FILE *fp)
 {
     /* Must be the same as deep_id_string in deep_profiler/read_profile.m */
-    const char  *id_string = "Mercury deep profiler data version 5\n";
+    const char  *id_string = "Mercury deep profiler data version 6\n";
 
     fputs(id_string, fp);
+}
+
+static void
+MR_write_out_program_name(FILE *fp)
+{
+    MR_write_string(fp, MR_progname);
 }
 
 static void
@@ -697,7 +711,7 @@ MR_write_out_procrep_id_string(FILE *fp)
     ** Must be the same as procrep_id_string in
     ** mdbcomp/program_representation.m
     */
-    const char  *id_string = "Mercury deep profiler procrep version 1\n";
+    const char  *id_string = "Mercury deep profiler procrep version 2\n";
 
     fputs(id_string, fp);
 }

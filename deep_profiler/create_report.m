@@ -56,12 +56,14 @@ create_report(Cmd, Deep, Report) :-
         Report = report_message(MessageInfo)
     ;
         Cmd = deep_cmd_menu,
-        Deep ^ profile_stats = profile_stats(NumCSD, NumCSS, NumPD, NumPS,
+        Deep ^ profile_stats = profile_stats(ProgramName, 
+            NumCSD, NumCSS, NumPD, NumPS,
             QuantaPerSec, InstrumentationQuanta, UserQuanta, NumCallsequs,
             _, _),
         NumCliques = array.max(Deep ^ clique_members),
-        MenuInfo = menu_info(QuantaPerSec, UserQuanta, InstrumentationQuanta,
-            NumCallsequs, NumCSD, NumCSS, NumPD, NumPS, NumCliques),
+        MenuInfo = menu_info(ProgramName, QuantaPerSec, UserQuanta,
+            InstrumentationQuanta, NumCallsequs, NumCSD, NumCSS, NumPD, NumPS,
+            NumCliques),
         Report = report_menu(ok(MenuInfo))
     ;
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),

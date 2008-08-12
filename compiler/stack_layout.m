@@ -565,8 +565,15 @@ construct_proc_layout(ProcLayoutInfo, InternalLabelInfos, Kind, VarNumMap,
             ; DeepProfiling = yes
             )
         ->
+            (
+                DeepProfiling = yes,
+                IncludeVarTable = include_variable_table
+            ;
+                DeepProfiling = no,
+                IncludeVarTable = do_not_include_variable_table
+            ),
             represent_proc_as_bytecodes(HeadVars, Goal, InstMap, VarTypes,
-                VarNumMap, ModuleInfo, !Info, ProcBytes)
+                VarNumMap, ModuleInfo, IncludeVarTable, !Info, ProcBytes)
         ;
             ProcBytes = []
         ),

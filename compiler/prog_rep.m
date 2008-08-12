@@ -44,8 +44,19 @@
     %
 :- type var_num_map == map(prog_var, pair(int, string)).
 
+    % Describe whether a variable name table should be included in the
+    % bytecode.  The variable name table actually adds the strings into the
+    % module's string table.
+    %
+:- type include_variable_table
+    --->    include_variable_table
+    ;       do_not_include_variable_table.
+
+    % Create the bytecodes for the given procedure.
+    %
 :- pred represent_proc_as_bytecodes(list(prog_var)::in, hlds_goal::in,
     instmap::in, vartypes::in, var_num_map::in, module_info::in,
+    include_variable_table::in, 
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -82,36 +93,107 @@
             ).
 
 represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
-        ModuleInfo, !StackInfo, ProcRepBytes) :-
+        ModuleInfo, IncludeVarTable, !StackInfo, ProcRepBytes) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName),
-    MaxVarNum = map.foldl(max_var_num, VarNumMap, 0),
-    ( MaxVarNum =< 255 ->
-        VarNumRep = byte
-    ;
-        VarNumRep = short
-    ),
+    represent_var_table_as_bytecode(IncludeVarTable, VarNumMap, VarNumRep,
+        VarTableBytes, !StackInfo),
     Info = prog_rep_info(FileName, VarTypes, VarNumMap, VarNumRep, ModuleInfo),
-    var_num_rep_byte(VarNumRep, VarNumRepByte),
 
     string_to_byte_list(FileName, FileNameBytes, !StackInfo),
     goal_to_byte_list(Goal, InstMap0, Info, GoalBytes, !StackInfo),
-    ProcRepBytes0 = [VarNumRepByte] ++ FileNameBytes ++
+    ProcRepBytes0 = FileNameBytes ++ VarTableBytes ++
         vars_to_byte_list(Info, HeadVars) ++ GoalBytes,
     int32_to_byte_list(list.length(ProcRepBytes0) + 4, LimitBytes),
     ProcRepBytes = LimitBytes ++ ProcRepBytes0.
 
 %---------------------------------------------------------------------------%
 
+    % Create bytecodes for the variable table.
+    %
+    % If a variable table is not requested, an empty table is created.  The
+    % variable table also includes information about the representation of
+    % variable numbers within the bytecode.
+    %
+    % The representation of variables and the variable table restricts the
+    % number of possible variables in a procedure to 2^15.
+    %
+:- pred represent_var_table_as_bytecode(include_variable_table::in,
+    var_num_map::in, var_num_rep::out, list(int)::out, 
+    stack_layout_info::in, stack_layout_info::out) is det.
+
+represent_var_table_as_bytecode(IncludeVarTable, VarNumMap, VarNumRep,
+        ByteList, !StackInfo) :-
+    map.foldl(max_var_num, VarNumMap, 0) = MaxVarNum,
+    ( MaxVarNum =< 255 ->
+        VarNumRep = byte
+    ;
+        VarNumRep = short
+    ),
+    var_num_rep_byte(VarNumRep, VarNumRepByte),
+    (
+        IncludeVarTable = include_variable_table,
+        map.foldl3(var_table_entry_bytelist(VarNumRep), VarNumMap, 0, NumVars, 
+            [], VarTableEntriesBytes, !StackInfo)
+    ;
+        IncludeVarTable = do_not_include_variable_table,
+        NumVars = 0,
+        VarTableEntriesBytes = []
+    ),
+    short_to_byte_list(NumVars, NumVarsBytes),
+    ByteList = [VarNumRepByte] ++ NumVarsBytes ++ VarTableEntriesBytes.
+
 :- func max_var_num(prog_var, pair(int, string), int) = int.
 
 max_var_num(_, VarNum1 - _, VarNum2) = Max :-
-    ( VarNum1 > VarNum2 ->
-        Max = VarNum1
+    Max = max(VarNum1, VarNum2).
+
+:- pred var_table_entry_bytelist(var_num_rep::in, 
+    prog_var::in, pair(int, string)::in, int::in, int::out, 
+    list(int)::in, list(int)::out,
+    stack_layout_info::in, stack_layout_info::out) is det.
+
+var_table_entry_bytelist(VarNumRep, _ProgVar, VarNum - VarName, 
+        !NumVars, !VarTableBytes, !StackInfo) :-
+    (
+        % Some variables that the compiler creates are named automatically,
+        % these and unamed variables should not be included in the variable
+        % table.
+        compiler_introduced_varname(VarName)
+    ->
+        true
     ;
-        Max = VarNum2
+        !:NumVars = !.NumVars + 1,
+        (
+            VarNumRep = byte,
+            VarBytes = [VarNum]
+        ;
+            VarNumRep = short,
+            short_to_byte_list(VarNum, VarBytes)
+        ),
+        string_to_byte_list(VarName, VarNameBytes, !StackInfo),
+        !:VarTableBytes = VarBytes ++ VarNameBytes ++ !.VarTableBytes
     ).
+
+:- pred compiler_introduced_varname(string::in) is semidet.
+
+compiler_introduced_varname("").
+compiler_introduced_varname("ProcStaticLayout").
+compiler_introduced_varname("TopCSD").
+compiler_introduced_varname("MiddleCSD").
+compiler_introduced_varname("ActivationPtr").
+compiler_introduced_varname("SiteNum").
+compiler_introduced_varname("MethodNum").
+compiler_introduced_varname(VarName) :-
+    ( Prefix = "V_"
+    ; Prefix = "HeadVar__"
+    ; Prefix = "TypeClassInfo_for_"
+    ; Prefix = "TypeInfo_"
+    ; Prefix = "TypeCtorInfo_"
+    ; Prefix = "STATE_VARIABLE_"
+    ),
+    prefix(VarName, Prefix).
 
 %---------------------------------------------------------------------------%
 

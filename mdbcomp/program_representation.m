@@ -114,7 +114,10 @@
                 list(var_rep),
 
                 % The procedure body.
-                goal_rep
+                goal_rep,
+
+                % The variable table.
+                var_table
             ).
 
 :- type goal_rep
@@ -253,6 +256,19 @@
     ;       cc_multidet_rep
     ;       erroneous_rep
     ;       failure_rep.
+
+    % A table of var_rep to string mappings.
+    %
+    % This table may not contain all the variables in the procedure.  Variables
+    % created by the compiler are not included.  The table may be empty if it's
+    % not required, such as when used with the declarative debugger.
+    %
+:- type var_table.
+
+    % Lookup the name of a variable within the variable table.  If the variable
+    % is unknown a distinct name is automatically generated.
+    %
+:- pred lookup_var_name(var_table::in, var_rep::in, string::out) is det.
 
     % If the given atomic goal behaves like a call in the sense that it
     % generates events as ordinary calls do, then return the list of variables
@@ -528,8 +544,10 @@
 :- import_module char.
 :- import_module exception.
 :- import_module int.
+:- import_module map.
 :- import_module require.
 :- import_module string.
+:- import_module svmap.
 
 atomic_goal_generates_event_like_call(GoalRep) = Generates :-
     (
@@ -751,6 +769,16 @@ goal_type_byte(19, goal_event_call).
 var_num_rep_byte(byte, 0).
 var_num_rep_byte(short, 1).
 
+:- type var_table == map(var_rep, string).
+
+lookup_var_name(VarTable, VarRep, String) :-
+    ( map.search(VarTable, VarRep, StringPrime) ->
+        String = StringPrime
+    ;
+        % Generate an automatic name for the variable. 
+        String = string.format("V_%d", [i(VarRep)])
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- pred read_file_as_bytecode(string::in, io.res(bytecode)::out,
@@ -844,7 +872,7 @@ read_prog_rep_file(FileName, Result, !IO) :-
             list.reverse(RevModuleReps, ModuleReps),
             Result = ok(prog_rep(ModuleReps))
         ;
-            Msg = FileName ++ "is not a valid program representation file",
+            Msg = FileName ++ ": is not a valid program representation file",
             Result = error(io.make_io_error(Msg))
         )
     ).
@@ -853,7 +881,7 @@ read_prog_rep_file(FileName, Result, !IO) :-
     %
 :- func procrep_id_string = string.
 
-procrep_id_string = "Mercury deep profiler procrep version 1\n".
+procrep_id_string = "Mercury deep profiler procrep version 2\n".
 
 :- pred read_module_reps(bytecode::in,
     list(module_rep)::in, list(module_rep)::out,
@@ -903,12 +931,12 @@ read_proc_rep(ByteCode, StringTable, ProcRep, !Pos) :-
     read_string_proc_label(ByteCode, ProcLabel, !Pos),
     StartPos = !.Pos,
     read_int32(ByteCode, Size, !Pos),
-    read_var_num_rep(ByteCode, VarNumRep, !Pos),
     read_string_via_offset(ByteCode, StringTable, FileName, !Pos),
     Info = read_proc_rep_info(FileName),
+    read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos), 
     read_vars(VarNumRep, ByteCode, HeadVars, !Pos),
     read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
-    ProcDefnRep = proc_defn_rep(HeadVars, Goal),
+    ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarTable),
     require(unify(!.Pos, StartPos + Size),
         "trace_read_proc_defn_rep: limit mismatch"),
     ProcRep = proc_rep(ProcLabel, ProcDefnRep).
@@ -948,6 +976,43 @@ read_string_proc_label(ByteCode, ProcLabel, !Pos) :-
 
 %-----------------------------------------------------------------------------%
 
+    % Read the var table from the bytecode.  The var table names all the
+    % variables used in the procedure representation.
+    % 
+    % The representation of variables and the variable table restricts the
+    % number of possible variables in a procedure to 2^16.
+    %
+:- pred read_var_table(bytecode::in, string_table::in,  var_num_rep::out, 
+    map(var_rep, string)::out, int::in, int::out) is semidet.
+
+read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos) :-
+    read_var_num_rep(ByteCode, VarNumRep, !Pos),
+    read_short(ByteCode, NumVarsInTable, !Pos),
+    read_var_table_entries(NumVarsInTable, VarNumRep, ByteCode, StringTable,
+        map.init, VarTable, !Pos).
+
+    % Read entries from the symbol table until the number of entries left to
+    % read is zero.
+    %
+:- pred read_var_table_entries(var_rep::in, var_num_rep::in, bytecode::in,
+    string_table::in, map(var_rep, string)::in, map(var_rep, string)::out,
+    int::in, int::out) is semidet.
+
+read_var_table_entries(NumVarsInTable, VarNumRep, ByteCode, StringTable,
+        !VarTable, !Pos) :-
+    ( NumVarsInTable > 0 ->
+        read_var(VarNumRep, ByteCode, VarRep, !Pos),
+        read_string_via_offset(ByteCode, StringTable, VarName, !Pos),
+        svmap.insert(VarRep, VarName, !VarTable),
+        read_var_table_entries(NumVarsInTable - 1, VarNumRep, ByteCode, 
+            StringTable, !VarTable, !Pos)
+    ;
+        % No more variables to read.
+        true
+    ).
+
+%----------------------------------------------------------------------------%
+
 :- pragma foreign_export("C", trace_read_proc_defn_rep(in, in, out),
     "MR_MDBCOMP_trace_read_proc_defn_rep").
 
@@ -965,12 +1030,12 @@ trace_read_proc_defn_rep(Bytes, LabelLayout, ProcDefnRep) :-
         DummyByteCode = bytecode(Bytes, 4),
         read_int32(DummyByteCode, Size, !Pos),
         ByteCode = bytecode(Bytes, Size),
-        read_var_num_rep(ByteCode, VarNumRep, !Pos),
         read_string_via_offset(ByteCode, StringTable, FileName, !Pos),
         Info = read_proc_rep_info(FileName),
+        read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos),
         read_vars(VarNumRep, ByteCode, HeadVars, !Pos),
         read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
-        ProcDefnRep = proc_defn_rep(HeadVars, Goal),
+        ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarTable),
         require(unify(!.Pos, Size),
             "trace_read_proc_defn_rep: limit mismatch")
     ).

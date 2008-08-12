@@ -848,7 +848,11 @@ do_merge_profiles(BaseInitDeep, OtherInitDeeps, MergedInitDeep) :-
     extract_num_callseqs(BaseInitDeep, BaseNumCallSeqs),
     list.map(extract_num_callseqs, OtherInitDeeps, OtherNumCallSeqs),
     list.foldl(int_add, OtherNumCallSeqs, BaseNumCallSeqs, ConcatNumCallSeqs),
-    ConcatProfileStats = profile_stats(
+    
+    % The program names are not checked.  The new profile is named after the
+    % base profile.
+    BaseProgramName = BaseInitDeep ^ init_profile_stats ^ program_name,
+    ConcatProfileStats = profile_stats(BaseProgramName,
         ConcatMaxCSD, BaseMaxCSS, ConcatMaxPD, BaseMaxPS, ConcatNumCallSeqs,
         BaseTicksPerSec, InstrumentQuanta, UserQuanta, WordSize, yes),
     % The root part is a temporary lie.

@@ -907,7 +907,7 @@ trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
         StartLoc = cur_goal,
         Contour = Contour0
     ),
-    ProcDefnRep = proc_defn_rep(HeadVars, GoalRep),
+    ProcDefnRep = proc_defn_rep(HeadVars, GoalRep, _),
     is_traced_grade(AllTraced),
     MaybePrims = make_primitive_list(Store, [goal_and_path(GoalRep, empty)],
         Contour, StartPath, ArgNum, TotalArgs, HeadVars, AllTraced, []),
@@ -946,7 +946,7 @@ trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
 proc_defn_rep_is_catch_impl(ProcDefnRep) :-
     ProcDefnRep = proc_defn_rep([A, B, C, D],
         atomic_goal_rep(_, "exception.m", _, [D],
-            plain_call_rep("exception", "builtin_catch", [A, B, C, D]))).
+            plain_call_rep("exception", "builtin_catch", [A, B, C, D])), _).
 
 :- pred find_chain_start(S::in, R::in, arg_pos::in, term_path::in,
     dependency_chain_start(R)::out) is det <= annotated_trace(S, R).
@@ -1575,7 +1575,7 @@ find_variable_in_args(Args, ArgNum, TotalArgs, Var) :-
     subterm_origin(edt_node(R))::out) is det <= annotated_trace(S, R).
 
 traverse_primitives([], Var0, TermPath0, _, ProcDefnRep, Origin) :-
-    ProcDefnRep = proc_defn_rep(HeadVars, _),
+    ProcDefnRep = proc_defn_rep(HeadVars, _, _),
     ArgPos = find_arg_pos(HeadVars, Var0),
     Origin = origin_input(ArgPos, TermPath0).
 traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,

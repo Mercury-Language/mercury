@@ -288,9 +288,11 @@ get_static_ptrs_from_dynamic_proc(ProcStatics, _, ProcDynamic, !PS_Ptrs,
 :- pred dump_init_profile_stats(profile_stats::in, io::di, io::uo) is det.
 
 dump_init_profile_stats(Stats, !IO) :-
-    Stats = profile_stats(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
-        InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize, Canonical),
+    Stats = profile_stats(ProgramName, MaxCSD, MaxCSS, MaxPD, MaxPS,
+        TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize,
+        Canonical),
     io.write_string("SECTION PROFILING STATS:\n\n", !IO),
+    io.write_string("\tprogram_name = " ++ ProgramName ++ "\n", !IO),
     io.format("\tmax_csd = %d\n", [i(MaxCSD)], !IO),
     io.format("\tmax_css = %d\n", [i(MaxCSS)], !IO),
     io.format("\tmax_pd  = %d\n", [i(MaxPD)],  !IO),

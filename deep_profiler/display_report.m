@@ -121,7 +121,7 @@ report_to_display(Deep, Prefs, Report) = Display :-
 :- pred display_report_menu(deep::in, menu_info::in, display::out) is det.
 
 display_report_menu(Deep, MenuInfo, Display) :-
-    MenuInfo = menu_info(QuantaPerSec, UserQuanta, InstQuanta,
+    MenuInfo = menu_info(ProgramName, QuantaPerSec, UserQuanta, InstQuanta,
         NumCallseqs, NumCSD, NumCSS, NumPD, NumPS, NumClique),
 
     ShouldDisplayTimes = should_display_times(Deep),
@@ -211,7 +211,8 @@ display_report_menu(Deep, MenuInfo, Display) :-
 
     % Display the table section of the report.
     ProfilingStatistics =
-        [("Quanta per second:"          - td_i(QuantaPerSec)),
+        [("Profile generated for:"      - td_s(ProgramName)),
+        ("Quanta per second:"           - td_i(QuantaPerSec)),
         ("Quanta in user code:"         - td_i(UserQuanta)),
         ("Quanta in instrumentation:"   - td_i(InstQuanta)),
         ("Call sequence numbers:"       - td_i(NumCallseqs)),

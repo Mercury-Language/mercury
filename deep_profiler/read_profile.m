@@ -65,7 +65,8 @@ read_call_graph(FileName, Res, !IO) :-
         read_deep_id_string(Res1, !IO),
         (
             Res1 = ok(_),
-            io_combinator.maybe_error_sequence_11(
+            io_combinator.maybe_error_sequence_12(
+                read_string,
                 read_fixed_size_int,
                 read_fixed_size_int,
                 read_fixed_size_int,
@@ -77,7 +78,8 @@ read_call_graph(FileName, Res, !IO) :-
                 read_deep_byte,
                 read_deep_byte,
                 read_ptr(pd),
-                (pred(MaxCSD::in, MaxCSS::in,
+                (pred(ProgName::in, 
+                        MaxCSD::in, MaxCSS::in,
                         MaxPD::in, MaxPS::in,
                         TicksPerSec::in,
                         InstrumentQuanta::in,
@@ -87,8 +89,8 @@ read_call_graph(FileName, Res, !IO) :-
                         CanonicalFlag::in,
                         RootPDI::in,
                         ResInitDeep::out) is det :-
-                    InitDeep0 = init_deep(MaxCSD, MaxCSS,
-                        MaxPD, MaxPS,
+                    InitDeep0 = init_deep(basename(ProgName), 
+                        MaxCSD, MaxCSS, MaxPD, MaxPS,
                         TicksPerSec, InstrumentQuanta, UserQuanta,
                         NumCallSeqs,
                         WordSize, CanonicalFlag,
@@ -139,7 +141,7 @@ read_deep_id_string(Res, !IO) :-
     %
 :- func deep_id_string = string.
 
-deep_id_string = "Mercury deep profiler data version 5\n".
+deep_id_string = deep_id_prefix ++ " 6\n".
 
     % Return the part of deep_id_string that is version independent.
     %
@@ -147,19 +149,61 @@ deep_id_string = "Mercury deep profiler data version 5\n".
 
 deep_id_prefix = "Mercury deep profiler data version".
 
-:- func init_deep(int, int, int, int, int, int, int, int, int, int, int)
-    = initial_deep.
+    % Strip the directory paths off the given string.
+    %
+    % basename("/bin/ls") = "ls"
+    %
+:- func basename(string) = string.
 
-init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec, InstrumentQuanta,
-        UserQuanta, NumCallSeqs, WordSize, CanonicalByte, RootPDI)
-        = InitDeep :-
+basename(Path) = Base :-
+    string.to_char_list(Path, PathChars),
+    basename_chars(PathChars, MaybeBaseChars),
+    (
+        MaybeBaseChars = no,
+        BaseChars = PathChars
+    ;
+        MaybeBaseChars = yes(BaseChars)
+    ),
+    string.from_char_list(BaseChars, Base).
+    
+:- pred basename_chars(list(char)::in, maybe(list(char))::out) is det.
+
+basename_chars([], no).
+basename_chars([Char | Chars], MaybeResult) :-
+    basename_chars(Chars, MaybeResult0),
+    (
+        MaybeResult0 = yes(_),
+        MaybeResult = MaybeResult0
+    ;
+        MaybeResult0 = no,
+        (
+            path_separator(Char)
+        ->
+            MaybeResult = yes(Chars)
+        ;
+            MaybeResult = no
+        )
+    ).
+
+:- pred path_separator(char::in) is semidet.
+
+path_separator('/').
+path_separator('\\').
+
+:- func init_deep(string, int, int, int, int, int, int, int, int, int, int,
+    int) = initial_deep.
+
+init_deep(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
+        InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize, CanonicalByte,
+        RootPDI) = InitDeep :-
     ( CanonicalByte = 0 ->
         CanonicalFlag = no
     ;
         CanonicalFlag = yes
     ),
-    InitStats = profile_stats(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
-        InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize, CanonicalFlag),
+    InitStats = profile_stats(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS, 
+        TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize,
+        CanonicalFlag),
     InitDeep = initial_deep(
         InitStats,
         make_pdptr(RootPDI),

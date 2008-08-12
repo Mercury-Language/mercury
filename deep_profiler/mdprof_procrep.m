@@ -94,11 +94,11 @@ print_module(ModuleRep, !IO) :-
 
 print_proc(ProcRep, !IO) :-
     ProcRep = proc_rep(ProcLabel, ProcDefnRep),
-    ProcDefnRep = proc_defn_rep(ArgVarReps, GoalRep),
+    ProcDefnRep = proc_defn_rep(ArgVarReps, GoalRep, VarTable),
     print_proc_label(ProcLabel, !IO),
-    print_args(ArgVarReps, !IO),
+    print_args(VarTable, ArgVarReps, !IO),
     io.write_string(" :-\n", !IO),
-    print_goal(1, GoalRep, !IO),
+    print_goal(VarTable, 1, GoalRep, !IO),
     io.nl(!IO).
 
 :- pred print_proc_label(string_proc_label::in, io::di, io::uo) is det.
@@ -125,44 +125,46 @@ print_proc_label(ProcLabel, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_goal(int::in, goal_rep::in, io::di, io::uo) is det.
+:- pred print_goal(var_table::in, int::in, goal_rep::in, io::di, io::uo) 
+    is det.
 
-print_goal(Indent, GoalRep, !IO) :-
+print_goal(VarTable, Indent, GoalRep, !IO) :-
     (
         GoalRep = conj_rep(ConjGoalReps),
-        print_conj(Indent, ConjGoalReps, !IO)
+        print_conj(VarTable, Indent, ConjGoalReps, !IO)
     ;
         GoalRep = disj_rep(DisjGoalReps),
         indent(Indent, !IO),
         io.write_string("(\n", !IO),
-        print_disj(Indent, DisjGoalReps, no, !IO),
+        print_disj(VarTable, Indent, DisjGoalReps, no, !IO),
         indent(Indent, !IO),
         io.write_string(")\n", !IO)
     ;
         GoalRep = switch_rep(SwitchVarRep, CasesRep),
         indent(Indent, !IO),
-        io.format("( switch on V%d\n", [i(SwitchVarRep)], !IO),
-        print_switch(Indent, CasesRep, no, !IO),
+        lookup_var_name(VarTable, SwitchVarRep, SwitchVarName),
+        io.format("( switch on %s\n", [s(SwitchVarName)], !IO),
+        print_switch(VarTable, Indent, CasesRep, no, !IO),
         indent(Indent, !IO),
         io.write_string(")\n", !IO)
     ;
         GoalRep = ite_rep(CondRep, ThenRep, ElseRep),
         indent(Indent, !IO),
         io.write_string("(\n", !IO),
-        print_goal(Indent + 1, CondRep, !IO),
+        print_goal(VarTable, Indent + 1, CondRep, !IO),
         indent(Indent, !IO),
         io.write_string("->\n", !IO),
-        print_goal(Indent + 1, ThenRep, !IO),
+        print_goal(VarTable, Indent + 1, ThenRep, !IO),
         indent(Indent, !IO),
         io.write_string(";\n", !IO),
-        print_goal(Indent + 1, ElseRep, !IO),
+        print_goal(VarTable, Indent + 1, ElseRep, !IO),
         indent(Indent, !IO),
         io.write_string(")\n", !IO)
     ;
         GoalRep = negation_rep(SubGoalRep),
         indent(Indent, !IO),
         io.write_string("not (\n", !IO),
-        print_goal(Indent + 1, SubGoalRep, !IO),
+        print_goal(VarTable, Indent + 1, SubGoalRep, !IO),
         indent(Indent, !IO),
         io.write_string(")\n", !IO)
     ;
@@ -176,44 +178,46 @@ print_goal(Indent, GoalRep, !IO) :-
             io.write_string(" cut", !IO)
         ),
         io.write_string(" (\n", !IO),
-        print_goal(Indent + 1, SubGoalRep, !IO),
+        print_goal(VarTable, Indent + 1, SubGoalRep, !IO),
         indent(Indent, !IO),
         io.write_string(")\n", !IO)
     ;
         GoalRep = atomic_goal_rep(_DetismRep, _FileName, _LineNumber,
             _BoundVars, AtomicGoalRep),
-        print_atomic_goal(Indent, AtomicGoalRep, !IO)
+        print_atomic_goal(VarTable, Indent, AtomicGoalRep, !IO)
     ).
 
-:- pred print_conj(int::in, list(goal_rep)::in, io::di, io::uo) is det.
+:- pred print_conj(var_table::in, int::in, list(goal_rep)::in, io::di, io::uo)
+    is det.
 
-print_conj(Indent, GoalReps, !IO) :-
+print_conj(VarTable, Indent, GoalReps, !IO) :-
     (
         GoalReps = [],
         indent(Indent, !IO),
         io.write_string("true\n", !IO)
     ;
         GoalReps = [_ | _],
-        print_conj_2(Indent, GoalReps, !IO)
+        print_conj_2(VarTable, Indent, GoalReps, !IO)
     ).
 
-:- pred print_conj_2(int::in, list(goal_rep)::in, io::di, io::uo) is det.
+:- pred print_conj_2(var_table::in, int::in, list(goal_rep)::in, 
+    io::di, io::uo) is det.
 
-print_conj_2(_Indent, [], !IO).
-print_conj_2(Indent, [GoalRep | GoalReps], !IO) :-
+print_conj_2(_, _Indent, [], !IO).
+print_conj_2(VarTable, Indent, [GoalRep | GoalReps], !IO) :-
     % We use the absence of a separator to denote conjunction.
     %
     % We could try to append the comma at the end of each goal that is
     % not last in a conjunction, but that would be significant work,
     % and (at least for now) there is no real need for it.
-    print_goal(Indent, GoalRep, !IO),
-    print_conj_2(Indent, GoalReps, !IO).
+    print_goal(VarTable, Indent, GoalRep, !IO),
+    print_conj_2(VarTable, Indent, GoalReps, !IO).
 
-:- pred print_disj(int::in, list(goal_rep)::in, bool::in, io::di, io::uo)
-    is det.
+:- pred print_disj(var_table::in, int::in, list(goal_rep)::in, bool::in, 
+    io::di, io::uo) is det.
 
-print_disj(_Indent, [], _PrintSemi, !IO).
-print_disj(Indent, [GoalRep | GoalReps], PrintSemi, !IO) :-
+print_disj(_, _Indent, [], _PrintSemi, !IO).
+print_disj(VarTable, Indent, [GoalRep | GoalReps], PrintSemi, !IO) :-
     (
         PrintSemi = no
     ;
@@ -221,14 +225,14 @@ print_disj(Indent, [GoalRep | GoalReps], PrintSemi, !IO) :-
         indent(Indent, !IO),
         io.write_string(";\n", !IO)
     ),
-    print_goal(Indent + 1, GoalRep, !IO),
-    print_disj(Indent, GoalReps, yes, !IO).
+    print_goal(VarTable, Indent + 1, GoalRep, !IO),
+    print_disj(VarTable, Indent, GoalReps, yes, !IO).
 
-:- pred print_switch(int::in, list(case_rep)::in, bool::in, io::di, io::uo)
-    is det.
+:- pred print_switch(var_table::in, int::in, list(case_rep)::in, bool::in, 
+    io::di, io::uo) is det.
 
-print_switch(_Indent, [], _PrintSemi, !IO).
-print_switch(Indent, [CaseRep | CaseReps], PrintSemi, !IO) :-
+print_switch(_, _Indent, [], _PrintSemi, !IO).
+print_switch(VarTable, Indent, [CaseRep | CaseReps], PrintSemi, !IO) :-
     (
         PrintSemi = no
     ;
@@ -239,8 +243,8 @@ print_switch(Indent, [CaseRep | CaseReps], PrintSemi, !IO) :-
     CaseRep = case_rep(MainConsIdArityRep, OtherConsIdArityRep, GoalRep),
     print_cons_id_and_arity(Indent + 1, MainConsIdArityRep, !IO),
     list.foldl(print_cons_id_and_arity(Indent + 1), OtherConsIdArityRep, !IO),
-    print_goal(Indent + 1, GoalRep, !IO),
-    print_switch(Indent, CaseReps, yes, !IO).
+    print_goal(VarTable, Indent + 1, GoalRep, !IO),
+        print_switch(VarTable, Indent, CaseReps, yes, !IO).
 
 :- pred print_cons_id_and_arity(int::in, cons_id_arity_rep::in,
     io::di, io::uo) is det.
@@ -252,9 +256,10 @@ print_cons_id_and_arity(Indent, ConsIdArityRep, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_atomic_goal(int::in, atomic_goal_rep::in, io::di, io::uo) is det.
+:- pred print_atomic_goal(var_table::in, int::in, atomic_goal_rep::in, 
+    io::di, io::uo) is det.
 
-print_atomic_goal(Indent, AtomicGoalRep, !IO) :-
+print_atomic_goal(VarTable, Indent, AtomicGoalRep, !IO) :-
     indent(Indent, !IO),
     (
         (
@@ -264,8 +269,9 @@ print_atomic_goal(Indent, AtomicGoalRep, !IO) :-
             AtomicGoalRep = unify_deconstruct_rep(VarRep, ConsIdRep, ArgReps),
             UnifyOp = "=>"
         ),
-        io.format("V%d %s %s", [i(VarRep), s(UnifyOp), s(ConsIdRep)], !IO),
-        print_args(ArgReps, !IO)
+        lookup_var_name(VarTable, VarRep, VarName),
+        io.format("%s %s %s", [s(VarName), s(UnifyOp), s(ConsIdRep)], !IO),
+        print_args(VarTable, ArgReps, !IO)
     ;
         (
             AtomicGoalRep = partial_construct_rep(VarRep, ConsIdRep,
@@ -276,94 +282,107 @@ print_atomic_goal(Indent, AtomicGoalRep, !IO) :-
                 MaybeArgReps),
             UnifyOp = "=>"
         ),
-        io.format("V%d %s %s", [i(VarRep), s(UnifyOp), s(ConsIdRep)], !IO),
-        print_maybe_args(MaybeArgReps, !IO)
+        lookup_var_name(VarTable, VarRep, VarName),
+        io.format("%s %s %s", [s(VarName), s(UnifyOp), s(ConsIdRep)], !IO),
+        print_maybe_args(VarTable, MaybeArgReps, !IO)
     ;
         AtomicGoalRep = unify_assign_rep(TargetRep, SourceRep),
-        io.format("V%d := V%d", [i(TargetRep), i(SourceRep)], !IO)
+        lookup_var_name(VarTable, TargetRep, TargetName),
+        lookup_var_name(VarTable, SourceRep, SourceName),
+        io.format("%s := %s", [s(TargetName), s(SourceName)], !IO)
     ;
         AtomicGoalRep = cast_rep(TargetRep, SourceRep),
-        io.format("cast V%d to V%d", [i(SourceRep), i(TargetRep)], !IO)
+        lookup_var_name(VarTable, TargetRep, TargetName),
+        lookup_var_name(VarTable, SourceRep, SourceName),
+        io.format("cast %s to %s", [s(SourceName), s(TargetName)], !IO)
     ;
         AtomicGoalRep = unify_simple_test_rep(TargetRep, SourceRep),
-        io.format("V%d == V%d", [i(SourceRep), i(TargetRep)], !IO)
+        lookup_var_name(VarTable, TargetRep, TargetName),
+        lookup_var_name(VarTable, SourceRep, SourceName),
+        io.format("%s == %s", [s(SourceName), s(TargetName)], !IO)
     ;
         AtomicGoalRep = pragma_foreign_code_rep(Args),
         io.write_string("foreign_proc(", !IO),
-        print_args(Args, !IO),
+        print_args(VarTable, Args, !IO),
         io.write_string(")", !IO)
     ;
         AtomicGoalRep = higher_order_call_rep(HOVarRep, Args),
-        io.format("V%d(", [i(HOVarRep)], !IO),
-        print_args(Args, !IO),
+        lookup_var_name(VarTable, HOVarRep, HOVarName),
+        io.format("%s(", [s(HOVarName)], !IO),
+        print_args(VarTable, Args, !IO),
         io.write_string(")", !IO)
     ;
         AtomicGoalRep = method_call_rep(TCIVarRep, MethodNumber, Args),
-        io.format("method %d of V%d(", [i(MethodNumber), i(TCIVarRep)], !IO),
-        print_args(Args, !IO),
+        lookup_var_name(VarTable, TCIVarRep, TCIVarName),
+        io.format("method %d of %s(", [i(MethodNumber), s(TCIVarName)], !IO),
+        print_args(VarTable, Args, !IO),
         io.write_string(")", !IO)
     ;
         AtomicGoalRep = plain_call_rep(Module, Pred, Args),
         io.format("%s.%s", [s(Module), s(Pred)], !IO),
-        print_args(Args, !IO)
+        print_args(VarTable, Args, !IO)
     ;
         AtomicGoalRep = builtin_call_rep(Module, Pred, Args),
         io.format("builtin %s.%s", [s(Module), s(Pred)], !IO),
-        print_args(Args, !IO)
+        print_args(VarTable, Args, !IO)
     ;
         AtomicGoalRep = event_call_rep(Event, Args),
         io.format("event %s", [s(Event)], !IO),
-        print_args(Args, !IO)
+        print_args(VarTable, Args, !IO)
     ),
     io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_args(list(var_rep)::in, io::di, io::uo) is det.
+:- pred print_args(var_table::in, list(var_rep)::in, io::di, io::uo) is det.
 
-print_args(Args, !IO) :-
+print_args(VarTable, Args, !IO) :-
     (
         Args = []
     ;
         Args = [_ | _],
         io.write_string("(", !IO),
-        print_args_2(Args, "", !IO),
+        print_args_2(VarTable, Args, "", !IO),
         io.write_string(")", !IO)
     ).
 
-:- pred print_args_2(list(var_rep)::in, string::in, io::di, io::uo) is det.
+:- pred print_args_2(var_table::in, list(var_rep)::in, string::in, 
+    io::di, io::uo) is det.
 
-print_args_2([], _, !IO).
-print_args_2([VarRep | VarReps], Prefix, !IO) :-
-    io.format("%sV%d", [s(Prefix), i(VarRep)], !IO),
-    print_args_2(VarReps, ", ", !IO).
+print_args_2(_,        [],                 _,      !IO).
+print_args_2(VarTable, [VarRep | VarReps], Prefix, !IO) :-
+    lookup_var_name(VarTable, VarRep, VarName),
+    io.write_string(Prefix ++ VarName, !IO),
+    print_args_2(VarTable, VarReps, ", ", !IO).
 
-:- pred print_maybe_args(list(maybe(var_rep))::in, io::di, io::uo) is det.
+:- pred print_maybe_args(var_table::in, list(maybe(var_rep))::in, 
+    io::di, io::uo) is det.
 
-print_maybe_args(MaybeArgs, !IO) :-
+print_maybe_args(VarTable, MaybeArgs, !IO) :-
     (
         MaybeArgs = []
     ;
         MaybeArgs = [_ | _],
         io.write_string("(", !IO),
-        print_maybe_args_2(MaybeArgs, "", !IO),
+        print_maybe_args_2(VarTable, MaybeArgs, "", !IO),
         io.write_string(")", !IO)
     ).
 
-:- pred print_maybe_args_2(list(maybe(var_rep))::in, string::in,
+:- pred print_maybe_args_2(var_table::in, list(maybe(var_rep))::in, string::in,
     io::di, io::uo) is det.
 
-print_maybe_args_2([], _, !IO).
-print_maybe_args_2([MaybeVarRep | MaybeVarReps], Prefix, !IO) :-
+print_maybe_args_2(_, [], _, !IO).
+print_maybe_args_2(VarTable, [MaybeVarRep | MaybeVarReps], Prefix, !IO) :-
+    io.write_string(Prefix, !IO),
     (
         MaybeVarRep = no,
-        io.write_string(Prefix, !IO),
         io.write_string("_", !IO)
     ;
         MaybeVarRep = yes(VarRep),
-        io.format("%sV%d", [s(Prefix), i(VarRep)], !IO)
+        lookup_var_name(VarTable, VarRep, VarName),
+        io.write_string(VarName, !IO)
     ),
-    print_maybe_args_2(MaybeVarReps, ", ", !IO).
+    print_maybe_args_2(VarTable, MaybeVarReps, ", ", !IO).
 
 :- pred indent(int::in, io::di, io::uo) is det.
 

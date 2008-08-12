@@ -37,6 +37,7 @@
 
 :- type profile_stats
     --->    profile_stats(
+                program_name            :: string,
                 num_csd                 :: int,
                 num_css                 :: int,
                 num_pd                  :: int,

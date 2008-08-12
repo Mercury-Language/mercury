@@ -59,6 +59,7 @@
                 % These statistics are displayed on the menu of the mdprof_cgi
                 % program.
 
+                program_name                :: string,
                 quanta_per_sec              :: int,
                 user_quanta                 :: int,
                 inst_quanta                 :: int,
