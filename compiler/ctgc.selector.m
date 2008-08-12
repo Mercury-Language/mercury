@@ -298,14 +298,7 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
                 Contains)
         ;
             svset.insert(FromType, !SeenTypes),
-            solutions(
-                (pred(ConsIdArgTypes::out) is nondet :-
-                    cons_id_arg_types(ModuleInfo, FromType, _ConsId,
-                        ConsIdArgTypes),
-                    ConsIdArgTypes = [_ | _]
-                ),
-                ArgTypesLists),
-            list.condense(ArgTypesLists, ArgTypes),
+            type_arg_types(ModuleInfo, FromType, ArgTypes),
             ( list.member(ToType, ArgTypes) ->
                 Contains = yes
             ;
@@ -317,6 +310,19 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
     ;
         Contains = no
     ).
+
+:- pred type_arg_types(module_info::in, mer_type::in, list(mer_type)::out)
+    is det.
+
+:- pragma memo(type_arg_types/3,
+    [allow_reset, specified([promise_implied, value, output])]).
+
+type_arg_types(ModuleInfo, Type, ArgTypes) :-
+    solutions(
+        (pred(ConsIdArgTypes::out) is nondet :-
+            cons_id_arg_types(ModuleInfo, Type, _ConsId, ConsIdArgTypes)
+        ), ArgTypesLists),
+    list.condense(ArgTypesLists, ArgTypes).
 
 type_of_node(ModuleInfo, StartType, Selector, SubType) :-
     (
@@ -370,6 +376,9 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
         unexpected(this_file,
             "select_subtype: type is both existential and non-existential")
     ).
+
+:- pragma memo(normalize_selector_with_type_information/4,
+    [allow_reset, specified([promise_implied, value, value, output])]).
 
 normalize_selector_with_type_information(ModuleInfo, Type, !Selector) :-
     ( is_introduced_type_info_type(Type) ->
@@ -500,7 +509,9 @@ branch_map_search([Type - Sel | TypeSels], KeyType, ValueSel):-
 %-----------------------------------------------------------------------------%
 
 reset_tables(!IO) :-
-    table_reset_for_type_contains_subtype_1_4(!IO).
+    table_reset_for_type_contains_subtype_1_4(!IO),
+    table_reset_for_type_arg_types_3(!IO).
+    table_reset_for_normalize_selector_with_type_information_4(!IO).
 
 %-----------------------------------------------------------------------------%
 
