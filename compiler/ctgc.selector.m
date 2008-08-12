@@ -508,10 +508,10 @@ branch_map_search([Type - Sel | TypeSels], KeyType, ValueSel):-
 
 %-----------------------------------------------------------------------------%
 
-reset_tables(!IO) :-
-    table_reset_for_type_contains_subtype_1_4(!IO),
-    table_reset_for_type_arg_types_3(!IO).
-    table_reset_for_normalize_selector_with_type_information_4(!IO).
+reset_tables(!IO).
+    %table_reset_for_type_contains_subtype_1_4(!IO),
+    %table_reset_for_type_arg_types_3(!IO).
+    %table_reset_for_normalize_selector_with_type_information_4(!IO).
 
 %-----------------------------------------------------------------------------%
 
