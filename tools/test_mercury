@@ -8,6 +8,9 @@
 # This script is used to run the nightly tests.
 # It is invoked from the `run_test' script.
 
+# NOTE: when adding a new host you need to add a symbolic link from
+# $TOPDIR/public/test_mercury/test_dirs to the actual build directory.
+
 echo "test_mercury starting at `date`" 1>&2
 
 case $# in
@@ -245,6 +248,7 @@ case $HOST in
 	aral)		OPTIMIZE="-O3" ;;
 	ceres)		OPTIMIZE="-O5" ;;	# hlc
 	uranus)		OPTIMIZE="-O3" ;;
+	taura)		OPTIMIZE="-05 --intermodule-optimization" ;;
 esac
 
 # on some systems, the file system we're using does not support links
@@ -284,7 +288,7 @@ esac
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-	earth|ceres|aral|jupiter|swordfish|saturn|uranus|neptune|pluto)
+	earth|ceres|aral|jupiter|swordfish|saturn|uranus|neptune|pluto|taura)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 
 	# The actual architecture string for eris has the version appended to it, but
@@ -313,9 +317,9 @@ PATH="$INSTALL_DIR/bin:$PATH"
 #
 PARALLEL=
 case $HOST in
-	saturn|pluto)	PARALLEL="-j2" ;;
-	eris)		PARALLEL="-j2" ;;
-	*)		PARALLEL= ;;
+	saturn|pluto|traura) 	PARALLEL="-j2" ;;
+	eris)			PARALLEL="-j2" ;;
+	*)			PARALLEL= ;;
 esac
 
 # Version of the mercury compiler to use for bootstrapping
@@ -529,6 +533,17 @@ case $HOST in
 			none.gc.tr			\
 			none.gc.tr.debug"
 		;;
+	taura)
+		CONFIG_OPTS=""
+		INSTALL_LIBGRADES="asm_fast.gc		\
+			asm_fast.gc.tr			\
+			asm_fast.par.gc			\
+			asm_fast.gc.tr.debug		\
+			asm_fast.gc.profdeep		\
+			asm_fast.gc.decldebug		\
+			hlc.gc				\
+			hlc.gc.tr"
+		;;	
 	*)	
 		CONFIG_OPTS="" ;;
 esac
