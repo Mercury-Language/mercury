@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1999, 2001-2003, 2005-2007 The University of Melbourne.
+# Copyright (C) 1996-1999, 2001-2003, 2005-2008 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -46,8 +46,7 @@ UTIL_PROGFILENAMES	= $(UTIL_PROGS:%=%$(EXT_FOR_EXE))
 
 # Any miscellaneous scripts and utilities not processed by configure
 UTILS			= $(UTIL_PROGFILENAMES) util/mtags \
-			  util/mprof_merge_runs util/vpath_find \
-			  util/mercury_cleanup_install
+			  util/mprof_merge_runs util/vpath_find
 
 #-----------------------------------------------------------------------------#
 
