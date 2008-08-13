@@ -248,7 +248,7 @@ case $HOST in
 	aral)		OPTIMIZE="-O3" ;;
 	ceres)		OPTIMIZE="-O5" ;;	# hlc
 	uranus)		OPTIMIZE="-O3" ;;
-	taura)		OPTIMIZE="-05 --intermodule-optimization" ;;
+	taura)		OPTIMIZE="-O5 --intermodule-optimization" ;;
 esac
 
 # on some systems, the file system we're using does not support links
