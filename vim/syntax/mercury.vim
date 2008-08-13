@@ -63,11 +63,13 @@ syn keyword mercuryCInterface   will_not_throw_exception
 syn keyword mercuryCInterface   may_modify_trail will_not_modify_trail
 syn keyword mercuryCInterface   affects_liveness
 syn keyword mercuryCInterface   does_not_affect_liveness doesnt_affect_liveness
+syn keyword mercuryCInterface   no_sharing unknown_sharing sharing
 syn keyword mercuryCInterface   export import
 syn keyword mercuryImpure       impure semipure
 syn keyword mercuryToDo         XXX TODO NOTE         
 syn keyword mercuryLogical      some all not if then else true fail false
-syn keyword mercuryLogical      semidet_true semidet_false semidet_fail impure_true 
+syn keyword mercuryLogical      semidet_true semidet_false semidet_fail
+syn keyword mercuryLogical      impure_true 
 syn match   mercuryImplication  +<=>\|<=\|=>\|/\\\|\\/+
 syn match   mercuryNumCode      +0'.\|0[box][0-9a-fA-F]*+
 syn region  mercuryAtom         start=+'+ skip=+\\.+ end=+'+
