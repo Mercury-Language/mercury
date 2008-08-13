@@ -711,7 +711,7 @@ MR_write_out_procrep_id_string(FILE *fp)
     ** Must be the same as procrep_id_string in
     ** mdbcomp/program_representation.m
     */
-    const char  *id_string = "Mercury deep profiler procrep version 2\n";
+    const char  *id_string = "Mercury deep profiler procrep version 3\n";
 
     fputs(id_string, fp);
 }

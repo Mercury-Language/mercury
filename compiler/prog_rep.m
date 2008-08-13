@@ -56,7 +56,7 @@
     %
 :- pred represent_proc_as_bytecodes(list(prog_var)::in, hlds_goal::in,
     instmap::in, vartypes::in, var_num_map::in, module_info::in,
-    include_variable_table::in, 
+    include_variable_table::in, determinism::in, 
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -93,7 +93,7 @@
             ).
 
 represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
-        ModuleInfo, IncludeVarTable, !StackInfo, ProcRepBytes) :-
+        ModuleInfo, IncludeVarTable, ProcDetism, !StackInfo, ProcRepBytes) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName),
@@ -103,8 +103,9 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
 
     string_to_byte_list(FileName, FileNameBytes, !StackInfo),
     goal_to_byte_list(Goal, InstMap0, Info, GoalBytes, !StackInfo),
+    DetismByte = represent_determinism(ProcDetism),
     ProcRepBytes0 = FileNameBytes ++ VarTableBytes ++
-        vars_to_byte_list(Info, HeadVars) ++ GoalBytes,
+        vars_to_byte_list(Info, HeadVars) ++ GoalBytes ++ [DetismByte],
     int32_to_byte_list(list.length(ProcRepBytes0) + 4, LimitBytes),
     ProcRepBytes = LimitBytes ++ ProcRepBytes0.
 
@@ -202,31 +203,22 @@ compiler_introduced_varname(VarName) :-
 
 goal_to_byte_list(hlds_goal(GoalExpr, GoalInfo), InstMap0, Info, Bytes,
         !StackInfo) :-
-    goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
-        !StackInfo).
-
-:- pred goal_expr_to_byte_list(hlds_goal_expr::in, hlds_goal_info::in,
-    instmap::in, prog_rep_info::in, list(int)::out,
-    stack_layout_info::in, stack_layout_info::out) is det.
-
-goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
-        !StackInfo) :-
     (
         GoalExpr = conj(ConjType, Goals),
         expect(unify(ConjType, plain_conj), this_file,
             "non-plain conjunction and declarative debugging"),
         conj_to_byte_list(Goals, InstMap0, Info, ConjBytes, !StackInfo),
-        Bytes = [goal_type_to_byte(goal_conj)] ++
+        ExprBytes = [goal_type_to_byte(goal_conj)] ++
             length_to_byte_list(Goals) ++ ConjBytes
     ;
         GoalExpr = disj(Goals),
         disj_to_byte_list(Goals, InstMap0, Info, DisjBytes, !StackInfo),
-        Bytes = [goal_type_to_byte(goal_disj)] ++
+        ExprBytes = [goal_type_to_byte(goal_disj)] ++
             length_to_byte_list(Goals) ++ DisjBytes
     ;
         GoalExpr = negation(SubGoal),
         goal_to_byte_list(SubGoal, InstMap0, Info, SubGoalBytes, !StackInfo),
-        Bytes = [goal_type_to_byte(goal_neg)] ++ SubGoalBytes
+        ExprBytes = [goal_type_to_byte(goal_neg)] ++ SubGoalBytes
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         Cond = hlds_goal(_, CondGoalInfo),
@@ -235,7 +227,7 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
         goal_to_byte_list(Cond, InstMap0, Info, CondBytes, !StackInfo),
         goal_to_byte_list(Then, InstMap1, Info, ThenBytes, !StackInfo),
         goal_to_byte_list(Else, InstMap0, Info, ElseBytes, !StackInfo),
-        Bytes = [goal_type_to_byte(goal_ite)] ++
+        ExprBytes = [goal_type_to_byte(goal_ite)] ++
             CondBytes ++ ThenBytes ++ ElseBytes
     ;
         GoalExpr = unify(_, _, _, Uni, _),
@@ -243,7 +235,7 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
             AtomicBytes, BoundVars, !StackInfo),
         (
             Uni = assign(Target, Source),
-            Bytes = [goal_type_to_byte(goal_assign)] ++
+            ExprBytes = [goal_type_to_byte(goal_assign)] ++
                 var_to_byte_list(Info, Target) ++
                 var_to_byte_list(Info, Source) ++
                 AtomicBytes
@@ -251,14 +243,14 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
             Uni = construct(Var, ConsId, Args, ArgModes, _, _, _),
             cons_id_to_byte_list(ConsId, ConsIdBytes, !StackInfo),
             ( list.all_true(lhs_final_is_ground(Info), ArgModes) ->
-                Bytes = [goal_type_to_byte(goal_construct)] ++
+                ExprBytes = [goal_type_to_byte(goal_construct)] ++
                     var_to_byte_list(Info, Var) ++
                     ConsIdBytes ++
                     vars_to_byte_list(Info, Args) ++
                     AtomicBytes
             ;
                 filter_input_args(Info, ArgModes, Args, MaybeArgs),
-                Bytes = [goal_type_to_byte(goal_partial_construct)] ++
+                ExprBytes = [goal_type_to_byte(goal_partial_construct)] ++
                     var_to_byte_list(Info, Var) ++
                     ConsIdBytes ++
                     maybe_vars_to_byte_list(Info, MaybeArgs) ++
@@ -269,13 +261,13 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
             cons_id_to_byte_list(ConsId, ConsIdBytes, !StackInfo),
             ( list.member(Var, BoundVars) ->
                 filter_input_args(Info, ArgModes, Args, MaybeArgs),
-                Bytes = [goal_type_to_byte(goal_partial_deconstruct)]++
+                ExprBytes = [goal_type_to_byte(goal_partial_deconstruct)]++
                     var_to_byte_list(Info, Var) ++
                     ConsIdBytes ++
                     maybe_vars_to_byte_list(Info, MaybeArgs) ++
                     AtomicBytes
             ;
-                Bytes = [goal_type_to_byte(goal_deconstruct)] ++
+                ExprBytes = [goal_type_to_byte(goal_deconstruct)] ++
                     var_to_byte_list(Info, Var) ++
                     ConsIdBytes ++
                     vars_to_byte_list(Info, Args) ++
@@ -283,7 +275,7 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
             )
         ;
             Uni = simple_test(Var1, Var2),
-            Bytes = [goal_type_to_byte(goal_simple_test)] ++
+            ExprBytes = [goal_type_to_byte(goal_simple_test)] ++
                 var_to_byte_list(Info, Var1) ++
                 var_to_byte_list(Info, Var2) ++
                 AtomicBytes
@@ -294,7 +286,7 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
     ;
         GoalExpr = switch(SwitchVar, _, Cases),
         cases_to_byte_list(Cases, InstMap0, Info, CasesBytes, !StackInfo),
-        Bytes = [goal_type_to_byte(goal_switch)] ++
+        ExprBytes = [goal_type_to_byte(goal_switch)] ++
             var_to_byte_list(Info, SwitchVar) ++
             length_to_byte_list(Cases) ++ CasesBytes
     ;
@@ -308,20 +300,20 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
             MaybeCut = 1
         ),
         goal_to_byte_list(SubGoal, InstMap0, Info, GoalBytes, !StackInfo),
-        Bytes = [goal_type_to_byte(goal_scope)] ++ [MaybeCut] ++ GoalBytes
+        ExprBytes = [goal_type_to_byte(goal_scope)] ++ [MaybeCut] ++ GoalBytes
     ;
         GoalExpr = generic_call(GenericCall, Args, _, _),
         atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info,
             AtomicBytes, _BoundVars, !StackInfo),
         (
             GenericCall = higher_order(PredVar, _, _, _),
-            Bytes = [goal_type_to_byte(goal_ho_call)] ++
+            ExprBytes = [goal_type_to_byte(goal_ho_call)] ++
                 var_to_byte_list(Info, PredVar) ++
                 vars_to_byte_list(Info, Args) ++
                 AtomicBytes
         ;
             GenericCall = class_method(Var, MethodNum, _, _),
-            Bytes = [goal_type_to_byte(goal_method_call)] ++
+            ExprBytes = [goal_type_to_byte(goal_method_call)] ++
                 var_to_byte_list(Info, Var) ++
                 method_num_to_byte_list(MethodNum) ++
                 vars_to_byte_list(Info, Args) ++
@@ -329,14 +321,14 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
         ;
             GenericCall = event_call(EventName),
             string_to_byte_list(EventName, EventNameBytes, !StackInfo),
-            Bytes = [goal_type_to_byte(goal_event_call)] ++
+            ExprBytes = [goal_type_to_byte(goal_event_call)] ++
                 EventNameBytes ++
                 vars_to_byte_list(Info, Args) ++
                 AtomicBytes
         ;
             GenericCall = cast(_),
             ( Args = [InputArg, OutputArg] ->
-                Bytes = [goal_type_to_byte(goal_cast)] ++
+                ExprBytes = [goal_type_to_byte(goal_cast)] ++
                     var_to_byte_list(Info, OutputArg) ++
                     var_to_byte_list(Info, InputArg) ++
                     AtomicBytes
@@ -356,7 +348,7 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
         string_to_byte_list(PredName, PredNameBytes, !StackInfo),
         (
             Builtin = not_builtin,
-            Bytes = [goal_type_to_byte(goal_plain_call)] ++
+            ExprBytes = [goal_type_to_byte(goal_plain_call)] ++
                 ModuleNameBytes ++
                 PredNameBytes ++
                 vars_to_byte_list(Info, Args) ++
@@ -365,7 +357,7 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
             ( Builtin = inline_builtin
             ; Builtin = out_of_line_builtin
             ),
-            Bytes = [goal_type_to_byte(goal_builtin_call)] ++
+            ExprBytes = [goal_type_to_byte(goal_builtin_call)] ++
                 ModuleNameBytes ++
                 PredNameBytes ++
                 vars_to_byte_list(Info, Args) ++
@@ -376,13 +368,19 @@ goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, Bytes,
         ArgVars = list.map(foreign_arg_var, Args),
         atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info,
             AtomicBytes, _BoundVars, !StackInfo),
-        Bytes = [goal_type_to_byte(goal_foreign)] ++
+        ExprBytes = [goal_type_to_byte(goal_foreign)] ++
             vars_to_byte_list(Info, ArgVars) ++ AtomicBytes
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
         unexpected(this_file, "goal_expr_to_byte_list: unexpected shorthand")
-    ).
+    ),
+    
+    % Include determinism in the bytecode.
+    Detism = goal_info_get_determinism(GoalInfo),
+    DetismByte = represent_determinism(Detism),
+
+    Bytes = ExprBytes ++ [DetismByte].
 
 :- pred lhs_final_is_ground(prog_rep_info::in, uni_mode::in) is semidet.
 
@@ -419,7 +417,6 @@ filter_input_args(_, [_ | _], [], _) :-
 
 atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, Bytes, BoundVars,
         !StackInfo) :-
-    Detism = goal_info_get_determinism(GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName0),
     ( FileName0 = Info ^ pri_filename ->
@@ -434,8 +431,7 @@ atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, Bytes, BoundVars,
         Info ^ pri_module_info, ChangedVars),
     set.to_sorted_list(ChangedVars, BoundVars),
     string_to_byte_list(FileName, FileNameBytes, !StackInfo),
-    Bytes = [represent_determinism(Detism)] ++
-        FileNameBytes ++
+    Bytes = FileNameBytes ++
         lineno_to_byte_list(LineNo) ++
         vars_to_byte_list(Info, BoundVars).
 

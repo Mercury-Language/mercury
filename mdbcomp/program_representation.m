@@ -65,8 +65,8 @@
 
 :- type proc_rep
     --->    proc_rep(
-                pr_id       :: string_proc_label,
-                pr_defn     :: proc_defn_rep
+                pr_id           :: string_proc_label,
+                pr_defn         :: proc_defn_rep
             ).
 
     % A string_proc_label is a data structure that uniquely identifies a
@@ -111,16 +111,26 @@
     --->    proc_defn_rep(
                 % The head variables, in order, including the ones introduced
                 % by the compiler.
-                list(var_rep),
+                pdr_head_vars           :: list(var_rep),
 
                 % The procedure body.
-                goal_rep,
+                pdr_goal                :: goal_rep,
 
                 % The variable table.
-                var_table
+                pdr_var_table           :: var_table,
+
+                % The determinism of the procedure, this may be different from
+                % procedure's goal's determinism.
+                pdr_detism              :: detism_rep
             ).
 
 :- type goal_rep
+    --->    goal_rep(
+                goal_expr_rep       :: goal_expr_rep,
+                goal_detism_rep     :: detism_rep
+            ).
+
+:- type goal_expr_rep
     --->    conj_rep(
                 list(goal_rep)      % The conjuncts in the original order.
             )
@@ -144,7 +154,6 @@
                 maybe_cut
             )
     ;       atomic_goal_rep(
-                detism_rep,
                 string,             % Filename of context.
                 int,                % Line number of context.
                 list(var_rep),      % The sorted list of the variables
@@ -601,14 +610,19 @@ call_does_not_generate_events(ModuleName, PredName, Arity) :-
         )
     ).
 
-goal_generates_internal_event(conj_rep(_)) = no.
-goal_generates_internal_event(disj_rep(_)) = yes.
-goal_generates_internal_event(switch_rep(_, _)) = yes.
-goal_generates_internal_event(ite_rep(_, _, _)) = yes.
-goal_generates_internal_event(negation_rep(_)) = yes.
-goal_generates_internal_event(scope_rep(_, _)) = no.
+goal_generates_internal_event(goal_rep(GoalExpr, _)) =
+    goal_expr_generates_internal_event(GoalExpr).
+
+:- func goal_expr_generates_internal_event(goal_expr_rep) = bool.
+
+goal_expr_generates_internal_event(conj_rep(_)) = no.
+goal_expr_generates_internal_event(disj_rep(_)) = yes.
+goal_expr_generates_internal_event(switch_rep(_, _)) = yes.
+goal_expr_generates_internal_event(ite_rep(_, _, _)) = yes.
+goal_expr_generates_internal_event(negation_rep(_)) = yes.
+goal_expr_generates_internal_event(scope_rep(_, _)) = no.
 % Atomic goals may generate interface events, not internal events.
-goal_generates_internal_event(atomic_goal_rep(_, _, _, _, _)) = no.
+goal_expr_generates_internal_event(atomic_goal_rep(_, _, _, _)) = no.
 
 atomic_goal_identifiable(unify_construct_rep(_, _, _)) = no.
 atomic_goal_identifiable(unify_deconstruct_rep(_, _, _)) = no.
@@ -881,7 +895,7 @@ read_prog_rep_file(FileName, Result, !IO) :-
     %
 :- func procrep_id_string = string.
 
-procrep_id_string = "Mercury deep profiler procrep version 2\n".
+procrep_id_string = "Mercury deep profiler procrep version 3\n".
 
 :- pred read_module_reps(bytecode::in,
     list(module_rep)::in, list(module_rep)::out,
@@ -936,7 +950,8 @@ read_proc_rep(ByteCode, StringTable, ProcRep, !Pos) :-
     read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos), 
     read_vars(VarNumRep, ByteCode, HeadVars, !Pos),
     read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
-    ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarTable),
+    read_determinism(ByteCode, Detism, !Pos),
+    ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarTable, Detism),
     require(unify(!.Pos, StartPos + Size),
         "trace_read_proc_defn_rep: limit mismatch"),
     ProcRep = proc_rep(ProcLabel, ProcDefnRep).
@@ -1035,7 +1050,8 @@ trace_read_proc_defn_rep(Bytes, LabelLayout, ProcDefnRep) :-
         read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos),
         read_vars(VarNumRep, ByteCode, HeadVars, !Pos),
         read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
-        ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarTable),
+        read_determinism(ByteCode, Detism, !Pos),
+        ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarTable, Detism),
         require(unify(!.Pos, Size),
             "trace_read_proc_defn_rep: limit mismatch")
     ).
@@ -1054,33 +1070,33 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
         (
             GoalType = goal_conj,
             read_goals(VarNumRep, ByteCode, StringTable, Info, Goals, !Pos),
-            Goal = conj_rep(Goals)
+            GoalExpr = conj_rep(Goals)
         ;
             GoalType = goal_disj,
             read_goals(VarNumRep, ByteCode, StringTable, Info, Goals, !Pos),
-            Goal = disj_rep(Goals)
+            GoalExpr = disj_rep(Goals)
         ;
             GoalType = goal_neg,
             read_goal(VarNumRep, ByteCode, StringTable, Info, SubGoal, !Pos),
-            Goal = negation_rep(SubGoal)
+            GoalExpr = negation_rep(SubGoal)
         ;
             GoalType = goal_ite,
             read_goal(VarNumRep, ByteCode, StringTable, Info, Cond, !Pos),
             read_goal(VarNumRep, ByteCode, StringTable, Info, Then, !Pos),
             read_goal(VarNumRep, ByteCode, StringTable, Info, Else, !Pos),
-            Goal = ite_rep(Cond, Then, Else)
+            GoalExpr = ite_rep(Cond, Then, Else)
         ;
             GoalType = goal_switch,
             read_var(VarNumRep, ByteCode, Var, !Pos),
             read_cases(VarNumRep, ByteCode, StringTable, Info, Cases, !Pos),
-            Goal = switch_rep(Var, Cases)
+            GoalExpr = switch_rep(Var, Cases)
         ;
             GoalType = goal_assign,
             read_var(VarNumRep, ByteCode, Target, !Pos),
             read_var(VarNumRep, ByteCode, Source, !Pos),
             AtomicGoal = unify_assign_rep(Target, Source),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_construct,
             read_var(VarNumRep, ByteCode, Var, !Pos),
@@ -1088,7 +1104,7 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             read_vars(VarNumRep, ByteCode, ArgVars, !Pos),
             AtomicGoal = unify_construct_rep(Var, ConsId, ArgVars),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_deconstruct,
             read_var(VarNumRep, ByteCode, Var, !Pos),
@@ -1096,7 +1112,7 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             read_vars(VarNumRep, ByteCode, ArgVars, !Pos),
             AtomicGoal = unify_deconstruct_rep(Var, ConsId, ArgVars),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_partial_construct,
             read_var(VarNumRep, ByteCode, Var, !Pos),
@@ -1104,7 +1120,7 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             read_maybe_vars(VarNumRep, ByteCode, MaybeVars, !Pos),
             AtomicGoal = partial_construct_rep(Var, ConsId, MaybeVars),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_partial_deconstruct,
             read_var(VarNumRep, ByteCode, Var, !Pos),
@@ -1112,14 +1128,14 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             read_maybe_vars(VarNumRep, ByteCode, MaybeVars, !Pos),
             AtomicGoal = partial_deconstruct_rep(Var, ConsId, MaybeVars),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_simple_test,
             read_var(VarNumRep, ByteCode, Var1, !Pos),
             read_var(VarNumRep, ByteCode, Var2, !Pos),
             AtomicGoal = unify_simple_test_rep(Var1, Var2),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_scope,
             read_byte(ByteCode, MaybeCutByte, !Pos),
@@ -1131,14 +1147,14 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
                 error("read_goal: bad maybe_cut")
             ),
             read_goal(VarNumRep, ByteCode, StringTable, Info, SubGoal, !Pos),
-            Goal = scope_rep(SubGoal, MaybeCut)
+            GoalExpr = scope_rep(SubGoal, MaybeCut)
         ;
             GoalType = goal_ho_call,
             read_var(VarNumRep, ByteCode, Var, !Pos),
             read_vars(VarNumRep, ByteCode, Args, !Pos),
             AtomicGoal = higher_order_call_rep(Var, Args),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_method_call,
             read_var(VarNumRep, ByteCode, Var, !Pos),
@@ -1146,14 +1162,14 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             read_vars(VarNumRep, ByteCode, Args, !Pos),
             AtomicGoal = method_call_rep(Var, MethodNum, Args),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_cast,
             read_var(VarNumRep, ByteCode, OutputVar, !Pos),
             read_var(VarNumRep, ByteCode, InputVar, !Pos),
             AtomicGoal = cast_rep(OutputVar, InputVar),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_plain_call,
             read_string_via_offset(ByteCode, StringTable, ModuleName, !Pos),
@@ -1161,7 +1177,7 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             read_vars(VarNumRep, ByteCode, Args, !Pos),
             AtomicGoal = plain_call_rep(ModuleName, PredName, Args),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_builtin_call,
             read_string_via_offset(ByteCode, StringTable, ModuleName, !Pos),
@@ -1169,37 +1185,33 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             read_vars(VarNumRep, ByteCode, Args, !Pos),
             AtomicGoal = builtin_call_rep(ModuleName, PredName, Args),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
+                AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_event_call,
             read_string_via_offset(ByteCode, StringTable, EventName, !Pos),
             read_vars(VarNumRep, ByteCode, Args, !Pos),
             AtomicGoal = event_call_rep(EventName, Args),
             read_atomic_info(VarNumRep, ByteCode, StringTable,
-                Info, AtomicGoal, Goal, !Pos)
+                Info, AtomicGoal, GoalExpr, !Pos)
         ;
             GoalType = goal_foreign,
             read_vars(VarNumRep, ByteCode, Args, !Pos),
             AtomicGoal = pragma_foreign_code_rep(Args),
             read_atomic_info(VarNumRep, ByteCode, StringTable, Info,
-                AtomicGoal, Goal, !Pos)
-        )
+                AtomicGoal, GoalExpr, !Pos)
+        ),
+        read_determinism(ByteCode, Detism, !Pos),
+        Goal = goal_rep(GoalExpr, Detism)
     ;
         error("read_goal: invalid goal type")
     ).
 
 :- pred read_atomic_info(var_num_rep::in, bytecode::in, string_table::in,
-    read_proc_rep_info::in, atomic_goal_rep::in, goal_rep::out,
+    read_proc_rep_info::in, atomic_goal_rep::in, goal_expr_rep::out,
     int::in, int::out) is semidet.
 
-read_atomic_info(VarNumRep, ByteCode, StringTable, Info, AtomicGoal, Goal,
+read_atomic_info(VarNumRep, ByteCode, StringTable, Info, AtomicGoal, GoalExpr,
         !Pos) :-
-    read_byte(ByteCode, DetismByte, !Pos),
-    ( determinism_representation(DetismPrime, DetismByte) ->
-        Detism = DetismPrime
-    ;
-        error("read_atomic_info: bad detism")
-    ),
     read_string_via_offset(ByteCode, StringTable, FileName0, !Pos),
     ( FileName0 = "" ->
         FileName = Info ^ filename
@@ -1208,7 +1220,7 @@ read_atomic_info(VarNumRep, ByteCode, StringTable, Info, AtomicGoal, Goal,
     ),
     read_lineno(ByteCode, LineNo, !Pos),
     read_vars(VarNumRep, ByteCode, BoundVars, !Pos),
-    Goal = atomic_goal_rep(Detism, FileName, LineNo, BoundVars, AtomicGoal).
+    GoalExpr = atomic_goal_rep(FileName, LineNo, BoundVars, AtomicGoal).
 
 :- pred read_goals(var_num_rep::in, bytecode::in, string_table::in,
     read_proc_rep_info::in, list(goal_rep)::out, int::in, int::out) is semidet.
@@ -1365,6 +1377,17 @@ read_var_num_rep(ByteCode, VarNumRep, !Pos) :-
         VarNumRep = VarNumRep0
     ;
         error("read_var_num_rep: unknown var_num_rep")
+    ).
+
+:- pred read_determinism(bytecode::in, detism_rep::out, int::in, int::out) 
+    is semidet.
+
+read_determinism(ByteCode, Detism, !Pos) :-
+    read_byte(ByteCode, DetismByte, !Pos),
+    ( determinism_representation(DetismPrime, DetismByte) ->
+        Detism = DetismPrime
+    ;
+        error("read_goal: bad detism")
     ).
 
 %-----------------------------------------------------------------------------%

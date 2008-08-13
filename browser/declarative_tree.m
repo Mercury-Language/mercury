@@ -907,7 +907,8 @@ trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
         StartLoc = cur_goal,
         Contour = Contour0
     ),
-    ProcDefnRep = proc_defn_rep(HeadVars, GoalRep, _),
+    HeadVars = ProcDefnRep ^ pdr_head_vars,
+    GoalRep = ProcDefnRep ^ pdr_goal,
     is_traced_grade(AllTraced),
     MaybePrims = make_primitive_list(Store, [goal_and_path(GoalRep, empty)],
         Contour, StartPath, ArgNum, TotalArgs, HeadVars, AllTraced, []),
@@ -944,9 +945,12 @@ trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
 :- pred proc_defn_rep_is_catch_impl(proc_defn_rep::in) is semidet.
 
 proc_defn_rep_is_catch_impl(ProcDefnRep) :-
-    ProcDefnRep = proc_defn_rep([A, B, C, D],
-        atomic_goal_rep(_, "exception.m", _, [D],
-            plain_call_rep("exception", "builtin_catch", [A, B, C, D])), _).
+    GoalRep = ProcDefnRep ^ pdr_goal,
+    HeadVars = ProcDefnRep ^ pdr_head_vars,
+    GoalExprRep = GoalRep ^ goal_expr_rep,
+    HeadVars = [A, B, C, D],
+    GoalExprRep = atomic_goal_rep("exception.m", _, [D],
+        plain_call_rep("exception", "builtin_catch", [A, B, C, D])).
 
 :- pred find_chain_start(S::in, R::in, arg_pos::in, term_path::in,
     dependency_chain_start(R)::out) is det <= annotated_trace(S, R).
@@ -1233,21 +1237,22 @@ next_goal_generates_internal_event([goal_and_path(NextGoal, _) | _]) :-
 
 match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
         ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0) = MaybePrims :-
+    Goal = goal_rep(GoalExpr, _),
     (
-        Goal = conj_rep(Conjs),
+        GoalExpr = conj_rep(Conjs),
         add_paths_to_conjuncts(Conjs, Path, 1, ConjPaths),
         MaybePrims = make_primitive_list(Store, ConjPaths ++ GoalPaths,
             Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
             Primitives0)
     ;
-        Goal = scope_rep(InnerGoal, MaybeCut),
+        GoalExpr = scope_rep(InnerGoal, MaybeCut),
         InnerPath = cord.snoc(Path, step_scope(MaybeCut)),
         InnerAndPath = goal_and_path(InnerGoal, InnerPath),
         MaybePrims = make_primitive_list(Store, [InnerAndPath | GoalPaths],
             Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
             Primitives0)
     ;
-        Goal = atomic_goal_rep(_, File, Line, BoundVars, AtomicGoal),
+        GoalExpr = atomic_goal_rep(File, Line, BoundVars, AtomicGoal),
         GeneratesEvent = atomic_goal_generates_event_like_call(AtomicGoal),
         (
             GeneratesEvent = yes(AtomicGoalArgs),
@@ -1263,7 +1268,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives1)
         )
     ;
-        Goal = disj_rep(Disjs),
+        GoalExpr = disj_rep(Disjs),
         (
             Contour = [_ - ContourHeadNode | ContourTail],
             (
@@ -1287,7 +1292,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 "mismatch on disj"))
         )
     ;
-        Goal = switch_rep(_SwitchVar, Cases),
+        GoalExpr = switch_rep(_SwitchVar, Cases),
         (
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_switch(_, Label),
@@ -1308,7 +1313,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 "mismatch on switch"))
         )
     ;
-        Goal = ite_rep(Cond, Then, Else),
+        GoalExpr = ite_rep(Cond, Then, Else),
         (
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_cond(_, Label, _),
@@ -1345,7 +1350,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 "mismatch on if-then-else"))
         )
     ;
-        Goal = negation_rep(NegGoal),
+        GoalExpr = negation_rep(NegGoal),
         (
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_neg_succ(_, _, _)
@@ -1575,7 +1580,7 @@ find_variable_in_args(Args, ArgNum, TotalArgs, Var) :-
     subterm_origin(edt_node(R))::out) is det <= annotated_trace(S, R).
 
 traverse_primitives([], Var0, TermPath0, _, ProcDefnRep, Origin) :-
-    ProcDefnRep = proc_defn_rep(HeadVars, _, _),
+    HeadVars = ProcDefnRep ^ pdr_head_vars,
     ArgPos = find_arg_pos(HeadVars, Var0),
     Origin = origin_input(ArgPos, TermPath0).
 traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
