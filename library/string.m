@@ -317,6 +317,7 @@
 
     % As above, but fail instead of throwing an exception if the
     % list contains a null character.
+    %
 :- pred string.semidet_from_rev_char_list(list(char)::in, string::uo)
     is semidet.
 
@@ -328,6 +329,7 @@
     % Convert a string to an int. The string must contain only digits,
     % optionally preceded by a plus or minus sign. If the string does
     % not match this syntax, string.to_int fails.
+    %
 :- pred string.to_int(string::in, int::out) is semidet.
 
     % Convert a string in the specified base (2-36) to an int. The string
