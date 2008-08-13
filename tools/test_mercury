@@ -317,7 +317,7 @@ PATH="$INSTALL_DIR/bin:$PATH"
 #
 PARALLEL=
 case $HOST in
-	saturn|pluto|traura) 	PARALLEL="-j2" ;;
+	saturn|pluto|taura) 	PARALLEL="-j2" ;;
 	eris)			PARALLEL="-j2" ;;
 	*)			PARALLEL= ;;
 esac
@@ -534,7 +534,7 @@ case $HOST in
 			none.gc.tr.debug"
 		;;
 	taura)
-		CONFIG_OPTS=""
+		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
 		INSTALL_LIBGRADES="asm_fast.gc		\
 			asm_fast.gc.tr			\
 			asm_fast.par.gc			\
