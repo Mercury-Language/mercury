@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005-2006 The University of Melbourne.
+% Copyright (C) 2001, 2005-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -133,30 +133,66 @@
 
 array_foldl_from_1(P, A, !AccU) :-
     array.max(A, Max),
-    array_foldl(1, Max, P, A, !AccU).
+    do_array_foldl(1, Max, P, A, !AccU).
 
 array_foldl_from_0(P, A, !AccU) :-
     array.max(A, Max),
-    array_foldl(0, Max, P, A, !AccU).
+    do_array_foldl(0, Max, P, A, !AccU).
 
 array_foldl(N, Max, P, A, !AccU) :-
+    do_array_foldl(N, Max, P, A, !AccU).
+
+    % This clone of array_foldl exists to allow looping to take place
+    % within a shallow traced predicate in debug grades. This avoids
+    % blowing the stack with deep recursion.
+    %
+:- pred do_array_foldl(int, int, pred(int, T, U, U), array(T), U, U).
+:- mode do_array_foldl(in, in, pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode do_array_foldl(in, in, pred(in, in, array_di, array_uo) is det, in,
+    array_di, array_uo) is det.
+:- mode do_array_foldl(in, in, pred(in, in, in, out) is det, in,
+    in, out) is det.
+
+do_array_foldl(N, Max, P, A, !AccU) :-
     ( N =< Max ->
         array.lookup(A, N, E),
         P(N, E, !AccU),
-        array_foldl(N + 1, Max, P, A, !AccU)
+        do_array_foldl(N + 1, Max, P, A, !AccU)
     ;
         true
     ).
 
 array_foldl2_from_1(P, A, !AccU, !AccV) :-
     array.max(A, Max),
-    array_foldl2(1, Max, P, A, !AccU, !AccV).
+    do_array_foldl2(1, Max, P, A, !AccU, !AccV).
 
 array_foldl2(N, Max, P, A, !AccU, !AccV) :-
+    do_array_foldl2(N, Max, P, A, !AccU, !AccV).
+
+    % This clone of array_foldl2 exists to allow looping to take place
+    % within a shallow traced predicate in debug grades. This avoids
+    % blowing the stack with deep recursion.
+    %
+:- pred do_array_foldl2(int, int, pred(int, T, U, U, V, V), array(T),
+    U, U, V, V).
+:- mode do_array_foldl2(in, in, pred(in, in, di, uo, di, uo) is det, in,
+    di, uo, di, uo) is det.
+:- mode do_array_foldl2(in, in, pred(in, in,
+    array_di, array_uo, array_di, array_uo) is det, in,
+    array_di, array_uo, array_di, array_uo) is det.
+:- mode do_array_foldl2(in, in, pred(in, in,
+    array_di, array_uo, in, out) is det, in,
+    array_di, array_uo, in, out) is det.
+:- mode do_array_foldl2(in, in, pred(in, in, in, out, di, uo) is det, in,
+    in, out, di, uo) is det.
+:- mode do_array_foldl2(in, in, pred(in, in, in, out, in, out) is det, in,
+    in, out, in, out) is det.
+
+do_array_foldl2(N, Max, P, A, !AccU, !AccV) :-
     ( N =< Max ->
         array.lookup(A, N, E),
         P(N, E, !AccU, !AccV),
-        array_foldl2(N + 1, Max, P, A, !AccU, !AccV)
+        do_array_foldl2(N + 1, Max, P, A, !AccU, !AccV)
     ;
         true
     ).

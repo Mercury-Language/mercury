@@ -20,12 +20,12 @@
 % Queries are sent and received as printed representations of Mercury terms,
 % using the predicates send_term and recv_term. Responses are sent as strings
 % using the predicates send_string and recv_string. Each response is actually
-% the name of a file contained a web page, rather than the text of the web page
-% itself. This makes things easy to debug (since we can leave the file around
-% for inspection) and avoids any potential problems with the web page being too
-% big to transmit atomically across the named pipe. (Printable representations
-% of queries and filenames are both guaranteed to be smaller than eight
-% kilobytes, which is the typical named pipe buffer size.)
+% the name of a file containing a web page, rather than the text of the web
+% page itself. This makes things easy to debug (since we can leave the file
+% around for inspection) and avoids any potential problems with the web page
+% being too big to transmit atomically across the named pipe. (Printable
+% representations of queries and filenames are both guaranteed to be smaller
+% than eight kilobytes, which is the typical named pipe buffer size.)
 %
 % A query consists of three components, a command, a set of preferences, and
 % the name of the profiling data file. The command tells the server what

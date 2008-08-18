@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,9 +50,8 @@
 
 :- import_module array.
 :- import_module int.
-
-% :- import_module io.
-% :- import_module string.
+:- import_module io.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -102,70 +101,82 @@ mklist(N, Acc0, Acc) :-
         mklist(N - 1, Acc1, Acc)
     ).
 
-topological_sort(Graph, TSort) :-
-    % impure unsafe_perform_io(io.nl),
-    % impure unsafe_perform_io(io.write_string("the graph:\n")),
-    % impure unsafe_perform_io(write_graph(Graph)),
-    % impure unsafe_perform_io(io.nl),
+topological_sort(Graph, Cliques) :-
+    trace [compiletime(flag("tsort")), io(!IO)] (
+        io.nl(!IO),
+        io.write_string("the graph:\n", !IO),
+        write_graph(Graph, !IO),
+        io.nl(!IO)
+    ),
 
     dfs_graph(Graph, Dfs),
 
-    % impure unsafe_perform_io(io.nl),
-    % impure unsafe_perform_io(io.write_string("the dfs:\n")),
-    % impure unsafe_perform_io(write_dfs(Dfs)),
-    % impure unsafe_perform_io(io.nl),
+    trace [compiletime(flag("tsort")), io(!IO)] (
+        io.nl(!IO),
+        io.write_string("the dfs:\n", !IO),
+        write_dfs(Dfs, !IO),
+        io.nl(!IO)
+    ),
 
     inverse(Graph, InvGraph),
 
-    % impure unsafe_perform_io(io.nl),
-    % impure unsafe_perform_io(io.write_string("the inverse graph:\n")),
-    % impure unsafe_perform_io(write_graph(InvGraph)),
-    % impure unsafe_perform_io(io.nl),
+    trace [compiletime(flag("tsort")), io(!IO)] (
+        io.nl(!IO),
+        io.write_string("the inverse graph:\n", !IO),
+        write_graph(InvGraph, !IO),
+        io.nl(!IO)
+    ),
 
     Visit = dense_bitset.init,
-    tsort(Dfs, InvGraph, Visit, [], TSort0),
-    reverse(TSort0, TSort).
+    tsort(Dfs, InvGraph, Visit, [], Cliques0),
+    list.reverse(Cliques0, Cliques),
 
-    % impure unsafe_perform_io(io.nl),
-    % impure unsafe_perform_io(io.write_string("the cliques:\n")),
-    % impure unsafe_perform_io(write_cliques(TSort)),
-    % impure unsafe_perform_io(io.nl),
-    % impure unsafe_perform_io(io.nl).
+    trace [compiletime(flag("tsort")), io(!IO)] (
+        io.nl(!IO),
+        io.write_string("the cliques:\n", !IO),
+        write_cliques(Cliques, !IO),
+        io.nl(!IO),
+        io.nl(!IO)
+    ).
 
 :- pred tsort(list(int)::in, graph::in, visit::array_di, list(set(int))::in,
     list(set(int))::out) is det.
 
-% :- pragma promise_pure(tsort/5).
+tsort([], _InvGraph, _Visit, !Cliques).
+tsort([Node | Nodes], InvGraph, !.Visited, !Cliques) :-
+    trace [compiletime(flag("tsort_loop")), io(!IO)] (
+        io.write_string("tsort check ", !IO),
+        io.write_int(Node, !IO),
+        io.nl(!IO)
+    ),
 
-tsort([], _InvGraph, _Visit, TSort, TSort).
-tsort([Node | Nodes], InvGraph, Visit0, TSort0, TSort) :-
-    % impure unsafe_perform_io(io.write_string("tsort check ")),
-    % impure unsafe_perform_io(io.write_int(Node)),
-    % impure unsafe_perform_io(io.nl),
-
-    ( dense_bitset.member(Node, Visit0) ->
-        % impure unsafe_perform_io(io.write_string("tsort old ")),
-        % impure unsafe_perform_io(io.write_int(Node)),
-        % impure unsafe_perform_io(io.nl),
-        Visit1 = Visit0,
-        TSort1 = TSort0
+    ( dense_bitset.member(Node, !.Visited) ->
+        trace [compiletime(flag("tsort_old")), io(!IO)] (
+            io.write_string("tsort old ", !IO),
+            io.write_int(Node, !IO),
+            io.nl(!IO)
+        )
     ;
-        % impure unsafe_perform_io(io.write_string("tsort new ")),
-        % impure unsafe_perform_io(io.write_int(Node)),
-        % impure unsafe_perform_io(io.nl),
+        trace [compiletime(flag("tsort_new")), io(!IO)] (
+            io.write_string("tsort new ", !IO),
+            io.write_int(Node, !IO),
+            io.nl(!IO)
+        ),
 
-        dfs([Node], InvGraph, Visit0, [], Visit1, CliqueList),
+        dfs([Node], InvGraph, !.Visited, [], !:Visited, CliqueList),
 
-        % impure unsafe_perform_io(io.write_string("tsort clique ")),
-        % impure unsafe_perform_io(io.write_int(Node)),
-        % impure unsafe_perform_io(io.write_string(" -> ")),
-        % impure unsafe_perform_io(write_clique(CliqueList)),
-        % impure unsafe_perform_io(io.nl),
+        trace [compiletime(flag("tsort_clique")), io(!IO)] (
+            io.write_string("tsort clique ", !IO),
+            io.write_int(Node, !IO),
+            io.write_string(" -> ", !IO),
+            write_clique(CliqueList, !IO),
+            io.nl(!IO)
+        ),
 
         set.list_to_set(CliqueList, Clique),
-        TSort1 = [Clique | TSort0]
+        !:Cliques = [Clique | !.Cliques]
     ),
-    tsort(Nodes, InvGraph, Visit1, TSort1, TSort).
+    tsort(Nodes, InvGraph, !.Visited, !Cliques).
 
     % Return a list containing all the nodes of the graph. The list is
     % effectively computed by randomly breaking all cycles, doing a pre-order
@@ -202,15 +213,19 @@ dfs_graph_2([Node | Nodes], Graph, Visit0, Dfs0, Dfs) :-
 dfs([], _Graph, Visit, Dfs, Visit, Dfs).
 dfs([Node | Nodes], Graph, Visit0, Dfs0, Visit, Dfs) :-
     ( dense_bitset.member(Node, Visit0) ->
-        % impure unsafe_perform_io(io.write_string("dfs old ")),
-        % impure unsafe_perform_io(io.write_int(Node)),
-        % impure unsafe_perform_io(io.nl),
+        trace [compiletime(flag("dfs_old")), io(!IO)] (
+            io.write_string("dfs old ", !IO),
+            io.write_int(Node, !IO),
+            io.nl(!IO)
+        ),
 
         dfs(Nodes, Graph, Visit0, Dfs0, Visit, Dfs)
     ;
-        % impure unsafe_perform_io(io.write_string("dfs new ")),
-        % impure unsafe_perform_io(io.write_int(Node)),
-        % impure unsafe_perform_io(io.nl),
+        trace [compiletime(flag("dfs_new")), io(!IO)] (
+            io.write_string("dfs new ", !IO),
+            io.write_int(Node, !IO),
+            io.nl(!IO)
+        ),
 
         Visit1 = dense_bitset.insert(Visit0, Node),
         successors(Graph, Node, Succ),
@@ -250,47 +265,43 @@ add_arcs_to([From | FromList], To, Graph0, Graph) :-
 
 % Predicates to use in debugging.
 
-% :- pred write_graph(graph::in, io::di, io::uo)
-%   is det.
-%
-% write_graph(Graph, !IO) :-
-%   Graph = graph(Size, Array),
-%   io.format("graph size: %d\n", [i(Size)], !IO),
-%   write_graph_nodes(0, Size, Array, !IO).
-%
-% :- pred write_graph_nodes(int::in, int::in, array(set(int))::in,
-%   io::di, io::uo) is det.
-%
-% write_graph_nodes(Cur, Max, Array, !IO) :-
-%   ( Cur =< Max ->
-%       io.format("%d -> ", [i(Cur)], !IO),
-%       array.lookup(Array, Cur, SuccSet),
-%       set.to_sorted_list(SuccSet, Succs),
-%       io.write_list(Succs, ", ", io.write_int, !IO),
-%       io.nl(!IO),
-%       write_graph_nodes(Cur + 1, Max, Array, !IO)
-%   ;
-%       true
-%   ).
-%
-% :- pred write_dfs(list(int)::in, io::di, io::uo)
-%   is det.
-%
-% write_dfs(Dfs, !IO) :-
-%   io.write_list(Dfs, "\n", io.write_int, !IO).
-%
-% :- pred write_cliques(list(set(int))::in, io::di, io::uo)
-%   is det.
-%
-% write_cliques(Cliques, !IO) :-
-%   io.write_list(Cliques, "\n", io.write, !IO).
-%
-% :- pred write_clique(list(int)::in, io::di, io::uo)
-%   is det.
-%
-% write_clique(Nodes, !IO) :-
-%   io.write_list(Nodes, "\n", io.write_int, !IO).
-%
+:- pred write_graph(graph::in, io::di, io::uo) is det.
+
+write_graph(Graph, !IO) :-
+    Graph = graph(Size, Array),
+    io.format("graph size: %d\n", [i(Size)], !IO),
+    write_graph_nodes(0, Size, Array, !IO).
+
+:- pred write_graph_nodes(int::in, int::in, array(set(int))::in,
+    io::di, io::uo) is det.
+
+write_graph_nodes(Cur, Max, Array, !IO) :-
+    ( Cur =< Max ->
+        io.format("%d -> ", [i(Cur)], !IO),
+        array.lookup(Array, Cur, SuccSet),
+        set.to_sorted_list(SuccSet, Succs),
+        io.write_list(Succs, ", ", io.write_int, !IO),
+        io.nl(!IO),
+        write_graph_nodes(Cur + 1, Max, Array, !IO)
+    ;
+        true
+    ).
+
+:- pred write_dfs(list(int)::in, io::di, io::uo) is det.
+
+write_dfs(Dfs, !IO) :-
+    io.write_list(Dfs, "\n", io.write_int, !IO).
+
+:- pred write_cliques(list(set(int))::in, io::di, io::uo) is det.
+
+write_cliques(Cliques, !IO) :-
+    io.write_list(Cliques, "\n", io.write, !IO).
+
+:- pred write_clique(list(int)::in, io::di, io::uo) is det.
+
+  write_clique(Nodes, !IO) :-
+    io.write_list(Nodes, "\n", io.write_int, !IO).
+
 %----------------------------------------------------------------------------%
 :- end_module cliques.
 %----------------------------------------------------------------------------%

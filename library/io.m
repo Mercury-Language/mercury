@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -7535,7 +7535,6 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     MR_update_io(IO0, IO);
 }").
 
-
 io.write_bitmap(Bitmap, !IO) :-
     io.binary_output_stream(Stream, !IO),
     io.write_bitmap(Stream, Bitmap, !IO).
@@ -7948,7 +7947,7 @@ io.write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
         io.do_write_bitmap(Stream, Bitmap, Start, NumBytes, !IO)
     ;
         bitmap.throw_bounds_error(Bitmap, "io.write_bitmap",
-                Start * bits_per_byte, NumBytes * bits_per_byte)
+            Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
 
 :- pred io.do_write_bitmap(io.stream, bitmap, int, int, io, io).
@@ -7968,14 +7967,13 @@ io.do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
 
 :- pragma foreign_proc("C",
     io.do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in,
-            IO0::di, IO::uo),
+        IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         no_sharing],
-"{
+"
     MR_WRITE(*Stream, Bitmap->elements + Start, Length);
     MR_update_io(IO0, IO);
-}").
-
+").
 
 io.flush_output(output_stream(Stream), !IO) :-
     io.flush_output_2(Stream, !IO).
@@ -8250,16 +8248,17 @@ io.stdin_stream = input_stream(io.stdin_stream_2).
 :- func io.stdin_stream_2 = io.stream.
 :- pragma foreign_proc("C",
     io.stdin_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness,
-        no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdin;
 ").
 
 :- pragma foreign_proc("C#",
     io.stdin_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
 "
     Stream = mercury_stdin;
 ").
@@ -8272,7 +8271,7 @@ io.stdin_stream(input_stream(Stream), !IO) :-
     io.stdin_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdin;
     MR_update_io(IO0, IO);
@@ -8285,14 +8284,15 @@ io.stdout_stream = output_stream(io.stdout_stream_2).
     io.stdout_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness,
         no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdout;
 ").
 
 :- pragma foreign_proc("C#",
     io.stdout_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
 "
     Stream = mercury_stdout;
 ").
@@ -8305,7 +8305,7 @@ io.stdout_stream(output_stream(Stream), !IO) :-
     io.stdout_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdout;
     MR_update_io(IO0, IO);
@@ -8316,16 +8316,17 @@ io.stderr_stream = output_stream(io.stderr_stream_2).
 :- func io.stderr_stream_2 = io.stream.
 :- pragma foreign_proc("C",
     io.stderr_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness,
-        no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness, no_sharing],
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stderr;
 ").
 
 :- pragma foreign_proc("C#",
     io.stderr_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
 "
     Stream = mercury_stderr;
 ").
@@ -8338,7 +8339,7 @@ io.stderr_stream(output_stream(Stream), !IO) :-
     io.stderr_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stderr;
     MR_update_io(IO0, IO);
@@ -8352,7 +8353,7 @@ io.stdin_binary_stream(binary_input_stream(Stream), !IO) :-
     io.stdin_binary_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdin_binary;
     MR_update_io(IO0, IO);
@@ -8366,7 +8367,7 @@ io.stdout_binary_stream(binary_output_stream(Stream), !IO) :-
     io.stdout_binary_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdout_binary;
     MR_update_io(IO0, IO);
@@ -8380,7 +8381,7 @@ io.input_stream(input_stream(Stream), !IO) :-
     io.input_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = mercury_current_text_input();
     MR_update_io(IO0, IO);
@@ -8394,7 +8395,7 @@ io.output_stream(output_stream(Stream), !IO) :-
     io.output_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = mercury_current_text_output();
     MR_update_io(IO0, IO);
@@ -8408,7 +8409,7 @@ io.binary_input_stream(binary_input_stream(Stream), !IO) :-
     io.binary_input_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = mercury_current_binary_input();
     MR_update_io(IO0, IO);
@@ -8422,7 +8423,7 @@ io.binary_output_stream(binary_output_stream(Stream), !IO) :-
     io.binary_output_stream_2(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = mercury_current_binary_output();
     MR_update_io(IO0, IO);
@@ -8440,8 +8441,7 @@ io.binary_output_stream(binary_output_stream(Stream), !IO) :-
 io.get_line_number(input_stream(Stream), LineNum, !IO) :-
     io.get_line_number_2(Stream, LineNum, !IO).
 
-:- pred io.get_line_number_2(io.stream::in, int::out, io::di, io::uo)
-    is det.
+:- pred io.get_line_number_2(io.stream::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.get_line_number_2(Stream::in, LineNum::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
@@ -8531,7 +8531,7 @@ io.set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
     io.set_input_stream_2(NewStream::in, OutStream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     OutStream = mercury_current_text_input();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
@@ -8550,7 +8550,7 @@ io.set_output_stream(output_stream(NewStream), output_stream(OutStream),
     io.set_output_stream_2(NewStream::in, OutStream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     OutStream = mercury_current_text_output();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
@@ -8569,7 +8569,7 @@ io.set_binary_input_stream(binary_input_stream(NewStream),
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     OutStream = mercury_current_binary_input();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
@@ -8588,7 +8588,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused. 
+    % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     OutStream = mercury_current_binary_output();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
@@ -9751,7 +9751,8 @@ command_line_argument(_, "") :-
 
 :- pragma foreign_proc("C",
     io.getenv(Var::in, Value::out),
-    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness, no_sharing],
+    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness,
+        no_sharing],
 "{
     Value = getenv(Var);
     SUCCESS_INDICATOR = (Value != 0);
@@ -9813,7 +9814,8 @@ io.setenv(Var, Value) :-
 
 :- pragma foreign_proc("C",
     io.putenv(VarAndValue::in),
-    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness, no_sharing],
+    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness,
+        no_sharing],
 "
     SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
 ").
@@ -10534,14 +10536,14 @@ io.make_symlink(FileName, LinkFileName, Result, !IO) :-
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
-"{
+"
 #ifdef MR_HAVE_SYMLINK
     Status = (symlink(FileName, LinkFileName) == 0);
 #else
     Status = 0;
 #endif
     MR_update_io(IO0, IO);
-}").
+").
 
 :- pragma foreign_proc("Erlang",
     io.make_symlink_2(FileName::in, LinkFileName::in, Status::out,
@@ -10582,7 +10584,7 @@ io.read_symlink(FileName, Result, !IO) :-
         Status::out, Error::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
-"{
+"
 #ifdef MR_HAVE_READLINK
   #ifndef PATH_MAX
     #define PATH_MAX 256
@@ -10630,7 +10632,7 @@ io.read_symlink(FileName, Result, !IO) :-
     Status = 0;
 #endif
     MR_update_io(IO0, IO);
-}").
+").
 
 :- pragma foreign_proc("Erlang",
     io.read_symlink_2(FileName::in, TargetFileName::out,
@@ -10748,7 +10750,6 @@ io.read_symlink(FileName, Result, !IO) :-
 io.result_to_stream_result(ok(T)) = ok(T).
 io.result_to_stream_result(eof) = eof.
 io.result_to_stream_result(error(Error)) = error(Error).
-
 
 :- instance stream.line_oriented(io.input_stream, io) where
 [

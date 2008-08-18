@@ -182,15 +182,11 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module svmap.
 
 :- import_module measurement_units.
-
-%-----------------------------------------------------------------------------%
-
-html_to_string(HTML) = Str :-
-    string.append_list(cord.list(HTML), Str).
 
 %-----------------------------------------------------------------------------%
 
@@ -210,22 +206,10 @@ htmlize_display(Deep, Prefs, Display) = HTML :-
     ),
     HeadTitleHTML = wrap_tags("<title>", "</title>\n", HeadTitle),
 
-    deep_to_http_context(Deep, HTTPContext),
+    FormatInfo = init_format_info(Deep, Prefs),
     StyleControlMap0 = default_style_control_map,
-    map_join_html(item_to_html("<div>\n", "</div>\n", HTTPContext),
-        StyleControlMap0, StyleControlMap1, Items, ItemsHTML),
-
-    ColourScheme = Prefs ^ pref_colour,
-    (
-        ColourScheme = colour_column_groups,
-        StyleControlMap = StyleControlMap1
-    ;
-        ColourScheme = colour_none,
-        % Ignore the updates in StyleControlMap1. This works as long as
-        % all such updates implement the colouring of column groups.
-        StyleControlMap = default_style_control_map
-    ),
-
+    map_join_html(item_to_html("<div>\n", "</div>\n", FormatInfo),
+        StyleControlMap0, StyleControlMap, Items, ItemsHTML),
     StyleHTML = css_style_html(StyleControlMap),
 
     HTML = doc_type_html ++
@@ -262,9 +246,10 @@ style_control_to_html(Control - StyleElementMap) = HTML :-
     StyleElements = map.to_assoc_list(StyleElementMap),
     ElementHTMLs = list.map(style_element_to_html, StyleElements),
     ElementsHTML = append_htmls(ElementHTMLs),
-    StartFragment = string.format("\t%s\n\t{\n", [s(ControlName)]),
-    EndFragment = "\t}\n",
-    HTML = wrap_tags(StartFragment, EndFragment, ElementsHTML).
+    StartFragmentHTML =
+        str_to_html(string.format("\t%s\n\t{\n", [s(ControlName)])),
+    EndFragmentHTML = str_to_html("\t}\n"),
+    HTML = StartFragmentHTML ++ ElementsHTML ++ EndFragmentHTML.
 
 :- func style_element_to_html(pair(style_element, string)) = html.
 
@@ -275,39 +260,49 @@ style_element_to_html(style_element(ElementName) - Value) =
 
     % Convert a display item into a HTML snippet.
     %
-:- pred item_to_html(string::in, string::in, http_context::in,
+:- pred item_to_html(string::in, string::in, format_info::in,
     style_control_map::in, style_control_map::out,
     display_item::in, html::out) is det.
 
-item_to_html(StartTag, EndTag, HTTPContext, !StyleControlMap, Item, HTML) :-
+item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
     (
-        Item = display_message(Message),
+        Item = display_heading(Message),
         HTML = wrap_tags(StartTag, EndTag,
             wrap_tags("<h3>", "</h3>\n", str_to_html(Message)))
     ;
-        Item = display_command_link(DeepLink),
+        Item = display_text(Message),
+        HTML = wrap_tags(StartTag, EndTag, str_to_html(Message))
+    ;
+        Item = display_paragraph_break,
+        HTML = str_to_html("<p>\n")
+    ;
+        Item = display_link(DeepLink),
         HTML = wrap_tags(StartTag, EndTag,
-            link_to_html(HTTPContext, DeepLink))
+            link_to_html(FormatInfo, DeepLink))
+    ;
+        Item = display_pseudo_link(PseudoLink),
+        HTML = wrap_tags(StartTag, EndTag,
+            pseudo_link_to_html(FormatInfo, PseudoLink))
     ;
         Item = display_table(Table),
-        table_to_html(HTTPContext, !StyleControlMap, Table, TableHTML),
+        table_to_html(FormatInfo, !StyleControlMap, Table, TableHTML),
         HTML = wrap_tags(StartTag, EndTag, TableHTML)
     ;
         Item = display_list(Class, MaybeTitle, Items),
         (
             MaybeTitle = yes(Title),
             TitleStartTag = "<span id=\"list_title\">",
-            TitleEndTag = "</span>",
+            TitleEndTag = "</span>\n",
             TitleHTML = wrap_tags(TitleStartTag, TitleEndTag,
                 str_to_html(Title)),
             (
-                Class = list_class_vertical_bullets,
+                Class = list_class_horizontal,
                 PostTitleHTML = empty_html
             ;
-                ( Class = list_class_horizontal
+                ( Class = list_class_vertical_bullets
                 ; Class = list_class_vertical_no_bullets
                 ),
-                PostTitleHTML = str_to_html("<br>")
+                PostTitleHTML = str_to_html("<br>\n")
             )
         ;
             MaybeTitle = no,
@@ -316,9 +311,9 @@ item_to_html(StartTag, EndTag, HTTPContext, !StyleControlMap, Item, HTML) :-
         ),
         (
             Class = list_class_vertical_bullets,
-            OutsideStartTag = "<ul>",
+            OutsideStartTag = "<ul>\n",
             OutsideEndTag = "</ul>\n",
-            InnerStartTag = "<li>",
+            InnerStartTag = "<li>\n",
             InnerEndTag = "</li>\n",
             Separator = empty_html
         ;
@@ -334,10 +329,10 @@ item_to_html(StartTag, EndTag, HTTPContext, !StyleControlMap, Item, HTML) :-
             OutsideEndTag = "\n",
             InnerStartTag = "",
             InnerEndTag = "\n",
-            Separator = str_to_html(" ")
+            Separator = str_to_html("")
         ),
         sep_map_join_html(Separator,
-            item_to_html(InnerStartTag, InnerEndTag, HTTPContext),
+            item_to_html(InnerStartTag, InnerEndTag, FormatInfo),
             !StyleControlMap, Items, InnerItemsHTML),
         ItemsHTML = wrap_tags(OutsideStartTag, OutsideEndTag, InnerItemsHTML),
         HTML = wrap_tags(StartTag, EndTag,
@@ -363,25 +358,25 @@ item_to_html(StartTag, EndTag, HTTPContext, !StyleControlMap, Item, HTML) :-
 
     % Create a HTML table entity from the given table description.
     %
-:- pred table_to_html(http_context::in,
+:- pred table_to_html(format_info::in,
     style_control_map::in, style_control_map::out,
     table::in, html::out) is det.
 
-table_to_html(HTTPContext, !StyleControlMap, Table, HTML) :-
+table_to_html(FormatInfo, !StyleControlMap, Table, HTML) :-
     Table = table(Class, NumColumns, MaybeHeader, BodyRows),
 
-    ClassStr = table_class_to_string(Class),
+    ClassStr = table_class_to_string(FormatInfo, Class),
     TableStartTag = "<table class=\"" ++ ClassStr ++ "\">\n",
     TableEndTag = "</table>\n",
 
     % Build a header row.
     (
         MaybeHeader = yes(table_header(THCells)),
-        list.foldl5(table_header_num_rows_and_classmap, THCells,
+        list.foldl6(table_header_num_rows_and_classmap(FormatInfo), THCells,
             one_header_row, THNumRows, 0, _, map.init, ClassMap,
-            0, _, !StyleControlMap),
+            0, _, set.init, _, !StyleControlMap),
         MaybeClassMap = yes(ClassMap),
-        map_join_html(table_header_group_to_html_row_1(HTTPContext, THNumRows),
+        map_join_html(table_header_group_to_html_row_1(FormatInfo, THNumRows),
             !StyleControlMap, THCells, InnerHeaderRowOneHTML),
         HeaderRowOneHTML =
             wrap_tags("<tr>", "</tr>\n", InnerHeaderRowOneHTML),
@@ -390,7 +385,7 @@ table_to_html(HTTPContext, !StyleControlMap, Table, HTML) :-
             HeaderRowTwoHTML = empty_html
         ;
             THNumRows = two_header_rows,
-            map_join_html(table_header_group_to_html_row_2(HTTPContext),
+            map_join_html(table_header_group_to_html_row_2(FormatInfo),
                 !StyleControlMap, THCells, InnerHeaderRowTwoHTML),
             HeaderRowTwoHTML =
                 wrap_tags("<tr>", "</tr>\n", InnerHeaderRowTwoHTML)
@@ -407,7 +402,7 @@ table_to_html(HTTPContext, !StyleControlMap, Table, HTML) :-
     ),
 
     % Build the table rows.
-    map_join_html(table_row_to_html(HTTPContext, MaybeClassMap, NumColumns),
+    map_join_html(table_row_to_html(FormatInfo, MaybeClassMap, NumColumns),
         !StyleControlMap, BodyRows, BodyRowsHTML),
 
     % Construct the table.
@@ -417,11 +412,11 @@ table_to_html(HTTPContext, !StyleControlMap, Table, HTML) :-
 
     % Return the HTML entity for a table header cell.
     %
-:- pred table_header_group_to_html_row_1(http_context::in,
+:- pred table_header_group_to_html_row_1(format_info::in,
     table_header_rows::in, style_control_map::in, style_control_map::out,
     table_header_group::in, html::out) is det.
 
-table_header_group_to_html_row_1(HTTPContext, HeaderNumRows, !StyleControlMap,
+table_header_group_to_html_row_1(FormatInfo, HeaderNumRows, !StyleControlMap,
         HeaderGroup, HTML) :-
     HeaderGroup = table_header_group(Titles, ColumnClass, _SetStyle),
     (
@@ -434,7 +429,7 @@ table_header_group_to_html_row_1(HTTPContext, HeaderNumRows, !StyleControlMap,
             RowSpan = "2"
         ),
         ColumnSpan = "1",
-        ContentsHTML = table_data_to_html(HTTPContext, Title)
+        ContentsHTML = table_data_to_html(FormatInfo, Title)
     ;
         Titles = table_header_group_multi(MainTitle, SubTitleCells),
         RowSpan = "1",
@@ -452,11 +447,11 @@ table_header_group_to_html_row_1(HTTPContext, HeaderNumRows, !StyleControlMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred table_header_group_to_html_row_2(http_context::in,
+:- pred table_header_group_to_html_row_2(format_info::in,
     style_control_map::in, style_control_map::out,
     table_header_group::in, html::out) is det.
 
-table_header_group_to_html_row_2(HTTPContext, !StyleControlMap,
+table_header_group_to_html_row_2(FormatInfo, !StyleControlMap,
         HeaderGroup, HTML) :-
     HeaderGroup = table_header_group(Titles, ColumnClass, _SetStyle),
     (
@@ -464,20 +459,20 @@ table_header_group_to_html_row_2(HTTPContext, !StyleControlMap,
         HTML = empty_html
     ;
         Titles = table_header_group_multi(_, SubTitleCells),
-        map_join_html(table_data_to_th_html(HTTPContext, ColumnClass),
+        map_join_html(table_data_to_th_html(FormatInfo, ColumnClass),
             !StyleControlMap, SubTitleCells, HTML)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred table_data_to_th_html(http_context::in, table_column_class::in,
+:- pred table_data_to_th_html(format_info::in, table_column_class::in,
     style_control_map::in, style_control_map::out,
     table_data::in, html::out) is det.
 
-table_data_to_th_html(HTTPContext, ColumnClass, !StyleControlMap,
+table_data_to_th_html(FormatInfo, ColumnClass, !StyleControlMap,
         TableData, HTML) :-
     ColumnClassStr = table_column_class_to_string(ColumnClass),
-    TableDataHTML = table_data_to_html(HTTPContext, TableData),
+    TableDataHTML = table_data_to_html(FormatInfo, TableData),
     StartTag = string.format("<th class=\"%s\">", [s(ColumnClassStr)]),
     EndTag = "</th>\n",
     HTML = wrap_tags(StartTag, EndTag, TableDataHTML).
@@ -488,16 +483,18 @@ table_data_to_th_html(HTTPContext, ColumnClass, !StyleControlMap,
     % from column numbers to classes. Update the style control map for
     % table header groups that specify table_set_style.
     %
-    % This should be used with list.foldl5.
+    % This should be used with list.foldl6.
     %
-:- pred table_header_num_rows_and_classmap(table_header_group::in,
-    table_header_rows::in, table_header_rows::out,
+:- pred table_header_num_rows_and_classmap(format_info::in,
+    table_header_group::in, table_header_rows::in, table_header_rows::out,
     int::in, int::out, column_class_map::in, column_class_map::out,
-    int::in, int::out, style_control_map::in, style_control_map::out) is det.
+    int::in, int::out, set(string)::in, set(string)::out,
+    style_control_map::in, style_control_map::out) is det.
 
-table_header_num_rows_and_classmap(HeaderGroup, !NumRows, !ColumnNumber,
-        !ClassMap, !HeaderGroupNumber, !StyleControlMap) :-
-    HeaderGroup = table_header_group(ColumnTitles, ColumnClass, SetStyle),
+table_header_num_rows_and_classmap(FormatInfo, HeaderGroup, !NumRows,
+        !ColumnNumber, !ClassMap, !HeaderGroupNumber, !ColouredClassStrs,
+        !StyleControlMap) :-
+    HeaderGroup = table_header_group(ColumnTitles, ColumnClass, MaybeColour),
     ColumnClassStr = table_column_class_to_string(ColumnClass),
     (
         ColumnTitles = table_header_group_single(_),
@@ -511,15 +508,24 @@ table_header_num_rows_and_classmap(HeaderGroup, !NumRows, !ColumnNumber,
         int.fold_up(insert_column_into_classmap(ColumnClassStr),
             !.ColumnNumber, !.ColumnNumber + NumSubCols - 1, !ClassMap)
     ),
+    !:ColumnNumber = !.ColumnNumber + NumSubCols,
     (
-        SetStyle = table_do_not_set_style
+        MaybeColour = column_do_not_colour,
+        Colour = do_not_colour_column_groups
     ;
-        SetStyle = table_set_style,
-        update_style_control_map(ColumnClass, !.HeaderGroupNumber,
-            !StyleControlMap),
-        !:HeaderGroupNumber = !.HeaderGroupNumber + 1
+        MaybeColour = column_colour,
+        Colour = colour_column_groups
+    ;
+        MaybeColour = column_colour_if_pref,
+        Colour = FormatInfo ^ fi_pref_colour_scheme
     ),
-    !:ColumnNumber = !.ColumnNumber + NumSubCols.
+    (
+        Colour = do_not_colour_column_groups
+    ;
+        Colour = colour_column_groups,
+        update_style_control_map(ColumnClassStr, !HeaderGroupNumber,
+            !ColouredClassStrs, !StyleControlMap)
+    ).
 
 :- pred insert_column_into_classmap(string::in, int::in,
     column_class_map::in, column_class_map::out) is det.
@@ -527,70 +533,84 @@ table_header_num_rows_and_classmap(HeaderGroup, !NumRows, !ColumnNumber,
 insert_column_into_classmap(Value, Key, !Map) :-
     svmap.det_insert(Key, Value, !Map).
 
-:- pred update_style_control_map(table_column_class::in, int::in,
+:- pred update_style_control_map(string::in, int::in, int::out,
+    set(string)::in, set(string)::out,
     style_control_map::in, style_control_map::out) is det.
 
-update_style_control_map(ColumnClass, HeaderGroupNumber, !StyleControlMap) :-
-    ColumnClassStr = table_column_class_to_string(ColumnClass),
+update_style_control_map(ColumnClassStr, !HeaderGroupNumber,
+        !ColouredClassStrs, !StyleControlMap) :-
     StyleControl = style_control("td." ++ ColumnClassStr),
     StyleElement = style_element("background"),
-    ( HeaderGroupNumber /\ 1 = 0 ->
+    ( !.HeaderGroupNumber /\ 1 = 0 ->
         Colour = "LightGrey"
     ;
         Colour = "White"
+    ),
+    ( set.member(ColumnClassStr, !.ColouredClassStrs) ->
+        error("update_style_control_map: repeated table_column_class")
+    ;
+        set.insert(!.ColouredClassStrs, ColumnClassStr, !:ColouredClassStrs)
     ),
     ( map.search(!.StyleControlMap, StyleControl, StyleElementMap0) ->
         map.set(StyleElementMap0, StyleElement, Colour, StyleElementMap),
         svmap.det_update(StyleControl, StyleElementMap, !StyleControlMap)
     ;
-        map.det_insert(map.init, StyleElement, Colour, StyleElementMap),
+        map.init(StyleElementMap0),
+        map.set(StyleElementMap0, StyleElement, Colour, StyleElementMap),
         svmap.det_insert(StyleControl, StyleElementMap, !StyleControlMap)
-    ).
+    ),
+    !:HeaderGroupNumber = !.HeaderGroupNumber + 1.
 
 %-----------------------------------------------------------------------------%
 
     % Build a row of a HTML table from the table_row type.
     %
-:- pred table_row_to_html(http_context::in, maybe(column_class_map)::in,
+:- pred table_row_to_html(format_info::in, maybe(column_class_map)::in,
     int::in, style_control_map::in, style_control_map::out,
     table_row::in, html::out) is det.
 
-table_row_to_html(HTTPContext, MaybeColClassMap, NumColumns, !StyleControlMap,
+table_row_to_html(FormatInfo, MaybeColClassMap, NumColumns, !StyleControlMap,
         TableRow, HTML) :-
     (
         TableRow = table_section_header(Contents),
-        ContentsHTML = table_data_to_html(HTTPContext, Contents),
+        ContentsHTML = table_data_to_html(FormatInfo, Contents),
         StartTag = string.format("<tr><td colspan=\"%d\">", [i(NumColumns)]),
         EndTag = "</td></tr>\n",
         HTML = wrap_tags(StartTag, EndTag, ContentsHTML)
     ;
+        TableRow = table_separator_row,
+        Str = string.format("<tr><td colspan=\"%d\"></td></tr>\n",
+            [i(NumColumns)]),
+        HTML = str_to_html(Str)
+    ;
         TableRow = table_row(Cells),
-        map_join_html_count(table_cell_to_html(HTTPContext, MaybeColClassMap),
+        map_join_html_count(table_cell_to_html(FormatInfo, MaybeColClassMap),
             !StyleControlMap, 0, Cells, InnerHTML),
         HTML = wrap_tags("<tr>", "</tr>\n", InnerHTML)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred table_cell_to_html(http_context::in, maybe(column_class_map)::in,
+:- pred table_cell_to_html(format_info::in, maybe(column_class_map)::in,
     style_control_map::in, style_control_map::out,
-    int::in, table_cell::in, html::out) is det.
+    int::in, int::out, table_cell::in, html::out) is det.
 
-table_cell_to_html(HTTPContext, MaybeClassMap, !StyleControlMap, ColumnNum,
+table_cell_to_html(FormatInfo, MaybeClassMap, !StyleControlMap, !ColumnNum,
         Cell, HTML) :-
     (
         Cell = table_empty_cell,
+        !:ColumnNum = !.ColumnNum + 1,
         HTML = str_to_html("<td/>")
     ;
-        Cell = table_cell(CellData),
+        Cell = table_cell(CellData, Span),
         (
             MaybeClassMap = yes(ClassMap),
-            ( map.search(ClassMap, ColumnNum, ColumnClassStrPrime) ->
+            ( map.search(ClassMap, !.ColumnNum, ColumnClassStrPrime) ->
                 ColumnClassStr = ColumnClassStrPrime
             ;
                 Msg = string.format(
                     "Class map had no class for col %d, check table structure",
-                    [i(ColumnNum)]),
+                    [i(!.ColumnNum)]),
                 error(Msg)
             )
         ;
@@ -602,22 +622,29 @@ table_cell_to_html(HTTPContext, MaybeClassMap, !StyleControlMap, ColumnNum,
             ),
             ColumnClassStr = table_column_class_to_string(ColumnClass)
         ),
-        CellHTML = table_data_to_html(HTTPContext, CellData),
-        StartTag = string.format("<td class=\"%s\">", [s(ColumnClassStr)]),
+        CellHTML = table_data_to_html(FormatInfo, CellData),
+        ( Span = 1 ->
+            SpanStr = ""
+        ;
+            SpanStr = string.format("colspan=%d ", [i(Span)])
+        ),
+        !:ColumnNum = !.ColumnNum + Span,
+        StartTag = string.format("<td %sclass=\"%s\">",
+            [s(SpanStr), s(ColumnClassStr)]),
         EndTag = "</td>\n",
         HTML = wrap_tags(StartTag, EndTag, CellHTML)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- func table_data_to_html(http_context, table_data) = html.
+:- func table_data_to_html(format_info, table_data) = html.
 
 table_data_to_html(_, td_f(Float)) =
     str_to_html(two_decimal_fraction(Float)).
 table_data_to_html(_, td_i(Int)) =
     str_to_html(commas(Int)).
-table_data_to_html(HTTPContext, td_l(Link)) =
-    link_to_html(HTTPContext, Link).
+table_data_to_html(FormatInfo, td_l(Link)) =
+    link_to_html(FormatInfo, Link).
 table_data_to_html(_, td_m(Mem, Units, Decimals)) =
     str_to_html(format_memory(Mem, Units, Decimals)).
 table_data_to_html(_, td_p(Percent)) =
@@ -654,13 +681,31 @@ table_column_class_to_string(table_column_class_number) = "number".
 table_column_class_to_string(table_column_class_ordinal_rank) = "ordinal_rank".
 table_column_class_to_string(table_column_class_port_counts) = "port_counts".
 table_column_class_to_string(table_column_class_proc) = "proc".
+table_column_class_to_string(table_column_class_source_context) =
+    "source_context".
 table_column_class_to_string(table_column_class_ticks_and_times) =
     "ticks_and_times".
 
-:- func table_class_to_string(table_class) = string.
+:- func table_class_to_string(format_info, table_class) = string.
 
-table_class_to_string(table_class_plain) = "plain".
-table_class_to_string(table_class_boxed) = "boxed".
+table_class_to_string(FormatInfo, Class) = ClassStr :-
+    (
+        Class = table_class_do_not_box,
+        ClassStr = "plain"
+    ;
+        Class = table_class_box,
+        ClassStr = "boxed"
+    ;
+        Class = table_class_box_if_pref,
+        BoxPrefs = FormatInfo ^ fi_pref_box,
+        (
+            BoxPrefs = do_not_box_tables,
+            ClassStr = "plain"
+        ;
+            BoxPrefs = box_tables,
+            ClassStr = "boxed"
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -725,6 +770,11 @@ default_style_control_map =
                 style_element("text-align")     - "left"
             ])
         ),
+        ( style_control("td.source_context") -
+            map.from_assoc_list([
+                style_element("text-align")     - "left"
+            ])
+        ),
         ( style_control("td.ticks_and_times") -
             map.from_assoc_list([
                 style_element("text-align")     - "right"
@@ -766,25 +816,13 @@ default_style_control_map =
 
 %-----------------------------------------------------------------------------%
 
-    % Information about the HTTP session. This is used to create HTTP links
-    % below.
-    %
-:- type http_context
-    --->    http_context(
-                server_name_port    :: string,
-                script_name         :: string,
-                deep_file           :: string
-            ).
-
-%-----------------------------------------------------------------------------%
-
     % Transform a deep link into HTML.
     %
-:- func link_to_html(http_context, deep_link) = html.
+:- func link_to_html(format_info, deep_link) = html.
 
-link_to_html(HTTPContext, Link) = HTML :-
+link_to_html(FormatInfo, Link) = HTML :-
     Link = deep_link(Cmd, MaybePrefs, Label, Class),
-    deep_cmd_to_url(HTTPContext, Cmd, MaybePrefs, URL),
+    deep_cmd_to_url(FormatInfo, Cmd, MaybePrefs, URL),
     (
         Class = link_class_control,
         FormatString = "<a class=\"control\" href=\"%s\">[%s]</a>"
@@ -796,26 +834,58 @@ link_to_html(HTTPContext, Link) = HTML :-
         [s(URL), s(escape_break_html_string(Label))], HTMLStr),
     HTML = str_to_html(HTMLStr).
 
+    % Transform a pseudo link into HTML.
+    % We should follow the same logic for decoration as link_to_html.
+    %
+:- func pseudo_link_to_html(format_info, pseudo_link) = html.
+
+pseudo_link_to_html(_FormatInfo, PseudoLink) = HTML :-
+    PseudoLink = pseudo_link(Label, Class),
+    (
+        Class = link_class_control,
+        FormatString = "[%s]"
+    ;
+        Class = link_class_link,
+        FormatString = "%s"
+    ),
+    string.format(FormatString,
+        [s(escape_break_html_string(Label))], HTMLStr),
+    HTML = str_to_html(HTMLStr).
+
 %-----------------------------------------------------------------------------%
 
-:- pred deep_to_http_context(deep::in, http_context::out) is det.
+    % The information we need to create various parts of the HTML.
+    %
+:- type format_info
+    --->    format_info(
+                % Information about preferences.
+                fi_pref_colour_scheme   :: colour_column_groups,
+                fi_pref_box             :: box_tables,
 
-deep_to_http_context(Deep, HTTPContext) :-
-    HTTPContext ^ server_name_port = Deep ^ server_name_port,
-    HTTPContext ^ script_name = Deep ^ script_name,
-    HTTPContext ^ deep_file = Deep ^ data_file_name.
+                % Information about the current HTTP session, which we use
+                % to create links.
+                fi_server_name_port     :: string,
+                fi_script_name          :: string,
+                fi_deep_file            :: string
+            ).
+
+:- func init_format_info(deep, preferences) = format_info.
+
+init_format_info(Deep, Prefs) = FormatInfo :-
+    FormatInfo = format_info(Prefs ^ pref_colour, Prefs ^ pref_box,
+        Deep ^ server_name_port, Deep ^ script_name, Deep ^ data_file_name).
 
 %-----------------------------------------------------------------------------%
 
     % Return a URL for the deep structure and command.
     %
-:- pred deep_cmd_to_url(http_context::in, cmd::in, maybe(preferences)::in,
+:- pred deep_cmd_to_url(format_info::in, cmd::in, maybe(preferences)::in,
     string::out) is det.
 
-deep_cmd_to_url(HTTPContext, Cmd, MaybePrefs, URL) :-
-    HostAndPort = HTTPContext ^ server_name_port,
-    Script = HTTPContext ^ script_name,
-    DataFile = HTTPContext ^ deep_file,
+deep_cmd_to_url(FormatInfo, Cmd, MaybePrefs, URL) :-
+    HostAndPort = FormatInfo ^ fi_server_name_port,
+    Script = FormatInfo ^ fi_script_name,
+    DataFile = FormatInfo ^ fi_deep_file,
     CmdStr = cmd_to_string(Cmd),
     (
         MaybePrefs = no,
@@ -833,6 +903,9 @@ deep_cmd_to_url(HTTPContext, Cmd, MaybePrefs, URL) :-
 %
 % Generic HTML helper predicates.
 %
+
+html_to_string(HTML) = Str :-
+    string.append_list(cord.list(HTML), Str).
 
 :- func append_htmls(list(html)) = html.
 
@@ -900,45 +973,45 @@ sep_map_join_html_acc(Separator, MapPred, !StyleControlMap, [Head | Tail],
     % N is the ordinal number of the element in the list.
     %
 :- pred map_join_html_count(
-    pred(style_control_map, style_control_map, int, A, html)::
-        in(pred(in, out, in, in, out) is det),
+    pred(style_control_map, style_control_map, int, int, A, html)::
+        in(pred(in, out, in, out, in, out) is det),
     style_control_map::in, style_control_map::out,
     int::in, list(A)::in, html::out) is det.
 
-map_join_html_count(MapPred, !StyleControlMap, N, List, HTML) :-
-    sep_map_join_html_count(empty_html, MapPred, !StyleControlMap, N, List,
-        HTML).
+map_join_html_count(MapPred, !StyleControlMap, !.ColumnNum, List, HTML) :-
+    sep_map_join_html_count(empty_html, MapPred, !StyleControlMap, !.ColumnNum,
+        List, HTML).
 
     % For each A, MapPred(!StyleControlMap, N, A, S), and concatenate all Ss
     % after putting Separator between them.
     % N is the ordinal number of the element in the list.
     %
 :- pred sep_map_join_html_count(html::in,
-    pred(style_control_map, style_control_map, int, A, html)::
-        in(pred(in, out, in, in, out) is det),
+    pred(style_control_map, style_control_map, int, int, A, html)::
+        in(pred(in, out, in, out, in, out) is det),
     style_control_map::in, style_control_map::out,
     int::in, list(A)::in, html::out) is det.
 
 sep_map_join_html_count(_, _, !StyleControlMap, _, [], empty_html).
-sep_map_join_html_count(Separator, MapPred, !StyleControlMap, N,
+sep_map_join_html_count(Separator, MapPred, !StyleControlMap, !.ColumnNum,
         [Head | Tail], HTML) :-
-    MapPred(!StyleControlMap, N, Head, HeadHTML),
-    sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap, N + 1,
-        Tail, HeadHTML, HTML).
+    MapPred(!StyleControlMap, !ColumnNum, Head, HeadHTML),
+    sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap,
+        !.ColumnNum, Tail, HeadHTML, HTML).
 
 :- pred sep_map_join_html_count_acc(html::in,
-    pred(style_control_map, style_control_map, int, A, html)::
-        in(pred(in, out, in, in, out) is det),
+    pred(style_control_map, style_control_map, int, int, A, html)::
+        in(pred(in, out, in, out, in, out) is det),
     style_control_map::in, style_control_map::out,
     int::in, list(A)::in, html::in, html::out) is det.
 
 sep_map_join_html_count_acc(_, _, !StyleControlMap, _, [], !HTML).
-sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap, N,
+sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap, !.ColumnNum,
         [Head | Tail], !HTML) :-
-    MapPred(!StyleControlMap, N, Head, HeadHTML),
+    MapPred(!StyleControlMap, !ColumnNum, Head, HeadHTML),
     !:HTML = !.HTML ++ Separator ++ HeadHTML,
-    sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap, N + 1,
-        Tail, !HTML).
+    sep_map_join_html_count_acc(Separator, MapPred, !StyleControlMap,
+        !.ColumnNum, Tail, !HTML).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1047,7 +1120,7 @@ select_colgroup_background(Pref, N) = HTML :-
         ),
         string.format("background: %s", [s(Background)], HTML)
     ;
-        Pref ^ pref_colour = colour_none,
+        Pref ^ pref_colour = do_not_colour_column_groups,
         HTML = ""
     ).
 
@@ -1063,10 +1136,10 @@ odd_background =  "rgb(240, 240, 255)".
 
 table_start(Pref) = HTML :-
     (
-        Pref ^ pref_box = nobox,
+        Pref ^ pref_box = do_not_box_tables,
         HTML = "\n<TABLE width=100%>\n"
     ;
-        Pref ^ pref_box = box,
+        Pref ^ pref_box = box_tables,
         HTML = "\n<TABLE width=100% border=1>\n"
     ).
 
@@ -1495,12 +1568,12 @@ footer_ancestor_toggle(Cmd, Pref, Deep) = HTML :-
 
 footer_box_toggle(Cmd, Pref, Deep) = HTML :-
     (
-        Pref ^ pref_box = nobox,
-        Pref1 = Pref ^ pref_box := box,
+        Pref ^ pref_box = do_not_box_tables,
+        Pref1 = Pref ^ pref_box := box_tables,
         Msg1 = "[Box]"
     ;
-        Pref ^ pref_box = box,
-        Pref1 = Pref ^ pref_box := nobox,
+        Pref ^ pref_box = box_tables,
+        Pref1 = Pref ^ pref_box := do_not_box_tables,
         Msg1 = "[Unbox]"
     ),
     HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -1510,12 +1583,12 @@ footer_box_toggle(Cmd, Pref, Deep) = HTML :-
 
 footer_colour_toggle(Cmd, Pref, Deep) = HTML :-
     (
-        Pref ^ pref_colour = colour_none,
+        Pref ^ pref_colour = do_not_colour_column_groups,
         Pref1 = Pref ^ pref_colour := colour_column_groups,
         Msg1 = "[Colour column groups]"
     ;
         Pref ^ pref_colour = colour_column_groups,
-        Pref1 = Pref ^ pref_colour := colour_none,
+        Pref1 = Pref ^ pref_colour := do_not_colour_column_groups,
         Msg1 = "[Fade column groups]"
     ),
     HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -1526,10 +1599,10 @@ footer_colour_toggle(Cmd, Pref, Deep) = HTML :-
 footer_summarize_toggle(Cmd, Pref, Deep) = HTML :-
     (
         Pref ^ pref_summarize = summarize,
-        Pref1 = Pref ^ pref_summarize := dont_summarize,
+        Pref1 = Pref ^ pref_summarize := do_not_summarize,
         Msg1 = "[Expand higher order calls]"
     ;
-        Pref ^ pref_summarize = dont_summarize,
+        Pref ^ pref_summarize = do_not_summarize,
         Pref1 = Pref ^ pref_summarize := summarize,
         Msg1 = "[Summarize higher order calls]"
     ),

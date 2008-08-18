@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,12 +40,10 @@
 :- import_module profile.
 
 :- import_module int.
+:- import_module io.
 :- import_module set.
+:- import_module string.
 :- import_module svarray.
-
-% :- import_module io.
-% :- import_module require.
-% :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -112,15 +110,15 @@ add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, !Graph) :-
 :- pred add_csd_arcs(initial_deep::in, int::in, call_site_dynamic_ptr::in,
     graph::in, graph::out) is det.
 
-% :- pragma promise_pure(add_csd_arcs/5).
-
 add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
     ( CSDI > 0 ->
         array.lookup(InitDeep ^ init_call_site_dynamics, CSDI, CSD),
         ToPDPtr = CSD ^ csd_callee,
         ToPDPtr = proc_dynamic_ptr(ToPDI),
-        % impure unsafe_perform_io(write_arc(FromPDI, ToPDI, CSDI)),
+        trace [compiletime(flag("add_csd_arcs")), io(!IO)] (
+            write_arc(FromPDI, ToPDI, CSDI, !IO)
+        ),
         add_arc(!.Graph, FromPDI, ToPDI, !:Graph)
     ;
         true
@@ -148,7 +146,9 @@ index_clique(CliqueNum, CliqueMembers, !CliqueIndex) :-
 
 index_clique_member(CliqueNum, PDPtr, !CliqueIndex) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    % impure unsafe_perform_io(write_pdi_cn(PDI, CliqueNum)),
+    trace [compiletime(flag("index_clique_member")), io(!IO)] (
+        write_pdi_cn(PDI, CliqueNum, !IO)
+    ),
     svarray.set(PDI, clique_ptr(CliqueNum), !CliqueIndex).
 
 %-----------------------------------------------------------------------------%
@@ -156,23 +156,21 @@ index_clique_member(CliqueNum, PDPtr, !CliqueIndex) :-
 % Predicates for use in debugging.
 %
 
-% :- pred write_arc(int::in, int::in, int::in, io::di, io::uo)
-%   is det.
-%
-% write_arc(FromPDI, ToPDI, CSDI, !IO) :-
-%   io.format("arc from pd %d to pd %d through csd %d\n",
-%       [i(FromPDI), i(ToPDI), i(CSDI)], !IO).
-%
-% :- pred write_pdi_cn(int::in, int::in, io::di, io::uo) is det.
-%
-% write_pdi_cn(PDI, CN, !IO) :-
-%   io.write_string("pdi ", !IO),
-%   io.write_int(PDI, !IO),
-%   io.write_string(" -> clique ", !IO),
-%   io.write_int(CN, !IO),
-%   io.nl(!IO),
-%   io.flush_output(!IO).
-%
+:- pred write_arc(int::in, int::in, int::in, io::di, io::uo) is det.
+
+write_arc(FromPDI, ToPDI, CSDI, !IO) :-
+    io.format("arc from pd %d to pd %d through csd %d\n",
+        [i(FromPDI), i(ToPDI), i(CSDI)], !IO).
+
+:- pred write_pdi_cn(int::in, int::in, io::di, io::uo) is det.
+
+write_pdi_cn(PDI, CN, !IO) :-
+    io.write_string("pdi ", !IO),
+    io.write_int(PDI, !IO),
+    io.write_string(" -> clique ", !IO),
+    io.write_int(CN, !IO),
+    io.nl(!IO),
+    io.flush_output(!IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module callgraph.

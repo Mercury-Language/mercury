@@ -112,10 +112,10 @@
                 pref_fields         :: fields,
 
                 % Whether displays should be boxed.
-                pref_box            :: box,
+                pref_box            :: box_tables,
 
                 % What principle governs colours.
-                pref_colour         :: colour_scheme,
+                pref_colour         :: colour_column_groups,
 
                 % The max number of ancestors to display.
                 pref_anc            :: maybe(int),
@@ -173,17 +173,17 @@
                 memory_fields   :: memory_fields
             ).
 
-:- type box
-    --->    box
-    ;       nobox.
+:- type box_tables
+    --->    box_tables
+    ;       do_not_box_tables.
 
-:- type colour_scheme
+:- type colour_column_groups
     --->    colour_column_groups
-    ;       colour_none.
+    ;       do_not_colour_column_groups.
 
 :- type summarize
     --->    summarize
-    ;       dont_summarize.
+    ;       do_not_summarize.
 
 :- type order_criteria
     --->    by_context
@@ -229,8 +229,8 @@
 
 :- func default_fields(deep) = fields.
 :- func all_fields = fields.
-:- func default_box = box.
-:- func default_colour_scheme = colour_scheme.
+:- func default_box_tables = box_tables.
+:- func default_colour_column_groups = colour_column_groups.
 :- func default_ancestor_limit = maybe(int).
 :- func default_summarize = summarize.
 :- func default_order_criteria = order_criteria.
@@ -271,12 +271,13 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module math.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module univ.
 :- import_module unit.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 
@@ -288,10 +289,23 @@ try_exec(Cmd, Pref, Deep, HTML, !IO) :-
         Result = exception(Exception),
         ( univ_to_type(Exception, MsgPrime) ->
             Msg = MsgPrime
-        ; univ_to_type(Exception, software_error(MsgPrime)) ->
-            Msg = MsgPrime
+        ; univ_to_type(Exception, software_error(ErrorMsg)) ->
+            Msg = "internal software error: " ++ ErrorMsg
+        ; univ_to_type(Exception, domain_error(DomainMsg)) ->
+            Msg = "domain error: " ++ DomainMsg
         ;
-            Msg = "unknown exception"
+            Msg = "unknown exception",
+            trace [compile_time(flag("query_exception")), io(!DebugIO)] (
+                io.open_output("/tmp/deep_profiler_exception_debug",
+                    DebugResult, !DebugIO),
+                (
+                    DebugResult = ok(DebugStream),
+                    io.write(DebugStream, Exception, !DebugIO),
+                    io.close_output(DebugStream, !DebugIO)
+                ;
+                    DebugResult = error(_)
+                )
+            )
         ),
         HTML = string.format("<H3>AN EXCEPTION HAS OCCURRED: %s</H3>\n",
             [s(Msg)])
@@ -301,63 +315,88 @@ try_exec(Cmd, Pref, Deep, HTML, !IO) :-
     io::di, io::uo) is det.
 
 exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
-    ( Cmd = deep_cmd_quit
-    ; Cmd = deep_cmd_timeout(_)
-    ; Cmd = deep_cmd_restart
-    ; Cmd = deep_cmd_menu
-    ; Cmd = deep_cmd_top_procs(_, _, _, _)
-    ; Cmd = deep_cmd_proc_static(_)
-    ; Cmd = deep_cmd_proc_dynamic(_)
-    ; Cmd = deep_cmd_call_site_static(_)
-    ; Cmd = deep_cmd_call_site_dynamic(_)
-    ),
-    create_report(Cmd, Deep, Report),
-    Display = report_to_display(Deep, Prefs, Report),
-    HTML = htmlize_display(Deep, Prefs, Display),
-    HTMLStr = html_to_string(HTML).
-
-% Old deep profiler cgi code.  This should remain supported until all the deep
-% profiler reports have been updated to use the data structures in report.m.
-
-%exec(Cmd, Pref, Deep, HTML, !IO) :-
-%    Cmd = deep_cmd_menu,
-%    HTML = generate_menu_page(Cmd, Pref, Deep).
-%exec(Cmd, Pref, Deep, HTML, !IO) :-
-%    Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
-%    HTML = generate_top_procs_page(Cmd, Limit, CostKind, InclDesc, Scope,
-%        Pref, Deep).
-% exec(deep_cmd_proc_static(PSI), _Pref, Deep, HTML, !IO) :-
-%     HTML = generate_proc_static_debug_page(PSI, Deep).
-% exec(deep_cmd_proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
-%     HTML = generate_proc_dynamic_debug_page(PDI, Deep).
-% exec(deep_cmd_call_site_static(CSSI), _Pref, Deep, HTML, !IO) :-
-%     HTML = generate_call_site_static_debug_page(CSSI, Deep).
-% exec(deep_cmd_call_site_dynamic(CSDI), _Pref, Deep, HTML, !IO) :-
-%     HTML = generate_call_site_dynamic_debug_page(CSDI, Deep).
-
-exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = deep_cmd_root(MaybePercent),
-    deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
-    RootCliquePtr = clique_ptr(RootCliqueNum),
+    % XXX While we are working on converting the deep profiler to use
+    % the new report structures, we can use the presence or absence
+    % of this file to tell mdprof_cgi which method we want to use at the
+    % moment. Being able to switch quickly between pages generated by the
+    % old and the new methods makes debugging easier.
+    io.open_input("/tmp/old_deep_profiler", OpenResult, !IO),
     (
-        MaybePercent = yes(Percent),
-        HTML = chase_the_action(Cmd, RootCliqueNum, Pref, Deep, Percent)
+        OpenResult = ok(Stream),
+        FileExists = yes,
+        io.close_input(Stream, !IO)
     ;
-        MaybePercent = no,
-        generate_clique_page(Cmd, RootCliqueNum, Pref, Deep, HTML, 100, _)
-    ).
-exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = deep_cmd_clique(CliqueNum),
-    CliquePtr = clique_ptr(CliqueNum),
-    ( valid_clique_ptr(Deep, CliquePtr) ->
-        generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML, 100, _)
+        OpenResult = error(_),
+        FileExists = no
+    ),
+    (
+        ( Cmd = deep_cmd_quit
+        ; Cmd = deep_cmd_restart
+        ; Cmd = deep_cmd_timeout(_)
+        ; Cmd = deep_cmd_menu
+        ; Cmd = deep_cmd_top_procs(_, _, _, _)
+        ; Cmd = deep_cmd_proc(_)
+        ; Cmd = deep_cmd_proc_static(_)
+        ; Cmd = deep_cmd_proc_dynamic(_)
+        ; Cmd = deep_cmd_call_site_static(_)
+        ; Cmd = deep_cmd_call_site_dynamic(_)
+        ),
+        (
+            FileExists = yes,
+            old_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
+        ;
+            FileExists = no,
+            create_report(Cmd, Deep, Report),
+            Display = report_to_display(Deep, Prefs, Report),
+            HTML = htmlize_display(Deep, Prefs, Display),
+            HTMLStr = html_to_string(HTML)
+            % ZZZ
+            % io.write_string("<!--\n", !IO),
+            % io.write(Display, !IO),
+            % io.write_string("-->\n", !IO)
+        )
     ;
-        HTML =
-            page_banner(Cmd, Pref) ++
-            "There is no clique with that number.\n" ++
-            page_footer(Cmd, Pref, Deep)
+        ( Cmd = deep_cmd_root(_)
+        ; Cmd = deep_cmd_clique(_)
+        ; Cmd = deep_cmd_proc_callers(_, _, _)
+        ; Cmd = deep_cmd_modules
+        ; Cmd = deep_cmd_module(_)
+        ; Cmd = deep_cmd_raw_clique(_)
+        ),
+        old_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
     ).
-exec(Cmd, Pref, Deep, HTML, !IO) :-
+
+    % Old deep profiler cgi code.  This should remain supported until all cmds
+    % have been updated to use the data structures in report.m.
+    %
+:- pred old_exec(cmd::in, preferences::in, deep::in, string::out,
+    io::di, io::uo) is det.
+
+old_exec(deep_cmd_restart, _Pref, _Deep, _HTML, !IO) :-
+    % Our caller is supposed to filter out restart commands.
+    error("exec: found restart command").
+old_exec(deep_cmd_quit, _Pref, Deep, HTML, !IO) :-
+    HTML = string.format(
+        "<H3>Shutting down deep profile server for %s.</H3>\n",
+        [s(Deep ^ data_file_name)]).
+old_exec(deep_cmd_timeout(TimeOut), _Pref, _Deep, HTML, !IO) :-
+    HTML = string.format("<H3>Timeout set to %d minutes</H3>\n", [i(TimeOut)]).
+old_exec(Cmd, Pref, Deep, HTML, !IO) :-
+    Cmd = deep_cmd_menu,
+    HTML = generate_menu_page(Cmd, Pref, Deep).
+old_exec(Cmd, Pref, Deep, HTML, !IO) :-
+    Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
+    HTML = generate_top_procs_page(Cmd, Limit, CostKind, InclDesc, Scope,
+        Pref, Deep).
+old_exec(deep_cmd_proc_static(PSI), _Pref, Deep, HTML, !IO) :-
+    HTML = generate_proc_static_debug_page(PSI, Deep).
+old_exec(deep_cmd_proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
+    HTML = generate_proc_dynamic_debug_page(PDI, Deep).
+old_exec(deep_cmd_call_site_static(CSSI), _Pref, Deep, HTML, !IO) :-
+    HTML = generate_call_site_static_debug_page(CSSI, Deep).
+old_exec(deep_cmd_call_site_dynamic(CSDI), _Pref, Deep, HTML, !IO) :-
+    HTML = generate_call_site_dynamic_debug_page(CSDI, Deep).
+old_exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_proc(PSI),
     PSPtr = proc_static_ptr(PSI),
     ( valid_proc_static_ptr(Deep, PSPtr) ->
@@ -368,7 +407,29 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             "There is no procedure with that number.\n" ++
             page_footer(Cmd, Pref, Deep)
     ).
-exec(Cmd, Pref, Deep, HTML, !IO) :-
+old_exec(Cmd, Pref, Deep, HTML, !IO) :-
+    Cmd = deep_cmd_root(MaybePercent),
+    deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
+    RootCliquePtr = clique_ptr(RootCliqueNum),
+    (
+        MaybePercent = yes(Percent),
+        HTML = chase_the_action(Cmd, RootCliqueNum, Pref, Deep, Percent)
+    ;
+        MaybePercent = no,
+        generate_clique_page(Cmd, RootCliqueNum, Pref, Deep, HTML, 100, _)
+    ).
+old_exec(Cmd, Pref, Deep, HTML, !IO) :-
+    Cmd = deep_cmd_clique(CliqueNum),
+    CliquePtr = clique_ptr(CliqueNum),
+    ( valid_clique_ptr(Deep, CliquePtr) ->
+        generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML, 100, _)
+    ;
+        HTML =
+            page_banner(Cmd, Pref) ++
+            "There is no clique with that number.\n" ++
+            page_footer(Cmd, Pref, Deep)
+    ).
+old_exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_proc_callers(PSI, CallerGroups, BunchNum),
     PSPtr = proc_static_ptr(PSI),
     ( valid_proc_static_ptr(Deep, PSPtr) ->
@@ -380,10 +441,10 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             "There is no procedure with that number.\n" ++
             page_footer(Cmd, Pref, Deep)
     ).
-exec(Cmd, Pref, Deep, HTML, !IO) :-
+old_exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_modules,
     HTML = generate_modules_page(Cmd, Pref, Deep).
-exec(Cmd, Pref, Deep, HTML, !IO) :-
+old_exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_module(ModuleName),
     ( map.search(Deep ^ module_data, ModuleName, ModuleData) ->
         HTML = generate_module_page(Cmd, ModuleName, ModuleData, Pref, Deep)
@@ -393,7 +454,7 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             "There is no procedure with that number.\n" ++
             page_footer(Cmd, Pref, Deep)
     ).
-exec(deep_cmd_raw_clique(CI), _Pref, Deep, HTML, !IO) :-
+old_exec(deep_cmd_raw_clique(CI), _Pref, Deep, HTML, !IO) :-
     HTML = generate_clique_debug_page(CI, Deep).
 
 %-----------------------------------------------------------------------------%
@@ -786,9 +847,9 @@ generate_proc_page(Cmd, PSPtr, Pref, Deep) =
     io::di, io::uo) is det.
 
 generate_proc_callers_page(Cmd, PSPtr, CallerGroups, BunchNum, Pref, Deep,
-        HTML, IO0, IO) :-
+        HTML, !IO) :-
     proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum,
-        MaybePage, IO0, IO),
+        MaybePage, !IO),
     (
         MaybePage = ok({IdFields, Heading, CallersHTML, Toggles}),
         HTML =
@@ -1352,7 +1413,7 @@ multi_call_site_clique_to_html(Pref, Deep, FileName, LineNumber, Kind,
         LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
             Own, Desc, SummaryHTML, sub_lines(two_id, []))
     ;
-        Pref ^ pref_summarize = dont_summarize,
+        Pref ^ pref_summarize = do_not_summarize,
         LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
             Own, Desc, SummaryHTML, sub_lines(two_id, SubLines))
     ),
@@ -1437,7 +1498,7 @@ multi_call_site_summary_to_html(Pref, Deep, FileName, LineNumber, Kind,
         LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
             Own, Desc, SummaryHTML, sub_lines(two_id, []))
     ;
-        Pref ^ pref_summarize = dont_summarize,
+        Pref ^ pref_summarize = do_not_summarize,
         ContextSubLines = list.map(add_context(""), SubLines),
         LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
             Own, Desc, SummaryHTML, sub_lines(two_id, ContextSubLines))
@@ -1472,7 +1533,7 @@ multi_call_site_add_suffix(Pref, RawCallSiteName, CallList) = CallSiteName :-
             Summarize = summarize,
             CallSiteName = RawCallSiteName ++ " (summary)"
         ;
-            Summarize = dont_summarize,
+            Summarize = do_not_summarize,
             CallSiteName = RawCallSiteName
         )
     ).
@@ -2274,8 +2335,8 @@ solidify_preference(Deep, PrefInd) = Pref :-
 default_preferences(Deep) =
     preferences(
         default_fields(Deep),
-        default_box,
-        default_colour_scheme,
+        default_box_tables,
+        default_colour_column_groups,
         default_ancestor_limit,
         default_summarize,
         default_order_criteria,
@@ -2298,10 +2359,10 @@ default_fields(Deep) = Fields :-
 all_fields = fields(port, ticks_and_time_and_percall, callseqs_and_percall,
     alloc, memory(units_words)).
 
-default_box = box.
-default_colour_scheme = colour_column_groups.
+default_box_tables = box_tables.
+default_colour_column_groups = colour_column_groups.
 default_ancestor_limit = yes(5).
-default_summarize = dont_summarize.
+default_summarize = do_not_summarize.
 default_order_criteria = by_context.
 default_cost_kind = cost_callseqs.
 default_incl_desc = self_and_desc.
@@ -2738,12 +2799,12 @@ string_to_limit(LimitStr, Limit) :-
 :- func summarize_to_string(summarize) = string.
 
 summarize_to_string(summarize)      = "sum".
-summarize_to_string(dont_summarize) = "nosum".
+summarize_to_string(do_not_summarize) = "nosum".
 
 :- pred string_to_summarize(string::in, summarize::out) is semidet.
 
 string_to_summarize("sum",   summarize).
-string_to_summarize("nosum", dont_summarize).
+string_to_summarize("nosum", do_not_summarize).
 
 :- func order_criteria_to_string(order_criteria) = string.
 
@@ -2833,29 +2894,29 @@ string_to_inactive_items("sh", inactive_items(inactive_show, inactive_hide)).
 string_to_inactive_items("hs", inactive_items(inactive_hide, inactive_show)).
 string_to_inactive_items("ss", inactive_items(inactive_show, inactive_show)).
 
-:- func colour_scheme_to_string(colour_scheme) = string.
+:- func colour_scheme_to_string(colour_column_groups) = string.
 
 colour_scheme_to_string(Scheme) = String :-
     string_to_colour_scheme(String, Scheme).
 
-:- pred string_to_colour_scheme(string, colour_scheme).
+:- pred string_to_colour_scheme(string, colour_column_groups).
 :- mode string_to_colour_scheme(in, out) is semidet.
 :- mode string_to_colour_scheme(out, in) is det.
 
 string_to_colour_scheme("cols", colour_column_groups).
-string_to_colour_scheme("none", colour_none).
+string_to_colour_scheme("none", do_not_colour_column_groups).
 
-:- func box_to_string(box) = string.
+:- func box_to_string(box_tables) = string.
 
 box_to_string(Box) = String :-
     string_to_box(String, Box).
 
-:- pred string_to_box(string, box).
+:- pred string_to_box(string, box_tables).
 :- mode string_to_box(in, out) is semidet.
 :- mode string_to_box(out, in) is det.
 
-string_to_box("box",   box).
-string_to_box("nobox", nobox).
+string_to_box("box",   box_tables).
+string_to_box("nobox", do_not_box_tables).
 
 %----------------------------------------------------------------------------%
 :- end_module query.

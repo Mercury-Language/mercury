@@ -381,23 +381,23 @@ compute_css_list_above_threshold(Index, Deep, Threshold, Measure, !CSSCord) :-
         list.length(CSDList, NumCSD),
         ( NumCSD = 0 ->
             % The CSS doesn't have any CSDs.
-            Callseqs = 0
+            CallSeqs = 0
         ;
             (
                 Measure = stat_mean,
                 list.foldr(sum_callseqs_csd_ptr(Deep), CSDList,
-                    0, SumCallseqs),
+                    0, SumCallSeqs),
                 % NOTE: we have checked that NumCSD is not zero above.
-                Callseqs = SumCallseqs // NumCSD
+                CallSeqs = SumCallSeqs // NumCSD
             ;
                 Measure = stat_median,
                 list.sort(compare_csd_ptr(Deep), CSDList, CSDListSorted),
                 IndexMedian = NumCSD // 2,
                 list.index0_det(CSDListSorted, IndexMedian, MedianPtr),
-                sum_callseqs_csd_ptr(Deep, MedianPtr, 0, Callseqs)
+                sum_callseqs_csd_ptr(Deep, MedianPtr, 0, CallSeqs)
             )
         ),
-        ( Callseqs >= Threshold ->
+        ( CallSeqs >= Threshold ->
             CSS = array.lookup(Deep ^ call_site_statics, Index),
             !:CSSCord = snoc(!.CSSCord, CSS),
             compute_css_list_above_threshold(Index + 1, Deep, Threshold,

@@ -407,8 +407,6 @@ construct_clique_parents(InitDeep, CliqueIndex, PDI, CliquePtr,
     array(maybe(clique_ptr))::array_di,
     array(maybe(clique_ptr))::array_uo) is det.
 
-% :- pragma promise_pure(construct_clique_parents_2/8).
-
 construct_clique_parents_2(InitDeep, CliqueIndex, ParentCliquePtr, CSDPtr,
         !CliqueParents, !CliqueMaybeChildren) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
@@ -420,9 +418,6 @@ construct_clique_parents_2(InitDeep, CliqueIndex, ParentCliquePtr, CSDPtr,
             array.lookup(CliqueIndex, ChildPDI, ChildCliquePtr),
             ( ChildCliquePtr \= ParentCliquePtr ->
                 ChildCliquePtr = clique_ptr(ChildCliqueNum),
-                % impure unsafe_perform_io(
-                %   write_pdi_cn_csd(ChildPDI,
-                %       ChildCliqueNum, CSDI)),
                 svarray.set(ChildCliqueNum, CSDPtr, !CliqueParents),
                 svarray.set(CSDI, yes(ChildCliquePtr), !CliqueMaybeChildren)
             ;

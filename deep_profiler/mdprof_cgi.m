@@ -102,6 +102,9 @@ process_command_line(!IO) :-
         MaybeOptions = ok(Options),
         lookup_bool_option(Options, help, Help),
         lookup_bool_option(Options, version, Version),
+        lookup_bool_option(Options, decode, Decode),
+        lookup_bool_option(Options, decode_cmd, DecodeCmd),
+        lookup_bool_option(Options, decode_prefs, DecodePrefs),
         (
             Help = yes,
             write_help_message(ProgName, !IO)
@@ -114,7 +117,22 @@ process_command_line(!IO) :-
         ;
             Version = no
         ),
-        ( Help = no, Version = no ->
+        (
+            Decode = no,
+            DecodeCmd = no,
+            DecodePrefs = no
+        ->
+            true
+        ;
+            decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO)
+        ),
+        (
+            Help = no,
+            Version = no,
+            Decode = no,
+            DecodeCmd = no,
+            DecodePrefs = no
+        ->
             process_args(ProgName, Args, Options, !IO)
         ;
             true
@@ -125,6 +143,87 @@ process_command_line(!IO) :-
         io.format("%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO)
     ).
+
+:- pred decode_input_lines(bool::in, bool::in, bool::in, io::di, io::uo)
+    is det.
+
+decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO) :-
+    io.read_line_as_string(LineResult, !IO),
+    (
+        LineResult = ok(LineStr),
+        (
+            Decode = no
+        ;
+            Decode = yes,
+            io.write_string("considering as query string:\n", !IO),
+            split(LineStr, query_separator_char, Pieces),
+            ( Pieces = [CmdStr, PrefStr, FileName] ->
+                decode_cmd_str(CmdStr, !IO),
+                decode_pref_str(PrefStr, !IO),
+                decode_filename(FileName, !IO)
+            ; Pieces = [CmdStr, FileName] ->
+                decode_cmd_str(CmdStr, !IO),
+                decode_filename(FileName, !IO)
+            ; Pieces = [FileName] ->
+                decode_filename(FileName, !IO)
+            ;
+                io.write_string("invalid query string: " ++
+                    "cannot split into components\n", !IO)
+            )
+        ),
+        (
+            DecodeCmd = no
+        ;
+            DecodeCmd = yes,
+            io.write_string("considering as cmd string:\n", !IO),
+            decode_cmd_str(LineStr, !IO)
+        ),
+        (
+            DecodePrefs = no
+        ;
+            DecodePrefs = yes,
+            io.write_string("considering as preference string:\n", !IO),
+            decode_cmd_str(LineStr, !IO)
+        ),
+        decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO)
+    ;
+        LineResult = error(Error),
+        io.error_message(Error, Msg),
+        io.format("%s\n", [s(Msg)], !IO)
+    ;
+        LineResult = eof
+    ).
+
+:- pred decode_cmd_str(string::in, io::di, io::uo) is det.
+
+decode_cmd_str(CmdStr, !IO) :-
+    MaybeCmd = string_to_maybe_cmd(CmdStr),
+    (
+        MaybeCmd = no,
+        io.format("invalid command string %s\n", [s(CmdStr)], !IO)
+    ;
+        MaybeCmd = yes(Cmd),
+        io.write(Cmd, !IO),
+        io.nl(!IO)
+    ).
+
+:- pred decode_pref_str(string::in, io::di, io::uo) is det.
+
+decode_pref_str(PrefStr, !IO) :-
+    MaybePref = string_to_maybe_pref(PrefStr),
+    (
+        MaybePref = no,
+        io.format("invalid preferences string %s\n", [s(PrefStr)], !IO)
+    ;
+        MaybePref = yes(Pref),
+        io.write(Pref, !IO),
+        io.nl(!IO)
+    ).
+
+:- pred decode_filename(string::in, io::di, io::uo) is det.
+
+decode_filename(FileName, !IO) :-
+    io.format("data file name: %s\n", [s(FileName)], !IO).
 
 :- func mdprof_cgi_progname = string.
 
@@ -697,6 +796,9 @@ detach_process(Result, !IO) :-
     --->    canonical_clique
     ;       clique
     ;       debug
+    ;       decode
+    ;       decode_cmd
+    ;       decode_prefs
     ;       detach_process
     ;       help
     ;       localhost
@@ -731,6 +833,9 @@ short('w',  write_query_string).
 long("canonical-clique",    canonical_clique).
 long("clique",              clique).
 long("debug",               debug).
+long("decode",              decode).
+long("decode-cmd",          decode_cmd).
+long("decode-prefs",        decode_prefs).
 long("detach-process",      detach_process).
 long("help",                help).
 long("localhost",           localhost).
@@ -750,6 +855,9 @@ long("write-query-string",  write_query_string).
 defaults(canonical_clique,      bool(no)).
 defaults(clique,                int(0)).
 defaults(debug,                 bool(no)).
+defaults(decode,                bool(no)).
+defaults(decode_cmd,            bool(no)).
+defaults(decode_prefs,          bool(no)).
 defaults(detach_process,        bool(yes)).
 defaults(help,                  bool(no)).
 defaults(localhost,             bool(no)).

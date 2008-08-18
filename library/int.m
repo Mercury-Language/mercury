@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -411,7 +411,7 @@ X // Y = Div :-
         int_domain_checks,
         Y = 0
     ->
-        throw(math.domain_error("int.'//'"))
+        throw(math.domain_error("int.'//': division by zero"))
     ;
         Div = unchecked_quotient(X, Y)
     ).
@@ -425,7 +425,7 @@ X rem Y = Rem :-
         int_domain_checks,
         Y = 0
     ->
-        throw(math.domain_error("int.rem"))
+        throw(math.domain_error("int.rem: division by zero"))
     ;
         Rem = unchecked_rem(X, Y)
     ).
@@ -562,7 +562,7 @@ int.pow(Base, Exp) = Result :-
 
 int.pow(Base, Exp, Result) :-
     ( int_domain_checks, Exp < 0 ->
-        throw(math.domain_error("int.pow"))
+        throw(math.domain_error("int.pow: zero base"))
     ;
         Result = int.multiply_by_pow(1, Base, Exp)
     ).
@@ -589,7 +589,7 @@ int.log2(X) = N :-
 
 int.log2(X, N) :-
     ( int_domain_checks, X =< 0 ->
-        throw(math.domain_error("int.log2"))
+        throw(math.domain_error("int.log2: taking logarithm of zero"))
     ;
         int.log2_2(X, 0, N)
     ).

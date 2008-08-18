@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2007 The University of Melbourne.
+% Copyright (C) 2001, 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -211,11 +211,24 @@
     ;       callback.
 
 :- type call_site_kind_and_callee
-    --->    normal_call_and_callee(proc_static_ptr, string)
+    --->    normal_call_and_callee(
+                % The identity of the callee.
+                proc_static_ptr,
+
+                % A description of the type substitution, if any and if known.
+                string
+            )
     ;       special_call_and_no_callee
     ;       higher_order_call_and_no_callee
     ;       method_call_and_no_callee
     ;       callback_and_no_callee.
+
+:- type call_site_kind_and_info(T)
+    --->    normal_call_and_info(T)
+    ;       special_call_and_no_info
+    ;       higher_order_call_and_no_info
+    ;       method_call_and_no_info
+    ;       callback_and_no_info.
 
 :- type call_site_callees
     --->    call_site_callees(

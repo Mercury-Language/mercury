@@ -32,8 +32,6 @@
     --->    units_words
     ;       units_bytes.
 
-%-----------------------------------------------------------------------------%
-
     % Memory abstract data type.
     %
     % This type represents an amount of computer memory while abstracting away
@@ -41,28 +39,24 @@
     %
 :- type memory.
 
-%-----------------------------------------------------------------------------%
-
     % memory_words(Words, BytesPerWord) = Memory
     %
-    % Convert number of words words to memory type.
+    % Convert number of words to memory type.
     %
 :- func memory_words(int, int) = memory.
-
-%-----------------------------------------------------------------------------%
 
     % Division for memory units. Use of this function may return fractions of
     % units.
     %
 :- func (memory) / (int) = (memory) is det.
 
-%-----------------------------------------------------------------------------%
-
     % Format a memory value using the given units.
     %
     % The third argument is the number of decimal places to show.
     %
 :- func format_memory(memory, memory_units, int) = string.
+
+:- pred compare_memory(memory::in, memory::in, comparison_result::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -73,14 +67,10 @@
     %
 :- type percent.
 
-%-----------------------------------------------------------------------------%
-
     % Convert from float between 0.0 and 1.0 (inclusive) and percent type.
     % Input of values outside the range above will throw exceptions.
     %
 :- func percent(float) = percent.
-
-%-----------------------------------------------------------------------------%
 
     % Format a percentage. Prints the percentage with one decimal place and a
     % '%' symbol.
@@ -96,23 +86,17 @@
     %
 :- type time.
 
-%-----------------------------------------------------------------------------%
-
-    % ticks_to_time(Ticks, TicksPerSec, Time)
+    % ticks_to_time(Ticks, TicksPerSec) = Time
     %
     % Converts profiler ticks to time,
     %
-:- pred ticks_to_time(int::in, int::in, time::out) is det.
+:- func ticks_to_time(int, int) = time.
 
-%-----------------------------------------------------------------------------%
-
-    % time_percall(Time, Calls, TimePercall)
+    % time_percall(Time, Calls) = TimePercall
     %
     % Time / Calls = TimePerCall.
     %
-:- pred time_percall(time::in, int::in, time::out) is det.
-
-%-----------------------------------------------------------------------------%
+:- func time_percall(time, int) = time.
 
     % Format a time, this prints the time in the most readable units for its
     % magnitude.  One or two letters follow the time to describe the units.
@@ -155,28 +139,32 @@
 %
 
 :- type memory
-    --->    memory_words(
+    --->    memory(
                 words       :: float,
                 word_size   :: int
             ).
 
-%-----------------------------------------------------------------------------%
-
-memory_words(WordsI, BytesPerWord) = memory_words(WordsF, BytesPerWord) :-
+memory_words(WordsI, BytesPerWord) = memory(WordsF, BytesPerWord) :-
     WordsF = float(WordsI).
 
-%-----------------------------------------------------------------------------%
+memory(Nom, BPW) / Denom =
+    ( Denom = 0 ->
+        memory(0.0, BPW)
+    ;
+        memory(Nom / float(Denom), BPW)
+    ).
 
-    % Divison operator.
-memory_words(Nom, BPW) / Denom =
-memory_words(Nom / float(Denom), BPW).
-
-%-----------------------------------------------------------------------------%
-
-format_memory(memory_words(Words, BPW), units_bytes, Decimals) =
+format_memory(memory(Words, BPW), units_bytes, Decimals) =
     format_number(Decimals, Words * float(BPW)).
-format_memory(memory_words(Words, _), units_words, Decimals) =
+format_memory(memory(Words, _), units_words, Decimals) =
     format_number(Decimals, Words).
+
+compare_memory(MemoryA, MemoryB, Result) :-
+    MemoryA = memory(WordsA, WordSizeA),
+    MemoryB = memory(WordsB, WordSizeB),
+    require(unify(WordSizeA, WordSizeB),
+        "compare_memory: word size mismatch"),
+    compare(Result, WordsA, WordsB).
 
 %-----------------------------------------------------------------------------%
 %
@@ -185,8 +173,6 @@ format_memory(memory_words(Words, _), units_words, Decimals) =
 
 :- type percent
     --->    percent_float(float).
-
-%-----------------------------------------------------------------------------%
 
 percent(P) = PF :-
     (
@@ -197,8 +183,6 @@ percent(P) = PF :-
     ;
         error("Percentage value out of range 0.0 to 1.0 (inclusive)")
     ).
-
-%-----------------------------------------------------------------------------%
 
 format_percent(percent_float(P)) = String :-
     string.format("%.2f", [f(P * 100.0)], String).
@@ -213,17 +197,17 @@ format_percent(percent_float(P)) = String :-
 :- type time
     --->    time_sec(float).
 
-%-----------------------------------------------------------------------------%
-
-ticks_to_time(Ticks, TicksPerSec, Time) :-
-    SecPerTick = 1.0/float(TicksPerSec),
+ticks_to_time(Ticks, TicksPerSec) = Time :-
+    % TicksPerSec will not be zero.
+    SecPerTick = 1.0 / float(TicksPerSec),
     Time = time_sec(float(Ticks) * SecPerTick).
 
-%-----------------------------------------------------------------------------%
-
-time_percall(time_sec(Time), Calls, time_sec(Time/float(Calls))).
-
-%-----------------------------------------------------------------------------%
+time_percall(time_sec(Time), Calls) = time_sec(TimePerCall) :-
+    ( Calls = 0 ->
+        TimePerCall = 0.0
+    ;
+        TimePerCall = Time / float(Calls)
+    ).
 
 :- func milli = float.
 milli = 0.001.
@@ -271,8 +255,6 @@ format_time(time_sec(F)) = String :-
 commas(Num) = Str :-
     string.int_to_string(Num, Str0),
     add_commas_intstr(Str0, Str).
-
-%-----------------------------------------------------------------------------%
 
 decimal_fraction(Format, Measure) = Representation :-
     string.format(Format, [f(Measure)], Str0),

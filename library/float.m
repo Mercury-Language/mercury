@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2007 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -253,7 +253,7 @@
 :- pragma inline('/'/2).
 X / Y = Z :-
 	( float_domain_checks, Y = 0.0 ->
-		throw(math.domain_error("float:'/'"))
+		throw(math.domain_error("float.'/': division by zero"))
 	;
 		Z = unchecked_quotient(X, Y)
 	).
@@ -517,7 +517,7 @@ float.pow(Base, Exp) = Ans :-
 		Ans = float.multiply_by_pow(1.0, Base, Exp)
 	;
 		( float_domain_checks, Base = 0.0 ->
-			throw(math.domain_error("float:pow"))
+			throw(math.domain_error("float.pow: zero base"))
 		;
 			Ans = unchecked_quotient(1.0,
 				float.multiply_by_pow(1.0, Base, -Exp))

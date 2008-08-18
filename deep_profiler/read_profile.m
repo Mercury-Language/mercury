@@ -58,13 +58,13 @@
     ;       css
     ;       csd.
 
-read_call_graph(FileName, Res, !IO) :-
-    io.see_binary(FileName, Res0, !IO),
+read_call_graph(FileName, MaybeInitDeep, !IO) :-
+    io.see_binary(FileName, SeeResult, !IO),
     (
-        Res0 = ok,
-        read_deep_id_string(Res1, !IO),
+        SeeResult = ok,
+        read_deep_id_string(MaybeIdStr, !IO),
         (
-            Res1 = ok(_),
+            MaybeIdStr = ok(_),
             io_combinator.maybe_error_sequence_12(
                 read_string,
                 read_fixed_size_int,
@@ -78,7 +78,7 @@ read_call_graph(FileName, Res, !IO) :-
                 read_deep_byte,
                 read_deep_byte,
                 read_ptr(pd),
-                (pred(ProgName::in, 
+                (pred(ProgName::in,
                         MaxCSD::in, MaxCSS::in,
                         MaxPD::in, MaxPS::in,
                         TicksPerSec::in,
@@ -89,7 +89,7 @@ read_call_graph(FileName, Res, !IO) :-
                         CanonicalFlag::in,
                         RootPDI::in,
                         ResInitDeep::out) is det :-
-                    InitDeep0 = init_deep(basename(ProgName), 
+                    InitDeep0 = init_deep(basename(ProgName),
                         MaxCSD, MaxCSS, MaxPD, MaxPS,
                         TicksPerSec, InstrumentQuanta, UserQuanta,
                         NumCallSeqs,
@@ -97,42 +97,42 @@ read_call_graph(FileName, Res, !IO) :-
                         RootPDI),
                     ResInitDeep = ok(InitDeep0)
                 ),
-                Res2, !IO),
+                MaybeInitDeepHeader, !IO),
             (
-                Res2 = ok(InitDeep),
-                read_nodes(InitDeep, Res, !IO),
+                MaybeInitDeepHeader = ok(InitDeep),
+                read_nodes(InitDeep, MaybeInitDeep, !IO),
                 io.seen_binary(!IO)
             ;
-                Res2 = error(Err),
-                Res = error(Err)
+                MaybeInitDeepHeader = error(Error),
+                MaybeInitDeep = error(Error)
             )
         ;
-            Res1 = error(Msg),
-            Res = error(Msg)
+            MaybeIdStr = error(Msg),
+            MaybeInitDeep = error(Msg)
         )
     ;
-        Res0 = error(Err),
-        io.error_message(Err, Msg),
-        Res = error(Msg)
+        SeeResult = error(Error),
+        io.error_message(Error, Msg),
+        MaybeInitDeep = error(Msg)
     ).
 
 :- pred read_deep_id_string(maybe_error(string)::out,
     io::di, io::uo) is det.
 
-read_deep_id_string(Res, !IO) :-
-    read_line(string.length(deep_id_string), LineRes, !IO),
+read_deep_id_string(MaybeIdStr, !IO) :-
+    read_line(string.length(deep_id_string), MaybeLine, !IO),
     (
-        LineRes = ok(Line),
+        MaybeLine = ok(Line),
         ( Line = deep_id_string ->
-            Res = ok(deep_id_string)
+            MaybeIdStr = ok(deep_id_string)
         ; string.prefix(Line, deep_id_prefix) ->
-            Res = error("version number mismatch")
+            MaybeIdStr = error("version number mismatch")
         ;
-            Res = error("not a deep profiling data file")
+            MaybeIdStr = error("not a deep profiling data file")
         )
     ;
-        LineRes = error(Err),
-        Res = error(Err)
+        MaybeLine = error(Error),
+        MaybeIdStr = error(Error)
     ).
 
     % Return the string identifying a file as a deep profiling data file.
@@ -165,23 +165,21 @@ basename(Path) = Base :-
         MaybeBaseChars = yes(BaseChars)
     ),
     string.from_char_list(BaseChars, Base).
-    
+
 :- pred basename_chars(list(char)::in, maybe(list(char))::out) is det.
 
 basename_chars([], no).
-basename_chars([Char | Chars], MaybeResult) :-
-    basename_chars(Chars, MaybeResult0),
+basename_chars([Char | Chars], MaybeChars) :-
+    basename_chars(Chars, MaybeTailChars),
     (
-        MaybeResult0 = yes(_),
-        MaybeResult = MaybeResult0
+        MaybeTailChars = yes(_),
+        MaybeChars = MaybeTailChars
     ;
-        MaybeResult0 = no,
-        (
-            path_separator(Char)
-        ->
-            MaybeResult = yes(Chars)
+        MaybeTailChars = no,
+        ( path_separator(Char) ->
+            MaybeChars = yes(Chars)
         ;
-            MaybeResult = no
+            MaybeChars = no
         )
     ).
 
@@ -201,7 +199,7 @@ init_deep(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
     ;
         CanonicalFlag = yes
     ),
-    InitStats = profile_stats(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS, 
+    InitStats = profile_stats(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS,
         TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize,
         CanonicalFlag),
     InitDeep = initial_deep(
@@ -227,84 +225,84 @@ init_deep(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
 :- pred read_nodes(initial_deep::in, maybe_error(initial_deep)::out,
     io::di, io::uo) is det.
 
-read_nodes(InitDeep0, Res, !IO) :-
-    read_byte(Res0, !IO),
+read_nodes(!.InitDeep, MaybeInitDeep, !IO) :-
+    read_byte(MaybeByte, !IO),
     (
-        Res0 = ok(Byte),
+        MaybeByte = ok(Byte),
         ( is_next_item_token(Byte, NextItem) ->
             (
                 NextItem = deep_item_call_site_dynamic,
-                read_call_site_dynamic(Res1, !IO),
+                read_call_site_dynamic(MaybeCSD, !IO),
                 (
-                    Res1 = ok2(CallSiteDynamic, CSDI),
-                    deep_insert(InitDeep0 ^ init_call_site_dynamics,
-                        CSDI, CallSiteDynamic, CSDs),
-                    InitDeep1 = InitDeep0 ^ init_call_site_dynamics := CSDs,
-                    read_nodes(InitDeep1, Res, !IO)
+                    MaybeCSD = ok2(CallSiteDynamic, CSDI),
+                    CSDs0 = !.InitDeep ^ init_call_site_dynamics,
+                    deep_insert(CSDs0, CSDI, CallSiteDynamic, CSDs),
+                    !InitDeep ^ init_call_site_dynamics := CSDs,
+                    read_nodes(!.InitDeep, MaybeInitDeep, !IO)
                 ;
-                    Res1 = error2(Err),
-                    Res = error(Err)
+                    MaybeCSD = error2(Error),
+                    MaybeInitDeep = error(Error)
                 )
             ;
                 NextItem = deep_item_proc_dynamic,
-                read_proc_dynamic(Res1, !IO),
+                read_proc_dynamic(MaybePD, !IO),
                 (
-                    Res1 = ok2(ProcDynamic, PDI),
-                    deep_insert(InitDeep0 ^ init_proc_dynamics,
-                        PDI, ProcDynamic, PDs),
-                    InitDeep1 = InitDeep0 ^ init_proc_dynamics := PDs,
-                    read_nodes(InitDeep1, Res, !IO)
+                    MaybePD = ok2(ProcDynamic, PDI),
+                    PDs0 = !.InitDeep ^ init_proc_dynamics,
+                    deep_insert(PDs0, PDI, ProcDynamic, PDs),
+                    !InitDeep ^ init_proc_dynamics := PDs,
+                    read_nodes(!.InitDeep, MaybeInitDeep, !IO)
                 ;
-                    Res1 = error2(Err),
-                    Res = error(Err)
+                    MaybePD = error2(Error),
+                    MaybeInitDeep = error(Error)
                 )
             ;
                 NextItem = deep_item_call_site_static,
-                read_call_site_static(Res1, !IO),
+                read_call_site_static(MaybeCSS, !IO),
                 (
-                    Res1 = ok2(CallSiteStatic, CSSI),
-                    deep_insert(InitDeep0 ^ init_call_site_statics,
-                        CSSI, CallSiteStatic, CSSs),
-                    InitDeep1 = InitDeep0 ^ init_call_site_statics := CSSs,
-                    read_nodes(InitDeep1, Res, !IO)
+                    MaybeCSS = ok({CallSiteStatic, CSSI}),
+                    CSSs0 = !.InitDeep ^ init_call_site_statics,
+                    deep_insert(CSSs0, CSSI, CallSiteStatic, CSSs),
+                    !InitDeep ^ init_call_site_statics := CSSs,
+                    read_nodes(!.InitDeep, MaybeInitDeep, !IO)
                 ;
-                    Res1 = error2(Err),
-                    Res = error(Err)
+                    MaybeCSS = error(Error),
+                    MaybeInitDeep = error(Error)
                 )
             ;
                 NextItem = deep_item_proc_static,
-                read_proc_static(Res1, !IO),
+                read_proc_static(MaybePS, !IO),
                 (
-                    Res1 = ok2(ProcStatic, PSI),
-                    deep_insert(InitDeep0 ^ init_proc_statics,
-                        PSI, ProcStatic, PSs),
-                    InitDeep1 = InitDeep0 ^ init_proc_statics := PSs,
-                    read_nodes(InitDeep1, Res, !IO)
+                    MaybePS = ok2(ProcStatic, PSI),
+                    PSs0 = !.InitDeep ^ init_proc_statics,
+                    deep_insert(PSs0, PSI, ProcStatic, PSs),
+                    !InitDeep ^ init_proc_statics := PSs,
+                    read_nodes(!.InitDeep, MaybeInitDeep, !IO)
                 ;
-                    Res1 = error2(Err),
-                    Res = error(Err)
+                    MaybePS = error2(Error),
+                    MaybeInitDeep = error(Error)
                 )
             ;
                 NextItem = deep_item_end,
-                Res = ok(InitDeep0)
+                MaybeInitDeep = ok(!.InitDeep)
             )
         ;
-            format("unexpected token %d", [i(Byte)], Msg),
-            Res = error(Msg)
+            string.format("unexpected token %d", [i(Byte)], Msg),
+            MaybeInitDeep = error(Msg)
         )
     ;
-        Res0 = eof,
-        Res = ok(InitDeep0)
+        MaybeByte = eof,
+        MaybeInitDeep = ok(!.InitDeep)
     ;
-        Res0 = error(Err),
-        io.error_message(Err, Msg),
-        Res = error(Msg)
+        MaybeByte = error(Error),
+        io.error_message(Error, Msg),
+        MaybeInitDeep = error(Msg)
     ).
 
-:- pred read_call_site_static(maybe_error2(call_site_static, int)::out,
+:- pred read_call_site_static(maybe_error({call_site_static, int})::out,
     io::di, io::uo) is det.
 
-read_call_site_static(Res, !IO) :-
+read_call_site_static(MaybeCSS, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading call_site_static.\n", !IO)
     ),
@@ -313,18 +311,17 @@ read_call_site_static(Res, !IO) :-
         read_call_site_kind_and_callee,
         read_num,
         read_string,
-        (pred(CSSI0::in, Kind::in, LineNumber::in, Str::in, Res0::out)
+        (pred(CSSI0::in, Kind::in, LineNumber::in, Str::in, CSS::out)
                 is det :-
             DummyPSPtr = make_dummy_psptr,
             DummySlotNum = -1,
             CallSiteStatic0 = call_site_static(DummyPSPtr,
                 DummySlotNum, Kind, LineNumber, Str),
-            Res0 = ok({CallSiteStatic0, CSSI0})
+            CSS = ok({CallSiteStatic0, CSSI0})
         ),
-        Res1, !IO),
+        MaybeCSS, !IO),
     (
-        Res1 = ok({CallSiteStatic, CSSI}),
-        Res = ok2(CallSiteStatic, CSSI),
+        MaybeCSS = ok({CallSiteStatic, CSSI}),
         trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
             io.write_string("read call_site_static ", !IO),
             io.write_int(CSSI, !IO),
@@ -333,14 +330,13 @@ read_call_site_static(Res, !IO) :-
             io.write_string("\n", !IO)
         )
     ;
-        Res1 = error(Err),
-        Res = error2(Err)
+        MaybeCSS = error(_)
     ).
 
 :- pred read_proc_static(maybe_error2(proc_static, int)::out,
     io::di, io::uo) is det.
 
-read_proc_static(Res, !IO) :-
+read_proc_static(MaybePS, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading proc_static.\n", !IO)
     ),
@@ -353,18 +349,18 @@ read_proc_static(Res, !IO) :-
         read_num,
         read_num,
         (pred(PSI0::in, Id0::in, F0::in, L0::in, I0::in,
-                NCS0::in, NCP0::in, Stuff0::out) is det :-
-            Stuff0 = ok({PSI0, Id0, F0, L0, I0, NCS0, NCP0})
+                NCS0::in, NCP0::in, ProcId::out) is det :-
+            ProcId = ok({PSI0, Id0, F0, L0, I0, NCS0, NCP0})
         ),
-        Res1, !IO),
+        MaybeProcId, !IO),
     (
-        Res1 = ok({PSI, Id, FileName, LineNumber, Interface, NCS, NCP}),
-        read_n_things(NCS, read_ptr(css), Res2, !IO),
+        MaybeProcId = ok({PSI, Id, FileName, LineNumber, Interface, NCS, NCP}),
+        read_n_things(NCS, read_ptr(css), MaybeCSSIs, !IO),
         (
-            Res2 = ok(CSSIs),
-            read_n_things(NCP, read_coverage_point, Res3, !IO),
+            MaybeCSSIs = ok(CSSIs),
+            read_n_things(NCP, read_coverage_point, MaybeCoveragePoints, !IO),
             (
-                Res3 = ok(CoveragePoints),
+                MaybeCoveragePoints = ok(CoveragePoints),
                 CSSPtrs = list.map(make_cssptr, CSSIs),
                 DeclModule = decl_module(Id),
                 RefinedStr = refined_proc_id_to_string(Id),
@@ -381,7 +377,7 @@ read_proc_static(Res, !IO) :-
                     RefinedStr, RawStr, FileName, LineNumber,
                     IsInInterface, array(CSSPtrs), array(CoveragePoints),
                     not_zeroed),
-                Res = ok2(ProcStatic, PSI),
+                MaybePS = ok2(ProcStatic, PSI),
                 trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                     io.write_string("read proc_static ", !IO),
                     io.write_int(PSI, !IO),
@@ -390,49 +386,49 @@ read_proc_static(Res, !IO) :-
                     io.write_string("\n", !IO)
                 )
             ;
-                Res3 = error(Err),
-                Res = error2(Err)
+                MaybeCoveragePoints = error(Error),
+                MaybePS = error2(Error)
             )
         ;
-            Res2 = error(Err),
-            Res = error2(Err)
+            MaybeCSSIs = error(Error),
+            MaybePS = error2(Error)
         )
     ;
-        Res1 = error(Err),
-        Res = error2(Err)
+        MaybeProcId = error(Error),
+        MaybePS = error2(Error)
     ).
 
 :- pred read_proc_id(maybe_error(string_proc_label)::out, io::di, io::uo)
     is det.
 
-read_proc_id(Res, !IO) :-
-    read_deep_byte(Res0, !IO),
+read_proc_id(MaybeProcId, !IO) :-
+    read_deep_byte(MaybeByte, !IO),
     (
-        Res0 = ok(Byte),
+        MaybeByte = ok(Byte),
         ( is_proclabel_kind(Byte, ProcLabelKind) ->
             (
                 ProcLabelKind = proclabel_special,
-                read_proc_id_uci_pred(Res, !IO)
+                read_proc_id_uci_pred(MaybeProcId, !IO)
             ;
                 ProcLabelKind = proclabel_user_predicate,
-                read_proc_id_user_defined(pf_predicate, Res, !IO)
+                read_proc_id_user_defined(pf_predicate, MaybeProcId, !IO)
             ;
                 ProcLabelKind = proclabel_user_function,
-                read_proc_id_user_defined(pf_function, Res, !IO)
+                read_proc_id_user_defined(pf_function, MaybeProcId, !IO)
             )
         ;
             format("unexpected proclabel_kind %d", [i(Byte)], Msg),
-            Res = error(Msg)
+            MaybeProcId = error(Msg)
         )
     ;
-        Res0 = error(Err),
-        Res = error(Err)
+        MaybeByte = error(Error),
+        MaybeProcId = error(Error)
     ).
 
 :- pred read_proc_id_uci_pred(maybe_error(string_proc_label)::out,
     io::di, io::uo) is det.
 
-read_proc_id_uci_pred(Res, !IO) :-
+read_proc_id_uci_pred(MaybeProcLabel, !IO) :-
     io_combinator.maybe_error_sequence_6(
         read_string,
         read_string,
@@ -446,12 +442,12 @@ read_proc_id_uci_pred(Res, !IO) :-
             ProcId = ok(str_special_proc_label(TypeName, TypeModule,
                 DefModule, PredName, Arity, Mode))
         ),
-        Res, !IO).
+        MaybeProcLabel, !IO).
 
 :- pred read_proc_id_user_defined(pred_or_func::in,
     maybe_error(string_proc_label)::out, io::di, io::uo) is det.
 
-read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
+read_proc_id_user_defined(PredOrFunc, MaybeProcLabel, !IO) :-
     io_combinator.maybe_error_sequence_5(
         read_string,
         read_string,
@@ -463,12 +459,12 @@ read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
             ProcId = ok(str_ordinary_proc_label(PredOrFunc, DeclModule,
                 DefModule, Name, Arity, Mode))
         ),
-        Res, !IO).
+        MaybeProcLabel, !IO).
 
 :- pred read_coverage_point(maybe_error(coverage_point)::out, io::di, io::uo)
     is det.
 
-read_coverage_point(Res, !IO) :-
+read_coverage_point(MaybeCoveragePoint, !IO) :-
     io_combinator.maybe_error_sequence_3(
         read_string,
         read_cp_type,
@@ -477,7 +473,7 @@ read_coverage_point(Res, !IO) :-
             goal_path_from_string_det(GoalPathString, GoalPath),
             CP = ok(coverage_point(CPCount, GoalPath, CPType))
         ),
-        Res, !IO).
+        MaybeCoveragePoint, !IO).
 
 :- func raw_proc_id_to_string(string_proc_label) = string.
 
@@ -634,7 +630,7 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
 :- pred read_proc_dynamic(maybe_error2(proc_dynamic, int)::out,
     io::di, io::uo) is det.
 
-read_proc_dynamic(Res, !IO) :-
+read_proc_dynamic(MaybePD, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading proc_dynamic.\n", !IO)
     ),
@@ -645,15 +641,15 @@ read_proc_dynamic(Res, !IO) :-
         (pred(PDI0::in, PSI0::in, N0::in, Stuff0::out) is det :-
             Stuff0 = ok({PDI0, PSI0, N0})
         ),
-        Res1, !IO),
+        MaybePDHeader, !IO),
     (
-        Res1 = ok({PDI, PSI, N}),
-        read_n_things(N, read_call_site_slot, Res2, !IO),
+        MaybePDHeader = ok({PDI, PSI, N}),
+        read_n_things(N, read_call_site_slot, MaybeSlots, !IO),
         (
-            Res2 = ok(Refs),
+            MaybeSlots = ok(Refs),
             PSPtr = make_psptr(PSI),
             ProcDynamic = proc_dynamic(PSPtr, array(Refs)),
-            Res = ok2(ProcDynamic, PDI),
+            MaybePD = ok2(ProcDynamic, PDI),
             trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                 io.write_string("read proc_dynamic ", !IO),
                 io.write_int(PDI, !IO),
@@ -662,35 +658,35 @@ read_proc_dynamic(Res, !IO) :-
                 io.write_string("\n", !IO)
             )
         ;
-            Res2 = error(Err),
-            Res = error2(Err)
+            MaybeSlots = error(Error),
+            MaybePD = error2(Error)
         )
     ;
-        Res1 = error(Err),
-        Res = error2(Err)
+        MaybePDHeader = error(Error),
+        MaybePD = error2(Error)
     ).
 
 :- pred read_call_site_dynamic(maybe_error2(call_site_dynamic, int)::out,
     io::di, io::uo) is det.
 
-read_call_site_dynamic(Res, !IO) :-
+read_call_site_dynamic(MaybeCSD, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading call_site_dynamic.\n", !IO)
     ),
-    read_ptr(csd, Res1, !IO),
+    read_ptr(csd, MaybeCSDI, !IO),
     (
-        Res1 = ok(CSDI),
-        read_ptr(pd, Res2, !IO),
+        MaybeCSDI = ok(CSDI),
+        read_ptr(pd, MaybePDI, !IO),
         (
-            Res2 = ok(PDI),
-            read_profile(Res3, !IO),
+            MaybePDI = ok(PDI),
+            read_profile(MaybeProfile, !IO),
             (
-                Res3 = ok(Profile),
+                MaybeProfile = ok(Profile),
                 PDPtr = make_pdptr(PDI),
                 CallerPDPtr = make_dummy_pdptr,
-                CallSiteDynamic = call_site_dynamic(
-                    CallerPDPtr, PDPtr, Profile),
-                Res = ok2(CallSiteDynamic, CSDI),
+                CallSiteDynamic = call_site_dynamic(CallerPDPtr, PDPtr,
+                    Profile),
+                MaybeCSD = ok2(CallSiteDynamic, CSDI),
                 trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                     io.write_string("read call_site_dynamic ", !IO),
                     io.write_int(CSDI, !IO),
@@ -699,24 +695,24 @@ read_call_site_dynamic(Res, !IO) :-
                     io.write_string("\n", !IO)
                 )
             ;
-                Res3 = error(Err),
-                Res = error2(Err)
+                MaybeProfile = error(Error),
+                MaybeCSD = error2(Error)
             )
         ;
-            Res2 = error(Err),
-            Res = error2(Err)
+            MaybePDI = error(Error),
+            MaybeCSD = error2(Error)
         )
     ;
-        Res1 = error(Err),
-        Res = error2(Err)
+        MaybeCSDI = error(Error),
+        MaybeCSD = error2(Error)
     ).
 
 :- pred read_profile(maybe_error(own_prof_info)::out, io::di, io::uo) is det.
 
-read_profile(Res, !IO) :-
-    read_num(Res0, !IO),
+read_profile(MaybeProfile, !IO) :-
+    read_num(MaybeMask, !IO),
     (
-        Res0 = ok(Mask),
+        MaybeMask = ok(Mask),
 
         % The masks here must correspond exactly with the masks in
         % MR_write_out_call_site_dynamic in mercury_deep_profiling.c
@@ -750,28 +746,27 @@ read_profile(Res, !IO) :-
         ),
         (
             LastMaybeError = yes(Error),
-            Res = error(Error)
+            MaybeProfile = error(Error)
         ;
             LastMaybeError = no,
-            Res = ok(compress_profile(Exits, Fails, Redos, Excps,
+            MaybeProfile = ok(compress_profile(Exits, Fails, Redos, Excps,
                 Quanta, CallSeqs, Allocs, Words))
         )
     ;
-        Res0 = error(Error),
-        Res = error(Error)
+        MaybeMask = error(Error),
+        MaybeProfile = error(Error)
     ).
 
 :- pred maybe_read_num_handle_error(int::in, int::in, int::out,
-    maybe(string)::in, maybe(string)::out,
-    io::di, io::uo) is det.
+    maybe(string)::in, maybe(string)::out, io::di, io::uo) is det.
 
 maybe_read_num_handle_error(MaskWord, MaskValue, Num, !MaybeError, !IO) :-
     ( MaskWord /\ MaskValue \= 0 ->
-        read_num(Res, !IO),
+        read_num(MaybeNum, !IO),
         (
-            Res = ok(Num)
+            MaybeNum = ok(Num)
         ;
-            Res = error(Error),
+            MaybeNum = error(Error),
             Num = 0,
             !:MaybeError = yes(Error)
         )
@@ -782,28 +777,28 @@ maybe_read_num_handle_error(MaskWord, MaskValue, Num, !MaybeError, !IO) :-
 :- pred read_call_site_slot(maybe_error(call_site_array_slot)::out,
     io::di, io::uo) is det.
 
-read_call_site_slot(Res, !IO) :-
+read_call_site_slot(MaybeSlot, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading call_site_slot.\n", !IO)
     ),
-    read_call_site_kind(Res1, !IO),
+    read_call_site_kind(MaybeKind, !IO),
     (
-        Res1 = ok(Kind),
+        MaybeKind = ok(Kind),
         (
             Kind = normal_call,
-            read_ptr(csd, Res2, !IO),
+            read_ptr(csd, MaybeCSDI, !IO),
             (
-                Res2 = ok(CSDI),
+                MaybeCSDI = ok(CSDI),
                 CSDPtr = make_csdptr(CSDI),
-                Res = ok(slot_normal(CSDPtr)),
+                MaybeSlot = ok(slot_normal(CSDPtr)),
                 trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                     io.write_string("normal call_site slot ", !IO),
                     io.write_int(CSDI, !IO),
                     io.write_string("\n", !IO)
                 )
             ;
-                Res2 = error(Err),
-                Res = error(Err)
+                MaybeCSDI = error(Error),
+                MaybeSlot = error(Error)
             )
         ;
             (
@@ -819,31 +814,31 @@ read_call_site_slot(Res, !IO) :-
                 Kind = callback,
                 Zeroed = not_zeroed
             ),
-            read_multi_call_site_csdis(Res2, !IO),
+            read_multi_call_site_csdis(MaybeCSDIs, !IO),
             (
-                Res2 = ok(CSDIs),
+                MaybeCSDIs = ok(CSDIs),
                 CSDPtrs = list.map(make_csdptr, CSDIs),
-                Res = ok(slot_multi(Zeroed, array(CSDPtrs))),
+                MaybeSlot = ok(slot_multi(Zeroed, array(CSDPtrs))),
                 trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                     io.write_string("multi call_site slots ", !IO),
                     io.write(CSDIs, !IO),
                     io.write_string("\n", !IO)
                 )
             ;
-                Res2 = error(Err),
-                Res = error(Err)
+                MaybeCSDIs = error(Error),
+                MaybeSlot = error(Error)
             )
         )
     ;
-        Res1 = error(Err),
-        Res = error(Err)
+        MaybeKind = error(Error),
+        MaybeSlot = error(Error)
     ).
 
 :- pred read_multi_call_site_csdis(maybe_error(list(int))::out,
     io::di, io::uo) is det.
 
-read_multi_call_site_csdis(Res, !IO) :-
-    read_multi_call_site_csdis_2([], Res, !IO).
+read_multi_call_site_csdis(MaybeCSDIs, !IO) :-
+    read_multi_call_site_csdis_2([], MaybeCSDIs, !IO).
 
     % We keep reading CSD node numbers until we find a zero byte.
     % The reason why a zero byte works as a sentinel is that a CSD node
@@ -858,106 +853,106 @@ read_multi_call_site_csdis(Res, !IO) :-
 :- pred read_multi_call_site_csdis_2(list(int)::in,
     maybe_error(list(int))::out, io::di, io::uo) is det.
 
-read_multi_call_site_csdis_2(CSDIs0, Res, !IO) :-
+read_multi_call_site_csdis_2(CSDIs0, MaybeCSDIs, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.format("reading multi_call_site_csdi.\n", [], !IO)
     ),
-    read_deep_byte(Res0, !IO),
+    read_deep_byte(MaybeByte, !IO),
     (
-        Res0 = ok(Byte),
+        MaybeByte = ok(Byte),
         ( Byte = 0 ->
-            Res = ok(CSDIs0)
+            MaybeCSDIs = ok(CSDIs0)
         ;
             putback_byte(Byte, !IO),
-            read_ptr(csd, Res1, !IO),
+            read_ptr(csd, MaybeCSDI, !IO),
             (
-                Res1 = ok(CSDI),
-                read_multi_call_site_csdis_2([CSDI | CSDIs0], Res, !IO)
+                MaybeCSDI = ok(CSDI),
+                read_multi_call_site_csdis_2([CSDI | CSDIs0], MaybeCSDIs, !IO)
             ;
-                Res1 = error(Err),
-                Res = error(Err)
+                MaybeCSDI = error(Error),
+                MaybeCSDIs = error(Error)
             )
         )
     ;
-        Res0 = error(Err),
-        Res = error(Err)
+        MaybeByte = error(Error),
+        MaybeCSDIs = error(Error)
     ).
 
 :- pred read_call_site_kind(maybe_error(call_site_kind)::out,
     io::di, io::uo) is det.
 
-read_call_site_kind(Res, !IO) :-
-    read_deep_byte(Res0, !IO),
+read_call_site_kind(MaybeKind, !IO) :-
+    read_deep_byte(MaybeByte, !IO),
     (
-        Res0 = ok(Byte),
+        MaybeByte = ok(Byte),
         ( is_call_site_kind(Byte, CallSiteKind) ->
-            Res = ok(CallSiteKind)
+            MaybeKind = ok(CallSiteKind)
         ;
-            format("unexpected call_site_kind %d", [i(Byte)], Msg),
-            Res = error(Msg)
+            string.format("unexpected call_site_kind %d", [i(Byte)], Msg),
+            MaybeKind = error(Msg)
         ),
         trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
              io.write_string("call_site_kind ", !IO),
-             io.write(Res, !IO),
+             io.write(MaybeKind, !IO),
              io.write_string("\n", !IO)
         )
     ;
-        Res0 = error(Err),
-        Res = error(Err)
+        MaybeByte = error(Error),
+        MaybeKind = error(Error)
     ).
 
 :- pred read_call_site_kind_and_callee(
     maybe_error(call_site_kind_and_callee)::out,
     io::di, io::uo) is det.
 
-read_call_site_kind_and_callee(Res, !IO) :-
-    read_deep_byte(Res0, !IO),
+read_call_site_kind_and_callee(MaybeKindAndCallee, !IO) :-
+    read_deep_byte(MaybeByte, !IO),
     (
-        Res0 = ok(Byte),
+        MaybeByte = ok(Byte),
         ( is_call_site_kind(Byte, CallSiteKind) ->
             (
                 CallSiteKind = normal_call,
-                read_num(Res1, !IO),
+                read_num(MaybeCSS, !IO),
                 (
-                    Res1 = ok(CalleeProcStatic),
-                    read_string(Res2, !IO),
+                    MaybeCSS = ok(CalleeProcStatic),
+                    read_string(MaybeTypeSubst, !IO),
                     (
-                        Res2 = ok(TypeSubst),
-                        Res = ok(normal_call_and_callee(
+                        MaybeTypeSubst = ok(TypeSubst),
+                        MaybeKindAndCallee = ok(normal_call_and_callee(
                             proc_static_ptr(CalleeProcStatic), TypeSubst))
                     ;
-                        Res2 = error(Err),
-                        Res = error(Err)
+                        MaybeTypeSubst = error(Error),
+                        MaybeKindAndCallee = error(Error)
                     )
                 ;
-                    Res1 = error(Err),
-                    Res = error(Err)
+                    MaybeCSS = error(Error),
+                    MaybeKindAndCallee = error(Error)
                 )
             ;
                 CallSiteKind = special_call,
-                Res = ok(special_call_and_no_callee)
+                MaybeKindAndCallee = ok(special_call_and_no_callee)
             ;
                 CallSiteKind = higher_order_call,
-                Res = ok(higher_order_call_and_no_callee)
+                MaybeKindAndCallee = ok(higher_order_call_and_no_callee)
             ;
                 CallSiteKind = method_call,
-                Res = ok(method_call_and_no_callee)
+                MaybeKindAndCallee = ok(method_call_and_no_callee)
             ;
                 CallSiteKind = callback,
-                Res = ok(callback_and_no_callee)
+                MaybeKindAndCallee = ok(callback_and_no_callee)
             )
         ;
-            format("unexpected call_site_kind %d", [i(Byte)], Msg),
-            Res = error(Msg)
+            string.format("unexpected call_site_kind %d", [i(Byte)], Msg),
+            MaybeKindAndCallee = error(Msg)
         ),
         trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
             io.write_string("call_site_kind_and_callee ", !IO),
-            io.write(Res, !IO),
+            io.write(MaybeKindAndCallee, !IO),
             io.write_string("\n", !IO)
         )
     ;
-        Res0 = error(Err),
-        Res = error(Err)
+        MaybeByte = error(Error),
+        MaybeKindAndCallee = error(Error)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -966,32 +961,33 @@ read_call_site_kind_and_callee(Res, !IO) :-
     in(pred(out, di, uo) is det), maybe_error(list(T))::out,
     io::di, io::uo) is det.
 
-read_n_things(N, ThingReader, Res, !IO) :-
-    read_n_things(N, ThingReader, [], Res0, !IO),
+read_n_things(N, ItemReader, MaybeItems, !IO) :-
+    read_n_things(N, ItemReader, [], MaybeRevItems, !IO),
     (
-        Res0 = ok(Things0),
-        reverse(Things0, Things),
-        Res = ok(Things)
+        MaybeRevItems = ok(RevItems),
+        list.reverse(RevItems, Items),
+        MaybeItems = ok(Items)
     ;
-        Res0 = error(Err),
-        Res = error(Err)
+        MaybeRevItems = error(Error),
+        MaybeItems = error(Error)
     ).
 
 :- pred read_n_things(int::in, pred(maybe_error(T), io, io)::
     in(pred(out, di, uo) is det), list(T)::in, maybe_error(list(T))::out,
     io::di, io::uo) is det.
 
-read_n_things(N, ThingReader, Things0, Res, !IO) :-
+read_n_things(N, ItemReader, RevItems0, MaybeItems, !IO) :-
     ( N =< 0 ->
-        Res = ok(Things0)
+        MaybeItems = ok(RevItems0)
     ;
-        call(ThingReader, Res1, !IO),
+        call(ItemReader, MaybeItem, !IO),
         (
-            Res1 = ok(Thing),
-            read_n_things(N - 1, ThingReader, [Thing | Things0], Res, !IO)
+            MaybeItem = ok(Item),
+            read_n_things(N - 1, ItemReader, [Item | RevItems0], MaybeItems,
+                !IO)
         ;
-            Res1 = error(Err),
-            Res = error(Err)
+            MaybeItem = error(Error),
+            MaybeItems = error(Error)
         )
     ).
 
@@ -999,108 +995,108 @@ read_n_things(N, ThingReader, Things0, Res, !IO) :-
 
 :- pred read_line(int::in, maybe_error(string)::out, io::di, io::uo) is det.
 
-read_line(Limit, Res, !IO) :-
-    read_line_acc(Limit, [], Res, !IO).
+read_line(Limit, MaybeLine, !IO) :-
+    read_line_acc(Limit, [], MaybeLine, !IO).
 
 :- pred read_line_acc(int::in, list(char)::in, maybe_error(string)::out,
     io::di, io::uo) is det.
 
-read_line_acc(Limit, !.RevChars, Res, !IO) :-
+read_line_acc(Limit, !.RevChars, MaybeLine, !IO) :-
     ( Limit > 0 ->
-        read_byte(ByteRes, !IO),
+        read_byte(MaybeByte, !IO),
         (
-            ByteRes = ok(Byte),
+            MaybeByte = ok(Byte),
             ( char.to_int(Char, Byte) ->
                 % Include the newline in the string.
                 !:RevChars = [Char | !.RevChars],
                 ( Char = '\n' ->
                     list.reverse(!.RevChars, Chars),
                     string.from_char_list(Chars, Str),
-                    Res = ok(Str)
+                    MaybeLine = ok(Str)
                 ;
-                    read_line_acc(Limit - 1, !.RevChars, Res, !IO)
+                    read_line_acc(Limit - 1, !.RevChars, MaybeLine, !IO)
                 )
             ;
-                Res = error("unexpected end of file")
+                MaybeLine = error("unexpected end of file")
             )
         ;
-            ByteRes = eof,
-            Res = error("unexpected end of file")
+            MaybeByte = eof,
+            MaybeLine = error("unexpected end of file")
         ;
-            ByteRes = error(Err),
-            io.error_message(Err, Msg),
-            Res = error(Msg)
+            MaybeByte = error(Error),
+            io.error_message(Error, Msg),
+            MaybeLine = error(Msg)
         )
     ;
         list.reverse(!.RevChars, Chars),
         string.from_char_list(Chars, Str),
-        Res = ok(Str)
+        MaybeLine = ok(Str)
     ).
 
 :- pred read_string(maybe_error(string)::out,
     io::di, io::uo) is det.
 
-read_string(Res, !IO) :-
-    read_num(Res0, !IO),
+read_string(MaybeStr, !IO) :-
+    read_num(MaybeNum, !IO),
     (
-        Res0 = ok(Length),
+        MaybeNum = ok(Length),
         ( Length = 0 ->
-            Res = ok("")
+            MaybeStr = ok("")
         ;
-            read_n_byte_string(Length, Res, !IO)
+            read_n_byte_string(Length, MaybeStr, !IO)
         )
     ;
-        Res0 = error(Err),
-        Res = error(Err)
+        MaybeNum = error(Error),
+        MaybeStr = error(Error)
     ).
 
 :- pred read_n_byte_string(int::in, maybe_error(string)::out,
     io::di, io::uo) is det.
 
-read_n_byte_string(Length, Res, !IO) :-
-    read_n_bytes(Length, NByteRes, !IO),
+read_n_byte_string(Length, MaybeStr, !IO) :-
+    read_n_bytes(Length, MaybeNBytes, !IO),
     (
-        NByteRes = ok(Bytes),
+        MaybeNBytes = ok(Bytes),
         (
             list.map((pred(I::in, C::out) is semidet :- char.to_int(C, I)),
                 Bytes, Chars)
         ->
             string.from_char_list(Chars, Str),
-            Res = ok(Str)
+            MaybeStr = ok(Str)
         ;
-            Res = error("string contained bad char")
+            MaybeStr = error("string contained bad char")
         )
     ;
-        NByteRes = error(Err),
-        Res = error(Err)
+        MaybeNBytes = error(Error),
+        MaybeStr = error(Error)
     ),
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("string ", !IO),
-        io.write(Res, !IO),
+        io.write(MaybeStr, !IO),
         io.write_string("\n", !IO)
     ).
 
 :- pred read_ptr(ptr_kind::in, maybe_error(int)::out, io::di, io::uo) is det.
 
-read_ptr(_Kind, Res, !IO) :-
-    read_num(Res, !IO),
+read_ptr(_Kind, MaybePtr, !IO) :-
+    read_num(MaybePtr, !IO),
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("ptr ", !IO),
-        io.write(Res, !IO),
+        io.write(MaybePtr, !IO),
         io.write_string("\n", !IO)
     ).
 
 :- pred read_cp_type(maybe_error(cp_type)::out, io::di, io::uo) is det.
 
-read_cp_type(MaybeRes, !IO) :-
-    read_num(MaybeRes0, !IO),
+read_cp_type(MaybeCPType, !IO) :-
+    read_num(MaybeNum, !IO),
     (
-        MaybeRes0 = ok(Res0),
-        num_to_cp_type(Res0, Res),
-        MaybeRes = ok(Res)
+        MaybeNum = ok(Num),
+        num_to_cp_type(Num, CPType),
+        MaybeCPType = ok(CPType)
     ;
-        MaybeRes0 = error(Msg),
-        MaybeRes = error(Msg)
+        MaybeNum = error(Msg),
+        MaybeCPType = error(Msg)
     ).
 
 :- pred num_to_cp_type(int::in, cp_type::out) is det.
@@ -1114,34 +1110,34 @@ read_cp_type(MaybeRes, !IO) :-
 
 :- pred read_num(maybe_error(int)::out, io::di, io::uo) is det.
 
-read_num(Res, !IO) :-
-    read_num_acc(0, Res, !IO),
+read_num(MaybeNum, !IO) :-
+    read_num_acc(0, MaybeNum, !IO),
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("num ", !IO),
-        io.write(Res, !IO),
+        io.write(MaybeNum, !IO),
         io.write_string("\n", !IO)
     ).
 
 :- pred read_num_acc(int::in, maybe_error(int)::out,
     io::di, io::uo) is det.
 
-read_num_acc(Num0, Res, !IO) :-
-    read_byte(Res0, !IO),
+read_num_acc(Num0, MaybeNum, !IO) :-
+    read_byte(MaybeByte, !IO),
     (
-        Res0 = ok(Byte),
+        MaybeByte = ok(Byte),
         Num1 = (Num0 << 7) \/ (Byte /\ 0x7F),
         ( Byte /\ 0x80 \= 0 ->
-            read_num_acc(Num1, Res, !IO)
+            read_num_acc(Num1, MaybeNum, !IO)
         ;
-            Res = ok(Num1)
+            MaybeNum = ok(Num1)
         )
     ;
-        Res0 = eof,
-        Res = error("unexpected end of file")
+        MaybeByte = eof,
+        MaybeNum = error("unexpected end of file")
     ;
-        Res0 = error(Err),
-        io.error_message(Err, Msg),
-        Res = error(Msg)
+        MaybeByte = error(Error),
+        io.error_message(Error, Msg),
+        MaybeNum = error(Msg)
     ).
 
 :- func fixed_size_int_bytes = int.
@@ -1154,77 +1150,78 @@ fixed_size_int_bytes = 4.
 :- pred read_fixed_size_int(maybe_error(int)::out,
     io::di, io::uo) is det.
 
-read_fixed_size_int(Res, !IO) :-
-    read_fixed_size_int_acc(fixed_size_int_bytes, 0, 0, Res, !IO).
+read_fixed_size_int(MaybeByte, !IO) :-
+    read_fixed_size_int_acc(fixed_size_int_bytes, 0, 0, MaybeByte, !IO).
 
 :- pred read_fixed_size_int_acc(int::in, int::in, int::in,
     maybe_error(int)::out, io::di, io::uo) is det.
 
-read_fixed_size_int_acc(BytesLeft, Num0, ShiftBy, Res, !IO) :-
+read_fixed_size_int_acc(BytesLeft, Num0, ShiftBy, MaybeInt, !IO) :-
     ( BytesLeft =< 0 ->
-        Res = ok(Num0)
+        MaybeInt = ok(Num0)
     ;
-        read_deep_byte(Res0, !IO),
+        read_deep_byte(MaybeByte, !IO),
         (
-            Res0 = ok(Byte),
+            MaybeByte = ok(Byte),
             Num1 = Num0 \/ ( Byte << ShiftBy),
-            read_fixed_size_int_acc(BytesLeft - 1, Num1, ShiftBy + 8, Res, !IO)
+            read_fixed_size_int_acc(BytesLeft - 1, Num1, ShiftBy + 8, MaybeInt,
+                !IO)
         ;
-            Res0 = error(Err),
-            Res = error(Err)
+            MaybeByte = error(Error),
+            MaybeInt = error(Error)
         )
     ).
 
 :- pred read_n_bytes(int::in, maybe_error(list(int))::out,
     io::di, io::uo) is det.
 
-read_n_bytes(N, Res, !IO) :-
-    read_n_bytes_acc(N, [], Res0, !IO),
+read_n_bytes(N, MaybeNBytes, !IO) :-
+    read_n_bytes_acc(N, [], MaybeRevNBytes, !IO),
     (
-        Res0 = ok(Bytes0),
-        list.reverse(Bytes0, Bytes),
-        Res = ok(Bytes)
+        MaybeRevNBytes = ok(RevBytes),
+        list.reverse(RevBytes, Bytes),
+        MaybeNBytes = ok(Bytes)
     ;
-        Res0 = error(Err),
-        Res = error(Err)
+        MaybeRevNBytes = error(Error),
+        MaybeNBytes = error(Error)
     ).
 
 :- pred read_n_bytes_acc(int::in, list(int)::in, maybe_error(list(int))::out,
     io::di, io::uo) is det.
 
-read_n_bytes_acc(N, RevBytes0, Res, !IO) :-
+read_n_bytes_acc(N, RevBytes0, MaybeNBytes, !IO) :-
     ( N =< 0 ->
-        Res = ok(RevBytes0)
+        MaybeNBytes = ok(RevBytes0)
     ;
-        read_deep_byte(Res0, !IO),
+        read_deep_byte(MaybeByte, !IO),
         (
-            Res0 = ok(Byte),
-            read_n_bytes_acc(N - 1, [Byte | RevBytes0], Res, !IO)
+            MaybeByte = ok(Byte),
+            read_n_bytes_acc(N - 1, [Byte | RevBytes0], MaybeNBytes, !IO)
         ;
-            Res0 = error(Err),
-            Res = error(Err)
+            MaybeByte = error(Error),
+            MaybeNBytes = error(Error)
         )
     ).
 
 :- pred read_deep_byte(maybe_error(int)::out,
     io::di, io::uo) is det.
 
-read_deep_byte(Res, !IO) :-
-    read_byte(Res0, !IO),
+read_deep_byte(MaybeByte, !IO) :-
+    read_byte(MaybeRawByte, !IO),
     (
-        Res0 = ok(Byte),
-        Res = ok(Byte)
+        MaybeRawByte = ok(Byte),
+        MaybeByte = ok(Byte)
     ;
-        Res0 = eof,
-        Res = error("unexpected end of file")
+        MaybeRawByte = eof,
+        MaybeByte = error("unexpected end of file")
     ;
-        Res0 = error(Err),
-        io.error_message(Err, Msg),
-        Res = error(Msg)
+        MaybeRawByte = error(Error),
+        io.error_message(Error, Msg),
+        MaybeByte = error(Msg)
     ),
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("byte ", !IO),
-        io.write(Res, !IO),
+        io.write(MaybeByte, !IO),
         io.write_string("\n", !IO)
     ).
 
@@ -1232,15 +1229,15 @@ read_deep_byte(Res, !IO) :-
 
 :- pred deep_insert(array(T)::in, int::in, T::in, array(T)::out) is det.
 
-deep_insert(A0, Ind, Thing, A) :-
+deep_insert(A0, Ind, Item, A) :-
     array.max(A0, Max),
     ( Ind > Max ->
         error("deep_insert: array bounds violation")
         % array.lookup(A0, 0, X),
         % array.resize(u(A0), 2 * (Max + 1), X, A1),
-        % deep_insert(A1, Ind, Thing, A)
+        % deep_insert(A1, Ind, Item, A)
     ;
-        set(u(A0), Ind, Thing, A)
+        set(u(A0), Ind, Item, A)
     ).
 
 %------------------------------------------------------------------------------%

@@ -20,7 +20,6 @@
 :- import_module measurement_units.
 :- import_module query.
 
-:- import_module cord.
 :- import_module list.
 :- import_module maybe.
 :- import_module string.
@@ -34,8 +33,24 @@
             ).
 
 :- type display_item
-    --->    display_message(string)
-    ;       display_table(table)
+    --->    display_heading(
+                % A string to be displayed as a HTML header.
+                string
+            )
+    ;       display_text(
+                % A string to be displayed as ordinary text.
+                string
+            )
+    ;       display_paragraph_break
+    ;       display_link(
+                deep_link
+            )
+    ;       display_pseudo_link(
+                % A string to be formatted exactly as if it were a link,
+                % without it actually being a link. Used for situations
+                % when a link would lead back to this page.
+                pseudo_link
+            )
     ;       display_list(
                 % Class of the list, may be used to display the list.
                 list_class,
@@ -46,7 +61,9 @@
                 % Items within the list.
                 list(display_item)
             )
-    ;       display_command_link(deep_link).
+    ;       display_table(
+                table
+            ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -55,15 +72,14 @@
 
 :- type table
     --->    table(
-                % Enumeration of what the table stores, this can be used
-                % for layout hints.
+                % Information about how to format the table.
                 table_class     :: table_class,
 
-                % The number of columns in the table. If the number of cells
-                % in any data row is not equal to this number, the table is not
-                % well formed. The number of cells in the header may be smaller
-                % than this value when there are header cells that span
-                % multiple sub-header cells.
+                % The number of columns in the table. You must get this number
+                % (a) when you sum up the number of columns in each
+                % table_header_group in the table_header (if it exists), and
+                % (b) when sum up the column span of each cell in any table
+                % row.
                 table_num_cols  :: int,
 
                 % The header row of the table.
@@ -87,7 +103,7 @@
                 % about how to paint this column.
                 thg_class       :: table_column_class,
 
-                thg_set_style   :: table_set_style
+                thg_colour      :: table_column_colour
             ).
 
 :- type table_header_group_columns
@@ -104,27 +120,31 @@
                 thmc_subtitles  :: list(table_data)
             ).
 
-:- type table_set_style
-    --->    table_set_style
-    ;       table_do_not_set_style.
-
 :- type table_row
     --->    table_row(
-                tr_cells    :: list(table_cell)
+                tr_cells        :: list(table_cell)
             )
+    ;       table_separator_row
     ;       table_section_header(
-                tsh_text    :: table_data
+                tsh_text        :: table_data
             ).
 
 :- type table_cell
     --->    table_cell(
-                tc_text     :: table_data
+                tc_text         :: table_data,
+                tc_span         :: int
             )
     ;       table_empty_cell.
 
 :- type table_class
-    --->    table_class_plain
-    ;       table_class_boxed.
+    --->    table_class_do_not_box
+    ;       table_class_box
+    ;       table_class_box_if_pref.
+
+:- type table_column_colour
+    --->    column_do_not_colour
+    ;       column_colour
+    ;       column_colour_if_pref.
 
 :- type table_column_class
     --->    table_column_class_allocations
@@ -135,6 +155,7 @@
     ;       table_column_class_ordinal_rank
     ;       table_column_class_port_counts
     ;       table_column_class_proc
+    ;       table_column_class_source_context
     ;       table_column_class_ticks_and_times.
 
     % Table data can be specified by type to allow formatting, for example
@@ -157,12 +178,6 @@
     ;       td_p(percent)
     ;       td_s(string)
     ;       td_t(time).
-
-:- func make_single_table_header_group(table_data,
-    table_column_class, table_set_style) = table_header_group.
-
-:- func make_multi_table_header_group(string, list(table_data),
-    table_column_class, table_set_style) = table_header_group.
 
 %-----------------------------------------------------------------------------%
 %
@@ -190,7 +205,16 @@
                 % A label for the link.
                 string,
 
-                % Class of the link may control how it is displayed.
+                % Class of the link; may control how it is displayed.
+                link_class
+            ).
+
+:- type pseudo_link
+    --->    pseudo_link(
+                % A label for the pseudo link.
+                string,
+
+                % Class of the link; may control how it is displayed.
                 link_class
             ).
 
@@ -203,21 +227,19 @@
 % Predicates for working with display structures.
 %
 
-    % If given a header for a (group of) columns, this predicate adds it
-    % to the end of the cord and adds the correct number of columns
-    % to the column count.
-    %
-:- pred table_maybe_add_header_group(maybe(table_header_group)::in,
-    cord(table_header_group)::in, cord(table_header_group)::out,
-    int::in, int::out) is det.
+:- func make_single_table_header_group(table_data,
+    table_column_class, table_column_colour) = table_header_group.
 
-    % Given a header for a (group of) columns, this predicate adds it
-    % to the end of the cord and adds the correct number of columns
-    % to the column count.
+:- func make_multi_table_header_group(string, list(table_data),
+    table_column_class, table_column_colour) = table_header_group.
+
+    % header_groups_to_header(HeaderGroups, NumColumns, Header)
     %
-:- pred table_add_header_group(table_header_group::in,
-    cord(table_header_group)::in, cord(table_header_group)::out,
-    int::in, int::out) is det.
+    % Convert the list of header groups into a header, and return
+    % the number of columns they represent.
+    %
+:- pred header_groups_to_header(list(table_header_group)::in,
+    int::out, table_header::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -230,25 +252,23 @@
 
 %-----------------------------------------------------------------------------%
 
-make_single_table_header_group(ColumnTitle, ColumnClass, SetStyle) =
+make_single_table_header_group(ColumnTitle, ColumnClass, Colour) =
     table_header_group(table_header_group_single(ColumnTitle),
-        ColumnClass, SetStyle).
+        ColumnClass, Colour).
 
-make_multi_table_header_group(MainTitle, SubTitles, ColumnClass, SetStyle) =
+make_multi_table_header_group(MainTitle, SubTitles, ColumnClass, Colour) =
     table_header_group(table_header_group_multi(MainTitle, SubTitles),
-        ColumnClass, SetStyle).
+        ColumnClass, Colour).
 
 %-----------------------------------------------------------------------------%
 
-table_maybe_add_header_group(MaybeHeaderGroup, !HeaderGroups, !NumColumns) :-
-    (
-        MaybeHeaderGroup = yes(HeaderGroup),
-        table_add_header_group(HeaderGroup, !HeaderGroups, !NumColumns)
-    ;
-        MaybeHeaderGroup = no
-    ).
+    % Given a header for a column group, this predicate adds the number
+    % of columns it covers to the accumulator.
+    %
+:- pred table_accumulate_columns(table_header_group::in, int::in, int::out)
+    is det.
 
-table_add_header_group(HeaderGroup, !HeaderGroups, !NumColumns) :-
+table_accumulate_columns(HeaderGroup, !NumColumns) :-
     HeaderGroup = table_header_group(ColumnTitles, _, _),
     (
         ColumnTitles = table_header_group_single(_),
@@ -257,8 +277,11 @@ table_add_header_group(HeaderGroup, !HeaderGroups, !NumColumns) :-
         ColumnTitles = table_header_group_multi(_, SubTitles),
         list.length(SubTitles, GroupColumns)
     ),
-    !:HeaderGroups = cord.snoc(!.HeaderGroups, HeaderGroup),
     !:NumColumns = !.NumColumns + GroupColumns.
+
+header_groups_to_header(HeaderGroups, NumColumns, Header) :-
+    list.foldl(table_accumulate_columns, HeaderGroups, 0, NumColumns),
+    Header = table_header(HeaderGroups).
 
 %-----------------------------------------------------------------------------%
 :- end_module display.

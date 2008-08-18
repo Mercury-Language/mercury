@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -515,16 +515,18 @@ lookup_multi_sites([RestArray | RestArrays], SlotNum, [CSDList | CSDLists]) :-
     ),
     lookup_multi_sites(RestArrays, SlotNum, CSDLists).
 
-% :- pragma promise_pure(record_pd_redirect/4).
 :- pred record_pd_redirect(list(proc_dynamic_ptr)::in, proc_dynamic_ptr::in,
     redirect::in, redirect::out) is det.
 
 record_pd_redirect(RestPDPtrs, PrimePDPtr, !Redirect) :-
-    % impure unsafe_perform_io(io.write_string("pd redirect: ")),
-    % impure unsafe_perform_io(io.print(RestPDPtrs)),
-    % impure unsafe_perform_io(io.write_string(" -> ")),
-    % impure unsafe_perform_io(io.print(PrimePDPtr)),
-    % impure unsafe_perform_io(io.nl),
+    trace [compiletime(flag("pd_redirect")), io(!IO)] (
+        io.write_string("pd redirect: ", !IO),
+        io.print(RestPDPtrs, !IO),
+        io.write_string(" -> ", !IO),
+        io.print(PrimePDPtr, !IO),
+        io.nl(!IO)
+    ),
+
     lookup_pd_redirect(!.Redirect ^ pd_redirect, PrimePDPtr, OldRedirect),
     ( OldRedirect = proc_dynamic_ptr(0) ->
         record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect)
@@ -548,16 +550,18 @@ record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr, !Redirect) :-
     !:Redirect = !.Redirect ^ pd_redirect := ProcRedirect,
     record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect).
 
-% :- pragma promise_pure(record_csd_redirect/4).
 :- pred record_csd_redirect(list(call_site_dynamic_ptr)::in,
     call_site_dynamic_ptr::in, redirect::in, redirect::out) is det.
 
 record_csd_redirect(RestCSDPtrs, PrimeCSDPtr, !Redirect) :-
-    % impure unsafe_perform_io(io.write_string("csd redirect: ")),
-    % impure unsafe_perform_io(io.print(RestCSDPtrs)),
-    % impure unsafe_perform_io(io.write_string(" -> ")),
-    % impure unsafe_perform_io(io.print(PrimeCSDPtr)),
-    % impure unsafe_perform_io(io.nl),
+    trace [compiletime(flag("csd_redirect")), io(!IO)] (
+        io.write_string("csd redirect: ", !IO),
+        io.print(RestCSDPtrs, !IO),
+        io.write_string(" -> ", !IO),
+        io.print(PrimeCSDPtr, !IO),
+        io.nl(!IO)
+    ),
+
     lookup_csd_redirect(!.Redirect ^ csd_redirect, PrimeCSDPtr, OldRedirect),
     ( OldRedirect = call_site_dynamic_ptr(0) ->
         record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, !Redirect)
