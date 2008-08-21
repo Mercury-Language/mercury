@@ -39,7 +39,7 @@
     % The type of (compiled) regular expressions.
     %
 :- type regex.
-:- inst regex == lexer.
+:- inst regex == ground.
 
     % A function for converting a POSIX style regex string to a regex
     % suitable for the string matching operations provided in this

@@ -42,8 +42,6 @@
     ---> (ground - Inst).
 
 :- type lexer(Token, Source).
-:- inst lexer
-    ---> lexer(ground, ignore_pred, read_pred).
 
 :- type lexer_state(Token, Source).
 
@@ -154,7 +152,7 @@
     % of the list of lexemes is returned.
     %
 :- func init(list(lexeme(Tok)), read_pred(Src)) = lexer(Tok, Src).
-:- mode init(in, in(read_pred)) = out(lexer) is det.
+:- mode init(in, in(read_pred)) = out is det.
 
     % Construct a lexer from which we can generate running
     % instances. If we construct a lexer with init/4, we
@@ -166,7 +164,7 @@
     %
 :- func init(list(lexeme(Tok)), read_pred(Src), ignore_pred(Tok)) =
             lexer(Tok, Src).
-:- mode init(in, in(read_pred), in(ignore_pred)) = out(lexer) is det.
+:- mode init(in, in(read_pred), in(ignore_pred)) = out is det.
 
     % Handy read predicates.
     %
@@ -185,7 +183,7 @@
     % lexing.
     %
 :- func start(lexer(Tok, Src), Src) = lexer_state(Tok, Src).
-:- mode start(in(lexer), di) = uo is det.
+:- mode start(in, di) = uo is det.
 
     % Read the next token from the input stream.
     %
@@ -255,6 +253,9 @@
                 lex_buf_read_pred       :: read_pred(Source)
             ).
 
+:- inst lexer
+    --->    lexer(ground, ignore_pred, read_pred).
+
 :- type lexer_instance(Token, Source)
     --->    lexer_instance(
                 init_lexemes            :: list(live_lexeme(Token)),
@@ -319,9 +320,20 @@ init(Lexemes, BufReadPred, IgnorePred) =
 
 %-----------------------------------------------------------------------------%
 
-start(Lexer, Src) = State :-
+start(Lexer0, Src) = State :-
+    Lexer = lexer_inst_cast(Lexer0),
     init_lexer_instance(Lexer, Instance, Buf),
     State = args_lexer_state(Instance, Buf, Src).
+
+:- func lexer_inst_cast(lexer(Tok, Src)::in) = (lexer(Tok, Src)::out(lexer))
+    is det.
+
+:- pragma foreign_proc("C",
+    lexer_inst_cast(Lexer0::in) = (Lexer::out(lexer)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Lexer = Lexer0;
+").
 
 %-----------------------------------------------------------------------------%
 
