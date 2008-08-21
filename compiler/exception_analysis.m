@@ -1254,13 +1254,16 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
+    globals.lookup_bool_option(Globals, analyse_exceptions,
+        ExceptionAnalysis),
     %
     % If we the procedure we are calling is imported and we are using
     % intermodule-analysis then we need to look up the exception status in the
     % analysis registry; otherwise we look it up in the the exception_info
     % table.
     %
-    UseAnalysisRegistry = IsImported `bool.and` IntermodAnalysis,
+    UseAnalysisRegistry = IsImported `bool.and` IntermodAnalysis
+        `bool.and` ExceptionAnalysis,
     (
         % If the procedure is not imported then it's exception_status
         % will be in the exception_info table.
