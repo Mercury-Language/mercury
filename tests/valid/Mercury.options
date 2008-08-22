@@ -73,6 +73,7 @@ MCFLAGS-intermod_test2		= --intermodule-optimization
 MCFLAGS-intermod_test		= --intermodule-optimization
 MCFLAGS-intermod_typeclass2	= --intermodule-optimization
 MCFLAGS-intermod_typeclass	= --intermodule-optimization
+MCFLAGS-intermod_typeclass_exist = --intermodule-optimization
 MCFLAGS-intermod_type_spec_2	= --intermodule-optimization
 MCFLAGS-intermod_type_spec	= --intermodule-optimization
 MCFLAGS-intermod_ua_type_spec	= --intermod-unused-args

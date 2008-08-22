@@ -133,6 +133,7 @@ OTHER_PROGS= \
 	intermod_test \
 	intermod_type_spec \
 	intermod_typeclass \
+	intermod_typeclass_exist \
 	intermod_ua_type_spec \
 	intermod_user_equality \
 	intermod_user_equality_nested \

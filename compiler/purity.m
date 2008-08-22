@@ -936,13 +936,16 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     ->
         PredInfo = !.Info ^ pi_pred_info,
         pred_info_get_typevarset(PredInfo, TVarSet),
+        pred_info_get_exist_quant_tvars(PredInfo, ExistQTVars),
+        pred_info_get_head_type_params(PredInfo, HeadTypeParams),
         map.apply_to_list(Args, VarTypes, ArgTypes0),
         list.append(ArgTypes0, VarArgTypes, PredArgTypes),
         ModuleInfo = !.Info ^ pi_module_info,
         pred_info_get_markers(PredInfo, CallerMarkers),
         (
-            get_pred_id(calls_are_fully_qualified(CallerMarkers), PName,
-                PredOrFunc, TVarSet, PredArgTypes, ModuleInfo, CalleePredId)
+            get_pred_id_by_types(calls_are_fully_qualified(CallerMarkers),
+                PName, PredOrFunc, TVarSet, ExistQTVars, PredArgTypes,
+                HeadTypeParams, ModuleInfo, CalleePredId)
         ->
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_get_purity(CalleePredInfo, CalleePurity),

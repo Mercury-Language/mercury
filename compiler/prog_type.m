@@ -412,16 +412,18 @@
 :- pred type_list_subsumes_det(list(mer_type)::in, list(mer_type)::in,
     tsubst::out) is det.
 
-    % arg_type_list_subsumes(TVarSet, ArgTypes, CalleeTVarSet,
-    %   CalleeExistQVars, CalleeArgTypes):
+    % arg_type_list_subsumes(TVarSet, ExistQVars, ArgTypes, HeadTypeParams,
+    %   CalleeTVarSet, CalleeExistQVars, CalleeArgTypes):
     %
     % Check that the argument types of the called predicate, function or
     % constructor subsume the types of the arguments of the call. This checks
     % that none of the existentially quantified type variables of the callee
     % are bound.
     %
-:- pred arg_type_list_subsumes(tvarset::in, list(mer_type)::in, tvarset::in,
-    tvar_kind_map::in, existq_tvars::in, list(mer_type)::in) is semidet.
+:- pred arg_type_list_subsumes(tvarset::in, existq_tvars::in,
+    list(mer_type)::in, list(tvar)::in,
+    tvarset::in, tvar_kind_map::in, existq_tvars::in, list(mer_type)::in)
+    is semidet.
 
     % Apply a renaming (partial map) to a list.
     % Useful for applying a variable renaming to a list of variables.
@@ -1366,8 +1368,8 @@ type_list_subsumes_det(TypesA, TypesB, TypeSubst) :-
             "type_list_subsumes_det: type_list_subsumes failed")
     ).
 
-arg_type_list_subsumes(TVarSet, ActualArgTypes, CalleeTVarSet, PredKindMap,
-        PredExistQVars, PredArgTypes) :-
+arg_type_list_subsumes(TVarSet, ExistQVars, ActualArgTypes, HeadTypeParams,
+        CalleeTVarSet, PredKindMap, PredExistQVars, PredArgTypes) :-
     % Rename the type variables in the callee's argument types.
     tvarset_merge_renaming(TVarSet, CalleeTVarSet, _TVarSet1, Renaming),
     apply_variable_renaming_to_tvar_kind_map(Renaming, PredKindMap,
@@ -1387,7 +1389,16 @@ arg_type_list_subsumes(TVarSet, ActualArgTypes, CalleeTVarSet, PredKindMap,
     % clauses_info and proc_info) -- the latter
     % might not subsume the actual argument types.]
 
-    type_list_subsumes(ParentArgTypes, ActualArgTypes, ParentToActualSubst),
+    (
+        ExistQVars = [],
+        type_list_subsumes(ParentArgTypes, ActualArgTypes, ParentToActualSubst)
+    ;
+        ExistQVars = [_ | _],
+        % For calls to existentially type preds, we may need to bind
+        % type variables in the caller, not just those in the callee.
+        type_unify_list(ParentArgTypes, ActualArgTypes, HeadTypeParams,
+            map.init, ParentToActualSubst)
+    ),
 
     % Check that the type substitution did not bind any existentially
     % typed variables to non-ground types.

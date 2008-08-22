@@ -3483,11 +3483,14 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo0,
         ProcInfo0),
     pred_info_get_typevarset(PredInfo0, TVarSet),
+    pred_info_get_exist_quant_tvars(PredInfo0, ExistQTVars),
+    pred_info_get_head_type_params(PredInfo0, HeadTypeParams),
 
     % Get the pred_info and proc_info for the procedure we are calling.
     SymName = qualified(CalleeModuleName, CalleePredName),
-    get_pred_id_and_proc_id(is_fully_qualified, SymName, pf_predicate, TVarSet,
-        ArgTypes, ModuleInfo0, CalleePredId, CalleeProcId),
+    get_pred_id_and_proc_id_by_types(is_fully_qualified, SymName, pf_predicate,
+        TVarSet, ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo0,
+        CalleePredId, CalleeProcId),
     module_info_pred_proc_info(ModuleInfo0, CalleePredId, CalleeProcId,
         CalleePredInfo, CalleeProcInfo),
 

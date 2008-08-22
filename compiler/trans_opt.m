@@ -187,10 +187,6 @@ write_trans_opt_file(Module, !IO) :-
         touch_interface_datestamp(ModuleName, ".trans_opt_date", !IO)
     ).
 
-:- pred get_pred_id(pred_proc_id::in, pred_id::out) is det.
-
-get_pred_id(proc(PredId, _ProcId), PredId). 
-
 %-----------------------------------------------------------------------------%
 %
 % Read and process the transitive optimization interfaces.

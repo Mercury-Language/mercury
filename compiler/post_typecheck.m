@@ -433,12 +433,14 @@ finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
         % Find the set of candidate pred_ids for predicates which
         % have the specified name and arity.
         pred_info_get_typevarset(CallerPredInfo, TVarSet),
+        pred_info_get_exist_quant_tvars(CallerPredInfo, ExistQVars),
+        pred_info_get_head_type_params(CallerPredInfo, HeadTypeParams),
         pred_info_get_markers(CallerPredInfo, Markers),
         pred_info_get_clauses_info(CallerPredInfo, ClausesInfo),
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
         map.apply_to_list(Args0, VarTypes, ArgTypes),
-        resolve_pred_overloading(ModuleInfo, Markers, ArgTypes, TVarSet,
-            !PredName, !:PredId)
+        resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
+            ArgTypes, HeadTypeParams, !PredName, !:PredId)
     ;
         !:PredName = get_qualified_pred_name(ModuleInfo, !.PredId)
     ).
@@ -978,14 +980,17 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % which subsume the actual argument/return types of this function call,
         % and which have universal constraints consistent with what we expect.
         pred_info_get_typevarset(!.PredInfo, TVarSet),
+        pred_info_get_exist_quant_tvars(!.PredInfo, ExistQTVars),
+        pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
         map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         list.append(ArgTypes0, [TypeOfX], ArgTypes),
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
         GoalPath = goal_info_get_goal_path(GoalInfo0),
         ConstraintSearch =
             search_hlds_constraint_list(ConstraintMap, unproven, GoalPath),
-        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
-            yes(ConstraintSearch), PredId, QualifiedFuncName)
+        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
+            ArgTypes, HeadTypeParams, yes(ConstraintSearch), PredId,
+            QualifiedFuncName)
     ->
         % Convert function calls into predicate calls:
         % replace `X = f(A, B, C)' with `f(A, B, C, X)'.
@@ -1013,9 +1018,12 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         AllArgTypes = ArgTypes0 ++ HOArgTypes,
         pred_info_get_typevarset(!.PredInfo, TVarSet),
+        pred_info_get_exist_quant_tvars(!.PredInfo, ExistQVars),
+        pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
         pred_info_get_markers(!.PredInfo, Markers),
-        get_pred_id(calls_are_fully_qualified(Markers), Name,
-            PredOrFunc, TVarSet, AllArgTypes, ModuleInfo, PredId)
+        get_pred_id_by_types(calls_are_fully_qualified(Markers), Name,
+            PredOrFunc, TVarSet, ExistQVars, AllArgTypes, HeadTypeParams,
+            ModuleInfo, PredId)
     ->
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ProcIds = pred_info_procids(PredInfo),
@@ -1102,8 +1110,11 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
     hlds_data.get_type_defn_kind_map(TypeDefn, TypeKindMap),
 
     ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgs),
-    arg_type_list_subsumes(TVarSet, ArgTypes, TypeTVarSet, TypeKindMap,
-        ConsExistQVars, ConsArgTypes).
+    % XXX is this correct?
+    ExistQVars = [],
+    HeadTypeParams = [],
+    arg_type_list_subsumes(TVarSet, ExistQVars, ArgTypes, HeadTypeParams,
+        TypeTVarSet, TypeKindMap, ConsExistQVars, ConsArgTypes).
 
 %-----------------------------------------------------------------------------%
 
