@@ -853,7 +853,7 @@ do_merge_profiles(BaseInitDeep, OtherInitDeeps, MergedInitDeep) :-
     list.map(extract_num_callseqs, OtherInitDeeps, OtherNumCallSeqs),
     list.foldl(int_add, OtherNumCallSeqs, BaseNumCallSeqs, ConcatNumCallSeqs),
     
-    % The program names are not checked.  The new profile is named after the
+    % The program names are not checked. The new profile is named after the
     % base profile.
     BaseProgramName = BaseInitDeep ^ init_profile_stats ^ program_name,
     ConcatProfileStats = profile_stats(BaseProgramName,
