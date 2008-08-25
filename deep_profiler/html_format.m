@@ -16,7 +16,7 @@
 % linear over the length of both input strings, building a long string
 % from many short strings would take quadratic time. This is why we represent
 % HTML as a cord of strings instead. This cord is then converted to a list of
-% strings and then a single list just before being given to the browser.
+% strings and then a single string just before being given to the browser.
 %
 %-----------------------------------------------------------------------------%
 
@@ -299,7 +299,8 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
                 Class = list_class_horizontal,
                 PostTitleHTML = empty_html
             ;
-                ( Class = list_class_vertical_bullets
+                ( Class = list_class_horizontal_except_title
+                ; Class = list_class_vertical_bullets
                 ; Class = list_class_vertical_no_bullets
                 ),
                 PostTitleHTML = str_to_html("<br>\n")
@@ -310,12 +311,14 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
             PostTitleHTML = empty_html
         ),
         (
-            Class = list_class_vertical_bullets,
-            OutsideStartTag = "<ul>\n",
-            OutsideEndTag = "</ul>\n",
-            InnerStartTag = "<li>\n",
-            InnerEndTag = "</li>\n",
-            Separator = empty_html
+            ( Class = list_class_horizontal
+            ; Class = list_class_horizontal_except_title
+            ),
+            OutsideStartTag = "",
+            OutsideEndTag = "\n",
+            InnerStartTag = "",
+            InnerEndTag = "\n",
+            Separator = str_to_html("")
         ;
             Class = list_class_vertical_no_bullets,
             OutsideStartTag = "",
@@ -324,12 +327,12 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
             InnerEndTag = "\n",
             Separator = str_to_html("<br>\n")
         ;
-            Class = list_class_horizontal,
-            OutsideStartTag = "",
-            OutsideEndTag = "\n",
-            InnerStartTag = "",
-            InnerEndTag = "\n",
-            Separator = str_to_html("")
+            Class = list_class_vertical_bullets,
+            OutsideStartTag = "<ul>\n",
+            OutsideEndTag = "</ul>\n",
+            InnerStartTag = "<li>\n",
+            InnerEndTag = "</li>\n",
+            Separator = empty_html
         ),
         sep_map_join_html(Separator,
             item_to_html(InnerStartTag, InnerEndTag, FormatInfo),
@@ -602,7 +605,12 @@ table_cell_to_html(FormatInfo, MaybeClassMap, !StyleControlMap, !ColumnNum,
         !:ColumnNum = !.ColumnNum + 1,
         HTML = str_to_html("<td/>")
     ;
-        Cell = table_cell(CellData, Span),
+        (
+            Cell = table_cell(CellData),
+            Span = 1
+        ;
+            Cell = table_multi_cell(CellData, Span)
+        ),
         (
             MaybeClassMap = yes(ClassMap),
             ( map.search(ClassMap, !.ColumnNum, ColumnClassStrPrime) ->
@@ -675,8 +683,10 @@ default_table_column_class = table_column_class_no_class.
 
 table_column_class_to_string(table_column_class_no_class) = "default".
 table_column_class_to_string(table_column_class_allocations) = "allocations".
+table_column_class_to_string(table_column_class_clique) = "clique".
 table_column_class_to_string(table_column_class_callseqs) = "callseqs".
 table_column_class_to_string(table_column_class_memory) = "memory".
+table_column_class_to_string(table_column_class_module_name) = "module_name".
 table_column_class_to_string(table_column_class_number) = "number".
 table_column_class_to_string(table_column_class_ordinal_rank) = "ordinal_rank".
 table_column_class_to_string(table_column_class_port_counts) = "port_counts".
@@ -745,9 +755,19 @@ default_style_control_map =
                 style_element("text-align")     - "right"
             ])
         ),
+        ( style_control("td.clique") -
+            map.from_assoc_list([
+                style_element("text-align")     - "right"
+            ])
+        ),
         ( style_control("td.memory") -
             map.from_assoc_list([
                 style_element("text-align")     - "right"
+            ])
+        ),
+        ( style_control("td.module_name") -
+            map.from_assoc_list([
+                style_element("text-align")     - "left"
             ])
         ),
         ( style_control("td.number") -
@@ -1251,18 +1271,18 @@ command_relevant_toggles(deep_cmd_restart) = [].
 command_relevant_toggles(deep_cmd_timeout(_)) = [].
 command_relevant_toggles(deep_cmd_menu) = [].
 command_relevant_toggles(deep_cmd_root(_)) =
-    % The clique num doesn't matter.
-    command_relevant_toggles(deep_cmd_clique(1)).
+    % The clique_ptr doesn't matter.
+    command_relevant_toggles(deep_cmd_clique(clique_ptr(1))).
 command_relevant_toggles(deep_cmd_clique(_)) =
     [toggle_fields, toggle_box, toggle_colour, toggle_ancestor_limit,
     toggle_summarize, toggle_order_criteria, toggle_time_format].
 command_relevant_toggles(deep_cmd_proc(_)) =
     [toggle_fields, toggle_box, toggle_colour, toggle_summarize,
     toggle_order_criteria, toggle_time_format].
-command_relevant_toggles(deep_cmd_proc_callers(_, _, _)) =
+command_relevant_toggles(deep_cmd_proc_callers(_, _, _, _)) =
     [toggle_fields, toggle_box, toggle_colour, toggle_order_criteria,
     toggle_contour, toggle_time_format].
-command_relevant_toggles(deep_cmd_modules) =
+command_relevant_toggles(deep_cmd_program_modules) =
     [toggle_fields, toggle_box, toggle_colour, toggle_order_criteria,
     toggle_time_format, toggle_inactive_modules].
 command_relevant_toggles(deep_cmd_module(_)) =
@@ -1270,11 +1290,11 @@ command_relevant_toggles(deep_cmd_module(_)) =
     toggle_time_format, toggle_inactive_procs].
 command_relevant_toggles(deep_cmd_top_procs(_, _, _, _)) =
     [toggle_fields, toggle_box, toggle_colour, toggle_time_format].
-command_relevant_toggles(deep_cmd_proc_static(_)) = [].
-command_relevant_toggles(deep_cmd_proc_dynamic(_)) = [].
-command_relevant_toggles(deep_cmd_call_site_static(_)) = [].
-command_relevant_toggles(deep_cmd_call_site_dynamic(_)) = [].
-command_relevant_toggles(deep_cmd_raw_clique(_)) = [].
+command_relevant_toggles(deep_cmd_dump_proc_static(_)) = [].
+command_relevant_toggles(deep_cmd_dump_proc_dynamic(_)) = [].
+command_relevant_toggles(deep_cmd_dump_call_site_static(_)) = [].
+command_relevant_toggles(deep_cmd_dump_call_site_dynamic(_)) = [].
+command_relevant_toggles(deep_cmd_dump_clique(_)) = [].
 
 :- func footer_field_toggle(cmd, preferences, deep) = string.
 
@@ -1613,12 +1633,12 @@ footer_summarize_toggle(Cmd, Pref, Deep) = HTML :-
 
 footer_contour_toggle(Cmd, Pref, Deep) = HTML :-
     (
-        Pref ^ pref_contour = no_contour,
-        Pref1 = Pref ^ pref_contour := apply_contour,
+        Pref ^ pref_contour = do_not_apply_contour_exclusion,
+        Pref1 = Pref ^ pref_contour := apply_contour_exclusion,
         Msg1 = "[Apply contour exclusion]"
     ;
-        Pref ^ pref_contour = apply_contour,
-        Pref1 = Pref ^ pref_contour := no_contour,
+        Pref ^ pref_contour = apply_contour_exclusion,
+        Pref1 = Pref ^ pref_contour := do_not_apply_contour_exclusion,
         Msg1 = "[Don't apply contour exclusion]"
     ),
     HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -3070,8 +3090,7 @@ proc_static_to_line_group_info(Pref, Deep, PSPtr, FileName, LineNumber,
     ).
 
 proc_static_to_html_ref(Pref, Deep, PSPtr) = HTML :-
-    PSPtr = proc_static_ptr(PSI),
-    URL = deep_cmd_pref_to_url(Pref, Deep, deep_cmd_proc(PSI)),
+    URL = deep_cmd_pref_to_url(Pref, Deep, deep_cmd_proc(PSPtr)),
     deep_lookup_proc_statics(Deep, PSPtr, PS),
     ProcName = PS ^ ps_refined_id,
     HTML = string.format("<A HREF=""%s"">%s</A>",
@@ -3083,8 +3102,7 @@ module_name_to_html_ref(Pref, Deep, ModuleName) = HTML :-
         [s(URL), s(escape_break_html_string(ModuleName))]).
 
 clique_ptr_to_html_ref(Pref, Deep, ProcName, CliquePtr) = HTML :-
-    CliquePtr = clique_ptr(CliqueNum),
-    URL = deep_cmd_pref_to_url(Pref, Deep, deep_cmd_clique(CliqueNum)),
+    URL = deep_cmd_pref_to_url(Pref, Deep, deep_cmd_clique(CliquePtr)),
     HTML = string.format("<A HREF=""%s"">%s</A>",
         [s(URL), s(escape_break_html_string(ProcName))]).
 

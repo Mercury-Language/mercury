@@ -232,7 +232,7 @@ test_server(DirName, Pref, Deep, !IO) :-
 
 test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_clique(Cur), Pref, Deep, HTML, !IO),
+        try_exec(deep_cmd_clique(clique_ptr(Cur)), Pref, Deep, HTML, !IO),
         write_test_html(DirName, "clique", Cur, HTML, !IO),
         test_cliques(Cur + 1, Max, DirName, Pref, Deep, !IO)
     ;
@@ -244,7 +244,7 @@ test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
 
 test_procs(Cur, Max, DirName, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_proc(Cur), Pref, Deep, HTML, !IO),
+        try_exec(deep_cmd_proc(proc_static_ptr(Cur)), Pref, Deep, HTML, !IO),
         write_test_html(DirName, "proc", Cur, HTML, !IO),
         test_procs(Cur + 1, Max, DirName, Pref, Deep, !IO)
     ;

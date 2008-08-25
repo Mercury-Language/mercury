@@ -28,6 +28,7 @@
 
 :- implementation.
 
+:- import_module apply_exclusion.
 :- import_module measurement_units.
 :- import_module measurements.
 :- import_module top_procs.
@@ -52,68 +53,159 @@ create_report(Cmd, Deep, Report) :-
         Cmd = deep_cmd_quit,
         Msg = string.format("Shutting down deep profile server for %s.",
             [s(Deep ^ data_file_name)]),
-        MessageInfo = message_report(Msg),
-        Report = report_message(MessageInfo)
+        MessageReport = message_report(Msg),
+        Report = report_message(MessageReport)
     ;
         Cmd = deep_cmd_timeout(Timeout),
         Msg = string.format("Timeout set to %d minutes.", [i(Timeout)]),
-        MessageInfo = message_report(Msg),
-        Report = report_message(MessageInfo)
+        MessageReport = message_report(Msg),
+        Report = report_message(MessageReport)
     ;
         Cmd = deep_cmd_menu,
-        Deep ^ profile_stats = profile_stats(ProgramName, 
+        Deep ^ profile_stats = profile_stats(ProgramName,
             NumCSD, NumCSS, NumPD, NumPS,
             QuantaPerSec, InstrumentationQuanta, UserQuanta, NumCallseqs,
             _, _),
         NumCliques = array.max(Deep ^ clique_members),
-        MenuInfo = menu_report(ProgramName, QuantaPerSec,
+        MenuReport = menu_report(ProgramName, QuantaPerSec,
             UserQuanta, InstrumentationQuanta,
             NumCallseqs, NumCSD, NumCSS, NumPD, NumPS, NumCliques),
-        Report = report_menu(ok(MenuInfo))
+        Report = report_menu(ok(MenuReport))
+    ;
+        Cmd = deep_cmd_program_modules,
+        create_program_modules_report(Deep, MaybeProgramModulesReport),
+        Report = report_program_modules(MaybeProgramModulesReport)
+    ;
+        Cmd = deep_cmd_module(ModuleName),
+        create_module_report(Deep, ModuleName, MaybeModuleReport),
+        Report = report_module(MaybeModuleReport)
     ;
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         create_top_procs_report(Deep, Limit, CostKind, InclDesc, Scope,
-            MaybeTopProcsInfo),
-        Report = report_top_procs(MaybeTopProcsInfo)
+            MaybeTopProcsReport),
+        Report = report_top_procs(MaybeTopProcsReport)
     ;
-        Cmd = deep_cmd_proc(PSI),
-        create_proc_report(Deep, PSI, MaybeProcReport),
+        Cmd = deep_cmd_proc(PSPtr),
+        create_proc_report(Deep, PSPtr, MaybeProcReport),
         Report = report_proc(MaybeProcReport)
     ;
-        Cmd = deep_cmd_proc_static(PSI),
-        create_proc_static_dump_report(Deep, PSI, MaybeProcStaticDumpInfo),
-        Report = report_proc_static_dump(MaybeProcStaticDumpInfo)
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, Contour),
+        create_proc_callers_report(Deep, PSPtr, CallerGroups, BunchNum,
+            Contour, MaybeProcCallersReport),
+        Report = report_proc_callers(MaybeProcCallersReport)
     ;
-        Cmd = deep_cmd_proc_dynamic(PDI),
-        create_proc_dynamic_dump_report(Deep, PDI, MaybeProcDynamicDumpInfo),
-        Report = report_proc_dynamic_dump(MaybeProcDynamicDumpInfo)
+        Cmd = deep_cmd_dump_proc_static(PSPtr),
+        create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDump),
+        Report = report_proc_static_dump(MaybeProcStaticDump)
     ;
-        Cmd = deep_cmd_call_site_static(CSSI),
-        create_call_site_static_dump_report(Deep, CSSI,
-            MaybeCallSiteStaticDumpInfo),
-        Report = report_call_site_static_dump(MaybeCallSiteStaticDumpInfo)
+        Cmd = deep_cmd_dump_proc_dynamic(PDPtr),
+        create_proc_dynamic_dump_report(Deep, PDPtr, MaybeProcDynamicDump),
+        Report = report_proc_dynamic_dump(MaybeProcDynamicDump)
     ;
-        Cmd = deep_cmd_call_site_dynamic(CSDI),
-        create_call_site_dynamic_dump_report(Deep, CSDI,
-            MaybeCallSiteStaticDumpInfo),
-        Report = report_call_site_dynamic_dump(MaybeCallSiteStaticDumpInfo)
+        Cmd = deep_cmd_dump_call_site_static(CSSPtr),
+        create_call_site_static_dump_report(Deep, CSSPtr,
+            MaybeCallSiteStaticDump),
+        Report = report_call_site_static_dump(MaybeCallSiteStaticDump)
+    ;
+        Cmd = deep_cmd_dump_call_site_dynamic(CSDPtr),
+        create_call_site_dynamic_dump_report(Deep, CSDPtr,
+            MaybeCallSiteStaticDump),
+        Report = report_call_site_dynamic_dump(MaybeCallSiteStaticDump)
     ;
         Cmd = deep_cmd_restart,
         error("create_report/3", "unexpected restart command")
     ;
         ( Cmd = deep_cmd_root(_)
         ; Cmd = deep_cmd_clique(_)
-        ; Cmd = deep_cmd_proc_callers(_, _, _)
-        ; Cmd = deep_cmd_modules
-        ; Cmd = deep_cmd_module(_)
-        ; Cmd = deep_cmd_raw_clique(_)
+        ; Cmd = deep_cmd_dump_clique(_)
         ),
         error("create_report/3", "Command not supported: " ++ string(Cmd))
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Code to build top_procs report.
+% Code to build a program_modules report.
+%
+
+    % Create a modules report, from the given data with the specified
+    % parameters.
+    %
+:- pred create_program_modules_report(deep::in,
+    maybe_error(program_modules_report)::out) is det.
+
+create_program_modules_report(Deep, MaybeProgramModulesReport) :-
+    map.to_assoc_list(Deep ^ module_data, ModulePairs0),
+    list.filter(not_mercury_runtime, ModulePairs0, ModulePairs),
+    ModuleRowDatas = list.map(module_pair_to_row_data(Deep), ModulePairs),
+    ProgramModulesReport = program_modules_report(ModuleRowDatas),
+    MaybeProgramModulesReport = ok(ProgramModulesReport).
+
+:- pred not_mercury_runtime(pair(string, module_data)::in) is semidet.
+
+not_mercury_runtime(ModuleName - _) :-
+    ModuleName \= "Mercury runtime".
+
+:- func module_pair_to_row_data(deep, pair(string, module_data))
+    = perf_row_data(module_active).
+
+module_pair_to_row_data(Deep, ModuleName - ModuleData) = ModuleRowData :-
+    Own = ModuleData ^ module_own,
+    IsActive = compute_is_active(Own),
+    (
+        IsActive = is_active,
+        ModuleIsActive = module_is_active
+    ;
+        IsActive = is_not_active,
+        ModuleIsActive = module_is_not_active
+    ),
+    ModuleActive = module_active(ModuleName, ModuleIsActive),
+    own_and_maybe_inherit_to_perf_row_data(Deep, ModuleActive, Own, no,
+        ModuleRowData).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to build a module report.
+%
+
+    % Create a module report, from the given data with the specified
+    % parameters.
+    %
+:- pred create_module_report(deep::in, string::in,
+    maybe_error(module_report)::out) is det.
+
+create_module_report(Deep, ModuleName, MaybeModuleReport) :-
+    ( map.search(Deep ^ module_data, ModuleName, ModuleData) ->
+        PSPtrs = ModuleData ^ module_procs, 
+        ProcRowDatas = list.map(proc_to_active_row_data(Deep), PSPtrs),
+        ModuleReport = module_report(ModuleName, ProcRowDatas),
+        MaybeModuleReport = ok(ModuleReport)
+    ;
+        Msg = string.format("There is no module named `%s'.\n",
+            [s(ModuleName)]),
+        MaybeModuleReport = error(Msg)
+    ).
+
+:- func proc_to_active_row_data(deep, proc_static_ptr)
+    = perf_row_data(proc_active).
+
+proc_to_active_row_data(Deep, PSPtr) = ProcRowData :-
+    deep_lookup_ps_own(Deep, PSPtr, Own),
+    deep_lookup_ps_desc(Deep, PSPtr, Desc),
+    IsActive = compute_is_active(Own),
+    (
+        IsActive = is_active,
+        ProcIsActive = proc_is_active
+    ;
+        IsActive = is_not_active,
+        ProcIsActive = proc_is_not_active
+    ),
+    ProcDesc = describe_proc(Deep, PSPtr),
+    ProcActive = proc_active(ProcDesc, ProcIsActive),
+    own_and_inherit_to_perf_row_data(Deep, ProcActive, Own, Desc, ProcRowData).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to build a top_procs report.
 %
 
     % Create a top procs report, from the given data with the specified
@@ -148,21 +240,20 @@ create_top_procs_report(Deep, Limit, CostKind, InclDesc0, Scope0,
     ;
         MaybeTopPSIs = ok(TopPSIs),
         Ordering = report_ordering(Limit, CostKind, InclDesc, Scope),
-        list.map(psi_to_perf_row_data(Deep), TopPSIs, RowData),
-        TopProcsReport = top_procs_report(Ordering, RowData),
+        list.map(psi_to_perf_row_data(Deep), TopPSIs, ProcRowDatas),
+        TopProcsReport = top_procs_report(Ordering, ProcRowDatas),
         MaybeTopProcsReport = ok(TopProcsReport)
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Code to build proc report.
+% Code to build a proc report.
 %
 
-:- pred create_proc_report(deep::in, int::in, maybe_error(proc_report)::out)
-    is det.
+:- pred create_proc_report(deep::in, proc_static_ptr::in,
+    maybe_error(proc_report)::out) is det.
 
-create_proc_report(Deep, PSI, MaybeProcReport) :-
-    PSPtr = proc_static_ptr(PSI),
+create_proc_report(Deep, PSPtr, MaybeProcReport) :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         ProcDesc = describe_proc(Deep, PSPtr),
         deep_lookup_ps_own(Deep, PSPtr, Own),
@@ -176,7 +267,7 @@ create_proc_report(Deep, PSI, MaybeProcReport) :-
         ProcCallSiteSummaryRowDatas = list.map(create_call_site_summary(Deep),
             CallSites),
 
-        ProcReport = proc_report(PSPtr, ProcSummaryRowData,
+        ProcReport = proc_report(ProcSummaryRowData,
             ProcCallSiteSummaryRowDatas),
         MaybeProcReport = ok(ProcReport)
     ;
@@ -293,14 +384,142 @@ accumulate_call_site_callees(Deep, CalleePerf, RowData, !Own, !Desc) :-
 
 %-----------------------------------------------------------------------------%
 %
+% Code to build a proc_callers report.
+%
+
+:- pred create_proc_callers_report(deep::in, proc_static_ptr::in,
+    caller_groups::in, int::in, contour_exclusion::in,
+    maybe_error(proc_callers_report)::out) is det.
+
+create_proc_callers_report(Deep, PSPtr, CallerGroups, BunchNum, Contour,
+        MaybeProcCallersReport) :-
+    ( valid_proc_static_ptr(Deep, PSPtr) ->
+        ProcDesc = describe_proc(Deep, PSPtr),
+
+        deep_lookup_proc_callers(Deep, PSPtr, CallerCSDPtrs),
+        MaybeMaybeExcludeFile = Deep ^ exclude_contour_file,
+        (
+            Contour = do_not_apply_contour_exclusion,
+            CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs),
+            Messages = []
+        ;
+            Contour = apply_contour_exclusion,
+            (
+                MaybeMaybeExcludeFile = no,
+                % There is no contour exclusion file, so do the same as for
+                % do_not_apply_contour_exclusion, but add a message to the
+                % report.
+                CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs),
+                Message = "There is no readable contour exclusion file.",
+                Messages = [Message]
+            ;
+                MaybeMaybeExcludeFile = yes(MaybeExcludeFile),
+                (
+                    MaybeExcludeFile = ok(ExcludeSpec),
+                    CallerCSDPtrPairs = list.map(
+                        pair_contour(Deep, ExcludeSpec), CallerCSDPtrs),
+                    Messages = []
+                ;
+                    MaybeExcludeFile = error(ErrorMsg),
+                    CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs),
+                    MessagePrefix = "The contour exclusion file has an error:",
+                    Messages = [MessagePrefix, ErrorMsg]
+                )
+            )
+        ),
+        (
+            CallerGroups = group_by_call_site,
+            CallSiteCallerGroups = group_csds_by_call_site(Deep,
+                CallerCSDPtrPairs),
+            ProcCallerCallSites = list.map(
+                create_proc_caller_call_sites(Deep, PSPtr),
+                CallSiteCallerGroups),
+            Callers = proc_caller_call_sites(ProcCallerCallSites)
+        ;
+            CallerGroups = group_by_proc,
+            ProcCallerGroups = group_csds_by_procedure(Deep,
+                CallerCSDPtrPairs),
+            ProcCallerProcs = list.map(
+                create_proc_caller_procedures(Deep, PSPtr),
+                ProcCallerGroups),
+            Callers = proc_caller_procedures(ProcCallerProcs)
+        ;
+            CallerGroups = group_by_module,
+            ModuleCallerGroups = group_csds_by_module(Deep,
+                CallerCSDPtrPairs),
+            ProcCallerModules = list.map(
+                create_proc_caller_modules(Deep, PSPtr),
+                ModuleCallerGroups),
+            Callers = proc_caller_modules(ProcCallerModules)
+        ;
+            CallerGroups = group_by_clique,
+            CliqueCallerGroups = group_csds_by_clique(Deep,
+                CallerCSDPtrPairs),
+            ProcCallerCliques = list.map(
+                create_proc_caller_cliques(Deep, PSPtr),
+                CliqueCallerGroups),
+            Callers = proc_caller_cliques(ProcCallerCliques)
+        ),
+
+        ProcCallersReport = proc_callers_report(ProcDesc, Callers,
+            BunchNum, Contour, Messages),
+        MaybeProcCallersReport = ok(ProcCallersReport)
+    ;
+        MaybeProcCallersReport = error("invalid proc_static index")
+    ).
+
+:- func create_proc_caller_call_sites(deep, proc_static_ptr,
+    pair(call_site_static_ptr, list(call_site_dynamic_ptr)))
+    = perf_row_data(call_site_desc).
+
+create_proc_caller_call_sites(Deep, CalleePSPtr, CSSPtr - CSDPtrs) =
+        PerfRowData :-
+    CallSiteDesc = describe_call_site(Deep, CSSPtr),
+    compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
+    own_and_inherit_to_perf_row_data(Deep, CallSiteDesc, Own, Desc,
+        PerfRowData).
+
+:- func create_proc_caller_procedures(deep, proc_static_ptr,
+    pair(proc_static_ptr, list(call_site_dynamic_ptr)))
+    = perf_row_data(proc_desc).
+
+create_proc_caller_procedures(Deep, CalleePSPtr, PSSPtr - CSDPtrs) =
+        PerfRowData :-
+    ProcDesc = describe_proc(Deep, PSSPtr),
+    compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
+    own_and_inherit_to_perf_row_data(Deep, ProcDesc, Own, Desc,
+        PerfRowData).
+
+:- func create_proc_caller_modules(deep, proc_static_ptr,
+    pair(string, list(call_site_dynamic_ptr)))
+    = perf_row_data(string).
+
+create_proc_caller_modules(Deep, CalleePSPtr, ModuleName - CSDPtrs) =
+        PerfRowData :-
+    compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
+    own_and_inherit_to_perf_row_data(Deep, ModuleName, Own, Desc,
+        PerfRowData).
+
+:- func create_proc_caller_cliques(deep, proc_static_ptr,
+    pair(clique_ptr, list(call_site_dynamic_ptr)))
+    = perf_row_data(clique_desc).
+
+create_proc_caller_cliques(Deep, CalleePSPtr, CliquePtr - CSDPtrs) =
+        PerfRowData :-
+    CliqueDesc = describe_clique(Deep, CliquePtr),
+    compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
+    own_and_inherit_to_perf_row_data(Deep, CliqueDesc, Own, Desc,
+        PerfRowData).
+
+%-----------------------------------------------------------------------------%
+%
 % Code to build the dump reports.
 %
 
-:- pred create_proc_static_dump_report(deep::in, int::in,
+:- pred create_proc_static_dump_report(deep::in, proc_static_ptr::in,
     maybe_error(proc_static_dump_info)::out) is det.
 
-create_proc_static_dump_report(Deep, PSI, MaybeProcStaticDumpInfo) :-
-    PSPtr = proc_static_ptr(PSI),
+create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDumpInfo) :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         % Should we dump some other fields?
@@ -315,11 +534,10 @@ create_proc_static_dump_report(Deep, PSI, MaybeProcStaticDumpInfo) :-
         MaybeProcStaticDumpInfo = error("invalid proc_static index")
     ).
 
-:- pred create_proc_dynamic_dump_report(deep::in, int::in,
+:- pred create_proc_dynamic_dump_report(deep::in, proc_dynamic_ptr::in,
     maybe_error(proc_dynamic_dump_info)::out) is det.
 
-create_proc_dynamic_dump_report(Deep, PDI, MaybeProcDynamicDumpInfo) :-
-    PDPtr = proc_dynamic_ptr(PDI),
+create_proc_dynamic_dump_report(Deep, PDPtr, MaybeProcDynamicDumpInfo) :-
     ( valid_proc_dynamic_ptr(Deep, PDPtr) ->
         deep_lookup_proc_dynamics(Deep, PDPtr, PD),
         PD = proc_dynamic(PSPtr, CallSiteArray),
@@ -334,12 +552,11 @@ create_proc_dynamic_dump_report(Deep, PDI, MaybeProcDynamicDumpInfo) :-
         MaybeProcDynamicDumpInfo = error("invalid proc_dynamic index")
     ).
 
-:- pred create_call_site_static_dump_report(deep::in, int::in,
+:- pred create_call_site_static_dump_report(deep::in, call_site_static_ptr::in,
     maybe_error(call_site_static_dump_info)::out) is det.
 
-create_call_site_static_dump_report(Deep, CSSI,
+create_call_site_static_dump_report(Deep, CSSPtr,
         MaybeCallSiteStaticDumpInfo) :-
-    CSSPtr = call_site_static_ptr(CSSI),
     ( valid_call_site_static_ptr(Deep, CSSPtr) ->
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
         CSS = call_site_static(ContainingPSPtr, SlotNumber, CallSiteKind,
@@ -351,12 +568,12 @@ create_call_site_static_dump_report(Deep, CSSI,
         MaybeCallSiteStaticDumpInfo = error("invalid call_site_static index")
     ).
 
-:- pred create_call_site_dynamic_dump_report(deep::in, int::in,
+:- pred create_call_site_dynamic_dump_report(deep::in,
+    call_site_dynamic_ptr::in,
     maybe_error(call_site_dynamic_dump_info)::out) is det.
 
-create_call_site_dynamic_dump_report(Deep, CSDI,
+create_call_site_dynamic_dump_report(Deep, CSDPtr,
         MaybeCallSiteDynamicDumpInfo) :-
-    CSDPtr = call_site_dynamic_ptr(CSDI),
     ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
         deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
         CSD = call_site_dynamic(CallerPSPtr, CalleePSDPtr, Own),
@@ -391,6 +608,15 @@ psi_to_perf_row_data(Deep, PSI, RowData) :-
     own_prof_info::in, inherit_prof_info::in, perf_row_data(T)::out) is det.
 
 own_and_inherit_to_perf_row_data(Deep, Subject, Own, Desc, RowData) :-
+    own_and_maybe_inherit_to_perf_row_data(Deep, Subject, Own, yes(Desc),
+        RowData).
+
+:- pred own_and_maybe_inherit_to_perf_row_data(deep::in, T::in,
+    own_prof_info::in, maybe(inherit_prof_info)::in, perf_row_data(T)::out)
+    is det.
+
+own_and_maybe_inherit_to_perf_row_data(Deep, Subject, Own, MaybeDesc,
+        RowData) :-
     % Look up global parameters and totals.
     ProfileStats = Deep ^ profile_stats,
     TicksPerSec = ProfileStats ^ ticks_per_sec,
@@ -415,31 +641,15 @@ own_and_inherit_to_perf_row_data(Deep, Subject, Own, Desc, RowData) :-
     SelfTimePercent = percent_from_ints(SelfTicks, RootQuanta),
     SelfTimePerCall = time_percall(SelfTime, Calls),
 
-    % Self + descendants times.
-    TotalTicks = SelfTicks + inherit_quanta(Desc),
-    TotalTime = ticks_to_time(TotalTicks, TicksPerSec),
-    TotalTimePercent = percent_from_ints(TotalTicks, RootQuanta),
-    TotalTimePerCall = time_percall(TotalTime, Calls),
-
     % Self call sequence counts.
     SelfCallseqs = callseqs(Own),
     SelfCallseqsPercent = percent_from_ints(SelfCallseqs, RootCallseqs),
     SelfCallseqsPerCall = int_per_call(SelfCallseqs, Calls),
 
-    % Self + descendants call sequence counts.
-    TotalCallseqs = callseqs(Own) + inherit_callseqs(Desc),
-    TotalCallseqsPercent = percent_from_ints(TotalCallseqs, RootCallseqs),
-    TotalCallseqsPerCall = int_per_call(TotalCallseqs, Calls),
-
     % Self memory allocations.
     SelfAllocs = allocs(Own),
     SelfAllocsPercent = percent_from_ints(SelfAllocs, RootAllocs),
     SelfAllocsPerCall = int_per_call(SelfAllocs, Calls),
-
-    % Self + descendants memory allocations.
-    TotalAllocs = SelfAllocs + inherit_allocs(Desc),
-    TotalAllocsPercent = percent_from_ints(TotalAllocs, RootAllocs),
-    TotalAllocsPerCall = int_per_call(TotalAllocs, Calls),
 
     % Self memory words.
     SelfWords = words(Own),
@@ -447,28 +657,50 @@ own_and_inherit_to_perf_row_data(Deep, Subject, Own, Desc, RowData) :-
     SelfMemoryPercent = percent_from_ints(SelfWords, RootWords),
     SelfMemoryPerCall = SelfMemory / Calls,
 
-    % Self + descendants memory words.
-    TotalWords = SelfWords + inherit_words(Desc),
-    TotalMemory = memory_words(TotalWords, WordSize),
-    TotalMemoryPercent = percent_from_ints(TotalWords, RootWords),
-    TotalMemoryPerCall = TotalMemory / Calls,
-
-    RowData = perf_row_data(Subject,
-        Calls, Exits, Fails, Redos, Excps,
-
+    SelfPerf = inheritable_perf(
         SelfTicks, SelfTime, SelfTimePercent, SelfTimePerCall,
-        TotalTicks, TotalTime, TotalTimePercent, TotalTimePerCall,
-
         SelfCallseqs, SelfCallseqsPercent, SelfCallseqsPerCall,
-        TotalCallseqs, TotalCallseqsPercent, TotalCallseqsPerCall,
-
         SelfAllocs, SelfAllocsPercent, SelfAllocsPerCall,
-        TotalAllocs, TotalAllocsPercent, TotalAllocsPerCall,
+        SelfMemory, SelfMemoryPercent, SelfMemoryPerCall),
 
-        WordSize,
-        SelfMemory, SelfMemoryPercent, SelfMemoryPerCall,
-        TotalMemory, TotalMemoryPercent, TotalMemoryPerCall
-    ).
+    (
+        MaybeDesc = no,
+        MaybeTotalPerf = no
+    ;
+        MaybeDesc = yes(Desc),
+
+        % Self + descendants times.
+        TotalTicks = SelfTicks + inherit_quanta(Desc),
+        TotalTime = ticks_to_time(TotalTicks, TicksPerSec),
+        TotalTimePercent = percent_from_ints(TotalTicks, RootQuanta),
+        TotalTimePerCall = time_percall(TotalTime, Calls),
+
+        % Self + descendants call sequence counts.
+        TotalCallseqs = callseqs(Own) + inherit_callseqs(Desc),
+        TotalCallseqsPercent = percent_from_ints(TotalCallseqs, RootCallseqs),
+        TotalCallseqsPerCall = int_per_call(TotalCallseqs, Calls),
+
+        % Self + descendants memory allocations.
+        TotalAllocs = SelfAllocs + inherit_allocs(Desc),
+        TotalAllocsPercent = percent_from_ints(TotalAllocs, RootAllocs),
+        TotalAllocsPerCall = int_per_call(TotalAllocs, Calls),
+
+        % Self + descendants memory words.
+        TotalWords = SelfWords + inherit_words(Desc),
+        TotalMemory = memory_words(TotalWords, WordSize),
+        TotalMemoryPercent = percent_from_ints(TotalWords, RootWords),
+        TotalMemoryPerCall = TotalMemory / Calls,
+
+        TotalPerf = inheritable_perf(
+            TotalTicks, TotalTime, TotalTimePercent, TotalTimePerCall,
+            TotalCallseqs, TotalCallseqsPercent, TotalCallseqsPerCall,
+            TotalAllocs, TotalAllocsPercent, TotalAllocsPerCall,
+            TotalMemory, TotalMemoryPercent, TotalMemoryPerCall),
+        MaybeTotalPerf = yes(TotalPerf)
+    ),
+
+    RowData = perf_row_data(Subject, Calls, Exits, Fails, Redos, Excps,
+        WordSize, SelfPerf, MaybeTotalPerf).
 
 %-----------------------------------------------------------------------------%
 
@@ -497,7 +729,7 @@ percent_from_ints(Nom, Denom) = Percent :-
 
 %-----------------------------------------------------------------------------%
 
-    % Create a report_proc structure for a given proc static pointer.
+    % Create a proc_desc structure for a given proc static pointer.
     %
 :- func describe_proc(deep, proc_static_ptr) = proc_desc.
 
@@ -514,7 +746,7 @@ describe_proc(Deep, PSPtr) = ProcDesc :-
     ),
     ProcDesc = proc_desc(PSPtr, FileName, LineNumber, RefinedName).
 
-    % Create a report_call_site structure for a given call site static pointer.
+    % Create a call_site_desc structure for a given call site static pointer.
     %
 :- func describe_call_site(deep, call_site_static_ptr) = call_site_desc.
 
@@ -536,6 +768,25 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
     ),
     CallSiteDesc = call_site_desc(CSSPtr, ContainingPSPtr,
         FileName, LineNumber, RefinedName, SlotNumber, GoalPath).
+
+    % Create a clique_desc structure for a given clique.
+    %
+:- func describe_clique(deep, clique_ptr) = clique_desc.
+
+describe_clique(Deep, CliquePtr) = CliqueDesc :-
+    ( valid_clique_ptr(Deep, CliquePtr) ->
+        deep_lookup_clique_members(Deep, CliquePtr, MemberPDPtrs),
+        ProcDescs = list.map(describe_clique_member(Deep), MemberPDPtrs),
+        CliqueDesc = clique_desc(CliquePtr, ProcDescs)
+    ;
+        error("describe_clique", "invalid clique_ptr")
+    ).
+
+:- func describe_clique_member(deep, proc_dynamic_ptr) = proc_desc.
+
+describe_clique_member(Deep, PDPtr) = ProcDesc :-
+    deep_lookup_proc_dynamics(Deep, PDPtr, PD),
+    ProcDesc = describe_proc(Deep, PD ^ pd_proc_static).
 
 %-----------------------------------------------------------------------------%
 %

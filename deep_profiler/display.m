@@ -34,7 +34,7 @@
 
 :- type display_item
     --->    display_heading(
-                % A string to be displayed as a HTML header.
+                % A string to be displayed as a header.
                 string
             )
     ;       display_text(
@@ -48,7 +48,7 @@
     ;       display_pseudo_link(
                 % A string to be formatted exactly as if it were a link,
                 % without it actually being a link. Used for situations
-                % when a link would lead back to this page.
+                % when a link would lead back to the same page.
                 pseudo_link
             )
     ;       display_list(
@@ -103,6 +103,9 @@
                 % about how to paint this column.
                 thg_class       :: table_column_class,
 
+                % This field controls the mechanism that use to shade every
+                % second column in the table, which should make it easier for
+                % people to associate table entries with their columns.
                 thg_colour      :: table_column_colour
             ).
 
@@ -131,8 +134,11 @@
 
 :- type table_cell
     --->    table_cell(
-                tc_text         :: table_data,
-                tc_span         :: int
+                tc_text         :: table_data
+            )
+    ;       table_multi_cell(
+                tcs_text        :: table_data,
+                tcs_span        :: int
             )
     ;       table_empty_cell.
 
@@ -149,7 +155,9 @@
 :- type table_column_class
     --->    table_column_class_allocations
     ;       table_column_class_callseqs
+    ;       table_column_class_clique
     ;       table_column_class_memory
+    ;       table_column_class_module_name
     ;       table_column_class_no_class
     ;       table_column_class_number
     ;       table_column_class_ordinal_rank
@@ -187,7 +195,8 @@
 :- type list_class
     --->    list_class_vertical_no_bullets
     ;       list_class_vertical_bullets
-    ;       list_class_horizontal.
+    ;       list_class_horizontal
+    ;       list_class_horizontal_except_title.
 
 %-----------------------------------------------------------------------------%
 %

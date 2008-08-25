@@ -66,6 +66,25 @@ report_to_display(Deep, Prefs, Report) = Display :-
             Display = display(no, [display_heading(Msg)])
         )
     ;
+        Report = report_program_modules(MaybeProgramModulesReport),
+        (
+            MaybeProgramModulesReport = ok(ProgramModulesReport),
+            display_report_program_modules(Prefs, ProgramModulesReport,
+                Display)
+        ;
+            MaybeProgramModulesReport = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
+    ;
+        Report = report_module(MaybeModuleReport),
+        (
+            MaybeModuleReport = ok(ModuleReport),
+            display_report_module(Prefs, ModuleReport, Display)
+        ;
+            MaybeModuleReport = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
+    ;
         Report = report_top_procs(MaybeTopProcsReport),
         (
             MaybeTopProcsReport = ok(TopProcsReport),
@@ -81,6 +100,15 @@ report_to_display(Deep, Prefs, Report) = Display :-
             display_report_proc(Prefs, ProcReport, Display)
         ;
             MaybeProcReport = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
+    ;
+        Report = report_proc_callers(MaybeProcCallersReport),
+        (
+            MaybeProcCallersReport = ok(ProcCallersReport),
+            display_report_proc_callers(Prefs, ProcCallersReport, Display)
+        ;
+            MaybeProcCallersReport = error(Msg),
             Display = display(no, [display_heading(Msg)])
         )
     ;
@@ -144,7 +172,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
             "Exploring the call graph, starting at the root."),
          (deep_cmd_root(yes(90)) -
             "Exploring the call graph, starting at the action."),
-         (deep_cmd_modules -
+         (deep_cmd_program_modules -
             "Exploring the program module by module.")],
 
     (
@@ -228,7 +256,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
         ("Quanta in user code:"         - td_i(UserQuanta)),
         ("Quanta in instrumentation:"   - td_i(InstQuanta)),
         ("Call sequence numbers:"       - td_i(NumCallseqs)),
-        ("CallSiteDyanic structures:"   - td_i(NumCSD)),
+        ("CallSiteDynamic structures:"  - td_i(NumCSD)),
         ("ProcDynamic structures:"      - td_i(NumPD)),
         ("CallSiteStatic structures:"   - td_i(NumCSS)),
         ("ProcStatic structures:"       - td_i(NumPS)),
@@ -243,6 +271,157 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
     Display = display(yes("Deep profiler menu"),
         [Links, display_table(Table),
         display_paragraph_break, MenuRestartQuitControls]).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to display a program_modules report.
+%
+
+    % Create a display_report structure for a program_modules report.
+    %
+:- pred display_report_program_modules(preferences::in,
+    program_modules_report::in, display::out) is det.
+
+display_report_program_modules(Prefs, ProgramModulesReport, Display) :-
+    ProgramModulesReport = program_modules_report(ModuleRowDatas0),
+    Cmd = deep_cmd_program_modules,
+    Title = "The modules of the program:",
+
+    ShowInactiveModules = Prefs ^ pref_inactive ^ inactive_modules,
+    (
+        ShowInactiveModules = inactive_show,
+        ModuleRowDatas1 = ModuleRowDatas0
+    ;
+        ShowInactiveModules = inactive_hide,
+        list.filter(active_module, ModuleRowDatas0, ModuleRowDatas1)
+    ),
+
+    SortPrefs = avoid_sort_self_and_desc(Prefs),
+    sort_module_active_rows_by_preferences(SortPrefs,
+        ModuleRowDatas1, ModuleRowDatas),
+
+    % Build the table of all modules.
+    SortByNamePrefs = Prefs ^ pref_criteria := by_name,
+    ModuleHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs), "Module",
+        link_class_link)),
+    RankHeaderGroup =
+        make_single_table_header_group(td_s("Rank"),
+            table_column_class_ordinal_rank, column_do_not_colour),
+    ModuleHeaderGroup =
+        make_single_table_header_group(ModuleHeaderCell,
+            table_column_class_module_name, column_do_not_colour),
+    MakeHeaderData = override_order_criteria_header_data(Cmd),
+    perf_table_header(total_columns_not_meaningful, Prefs, MakeHeaderData,
+        PerfHeaderGroups),
+    AllHeaderGroups =
+        [RankHeaderGroup, ModuleHeaderGroup] ++ PerfHeaderGroups,
+    header_groups_to_header(AllHeaderGroups, NumColumns, Header),
+
+    list.map_foldl(
+        maybe_ranked_subject_perf_table_row(Prefs, ranked,
+            total_columns_not_meaningful, module_active_to_cell),
+        ModuleRowDatas, Rows, 1, _),
+    Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
+    DisplayTable = display_table(Table),
+
+    % Build controls at the bottom of the page.
+    InactiveControls = inactive_module_controls(Prefs, Cmd),
+    FieldControls = field_controls(Prefs, Cmd),
+    FormatControls = format_controls(Prefs, Cmd),
+    MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
+
+    Display = display(yes(Title),
+        [DisplayTable,
+        display_paragraph_break, InactiveControls,
+        display_paragraph_break, FieldControls,
+        display_paragraph_break, FormatControls,
+        display_paragraph_break, MenuRestartQuitControls]).
+
+:- pred active_module(perf_row_data(module_active)::in) is semidet.
+
+active_module(ModuleRowData) :-
+    ModuleActive = ModuleRowData ^ perf_row_subject,
+    ModuleActive ^ ma_is_active = module_is_active.
+
+:- func avoid_sort_self_and_desc(preferences) = preferences.
+
+avoid_sort_self_and_desc(Prefs) = SortPrefs :-
+    ( Prefs ^ pref_criteria = by_cost(CostKind, self_and_desc, Scope) ->
+        SortPrefs = Prefs ^ pref_criteria := by_cost(CostKind, self, Scope)
+    ;
+        SortPrefs = Prefs
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to display a module report.
+%
+
+    % Create a display_report structure for a module report.
+    %
+:- pred display_report_module(preferences::in, module_report::in, display::out)
+    is det.
+
+display_report_module(Prefs, ModuleReport, Display) :-
+    ModuleReport = module_report(ModuleName, ProcRowDatas0),
+    Cmd = deep_cmd_module(ModuleName),
+    Title = string.format("The procedures of module %s:", [s(ModuleName)]),
+
+    ShowInactiveProcs = Prefs ^ pref_inactive ^ inactive_procs,
+    (
+        ShowInactiveProcs = inactive_show,
+        ProcRowDatas1 = ProcRowDatas0
+    ;
+        ShowInactiveProcs = inactive_hide,
+        list.filter(active_proc, ProcRowDatas0, ProcRowDatas1)
+    ),
+
+    SortPrefs = avoid_sort_self_and_desc(Prefs),
+    sort_proc_active_rows_by_preferences(SortPrefs,
+        ProcRowDatas1, ProcRowDatas),
+
+    % Build the table of all modules.
+    SortByNamePrefs = Prefs ^ pref_criteria := by_name,
+    ProcHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs), "Procedure",
+        link_class_link)),
+    RankHeaderGroup =
+        make_single_table_header_group(td_s("Rank"),
+            table_column_class_ordinal_rank, column_do_not_colour),
+    ProcHeaderGroup =
+        make_single_table_header_group(ProcHeaderCell,
+            table_column_class_module_name, column_do_not_colour),
+    MakeHeaderData = override_order_criteria_header_data(Cmd),
+    perf_table_header(total_columns_meaningful, Prefs, MakeHeaderData,
+        PerfHeaderGroups),
+    AllHeaderGroups =
+        [RankHeaderGroup, ProcHeaderGroup] ++ PerfHeaderGroups,
+    header_groups_to_header(AllHeaderGroups, NumColumns, Header),
+
+    list.map_foldl(
+        maybe_ranked_subject_perf_table_row(Prefs, ranked,
+            total_columns_meaningful, proc_active_to_cell),
+        ProcRowDatas, Rows, 1, _),
+    Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
+    DisplayTable = display_table(Table),
+
+    % Build controls at the bottom of the page.
+    InactiveControls = inactive_proc_controls(Prefs, Cmd),
+    FieldControls = field_controls(Prefs, Cmd),
+    FormatControls = format_controls(Prefs, Cmd),
+    MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
+
+    Display = display(yes(Title),
+        [DisplayTable,
+        display_paragraph_break, InactiveControls,
+        display_paragraph_break, FieldControls,
+        display_paragraph_break, FormatControls,
+        display_paragraph_break, MenuRestartQuitControls]).
+
+:- pred active_proc(perf_row_data(proc_active)::in) is semidet.
+
+active_proc(ProcRowData) :-
+    ProcActive = ProcRowData ^ perf_row_subject,
+    ProcActive ^ pa_is_active = proc_is_active.
 
 %-----------------------------------------------------------------------------%
 %
@@ -266,12 +445,13 @@ display_report_top_procs(Prefs, TopProcsReport, Display) :-
     maybe_ranked_proc_table_header(Prefs, ranked, MakeHeaderData,
         NumColumns, Header),
     list.map_foldl(
-        maybe_ranked_subject_perf_table_row(Prefs, ranked, proc_desc_to_cell),
+        maybe_ranked_subject_perf_table_row(Prefs, ranked,
+            total_columns_meaningful, proc_desc_to_cell),
         TopProcs, Rows, 1, _),
     Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
     DisplayTable = display_table(Table),
 
-    % Build controls at the bottom of page.
+    % Build controls at the bottom of the page.
     Cmd = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
     TopProcsControls = top_procs_controls(Prefs,
         DisplayLimit, CostKind, InclDesc, Scope),
@@ -334,20 +514,21 @@ scope_to_description(overall) = "overall".
     display::out) is det.
 
 display_report_proc(Prefs, ProcReport, Display) :-
-    ProcReport = proc_report(PSPtr, ProcSummaryRowData, CallSitePerfs0),
+    ProcReport = proc_report(ProcSummaryRowData, CallSitePerfs0),
     ProcDesc = ProcSummaryRowData ^ perf_row_subject,
-    RefinedName = ProcDesc ^ proc_desc_refined_name,
+    RefinedName = ProcDesc ^ pdesc_refined_name,
     Title = "Summary of procedure " ++ RefinedName,
 
-    PSPtr = proc_static_ptr(PSI),
-    Cmd = deep_cmd_proc(PSI),
+    PSPtr = ProcDesc ^ pdesc_ps_ptr,
+    Cmd = deep_cmd_proc(PSPtr),
 
     SourceHeaderGroup = make_single_table_header_group(td_s("Source"),
         table_column_class_source_context, column_do_not_colour),
     ProcHeaderGroup = make_single_table_header_group(td_s("Procedure"),
         table_column_class_proc, column_do_not_colour),
     MakeHeaderData = override_order_criteria_header_data(Cmd),
-    perf_table_header(Prefs, MakeHeaderData, PerfHeaderGroups),
+    perf_table_header(total_columns_meaningful, Prefs, MakeHeaderData,
+        PerfHeaderGroups),
     AllHeaderGroups =
         [SourceHeaderGroup, ProcHeaderGroup] ++ PerfHeaderGroups,
     header_groups_to_header(AllHeaderGroups, NumColumns, Header),
@@ -359,9 +540,10 @@ display_report_proc(Prefs, ProcReport, Display) :-
     %
     % SummaryProcCell spans two columns: the ones that contain (1) the context
     % and (2) the callee of each call site in the rows below.
-    SummaryProcCell = table_cell(td_s(RefinedName), 2),
+    SummaryProcCell = table_multi_cell(td_s(RefinedName), 2),
     Fields = Prefs ^ pref_fields,
-    perf_table_row(Fields, ProcSummaryRowData, SummaryPerfCells),
+    perf_table_row(total_columns_meaningful, Fields, ProcSummaryRowData,
+        SummaryPerfCells),
     SummaryCells = [SummaryProcCell] ++ SummaryPerfCells,
     SummaryRow = table_row(SummaryCells),
 
@@ -372,8 +554,9 @@ display_report_proc(Prefs, ProcReport, Display) :-
     Table = table(table_class_box_if_pref, NumColumns, yes(Header), AllRows),
     DisplayTable = display_table(Table),
 
-    % Build the controls at the bottom of page.
-    ParentControls = proc_parent_controls(Prefs, PSI),
+    % Build the controls at the bottom of the page.
+    ProcCallersControls = proc_callers_group_controls(Prefs, Cmd,
+        PSPtr, group_by_call_site, Prefs ^ pref_contour),
     SummarizeControls = summarize_controls(Prefs, Cmd),
     SortControls = sort_controls(Prefs, Cmd),
     FieldControls = field_controls(Prefs, Cmd),
@@ -382,36 +565,12 @@ display_report_proc(Prefs, ProcReport, Display) :-
 
     Display = display(yes(Title),
         [DisplayTable,
-        display_paragraph_break, ParentControls,
+        display_paragraph_break, ProcCallersControls,
         display_paragraph_break, SummarizeControls,
         display_paragraph_break, SortControls,
         display_paragraph_break, FieldControls,
         display_paragraph_break, FormatControls,
         display_paragraph_break, MenuRestartQuitControls]).
-
-:- func proc_parent_controls(preferences, int) = display_item.
-
-proc_parent_controls(Prefs, PSI) = ControlsItem :-
-    OrderedByCallSiteCmd = deep_cmd_proc_callers(PSI, group_by_call_site, 1),
-    OrderedByCallSite = display_link(deep_link(OrderedByCallSiteCmd,
-        yes(Prefs), "Ordered by call site", link_class_control)),
-
-    OrderedByProcCmd = deep_cmd_proc_callers(PSI, group_by_proc, 1),
-    OrderedByProc = display_link(deep_link(OrderedByProcCmd,
-        yes(Prefs), "Ordered by procedure", link_class_control)),
-
-    OrderedByModuleCmd = deep_cmd_proc_callers(PSI, group_by_module, 1),
-    OrderedByModule = display_link(deep_link(OrderedByModuleCmd,
-        yes(Prefs), "Ordered by module", link_class_control)),
-
-    OrderedByCliqueCmd = deep_cmd_proc_callers(PSI, group_by_clique, 1),
-    OrderedByClique = display_link(deep_link(OrderedByCliqueCmd,
-        yes(Prefs), "Ordered by clique", link_class_control)),
-
-    List = display_list(list_class_horizontal, no,
-        [OrderedByCallSite, OrderedByProc, OrderedByModule, OrderedByClique]),
-    ControlsItem = display_list(list_class_vertical_no_bullets,
-        yes("The procedure's callers:"), [List]).
 
 :- func report_proc_call_site(preferences, call_site_perf) = list(table_row).
 
@@ -420,27 +579,26 @@ report_proc_call_site(Prefs, CallSitePerf) = Rows :-
         call_site_perf(KindAndCallee, SummaryPerfRowData, SubPerfs0),
 
     CallSiteDesc = SummaryPerfRowData ^ perf_row_subject,
-    FileName = CallSiteDesc ^ call_site_desc_file_name,
-    LineNumber = CallSiteDesc ^ call_site_desc_line_number,
+    FileName = CallSiteDesc ^ csdesc_file_name,
+    LineNumber = CallSiteDesc ^ csdesc_line_number,
     Context = string.format("%s:%d", [s(FileName), i(LineNumber)]),
-    ContextCell = table_cell(td_s(Context), 1),
+    ContextCell = table_cell(td_s(Context)),
 
     (
         KindAndCallee = normal_call_and_info(NormalCalleeId),
         NormalCalleeId = normal_callee_id(CalleeDesc, TypeSubstStr),
-        CalleeRefinedName = CalleeDesc ^ proc_desc_refined_name,
+        CalleeRefinedName = CalleeDesc ^ pdesc_refined_name,
         ( TypeSubstStr = "" ->
             CallSiteStr = CalleeRefinedName
         ;
             CallSiteStr = string.format("%s [%s]",
                 [s(CalleeRefinedName), s(TypeSubstStr)])
         ),
-        CalleePSPtr = CalleeDesc ^ proc_desc_static_ptr,
-        CalleePSPtr = proc_static_ptr(CalleePSI),
-        CallSiteLinkCmd = deep_cmd_proc(CalleePSI),
+        CalleePSPtr = CalleeDesc ^ pdesc_ps_ptr,
+        CallSiteLinkCmd = deep_cmd_proc(CalleePSPtr),
         CallSiteLink = deep_link(CallSiteLinkCmd, yes(Prefs),
             CallSiteStr, link_class_link),
-        CallSiteCell = table_cell(td_l(CallSiteLink), 1),
+        CallSiteCell = table_cell(td_l(CallSiteLink)),
 
         require(unify(SubPerfs0, []),
             "report_proc_call_site: SubPerfs0 != [] for normal call site")
@@ -458,11 +616,12 @@ report_proc_call_site(Prefs, CallSitePerf) = Rows :-
             KindAndCallee = callback_and_no_info,
             CallSiteStr = "callback"
         ),
-        CallSiteCell = table_cell(td_s(CallSiteStr), 1)
+        CallSiteCell = table_cell(td_s(CallSiteStr))
     ),
 
     Fields = Prefs ^ pref_fields,
-    perf_table_row(Fields, SummaryPerfRowData, SummaryPerfCells),
+    perf_table_row(total_columns_meaningful, Fields, SummaryPerfRowData,
+        SummaryPerfCells),
     SummaryCells = [ContextCell, CallSiteCell] ++ SummaryPerfCells,
     SummaryRow = table_row(SummaryCells),
 
@@ -487,16 +646,334 @@ report_proc_call_site_callee(Prefs, RowData) = Row :-
 
     ProcDesc = RowData ^ perf_row_subject,
     ProcDesc = proc_desc(PSPtr, _FileName, _LineNumber, RefinedName),
-    PSPtr = proc_static_ptr(PSI),
-    ProcLinkCmd = deep_cmd_proc(PSI),
+    ProcLinkCmd = deep_cmd_proc(PSPtr),
     ProcLink = deep_link(ProcLinkCmd, yes(Prefs), RefinedName,
         link_class_link),
-    ProcCell = table_cell(td_l(ProcLink), 1),
+    ProcCell = table_cell(td_l(ProcLink)),
 
-    perf_table_row(Fields, RowData, PerfCells),
+    perf_table_row(total_columns_meaningful, Fields, RowData, PerfCells),
 
     Cells = [EmptyCell, ProcCell] ++ PerfCells,
     Row = table_row(Cells).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to display a procedure callers report.
+%
+
+    % Create a display_report structure for a proc_callers report.
+    %
+:- pred display_report_proc_callers(preferences::in, proc_callers_report::in,
+    display::out) is det.
+
+display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
+    ProcCallersReport = proc_callers_report(ProcDesc, CallerRowDatas,
+        BunchNum, ContourExcl, _ContourErrorMessages),
+    RefinedName = ProcDesc ^ pdesc_refined_name,
+
+    % Remember the selected value of contour exclusion.
+    Prefs = Prefs0 ^ pref_contour := ContourExcl,
+
+    PSPtr = ProcDesc ^ pdesc_ps_ptr,
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, ContourExcl),
+    MakeHeaderData = override_order_criteria_header_data(Cmd),
+    perf_table_header(total_columns_meaningful, Prefs, MakeHeaderData,
+        PerfHeaderGroups),
+
+    RankHeaderGroup = make_single_table_header_group(td_s("Rank"),
+        table_column_class_ordinal_rank, column_do_not_colour),
+
+    (
+        CallerRowDatas = proc_caller_call_sites(CallSiteRowDatas),
+        CallerGroups = group_by_call_site,
+        Title = "The call sites calling " ++ RefinedName,
+        sort_call_site_desc_rows_by_preferences(Prefs, CallSiteRowDatas,
+            SortedCallSiteRowDatas),
+        select_displayed_rows(SortedCallSiteRowDatas, BunchNum,
+            DisplayedCallSiteRowDatas, TotalNumRows, FirstRowNum, LastRowNum,
+            DisplayedBunchNum, MaybeFirstAndLastBunchNum),
+        list.map_foldl(display_caller_call_site(Prefs),
+            DisplayedCallSiteRowDatas, Rows, FirstRowNum, AfterLastRowNum),
+        SourceHeaderGroup = make_single_table_header_group(td_s("Source"),
+            table_column_class_source_context, column_do_not_colour),
+        ProcHeaderGroup = make_single_table_header_group(td_s("In procedure"),
+            table_column_class_proc, column_do_not_colour),
+        IdHeaderGroups = [SourceHeaderGroup, ProcHeaderGroup]
+    ;
+        CallerRowDatas = proc_caller_procedures(ProcRowDatas),
+        CallerGroups = group_by_proc,
+        Title = "The procedures calling " ++ RefinedName,
+        sort_proc_desc_rows_by_preferences(Prefs, ProcRowDatas,
+            SortedProcRowDatas),
+        select_displayed_rows(SortedProcRowDatas, BunchNum,
+            DisplayedProcRowDatas, TotalNumRows, FirstRowNum, LastRowNum,
+            DisplayedBunchNum, MaybeFirstAndLastBunchNum),
+        list.map_foldl(display_caller_proc(Prefs),
+            DisplayedProcRowDatas, Rows, FirstRowNum, AfterLastRowNum),
+        SourceHeaderGroup = make_single_table_header_group(td_s("Source"),
+            table_column_class_source_context, column_do_not_colour),
+        ProcHeaderGroup = make_single_table_header_group(td_s("Procedure"),
+            table_column_class_proc, column_do_not_colour),
+        IdHeaderGroups = [SourceHeaderGroup, ProcHeaderGroup]
+    ;
+        CallerRowDatas = proc_caller_modules(ModuleRowDatas),
+        CallerGroups = group_by_module,
+        Title = "The modules calling " ++ RefinedName,
+        sort_module_name_rows_by_preferences(Prefs, ModuleRowDatas,
+            SortedModuleRowDatas),
+        select_displayed_rows(SortedModuleRowDatas, BunchNum,
+            DisplayedModuleRowDatas, TotalNumRows, FirstRowNum, LastRowNum,
+            DisplayedBunchNum, MaybeFirstAndLastBunchNum),
+        list.map_foldl(display_caller_module(Prefs),
+            DisplayedModuleRowDatas, Rows, FirstRowNum, AfterLastRowNum),
+        ModuleHeaderGroup = make_single_table_header_group(td_s("Module"),
+            table_column_class_source_context, column_do_not_colour),
+        IdHeaderGroups = [ModuleHeaderGroup]
+    ;
+        CallerRowDatas = proc_caller_cliques(CliqueRowDatas),
+        CallerGroups = group_by_clique,
+        Title = "The cliques calling " ++ RefinedName,
+        sort_clique_rows_by_preferences(Prefs, CliqueRowDatas,
+            SortedCliqueRowDatas),
+        select_displayed_rows(SortedCliqueRowDatas, BunchNum,
+            DisplayedCliqueRowDatas, TotalNumRows, FirstRowNum, LastRowNum,
+            DisplayedBunchNum, MaybeFirstAndLastBunchNum),
+        list.map_foldl(display_caller_clique(Prefs),
+            DisplayedCliqueRowDatas, Rows, FirstRowNum, AfterLastRowNum),
+        CliqueHeaderGroup = make_single_table_header_group(td_s("Clique"),
+            table_column_class_clique, column_do_not_colour),
+        MembersHeaderGroup = make_single_table_header_group(td_s("Members"),
+            table_column_class_clique, column_do_not_colour),
+        IdHeaderGroups = [CliqueHeaderGroup, MembersHeaderGroup]
+    ),
+
+    AllHeaderGroups = [RankHeaderGroup] ++ IdHeaderGroups ++ PerfHeaderGroups,
+    header_groups_to_header(AllHeaderGroups, NumColumns, Header),
+
+    (
+        MaybeFirstAndLastBunchNum = no,
+        Message = "There are none.",
+        Display = display(yes(Title), [display_text(Message)])
+    ;
+        MaybeFirstAndLastBunchNum = yes({FirstBunchNum, LastBunchNum}),
+        require(unify(LastRowNum + 1, AfterLastRowNum),
+            "display_report_proc_callers: row number mismatch"),
+        require((FirstBunchNum =< DisplayedBunchNum),
+            "display_report_proc_callers: display bunch number mismatch"),
+        require((DisplayedBunchNum =< LastBunchNum),
+            "display_report_proc_callers: display bunch number mismatch"),
+
+        ( FirstBunchNum = LastBunchNum ->
+            Message = string.format("There are %d:",
+                [i(TotalNumRows)]),
+            BunchControls = []
+        ;
+            Message = string.format("There are %d, showing %d to %d:",
+                [i(TotalNumRows), i(FirstRowNum), i(LastRowNum)]),
+            ( BunchNum > FirstBunchNum ->
+                BunchControlsFirst = [make_proc_callers_link(Prefs,
+                    "First group", PSPtr, CallerGroups, FirstBunchNum,
+                    ContourExcl)]
+            ;
+                BunchControlsFirst = []
+            ),
+            ( BunchNum - 1 > FirstBunchNum ->
+                BunchControlsPrev = [make_proc_callers_link(Prefs,
+                    "Previous group", PSPtr, CallerGroups, BunchNum - 1,
+                    ContourExcl)]
+            ;
+                BunchControlsPrev = []
+            ),
+            ( BunchNum + 1 < LastBunchNum ->
+                BunchControlsNext = [make_proc_callers_link(Prefs,
+                    "Next group", PSPtr, CallerGroups, BunchNum + 1,
+                    ContourExcl)]
+            ;
+                BunchControlsNext = []
+            ),
+            ( BunchNum < LastBunchNum ->
+                BunchControlsLast = [make_proc_callers_link(Prefs,
+                    "Last group", PSPtr, CallerGroups, LastBunchNum,
+                    ContourExcl)]
+            ;
+                BunchControlsLast = []
+            ),
+            BunchControlList = BunchControlsFirst ++ BunchControlsPrev ++
+                BunchControlsNext ++ BunchControlsLast,
+            BunchControls = [display_paragraph_break,
+                display_list(list_class_horizontal_except_title,
+                    yes("Show other groups:"), BunchControlList)]
+        ),
+
+        Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
+        DisplayTable = display_table(Table),
+
+        % Build the controls at the bottom of the page.
+        FirstCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, ContourExcl),
+        CallerGroupControls = proc_callers_group_controls(Prefs, FirstCmd,
+            PSPtr, CallerGroups, ContourExcl),
+        FieldControls = field_controls(Prefs, Cmd),
+        FormatControls = format_controls(Prefs, Cmd),
+        MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
+
+        Display = display(yes(Title),
+            [display_text(Message),
+            display_paragraph_break, DisplayTable] ++
+            BunchControls ++
+            [display_paragraph_break, CallerGroupControls,
+            display_paragraph_break, FieldControls,
+            display_paragraph_break, FormatControls,
+            display_paragraph_break, MenuRestartQuitControls])
+    ).
+
+:- pred select_displayed_rows(list(perf_row_data(T))::in, int::in,
+    list(perf_row_data(T))::out, int::out, int::out, int::out,
+    int::out, maybe({int, int})::out) is det.
+
+select_displayed_rows(RowDatas, BunchNum, DisplayRowDatas,
+        TotalNumRows, FirstRowNum, LastRowNum,
+        DisplayedBunchNum, MaybeFirstAndLastBunchNum) :-
+    list.length(RowDatas, TotalNumRows),
+    NumRowsToDelete = (BunchNum - 1) * bunch_size,
+    (
+        list.drop(NumRowsToDelete, RowDatas, RemainingRowDatasPrime),
+        RemainingRowDatasPrime = [_ | _]
+    ->
+        DisplayedBunchNum = BunchNum,
+        % We start counting rows at 1, not 0.
+        FirstRowNum = NumRowsToDelete + 1,
+        RemainingRowDatas = RemainingRowDatasPrime,
+        NumRemainingRows = TotalNumRows - NumRowsToDelete
+    ;
+        DisplayedBunchNum = 1,
+        FirstRowNum = 1,
+        RemainingRowDatas = RowDatas,
+        NumRemainingRows = TotalNumRows
+    ),
+    ( NumRemainingRows > bunch_size ->
+        list.take_upto(bunch_size, RemainingRowDatas, DisplayRowDatas)
+    ;
+        DisplayRowDatas = RemainingRowDatas
+    ),
+    LastRowNum = FirstRowNum - 1 + list.length(DisplayRowDatas),
+    ( TotalNumRows > 0 ->
+        FirstBunchNum = 1,
+        LastBunchNum = (TotalNumRows + bunch_size - 1) / bunch_size,
+        MaybeFirstAndLastBunchNum = yes({FirstBunchNum, LastBunchNum})
+    ;
+        MaybeFirstAndLastBunchNum = no
+    ).
+
+:- func bunch_size = int.
+
+bunch_size = 5.
+
+:- pred display_caller_call_site(preferences::in,
+    perf_row_data(call_site_desc)::in, table_row::out, int::in, int::out)
+    is det.
+
+display_caller_call_site(Prefs, CallSiteRowData, Row, !RowNum) :-
+    RankCell = table_cell(td_i(!.RowNum)),
+    !:RowNum = !.RowNum + 1,
+
+    CallSiteDesc = CallSiteRowData ^ perf_row_subject,
+    PSPtr = CallSiteDesc ^ csdesc_container,
+    FileName = CallSiteDesc ^ csdesc_file_name,
+    LineNumber = CallSiteDesc ^ csdesc_line_number,
+    CallerRefinedName = CallSiteDesc ^ csdesc_caller_refined_name,
+
+    Source = string.format("%s:%d", [s(FileName), i(LineNumber)]),
+    SourceCell = table_cell(td_s(Source)),
+    ProcLinkCmd = deep_cmd_proc(PSPtr),
+    ProcLink = deep_link(ProcLinkCmd, yes(Prefs), CallerRefinedName,
+        link_class_link),
+    ProcCell = table_cell(td_l(ProcLink)),
+
+    Fields = Prefs ^ pref_fields,
+    perf_table_row(total_columns_meaningful, Fields, CallSiteRowData,
+        PerfCells),
+    Cells = [RankCell, SourceCell, ProcCell] ++ PerfCells,
+    Row = table_row(Cells).
+
+:- pred display_caller_proc(preferences::in, perf_row_data(proc_desc)::in,
+    table_row::out, int::in, int::out) is det.
+
+display_caller_proc(Prefs, ProcRowData, Row, !RowNum) :-
+    RankCell = table_cell(td_i(!.RowNum)),
+    !:RowNum = !.RowNum + 1,
+
+    ProcDesc = ProcRowData ^ perf_row_subject,
+    PSPtr = ProcDesc ^ pdesc_ps_ptr,
+    FileName = ProcDesc ^ pdesc_file_name,
+    LineNumber = ProcDesc ^ pdesc_line_number,
+    RefinedName = ProcDesc ^ pdesc_refined_name,
+
+    Source = string.format("%s:%d", [s(FileName), i(LineNumber)]),
+    SourceCell = table_cell(td_s(Source)),
+    ProcLinkCmd = deep_cmd_proc(PSPtr),
+    ProcLink = deep_link(ProcLinkCmd, yes(Prefs), RefinedName,
+        link_class_link),
+    ProcCell = table_cell(td_l(ProcLink)),
+
+    Fields = Prefs ^ pref_fields,
+    perf_table_row(total_columns_meaningful, Fields, ProcRowData, PerfCells),
+    Cells = [RankCell, SourceCell, ProcCell] ++ PerfCells,
+    Row = table_row(Cells).
+
+:- pred display_caller_module(preferences::in, perf_row_data(string)::in,
+    table_row::out, int::in, int::out) is det.
+
+display_caller_module(Prefs, ModuleRowData, Row, !RowNum) :-
+    RankCell = table_cell(td_i(!.RowNum)),
+    !:RowNum = !.RowNum + 1,
+
+    ModuleName = ModuleRowData ^ perf_row_subject,
+    ModuleCell = table_cell(td_s(ModuleName)),
+
+    Fields = Prefs ^ pref_fields,
+    perf_table_row(total_columns_meaningful, Fields, ModuleRowData, PerfCells),
+    Cells = [RankCell, ModuleCell] ++ PerfCells,
+    Row = table_row(Cells).
+
+:- pred display_caller_clique(preferences::in, perf_row_data(clique_desc)::in,
+    table_row::out, int::in, int::out) is det.
+
+display_caller_clique(Prefs, CliqueRowData, Row, !RowNum) :-
+    RankCell = table_cell(td_i(!.RowNum)),
+    !:RowNum = !.RowNum + 1,
+
+    CliqueDesc = CliqueRowData ^ perf_row_subject,
+    CliquePtr = CliqueDesc ^ cdesc_clique_ptr,
+    CliquePtr = clique_ptr(CliqueNum),
+
+    CliqueLinkCmd = deep_cmd_clique(CliquePtr),
+    CliqueText = string.format("clique %d", [i(CliqueNum)]),
+    CliqueLink = deep_link(CliqueLinkCmd, yes(Prefs), CliqueText,
+        link_class_link),
+    CliqueCell = table_cell(td_l(CliqueLink)),
+
+    MembersStrs = list.map(project_proc_desc_refined_name,
+        CliqueDesc ^ cdesc_members),
+    MembersStr = string.join_list(", ", MembersStrs),
+    MembersCell = table_cell(td_s(MembersStr)),
+
+    Fields = Prefs ^ pref_fields,
+    perf_table_row(total_columns_meaningful, Fields, CliqueRowData, PerfCells),
+    Cells = [RankCell, CliqueCell, MembersCell] ++ PerfCells,
+    Row = table_row(Cells).
+
+:- func project_proc_desc_refined_name(proc_desc) = string.
+
+project_proc_desc_refined_name(ProcDesc) = ProcDesc ^ pdesc_refined_name.
+
+:- func make_proc_callers_link(preferences, string, proc_static_ptr,
+    caller_groups, int, contour_exclusion) = display_item.
+
+make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum,
+        ContourExcl) = Item :-
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, ContourExcl),
+    Link = deep_link(Cmd, yes(Prefs), Label, link_class_control),
+    Item = display_link(Link).
 
 %-----------------------------------------------------------------------------%
 %
@@ -537,7 +1014,7 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
     PSPtr = proc_static_ptr(PSI),
     string.format("Dump of proc_dynamic %d", [i(PDI)], Title),
 
-    ProcStaticLink = deep_link(deep_cmd_proc_static(PSI), yes(Prefs),
+    ProcStaticLink = deep_link(deep_cmd_dump_proc_static(PSPtr), yes(Prefs),
         string.int_to_string(PSI), link_class_link),
     MainValues =
         [("Proc static:"            - td_l(ProcStaticLink)),
@@ -566,13 +1043,13 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
 
 dump_psd_call_site(Prefs, CallSite, Rows, !CallSiteCounter) :-
     counter.allocate(CallSiteNum, !CallSiteCounter),
-    CallSiteNumCell = table_cell(td_i(CallSiteNum), 1),
+    CallSiteNumCell = table_cell(td_i(CallSiteNum)),
     (
         CallSite = slot_normal(CSDPtr),
         CSDPtr = call_site_dynamic_ptr(CSDI),
-        CSDLink = deep_link(deep_cmd_call_site_dynamic(CSDI), yes(Prefs),
-            string.int_to_string(CSDI), link_class_link),
-        CSDCell = table_cell(td_l(CSDLink), 1),
+        CSDLink = deep_link(deep_cmd_dump_call_site_dynamic(CSDPtr),
+            yes(Prefs), string.int_to_string(CSDI), link_class_link),
+        CSDCell = table_cell(td_l(CSDLink)),
         FirstRow = table_row([CallSiteNumCell, CSDCell]),
         Rows = [FirstRow]
     ;
@@ -588,7 +1065,7 @@ dump_psd_call_site(Prefs, CallSite, Rows, !CallSiteCounter) :-
         NumCSDPtrs = list.length(CSDPtrs),
         string.format("multi, %d csds (%s)", [i(NumCSDPtrs), s(IsZeroedStr)],
             MultiCellStr),
-        MultiCell = table_cell(td_s(MultiCellStr), 1),
+        MultiCell = table_cell(td_s(MultiCellStr)),
         FirstRow = table_row([CallSiteNumCell, MultiCell]),
         list.map(dump_psd_call_site_multi_entry(Prefs), CSDPtrs, LaterRows),
         Rows = [FirstRow | LaterRows]
@@ -599,10 +1076,10 @@ dump_psd_call_site(Prefs, CallSite, Rows, !CallSiteCounter) :-
 
 dump_psd_call_site_multi_entry(Prefs, CSDPtr, Row) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    CSDLink = deep_link(deep_cmd_call_site_dynamic(CSDI), yes(Prefs),
+    CSDLink = deep_link(deep_cmd_dump_call_site_dynamic(CSDPtr), yes(Prefs),
         string.int_to_string(CSDI), link_class_link),
-    CSDCell = table_cell(td_l(CSDLink), 1),
-    EmptyCell = table_cell(td_s(""), 1),
+    CSDCell = table_cell(td_l(CSDLink)),
+    EmptyCell = table_cell(td_s("")),
     Row = table_row([EmptyCell, CSDCell]).
 
     % Create a display_report structure for a call_site_static_dump report.
@@ -617,8 +1094,9 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
     string.format("Dump of call_site_static %d", [i(CSSI)], Title),
     ContainingPSPtr = proc_static_ptr(ContainingPSI),
 
-    ContainingProcStaticLink = deep_link(deep_cmd_proc_static(ContainingPSI),
-        yes(Prefs), string.int_to_string(ContainingPSI), link_class_link),
+    ContainingProcStaticLink = deep_link(
+        deep_cmd_dump_proc_static(ContainingPSPtr), yes(Prefs),
+        string.int_to_string(ContainingPSI), link_class_link),
 
     (
         CallSiteKind = normal_call_and_callee(CalleePSPtr, TypeSpecDesc),
@@ -629,8 +1107,9 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
         ;
             CalleeDesc = CalleeDesc0 ++ " typespec " ++ TypeSpecDesc
         ),
-        CalleeProcStaticLink = deep_link(deep_cmd_proc_static(CalleePSI),
-            yes(Prefs), CalleeDesc, link_class_link),
+        CalleeProcStaticLink = deep_link(
+            deep_cmd_dump_proc_static(CalleePSPtr), yes(Prefs), CalleeDesc,
+            link_class_link),
         CallSiteKindData = td_l(CalleeProcStaticLink)
     ;
         CallSiteKind = special_call_and_no_callee,
@@ -665,17 +1144,17 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
 display_report_call_site_dynamic_dump(Prefs, CallSiteStaticDumpInfo,
         Display) :-
     CallSiteStaticDumpInfo = call_site_dynamic_dump_info(CSDPtr,
-        CallerPSPtr, CalleePSPtr, RowData),
+        CallerPDPtr, CalleePDPtr, RowData),
     CSDPtr = call_site_dynamic_ptr(CSDI),
     string.format("Dump of call_site_dynamic %d", [i(CSDI)], Title),
 
-    CallerPSPtr = proc_dynamic_ptr(CallerPSI),
-    CallerProcDynamicLink = deep_link(deep_cmd_proc_dynamic(CallerPSI),
-        yes(Prefs), string.int_to_string(CallerPSI), link_class_link),
+    CallerPDPtr = proc_dynamic_ptr(CallerPDI),
+    CallerProcDynamicLink = deep_link(deep_cmd_dump_proc_dynamic(CallerPDPtr),
+        yes(Prefs), string.int_to_string(CallerPDI), link_class_link),
 
-    CalleePSPtr = proc_dynamic_ptr(CalleePSI),
-    CalleeProcDynamicLink = deep_link(deep_cmd_proc_dynamic(CalleePSI),
-        yes(Prefs), string.int_to_string(CalleePSI), link_class_link),
+    CalleePDPtr = proc_dynamic_ptr(CalleePDI),
+    CalleeProcDynamicLink = deep_link(deep_cmd_dump_proc_dynamic(CalleePDPtr),
+        yes(Prefs), string.int_to_string(CalleePDI), link_class_link),
 
     FirstValues =
         [("Caller proc_dynamic:"    - td_l(CallerProcDynamicLink)),
@@ -688,7 +1167,8 @@ display_report_call_site_dynamic_dump(Prefs, CallSiteStaticDumpInfo,
     maybe_ranked_proc_table_header(Prefs, non_ranked, MakeHeaderData,
         NumColumns, Header),
     maybe_ranked_subject_perf_table_row(Prefs, non_ranked,
-        call_site_desc_to_cell, RowData, PerfRow, 1, _),
+        total_columns_meaningful, call_site_desc_to_cell, RowData, PerfRow,
+        1, _),
     PerfTable = table(table_class_box, NumColumns, yes(Header), [PerfRow]),
 
     Display = display(yes(Title),
@@ -711,7 +1191,7 @@ override_order_criteria_header_data(Cmd, Prefs0, Criteria, Label)
     Criteria0 = Prefs0 ^ pref_criteria,
     Prefs = Prefs0 ^ pref_criteria := Criteria,
     ( Criteria = Criteria0 ->
-        % ZZZ Should we display a simple string to indicate that this link
+        % Should we display a simple string to indicate that this link
         % leads back to the same page, or would that be confusing?
         Link = deep_link(Cmd, yes(Prefs), Label, link_class_link),
         TableData = td_l(Link)
@@ -737,7 +1217,7 @@ top_procs_order_criteria_header_data(DisplayLimit0, CostKind0, InclDesc0,
         Criteria = by_cost(CostKind, InclDesc, Scope),
         Cmd = deep_cmd_top_procs(DisplayLimit0, CostKind, InclDesc, Scope),
         ( Cmd = Cmd0 ->
-            % ZZZ Should we display a simple string to indicate that this link
+            % Should we display a simple string to indicate that this link
             % leads back to the same page, or would that be confusing?
             Link = deep_link(Cmd, yes(Prefs0), Label, link_class_link),
             TableData = td_l(Link)
@@ -763,18 +1243,22 @@ dummy_order_criteria_header_data(_, _, Label) = td_s(Label).
 % Each pair of predicates should follow the exact same logic when selecting
 % what columns to display, and in what order.
 
+:- type total_columns_meaning
+    --->    total_columns_meaningful
+    ;       total_columns_not_meaningful.
+
     % Convert the performance information in a row data into the cells
     % of a table row according to the preferences.
     %
-:- pred perf_table_row(fields::in, perf_row_data(Subject)::in,
-    list(table_cell)::out) is det.
+:- pred perf_table_row(total_columns_meaning::in, fields::in,
+    perf_row_data(Subject)::in, list(table_cell)::out) is det.
 
-perf_table_row(Fields, RowData, PerfCells) :-
+perf_table_row(TotalsMeaningful, Fields, RowData, PerfCells) :-
     perf_table_row_ports(Fields, RowData, PortCells),
-    perf_table_row_time(Fields, RowData, TimeCells),
-    perf_table_row_callseqs(Fields, RowData, CallSeqsCells),
-    perf_table_row_allocs(Fields, RowData, AllocCells),
-    perf_table_row_memory(Fields, RowData, MemoryCells),
+    perf_table_row_time(TotalsMeaningful, Fields, RowData, TimeCells),
+    perf_table_row_callseqs(TotalsMeaningful, Fields, RowData, CallSeqsCells),
+    perf_table_row_allocs(TotalsMeaningful, Fields, RowData, AllocCells),
+    perf_table_row_memory(TotalsMeaningful, Fields, RowData, MemoryCells),
     PerfCells =
         PortCells ++ TimeCells ++ CallSeqsCells ++
         AllocCells ++ MemoryCells.
@@ -782,16 +1266,20 @@ perf_table_row(Fields, RowData, PerfCells) :-
     % Build the performance group of table headers
     % according to the preferences.
     %
-:- pred perf_table_header(preferences::in,
+:- pred perf_table_header(total_columns_meaning::in, preferences::in,
     (func(preferences, order_criteria, string) = table_data)::in,
     list(table_header_group)::out) is det.
 
-perf_table_header(Prefs, MakeHeaderData, HeaderGroups) :-
+perf_table_header(TotalsMeaningful, Prefs, MakeHeaderData, HeaderGroups) :-
     perf_table_header_ports(Prefs, MakeHeaderData, PortHeaderGroups),
-    perf_table_header_time(Prefs, MakeHeaderData, TimeHeaderGroups),
-    perf_table_header_callseqs(Prefs, MakeHeaderData, CallSeqsHeaderGroups),
-    perf_table_header_allocs(Prefs, MakeHeaderData, AllocHeaderGroups),
-    perf_table_header_memory(Prefs, MakeHeaderData, MemoryHeaderGroups),
+    perf_table_header_time(TotalsMeaningful, Prefs, MakeHeaderData,
+        TimeHeaderGroups),
+    perf_table_header_callseqs(TotalsMeaningful, Prefs, MakeHeaderData,
+        CallSeqsHeaderGroups),
+    perf_table_header_allocs(TotalsMeaningful, Prefs, MakeHeaderData,
+        AllocHeaderGroups),
+    perf_table_header_memory(TotalsMeaningful, Prefs, MakeHeaderData,
+        MemoryHeaderGroups),
     HeaderGroups =
         PortHeaderGroups ++ TimeHeaderGroups ++ CallSeqsHeaderGroups ++
         AllocHeaderGroups ++ MemoryHeaderGroups.
@@ -815,11 +1303,11 @@ perf_table_row_ports(Fields, RowData, PortCells) :-
         Redos = RowData ^ perf_row_redos,
         Excps = RowData ^ perf_row_excps,
 
-        CallsCell = table_cell(td_i(Calls), 1),
-        ExitsCell = table_cell(td_i(Exits), 1),
-        FailsCell = table_cell(td_i(Fails), 1),
-        RedosCell = table_cell(td_i(Redos), 1),
-        ExcpsCell = table_cell(td_i(Excps), 1),
+        CallsCell = table_cell(td_i(Calls)),
+        ExitsCell = table_cell(td_i(Exits)),
+        FailsCell = table_cell(td_i(Fails)),
+        RedosCell = table_cell(td_i(Redos)),
+        ExcpsCell = table_cell(td_i(Excps)),
 
         PortCells = [CallsCell, ExitsCell, FailsCell, RedosCell, ExcpsCell]
     ).
@@ -859,10 +1347,10 @@ perf_table_header_ports(Prefs, MakeHeaderData, HeaderGroups) :-
     % Convert the time information in a row data into the cells
     % of a table row according to the preferences.
     %
-:- pred perf_table_row_time(fields::in, perf_row_data(Subject)::in,
-    list(table_cell)::out) is det.
+:- pred perf_table_row_time(total_columns_meaning::in, fields::in,
+    perf_row_data(Subject)::in, list(table_cell)::out) is det.
 
-perf_table_row_time(Fields, RowData, TimeCells) :-
+perf_table_row_time(TotalsMeaningful, Fields, RowData, TimeCells) :-
     TimeFields = Fields ^ time_fields,
     (
         TimeFields = no_time,
@@ -875,61 +1363,97 @@ perf_table_row_time(Fields, RowData, TimeCells) :-
         ; TimeFields = ticks_and_time_and_percall
         ),
 
-        SelfTicks =         RowData ^ perf_row_self_ticks,
-        SelfTime =          RowData ^ perf_row_self_time,
-        SelfTimePercent =   RowData ^ perf_row_self_time_percent,
-        SelfTimePerCall =   RowData ^ perf_row_self_time_percall,
-        TotalTicks =        RowData ^ perf_row_total_ticks,
-        TotalTime =         RowData ^ perf_row_total_time,
-        TotalTimePercent =  RowData ^ perf_row_total_time_percent,
-        TotalTimePerCall =  RowData ^ perf_row_total_time_percall,
-
-        SelfTicksCell =         table_cell(td_i(SelfTicks), 1),
-        SelfTimeCell =          table_cell(td_t(SelfTime), 1),
-        SelfTimePercentCell =   table_cell(td_p(SelfTimePercent), 1),
-        SelfTimePerCallCell =   table_cell(td_t(SelfTimePerCall), 1),
-        TotalTicksCell =        table_cell(td_i(TotalTicks), 1),
-        TotalTimeCell =         table_cell(td_t(TotalTime), 1),
-        TotalTimePercentCell =  table_cell(td_p(TotalTimePercent), 1),
-        TotalTimePerCallCell =  table_cell(td_t(TotalTimePerCall), 1),
-
+        Self = RowData ^ perf_row_self,
+        SelfTicks =             Self ^ perf_row_ticks,
+        SelfTime =              Self ^ perf_row_time,
+        SelfTimePercent =       Self ^ perf_row_time_percent,
+        SelfTimePerCall =       Self ^ perf_row_time_percall,
+        SelfTicksCell =         table_cell(td_i(SelfTicks)),
+        SelfTimeCell =          table_cell(td_t(SelfTime)),
+        SelfTimePercentCell =   table_cell(td_p(SelfTimePercent)),
+        SelfTimePerCallCell =   table_cell(td_t(SelfTimePerCall)),
         (
-            TimeFields = ticks,
-            TimeCells =
-                [SelfTicksCell, SelfTimePercentCell,
-                TotalTicksCell, TotalTimePercentCell]
+            TotalsMeaningful = total_columns_not_meaningful,
+            (
+                TimeFields = ticks,
+                TimeCells =
+                    [SelfTicksCell, SelfTimePercentCell]
+            ;
+                TimeFields = time,
+                TimeCells =
+                    [SelfTimeCell, SelfTimePercentCell]
+            ;
+                TimeFields = ticks_and_time,
+                TotalsMeaningful = total_columns_not_meaningful,
+                TimeCells =
+                    [SelfTicksCell, SelfTimeCell, SelfTimePercentCell]
+            ;
+                TimeFields = time_and_percall,
+                TimeCells =
+                    [SelfTimeCell, SelfTimePercentCell, SelfTimePerCallCell]
+            ;
+                TimeFields = ticks_and_time_and_percall,
+                TimeCells =
+                    [SelfTicksCell, SelfTimeCell,
+                    SelfTimePercentCell, SelfTimePerCallCell]
+            )
         ;
-            TimeFields = time,
-            TimeCells =
-                [SelfTimeCell, SelfTimePercentCell,
-                TotalTimeCell, TotalTimePercentCell]
-        ;
-            TimeFields = ticks_and_time,
-            TimeCells =
-                [SelfTicksCell, SelfTimeCell, SelfTimePercentCell,
-                TotalTicksCell, TotalTimeCell, TotalTimePercentCell]
-        ;
-            TimeFields = time_and_percall,
-            TimeCells =
-                [SelfTimeCell, SelfTimePercentCell, SelfTimePerCallCell,
-                TotalTimeCell, TotalTimePercentCell, TotalTimePerCallCell]
-        ;
-            TimeFields = ticks_and_time_and_percall,
-            TimeCells =
-                [SelfTicksCell, SelfTimeCell,
-                SelfTimePercentCell, SelfTimePerCallCell,
-                TotalTicksCell, TotalTimeCell,
-                TotalTimePercentCell, TotalTimePerCallCell]
+            TotalsMeaningful = total_columns_meaningful,
+            MaybeTotal = RowData ^ perf_row_maybe_total,
+            (
+                MaybeTotal = yes(Total)
+            ;
+                MaybeTotal = no,
+                error("perf_table_row_time: no total")
+            ),
+            TotalTicks =            Total ^ perf_row_ticks,
+            TotalTime =             Total ^ perf_row_time,
+            TotalTimePercent =      Total ^ perf_row_time_percent,
+            TotalTimePerCall =      Total ^ perf_row_time_percall,
+            TotalTicksCell =        table_cell(td_i(TotalTicks)),
+            TotalTimeCell =         table_cell(td_t(TotalTime)),
+            TotalTimePercentCell =  table_cell(td_p(TotalTimePercent)),
+            TotalTimePerCallCell =  table_cell(td_t(TotalTimePerCall)),
+            (
+                TimeFields = ticks,
+                TimeCells =
+                    [SelfTicksCell, SelfTimePercentCell,
+                    TotalTicksCell, TotalTimePercentCell]
+            ;
+                TimeFields = time,
+                TotalsMeaningful = total_columns_meaningful,
+                TimeCells =
+                    [SelfTimeCell, SelfTimePercentCell,
+                    TotalTimeCell, TotalTimePercentCell]
+            ;
+                TimeFields = ticks_and_time,
+                TimeCells =
+                    [SelfTicksCell, SelfTimeCell, SelfTimePercentCell,
+                    TotalTicksCell, TotalTimeCell, TotalTimePercentCell]
+            ;
+                TimeFields = time_and_percall,
+                TimeCells =
+                    [SelfTimeCell, SelfTimePercentCell, SelfTimePerCallCell,
+                    TotalTimeCell, TotalTimePercentCell, TotalTimePerCallCell]
+            ;
+                TimeFields = ticks_and_time_and_percall,
+                TimeCells =
+                    [SelfTicksCell, SelfTimeCell,
+                    SelfTimePercentCell, SelfTimePerCallCell,
+                    TotalTicksCell, TotalTimeCell,
+                    TotalTimePercentCell, TotalTimePerCallCell]
+            )
         )
     ).
 
     % Build the time group of table headers according to the preferences.
     %
-:- pred perf_table_header_time(preferences::in,
+:- pred perf_table_header_time(total_columns_meaning::in, preferences::in,
     (func(preferences, order_criteria, string) = table_data)::in,
     list(table_header_group)::out) is det.
 
-perf_table_header_time(Prefs, MakeHeaderData, HeaderGroups) :-
+perf_table_header_time(TotalsMeaningful, Prefs, MakeHeaderData,
+        HeaderGroups) :-
     Fields = Prefs ^ pref_fields,
     TimeFields = Fields ^ time_fields,
 
@@ -968,37 +1492,69 @@ perf_table_header_time(Prefs, MakeHeaderData, HeaderGroups) :-
                                     "/call"),
 
         (
-            TimeFields = ticks,
-            Title = "Clock ticks",
-            SubHeaders =
-                [SelfTicksData, SelfTimePercentData,
-                TotalTicksData, TotalTimePercentData]
+            TotalsMeaningful = total_columns_not_meaningful,
+            (
+                TimeFields = ticks,
+                Title = "Clock ticks",
+                SubHeaders =
+                    [SelfTicksData, SelfTimePercentData]
+            ;
+                TimeFields = time,
+                Title = "Time",
+                SubHeaders =
+                    [SelfTimeData, SelfTimePercentData]
+            ;
+                TimeFields = ticks_and_time,
+                Title = "Clock ticks and times",
+                SubHeaders =
+                    [SelfTicksData, SelfTimeData, SelfTimePercentData]
+            ;
+                TimeFields = time_and_percall,
+                Title = "Time",
+                SubHeaders =
+                    [SelfTimeData, SelfTimePercentData, SelfTimePerCallData]
+            ;
+                TimeFields = ticks_and_time_and_percall,
+                Title = "Clock ticks and times",
+                SubHeaders =
+                    [SelfTicksData, SelfTimeData,
+                    SelfTimePercentData, SelfTimePerCallData]
+            )
         ;
-            TimeFields = time,
-            Title = "Time",
-            SubHeaders =
-                [SelfTimeData, SelfTimePercentData,
-                TotalTimeData, TotalTimePercentData]
-        ;
-            TimeFields = ticks_and_time,
-            Title = "Clock ticks and times",
-            SubHeaders =
-                [SelfTicksData, SelfTimeData, SelfTimePercentData,
-                TotalTicksData, TotalTimeData, TotalTimePercentData]
-        ;
-            TimeFields = time_and_percall,
-            Title = "Time",
-            SubHeaders =
-                [SelfTimeData, SelfTimePercentData, SelfTimePerCallData,
-                TotalTimeData, TotalTimePercentData, TotalTimePerCallData]
-        ;
-            TimeFields = ticks_and_time_and_percall,
-            Title = "Clock ticks and times",
-            SubHeaders =
-                [SelfTicksData, SelfTimeData,
-                SelfTimePercentData, SelfTimePerCallData,
-                TotalTicksData, TotalTimeData,
-                TotalTimePercentData, TotalTimePerCallData]
+            TotalsMeaningful = total_columns_meaningful,
+            (
+                TimeFields = ticks,
+                Title = "Clock ticks",
+                SubHeaders =
+                    [SelfTicksData, SelfTimePercentData,
+                    TotalTicksData, TotalTimePercentData]
+            ;
+                TimeFields = time,
+                Title = "Time",
+                SubHeaders =
+                    [SelfTimeData, SelfTimePercentData,
+                    TotalTimeData, TotalTimePercentData]
+            ;
+                TimeFields = ticks_and_time,
+                Title = "Clock ticks and times",
+                SubHeaders =
+                    [SelfTicksData, SelfTimeData, SelfTimePercentData,
+                    TotalTicksData, TotalTimeData, TotalTimePercentData]
+            ;
+                TimeFields = time_and_percall,
+                Title = "Time",
+                SubHeaders =
+                    [SelfTimeData, SelfTimePercentData, SelfTimePerCallData,
+                    TotalTimeData, TotalTimePercentData, TotalTimePerCallData]
+            ;
+                TimeFields = ticks_and_time_and_percall,
+                Title = "Clock ticks and times",
+                SubHeaders =
+                    [SelfTicksData, SelfTimeData,
+                    SelfTimePercentData, SelfTimePerCallData,
+                    TotalTicksData, TotalTimeData,
+                    TotalTimePercentData, TotalTimePerCallData]
+            )
         ),
 
         HeaderGroup = make_multi_table_header_group(Title, SubHeaders,
@@ -1009,51 +1565,76 @@ perf_table_header_time(Prefs, MakeHeaderData, HeaderGroups) :-
     % Convert the callseqs information in a row data into the cells
     % of a table row according to the preferences.
     %
-:- pred perf_table_row_callseqs(fields::in, perf_row_data(Subject)::in,
-    list(table_cell)::out) is det.
+:- pred perf_table_row_callseqs(total_columns_meaning::in, fields::in,
+    perf_row_data(Subject)::in, list(table_cell)::out) is det.
 
-perf_table_row_callseqs(Fields, RowData, CallSeqsCells) :-
+perf_table_row_callseqs(TotalsMeaningful, Fields, RowData, CallSeqsCells) :-
     CallSeqsFields = Fields ^ callseqs_fields,
     (
         CallSeqsFields = no_callseqs,
         CallSeqsCells = []
     ;
-        SelfCallSeqs =              RowData ^ perf_row_self_callseqs,
-        SelfCallSeqsPercent =       RowData ^ perf_row_self_callseqs_percent,
-        SelfCallSeqsPerCall =       RowData ^ perf_row_self_callseqs_percall,
-        TotalCallSeqs =             RowData ^ perf_row_total_callseqs,
-        TotalCallSeqsPercent =      RowData ^ perf_row_total_callseqs_percent,
-        TotalCallSeqsPerCall =      RowData ^ perf_row_total_callseqs_percall,
-
-        SelfCallSeqsCell =          table_cell(td_i(SelfCallSeqs), 1),
-        SelfCallSeqsPercentCell =   table_cell(td_p(SelfCallSeqsPercent), 1),
-        SelfCallSeqsPerCallCell =   table_cell(td_f(SelfCallSeqsPerCall), 1),
-        TotalCallSeqsCell =         table_cell(td_i(TotalCallSeqs), 1),
-        TotalCallSeqsPercentCell =  table_cell(td_p(TotalCallSeqsPercent), 1),
-        TotalCallSeqsPerCallCell =  table_cell(td_f(TotalCallSeqsPerCall), 1),
-
+        ( CallSeqsFields = callseqs
+        ; CallSeqsFields = callseqs_and_percall
+        ),
+        Self = RowData ^ perf_row_self,
+        SelfCallSeqs =              Self ^ perf_row_callseqs,
+        SelfCallSeqsPercent =       Self ^ perf_row_callseqs_percent,
+        SelfCallSeqsPerCall =       Self ^ perf_row_callseqs_percall,
+        SelfCallSeqsCell =          table_cell(td_i(SelfCallSeqs)),
+        SelfCallSeqsPercentCell =   table_cell(td_p(SelfCallSeqsPercent)),
+        SelfCallSeqsPerCallCell =   table_cell(td_f(SelfCallSeqsPerCall)),
         (
-            CallSeqsFields = callseqs,
-            CallSeqsCells =
-                [SelfCallSeqsCell, SelfCallSeqsPercentCell,
-                TotalCallSeqsCell, TotalCallSeqsPercentCell]
+            TotalsMeaningful = total_columns_not_meaningful,
+            (
+                CallSeqsFields = callseqs,
+                CallSeqsCells =
+                    [SelfCallSeqsCell, SelfCallSeqsPercentCell]
+            ;
+                CallSeqsFields = callseqs_and_percall,
+                CallSeqsCells =
+                    [SelfCallSeqsCell, SelfCallSeqsPercentCell,
+                    SelfCallSeqsPerCallCell]
+            )
         ;
-            CallSeqsFields = callseqs_and_percall,
-            CallSeqsCells =
-                [SelfCallSeqsCell, SelfCallSeqsPercentCell,
-                SelfCallSeqsPerCallCell,
-                TotalCallSeqsCell, TotalCallSeqsPercentCell,
-                TotalCallSeqsPerCallCell]
+            TotalsMeaningful = total_columns_meaningful,
+            MaybeTotal = RowData ^ perf_row_maybe_total,
+            (
+                MaybeTotal = yes(Total)
+            ;
+                MaybeTotal = no,
+                error("perf_table_row_callseqs: no total")
+            ),
+            TotalCallSeqs =             Total ^ perf_row_callseqs,
+            TotalCallSeqsPercent =      Total ^ perf_row_callseqs_percent,
+            TotalCallSeqsPerCall =      Total ^ perf_row_callseqs_percall,
+            TotalCallSeqsCell =         table_cell(td_i(TotalCallSeqs)),
+            TotalCallSeqsPercentCell =  table_cell(td_p(TotalCallSeqsPercent)),
+            TotalCallSeqsPerCallCell =  table_cell(td_f(TotalCallSeqsPerCall)),
+            (
+                CallSeqsFields = callseqs,
+                CallSeqsCells =
+                    [SelfCallSeqsCell, SelfCallSeqsPercentCell,
+                    TotalCallSeqsCell, TotalCallSeqsPercentCell]
+            ;
+                CallSeqsFields = callseqs_and_percall,
+                CallSeqsCells =
+                    [SelfCallSeqsCell, SelfCallSeqsPercentCell,
+                    SelfCallSeqsPerCallCell,
+                    TotalCallSeqsCell, TotalCallSeqsPercentCell,
+                    TotalCallSeqsPerCallCell]
+            )
         )
     ).
 
     % Build the callseqs group of table headers according to the preferences.
     %
-:- pred perf_table_header_callseqs(preferences::in,
+:- pred perf_table_header_callseqs(total_columns_meaning::in, preferences::in,
     (func(preferences, order_criteria, string) = table_data)::in,
     list(table_header_group)::out) is det.
 
-perf_table_header_callseqs(Prefs, MakeHeaderData, HeaderGroups) :-
+perf_table_header_callseqs(TotalsMeaningful, Prefs, MakeHeaderData,
+        HeaderGroups) :-
     Fields = Prefs ^ pref_fields,
     CallSeqsFields = Fields ^ callseqs_fields,
     (
@@ -1077,14 +1658,29 @@ perf_table_header_callseqs(Prefs, MakeHeaderData, HeaderGroups) :-
         TotalPerCallData =  MakeHeaderData(Prefs, TotalPerCallCrit, "/call"),
 
         (
-            CallSeqsFields = callseqs,
-            SubHeaders =
-                [SelfData, SelfPercentData, TotalData, TotalPercentData]
+            TotalsMeaningful = total_columns_not_meaningful,
+            (
+                CallSeqsFields = callseqs,
+                SubHeaders =
+                    [SelfData, SelfPercentData]
+            ;
+                CallSeqsFields = callseqs_and_percall,
+                SubHeaders =
+                    [SelfData, SelfPercentData, SelfPerCallData]
+            )
         ;
-            CallSeqsFields = callseqs_and_percall,
-            SubHeaders =
-                [SelfData, SelfPercentData, SelfPerCallData,
-                TotalData, TotalPercentData, TotalPerCallData]
+            TotalsMeaningful = total_columns_meaningful,
+            (
+                CallSeqsFields = callseqs,
+                SubHeaders =
+                    [SelfData, SelfPercentData,
+                    TotalData, TotalPercentData]
+            ;
+                CallSeqsFields = callseqs_and_percall,
+                SubHeaders =
+                    [SelfData, SelfPercentData, SelfPerCallData,
+                    TotalData, TotalPercentData, TotalPerCallData]
+            )
         ),
         Title = "Call sequence numbers",
         HeaderGroup = make_multi_table_header_group(Title, SubHeaders,
@@ -1095,10 +1691,10 @@ perf_table_header_callseqs(Prefs, MakeHeaderData, HeaderGroups) :-
     % Convert the allocation information in a row data into the cells
     % of a table row according to the preferences.
     %
-:- pred perf_table_row_allocs(fields::in, perf_row_data(Subject)::in,
-    list(table_cell)::out) is det.
+:- pred perf_table_row_allocs(total_columns_meaning::in, fields::in,
+    perf_row_data(Subject)::in, list(table_cell)::out) is det.
 
-perf_table_row_allocs(Fields, RowData, AllocCells) :-
+perf_table_row_allocs(TotalsMeaningful, Fields, RowData, AllocCells) :-
     AllocFields = Fields ^ alloc_fields,
     (
         AllocFields = no_alloc,
@@ -1108,42 +1704,64 @@ perf_table_row_allocs(Fields, RowData, AllocCells) :-
         ; AllocFields = alloc_and_percall
         ),
 
-        SelfAllocs =                RowData ^ perf_row_self_allocs,
-        SelfAllocsPercent =         RowData ^ perf_row_self_allocs_percent,
-        SelfAllocsPerCall =         RowData ^ perf_row_self_allocs_percall,
-        TotalAllocs =               RowData ^ perf_row_total_allocs,
-        TotalAllocsPercent =        RowData ^ perf_row_total_allocs_percent,
-        TotalAllocsPerCall =        RowData ^ perf_row_total_allocs_percall,
-
-        SelfAllocsCell =            table_cell(td_i(SelfAllocs), 1),
-        SelfAllocsPercentCell =     table_cell(td_p(SelfAllocsPercent), 1),
-        SelfAllocsPerCallCell =     table_cell(td_f(SelfAllocsPerCall), 1),
-        TotalAllocsCell =           table_cell(td_i(TotalAllocs), 1),
-        TotalAllocsPercentCell =    table_cell(td_p(TotalAllocsPercent), 1),
-        TotalAllocsPerCallCell =    table_cell(td_f(TotalAllocsPerCall), 1),
-
+        Self = RowData ^ perf_row_self,
+        SelfAllocs =                Self ^ perf_row_allocs,
+        SelfAllocsPercent =         Self ^ perf_row_allocs_percent,
+        SelfAllocsPerCall =         Self ^ perf_row_allocs_percall,
+        SelfAllocsCell =            table_cell(td_i(SelfAllocs)),
+        SelfAllocsPercentCell =     table_cell(td_p(SelfAllocsPercent)),
+        SelfAllocsPerCallCell =     table_cell(td_f(SelfAllocsPerCall)),
         (
-            AllocFields = alloc,
-            AllocCells =
-                [SelfAllocsCell, SelfAllocsPercentCell,
-                TotalAllocsCell, TotalAllocsPercentCell]
+            TotalsMeaningful = total_columns_not_meaningful,
+            (
+                AllocFields = alloc,
+                AllocCells =
+                    [SelfAllocsCell, SelfAllocsPercentCell]
+            ;
+                AllocFields = alloc_and_percall,
+                AllocCells =
+                    [SelfAllocsCell, SelfAllocsPercentCell,
+                    SelfAllocsPerCallCell]
+            )
         ;
-            AllocFields = alloc_and_percall,
-            AllocCells =
-                [SelfAllocsCell, SelfAllocsPercentCell,
-                SelfAllocsPerCallCell,
-                TotalAllocsCell, TotalAllocsPercentCell,
-                TotalAllocsPerCallCell]
+            TotalsMeaningful = total_columns_meaningful,
+            MaybeTotal = RowData ^ perf_row_maybe_total,
+            (
+                MaybeTotal = yes(Total)
+            ;
+                MaybeTotal = no,
+                error("perf_table_row_allocs: no total")
+            ),
+            TotalAllocs =               Total ^ perf_row_allocs,
+            TotalAllocsPercent =        Total ^ perf_row_allocs_percent,
+            TotalAllocsPerCall =        Total ^ perf_row_allocs_percall,
+            TotalAllocsCell =           table_cell(td_i(TotalAllocs)),
+            TotalAllocsPercentCell =    table_cell(td_p(TotalAllocsPercent)),
+            TotalAllocsPerCallCell =    table_cell(td_f(TotalAllocsPerCall)),
+            (
+                AllocFields = alloc,
+                AllocCells =
+                    [SelfAllocsCell, SelfAllocsPercentCell,
+                    TotalAllocsCell, TotalAllocsPercentCell]
+            ;
+                AllocFields = alloc_and_percall,
+                AllocCells =
+                    [SelfAllocsCell, SelfAllocsPercentCell,
+                    SelfAllocsPerCallCell,
+                    TotalAllocsCell, TotalAllocsPercentCell,
+                    TotalAllocsPerCallCell]
+            )
         )
     ).
 
     % Build the allocs group of table headers according to the preferences.
     %
-:- pred perf_table_header_allocs(preferences::in,
+:- pred perf_table_header_allocs(total_columns_meaning::in, preferences::in,
     (func(preferences, order_criteria, string) = table_data)::in,
     list(table_header_group)::out) is det.
 
-perf_table_header_allocs(Prefs, MakeHeaderData, HeaderGroups) :-
+perf_table_header_allocs(TotalsMeaningful, Prefs, MakeHeaderData,
+        HeaderGroups) :-
     Fields = Prefs ^ pref_fields,
     AllocFields = Fields ^ alloc_fields,
     (
@@ -1168,13 +1786,28 @@ perf_table_header_allocs(Prefs, MakeHeaderData, HeaderGroups) :-
 
         (
             AllocFields = alloc,
-            SubHeaders =
-                [SelfData, SelfPercentData, TotalData, TotalPercentData]
+            (
+                TotalsMeaningful = total_columns_not_meaningful,
+                SubHeaders =
+                    [SelfData, SelfPercentData]
+            ;
+                TotalsMeaningful = total_columns_meaningful,
+                SubHeaders =
+                    [SelfData, SelfPercentData,
+                    TotalData, TotalPercentData]
+            )
         ;
             AllocFields = alloc_and_percall,
-            SubHeaders =
-                [SelfData, SelfPercentData, SelfPerCallData,
-                TotalData, TotalPercentData, TotalPerCallData]
+            (
+                TotalsMeaningful = total_columns_not_meaningful,
+                SubHeaders =
+                    [SelfData, SelfPercentData, SelfPerCallData]
+            ;
+                TotalsMeaningful = total_columns_meaningful,
+                SubHeaders =
+                    [SelfData, SelfPercentData, SelfPerCallData,
+                    TotalData, TotalPercentData, TotalPerCallData]
+            )
         ),
 
         Title = "Memory allocations",
@@ -1186,10 +1819,10 @@ perf_table_header_allocs(Prefs, MakeHeaderData, HeaderGroups) :-
     % Convert the memory information in a row data into the cells
     % of a table row according to the preferences.
     %
-:- pred perf_table_row_memory(fields::in, perf_row_data(Subject)::in,
-    list(table_cell)::out) is det.
+:- pred perf_table_row_memory(total_columns_meaning::in, fields::in,
+    perf_row_data(Subject)::in, list(table_cell)::out) is det.
 
-perf_table_row_memory(Fields, RowData, MemoryCells) :-
+perf_table_row_memory(TotalsMeaningful, Fields, RowData, MemoryCells) :-
     MemoryFields = Fields ^ memory_fields,
     (
         MemoryFields = no_memory,
@@ -1199,40 +1832,61 @@ perf_table_row_memory(Fields, RowData, MemoryCells) :-
         ; MemoryFields = memory_and_percall(Units)
         ),
 
-        SelfMem =               RowData ^ perf_row_self_mem,
-        SelfMemPerCall =        RowData ^ perf_row_self_mem_percall,
-        SelfMemPercent =        RowData ^ perf_row_self_mem_percent,
-        TotalMem =              RowData ^ perf_row_total_mem,
-        TotalMemPerCall =       RowData ^ perf_row_total_mem_percall,
-        TotalMemPercent =       RowData ^ perf_row_total_mem_percent,
-
-        SelfMemCell =           table_cell(td_m(SelfMem, Units, 0), 1),
-        SelfMemPerCallCell =    table_cell(td_m(SelfMemPerCall, Units, 2), 1),
-        SelfMemPercentCell =    table_cell(td_p(SelfMemPercent), 1),
-        TotalMemCell =          table_cell(td_m(TotalMem, Units, 0), 1),
-        TotalMemPerCallCell =   table_cell(td_m(TotalMemPerCall, Units, 2), 1),
-        TotalMemPercentCell =   table_cell(td_p(TotalMemPercent), 1),
-
+        Self = RowData ^ perf_row_self,
+        SelfMem =               Self ^ perf_row_mem,
+        SelfMemPerCall =        Self ^ perf_row_mem_percall,
+        SelfMemPercent =        Self ^ perf_row_mem_percent,
+        SelfMemCell =           table_cell(td_m(SelfMem, Units, 0)),
+        SelfMemPerCallCell =    table_cell(td_m(SelfMemPerCall, Units, 2)),
+        SelfMemPercentCell =    table_cell(td_p(SelfMemPercent)),
         (
-            MemoryFields = memory(_),
-            MemoryCells =
-                [SelfMemCell, SelfMemPercentCell,
-                TotalMemCell, TotalMemPercentCell]
+            TotalsMeaningful = total_columns_not_meaningful,
+            (
+                MemoryFields = memory(_),
+                MemoryCells =
+                    [SelfMemCell, SelfMemPercentCell]
+            ;
+                MemoryFields = memory_and_percall(_),
+                MemoryCells =
+                    [SelfMemCell, SelfMemPercentCell, SelfMemPerCallCell]
+            )
         ;
-            MemoryFields = memory_and_percall(_),
-            MemoryCells =
-                [SelfMemCell, SelfMemPercentCell, SelfMemPerCallCell,
-                TotalMemCell, TotalMemPercentCell, TotalMemPerCallCell]
+            TotalsMeaningful = total_columns_meaningful,
+            MaybeTotal = RowData ^ perf_row_maybe_total,
+            (
+                MaybeTotal = yes(Total)
+            ;
+                MaybeTotal = no,
+                error("perf_table_row_memory: no total")
+            ),
+            TotalMem =              Total ^ perf_row_mem,
+            TotalMemPerCall =       Total ^ perf_row_mem_percall,
+            TotalMemPercent =       Total ^ perf_row_mem_percent,
+            TotalMemCell =          table_cell(td_m(TotalMem, Units, 0)),
+            TotalMemPerCallCell =   table_cell(td_m(TotalMemPerCall, Units, 2)),
+            TotalMemPercentCell =   table_cell(td_p(TotalMemPercent)),
+            (
+                MemoryFields = memory(_),
+                MemoryCells =
+                    [SelfMemCell, SelfMemPercentCell,
+                    TotalMemCell, TotalMemPercentCell]
+            ;
+                MemoryFields = memory_and_percall(_),
+                MemoryCells =
+                    [SelfMemCell, SelfMemPercentCell, SelfMemPerCallCell,
+                    TotalMemCell, TotalMemPercentCell, TotalMemPerCallCell]
+            )
         )
     ).
 
     % Build the memory group of table headers according to the preferences.
     %
-:- pred perf_table_header_memory(preferences::in,
+:- pred perf_table_header_memory(total_columns_meaning::in, preferences::in,
     (func(preferences, order_criteria, string) = table_data)::in,
     list(table_header_group)::out) is det.
 
-perf_table_header_memory(Prefs, MakeHeaderData, HeaderGroups) :-
+perf_table_header_memory(TotalsMeaningful, Prefs, MakeHeaderData,
+        HeaderGroups) :-
     Fields = Prefs ^ pref_fields,
     MemoryFields = Fields ^ memory_fields,
     (
@@ -1256,16 +1910,30 @@ perf_table_header_memory(Prefs, MakeHeaderData, HeaderGroups) :-
         TotalPerCallData =  MakeHeaderData(Prefs, TotalPerCallCrit, "/call"),
 
         (
-            MemoryFields = memory(Units),
-            SubHeaders =
-                [SelfData, SelfPercentData, TotalData, TotalPercentData]
+            TotalsMeaningful = total_columns_not_meaningful,
+            (
+                MemoryFields = memory(Units),
+                SubHeaders =
+                    [SelfData, SelfPercentData]
+            ;
+                MemoryFields = memory_and_percall(Units),
+                SubHeaders =
+                    [SelfData, SelfPercentData, SelfPerCallData]
+            )
         ;
-            MemoryFields = memory_and_percall(Units),
-            SubHeaders =
-                [SelfData, SelfPercentData, SelfPerCallData,
-                TotalData, TotalPercentData, TotalPerCallData]
+            TotalsMeaningful = total_columns_meaningful,
+            (
+                MemoryFields = memory(Units),
+                SubHeaders =
+                    [SelfData, SelfPercentData,
+                    TotalData, TotalPercentData]
+            ;
+                MemoryFields = memory_and_percall(Units),
+                SubHeaders =
+                    [SelfData, SelfPercentData, SelfPerCallData,
+                    TotalData, TotalPercentData, TotalPerCallData]
+            )
         ),
-
         (
             Units = units_words,
             Title = "Memory words"
@@ -1307,13 +1975,13 @@ maybe_ranked_proc_table_header(Prefs, Ranked, MakeHeaderData, NumColumns,
         RankedHeaderGroups = [RankedHeaderGroup]
     ),
 
-    % ZZZ SubjectHeaderFunc
     ProcHeaderGroup =
         make_single_table_header_group(td_s("Procedure"),
             table_column_class_proc, column_do_not_colour),
     ProcHeaderGroups = [ProcHeaderGroup],
 
-    perf_table_header(Prefs, MakeHeaderData, PerfHeaderGroups),
+    perf_table_header(total_columns_meaningful, Prefs, MakeHeaderData,
+        PerfHeaderGroups),
 
     AllHeaderGroups =
         RankedHeaderGroups ++ ProcHeaderGroups ++ PerfHeaderGroups,
@@ -1323,24 +1991,24 @@ maybe_ranked_proc_table_header(Prefs, Ranked, MakeHeaderData, NumColumns,
     % according to the preferences.
     %
 :- pred maybe_ranked_subject_perf_table_row(preferences::in, ranked::in,
-    (func(preferences, Subject) = table_cell)::in,
+    total_columns_meaning::in, (func(preferences, Subject) = table_cell)::in,
     perf_row_data(Subject)::in, table_row::out, int::in, int::out) is det.
 
-maybe_ranked_subject_perf_table_row(Prefs, Ranked, SubjectCellFunc,
-        RowData, Row, Rank, Rank + 1) :-
+maybe_ranked_subject_perf_table_row(Prefs, Ranked, TotalsMeaningful,
+        SubjectCellFunc, RowData, Row, Rank, Rank + 1) :-
     (
         Ranked = non_ranked,
         RankCells = []
     ;
         Ranked = ranked,
-        RankCells = [table_cell(td_i(Rank), 1)]
+        RankCells = [table_cell(td_i(Rank))]
     ),
 
     % The name of the procedure,
     SubjectCells = [SubjectCellFunc(Prefs, RowData ^ perf_row_subject)],
 
     Fields = Prefs ^ pref_fields,
-    perf_table_row(Fields, RowData, PerfCells),
+    perf_table_row(TotalsMeaningful, Fields, RowData, PerfCells),
 
     Cells = RankCells ++ SubjectCells ++ PerfCells,
     Row = table_row(Cells).
@@ -1350,7 +2018,7 @@ maybe_ranked_subject_perf_table_row(Prefs, Ranked, SubjectCellFunc,
 % The basic predicates for creating the controls at the bottoms of pages.
 %
 
-:- pred make_top_procs_cmds(preferences::in, display_limit::in,
+:- pred make_top_procs_cmd_items(preferences::in, display_limit::in,
     cost_kind::in, include_descendants::in, measurement_scope::in,
     maybe(string)::in,
     assoc_list(string,
@@ -1359,15 +2027,15 @@ maybe_ranked_subject_perf_table_row(Prefs, Ranked, SubjectCellFunc,
         in(list_skel(pair(ground, (pred(in, in, in, in, out) is det)))),
     display_item::out) is det.
 
-make_top_procs_cmds(Prefs, DisplayLimit, CostKind, InclDesc, Scope, MaybeLabel,
-        LabelsCmdMakers, Item) :-
+make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
+        MaybeLabel, LabelsCmdMakers, Item) :-
     list.map(
-        make_top_procs_cmd(Prefs, DisplayLimit, CostKind, InclDesc, Scope),
+        make_top_procs_cmd_item(Prefs, DisplayLimit, CostKind, InclDesc, Scope),
         LabelsCmdMakers, ControlItemLists),
     list.condense(ControlItemLists, ControlItems),
     Item = display_list(list_class_horizontal, MaybeLabel, ControlItems).
 
-:- pred make_top_procs_cmd(preferences::in, display_limit::in,
+:- pred make_top_procs_cmd_item(preferences::in, display_limit::in,
     cost_kind::in, include_descendants::in, measurement_scope::in,
     pair(string,
         (pred(display_limit, cost_kind, include_descendants, measurement_scope,
@@ -1375,7 +2043,7 @@ make_top_procs_cmds(Prefs, DisplayLimit, CostKind, InclDesc, Scope, MaybeLabel,
         in(pair(ground, (pred(in, in, in, in, out) is det))),
     list(display_item)::out) is det.
 
-make_top_procs_cmd(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
+make_top_procs_cmd_item(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
         Label - CmdMaker, Items) :-
     Cmd0 = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
     CmdMaker(DisplayLimit, CostKind, InclDesc, Scope, Cmd),
@@ -1392,23 +2060,65 @@ make_top_procs_cmd(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
         Items = [Item]
     ).
 
-:- pred make_prefs_controls(preferences::in, cmd::in, maybe(string)::in,
+:- pred make_first_proc_callers_cmds_item(preferences::in, cmd::in,
+    proc_static_ptr::in, caller_groups::in, contour_exclusion::in,
+    maybe(string)::in,
+    assoc_list(string,
+        (pred(proc_static_ptr, caller_groups, contour_exclusion, cmd)))::
+        in(list_skel(pair(ground, (pred(in, in, in, out) is det)))),
+    display_item::out) is det.
+
+make_first_proc_callers_cmds_item(Prefs, Cmd, PSPtr, CallerGroups, ContourExcl,
+        MaybeLabel, LabelsCmdMakers, Item) :-
+    list.map(
+        make_first_proc_callers_cmd_item(Prefs, Cmd, PSPtr, CallerGroups,
+            ContourExcl),
+        LabelsCmdMakers, ControlItemLists),
+    list.condense(ControlItemLists, ControlItems),
+    Item = display_list(list_class_horizontal, MaybeLabel, ControlItems).
+
+:- pred make_first_proc_callers_cmd_item(preferences::in, cmd::in,
+    proc_static_ptr::in, caller_groups::in, contour_exclusion::in,
+    pair(string,
+        (pred(proc_static_ptr, caller_groups, contour_exclusion, cmd)))::
+        in(pair(ground, (pred(in, in, in, out) is det))),
+    list(display_item)::out) is det.
+
+make_first_proc_callers_cmd_item(Prefs, Cmd0, PSPtr, CallerGroups, ContourExcl,
+        Label - CmdMaker, Items) :-
+    % When we just to a different kind of grouping or toggle contour exclusion,
+    % we always go to the first bunch of the resulting rows.
+    CmdMaker(PSPtr, CallerGroups, ContourExcl, Cmd),
+    ( Cmd = Cmd0 ->
+        Items = []
+        % We could use this code instead.
+        % CurLabel = Label ++ " (current setting)",
+        % PseudoLink = pseudo_link(CurLabel, link_class_control),
+        % Item = display_pseudo_link(PseudoLink),
+        % Items = [Item]
+    ;
+        Link = deep_link(Cmd, yes(Prefs), Label, link_class_control),
+        Item = display_link(Link),
+        Items = [Item]
+    ).
+
+:- pred make_prefs_controls_item(preferences::in, cmd::in, maybe(string)::in,
     assoc_list(string, (pred(preferences, preferences)))::
         in(list_skel(pair(ground, (pred(in, out) is det)))),
     display_item::out) is det.
 
-make_prefs_controls(Prefs0, Cmd, MaybeLabel, LabelsPrefMakers, Item) :-
-    list.map(make_prefs_control(Prefs0, Cmd), LabelsPrefMakers,
+make_prefs_controls_item(Prefs0, Cmd, MaybeLabel, LabelsPrefMakers, Item) :-
+    list.map(make_prefs_control_item(Prefs0, Cmd), LabelsPrefMakers,
         ControlItemLists),
     list.condense(ControlItemLists, ControlItems),
     Item = display_list(list_class_horizontal, MaybeLabel, ControlItems).
 
-:- pred make_prefs_control(preferences::in, cmd::in,
+:- pred make_prefs_control_item(preferences::in, cmd::in,
     pair(string, (pred(preferences, preferences)))::
         in(pair(ground, (pred(in, out) is det))),
     list(display_item)::out) is det.
 
-make_prefs_control(Prefs0, Cmd, Label - PrefMaker, Items) :-
+make_prefs_control_item(Prefs0, Cmd, Label - PrefMaker, Items) :-
     PrefMaker(Prefs0, Prefs),
     ( Prefs = Prefs0 ->
         Items = []
@@ -1433,14 +2143,14 @@ make_prefs_control(Prefs0, Cmd, Label - PrefMaker, Items) :-
 
 top_procs_controls(Prefs, DisplayLimit, CostKind, InclDesc, Scope) =
         ControlsItem :-
-    make_top_procs_cmds(Prefs, DisplayLimit, CostKind, InclDesc, Scope, no,
-        top_procs_limit_toggles, LimitControls),
-    make_top_procs_cmds(Prefs, DisplayLimit, CostKind, InclDesc, Scope, no,
-        top_procs_sort_toggles, SortControls),
-    make_top_procs_cmds(Prefs, DisplayLimit, CostKind, InclDesc, Scope, no,
-        top_procs_incl_desc_toggles, InclDescControls),
-    make_top_procs_cmds(Prefs, DisplayLimit, CostKind, InclDesc, Scope, no,
-        top_procs_scope_toggles, ScopeControls),
+    make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
+        no, top_procs_limit_toggles, LimitControls),
+    make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
+        no, top_procs_sort_toggles, SortControls),
+    make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
+        no, top_procs_incl_desc_toggles, InclDescControls),
+    make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
+        no, top_procs_scope_toggles, ScopeControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Toggle sorting criteria:"),
         [LimitControls, SortControls, InclDescControls, ScopeControls]).
@@ -1550,21 +2260,89 @@ set_top_procs_scope(Scope, DisplayLimit, CostKind, InclDesc, _Scope, Cmd) :-
 
 %-----------------------------------------------------------------------------%
 %
+% Control how the proc command displays the procedure's callers.
+%
+
+:- func proc_callers_group_controls(preferences, cmd, proc_static_ptr,
+    caller_groups, contour_exclusion) = display_item.
+
+proc_callers_group_controls(Prefs, Cmd, PSPtr, CallerGroups, ContourExcl) =
+        ControlsItem :-
+    make_first_proc_callers_cmds_item(Prefs, Cmd, PSPtr, CallerGroups,
+        ContourExcl, no, proc_callers_group_toggles, GroupControls),
+    ( Cmd = deep_cmd_proc_callers(_, _, _, _) ->
+        make_first_proc_callers_cmds_item(Prefs, Cmd, PSPtr, CallerGroups,
+            ContourExcl, no, proc_callers_contour_excl_toggles,
+            ContourExclControls),
+        List = [GroupControls, ContourExclControls]
+    ;
+        List = [GroupControls]
+    ),
+    ControlsItem = display_list(list_class_vertical_no_bullets,
+        yes("The procedure's callers:"), List).
+
+:- func proc_callers_group_toggles =
+    (assoc_list(string,
+        (pred(proc_static_ptr, caller_groups, contour_exclusion, cmd)))::
+        out(list_skel(pair(ground, (pred(in, in, in, out) is det)))))
+    is det.
+
+proc_callers_group_toggles = [
+    "Group by call site" -
+        set_proc_callers_caller_groups(group_by_call_site),
+    "Group by procedure" -
+        set_proc_callers_caller_groups(group_by_proc),
+    "Group by module" -
+        set_proc_callers_caller_groups(group_by_module),
+    "Group by clique" -
+        set_proc_callers_caller_groups(group_by_clique)
+].
+
+:- func proc_callers_contour_excl_toggles =
+    (assoc_list(string,
+        (pred(proc_static_ptr, caller_groups, contour_exclusion, cmd)))::
+        out(list_skel(pair(ground, (pred(in, in, in, out) is det)))))
+    is det.
+
+proc_callers_contour_excl_toggles = [
+    "Apply contour exclusion" -
+        set_proc_callers_contour_excl(apply_contour_exclusion),
+    "Do not apply contour exclusion" -
+        set_proc_callers_contour_excl(do_not_apply_contour_exclusion)
+].
+
+:- pred set_proc_callers_caller_groups(caller_groups::in, proc_static_ptr::in,
+    caller_groups::in, contour_exclusion::in, cmd::out) is det.
+
+set_proc_callers_caller_groups(CallerGroups, PSPtr, _CallerGroups, ContourExcl,
+        Cmd) :-
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, ContourExcl).
+
+:- pred set_proc_callers_contour_excl(contour_exclusion::in,
+    proc_static_ptr::in, caller_groups::in, contour_exclusion::in, cmd::out)
+    is det.
+
+set_proc_callers_contour_excl(ContourExcl, PSPtr, CallerGroups, _ContourExcl,
+        Cmd) :-
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, ContourExcl).
+
+%-----------------------------------------------------------------------------%
+%
 % Control how the rows in procedure displays are sorted.
 %
 
 :- func sort_controls(preferences, cmd) = display_item.
 
 sort_controls(Prefs, Cmd) = ControlsItem :-
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         sort_main_toggles, SortMainControls),
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         sort_time_toggles, SortTimeControls),
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         sort_callseqs_toggles, SortCallSeqsControls),
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         sort_allocs_toggles, SortAllocsControls),
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         sort_memory_toggles, SortMemoryControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Toggle sort options:"),
@@ -1661,7 +2439,7 @@ set_sort_criteria(SortCriteria, !Prefs) :-
 :- func summarize_controls(preferences, cmd) = display_item.
 
 summarize_controls(Prefs, Cmd) = ControlsItem :-
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         summarize_toggles, SummarizeControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Toggle summarize options:"), [SummarizeControls]).
@@ -1691,7 +2469,7 @@ set_summarize(Summarize, !Prefs) :-
 :- func format_controls(preferences, cmd) = display_item.
 
 format_controls(Prefs, Cmd) = ControlsItem :-
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         format_toggles, FormatControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Toggle format options:"), [FormatControls]).
@@ -1725,21 +2503,83 @@ set_box_tables(Box, !Prefs) :-
 
 %-----------------------------------------------------------------------------%
 %
+% Control whether we display inactive modules.
+%
+
+:- func inactive_module_controls(preferences, cmd) = display_item.
+
+inactive_module_controls(Prefs, Cmd) = ControlsItem :-
+    make_prefs_controls_item(Prefs, Cmd, no,
+        inactive_module_toggles, InactiveModuleControls),
+    Controls = [InactiveModuleControls],
+    ControlsItem = display_list(list_class_vertical_no_bullets,
+        yes("Toggle display of inactive modules:"), Controls).
+
+:- func inactive_module_toggles =
+    (assoc_list(string, (pred(preferences, preferences)))::
+    out(list_skel(pair(ground, (pred(in, out) is det))))) is det.
+
+inactive_module_toggles = [
+    "Do not display inactive modules" -
+        set_inactive_modules(inactive_hide),
+    "Display inactive modules" -
+        set_inactive_modules(inactive_show)
+].
+
+:- pred set_inactive_modules(inactive_status::in,
+    preferences::in, preferences::out) is det.
+
+set_inactive_modules(Status, !Prefs) :-
+    !Prefs ^ pref_inactive ^ inactive_modules := Status.
+
+%-----------------------------------------------------------------------------%
+%
+% Control whether we display inactive procedures.
+%
+
+:- func inactive_proc_controls(preferences, cmd) = display_item.
+
+inactive_proc_controls(Prefs, Cmd) = ControlsItem :-
+    make_prefs_controls_item(Prefs, Cmd, no,
+        inactive_proc_toggles, InactiveModuleControls),
+    Controls = [InactiveModuleControls],
+    ControlsItem = display_list(list_class_vertical_no_bullets,
+        yes("Toggle display of inactive procedures:"), Controls).
+
+:- func inactive_proc_toggles =
+    (assoc_list(string, (pred(preferences, preferences)))::
+    out(list_skel(pair(ground, (pred(in, out) is det))))) is det.
+
+inactive_proc_toggles = [
+    "Do not display inactive procedures" -
+        set_inactive_procs(inactive_hide),
+    "Display inactive procedures" -
+        set_inactive_procs(inactive_show)
+].
+
+:- pred set_inactive_procs(inactive_status::in,
+    preferences::in, preferences::out) is det.
+
+set_inactive_procs(Status, !Prefs) :-
+    !Prefs ^ pref_inactive ^ inactive_procs := Status.
+
+%-----------------------------------------------------------------------------%
+%
 % Control the set of displayed fields.
 %
 
 :- func field_controls(preferences, cmd) = display_item.
 
 field_controls(Prefs, Cmd) = ControlsItem :-
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         port_field_toggles, PortControls),
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         time_field_toggles, TimeControls),
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         callseqs_field_toggles, CallSeqsControls),
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         alloc_field_toggles, AllocControls),
-    make_prefs_controls(Prefs, Cmd, no,
+    make_prefs_controls_item(Prefs, Cmd, no,
         memory_field_toggles, MemoryControls),
     Controls = [PortControls, TimeControls, CallSeqsControls,
         AllocControls, MemoryControls],
@@ -1886,23 +2726,33 @@ cmds_menu_restart_quit(MaybePrefs) = ControlsItem :-
 % Convert procedure and call site descriptions into table cells.
 %
 
+:- func module_active_to_cell(preferences, module_active) = table_cell.
+
+module_active_to_cell(Prefs, ModuleActive) = table_cell(Data) :-
+    ModuleName = ModuleActive ^ ma_module_name,
+    Cmd = deep_cmd_module(ModuleName),
+    Data = td_l(deep_link(Cmd, yes(Prefs), ModuleName, link_class_link)).
+
+:- func proc_active_to_cell(preferences, proc_active) = table_cell.
+
+proc_active_to_cell(Prefs, ProcActive) =
+    proc_desc_to_cell(Prefs, ProcActive ^ pa_proc_desc).
+
 :- func proc_desc_to_cell(preferences, proc_desc) = table_cell.
 
-proc_desc_to_cell(Prefs, ProcDesc) = table_cell(Data, 1) :-
+proc_desc_to_cell(Prefs, ProcDesc) = table_cell(Data) :-
     ProcDesc = proc_desc(PSPtr, _FileName, _LineNumber, RefinedName),
-    PSPtr = proc_static_ptr(PSI),
-    Cmd = deep_cmd_proc(PSI),
+    Cmd = deep_cmd_proc(PSPtr),
     Data = td_l(deep_link(Cmd, yes(Prefs), RefinedName, link_class_link)).
 
 :- func call_site_desc_to_cell(preferences, call_site_desc) = table_cell.
 
-call_site_desc_to_cell(Prefs, CallSiteDesc) = table_cell(Data, 1) :-
+call_site_desc_to_cell(Prefs, CallSiteDesc) = table_cell(Data) :-
     CallSiteDesc = call_site_desc(CSSPtr, _ContainerPSPtr,
         _FileName, _LineNumber, RefinedName, SlotNumber, GoalPath),
     string.format("%s @ %s #%d", [s(RefinedName), s(GoalPath), i(SlotNumber)],
         Name),
-    CSSPtr = call_site_static_ptr(CSSI),
-    Cmd = deep_cmd_call_site_static(CSSI),
+    Cmd = deep_cmd_dump_call_site_static(CSSPtr),
     Data = td_l(deep_link(Cmd, yes(Prefs), Name, link_class_link)).
 
 %-----------------------------------------------------------------------------%
@@ -1915,7 +2765,7 @@ call_site_desc_to_cell(Prefs, CallSiteDesc) = table_cell(Data, 1) :-
 :- func make_labelled_table_row(pair(string, table_data)) = table_row.
 
 make_labelled_table_row(Label - Value) =
-    table_row([table_cell(td_s(Label), 1), table_cell(Value, 1)]).
+    table_row([table_cell(td_s(Label)), table_cell(Value)]).
 
     % Make a link for use in the menu report.
     %
@@ -1954,8 +2804,8 @@ sort_call_sites_by_preferences(Prefs, !CallSitePerfs) :-
 compare_call_site_perfs_by_context(CallSitePerfA, CallSitePerfB, Result) :-
     CallSiteDescA = CallSitePerfA ^ csf_summary_perf ^ perf_row_subject,
     CallSiteDescB = CallSitePerfB ^ csf_summary_perf ^ perf_row_subject,
-    FileNameA = CallSiteDescA ^ call_site_desc_file_name,
-    FileNameB = CallSiteDescB ^ call_site_desc_file_name,
+    FileNameA = CallSiteDescA ^ csdesc_file_name,
+    FileNameB = CallSiteDescB ^ csdesc_file_name,
     compare(FileNameResult, FileNameA, FileNameB),
     (
         ( FileNameResult = (<)
@@ -1964,8 +2814,8 @@ compare_call_site_perfs_by_context(CallSitePerfA, CallSitePerfB, Result) :-
         Result = FileNameResult
     ;
         FileNameResult = (=),
-        LineNumberA = CallSiteDescA ^ call_site_desc_line_number,
-        LineNumberB = CallSiteDescB ^ call_site_desc_line_number,
+        LineNumberA = CallSiteDescA ^ csdesc_line_number,
+        LineNumberB = CallSiteDescB ^ csdesc_line_number,
         compare(Result, LineNumberA, LineNumberB)
     ).
 
@@ -1975,8 +2825,8 @@ compare_call_site_perfs_by_context(CallSitePerfA, CallSitePerfB, Result) :-
 compare_call_site_perfs_by_name(CallSitePerfA, CallSitePerfB, Result) :-
     CallSiteDescA = CallSitePerfA ^ csf_summary_perf ^ perf_row_subject,
     CallSiteDescB = CallSitePerfB ^ csf_summary_perf ^ perf_row_subject,
-    NameA = CallSiteDescA ^ call_site_desc_refined_name,
-    NameB = CallSiteDescB ^ call_site_desc_refined_name,
+    NameA = CallSiteDescA ^ csdesc_caller_refined_name,
+    NameB = CallSiteDescB ^ csdesc_caller_refined_name,
     compare(Result, NameA, NameB).
 
 :- pred compare_call_site_perfs_by_cost(
@@ -1992,27 +2842,87 @@ compare_call_site_perfs_by_cost(CostKind, InclDesc, Scope,
 
 %-----------------------------------------------------------------------------%
 %
-% Sort the procs at a multi call site by the preferred criteria of performance.
+% Sort perf_data_rows of call_site_descs by the preferred criteria.
+%
+
+:- pred sort_call_site_desc_rows_by_preferences(preferences::in,
+    list(perf_row_data(call_site_desc))::in,
+    list(perf_row_data(call_site_desc))::out) is det.
+
+sort_call_site_desc_rows_by_preferences(Prefs, !CallSiteRowDatas) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        OrderCriteria = by_context,
+        list.sort(compare_call_site_desc_rows_by_context, !CallSiteRowDatas)
+    ;
+        OrderCriteria = by_name,
+        list.sort(compare_call_site_desc_rows_by_name, !CallSiteRowDatas)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        list.sort(compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope),
+            !CallSiteRowDatas),
+        % We want the most expensive rows to appear first.
+        list.reverse(!CallSiteRowDatas)
+    ).
+
+:- pred compare_call_site_desc_rows_by_context(
+    perf_row_data(call_site_desc)::in, perf_row_data(call_site_desc)::in,
+    comparison_result::out) is det.
+
+compare_call_site_desc_rows_by_context(
+        CallSiteDescRowDataA, CallSiteDescRowDataB, Result) :-
+    CallSiteDescA = CallSiteDescRowDataA ^ perf_row_subject,
+    CallSiteDescB = CallSiteDescRowDataB ^ perf_row_subject,
+    FileNameA = CallSiteDescA ^ csdesc_file_name,
+    FileNameB = CallSiteDescB ^ csdesc_file_name,
+    compare(FileNameResult, FileNameA, FileNameB),
+    (
+        ( FileNameResult = (<)
+        ; FileNameResult = (>)
+        ),
+        Result = FileNameResult
+    ;
+        FileNameResult = (=),
+        LineNumberA = CallSiteDescA ^ csdesc_line_number,
+        LineNumberB = CallSiteDescB ^ csdesc_line_number,
+        compare(Result, LineNumberA, LineNumberB)
+    ).
+
+:- pred compare_call_site_desc_rows_by_name(
+    perf_row_data(call_site_desc)::in, perf_row_data(call_site_desc)::in,
+    comparison_result::out) is det.
+
+compare_call_site_desc_rows_by_name(CallSiteDescRowDataA, CallSiteDescRowDataB,
+        Result) :-
+    CallSiteDescA = CallSiteDescRowDataA ^ perf_row_subject,
+    CallSiteDescB = CallSiteDescRowDataB ^ perf_row_subject,
+    NameA = CallSiteDescA ^ csdesc_caller_refined_name,
+    NameB = CallSiteDescB ^ csdesc_caller_refined_name,
+    compare(Result, NameA, NameB).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort perf_data_rows of proc_descs by the preferred criteria.
 %
 
 :- pred sort_proc_desc_rows_by_preferences(preferences::in,
     list(perf_row_data(proc_desc))::in, list(perf_row_data(proc_desc))::out)
     is det.
 
-sort_proc_desc_rows_by_preferences(Prefs, !CalleePerfs) :-
+sort_proc_desc_rows_by_preferences(Prefs, !ProcDescRowDatas) :-
     OrderCriteria = Prefs ^ pref_criteria,
     (
         OrderCriteria = by_context,
-        list.sort(compare_proc_desc_rows_by_context, !CalleePerfs)
+        list.sort(compare_proc_desc_rows_by_context, !ProcDescRowDatas)
     ;
         OrderCriteria = by_name,
-        list.sort(compare_proc_desc_rows_by_name, !CalleePerfs)
+        list.sort(compare_proc_desc_rows_by_name, !ProcDescRowDatas)
     ;
         OrderCriteria = by_cost(CostKind, InclDesc, Scope),
         list.sort(compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope),
-            !CalleePerfs),
+            !ProcDescRowDatas),
         % We want the most expensive rows to appear first.
-        list.reverse(!CalleePerfs)
+        list.reverse(!ProcDescRowDatas)
     ).
 
 :- pred compare_proc_desc_rows_by_context(
@@ -2023,20 +2933,7 @@ compare_proc_desc_rows_by_context(ProcDescRowDataA, ProcDescRowDataB,
             Result) :-
     ProcDescA = ProcDescRowDataA ^ perf_row_subject,
     ProcDescB = ProcDescRowDataB ^ perf_row_subject,
-    FileNameA = ProcDescA ^ proc_desc_file_name,
-    FileNameB = ProcDescB ^ proc_desc_file_name,
-    compare(FileNameResult, FileNameA, FileNameB),
-    (
-        ( FileNameResult = (<)
-        ; FileNameResult = (>)
-        ),
-        Result = FileNameResult
-    ;
-        FileNameResult = (=),
-        LineNumberA = ProcDescA ^ proc_desc_line_number,
-        LineNumberB = ProcDescB ^ proc_desc_line_number,
-        compare(Result, LineNumberA, LineNumberB)
-    ).
+    compare_proc_descs_by_context(ProcDescA, ProcDescB, Result).
 
 :- pred compare_proc_desc_rows_by_name(
     perf_row_data(proc_desc)::in, perf_row_data(proc_desc)::in,
@@ -2045,9 +2942,208 @@ compare_proc_desc_rows_by_context(ProcDescRowDataA, ProcDescRowDataB,
 compare_proc_desc_rows_by_name(ProcDescRowDataA, ProcDescRowDataB, Result) :-
     ProcDescA = ProcDescRowDataA ^ perf_row_subject,
     ProcDescB = ProcDescRowDataB ^ perf_row_subject,
-    NameA = ProcDescA ^ proc_desc_refined_name,
-    NameB = ProcDescB ^ proc_desc_refined_name,
+    NameA = ProcDescA ^ pdesc_refined_name,
+    NameB = ProcDescB ^ pdesc_refined_name,
     compare(Result, NameA, NameB).
+
+:- pred compare_proc_descs_by_context(proc_desc::in, proc_desc::in,
+    comparison_result::out) is det.
+
+compare_proc_descs_by_context(ProcDescA, ProcDescB, Result) :-
+    FileNameA = ProcDescA ^ pdesc_file_name,
+    FileNameB = ProcDescB ^ pdesc_file_name,
+    compare(FileNameResult, FileNameA, FileNameB),
+    (
+        ( FileNameResult = (<)
+        ; FileNameResult = (>)
+        ),
+        Result = FileNameResult
+    ;
+        FileNameResult = (=),
+        LineNumberA = ProcDescA ^ pdesc_line_number,
+        LineNumberB = ProcDescB ^ pdesc_line_number,
+        compare(Result, LineNumberA, LineNumberB)
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort perf_data_rows of proc_actives by the preferred criteria.
+%
+
+:- pred sort_proc_active_rows_by_preferences(preferences::in,
+    list(perf_row_data(proc_active))::in,
+    list(perf_row_data(proc_active))::out) is det.
+
+sort_proc_active_rows_by_preferences(Prefs, !ProcRowDatas) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        OrderCriteria = by_context,
+        list.sort(compare_proc_active_rows_by_context, !ProcRowDatas)
+    ;
+        OrderCriteria = by_name,
+        list.sort(compare_proc_active_rows_by_name, !ProcRowDatas)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        list.sort(compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope),
+            !ProcRowDatas),
+        % We want the most expensive rows to appear first.
+        list.reverse(!ProcRowDatas)
+    ).
+
+:- pred compare_proc_active_rows_by_context(
+    perf_row_data(proc_active)::in, perf_row_data(proc_active)::in,
+    comparison_result::out) is det.
+
+compare_proc_active_rows_by_context(ProcRowDataA, ProcRowDataB, Result) :-
+    ProcActiveA = ProcRowDataA ^ perf_row_subject,
+    ProcActiveB = ProcRowDataB ^ perf_row_subject,
+    ProcDescA = ProcActiveA ^ pa_proc_desc,
+    ProcDescB = ProcActiveB ^ pa_proc_desc,
+    compare_proc_descs_by_context(ProcDescA, ProcDescB, Result).
+
+:- pred compare_proc_active_rows_by_name(
+    perf_row_data(proc_active)::in, perf_row_data(proc_active)::in,
+    comparison_result::out) is det.
+
+compare_proc_active_rows_by_name(ModuleRowDataA, ModuleRowDataB, Result) :-
+    ProcActiveA = ModuleRowDataA ^ perf_row_subject,
+    ProcActiveB = ModuleRowDataB ^ perf_row_subject,
+    ProcNameA = ProcActiveA ^ pa_proc_desc ^ pdesc_refined_name,
+    ProcNameB = ProcActiveB ^ pa_proc_desc ^ pdesc_refined_name,
+    compare(Result, ProcNameA, ProcNameB).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort perf_data_rows of module_actives by the preferred criteria.
+%
+
+:- pred sort_module_active_rows_by_preferences(preferences::in,
+    list(perf_row_data(module_active))::in,
+    list(perf_row_data(module_active))::out) is det.
+
+sort_module_active_rows_by_preferences(Prefs, !ModuleRowDatas) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        % A context is a filename and line number. The filename is derived
+        % from the module name, and for modules, the line number part of the
+        % context isn't relevant. Therefore sorting by context is equivalent to
+        % sorting by name.
+        ( OrderCriteria = by_context
+        ; OrderCriteria = by_name
+        ),
+        list.sort(compare_module_active_rows_by_name, !ModuleRowDatas)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        list.sort(compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope),
+            !ModuleRowDatas),
+        % We want the most expensive rows to appear first.
+        list.reverse(!ModuleRowDatas)
+    ).
+
+:- pred compare_module_active_rows_by_name(
+    perf_row_data(module_active)::in, perf_row_data(module_active)::in,
+    comparison_result::out) is det.
+
+compare_module_active_rows_by_name(ModuleRowDataA, ModuleRowDataB, Result) :-
+    ModuleDescA = ModuleRowDataA ^ perf_row_subject,
+    ModuleDescB = ModuleRowDataB ^ perf_row_subject,
+    ModuleNameA = ModuleDescA ^ ma_module_name,
+    ModuleNameB = ModuleDescB ^ ma_module_name,
+    compare(Result, ModuleNameA, ModuleNameB).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort perf_data_rows of module names by the preferred criteria.
+%
+
+:- pred sort_module_name_rows_by_preferences(preferences::in,
+    list(perf_row_data(string))::in, list(perf_row_data(string))::out) is det.
+
+sort_module_name_rows_by_preferences(Prefs, !ModuleRowDatas) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        % A context is a filename and line number. The filename is derived
+        % from the module name, and for modules, the line number part of the
+        % context isn't relevant. Therefore sorting by context is equivalent to
+        % sorting by name.
+        ( OrderCriteria = by_context
+        ; OrderCriteria = by_name
+        ),
+        list.sort(compare_module_name_rows_by_name, !ModuleRowDatas)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        list.sort(compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope),
+            !ModuleRowDatas),
+        % We want the most expensive rows to appear first.
+        list.reverse(!ModuleRowDatas)
+    ).
+
+:- pred compare_module_name_rows_by_name(
+    perf_row_data(string)::in, perf_row_data(string)::in,
+    comparison_result::out) is det.
+
+compare_module_name_rows_by_name(ModuleRowDataA, ModuleRowDataB, Result) :-
+    ModuleNameA = ModuleRowDataA ^ perf_row_subject,
+    ModuleNameB = ModuleRowDataB ^ perf_row_subject,
+    compare(Result, ModuleNameA, ModuleNameB).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort perf_data_rows of cliques by the preferred criteria.
+%
+
+:- pred sort_clique_rows_by_preferences(preferences::in,
+    list(perf_row_data(clique_desc))::in, list(perf_row_data(clique_desc))::out)
+    is det.
+
+sort_clique_rows_by_preferences(Prefs, !CliqueRowDatas) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        OrderCriteria = by_context,
+        % For cliques, we don't have have a single context. We could use the
+        % contexts of the procedures in the clique, but using the clique number
+        % seems more useful.
+        list.sort(compare_clique_rows_by_number, !CliqueRowDatas)
+    ;
+        OrderCriteria = by_name,
+        list.sort(compare_clique_rows_by_first_proc_name, !CliqueRowDatas)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        list.sort(compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope),
+            !CliqueRowDatas),
+        % We want the most expensive rows to appear first.
+        list.reverse(!CliqueRowDatas)
+    ).
+
+:- pred compare_clique_rows_by_number(
+    perf_row_data(clique_desc)::in, perf_row_data(clique_desc)::in,
+    comparison_result::out) is det.
+
+compare_clique_rows_by_number(CliqueRowDataA, CliqueRowDataB, Result) :-
+    CliqueDescA = CliqueRowDataA ^ perf_row_subject,
+    CliqueDescB = CliqueRowDataB ^ perf_row_subject,
+    CliqueDescA ^ cdesc_clique_ptr = clique_ptr(CliqueNumA),
+    CliqueDescB ^ cdesc_clique_ptr = clique_ptr(CliqueNumB),
+    compare(Result, CliqueNumA, CliqueNumB).
+
+:- pred compare_clique_rows_by_first_proc_name(
+    perf_row_data(clique_desc)::in, perf_row_data(clique_desc)::in,
+    comparison_result::out) is det.
+
+compare_clique_rows_by_first_proc_name(CliqueRowDataA, CliqueRowDataB,
+        Result) :-
+    CliqueDescA = CliqueRowDataA ^ perf_row_subject,
+    CliqueDescB = CliqueRowDataB ^ perf_row_subject,
+    ProcDescsA = CliqueDescA ^ cdesc_members,
+    ProcDescsB = CliqueDescB ^ cdesc_members,
+    (
+        ProcDescsA = [FirstProcDescA | _],
+        ProcDescsB = [FirstProcDescB | _]
+    ->
+        compare_proc_descs_by_context(FirstProcDescA, FirstProcDescB, Result)
+    ;
+        error("compare_clique_rows_by_first_proc_name: missing first proc")
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2074,109 +3170,161 @@ compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope, PerfA, PerfB,
         CostKind = cost_time,
         (
             InclDesc = self,
-            Scope = overall,
-            TimeA = PerfA ^ perf_row_self_time,
-            TimeB = PerfB ^ perf_row_self_time,
-            compare(Result, TimeA, TimeB)
-        ;
-            InclDesc = self,
-            Scope = per_call,
-            TimeA = PerfA ^ perf_row_self_time_percall,
-            TimeB = PerfB ^ perf_row_self_time_percall,
-            compare(Result, TimeA, TimeB)
-        ;
-            InclDesc = self_and_desc,
-            Scope = overall,
-            TimeA = PerfA ^ perf_row_total_time,
-            TimeB = PerfB ^ perf_row_total_time,
-            compare(Result, TimeA, TimeB)
+            SelfA = PerfA ^ perf_row_self,
+            SelfB = PerfB ^ perf_row_self,
+            (
+                Scope = overall,
+                TimeA = SelfA ^ perf_row_time,
+                TimeB = SelfB ^ perf_row_time,
+                compare(Result, TimeA, TimeB)
+            ;
+                Scope = per_call,
+                TimeA = SelfA ^ perf_row_time_percall,
+                TimeB = SelfB ^ perf_row_time_percall,
+                compare(Result, TimeA, TimeB)
+            )
         ;
             InclDesc = self_and_desc,
-            Scope = per_call,
-            TimeA = PerfA ^ perf_row_total_time_percall,
-            TimeB = PerfB ^ perf_row_total_time_percall,
-            compare(Result, TimeA, TimeB)
+            MaybeTotalA = PerfA ^ perf_row_maybe_total,
+            MaybeTotalB = PerfB ^ perf_row_maybe_total,
+            (
+                MaybeTotalA = yes(TotalA),
+                MaybeTotalB = yes(TotalB)
+            ->
+                (
+                    Scope = overall,
+                    TimeA = TotalA ^ perf_row_time,
+                    TimeB = TotalB ^ perf_row_time,
+                    compare(Result, TimeA, TimeB)
+                ;
+                    Scope = per_call,
+                    TimeA = TotalA ^ perf_row_time_percall,
+                    TimeB = TotalB ^ perf_row_time_percall,
+                    compare(Result, TimeA, TimeB)
+                )
+            ;
+                error("compare_perf_row_datas_by_cost: self_and_desc")
+            )
         )
     ;
         CostKind = cost_callseqs,
         (
             InclDesc = self,
-            Scope = overall,
-            CallSeqsA = PerfA ^ perf_row_self_callseqs,
-            CallSeqsB = PerfB ^ perf_row_self_callseqs,
-            compare(Result, CallSeqsA, CallSeqsB)
-        ;
-            InclDesc = self,
-            Scope = per_call,
-            CallSeqsA = PerfA ^ perf_row_self_callseqs_percall,
-            CallSeqsB = PerfB ^ perf_row_self_callseqs_percall,
-            compare(Result, CallSeqsA, CallSeqsB)
-        ;
-            InclDesc = self_and_desc,
-            Scope = overall,
-            CallSeqsA = PerfA ^ perf_row_total_callseqs,
-            CallSeqsB = PerfB ^ perf_row_total_callseqs,
-            compare(Result, CallSeqsA, CallSeqsB)
+            SelfA = PerfA ^ perf_row_self,
+            SelfB = PerfB ^ perf_row_self,
+            (
+                Scope = overall,
+                CallSeqsA = SelfA ^ perf_row_callseqs,
+                CallSeqsB = SelfB ^ perf_row_callseqs,
+                compare(Result, CallSeqsA, CallSeqsB)
+            ;
+                Scope = per_call,
+                CallSeqsA = SelfA ^ perf_row_callseqs_percall,
+                CallSeqsB = SelfB ^ perf_row_callseqs_percall,
+                compare(Result, CallSeqsA, CallSeqsB)
+            )
         ;
             InclDesc = self_and_desc,
-            Scope = per_call,
-            CallSeqsA = PerfA ^ perf_row_total_callseqs_percall,
-            CallSeqsB = PerfB ^ perf_row_total_callseqs_percall,
-            compare(Result, CallSeqsA, CallSeqsB)
+            MaybeTotalA = PerfA ^ perf_row_maybe_total,
+            MaybeTotalB = PerfB ^ perf_row_maybe_total,
+            (
+                MaybeTotalA = yes(TotalA),
+                MaybeTotalB = yes(TotalB)
+            ->
+                (
+                    Scope = overall,
+                    CallSeqsA = TotalA ^ perf_row_callseqs,
+                    CallSeqsB = TotalB ^ perf_row_callseqs,
+                    compare(Result, CallSeqsA, CallSeqsB)
+                ;
+                    Scope = per_call,
+                    CallSeqsA = TotalA ^ perf_row_callseqs_percall,
+                    CallSeqsB = TotalB ^ perf_row_callseqs_percall,
+                    compare(Result, CallSeqsA, CallSeqsB)
+                )
+            ;
+                error("compare_perf_row_datas_by_cost: self_and_desc")
+            )
         )
     ;
         CostKind = cost_allocs,
         (
             InclDesc = self,
-            Scope = overall,
-            AllocsA = PerfA ^ perf_row_self_allocs,
-            AllocsB = PerfB ^ perf_row_self_allocs,
-            compare(Result, AllocsA, AllocsB)
-        ;
-            InclDesc = self,
-            Scope = per_call,
-            AllocsA = PerfA ^ perf_row_self_allocs_percall,
-            AllocsB = PerfB ^ perf_row_self_allocs_percall,
-            compare(Result, AllocsA, AllocsB)
-        ;
-            InclDesc = self_and_desc,
-            Scope = overall,
-            AllocsA = PerfA ^ perf_row_total_allocs,
-            AllocsB = PerfB ^ perf_row_total_allocs,
-            compare(Result, AllocsA, AllocsB)
+            SelfA = PerfA ^ perf_row_self,
+            SelfB = PerfB ^ perf_row_self,
+            (
+                Scope = overall,
+                AllocsA = SelfA ^ perf_row_allocs,
+                AllocsB = SelfB ^ perf_row_allocs,
+                compare(Result, AllocsA, AllocsB)
+            ;
+                Scope = per_call,
+                AllocsA = SelfA ^ perf_row_allocs_percall,
+                AllocsB = SelfB ^ perf_row_allocs_percall,
+                compare(Result, AllocsA, AllocsB)
+            )
         ;
             InclDesc = self_and_desc,
-            Scope = per_call,
-            AllocsA = PerfA ^ perf_row_total_allocs_percall,
-            AllocsB = PerfB ^ perf_row_total_allocs_percall,
-            compare(Result, AllocsA, AllocsB)
+            MaybeTotalA = PerfA ^ perf_row_maybe_total,
+            MaybeTotalB = PerfB ^ perf_row_maybe_total,
+            (
+                MaybeTotalA = yes(TotalA),
+                MaybeTotalB = yes(TotalB)
+            ->
+                (
+                    Scope = overall,
+                    AllocsA = TotalA ^ perf_row_allocs,
+                    AllocsB = TotalB ^ perf_row_allocs,
+                    compare(Result, AllocsA, AllocsB)
+                ;
+                    Scope = per_call,
+                    AllocsA = TotalA ^ perf_row_allocs_percall,
+                    AllocsB = TotalB ^ perf_row_allocs_percall,
+                    compare(Result, AllocsA, AllocsB)
+                )
+            ;
+                error("compare_perf_row_datas_by_cost: self_and_desc")
+            )
         )
     ;
         CostKind = cost_words,
         (
             InclDesc = self,
-            Scope = overall,
-            MemoryA = PerfA ^ perf_row_self_mem,
-            MemoryB = PerfB ^ perf_row_self_mem,
-            compare_memory(MemoryA, MemoryB, Result)
-        ;
-            InclDesc = self,
-            Scope = per_call,
-            MemoryA = PerfA ^ perf_row_self_mem_percall,
-            MemoryB = PerfB ^ perf_row_self_mem_percall,
-            compare_memory(MemoryA, MemoryB, Result)
-        ;
-            InclDesc = self_and_desc,
-            Scope = overall,
-            MemoryA = PerfA ^ perf_row_total_mem,
-            MemoryB = PerfB ^ perf_row_total_mem,
-            compare_memory(MemoryA, MemoryB, Result)
+            SelfA = PerfA ^ perf_row_self,
+            SelfB = PerfB ^ perf_row_self,
+            (
+                Scope = overall,
+                MemoryA = SelfA ^ perf_row_mem,
+                MemoryB = SelfB ^ perf_row_mem,
+                compare_memory(MemoryA, MemoryB, Result)
+            ;
+                Scope = per_call,
+                MemoryA = SelfA ^ perf_row_mem_percall,
+                MemoryB = SelfB ^ perf_row_mem_percall,
+                compare_memory(MemoryA, MemoryB, Result)
+            )
         ;
             InclDesc = self_and_desc,
-            Scope = per_call,
-            MemoryA = PerfA ^ perf_row_total_mem_percall,
-            MemoryB = PerfB ^ perf_row_total_mem_percall,
-            compare_memory(MemoryA, MemoryB, Result)
+            MaybeTotalA = PerfA ^ perf_row_maybe_total,
+            MaybeTotalB = PerfB ^ perf_row_maybe_total,
+            (
+                MaybeTotalA = yes(TotalA),
+                MaybeTotalB = yes(TotalB)
+            ->
+                (
+                    Scope = overall,
+                    MemoryA = TotalA ^ perf_row_mem,
+                    MemoryB = TotalB ^ perf_row_mem,
+                    compare_memory(MemoryA, MemoryB, Result)
+                ;
+                    Scope = per_call,
+                    MemoryA = TotalA ^ perf_row_mem_percall,
+                    MemoryB = TotalB ^ perf_row_mem_percall,
+                    compare_memory(MemoryA, MemoryB, Result)
+                )
+            ;
+                error("compare_perf_row_datas_by_cost: self_and_desc")
+            )
         )
     ).
 

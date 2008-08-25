@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,11 +70,15 @@
 
 :- func own_to_string(own_prof_info) = string.
 
-    % Tests if this profiling information represents an entity in the
-    % program that was inactive during the profiling run, e.g. a module
-    % or procedure that has had no calls made to it.
+:- type is_active
+    --->    is_active
+    ;       is_not_active.
+
+    % Tests if this profiling information represents an entity in the program
+    % that was inactive during the profiling run, e.g. a module or procedure
+    % that has had no calls made to it.
     %
-:- pred is_inactive(own_prof_info::in) is semidet.
+:- func compute_is_active(own_prof_info) = is_active.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -388,10 +392,18 @@ own_to_string(own_prof_fast_nomem_semi(Exits, Fails, CallSeqs)) =
     string.int_to_string(CallSeqs) ++
     ")".
 
-is_inactive(own_prof_all(0, 0, 0, 0, _, _, _, _)).
-is_inactive(own_prof_det(0, _, _, _, _)).
-is_inactive(own_prof_fast_det(0, _, _, _)).
-is_inactive(own_prof_fast_nomem_semi(0, 0, _)).
+compute_is_active(Own) = IsActive :-
+    (
+        ( Own = own_prof_all(0, 0, 0, 0, _, _, _, _)
+        ; Own = own_prof_det(0, _, _, _, _)
+        ; Own = own_prof_fast_det(0, _, _, _)
+        ; Own = own_prof_fast_nomem_semi(0, 0, _)
+        )
+    ->
+        IsActive = is_not_active
+    ;
+        IsActive = is_active
+    ).
 
 %----------------------------------------------------------------------------%
 :- end_module measurements.

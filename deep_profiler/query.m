@@ -51,24 +51,56 @@
 :- type cmd
     --->    deep_cmd_quit
     ;       deep_cmd_restart
-    ;       deep_cmd_timeout(int)
+    ;       deep_cmd_timeout(
+                cmd_timeout_minutes         :: int
+            )
     ;       deep_cmd_menu
-    ;       deep_cmd_root(maybe(int))
-    ;       deep_cmd_clique(int)
-    ;       deep_cmd_proc(int)
-    ;       deep_cmd_proc_callers(int, caller_groups, int)
-    ;       deep_cmd_modules
-    ;       deep_cmd_module(string)
-    ;       deep_cmd_top_procs(display_limit, cost_kind, include_descendants,
-                measurement_scope)
+    ;       deep_cmd_root(
+                % If set to yes(Action), chase the dominant call sites
+                % until we get to a clique that is responsible for less than
+                % or equal to Action percent of the program's total callseqs.
+                cmd_root_maybe_action       :: maybe(int)
+            )
+    ;       deep_cmd_clique(
+                cmd_clique_clique_id        :: clique_ptr
+            )
+    ;       deep_cmd_proc(
+                cmd_proc_proc_id            :: proc_static_ptr
+            )
+    ;       deep_cmd_proc_callers(
+                cmd_pc_proc_id              :: proc_static_ptr,
+                cmd_pc_called_groups        :: caller_groups,
+                cmd_pc_bunch_number         :: int,
+                cmd_pc_contour_exclusion    :: contour_exclusion
+            )
+    ;       deep_cmd_program_modules
+    ;       deep_cmd_module(
+                cmd_module_module_name      :: string
+            )
+    ;       deep_cmd_top_procs(
+                cmd_tp_display_limit        :: display_limit,
+                cmd_tp_sort_cost_kind       :: cost_kind,
+                cmd_tp_incl_desc            :: include_descendants,
+                cmd_tp_scope                :: measurement_scope
+            )
 
     % The following commands are for debugging.
 
-    ;       deep_cmd_proc_static(int)
-    ;       deep_cmd_proc_dynamic(int)
-    ;       deep_cmd_call_site_static(int)
-    ;       deep_cmd_call_site_dynamic(int)
-    ;       deep_cmd_raw_clique(int).
+    ;       deep_cmd_dump_proc_static(
+                cmd_dps_id                  :: proc_static_ptr
+            )
+    ;       deep_cmd_dump_proc_dynamic(
+                cmd_dpd_id                  :: proc_dynamic_ptr
+            )
+    ;       deep_cmd_dump_call_site_static(
+                cmd_dcss_id                 :: call_site_static_ptr
+            )
+    ;       deep_cmd_dump_call_site_dynamic(
+                cmd_dcsd_id                 :: call_site_dynamic_ptr
+            )
+    ;       deep_cmd_dump_clique(
+                cmd_dcl_id                  :: clique_ptr
+            ).
 
 :- type caller_groups
     --->    group_by_call_site
@@ -87,6 +119,10 @@
 :- type include_descendants
     --->    self
     ;       self_and_desc.
+
+:- type descendants_meaningful
+    --->    descendants_meaningful
+    ;       descendants_not_meaningful.
 
 :- type display_limit
     --->    rank_range(int, int)
@@ -127,8 +163,15 @@
                 % doesn't specify otherwise.
                 pref_criteria       :: order_criteria,
 
-                % Whether contour exclusion should be applied.
-                pref_contour        :: contour,
+                % Whether contour exclusion should be applied. The commands
+                % that depend on this setting take a contour value as an
+                % argument that will override this setting. However, we do not
+                % want to require users to restate their preferences about
+                % contour exclusion over and over again, so we store their
+                % preference here. A link from a page for which contour
+                % exclusion is irrelevant to a page for which it is relevant
+                % can pick up the preferred value of this parameter from here.
+                pref_contour        :: contour_exclusion,
 
                 pref_time           :: time_format,
 
@@ -198,9 +241,9 @@
     --->    per_call
     ;       overall.
 
-:- type contour
-    --->    apply_contour
-    ;       no_contour.
+:- type contour_exclusion
+    --->    apply_contour_exclusion
+    ;       do_not_apply_contour_exclusion.
 
 :- type time_format
     --->    no_scale
@@ -237,7 +280,7 @@
 :- func default_cost_kind = cost_kind.
 :- func default_incl_desc = include_descendants.
 :- func default_scope = measurement_scope.
-:- func default_contour = contour.
+:- func default_contour_exclusion = contour_exclusion.
 :- func default_time_format = time_format.
 :- func default_inactive_items = inactive_items.
 
@@ -254,6 +297,7 @@
 
 :- implementation.
 
+:- import_module apply_exclusion.
 :- import_module create_report.
 :- import_module display_report.
 :- import_module exclude.
@@ -334,12 +378,15 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
         ; Cmd = deep_cmd_restart
         ; Cmd = deep_cmd_timeout(_)
         ; Cmd = deep_cmd_menu
+        ; Cmd = deep_cmd_program_modules
+        ; Cmd = deep_cmd_module(_)
         ; Cmd = deep_cmd_top_procs(_, _, _, _)
         ; Cmd = deep_cmd_proc(_)
-        ; Cmd = deep_cmd_proc_static(_)
-        ; Cmd = deep_cmd_proc_dynamic(_)
-        ; Cmd = deep_cmd_call_site_static(_)
-        ; Cmd = deep_cmd_call_site_dynamic(_)
+        ; Cmd = deep_cmd_proc_callers(_, _, _, _)
+        ; Cmd = deep_cmd_dump_proc_static(_)
+        ; Cmd = deep_cmd_dump_proc_dynamic(_)
+        ; Cmd = deep_cmd_dump_call_site_static(_)
+        ; Cmd = deep_cmd_dump_call_site_dynamic(_)
         ),
         (
             FileExists = yes,
@@ -350,18 +397,11 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
             Display = report_to_display(Deep, Prefs, Report),
             HTML = htmlize_display(Deep, Prefs, Display),
             HTMLStr = html_to_string(HTML)
-            % ZZZ
-            % io.write_string("<!--\n", !IO),
-            % io.write(Display, !IO),
-            % io.write_string("-->\n", !IO)
         )
     ;
         ( Cmd = deep_cmd_root(_)
         ; Cmd = deep_cmd_clique(_)
-        ; Cmd = deep_cmd_proc_callers(_, _, _)
-        ; Cmd = deep_cmd_modules
-        ; Cmd = deep_cmd_module(_)
-        ; Cmd = deep_cmd_raw_clique(_)
+        ; Cmd = deep_cmd_dump_clique(_)
         ),
         old_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
     ).
@@ -388,17 +428,16 @@ old_exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
     HTML = generate_top_procs_page(Cmd, Limit, CostKind, InclDesc, Scope,
         Pref, Deep).
-old_exec(deep_cmd_proc_static(PSI), _Pref, Deep, HTML, !IO) :-
-    HTML = generate_proc_static_debug_page(PSI, Deep).
-old_exec(deep_cmd_proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
-    HTML = generate_proc_dynamic_debug_page(PDI, Deep).
-old_exec(deep_cmd_call_site_static(CSSI), _Pref, Deep, HTML, !IO) :-
-    HTML = generate_call_site_static_debug_page(CSSI, Deep).
-old_exec(deep_cmd_call_site_dynamic(CSDI), _Pref, Deep, HTML, !IO) :-
-    HTML = generate_call_site_dynamic_debug_page(CSDI, Deep).
+old_exec(deep_cmd_dump_proc_static(PSPtr), _Pref, Deep, HTML, !IO) :-
+    HTML = generate_proc_static_debug_page(PSPtr, Deep).
+old_exec(deep_cmd_dump_proc_dynamic(PDPtr), _Pref, Deep, HTML, !IO) :-
+    HTML = generate_proc_dynamic_debug_page(PDPtr, Deep).
+old_exec(deep_cmd_dump_call_site_static(CSSPtr), _Pref, Deep, HTML, !IO) :-
+    HTML = generate_call_site_static_debug_page(CSSPtr, Deep).
+old_exec(deep_cmd_dump_call_site_dynamic(CSDPtr), _Pref, Deep, HTML, !IO) :-
+    HTML = generate_call_site_dynamic_debug_page(CSDPtr, Deep).
 old_exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = deep_cmd_proc(PSI),
-    PSPtr = proc_static_ptr(PSI),
+    Cmd = deep_cmd_proc(PSPtr),
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         HTML = generate_proc_page(Cmd, PSPtr, Pref, Deep)
     ;
@@ -410,28 +449,26 @@ old_exec(Cmd, Pref, Deep, HTML, !IO) :-
 old_exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_root(MaybePercent),
     deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
-    RootCliquePtr = clique_ptr(RootCliqueNum),
     (
         MaybePercent = yes(Percent),
-        HTML = chase_the_action(Cmd, RootCliqueNum, Pref, Deep, Percent)
+        HTML = chase_the_action(Cmd, RootCliquePtr, Pref, Deep, Percent)
     ;
         MaybePercent = no,
-        generate_clique_page(Cmd, RootCliqueNum, Pref, Deep, HTML, 100, _)
+        generate_clique_page(Cmd, RootCliquePtr, Pref, Deep, HTML, 100, _)
     ).
 old_exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = deep_cmd_clique(CliqueNum),
-    CliquePtr = clique_ptr(CliqueNum),
+    Cmd = deep_cmd_clique(CliquePtr),
     ( valid_clique_ptr(Deep, CliquePtr) ->
-        generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML, 100, _)
+        generate_clique_page(Cmd, CliquePtr, Pref, Deep, HTML, 100, _)
     ;
         HTML =
             page_banner(Cmd, Pref) ++
             "There is no clique with that number.\n" ++
             page_footer(Cmd, Pref, Deep)
     ).
-old_exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = deep_cmd_proc_callers(PSI, CallerGroups, BunchNum),
-    PSPtr = proc_static_ptr(PSI),
+old_exec(Cmd, Pref0, Deep, HTML, !IO) :-
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, Contour),
+    Pref = Pref0 ^ pref_contour := Contour,
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         generate_proc_callers_page(Cmd, PSPtr, CallerGroups, BunchNum,
             Pref, Deep, HTML, !IO)
@@ -442,7 +479,7 @@ old_exec(Cmd, Pref, Deep, HTML, !IO) :-
             page_footer(Cmd, Pref, Deep)
     ).
 old_exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = deep_cmd_modules,
+    Cmd = deep_cmd_program_modules,
     HTML = generate_modules_page(Cmd, Pref, Deep).
 old_exec(Cmd, Pref, Deep, HTML, !IO) :-
     Cmd = deep_cmd_module(ModuleName),
@@ -454,15 +491,14 @@ old_exec(Cmd, Pref, Deep, HTML, !IO) :-
             "There is no procedure with that number.\n" ++
             page_footer(Cmd, Pref, Deep)
     ).
-old_exec(deep_cmd_raw_clique(CI), _Pref, Deep, HTML, !IO) :-
-    HTML = generate_clique_debug_page(CI, Deep).
+old_exec(deep_cmd_dump_clique(CliquePtr), _Pref, Deep, HTML, !IO) :-
+    HTML = generate_clique_debug_page(CliquePtr, Deep).
 
 %-----------------------------------------------------------------------------%
 
-:- func generate_proc_static_debug_page(int, deep) = string.
+:- func generate_proc_static_debug_page(proc_static_ptr, deep) = string.
 
-generate_proc_static_debug_page(PSI, Deep) = HTML :-
-    PSPtr = proc_static_ptr(PSI),
+generate_proc_static_debug_page(PSPtr, Deep) = HTML :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         Refined = PS ^ ps_refined_id,
@@ -480,10 +516,9 @@ generate_proc_static_debug_page(PSI, Deep) = HTML :-
             "</HTML>\n"
     ).
 
-:- func generate_proc_dynamic_debug_page(int, deep) = string.
+:- func generate_proc_dynamic_debug_page(proc_dynamic_ptr, deep) = string.
 
-generate_proc_dynamic_debug_page(PDI, Deep) = HTML :-
-    PDPtr = proc_dynamic_ptr(PDI),
+generate_proc_dynamic_debug_page(PDPtr, Deep) = HTML :-
     ( valid_proc_dynamic_ptr(Deep, PDPtr) ->
         deep_lookup_proc_dynamics(Deep, PDPtr, PD),
         PSPtr = PD ^ pd_proc_static,
@@ -500,10 +535,10 @@ generate_proc_dynamic_debug_page(PDI, Deep) = HTML :-
             "</HTML>\n"
     ).
 
-:- func generate_call_site_static_debug_page(int, deep) = string.
+:- func generate_call_site_static_debug_page(call_site_static_ptr, deep)
+    = string.
 
-generate_call_site_static_debug_page(CSSI, Deep) = HTML :-
-    CSSPtr = call_site_static_ptr(CSSI),
+generate_call_site_static_debug_page(CSSPtr, Deep) = HTML :-
     ( valid_call_site_static_ptr(Deep, CSSPtr) ->
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
         ContainerPtr = CSS ^ css_container,
@@ -523,10 +558,10 @@ generate_call_site_static_debug_page(CSSI, Deep) = HTML :-
             "</HTML>\n"
     ).
 
-:- func generate_call_site_dynamic_debug_page(int, deep) = string.
+:- func generate_call_site_dynamic_debug_page(call_site_dynamic_ptr, deep)
+    = string.
 
-generate_call_site_dynamic_debug_page(CSDI, Deep) = HTML :-
-    CSDPtr = call_site_dynamic_ptr(CSDI),
+generate_call_site_dynamic_debug_page(CSDPtr, Deep) = HTML :-
     ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
         deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
         CSD ^ csd_caller = proc_dynamic_ptr(CallerPDI),
@@ -544,14 +579,13 @@ generate_call_site_dynamic_debug_page(CSDI, Deep) = HTML :-
             "</HTML>\n"
     ).
 
-:- func generate_clique_debug_page(int, deep) = string.
+:- func generate_clique_debug_page(clique_ptr, deep) = string.
 
-generate_clique_debug_page(CI, Deep) = HTML :-
-    CliquePtr = clique_ptr(CI),
+generate_clique_debug_page(CliquePtr, Deep) = HTML :-
     ( valid_clique_ptr(Deep, CliquePtr) ->
-        deep_lookup_clique_parents(Deep, CliquePtr, Parent),
-        Parent = call_site_dynamic_ptr(ParentPDI),
-        ParentStr = string.format("%d ->", [i(ParentPDI)]),
+        deep_lookup_clique_parents(Deep, CliquePtr, ParentCSDPtr),
+        ParentCSDPtr = call_site_dynamic_ptr(ParentCSDI),
+        ParentStr = string.format("%d ->", [i(ParentCSDI)]),
         deep_lookup_clique_members(Deep, CliquePtr, Members),
         HTML =
             "<HTML>\n" ++
@@ -645,7 +679,7 @@ generate_menu_page(Cmd, Pref, Deep) = HTML :-
         menu_item(Deep, Pref, deep_cmd_root(yes(90)),
             "Exploring the call graph, starting at the action.") ++
         "<li>\n" ++
-        menu_item(Deep, Pref, deep_cmd_modules,
+        menu_item(Deep, Pref, deep_cmd_program_modules,
             "Exploring the program module by module.") ++
         ( ShouldDisplayTimes = yes ->
             "<li>\n" ++
@@ -798,31 +832,31 @@ present_stats(Deep) = HTML :-
 
 %-----------------------------------------------------------------------------%
 
-:- func chase_the_action(cmd, int, preferences, deep, int) = string.
+:- func chase_the_action(cmd, clique_ptr, preferences, deep, int) = string.
 
-chase_the_action(Cmd, CliqueNum, Pref, Deep, Percent) = HTML :-
-    generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML0,
+chase_the_action(Cmd, CliquePtr, Pref, Deep, Percent) = HTML :-
+    generate_clique_page(Cmd, CliquePtr, Pref, Deep, HTML0,
         Percent, ActionPtrs),
-    ( ActionPtrs = [clique_ptr(ActionCliqueNum)] ->
-        HTML = chase_the_action(Cmd, ActionCliqueNum, Pref, Deep, Percent)
+    ( ActionPtrs = [ActionCliquePtr] ->
+        HTML = chase_the_action(Cmd, ActionCliquePtr, Pref, Deep, Percent)
     ;
         HTML = HTML0
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_clique_page(cmd::in, int::in, preferences::in, deep::in,
-    string::out, int::in, list(clique_ptr)::out) is det.
+:- pred generate_clique_page(cmd::in, clique_ptr::in, preferences::in,
+    deep::in, string::out, int::in, list(clique_ptr)::out) is det.
 
-generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML, Percent, ActionPtrs) :-
-    clique_to_html(Pref, Deep, clique_ptr(CliqueNum), CliqueHTML, Percent,
-        ActionPtrs),
+generate_clique_page(Cmd, CliquePtr, Pref, Deep, HTML, Percent, ActionPtrs) :-
+    clique_to_html(Pref, Deep, CliquePtr, CliqueHTML, Percent, ActionPtrs),
+    CliquePtr = clique_ptr(CliqueNum),
     HTML =
         page_banner(Cmd, Pref) ++
         string.format("<H3>Clique %d:</H3>\n", [i(CliqueNum)]) ++
         table_start(Pref) ++
         fields_header(Pref, source_proc, totals_meaningful,
-            wrap_clique_links(clique_ptr(CliqueNum), Pref, Deep)) ++
+            wrap_clique_links(CliquePtr, Pref, Deep)) ++
         CliqueHTML ++
         table_end(Pref) ++
         page_footer(Cmd, Pref, Deep).
@@ -1005,7 +1039,7 @@ module_summary_to_html(Pref, Deep, ModuleName - ModuleData) = LineGroup :-
     ModuleData = module_data(Own, Desc, _),
     not (
         Pref ^ pref_inactive ^ inactive_modules = inactive_hide,
-        is_inactive(Own)
+        compute_is_active(Own) = is_not_active
     ),
     HTML = string.format("<TD><A HREF=""%s"">%s</A></TD>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, deep_cmd_module(ModuleName))),
@@ -1248,7 +1282,7 @@ lookup_proc_total_to_html(Pref, Deep, Bold, Prefix, PSPtr) = LineGroup :-
     deep_lookup_ps_own(Deep, PSPtr, Own),
     not (
         Pref ^ pref_inactive ^ inactive_procs = inactive_hide,
-        is_inactive(Own)
+        compute_is_active(Own) = is_not_active
     ),
     deep_lookup_ps_desc(Deep, PSPtr, Desc),
     LineGroup = proc_total_to_html(Pref, Deep, Bold, Prefix, PSPtr, Own, Desc).
@@ -1711,9 +1745,8 @@ call_to_html(Pref, Deep, CallSiteDisplay, CallContext,
         CallSiteDisplay ^ display_url = callee_clique,
         ChosenCliquePtr = CalleeCliquePtr
     ),
-    ChosenCliquePtr = clique_ptr(ChosenCliqueNum),
     WrappedProcName = string.format("<A HREF=""%s"">%s</A>",
-        [s(deep_cmd_pref_to_url(Pref, Deep, deep_cmd_clique(ChosenCliqueNum))),
+        [s(deep_cmd_pref_to_url(Pref, Deep, deep_cmd_clique(ChosenCliquePtr))),
         s(escape_break_html_string(ProcName))]),
     (
         CallSiteDisplay ^ display_wrap = wrap_url_always,
@@ -1776,31 +1809,43 @@ call_site_dynamic_context(Deep, CSDPtr, FileName, LineNumber) :-
 proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         !IO) :-
     deep_lookup_proc_callers(Deep, PSPtr, CallerCSDPtrs),
+    PrefContour = Pref ^ pref_contour,
     (
-        Pref ^ pref_contour = no_contour,
+        PrefContour = do_not_apply_contour_exclusion,
         CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs),
         MaybeErrorMsg = no
     ;
-        Pref ^ pref_contour = apply_contour,
-        read_exclude_file(contour_file_name(Deep ^ data_file_name),
-            Deep, Result, !IO),
+        PrefContour = apply_contour_exclusion,
+        MaybeMaybeExcludeFile = Deep ^ exclude_contour_file,
         (
-            Result = ok(ExcludeSpec),
-            CallerCSDPtrPairs = list.map(pair_contour(Deep, ExcludeSpec),
-                CallerCSDPtrs),
+            MaybeMaybeExcludeFile = no,
+            % There is no contour exclusion file, so do the same as for
+            % do_not_apply_contour_exclusion.
+            CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs),
             MaybeErrorMsg = no
         ;
-            Result = error(ErrorMsg),
-            MaybeErrorMsg = yes(ErrorMsg ++ "\n<br>"),
-            CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs)
+            MaybeMaybeExcludeFile = yes(MaybeExcludeFile),
+            (
+                MaybeExcludeFile = ok(ExcludeSpec),
+                CallerCSDPtrPairs = list.map(pair_contour(Deep, ExcludeSpec),
+                    CallerCSDPtrs),
+                MaybeErrorMsg = no
+            ;
+                MaybeExcludeFile = error(ErrorMsg),
+                MaybeErrorMsg = yes(ErrorMsg ++ "\n<br>"),
+                CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs)
+            )
         )
     ),
     ProcName = proc_static_name(Deep, PSPtr),
-    PSPtr = proc_static_ptr(PSI),
-    CmdSite    = deep_cmd_proc_callers(PSI, group_by_call_site, 1),
-    CmdProc    = deep_cmd_proc_callers(PSI, group_by_proc, 1),
-    CmdModule  = deep_cmd_proc_callers(PSI, group_by_module, 1),
-    CmdClique  = deep_cmd_proc_callers(PSI, group_by_clique, 1),
+    CmdSite    = deep_cmd_proc_callers(PSPtr, group_by_call_site, 1,
+        PrefContour),
+    CmdProc    = deep_cmd_proc_callers(PSPtr, group_by_proc, 1,
+        PrefContour),
+    CmdModule  = deep_cmd_proc_callers(PSPtr, group_by_module, 1,
+        PrefContour),
+    CmdClique  = deep_cmd_proc_callers(PSPtr, group_by_clique, 1,
+        PrefContour),
     LinkSite   = "[Group callers by call site]",
     LinkProc   = "[Group callers by procedure]",
     LinkModule = "[Group callers by module]",
@@ -1810,9 +1855,7 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
     BunchSize = 100,
     (
         CallerGroups = group_by_call_site,
-        GroupMap = list.foldl(accumulate_csds_by_call_site(Deep),
-            CallerCSDPtrPairs, map.init),
-        map.to_assoc_list(GroupMap, GroupList),
+        GroupList = group_csds_by_call_site(Deep, CallerCSDPtrPairs),
         Lines = list.map(proc_callers_call_site_to_html(Pref, Deep, PSPtr),
             GroupList),
         SortedLines = sort_line_groups(Pref ^ pref_criteria, Lines),
@@ -1830,9 +1873,7 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
                 s(LinkClique)])
     ;
         CallerGroups = group_by_proc,
-        GroupMap = list.foldl(accumulate_csds_by_procedure(Deep),
-            CallerCSDPtrPairs, map.init),
-        map.to_assoc_list(GroupMap, GroupList),
+        GroupList = group_csds_by_procedure(Deep, CallerCSDPtrPairs),
         Lines = list.map(proc_callers_proc_to_html(Pref, Deep, PSPtr),
             GroupList),
         SortedLines = sort_line_groups(Pref ^ pref_criteria, Lines),
@@ -1850,9 +1891,7 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
                 s(LinkClique)])
     ;
         CallerGroups = group_by_module,
-        GroupMap = list.foldl(accumulate_csds_by_module(Deep),
-            CallerCSDPtrPairs, map.init),
-        map.to_assoc_list(GroupMap, GroupList),
+        GroupList = group_csds_by_module(Deep, CallerCSDPtrPairs),
         RawLines = list.map(proc_callers_module_to_html(Pref, Deep, PSPtr),
             GroupList),
         SortedRawLines = sort_line_groups(Pref ^ pref_criteria, RawLines),
@@ -1871,9 +1910,7 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
                 s(LinkClique)])
     ;
         CallerGroups = group_by_clique,
-        GroupMap = list.foldl(accumulate_csds_by_clique(Deep),
-            CallerCSDPtrPairs, map.init),
-        map.to_assoc_list(GroupMap, GroupList),
+        GroupList = group_csds_by_clique(Deep, CallerCSDPtrPairs),
         RawLines = list.map(proc_callers_clique_to_html(Pref, Deep, PSPtr),
             GroupList),
         SortedRawLines = sort_line_groups(Pref ^ pref_criteria, RawLines),
@@ -1898,14 +1935,14 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
     list.length(SortedLines, NumLines),
     select_line_bunch(NumLines, BunchNum0, BunchNum, BunchSize,
         SortedLines, DisplayedLines),
-    Banner = proc_callers_banner(PSI, ProcName, Pref, Deep,
+    Banner = proc_callers_banner(PSPtr, ProcName, Pref, Deep,
         NumLines, BunchSize, BunchNum, Entity),
     DisplayedHTMLs = list.map(
         two_id_line_to_html(Pref, Deep, totals_meaningful),
         DisplayedLines),
     HTML = string.append_list(DisplayedHTMLs),
     ( BunchNum > 1 ->
-        FirstCmd = deep_cmd_proc_callers(PSI, CallerGroups, 1),
+        FirstCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, PrefContour),
         FirstLink = "First group",
         FirstToggle =
             string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -1914,7 +1951,8 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         FirstToggle = ""
     ),
     ( BunchNum > 2 ->
-        PrevCmd = deep_cmd_proc_callers(PSI, CallerGroups, BunchNum - 1),
+        PrevCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum - 1,
+            PrefContour),
         PrevLink = "Previous group",
         PrevToggle =
             string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -1923,7 +1961,8 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         PrevToggle = ""
     ),
     ( NumLines > BunchNum * BunchSize ->
-        NextCmd = deep_cmd_proc_callers(PSI, CallerGroups, BunchNum + 1),
+        NextCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum + 1,
+            PrefContour),
         NextLink = "Next group",
         NextToggle =
             string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -1964,12 +2003,12 @@ select_line_bunch(NumLines, BunchNum0, BunchNum, BunchSize,
         DisplayedLines = RemainingLines
     ).
 
-:- func proc_callers_banner(int, string, preferences, deep, int, int, int,
-    string) = string.
+:- func proc_callers_banner(proc_static_ptr, string, preferences, deep,
+    int, int, int, string) = string.
 
-proc_callers_banner(PSI, ProcName, Pref, Deep, NumLines, BunchSize, BunchNum,
+proc_callers_banner(PSPtr, ProcName, Pref, Deep, NumLines, BunchSize, BunchNum,
         Parent) = HTML :-
-    Cmd = deep_cmd_proc(PSI),
+    Cmd = deep_cmd_proc(PSPtr),
     WrappedProcName = string.format("<A HREF=""%s"">%s</A>",
         [s(deep_cmd_pref_to_url(Pref, Deep, Cmd)),
             s(escape_break_html_string(ProcName))]),
@@ -2009,8 +2048,7 @@ proc_callers_call_site_to_html(Pref, Deep, CalleePSPtr, CSSPtr - CSDPtrs)
     CallerPSPtr = CSS ^ css_container,
     deep_lookup_proc_statics(Deep, CallerPSPtr, CallerPS),
     CallerProcName = CallerPS ^ ps_refined_id,
-    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr), CSDPtrs,
-        zero_own_prof_info, Own, zero_inherit_prof_info, Desc),
+    compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
     HTML =
         string.format("<TD CLASS=id>%s:%d</TD>\n",
             [s(escape_break_html_string(FileName)), i(LineNumber)]) ++
@@ -2027,8 +2065,7 @@ proc_callers_proc_to_html(Pref, Deep, CalleePSPtr, CallerPSPtr - CSDPtrs)
     proc_static_context(Deep, CallerPSPtr, FileName, LineNumber),
     deep_lookup_proc_statics(Deep, CallerPSPtr, CallerPS),
     CallerProcName = CallerPS ^ ps_refined_id,
-    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr), CSDPtrs,
-        zero_own_prof_info, Own, zero_inherit_prof_info, Desc),
+    compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
     HTML =
         string.format("<TD CLASS=id>%s:%d</TD>\n",
             [s(escape_break_html_string(FileName)), i(LineNumber)]) ++
@@ -2042,8 +2079,7 @@ proc_callers_proc_to_html(Pref, Deep, CalleePSPtr, CallerPSPtr - CSDPtrs)
 
 proc_callers_module_to_html(Pref, Deep, CalleePSPtr, ModuleName - CSDPtrs)
         = LineGroup :-
-    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr), CSDPtrs,
-        zero_own_prof_info, Own, zero_inherit_prof_info, Desc),
+    compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
     HTML = string.format("<TD CLASS=id>%s</TD>\n",
         [s(module_name_to_html_ref(Pref, Deep, ModuleName))]),
     % We don't have filename information for modules, and line numbers
@@ -2056,8 +2092,7 @@ proc_callers_module_to_html(Pref, Deep, CalleePSPtr, ModuleName - CSDPtrs)
 
 proc_callers_clique_to_html(Pref, Deep, CalleePSPtr, CliquePtr - CSDPtrs)
         = LineGroup :-
-    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr), CSDPtrs,
-        zero_own_prof_info, Own, zero_inherit_prof_info, Desc),
+    compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
     deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
     deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
     EntryPDPtr = EntryCSD ^ csd_callee,
@@ -2067,113 +2102,6 @@ proc_callers_clique_to_html(Pref, Deep, CalleePSPtr, CliquePtr - CSDPtrs)
         [s(clique_ptr_to_html_ref(Pref, Deep, ProcName, CliquePtr))]),
     LineGroup = line_group(FileName, LineNumber, ProcName,
         Own, Desc, HTML, unit).
-
-:- func accumulate_csds_by_call_site(deep, pair(call_site_dynamic_ptr),
-    map(call_site_static_ptr, list(call_site_dynamic_ptr))) =
-    map(call_site_static_ptr, list(call_site_dynamic_ptr)).
-
-accumulate_csds_by_call_site(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
-    deep_lookup_call_site_static_map(Deep, GroupCSDPtr, GroupCSSPtr),
-    ( map.search(Map0, GroupCSSPtr, CostCSDPtrs0) ->
-        map.det_update(Map0, GroupCSSPtr, [CostCSDPtr | CostCSDPtrs0], Map)
-    ;
-        map.det_insert(Map0, GroupCSSPtr, [CostCSDPtr], Map)
-    ).
-
-:- func accumulate_csds_by_procedure(deep, pair(call_site_dynamic_ptr),
-    map(proc_static_ptr, list(call_site_dynamic_ptr))) =
-    map(proc_static_ptr, list(call_site_dynamic_ptr)).
-
-accumulate_csds_by_procedure(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
-    deep_lookup_call_site_static_map(Deep, GroupCSDPtr, GroupCSSPtr),
-    deep_lookup_call_site_statics(Deep, GroupCSSPtr, GroupCSS),
-    GroupPSPtr = GroupCSS ^ css_container,
-    ( map.search(Map0, GroupPSPtr, CostCSDPtrs0) ->
-        map.det_update(Map0, GroupPSPtr, [CostCSDPtr | CostCSDPtrs0], Map)
-    ;
-        map.det_insert(Map0, GroupPSPtr, [CostCSDPtr], Map)
-    ).
-
-:- func accumulate_csds_by_module(deep, pair(call_site_dynamic_ptr),
-    map(string, list(call_site_dynamic_ptr))) =
-    map(string, list(call_site_dynamic_ptr)).
-
-accumulate_csds_by_module(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
-    deep_lookup_call_site_static_map(Deep, GroupCSDPtr, GroupCSSPtr),
-    deep_lookup_call_site_statics(Deep, GroupCSSPtr, GroupCSS),
-    GroupPSPtr = GroupCSS ^ css_container,
-    deep_lookup_proc_statics(Deep, GroupPSPtr, GroupPS),
-    GroupModuleName = GroupPS ^ ps_decl_module,
-    ( map.search(Map0, GroupModuleName, CostCSDPtrs0) ->
-        map.det_update(Map0, GroupModuleName, [CostCSDPtr | CostCSDPtrs0], Map)
-    ;
-        map.det_insert(Map0, GroupModuleName, [CostCSDPtr], Map)
-    ).
-
-:- func accumulate_csds_by_clique(deep, pair(call_site_dynamic_ptr),
-    map(clique_ptr, list(call_site_dynamic_ptr))) =
-    map(clique_ptr, list(call_site_dynamic_ptr)).
-
-accumulate_csds_by_clique(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
-    deep_lookup_call_site_dynamics(Deep, GroupCSDPtr, GroupCSD),
-    CallerPDPtr = GroupCSD ^ csd_caller,
-    deep_lookup_clique_index(Deep, CallerPDPtr, CliquePtr),
-    ( map.search(Map0, CliquePtr, CostCSDPtrs0) ->
-        map.det_update(Map0, CliquePtr, [CostCSDPtr | CostCSDPtrs0], Map)
-    ;
-        map.det_insert(Map0, CliquePtr, [CostCSDPtr], Map)
-    ).
-
-:- pred accumulate_parent_csd_prof_info(deep::in, proc_static_ptr::in,
-    call_site_dynamic_ptr::in,
-    own_prof_info::in, own_prof_info::out,
-    inherit_prof_info::in, inherit_prof_info::out) is det.
-
-accumulate_parent_csd_prof_info(Deep, CallerPSPtr, CSDPtr,
-        Own0, Own, Desc0, Desc) :-
-    deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
-    ( CSD ^ csd_callee = CSD ^ csd_caller ->
-        % We want to sum only cross-clique callers.
-        Own = Own0,
-        Desc = Desc0
-    ;
-        deep_lookup_csd_own(Deep, CSDPtr, CSDOwn),
-        deep_lookup_csd_desc(Deep, CSDPtr, CSDDesc),
-        add_own_to_own(Own0, CSDOwn) = Own,
-        add_inherit_to_inherit(Desc0, CSDDesc) = Desc1,
-
-        deep_lookup_clique_index(Deep, CSD ^ csd_callee, CalleeCliquePtr),
-        deep_lookup_clique_members(Deep, CalleeCliquePtr, CalleeCliquePDPtrs),
-        list.foldl(compensate_using_comp_table(Deep, CallerPSPtr),
-            CalleeCliquePDPtrs, Desc1, Desc)
-    ).
-
-:- pred compensate_using_comp_table(deep::in, proc_static_ptr::in,
-    proc_dynamic_ptr::in, inherit_prof_info::in, inherit_prof_info::out)
-    is det.
-
-compensate_using_comp_table(Deep, CallerPSPtr, PDPtr, Desc0, Desc) :-
-    deep_lookup_pd_comp_table(Deep, PDPtr, CompTableArray),
-    ( map.search(CompTableArray, CallerPSPtr, InnerTotal) ->
-        Desc = subtract_inherit_from_inherit(InnerTotal, Desc0)
-    ;
-        Desc = Desc0
-    ).
-
-:- func pair_self(call_site_dynamic_ptr) = pair(call_site_dynamic_ptr).
-
-pair_self(CSDPtr) = CSDPtr - CSDPtr.
-
-:- func pair_contour(deep, exclude_file, call_site_dynamic_ptr)
-    = pair(call_site_dynamic_ptr).
-
-pair_contour(Deep, ExcludeSpec, CSDPtr) =
-    apply_contour_exclusion(Deep, ExcludeSpec, CSDPtr) - CSDPtr.
-
-:- func contour_file_name(string) = string.
-
-contour_file_name(DataFileName) =
-    DataFileName ++ ".contour".
 
 %-----------------------------------------------------------------------------%
 
@@ -2210,15 +2138,15 @@ proc_summary_to_html(Pref, Deep, PSPtr) = HTML :-
     = string.
 
 proc_summary_toggles_to_html(Pref, Deep, PSPtr) = HTML :-
-    PSPtr = proc_static_ptr(PSI),
+    PrefContour = Pref ^ pref_contour,
     Msg1 = "[Parent call sites]",
-    Cmd1 = deep_cmd_proc_callers(PSI, group_by_call_site, 1),
+    Cmd1 = deep_cmd_proc_callers(PSPtr, group_by_call_site, 1, PrefContour),
     Msg2 = "[Parent procedures]",
-    Cmd2 = deep_cmd_proc_callers(PSI, group_by_proc, 1),
+    Cmd2 = deep_cmd_proc_callers(PSPtr, group_by_proc, 1, PrefContour),
     Msg3 = "[Parent modules]",
-    Cmd3 = deep_cmd_proc_callers(PSI, group_by_module, 1),
+    Cmd3 = deep_cmd_proc_callers(PSPtr, group_by_module, 1, PrefContour),
     Msg4 = "[Parent cliques]",
-    Cmd4 = deep_cmd_proc_callers(PSI, group_by_clique, 1),
+    Cmd4 = deep_cmd_proc_callers(PSPtr, group_by_clique, 1, PrefContour),
     Link1 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, Cmd1)), s(Msg1)]),
     Link2 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -2239,8 +2167,7 @@ proc_summary_toggles_to_html(Pref, Deep, PSPtr) = HTML :-
     order_criteria) = string.
 
 wrap_clique_links(CliquePtr, Pref0, Deep, Str0, Criteria) = Str :-
-    CliquePtr = clique_ptr(CI),
-    Cmd = deep_cmd_clique(CI),
+    Cmd = deep_cmd_clique(CliquePtr),
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",
@@ -2250,8 +2177,7 @@ wrap_clique_links(CliquePtr, Pref0, Deep, Str0, Criteria) = Str :-
     order_criteria) = string.
 
 wrap_proc_links(PSPtr, Pref0, Deep, Str0, Criteria) = Str :-
-    PSPtr = proc_static_ptr(PSI),
-    Cmd = deep_cmd_proc(PSI),
+    Cmd = deep_cmd_proc(PSPtr),
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",
@@ -2262,8 +2188,8 @@ wrap_proc_links(PSPtr, Pref0, Deep, Str0, Criteria) = Str :-
 
 wrap_proc_callers_links(PSPtr, CallerGroups, BunchNum, Pref0, Deep,
         Str0, Criteria) = Str :-
-    PSPtr = proc_static_ptr(PSI),
-    Cmd = deep_cmd_proc_callers(PSI, CallerGroups, BunchNum),
+    PrefContour = Pref0 ^ pref_contour,
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, PrefContour),
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",
@@ -2282,7 +2208,7 @@ wrap_module_links(ModuleName, Pref0, Deep, Str0, Criteria) = Str :-
 :- func wrap_modules_links(preferences, deep, string, order_criteria) = string.
 
 wrap_modules_links(Pref0, Deep, Str0, Criteria) = Str :-
-    Cmd = deep_cmd_modules,
+    Cmd = deep_cmd_program_modules,
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",
@@ -2340,7 +2266,7 @@ default_preferences(Deep) =
         default_ancestor_limit,
         default_summarize,
         default_order_criteria,
-        default_contour,
+        default_contour_exclusion,
         default_time_format,
         default_inactive_items
     ).
@@ -2367,7 +2293,7 @@ default_order_criteria = by_context.
 default_cost_kind = cost_callseqs.
 default_incl_desc = self_and_desc.
 default_scope = overall.
-default_contour = no_contour.
+default_contour_exclusion = do_not_apply_contour_exclusion.
 default_time_format = scale_by_thousands.
 default_inactive_items = inactive_items(inactive_hide, inactive_hide).
 
@@ -2414,23 +2340,28 @@ cmd_to_string(Cmd) = CmdStr :-
                 [c(cmd_separator_char), s("no")])
         )
     ;
-        Cmd = deep_cmd_clique(CliqueNum),
+        Cmd = deep_cmd_clique(CliquePtr),
+        CliquePtr = clique_ptr(CliqueNum),
         CmdStr = string.format("clique%c%d",
             [c(cmd_separator_char), i(CliqueNum)])
     ;
-        Cmd = deep_cmd_proc(ProcNum),
+        Cmd = deep_cmd_proc(PSPtr),
+        PSPtr = proc_static_ptr(PSI),
         CmdStr = string.format("proc%c%d",
-            [c(cmd_separator_char), i(ProcNum)])
+            [c(cmd_separator_char), i(PSI)])
     ;
-        Cmd = deep_cmd_proc_callers(ProcNum, GroupCallers, BunchNum),
+        Cmd = deep_cmd_proc_callers(PSPtr, GroupCallers, BunchNum, Contour),
+        PSPtr = proc_static_ptr(PSI),
         GroupCallersStr = caller_groups_to_string(GroupCallers),
-        CmdStr = string.format("proc_callers%c%d%c%s%c%d",
-            [c(cmd_separator_char), i(ProcNum),
+        ContourStr = contour_exclusion_to_string(Contour),
+        CmdStr = string.format("proc_callers%c%d%c%s%c%d%c%s",
+            [c(cmd_separator_char), i(PSI),
             c(cmd_separator_char), s(GroupCallersStr),
-            c(cmd_separator_char), i(BunchNum)])
+            c(cmd_separator_char), i(BunchNum),
+            c(cmd_separator_char), s(ContourStr)])
     ;
-        Cmd = deep_cmd_modules,
-        CmdStr = "modules"
+        Cmd = deep_cmd_program_modules,
+        CmdStr = "program_modules"
     ;
         Cmd = deep_cmd_module(ModuleName),
         CmdStr = string.format("module%c%s",
@@ -2447,25 +2378,30 @@ cmd_to_string(Cmd) = CmdStr :-
             c(cmd_separator_char), s(InclDescStr),
             c(cmd_separator_char), s(ScopeStr)])
     ;
-        Cmd = deep_cmd_proc_static(PSI),
-        CmdStr = string.format("proc_static%c%d",
+        Cmd = deep_cmd_dump_proc_static(PSPtr),
+        PSPtr = proc_static_ptr(PSI),
+        CmdStr = string.format("dump_proc_static%c%d",
             [c(cmd_separator_char), i(PSI)])
     ;
-        Cmd = deep_cmd_proc_dynamic(PDI),
-        CmdStr = string.format("proc_dynamic%c%d",
+        Cmd = deep_cmd_dump_proc_dynamic(PDPtr),
+        PDPtr = proc_dynamic_ptr(PDI),
+        CmdStr = string.format("dump_proc_dynamic%c%d",
             [c(cmd_separator_char), i(PDI)])
     ;
-        Cmd = deep_cmd_call_site_static(CSSI),
-        CmdStr = string.format("call_site_static%c%d",
+        Cmd = deep_cmd_dump_call_site_static(CSSPtr),
+        CSSPtr = call_site_static_ptr(CSSI),
+        CmdStr = string.format("dump_call_site_static%c%d",
             [c(cmd_separator_char), i(CSSI)])
     ;
-        Cmd = deep_cmd_call_site_dynamic(CSDI),
-        CmdStr = string.format("call_site_dynamic%c%d",
+        Cmd = deep_cmd_dump_call_site_dynamic(CSDPtr),
+        CSDPtr = call_site_dynamic_ptr(CSDI),
+        CmdStr = string.format("dump_call_site_dynamic%c%d",
             [c(cmd_separator_char), i(CSDI)])
     ;
-        Cmd = deep_cmd_raw_clique(CI),
-        CmdStr = string.format("raw_clique%c%d",
-            [c(cmd_separator_char), i(CI)])
+        Cmd = deep_cmd_dump_clique(CliquePtr),
+        CliquePtr = clique_ptr(CliqueNum),
+        CmdStr = string.format("dump_clique%c%d",
+            [c(cmd_separator_char), i(CliqueNum)])
     ).
 
 preferences_to_string(Pref) = PrefStr :-
@@ -2486,7 +2422,7 @@ preferences_to_string(Pref) = PrefStr :-
         c(pref_separator_char), s(MaybeAncestorLimitStr),
         c(pref_separator_char), s(summarize_to_string(Summarize)),
         c(pref_separator_char), s(order_criteria_to_string(Order)),
-        c(pref_separator_char), s(contour_to_string(Contour)),
+        c(pref_separator_char), s(contour_exclusion_to_string(Contour)),
         c(pref_separator_char), s(time_format_to_string(Time)),
         c(pref_separator_char), s(inactive_items_to_string(InactiveItems))
     ]).
@@ -2512,32 +2448,43 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
             fail
         )
     ->
-        MaybeCmd = yes(deep_cmd_root(MaybePercent))
+        Cmd = deep_cmd_root(MaybePercent),
+        MaybeCmd = yes(Cmd)
     ;
         Pieces = ["clique", CliqueNumStr],
         string.to_int(CliqueNumStr, CliqueNum)
     ->
-        MaybeCmd = yes(deep_cmd_clique(CliqueNum))
+        CliquePtr = clique_ptr(CliqueNum),
+        Cmd = deep_cmd_clique(CliquePtr),
+        MaybeCmd = yes(Cmd)
     ;
         Pieces = ["proc", PSIStr],
         string.to_int(PSIStr, PSI)
     ->
-        MaybeCmd = yes(deep_cmd_proc(PSI))
+        PSPtr = proc_static_ptr(PSI),
+        Cmd = deep_cmd_proc(PSPtr),
+        MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["proc_callers", PSIStr, GroupCallersStr, BunchNumStr],
+        Pieces = ["proc_callers", PSIStr, GroupCallersStr, BunchNumStr,
+            ContourStr],
         string.to_int(PSIStr, PSI),
+        string_to_caller_groups(GroupCallersStr, GroupCallers),
         string.to_int(BunchNumStr, BunchNum),
-        string_to_caller_groups(GroupCallersStr, GroupCallers)
+        string_to_contour_exclusion(ContourStr, Contour)
     ->
-        MaybeCmd = yes(deep_cmd_proc_callers(PSI, GroupCallers, BunchNum))
+        PSPtr = proc_static_ptr(PSI),
+        Cmd = deep_cmd_proc_callers(PSPtr, GroupCallers, BunchNum, Contour),
+        MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["modules"]
+        Pieces = ["program_modules"]
     ->
-        MaybeCmd = yes(deep_cmd_modules)
+        Cmd = deep_cmd_program_modules,
+        MaybeCmd = yes(Cmd)
     ;
         Pieces = ["module", ModuleName]
     ->
-        MaybeCmd = yes(deep_cmd_module(ModuleName))
+        Cmd = deep_cmd_module(ModuleName),
+        MaybeCmd = yes(Cmd)
     ;
         Pieces = ["top_procs", LimitStr, CostKindStr, InclDescStr, ScopeStr],
         string_to_limit(LimitStr, Limit),
@@ -2545,49 +2492,64 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         string_to_incl_desc(InclDescStr, InclDesc),
         string_to_scope(ScopeStr, Scope)
     ->
-        MaybeCmd = yes(deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope))
+        Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
+        MaybeCmd = yes(Cmd)
     ;
         Pieces = ["menu"]
     ->
-        MaybeCmd = yes(deep_cmd_menu)
+        Cmd = deep_cmd_menu,
+        MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["proc_static", PSIStr],
+        Pieces = ["dump_proc_static", PSIStr],
         string.to_int(PSIStr, PSI)
     ->
-        MaybeCmd = yes(deep_cmd_proc_static(PSI))
+        PSPtr = proc_static_ptr(PSI),
+        Cmd = deep_cmd_dump_proc_static(PSPtr),
+        MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["proc_dynamic", PDIStr],
+        Pieces = ["dump_proc_dynamic", PDIStr],
         string.to_int(PDIStr, PDI)
     ->
-        MaybeCmd = yes(deep_cmd_proc_dynamic(PDI))
+        PDPtr = proc_dynamic_ptr(PDI),
+        Cmd = deep_cmd_dump_proc_dynamic(PDPtr),
+        MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["call_site_static", CSSIStr],
+        Pieces = ["dump_call_site_static", CSSIStr],
         string.to_int(CSSIStr, CSSI)
     ->
-        MaybeCmd = yes(deep_cmd_call_site_static(CSSI))
+        CSSPtr = call_site_static_ptr(CSSI),
+        Cmd = deep_cmd_dump_call_site_static(CSSPtr),
+        MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["call_site_dynamic", CSDIStr],
+        Pieces = ["dump_call_site_dynamic", CSDIStr],
         string.to_int(CSDIStr, CSDI)
     ->
-        MaybeCmd = yes(deep_cmd_call_site_dynamic(CSDI))
+        CSDPtr = call_site_dynamic_ptr(CSDI),
+        Cmd = deep_cmd_dump_call_site_dynamic(CSDPtr),
+        MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["raw_clique", CliqueNumStr],
+        Pieces = ["dump_clique", CliqueNumStr],
         string.to_int(CliqueNumStr, CliqueNum)
     ->
-        MaybeCmd = yes(deep_cmd_raw_clique(CliqueNum))
+        CliquePtr = clique_ptr(CliqueNum),
+        Cmd = deep_cmd_dump_clique(CliquePtr),
+        MaybeCmd = yes(Cmd)
     ;
         Pieces = ["timeout", TimeOutStr],
         string.to_int(TimeOutStr, TimeOut)
     ->
-        MaybeCmd = yes(deep_cmd_timeout(TimeOut))
+        Cmd = deep_cmd_timeout(TimeOut),
+        MaybeCmd = yes(Cmd)
     ;
         Pieces = ["restart"]
     ->
-        MaybeCmd = yes(deep_cmd_restart)
+        Cmd = deep_cmd_restart,
+        MaybeCmd = yes(Cmd)
     ;
         Pieces = ["quit"]
     ->
-        MaybeCmd = yes(deep_cmd_quit)
+        Cmd = deep_cmd_quit,
+        MaybeCmd = yes(Cmd)
     ;
         MaybeCmd = no
     ).
@@ -2609,7 +2571,7 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
         ),
         string_to_summarize(SummarizeStr, Summarize),
         string_to_order_criteria(OrderStr, Order),
-        string_to_contour(ContourStr, Contour),
+        string_to_contour_exclusion(ContourStr, Contour),
         string_to_time_format(TimeStr, Time),
         string_to_inactive_items(InactiveItemsStr, InactiveItems)
     ->
@@ -2854,17 +2816,17 @@ scope_to_string(Scope) = String :-
 string_to_scope("pc", per_call).
 string_to_scope("oa",  overall).
 
-:- func contour_to_string(contour) = string.
+:- func contour_exclusion_to_string(contour_exclusion) = string.
 
-contour_to_string(Contour) = String :-
-    string_to_contour(String, Contour).
+contour_exclusion_to_string(Contour) = String :-
+    string_to_contour_exclusion(String, Contour).
 
-:- pred string_to_contour(string, contour).
-:- mode string_to_contour(in, out) is semidet.
-:- mode string_to_contour(out, in) is det.
+:- pred string_to_contour_exclusion(string, contour_exclusion).
+:- mode string_to_contour_exclusion(in, out) is semidet.
+:- mode string_to_contour_exclusion(out, in) is det.
 
-string_to_contour("ac", apply_contour).
-string_to_contour("nc", no_contour).
+string_to_contour_exclusion("ac", apply_contour_exclusion).
+string_to_contour_exclusion("nc", do_not_apply_contour_exclusion).
 
 :- func time_format_to_string(time_format) = string.
 

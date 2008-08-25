@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,8 +52,8 @@
 
 :- type exclude_file.
 
-:- pred read_exclude_file(string::in, deep::in, maybe_error(exclude_file)::out,
-    io::di, io::uo) is det.
+:- pred read_exclude_file(string::in, deep::in,
+    maybe(maybe_error(exclude_file))::out, io::di, io::uo) is det.
 
 :- func apply_contour_exclusion(deep, exclude_file, call_site_dynamic_ptr)
     = call_site_dynamic_ptr.
@@ -90,23 +90,25 @@
 
 %-----------------------------------------------------------------------------%
 
-read_exclude_file(FileName, Deep, Res, !IO) :-
-    io.open_input(FileName, Res0, !IO),
+read_exclude_file(FileName, Deep, MaybeMaybeExcludeFile, !IO) :-
+    io.open_input(FileName, MaybeStream, !IO),
     (
-        Res0 = ok(InputStream),
-        read_exclude_lines(FileName, InputStream, [], Res1, !IO),
+        MaybeStream = ok(InputStream),
+        read_exclude_lines(FileName, InputStream, [], MaybeSpecs, !IO),
         io.close_input(InputStream, !IO),
         (
-            Res1 = ok(Specs),
-            validate_exclude_lines(FileName, Specs, Deep, Res)
+            MaybeSpecs = ok(Specs),
+            validate_exclude_lines(FileName, Specs, Deep, MaybeExcludeFile),
+            MaybeMaybeExcludeFile = yes(MaybeExcludeFile)
         ;
-            Res1 = error(Msg),
-            Res = error(Msg)
+            MaybeSpecs = error(Msg),
+            MaybeMaybeExcludeFile = yes(error(Msg))
         )
     ;
-        Res0 = error(Err),
-        io.error_message(Err, Msg),
-        Res = error(Msg)
+        MaybeStream = error(_),
+        % If we cannot open the file, simply return `no' as an indication
+        % that there is no exclude file there, at least not a readable one.
+        MaybeMaybeExcludeFile = no
     ).
 
 :- pred read_exclude_lines(string::in, io.input_stream::in,

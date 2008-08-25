@@ -883,11 +883,11 @@ default_cmd(Options) = Cmd :-
     ( Root = yes ->
         Cmd = deep_cmd_root(no)
     ; Modules = yes ->
-        Cmd = deep_cmd_modules
+        Cmd = deep_cmd_program_modules
     ; CliqueNum > 0 ->
-        Cmd = deep_cmd_clique(CliqueNum)
+        Cmd = deep_cmd_clique(clique_ptr(CliqueNum))
     ; ProcNum > 0 ->
-        Cmd = deep_cmd_proc(ProcNum)
+        Cmd = deep_cmd_proc(proc_static_ptr(ProcNum))
     ; Quit = yes ->
         Cmd = deep_cmd_quit
     ;

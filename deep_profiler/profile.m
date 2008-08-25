@@ -23,6 +23,7 @@
 :- module profile.
 :- interface.
 
+:- import_module exclude.
 :- import_module measurements.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
@@ -115,7 +116,15 @@
                 csd_comp_table          :: array(compensation_table),
 
                 % Information about modules.
-                module_data             :: map(string, module_data)
+                module_data             :: map(string, module_data),
+
+                % If this field is `no', then there is no (readable) contour
+                % exclusion file. If this field is yes(MaybeExcludeFile),
+                % then there are again two possibilities. The normal case is
+                % MaybeExcludeFile = ok(ExcludeFile). The other case is
+                % MaybeExcludeFile = error(ErrorMsg), which shows that the
+                % contour exclusion file was malformed.
+                exclude_contour_file    :: maybe(maybe_error(exclude_file))
             ).
 
 :- type compensation_table == map(proc_static_ptr, inherit_prof_info).
@@ -246,15 +255,18 @@
     %
 :- type coverage_point
     --->    coverage_point(
+                % The number of times execution reached this point,
                 int,
-                    % The number of times execution reached this point,
+
+                % Identifies the goal that this coverage point is near.
+                % If cp_type is cp_type_branch_arm the coverage point is
+                % immediately before this goal, otherwise it is immediately
+                % after.
+
                 goal_path,
-                    % Identifies the goal that this coverage point is near.  If
-                    % cp_type is cp_type_branch_arm the coverage point is
-                    % immediately before this goal, otherwise it is immediately
-                    % after.
+
+                % The type of this coverage point.
                 cp_type
-                    % The type of this coverage point.
             ).
 
 :- pred is_call_site_kind(int::in, call_site_kind::out) is semidet.

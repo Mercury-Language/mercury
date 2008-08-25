@@ -45,6 +45,7 @@
 :- import_module array_util.
 :- import_module callgraph.
 :- import_module canonical.
+:- import_module exclude.
 :- import_module measurements.
 :- import_module profile.
 :- import_module read_profile.
@@ -100,7 +101,7 @@ read_and_startup(Machine, ScriptName, DataFileNames, Canonical,
     initial_deep::in, deep::out, io::di, io::uo) is det.
 
 startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
-        DumpStages, DumpOptions, InitDeep0, Deep, !IO) :-
+        DumpStages, DumpOptions, InitDeep0, !:Deep, !IO) :-
     InitDeep0 = initial_deep(InitStats, Root,
         CallSiteDynamics0, ProcDynamics, CallSiteStatics0, ProcStatics0),
     maybe_dump(DataFileName, DumpStages, 0,
@@ -229,36 +230,48 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
     array.init(NCSDs, map.init, CSDCompTable0),
 
     ModuleData = map.map_values(initialize_module_data, ModuleProcs),
-    Deep0 = deep(InitStats, Machine, ScriptName, DataFileName, Root,
+    % The field holding DummyExcludeError is given its proper, non-dummy value
+    % a few calls below.
+    DummyMaybeExcludeFile = no,
+    !:Deep = deep(InitStats, Machine, ScriptName, DataFileName, Root,
         CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics,
         CliqueIndex, Cliques, CliqueParents, CliqueMaybeChildren,
         ProcCallers, CallSiteStaticMap, CallSiteCalls,
         PDOwn, PDDesc0, CSDDesc0,
         PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
-        PDCompTable0, CSDCompTable0, ModuleData),
+        PDCompTable0, CSDCompTable0, ModuleData, DummyMaybeExcludeFile),
+
+    read_exclude_file(contour_file_name(DataFileName), !.Deep,
+        MaybeMaybeExcludeFile, !IO),
+    !Deep ^ exclude_contour_file := MaybeMaybeExcludeFile,
 
     maybe_dump(DataFileName, DumpStages, 30,
-        dump_deep(Deep0, DumpOptions), !IO),
+        dump_deep(!.Deep, DumpOptions), !IO),
 
-    array_foldl_from_1(propagate_to_clique, Cliques, Deep0, Deep1),
+    array_foldl_from_1(propagate_to_clique, Cliques, !Deep),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
 
     maybe_dump(DataFileName, DumpStages, 40,
-        dump_deep(Deep1, DumpOptions), !IO),
+        dump_deep(!.Deep, DumpOptions), !IO),
 
     maybe_report_msg(MaybeOutputStream,
         "% Summarizing information...\n", !IO),
-    summarize_proc_dynamics(Deep1, Deep2),
-    summarize_call_site_dynamics(Deep2, Deep3),
-    summarize_modules(Deep3, Deep),
+    summarize_proc_dynamics(!Deep),
+    summarize_call_site_dynamics(!Deep),
+    summarize_modules(!Deep),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
 
     maybe_dump(DataFileName, DumpStages, 50,
-        dump_deep(Deep, DumpOptions), !IO).
+        dump_deep(!.Deep, DumpOptions), !IO).
+
+:- func contour_file_name(string) = string.
+
+contour_file_name(DataFileName) =
+    DataFileName ++ ".contour".
 
 :- pred count_quanta(int::in, call_site_dynamic::in, int::in, int::out) is det.
 

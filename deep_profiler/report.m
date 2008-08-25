@@ -36,8 +36,11 @@
 :- type deep_report
     --->    report_message(message_report)
     ;       report_menu(maybe_error(menu_report))
+    ;       report_program_modules(maybe_error(program_modules_report))
+    ;       report_module(maybe_error(module_report))
     ;       report_top_procs(maybe_error(top_procs_report))
     ;       report_proc(maybe_error(proc_report))
+    ;       report_proc_callers(maybe_error(proc_callers_report))
     ;       report_proc_static_dump(maybe_error(proc_static_dump_info))
     ;       report_proc_dynamic_dump(maybe_error(proc_dynamic_dump_info))
     ;       report_call_site_static_dump(
@@ -72,6 +75,21 @@
                 menu_num_clique             :: int
             ).
 
+:- type program_modules_report
+    --->    program_modules_report(
+                % Summary information about all the modules of the program.
+                program_modules             :: list(
+                                                perf_row_data(module_active))
+            ).
+
+:- type module_report
+    --->    module_report(
+                % Summary information about all the procedures in one module
+                % of the program.
+                mr_module_name              :: string,
+                mr_procs                    :: list(perf_row_data(proc_active))
+            ).
+
 :- type top_procs_report
     --->    top_procs_report(
                 % Information about the most expensive procedures. The ordering
@@ -86,7 +104,6 @@
     --->    proc_report(
                 % The proc description is inside the proc_summary field.
 
-                proc_psptr                  :: proc_static_ptr,
                 proc_summary                :: perf_row_data(proc_desc),
                 proc_call_site_summaries    :: list(call_site_perf)
             ).
@@ -120,6 +137,45 @@
     --->    normal_callee_id(
                 nci_callee_desc             :: proc_desc,
                 nci_type_subst              :: string
+            ).
+
+:- type proc_callers_report
+    --->    proc_callers_report(
+                % The id of the procedure.
+                pc_proc_desc                :: proc_desc,
+
+                % The call sites that call this procedure.
+                pc_callers                  :: proc_callers,
+
+                % Which batch of rows to show; transmitted without processing
+                % from the request.
+                pc_batch_number             :: int,
+
+                % Whether contour exclusion was applied in computing the
+                % pc_callers field.
+                pc_contour_exclusion        :: contour_exclusion,
+
+                % If contour exclusion was asked for, this field may contain
+                % the pieces of an error message.
+                pc_contour_error_messages   :: list(string)
+            ).
+
+:- type proc_callers
+    --->    proc_caller_call_sites(
+                pc_caller_call_sites        :: list(
+                                                perf_row_data(call_site_desc))
+            )
+    ;       proc_caller_procedures(
+                pc_caller_procedures        :: list(
+                                                perf_row_data(proc_desc))
+            )
+    ;       proc_caller_modules(
+                pc_caller_modules           :: list(
+                                                perf_row_data(string))
+            )
+    ;       proc_caller_cliques(
+                pc_caller_cliques           :: list(
+                                                perf_row_data(clique_desc))
             ).
 
 :- type proc_static_dump_info
@@ -172,51 +228,42 @@
                 perf_row_redos                  :: int,
                 perf_row_excps                  :: int,
 
+                perf_row_bytes_per_word         :: int,
+                perf_row_self                   :: inheritable_perf,
+                perf_row_maybe_total            :: maybe(inheritable_perf)
+            ).
+
+:- type inheritable_perf
+    --->    inheritable_perf(
                 % Clock ticks and times. We always use simple integers to
                 % represent clock ticks, whereas for time, we use more
                 % user-friendly units. When the total time for the program
-                % is close to zero, the percentage may be NaN representing
-                % 'not_applicable' or 'do not know'.
-                perf_row_self_ticks             :: int,
-                perf_row_self_time              :: time,
-                perf_row_self_time_percent      :: percent,
-                perf_row_self_time_percall      :: time,
-
-                perf_row_total_ticks            :: int,
-                perf_row_total_time             :: time,
-                perf_row_total_time_percent     :: percent,
-                perf_row_total_time_percall     :: time,
+                % is close to zero, i.e. the number of ticks or quanta is zero
+                % for the whole programs, then the percentage may be zero
+                % for everyhing (it used to be a NaN for 0/0, but we now
+                % check explicitly for division by zero).
+                perf_row_ticks             :: int,
+                perf_row_time              :: time,
+                perf_row_time_percent      :: percent,
+                perf_row_time_percall      :: time,
 
                 % Call sequence counts.
-                perf_row_self_callseqs          :: int,
-                perf_row_self_callseqs_percent  :: percent,
-                perf_row_self_callseqs_percall  :: float,
-
-                perf_row_total_callseqs         :: int,
-                perf_row_total_callseqs_percent :: percent,
-                perf_row_total_callseqs_percall :: float,
+                perf_row_callseqs          :: int,
+                perf_row_callseqs_percent  :: percent,
+                perf_row_callseqs_percall  :: float,
 
                 % Memory allocations.
-                perf_row_self_allocs            :: int,
-                perf_row_self_allocs_percent    :: percent,
-                perf_row_self_allocs_percall    :: float,
-
-                perf_row_total_allocs           :: int,
-                perf_row_total_allocs_percent   :: percent,
-                perf_row_total_allocs_percall   :: float,
+                perf_row_allocs            :: int,
+                perf_row_allocs_percent    :: percent,
+                perf_row_allocs_percall    :: float,
 
                 % Memory used. We try to use the most appropriate units
                 % for representing each given amount of memory.
                 % XXX Memory per call might not be an integer, so we should
                 % make sure that the memory type can represent fractions.
-                perf_row_bytes_per_word         :: int,
-                perf_row_self_mem               :: memory,
-                perf_row_self_mem_percent       :: percent,
-                perf_row_self_mem_percall       :: memory,
-
-                perf_row_total_mem              :: memory,
-                perf_row_total_mem_percent      :: percent,
-                perf_row_total_mem_percall      :: memory
+                perf_row_mem               :: memory,
+                perf_row_mem_percent       :: percent,
+                perf_row_mem_percall       :: memory
             ).
 
     % This type is used to define 'most expensive procedures'. It contains all
@@ -232,15 +279,37 @@
                 scope                       :: measurement_scope
             ).
 
+    % The representation of a module in a report structure.
+    %
+:- type module_active
+    --->    module_active(
+                ma_module_name              :: string,
+                ma_is_active                :: module_is_active
+            ).
+
+:- type module_is_active
+    --->    module_is_active
+    ;       module_is_not_active.
+
+:- type proc_active
+    --->    proc_active(
+                pa_proc_desc                :: proc_desc,
+                pa_is_active                :: proc_is_active
+            ).
+
+:- type proc_is_active
+    --->    proc_is_active
+    ;       proc_is_not_active.
+
     % The representation of a procedure in a report structure, including
     % information about its location in Mercury source code.
     %
 :- type proc_desc
     --->    proc_desc(
-                proc_desc_static_ptr        :: proc_static_ptr,
-                proc_desc_file_name         :: string,
-                proc_desc_line_number       :: int,
-                proc_desc_refined_name      :: string
+                pdesc_ps_ptr                :: proc_static_ptr,
+                pdesc_file_name             :: string,
+                pdesc_line_number           :: int,
+                pdesc_refined_name          :: string
             ).
 
     % The representation of a call site in a report structure, including
@@ -248,13 +317,21 @@
     %
 :- type call_site_desc
     --->    call_site_desc(
-                call_site_desc_static_ptr   :: call_site_static_ptr,
-                call_site_desc_container    :: proc_static_ptr,
-                call_site_desc_file_name    :: string,
-                call_site_desc_line_number  :: int,
-                call_site_desc_refined_name :: string,
-                call_site_desc_slot_number  :: int,
-                call_site_desc_goal_path    :: string
+                csdesc_css_ptr              :: call_site_static_ptr,
+                csdesc_container            :: proc_static_ptr,
+                csdesc_file_name            :: string,
+                csdesc_line_number          :: int,
+                csdesc_caller_refined_name  :: string,
+                csdesc_slot_number          :: int,
+                csdesc_goal_path            :: string
+            ).
+
+    % The description of a clique in a report structure.
+    %
+:- type clique_desc
+    --->    clique_desc(
+                cdesc_clique_ptr            :: clique_ptr,
+                cdesc_members               :: list(proc_desc)
             ).
 
 %-----------------------------------------------------------------------------%
