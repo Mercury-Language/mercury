@@ -139,6 +139,9 @@
     % A type cannot be a dummy type if it is the subject of a foreign_enum
     % pragma, or if it has a reserved tag or user defined equality.
     %
+    % NOTE: changes here may require changes to
+    % `constructor_list_represents_dummy_argument_type'.
+    %
 :- func check_dummy_type(module_info, mer_type) = is_dummy_type.
 
     % A test for types that are defined in Mercury, but whose definitions

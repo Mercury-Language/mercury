@@ -217,17 +217,6 @@
     %
 :- func check_builtin_dummy_type_ctor(type_ctor) = is_builtin_dummy_type_ctor.
 
-    % Certain types, e.g. io.state and store.store(S), are just dummy types
-    % used to ensure logical semantics; there is no need to actually pass them,
-    % and so when importing or exporting procedures to/from C, we don't include
-    % arguments with these types.
-    %
-    % A type is a dummy type in one of two cases: either it is a builtin
-    % dummy type, or it has only a single function symbol of arity zero.
-    %
-:- pred constructor_list_represents_dummy_argument_type(list(constructor)::in,
-    maybe(unify_compare)::in) is semidet.
-
 :- pred type_is_io_state(mer_type::in) is semidet.
 
 :- pred type_ctor_is_array(type_ctor::in) is semidet.
@@ -808,9 +797,6 @@ check_builtin_dummy_type_ctor(TypeCtor) = IsBuiltinDummy :-
     ;
         IsBuiltinDummy = is_not_builtin_dummy_type_ctor
     ).
-
-constructor_list_represents_dummy_argument_type([Ctor], no) :-
-    Ctor = ctor([], [], _, [], _).
 
 type_is_io_state(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, []),

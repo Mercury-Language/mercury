@@ -677,12 +677,13 @@ strip_unnecessary_impl_defns(Items0, Items) :-
     some [!IntTypesMap, !ImplTypesMap, !ImplItems] (
         gather_type_defns(Items0, IntItems0, !:ImplItems,
             !:IntTypesMap, !:ImplTypesMap),
+        BothTypesMap = multi_map.merge(!.IntTypesMap, !.ImplTypesMap),
 
         % Work out which module imports in the implementation section of
         % the interface are required by the definitions of equivalence
         % types and dummy types in the implementation.
         get_requirements_of_impl_exported_types(!.IntTypesMap, !.ImplTypesMap,
-            NecessaryDummyTypeCtors, NecessaryEqvTypeCtors,
+            BothTypesMap, NecessaryDummyTypeCtors, NecessaryEqvTypeCtors,
             NecessaryTypeImplImports),
 
         % Work out which module imports in the implementation section of
@@ -697,7 +698,7 @@ strip_unnecessary_impl_defns(Items0, Items) :-
 
         % If a type in the implementation section isn't dummy and doesn't have
         % foreign type alternatives, make it abstract.
-        map.map_values(make_impl_type_abstract, !ImplTypesMap),
+        map.map_values(make_impl_type_abstract(BothTypesMap), !ImplTypesMap),
 
         % If there is an exported type declaration for a type with an abstract
         % declaration in the implementation (usually it will originally
@@ -898,21 +899,100 @@ insert_type_defn(New, [Head | Tail], Result) :-
         Result = [Head | NewTail]
     ).
 
-:- pred make_impl_type_abstract(type_ctor::in,
+:- pred make_impl_type_abstract(type_defn_map::in, type_ctor::in,
     assoc_list(type_defn, item_type_defn_info)::in,
     assoc_list(type_defn, item_type_defn_info)::out) is det.
 
-make_impl_type_abstract(_TypeCtor, !TypeDefnPairs) :-
+make_impl_type_abstract(TypeDefnMap, _TypeCtor, !TypeDefnPairs) :-
     (
         !.TypeDefnPairs =
             [parse_tree_du_type(Ctors, MaybeEqCmp) - ItemTypeDefn0],
-        not constructor_list_represents_dummy_argument_type(Ctors, MaybeEqCmp)
+        not constructor_list_represents_dummy_argument_type(TypeDefnMap,
+            Ctors, MaybeEqCmp)
     ->
         Defn = parse_tree_abstract_type(non_solver_type),
         ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := Defn,
         !:TypeDefnPairs = [Defn - ItemTypeDefn]
     ;
         true
+    ).
+
+    % Certain types, e.g. io.state and store.store(S), are just dummy types
+    % used to ensure logical semantics; there is no need to actually pass them,
+    % and so when importing or exporting procedures to/from C, we don't include
+    % arguments with these types.
+    %
+    % See the documentation for `type_util.check_dummy_type' for the definition
+    % of a dummy type.
+    %
+    % NOTE: changes here may require changes to `type_util.check_dummy_type'.
+    %
+:- pred constructor_list_represents_dummy_argument_type(type_defn_map::in,
+    list(constructor)::in, maybe(unify_compare)::in) is semidet.
+
+constructor_list_represents_dummy_argument_type(TypeDefnMap,
+        Ctors, MaybeEqCmp) :-
+    constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
+        Ctors, MaybeEqCmp, []).
+
+:- pred constructor_list_represents_dummy_argument_type_2(type_defn_map::in,
+    list(constructor)::in, maybe(unify_compare)::in, list(mer_type)::in)
+    is semidet.
+
+constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor], no,
+        CoveredTypes) :-
+    Ctor = ctor(ExistQTVars, Constraints, _Name, Args, _Context),
+    ExistQTVars = [],
+    Constraints = [],
+    (
+        % A single zero-arity constructor.
+        Args = []
+    ;
+        % A constructor with a single dummy argument.
+        Args = [ctor_arg(_, ArgType, _)],
+        ctor_arg_is_dummy_type(TypeDefnMap, ArgType, CoveredTypes) = yes
+    ).
+
+:- func ctor_arg_is_dummy_type(type_defn_map, mer_type, list(mer_type)) = bool.
+
+ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
+    (
+        Type = defined_type(SymName, TypeArgs, _Kind),
+        ( list.member(Type, CoveredTypes0) ->
+            % The type is circular.
+            IsDummyType = no
+        ;
+            Arity = list.length(TypeArgs),
+            TypeCtor = type_ctor(SymName, Arity),
+            (
+                check_builtin_dummy_type_ctor(TypeCtor)
+                    = is_builtin_dummy_type_ctor
+            ->
+                IsDummyType = yes
+            ;
+                % Can we find a definition of the type that tells us it is a
+                % dummy type?
+                multi_map.search(TypeDefnMap, TypeCtor, TypeDefns),
+                list.member(TypeDefn - _, TypeDefns),
+                TypeDefn = parse_tree_du_type(TypeCtors, MaybeEqCmp),
+                CoveredTypes = [Type | CoveredTypes0],
+                constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
+                    TypeCtors, MaybeEqCmp, CoveredTypes)
+            ->
+                IsDummyType = yes
+            ;
+                IsDummyType = no
+            )
+        )
+    ;
+        ( Type = type_variable(_, _)
+        ; Type = builtin_type(_)
+        ; Type = tuple_type(_, _)
+        ; Type = higher_order_type(_, _, _, _)
+        ; Type = apply_n_type(_, _, _)
+        ; Type = kinded_type(_, _)
+        ),
+        IsDummyType = no
     ).
 
     % strip_unnecessary_impl_imports(NecessaryModules, !Items):
@@ -977,7 +1057,7 @@ is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
     ).
 
     % get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
-    %   NecessaryTypeCtors, Modules):
+    %   BothTypeMap, NecessaryTypeCtors, Modules):
     %
     % Figure out the set of abstract equivalence type constructors
     % (i.e. the types that are exported as abstract types and which are defined
@@ -995,24 +1075,26 @@ is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
     % in NecessaryTypeCtors.
     %
 :- pred get_requirements_of_impl_exported_types(type_defn_map::in,
-    type_defn_map::in, set(type_ctor)::out, set(type_ctor)::out,
-    set(module_name)::out) is det.
+    type_defn_map::in, type_defn_map::in,
+    set(type_ctor)::out, set(type_ctor)::out, set(module_name)::out) is det.
 
 get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
-        DummyTypeCtors, EqvTypeCtors, Modules) :-
+        BothTypeMap, DummyTypeCtors, EqvTypeCtors, Modules) :-
     multi_map.to_flat_assoc_list(ImplTypeMap, ImplTypes),
-    list.foldl2(accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap),
+    list.foldl2(
+        accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypeMap),
         ImplTypes, set.init, AbsEqvLhsTypeCtors, set.init, DummyTypeCtors),
     set.fold2(accumulate_abs_eqv_type_rhs(ImplTypeMap), AbsEqvLhsTypeCtors,
         set.init, AbsEqvRhsTypeCtors, set.init, Modules),
     set.union(AbsEqvLhsTypeCtors, AbsEqvRhsTypeCtors, EqvTypeCtors).
 
 :- pred accumulate_abs_impl_exported_type_lhs(type_defn_map::in,
+    type_defn_map::in,
     pair(type_ctor, pair(type_defn, item_type_defn_info))::in,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
-accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap,
+accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
         TypeCtor - (TypeDefn - _Item), !AbsEqvLhsTypeCtors, !DummyTypeCtors) :-
     % A type may have multiple definitions because it may be defined both
     % as a foreign type and as a Mercury type. We grab any equivalence types
@@ -1029,7 +1111,8 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap,
         svset.insert(TypeCtor, !AbsEqvLhsTypeCtors)
     ;
         TypeDefn = parse_tree_du_type(Ctors, MaybeEqCmp),
-        constructor_list_represents_dummy_argument_type(Ctors, MaybeEqCmp)
+        constructor_list_represents_dummy_argument_type(BothTypesMap,
+            Ctors, MaybeEqCmp)
     ->
         svset.insert(TypeCtor, !DummyTypeCtors)
     ;
