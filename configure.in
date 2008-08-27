@@ -4005,65 +4005,67 @@ esac
 # compiler/compile_target_code.m.
 #
 
-# XXX we should not just rely on pattern matching against the executable
-# name to determine the C compiler type.
+# AC_PROG_CC sets GCC to yes if $CC is GNU C.
+if test "$GCC" = "yes"; then
+    C_COMPILER_TYPE=gcc
+    CFLAGS_FOR_ANSI="-ansi"
 
-case "$CC" in
-    *gcc*)
-        C_COMPILER_TYPE=gcc
-        CFLAGS_FOR_ANSI="-ansi"
+    # For a full list of the other gcc warnings that we don't
+    # enable, and why, see scripts/mgnuc.in.
+    CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
+    CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer"
+    CFLAGS_FOR_DEBUG="-g"
+    MCFLAGS_FOR_CC=
+else
 
-        # For a full list of the other gcc warnings that we don't
-        # enable, and why, see scripts/mgnuc.in.
-        CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
-        CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer"
-        CFLAGS_FOR_DEBUG="-g"
-        MCFLAGS_FOR_CC=
-        ;;
-    
-    *lcc*)
-        C_COMPILER_TYPE=lcc
-        CFLAGS_FOR_ANSI=
+    # XXX we should not rely on pattern matching against the executable name to
+    # determine the C compiler type.
 
-        # Turn off all warnings due to spurious warnings.
-        CFLAGS_FOR_WARNINGS="-w"
+    case "$CC" in
+        *lcc*)
+            C_COMPILER_TYPE=lcc
+            CFLAGS_FOR_ANSI=
 
-        CFLAGS_FOR_OPT=
-        CFLAGS_FOR_DEBUG="-g"
-        MCFLAGS_FOR_CC=
-        ;;
-    
-    *cl* | *CL*)
-        C_COMPILER_TYPE=cl
-        CFLAGS_FOR_ANSI=
-        CFLAGS_FOR_WARNINGS=
-        CFLAGS_FOR_OPT=
-        CFLAGS_FOR_DEBUG="/Zi"
+            # Turn off all warnings due to spurious warnings.
+            CFLAGS_FOR_WARNINGS="-w"
 
-        # Using the MSVC compiler implies that we must use
-        # a maximum jump table size of 512 to avoid a fixed limit
-        # in the compiler.
-        MCFLAGS_FOR_CC="--max-jump-table-size 512"
-        ;;
-    
-    cc* | */cc*)
-        C_COMPILER_TYPE=unknown
-        CFLAGS_FOR_ANSI=
-        CFLAGS_FOR_OPT="-O"
-        CFLAGS_FOR_WARNINGS=
-        CFLAGS_FOR_DEBUG="-g"
-        MCFLAGS_FOR_CC=
-        ;;
-    
-    *)
-        C_COMPILER_TYPE=unknown
-        CFLAGS_FOR_ANSI=
-        CFLAGS_FOR_OPT="-O"
-        CFLAGS_FOR_WARNINGS=
-        CFLAGS_FOR_DEBUG="-g"
-        MCFLAGS_FOR_CC=
-        ;;
-esac
+            CFLAGS_FOR_OPT=
+            CFLAGS_FOR_DEBUG="-g"
+            MCFLAGS_FOR_CC=
+            ;;
+        
+        *cl* | *CL*)
+            C_COMPILER_TYPE=cl
+            CFLAGS_FOR_ANSI=
+            CFLAGS_FOR_WARNINGS=
+            CFLAGS_FOR_OPT=
+            CFLAGS_FOR_DEBUG="/Zi"
+
+            # Using the MSVC compiler implies that we must use
+            # a maximum jump table size of 512 to avoid a fixed limit
+            # in the compiler.
+            MCFLAGS_FOR_CC="--max-jump-table-size 512"
+            ;;
+        
+        cc* | */cc*)
+            C_COMPILER_TYPE=unknown
+            CFLAGS_FOR_ANSI=
+            CFLAGS_FOR_OPT="-O"
+            CFLAGS_FOR_WARNINGS=
+            CFLAGS_FOR_DEBUG="-g"
+            MCFLAGS_FOR_CC=
+            ;;
+        
+        *)
+            C_COMPILER_TYPE=unknown
+            CFLAGS_FOR_ANSI=
+            CFLAGS_FOR_OPT="-O"
+            CFLAGS_FOR_WARNINGS=
+            CFLAGS_FOR_DEBUG="-g"
+            MCFLAGS_FOR_CC=
+            ;;
+    esac
+fi
 
 CFLAGS_FOR_OPT="$CFLAGS_FOR_OPT $CFLAGS_FOR_NO_STRICT_ALIASING"
 
