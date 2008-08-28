@@ -27,79 +27,108 @@
 :- module query.
 :- interface.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
 :- import_module profile.
 
 :- import_module bool.
-:- import_module char.
 :- import_module io.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
-:- pred try_exec(cmd::in, preferences::in, deep::in, string::out,
-    io::di, io::uo) is cc_multi.
+:- pred try_exec(cmd::in, preferences::in, deep::in, maybe_error(prog_rep)::in,
+    string::out, io::di, io::uo) is cc_multi.
+
+%-----------------------------------------------------------------------------%
+%
+% Declarations for reading and writing querys.
+%
+
+    % A deep profiler query.
+    %
+:- type deep_query
+    --->    deep_query(
+                maybe_cmd                   :: maybe(cmd),
+                deep_file_name              :: string,
+                maybe_prefs                 :: maybe(preferences)
+            ).
+
+    % A subtype of the above, with a mandatory command field.
+    %
+:- inst deep_query_with_cmd
+    --->    deep_query(bound(yes(ground)), ground, ground).
+
+:- func query_to_string(deep_query) = string.
+:- mode query_to_string(in(deep_query_with_cmd)) = out is det.
+
+:- func string_to_maybe_query(string) = maybe(deep_query).
+
+:- func string_to_maybe_cmd(string) = maybe(cmd).
+
+:- func string_to_maybe_pref(string) = maybe(preferences).
 
 %-----------------------------------------------------------------------------%
 
 :- type resp
     --->    html(string).
 
-:- type cmd_pref
-    --->    cmd_pref(cmd, preferences_indication).
-
 :- type cmd
     --->    deep_cmd_quit
     ;       deep_cmd_restart
     ;       deep_cmd_timeout(
-                cmd_timeout_minutes         :: int
+                cmd_timeout_minutes             :: int
             )
     ;       deep_cmd_menu
     ;       deep_cmd_root(
                 % If set to yes(Action), chase the dominant call sites
                 % until we get to a clique that is responsible for less than
                 % or equal to Action percent of the program's total callseqs.
-                cmd_root_maybe_action       :: maybe(int)
+                cmd_root_maybe_action           :: maybe(int)
             )
     ;       deep_cmd_clique(
-                cmd_clique_clique_id        :: clique_ptr
+                cmd_clique_clique_id            :: clique_ptr
             )
     ;       deep_cmd_proc(
-                cmd_proc_proc_id            :: proc_static_ptr
+                cmd_proc_proc_id                :: proc_static_ptr
             )
     ;       deep_cmd_proc_callers(
-                cmd_pc_proc_id              :: proc_static_ptr,
-                cmd_pc_called_groups        :: caller_groups,
-                cmd_pc_bunch_number         :: int,
-                cmd_pc_contour_exclusion    :: contour_exclusion
+                cmd_pc_proc_id                  :: proc_static_ptr,
+                cmd_pc_called_groups            :: caller_groups,
+                cmd_pc_bunch_number             :: int,
+                cmd_pc_contour_exclusion        :: contour_exclusion
             )
     ;       deep_cmd_program_modules
     ;       deep_cmd_module(
-                cmd_module_module_name      :: string
+                cmd_module_module_name          :: string
             )
     ;       deep_cmd_top_procs(
-                cmd_tp_display_limit        :: display_limit,
-                cmd_tp_sort_cost_kind       :: cost_kind,
-                cmd_tp_incl_desc            :: include_descendants,
-                cmd_tp_scope                :: measurement_scope
+                cmd_tp_display_limit            :: display_limit,
+                cmd_tp_sort_cost_kind           :: cost_kind,
+                cmd_tp_incl_desc                :: include_descendants,
+                cmd_tp_scope                    :: measurement_scope
+            )
+    ;       deep_cmd_procrep_coverage(
+                cmd_procrep_coverage_proc_id    :: proc_static_ptr
             )
 
     % The following commands are for debugging.
 
     ;       deep_cmd_dump_proc_static(
-                cmd_dps_id                  :: proc_static_ptr
+                cmd_dps_id                      :: proc_static_ptr
             )
     ;       deep_cmd_dump_proc_dynamic(
-                cmd_dpd_id                  :: proc_dynamic_ptr
+                cmd_dpd_id                      :: proc_dynamic_ptr
             )
     ;       deep_cmd_dump_call_site_static(
-                cmd_dcss_id                 :: call_site_static_ptr
+                cmd_dcss_id                     :: call_site_static_ptr
             )
     ;       deep_cmd_dump_call_site_dynamic(
-                cmd_dcsd_id                 :: call_site_dynamic_ptr
+                cmd_dcsd_id                     :: call_site_dynamic_ptr
             )
     ;       deep_cmd_dump_clique(
-                cmd_dcl_id                  :: clique_ptr
+                cmd_dcl_id                      :: clique_ptr
             ).
 
 :- type caller_groups
@@ -136,11 +165,6 @@
     ;       threshold_value(float).
             % threshold_value(Value): display procedures whose cost is at least
             % this value.
-
-:- type preferences_indication
-    --->    given_pref(preferences)
-    ;       default_pref
-    ;       all_pref.
 
 :- type preferences
     --->    preferences(
@@ -179,6 +203,11 @@
                 % called.
                 pref_inactive       :: inactive_items
             ).
+
+:- type preferences_indication
+    --->    given_pref(preferences)
+    ;       default_pref
+    ;       all_pref.
 
 :- type port_fields
     --->    no_port
@@ -266,6 +295,8 @@
     %
 :- func should_display_times(deep) = bool.
 
+:- func default_command = cmd.
+
 :- func solidify_preference(deep, preferences_indication) = preferences.
 
 :- func default_preferences(deep) = preferences.
@@ -283,14 +314,6 @@
 :- func default_contour_exclusion = contour_exclusion.
 :- func default_time_format = time_format.
 :- func default_inactive_items = inactive_items.
-
-:- func query_separator_char = char.
-
-:- func preferences_to_string(preferences) = string.
-:- func cmd_to_string(cmd) = string.
-:- func string_to_cmd(string, cmd) = cmd.
-:- func string_to_maybe_cmd(string) = maybe(cmd).
-:- func string_to_maybe_pref(string) = maybe(preferences).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -310,6 +333,7 @@
 :- import_module array.
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module char.
 :- import_module exception.
 :- import_module float.
 :- import_module int.
@@ -325,8 +349,8 @@
 
 %-----------------------------------------------------------------------------%
 
-try_exec(Cmd, Pref, Deep, HTML, !IO) :-
-    try_io(exec(Cmd, Pref, Deep), Result, !IO),
+try_exec(Cmd, Pref, Deep, MaybeProgrep, HTML, !IO) :-
+    try_io(exec(Cmd, Pref, Deep, MaybeProgrep), Result, !IO),
     (
         Result = succeeded(HTML)
     ;
@@ -355,10 +379,10 @@ try_exec(Cmd, Pref, Deep, HTML, !IO) :-
             [s(Msg)])
     ).
 
-:- pred exec(cmd::in, preferences::in, deep::in, string::out,
-    io::di, io::uo) is det.
+:- pred exec(cmd::in, preferences::in, deep::in, maybe_error(prog_rep)::in,
+    string::out, io::di, io::uo) is det.
 
-exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
+exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO) :-
     % XXX While we are working on converting the deep profiler to use
     % the new report structures, we can use the presence or absence
     % of this file to tell mdprof_cgi which method we want to use at the
@@ -393,10 +417,7 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
             old_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
         ;
             FileExists = no,
-            create_report(Cmd, Deep, Report),
-            Display = report_to_display(Deep, Prefs, Report),
-            HTML = htmlize_display(Deep, Prefs, Display),
-            HTMLStr = html_to_string(HTML)
+            new_exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO)
         )
     ;
         ( Cmd = deep_cmd_root(_)
@@ -404,12 +425,26 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
         ; Cmd = deep_cmd_dump_clique(_)
         ),
         old_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
+    ;
+        Cmd = deep_cmd_procrep_coverage(_),
+        new_exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO)
     ).
+
+    % Run the command through the new report generation code.
+    %
+:- pred new_exec(cmd::in, preferences::in, deep::in, maybe_error(prog_rep)::in,
+    string::out, io::di, io::uo) is det.
+
+new_exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO) :-
+    create_report(Cmd, Deep, MaybeProgRep, Report),
+    Display = report_to_display(Deep, Prefs, Report),
+    HTML = htmlize_display(Deep, Prefs, Display),
+    HTMLStr = html_to_string(HTML).
 
     % Old deep profiler cgi code.  This should remain supported until all cmds
     % have been updated to use the data structures in report.m.
     %
-:- pred old_exec(cmd::in, preferences::in, deep::in, string::out,
+:- pred old_exec(cmd::in, preferences::in, deep::in, string::out, 
     io::di, io::uo) is det.
 
 old_exec(deep_cmd_restart, _Pref, _Deep, _HTML, !IO) :-
@@ -493,6 +528,8 @@ old_exec(Cmd, Pref, Deep, HTML, !IO) :-
     ).
 old_exec(deep_cmd_dump_clique(CliquePtr), _Pref, Deep, HTML, !IO) :-
     HTML = generate_clique_debug_page(CliquePtr, Deep).
+old_exec(deep_cmd_procrep_coverage(_), _, _, HTML, !IO) :-
+    HTML = "query.m: deep_cmd_procrep_coverage is unsupported by old_exec\n". 
 
 %-----------------------------------------------------------------------------%
 
@@ -2247,6 +2284,8 @@ should_display_times(Deep) =
         no
     ).
 
+default_command = deep_cmd_menu.
+
 solidify_preference(Deep, PrefInd) = Pref :-
     (
         PrefInd = given_pref(Pref)
@@ -2299,6 +2338,7 @@ default_inactive_items = inactive_items(inactive_hide, inactive_hide).
 
 %-----------------------------------------------------------------------------%
 
+:- func query_separator_char = char.
 :- func cmd_separator_char = char.
 :- func pref_separator_char = char.
 :- func criteria_separator_char = char.
@@ -2314,95 +2354,106 @@ limit_separator_char = ('-').
 
 %-----------------------------------------------------------------------------%
 
+:- func cmd_to_string(cmd) = string.
+
 cmd_to_string(Cmd) = CmdStr :-
     (
         Cmd = deep_cmd_quit,
-        CmdStr = "quit"
+        CmdStr = cmd_str_quit 
     ;
         Cmd = deep_cmd_restart,
-        CmdStr = "restart"
+        CmdStr = cmd_str_restart
     ;
         Cmd = deep_cmd_timeout(Minutes),
-        CmdStr = string.format("timeout%c%d",
-            [c(cmd_separator_char), i(Minutes)])
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_timeout), c(cmd_separator_char), i(Minutes)])
     ;
         Cmd = deep_cmd_menu,
-        CmdStr = "menu"
+        CmdStr = cmd_str_menu
     ;
         Cmd = deep_cmd_root(MaybePercent),
         (
             MaybePercent = yes(Percent),
-            CmdStr = string.format("root%c%d",
-                [c(cmd_separator_char), i(Percent)])
+            CmdStr = string.format("%s%c%d",
+                [s(cmd_str_root), c(cmd_separator_char), i(Percent)])
         ;
             MaybePercent = no,
-            CmdStr = string.format("root%c%s",
-                [c(cmd_separator_char), s("no")])
+            CmdStr = string.format("%s%c%s",
+                [s(cmd_str_root), c(cmd_separator_char), s("no")])
         )
     ;
         Cmd = deep_cmd_clique(CliquePtr),
         CliquePtr = clique_ptr(CliqueNum),
-        CmdStr = string.format("clique%c%d",
-            [c(cmd_separator_char), i(CliqueNum)])
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_clique), c(cmd_separator_char), i(CliqueNum)])
     ;
         Cmd = deep_cmd_proc(PSPtr),
         PSPtr = proc_static_ptr(PSI),
-        CmdStr = string.format("proc%c%d",
-            [c(cmd_separator_char), i(PSI)])
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_proc), c(cmd_separator_char), i(PSI)])
     ;
         Cmd = deep_cmd_proc_callers(PSPtr, GroupCallers, BunchNum, Contour),
         PSPtr = proc_static_ptr(PSI),
         GroupCallersStr = caller_groups_to_string(GroupCallers),
         ContourStr = contour_exclusion_to_string(Contour),
-        CmdStr = string.format("proc_callers%c%d%c%s%c%d%c%s",
-            [c(cmd_separator_char), i(PSI),
+        CmdStr = string.format("%s%c%d%c%s%c%d%c%s",
+            [s(cmd_str_proc_callers),
+            c(cmd_separator_char), i(PSI),
             c(cmd_separator_char), s(GroupCallersStr),
             c(cmd_separator_char), i(BunchNum),
             c(cmd_separator_char), s(ContourStr)])
     ;
         Cmd = deep_cmd_program_modules,
-        CmdStr = "program_modules"
+        CmdStr = cmd_str_program_modules
     ;
         Cmd = deep_cmd_module(ModuleName),
-        CmdStr = string.format("module%c%s",
-            [c(cmd_separator_char), s(ModuleName)])
+        CmdStr = string.format("%s%c%s",
+            [s(cmd_str_module), c(cmd_separator_char), s(ModuleName)])
     ;
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         LimitStr = limit_to_string(Limit),
         CostKindStr = cost_kind_to_string(CostKind),
         InclDescStr = incl_desc_to_string(InclDesc),
         ScopeStr = scope_to_string(Scope),
-        CmdStr = string.format("top_procs%c%s%c%s%c%s%c%s",
-            [c(cmd_separator_char), s(LimitStr),
+        CmdStr = string.format("%s%c%s%c%s%c%s%c%s",
+            [s(cmd_str_top_procs),
+            c(cmd_separator_char), s(LimitStr),
             c(cmd_separator_char), s(CostKindStr),
             c(cmd_separator_char), s(InclDescStr),
             c(cmd_separator_char), s(ScopeStr)])
     ;
+        Cmd = deep_cmd_procrep_coverage(PSPtr),
+        PSPtr = proc_static_ptr(PSI),
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_procrep_coverage), c(cmd_separator_char), i(PSI)])
+    ;
         Cmd = deep_cmd_dump_proc_static(PSPtr),
         PSPtr = proc_static_ptr(PSI),
-        CmdStr = string.format("dump_proc_static%c%d",
-            [c(cmd_separator_char), i(PSI)])
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_dump_proc_static), c(cmd_separator_char), i(PSI)])
     ;
         Cmd = deep_cmd_dump_proc_dynamic(PDPtr),
         PDPtr = proc_dynamic_ptr(PDI),
-        CmdStr = string.format("dump_proc_dynamic%c%d",
-            [c(cmd_separator_char), i(PDI)])
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_dump_proc_dynamic), c(cmd_separator_char), i(PDI)])
     ;
         Cmd = deep_cmd_dump_call_site_static(CSSPtr),
         CSSPtr = call_site_static_ptr(CSSI),
-        CmdStr = string.format("dump_call_site_static%c%d",
-            [c(cmd_separator_char), i(CSSI)])
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_dump_call_site_static), c(cmd_separator_char), i(CSSI)])
     ;
         Cmd = deep_cmd_dump_call_site_dynamic(CSDPtr),
         CSDPtr = call_site_dynamic_ptr(CSDI),
-        CmdStr = string.format("dump_call_site_dynamic%c%d",
-            [c(cmd_separator_char), i(CSDI)])
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_dump_call_site_dynamic), c(cmd_separator_char), i(CSDI)])
     ;
         Cmd = deep_cmd_dump_clique(CliquePtr),
         CliquePtr = clique_ptr(CliqueNum),
-        CmdStr = string.format("dump_clique%c%d",
-            [c(cmd_separator_char), i(CliqueNum)])
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_dump_raw_clique), c(cmd_separator_char), i(CliqueNum)])
     ).
+
+:- func preferences_to_string(preferences) = string.
 
 preferences_to_string(Pref) = PrefStr :-
     Pref = preferences(Fields, Box, Colour, MaybeAncestorLimit,
@@ -2427,6 +2478,8 @@ preferences_to_string(Pref) = PrefStr :-
         c(pref_separator_char), s(inactive_items_to_string(InactiveItems))
     ]).
 
+:- func string_to_cmd(string, cmd) = cmd.
+
 string_to_cmd(QueryString, DefaultCmd) = Cmd :-
     MaybeCmd = string_to_maybe_cmd(QueryString),
     (
@@ -2439,7 +2492,7 @@ string_to_cmd(QueryString, DefaultCmd) = Cmd :-
 string_to_maybe_cmd(QueryString) = MaybeCmd :-
     split(QueryString, pref_separator_char, Pieces),
     (
-        Pieces = ["root", MaybePercentStr],
+        Pieces = [cmd_str_root, MaybePercentStr],
         ( MaybePercentStr = "no" ->
             MaybePercent = no
         ; string.to_int(MaybePercentStr, Percent) ->
@@ -2451,21 +2504,21 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         Cmd = deep_cmd_root(MaybePercent),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["clique", CliqueNumStr],
+        Pieces = [cmd_str_clique, CliqueNumStr],
         string.to_int(CliqueNumStr, CliqueNum)
     ->
         CliquePtr = clique_ptr(CliqueNum),
         Cmd = deep_cmd_clique(CliquePtr),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["proc", PSIStr],
+        Pieces = [cmd_str_proc, PSIStr],
         string.to_int(PSIStr, PSI)
     ->
         PSPtr = proc_static_ptr(PSI),
         Cmd = deep_cmd_proc(PSPtr),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["proc_callers", PSIStr, GroupCallersStr, BunchNumStr,
+        Pieces = [cmd_str_proc_callers, PSIStr, GroupCallersStr, BunchNumStr, 
             ContourStr],
         string.to_int(PSIStr, PSI),
         string_to_caller_groups(GroupCallersStr, GroupCallers),
@@ -2476,17 +2529,18 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         Cmd = deep_cmd_proc_callers(PSPtr, GroupCallers, BunchNum, Contour),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["program_modules"]
+        Pieces = [cmd_str_program_modules]
     ->
         Cmd = deep_cmd_program_modules,
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["module", ModuleName]
+        Pieces = [cmd_str_module, ModuleName]
     ->
         Cmd = deep_cmd_module(ModuleName),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["top_procs", LimitStr, CostKindStr, InclDescStr, ScopeStr],
+        Pieces = [cmd_str_top_procs, LimitStr, CostKindStr, InclDescStr, 
+            ScopeStr],
         string_to_limit(LimitStr, Limit),
         string_to_cost_kind(CostKindStr, CostKind),
         string_to_incl_desc(InclDescStr, InclDesc),
@@ -2495,58 +2549,64 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["menu"]
+        Pieces = [cmd_str_procrep_coverage, PSIStr],
+        string.to_int(PSIStr, PSI)
+    ->
+        PSPtr = proc_static_ptr(PSI),
+        MaybeCmd = yes(deep_cmd_procrep_coverage(PSPtr))
+    ;
+        Pieces = [cmd_str_menu]
     ->
         Cmd = deep_cmd_menu,
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["dump_proc_static", PSIStr],
+        Pieces = [cmd_str_dump_proc_static, PSIStr],
         string.to_int(PSIStr, PSI)
     ->
         PSPtr = proc_static_ptr(PSI),
         Cmd = deep_cmd_dump_proc_static(PSPtr),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["dump_proc_dynamic", PDIStr],
+        Pieces = [cmd_str_dump_proc_dynamic, PDIStr],
         string.to_int(PDIStr, PDI)
     ->
         PDPtr = proc_dynamic_ptr(PDI),
         Cmd = deep_cmd_dump_proc_dynamic(PDPtr),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["dump_call_site_static", CSSIStr],
+        Pieces = [cmd_str_dump_call_site_static, CSSIStr],
         string.to_int(CSSIStr, CSSI)
     ->
         CSSPtr = call_site_static_ptr(CSSI),
         Cmd = deep_cmd_dump_call_site_static(CSSPtr),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["dump_call_site_dynamic", CSDIStr],
+        Pieces = [cmd_str_dump_call_site_dynamic, CSDIStr],
         string.to_int(CSDIStr, CSDI)
     ->
         CSDPtr = call_site_dynamic_ptr(CSDI),
         Cmd = deep_cmd_dump_call_site_dynamic(CSDPtr),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["dump_clique", CliqueNumStr],
+        Pieces = [cmd_str_dump_raw_clique, CliqueNumStr],
         string.to_int(CliqueNumStr, CliqueNum)
     ->
         CliquePtr = clique_ptr(CliqueNum),
         Cmd = deep_cmd_dump_clique(CliquePtr),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["timeout", TimeOutStr],
+        Pieces = [cmd_str_timeout, TimeOutStr],
         string.to_int(TimeOutStr, TimeOut)
     ->
         Cmd = deep_cmd_timeout(TimeOut),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["restart"]
+        Pieces = [cmd_str_restart]
     ->
         Cmd = deep_cmd_restart,
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = ["quit"]
+        Pieces = [cmd_str_quit]
     ->
         Cmd = deep_cmd_quit,
         MaybeCmd = yes(Cmd)
@@ -2582,7 +2642,66 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
         MaybePreferences = no
     ).
 
-%-----------------------------------------------------------------------------%
+query_to_string(DeepQuery) = String :-
+    DeepQuery = deep_query(yes(Cmd), DeepFileName, MaybePreferences), 
+    (
+        MaybePreferences = yes(Preferences),
+        PreferencesString = preferences_to_string(Preferences)
+    ;
+        MaybePreferences = no,
+        PreferencesString = ""
+    ),
+    String = cmd_to_string(Cmd) ++
+        string.char_to_string(query_separator_char) ++
+        PreferencesString ++
+        string.char_to_string(query_separator_char) ++
+        DeepFileName.
+
+string_to_maybe_query(String) = MaybeDeepQuery :-
+    % Breakup the string into seperate peices, there may be one to four peices.
+    (
+        split_query_string(String, MaybeCmdStr, MaybePrefStr, DeepFileName)
+    ->
+        (
+            MaybeCmdStr = no,
+            MaybeCmd = no
+        ;
+            MaybeCmdStr = yes(CmdStr),
+            MaybeCmd = yes(string_to_cmd(CmdStr, deep_cmd_menu))
+        ),
+        (
+            MaybePrefStr = yes(PrefStr),
+            MaybePreferences = string_to_maybe_pref(PrefStr)
+        ;
+            MaybePrefStr = no,
+            MaybePreferences = no
+        ),
+        MaybeDeepQuery = 
+            yes(deep_query(MaybeCmd, DeepFileName, MaybePreferences)) 
+    ;
+        MaybeDeepQuery = no
+    ).
+
+:- pred split_query_string(string::in, maybe(string)::out, maybe(string)::out,
+    string::out) is semidet.
+
+split_query_string(QueryString, MaybeCmdStr, MaybePrefStr, DeepFileName) :-
+    split(QueryString, query_separator_char, Pieces),
+    ( Pieces = [DeepFileName0] ->
+        MaybeCmdStr = no,
+        MaybePrefStr = no,
+        DeepFileName = DeepFileName0
+    ; Pieces = [CmdStr, DeepFileName0] ->
+        MaybeCmdStr = yes(CmdStr),
+        MaybePrefStr = no,
+        DeepFileName = DeepFileName0
+    ; Pieces = [CmdStr, PrefsStr, DeepFileName0] ->
+        MaybeCmdStr = yes(CmdStr),
+        MaybePrefStr = yes(PrefsStr),
+        DeepFileName = DeepFileName0
+    ;
+        fail
+    ).
 
 :- func port_fields_to_string(port_fields) = string.
 
@@ -2879,6 +2998,59 @@ box_to_string(Box) = String :-
 
 string_to_box("box",   box_tables).
 string_to_box("nobox", do_not_box_tables).
+
+    % Constant strings used in command links and parsing.
+    %
+:- func cmd_str_quit = string.
+cmd_str_quit = "quit".
+
+:- func cmd_str_restart = string.
+cmd_str_restart = "restart".
+
+:- func cmd_str_timeout = string.
+cmd_str_timeout = "timeout".
+
+:- func cmd_str_menu = string.
+cmd_str_menu = "menu".
+
+:- func cmd_str_root = string.
+cmd_str_root = "root".
+
+:- func cmd_str_clique = string.
+cmd_str_clique = "clique".
+
+:- func cmd_str_proc = string.
+cmd_str_proc = "proc".
+
+:- func cmd_str_proc_callers = string.
+cmd_str_proc_callers = "proc_callers".
+
+:- func cmd_str_program_modules = string.
+cmd_str_program_modules = "program_modules".
+
+:- func cmd_str_module = string.
+cmd_str_module = "module".
+
+:- func cmd_str_top_procs = string.
+cmd_str_top_procs = "top_procs".
+
+:- func cmd_str_procrep_coverage = string.
+cmd_str_procrep_coverage = "procrep_coverage".
+
+:- func cmd_str_dump_proc_static = string.
+cmd_str_dump_proc_static = "dump_proc_static".
+
+:- func cmd_str_dump_proc_dynamic = string.
+cmd_str_dump_proc_dynamic = "dump_proc_dynamic".
+
+:- func cmd_str_dump_call_site_static = string.
+cmd_str_dump_call_site_static = "dump_call_site_static".
+
+:- func cmd_str_dump_call_site_dynamic = string.
+cmd_str_dump_call_site_dynamic = "dump_call_site_dynamic".
+
+:- func cmd_str_dump_raw_clique = string.
+cmd_str_dump_raw_clique = "dump_raw_clique".
 
 %----------------------------------------------------------------------------%
 :- end_module query.

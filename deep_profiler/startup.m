@@ -20,6 +20,8 @@
 :- interface.
 
 :- import_module dump.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module profile.
 
 :- import_module bool.
@@ -29,13 +31,27 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_and_startup(string::in, string::in, list(string)::in, bool::in,
-    maybe(io.output_stream)::in, list(string)::in, maybe_error(deep)::out,
+    % The result of read_and_startup below.
+    %
+:- type maybe_deep_and_progrep
+    --->    error(string)
+                % This error was raised while reading the Deep data.
+
+    ;       deep_and_error(deep, string)
+                % The Deep data was read succesfully, but the reading the
+                % Progrep data raised an error.
+                
+    ;       deep_and_progrep(deep, prog_rep).
+                % Both Deep and Progrep files where read successfully.
+
+
+:- pred read_and_startup(string::in, string::in, string::in, bool::in,
+    maybe(io.output_stream)::in, list(string)::in, maybe_deep_and_progrep::out,
     io::di, io::uo) is det.
 
-:- pred read_and_startup(string::in, string::in, list(string)::in, bool::in,
+:- pred read_and_startup(string::in, string::in, string::in, bool::in,
     maybe(io.output_stream)::in, list(string)::in, dump_options::in,
-    maybe_error(deep)::out, io::di, io::uo) is det.
+    maybe_deep_and_progrep::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -60,41 +76,57 @@
 
 %-----------------------------------------------------------------------------%
 
-read_and_startup(Machine, ScriptName, DataFileNames, Canonical,
+read_and_startup(Machine, ScriptName, DataFileName, Canonical,
         MaybeOutputStream, DumpStages, Res, !IO) :-
-    read_and_startup(Machine, ScriptName, DataFileNames, Canonical,
+    read_and_startup(Machine, ScriptName, DataFileName, Canonical,
         MaybeOutputStream, DumpStages, default_dump_options, Res, !IO).
 
-read_and_startup(Machine, ScriptName, DataFileNames, Canonical,
+read_and_startup(Machine, ScriptName, DataFileName, Canonical,
         MaybeOutputStream, DumpStages, DumpOptions, Res, !IO) :-
+    maybe_report_stats(MaybeOutputStream, !IO),
+    maybe_report_msg(MaybeOutputStream,
+        "% Reading graph data...\n", !IO),
+    read_call_graph(DataFileName, Res0, !IO),
+    maybe_report_msg(MaybeOutputStream,
+        "% Done.\n", !IO),
+    maybe_report_stats(MaybeOutputStream, !IO),
     (
-        DataFileNames = [],
-        % This should have been caught and reported by main.
-        error("read_and_startup: no data files")
-    ;
-        DataFileNames = [DataFileName],
-        maybe_report_stats(MaybeOutputStream, !IO),
+        Res0 = ok(InitDeep),
+        startup(Machine, ScriptName, DataFileName, 
+            Canonical, MaybeOutputStream, DumpStages, DumpOptions,
+            InitDeep, Deep, !IO),
+        ProgrepFileName = make_progrep_filename(DataFileName),
         maybe_report_msg(MaybeOutputStream,
-            "% Reading graph data...\n", !IO),
-        read_call_graph(DataFileName, Res0, !IO),
-        maybe_report_msg(MaybeOutputStream,
-            "% Done.\n", !IO),
-        maybe_report_stats(MaybeOutputStream, !IO),
+            "% Reading progrep data...\n", !IO),
+        read_prog_rep_file(ProgrepFileName, Res1, !IO),
         (
-            Res0 = ok(InitDeep),
-            startup(Machine, ScriptName, DataFileName, Canonical,
-                MaybeOutputStream, DumpStages, DumpOptions, InitDeep, Deep,
-                !IO),
-            Res = ok(Deep)
+            Res1 = ok(Progrep),
+            maybe_report_msg(MaybeOutputStream,
+                "% Done.\n", !IO),
+            Res = deep_and_progrep(Deep, Progrep)
         ;
-            Res0 = error(Error),
-            Res = error(Error)
+            Res1 = error(Error),
+            ErrorMessage = io.error_message(Error),
+            maybe_report_msg(MaybeOutputStream,
+                "% Error: " ++ ErrorMessage ++ "\n", !IO),
+            % This error isn't displayed until a query needs the progrep
+            % data.
+            Res = deep_and_error(Deep, ErrorMessage)
         )
     ;
-        DataFileNames = [_, _ | _],
-        error("mdprof_server: merging of data files is not yet implemented")
+        Res0 = error(Error),
+        Res = error(Error)
     ).
 
+:- func make_progrep_filename(string) = string.
+
+make_progrep_filename(DataFileName) = ProgrepFileName :-
+    ( remove_suffix(DataFileName, ".data", BaseFileName) ->
+        ProgrepFileName = BaseFileName ++ ".procrep"
+    ;
+        error("Couldn't remove suffix from deep file name: " ++
+            DataFileName)
+    ).
 
 :- pred startup(string::in, string::in, string::in, bool::in,
     maybe(io.output_stream)::in, list(string)::in, dump_options::in,

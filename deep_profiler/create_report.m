@@ -16,13 +16,17 @@
 :- module create_report.
 :- interface.
 
-:- import_module report.
+:- import_module maybe.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module profile.
 :- import_module query.
+:- import_module report.
 
 %-----------------------------------------------------------------------------%
 
-:- pred create_report(cmd::in, deep::in, deep_report::out) is det.
+:- pred create_report(cmd::in, deep::in, maybe_error(prog_rep)::in, 
+    deep_report::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -31,6 +35,7 @@
 :- import_module apply_exclusion.
 :- import_module measurement_units.
 :- import_module measurements.
+:- import_module program_representation_utils.
 :- import_module top_procs.
 
 :- import_module array.
@@ -48,7 +53,7 @@
 
 %-----------------------------------------------------------------------------%
 
-create_report(Cmd, Deep, Report) :-
+create_report(Cmd, Deep, MaybeProgRep, Report) :-
     (
         Cmd = deep_cmd_quit,
         Msg = string.format("Shutting down deep profile server for %s.",
@@ -84,6 +89,18 @@ create_report(Cmd, Deep, Report) :-
         create_top_procs_report(Deep, Limit, CostKind, InclDesc, Scope,
             MaybeTopProcsReport),
         Report = report_top_procs(MaybeTopProcsReport)
+    ;
+        Cmd = deep_cmd_procrep_coverage(PSPtr),
+        (   
+            MaybeProgRep = ok(ProgRep),
+            generate_procrep_coverage_dump_report(Deep, ProgRep, PSPtr,
+                MaybeProcrepCoverageReport)
+        ;
+            MaybeProgRep = error(Error),
+            MaybeProcrepCoverageReport = 
+                error("No procedure representation information: " ++ Error) 
+        ),
+        Report = report_procrep_coverage_dump(MaybeProcrepCoverageReport)
     ;
         Cmd = deep_cmd_proc(PSPtr),
         create_proc_report(Deep, PSPtr, MaybeProcReport),
@@ -511,9 +528,31 @@ create_proc_caller_cliques(Deep, CalleePSPtr, CliquePtr - CSDPtrs) =
     own_and_inherit_to_perf_row_data(Deep, CliqueDesc, Own, Desc,
         PerfRowData).
 
+%----------------------------------------------------------------------------%
+%
+% Code to generate the coverage annotated procedure representation report.
+%
+
+:- pred generate_procrep_coverage_dump_report(deep::in, prog_rep::in,
+    proc_static_ptr::in, maybe_error(procrep_coverage_info)::out) is det.
+
+generate_procrep_coverage_dump_report(Deep, ProgRep, PSPtr, MaybeReport) :-
+    ( valid_proc_static_ptr(Deep, PSPtr) ->
+        deep_lookup_proc_statics(Deep, PSPtr, PS),
+        ProcLabel = PS ^ ps_id,
+        ( progrep_search_proc(ProgRep, ProcLabel, ProcRep) ->
+            MaybeReport = ok(ProcRep)
+        ;
+            MaybeReport = 
+                error("Program Representation doesn't contain procedure")
+        )
+    ;
+        MaybeReport = error("Invalid proc_static index")
+    ).
+
 %-----------------------------------------------------------------------------%
 %
-% Code to build the dump reports.
+% Code to build the other dump reports.
 %
 
 :- pred create_proc_static_dump_report(deep::in, proc_static_ptr::in,
@@ -524,11 +563,14 @@ create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDumpInfo) :-
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         % Should we dump some other fields?
         PS = proc_static(_ProcId, _DeclModule, RefinedName, RawName,
-            FileName, LineNumber, _InInterface, CallSites, _CoveragePoints,
+            FileName, LineNumber, _InInterface, CallSites, CoveragePoints,
             _IsZeroed),
-        array.max(CallSites, NumCallSites),
+        array.max(CallSites, MaxCallSiteIdx),
+        NumCallSites = MaxCallSiteIdx + 1,
+        array.max(CoveragePoints, MaxCoveragePointIdx),
+        NumCoveragePoints = MaxCoveragePointIdx + 1,
         ProcStaticDumpInfo = proc_static_dump_info(PSPtr, RawName, RefinedName,
-            FileName, LineNumber, NumCallSites),
+            FileName, LineNumber, NumCallSites, NumCoveragePoints),
         MaybeProcStaticDumpInfo = ok(ProcStaticDumpInfo)
     ;
         MaybeProcStaticDumpInfo = error("invalid proc_static index")

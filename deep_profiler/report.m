@@ -20,6 +20,8 @@
 :- module report.
 :- interface.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
 :- import_module profile.
 % TODO: The data structures in query should be moved into a different module,
@@ -40,6 +42,7 @@
     ;       report_module(maybe_error(module_report))
     ;       report_top_procs(maybe_error(top_procs_report))
     ;       report_proc(maybe_error(proc_report))
+    ;       report_procrep_coverage_dump(maybe_error(procrep_coverage_info))
     ;       report_proc_callers(maybe_error(proc_callers_report))
     ;       report_proc_static_dump(maybe_error(proc_static_dump_info))
     ;       report_proc_dynamic_dump(maybe_error(proc_dynamic_dump_info))
@@ -139,6 +142,8 @@
                 nci_type_subst              :: string
             ).
 
+:- type procrep_coverage_info == proc_rep.
+
 :- type proc_callers_report
     --->    proc_callers_report(
                 % The id of the procedure.
@@ -185,8 +190,10 @@
                 psdi_refined_name           :: string,
                 psdi_filename               :: string,
                 psdi_linenumber             :: int,
-                % Should we list the call_site_statics themselves?
-                psdi_num_call_sites         :: int
+                % Should we list the call_site_statics and coverage points
+                % themselves?
+                psdi_num_call_sites         :: int,
+                psdi_num_coverage_points    :: int
             ).
 
 :- type proc_dynamic_dump_info

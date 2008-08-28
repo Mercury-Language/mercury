@@ -1237,7 +1237,7 @@ next_goal_generates_internal_event([goal_and_path(NextGoal, _) | _]) :-
 
 match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
         ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0) = MaybePrims :-
-    Goal = goal_rep(GoalExpr, _),
+    Goal = goal_rep(GoalExpr, _, _),
     (
         GoalExpr = conj_rep(Conjs),
         add_paths_to_conjuncts(Conjs, Path, 1, ConjPaths),

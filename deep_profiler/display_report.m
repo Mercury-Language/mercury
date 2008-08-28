@@ -35,7 +35,10 @@
 
 :- implementation.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
+:- import_module program_representation_utils.
 
 :- import_module array.
 :- import_module assoc_list.
@@ -110,6 +113,16 @@ report_to_display(Deep, Prefs, Report) = Display :-
         ;
             MaybeProcCallersReport = error(Msg),
             Display = display(no, [display_heading(Msg)])
+        )
+    ;
+        Report = report_procrep_coverage_dump(MaybeProcrepCoverageInfo),
+        (
+            MaybeProcrepCoverageInfo = ok(ProcrepCoverageInfo),
+            display_report_procrep_coverage_info(ProcrepCoverageInfo,
+                Display)
+        ;
+            MaybeProcrepCoverageInfo = error(Msg),
+            Display = display(no, [display_text(Msg)])
         )
     ;
         Report = report_proc_static_dump(MaybeProcStaticDumpInfo),
@@ -974,6 +987,21 @@ make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum,
     Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, ContourExcl),
     Link = deep_link(Cmd, yes(Prefs), Label, link_class_control),
     Item = display_link(Link).
+            
+%-----------------------------------------------------------------------------%
+%
+% Code to display procrep_coverage dumps 
+%
+
+:- pred display_report_procrep_coverage_info(procrep_coverage_info::in,
+    display::out) is det.
+
+display_report_procrep_coverage_info(ProcrepCoverageInfo, Display) :-
+    Title = "Procrep coverage dump",
+    print_proc_to_strings(ProcrepCoverageInfo, ProcRepStrings),
+    string.append_list(list(ProcRepStrings), ProcRepString),
+    Display = display(yes(Title), [display_verbatim(ProcRepString)]).
+    
 
 %-----------------------------------------------------------------------------%
 %
@@ -987,16 +1015,17 @@ make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum,
 
 display_report_proc_static_dump(ProcStaticDumpInfo, Display) :-
     ProcStaticDumpInfo = proc_static_dump_info(PSPtr, RawName, RefinedName,
-        FileName, LineNumber, NumCallSites),
+        FileName, LineNumber, NumCallSites, NumCoveragePoints),
     PSPtr = proc_static_ptr(PSI),
     string.format("Dump of proc_static %d", [i(PSI)], Title),
 
     Values =
-        [("Raw name:"               - td_s(RawName)),
-        ("Refined name:"            - td_s(RefinedName)),
-        ("File name:"               - td_s(FileName)),
-        ("Line number:"             - td_i(LineNumber)),
-        ("Number of call sites:"    - td_i(NumCallSites))],
+        [("Raw name:"                   - td_s(RawName)),
+        ("Refined name:"                - td_s(RefinedName)),
+        ("File name:"                   - td_s(FileName)),
+        ("Line number:"                 - td_i(LineNumber)),
+        ("Number of call sites:"        - td_i(NumCallSites)),
+        ("Number of coverage points:"   - td_i(NumCoveragePoints))],
 
     Rows = list.map(make_labelled_table_row, Values),
     Table = table(table_class_do_not_box, 2, no, Rows),

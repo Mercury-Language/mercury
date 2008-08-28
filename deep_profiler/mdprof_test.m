@@ -29,6 +29,8 @@
 :- import_module conf.
 :- import_module dump.
 :- import_module interface.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module profile.
 :- import_module query.
 :- import_module startup.
@@ -115,10 +117,12 @@ main2(ProgName, Args, Options, !IO) :-
             io.stdout_stream(Stdout, !IO),
             MaybeOutput = yes(Stdout)
         ),
-        read_and_startup(Machine, ScriptName, [FileName], Canonical,
+        read_and_startup(Machine, ScriptName, FileName, Canonical,
             MaybeOutput, DumpStages, DumpOptions, Res, !IO),
         (
-            Res = ok(Deep),
+            ( Res = deep_and_error(Deep, _)
+            ; Res = deep_and_progrep(Deep, _)
+            ),
             lookup_bool_option(Options, test, Test),
             (
                 Test = no
@@ -169,10 +173,12 @@ verify_profile_2(ProgName, Options, FileName, !IO) :-
     lookup_bool_option(Options, canonical_clique, Canonical),
     Machine = "dummy_server",      % For verification this doesn't matter.
     script_name(ScriptName, !IO),
-    read_and_startup(Machine, ScriptName, [FileName], Canonical, no,
+    read_and_startup(Machine, ScriptName, FileName, Canonical, no,
         [], default_dump_options, Res, !IO),
     (
-        Res = ok(_Deep)
+        Res = deep_and_error(_Deep, _ProgrepError)
+    ;
+        Res = deep_and_progrep(_Deep, _Progrep)
     ;
         Res = error(Error),
         io.set_exit_status(1, !IO),
@@ -232,7 +238,8 @@ test_server(DirName, Pref, Deep, !IO) :-
 
 test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_clique(clique_ptr(Cur)), Pref, Deep, HTML, !IO),
+        try_exec(deep_cmd_clique(clique_ptr(Cur)), Pref, Deep, progrep_error,
+            HTML, !IO),
         write_test_html(DirName, "clique", Cur, HTML, !IO),
         test_cliques(Cur + 1, Max, DirName, Pref, Deep, !IO)
     ;
@@ -244,12 +251,18 @@ test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
 
 test_procs(Cur, Max, DirName, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_proc(proc_static_ptr(Cur)), Pref, Deep, HTML, !IO),
+        try_exec(deep_cmd_proc(proc_static_ptr(Cur)), Pref, Deep,
+            progrep_error, HTML, !IO),
         write_test_html(DirName, "proc", Cur, HTML, !IO),
         test_procs(Cur + 1, Max, DirName, Pref, Deep, !IO)
     ;
         true
     ).
+
+:- func progrep_error = maybe_error(prog_rep).
+
+progrep_error = 
+    error("No Program Representation available when using mdprof_test").
 
 :- pred write_test_html(string::in, string::in, int::in, string::in,
     io::di, io::uo) is det.

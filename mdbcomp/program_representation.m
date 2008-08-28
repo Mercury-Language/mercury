@@ -44,6 +44,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module unit.
 :- import_module type_desc.
 
     % read_prog_rep_file(FileName, Result, !IO)
@@ -51,23 +52,29 @@
 :- pred read_prog_rep_file(string::in, io.res(prog_rep)::out, io::di, io::uo)
     is det.
 
-:- type prog_rep
+:- type prog_rep(GoalAnnotation)
     --->    prog_rep(
-                list(module_rep)
+                list(module_rep(GoalAnnotation))
             ).
 
-:- type module_rep
+:- type prog_rep == prog_rep(unit).
+
+:- type module_rep(GoalAnnotation)
     --->    module_rep(
                 mr_name         :: string,          % The module name.
                 mr_string_table :: string_table,
-                mr_procs        :: list(proc_rep)
+                mr_procs        :: list(proc_rep(GoalAnnotation))
             ).
 
-:- type proc_rep
+:- type module_rep == module_rep(unit).
+
+:- type proc_rep(GoalAnnotation)
     --->    proc_rep(
                 pr_id           :: string_proc_label,
-                pr_defn         :: proc_defn_rep
+                pr_defn         :: proc_defn_rep(GoalAnnotation)
             ).
+
+:- type proc_rep == proc_rep(unit).
 
     % A string_proc_label is a data structure that uniquely identifies a
     % procedure. It is a version of the proc_label type from prim_data.m
@@ -107,14 +114,14 @@
     % Each element of this structure will correspond one-to-one
     % to an element of the original HLDS at the code generation stage.
 
-:- type proc_defn_rep
+:- type proc_defn_rep(GoalAnnotation)
     --->    proc_defn_rep(
                 % The head variables, in order, including the ones introduced
                 % by the compiler.
                 pdr_head_vars           :: list(var_rep),
 
                 % The procedure body.
-                pdr_goal                :: goal_rep,
+                pdr_goal                :: goal_rep(GoalAnnotation),
 
                 % The variable table.
                 pdr_var_table           :: var_table,
@@ -124,33 +131,58 @@
                 pdr_detism              :: detism_rep
             ).
 
-:- type goal_rep
+:- type proc_defn_rep == proc_defn_rep(unit).
+
+:- type goal_rep(GoalAnnotation)
     --->    goal_rep(
-                goal_expr_rep       :: goal_expr_rep,
-                goal_detism_rep     :: detism_rep
+                goal_expr_rep       :: goal_expr_rep(GoalAnnotation),
+                    % The expression this goal represents.
+                
+                goal_detism_rep     :: detism_rep,
+                    % The determinism of this goal.
+
+                goal_annotation     :: GoalAnnotation
+                    % This slot may be used to annotate the goal with some
+                    % extra information.  The deep profiling tools make use of
+                    % this to associate coverage profiling data with goals.
             ).
 
-:- type goal_expr_rep
+:- type goal_rep == goal_rep(unit).
+
+:- type goal_expr_rep(GoalAnnotation)
     --->    conj_rep(
-                list(goal_rep)      % The conjuncts in the original order.
+                list(goal_rep(GoalAnnotation))
+                    % The conjuncts in the original order.
             )
     ;       disj_rep(
-                list(goal_rep)      % The disjuncts in the original order.
+                list(goal_rep(GoalAnnotation))
+                    % The disjuncts in the original order.
             )
     ;       switch_rep(
-                var_rep,            % The variable being switched on.
-                list(case_rep)      % The switch arms in the original order.
+                var_rep,            
+                    % The variable being switched on.
+                
+                list(case_rep(GoalAnnotation))
+                    % The switch arms in the original order.
             )
     ;       ite_rep(
-                goal_rep,           % Condition.
-                goal_rep,           % Then branch.
-                goal_rep            % Else branch.
+                goal_rep(GoalAnnotation),
+                    % Condition.
+                
+                goal_rep(GoalAnnotation),
+                    % Then branch.
+                
+                goal_rep(GoalAnnotation)
+                    % Else branch.
             )
     ;       negation_rep(
-                goal_rep            % The negated goal.
+                goal_rep(GoalAnnotation)
+                    % The negated goal.
             )
     ;       scope_rep(
-                goal_rep,           % The quantified goal.
+                goal_rep(GoalAnnotation),
+                    % The quantified goal.
+                
                 maybe_cut
             )
     ;       atomic_goal_rep(
@@ -161,16 +193,21 @@
                 atomic_goal_rep
             ).
 
-:- type case_rep
+:- type case_rep(GoalAnnotation)
     --->    case_rep(
-                cons_id_arity_rep,  % The name and arity of the first
-                                    % function symbol for which this switch arm
-                                    % is applicable.
+                cons_id_arity_rep,  
+                    % The name and arity of the first function symbol for which
+                    % this switch arm is applicable.
+                
                 list(cons_id_arity_rep),
-                                    % The names and arities of any other
-                                    % function symbols for this switch arm.
-                goal_rep            % The code of the switch arm.
+                    % The names and arities of any other function symbols for
+                    % this switch arm.
+                
+                goal_rep(GoalAnnotation)
+                    % The code of the switch arm.
             ).
+
+:- type case_rep == case_rep(unit).
 
 :- type atomic_goal_rep
     --->    unify_construct_rep(
@@ -289,7 +326,7 @@
     % If the given goal generates internal events directly then this
     % function will return yes and no otherwise.
     %
-:- func goal_generates_internal_event(goal_rep) = bool.
+:- func goal_generates_internal_event(goal_rep(unit)) = bool.
 
     % call_does_not_generate_events(ModuleName, PredName, Arity): succeeds iff
     % a call to the named predicate will not generate events in a debugging
@@ -545,7 +582,6 @@
     %
 :- pred coverage_point_type_c_value(cp_type::in, string::out) is det.
 
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -610,10 +646,10 @@ call_does_not_generate_events(ModuleName, PredName, Arity) :-
         )
     ).
 
-goal_generates_internal_event(goal_rep(GoalExpr, _)) =
+goal_generates_internal_event(goal_rep(GoalExpr, _, _)) =
     goal_expr_generates_internal_event(GoalExpr).
 
-:- func goal_expr_generates_internal_event(goal_expr_rep) = bool.
+:- func goal_expr_generates_internal_event(goal_expr_rep(unit)) = bool.
 
 goal_expr_generates_internal_event(conj_rep(_)) = no.
 goal_expr_generates_internal_event(disj_rep(_)) = yes.
@@ -801,7 +837,7 @@ lookup_var_name(VarTable, VarRep, String) :-
 read_file_as_bytecode(FileName, Result, !IO) :-
     read_file_as_bytecode_2(FileName, ByteCode, Size, Error, !IO),
     ( Size < 0 ->
-        io.make_err_msg(Error, "opening " ++ FileName, Msg, !IO),
+        io.make_err_msg(Error, "opening " ++ FileName ++ ": ", Msg, !IO),
         Result = error(io.make_io_error(Msg))
     ;
         Result = ok(bytecode(ByteCode, Size))
@@ -898,7 +934,7 @@ read_prog_rep_file(FileName, Result, !IO) :-
 procrep_id_string = "Mercury deep profiler procrep version 3\n".
 
 :- pred read_module_reps(bytecode::in,
-    list(module_rep)::in, list(module_rep)::out,
+    list(module_rep(unit))::in, list(module_rep(unit))::out,
     int::in, int::out) is semidet.
 
 read_module_reps(ByteCode, !RevModuleReps, !Pos) :-
@@ -913,7 +949,7 @@ read_module_reps(ByteCode, !RevModuleReps, !Pos) :-
         read_module_reps(ByteCode, !RevModuleReps, !Pos)
     ).
 
-:- pred read_module_rep(bytecode::in, module_rep::out, int::in, int::out)
+:- pred read_module_rep(bytecode::in, module_rep(unit)::out, int::in, int::out)
     is semidet.
 
 read_module_rep(ByteCode, ModuleRep, !Pos) :-
@@ -924,7 +960,8 @@ read_module_rep(ByteCode, ModuleRep, !Pos) :-
     ModuleRep = module_rep(ModuleName, StringTable, ProcReps).
 
 :- pred read_proc_reps(bytecode::in, string_table::in,
-    list(proc_rep)::in, list(proc_rep)::out, int::in, int::out) is semidet.
+    list(proc_rep(unit))::in, list(proc_rep(unit))::out, int::in, int::out) 
+    is semidet.
 
 read_proc_reps(ByteCode, StringTable, !RevProcReps, !Pos) :-
     read_byte(ByteCode, MoreByte, !Pos),
@@ -938,7 +975,7 @@ read_proc_reps(ByteCode, StringTable, !RevProcReps, !Pos) :-
         read_proc_reps(ByteCode, StringTable, !RevProcReps, !Pos)
     ).
 
-:- pred read_proc_rep(bytecode::in, string_table::in, proc_rep::out,
+:- pred read_proc_rep(bytecode::in, string_table::in, proc_rep(unit)::out,
     int::in, int::out) is semidet.
 
 read_proc_rep(ByteCode, StringTable, ProcRep, !Pos) :-
@@ -1201,13 +1238,13 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
                 AtomicGoal, GoalExpr, !Pos)
         ),
         read_determinism(ByteCode, Detism, !Pos),
-        Goal = goal_rep(GoalExpr, Detism)
+        Goal = goal_rep(GoalExpr, Detism, unit)
     ;
         error("read_goal: invalid goal type")
     ).
 
 :- pred read_atomic_info(var_num_rep::in, bytecode::in, string_table::in,
-    read_proc_rep_info::in, atomic_goal_rep::in, goal_expr_rep::out,
+    read_proc_rep_info::in, atomic_goal_rep::in, goal_expr_rep(unit)::out,
     int::in, int::out) is semidet.
 
 read_atomic_info(VarNumRep, ByteCode, StringTable, Info, AtomicGoal, GoalExpr,
@@ -1244,15 +1281,15 @@ read_goals_2(VarNumRep, ByteCode, StringTable, Info, N, Goals, !Pos) :-
     ).
 
 :- pred read_cases(var_num_rep::in, bytecode::in, string_table::in,
-    read_proc_rep_info::in, list(case_rep)::out, int::in, int::out) is semidet.
+    read_proc_rep_info::in, list(case_rep(unit))::out, int::in, int::out) is semidet.
 
 read_cases(VarNumRep, ByteCode, StringTable, Info, Cases, !Pos) :-
     read_length(ByteCode, Len, !Pos),
     read_cases_2(VarNumRep, ByteCode, StringTable, Info, Len, Cases, !Pos).
 
 :- pred read_cases_2(var_num_rep::in, bytecode::in, string_table::in,
-    read_proc_rep_info::in, int::in, list(case_rep)::out, int::in, int::out)
-    is semidet.
+    read_proc_rep_info::in, int::in, list(case_rep(unit))::out, 
+    int::in, int::out) is semidet.
 
 read_cases_2(VarNumRep, ByteCode, StringTable, Info, N, Cases, !Pos) :-
     ( N > 0 ->
@@ -1565,6 +1602,5 @@ coverage_point_type_c_value(cp_type_branch_arm, "MR_cp_type_branch_arm").
         cp_type_solns_any      - "MR_cp_type_solns_any",
         cp_type_branch_arm     - "MR_cp_type_branch_arm"
     ]).
-
 
 %-----------------------------------------------------------------------------%

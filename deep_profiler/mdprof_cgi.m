@@ -29,11 +29,13 @@
 
 :- implementation.
 
-:- import_module profile.
-:- import_module interface.
-:- import_module startup.
-:- import_module query.
 :- import_module conf.
+:- import_module interface.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
+:- import_module profile.
+:- import_module query.
+:- import_module startup.
 :- import_module timeout.
 :- import_module util.
 
@@ -69,19 +71,22 @@ main(!IO) :-
             MaybeOptions = error(_Msg),
             error("mdprof_cgi: error parsing empty command line")
         ),
-        split(QueryString0, query_separator_char, Pieces),
-        ( Pieces = [CmdStr, PrefStr, FileName] ->
-            Cmd = string_to_cmd(CmdStr, deep_cmd_menu),
-            process_query(Cmd, yes(PrefStr), FileName, Options, !IO)
-        ; Pieces = [CmdStr, FileName] ->
-            Cmd = string_to_cmd(CmdStr, deep_cmd_menu),
-            process_query(Cmd, no, FileName, Options, !IO)
-        ; Pieces = [FileName] ->
-            process_query(deep_cmd_menu, no, FileName, Options, !IO)
+        string_to_maybe_query(QueryString0) = MaybeDeepQuery,
+        (
+            MaybeDeepQuery = yes(DeepQuery),
+            DeepQuery = deep_query(MaybeCmd, DeepFileName, MaybePrefs),
+            (
+                MaybeCmd = yes(Cmd)
+            ;
+                MaybeCmd = no,
+                Cmd = default_command
+            ),
+            process_query(Cmd, DeepFileName, MaybePrefs, Options, !IO)
         ;
+            MaybeDeepQuery = no,
             io.set_exit_status(1, !IO),
             % Give the simplest URL in the error message.
-            io.write_string("Bad URL; expected filename\n", !IO)
+            io.write_string("Bad URL; expected filename \n", !IO)
         )
     ;
         MaybeQueryString = no,
@@ -156,18 +161,22 @@ decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO) :-
         ;
             Decode = yes,
             io.write_string("considering as query string:\n", !IO),
-            split(LineStr, query_separator_char, Pieces),
-            ( Pieces = [CmdStr, PrefStr, FileName] ->
-                decode_cmd_str(CmdStr, !IO),
-                decode_pref_str(PrefStr, !IO),
-                decode_filename(FileName, !IO)
-            ; Pieces = [CmdStr, FileName] ->
-                decode_cmd_str(CmdStr, !IO),
-                decode_filename(FileName, !IO)
-            ; Pieces = [FileName] ->
-                decode_filename(FileName, !IO)
+            string_to_maybe_query(LineStr) = MaybeQuery,
+            (
+                MaybeQuery = yes(deep_query(MaybeCmd, DeepFileName,
+                    MaybePrefs)),
+                io.write_string("Maybe Command:\n", !IO),
+                io.write(MaybeCmd, !IO),
+                io.nl(!IO),
+                io.format("Deep File Name: %s\n", [s(DeepFileName)], !IO),
+                % The preferences may fail to parse, in this case no
+                % preferences are assumed.
+                io.write_string("Maybe Preferences:\n", !IO),
+                io.write(MaybePrefs, !IO),
+                io.nl(!IO)
             ;
-                io.write_string("invalid query string: " ++
+                MaybeQuery = no,
+                io.write_string("invalid query string: " ++ 
                     "cannot split into components\n", !IO)
             )
         ),
@@ -176,14 +185,30 @@ decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO) :-
         ;
             DecodeCmd = yes,
             io.write_string("considering as cmd string:\n", !IO),
-            decode_cmd_str(LineStr, !IO)
+            MaybeCmd1 = string_to_maybe_cmd(LineStr),
+            (
+                MaybeCmd1 = no,
+                io.format("invalid command string %s\n", [s(LineStr)], !IO)
+            ;
+                MaybeCmd1 = yes(Cmd),
+                io.write(Cmd, !IO),
+                io.nl(!IO)
+            )
         ),
         (
             DecodePrefs = no
         ;
             DecodePrefs = yes,
             io.write_string("considering as preference string:\n", !IO),
-            decode_cmd_str(LineStr, !IO)
+            MaybePref = string_to_maybe_pref(LineStr),
+            (
+                MaybePref = no,
+                io.format("invalid preferences string %s\n", [s(LineStr)], !IO)
+            ;
+                MaybePref = yes(Pref),
+                io.write(Pref, !IO),
+                io.nl(!IO)
+            )
         ),
         decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO)
     ;
@@ -193,37 +218,6 @@ decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO) :-
     ;
         LineResult = eof
     ).
-
-:- pred decode_cmd_str(string::in, io::di, io::uo) is det.
-
-decode_cmd_str(CmdStr, !IO) :-
-    MaybeCmd = string_to_maybe_cmd(CmdStr),
-    (
-        MaybeCmd = no,
-        io.format("invalid command string %s\n", [s(CmdStr)], !IO)
-    ;
-        MaybeCmd = yes(Cmd),
-        io.write(Cmd, !IO),
-        io.nl(!IO)
-    ).
-
-:- pred decode_pref_str(string::in, io::di, io::uo) is det.
-
-decode_pref_str(PrefStr, !IO) :-
-    MaybePref = string_to_maybe_pref(PrefStr),
-    (
-        MaybePref = no,
-        io.format("invalid preferences string %s\n", [s(PrefStr)], !IO)
-    ;
-        MaybePref = yes(Pref),
-        io.write(Pref, !IO),
-        io.nl(!IO)
-    ).
-
-:- pred decode_filename(string::in, io::di, io::uo) is det.
-
-decode_filename(FileName, !IO) :-
-    io.format("data file name: %s\n", [s(FileName)], !IO).
 
 :- func mdprof_cgi_progname = string.
 
@@ -256,11 +250,11 @@ write_help_message(ProgName, !IO) :-
     io::di, io::uo) is cc_multi.
 
 process_args(ProgName, Args, Options, !IO) :-
-    ( Args = [FileName] ->
+    ( Args = [DeepFileName] ->
         % Although this mode of usage is not intended for production use,
         % allowing the filename and a limited range of commands to be supplied
         % on the command line makes debugging very much easier.
-        process_query(default_cmd(Options), no, FileName, Options, !IO)
+        process_query(default_cmd(Options), DeepFileName, no, Options, !IO)
     ;
         io.set_exit_status(1, !IO),
         write_help_message(ProgName, !IO)
@@ -290,17 +284,10 @@ html_header_text = "Content-type: text/html\n\n".
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_query(cmd::in, maybe(string)::in, string::in,
+:- pred process_query(cmd::in, string::in, maybe(preferences)::in,
     option_table::in, io::di, io::uo) is cc_multi.
 
-process_query(Cmd, MaybePrefStr, DataFileName0, Options0, !IO) :-
-    (
-        MaybePrefStr = yes(PrefStr),
-        MaybePref = string_to_maybe_pref(PrefStr)
-    ;
-        MaybePrefStr = no,
-        MaybePref = no
-    ),
+process_query(Cmd, DeepFileName0, MaybePref, Options0, !IO) :-
     (
         MaybePref = yes(Pref),
         PrefInd = given_pref(Pref)
@@ -308,17 +295,17 @@ process_query(Cmd, MaybePrefStr, DataFileName0, Options0, !IO) :-
         MaybePref = no,
         PrefInd = default_pref
     ),
-    ( string.remove_suffix(DataFileName0, ".localhost", DataFileNamePrime) ->
-        DataFileName = DataFileNamePrime,
+    ( string.remove_suffix(DeepFileName0, ".localhost", DeepFileNamePrime) ->
+        DeepFileName = DeepFileNamePrime,
         map.det_update(Options0, localhost, bool(yes), Options)
     ;
-        DataFileName = DataFileName0,
+        DeepFileName = DeepFileName0,
         Options = Options0
     ),
-    ToServerPipe = to_server_pipe_name(DataFileName),
-    FromServerPipe = from_server_pipe_name(DataFileName),
-    StartupFile = server_startup_name(DataFileName),
-    MutexFile = mutex_file_name(DataFileName),
+    ToServerPipe = to_server_pipe_name(DeepFileName),
+    FromServerPipe = from_server_pipe_name(DeepFileName),
+    StartupFile = server_startup_name(DeepFileName),
+    MutexFile = mutex_file_name(DeepFileName),
     lookup_bool_option(Options, debug, Debug),
     WantFile = want_file_name,
     make_want_file(WantFile, !IO),
@@ -333,9 +320,8 @@ process_query(Cmd, MaybePrefStr, DataFileName0, Options0, !IO) :-
     ),
     check_for_existing_fifos(ToServerPipe, FromServerPipe, FifoCount, !IO),
     ( FifoCount = 0 ->
-        handle_query_from_new_server(Cmd, PrefInd, DataFileName,
-            ToServerPipe, FromServerPipe, StartupFile, MutexFile, WantFile,
-            Options, !IO)
+        handle_query_from_new_server(Cmd, PrefInd, DeepFileName, ToServerPipe,
+            FromServerPipe, StartupFile, MutexFile, WantFile, Options, !IO)
     ; FifoCount = 2 ->
         handle_query_from_existing_server(Cmd, PrefInd,
             ToServerPipe, FromServerPipe, MutexFile, WantFile, Options, !IO)
@@ -345,6 +331,11 @@ process_query(Cmd, MaybePrefStr, DataFileName0, Options0, !IO) :-
         io.set_exit_status(1, !IO),
         io.write_string("mdprof internal error: bad fifo count", !IO)
     ).
+
+    % This type is used to pass queries between the two servers.
+    %
+:- type cmd_pref
+    --->    cmd_pref(cmd, preferences_indication).
 
     % Handle the given query using the existing server. Delete the mutex and
     % want files when we get out of the critical region.
@@ -403,9 +394,8 @@ handle_query_from_existing_server(Cmd, PrefInd, ToServerPipe, FromServerPipe,
     string::in, string::in, string::in, string::in, string::in, string::in,
     option_table::in, io::di, io::uo) is cc_multi.
 
-handle_query_from_new_server(Cmd, PrefInd, FileName,
-        ToServerPipe, FromServerPipe, StartupFile, MutexFile, WantFile,
-        Options, !IO) :-
+handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
+        FromServerPipe, StartupFile, MutexFile, WantFile, Options, !IO) :-
     lookup_bool_option(Options, localhost, LocalHost),
     (
         LocalHost = no,
@@ -434,12 +424,18 @@ handle_query_from_new_server(Cmd, PrefInd, FileName,
         RecordStartup = no,
         MaybeStartupStream = no
     ),
-    read_and_startup(Machine, ScriptName, [FileName], Canonical,
+    read_and_startup(Machine, ScriptName, FileName, Canonical,
         MaybeStartupStream, [], Res, !IO),
     (
-        Res = ok(Deep),
+        (
+            Res = deep_and_progrep(Deep, Progrep),
+            MaybeProgrep = ok(Progrep)
+        ;
+            Res = deep_and_error(Deep, Error),
+            MaybeProgrep = error(Error)
+        ),
         Pref = solidify_preference(Deep, PrefInd),
-        try_exec(Cmd, Pref, Deep, HTML, !IO),
+        try_exec(Cmd, Pref, Deep, MaybeProgrep, HTML, !IO),
         (
             MaybeStartupStream = yes(StartupStream1),
             io.format(StartupStream1, "query 0 output:\n%s\n", [s(HTML)], !IO),
@@ -463,7 +459,8 @@ handle_query_from_new_server(Cmd, PrefInd, FileName,
                 io.write_string(HTML, !IO),
                 io.flush_output(!IO),
                 start_server(Options, ToServerPipe, FromServerPipe,
-                    MaybeStartupStream, MutexFile, WantFile, Deep, !IO)
+                    MaybeStartupStream, MutexFile, WantFile, Deep, MaybeProgrep,
+                    !IO)
             ;
                 Success = no,
                 release_lock(Debug, MutexFile, !IO),
@@ -477,18 +474,19 @@ handle_query_from_new_server(Cmd, PrefInd, FileName,
         release_lock(Debug, MutexFile, !IO),
         remove_want_file(WantFile, !IO),
         io.set_exit_status(1, !IO),
-        io.format("error reading %s: %s\n", [s(FileName), s(Error)], !IO)
+        io.format("%s\n", [s(Error)], !IO)
     ).
 
     % Become the new server. Delete the mutex and want files when we get out
     % of the critical region.
     %
 :- pred start_server(option_table::in, string::in, string::in,
-    maybe(io.output_stream)::in, string::in, string::in, deep::in,
+    maybe(io.output_stream)::in, string::in, string::in, 
+    deep::in, maybe_error(prog_rep)::in,
     io::di, io::uo) is cc_multi.
 
 start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
-        MutexFile, WantFile, Deep, !IO) :-
+        MutexFile, WantFile, Deep, MaybeProgrep, !IO) :-
     lookup_bool_option(Options, detach_process, DetachProcess),
     lookup_bool_option(Options, record_loop, RecordLoop),
     lookup_bool_option(Options, debug, Debug),
@@ -545,7 +543,7 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
         lookup_int_option(Options, timeout, TimeOut),
         lookup_bool_option(Options, canonical_clique, Canonical),
         server_loop(ToServerPipe, FromServerPipe, TimeOut,
-            MaybeDebugStream, Debug, Canonical, 0, Deep, !IO)
+            MaybeDebugStream, Debug, Canonical, 0, Deep, MaybeProgrep, !IO)
     ;
         DetachRes = in_parent,
         % We are in the parent after we spawned the child. We cause the process
@@ -570,11 +568,12 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
     ).
 
 :- pred server_loop(string::in, string::in, int::in,
-    maybe(io.output_stream)::in, bool::in, bool::in, int::in, deep::in,
+    maybe(io.output_stream)::in, bool::in, bool::in, int::in, 
+    deep::in, maybe_error(prog_rep)::in,
     io::di, io::uo) is cc_multi.
 
 server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
-        Debug, Canonical, QueryNum0, Deep0, !IO) :-
+        Debug, Canonical, QueryNum0, Deep0, MaybeProgrep0, !IO) :-
     setup_timeout(TimeOut0, !IO),
     QueryNum = QueryNum0 + 1,
     recv_term(ToServerPipe, Debug, CmdPref0, !IO),
@@ -592,20 +591,28 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
 
     ( Cmd0 = deep_cmd_restart ->
         read_and_startup(Deep0 ^ server_name_port, Deep0 ^ script_name,
-            [Deep0 ^ data_file_name], Canonical, MaybeStartupStream, [],
-            MaybeDeep, !IO),
+            Deep0 ^ data_file_name, Canonical, MaybeStartupStream, [],
+            MaybeDeepAndProgrep, !IO),
         (
-            MaybeDeep = ok(Deep),
+            (
+                MaybeDeepAndProgrep = deep_and_progrep(Deep, Progrep),
+                MaybeProgrep = ok(Progrep)
+            ;
+                MaybeDeepAndProgrep = deep_and_error(Deep, Error),
+                MaybeProgrep = error(Error) 
+            ),
             MaybeMsg = no,
             Cmd = deep_cmd_menu
         ;
-            MaybeDeep = error(ErrorMsg),
+            MaybeDeepAndProgrep = error(ErrorMsg),
             MaybeMsg = yes(ErrorMsg),
             Deep = Deep0,
+            MaybeProgrep = MaybeProgrep0,
             Cmd = deep_cmd_quit
         )
     ;
         Deep = Deep0,
+        MaybeProgrep = MaybeProgrep0,
         MaybeMsg = no,
         Cmd = Cmd0
     ),
@@ -614,7 +621,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         MaybeMsg = yes(HTML)
     ;
         MaybeMsg = no,
-        try_exec(Cmd, Pref0, Deep, HTML, !IO)
+        try_exec(Cmd, Pref0, Deep, MaybeProgrep, HTML, !IO)
     ),
 
     ResponseFileName = response_file_name(Deep0 ^ data_file_name, QueryNum),
@@ -647,10 +654,10 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         delete_cleanup_files(!IO)
     ; Cmd = deep_cmd_timeout(TimeOut) ->
         server_loop(ToServerPipe, FromServerPipe, TimeOut, MaybeStartupStream,
-            Debug, Canonical, QueryNum, Deep, !IO)
+            Debug, Canonical, QueryNum, Deep, MaybeProgrep, !IO)
     ;
         server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
-            Debug, Canonical, QueryNum, Deep, !IO)
+            Debug, Canonical, QueryNum, Deep, MaybeProgrep, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

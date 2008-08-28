@@ -63,6 +63,11 @@
             )
     ;       display_table(
                 table
+            )
+    ;       display_verbatim(
+                % A string to be displayed verbatim.  It should be displayed
+                % with a fixed with font and line breaks should be honoured.
+                string
             ).
 
 %-----------------------------------------------------------------------------%

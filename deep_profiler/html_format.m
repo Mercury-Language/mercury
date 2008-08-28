@@ -340,6 +340,10 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
         ItemsHTML = wrap_tags(OutsideStartTag, OutsideEndTag, InnerItemsHTML),
         HTML = wrap_tags(StartTag, EndTag,
             TitleHTML ++ PostTitleHTML ++ ItemsHTML)
+    ;
+        Item = display_verbatim(Text),
+        HTML = wrap_tags(StartTag, EndTag, 
+            wrap_tags("<pre>", "</pre>", str_to_html(Text))) 
     ).
 
 %-----------------------------------------------------------------------------%
@@ -905,19 +909,10 @@ init_format_info(Deep, Prefs) = FormatInfo :-
 deep_cmd_to_url(FormatInfo, Cmd, MaybePrefs, URL) :-
     HostAndPort = FormatInfo ^ fi_server_name_port,
     Script = FormatInfo ^ fi_script_name,
-    DataFile = FormatInfo ^ fi_deep_file,
-    CmdStr = cmd_to_string(Cmd),
-    (
-        MaybePrefs = no,
-        string.format("http://%s%s?%s&%s",
-            [s(HostAndPort), s(Script), s(CmdStr), s(DataFile)], URL)
-    ;
-        MaybePrefs = yes(Prefs),
-        PrefStr = preferences_to_string(Prefs),
-        string.format("http://%s%s?%s&%s&%s",
-            [s(HostAndPort), s(Script), s(CmdStr), s(PrefStr), s(DataFile)],
-            URL)
-    ).
+    DeepFileName = FormatInfo ^ fi_deep_file,
+    DeepQuery = deep_query(yes(Cmd), DeepFileName, MaybePrefs),
+    string.format("http://%s%s?%s",
+        [s(HostAndPort), s(Script), s(query_to_string(DeepQuery))], URL).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1290,6 +1285,8 @@ command_relevant_toggles(deep_cmd_module(_)) =
     toggle_time_format, toggle_inactive_procs].
 command_relevant_toggles(deep_cmd_top_procs(_, _, _, _)) =
     [toggle_fields, toggle_box, toggle_colour, toggle_time_format].
+command_relevant_toggles(deep_cmd_procrep_coverage(_)) = 
+    [].
 command_relevant_toggles(deep_cmd_dump_proc_static(_)) = [].
 command_relevant_toggles(deep_cmd_dump_proc_dynamic(_)) = [].
 command_relevant_toggles(deep_cmd_dump_call_site_static(_)) = [].
@@ -3181,21 +3178,15 @@ special_html_char_or_break(':', ":" ++ zero_width_space).
 % zero_width_space = "&#8203;".
 zero_width_space = "<wbr />".
 
-%-----------------------------------------------------------------------------%
-
 :- func machine_datafile_cmd_pref_to_url(string, string, string, cmd,
     preferences) = string.
 
-machine_datafile_cmd_pref_to_url(Machine, ScriptName, DataFileName, Cmd,
+machine_datafile_cmd_pref_to_url(Machine, ScriptName, DeepFileName, Cmd,
         Preferences) =
     "http://" ++
     Machine ++
     ScriptName ++ "?" ++
-    cmd_to_string(Cmd) ++
-    string.char_to_string(query_separator_char) ++
-    preferences_to_string(Preferences) ++
-    string.char_to_string(query_separator_char) ++
-    DataFileName.
+    query_to_string(deep_query(yes(Cmd), DeepFileName, yes(Preferences))). 
 
 %-----------------------------------------------------------------------------%
 :- end_module html_format.
