@@ -275,8 +275,8 @@ type_contains_subtype(ModuleInfo, FromType, ToType) :-
     % We assume that type definitions for a module don't change for the
     % duration of the analysis.
     %
-%:- pragma memo(type_contains_subtype_1/4,
-%    [allow_reset, specified([promise_implied, value, value, output])]).
+:- pragma memo(type_contains_subtype_1/4,
+    [allow_reset, specified([promise_implied, value, value, output])]).
 
 type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains) :-
     queue.put(queue.init, FromType, Queue0),
@@ -314,8 +314,8 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
 :- pred type_arg_types(module_info::in, mer_type::in, list(mer_type)::out)
     is det.
 
-%:- pragma memo(type_arg_types/3,
-%    [allow_reset, specified([promise_implied, value, output])]).
+:- pragma memo(type_arg_types/3,
+    [allow_reset, specified([promise_implied, value, output])]).
 
 type_arg_types(ModuleInfo, Type, ArgTypes) :-
     solutions(
@@ -377,8 +377,8 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
             "select_subtype: type is both existential and non-existential")
     ).
 
-%:- pragma memo(normalize_selector_with_type_information/4,
-%    [allow_reset, specified([promise_implied, value, value, output])]).
+:- pragma memo(normalize_selector_with_type_information/4,
+    [allow_reset, specified([promise_implied, value, value, output])]).
 
 normalize_selector_with_type_information(ModuleInfo, Type, !Selector) :-
     ( is_introduced_type_info_type(Type) ->
@@ -508,10 +508,10 @@ branch_map_search([Type - Sel | TypeSels], KeyType, ValueSel):-
 
 %-----------------------------------------------------------------------------%
 
-reset_tables(!IO).
-    %table_reset_for_type_contains_subtype_1_4(!IO),
-    %table_reset_for_type_arg_types_3(!IO).
-    %table_reset_for_normalize_selector_with_type_information_4(!IO).
+reset_tables(!IO) :-
+    table_reset_for_type_contains_subtype_1_4(!IO),
+    table_reset_for_type_arg_types_3(!IO).
+    table_reset_for_normalize_selector_with_type_information_4(!IO).
 
 %-----------------------------------------------------------------------------%
 
