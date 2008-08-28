@@ -2692,8 +2692,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             ;
                 MaybeAttributes = no,
                 Strictness = all_strict,
-                Statistics = table_gather_statistics,
-                AllowReset = table_allow_reset
+                Statistics = table_dont_gather_statistics,
+                AllowReset = table_dont_allow_reset
             ),
             (
                 Strictness = specified(MaybeArgMethods, _HiddenArgMethod),
