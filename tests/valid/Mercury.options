@@ -47,6 +47,7 @@ MCFLAGS-ho_and_type_spec_bug = -O4
 MCFLAGS-ho_and_type_spec_bug2 = -O3 --no-inlining
 MCFLAGS-impure_detism           = -O5 --deep-profiling
 MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
+MCFLAGS-instmap_generic_failure	= --local-constraint-propagation
 MCFLAGS-intermod_bug_nested	= --intermodule-optimization
 MCFLAGS-intermod_bug_nested.parser	= --intermodule-optimization
 MCFLAGS-intermod_dcg_bug2	= --intermodule-optimization

@@ -1124,9 +1124,13 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
             InstMap0, InstMapDelta, !RI),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = generic_call(_Details, Vars, Modes, _Detism),
-        ModuleInfo = !.RI ^ ri_module_info,
-        instmap_delta_from_mode_list(Vars, Modes, ModuleInfo, InstMapDelta),
+        GoalExpr0 = generic_call(_Details, Vars, Modes, Detism),
+        ( determinism_components(Detism, _, at_most_zero) ->
+            instmap_delta_init_unreachable(InstMapDelta)
+        ;
+            ModuleInfo = !.RI ^ ri_module_info,
+            instmap_delta_from_mode_list(Vars, Modes, ModuleInfo, InstMapDelta)
+        ),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = plain_call(PredId, ProcId, Args, _BI, _UC, _Name),

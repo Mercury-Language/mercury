@@ -118,6 +118,7 @@ OTHER_PROGS= \
 	indexing \
 	inhibit_warn_test \
 	inlining_bug \
+	instmap_generic_failure \
 	inst_perf_bug_1 \
 	int64 \
 	intermod_bug_nested \
