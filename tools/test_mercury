@@ -1,5 +1,7 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 et
+#---------------------------------------------------------------------------#
 # Copyright (C) 1996-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -14,57 +16,60 @@
 echo "test_mercury starting at `date`" 1>&2
 
 case $# in
-	6)	HOST=$1; ARCH=$2; FULLARCH=$3; BRANCH=$4; C_COMPILER=$5; USE_MMC_MAKE=$6 ;;
-	5)      HOST=$1; ARCH=$2; FULLARCH=$3; BRANCH=$4; C_COMPILER=$5; USE_MMC_MAKE="" ;;
-	*)	echo "Usage: $0 host arch fullarch branch c_compiler use_mmc_make" 1>&2; exit 1 ;;
+    6)      HOST=$1; ARCH=$2; FULLARCH=$3; BRANCH=$4; C_COMPILER=$5; USE_MMC_MAKE=$6 ;;
+    5)      HOST=$1; ARCH=$2; FULLARCH=$3; BRANCH=$4; C_COMPILER=$5; USE_MMC_MAKE="" ;;
+    *)      echo "Usage: $0 host arch fullarch branch c_compiler use_mmc_make" 1>&2; exit 1 ;;
 esac
 
 if test -d /home/mercury/public/.
 then
-	TOPDIR=/home/mercury/public
-	PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' $TOPDIR/cron/.path`"
-	PATH="$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH"
-	PATH="/home/$HOST/public/mercury-latest/$FULLARCH/bin:$PATH"
-	PATH="$TOPDIR/autoconf-2.13/$FULLARCH/bin:$PATH"
-	PATH="$TOPDIR/autoconf-2.52/$FULLARCH/bin:$PATH"
-	PATH="$TOPDIR/$FULLARCH:$PATH"
-	PATH="$TOPDIR/$FULLARCH/bin:$PATH"
-	PATH="$TOPDIR/$HOST:$PATH"
-	# generate_index_html needs to be in our PATH too
-	PATH="$TOPDIR/test_mercury/scripts:$PATH"
+    TOPDIR=/home/mercury/public
+    PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' $TOPDIR/cron/.path`"
+    PATH="$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH"
+    PATH="/home/$HOST/public/mercury-latest/$FULLARCH/bin:$PATH"
+    PATH="$TOPDIR/autoconf-2.13/$FULLARCH/bin:$PATH"
+    PATH="$TOPDIR/autoconf-2.52/$FULLARCH/bin:$PATH"
+    PATH="$TOPDIR/$FULLARCH:$PATH"
+    PATH="$TOPDIR/$FULLARCH/bin:$PATH"
+    PATH="$TOPDIR/$HOST:$PATH"
+    # generate_index_html needs to be in our PATH too
+    PATH="$TOPDIR/test_mercury/scripts:$PATH"
 else
-	case "$HOST" in
-	    eris)
-	        HOME=/Users/mercury/mercury
-		;;
-	esac
+    case "$HOST" in
+        eris)
+            HOME=/Users/mercury/mercury
+            ;;
+    esac
 
-	TOPDIR=$HOME/public
-	PATH=$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH
-	PATH="$TOPDIR/$FULLARCH:$PATH"
-	PATH="$TOPDIR/$HOST:$PATH"
+    TOPDIR=$HOME/public
+    PATH=$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH
+    PATH="$TOPDIR/$FULLARCH:$PATH"
+    PATH="$TOPDIR/$HOST:$PATH"
 fi
+
 case $HOST in mundroo*|mundula)
-	PATH="/usr/local/apps/ssh-1.2.32/bin:$PATH"
-	;;
+    PATH="/usr/local/apps/ssh-1.2.32/bin:$PATH"
+    ;;
 esac
+
 PATH="$PATH:/usr/bin"
 export PATH
 
 # Use NFS if we can, for the machines over at EE use ssh and
 # otherwise use anonymous CVS (pserver).
 CVSROOT=/home/mercury/mercury1/repository
-if [ -d $CVSROOT/. ]; then
-	:
+if test -d $CVSROOT/.
+then
+    :
 else
-	case "$HOST" in
-	    neptune|pluto|eris)
-	    CVSROOT=":ext:mercury@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
-	    ;;
-	    *)
-	    CVSROOT=":pserver:guest@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
-	    ;;
-	esac
+    case "$HOST" in
+        neptune|pluto|eris)
+        CVSROOT=":ext:mercury@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
+        ;;
+        *)
+        CVSROOT=":pserver:guest@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
+        ;;
+    esac
 fi
 export CVSROOT
 
@@ -83,12 +88,12 @@ umask 022
 # but building the --split-c-files versions of
 # the libraries needs more, at least for dec-alpha-osf*.)
 case $HOST in
-	# ulimit doesn't work properly under cygwin, so don't use it on
-	# uranus.
-	uranus) ;;
-	*) 	ulimit -S -t 300
-		ulimit -S -d 250000
-		;;
+    # ulimit doesn't work properly under cygwin, so don't use it on
+    # uranus.
+    uranus) ;;
+    *)      ulimit -S -t 300
+            ulimit -S -d 250000
+            ;;
 esac
 
 # directories to use
@@ -114,18 +119,18 @@ G12_ROTD_HOST=swordfish
 # GCC_ROTD_HOST=
 
 set_status () {
-	case "$*" in
-	    "tests in grade asm_fast.agc"* | "tests in grade hlc_nest"*)
-	        # These grades have known bugs which mean that they
-		# do not pass all of the tests.  So we do not fail
-		# if we get errors in those grades.
-	    	echo "** Error in $* (expected)"
-		;;
-	    *)
-		status=1;
-		echo "** Error in $*"
-		;;
-	esac
+    case "$*" in
+        "tests in grade asm_fast.agc"* | "tests in grade hlc_nest"*)
+            # These grades have known bugs which mean that they
+            # do not pass all of the tests.  So we do not fail
+            # if we get errors in those grades.
+            echo "** Error in $* (expected)"
+            ;;
+        *)
+            status=1;
+            echo "** Error in $*"
+            ;;
+    esac
 }
 
 #-----------------------------------------------------------------------------#
@@ -178,47 +183,50 @@ set_status () {
 INSTALL_DIR_NAME=mercury-$BRANCH
 DATE=`date '+%Y-%m-%d'`
 case $BRANCH in
-	latest)
-		CHECKOUT_OPTS=-A
-		BASE_TAG_NAME=rotd
-		FTP_DIR_NAME=rotd
-		RELEASE_VERSION=rotd-$DATE
-		RELEASE_VERSION_PATTERN=rotd-*
-		;;
-	g12)
-		CHECKOUT_OPTS=-rg12-0_5_0
-		BASE_TAG_NAME=g12-0_5_0
-		FTP_DIR_NAME=g12
-		RELEASE_VERSION=g12-0.5.0
-		RELEASE_VERSION_PATTERN=g12-0.5.0*
-		;;
-	0.13)
-		# This is for 0.13.2-beta
-		#
-		#CHECKOUT_OPTS=-rversion-0_13-branch
-		#BASE_TAG_NAME=version-0_13-branch
-		#FTP_DIR_NAME=0.13.2-beta
-		#RELEASE_VERSION=0.13.2-beta-$DATE
-		#RELEASE_VERSION_PATTERN=0.13.2-beta-*
+    latest)
+        CHECKOUT_OPTS=-A
+        BASE_TAG_NAME=rotd
+        FTP_DIR_NAME=rotd
+        RELEASE_VERSION=rotd-$DATE
+        RELEASE_VERSION_PATTERN=rotd-*
+        ;;
+    g12)
+        CHECKOUT_OPTS=-rg12-0_5_0
+        BASE_TAG_NAME=g12-0_5_0
+        FTP_DIR_NAME=g12
+        RELEASE_VERSION=g12-0.5.0
+        RELEASE_VERSION_PATTERN=g12-0.5.0*
+        ;;
+    0.13)
+        # This is for 0.13.2-beta
+        #
+        #CHECKOUT_OPTS=-rversion-0_13-branch
+        #BASE_TAG_NAME=version-0_13-branch
+        #FTP_DIR_NAME=0.13.2-beta
+        #RELEASE_VERSION=0.13.2-beta-$DATE
+        #RELEASE_VERSION_PATTERN=0.13.2-beta-*
 
-		# This for the 0.13.1 release.
-		#
-		CHECKOUT_OPTS=-rversion-0_13_1
-		BASE_TAG_NAME=version-0_13_1
-		FTP_DIR_NAME=0.13.1
-		RELEASE_VERSION=0.13.1
-		RELEASE_VERSION_PATTERN=0.13.1*
-		;;
+        # This for the 0.13.1 release.
+        #
+        CHECKOUT_OPTS=-rversion-0_13_1
+        BASE_TAG_NAME=version-0_13_1
+        FTP_DIR_NAME=0.13.1
+        RELEASE_VERSION=0.13.1
+        RELEASE_VERSION_PATTERN=0.13.1*
+        ;;
 esac
+
 case "$C_COMPILER" in
-	gcc)	TEST_ID=$BRANCH.$HOST
-        	TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST.test_errs"
-        	FAILED_TESTS_FILE="$TESTDIR/logs/test-$BRANCH-$HOST.failed_tests"
-		;;
-	*)	TEST_ID=$BRANCH.$HOST.$C_COMPILER
-		TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.test_errs"
-		FAILED_TESTS_FILE="$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.failed_tests"
-		;;
+    gcc)
+        TEST_ID=$BRANCH.$HOST
+        TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST.test_errs"
+        FAILED_TESTS_FILE="$TESTDIR/logs/test-$BRANCH-$HOST.failed_tests"
+        ;;
+    *)
+        TEST_ID=$BRANCH.$HOST.$C_COMPILER
+        TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.test_errs"
+        FAILED_TESTS_FILE="$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.failed_tests"
+        ;;
 esac
 rm -f $TEST_ERROR_FILE $FAILED_TESTS_FILE
 
@@ -226,61 +234,88 @@ rm -f $TEST_ERROR_FILE $FAILED_TESTS_FILE
 
 use_cp_opt=""
 case $HOST in
-	# test things at different optimization levels...
+    # test things at different optimization levels...
 
-	$ROTD_HOST|jupiter)
-			OPTIMIZE="-O2 --intermodule-optimization"
-			;;
-	earth)		OPTIMIZE="-O2" ;;
-	saturn)		OPTIMIZE="-O5 --intermodule-optimization" ;;
-	neptune)	OPTIMIZE="-O4" ;;
-	pluto)		OPTIMIZE="-O2 --intermodule-optimization" ;;
-	$G12_ROTD_HOST|swordfish)
-		case $BRANCH in
-			g12) OPTIMIZE="-O3" ;;
-			*)   OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation" ;;
-		esac
-		;;
-	mundroo|mundula)
-			OPTIMIZE=-O2; use_cp_opt="--use-cp" ;;
-			# On mundroo, "mkdir -p scripts" aborts
-			# if scripts is a symbolic link to a directory.
-	aral)		OPTIMIZE="-O3" ;;
-	ceres)		OPTIMIZE="-O5" ;;	# hlc
-	uranus)		OPTIMIZE="-O3" ;;
-	taura)		OPTIMIZE="-O5 --intermodule-optimization" ;;
+    $ROTD_HOST|jupiter)
+        OPTIMIZE="-O2 --intermodule-optimization"
+        ;;
+    
+    earth)
+        OPTIMIZE="-O2"
+        ;;
+    
+    saturn)
+        OPTIMIZE="-O5 --intermodule-optimization"
+        ;;
+    
+    neptune)
+        OPTIMIZE="-O4"
+        ;;
+    
+    pluto)
+        OPTIMIZE="-O2 --intermodule-optimization"
+        ;;
+    
+    $G12_ROTD_HOST|swordfish)
+        case $BRANCH in
+            g12) OPTIMIZE="-O3" ;;
+            *)   OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation" ;;
+        esac
+        ;;
+    
+    mundroo|mundula)
+        OPTIMIZE=-O2; use_cp_opt="--use-cp"
+        # On mundroo, "mkdir -p scripts" aborts
+        # if scripts is a symbolic link to a directory.
+        ;;
+
+    aral)
+        OPTIMIZE="-O3"
+        ;;
+
+    ceres)
+        OPTIMIZE="-O5"
+        ;;
+
+    uranus)
+        OPTIMIZE="-O3"
+        ;;
+
+    taura)
+        OPTIMIZE="-O5 --intermodule-optimization"
+        ;;
 esac
 
-# on some systems, the file system we're using does not support links
+# On some systems, the file system we're using does not support links.
 case $HOST in
-	uranus)		LN="cp -r"; LN_S="cp -r" ;;
-	*)		LN="ln"; LN_S="ln -s" ;;
+    uranus) LN="cp -r"; LN_S="cp -r" ;;
+    *)      LN="ln"; LN_S="ln -s" ;;
 esac
 
-# flags for building the compiler
+# Flags for building the compiler.
 INSTALL_MCFLAGS="$OPTIMIZE --opt-space"
 INSTALL_MGNUCFLAGS=""
 INSTALL_CFLAGS=""
 INSTALL_MLFLAGS=""
 
-# flags for running the tests
+# Flags for running the tests.
 TEST_MCFLAGS="$OPTIMIZE --opt-space"
 TEST_MGNUCFLAGS=""
 TEST_CFLAGS=""
 TEST_MLFLAGS=""
 
 case $FULLARCH in
-	i*86-*-linux*|i*86-*-freebsd*|i*86-*-solaris2.*)
-		# On x86 Unix, we need to set the following flags to enable
-		# shared libraries (and we need to use shared libraries to
-		# avoid running out of disk space...)
-		TEST_MCFLAGS="$TEST_MCFLAGS --mercury-linkage shared --linkage shared --pic-reg"
-		TEST_MGNUCFLAGS="$TEST_MGNUCFLAGS --pic-reg"
-		TEST_MLFLAGS="$TEST_MLFLAGS --shared"
-		;;
-	*)
-		# On other platforms shared libraries is the default
-		;;
+    i*86-*-linux*|i*86-*-freebsd*|i*86-*-solaris2.*)
+            # On x86 Unix, we need to set the following flags to enable
+            # shared libraries (and we need to use shared libraries to
+            # avoid running out of disk space...)
+            TEST_MCFLAGS="$TEST_MCFLAGS --mercury-linkage shared --linkage shared --pic-reg"
+            TEST_MGNUCFLAGS="$TEST_MGNUCFLAGS --pic-reg"
+            TEST_MLFLAGS="$TEST_MLFLAGS --shared"
+            ;;
+    *)
+            # On other platforms shared libraries is the default
+            ;;
 esac
 
 # This list of hosts for which we install into /home/$HOST rather than
@@ -288,19 +323,22 @@ esac
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-	earth|ceres|aral|jupiter|swordfish|saturn|uranus|neptune|pluto|taura)
-		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
+    earth|ceres|aral|jupiter|swordfish|saturn|uranus|neptune|pluto|taura)
+        INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH
+        ;;
 
-	# The actual architecture string for eris has the version appended to it, but
-	# that will change with every OS update so we don't include it here.
-	eris)
-		INSTALL_DIR=/Users/mercury/mercury/public/$INSTALL_DIR_NAME/i686-apple-darwin ;;
-	*)		
-		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
+    # The actual architecture string for eris has the version appended to it, but
+    # that will change with every OS update so we don't include it here.
+    eris)
+       INSTALL_DIR=/Users/mercury/mercury/public/$INSTALL_DIR_NAME/i686-apple-darwin
+       ;;
+    *)              
+       INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH
+       ;;
 esac
 case "$C_COMPILER" in
-	gcc)	;;
-	*)	INSTALL_DIR="$INSTALL_DIR-$C_COMPILER" ;;
+    gcc)    ;;
+    *)      INSTALL_DIR="$INSTALL_DIR-$C_COMPILER" ;;
 esac
 
 BETA_FTPHOST=ftp.mercury.csse.unimelb.edu.au
@@ -317,57 +355,59 @@ PATH="$INSTALL_DIR/bin:$PATH"
 #
 PARALLEL=
 case $HOST in
-	saturn|pluto|taura) 	PARALLEL="-j2" ;;
-	eris)			PARALLEL="-j2" ;;
-	*)			PARALLEL= ;;
+    saturn|pluto|taura) PARALLEL="-j2" ;;
+    eris)               PARALLEL="-j2" ;;
+    *)                  PARALLEL= ;;
 esac
 
 # Version of the mercury compiler to use for bootstrapping
 # Normally we use the compiler from same location that we will install in.
 # But occasionally this setting will get overridden below.
 case $BRANCH in
-	*)
-		if test -x $INSTALL_DIR/bin/mercury_compile
-		then
-			BOOTSTRAP_MERCURY_COMPILER=$INSTALL_DIR/bin/mercury_compile
-		fi
-		;;
+    *)
+        if test -x $INSTALL_DIR/bin/mercury_compile
+        then
+            BOOTSTRAP_MERCURY_COMPILER=$INSTALL_DIR/bin/mercury_compile
+        fi
+        ;;
 esac
 
 # df (disk free) command
 DF=df
 case $HOST in
-	mundroo|mundula) DF="df -k" ;;
+    mundroo|mundula) DF="df -k" ;;
 esac
 
 #-----------------------------------------------------------------------------#
 
-# check we've got a reasonable amount of free disk space -- no point
+# Check we've got a reasonable amount of free disk space -- no point
 # starting if we'll only run out of disk space.
 
-[ -d $DIR ] || mkdir -p $DIR
+test -d $DIR || mkdir -p $DIR
 FREE=`$DF $DIR | awk '
-	NR == 2 && NF > 4 { print $4; exit; }
-	NR == 3 { print $3; }
+        NR == 2 && NF > 4 { print $4; exit; }
+        NR == 3 { print $3; }
 '`
-if [ "$FREE" -lt 10000 ]; then
-	echo "Insufficient disk space on $DIR" 1>&2
-	$DF $DIR
-	exit 1
+if test "$FREE" -lt 10000
+then
+    echo "Insufficient disk space on $DIR" 1>&2
+    $DF $DIR
+    exit 1
 fi
 
 #-----------------------------------------------------------------------------#
 
-# to make sure we don't try to run two tests in parallel,
-# we use a lock file in the test directory
+# To make sure we don't try to run two tests in parallel,
+# we use a lock file in the test directory.
 
 lockfile=$HOSTDIR/lockfile
-if [ -f $lockfile ]; then
-	echo "Directory $HOSTDIR is locked:" 1>&2
-	cat $lockfile 1>&2
-	echo "Perhaps the previous test is still running?" 1>&2
-	echo "(Remove $lockfile manually if necessary.)" 1>&2
-	exit 1
+if test -f $lockfile
+then
+    echo "Directory $HOSTDIR is locked:" 1>&2
+    cat $lockfile 1>&2
+    echo "Perhaps the previous test is still running?" 1>&2
+    echo "(Remove $lockfile manually if necessary.)" 1>&2
+    exit 1
 fi
 trap 'rm -f $lockfile; exit 1' 1 2 3 13 15
 trap 'exit_status=$?; rm -f $lockfile; exit $exit_status' 0
@@ -387,176 +427,176 @@ status=0
 # a debugging grade and a trailing grade.
 
 case $HOST in
-	ceres)
-		# On these hosts, test the high-level back-end more:
-		# bootstrap the compiler in hlc.gc,
-		# use hlc.gc as the default grade,
-		# and install & test various other hlc-related grades.
-		CONFIG_OPTS=""
-		DEFAULT_GRADE="hlc.gc"
-		export DEFAULT_GRADE
-		INSTALL_GRADE="hlc.gc"
-		INSTALL_LIBGRADES="hlc.gc		\
-					hlc.gc.prof 	\
-					hlc.gc.memprof 	\
-					hlc.gc.tr 	\
-					hlc.par.gc	\
-					asm_fast.gc	\
-					asm_fast.gc.tr	\
-					asm_fast.gc.tr.debug"
-		# The erlang grade requires mmc --make.
-		if test "$USE_MMC_MAKE" != ""; then
-			INSTALL_LIBGRADES="$INSTALL_LIBGRADES erlang"
-		fi
-		;;
-	saturn)
-		CONFIG_OPTS="--disable-dotnet-grades"
-		INSTALL_LIBGRADES="asm_fast.gc			\
-					asm_fast.gc.decldebug	\
-					asm_fast.gc.memprof	\
-					asm_fast.gc.prof	\
-					asm_fast.gc.tr		\
-					asm_fast.gc.tr.debug	\
-					asm_fast.gc.tr.profdeep	\
-					hlc.gc			\
-					hlc.gc.tr		\
-					hlc.par.gc		\
-					asm_fast.par.gc"
-		;;
-	neptune)
-		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
-		INSTALL_LIBGRADES="asm_fast.gc		\
-			asm_fast.gc.tr			\
-			asm_fast.gc.tr.ll_debug		\
-			asm_fast.gc.tr.debug		\
-			hlc.gc				\
-			hlc.gc.tr			\
-			hlc.gc.tr.ll_debug		\
-			asm_fast.gc.tr.prof		\
-			asm_fast.gc.tr.memprof		\
-			asm_fast.gc.tr.profdeep"	
-		;;	
-	pluto)
-		DEFAULT_GRADE="hlc.gc"
-		export DEFAULT_GRADE
-		INSTALL_GRADE="hlc.gc"
-		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
-		INSTALL_LIBGRADES="hlc.gc		\
-			hlc.gc.tr			\
-			hlc.par.gc			\
-			asm_fast.gc			\
-			asm_fast.par.gc			\
-			asm_fast.gc.tr			\
-			asm_fast.gc.tr.debug		\
-			asm_fast.gc.profdeep		\
-			asm_fast.gc.stseg		\
-			reg.gc.tr"			
-		;;
-			
-	jupiter)
-		# Ensure that the nogc grades get installed and tested
-		# on at least one host
-		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
-		;;
-	earth)
-		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-dotnet-grades"
-		INSTALL_LIBGRADES="asm_fast.gc			\
-				asm_fast.gc.tr			\
-				asm_fast.gc.debug.tr 		\
-				asm_fast.gc.prof 		\
-				asm_fast.gc.profdeep		\
-				asm_fast.gc.tsc	 		\
-				hlc.gc 				\
-				hlc.par.gc			\
-				asm_fast.gc.tr.decldebug"
-		;;
-	aral)
-		#
-		# Aral has limited disk space, and not having to expend it
-		# on grades not needed by its primary user (zs) helps to
-		# conserve it.
-		#
-		CONFIG_OPTS="--with-cc=/usr/local/gcc-3.4.6/bin/gcc-3.4.6 --enable-deep-profiler=/var/www/cgi-bin"
-		INSTALL_LIBGRADES="asm_fast.gc			\
-					asm_fast.gc.debug.tr	\
-					asm_fast.gc.mmsc	\
-					asm_fast.gc.mm.debug	\
-					asm_fast.gc.profdeep	\
-					hlc.gc"
-		;;
-	swordfish)
-		# swordfish is being used by the G12 group at the moment, so
-		# it requires trailing versions of most of the grades.
-		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-java-grade"
-		case $BRANCH in
-			g12)
-				DEFAULT_GRADE="hlc.gc.tr"
-				export $DEFAULT_GRADE
-				INSTALL_LIBGRADES="hlc.gc.tr		\
-					hl.gc.tr			\
-					asm_fast.gc.tr			\
-					asm_fast.gc.tr.prof 		\
-					asm_fast.gc.tr.memprof 		\
-					asm_fast.gc.tr.profdeep		\
-					asm_fast.gc.tr.debug"
-				;;
-			*)
-				INSTALL_LIBGRADES="asm_fast.gc		\
-					hlc.gc.tr			\
-					hlc.gc.tr.prof 			\
-					hlc.gc.tr.memprof		\
-					asm_fast.gc.tr			\
-					asm_fast.gc.tr.prof 		\
-					asm_fast.gc.tr.memprof 		\
-					asm_fast.gc.tr.profdeep		\
-					asm_fast.gc.tr.decldebug	\
-					hlc.gc"
-				;;
-		esac
-		;; 
-	uranus)
-		CONFIG_OPTS=""
-		;;
-	
-	eris)
-		# The asm_fast grades don't work on Darwin.
-		# The reg grades don't work with the default gcc compiler
-		# on this machine either.
-		# XXX Install more grades on this machine.
-		CONFIG_OPTS=""
-		DEFAULT_GRADE="hlc.gc"
-		export DEFAULT_GRADE
-		INSTALL_GRADE="hlc.gc"
-		INSTALL_LIBGRADES="hlc.gc		\
-			hlc.gc.tr			\
-			hlc.gc.tr.ll_debug		\
-			none.gc.tr			\
-			none.gc.tr.debug"
-		;;
-	taura)
-		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
-		INSTALL_LIBGRADES="asm_fast.gc		\
-			asm_fast.gc.tr			\
-			asm_fast.par.gc			\
-			asm_fast.gc.tr.debug		\
-			asm_fast.gc.profdeep		\
-			asm_fast.gc.decldebug		\
-			hlc.gc				\
-			hlc.gc.tr"
-		;;	
-	*)	
-		CONFIG_OPTS="" ;;
+    ceres)
+            # On these hosts, test the high-level back-end more:
+            # bootstrap the compiler in hlc.gc,
+            # use hlc.gc as the default grade,
+            # and install & test various other hlc-related grades.
+            CONFIG_OPTS=""
+            DEFAULT_GRADE="hlc.gc"
+            export DEFAULT_GRADE
+            INSTALL_GRADE="hlc.gc"
+            INSTALL_LIBGRADES="hlc.gc               \
+                                    hlc.gc.prof     \
+                                    hlc.gc.memprof  \
+                                    hlc.gc.tr       \
+                                    hlc.par.gc      \
+                                    asm_fast.gc     \
+                                    asm_fast.gc.tr  \
+                                    asm_fast.gc.tr.debug"
+            # The erlang grade requires mmc --make.
+            if test "$USE_MMC_MAKE" != ""; then
+                    INSTALL_LIBGRADES="$INSTALL_LIBGRADES erlang"
+            fi
+            ;;
+    saturn)
+            CONFIG_OPTS="--disable-dotnet-grades"
+            INSTALL_LIBGRADES="asm_fast.gc                  \
+                                    asm_fast.gc.decldebug   \
+                                    asm_fast.gc.memprof     \
+                                    asm_fast.gc.prof        \
+                                    asm_fast.gc.tr          \
+                                    asm_fast.gc.tr.debug    \
+                                    asm_fast.gc.tr.profdeep \
+                                    hlc.gc                  \
+                                    hlc.gc.tr               \
+                                    hlc.par.gc              \
+                                    asm_fast.par.gc"
+            ;;
+    neptune)
+            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+            INSTALL_LIBGRADES="asm_fast.gc          \
+                    asm_fast.gc.tr                  \
+                    asm_fast.gc.tr.ll_debug         \
+                    asm_fast.gc.tr.debug            \
+                    hlc.gc                          \
+                    hlc.gc.tr                       \
+                    hlc.gc.tr.ll_debug              \
+                    asm_fast.gc.tr.prof             \
+                    asm_fast.gc.tr.memprof          \
+                    asm_fast.gc.tr.profdeep"        
+            ;;      
+    pluto)
+            DEFAULT_GRADE="hlc.gc"
+            export DEFAULT_GRADE
+            INSTALL_GRADE="hlc.gc"
+            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+            INSTALL_LIBGRADES="hlc.gc               \
+                    hlc.gc.tr                       \
+                    hlc.par.gc                      \
+                    asm_fast.gc                     \
+                    asm_fast.par.gc                 \
+                    asm_fast.gc.tr                  \
+                    asm_fast.gc.tr.debug            \
+                    asm_fast.gc.profdeep            \
+                    asm_fast.gc.stseg               \
+                    reg.gc.tr"                      
+            ;;
+                    
+    jupiter)
+            # Ensure that the nogc grades get installed and tested
+            # on at least one host
+            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+            ;;
+    earth)
+            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-dotnet-grades"
+            INSTALL_LIBGRADES="asm_fast.gc                  \
+                            asm_fast.gc.tr                  \
+                            asm_fast.gc.debug.tr            \
+                            asm_fast.gc.prof                \
+                            asm_fast.gc.profdeep            \
+                            asm_fast.gc.tsc                 \
+                            hlc.gc                          \
+                            hlc.par.gc                      \
+                            asm_fast.gc.tr.decldebug"
+            ;;
+    aral)
+            #
+            # Aral has limited disk space, and not having to expend it
+            # on grades not needed by its primary user (zs) helps to
+            # conserve it.
+            #
+            CONFIG_OPTS="--with-cc=/usr/local/gcc-3.4.6/bin/gcc-3.4.6 --enable-deep-profiler=/var/www/cgi-bin"
+            INSTALL_LIBGRADES="asm_fast.gc                  \
+                                    asm_fast.gc.debug.tr    \
+                                    asm_fast.gc.mmsc        \
+                                    asm_fast.gc.mm.debug    \
+                                    asm_fast.gc.profdeep    \
+                                    hlc.gc"
+            ;;
+    swordfish)
+            # swordfish is being used by the G12 group at the moment, so
+            # it requires trailing versions of most of the grades.
+            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-java-grade"
+            case $BRANCH in
+                g12)
+                    DEFAULT_GRADE="hlc.gc.tr"
+                    export $DEFAULT_GRADE
+                    INSTALL_LIBGRADES="hlc.gc.tr            \
+                            hl.gc.tr                        \
+                            asm_fast.gc.tr                  \
+                            asm_fast.gc.tr.prof             \
+                            asm_fast.gc.tr.memprof          \
+                            asm_fast.gc.tr.profdeep         \
+                            asm_fast.gc.tr.debug"
+                    ;;
+                *)
+                    INSTALL_LIBGRADES="asm_fast.gc          \
+                            hlc.gc.tr                       \
+                            hlc.gc.tr.prof                  \
+                            hlc.gc.tr.memprof               \
+                            asm_fast.gc.tr                  \
+                            asm_fast.gc.tr.prof             \
+                            asm_fast.gc.tr.memprof          \
+                            asm_fast.gc.tr.profdeep         \
+                            asm_fast.gc.tr.decldebug        \
+                            hlc.gc"
+                    ;;
+            esac
+            ;; 
+    uranus)
+            CONFIG_OPTS=""
+            ;;
+    
+    eris)
+            # The asm_fast grades don't work on Darwin.
+            # The reg grades don't work with the default gcc compiler
+            # on this machine either.
+            # XXX Install more grades on this machine.
+            CONFIG_OPTS=""
+            DEFAULT_GRADE="hlc.gc"
+            export DEFAULT_GRADE
+            INSTALL_GRADE="hlc.gc"
+            INSTALL_LIBGRADES="hlc.gc               \
+                    hlc.gc.tr                       \
+                    hlc.gc.tr.ll_debug              \
+                    none.gc.tr                      \
+                    none.gc.tr.debug"
+            ;;
+    taura)
+            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+            INSTALL_LIBGRADES="asm_fast.gc          \
+                    asm_fast.gc.tr                  \
+                    asm_fast.par.gc                 \
+                    asm_fast.gc.tr.debug            \
+                    asm_fast.gc.profdeep            \
+                    asm_fast.gc.decldebug           \
+                    hlc.gc                          \
+                    hlc.gc.tr"
+            ;;      
+    *)      
+            CONFIG_OPTS="" ;;
 esac
 
 
-	# The deep profiler needs to be included in the source distribution.
+# The deep profiler needs to be included in the source distribution.
+#
 case $HOST in $ROTD_HOST)
-	CONFIG_OPTS="$CONFIG_OPTS \
-	    --enable-deep-profiler=$TOPDIR/installed_w3/cgi-bin"
-	if test "$INSTALL_LIBGRADES" != ""; then
-		INSTALL_LIBGRADES="$INSTALL_LIBGRADES asm_fast.gc.profdeep"
-	fi
-	;;
+    CONFIG_OPTS="$CONFIG_OPTS --enable-deep-profiler=$TOPDIR/installed_w3/cgi-bin"
+    if test "$INSTALL_LIBGRADES" != ""; then
+            INSTALL_LIBGRADES="$INSTALL_LIBGRADES asm_fast.gc.profdeep"
+    fi
+    ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -597,100 +637,103 @@ rm -rf build.*/mercury-gcc
 
 echo "test_mercury starting cvs checkout at `date`" 1>&2
 
-set -x	# trace execution
+set -x  # trace execution
 
 : checkout the sources
 cd $DIR || { false; exit 1; }
-# we need to manually remove this copy of dl.m to avoid spurious cvs
+# We need to manually remove this copy of dl.m to avoid spurious cvs
 # conflicts when switching between the 0.10 branch (where it is in cvs)
 # and the main branch (where it is generated automatically).
 rm -f mercury/extras/dynamic_linking/dl.m
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case "$C_COMPILER" in
-	asm)	with_asm=true ;;
-	*)	case $HOST in
-			*)	with_asm=false ;;
-		esac
-		;;
+    asm)
+        with_asm=true
+        ;;
+    *)
+        case $HOST in
+            *) with_asm=false ;;
+        esac
+        ;;
 esac
 case "$with_asm" in
-	true)
-		# Check out the Mercury gcc back-end interface sources
-		cvs checkout $CHECKOUT_OPTS mercury-gcc || { false; exit 1; }
-		# Check out the main gcc sources.
-		# See <http://gcc.gnu.org/cvs.html>.
-		#
-		# Once the gcc sources have been checked out here,
-		# the Mercury autoconfiguration script should find them
-		# automatically, so we don't need to bother explicitly
-		# passing `--enable-gcc-back-end' to configure.
-		#
-		# Note that the `cvs login' command, namely
-		# `cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc login'
-		# must be done manually, since there is no easy way to pass
-		# the password (`anoncvs') from a script.
-		# Once it is done once, it will be saved in the user's
-		# ~/.cvspass file, so it doesn't need to be done again.
-		#
-		# This is commented out, to save bandwidth,
-		# since currently we're using a fixed snapshot
-		# (`-r gcc_3_2_release') anyway.
-		# Perhaps this should eventually change to use
-		# `-r gcc_latest_snapshot'.
-		date
-		#cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc -z 9 \
-		# 	checkout -r gcc_3_2_release gcc || { false; exit 1; }
-		#date
-		# Link the Mercury gcc back-end interface sources
-		# into the appropriate place in the gcc sources
-		pwd
-		(cd gcc/gcc && rm -f mercury && \
-			ln -s ../../mercury-gcc mercury) \
-			|| { false; exit 1; }
-		# Now configure and build the gcc directory.
-		# The gcc cvs repository includes some automatically
-		# generated files; we need to touch them here before
-		# running configure.
-		# XXX We should perhaps also do `make distclean' before
-		# configure.
-		(cd gcc && 
-			contrib/gcc_update --touch &&
-			sh configure --enable-languages=mercury &&
-			make) || set_status "gcc checkout"
-		date
-		;;
+    true)
+        # Check out the Mercury gcc back-end interface sources
+        cvs checkout $CHECKOUT_OPTS mercury-gcc || { false; exit 1; }
+        # Check out the main gcc sources.
+        # See <http://gcc.gnu.org/cvs.html>.
+        #
+        # Once the gcc sources have been checked out here,
+        # the Mercury autoconfiguration script should find them
+        # automatically, so we don't need to bother explicitly
+        # passing `--enable-gcc-back-end' to configure.
+        #
+        # Note that the `cvs login' command, namely
+        # `cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc login'
+        # must be done manually, since there is no easy way to pass
+        # the password (`anoncvs') from a script.
+        # Once it is done once, it will be saved in the user's
+        # ~/.cvspass file, so it doesn't need to be done again.
+        #
+        # This is commented out, to save bandwidth,
+        # since currently we're using a fixed snapshot
+        # (`-r gcc_3_2_release') anyway.
+        # Perhaps this should eventually change to use
+        # `-r gcc_latest_snapshot'.
+        date
+        #cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc -z 9 \
+        #       checkout -r gcc_3_2_release gcc || { false; exit 1; }
+        #date
+        # Link the Mercury gcc back-end interface sources
+        # into the appropriate place in the gcc sources
+        pwd
+        (cd gcc/gcc && rm -f mercury && \
+                ln -s ../../mercury-gcc mercury) \
+                || { false; exit 1; }
+        # Now configure and build the gcc directory.
+        # The gcc cvs repository includes some automatically
+        # generated files; we need to touch them here before
+        # running configure.
+        # XXX We should perhaps also do `make distclean' before
+        # configure.
+        (cd gcc && 
+                contrib/gcc_update --touch &&
+                sh configure --enable-languages=mercury &&
+                make) || set_status "gcc checkout"
+        date
+        ;;
 esac
 
 : make sure the installation directory exists
-[ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
+test -d $INSTALL_DIR || mkdir -p $INSTALL_DIR
 
 : update the VERSION file to specify the version we are building
-sed	"s/VERSION=.*/VERSION=$RELEASE_VERSION/" \
-	mercury/VERSION > mercury/VERSION.new
+sed     "s/VERSION=.*/VERSION=$RELEASE_VERSION/" \
+        mercury/VERSION > mercury/VERSION.new
 mv mercury/VERSION.new mercury/VERSION
 
 : bootstrap the compiler up to stage 3 and check that the results match
 case "$BOOTSTRAP_MERCURY_COMPILER" in
-	"")	;;
-	*)	MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
-		export MERCURY_COMPILER
-		;;
+    "")     ;;
+    *)      MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
+            export MERCURY_COMPILER
+            ;;
 esac
 cd mercury || { false; exit 1; }
 
 # if [ -s tools/list.$HOST ]; then
-# 	tools/expand_params `tools/cur_param tools $HOST` > Mmake.params
+#       tools/expand_params `tools/cur_param tools $HOST` > Mmake.params
 # else
-	echo "MC = ../scripts/mmc" > Mmake.params
-	echo "EXTRA_MCFLAGS = $INSTALL_MCFLAGS" >> Mmake.params
-	echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS" >> Mmake.params
-	echo "EXTRA_CFLAGS = $INSTALL_CFLAGS" >> Mmake.params
-	echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS" >> Mmake.params
-	case "$INSTALL_GRADE" in
-		"")	;;
-		*)	echo "GRADE = $INSTALL_GRADE" >> Mmake.params
-			;;
-	esac
+    echo "MC = ../scripts/mmc" > Mmake.params
+    echo "EXTRA_MCFLAGS = $INSTALL_MCFLAGS" >> Mmake.params
+    echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS" >> Mmake.params
+    echo "EXTRA_CFLAGS = $INSTALL_CFLAGS" >> Mmake.params
+    echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS" >> Mmake.params
+    case "$INSTALL_GRADE" in
+            "")     ;;
+            *)      echo "GRADE = $INSTALL_GRADE" >> Mmake.params
+                    ;;
+    esac
 # fi
 
 # We allow "asm" as a special value for the C_COMPILER
@@ -698,22 +741,22 @@ cd mercury || { false; exit 1; }
 # $CC holds the name of the real C compiler.
 
 case "$C_COMPILER" in
-	asm)
-		CC=gcc
-		target_opts="--target asm"
-		;;
-	*)
-		CC="$C_COMPILER"
-		target_opts=""
-		;;
+    asm)
+        CC=gcc
+        target_opts="--target asm"
+        ;;
+    *)
+        CC="$C_COMPILER"
+        target_opts=""
+        ;;
 esac
 export CC
 
 MMAKE="mmake $USE_MMC_MAKE"
-	
+        
 if test "$INSTALL_LIBGRADES" != ""
 then
-	echo "$INSTALL_LIBGRADES" > .enable_lib_grades
+    echo "$INSTALL_LIBGRADES" > .enable_lib_grades
 fi
 
 # XXX Darwin attachs an underscore to the names of exported symbols, so the 
@@ -721,10 +764,10 @@ fi
 namespace_opt=""
 case "$HOST" in
     eris)
-    namespace_opt="--no-check-namespace"
-    ;;
+        namespace_opt="--no-check-namespace"
+        ;;
 esac
-	
+        
 autoconf || { false; exit 1; }
 rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
@@ -735,8 +778,8 @@ $MMAKE $target_opts depend $PARALLEL || { false; exit 1; }
 version=`$MMAKE $target_opts version` || { false; exit 1; }
 fullarch=`$MMAKE $target_opts fullarch` || { false; exit 1; }
 tools/bootcheck $USE_MMC_MAKE $use_cp_opt $target_opts \
-	--keep-objs --copy-runtime $namespace_opt \
-	--no-test-suite $PARALLEL || $install_anyway || { false; exit 1; }
+        --keep-objs --copy-runtime $namespace_opt \
+        --no-test-suite $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
 #-----------------------------------------------------------------------------#
@@ -756,12 +799,12 @@ echo "current directory `pwd`" 1>&2
 
 case $status in 0)
     case $install_anyway_stage1 in
-        false)	cd mercury/stage2 || { false; exit 1; }
-		# we need to use the stage1 compiler to do the install
-		MERCURY_COMPILER=$DIR/mercury/compiler/mercury_compile
-		export MERCURY_COMPILER
-		;;
-        true)	cd mercury || { false; exit 1; } ;;
+        false)  cd mercury/stage2 || { false; exit 1; }
+                # we need to use the stage1 compiler to do the install
+                MERCURY_COMPILER=$DIR/mercury/compiler/mercury_compile
+                export MERCURY_COMPILER
+                ;;
+        true)   cd mercury || { false; exit 1; } ;;
     esac
 
     # Make a backup copy of the current installation which we will restore
@@ -782,27 +825,27 @@ case $status in 0)
     # that wouldn't work, since many of the grades can only be built with
     # `--target c'.
     $MMAKE $target_opts install_main MMAKEFLAGS=$PARALLEL || \
-    		set_status "install_main"
+                set_status "install_main"
     $MMAKE install_grades MMAKEFLAGS=$PARALLEL || \
-    		set_status "install_grades"
+                set_status "install_grades"
 
     case $install_anyway_stage1 in
-        false)	cd ../.. || set_status "cd ../.." ;;
-        true)	cd .. || set_status "cd .." ;;
+        false)  cd ../.. || set_status "cd ../.." ;;
+        true)   cd .. || set_status "cd .." ;;
     esac
 
-    [ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
+    test -d $TESTDIR/logs || mkdir -p $TESTDIR/logs
     case $status in
         0) 
-	    date >> $TESTDIR/logs/install."$TEST_ID"
-	    rm -f $TESTDIR/logs/install-failed."$TEST_ID"
-	    ;;
+            date >> $TESTDIR/logs/install."$TEST_ID"
+            rm -f $TESTDIR/logs/install-failed."$TEST_ID"
+            ;;
         *)
-	    date >> $TESTDIR/logs/install-failed."$TEST_ID"
-	    # restore the previous installation
-	    rm -rf $INSTALL_DIR
-	    mv $BACKUP_DIR $INSTALL_DIR
-	    ;;
+            date >> $TESTDIR/logs/install-failed."$TEST_ID"
+            # restore the previous installation
+            rm -rf $INSTALL_DIR
+            mv $BACKUP_DIR $INSTALL_DIR
+            ;;
     esac
 esac
 
@@ -830,54 +873,54 @@ GRADES="`(cd $DIR/mercury && $MMAKE echo_libgrades)`"
 echo "test_mercury starting to create distribution at `date`" 1>&2
 
 case $HOST in $ROTD_HOST|$G12_ROTD_HOST)
-	# The tests on $ROTD_HOST and $G12_ROTD_HOST are run with
-	# `--intermodule-optimization', so we need to do a `mmake realclean'
-	# before building the C files for the source distribution. The extra
-	# compilation time for `--intermodule-optimization' is probably not
-	# acceptable for the source distribution.
-	{ cd $DIR/mercury &&
-	$MMAKE realclean MMAKEFLAGS=$PARALLEL &&
-	(cd $DIR/tests &&
-	$MMAKE realclean MMAKEFLAGS=$PARALLEL) &&
-	: > Mmake.params &&
-	rm -f so_locations &&
-	autoconf &&
-	mercury_cv_low_tag_bits=2 \
-	mercury_cv_bits_per_word=32 \
-	mercury_cv_unboxed_floats=no \
-	sh configure --prefix=$INSTALL_DIR &&
-	$MMAKE MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling' $PARALLEL" tar &&
-	cd .. &&
-	rm -f $UNSTABLE/* &&
-	cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version-unstable.txt &&
-	cp mercury/INSTALL $UNSTABLE/mercury-INSTALL-$version-unstable.txt &&
-	mv mercury-compiler-$version.tar.gz	\
-	    $UNSTABLE/mercury-compiler-$version-unstable.tar.gz &&
-	mv mercury-extras-$version.tar.gz	\
-	    $UNSTABLE/mercury-extras-$version-unstable.tar.gz &&
-	mv mercury-tests-$version.tar.gz	\
-	    $UNSTABLE/mercury-tests-$version-unstable.tar.gz
-	} || set_status "making source distribution"
-	# Later parts of this script assume that we've already run configure,
-	# so we need to redo that.
-	cd $DIR/mercury && sh configure --prefix=$INSTALL_DIR
-	cd $DIR
-	;;
+    # The tests on $ROTD_HOST and $G12_ROTD_HOST are run with
+    # `--intermodule-optimization', so we need to do a `mmake realclean'
+    # before building the C files for the source distribution. The extra
+    # compilation time for `--intermodule-optimization' is probably not
+    # acceptable for the source distribution.
+    { cd $DIR/mercury &&
+    $MMAKE realclean MMAKEFLAGS=$PARALLEL &&
+    (cd $DIR/tests &&
+    $MMAKE realclean MMAKEFLAGS=$PARALLEL) &&
+    : > Mmake.params &&
+    rm -f so_locations &&
+    autoconf &&
+    mercury_cv_low_tag_bits=2 \
+    mercury_cv_bits_per_word=32 \
+    mercury_cv_unboxed_floats=no \
+    sh configure --prefix=$INSTALL_DIR &&
+    $MMAKE MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling' $PARALLEL" tar &&
+    cd .. &&
+    rm -f $UNSTABLE/* &&
+    cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version-unstable.txt &&
+    cp mercury/INSTALL $UNSTABLE/mercury-INSTALL-$version-unstable.txt &&
+    mv mercury-compiler-$version.tar.gz     \
+        $UNSTABLE/mercury-compiler-$version-unstable.tar.gz &&
+    mv mercury-extras-$version.tar.gz       \
+        $UNSTABLE/mercury-extras-$version-unstable.tar.gz &&
+    mv mercury-tests-$version.tar.gz        \
+        $UNSTABLE/mercury-tests-$version-unstable.tar.gz
+    } || set_status "making source distribution"
+    # Later parts of this script assume that we've already run configure,
+    # so we need to redo that.
+    cd $DIR/mercury && sh configure --prefix=$INSTALL_DIR
+    cd $DIR
+    ;;
 esac
 case $HOST in $GCC_ROTD_HOST)
-	# build the mercury-gcc source distribution
-	cd $DIR &&
-	rm -f	mercury-gcc/stage[1-4] \
-		mercury-gcc/include \
-		mercury-gcc/mercury \
-		mercury-gcc/*.o &&
-	mv mercury-gcc mercury-gcc-$version &&
-	rm -f $UNSTABLE/mercury-gcc-$RELEASE_VERSION_PATTERN.tar.gz &&
-	tar -cf - mercury-gcc-$version | gzip -9 \
-		> $UNSTABLE/mercury-gcc-$version.tar.gz &&
-	mv mercury-gcc-$version mercury-gcc &&
-	true
-	;;
+    # Build the mercury-gcc source distribution.
+    cd $DIR &&
+    rm -f   mercury-gcc/stage[1-4] \
+            mercury-gcc/include \
+            mercury-gcc/mercury \
+            mercury-gcc/*.o &&
+    mv mercury-gcc mercury-gcc-$version &&
+    rm -f $UNSTABLE/mercury-gcc-$RELEASE_VERSION_PATTERN.tar.gz &&
+    tar -cf - mercury-gcc-$version | gzip -9 \
+            > $UNSTABLE/mercury-gcc-$version.tar.gz &&
+    mv mercury-gcc-$version mercury-gcc &&
+    true
+    ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -889,67 +932,65 @@ cd tests || { false; exit 1; }
 echo "test_mercury running tests in grades $GRADES" 1>&2
 for grade in $GRADES
 do
-	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
-	MERCURY_SUPPRESS_STACK_TRACE=yes
-	export MERCURY_SUPPRESS_STACK_TRACE
-	case $BRANCH in
-	    *)
-#	        echo "testing grade $grade, MCFLAGS=$TEST_MCFLAGS" \
-#			>> $TEST_ERROR_FILE
-		$MMAKE GRADE="$grade" \
-			EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-			EXTRA_CFLAGS="$TEST_CFLAGS" \
-			EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
-			EXTRA_MLFLAGS="$TEST_MLFLAGS" \
-			$PARALLEL runtests || \
-			set_status "tests in grade $grade"
-		if [ -f runtests.errs ]; then
-			touch $TEST_ERROR_FILE
-			cat runtests.errs >> $TEST_ERROR_FILE
-		fi
-		;;
-	esac
-	case $grade in
-		*.memprof*)
-			# we need to set LD_BIND_NOW=1
-			# for profiling on DEC Alpha
-			(cd benchmarks &&
-			touch poly.m &&
-			$MMAKE poly.depend &&
-			$MMAKE poly \
-				GRADE="$grade" \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" \
-				EXTRA_MLFLAGS="$TEST_MLFLAGS" &&
-			LD_BIND_NOW=1 ./poly > poly.$grade.out &&
-			case $grade in
-			*hl*)
-				# for --high-level-code, we need to
-				# pass --no-demangle to mprof
-				mprof --no-demangle -v -m -c \
-					> poly.$grade.mprof 2>&1 &&
-				{ diff -u poly.mprof-exp2 poly.$grade.mprof ||
-					true; }
-				;;
-			*)
-				mprof -v -m -c > poly.$grade.mprof 2>&1 &&
-				{ diff -u poly.mprof-exp poly.$grade.mprof ||
-					true; }
-				;;
-			esac &&
-			cp Prof.CallPair poly.$grade.CallPair &&
-			cp Prof.MemoryWords poly.$grade.MemoryWords &&
-			cp Prof.MemoryCells poly.$grade.MemoryCells &&
-			cp Prof.Decl poly.$grade.Decl) ||
-			set_status "benchmarks/poly in grade *.memprof*"
-			;;
-	esac
-	echo "test_mercury finished tests for grade $grade at `date`" 1>&2
+    echo "test_mercury starting tests for grade $grade at `date`" 1>&2
+    MERCURY_SUPPRESS_STACK_TRACE=yes
+    export MERCURY_SUPPRESS_STACK_TRACE
+    case $BRANCH in
+        *)
+            $MMAKE GRADE="$grade" \
+                EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+                EXTRA_CFLAGS="$TEST_CFLAGS" \
+                EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
+                EXTRA_MLFLAGS="$TEST_MLFLAGS" \
+                $PARALLEL runtests || \
+                set_status "tests in grade $grade"
+            if test -f runtests.errs
+            then
+                touch $TEST_ERROR_FILE
+                cat runtests.errs >> $TEST_ERROR_FILE
+            fi
+            ;;
+    esac
+    case $grade in
+        *.memprof*)
+            # We need to set LD_BIND_NOW=1
+            # for profiling on DEC Alpha.
+            (cd benchmarks &&
+            touch poly.m &&
+            $MMAKE poly.depend &&
+            $MMAKE poly \
+                    GRADE="$grade" \
+                    EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+                    EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
+                    EXTRA_CFLAGS="$TEST_CFLAGS" \
+                    EXTRA_MLFLAGS="$TEST_MLFLAGS" &&
+            LD_BIND_NOW=1 ./poly > poly.$grade.out &&
+            case $grade in
+                *hl*)
+                    # For --high-level-code, we need to
+                    # pass --no-demangle to mprof.
+                    mprof --no-demangle -v -m -c \
+                        > poly.$grade.mprof 2>&1 &&
+                    { diff -u poly.mprof-exp2 poly.$grade.mprof || true; }
+                    ;;
+                *)
+                    mprof -v -m -c > poly.$grade.mprof 2>&1 &&
+                    { diff -u poly.mprof-exp poly.$grade.mprof || true; }
+                    ;;
+            esac &&
+            cp Prof.CallPair poly.$grade.CallPair &&
+            cp Prof.MemoryWords poly.$grade.MemoryWords &&
+            cp Prof.MemoryCells poly.$grade.MemoryCells &&
+            cp Prof.Decl poly.$grade.Decl) ||
+            set_status "benchmarks/poly in grade *.memprof*"
+            ;;
+    esac
+    echo "test_mercury finished tests for grade $grade at `date`" 1>&2
 done
 
-if [ -s $TEST_ERROR_FILE ]; then
-	fgrep "FAILED TEST" $TEST_ERROR_FILE > $FAILED_TESTS_FILE
+if test -s $TEST_ERROR_FILE
+then
+    fgrep "FAILED TEST" $TEST_ERROR_FILE > $FAILED_TESTS_FILE
 fi
 echo "test_mercury finished tests at `date`" 1>&2
 
@@ -960,41 +1001,42 @@ cd ..
 : update the unstable release
 
 case $HOST in $ROTD_HOST)
-	if [ -s $TEST_ERROR_FILE ]; then
-		{ cat $FAILED_TESTS_FILE;
-		  echo "";
-		  echo "Test logs for the failed test cases:";
-		  echo "";
-		  cat $TEST_ERROR_FILE;
-		} > $UNSTABLE/mercury-test-failures-$version-unstable.txt
-	else 
-		rm -f $UNSTABLE/mercury-test-failures-$version-unstable.txt
-	fi &&
-	ssh $BETA_FTPHOST "\
-	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR" &&
-	scp $UNSTABLE/mercury-*-$version-unstable.* \
-		$BETA_FTPHOST:$BETA_FTPDIR &&
-	ssh $BETA_FTPHOST "\
-		echo $version > $BETA_FTPDIR/latest-unstable-version" &&
-	([ -d $BETA_WEBDIR ] || mkdir $BETA_WEBDIR) &&
-	cp $UNSTABLE/mercury-*-$version-unstable.* $BETA_WEBDIR &&
-	echo $version > $BETA_WEBDIR/latest-unstable-version \
-	|| set_status "copying ROTD"
-	;;
+    if test -s $TEST_ERROR_FILE
+    then
+        { cat $FAILED_TESTS_FILE;
+          echo "";
+          echo "Test logs for the failed test cases:";
+          echo "";
+          cat $TEST_ERROR_FILE;
+        } > $UNSTABLE/mercury-test-failures-$version-unstable.txt
+    else 
+        rm -f $UNSTABLE/mercury-test-failures-$version-unstable.txt
+    fi &&
+    ssh $BETA_FTPHOST "\
+        [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR" &&
+    scp $UNSTABLE/mercury-*-$version-unstable.* \
+            $BETA_FTPHOST:$BETA_FTPDIR &&
+    ssh $BETA_FTPHOST "\
+            echo $version > $BETA_FTPDIR/latest-unstable-version" &&
+    ([ -d $BETA_WEBDIR ] || mkdir $BETA_WEBDIR) &&
+    cp $UNSTABLE/mercury-*-$version-unstable.* $BETA_WEBDIR &&
+    echo $version > $BETA_WEBDIR/latest-unstable-version \
+    || set_status "copying ROTD"
+    ;;
 esac
 case $HOST in $GCC_ROTD_HOST)
-	ssh $BETA_FTPHOST "\
-	  [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
-	  rm -f \
-	    $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
-	scp $UNSTABLE/mercury-gcc-$version.tar.gz \
-	    $BETA_FTPHOST:$BETA_FTPDIR/mercury-gcc-$version-unstable.tar.gz  &&
-	([ -d $BETA_WEBDIR ] || mkdir $BETA_WEBDIR) &&
-	rm -f $BETA_WEBDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
-	cp $UNSTABLE/mercury-gcc-$version.tar.gz \
-		$BETA_WEBDIR/mercury-gcc-$version-unstable.tar.gz \
-	|| set_status "copying mercury-gcc ROTD"
-	;;
+    ssh $BETA_FTPHOST "\
+      [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
+      rm -f \
+        $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
+    scp $UNSTABLE/mercury-gcc-$version.tar.gz \
+        $BETA_FTPHOST:$BETA_FTPDIR/mercury-gcc-$version-unstable.tar.gz  &&
+    ([ -d $BETA_WEBDIR ] || mkdir $BETA_WEBDIR) &&
+    rm -f $BETA_WEBDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
+    cp $UNSTABLE/mercury-gcc-$version.tar.gz \
+            $BETA_WEBDIR/mercury-gcc-$version-unstable.tar.gz \
+    || set_status "copying mercury-gcc ROTD"
+    ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -1008,38 +1050,38 @@ echo "test_mercury starting to create binary distribution at `date`" 1>&2
 # Also we distinguish them based on what optimization level
 # they were compiled with.
 case $HOST in
-	jupiter)	
-		fullname=i686-pc-linux-libc2.3-gnu-O5-intermod
-		;;
-	earth)
-		fullname=i686-pc-linux-libc2.3-gnu-O2
-		;;
-	swordfish)
-		fullname=i686-pc-linux-libc2.3-gnu-O4-intermod
-		;;
-	ceres)	
-		fullname=i686-pc-linux-libc2.3-gnu-O5-hlc
-		;;
-	aral)	
-		fullname=i686-pc-linux-libc2.3-gnu-O3
-		;;
-	saturn)
-		fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O5-intermod
-		;;
-	neptune)
-		fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O4
-		;;
-	pluto)
-		fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O2-intermod-hlc
-		;;
-	*)
-		fullname=$fullarch
-		;;
+    jupiter)        
+        fullname=i686-pc-linux-libc2.3-gnu-O5-intermod
+        ;;
+    earth)
+        fullname=i686-pc-linux-libc2.3-gnu-O2
+        ;;
+    swordfish)
+        fullname=i686-pc-linux-libc2.3-gnu-O4-intermod
+        ;;
+    ceres)  
+        fullname=i686-pc-linux-libc2.3-gnu-O5-hlc
+        ;;
+    aral)   
+        fullname=i686-pc-linux-libc2.3-gnu-O3
+        ;;
+    saturn)
+        fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O5-intermod
+        ;;
+    neptune)
+        fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O4
+        ;;
+    pluto)
+        fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O2-intermod-hlc
+        ;;
+    *)
+        fullname=$fullarch
+        ;;
 esac
 
 case "$C_COMPILER" in
-	gcc)	;;
-	*)	fullname="$fullname-$C_COMPILER" ;;
+    gcc)    ;;
+    *)      fullname="$fullname-$C_COMPILER" ;;
 esac
 
 # cvs does not allow `.' or space in tag names, so we use `_' instead
@@ -1047,52 +1089,53 @@ fullname_tag=`echo $fullname | tr ' .' __`
 
 # On murlibobo building the binary distribution takes a lot of CPU time.
 case $HOST in
-	uranus) ;;
-	*) 	ulimit -S -t unlimited ;;
+    uranus) ;;
+    *)      ulimit -S -t unlimited ;;
 esac
 
 {
-	cd $DIR/mercury &&
-	$MMAKE bindist &&
-	cd .. &&
-	{ [ -d $UNSTABLE ] || mkdir $UNSTABLE; } &&
-	rm -f $UNSTABLE/mercury-*.$fullname.tar.gz &&
-	rm -f $UNSTABLE/mercury-*.$fullname.txt &&
-	cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version.$fullname.txt &&
-	cp mercury/bindist/bindist.INSTALL \
-		$UNSTABLE/mercury-INSTALL-$version.$fullname.txt &&
-	if [ -s $TEST_ERROR_FILE ]; then
-		{ cat $FAILED_TESTS_FILE;
-		  echo "";
-		  echo "Test logs for the failed test cases:";
-		  echo "";
-		  cat $TEST_ERROR_FILE;
-		} > $UNSTABLE/mercury-test-failures-$version.$fullname.txt
-	else 
-		rm -f $UNSTABLE/mercury-test-failures-$version.$fullname.txt
-	fi &&
-	mv mercury/mercury-$version.$fullarch.tar.gz \
-		$UNSTABLE/mercury-$version.$fullname.tar.gz
+    cd $DIR/mercury &&
+    $MMAKE bindist &&
+    cd .. &&
+    { [ -d $UNSTABLE ] || mkdir $UNSTABLE; } &&
+    rm -f $UNSTABLE/mercury-*.$fullname.tar.gz &&
+    rm -f $UNSTABLE/mercury-*.$fullname.txt &&
+    cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version.$fullname.txt &&
+    cp mercury/bindist/bindist.INSTALL \
+            $UNSTABLE/mercury-INSTALL-$version.$fullname.txt &&
+    if test -s $TEST_ERROR_FILE
+    then
+        { cat $FAILED_TESTS_FILE;
+          echo "";
+          echo "Test logs for the failed test cases:";
+          echo "";
+          cat $TEST_ERROR_FILE;
+        } > $UNSTABLE/mercury-test-failures-$version.$fullname.txt
+    else 
+        rm -f $UNSTABLE/mercury-test-failures-$version.$fullname.txt
+    fi &&
+    mv mercury/mercury-$version.$fullarch.tar.gz \
+            $UNSTABLE/mercury-$version.$fullname.tar.gz
 } || set_status "creating binary distribution"
 
 case $status in
     0) {
-    	cd $DIR &&
-	{ [ -d $STABLE ] || mkdir $STABLE; } &&
-	rm -f $STABLE/mercury*-$RELEASE_VERSION_PATTERN.$fullname.tar.gz &&
-	rm -f $STABLE/mercury*-$RELEASE_VERSION_PATTERN.$fullname.txt &&
-	$LN $UNSTABLE/mercury-$version.$fullname.tar.gz \
-		$STABLE/mercury-$version.$fullname.tar.gz &&
-	$LN $UNSTABLE/mercury-NEWS-$version.$fullname.txt \
-		$STABLE/mercury-NEWS-$version.$fullname.txt &&
-	$LN $UNSTABLE/mercury-INSTALL-$version.$fullname.txt \
-		$STABLE/mercury-INSTALL-$version.$fullname.txt &&
-	ssh $BETA_FTPHOST "\
-	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
-	    rm -f \
-		$BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz \
-		$BETA_FTPDIR/mercury*-$RELEASE_VERSION_PATTERN.$fullname.txt" &&
-	scp $STABLE/mercury*-$version.$fullname.* $BETA_FTPHOST:$BETA_FTPDIR
+        cd $DIR &&
+        { test -d $STABLE || mkdir $STABLE; } &&
+        rm -f $STABLE/mercury*-$RELEASE_VERSION_PATTERN.$fullname.tar.gz &&
+        rm -f $STABLE/mercury*-$RELEASE_VERSION_PATTERN.$fullname.txt &&
+        $LN $UNSTABLE/mercury-$version.$fullname.tar.gz \
+                $STABLE/mercury-$version.$fullname.tar.gz &&
+        $LN $UNSTABLE/mercury-NEWS-$version.$fullname.txt \
+                $STABLE/mercury-NEWS-$version.$fullname.txt &&
+        $LN $UNSTABLE/mercury-INSTALL-$version.$fullname.txt \
+                $STABLE/mercury-INSTALL-$version.$fullname.txt &&
+        ssh $BETA_FTPHOST "\
+            [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
+            rm -f \
+                $BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz \
+                $BETA_FTPDIR/mercury*-$RELEASE_VERSION_PATTERN.$fullname.txt" &&
+        scp $STABLE/mercury*-$version.$fullname.* $BETA_FTPHOST:$BETA_FTPDIR
        } || set_status "copying binary distribution"
     ;;
 esac
@@ -1102,132 +1145,132 @@ echo "test_mercury finished binary distribution at `date`" 1>&2
 
 case $status in
     0)
-	: if we get this far, then it worked.
-	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
-	date >> $TESTDIR/logs/success."$TEST_ID"
+        : if we get this far, then it worked.
+        test -d $TESTDIR/logs || mkdir -p $TESTDIR/logs
+        date >> $TESTDIR/logs/success."$TEST_ID"
 
-	case $HOST in $ROTD_HOST)
-	    cd $DIR &&
-		# Delete older stable versions that this one replaces
-	    rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
-	    rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].txt &&
-	    rm -f $STABLE/mercury-*-$version.tar.gz &&
-	    rm -f $STABLE/mercury-*-$version.txt &&
-	    $LN $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
-	        $STABLE/mercury-compiler-$version.tar.gz &&
-	    $LN $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
-	        $STABLE/mercury-extras-$version.tar.gz &&
-	    $LN $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
-	        $STABLE/mercury-tests-$version.tar.gz &&
-	    $LN $UNSTABLE/mercury-NEWS-$version-unstable.txt \
-	        $STABLE/mercury-NEWS-$version.txt &&
-	    $LN $UNSTABLE/mercury-INSTALL-$version-unstable.txt \
-	        $STABLE/mercury-INSTALL-$version.txt &&
+        case $HOST in $ROTD_HOST)
+            cd $DIR &&
+                # Delete older stable versions that this one replaces
+            rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+            rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].txt &&
+            rm -f $STABLE/mercury-*-$version.tar.gz &&
+            rm -f $STABLE/mercury-*-$version.txt &&
+            $LN $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
+                $STABLE/mercury-compiler-$version.tar.gz &&
+            $LN $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
+                $STABLE/mercury-extras-$version.tar.gz &&
+            $LN $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
+                $STABLE/mercury-tests-$version.tar.gz &&
+            $LN $UNSTABLE/mercury-NEWS-$version-unstable.txt \
+                $STABLE/mercury-NEWS-$version.txt &&
+            $LN $UNSTABLE/mercury-INSTALL-$version-unstable.txt \
+                $STABLE/mercury-INSTALL-$version.txt &&
 
-	    ssh $BETA_FTPHOST "\
-	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
-	    rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz \
-	          $BETA_FTPDIR/mercury-*-$version.tar.gz \
-	          $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].txt \
-	          $BETA_FTPDIR/mercury-*-$version.txt && 
-	    $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
-	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
-	    $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
-	        $BETA_FTPDIR/mercury-extras-$version.tar.gz &&
-	    $LN $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
-	        $BETA_FTPDIR/mercury-tests-$version.tar.gz &&
-	    $LN $BETA_FTPDIR/mercury-NEWS-$version-unstable.txt \
-	        $BETA_FTPDIR/mercury-NEWS-$version.txt &&
-	    $LN $BETA_FTPDIR/mercury-INSTALL-$version-unstable.txt \
-	        $BETA_FTPDIR/mercury-INSTALL-$version.txt &&
+            ssh $BETA_FTPHOST "\
+            [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
+            rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz \
+                  $BETA_FTPDIR/mercury-*-$version.tar.gz \
+                  $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].txt \
+                  $BETA_FTPDIR/mercury-*-$version.txt && 
+            $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
+                $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
+            $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
+                $BETA_FTPDIR/mercury-extras-$version.tar.gz &&
+            $LN $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
+                $BETA_FTPDIR/mercury-tests-$version.tar.gz &&
+            $LN $BETA_FTPDIR/mercury-NEWS-$version-unstable.txt \
+                $BETA_FTPDIR/mercury-NEWS-$version.txt &&
+            $LN $BETA_FTPDIR/mercury-INSTALL-$version-unstable.txt \
+                $BETA_FTPDIR/mercury-INSTALL-$version.txt &&
             echo $version > $BETA_FTPDIR/latest-stable-version" &&
 
-	    rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
-	    rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
-	    rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
-	    rm -f $BETA_WEBDIR/mercury-NEWS-$RELEASE_VERSION_PATTERN[0-9].txt &&
-	    rm -f $BETA_WEBDIR/mercury-INSTALL-$RELEASE_VERSION_PATTERN[0-9].txt &&
-	    $LN $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
-	        $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
-	    $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
-	        $BETA_WEBDIR/mercury-extras-$version.tar.gz &&
-	    $LN $BETA_WEBDIR/mercury-tests-$version-unstable.tar.gz \
-	        $BETA_WEBDIR/mercury-tests-$version.tar.gz &&
-	    $LN $BETA_WEBDIR/mercury-NEWS-$version-unstable.txt \
-	        $BETA_WEBDIR/mercury-NEWS-$version.txt &&
-	    $LN $BETA_WEBDIR/mercury-INSTALL-$version-unstable.txt \
-	        $BETA_WEBDIR/mercury-INSTALL-$version.txt &&
+            rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+            rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+            rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+            rm -f $BETA_WEBDIR/mercury-NEWS-$RELEASE_VERSION_PATTERN[0-9].txt &&
+            rm -f $BETA_WEBDIR/mercury-INSTALL-$RELEASE_VERSION_PATTERN[0-9].txt &&
+            $LN $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
+                $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
+            $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
+                $BETA_WEBDIR/mercury-extras-$version.tar.gz &&
+            $LN $BETA_WEBDIR/mercury-tests-$version-unstable.tar.gz \
+                $BETA_WEBDIR/mercury-tests-$version.tar.gz &&
+            $LN $BETA_WEBDIR/mercury-NEWS-$version-unstable.txt \
+                $BETA_WEBDIR/mercury-NEWS-$version.txt &&
+            $LN $BETA_WEBDIR/mercury-INSTALL-$version-unstable.txt \
+                $BETA_WEBDIR/mercury-INSTALL-$version.txt &&
 
             echo $version > $BETA_WEBDIR/latest-stable-version
-	    ;;
-	esac || set_status "updating stable mercury source distribution"
+            ;;
+        esac || set_status "updating stable mercury source distribution"
 
-	case $HOST in $GCC_ROTD_HOST)
-	    cd $DIR &&
-		# Delete older stable versions that this one replaces
-	    rm -f $STABLE/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
-	    rm -f $STABLE/mercury-gcc-$version.tar.gz &&
-	    $LN $UNSTABLE/mercury-gcc-$version.tar.gz \
-	        $STABLE/mercury-gcc-$version.tar.gz &&
+        case $HOST in $GCC_ROTD_HOST)
+            cd $DIR &&
+                # Delete older stable versions that this one replaces
+            rm -f $STABLE/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+            rm -f $STABLE/mercury-gcc-$version.tar.gz &&
+            $LN $UNSTABLE/mercury-gcc-$version.tar.gz \
+                $STABLE/mercury-gcc-$version.tar.gz &&
 
-	    ssh $BETA_FTPHOST "\
-	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
-	    rm -f $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz \
-		  $BETA_FTPDIR/mercury-gcc-$version.tar.gz && 
-	    $LN $BETA_FTPDIR/mercury-gcc-$version-unstable.tar.gz \
-	        $BETA_FTPDIR/mercury-gcc-$version.tar.gz" &&
+            ssh $BETA_FTPHOST "\
+            [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
+            rm -f $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz \
+                  $BETA_FTPDIR/mercury-gcc-$version.tar.gz && 
+            $LN $BETA_FTPDIR/mercury-gcc-$version-unstable.tar.gz \
+                $BETA_FTPDIR/mercury-gcc-$version.tar.gz" &&
 
-	    rm -f $BETA_WEBDIR/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
-	    $LN $BETA_WEBDIR/mercury-gcc-$version-unstable.tar.gz \
-	        $BETA_WEBDIR/mercury-gcc-$version.tar.gz
-	    ;;
-	esac || set_status "updating stable mercury-gcc source distribution"
-	;;
+            rm -f $BETA_WEBDIR/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+            $LN $BETA_WEBDIR/mercury-gcc-$version-unstable.tar.gz \
+                $BETA_WEBDIR/mercury-gcc-$version.tar.gz
+            ;;
+        esac || set_status "updating stable mercury-gcc source distribution"
+        ;;
     *)
-	;;
+        ;;
 esac
 
-# Now rebuild the index files on the www site
+# Now rebuild the index files on the WWW site.
 case $HOST in 
     $ROTD_HOST|$G12_ROTD_HOST)
-	echo "test_mercury generating www index files, starting at `date`" 1>&2
-	(
-	cd $BETA_WEBDIR_TOP &&
-	generate_index_html
-	) || set_status "generating www index"
-	echo "test_mercury generating www index files, finished at `date`" 1>&2
-	;;
+        echo "test_mercury generating www index files, starting at `date`" 1>&2
+        (
+        cd $BETA_WEBDIR_TOP &&
+        generate_index_html
+        ) || set_status "generating www index"
+        echo "test_mercury generating www index files, finished at `date`" 1>&2
+        ;;
     *)
-	;;
+        ;;
 esac
 
-# Now rebuild the index files on the ftp site
+# Now rebuild the index files on the FTP site.
 echo "test_mercury generating ftp index files, starting at `date`" 1>&2
 ssh $BETA_FTPHOST "\
-	PATH=/home/mercury/public/cron/scripts:\$PATH &&
-	export PATH &&
-	( [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR ) &&
-	cd $BETA_FTPDIR &&
-	generate_index_html" || set_status "generating ftp index"
+        PATH=/home/mercury/public/cron/scripts:\$PATH &&
+        export PATH &&
+        ( [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR ) &&
+        cd $BETA_FTPDIR &&
+        generate_index_html" || set_status "generating ftp index"
 echo "test_mercury generating ftp index files, finished at `date`" 1>&2
 
 : check for success
 
 case $status in
     0)
-
-	echo "Installation directory: $INSTALL_DIR" 1>&2
-	echo "test_mercury exiting successfully at `date`" 1>&2
-	true
-	exit 0
-	;;
+        echo "Installation directory: $INSTALL_DIR" 1>&2
+        echo "test_mercury exiting successfully at `date`" 1>&2
+        true
+        exit 0
+        ;;
     *)
-	: one or more tests failed
-	echo "some tests failed" 1>&2
-	echo "test_mercury exiting unsuccessfully at `date`" 1>&2
-	false
-	exit 1
-	;;
+        : one or more tests failed
+        echo "some tests failed" 1>&2
+        echo "test_mercury exiting unsuccessfully at `date`" 1>&2
+        false
+        exit 1
+        ;;
 esac
 
+#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
