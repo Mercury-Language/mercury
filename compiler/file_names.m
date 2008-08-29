@@ -484,6 +484,7 @@ file_is_arch_or_grade_dependent_2(".trans_opt").
 file_is_arch_or_grade_dependent_2(".trans_opt_date").
 file_is_arch_or_grade_dependent_2(".analysis").
 file_is_arch_or_grade_dependent_2(".analysis_date").
+file_is_arch_or_grade_dependent_2(".analysis_status").
 file_is_arch_or_grade_dependent_2(".imdg").
 file_is_arch_or_grade_dependent_2(".init").
 file_is_arch_or_grade_dependent_2(".request").
