@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995,1997,1999-2000,2002-2007 The University of Melbourne.
+% Copyright (C) 1994-1995,1997,1999-2000,2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -840,7 +840,8 @@ dir.relative_path_name_from_components(Components) = PathName :-
 
 :- pragma foreign_proc("C",
     dir.current_directory(Res::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        may_not_duplicate],
 "
     /*
     ** Marked thread_safe because ML_make_io_res_1_error_string will acquire
@@ -1040,7 +1041,8 @@ dir.make_single_directory(DirName, Result, !IO) :-
     dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
         Result::out, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates, will_not_modify_trail, does_not_affect_liveness],
+        terminates, will_not_modify_trail, does_not_affect_liveness,
+        may_not_duplicate],
 "{
 #if defined(MR_WIN32)
     if (CreateDirectory(DirName, NULL)) {

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -198,7 +198,7 @@ get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
 :- pragma foreign_proc("C",
     get_functor_internal(TypeDesc::in, FunctorNumber::in, FunctorName::out,
         Arity::out, PseudoTypeInfoList::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, may_not_duplicate],
 "{
     MR_TypeInfo         type_info;
     MR_Construct_Info   construct_info;
@@ -276,7 +276,7 @@ get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
     get_functor_with_names_internal(TypeDesc::in, FunctorNumber::in,
         FunctorName::out, Arity::out, PseudoTypeInfoList::out,
         ArgNameList::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, may_not_duplicate],
 "{
     MR_TypeInfo         type_info;
     MR_Construct_Info   construct_info;
@@ -977,7 +977,7 @@ construct_tuple(Args) =
 
 :- pragma foreign_proc("C",
     construct_tuple_2(Args::in, ArgTypes::in, Arity::in) = (Term::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, may_not_duplicate],
 "{
     MR_TypeInfo type_info;
     MR_Word     new_data;

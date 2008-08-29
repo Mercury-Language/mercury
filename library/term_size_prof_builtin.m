@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 2003, 2005-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -96,7 +96,7 @@
 
 :- pragma foreign_proc("C",
     measure_size(Term::in, Size::out),
-    [thread_safe, promise_pure, will_not_call_mercury],
+    [thread_safe, promise_pure, will_not_call_mercury, may_not_duplicate],
 "{
 #ifdef MR_RECORD_TERM_SIZES
     MR_TypeInfo type_info;
@@ -123,7 +123,7 @@ measure_size(_Value, Size) :-
 
 :- pragma foreign_proc("C",
     measure_size_acc(Term::in, Size0::in, Size::out),
-    [thread_safe, promise_pure, will_not_call_mercury],
+    [thread_safe, promise_pure, will_not_call_mercury, may_not_duplicate],
 "{
 #ifdef MR_RECORD_TERM_SIZES
     MR_TypeInfo type_info;
@@ -150,7 +150,7 @@ measure_size_acc(_Value, Size0, Size) :-
 
 :- pragma foreign_proc("C",
     increment_size(Term::in, Incr::in),
-    [thread_safe, will_not_call_mercury],
+    [thread_safe, will_not_call_mercury, may_not_duplicate],
 "{
 #ifdef MR_RECORD_TERM_SIZES
   #ifdef MR_DEBUG_TERM_SIZES

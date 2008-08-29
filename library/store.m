@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 2000-2007 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -581,7 +581,7 @@ ref_functor(Ref, Functor, Arity, !Store) :-
 
 :- pragma foreign_proc("C",
     arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "{
     MR_TypeInfo type_info;
     MR_TypeInfo arg_type_info;
@@ -626,7 +626,7 @@ ref_functor(Ref, Functor, Arity, !Store) :-
 
 :- pragma foreign_proc("C",
     new_arg_ref(Val::di, ArgNum::in, ArgRef::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "{
     MR_TypeInfo type_info;
     MR_TypeInfo arg_type_info;

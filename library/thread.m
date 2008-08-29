@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003-2004, 2006-2007 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004, 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -82,7 +82,7 @@
 
 :- pragma foreign_proc("C",
     can_spawn,
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
 #if !defined(MR_HIGHLEVEL_CODE)
     SUCCESS_INDICATOR = MR_TRUE;
@@ -99,7 +99,8 @@
 
 :- pragma foreign_proc("C",
     spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
 "
 #if !defined(MR_HIGHLEVEL_CODE)
     MR_Context  *ctxt;
@@ -135,7 +136,8 @@
 
 :- pragma foreign_proc("C#",
     spawn(Goal::(pred(di, uo) is cc_multi), _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
 "
     System.Threading.Thread t;
     MercuryThread mt = new MercuryThread(Goal);
@@ -148,7 +150,8 @@
 :- pragma no_inline(yield/2).
 :- pragma foreign_proc("C",
     yield(IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
 "
 #ifndef MR_HIGHLEVEL_CODE
     MR_save_context(MR_ENGINE(MR_eng_this_context));

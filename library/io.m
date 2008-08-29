@@ -9311,7 +9311,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.progname(DefaultProgname::in, PrognameOut::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
+        does_not_affect_liveness, may_not_duplicate],
 "
     if (MR_progname) {
         MR_make_aligned_string(PrognameOut, MR_progname);
@@ -9324,7 +9324,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.command_line_arguments(Args::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, may_not_duplicate,
+        no_sharing],
     % no_sharing is okay because the string elements can't reused.
 "{
     int i;

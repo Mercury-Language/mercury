@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -312,7 +312,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 :- pragma foreign_proc("C",
     version_array.new(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, may_not_duplicate],
 "
     MR_Integer  i;
 
@@ -330,7 +330,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 :- pragma foreign_proc("C",
     resize(VA0::in, N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
-        does_not_affect_liveness],
+        does_not_affect_liveness, may_not_duplicate],
 "
     MR_Integer  i;
     MR_Integer  size_VA0;

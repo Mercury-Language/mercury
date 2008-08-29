@@ -1344,7 +1344,7 @@ string.from_char_list(Chars::in, Str::uo) :-
 :- pragma foreign_proc("C",
     string.semidet_from_char_list(CharList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     /* mode (uo, in) is det */
     MR_Word char_list_ptr;
@@ -1428,7 +1428,7 @@ string.from_rev_char_list(Chars, Str) :-
 :- pragma foreign_proc("C",
     string.semidet_from_rev_char_list(Chars::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     MR_Word list_ptr;
     MR_Word size;
@@ -1575,7 +1575,7 @@ string.append_list(Lists, string.append_list(Lists)).
 :- pragma foreign_proc("C",
     string.append_list(Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     MR_Word list = Strs;
     MR_Word tmp;
@@ -1616,7 +1616,7 @@ string.append_list(Lists, string.append_list(Lists)).
 :- pragma foreign_proc("C",
     string.join_list(Sep::in, Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     MR_Word list;
     MR_Word tmp;
@@ -3976,7 +3976,7 @@ string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 :- pragma foreign_proc("C",
     string.append_ooi_3(S1Len::in, S3Len::in, S1::out, S2::out, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     MR_allocate_aligned_string_msg(S1, S1Len, MR_PROC_LABEL);
     MR_memcpy(S1, S3, S1Len);
@@ -4037,7 +4037,7 @@ strchars(I, End, Str) =
 :- pragma foreign_proc("C",
     string.substring(Str::in, Start::in, Count::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     MR_Integer  len;
     MR_Word     tmp;
@@ -4117,7 +4117,7 @@ strchars(I, End, Str) =
 :- pragma foreign_proc("C",
     string.split(Str::in, Count::in, Left::uo, Right::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     MR_Integer  len;
     MR_Word     tmp;
