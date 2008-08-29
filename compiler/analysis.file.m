@@ -834,7 +834,7 @@ write_func_id(func_id(PredOrFunc, Name, Arity, ProcId), !IO) :-
 :- pred write_module_name(module_name::in, io::di, io::uo) is det.
 
 write_module_name(ModuleName, !IO) :-
-    write_sym_name(ModuleName, !IO).
+    write_quoted_sym_name(ModuleName, !IO).
 
 %-----------------------------------------------------------------------------%
 

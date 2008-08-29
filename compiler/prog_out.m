@@ -50,8 +50,8 @@
 :- pred write_sym_name_and_arity(sym_name_and_arity::in, io::di, io::uo)
     is det.
 
-    % Write out a symbol name, enclosed in single forward quotes ('...')
-    % if necessary, and with any special characters escaped.
+    % Write out a symbol name, enclosed in single forward quotes ('...'),
+    % and with any special characters escaped.
     % The output should be a syntactically valid Mercury term.
     %
 :- pred write_quoted_sym_name(sym_name::in, io::di, io::uo) is det.
