@@ -428,164 +428,164 @@ status=0
 
 case $HOST in
     ceres)
-            # On these hosts, test the high-level back-end more:
-            # bootstrap the compiler in hlc.gc,
-            # use hlc.gc as the default grade,
-            # and install & test various other hlc-related grades.
-            CONFIG_OPTS=""
-            DEFAULT_GRADE="hlc.gc"
-            export DEFAULT_GRADE
-            INSTALL_GRADE="hlc.gc"
-            INSTALL_LIBGRADES="hlc.gc               \
-                                    hlc.gc.prof     \
-                                    hlc.gc.memprof  \
-                                    hlc.gc.tr       \
-                                    hlc.par.gc      \
-                                    asm_fast.gc     \
-                                    asm_fast.gc.tr  \
-                                    asm_fast.gc.tr.debug"
-            # The erlang grade requires mmc --make.
-            if test "$USE_MMC_MAKE" != ""; then
-                    INSTALL_LIBGRADES="$INSTALL_LIBGRADES erlang"
-            fi
-            ;;
+        # On these hosts, test the high-level back-end more:
+        # bootstrap the compiler in hlc.gc,
+        # use hlc.gc as the default grade,
+        # and install & test various other hlc-related grades.
+        CONFIG_OPTS=""
+        DEFAULT_GRADE="hlc.gc"
+        export DEFAULT_GRADE
+        INSTALL_GRADE="hlc.gc"
+        INSTALL_LIBGRADES="hlc.gc   \
+            hlc.gc.prof             \
+            hlc.gc.memprof          \
+            hlc.gc.tr               \
+            hlc.par.gc              \
+            asm_fast.gc             \
+            asm_fast.gc.tr          \
+            asm_fast.gc.tr.debug"
+        # The erlang grade requires mmc --make.
+        if test "$USE_MMC_MAKE" != ""
+        then
+            INSTALL_LIBGRADES="$INSTALL_LIBGRADES erlang"
+        fi
+        ;;
     saturn)
-            CONFIG_OPTS="--disable-dotnet-grades"
-            INSTALL_LIBGRADES="asm_fast.gc                  \
-                                    asm_fast.gc.decldebug   \
-                                    asm_fast.gc.memprof     \
-                                    asm_fast.gc.prof        \
-                                    asm_fast.gc.tr          \
-                                    asm_fast.gc.tr.debug    \
-                                    asm_fast.gc.tr.profdeep \
-                                    hlc.gc                  \
-                                    hlc.gc.tr               \
-                                    hlc.par.gc              \
-                                    asm_fast.par.gc"
-            ;;
+        CONFIG_OPTS="--disable-dotnet-grades"
+        INSTALL_LIBGRADES="asm_fast.gc  \
+            asm_fast.gc.decldebug       \
+            asm_fast.gc.memprof         \
+            asm_fast.gc.prof            \
+            asm_fast.gc.tr              \
+            asm_fast.gc.tr.debug        \
+            asm_fast.gc.tr.profdeep     \
+            hlc.gc                      \
+            hlc.gc.tr                   \
+            hlc.par.gc                  \
+            asm_fast.par.gc"
+        ;;
     neptune)
-            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
-            INSTALL_LIBGRADES="asm_fast.gc          \
-                    asm_fast.gc.tr                  \
-                    asm_fast.gc.tr.ll_debug         \
-                    asm_fast.gc.tr.debug            \
-                    hlc.gc                          \
-                    hlc.gc.tr                       \
-                    hlc.gc.tr.ll_debug              \
-                    asm_fast.gc.tr.prof             \
-                    asm_fast.gc.tr.memprof          \
-                    asm_fast.gc.tr.profdeep"        
-            ;;      
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        INSTALL_LIBGRADES="asm_fast.gc      \
+            asm_fast.gc.tr                  \
+            asm_fast.gc.tr.ll_debug         \
+            asm_fast.gc.tr.debug            \
+            hlc.gc                          \
+            hlc.gc.tr                       \
+            hlc.gc.tr.ll_debug              \
+            asm_fast.gc.tr.prof             \
+            asm_fast.gc.tr.memprof          \
+            asm_fast.gc.tr.profdeep"        
+        ;;
     pluto)
-            DEFAULT_GRADE="hlc.gc"
-            export DEFAULT_GRADE
-            INSTALL_GRADE="hlc.gc"
-            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
-            INSTALL_LIBGRADES="hlc.gc               \
-                    hlc.gc.tr                       \
-                    hlc.par.gc                      \
-                    asm_fast.gc                     \
-                    asm_fast.par.gc                 \
-                    asm_fast.gc.tr                  \
-                    asm_fast.gc.tr.debug            \
-                    asm_fast.gc.profdeep            \
-                    asm_fast.gc.stseg               \
-                    reg.gc.tr"                      
-            ;;
+        DEFAULT_GRADE="hlc.gc"
+        export DEFAULT_GRADE
+        INSTALL_GRADE="hlc.gc"
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        INSTALL_LIBGRADES="hlc.gc           \
+            hlc.gc.tr                       \
+            hlc.par.gc                      \
+            asm_fast.gc                     \
+            asm_fast.par.gc                 \
+            asm_fast.gc.tr                  \
+            asm_fast.gc.tr.debug            \
+            asm_fast.gc.profdeep            \
+            asm_fast.gc.stseg               \
+            reg.gc.tr"                      
+        ;;
                     
     jupiter)
-            # Ensure that the nogc grades get installed and tested
-            # on at least one host
-            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
-            ;;
+        # Ensure that the nogc grades get installed and tested
+        # on at least one host
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        ;;
     earth)
-            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-dotnet-grades"
-            INSTALL_LIBGRADES="asm_fast.gc                  \
-                            asm_fast.gc.tr                  \
-                            asm_fast.gc.debug.tr            \
-                            asm_fast.gc.prof                \
-                            asm_fast.gc.profdeep            \
-                            asm_fast.gc.tsc                 \
-                            hlc.gc                          \
-                            hlc.par.gc                      \
-                            asm_fast.gc.tr.decldebug"
-            ;;
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-dotnet-grades"
+        INSTALL_LIBGRADES="asm_fast.gc      \
+            asm_fast.gc.tr                  \
+            asm_fast.gc.debug.tr            \
+            asm_fast.gc.prof                \
+            asm_fast.gc.profdeep            \
+            asm_fast.gc.tsc                 \
+            hlc.gc                          \
+            hlc.par.gc                      \
+            asm_fast.gc.tr.decldebug"
+        ;;
     aral)
-            #
-            # Aral has limited disk space, and not having to expend it
-            # on grades not needed by its primary user (zs) helps to
-            # conserve it.
-            #
-            CONFIG_OPTS="--with-cc=/usr/local/gcc-3.4.6/bin/gcc-3.4.6 --enable-deep-profiler=/var/www/cgi-bin"
-            INSTALL_LIBGRADES="asm_fast.gc                  \
-                                    asm_fast.gc.debug.tr    \
-                                    asm_fast.gc.mmsc        \
-                                    asm_fast.gc.mm.debug    \
-                                    asm_fast.gc.profdeep    \
-                                    hlc.gc"
-            ;;
+        # Aral has limited disk space, and not having to expend it
+        # on grades not needed by its primary user (zs) helps to
+        # conserve it.
+        #
+        CONFIG_OPTS="--with-cc=/usr/local/gcc-3.4.6/bin/gcc-3.4.6 --enable-deep-profiler=/var/www/cgi-bin"
+        INSTALL_LIBGRADES="asm_fast.gc  \
+            asm_fast.gc.debug.tr        \
+            asm_fast.gc.mmsc            \
+            asm_fast.gc.mm.debug        \
+            asm_fast.gc.profdeep        \
+            hlc.gc"
+        ;;
     swordfish)
-            # swordfish is being used by the G12 group at the moment, so
-            # it requires trailing versions of most of the grades.
-            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-java-grade"
-            case $BRANCH in
-                g12)
-                    DEFAULT_GRADE="hlc.gc.tr"
-                    export $DEFAULT_GRADE
-                    INSTALL_LIBGRADES="hlc.gc.tr            \
-                            hl.gc.tr                        \
-                            asm_fast.gc.tr                  \
-                            asm_fast.gc.tr.prof             \
-                            asm_fast.gc.tr.memprof          \
-                            asm_fast.gc.tr.profdeep         \
-                            asm_fast.gc.tr.debug"
-                    ;;
-                *)
-                    INSTALL_LIBGRADES="asm_fast.gc          \
-                            hlc.gc.tr                       \
-                            hlc.gc.tr.prof                  \
-                            hlc.gc.tr.memprof               \
-                            asm_fast.gc.tr                  \
-                            asm_fast.gc.tr.prof             \
-                            asm_fast.gc.tr.memprof          \
-                            asm_fast.gc.tr.profdeep         \
-                            asm_fast.gc.tr.decldebug        \
-                            hlc.gc"
-                    ;;
-            esac
-            ;; 
-    uranus)
-            CONFIG_OPTS=""
-            ;;
-    
-    eris)
-            # The asm_fast grades don't work on Darwin.
-            # The reg grades don't work with the default gcc compiler
-            # on this machine either.
-            # XXX Install more grades on this machine.
-            CONFIG_OPTS=""
-            DEFAULT_GRADE="hlc.gc"
-            export DEFAULT_GRADE
-            INSTALL_GRADE="hlc.gc"
-            INSTALL_LIBGRADES="hlc.gc               \
-                    hlc.gc.tr                       \
-                    hlc.gc.tr.ll_debug              \
-                    none.gc.tr                      \
-                    none.gc.tr.debug"
-            ;;
-    taura)
-            CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
-            INSTALL_LIBGRADES="asm_fast.gc          \
+        # swordfish is being used by the G12 group at the moment, so
+        # it requires trailing versions of most of the grades.
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-java-grade"
+        case $BRANCH in
+            g12)
+                DEFAULT_GRADE="hlc.gc.tr"
+                export $DEFAULT_GRADE
+                INSTALL_LIBGRADES="hlc.gc.tr        \
+                    hl.gc.tr                        \
                     asm_fast.gc.tr                  \
-                    asm_fast.par.gc                 \
-                    asm_fast.gc.tr.debug            \
-                    asm_fast.gc.profdeep            \
-                    asm_fast.gc.decldebug           \
-                    hlc.gc                          \
-                    hlc.gc.tr"
-            ;;      
+                    asm_fast.gc.tr.prof             \
+                    asm_fast.gc.tr.memprof          \
+                    asm_fast.gc.tr.profdeep         \
+                    asm_fast.gc.tr.debug"
+                ;;
+            *)
+                INSTALL_LIBGRADES="asm_fast.gc      \
+                    hlc.gc.tr                       \
+                    hlc.gc.tr.prof                  \
+                    hlc.gc.tr.memprof               \
+                    asm_fast.gc.tr                  \
+                    asm_fast.gc.tr.prof             \
+                    asm_fast.gc.tr.memprof          \
+                    asm_fast.gc.tr.profdeep         \
+                    asm_fast.gc.tr.decldebug        \
+                    hlc.gc"
+                ;;
+        esac
+        ;; 
+    uranus)
+        CONFIG_OPTS=""
+        ;;
+    eris)
+        # The asm_fast grades don't work on Darwin.
+        # The reg grades don't work with the default gcc compiler
+        # on this machine either.
+        # XXX Install more grades on this machine.
+        CONFIG_OPTS=""
+        DEFAULT_GRADE="hlc.gc"
+        export DEFAULT_GRADE
+        INSTALL_GRADE="hlc.gc"
+        INSTALL_LIBGRADES="hlc.gc   \
+            hlc.gc.tr               \
+            hlc.gc.tr.ll_debug      \
+            none.gc.tr              \
+            none.gc.tr.debug"
+        ;;
+    taura)
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        INSTALL_LIBGRADES="asm_fast.gc  \
+            asm_fast.gc.tr              \
+            asm_fast.par.gc             \
+            asm_fast.gc.tr.debug        \
+            asm_fast.gc.profdeep        \
+            asm_fast.gc.decldebug       \
+            hlc.gc                      \
+            hlc.gc.tr"
+        ;;      
     *)      
-            CONFIG_OPTS="" ;;
+        CONFIG_OPTS=""
+        ;;
 esac
 
 
