@@ -385,22 +385,34 @@ convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
             !:Cases = [Case | !.Cases]
         ;
             State = cons_id_has_one_multi,
-            ( Arms = [multi_cons_id_arm(MainConsId, OtherConsIds0, Goal)] ->
-                ( ConsId = MainConsId ->
-                    list.filter(set_tree234.contains(ConflictConsIds),
-                        OtherConsIds0, _, OtherConsIds),
+            ( Arms = [multi_cons_id_arm(MainConsId0, OtherConsIds0, Goal)] ->
+                % The code that creates multi_cons_id_arms should ensure
+                % that [MainConsId | OtherConsIds0] is sorted, and
+                % convert_cases_table should call convert_case for ConsIds
+                % in the same sorted order. In the usual case, by the time
+                % convert_case is called for any of the cons_ids in
+                % OtherConsIds, the call to convert_case for MainConsId will
+                % have put the cons_ids in OtherConsIds into
+                % !.AlreadyHandledConsIds, so we won't get here. That is when
+                % the entry for MainConsId has state cons_id_has_one_multi.
+                % However, MainConsId0 may have an entry whose state is
+                % cons_id_has_conflict. In that case ConsId will not equal
+                % MainConsId0.
+                AllConsIds0 = [MainConsId0 | OtherConsIds0],
+                % This can filter out MainConsId0.
+                list.filter(set_tree234.contains(ConflictConsIds),
+                    AllConsIds0, _, AllConsIds),
+                (
+                    AllConsIds = [MainConsId | OtherConsIds],
                     Case = case(MainConsId, OtherConsIds, Goal),
                     set_tree234.insert_list(OtherConsIds,
                         !AlreadyHandledConsIds),
                     !:Cases = [Case | !.Cases]
                 ;
-                    % The code that creates multi_cons_id_arms should ensure
-                    % that [MainConsId | OtherConsIds] is sorted, and
-                    % convert_cases_table should call convert_case for
-                    % ConsIds in the same sorted order. If the first elements
-                    % of the two lists don't match, something has gone wrong.
+                    AllConsIds = [],
+                    % At least, AllConsIds should contain ConsId.
                     unexpected(this_file, "convert_case: " ++
-                        "cons_id_has_one_multi: ConsId != MainConsId")
+                        "cons_id_has_one_multi: AllConsIds = []")
                 )
             ;
                 unexpected(this_file,

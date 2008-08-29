@@ -1,0 +1,5 @@
+cmd_quit.
+cmd_menu.
+cmd_clique.
+cmd_dump_clique.
+cmd_root.
