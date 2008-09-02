@@ -876,6 +876,7 @@
     ;       use_search_directories_for_intermod
     ;       libgrade_install_check
     ;       show_make_times
+    ;       extra_library_header
 
     % Miscellaneous Options
     ;       filenames_from_stdin
@@ -1704,7 +1705,8 @@ option_defaults_2(build_system_option, [
     intermod_directories                -   accumulating([]),
     use_search_directories_for_intermod -   bool(yes),
     libgrade_install_check              -   bool(yes),
-    show_make_times                     -   bool(no)
+    show_make_times                     -   bool(no),
+    extra_library_header                -   accumulating([])
 ]).
 option_defaults_2(miscellaneous_option, [
     % Miscellaneous Options
@@ -2579,6 +2581,8 @@ long_option("use-search-directories-for-intermod",
                     use_search_directories_for_intermod).
 long_option("libgrade-install-check", libgrade_install_check).
 long_option("show-make-times",      show_make_times).
+long_option("extra-lib-header",     extra_library_header).
+long_option("extra-library-header", extra_library_header).
 
 % misc options
 long_option("typecheck-ambiguity-warn-limit",
@@ -5252,7 +5256,11 @@ options_help_build_system -->
         "\tattempting to use them.  (This option is only meaningful with",
         "\t`mmc --make'.)",
         "--show-make-times",
-        "\tReport run times for commands executed by `mmc --make'."
+        "\tReport run times for commands executed by `mmc --make'.",
+        "--extra-library-header <file>, --extra-lib-header <file>",
+        "\tInstall the specified C header file with along with",
+        "\ta Mercury library.",
+        "\t(This option is only supported by `mmc --make'.)"
     ]).
 
 :- pred options_help_misc(io::di, io::uo) is det.

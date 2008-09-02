@@ -8966,6 +8966,14 @@ work with @samp{mmc --make}).
 @findex --show-make-times
 Report run times for commands executed by @samp{mmc --make}.
 
+@sp 1
+@item --extra-library-header @var{file}
+@item --extra-lib-header @var{file}
+@findex --extra-library-header
+@findex --extra-lib-header
+Install the specified C header file along with a Mercury library.
+(This option is only supported by @samp{mmc --make})
+
 @end table
 
 @node Miscellaneous options

@@ -1099,13 +1099,14 @@ install_library(MainModuleName, Succeeded, !Info, !IO) :-
     ->
         list.map_foldl2(install_ints_and_headers(LinkSucceeded), AllModules,
             IntsSucceeded, !Info, !IO),
-
+        install_extra_headers(ExtraHdrsSucceeded, !IO),
+        
         globals.io_get_globals(Globals, !IO),
         grade_directory_component(Globals, Grade),
         install_library_grade_files(LinkSucceeded, Grade, MainModuleName,
             AllModules, GradeSucceeded, !Info, !IO),
         (
-            bool.and_list(IntsSucceeded) = yes,
+            bool.and_list([ExtraHdrsSucceeded | IntsSucceeded]) = yes,
             GradeSucceeded = yes
         ->
             % XXX With Mmake, LIBGRADES is target-specific.
@@ -1122,6 +1123,7 @@ install_library(MainModuleName, Succeeded, !Info, !IO) :-
     ;
         Succeeded = no
     ).
+
 
 :- pred install_ints_and_headers(bool::in, module_name::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -1194,6 +1196,23 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
         MaybeImports = no,
         Succeeded = no
     ).
+
+:- pred install_extra_headers(bool::out, io::di, io::uo) is det.
+
+install_extra_headers(ExtraHdrsSucceeded, !IO) :-
+    globals.io_lookup_accumulating_option(extra_library_header, ExtraHdrs,
+        !IO),
+    globals.io_lookup_string_option(install_prefix, Prefix, !IO),
+    IncDir = Prefix / "lib" / "mercury" / "inc",
+    list.foldl2(install_extra_header(IncDir), ExtraHdrs,
+        yes, ExtraHdrsSucceeded, !IO).
+
+:- pred install_extra_header(dir_name::in, string::in, bool::in, bool::out,
+    io::di, io::uo) is det.
+
+install_extra_header(IncDir, FileName, !Succeeded, !IO) :-
+    install_file(FileName, IncDir, InstallSucceeded, !IO),
+    !:Succeeded = bool.and(InstallSucceeded, !.Succeeded). 
 
 :- pred install_library_grade(bool::in, module_name::in, list(module_name)::in,
     string::in, bool::out, make_info::in, make_info::out,
