@@ -14,11 +14,11 @@
 :- module posix.write.
 :- interface.
 
-:- import_module text.
+:- import_module bitmap.
 
 %-----------------------------------------------------------------------------%
 
-:- pred write(fd::in, int::in, text::in, posix.result(int)::out,
+:- pred write(fd::in, int::in, bitmap::in, posix.result(int)::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -29,7 +29,6 @@
 
 :- pragma foreign_decl("C", "
     #include <unistd.h>
-    #include ""text_header.h""
 ").
 
 %-----------------------------------------------------------------------------%
@@ -43,16 +42,13 @@ write(Fd, ToWrite, Text, Result, !IO) :-
         Result = ok(Res)
     ).
 
-:- pred write0(fd::in, int::in, text::in, int::out, io::di, io::uo) is det.
+:- pred write0(fd::in, int::in, bitmap::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    write0(Fd::in, ToWrite::in, Text::in, Res::out, IO0::di, IO::uo),
+    write0(Fd::in, ToWrite::in, Bitmap::in, Res::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    ME_Text *txtptr;
-
-    txtptr = (ME_Text *) Text;
     do {
-        Res = write(Fd, txtptr->data, ToWrite);
+        Res = write(Fd, Bitmap->elements, ToWrite);
     } while (Res == -1 && MR_is_eintr(errno));
     IO = IO0;
 ").

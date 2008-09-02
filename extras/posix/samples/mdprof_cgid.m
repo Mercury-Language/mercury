@@ -25,6 +25,7 @@
 
 :- implementation.
 
+:- import_module bitmap.
 :- import_module char.
 :- import_module getopt.
 :- import_module int.
@@ -38,7 +39,6 @@
 :- import_module posix.open.
 :- import_module posix.select.
 :- import_module posix.socket.
-:- import_module text.
 
 %-----------------------------------------------------------------------------%
 %
@@ -206,7 +206,7 @@ wait_input_fd(Fd @ fd(MaxFd), Result, !IO) :-
 
 handle_conn(Data, ConnFd, !IO) :-
     TextSize = 1024,
-    text.create(TextSize, 0, Text0),
+    Text0 = bitmap.new(TextSize * bits_per_int),
     read(ConnFd, TextSize, ReadResult, Text0, Text, !IO),
     (
         ReadResult = ok(Length),
@@ -305,32 +305,27 @@ write_http_response(StatusCode, Message, !IO) :-
 %-----------------------------------------------------------------------------%
 
     % first_line(Text, TextLen) = String
-    % Return the first line from the Text object as a string,
+    % Return the first line from the bitmap object as a string,
     % i.e. everything up to the first CR or NL character.
     %
-:- func first_line(text, int) = string.
+:- func first_line(bitmap, int) = string.
 
 first_line(Text, TextLen) =
     string.from_char_list(first_line_2(Text, 0, TextLen)).
 
-:- func first_line_2(text, int, int) = list(char).
+:- func first_line_2(bitmap, int, int) = list(char).
 
 first_line_2(Text, Index, TextLen) = RevChars :-
     ( if Index >= TextLen then
         RevChars = []
     else
-        Char = text_char(Text, Index),
+        Char = char.det_from_int(Text ^ byte(Index)),
         ( if is_newline(Char) then
             RevChars = []
         else
             RevChars = [Char | first_line_2(Text, Index + 1, TextLen)]
         )
     ).
-
-:- func text_char(text, int) = char.
-
-text_char(Text, Index) = char.det_from_int(Int) :-
-    text.index(Text, Index, Int).
 
 :- pred is_newline(char::in) is semidet.
 

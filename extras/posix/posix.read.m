@@ -14,10 +14,10 @@
 :- module posix.read.
 :- interface.
 
-:- import_module text.
+:- import_module bitmap.
 
 :- pred read(fd::in, int::in, posix.result(int)::out,
-    text::di, text::uo, io::di, io::uo) is det.
+    bitmap::bitmap_di, bitmap::bitmap_uo, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -28,13 +28,12 @@
 
 :- pragma foreign_decl("C", "
     #include <unistd.h>
-    #include ""text_header.h""
 ").
 
 %-----------------------------------------------------------------------------%
 
-read(Fd, ToRead, Result, !Text, !IO) :-
-    read0(Fd, ToRead, Read, !Text, !IO),
+read(Fd, ToRead, Result, !Bitmap, !IO) :-
+    read0(Fd, ToRead, Read, !Bitmap, !IO),
     ( Read < 0 ->
         errno(Err, !IO),
         Result = error(Err)
@@ -42,21 +41,18 @@ read(Fd, ToRead, Result, !Text, !IO) :-
         Result = ok(Read)
     ).
 
-:- pred read0(fd::in, int::in, int::out, text::di, text::uo,
-    io::di, io::uo) is det.
+:- pred read0(fd::in, int::in, int::out,
+    bitmap::bitmap_di, bitmap::bitmap_uo, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    read0(Fd::in, ToRead::in, Read::out, Text0::di, Text::uo, IO0::di, IO::uo),
+    read0(Fd::in, ToRead::in, Read::out, Bitmap0::bitmap_di, Bitmap::bitmap_uo,
+        IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
  "
-    ME_Text *txtptr;
-
-    txtptr = (ME_Text *) Text0;
-
     do {
-        Read = read(Fd, txtptr->data, ToRead);
+        Read = read(Fd, Bitmap0->elements, ToRead);
     } while (Read == -1 && MR_is_eintr(errno));
 
-    Text = Text0;
+    Bitmap = Bitmap0;
     IO = IO0;
 ").
 
