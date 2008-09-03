@@ -1703,7 +1703,7 @@ string.hash_2(String, Index, Length, !HashVal) :-
 :- pred string.combine_hash(int::in, int::in, int::out) is det.
 
 string.combine_hash(X, H0, H) :-
-    H1 = H0 `xor` (H0 << 5),
+    H1 = H0 `xor` (H0 `unchecked_left_shift` 5),
     H = H1 `xor` X.
 
 %-----------------------------------------------------------------------------%
