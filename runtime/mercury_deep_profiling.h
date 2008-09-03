@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2004, 2006-2007 The University of Melbourne.
+** Copyright (C) 2001-2004, 2006-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -68,7 +68,7 @@ typedef enum {
 
 typedef struct {
 	const char				*MR_cp_goal_path;
-	const MR_CPType			MR_cp_type;
+	const MR_CPType				MR_cp_type;
 } MR_CoveragePointStatic;
 
 
