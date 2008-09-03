@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -386,7 +386,7 @@ clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
     % way the known contents map. This is a conservative approximation of the
     % desired behaviour, which would invalidate only the entries of lvals
     % that may be referred to via this mem_ref.
-    code_util.lvals_in_rval(lval(Target), SubLvals),
+    SubLvals = lvals_in_rval(lval(Target)),
     (
         some [SubLval] (
             list.member(SubLval, SubLvals),
@@ -410,7 +410,7 @@ clobber_dependent(Dependent, KnownContentsMap0, KnownContentsMap) :-
     dependent_lval_map::in, dependent_lval_map::out) is det.
 
 record_known(TargetLval, SourceRval, !KnownContentsMap, !DepLvalMap) :-
-    code_util.lvals_in_rval(SourceRval, SourceSubLvals),
+    SourceSubLvals = lvals_in_rval(SourceRval),
     ( list.member(TargetLval, SourceSubLvals) ->
         % The act of assigning to TargetLval has modified the value of
         % SourceRval, so we can't eliminate any copy of this assignment
@@ -440,13 +440,13 @@ record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
         % and will add it back in a few lines later on.
         %
         % TargetLval still depends on the lvals inside it.
-        code_util.lvals_in_rval(OldRval, OldSubLvals),
+        OldSubLvals = lvals_in_rval(OldRval),
         list.foldl(make_not_dependent(TargetLval), OldSubLvals, !DepLvalMap)
     ;
         true
     ),
-    code_util.lvals_in_lval(TargetLval, TargetSubLvals),
-    code_util.lvals_in_rval(SourceRval, SourceSubLvals),
+    TargetSubLvals = lvals_in_lval(TargetLval),
+    SourceSubLvals = lvals_in_rval(SourceRval),
     list.append(TargetSubLvals, SourceSubLvals, AllSubLvals),
     list.foldl(make_dependent(TargetLval), AllSubLvals, !DepLvalMap),
     svmap.set(TargetLval, SourceRval, !KnownContentsMap).

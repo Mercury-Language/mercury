@@ -1776,8 +1776,7 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
 
 get_var_set_roots(Lvals, NoDupRootLvals) :-
     set.to_sorted_list(Lvals, LvalList),
-    code_util.lvals_in_lvals(LvalList, ContainedLvals),
-    list.append(LvalList, ContainedLvals, AllLvals),
+    AllLvals = LvalList ++ lvals_in_lvals(LvalList),
     list.filter(is_root_lval, AllLvals, RootLvals),
     list.sort_and_remove_dups(RootLvals, NoDupRootLvals).
 

@@ -3743,13 +3743,13 @@ assign_const_to_var(Var, ConstRval, !CI) :-
 
 assign_expr_to_var(Var, Rval, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
+    Lvals = lvals_in_rval(Rval),
     (
-        code_util.lvals_in_rval(Rval, Lvals),
-        Lvals = []
-    ->
+        Lvals = [],
         var_locn_assign_expr_to_var(Var, Rval, Code,
         VarLocnInfo0, VarLocnInfo)
     ;
+        Lvals = [_ | _],
         unexpected(this_file, "assign_expr_to_var: non-var lvals")
     ),
     set_var_locn_info(VarLocnInfo, !CI).

@@ -77,9 +77,9 @@
     % and an lval respectively. Lvals referenced indirectly through
     % lvals of the form var(_) are not counted.
     %
-:- pred lvals_in_rval(rval::in, list(lval)::out) is det.
-:- pred lvals_in_lval(lval::in, list(lval)::out) is det.
-:- pred lvals_in_lvals(list(lval)::in, list(lval)::out) is det.
+:- func lvals_in_rval(rval) = list(lval).
+:- func lvals_in_lval(lval) = list(lval).
+:- func lvals_in_lvals(list(lval)) = list(lval).
 
     % Given a procedure that already has its arg_info field filled in,
     % return a list giving its input variables and their initial locations.
@@ -337,63 +337,48 @@ negate_the_test([Instr0 | Instrs0], Instrs) :-
 
 %-----------------------------------------------------------------------------%
 
-lvals_in_lvals([], []).
-lvals_in_lvals([First | Rest], FirstLvals ++ RestLvals) :-
-    lvals_in_lval(First, FirstLvals),
-    lvals_in_lvals(Rest, RestLvals).
+lvals_in_lvals([]) = [].
+lvals_in_lvals([First | Rest]) = FirstLvals ++ RestLvals :-
+    FirstLvals = lvals_in_lval(First),
+    RestLvals = lvals_in_lvals(Rest).
 
-lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
-    lvals_in_lval(Lval, Lvals).
-lvals_in_rval(var(_), []).
-lvals_in_rval(mkword(_, Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_rval(const(_), []).
-lvals_in_rval(unop(_, Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_rval(binop(_, Rval1, Rval2), Lvals1 ++ Lvals2) :-
-    lvals_in_rval(Rval1, Lvals1),
-    lvals_in_rval(Rval2, Lvals2).
-lvals_in_rval(mem_addr(MemRef), Lvals) :-
-    lvals_in_mem_ref(MemRef, Lvals).
+lvals_in_rval(lval(Lval)) = [Lval | lvals_in_lval(Lval)].
+lvals_in_rval(var(_)) = [].
+lvals_in_rval(mkword(_, Rval)) = lvals_in_rval(Rval).
+lvals_in_rval(const(_)) = [].
+lvals_in_rval(unop(_, Rval)) = lvals_in_rval(Rval).
+lvals_in_rval(binop(_, Rval1, Rval2)) =
+    lvals_in_rval(Rval1) ++ lvals_in_rval(Rval2).
+lvals_in_rval(mem_addr(MemRef)) = lvals_in_mem_ref(MemRef).
 
-lvals_in_lval(reg(_, _), []).
-lvals_in_lval(stackvar(_), []).
-lvals_in_lval(parent_stackvar(_), []).
-lvals_in_lval(framevar(_), []).
-lvals_in_lval(succip, []).
-lvals_in_lval(maxfr, []).
-lvals_in_lval(curfr, []).
-lvals_in_lval(succip_slot(Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_lval(redofr_slot(Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_lval(redoip_slot(Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_lval(succfr_slot(Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_lval(prevfr_slot(Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_lval(hp, []).
-lvals_in_lval(sp, []).
-lvals_in_lval(parent_sp, []).
-lvals_in_lval(field(_, Rval1, Rval2), Lvals1 ++ Lvals2) :-
-    lvals_in_rval(Rval1, Lvals1),
-    lvals_in_rval(Rval2, Lvals2).
-lvals_in_lval(lvar(_), []).
-lvals_in_lval(temp(_, _), []).
-lvals_in_lval(mem_ref(Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_lval(global_var_ref(_), []).
+lvals_in_lval(reg(_, _)) = [].
+lvals_in_lval(stackvar(_)) = [].
+lvals_in_lval(parent_stackvar(_)) = [].
+lvals_in_lval(framevar(_)) = [].
+lvals_in_lval(succip) = [].
+lvals_in_lval(maxfr) = [].
+lvals_in_lval(curfr) = [].
+lvals_in_lval(succip_slot(Rval)) = lvals_in_rval(Rval).
+lvals_in_lval(redofr_slot(Rval)) = lvals_in_rval(Rval).
+lvals_in_lval(redoip_slot(Rval)) = lvals_in_rval(Rval).
+lvals_in_lval(succfr_slot(Rval)) = lvals_in_rval(Rval).
+lvals_in_lval(prevfr_slot(Rval)) = lvals_in_rval(Rval).
+lvals_in_lval(hp) = [].
+lvals_in_lval(sp) = [].
+lvals_in_lval(parent_sp) = [].
+lvals_in_lval(field(_, Rval1, Rval2)) =
+    lvals_in_rval(Rval1) ++ lvals_in_rval(Rval2).
+lvals_in_lval(lvar(_)) = [].
+lvals_in_lval(temp(_, _)) = [].
+lvals_in_lval(mem_ref(Rval)) = lvals_in_rval(Rval).
+lvals_in_lval(global_var_ref(_)) = [].
 
-:- pred lvals_in_mem_ref(mem_ref::in, list(lval)::out) is det.
+:- func lvals_in_mem_ref(mem_ref) = list(lval).
 
-lvals_in_mem_ref(stackvar_ref(Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_mem_ref(framevar_ref(Rval), Lvals) :-
-    lvals_in_rval(Rval, Lvals).
-lvals_in_mem_ref(heap_ref(Rval1, _, Rval2), Lvals1 ++ Lvals2) :-
-    lvals_in_rval(Rval1, Lvals1),
-    lvals_in_rval(Rval2, Lvals2).
+lvals_in_mem_ref(stackvar_ref(Rval)) = lvals_in_rval(Rval).
+lvals_in_mem_ref(framevar_ref(Rval)) = lvals_in_rval(Rval).
+lvals_in_mem_ref(heap_ref(Rval1, _, Rval2)) =
+    lvals_in_rval(Rval1) ++ lvals_in_rval(Rval2).
 
 %-----------------------------------------------------------------------------%
 

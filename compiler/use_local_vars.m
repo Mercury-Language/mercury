@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -391,9 +391,7 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
     Instr0 = llds_instr(Uinstr0, _Comment0),
     (
         Uinstr0 = assign(ToLval, FromRval),
-        lvals_in_lval(ToLval, ToSubLvals),
-        lvals_in_rval(FromRval, FromSubLvals),
-        list.append(ToSubLvals, FromSubLvals, SubLvals),
+        SubLvals = lvals_in_lval(ToLval) ++ lvals_in_rval(FromRval),
         list.filter(
             base_lval_worth_replacing_not_tried(AlreadyTried0, NumRealRRegs),
             SubLvals, ReplaceableSubLvals),
@@ -402,7 +400,7 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
         OrigTempCounter = !.TempCounter,
         counter.allocate(TempNum, !TempCounter),
         TempLval = temp(reg_r, TempNum),
-        lvals_in_lval(ChosenLval, SubChosenLvals),
+        SubChosenLvals = lvals_in_lval(ChosenLval),
         expect(unify(SubChosenLvals, []),
             this_file, "opt_access: nonempty SubChosenLvals"),
         substitute_lval_in_instr_until_defn(ChosenLval, TempLval,
