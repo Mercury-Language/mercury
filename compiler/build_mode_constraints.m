@@ -285,7 +285,8 @@ add_mc_vars_for_pred_head(ModuleInfo, PredId, !VarInfo) :-
     mc_var_info::in, mc_var_info::out) is det.
 
 add_mc_var_for_pred_head(ProgVarset, PredId, HeadVar, !VarInfo) :-
-    prog_var_at_path(ProgVarset, PredId, HeadVar, empty, _, !VarInfo).
+    prog_var_at_path(ProgVarset, PredId, HeadVar, empty_goal_path, _,
+        !VarInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -374,7 +375,7 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         % Temporarily form the disjunction implied by the goal path
         % annotations.
         MainGoal = disj(Goals),
-        HeadGoalPath = empty,
+        HeadGoalPath = empty_goal_path,
         Nonlocals = proc_arg_vector_to_set(HeadVars),
         add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, MainGoal,
             Context, HeadGoalPath, Nonlocals, !VarInfo, !Constraints)
@@ -683,7 +684,8 @@ mode_decls_constraints(ModuleInfo, VarMap, PredId, Decls, HeadVarsList,
     % the proposition that it is produced at the empty goal path (ie
     % that it is produced by a call to the predicate).
     HeadVarsMCVars =
-        list.map(list.map(lookup_prog_var_at_path(VarMap, PredId, empty)),
+        list.map(list.map(
+                lookup_prog_var_at_path(VarMap, PredId, empty_goal_path)),
             HeadVarsList),
 
     % Make the constraints for each declaration.
@@ -703,7 +705,8 @@ add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
     proc_info_get_varset(ProcInfo, ProgVarset),
     proc_info_get_context(ProcInfo, Context),
 
-    prog_vars_at_path(ProgVarset, PredId, Args, empty, ArgsAtHead, !VarInfo),
+    prog_vars_at_path(ProgVarset, PredId, Args, empty_goal_path, ArgsAtHead, 
+        !VarInfo),
 
     DeclConstraints = mode_decl_constraints(ModuleInfo, ArgsAtHead, Decl),
 
@@ -776,7 +779,7 @@ add_call_mode_decls_constraints(ModuleInfo, ProgVarset, CallContext,
 
 add_call_headvar_constraints(ProgVarset, Context, GoalPath, CallerPredId,
         CallArgs, CalleePredId, CalleeHeadVars, !VarInfo, !Constraints) :-
-    prog_vars_at_path(ProgVarset, CalleePredId, CalleeHeadVars, empty,
+    prog_vars_at_path(ProgVarset, CalleePredId, CalleeHeadVars, empty_goal_path,
         HeadVarsAtHead, !VarInfo),
     prog_vars_at_path(ProgVarset, CallerPredId, CallArgs, GoalPath,
         CallArgsHere, !VarInfo),

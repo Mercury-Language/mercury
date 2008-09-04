@@ -350,7 +350,7 @@ dump_mode_constraint_var(VarSet, V `at` Path, !IO) :-
     varset.lookup_name(VarSet, V, Name),
     io.write_string(Name, !IO),
     io.write_char('_', !IO),
-    PathSteps = cord.list(Path),
+    PathSteps = goal_path_to_list(Path),
     list.foldl(dump_goal_path_step, PathSteps, !IO).
 
 :- pred dump_goal_path_step(goal_path_step::in, io::di, io::uo) is det.

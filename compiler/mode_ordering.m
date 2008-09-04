@@ -423,7 +423,7 @@ mode_order_conj(Goals0, Goals) :-
         (
             G = hlds_goal(_, GI),
             GoalPath = goal_info_get_goal_path(GI),
-            cord.get_last(GoalPath, LastStep),
+            LastStep = goal_path_get_last(GoalPath),
             LastStep = step_conj(Index0)
         ->
             Index = Index0

@@ -1922,13 +1922,13 @@ get_ite_relative_frequencies(ProcCounts, ThenGoalPath, ElseGoalPath,
 
 get_disjunct_relative_frequency(ProcCounts, GoalPath, RelFreq) :-
     (
-        cord.split_last(GoalPath, InitialSteps, LastStep),
+        goal_path_remove_last(GoalPath, InitialSteps, LastStep),
         LastStep = step_disj(Num)
     ->
         get_path_only_count(ProcCounts,
-            cord.snoc(InitialSteps, step_disj(Num)), DisjCount),
+            goal_path_add_at_end(InitialSteps, step_disj(Num)), DisjCount),
         get_path_only_count(ProcCounts,
-            cord.snoc(InitialSteps, step_disj(1)), FirstDisjCount),
+            goal_path_add_at_end(InitialSteps, step_disj(1)), FirstDisjCount),
         ( FirstDisjCount = 0 ->
             RelFreq = 0.0
         ;
@@ -1972,7 +1972,7 @@ get_switch_total_count_2(SwitchGoalPath, PathPort, LineNoAndCount,
 :- pred case_in_switch(goal_path::in, path_port::in) is semidet.
 
 case_in_switch(GoalPath, path_only(GoalPath)) :-
-    cord.get_last(GoalPath, LastStep),
+    LastStep = goal_path_get_last(GoalPath),
     LastStep = step_switch(_, _).
 
 %-----------------------------------------------------------------------------%

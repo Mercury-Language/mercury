@@ -1027,7 +1027,7 @@ get_improved_exists_head_constraints(ConstraintMap,  ExistConstraints,
         ActualExistConstraints) :-
     list.length(ExistConstraints, NumExistConstraints),
     (
-        search_hlds_constraint_list(ConstraintMap, unproven, empty,
+        search_hlds_constraint_list(ConstraintMap, unproven, empty_goal_path,
             NumExistConstraints, ActualExistConstraints0)
     ->
         ActualExistConstraints = ActualExistConstraints0

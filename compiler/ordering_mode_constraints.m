@@ -585,7 +585,7 @@ produced_at_path(VarMap, Bindings, RepVar) :-
 :- pred get_position_in_conj(mc_rep_var::in, conjunct_id::out) is semidet.
 
 get_position_in_conj(_ProgVar `in` _PredId `at` GoalPath, N) :-
-    cord.get_last(GoalPath, LastStep),
+    LastStep = goal_path_get_last(GoalPath),
     LastStep = step_conj(N).
 
 %-----------------------------------------------------------------------------%

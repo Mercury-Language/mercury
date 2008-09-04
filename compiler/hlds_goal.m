@@ -1767,7 +1767,7 @@ goal_info_init(GoalInfo) :-
     set.init(NonLocals),
     term.context_init(Context),
     set.init(Features),
-    GoalPath = empty,
+    GoalPath = empty_goal_path,
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
         Features, GoalPath, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
@@ -1779,7 +1779,7 @@ goal_info_init(Context, GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
     set.init(NonLocals),
     set.init(Features),
-    GoalPath = empty,
+    GoalPath = empty_goal_path,
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
         Features, GoalPath, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
@@ -1787,14 +1787,14 @@ goal_info_init(Context, GoalInfo) :-
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
     set.init(Features),
     term.context_init(Context),
-    GoalPath = empty,
+    GoalPath = empty_goal_path,
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
         Features, GoalPath, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
     set.init(Features),
-    GoalPath = empty,
+    GoalPath = empty_goal_path,
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
         Features, GoalPath, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).

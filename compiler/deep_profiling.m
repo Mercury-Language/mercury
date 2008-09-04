@@ -578,7 +578,7 @@ transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo, DeepLayoutInfo) :-
             counter.init(0), [], !.VarInfo, FileName, MaybeRecInfo),
 
         % This call transforms the goals of the procedure.
-        deep_prof_transform_goal(empty, Goal0, Goal1, _,
+        deep_prof_transform_goal(empty_goal_path, Goal0, Goal1, _,
             DeepInfo0, DeepInfo),
         !:VarInfo = DeepInfo ^ deep_varinfos,
         CallSites = DeepInfo ^ deep_call_sites,
@@ -651,8 +651,13 @@ transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo, DeepLayoutInfo) :-
     proc_info_set_goal(Goal, !ProcInfo),
     DeepLayoutInfo = hlds_deep_layout(ProcStatic, ExcpVars).
 
-% Wrap the procedure body in the deep profiling port goals.
 
+    % Wrap the procedure body in the deep profiling port goals.
+    %
+    % When modifing this transformation be sure to modify original_root/3 in
+    % deep_profiler/program_represetntation_utils.m which must be able to undo
+    % this transformation.
+    %
 :- pred build_det_proc_body(module_info::in, prog_var::in, prog_var::in,
     prog_var::in, maybe(prog_var)::in, hlds_goal_info::in, hlds_goal::in,
     hlds_goal::in, hlds_goal::out) is det.
@@ -688,6 +693,11 @@ build_det_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
     ]),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
+    % Wrap the goal for a semidet procedure,
+    %
+    % If changing this transformation be sure to change original_root/3 in
+    % deep_profiler/program_represenentation_utils.m.
+    %
 :- pred build_semi_proc_body(module_info::in, prog_var::in, prog_var::in,
     prog_var::in, maybe(prog_var)::in, hlds_goal_info::in, hlds_goal::in,
     hlds_goal::in, hlds_goal::out) is det.
@@ -856,7 +866,7 @@ transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         counter.init(0), [], VarInfo1,
         FileName, MaybeRecInfo),
 
-    deep_prof_transform_goal(empty, Goal0, TransformedGoal, _,
+    deep_prof_transform_goal(empty_goal_path, Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
 
     VarInfo = DeepInfo ^ deep_varinfos,
@@ -961,19 +971,19 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = negation(SubGoal0),
-        deep_prof_transform_goal(cord.snoc(Path, step_neg), SubGoal0, SubGoal,
-            AddedImpurity, !DeepInfo),
+        deep_prof_transform_goal(goal_path_add_at_end(Path, step_neg), 
+            SubGoal0, SubGoal, AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = if_then_else(IVars, Cond0, Then0, Else0),
-        deep_prof_transform_goal(cord.snoc(Path, step_ite_cond), Cond0, Cond,
-            AddedImpurityC, !DeepInfo),
-        deep_prof_transform_goal(cord.snoc(Path, step_ite_then), Then0, Then,
-            AddedImpurityT, !DeepInfo),
-        deep_prof_transform_goal(cord.snoc(Path, step_ite_else), Else0, Else,
-            AddedImpurityE, !DeepInfo),
+        deep_prof_transform_goal(goal_path_add_at_end(Path, step_ite_cond), 
+            Cond0, Cond, AddedImpurityC, !DeepInfo),
+        deep_prof_transform_goal(goal_path_add_at_end(Path, step_ite_then), 
+            Then0, Then, AddedImpurityT, !DeepInfo),
+        deep_prof_transform_goal(goal_path_add_at_end(Path, step_ite_else), 
+            Else0, Else, AddedImpurityE, !DeepInfo),
         (
             ( AddedImpurityC = yes
             ; AddedImpurityT = yes
@@ -1014,7 +1024,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
                 AddForceCommit = yes
             )
         ),
-        deep_prof_transform_goal(cord.snoc(Path, step_scope(MaybeCut)),
+        deep_prof_transform_goal(goal_path_add_at_end(Path, step_scope(MaybeCut)),
             SubGoal0, SubGoal, AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         (
@@ -1040,8 +1050,8 @@ deep_prof_transform_conj(_, _, _, [], [], no, !DeepInfo).
 deep_prof_transform_conj(N, ConjType, Path, [Goal0 | Goals0], Goals,
         AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    deep_prof_transform_goal(cord.snoc(Path, step_conj(N1)), Goal0, Goal,
-        AddedImpurityFirst, !DeepInfo),
+    deep_prof_transform_goal(goal_path_add_at_end(Path, step_conj(N1)), 
+        Goal0, Goal, AddedImpurityFirst, !DeepInfo),
     deep_prof_transform_conj(N1, ConjType, Path, Goals0,
         TailGoals, AddedImpurityLater, !DeepInfo),
     Goal = hlds_goal(GoalExpr, _),
@@ -1063,8 +1073,8 @@ deep_prof_transform_disj(_, _, [], [], no, !DeepInfo).
 deep_prof_transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals],
         AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    deep_prof_transform_goal(cord.snoc(Path, step_disj(N1)), Goal0, Goal,
-        AddedImpurityFirst, !DeepInfo),
+    deep_prof_transform_goal(goal_path_add_at_end(Path, step_disj(N1)), 
+        Goal0, Goal, AddedImpurityFirst, !DeepInfo),
     deep_prof_transform_disj(N1, Path, Goals0, Goals, AddedImpurityLater,
         !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
@@ -1078,7 +1088,8 @@ deep_prof_transform_switch(MaybeNumCases, N, Path,
         [Case0 | Cases0], [Case | Cases], AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    deep_prof_transform_goal(cord.snoc(Path, step_switch(N1, MaybeNumCases)),
+    deep_prof_transform_goal(
+        goal_path_add_at_end(Path, step_switch(N1, MaybeNumCases)),
         Goal0, Goal, AddedImpurityFirst, !DeepInfo),
     Case = case(MainConsId, OtherConsIds, Goal),
     deep_prof_transform_switch(MaybeNumCases, N1, Path, Cases0, Cases,
@@ -1962,7 +1973,7 @@ coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
     ;
         CoverageProfilingOptions ^ cpo_use_2pass = no
     ),
-    coverage_prof_second_pass_goal(cord.empty, !Goal,
+    coverage_prof_second_pass_goal(empty_goal_path, !Goal,
         coverage_after_known, _, CoverageInfo0, CoverageInfo, _),
     CoverageInfo ^ ci_coverage_points = CoveragePointsMap,
     CoverageInfo ^ ci_var_info = !:VarInfo,
@@ -2215,7 +2226,7 @@ coverage_prof_second_pass_goal(Path, Goal0, Goal,
         GoalExpr1 = switch(Var, SwitchCanFail, Cases)
     ;
         GoalExpr0 = negation(NegGoal0),
-        coverage_prof_second_pass_goal(snoc(Path, step_neg),
+        coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_neg),
             NegGoal0, NegGoal, CoverageAfterKnown, NextCoverageAfterKnown,
             !Info, AddedImpurityInner),
         GoalExpr1 = negation(NegGoal)
@@ -2226,7 +2237,8 @@ coverage_prof_second_pass_goal(Path, Goal0, Goal,
         ;
             ScopeCut = scope_is_cut
         ),
-        coverage_prof_second_pass_goal(snoc(Path, step_scope(ScopeCut)),
+        coverage_prof_second_pass_goal(
+            goal_path_add_at_end(Path, step_scope(ScopeCut)),
             ScopeGoal0, ScopeGoal,
             CoverageAfterKnown, NextCoverageAfterKnown, !Info,
             AddedImpurityInner),
@@ -2282,8 +2294,9 @@ coverage_prof_second_pass_conj(Path, Pos, ConjType, [Goal0 | Goals0], Goals,
         CoverageAfterKnown0, NextCoverageAfterKnown, !Info, AddedImpurity) :-
     coverage_prof_second_pass_conj(Path, Pos+1, ConjType, Goals0, Goals1,
         CoverageAfterKnown0, CoverageAfterKnown, !Info, AddedImpurityTail),
-    coverage_prof_second_pass_goal(snoc(Path, step_conj(Pos)), Goal0, Goal1,
-        CoverageAfterKnown, NextCoverageAfterKnown, !Info, AddedImpurityHead),
+    coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_conj(Pos)), 
+        Goal0, Goal1, CoverageAfterKnown, NextCoverageAfterKnown, !Info, 
+        AddedImpurityHead),
     (
         Goal1 = hlds_goal(conj(plain_conj, ConjGoals), _),
         ConjType = plain_conj
@@ -2315,7 +2328,7 @@ coverage_prof_second_pass_disj(Path, Pos, [Goal0 | Goals0], [Goal | Goals],
         AddedImpurityTail),
 
     % Transform this goal and optionally add a coverage point before it.
-    DisjPath = snoc(Path, step_disj(Pos)),
+    DisjPath = goal_path_add_at_end(Path, step_disj(Pos)),
     coverage_prof_second_pass_goal(DisjPath, Goal0, Goal1,
         coverage_after_unknown, NextCoverageAfterKnown, !Info,
         AddedImpurityHead0),
@@ -2372,7 +2385,7 @@ coverage_prof_second_pass_switchcase(Path, Pos, SwitchCanFail,
         CoverageAfterHeadKnown = coverage_after_unknown
     ),
 
-    SwitchPath = snoc(Path, step_disj(Pos)),
+    SwitchPath = goal_path_add_at_end(Path, step_disj(Pos)),
     coverage_prof_second_pass_goal(SwitchPath, Goal0, Goal1,
         CoverageAfterHeadKnown, NextCoverageAfterKnown0, !Info,
         AddedImpurityHead0),
@@ -2505,13 +2518,13 @@ coverage_prof_second_pass_ite(Path, ITEExistVars, Cond0, Then0, Else0,
     ),
 
     % Transform Else branch,
-    coverage_prof_second_pass_goal(snoc(Path, step_ite_else), Else0, Else1,
-        CoverageAfterElseKnown, CoverageBeforeElseKnown1, !Info,
+    coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_ite_else), 
+        Else0, Else1, CoverageAfterElseKnown, CoverageBeforeElseKnown1, !Info,
         AddedImpurityElseGoal),
 
     % Transform Then branch.
-    coverage_prof_second_pass_goal(snoc(Path, step_ite_then), Then0, Then1,
-        CoverageAfterThenKnown, CoverageBeforeThenKnown1, !Info,
+    coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_ite_then), 
+        Then0, Then1, CoverageAfterThenKnown, CoverageBeforeThenKnown1, !Info,
         AddedImpurityThenGoal),
 
     % Gather information and decide what coverage points to insert.
@@ -2533,7 +2546,8 @@ coverage_prof_second_pass_ite(Path, ITEExistVars, Cond0, Then0, Else0,
         (
             CoverageBeforeThenKnown1 = coverage_after_unknown,
 
-            InsertCPThen = yes(coverage_point_info(snoc(Path, step_ite_then),
+            InsertCPThen = yes(coverage_point_info(
+                goal_path_add_at_end(Path, step_ite_then),
                 cp_type_branch_arm))
         ;
             CoverageBeforeThenKnown1 = coverage_after_known,
@@ -2543,7 +2557,8 @@ coverage_prof_second_pass_ite(Path, ITEExistVars, Cond0, Then0, Else0,
         (
             CoverageBeforeElseKnown1 = coverage_after_unknown,
 
-            InsertCPElse = yes(coverage_point_info(snoc(Path, step_ite_else),
+            InsertCPElse = yes(coverage_point_info(
+                goal_path_add_at_end(Path, step_ite_else),
                 cp_type_branch_arm))
         ;
             CoverageBeforeElseKnown1 = coverage_after_known,
@@ -2579,7 +2594,7 @@ coverage_prof_second_pass_ite(Path, ITEExistVars, Cond0, Then0, Else0,
     % Transform Cond branch.
     coverage_after_known_branch(CoverageBeforeThenKnown,
         CoverageBeforeElseKnown, CoverageKnownAfterCond),
-    coverage_prof_second_pass_goal(snoc(Path, step_ite_cond),
+    coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_ite_cond),
         Cond0, Cond, CoverageKnownAfterCond, NextCoverageAfterKnown, !Info,
         AddedImpurityCond),
 

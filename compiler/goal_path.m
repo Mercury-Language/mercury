@@ -103,13 +103,13 @@ fill_goal_path_slots_in_clauses(ModuleInfo, OmitModeEquivPrefix, !PredInfo) :-
 
 fill_slots_in_clause(SlotInfo, Clause0, Clause, ClauseNum, ClauseNum + 1) :-
     Clause0 = clause(ProcIds, Goal0, Lang, Context),
-    fill_goal_slots(cord.singleton(step_disj(ClauseNum)), SlotInfo,
+    fill_goal_slots(singleton_goal_path(step_disj(ClauseNum)), SlotInfo,
         Goal0, Goal),
     Clause = clause(ProcIds, Goal, Lang, Context).
 
 fill_goal_path_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal) :-
     SlotInfo = slot_info(VarTypes, ModuleInfo, no),
-    fill_goal_slots(empty, SlotInfo, Goal0, Goal).
+    fill_goal_slots(empty_goal_path, SlotInfo, Goal0, Goal).
 
 :- pred fill_goal_slots(goal_path::in, slot_info::in,
     hlds_goal::in, hlds_goal::out) is det.
@@ -119,9 +119,9 @@ fill_goal_slots(Path0, SlotInfo,
     OmitModeEquivPrefix = SlotInfo ^ slot_info_omit_mode_equiv_prefix,
     (
         OmitModeEquivPrefix = yes,
-        PathSteps0 = cord.list(Path0),
+        PathSteps0 = goal_path_to_list(Path0),
         list.takewhile(mode_equiv_step, PathSteps0, _, PathSteps),
-        Path = cord.from_list(PathSteps)
+        Path = list_to_goal_path(PathSteps)
     ;
         OmitModeEquivPrefix = no,
         Path = Path0
@@ -164,7 +164,7 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, GoalExpr0, GoalExpr) :-
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = negation(SubGoal0),
-        fill_goal_slots(cord.snoc(Path0, step_neg), SlotInfo,
+        fill_goal_slots(goal_path_add_at_end(Path0, step_neg), SlotInfo,
             SubGoal0, SubGoal),
         GoalExpr = negation(SubGoal)
     ;
@@ -177,16 +177,16 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, GoalExpr0, GoalExpr) :-
         ;
             MaybeCut = scope_is_cut
         ),
-        fill_goal_slots(cord.snoc(Path0, step_scope(MaybeCut)), SlotInfo,
-            SubGoal0, SubGoal),
+        fill_goal_slots(goal_path_add_at_end(Path0, step_scope(MaybeCut)),
+            SlotInfo, SubGoal0, SubGoal),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = if_then_else(A, Cond0, Then0, Else0),
-        fill_goal_slots(cord.snoc(Path0, step_ite_cond), SlotInfo,
+        fill_goal_slots(goal_path_add_at_end(Path0, step_ite_cond), SlotInfo,
             Cond0, Cond),
-        fill_goal_slots(cord.snoc(Path0, step_ite_then), SlotInfo,
+        fill_goal_slots(goal_path_add_at_end(Path0, step_ite_then), SlotInfo,
             Then0, Then),
-        fill_goal_slots(cord.snoc(Path0, step_ite_else), SlotInfo,
+        fill_goal_slots(goal_path_add_at_end(Path0, step_ite_else), SlotInfo,
             Else0, Else),
         GoalExpr = if_then_else(A, Cond, Then, Else)
     ;
@@ -215,8 +215,8 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, GoalExpr0, GoalExpr) :-
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0),
-            fill_goal_slots(cord.snoc(Path0, step_atomic_main), SlotInfo,
-                MainGoal0, MainGoal),
+            fill_goal_slots(goal_path_add_at_end(Path0, step_atomic_main), 
+                SlotInfo, MainGoal0, MainGoal),
             fill_orelse_slots(Path0, 0, SlotInfo, OrElseGoals0, OrElseGoals),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals)
@@ -234,7 +234,8 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, GoalExpr0, GoalExpr) :-
 fill_conj_slots(_, _, _, [], []).
 fill_conj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
     N1 = N0 + 1,
-    fill_goal_slots(cord.snoc(Path0, step_conj(N1)), SlotInfo, Goal0, Goal),
+    fill_goal_slots(goal_path_add_at_end(Path0, step_conj(N1)), SlotInfo, 
+        Goal0, Goal),
     fill_conj_slots(Path0, N1, SlotInfo, Goals0, Goals).
 
 :- pred fill_disj_slots(goal_path::in, int::in, slot_info::in,
@@ -243,7 +244,8 @@ fill_conj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
 fill_disj_slots(_, _, _, [], []).
 fill_disj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
     N1 = N0 + 1,
-    fill_goal_slots(cord.snoc(Path0, step_disj(N1)), SlotInfo, Goal0, Goal),
+    fill_goal_slots(goal_path_add_at_end(Path0, step_disj(N1)), SlotInfo, 
+        Goal0, Goal),
     fill_disj_slots(Path0, N1, SlotInfo, Goals0, Goals).
 
 :- pred fill_switch_slots(goal_path::in, int::in, maybe(int)::in,
@@ -254,8 +256,8 @@ fill_switch_slots(Path0, N0, MaybeNumFunctors, SlotInfo,
         [Case0 | Cases0], [Case | Cases]) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     N1 = N0 + 1,
-    fill_goal_slots(cord.snoc(Path0, step_switch(N1, MaybeNumFunctors)),
-        SlotInfo, Goal0, Goal),
+    CasePath = goal_path_add_at_end(Path0, step_switch(N1, MaybeNumFunctors)),
+    fill_goal_slots(CasePath, SlotInfo, Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal),
     fill_switch_slots(Path0, N1, MaybeNumFunctors, SlotInfo, Cases0, Cases).
 
@@ -265,8 +267,8 @@ fill_switch_slots(Path0, N0, MaybeNumFunctors, SlotInfo,
 fill_orelse_slots(_, _, _, [], []).
 fill_orelse_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
     N1 = N0 + 1,
-    fill_goal_slots(cord.snoc(Path0, step_atomic_orelse(N1)), SlotInfo,
-        Goal0, Goal),
+    fill_goal_slots(goal_path_add_at_end(Path0, step_atomic_orelse(N1)),
+        SlotInfo, Goal0, Goal),
     fill_orelse_slots(Path0, N1, SlotInfo, Goals0, Goals).
 
 %-----------------------------------------------------------------------------%

@@ -340,7 +340,10 @@
     % `Reverse' is a list containing the same elements as `List'
     % but in reverse order.
     %
-:- pred list.reverse(list(T)::in, list(T)::out) is det.
+:- pred list.reverse(list(T), list(T)).
+:- mode list.reverse(in, out) is det.
+:- mode list.reverse(out, in) is det.
+
 :- func list.reverse(list(T)) = list(T).
 
     % list.perm(List0, List):
@@ -1721,7 +1724,13 @@ list.length_2([_ | L1], N0, N) :-
 
 %-----------------------------------------------------------------------------%
 
-list.reverse(L0, L) :-
+    % reverse(A, B) <=> reverse(B, A).
+:- pragma promise_equivalent_clauses(list.reverse/2).
+
+list.reverse(L0::in, L::out) :-
+    list.reverse_2(L0, [], L).
+
+list.reverse(L::out, L0::in) :-
     list.reverse_2(L0, [], L).
 
 :- pred list.reverse_2(list(T)::in, list(T)::in, list(T)::out) is det.

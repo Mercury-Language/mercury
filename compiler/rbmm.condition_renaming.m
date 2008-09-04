@@ -447,11 +447,11 @@ renaming_annotation_to_regions(RenameAnnotation, !LeftRegions,
     goal_path_regions_table::out) is det.
 
 record_non_local_regions(Path, Created, Removed, !NonLocalRegionProc) :-
-    ( cord.split_last(Path, InitialPath, LastStep) ->
+    ( goal_path_remove_last(Path, InitialPath, LastStep) ->
         ( LastStep = step_ite_else ->
             % The current NonLocalRegions are attached to the goal path to
             % the corresponding condition.
-            PathToCond = cord.snoc(InitialPath, step_ite_cond),
+            PathToCond = goal_path_add_at_end(InitialPath, step_ite_cond),
             ( map.search(!.NonLocalRegionProc, PathToCond, NonLocalRegions0) ->
                 set.union(NonLocalRegions0, Created, NonLocalRegions1),
                 set.difference(NonLocalRegions1, Removed, NonLocalRegions)
@@ -628,7 +628,7 @@ collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
     goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
 record_regions_created_in_condition(Path, Created, !InCondRegionsProc) :-
-    ( cord.split_last(Path, InitialPath, LastStep) ->
+    ( goal_path_remove_last(Path, InitialPath, LastStep) ->
         ( LastStep = step_ite_cond  ->
             ( map.search(!.InCondRegionsProc, Path, InCondRegions0) ->
                 set.union(InCondRegions0, Created, InCondRegions)
@@ -1008,7 +1008,7 @@ collect_ite_renaming_in_condition_case(IteRenamedRegionProc, Graph, Case,
     goal_path::out, int::in, int::out) is det.
 
 get_closest_condition_in_goal_path(Path, PathToCond, !HowMany) :-
-    ( cord.split_last(Path, InitialPath, LastStep) ->
+    ( goal_path_remove_last(Path, InitialPath, LastStep) ->
         ( LastStep = step_ite_cond ->
             PathToCond = Path,
             get_closest_condition_in_goal_path(InitialPath, _, !HowMany),
@@ -1018,7 +1018,7 @@ get_closest_condition_in_goal_path(Path, PathToCond, !HowMany) :-
                 !HowMany)
         )
     ;
-        PathToCond = empty
+        PathToCond = empty_goal_path
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1058,10 +1058,10 @@ collect_ite_annotation_proc(ExecPathTable, RptaInfoTable, PPId,
 
 collect_ite_annotation_region_names(ExecPaths, Graph, PathToCond,
         RenamedRegions, !IteRenamingProc, !IteAnnotationProc) :-
-    ( cord.split_last(PathToCond, InitialSteps, LastStep) ->
+    ( goal_path_remove_last(PathToCond, InitialSteps, LastStep) ->
         expect(unify(LastStep, step_ite_cond), this_file,
             "collect_ite_annotation_region_names: not step_ite_cond"),
-        PathToThen = cord.snoc(InitialSteps, step_ite_then),
+        PathToThen = goal_path_add_at_end(InitialSteps, step_ite_then),
         get_closest_condition_in_goal_path(PathToCond, _, 0, HowMany),
         list.foldl2(
             collect_ite_annotation_exec_path(Graph, PathToThen,
@@ -1100,8 +1100,8 @@ collect_ite_annotation_exec_path_2(Graph, PathToThen, RenamedRegions,
         HowMany, PrevPoint, [ProgPoint - _ | ProgPoint_Goals],
         !IteRenamingProc, !IteAnnotationProc) :-
     ProgPoint = pp(_, GoalPath),
-    PathToThenSteps = cord.list(PathToThen),
-    GoalPathSteps = cord.list(GoalPath),
+    PathToThenSteps = goal_path_to_list(PathToThen),
+    GoalPathSteps = goal_path_to_list(GoalPath),
     ( list.append(PathToThenSteps, FromThenSteps, GoalPathSteps) ->
         ( list.member(step_ite_cond, FromThenSteps) ->
             % We cannot introduce reverse renaming in the condition of

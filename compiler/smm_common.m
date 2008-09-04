@@ -147,7 +147,7 @@ program_point_init(GoalInfo) = ProgPoint :-
 dump_program_point(pp(Context, GoalPath), !IO):- 
     prog_out.write_context(Context, !IO), 
     io.write_string("--", !IO),
-    GoalPathSteps = cord.list(GoalPath),
+    GoalPathSteps = goal_path_to_list(GoalPath),
     list.foldl(dump_goal_path_step, GoalPathSteps, !IO).
 
 :- pred dump_goal_path_step(goal_path_step::in, io::di, io::uo) is det.

@@ -1137,7 +1137,7 @@ init_hlds_constraint(constraint(Name, Types), constraint([], Name, Types)).
 make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
         Constraints) :-
     ProgConstraints = constraints(UnivConstraints, ExistConstraints),
-    GoalPath = empty,
+    GoalPath = empty_goal_path,
     make_hlds_constraint_list(UnivConstraints, assumed, GoalPath,
         AssumedConstraints),
     make_hlds_constraint_list(ExistConstraints, unproven, GoalPath,

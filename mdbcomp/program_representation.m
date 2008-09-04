@@ -40,9 +40,9 @@
 
 :- import_module bool.
 :- import_module char.
-:- import_module cord.
 :- import_module io.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module unit.
 :- import_module type_desc.
@@ -54,19 +54,31 @@
 
 :- type prog_rep(GoalAnnotation)
     --->    prog_rep(
-                list(module_rep(GoalAnnotation))
+                module_map(GoalAnnotation)
             ).
 
 :- type prog_rep == prog_rep(unit).
+
+    % A map of module names to module representations.
+    %
+:- type module_map(GoalAnnotation) ==
+    map(string, module_rep(GoalAnnotation)).
+:- type module_map == module_map(unit).
 
 :- type module_rep(GoalAnnotation)
     --->    module_rep(
                 mr_name         :: string,          % The module name.
                 mr_string_table :: string_table,
-                mr_procs        :: list(proc_rep(GoalAnnotation))
+                mr_procs        :: proc_map(GoalAnnotation)
             ).
 
 :- type module_rep == module_rep(unit).
+
+    % A map of proc names to proc_reps.
+    %
+:- type proc_map(GoalAnnotation) ==
+    map(string_proc_label, proc_rep(GoalAnnotation)).
+:- type proc_map == proc_map(unit).
 
 :- type proc_rep(GoalAnnotation)
     --->    proc_rep(
@@ -381,10 +393,11 @@
 % goal. We use a cord instead of a list because most operations on goal paths
 % focus on the last element, not the first.
 %
-% NOTE: Comparing two cords for equality should be done by calling cord.equal,
-% not by unifying them directly.
+% The goal_path type is safe for use in maps and sets.  However compare/3 and
+% unify/2 are faster for goal_path_string.
+%
 
-:- type goal_path == cord(goal_path_step).
+:- type goal_path.
 
 :- type goal_path_string == string.
 
@@ -406,6 +419,44 @@
 :- type maybe_cut
     --->    scope_is_cut
     ;       scope_is_no_cut.
+    
+    % The empty goal path.
+    %
+:- func empty_goal_path = goal_path.
+
+    % A singleton goal path.
+    %
+:- func singleton_goal_path(goal_path_step) = goal_path.
+
+    % Append a goal path step onto the end of a goal path.
+    %
+:- func goal_path_add_at_end(goal_path, goal_path_step) = goal_path.
+
+    % Remove the last item from the goal path.  This fails if the goal path is
+    % empty.
+    %
+:- func goal_path_remove_last(goal_path) = goal_path is semidet.
+
+    % Remove the last item from the goal path, returning it and the new 
+    % goal path.
+    %
+:- pred goal_path_remove_last(goal_path::in, goal_path::out,
+    goal_path_step::out) is semidet.
+
+    % Get the last item from the goal path.  This fails if the goal path is
+    % empty
+    %
+:- func goal_path_get_last(goal_path) = goal_path_step is semidet.
+
+    % Return the goal path represented as a list, with the outer most goal path
+    % step at the head of the list.
+    %
+:- func goal_path_to_list(goal_path) = list(goal_path_step).
+
+    % Build a goal path from the given list of goal steps.  The outer most goal
+    % step should be at the head of the list.
+    %
+:- func list_to_goal_path(list(goal_path_step)) = goal_path.
 
     % goal_path_inside(PathA, PathB):
     %
@@ -687,10 +738,57 @@ goal_rep_type = type_of(_ : goal_rep).
 
 %-----------------------------------------------------------------------------%
 
+    % Goal paths are stored as a list in reverse order, that is the inner most
+    % goal path step is at the head of the list.
+    %
+:- type goal_path
+    --->    goal_path(
+                gp_steps    :: list(goal_path_step)
+            ).
+
+empty_goal_path = goal_path([]).
+
+singleton_goal_path(Step) = goal_path([Step]).
+
 goal_path_inside(PathA, PathB) :-
-    StepsA = cord.list(PathA),
-    StepsB = cord.list(PathB),
-    list.append(StepsA, _, StepsB).
+    list.append(_, PathA ^ gp_steps, PathB ^ gp_steps).
+
+goal_path_add_at_end(GoalPath0, GoalPathStep) = GoalPath :-
+    goal_path_snoc(GoalPath, GoalPath0, GoalPathStep).
+
+goal_path_remove_last(GoalPath0) = GoalPath :-
+    goal_path_snoc(GoalPath0, GoalPath, _).
+
+goal_path_remove_last(GoalPath0, GoalPath, GoalPathStep) :-
+    goal_path_snoc(GoalPath0, GoalPath, GoalPathStep).
+
+goal_path_get_last(GoalPath) = Step :-
+    goal_path_snoc(GoalPath, _, Step).
+
+    % goal_path_snoc(GP, GP0, GPS) <=> GP = GP0 ++ [GPS].
+    %
+:- pred goal_path_snoc(goal_path, goal_path, goal_path_step).
+:- mode goal_path_snoc(in, out, out) is semidet.
+:- mode goal_path_snoc(out, in, in) is det.
+
+goal_path_snoc(GoalPath, GoalPath0, GoalPathStep) :-
+    GoalPath0 = goal_path(Steps0),
+    Steps = [ GoalPathStep | Steps0 ],
+    GoalPath = goal_path(Steps).
+
+goal_path_to_list(GoalPath) = List :-
+    goal_path_list(GoalPath, List).
+
+list_to_goal_path(List) = GoalPath :-
+    goal_path_list(GoalPath, List).
+
+:- pred goal_path_list(goal_path, list(goal_path_step)).
+:- mode goal_path_list(in, out) is det.
+:- mode goal_path_list(out, in) is det.
+
+goal_path_list(GoalPath, StepsList) :-
+    GoalPath = goal_path(RevSteps),
+    reverse(RevSteps, StepsList).
 
 goal_path_from_string_det(GoalPathStr, GoalPath) :-
     ( goal_path_from_string(GoalPathStr, GoalPathPrime) ->
@@ -701,8 +799,9 @@ goal_path_from_string_det(GoalPathStr, GoalPath) :-
 
 goal_path_from_string(GoalPathStr, GoalPath) :-
     StepStrs = string.words_separator(is_goal_path_separator, GoalPathStr),
-    list.map(goal_path_step_from_string, StepStrs, Steps),
-    GoalPath = cord.from_list(Steps).
+    list.map(goal_path_step_from_string, StepStrs, Steps0),
+    list.reverse(Steps0, Steps),
+    GoalPath = goal_path(Steps).
 
 goal_path_step_from_string(String, Step) :-
     string.first_char(String, First, Rest),
@@ -740,7 +839,8 @@ goal_path_step_from_string_2('l', "", step_later).
 is_goal_path_separator(';').
 
 goal_path_to_string(GoalPath) = GoalPathStr :-
-    Steps = cord.list(GoalPath),
+    Steps0 = GoalPath ^ gp_steps,
+    list.reverse(Steps0, Steps),
     StepStrs = list.map(goal_path_step_to_string, Steps),
     string.append_list(StepStrs, GoalPathStr).
 
@@ -914,12 +1014,11 @@ read_prog_rep_file(FileName, Result, !IO) :-
                 !:Pos = 0,
                 read_line(ByteCode, Line, !Pos),
                 Line = procrep_id_string,
-                read_module_reps(ByteCode, [], RevModuleReps, !Pos),
+                read_module_reps(ByteCode, map.init, ModuleReps, !Pos),
                 ByteCode = bytecode(_, Size),
                 !.Pos = Size
             )
         ->
-            list.reverse(RevModuleReps, ModuleReps),
             Result = ok(prog_rep(ModuleReps))
         ;
             Msg = FileName ++ ": is not a valid program representation file",
@@ -934,10 +1033,10 @@ read_prog_rep_file(FileName, Result, !IO) :-
 procrep_id_string = "Mercury deep profiler procrep version 3\n".
 
 :- pred read_module_reps(bytecode::in,
-    list(module_rep(unit))::in, list(module_rep(unit))::out,
+    module_map(unit)::in, module_map(unit)::out,
     int::in, int::out) is semidet.
 
-read_module_reps(ByteCode, !RevModuleReps, !Pos) :-
+read_module_reps(ByteCode, !ModuleReps, !Pos) :-
     read_byte(ByteCode, MoreByte, !Pos),
     is_more_modules(MoreByte, MoreModules),
     (
@@ -945,8 +1044,8 @@ read_module_reps(ByteCode, !RevModuleReps, !Pos) :-
     ;
         MoreModules = next_module,
         read_module_rep(ByteCode, ModuleRep, !Pos),
-        !:RevModuleReps = [ModuleRep | !.RevModuleReps],
-        read_module_reps(ByteCode, !RevModuleReps, !Pos)
+        svmap.det_insert(ModuleRep ^ mr_name, ModuleRep, !ModuleReps),
+        read_module_reps(ByteCode, !ModuleReps, !Pos)
     ).
 
 :- pred read_module_rep(bytecode::in, module_rep(unit)::out, int::in, int::out)
@@ -955,15 +1054,14 @@ read_module_reps(ByteCode, !RevModuleReps, !Pos) :-
 read_module_rep(ByteCode, ModuleRep, !Pos) :-
     read_len_string(ByteCode, ModuleName, !Pos),
     read_string_table(ByteCode, StringTable, !Pos),
-    read_proc_reps(ByteCode, StringTable, [], RevProcReps, !Pos),
-    list.reverse(RevProcReps, ProcReps),
+    read_proc_reps(ByteCode, StringTable, map.init, ProcReps, !Pos),
     ModuleRep = module_rep(ModuleName, StringTable, ProcReps).
 
 :- pred read_proc_reps(bytecode::in, string_table::in,
-    list(proc_rep(unit))::in, list(proc_rep(unit))::out, int::in, int::out) 
+    proc_map(unit)::in, proc_map(unit)::out, int::in, int::out) 
     is semidet.
 
-read_proc_reps(ByteCode, StringTable, !RevProcReps, !Pos) :-
+read_proc_reps(ByteCode, StringTable, !ProcReps, !Pos) :-
     read_byte(ByteCode, MoreByte, !Pos),
     is_more_procs(MoreByte, MoreProcs),
     (
@@ -971,8 +1069,8 @@ read_proc_reps(ByteCode, StringTable, !RevProcReps, !Pos) :-
     ;
         MoreProcs = next_proc,
         read_proc_rep(ByteCode, StringTable, ProcRep, !Pos),
-        !:RevProcReps = [ProcRep | !.RevProcReps],
-        read_proc_reps(ByteCode, StringTable, !RevProcReps, !Pos)
+        svmap.det_insert(ProcRep ^ pr_id, ProcRep, !ProcReps), 
+        read_proc_reps(ByteCode, StringTable, !ProcReps, !Pos)
     ).
 
 :- pred read_proc_rep(bytecode::in, string_table::in, proc_rep(unit)::out,

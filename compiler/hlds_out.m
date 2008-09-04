@@ -1282,7 +1282,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ),
     ( string.contains_char(Verbose, 'P') ->
         Path = goal_info_get_goal_path(GoalInfo),
-        ( is_empty(Path) ->
+        ( Path = empty_goal_path ->
             true
         ;
             write_indent(Indent, !IO),

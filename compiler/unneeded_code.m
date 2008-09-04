@@ -669,7 +669,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         (
             Cases0 = [case(_, _, hlds_goal(_, FirstCaseGoalInfo)) | _],
             FirstCaseGoalPath = goal_info_get_goal_path(FirstCaseGoalInfo),
-            cord.get_last(FirstCaseGoalPath, FirstCaseLastStep),
+            FirstCaseLastStep = goal_path_get_last(FirstCaseGoalPath),
             FirstCaseLastStep = step_switch(_, MaybeNumAltPrime)
         ->
             MaybeNumAlt = MaybeNumAltPrime
@@ -1125,7 +1125,7 @@ where_needed_branches_upper_bound_2(CurrentPath, [First | Rest],
                 get_parent_branch_point(GoalPath,
                     ParentGoalInitialPath, ParentGoalPathStep,
                     ParentBranchAlt, ParentBranchNum),
-                ParentGoalPath = cord.snoc(ParentGoalInitialPath,
+                ParentGoalPath = goal_path_add_at_end(ParentGoalInitialPath,
                     ParentGoalPathStep),
                 \+ goal_path_inside(ParentGoalPath, CurrentPath)
             ->
@@ -1155,7 +1155,7 @@ where_needed_branches_upper_bound_2(CurrentPath, [First | Rest],
 
 get_parent_branch_point(GoalPath, ParentPath, ParentStep,
         BranchAlt, BranchNum) :-
-    cord.split_last(GoalPath, InitialPath, LastStep),
+    goal_path_remove_last(GoalPath, InitialPath, LastStep),
     (
         LastStep = step_switch(Arm, MaybeNumAlts),
         ParentPath = InitialPath,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,6 +38,7 @@
 :- import_module cord.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
@@ -66,24 +67,24 @@ main(!IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_selected_modules(list(module_rep)::in, maybe(list(string))::in,
+:- pred print_selected_modules(module_map::in, maybe(list(string))::in,
     io::di, io::uo) is det.
 
-print_selected_modules([], _, !IO).
-print_selected_modules([ModuleRep | ModuleReps], MaybeModules, !IO) :-
-    ModuleRep = module_rep(ModuleName, _StringTable, _ProcReps),
+print_selected_modules(ModuleReps, MaybeModules, !IO) :-
     (
         MaybeModules = no,
-        print_module(ModuleRep, !IO)
+        map.foldl((pred(_::in, ModuleRep::in, IO0::di, IO::uo) is det :-
+                print_module(ModuleRep, IO0, IO)
+            ), ModuleReps, !IO)
     ;
         MaybeModules = yes(Modules),
-        ( list.member(ModuleName, Modules) ->
-            print_module(ModuleRep, !IO)
-        ;
-            true
-        )
-    ),
-    print_selected_modules(ModuleReps, MaybeModules, !IO).
+        list.foldl((pred(ModuleName::in, IO0::di, IO::uo) is det :-
+            ( map.search(ModuleReps, ModuleName, ModuleRep) ->
+                print_module(ModuleRep, IO0, IO)
+            ;
+                IO = IO0
+            )), Modules, !IO)
+    ).
 
 :- pred print_module(module_rep::in, io::di, io::uo) is det.
 

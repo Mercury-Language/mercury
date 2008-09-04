@@ -55,15 +55,18 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 
 %----------------------------------------------------------------------------%
 
 print_module_to_strings(ModuleRep, Strings) :-
     ModuleRep = module_rep(ModuleName, _StringTable, ProcReps),
-    list.map(print_proc_to_strings, ProcReps, ProcStrings),
+    map.foldl((pred(_::in, ProcRep::in, Str0::in, Str::out) is det :-
+            print_proc_to_strings(ProcRep, Str1),
+            Str = Str0 ++ Str1), ProcReps, cord.empty, ProcStrings),
     Strings = cord.cons(string.format("Module %s\n", [s(ModuleName)]), 
-        cord_list_to_cord(ProcStrings)).
+        ProcStrings).
 
 print_proc_to_strings(ProcRep, Strings) :-
     ProcRep = proc_rep(ProcLabel, ProcDefnRep),
@@ -428,8 +431,6 @@ nl = cord.singleton("\n").
 
 %----------------------------------------------------------------------------%
 
-% TODO: It'd be nice if this predicate had some sort of indexes or binary tree
-% to use to speed up it's search.
 progrep_search_proc(ProgRep, ProcLabel, ProcRep) :-
     % XXX: what's the difference between these two module fields? which should
     % I be using.
@@ -446,21 +447,7 @@ progrep_search_proc(ProgRep, ProcLabel, ProcRep) :-
 
 progrep_search_module(ProgRep, ModuleName, ModuleRep) :-
    ProgRep = prog_rep(ModuleReps),
-   modulerep_list_search_module(ModuleReps, ModuleName, ModuleRep).
-
-    % Search for a module within a list of module representations.
-    %
-:- pred modulerep_list_search_module(list(module_rep)::in, string::in,
-    module_rep::out) is semidet.
-
-modulerep_list_search_module([], _, _) :- fail.
-modulerep_list_search_module([ModuleRep0 | ModuleReps], ModuleName, ModuleRep)
-        :-
-    ( ModuleRep0 ^ mr_name = ModuleName ->
-        ModuleRep = ModuleRep0
-    ;
-        modulerep_list_search_module(ModuleReps, ModuleName, ModuleRep)
-    ).
+   map.search(ModuleReps, ModuleName, ModuleRep).
 
     % Search for a procedure within a module representation.
     %
@@ -468,20 +455,7 @@ modulerep_list_search_module([ModuleRep0 | ModuleReps], ModuleName, ModuleRep)
     proc_rep::out) is semidet.
 
 modulerep_search_proc(ModuleRep, ProcLabel, ProcRep) :-
-    procrep_list_search_proc(ModuleRep ^ mr_procs, ProcLabel, ProcRep).
-
-    % Search for a procedure within a list of procedure representations.
-    %
-:- pred procrep_list_search_proc(list(proc_rep)::in, string_proc_label::in,
-    proc_rep::out) is semidet.
-
-procrep_list_search_proc([], _, _) :- fail.
-procrep_list_search_proc([ProcRep0 | ProcReps], ProcLabel, ProcRep) :-
-    ( ProcRep0 ^ pr_id = ProcLabel ->
-        ProcRep = ProcRep0
-    ;
-        procrep_list_search_proc(ProcReps, ProcLabel, ProcRep)
-    ).
+    map.search(ModuleRep ^ mr_procs, ProcLabel, ProcRep).
 
 %----------------------------------------------------------------------------%
 

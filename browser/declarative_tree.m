@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -910,8 +910,9 @@ trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
     HeadVars = ProcDefnRep ^ pdr_head_vars,
     GoalRep = ProcDefnRep ^ pdr_goal,
     is_traced_grade(AllTraced),
-    MaybePrims = make_primitive_list(Store, [goal_and_path(GoalRep, empty)],
-        Contour, StartPath, ArgNum, TotalArgs, HeadVars, AllTraced, []),
+    MaybePrims = make_primitive_list(Store, 
+        [goal_and_path(GoalRep, empty_goal_path)], Contour, StartPath, ArgNum,
+        TotalArgs, HeadVars, AllTraced, []),
     (
         MaybePrims = yes(primitive_list_and_var(Primitives, Var,
             MaybeClosure)),
@@ -1246,7 +1247,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             Primitives0)
     ;
         GoalExpr = scope_rep(InnerGoal, MaybeCut),
-        InnerPath = cord.snoc(Path, step_scope(MaybeCut)),
+        InnerPath = goal_path_add_at_end(Path, step_scope(MaybeCut)),
         InnerAndPath = goal_and_path(InnerGoal, InnerPath),
         MaybePrims = make_primitive_list(Store, [InnerAndPath | GoalPaths],
             Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1278,8 +1279,8 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             ),
             DisjPathStr = get_goal_path_from_label_layout(Label),
             goal_path_from_string_det(DisjPathStr, DisjPath),
-            cord.split_last(DisjPath, DisjInitialPath, DisjLastStep),
-            cord.equal(DisjInitialPath, Path),
+            goal_path_remove_last(DisjPath, DisjInitialPath, DisjLastStep),
+            DisjInitialPath = Path,
             DisjLastStep = step_disj(N)
         ->
             list.index1_det(Disjs, N, Disj),
@@ -1298,8 +1299,8 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             ContourHeadNode = node_switch(_, Label),
             ArmPathStr = get_goal_path_from_label_layout(Label),
             goal_path_from_string_det(ArmPathStr, ArmPath),
-            cord.split_last(ArmPath, ArmInitialPath, ArmLastStep),
-            cord.equal(ArmInitialPath, Path),
+            goal_path_remove_last(ArmPath, ArmInitialPath, ArmLastStep),
+            ArmInitialPath = Path,
             ArmLastStep = step_switch(N, _)
         ->
             list.index1_det(Cases, N, Case),
@@ -1319,11 +1320,11 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             ContourHeadNode = node_cond(_, Label, _),
             CondPathStr = get_goal_path_from_label_layout(Label),
             goal_path_from_string_det(CondPathStr, CondPath),
-            cord.split_last(CondPath, CondInitialPath, CondLastStep),
-            cord.equal(CondInitialPath, Path),
+            goal_path_remove_last(CondPath, CondInitialPath, CondLastStep),
+            CondInitialPath = Path,
             CondLastStep = step_ite_cond
         ->
-            ThenPath = cord.snoc(Path, step_ite_then),
+            ThenPath = goal_path_add_at_end(Path, step_ite_then),
             CondAndPath = goal_and_path(Cond, CondPath),
             ThenAndPath = goal_and_path(Then, ThenPath),
             MaybePrims = make_primitive_list(Store,
@@ -1336,11 +1337,11 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             CondNode = node_cond(_, Label, _),
             CondPathStr = get_goal_path_from_label_layout(Label),
             goal_path_from_string_det(CondPathStr, CondPath),
-            cord.split_last(CondPath, CondInitialPath, CondLastStep),
-            cord.equal(CondInitialPath, Path),
+            goal_path_remove_last(CondPath, CondInitialPath, CondLastStep),
+            CondInitialPath = Path,
             CondLastStep = step_ite_cond
         ->
-            ElsePath = cord.snoc(Path, step_ite_else),
+            ElsePath = goal_path_add_at_end(Path, step_ite_else),
             ElseAndPath = goal_and_path(Else, ElsePath),
             MaybePrims = make_primitive_list(Store, [ElseAndPath | GoalPaths],
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1364,7 +1365,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
         ->
             % The end of the primitive list is somewhere inside
             % NegGoal.
-            NegPath = cord.snoc(Path, step_neg),
+            NegPath = goal_path_add_at_end(Path, step_neg),
             NegAndPath = goal_and_path(NegGoal, NegPath),
             MaybePrims = make_primitive_list(Store, [NegAndPath], ContourTail,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0)
@@ -1800,7 +1801,7 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 add_paths_to_conjuncts([], _, _, []).
 add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
         [goal_and_path(Goal, Path) | GoalAndPaths]) :-
-    Path = cord.snoc(ParentPath, step_conj(N)),
+    Path = goal_path_add_at_end(ParentPath, step_conj(N)),
     add_paths_to_conjuncts(Goals, ParentPath, N + 1, GoalAndPaths).
 
 %-----------------------------------------------------------------------------%

@@ -686,7 +686,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
         Goal = hlds_goal(_, GoalInfo),
         GoalPath = goal_info_get_goal_path(GoalInfo),
         (
-            cord.get_last(GoalPath, LastStep),
+            LastStep = goal_path_get_last(GoalPath),
             (
                 LastStep = step_switch(_, _),
                 PortPrime = port_switch
@@ -834,7 +834,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     (
         PortInfo = port_info_external,
         LiveVars = LiveVars0,
-        Path = empty
+        Path = empty_goal_path
     ;
         PortInfo = port_info_internal(Path, PreDeaths),
         ResumeVars = current_resume_point_vars(!.CI),
@@ -851,9 +851,9 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         PortInfo = port_info_nondet_foreign_proc,
         LiveVars = [],
         ( Port = port_nondet_foreign_proc_first ->
-            Path = cord.singleton(step_first)
+            Path = singleton_goal_path(step_first)
         ; Port = port_nondet_foreign_proc_later ->
-            Path = cord.singleton(step_later)
+            Path = singleton_goal_path(step_later)
         ;
             unexpected(this_file,
                 "generate_event_code: bad nondet foreign_proc port")

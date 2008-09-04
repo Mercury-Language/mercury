@@ -378,7 +378,7 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
         ( pred(V::in, S0::in, S::out) is det :-
             mode_constraint_var(in(V), _, S0, S1),
             mode_constraint_var(out(V), _, S1, S2),
-            mode_constraint_var(V `at` empty, _, S2, S)
+            mode_constraint_var(V `at` empty_goal_path, _, S2, S)
         ), InstGraph, HeadVars, !MCI),
 
     ( pred_info_is_imported(PredInfo0) ->
@@ -515,7 +515,7 @@ number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
             ( pred(V::in, in, out) is det -->
                 mode_constraint_var(in(V), _),
                 mode_constraint_var(out(V), _),
-                mode_constraint_var(V `at` empty, _)
+                mode_constraint_var(V `at` empty_goal_path, _)
             ), InstGraph, LambdaHeadVars), !NRInfo),
 
     % Number variables within the lambda goal.
@@ -1046,7 +1046,7 @@ process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
     list.map(pred(clause(_, Goal, _, _)::in, Goal::out) is det, Clauses,
         Goals),
     DisjGoal = disj(Goals),
-    EmptyGoalPath = empty,
+    EmptyGoalPath = empty_goal_path,
     AtomicGoals0 = set.init,
     Info0 = goal_constraints_info(ModuleInfo, SCC, InstGraph, HeadVars,
         VarSet0, AtomicGoals0, !.ConstraintInfo, HOModes0, map.init),
@@ -1088,7 +1088,7 @@ input_output_constraints(HeadVars, InstGraph, V, Node, !Constraint, !MCI) :-
     inst_graph.top_level_node(InstGraph, V, TopLevel),
     mode_constraint_var(in(V), V_in, !MCI),
     mode_constraint_var(out(V), V_out, !MCI),
-    mode_constraint_var(V `at` empty, V_, !MCI),
+    mode_constraint_var(V `at` empty_goal_path, V_, !MCI),
     ( TopLevel `list.member` HeadVars ->
         % For each variable V in the instantiation graph, add
         %   (Vout = Vin + V), ~(Vin * V).
@@ -1732,7 +1732,7 @@ call_constraints(GoalPath, PredId, HeadVars, Args, !Constraint, !GCInfo) :-
         ),
     Accumulator =
         (pred((V - W)::in, C0::in, C::out, S0::in, S::out) is det :-
-            get_var(PredId, V `at` empty, V_, S0, S1),
+            get_var(PredId, V `at` empty_goal_path, V_, S0, S1),
             get_var(W `at` GoalPath, Wgp, S1, S2),
             get_var(PredId, in(V), Vin, S2, S3),
             get_var(out(W), Wout, S3, S),
@@ -1828,8 +1828,8 @@ keep_var(NonLocals, GoalVars, GoalPath, _AtomicGoals, InstGraph, RepVar) :-
         inst_graph.reachable(InstGraph, NonLocal, V),
         \+ (
             RepVar = _ `at` GoalPath1,
-            GoalPathSteps = cord.list(GoalPath),
-            GoalPathSteps1 = cord.list(GoalPath1),
+            GoalPathSteps = goal_path_to_list(GoalPath),
+            GoalPathSteps1 = goal_path_to_list(GoalPath1),
             list.remove_suffix(GoalPathSteps1, GoalPathSteps, [_ | _])
         )
     ).
