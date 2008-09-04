@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -159,7 +159,8 @@
 :- type proc_layout_proc_static
     --->    proc_layout_proc_static(
                 hlds_proc_static        :: hlds_proc_static,
-                deep_excp_slots         :: deep_excp_slots
+                deep_excp_slots         :: deep_excp_slots,
+                deep_original_body      :: deep_original_body 
             ).
 
 :- type maybe_proc_id_and_more

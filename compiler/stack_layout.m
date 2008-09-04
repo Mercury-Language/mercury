@@ -572,9 +572,39 @@ construct_proc_layout(ProcLayoutInfo, InternalLabelInfos, Kind, VarNumMap,
                 DeepProfiling = no,
                 IncludeVarTable = do_not_include_variable_table
             ),
-            represent_proc_as_bytecodes(HeadVars, Goal, InstMap, VarTypes,
-                VarNumMap, ModuleInfo, IncludeVarTable, Detism, !Info, 
-                ProcBytes)
+            
+            % When the proc static is availiable (used with deep profiling) use
+            % the version of the procedure saved before the deep profiling
+            % transformation as the program representation.
+            (
+                MaybeProcStatic = yes(ProcStatic),
+                DeepOriginalBody = ProcStatic ^ deep_original_body,
+                DeepOriginalBody = deep_original_body(BytecodeBody,
+                    BytecodeHeadVars, BytecodeInstMap, BytecodeVarTypes,
+                    BytecodeDetism),
+                some [!VarNumMap, !Counter] (
+                    !:VarNumMap = map.init,
+                    !:Counter = counter.init(1),
+                    goal_util.goal_vars(BytecodeBody, BodyVarSet),
+                    set.to_sorted_list(BodyVarSet, BodyVars),
+                    list.foldl2(add_var_to_var_number_map(VarSet),
+                        BodyVars, !VarNumMap, !Counter),
+                    list.foldl2(add_var_to_var_number_map(VarSet),
+                        BytecodeHeadVars, !VarNumMap, !.Counter, _),
+                    BytecodeVarNumMap = !.VarNumMap
+                )
+            ;
+                MaybeProcStatic = no,
+                BytecodeHeadVars = HeadVars,
+                BytecodeBody = Goal,
+                BytecodeInstMap = InstMap,
+                BytecodeVarTypes = VarTypes,
+                BytecodeDetism = Detism,
+                BytecodeVarNumMap = VarNumMap
+            ),
+            represent_proc_as_bytecodes(BytecodeHeadVars, BytecodeBody,
+                BytecodeInstMap, BytecodeVarTypes, BytecodeVarNumMap,
+                ModuleInfo, IncludeVarTable, BytecodeDetism, !Info, ProcBytes)
         ;
             ProcBytes = []
         ),

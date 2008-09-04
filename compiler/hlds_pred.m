@@ -1709,16 +1709,34 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- type deep_profile_proc_info
     --->    deep_profile_proc_info(
                 deep_rec        :: maybe(deep_recursion_info),
-                deep_layout     :: maybe(hlds_deep_layout)
-                                % The first field is set during the first,
-                                % tail recursion part of the deep profiling
-                                % transformation, if that is enabled.
-                                % The deep_layout field is set during the
-                                % second part; it will be bound to `no'
-                                % before and during the first part, and
-                                % to `yes' after the second. The contents
-                                % of this field govern what will go into
-                                % MR_ProcStatic structures.
+                                % This field is set during the first part of
+                                % the deep profiling transformation; tail
+                                % recursion, if that is enabled.
+                                
+                deep_layout     :: maybe(hlds_deep_layout),
+                                % This field is set during the second part; it
+                                % will be bound to `no' before and during the
+                                % first part, and to `yes' after the second.
+                                % The contents of this field govern what will
+                                % go into MR_ProcStatic structures.
+                
+                deep_orig_body  :: deep_original_body 
+                                % This field stores the origional body of a
+                                % procedure, before either part of the deep
+                                % profiling transformation was executed.  For
+                                % inner procedures created by the tail
+                                % recursion part of the deep profiling
+                                % transformation, it holds the origional body
+                                % of the outer procedure.
+            ).
+
+:- type deep_original_body
+    --->    deep_original_body(
+                dob_body            :: hlds_goal,
+                dob_head_vars       :: list(prog_var),
+                dob_instmap         :: instmap,
+                dob_vartypes        :: vartypes,
+                dob_detism          :: determinism
             ).
 
 :- type table_arg_infos

@@ -546,7 +546,8 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
         unexpected(this_file,
             "generate_deep_prof_info: no HLDS deep profiling layout info")
     ),
-    HLDSDeepLayout = hlds_deep_layout(HLDSProcStatic, HLDSExcpVars),
+    HLDSDeepLayout = hlds_deep_layout(HLDSProcStatic, HLDSExcpVars), 
+    HLDSDeepInfo ^ deep_orig_body = OriginalProcBody,
     HLDSExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
         MaybeOldOutermostVar),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
@@ -569,7 +570,8 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
     ),
     DeepExcpSlots = deep_excp_slots(TopCSDSlotNum, MiddleCSDSlotNum,
         OldOutermostSlotNum),
-    DeepProfInfo = proc_layout_proc_static(HLDSProcStatic, DeepExcpSlots).
+    DeepProfInfo = proc_layout_proc_static(HLDSProcStatic, DeepExcpSlots,
+        OriginalProcBody).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

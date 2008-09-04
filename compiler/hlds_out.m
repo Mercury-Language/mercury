@@ -4103,7 +4103,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     (
         MaybeDeepProfileInfo = yes(DeepProfileInfo),
         DeepProfileInfo = deep_profile_proc_info(MaybeRecInfo,
-            MaybeDeepLayout),
+            MaybeDeepLayout, _),
         (
             MaybeRecInfo = yes(DeepRecInfo),
             DeepRecInfo = deep_recursion_info(Role, _),

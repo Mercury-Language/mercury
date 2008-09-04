@@ -135,10 +135,13 @@ apply_tail_recursion_to_proc(PredProcId, !ModuleInfo) :-
         OrigDeepRecInfo = yes(deep_recursion_info(
             outer_proc(ClonePredProcId),
             [visible_scc_data(PredProcId, ClonePredProcId, TailCallSites)])),
-        OrigDeepProfileInfo = deep_profile_proc_info(OrigDeepRecInfo, no),
+        make_deep_original_body(ProcInfo0, !.ModuleInfo, DeepOriginalBody),
+        OrigDeepProfileInfo = deep_profile_proc_info(OrigDeepRecInfo, no,
+            DeepOriginalBody),
         CloneDeepRecInfo = yes(deep_recursion_info(inner_proc(PredProcId),
             [visible_scc_data(PredProcId, ClonePredProcId, TailCallSites)])),
-        CloneDeepProfileInfo = deep_profile_proc_info(CloneDeepRecInfo, no),
+        CloneDeepProfileInfo = deep_profile_proc_info(CloneDeepRecInfo, no, 
+            DeepOriginalBody),
         proc_info_set_maybe_deep_profile_info(yes(OrigDeepProfileInfo),
             ProcInfo1, ProcInfo),
         proc_info_set_maybe_deep_profile_info(
@@ -475,15 +478,50 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
 deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepInfo),
     (
-        MaybeDeepInfo = yes(DeepInfo),
-        DeepInfo = deep_profile_proc_info(MaybeDeepRecInfo, _),
-        MaybeDeepRecInfo = yes(RecInfo),
-        RecInfo ^ role = inner_proc(_)
-    ->
-        transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo)
+        MaybeDeepInfo = yes(DeepInfo0),
+        DeepInfo0 = deep_profile_proc_info(MaybeDeepRecInfo, _, OrigBody),
+        (
+            MaybeDeepRecInfo = yes(RecInfo),
+            RecInfo ^ role = inner_proc(_)
+        ->
+            transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo),
+            MaybeDeepLayoutInfo = no
+        ;
+            transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
+                DeepLayoutInfo),
+            MaybeDeepLayoutInfo = yes(DeepLayoutInfo)
+        )
     ;
-        transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo)
-    ).
+        MaybeDeepInfo = no,
+        make_deep_original_body(!.ProcInfo, ModuleInfo, OrigBody),
+        transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
+            DeepLayoutInfo),
+        MaybeDeepLayoutInfo = yes(DeepLayoutInfo),
+        MaybeDeepRecInfo = no
+    ),
+    DeepInfo = deep_profile_proc_info(MaybeDeepRecInfo, MaybeDeepLayoutInfo, 
+        OrigBody),
+    proc_info_set_maybe_deep_profile_info(yes(DeepInfo), !ProcInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred make_deep_original_body(proc_info::in, module_info::in, 
+    deep_original_body::out) is det.
+
+make_deep_original_body(ProcInfo, ModuleInfo, DeepOriginalBody) :-
+    proc_info_get_goal(ProcInfo, Body),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_initial_instmap(ProcInfo, ModuleInfo, Instmap),
+    proc_info_get_vartypes(ProcInfo, Vartypes),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
+    (
+        MaybeDetism = yes(Detism)
+    ;
+        MaybeDetism = no,
+        proc_info_get_inferred_determinism(ProcInfo, Detism)
+    ),
+    DeepOriginalBody = deep_original_body(Body, HeadVars, Instmap, Vartypes,
+        Detism).
 
 %-----------------------------------------------------------------------------%
 
@@ -515,9 +553,9 @@ deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     % Transfrom a procedure.
     %
 :- pred transform_normal_proc(module_info::in, pred_proc_id::in,
-    proc_info::in, proc_info::out) is det.
+    proc_info::in, proc_info::out, hlds_deep_layout::out) is det.
 
-transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo) :-
+transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo, DeepLayoutInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = hlds_goal(_, GoalInfo0),
@@ -611,7 +649,7 @@ transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_set_varset(Vars, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
-    record_hlds_proc_static(ProcStatic, ExcpVars, !ProcInfo).
+    DeepLayoutInfo = hlds_deep_layout(ProcStatic, ExcpVars).
 
 % Wrap the procedure body in the deep profiling port goals.
 
@@ -1818,27 +1856,11 @@ add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
 extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo) :-
     (
         MaybeDeepProfInfo = yes(DeepProfInfo),
-        DeepProfInfo = deep_profile_proc_info(MaybeRecInfo, _)
+        DeepProfInfo = deep_profile_proc_info(MaybeRecInfo, _, _)
     ;
         MaybeDeepProfInfo = no,
         MaybeRecInfo = no
     ).
-
-:- pred record_hlds_proc_static(hlds_proc_static::in, hlds_deep_excp_vars::in,
-    proc_info::in, proc_info::out) is det.
-
-record_hlds_proc_static(ProcStatic, ExcpVars, !ProcInfo) :-
-    proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepInfo0),
-    MaybeDeepLayoutInfo = yes(hlds_deep_layout(ProcStatic, ExcpVars)),
-    (
-        MaybeDeepInfo0 = yes(DeepInfo0),
-        DeepInfo = DeepInfo0 ^ deep_layout := MaybeDeepLayoutInfo
-    ;
-        MaybeDeepInfo0 = no,
-        DeepInfo = deep_profile_proc_info(no, MaybeDeepLayoutInfo)
-    ),
-    MaybeDeepInfo = yes(DeepInfo),
-    proc_info_set_maybe_deep_profile_info(MaybeDeepInfo, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 % Coverage Profiling.

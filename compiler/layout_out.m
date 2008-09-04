@@ -2120,7 +2120,7 @@ output_data_addr_in_vector(Prefix, DataAddr, !IO) :-
 output_proc_static_data_defn(RttiProcLabel, ProcLayoutProcStatic,
         !DeclSet, !IO) :-
     ProcLayoutProcStatic = proc_layout_proc_static(HLDSProcStatic,
-        DeepExcpVars),
+        DeepExcpVars, _),
     HLDSProcStatic = hlds_proc_static(FileName, LineNumber, IsInInterface,
         CallSites, CoveragePoints),
    
