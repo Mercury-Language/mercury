@@ -3557,7 +3557,7 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
     
     while (!MR_list_is_empty(Verticies)) {
         
-        MOGL_deconstruct_double(MR_list_head(Verticies), &x, &y);
+        MOGL_deconstruct_double((MR_Tuple) MR_list_head(Verticies), &x, &y);
 
         MOGL_set_ctrl_point(Points, i, x);
         MOGL_set_ctrl_point(Points, i + 1, y);
@@ -3580,7 +3580,8 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
 
     while (!MR_list_is_empty(Verticies)) {
         
-        MOGL_deconstruct_triple(MR_list_head(Verticies), &x, &y, &z);
+        MOGL_deconstruct_triple((MR_Tuple) MR_list_head(Verticies),
+            &x, &y, &z);
 
         MOGL_set_ctrl_point(Points, i,     x);
         MOGL_set_ctrl_point(Points, i + 1, y);
@@ -3607,7 +3608,7 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
 
     while(!MR_list_is_empty(Verticies)) {
 
-        MOGL_deconstruct_quadruple(MR_list_head(Verticies),
+        MOGL_deconstruct_quadruple((MR_Tuple) MR_list_head(Verticies),
             &x, &y, &z, &w);
     
         MOGL_set_ctrl_point(Points, i, x);
