@@ -899,17 +899,19 @@ is_proc_in_interface(ModuleInfo, PredId, _ProcId) = IsInInterface :-
 
 deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    goal_info_set_goal_path(Path, GoalInfo0, GoalInfo1),
+    Goal1 = hlds_goal(GoalExpr0, GoalInfo1),
     (
         GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
         (
             ( BuiltinState = out_of_line_builtin
             ; BuiltinState = not_builtin
             ),
-            deep_prof_wrap_call(Path, Goal0, Goal, !DeepInfo),
+            deep_prof_wrap_call(Path, Goal1, Goal, !DeepInfo),
             AddedImpurity = yes
         ;
             BuiltinState = inline_builtin,
-            Goal = Goal0,
+            Goal = Goal1,
             AddedImpurity = no
         )
     ;
@@ -918,40 +920,40 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
             ( GenericCall = higher_order(_, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ),
-            deep_prof_wrap_call(Path, Goal0, Goal, !DeepInfo),
+            deep_prof_wrap_call(Path, Goal1, Goal, !DeepInfo),
             AddedImpurity = yes
         ;
             ( GenericCall = event_call(_)
             ; GenericCall = cast(_)
             ),
-            Goal = Goal0,
+            Goal = Goal1,
             AddedImpurity = no
         )
     ;
         GoalExpr0 = call_foreign_proc(Attrs, _, _, _, _, _, _),
         ( get_may_call_mercury(Attrs) = proc_may_call_mercury ->
-            deep_prof_wrap_foreign_code(Path, Goal0, Goal, !DeepInfo),
+            deep_prof_wrap_foreign_code(Path, Goal1, Goal, !DeepInfo),
             AddedImpurity = yes
         ;
-            Goal = Goal0,
+            Goal = Goal1,
             AddedImpurity = no
         )
     ;
         GoalExpr0 = unify(_, _, _, _, _),
-        Goal = Goal0,
+        Goal = Goal1,
         AddedImpurity = no
     ;
         GoalExpr0 = conj(ConjType, Goals0),
         deep_prof_transform_conj(0, ConjType, Path, Goals0, Goals,
             AddedImpurity, !DeepInfo),
-        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = disj(Goals0),
         deep_prof_transform_disj(0, Path, Goals0, Goals, AddedImpurity,
             !DeepInfo),
-        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -966,14 +968,14 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         ),
         deep_prof_transform_switch(MaybeNumFunctors, 0, Path, Cases0, Cases,
             AddedImpurity, !DeepInfo),
-        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = switch(Var, CF, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = negation(SubGoal0),
         deep_prof_transform_goal(goal_path_add_at_end(Path, step_neg), 
             SubGoal0, SubGoal, AddedImpurity, !DeepInfo),
-        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -994,13 +996,13 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         ;
             AddedImpurity = no
         ),
-        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = if_then_else(IVars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         SubGoal0 = hlds_goal(_, InnerInfo),
-        OuterDetism = goal_info_get_determinism(GoalInfo0),
+        OuterDetism = goal_info_get_determinism(GoalInfo1),
         InnerDetism = goal_info_get_determinism(InnerInfo),
         ( InnerDetism = OuterDetism ->
             MaybeCut = scope_is_no_cut,
@@ -1026,7 +1028,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         ),
         deep_prof_transform_goal(goal_path_add_at_end(Path, step_scope(MaybeCut)),
             SubGoal0, SubGoal, AddedImpurity, !DeepInfo),
-        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         (
             AddForceCommit = no,
             Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo)
@@ -1973,8 +1975,8 @@ coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
     ;
         CoverageProfilingOptions ^ cpo_use_2pass = no
     ),
-    coverage_prof_second_pass_goal(empty_goal_path, !Goal,
-        coverage_after_known, _, CoverageInfo0, CoverageInfo, _),
+    coverage_prof_second_pass_goal(!Goal, coverage_after_known, _,
+        CoverageInfo0, CoverageInfo, _),
     CoverageInfo ^ ci_coverage_points = CoveragePointsMap,
     CoverageInfo ^ ci_var_info = !:VarInfo,
     coverage_points_map_list(CoveragePointsMap, CoveragePoints).
@@ -2000,12 +2002,11 @@ coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
     % at step 1.  This is done here after any inner goals have been
     % transformed.
     %
-:- pred coverage_prof_second_pass_goal(goal_path::in,
-    hlds_goal::in, hlds_goal::out,
+:- pred coverage_prof_second_pass_goal(hlds_goal::in, hlds_goal::out,
     coverage_after_known::in, coverage_after_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_goal(Path, Goal0, Goal,
+coverage_prof_second_pass_goal(Goal0, Goal,
     CoverageAfterKnown0, NextCoverageAfterKnown, !Info, AddedImpurity) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Detism = GoalInfo0 ^ goal_info_get_determinism,
@@ -2183,7 +2184,7 @@ coverage_prof_second_pass_goal(Path, Goal0, Goal,
         NextCoverageAfterKnown = CoverageAfterKnown
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        coverage_prof_second_pass_conj(Path, 1, ConjType, Goals0, Goals,
+        coverage_prof_second_pass_conj(ConjType, Goals0, Goals,
             CoverageAfterKnown, NextCoverageAfterKnown, !Info,
             AddedImpurityInner),
         GoalExpr1 = conj(ConjType, Goals)
@@ -2193,7 +2194,7 @@ coverage_prof_second_pass_goal(Path, Goal0, Goal,
         % non-trivial.
 
         GoalExpr0 = disj(Goals0),
-        coverage_prof_second_pass_disj(Path, 1, Goals0, Goals, !Info,
+        coverage_prof_second_pass_disj(Goals0, Goals, !Info,
             AddedImpurityInner),
         (
             ( Detism = detism_det
@@ -2213,9 +2214,9 @@ coverage_prof_second_pass_goal(Path, Goal0, Goal,
         GoalExpr1 = disj(Goals)
     ;
         GoalExpr0 = switch(Var, SwitchCanFail, Cases0),
-        coverage_prof_second_pass_switchcase(Path, 1, SwitchCanFail,
-            Cases0, Cases, CoverageAfterKnown, NextCoverageAfterKnown0,
-            !Info, AddedImpurityInner),
+        coverage_prof_second_pass_switchcase(SwitchCanFail, Cases0, Cases,
+            CoverageAfterKnown, NextCoverageAfterKnown0, !Info,
+            AddedImpurityInner),
         (
             SwitchCanFail = cannot_fail,
             NextCoverageAfterKnown = NextCoverageAfterKnown0
@@ -2226,28 +2227,19 @@ coverage_prof_second_pass_goal(Path, Goal0, Goal,
         GoalExpr1 = switch(Var, SwitchCanFail, Cases)
     ;
         GoalExpr0 = negation(NegGoal0),
-        coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_neg),
-            NegGoal0, NegGoal, CoverageAfterKnown, NextCoverageAfterKnown,
-            !Info, AddedImpurityInner),
+        coverage_prof_second_pass_goal(NegGoal0, NegGoal, CoverageAfterKnown,
+            NextCoverageAfterKnown, !Info, AddedImpurityInner),
         GoalExpr1 = negation(NegGoal)
     ;
         GoalExpr0 = scope(Reason, ScopeGoal0),
-        ( Detism = ScopeGoal0 ^ hlds_goal_info ^ goal_info_get_determinism ->
-            ScopeCut = scope_is_no_cut
-        ;
-            ScopeCut = scope_is_cut
-        ),
-        coverage_prof_second_pass_goal(
-            goal_path_add_at_end(Path, step_scope(ScopeCut)),
-            ScopeGoal0, ScopeGoal,
+        coverage_prof_second_pass_goal(ScopeGoal0, ScopeGoal,
             CoverageAfterKnown, NextCoverageAfterKnown, !Info,
             AddedImpurityInner),
         GoalExpr1 = scope(Reason, ScopeGoal)
     ;
         GoalExpr0 = if_then_else(ITEExistVars, Cond, Then, Else),
-        coverage_prof_second_pass_ite(Path, ITEExistVars,
-            Cond, Then, Else, GoalExpr1,
-            CoverageAfterKnown, NextCoverageAfterKnown, !Info,
+        coverage_prof_second_pass_ite(ITEExistVars, Cond, Then, Else,
+            GoalExpr1, CoverageAfterKnown, NextCoverageAfterKnown, !Info,
             AddedImpurityInner)
     ;
         GoalExpr0 = shorthand(_),
@@ -2263,6 +2255,7 @@ coverage_prof_second_pass_goal(Path, Goal0, Goal,
     % Insert the coverage point if we decided to earlier.
     (
         MaybeCPType = yes(CPType),
+        Path = goal_info_get_goal_path(GoalInfo1),
         CPInfo = coverage_point_info(Path, CPType),
 
         make_coverage_point(CPInfo, CPGoals, !Info),
@@ -2283,20 +2276,19 @@ coverage_prof_second_pass_goal(Path, Goal0, Goal,
     % This is done tail first as to take advantage of knoledge of goals after
     % the current goal within the conjunction.
     %
-:- pred coverage_prof_second_pass_conj(goal_path::in, int::in,
-    conj_type::in, list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred coverage_prof_second_pass_conj(conj_type::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, 
     coverage_after_known::in, coverage_after_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_conj(_, _, _, [], [], !CoverageAfterKnown,
+coverage_prof_second_pass_conj(_, [], [], !CoverageAfterKnown,
         !Info, no).
-coverage_prof_second_pass_conj(Path, Pos, ConjType, [Goal0 | Goals0], Goals,
+coverage_prof_second_pass_conj(ConjType, [Goal0 | Goals0], Goals,
         CoverageAfterKnown0, NextCoverageAfterKnown, !Info, AddedImpurity) :-
-    coverage_prof_second_pass_conj(Path, Pos+1, ConjType, Goals0, Goals1,
+    coverage_prof_second_pass_conj(ConjType, Goals0, Goals1,
         CoverageAfterKnown0, CoverageAfterKnown, !Info, AddedImpurityTail),
-    coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_conj(Pos)), 
-        Goal0, Goal1, CoverageAfterKnown, NextCoverageAfterKnown, !Info, 
-        AddedImpurityHead),
+    coverage_prof_second_pass_goal(Goal0, Goal1, 
+        CoverageAfterKnown, NextCoverageAfterKnown, !Info, AddedImpurityHead),
     (
         Goal1 = hlds_goal(conj(plain_conj, ConjGoals), _),
         ConjType = plain_conj
@@ -2315,21 +2307,19 @@ coverage_prof_second_pass_conj(Path, Pos, ConjType, [Goal0 | Goals0], Goals,
     % later disjuncts can be used to reduce the number of coverage points
     % placed in earlier disjuncts.
     %
-:- pred coverage_prof_second_pass_disj(goal_path::in, int::in,
+:- pred coverage_prof_second_pass_disj(
     list(hlds_goal)::in, list(hlds_goal)::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_disj(_, _, [], [], !Info, no).
+coverage_prof_second_pass_disj([], [], !Info, no).
 
-coverage_prof_second_pass_disj(Path, Pos, [Goal0 | Goals0], [Goal | Goals],
-        !Info, AddedImpurity) :-
+coverage_prof_second_pass_disj([Goal0 | Goals0], [Goal | Goals], !Info,
+        AddedImpurity) :-
     % Transform the tail of the disjunction.
-    coverage_prof_second_pass_disj(Path, Pos+1, Goals0, Goals, !Info,
-        AddedImpurityTail),
+    coverage_prof_second_pass_disj(Goals0, Goals, !Info, AddedImpurityTail),
 
     % Transform this goal and optionally add a coverage point before it.
-    DisjPath = goal_path_add_at_end(Path, step_disj(Pos)),
-    coverage_prof_second_pass_goal(DisjPath, Goal0, Goal1,
+    coverage_prof_second_pass_goal(Goal0, Goal1,
         coverage_after_unknown, NextCoverageAfterKnown, !Info,
         AddedImpurityHead0),
     CPOBranchDisj = !.Info ^ ci_coverage_profiling_opts ^ cpo_branch_disj,
@@ -2337,6 +2327,7 @@ coverage_prof_second_pass_disj(Path, Pos, [Goal0 | Goals0], [Goal | Goals],
         CPOBranchDisj = yes,
         (
             NextCoverageAfterKnown = coverage_after_unknown,
+            DisjPath = goal_info_get_goal_path(Goal0 ^ hlds_goal_info),
             insert_coverage_point_before(coverage_point_info(DisjPath,
                 cp_type_branch_arm), Goal1, Goal, !Info),
             AddedImpurityHead = yes
@@ -2353,15 +2344,15 @@ coverage_prof_second_pass_disj(Path, Pos, [Goal0 | Goals0], [Goal | Goals],
 
     bool.or(AddedImpurityHead, AddedImpurityTail, AddedImpurity).
 
-:- pred coverage_prof_second_pass_switchcase(goal_path::in, int::in,
-    can_fail::in, list(case)::in, list(case)::out,
+:- pred coverage_prof_second_pass_switchcase(can_fail::in,
+    list(case)::in, list(case)::out,
     coverage_after_known::in, coverage_after_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_switchcase(_, _, _, [], [],
-    _, coverage_after_known, !Info, no).
+coverage_prof_second_pass_switchcase(_, [], [], _, coverage_after_known, !Info,
+    no).
 
-coverage_prof_second_pass_switchcase(Path, Pos, SwitchCanFail,
+coverage_prof_second_pass_switchcase(SwitchCanFail,
         [Case0 | Cases0], [Case | Cases], CoverageAfterSwitchKnown,
         NextCoverageAfterKnown, !Info, AddedImpurity) :-
     Goal0 = Case0 ^ case_goal,
@@ -2385,10 +2376,8 @@ coverage_prof_second_pass_switchcase(Path, Pos, SwitchCanFail,
         CoverageAfterHeadKnown = coverage_after_unknown
     ),
 
-    SwitchPath = goal_path_add_at_end(Path, step_disj(Pos)),
-    coverage_prof_second_pass_goal(SwitchPath, Goal0, Goal1,
-        CoverageAfterHeadKnown, NextCoverageAfterKnown0, !Info,
-        AddedImpurityHead0),
+    coverage_prof_second_pass_goal(Goal0, Goal1, CoverageAfterHeadKnown,
+        NextCoverageAfterKnown0, !Info, AddedImpurityHead0),
 
     % Possibly insert coverage point.
     CPOBranchSwitch = !.Info ^ ci_coverage_profiling_opts ^
@@ -2397,7 +2386,8 @@ coverage_prof_second_pass_switchcase(Path, Pos, SwitchCanFail,
         CPOBranchSwitch = yes,
         (
             NextCoverageAfterKnown0 = coverage_after_unknown,
-            insert_coverage_point_before(coverage_point_info(SwitchPath,
+            CasePath = goal_info_get_goal_path(Goal0 ^ hlds_goal_info),
+            insert_coverage_point_before(coverage_point_info(CasePath,
                 cp_type_branch_arm), Goal1, Goal, !Info),
             AddedImpurityHead = yes,
             NextCoverageAfterKnownHead = coverage_after_known
@@ -2415,8 +2405,7 @@ coverage_prof_second_pass_switchcase(Path, Pos, SwitchCanFail,
     ),
 
     % Handle recursive case and prepare output variables.
-    coverage_prof_second_pass_switchcase(Path, Pos+1,
-        SwitchCanFail, Cases0, Cases,
+    coverage_prof_second_pass_switchcase(SwitchCanFail, Cases0, Cases,
         CoverageAfterSwitchKnown, NextCoverageAfterKnownTail, !Info,
         AddedImpurityTail),
     Case = Case0 ^ case_goal := Goal,
@@ -2432,12 +2421,12 @@ coverage_prof_second_pass_switchcase(Path, Pos, SwitchCanFail,
     % then making decisions about cooverage points and inserting them, then
     % transforming the condition and constructing the new ITE goal_expr.
     %
-:- pred coverage_prof_second_pass_ite(goal_path::in, list(prog_var)::in,
+:- pred coverage_prof_second_pass_ite(list(prog_var)::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_expr::out,
     coverage_after_known::in, coverage_after_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_ite(Path, ITEExistVars, Cond0, Then0, Else0,
+coverage_prof_second_pass_ite(ITEExistVars, Cond0, Then0, Else0,
         GoalExpr, CoverageAfterITEKnown, NextCoverageAfterKnown,
         !Info, AddedImpurity) :-
     % If the then and else goals have exactly one solution and coverage is
@@ -2518,13 +2507,13 @@ coverage_prof_second_pass_ite(Path, ITEExistVars, Cond0, Then0, Else0,
     ),
 
     % Transform Else branch,
-    coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_ite_else), 
-        Else0, Else1, CoverageAfterElseKnown, CoverageBeforeElseKnown1, !Info,
+    coverage_prof_second_pass_goal(Else0, Else1,
+        CoverageAfterElseKnown, CoverageBeforeElseKnown1, !Info,
         AddedImpurityElseGoal),
 
     % Transform Then branch.
-    coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_ite_then), 
-        Then0, Then1, CoverageAfterThenKnown, CoverageBeforeThenKnown1, !Info,
+    coverage_prof_second_pass_goal(Then0, Then1,
+        CoverageAfterThenKnown, CoverageBeforeThenKnown1, !Info,
         AddedImpurityThenGoal),
 
     % Gather information and decide what coverage points to insert.
@@ -2545,9 +2534,8 @@ coverage_prof_second_pass_ite(Path, ITEExistVars, Cond0, Then0, Else0,
 
         (
             CoverageBeforeThenKnown1 = coverage_after_unknown,
-
-            InsertCPThen = yes(coverage_point_info(
-                goal_path_add_at_end(Path, step_ite_then),
+            ThenPath = goal_info_get_goal_path(Then0 ^ hlds_goal_info),
+            InsertCPThen = yes(coverage_point_info(ThenPath, 
                 cp_type_branch_arm))
         ;
             CoverageBeforeThenKnown1 = coverage_after_known,
@@ -2556,9 +2544,8 @@ coverage_prof_second_pass_ite(Path, ITEExistVars, Cond0, Then0, Else0,
         ),
         (
             CoverageBeforeElseKnown1 = coverage_after_unknown,
-
-            InsertCPElse = yes(coverage_point_info(
-                goal_path_add_at_end(Path, step_ite_else),
+            ElsePath = goal_info_get_goal_path(Else0 ^ hlds_goal_info),
+            InsertCPElse = yes(coverage_point_info(ElsePath,
                 cp_type_branch_arm))
         ;
             CoverageBeforeElseKnown1 = coverage_after_known,
@@ -2594,8 +2581,8 @@ coverage_prof_second_pass_ite(Path, ITEExistVars, Cond0, Then0, Else0,
     % Transform Cond branch.
     coverage_after_known_branch(CoverageBeforeThenKnown,
         CoverageBeforeElseKnown, CoverageKnownAfterCond),
-    coverage_prof_second_pass_goal(goal_path_add_at_end(Path, step_ite_cond),
-        Cond0, Cond, CoverageKnownAfterCond, NextCoverageAfterKnown, !Info,
+    coverage_prof_second_pass_goal(Cond0, Cond, 
+        CoverageKnownAfterCond, NextCoverageAfterKnown, !Info,
         AddedImpurityCond),
 
     % Build goal experession and tidy up.
