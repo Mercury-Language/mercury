@@ -771,6 +771,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             )
         ),
 
+        % Using trail segments implies the use of the trail.
+        option_implies(trail_segments, use_trail, bool(yes), !Globals),
+        
         %
         % Set up options for position independent code.
         %
@@ -2696,7 +2699,10 @@ grade_component_table("tsc", comp_term_size,
     record_term_sizes_as_cells - bool(yes)], no, yes).
 
     % Trailing components.
-grade_component_table("tr", comp_trail, [use_trail - bool(yes)], no, yes).
+grade_component_table("tr", comp_trail,
+    [use_trail - bool(yes), trail_segments - bool(no)], no, yes).
+grade_component_table("trseg", comp_trail,
+    [use_trail - bool(yes), trail_segments - bool(yes)], no, yes).
 
     % Minimal model tabling components.
     % NOTE: we do not include `.mm' and `.dmm' in grade strings

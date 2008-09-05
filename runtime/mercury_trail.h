@@ -25,6 +25,7 @@
   #define MR_IF_USE_TRAIL(x)
 #endif
 
+
 /*---------------------------------------------------------------------------*/
 /*
 ** The following macros define how to store and retrieve a 'ticket' -
@@ -307,7 +308,7 @@ struct MR_TrailEntry_Struct {
       } while (0)
 
   /*
-  ** void MR_store_function_trail_entry_kind(
+  ** void MR_store_function_trail_entry(
   **        MR_trail_entry *entry, MR_untrail_func *func, void *datum);
   */
   #define MR_store_function_trail_entry(entry, func, datum)                 \
@@ -316,7 +317,8 @@ struct MR_TrailEntry_Struct {
         (entry)->MR_union.MR_func.MR_untrail_func = (func);                 \
         (entry)->MR_union.MR_func.MR_datum = (datum);                       \
       } while (0)
-#endif
+
+#endif /* ! MR_USE_TAGGED_TRAIL */
 
 /*
 ** MR_Word MR_get_trail_entry_value(const MR_trail_entry *);
@@ -355,6 +357,11 @@ struct MR_TrailEntry_Struct {
     /* The Mercury trail */
     extern MR_MemoryZone *MR_trail_zone;
 
+    #if defined(MR_TRAIL_SEGMENTS)
+        /* A list of any previous trail zones. */
+         extern MR_MemoryZones *MR_prev_trail_zones;
+    #endif
+
     /* 
     ** A pointer to the current top of the Mercury trail.
     ** N.B. Use `MR_trail_ptr', defined in mercury_regs.h, 
@@ -387,6 +394,41 @@ struct MR_TrailEntry_Struct {
 
 #endif /* !defined(MR_THREAD_SAFE) */
 
+/*
+** The following macros are used to access (parts of) the trail zone in a
+** grade independent manner.
+** 
+** MR_TRAIL_ZONE expands to the address of the trail zone for the current
+** thread.
+**
+** MR_PREV_TRAIL_ZONES expands to the address of the list of previous trail
+** zones for the current thread.  This is only defined in grades that support
+** trail segments.
+**
+** MR_TRAIL_BASE expands to the address of the base of the trail for the
+** current thread, i.e. the initial value to which MR_trail_ptr_var is set.
+**
+*/
+#if defined(MR_THREAD_SAFE)
+
+    #define MR_TRAIL_ZONE (MR_CONTEXT(MR_ctxt_trail_zone))
+    
+    #if defined(MR_TRAIL_SEGMENTS)
+        #define MR_PREV_TRAIL_ZONES (MR_CONTEXT(MR_ctxt_prev_trail_zones))
+    #endif
+
+    #define MR_TRAIL_BASE \
+        ((MR_TrailEntry *) (MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min))
+#else
+    #define MR_TRAIL_ZONE   MR_trail_zone
+    
+    #if defined(MR_TRAIL_SEGMENTS)
+        #define MR_PREV_TRAIL_ZONES MR_prev_trail_zones
+    #endif
+
+    #define MR_TRAIL_BASE   ((MR_TrailEntry *) (MR_trail_zone->MR_zone_min))
+#endif
+
 /*---------------------------------------------------------------------------*/
 /*
 ** This is the interface that should be used by C code that wants to
@@ -397,6 +439,22 @@ struct MR_TrailEntry_Struct {
 */
 /*---------------------------------------------------------------------------*/
 
+#if defined(MR_TRAIL_SEGMENTS)
+
+#define MR_trail_extend_and_check()                                         \
+    do {                                                                    \
+        if (MR_trail_ptr >= (MR_TrailEntry *) MR_TRAIL_ZONE->MR_zone_end) { \
+            MR_new_trail_segment();                                         \
+        }                                                                   \
+    } while (0)
+
+#else /* ! MR_TRAIL_SEGMENTS */
+
+    #define MR_trail_extend_and_check()     ((void) 0)
+
+#endif /* !MR_TRAIL_SEGMENTS */
+
+
 /*
 ** void  MR_trail_value(MR_Word *address, MR_Word value);
 **
@@ -406,6 +464,7 @@ struct MR_TrailEntry_Struct {
 
 #define MR_trail_value(address, value)                                      \
     do {                                                                    \
+        MR_trail_extend_and_check();                                        \
         MR_store_value_trail_entry(MR_trail_ptr,                            \
             (address), (value));                                            \
         MR_trail_ptr++;                                                     \
@@ -435,6 +494,7 @@ struct MR_TrailEntry_Struct {
 
 #define MR_trail_function(untrail_func, datum)                              \
     do {                                                                    \
+        MR_trail_extend_and_check();                                        \
         MR_store_function_trail_entry((MR_trail_ptr),                       \
             (untrail_func), (datum));                                       \
         MR_trail_ptr++;                                                     \
@@ -443,8 +503,8 @@ struct MR_TrailEntry_Struct {
 /*
 ** Apply all the trail entries between MR_trail_ptr and old_trail_ptr.
 */
-
-void MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason);
+extern void
+MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason);
 
 /* Abstract type. */
 typedef MR_Unsigned MR_ChoicepointId;
@@ -510,5 +570,23 @@ MR_num_trail_entries(void);
 */
 extern void
 MR_reset_trail(void);
+
+#if defined(MR_TRAIL_SEGMENTS)
+
+/*
+** Push the current trail segment onto the list of previous segments,
+** allocate a new segment and set MR_trail_ptr to point to beginning
+** of that segment.
+*/
+extern void
+MR_new_trail_segment(void);
+
+/*
+** Return the number of segments that make up the trail.
+*/
+extern MR_Unsigned
+MR_num_trail_segments(void);
+
+#endif /* MR_TRAIL_SEGMENTS */
 
 #endif /* not MERCURY_TRAIL_H */

@@ -213,8 +213,13 @@
 #endif
 
 #ifdef MR_USE_TRAIL
-  #define MR_GRADE_PART_7       MR_PASTE2(MR_GRADE_PART_6, _tr)
-  #define MR_GRADE_OPT_PART_7   MR_GRADE_OPT_PART_6 ".tr"
+   #ifdef MR_TRAIL_SEGMENTS
+    #define MR_GRADE_PART_7     MR_PASTE2(MR_GRADE_PART_6, _trseg)
+    #define MR_GRADE_OPT_PART_7 MR_GRADE_OPT_PART_6 ".trseg"
+  #else 
+    #define MR_GRADE_PART_7     MR_PASTE2(MR_GRADE_PART_6, _tr)
+    #define MR_GRADE_OPT_PART_7 MR_GRADE_OPT_PART_6 ".tr"
+   #endif /* ! MR_TRAIL_SEGMENTS */
 #else
   #define MR_GRADE_PART_7       MR_GRADE_PART_6
   #define MR_GRADE_OPT_PART_7   MR_GRADE_OPT_PART_6

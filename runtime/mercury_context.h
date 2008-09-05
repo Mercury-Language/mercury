@@ -175,6 +175,7 @@
 **                  but also via MR_eng_this_context.)
 **
 ** trail_zone       The trail zone for this context.
+** prev_trail_zones A list of any previous trail zones for this context.
 **                  (Accessed via MR_eng_context.)
 **
 ** trail_ptr        The saved MR_trail_ptr for this context.
@@ -233,12 +234,6 @@ struct MR_SavedOwner_Struct {
 };
 #endif
 
-typedef struct MR_MemoryZones_Struct    MR_MemoryZones;
-
-struct MR_MemoryZones_Struct {
-    MR_MemoryZone       *MR_zones_head;
-    MR_MemoryZones      *MR_zones_tail;
-};
 
 #ifdef MR_LL_PARALLEL_CONJ
 typedef struct MR_Spark_Struct          MR_Spark;
@@ -304,6 +299,9 @@ struct MR_Context_Struct {
 
 #ifdef  MR_USE_TRAIL
     MR_MemoryZone       *MR_ctxt_trail_zone;
+  #ifdef MR_TRAIL_SEGMENTS
+    MR_MemoryZones      *MR_ctxt_prev_trail_zones;
+  #endif
     MR_TrailEntry       *MR_ctxt_trail_ptr;
     MR_ChoicepointId    MR_ctxt_ticket_counter;
     MR_ChoicepointId    MR_ctxt_ticket_high_water;

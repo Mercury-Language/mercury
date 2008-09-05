@@ -323,6 +323,7 @@
     ;       gc
     ;       parallel
     ;       use_trail
+    ;       trail_segments
     ;       use_minimal_model_stack_copy
     ;       use_minimal_model_own_stacks
     ;       minimal_model_debug
@@ -1175,6 +1176,7 @@ option_defaults_2(compilation_model_option, [
     gc                                  -   string("boehm"),
     parallel                            -   bool(no),
     use_trail                           -   bool(no),
+    trail_segments                      -   bool(no),
     maybe_thread_safe_opt               -   string("no"),
     extend_stacks_when_needed           -   bool(no),
     stack_segments                      -   bool(no),
@@ -2016,6 +2018,7 @@ long_option("gc",                   gc).
 long_option("garbage-collection",   gc).
 long_option("parallel",             parallel).
 long_option("use-trail",            use_trail).
+long_option("trail-segments",       trail_segments).
 long_option("type-layout",          type_layout).
 long_option("maybe-thread-safe",    maybe_thread_safe_opt).
 long_option("extend-stacks-when-needed",    extend_stacks_when_needed).
@@ -3992,6 +3995,10 @@ options_help_compilation_model -->
         "\tThis is necessary for interfacing with constraint solvers,",
         "\tor for backtrackable destructive update.",
         "\tThis option is not yet supported for the IL or Java back-ends.",
+        "--trail-segments\t\t\t(grade modifier: `.trseg')",
+        "\tAs above, but use a dynamically sized trail that is composed",
+        "\tof small segments.  This can help to avoid trail exhaustion",
+        "\tat the cost of increased execution time.",
         "--maybe-thread-safe {yes, no}",
         "\tSpecify how to treat the `maybe_thread_safe' foreign code",
         "\tattribute.  `yes' means that a foreign procedure with the",

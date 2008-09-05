@@ -58,6 +58,7 @@
 ** MR_USE_SINGLE_PREC_FLOAT
 ** MR_EXTEND_STACKS_WHEN_NEEDED
 ** MR_STACK_SEGMENTS
+** MR_TRAIL_SEGMENTS
 ** MR_INLINE_ALLOC
 ** MR_PIC_REG
 ** MR_HIGHTAGS
@@ -83,6 +84,7 @@
 **		--single-prec-float
 **		--extend-stacks-when-needed
 **		--stack-segments
+**		--trail-segments
 **		--inline-alloc
 **		--pic-reg
 **		--tags
@@ -306,6 +308,10 @@
 ** MR_DEBUG_STACK_SEGMENTS
 **	Enables low-level debugging messages when updating the list of
 **	stack segments.
+**
+** MR_DEBUG_TRAIL_SEGMENTS
+**	Enables low-level debugging messages when updating the list of
+**	trail segments.
 **
 ** MR_TRACE_CHECK_INTEGRITY
 **	Enables the -i and --integrity options on mdb's forward movement

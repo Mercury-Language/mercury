@@ -14,54 +14,45 @@
 */
 
 #include "mercury_imp.h"
-
 #include "mercury_trail.h"
-
 #include "mercury_memory.h"
+#include "mercury_memory_handlers.h"
 #include "mercury_misc.h"
 
 #ifdef MR_USE_TRAIL
 
-/*
-** The following macros are used to access (parts of) the trail zone in a
-** grade independent manner.
-** 
-** MR_TRAIL_ZONE expands to the address of the trail zone for the current
-** thread.
-**
-** MR_TRAIL_BASE expands to the address of the base of the trail for the
-** current thread, i.e. the initial value to which MR_trail_ptr_var is set.
-**
-*/
-#if defined(MR_THREAD_SAFE)
-
-    #define MR_TRAIL_ZONE (MR_CONTEXT(MR_ctxt_trail_zone))
-
-    #define MR_TRAIL_BASE \
-        ((MR_TrailEntry *) (MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min))
-#else
-    #define MR_TRAIL_ZONE   MR_trail_zone
-    #define MR_TRAIL_BASE   ((MR_TrailEntry *) (MR_trail_zone->MR_zone_min))
-#endif
-
 #if !defined(MR_THREAD_SAFE)
 MR_MemoryZone   *MR_trail_zone;
 MR_TrailEntry   *MR_trail_ptr_var;
+
+    #if defined(MR_TRAIL_SEGMENTS)
+        MR_MemoryZones *MR_prev_trail_zones;
+    #endif
+
 MR_Unsigned     MR_ticket_counter_var = 1;
 MR_Unsigned     MR_ticket_high_water_var = 1;
 #endif
+
+#if defined(MR_TRAIL_SEGMENTS)
+static void
+MR_pop_trail_segment(void);
+#endif
+
+static void
+MR_reset_trail_zone(void);
 
 void
 MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 {
     MR_TrailEntry *tr_ptr;
-    /* not needed, since MR_trail_ptr is never a real reg: */
+    /* Not needed, since MR_trail_ptr is never a real reg: */
     /* MR_restore_transient_registers(); */
     tr_ptr = MR_trail_ptr;
 
     switch (reason) {
     case MR_solve:
     case MR_commit:
+    
         /* Just handle the function trail entries */
         while (tr_ptr != old_trail_ptr) {
             tr_ptr--;
@@ -69,6 +60,42 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
                 (*MR_get_trail_entry_untrail_func(tr_ptr))(
                     MR_get_trail_entry_datum(tr_ptr), reason);
             }
+   
+            /*
+            ** When we are using trail segments it is possible that
+            ** `old_trail_ptr' is not a location on the current trail segment.
+            ** We need to walk backwards through all the previous segments
+            ** (invoking function trail entires as we go) until we find it.
+            */ 
+            #if defined(MR_TRAIL_SEGMENTS)
+                if (tr_ptr == MR_TRAIL_BASE 
+                    && tr_ptr != old_trail_ptr)
+                {
+                    MR_MemoryZones  *prev_zones;
+                    MR_MemoryZone   *zone; 
+                    
+                    prev_zones = MR_PREV_TRAIL_ZONES;
+                    zone = prev_zones->MR_zones_head;
+                    tr_ptr = (MR_TrailEntry *) zone->MR_zone_end;
+
+                    while (tr_ptr != old_trail_ptr) {
+                        tr_ptr--;
+                        if (MR_get_trail_entry_kind(tr_ptr) == MR_func_entry) {
+                            (*MR_get_trail_entry_untrail_func(tr_ptr))(
+                                MR_get_trail_entry_datum(tr_ptr), reason);
+                        }
+                    
+                        if (tr_ptr == (MR_TrailEntry *) zone->MR_zone_min
+                            && tr_ptr != old_trail_ptr)
+                        {
+                            prev_zones = prev_zones->MR_zones_tail;
+                            zone = prev_zones->MR_zones_head;
+                            tr_ptr = (MR_TrailEntry *) zone->MR_zone_end; 
+                        }
+                    }
+                    break;
+                }   
+            #endif 
         }
         /*
         ** NB. We do _not_ reset the trail pointer here. Doing so would be
@@ -91,6 +118,14 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
                 *MR_get_trail_entry_address(tr_ptr) =
                     MR_get_trail_entry_value(tr_ptr);
             }
+            #if defined(MR_TRAIL_SEGMENTS)
+                if (tr_ptr == MR_TRAIL_BASE 
+                    && tr_ptr != old_trail_ptr)
+                {
+                    MR_pop_trail_segment();
+                    tr_ptr = MR_trail_ptr;
+                }
+            #endif 
         }
 
         MR_trail_ptr = tr_ptr;
@@ -105,11 +140,27 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 
 /*---------------------------------------------------------------------------*/
 
-
 MR_Unsigned
 MR_num_trail_entries(void)
 {
-    return MR_trail_ptr - MR_TRAIL_BASE;
+    MR_Unsigned     n_entries = 0;
+
+#if defined(MR_TRAIL_SEGMENTS)
+    MR_MemoryZones  *list;
+    MR_MemoryZone   *zone;
+
+    list = MR_PREV_TRAIL_ZONES;
+    while (list != NULL) {
+        zone = list->MR_zones_head;
+        n_entries += (MR_TrailEntry *) zone->MR_zone_end
+            - (MR_TrailEntry *) zone->MR_zone_min;
+        list = list->MR_zones_tail; 
+    }
+#endif /* MR_TRAIL_SEGMENTS */
+
+    n_entries += MR_trail_ptr - MR_TRAIL_BASE;
+
+    return n_entries;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -117,7 +168,27 @@ MR_num_trail_entries(void)
 void
 MR_reset_trail(void)
 {
-    MR_TrailEntry *tr_ptr;
+    #if defined(MR_TRAIL_SEGMENTS)
+        while (MR_PREV_TRAIL_ZONES != NULL) {
+            MR_reset_trail_zone();
+            MR_pop_trail_segment();
+        }
+    #endif 
+    
+    MR_reset_trail_zone();
+
+    #if defined(MR_CONSERVATIVE_GC)
+        MR_clear_zone_for_GC(MR_TRAIL_ZONE, MR_trail_ptr);
+    #endif
+
+    MR_ticket_counter = 1;
+    MR_ticket_high_water = 1;
+}
+
+static void
+MR_reset_trail_zone(void) {
+    
+    MR_TrailEntry   *tr_ptr;
 
     tr_ptr = MR_trail_ptr;
 
@@ -128,14 +199,88 @@ MR_reset_trail(void)
                 MR_get_trail_entry_datum(tr_ptr), MR_gc);
         }
     }
-
-    #if defined(MR_CONSERVATIVE_GC)
-        MR_clear_zone_for_GC(MR_TRAIL_ZONE, MR_trail_ptr);
-    #endif
-
-    MR_ticket_counter = 1;
-    MR_ticket_high_water = 1;
+    MR_trail_ptr = MR_TRAIL_BASE;
 }
+
+/*---------------------------------------------------------------------------*/
+
+#if defined(MR_TRAIL_SEGMENTS)
+void
+MR_new_trail_segment(void)
+{
+
+    MR_MemoryZones  *list;
+    MR_MemoryZone   *new_zone;
+    MR_TrailEntry   *old_trail_ptr;
+
+    old_trail_ptr = MR_trail_ptr;
+   
+    /*
+    ** We perform explicit overflow checks so redzones just waste space. 
+    */
+    new_zone = MR_create_zone("trail_segment", 0, MR_trail_size, 0,
+        0, MR_default_handler);
+    
+    list = MR_GC_malloc_uncollectable(sizeof(MR_MemoryZones));
+
+#if defined(MR_DEBUG_TRAIL_SEGMENTS)
+    printf("create new trail segment: old zone: %p, old trail_ptr %p\n",
+        MR_TRAIL_ZONE, MR_trail_ptr);
+#endif
+
+    list->MR_zones_head = MR_TRAIL_ZONE;
+    list->MR_zones_tail = MR_PREV_TRAIL_ZONES;
+    MR_PREV_TRAIL_ZONES = list;
+    MR_TRAIL_ZONE = new_zone;
+    MR_trail_ptr = (MR_TrailEntry *) MR_TRAIL_ZONE->MR_zone_min; 
+
+#if defined(MR_DEBUG_TRAIL_SEGMENTS)
+    printf("create new trail segment: new zone: %p, new trail_ptr %p\n",
+        MR_TRAIL_ZONE, MR_trail_ptr);
+#endif
+}
+
+static void
+MR_pop_trail_segment(void)
+{
+
+    MR_MemoryZones  *list;
+
+#if defined(MR_DEBUG_TRAIL_SEGMENTS)
+    printf("restore old trail segment: old zone %p, old trail_ptr %p\n",
+        MR_TRAIL_ZONE, MR_trail_ptr);
+#endif
+
+    MR_unget_zone(MR_TRAIL_ZONE);
+
+    list = MR_PREV_TRAIL_ZONES;
+    MR_TRAIL_ZONE = list->MR_zones_head;
+    MR_PREV_TRAIL_ZONES = list->MR_zones_tail;
+    MR_trail_ptr = (MR_TrailEntry *) MR_TRAIL_ZONE->MR_zone_end;
+    MR_GC_free(list);
+
+#if defined(MR_DEBUG_TRAIL_SEGMENTS)
+    printf("restore old trail segment: new zone %p, new trail_ptr %p\n",
+        MR_TRAIL_ZONE, MR_trail_ptr);
+#endif
+}
+
+MR_Unsigned
+MR_num_trail_segments(void)
+{
+    MR_Unsigned     n_segments = 1;
+    MR_MemoryZones  *list;
+
+    list = MR_PREV_TRAIL_ZONES;
+    while (list != NULL) {
+        n_segments++;
+        list = list->MR_zones_tail;
+    }
+
+    return n_segments;
+}
+
+#endif /* MR_TRAIL_SEGMENTS */
 
 #endif /* MR_USE_TRAIL */
 /*---------------------------------------------------------------------------*/

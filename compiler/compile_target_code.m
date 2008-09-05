@@ -669,11 +669,20 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         ;
             C_CompilerType = cc_unknown,
             C_FnAlignOpt = ""
+        ),
+        globals.io_lookup_bool_option(trail_segments, TrailSegments, !IO),
+        (
+            TrailSegments = yes,
+            TrailSegOpt = "-DMR_TRAIL_SEGMENTS "
+        ;
+            TrailSegments = no,
+            TrailSegOpt = ""
         )
     ;
         UseTrail = no,
         UseTrailOpt = "",
-        C_FnAlignOpt = ""
+        C_FnAlignOpt = "",
+        TrailSegOpt = ""
     ),
     globals.io_lookup_bool_option(use_minimal_model_stack_copy,
         MinimalModelStackCopy, !IO),
@@ -831,6 +840,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         SourceDebugOpt,
         ExecTraceOpt,
         UseTrailOpt, 
+        TrailSegOpt,
         MinimalModelOpt, 
         SinglePrecFloatOpt,
         UseRegionsOpt,

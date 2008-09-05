@@ -39,6 +39,7 @@ Grade options:
 	--record-term-sizes-as-words
 	--record-term-sizes-as-cells
 	--use-trail
+	--use-trail-segments
 	--reserve-tag
 	--use-minimal-model-stack-copy
 	--use-minimal-model-own-stacks
@@ -79,6 +80,7 @@ profile_deep=false
 record_term_sizes_as_words=false
 record_term_sizes_as_cells=false
 use_trail=false
+trail_segments=false
 use_minimal_model_stack_copy=false
 use_minimal_model_own_stacks=false
 minimal_model_debug=false

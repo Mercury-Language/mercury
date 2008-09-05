@@ -1365,7 +1365,13 @@ MR_trace_cmd_trail_details(char **words, int word_count,
         (unsigned long) MR_saved_ticket_high_water(saved_regs));
     fprintf(MR_mdb_out, "number of trail entries: %lu\n",
         (unsigned long) MR_num_trail_entries());
-#else
+
+    #if defined(MR_TRAIL_SEGMENTS)
+        fprintf(MR_mdb_out, "number of trail segments: %lu\n",
+            (unsigned long) MR_num_trail_segments());
+    #endif
+
+#else /* ! MR_USE_TRAIL */
 
     fprintf(MR_mdb_out, "mdb: the `trail_details' command is available "
         "only in trailing grades.\n");

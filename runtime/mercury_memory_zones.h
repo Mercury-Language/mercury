@@ -127,6 +127,13 @@ struct MR_MemoryZone_Struct {
 #endif
 };
 
+typedef struct MR_MemoryZones_Struct    MR_MemoryZones;
+
+struct MR_MemoryZones_Struct {
+    MR_MemoryZone       *MR_zones_head;
+    MR_MemoryZones      *MR_zones_tail;
+};
+
 	/*
 	** MR_zone_end specifies the end of the area accessible without
 	** a page fault. It is used by MR_clear_zone_for_GC().
