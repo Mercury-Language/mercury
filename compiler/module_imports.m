@@ -25,10 +25,13 @@
 :- import_module parse_tree.prog_io.    % for module_error;
                                         % undesirable dependency
 
+:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+
+%-----------------------------------------------------------------------------%
 
     % When doing smart recompilation record for each module the suffix of
     % the file that was read and the modification time of the file.
@@ -109,7 +112,7 @@
                 contains_foreign_export     :: contains_foreign_export,
 
                 % The contents of the module and its imports.
-                items                       :: list(item),
+                items                       :: cord(item),
 
                 % Whether an error has been encountered when reading in
                 % this module.
@@ -132,10 +135,14 @@
     is det.
 :- pred module_imports_get_impl_deps(module_imports::in,
     list(module_name)::out) is det.
-:- pred module_imports_get_items(module_imports::in, list(item)::out) is det.
+:- pred module_imports_get_items(module_imports::in, cord(item)::out) is det.
+:- pred module_imports_get_items_list(module_imports::in, list(item)::out)
+    is det.
 :- pred module_imports_get_error(module_imports::in, module_error::out) is det.
 
-:- pred module_imports_set_items(list(item)::in,
+:- pred module_imports_set_items(cord(item)::in,
+    module_imports::in, module_imports::out) is det.
+:- pred module_imports_set_items_list(list(item)::in,
     module_imports::in, module_imports::out) is det.
 :- pred module_imports_set_error(module_error::in,
     module_imports::in, module_imports::out) is det.
@@ -226,6 +233,7 @@
 :- pred get_fact_table_dependencies(list(item)::in, list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -236,14 +244,20 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module set.
+:- import_module svset.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 module_imports_get_source_file_name(Module, Module ^ source_file_name).
 module_imports_get_module_name(Module, Module ^ module_name).
 module_imports_get_impl_deps(Module, Module ^ impl_deps).
 module_imports_get_items(Module, Module ^ items).
+module_imports_get_items_list(Module, cord.list(Module ^ items)).
 module_imports_get_error(Module, Module ^ error).
 module_imports_set_items(Items, Module, Module ^ items := Items).
+module_imports_set_items_list(Items, Module, Module ^ items := Cord) :-
+    Cord = cord.from_list(Items).
 module_imports_set_error(Error, Module, Module ^ error := Error).
 module_imports_set_int_deps(IntDeps, Module, Module ^ int_deps := IntDeps).
 module_imports_set_impl_deps(ImplDeps, Module,
@@ -332,26 +346,31 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         ImplementationDeps, IndirectDeps, IncludeDeps,
         InterfaceIncludeDeps, NestedDeps, FactTableDeps,
         ContainsForeignCode, ForeignImports, ContainsPragmaExport,
-        [], Error, no, HasMain, dir.this_directory).
+        cord.empty, Error, no, HasMain, dir.this_directory).
 
 %-----------------------------------------------------------------------------%
 
 get_dependencies(Items, ImportDeps, UseDeps) :-
-    get_dependencies_implementation(Items,
-        [], IntImportDeps, [], IntUseDeps, [], ImpImportDeps, [], ImpUseDeps),
+    get_dependencies_int_imp(Items, IntImportDeps, IntUseDeps,
+        ImpImportDeps, ImpUseDeps),
     ImportDeps = IntImportDeps ++ ImpImportDeps,
     UseDeps = IntUseDeps ++ ImpUseDeps.
 
 get_dependencies_int_imp(Items, IntImportDeps, IntUseDeps,
         ImpImportDeps, ImpUseDeps) :-
     get_dependencies_implementation(Items,
-        [], IntImportDeps, [], IntUseDeps, [], ImpImportDeps, [], ImpUseDeps).
+        set.init, IntImportDepsSet, set.init, IntUseDepsSet,
+        set.init, ImpImportDepsSet, set.init, ImpUseDepsSet),
+    IntImportDeps = set.to_sorted_list(IntImportDepsSet),
+    ImpImportDeps = set.to_sorted_list(ImpImportDepsSet),
+    IntUseDeps = set.to_sorted_list(IntUseDepsSet),
+    ImpUseDeps = set.to_sorted_list(ImpUseDepsSet).
 
 :- pred get_dependencies_implementation(list(item)::in,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out) is det.
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out) is det.
 
 get_dependencies_implementation([],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
@@ -364,9 +383,9 @@ get_dependencies_implementation([Item | Items],
                 !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
         ;
             ( ModuleDefn = md_import(Modules) ->
-                !:ImpImportDeps = !.ImpImportDeps ++ Modules
+                svset.insert_list(Modules, !ImpImportDeps)
             ; ModuleDefn = md_use(Modules) ->
-                !:ImpUseDeps = !.ImpUseDeps ++ Modules
+                svset.insert_list(Modules, !ImpUseDeps)
             ;
                 true
             ),
@@ -379,10 +398,10 @@ get_dependencies_implementation([Item | Items],
     ).
 
 :- pred get_dependencies_interface(list(item)::in,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out) is det.
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out) is det.
 
 get_dependencies_interface([],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
@@ -395,9 +414,9 @@ get_dependencies_interface([Item | Items],
                 !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
         ;
             ( ModuleDefn = md_import(Modules) ->
-                !:IntImportDeps = !.IntImportDeps ++ Modules
+                svset.insert_list(Modules, !IntImportDeps)
             ; ModuleDefn = md_use(Modules) ->
-                !:IntUseDeps = !.IntUseDeps ++ Modules
+                svset.insert_list(Modules, !IntUseDeps)
             ;
                 true
             ),

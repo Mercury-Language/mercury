@@ -53,6 +53,7 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module parser.
@@ -244,7 +245,8 @@ module_dependencies_version_number = 1.
 write_module_dep_file(Imports0, !IO) :-
     % Make sure all the required fields are filled in.
     globals.io_get_globals(Globals, !IO),
-    strip_imported_items(Imports0 ^ items, Items),
+    module_imports_get_items_list(Imports0, Items0),
+    strip_imported_items(Items0, Items),
     init_dependencies(Imports0 ^ source_file_name,
         Imports0 ^ source_file_module_name,
         Imports0 ^ nested_children, no_module_errors, Globals,
@@ -476,7 +478,7 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
             Imports ^ has_foreign_code = ContainsForeignCode,
             Imports ^ foreign_import_modules = ForeignImports,
             Imports ^ contains_foreign_export = ContainsForeignExport,
-            Imports ^ items = [],       % not used.
+            Imports ^ items = cord.empty,       % not used.
             Imports ^ error = no_module_errors, % not used.
             Imports ^ maybe_timestamps = no,    % not used.
             Imports ^ has_main = HasMain,

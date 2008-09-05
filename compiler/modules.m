@@ -377,6 +377,7 @@
 :- import_module recompilation.version.
 
 :- import_module char.
+:- import_module cord.
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module int.
@@ -417,7 +418,7 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
             "`", FileName, "' not written.\n"], !IO)
     ;
         % Module-qualify all items.
-        module_imports_get_items(Module, Items1),
+        module_imports_get_items_list(Module, Items1),
         globals.io_get_globals(Globals, !IO),
         module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
             FileName, !IO),
@@ -531,7 +532,7 @@ make_interface(SourceFileName, SourceFileModuleName, ModuleName,
             ModuleName, !.InterfaceItems, Module0, Error, !IO),
 
         % Check whether we succeeded.
-        module_imports_get_items(Module0, !:InterfaceItems),
+        module_imports_get_items_list(Module0, !:InterfaceItems),
         % XXX zs: why does this code not check for fatal_module_errors?
         ( Error = some_module_errors ->
             module_name_to_file_name(ModuleName, ".int", do_not_create_dirs,
@@ -1741,7 +1742,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
                 [[make_pseudo_decl(md_interface) | InterfaceItems],
                 [make_pseudo_decl(md_private_interface) | ImplDecls],
                 [make_pseudo_decl(md_implementation) | Clauses]], Items1),
-            module_imports_set_items(Items1, !Module)
+            module_imports_set_items_list(Items1, !Module)
         ),
 
         % Add `builtin' and `private_builtin' to the list of imported modules.
@@ -1830,7 +1831,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
             make_pseudo_decl(md_abstract_imported),
             !Module, !IO),
 
-        module_imports_get_items(!.Module, Items),
+        module_imports_get_items_list(!.Module, Items),
         check_imports_accessibility(ModuleName,
             IntImportedModules ++ IntUsedModules ++
             ImpImportedModules ++ ImpUsedModules, Items, !Specs),
@@ -1928,7 +1929,7 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
     some [!Specs] (
         !:Specs = [],
 
-        module_imports_get_items(!.Module, Items),
+        module_imports_get_items_list(!.Module, Items),
         check_imports_accessibility(ModuleName,
             IntImportDeps ++ IntUseDeps ++ ImpImportDeps ++ ImpUseDeps,
             Items, !Specs),
@@ -1943,7 +1944,7 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 
 append_pseudo_decl(PseudoDecl, Module0, Module) :-
     Items0 = Module0 ^ items,
-    list.append(Items0, [make_pseudo_decl(PseudoDecl)], Items),
+    Items = cord.snoc(Items0, make_pseudo_decl(PseudoDecl)),
     Module = Module0 ^ items := Items.
 
 make_pseudo_decl(PseudoDecl) = Item :-
@@ -2787,7 +2788,7 @@ process_module_private_interfaces(ReadModules, [Ancestor | Ancestors],
         get_dependencies(Items, AncDirectImports, AncDirectUses),
         !:DirectImports = !.DirectImports ++ AncDirectImports,
         !:DirectUses = !.DirectUses ++ AncDirectUses,
-        ModItems = ModItems0 ++ Items,
+        ModItems = ModItems0 ++ cord.from_list(Items),
         !:Module = !.Module ^ items := ModItems,
         !:Module = !.Module ^ parent_deps := ModAncestors,
         !:Module = !.Module ^ error := ModError,
@@ -2846,7 +2847,7 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
             ++ IndirectUses1,
         !:ImplIndirectImports = !.ImplIndirectImports
             ++ ImplIndirectImports1 ++ ImplIndirectUses1,
-        ModItems = ModItems0 ++ Items,
+        ModItems = ModItems0 ++ cord.from_list(Items),
         !:Module = !.Module ^ impl_deps := ModImplementationImports,
         !:Module = !.Module ^ items := ModItems,
         !:Module = !.Module ^ error := ModError,
@@ -3021,7 +3022,7 @@ process_module_short_interfaces(ReadModules, [Import | Imports], Ext,
         ModIndirectImports = [Import | ModIndirectImports0],
         !:IndirectImports = !.IndirectImports ++ IntImports1 ++ IntUses1,
         !:ImpIndirectImports = !.ImpIndirectImports ++ ImpImports1 ++ ImpUses1,
-        ModItems = ModItems0 ++ Items,
+        ModItems = ModItems0 ++ cord.from_list(Items),
         !:Module = !.Module ^ indirect_deps := ModIndirectImports,
         !:Module = !.Module ^ items := ModItems,
         !:Module = !.Module ^ error := ModError,
@@ -3411,10 +3412,11 @@ init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
     % module_imports.m is this call. This should be fixed, preferably
     % by changing the module_imports structure.
     maybe_add_foreign_import_module(ModuleName, Items0, Items),
+    ItemsCord = cord.from_list(Items),
     Module = module_imports(SourceFileName, SourceFileModuleName,
         ModuleName, [], [], [], [], [], PublicChildren,
         NestedChildren, FactDeps, contains_foreign_code_unknown, [],
-        contains_no_foreign_export, Items, no_module_errors,
+        contains_no_foreign_export, ItemsCord, no_module_errors,
         MaybeTimestamps, no_main, dir.this_directory).
 
 :- pred maybe_add_foreign_import_module(module_name::in,

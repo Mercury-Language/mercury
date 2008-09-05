@@ -122,6 +122,7 @@
 :- import_module transform_hlds.inlining.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module getopt_io.
 :- import_module int.
 :- import_module map.
@@ -2289,13 +2290,15 @@ grab_opt_files(!Module, FoundError, !IO) :-
     ModulesProcessed = set.insert(set.sorted_list_to_set(OptFiles),
         ModuleName),
     read_optimization_interfaces(Transitive, ModuleName, OptFiles,
-        ModulesProcessed, [], OptItems, no, OptError, !IO),
+        ModulesProcessed, cord.empty, OptItemsCord, no, OptError, !IO),
+    OptItems = cord.list(OptItemsCord),
 
     % Append the items to the current item list, using a `opt_imported'
     % psuedo-declaration to let make_hlds know the opt_imported stuff
     % is coming.
     module_imports_get_items(!.Module, Items0),
-    Items1 = Items0 ++ [make_pseudo_decl(md_opt_imported) | OptItems],
+    Items1 = Items0 ++ cord.from_list([
+        make_pseudo_decl(md_opt_imported) | OptItems]),
     module_imports_set_items(Items1, !Module),
 
     % Get the :- pragma unused_args(...) declarations created when writing
@@ -2318,7 +2321,8 @@ grab_opt_files(!Module, FoundError, !IO) :-
         )
     ->
         read_optimization_interfaces(no, ModuleName, [ModuleName],
-            set.init, [], LocalItems, no, UA_SR_Error, !IO),
+            set.init, cord.empty, LocalItemsCord, no, UA_SR_Error, !IO),
+        LocalItems = cord.list(LocalItemsCord),
         KeepPragma = (pred(Item::in) is semidet :-
             Item = item_pragma(ItemPragma),
             ItemPragma = item_pragma_info(_, Pragma, _, _),
@@ -2333,7 +2337,7 @@ grab_opt_files(!Module, FoundError, !IO) :-
         list.filter(KeepPragma, LocalItems, PragmaItems),
 
         module_imports_get_items(!.Module, Items2),
-        list.append(Items2, PragmaItems, Items),
+        Items = Items2 ++ cord.from_list(PragmaItems),
         module_imports_set_items(Items, !Module)
     ;
         UA_SR_Error = no
@@ -2386,7 +2390,7 @@ grab_opt_files(!Module, FoundError, !IO) :-
 
 :- pred read_optimization_interfaces(bool::in, module_name::in,
     list(module_name)::in, set(module_name)::in,
-    list(item)::in, list(item)::out, bool::in, bool::out,
+    cord(item)::in, cord(item)::out, bool::in, bool::out,
     io::di, io::uo) is det.
 
 read_optimization_interfaces(_, _, [], _, !Items, !Error, !IO).
@@ -2406,7 +2410,7 @@ read_optimization_interfaces(Transitive, ModuleName,
     prog_io.read_opt_file(FileName, ModuleToRead, OptItems, Specs, ModuleError,
         !IO),
     update_error_status(opt_file, FileName, ModuleError, Specs, !Error, !IO),
-    !:Items = !.Items ++ OptItems,
+    !:Items = !.Items ++ cord.from_list(OptItems),
     maybe_write_string(VeryVerbose, "% done.\n", !IO),
 
     globals.io_get_globals(Globals, !IO),

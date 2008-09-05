@@ -1864,7 +1864,7 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         )
     ),
 
-    module_imports_get_items(ModuleImports1, Items1),
+    module_imports_get_items_list(ModuleImports1, Items1),
     MaybeTimestamps = ModuleImports1 ^ maybe_timestamps,
 
     invoke_module_qualify_items(Items1, Items2, EventSpecMap1, EventSpecMap2,

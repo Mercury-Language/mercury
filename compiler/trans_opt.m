@@ -107,6 +107,7 @@
 :- import_module transform_hlds.trailing_analysis.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -197,18 +198,19 @@ grab_trans_opt_files(TransOptDeps, !Module, FoundError, !IO) :-
     maybe_write_string(Verbose, "% Reading .trans_opt files..\n", !IO),
     maybe_flush_output(Verbose, !IO),
 
-    read_trans_opt_files(TransOptDeps, [], OptItems, no, FoundError, !IO),
+    read_trans_opt_files(TransOptDeps, cord.empty, OptItems, no, FoundError,
+        !IO),
 
     append_pseudo_decl(md_opt_imported, !Module),
     module_imports_get_items(!.Module, Items0),
-    list.append(Items0, OptItems, Items),
+    Items = Items0 ++ OptItems,
     module_imports_set_items(Items, !Module),
     module_imports_set_error(no_module_errors, !Module),
 
     maybe_write_string(Verbose, "% Done.\n", !IO).
 
-:- pred read_trans_opt_files(list(module_name)::in, list(item)::in,
-    list(item)::out, bool::in, bool::out, io::di, io::uo) is det.
+:- pred read_trans_opt_files(list(module_name)::in, cord(item)::in,
+    cord(item)::out, bool::in, bool::out, io::di, io::uo) is det.
 
 read_trans_opt_files([], !Items, !Error, !IO).
 read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-
@@ -229,7 +231,7 @@ read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-
 
     intermod.update_error_status(trans_opt_file, FileName, ModuleError,
         Specs, !Error, !IO),
-    list.append(!.Items, NewItems, !:Items),
+    !:Items = !.Items ++ cord.from_list(NewItems),
     read_trans_opt_files(Imports, !Items, !Error, !IO).
 
 %-----------------------------------------------------------------------------%

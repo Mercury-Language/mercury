@@ -31,8 +31,8 @@ ambiguous_overloading.m:056:   The following symbol was overloaded in the
 ambiguous_overloading.m:056:   following contexts.
 ambiguous_overloading.m:050:   The predicate symbol predicate `<'/2.
 ambiguous_overloading.m:050:   The possible matches are:
-ambiguous_overloading.m:050:     predicate `float.<'/2,
-ambiguous_overloading.m:050:     predicate `int.<'/2.
+ambiguous_overloading.m:050:     predicate `int.<'/2,
+ambiguous_overloading.m:050:     predicate `float.<'/2.
 ambiguous_overloading.m:051:   The predicate symbol predicate `<'/2 is also
 ambiguous_overloading.m:051:   overloaded here.
 ambiguous_overloading.m:052:   The predicate symbol predicate `<'/2 is also

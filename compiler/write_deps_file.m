@@ -75,6 +75,7 @@
     string::in, list(module_name)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -91,11 +92,14 @@
 :- import_module parse_tree.source_file_map.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module dir.
 :- import_module library.
 :- import_module map.
 :- import_module string.
 :- import_module pair.
+
+%-----------------------------------------------------------------------------%
 
 write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
     Module = module_imports(SourceFileName, SourceFileModuleName,
@@ -513,7 +517,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             ForeignImports = ForeignImports0
         ;
             ContainsForeignCode = contains_foreign_code_unknown,
-            get_item_list_foreign_code(Globals, Items, LangSet,
+            get_item_list_foreign_code(Globals, cord.list(Items), LangSet,
                 ForeignImports1, _),
             % If we're generating the `.dep' file, ForeignImports0 will contain
             % a conservative approximation to the set of foreign imports
