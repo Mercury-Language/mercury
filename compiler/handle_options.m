@@ -1159,23 +1159,57 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         option_implies(target_debug, strip, bool(no), !Globals),
 
+        % Profile for implicit parallelism implies a particular coverage
+        % profiling configuration, since that's what is supported.
+        globals.lookup_bool_option(!.Globals, profile_for_implicit_parallelism,
+            ProfForImplicitParallelism),
+        (
+            ProfForImplicitParallelism = yes,
+            globals.set_option(coverage_profiling, bool(yes), !Globals),
+            globals.set_option(profile_deep_coverage_may_fail, bool(yes),
+                !Globals), 
+            globals.set_option(profile_deep_coverage_multi, bool(yes),
+                !Globals), 
+            globals.set_option(profile_deep_coverage_any, bool(yes), !Globals), 
+            globals.set_option(profile_deep_coverage_branch_ite, bool(yes),
+                !Globals), 
+            globals.set_option(profile_deep_coverage_branch_switch, bool(yes),
+                !Globals), 
+            globals.set_option(profile_deep_coverage_branch_disj, bool(yes),
+                !Globals),
 
-        % Coverage profiling requires deep profiling.
-        option_implies(coverage_profiling, profile_deep, bool(yes),
-            !Globals),
-        
+            % Disabling these two options causes the coverage profiling
+            % transformation to make a single backwards traversal.  This makes
+            % coverage information propagation easier at the expense of
+            % inserting more coverage points.
+            globals.set_option(profile_deep_coverage_use_portcounts, bool(no),
+                !Globals), 
+            globals.set_option(profile_deep_coverage_use_trivial, bool(no),
+                !Globals)
+        ;
+            ProfForImplicitParallelism = no
+        ),
+
+        % At the moment coverage profiling is not compatible with the tail
+        % recursion preservation optimization used by the deep profiler.
+        option_implies(coverage_profiling, deep_profile_tail_recursion,
+            bool(no), !Globals),
+
         % Inlining happens before the deep profiling transformation, so if
         % we allowed inlining to happen, then we would lose all profiling
         % information about the inlined calls - this is not usually what we
         % want so we disable inlining with deep profiling by default.  The
-        % user can re-enable it with the `--profile-optimized' option.
+        % user can re-enable it with the `--profile-optimized' option.  Leave
+        % inlineing enabled when profiling for implicit parallelism.
         % 
         globals.lookup_bool_option(!.Globals, prof_optimized, ProfOptimized),
         (
-            ProfOptimized = yes
-        ;
             ProfOptimized = no,
+            ProfForImplicitParallelism = no
+        ->
             option_implies(profile_deep, allow_inlining, bool(no), !Globals)
+        ;
+            true
         ),
 
         globals.lookup_string_option(!.Globals, experimental_complexity,

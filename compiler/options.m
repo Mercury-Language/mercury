@@ -309,11 +309,17 @@
     ;       profile_deep_coverage_use_portcounts
     ;       profile_deep_coverage_use_trivial
 
+            % Turn on flags ralevent for profiler directed implicit
+            % parallelism.
+    ;       profile_for_implicit_parallelism
+
     ;       use_zeroing_for_ho_cycles
     ;       use_lots_of_ho_specialization
-            % We should always handle tail recursion specially in deep
-            % profiling; the option is only for benchmarks for the paper.
 
+            % We should always handle tail recursion specially in deep
+            % profiling; the option is only for benchmarks for the paper,
+            % except that this is currently broken, and not supported with
+            % coverage profiling.
     ;       deep_profile_tail_recursion
     ;       record_term_sizes_as_words
     ;       record_term_sizes_as_cells
@@ -1166,6 +1172,7 @@ option_defaults_2(compilation_model_option, [
     profile_deep_coverage_branch_disj   -   bool(yes),
     profile_deep_coverage_use_portcounts -  bool(yes),
     profile_deep_coverage_use_trivial   -   bool(yes),
+    profile_for_implicit_parallelism    -   bool(no),
     use_zeroing_for_ho_cycles           -   bool(yes),
     use_lots_of_ho_specialization       -   bool(no),
     deep_profile_tail_recursion         -   bool(no),
@@ -2003,6 +2010,8 @@ long_option("profile-deep-coverage-use-portcounts",
                     profile_deep_coverage_use_portcounts).
 long_option("profile-deep-coverage-use-trivial",
                     profile_deep_coverage_use_trivial).
+long_option("profile-for-implicit-parallelism",
+                    profile_for_implicit_parallelism).
 long_option("use-zeroing-for-ho-cycles",
                     use_zeroing_for_ho_cycles).
 long_option("use-lots-of-ho-specialization",
@@ -3957,6 +3966,10 @@ options_help_compilation_model -->
 %       "\tsome coverage information.",
 %       "--no-profile-deep-coverage-use-trivial",
 %       "\tTurn off usage of trivial goal information",
+
+        "--profile-for-implicit-parallelism",
+        "\tSelect deep profiling options suitable for profiler directed",
+        "\timplicit parallelism",
 
         "--record-term-sizes-as-words\t\t(grade modifier: `.tsw')",
         "\tAugment each heap cells with its size in words.",

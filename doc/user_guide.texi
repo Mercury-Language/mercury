@@ -7541,18 +7541,27 @@ This option is only supported by the C back-ends.
 Enable deep profiling by inserting the appropriate hooks in the generated code.
 This option is only supported by the low-level C back-end.
 
+@sp 1
+@item @code{--coverage-profiling}
+@findex --coverage-profiling
+@cindex Coverage Profiling
+Enable coverage profiling by inserting coverage points, these are used to
+measure how execution moves through a procedure.  This option only effects
+programs built  in deep profiling grades.
+
+@sp 1
+@item @code{--profile-for-implicit-parallelism}
+@findex --profile-for-implicit-parallelism
+@cindex Coverage Profiling
+@cindex Implicit Parallelism
+Enable options in the deep profiler that generate suitable profiles for use
+with profile directed implicit parallelism.  This option only effects programs
+built in deep profiling grades.
+
 @ignore
     Coverage profiling is experimental, some options below tune coverage
     profiling however they are intended for developers.
 
-@sp 1
-@item @code{--coverage-profiling} (grades: any grade containing @samp{.profdeep})
-@findex --coverage-profiling
-@cindex Coverage Profiling
-Enable coverage profiling by inserting coverage points used to measure how
-execution moves through a procedure.  This option is only supported by the
-low-level C back-end.
-        
 @sp 1
 
 Switches to effect coverage profiling (part of deep profiling).  they enable

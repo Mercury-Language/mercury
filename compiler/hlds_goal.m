@@ -1169,7 +1169,6 @@
 :- func goal_info_get_lfu(hlds_goal_info) = set(prog_var).
 :- func goal_info_get_lbu(hlds_goal_info) = set(prog_var).
 :- func goal_info_get_reuse(hlds_goal_info) = reuse_description.
-:- func goal_info_get_dp_info(hlds_goal_info) = dp_goal_info.
 
 :- pred goal_info_get_occurring_vars(hlds_goal_info::in, set(prog_var)::out)
     is det.
@@ -2121,17 +2120,6 @@ goal_info_get_reuse(GoalInfo) = Reuse :-
         unexpected(this_file,
             "Requesting reuse information while CTGC field not set.")
     ).
-
-goal_info_get_dp_info(GoalInfo) = DPInfo :-
-    MaybeDPInfo = goal_info_get_maybe_dp_info(GoalInfo),
-    (
-        MaybeDPInfo = yes(DPInfo)
-    ;
-        MaybeDPInfo = no,
-        unexpected(this_file,
-            "Requesting dp_info while maybe_dp_info field not set.")
-    ).
-
 
 %-----------------------------------------------------------------------------%
 

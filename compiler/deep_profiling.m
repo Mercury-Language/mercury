@@ -2013,18 +2013,18 @@ coverage_prof_second_pass_goal(Goal0, Goal,
 
     % Depending on command line arguments first pass information may or may not
     % be available, if it is not avalible sensible defaults are assumed.
-
-    Use2Pass = !.Info ^ ci_coverage_profiling_opts ^ cpo_use_2pass,
+    MaybeDPInfo = goal_info_get_maybe_dp_info(GoalInfo0),
     (
-        Use2Pass = yes,
-        dp_goal_info(GoalTrivial, GoalHasPortCounts) =
-            goal_info_get_dp_info(GoalInfo0)
+        MaybeDPInfo = yes( dp_goal_info(GoalTrivial, GoalHasPortCounts))
     ;
-        Use2Pass = no,
+        MaybeDPInfo = no,
 
         % XXX: Zoltan says;
         % Is this the best default you can get? You should be able to do
         % better for goals like unifications.
+        %
+        % pbone: I agree.  Idealy we should get more accurate information for
+        % atomic goals and fall back to these defaults for any other goal.
 
         GoalTrivial = goal_is_nontrivial,
         GoalHasPortCounts = goal_does_not_have_port_counts
@@ -2449,16 +2449,12 @@ coverage_prof_second_pass_ite(ITEExistVars, Cond0, Then0, Else0,
                 ; ElseDetism = detism_cc_multi
                 ),
 
-                % Now which should have coverage known.
-                % XXX What does that comment mean?
-                Use2Pass = !.Info ^ ci_coverage_profiling_opts ^
-                    cpo_use_2pass,
+                ThenMaybeDPInfo = 
+                    goal_info_get_maybe_dp_info(Then0 ^ hlds_goal_info),
                 (
-                    Use2Pass = yes,
-                    dp_goal_info(_, ThenHasPortCounts) =
-                        goal_info_get_dp_info(Then0 ^ hlds_goal_info)
+                    ThenMaybeDPInfo = yes(dp_goal_info(_, ThenHasPortCounts)) 
                 ;
-                    Use2Pass = no,
+                    ThenMaybeDPInfo = no,
                     ThenHasPortCounts = goal_does_not_have_port_counts
                 ),
 
@@ -2526,8 +2522,13 @@ coverage_prof_second_pass_ite(ITEExistVars, Cond0, Then0, Else0,
     % beginning of each branch,
 
     CPOBranchIf = !.Info ^ ci_coverage_profiling_opts ^ cpo_branch_ite,
-    dp_goal_info(_, CondHasPortCounts) =
-        Cond0 ^ hlds_goal_info ^ goal_info_get_dp_info,
+    CondMaybeDPInfo = goal_info_get_maybe_dp_info(Cond0 ^ hlds_goal_info),
+    (
+        CondMaybeDPInfo = yes(dp_goal_info(_, CondHasPortCounts))
+    ;
+        CondMaybeDPInfo = no,
+        CondHasPortCounts = goal_does_not_have_port_counts
+    ),
     (
         CPOBranchIf = yes,
         CondHasPortCounts = goal_does_not_have_port_counts,
