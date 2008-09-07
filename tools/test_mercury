@@ -473,6 +473,7 @@ case $HOST in
             hlc.gc                          \
             hlc.gc.tr                       \
             hlc.gc.tr.ll_debug              \
+            hlc.gc.trseg                    \
             asm_fast.gc.tr.prof             \
             asm_fast.gc.tr.memprof          \
             asm_fast.gc.tr.profdeep"        
@@ -484,6 +485,7 @@ case $HOST in
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         INSTALL_LIBGRADES="hlc.gc           \
             hlc.gc.tr                       \
+            hlc.gc.trseg                    \
             hlc.par.gc                      \
             asm_fast.gc                     \
             asm_fast.par.gc                 \
@@ -568,8 +570,10 @@ case $HOST in
         INSTALL_GRADE="hlc.gc"
         INSTALL_LIBGRADES="hlc.gc   \
             hlc.gc.tr               \
+            hlc.gc.trseg            \
             hlc.gc.tr.ll_debug      \
             none.gc.tr              \
+            none.gc.trseg           \
             none.gc.tr.debug"
         ;;
     taura)
@@ -581,7 +585,8 @@ case $HOST in
             asm_fast.gc.profdeep        \
             asm_fast.gc.decldebug       \
             hlc.gc                      \
-            hlc.gc.tr"
+            hlc.gc.tr                   \
+            hlc.gc.trseg"
         ;;      
     *)      
         CONFIG_OPTS=""
