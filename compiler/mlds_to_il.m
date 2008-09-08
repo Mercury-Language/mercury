@@ -531,7 +531,8 @@ rename_cond(match_range(RvalA, RvalB))
 
 rename_atomic(comment(S)) = comment(S).
 rename_atomic(assign(L, R)) = assign(rename_lval(L), rename_rval(R)).
-rename_atomic(delete_object(O)) = delete_object(rename_lval(O)).
+rename_atomic(assign_if_in_heap(L, R)) = assign(rename_lval(L), rename_rval(R)).
+rename_atomic(delete_object(O)) = delete_object(rename_rval(O)).
 rename_atomic(new_object(L, Tag, HasSecTag, Type, MaybeSize, Ctxt, Args,
         Types, MayUseAtomic))
     = new_object(rename_lval(L), Tag, HasSecTag, Type, MaybeSize,
@@ -2034,10 +2035,14 @@ atomic_statement_to_il(assign(Lval, Rval), Instrs, !Info) :-
         LoadRvalInstrs,
         StoreLvalInstrs
     ]).
+
+atomic_statement_to_il(assign_if_in_heap(_, _), _, !Info) :-
+    sorry(this_file, "assign_if_in_heap").
+
 atomic_statement_to_il(comment(Comment), Instrs, !Info) :-
     Instrs = node([comment(Comment)]).
 
-atomic_statement_to_il(delete_object(Target), Instrs, !Info) :-
+atomic_statement_to_il(delete_object(_Target), Instrs, !Info) :-
     % XXX We assume the code generator knows what it is doing and is only
     % going to delete real objects (e.g. reference types). It would perhaps
     % be prudent to check the type of delete_object (if it had one) to
@@ -2046,8 +2051,13 @@ atomic_statement_to_il(delete_object(Target), Instrs, !Info) :-
     % We implement delete_object by storing null in the lval, which hopefully
     % gives the garbage collector a good solid hint that this storage is
     % no longer required.
-    get_load_store_lval_instrs(Target, LoadInstrs, StoreInstrs, !Info),
-    Instrs = tree_list([LoadInstrs, instr_node(ldnull), StoreInstrs]).
+    %
+    % XXX commented out because `delete_object' was changed to take an rval
+    % instead of an lval
+    %
+    % get_load_store_lval_instrs(Target, LoadInstrs, StoreInstrs, !Info),
+    % Instrs = tree_list([LoadInstrs, instr_node(ldnull), StoreInstrs]).
+    Instrs = empty.
 
 atomic_statement_to_il(new_object(Target0, _MaybeTag, HasSecTag, Type, Size,
         MaybeCtorName, Args0, ArgTypes0, _MayUseAtomic), Instrs, !Info) :-

@@ -3094,6 +3094,9 @@ gen_atomic_stmt(DefnInfo, assign(Lval, Rval), _) -->
 	build_rval(Rval, DefnInfo, GCC_Rval),
 	gcc__gen_assign(GCC_Lval, GCC_Rval).
 
+gen_atomic_stmt(_, assign_if_in_heap(_, _), _) -->
+	{ sorry(this_file, "gen_atomic_stmt: assign_if_in_heap") }.
+
 	%
 	% heap management
 	%

@@ -2811,6 +2811,9 @@ output_atomic_stmt(Indent, ModuleInfo, FuncInfo, assign(Lval, Rval), _, !IO) :-
     ),
     io.write_string(";\n", !IO).
 
+output_atomic_stmt(_, _, _, assign_if_in_heap(_, _), _, !IO) :-
+    sorry(this_file, "output_atomic_stmt: assign_if_in_heap").
+
     % heap management
     %
 output_atomic_stmt(_Indent, _, _FuncInfo, delete_object(_Lval), _, _, _) :-

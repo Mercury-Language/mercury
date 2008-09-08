@@ -135,8 +135,13 @@ determine_reuse(Strategy, ModuleInfo, ProcInfo, DeadCellTable, !Goal,
     process_goal(BackGroundInfo, DeadCellTable, RemainingDeadCellTable,
         !Goal, reuse_as_init, ReuseAs, !IO),
 
-    % Check for cell caching.
-    check_for_cell_caching(RemainingDeadCellTable, !Goal, !IO).
+    globals.io_lookup_bool_option(structure_reuse_free_cells, FreeCells, !IO),
+    (
+        FreeCells = yes,
+        check_for_cell_caching(RemainingDeadCellTable, !Goal, !IO)
+    ;
+        FreeCells = no
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -471,42 +476,47 @@ process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO):-
         % Select the deconstructions-constructions with highest value.
         %
         Match = highest_match_degree_ratio(MatchTable),
-
-        % Maybe dump all the matches recorded in the table, highlight the
-        % match with the highest value.
-        %
-        maybe_write_string(VeryVerbose, "% Reuse results: \n", !IO),
-        maybe_dump_match_table(VeryVerbose, MatchTable, Match, !IO),
-
-        OldGoal = !.Goal,
-        OldReuseAs = !.ReuseAs,
-
-        % Realise the reuses by explicitly annotating the procedure goal.
-        annotate_reuses_in_goal(Background, Match, !Goal),
-
-        % Remove the deconstructions from the available map of dead cells.
-        remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable),
-
-        % Add the conditions involved in the reuses to the existing
-        % conditions.
-        ModuleInfo = Background ^ back_module_info,
-        ProcInfo   = Background ^ back_proc_info,
-        reuse_as_least_upper_bound(ModuleInfo, ProcInfo,
-            match_get_condition(Background, Match), !ReuseAs),
-
-        % If there would be too many reuse conditions on this procedure
-        % by taking the reuse opportunity, just drop it.
-        globals.io_lookup_int_option(structure_reuse_max_conditions,
-            MaxConditions, !IO),
-        ( reuse_as_count_conditions(!.ReuseAs) > MaxConditions ->
-            !:Goal = OldGoal,
-            !:ReuseAs = OldReuseAs
+        (
+            Match ^ con_specs = []
         ;
-            true
-        ),
+            Match ^ con_specs = [_ | _],
 
-        % Process the goal for further reuse-matches.
-        process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO)
+            % Maybe dump all the matches recorded in the table, highlight the
+            % match with the highest value.
+            %
+            maybe_write_string(VeryVerbose, "% Reuse results: \n", !IO),
+            maybe_dump_match_table(VeryVerbose, MatchTable, Match, !IO),
+
+            OldGoal = !.Goal,
+            OldReuseAs = !.ReuseAs,
+
+            % Realise the reuses by explicitly annotating the procedure goal.
+            annotate_reuses_in_goal(Background, Match, !Goal),
+
+            % Remove the deconstructions from the available map of dead cells.
+            remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable),
+
+            % Add the conditions involved in the reuses to the existing
+            % conditions.
+            ModuleInfo = Background ^ back_module_info,
+            ProcInfo   = Background ^ back_proc_info,
+            reuse_as_least_upper_bound(ModuleInfo, ProcInfo,
+                match_get_condition(Background, Match), !ReuseAs),
+
+            % If there would be too many reuse conditions on this procedure
+            % by taking the reuse opportunity, just drop it.
+            globals.io_lookup_int_option(structure_reuse_max_conditions,
+                MaxConditions, !IO),
+            ( reuse_as_count_conditions(!.ReuseAs) > MaxConditions ->
+                !:Goal = OldGoal,
+                !:ReuseAs = OldReuseAs
+            ;
+                true
+            ),
+
+            % Process the goal for further reuse-matches.
+            process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO)
+        )
     ).
 
 :- pred remove_deconstructions_from_dead_cell_table(match::in,
@@ -1364,6 +1374,9 @@ maybe_dump_full_table(yes, M, !IO) :-
     % structures, without imposing any reuse constraints are annotated so that
     % these cells can be cached whenever the user specifies that option.
     %
+    % XXX cell caching is not actually implemented, but we use the same
+    % information to free dead cells that have no reuse opportunity
+    %
 :- pred check_for_cell_caching(dead_cell_table::in, hlds_goal::in,
     hlds_goal::out, io::di, io::uo) is det.
 
@@ -1371,9 +1384,11 @@ check_for_cell_caching(DeadCellTable0, !Goal, !IO) :-
     dead_cell_table_remove_conditionals(DeadCellTable0, DeadCellTable),
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     ( dead_cell_table_is_empty(DeadCellTable) ->
-        maybe_write_string(VeryVerbose, "% No cells to be cached.\n", !IO)
+        maybe_write_string(VeryVerbose,
+            "% No cells to be cached/freed.\n", !IO)
     ;
-        maybe_write_string(VeryVerbose, "% Marking cacheable cells.\n", !IO),
+        maybe_write_string(VeryVerbose,
+            "% Marking cacheable/freeable cells.\n", !IO),
         check_for_cell_caching_2(DeadCellTable, !Goal)
     ).
 

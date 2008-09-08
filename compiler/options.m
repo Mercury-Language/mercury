@@ -638,6 +638,7 @@
     ;           structure_reuse_constraint_arg
     ;           structure_reuse_max_conditions
     ;           structure_reuse_repeat
+    ;           structure_reuse_free_cells
 
     % Stuff for the old termination analyser.
     ;       termination
@@ -1359,6 +1360,7 @@ option_defaults_2(special_optimization_option, [
     structure_reuse_constraint_arg      -   int(0),
     structure_reuse_max_conditions      -   int(10),
     structure_reuse_repeat              -   int(0),
+    structure_reuse_free_cells          -   bool(no),
     termination                         -   bool(no),
     termination_single_args             -   int(0),
     termination_norm                    -   string("total"),
@@ -2330,6 +2332,7 @@ long_option("structure-reuse-constraint-arg", structure_reuse_constraint_arg).
 long_option("ctgc-constraint-arg",  structure_reuse_constraint_arg).
 long_option("structure-reuse-max-conditions", structure_reuse_max_conditions).
 long_option("structure-reuse-repeat", structure_reuse_repeat).
+long_option("structure-reuse-free-cells", structure_reuse_free_cells).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",       smart_indexing).
@@ -3713,6 +3716,11 @@ options_help_ctgc -->
 %       "--structure-reuse-max-conditions",
 %       "\tSoft limit on the number of reuse conditions to accumulate",
 %       "\tfor a procedure. (default: 10)"
+
+% This option is likely to break many optimisations which haven't been updated.
+%       "--structure-reuse-free-cells",
+%       "\tImmediately free cells which are known to be dead but which",
+%       "\tcannot be reused."
     ]).
 
 :- pred options_help_termination(io::di, io::uo) is det.

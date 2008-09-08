@@ -1166,9 +1166,14 @@ eliminate_var_in_atomic_stmt(Stmt0, Stmt, !VarElimInfo) :-
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         Stmt = assign(Lval, Rval)
     ;
-        Stmt0 = delete_object(Lval0),
+        Stmt0 = assign_if_in_heap(Lval0, Rval0),
         eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
-        Stmt = delete_object(Lval)
+        eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+        Stmt = assign_if_in_heap(Lval, Rval)
+    ;
+        Stmt0 = delete_object(Rval0),
+        eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+        Stmt = delete_object(Rval)
     ;
         Stmt0 = new_object(Target0, MaybeTag, HasSecTag, Type,
             MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic),

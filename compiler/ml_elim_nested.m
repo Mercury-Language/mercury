@@ -1762,9 +1762,14 @@ fixup_atomic_stmt(Atomic0, Atomic, !Info) :-
         fixup_rval(Rval0, Rval, !Info),
         Atomic = assign(Lval, Rval)
     ;
-        Atomic0 = delete_object(Lval0),
+        Atomic0 = assign_if_in_heap(Lval0, Rval0),
         fixup_lval(Lval0, Lval, !Info),
-        Atomic = delete_object(Lval)
+        fixup_rval(Rval0, Rval, !Info),
+        Atomic = assign_if_in_heap(Lval, Rval)
+    ;
+        Atomic0 = delete_object(Rval0),
+        fixup_rval(Rval0, Rval, !Info),
+        Atomic = delete_object(Rval)
     ;
         Atomic0 = new_object(Target0, MaybeTag, HasSecTag, Type, MaybeSize,
             MaybeCtorName, Args0, ArgTypes, MayUseAtomic),

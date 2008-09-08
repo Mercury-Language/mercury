@@ -176,7 +176,13 @@
 
   #define   MR_mark_hp(dest)        ((void) 0)
   #define   MR_restore_hp(src)      ((void) 0)
-  #define   MR_free_heap(ptr)       GC_FREE((ptr))
+  #define   MR_free_heap(ptr)                                               \
+            do {                                                            \
+                MR_Word *tmp = (MR_Word *) (ptr);                           \
+                if (MR_in_heap_range(tmp)) {                                \
+                    GC_FREE(tmp);                                           \
+                }                                                           \
+            } while (0)
 
 #else /* not MR_CONSERVATIVE_GC */
 
@@ -446,6 +452,12 @@
                     (fallback_alloc);                                       \
                     (flag) = MR_FALSE;                                      \
                 }                                                           \
+            } while (0)
+
+#define     MR_assign_if_in_heap(dest, addr)                                \
+            do {                                                            \
+                MR_Word tmp = (addr);                                       \
+                (dest) = MR_in_heap_range(tmp) ? tmp : (MR_Word) NULL;      \
             } while (0)
 
 /***************************************************************************/

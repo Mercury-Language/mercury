@@ -187,6 +187,16 @@
     static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
 
+    % var_locn_save_cell_fields(ModuleInfo, Var, VarLval, Code,
+    %   TempRegs, !VarLocnInfo)
+    %
+    % Save any variables which depend on the ReuseLval into temporary
+    % registers so that they are available after ReuseLval is clobbered.
+    %
+:- pred var_locn_save_cell_fields(module_info::in, prog_var::in, lval::in,
+    code_tree::out, list(lval)::out, var_locn_info::in, var_locn_info::out)
+    is det.
+
     % var_locn_place_var(ModuleInfo, Var, Lval, Code, !VarLocnInfo):
     %
     % Produces Code to place the value of Var in Lval, and update !VarLocnInfo
@@ -879,8 +889,8 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeOffset = no,
         StartOffset = 0
     ),
-    % This must appear before the call to `save_reused_cell_fields' in the
-    % reused_cell case, otherwise `save_reused_cell_fields' won't know not to
+    % This must appear before the call to `var_locn_save_cell_fields' in the
+    % reused_cell case, otherwise `var_locn_save_cell_fields' won't know not to
     % use Lval as a temporary register (if Lval is a register).
     var_locn_set_magic_var_location(Var, Lval, !VLI),
     (
@@ -953,7 +963,7 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
 
     % Save any variables which are available only in the reused cell into
     % temporary registers.
-    save_reused_cell_fields(ModuleInfo, ReuseVar, ReuseLval, SaveArgsCode,
+    var_locn_save_cell_fields(ModuleInfo, ReuseVar, ReuseLval, SaveArgsCode,
         TempRegs0, !VLI),
     SetupReuseCode = tree(ReuseVarCode, SaveArgsCode),
 
@@ -1102,27 +1112,20 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
     ),
     Code = tree(EvalCode, AssignCode).
 
-    % Save any variables which depend on the ReuseLval into temporary
-    % registers so that they are available after ReuseLval is clobbered.
-    %
-:- pred save_reused_cell_fields(module_info::in, prog_var::in, lval::in,
-    code_tree::out, list(lval)::out, var_locn_info::in, var_locn_info::out)
-    is det.
-
-save_reused_cell_fields(ModuleInfo, ReuseVar, ReuseLval, Code, Regs, !VLI) :-
+var_locn_save_cell_fields(ModuleInfo, ReuseVar, ReuseLval, Code, Regs, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap),
     map.lookup(VarStateMap, ReuseVar, ReuseVarState0),
     DepVarsSet = ReuseVarState0 ^ using_vars,
     DepVars = set.to_sorted_list(DepVarsSet),
-    list.map_foldl2(save_reused_cell_fields_2(ModuleInfo, ReuseLval),
+    list.map_foldl2(var_locn_save_cell_fields_2(ModuleInfo, ReuseLval),
         DepVars, SaveArgsCode, [], Regs, !VLI),
     Code = tree_list(SaveArgsCode).
 
-:- pred save_reused_cell_fields_2(module_info::in, lval::in, prog_var::in,
+:- pred var_locn_save_cell_fields_2(module_info::in, lval::in, prog_var::in,
     code_tree::out, list(lval)::in, list(lval)::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-save_reused_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
+var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
         !Regs, !VLI) :-
     find_var_availability(!.VLI, DepVar, no, Avail),
     (

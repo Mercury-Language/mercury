@@ -135,11 +135,32 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
             Code = empty
         )
     ;
-        Uni = deconstruct(Var, ConsId, Args, Modes, _CanFail, _CanCGC),
+        Uni = deconstruct(Var, ConsId, Args, Modes, _CanFail, CanCGC),
         ( CodeModel = model_det ->
-            generate_det_deconstruction(Var, ConsId, Args, Modes, Code, !CI)
+            generate_det_deconstruction(Var, ConsId, Args, Modes, Code0, !CI)
         ;
-            generate_semi_deconstruction(Var, ConsId, Args, Modes, Code, !CI)
+            generate_semi_deconstruction(Var, ConsId, Args, Modes, Code0, !CI)
+        ),
+        (
+            CanCGC = can_cgc,
+            VarName = variable_name(!.CI, Var),
+            produce_variable(Var, ProduceVar, VarRval, !CI),
+            ( VarRval = lval(VarLval) ->
+                save_reused_cell_fields(Var, VarLval, SaveArgs, Regs, !CI),
+                % This seems to be fine.
+                list.foldl(release_reg, Regs, !CI),
+                % XXX avoid strip_tag when we know what tag it will have
+                FreeVar = node([
+                    llds_instr(free_heap(unop(strip_tag, VarRval)),
+                        "Free " ++ VarName)
+                ]),
+                Code = tree_list([Code0, ProduceVar, SaveArgs, FreeVar])
+            ;
+                Code = Code0
+            )
+        ;
+            CanCGC = cannot_cgc,
+            Code = Code0
         )
     ;
         Uni = simple_test(Var1, Var2),

@@ -3134,8 +3134,20 @@ mlds_output_atomic_stmt(Indent, _FuncInfo, assign(Lval, Rval), _, !IO) :-
     mlds_output_rval(Rval, !IO),
     io.write_string(";\n", !IO).
 
-mlds_output_atomic_stmt(_Indent, _FuncInfo, delete_object(_Lval), _, !IO) :-
-    sorry(this_file, "delete_object not implemented").
+mlds_output_atomic_stmt(Indent, _FuncInfo, assign_if_in_heap(Lval, Rval), _,
+        !IO) :-
+    mlds_indent(Indent, !IO),
+    io.write_string("MR_assign_if_in_heap(", !IO),
+    mlds_output_lval(Lval, !IO),
+    io.write_string(", ", !IO),
+    mlds_output_rval(Rval, !IO),
+    io.write_string(");\n", !IO).
+
+mlds_output_atomic_stmt(Indent, _FuncInfo, delete_object(Rval), _, !IO) :-
+    mlds_indent(Indent, !IO),
+    io.write_string("MR_free_heap(", !IO),
+    mlds_output_rval(Rval, !IO),
+    io.write_string(");\n", !IO).
 
 mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context, !IO) :-
     NewObject = new_object(Target, MaybeTag, _HasSecTag, Type, MaybeSize,

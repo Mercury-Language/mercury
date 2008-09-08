@@ -1238,9 +1238,15 @@
             % Assign the value specified by rval to the location
             % specified by lval.
 
+    ;       assign_if_in_heap(mlds_lval, mlds_rval)
+            % assign_if_in_heap(Location, Value):
+            % Assign the address specified by rval to the location specified
+            % by lval if the address is in the bounds of the garbage collected
+            % heap.  Otherwise assign a null pointer to lval.
+
     % Heap management.
 
-    ;       delete_object(mlds_lval)
+    ;       delete_object(mlds_rval)
             % Compile time garbage collect (ie explicitly
             % deallocate) the memory used by the lval.
 

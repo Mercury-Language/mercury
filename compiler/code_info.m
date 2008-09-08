@@ -3617,6 +3617,9 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
     list(int)::in, string::in, may_use_atomic_alloc::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
+:- pred save_reused_cell_fields(prog_var::in, lval::in, code_tree::out,
+    list(lval)::out, code_info::in, code_info::out) is det.
+
 :- pred place_var(prog_var::in, lval::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
@@ -3766,6 +3769,13 @@ assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
         MayUseAtomic, Label, Code, StaticCellInfo0, StaticCellInfo,
         VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
+    set_var_locn_info(VarLocnInfo, !CI).
+
+save_reused_cell_fields(Var, Lval, Code, Regs, !CI) :-
+    get_var_locn_info(!.CI, VarLocnInfo0),
+    get_module_info(!.CI, ModuleInfo),
+    var_locn_save_cell_fields(ModuleInfo, Var, Lval, Code, Regs,
+        VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 place_var(Var, Lval, Code, !CI) :-

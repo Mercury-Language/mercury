@@ -210,7 +210,9 @@ ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
         % this is safe.
         CanCGC = can_cgc,
         ml_gen_var(!.Info, Var, VarLval),
-        Stmt = ml_stmt_atomic(delete_object(VarLval)),
+        % XXX avoid strip_tag when we know what tag it will have
+        Delete = delete_object(unop(std_unop(strip_tag), lval(VarLval))),
+        Stmt = ml_stmt_atomic(Delete),
         CGC_Statements = [statement(Stmt, mlds_make_context(Context)) ]
     ;
         CanCGC = cannot_cgc,
@@ -810,7 +812,10 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 
         ml_gen_type(!.Info, Type, MLDS_DestType),
         CastVar2Rval = unop(cast(MLDS_DestType), Var2Rval),
-        AssignStatement = ml_gen_assign(Var1Lval, CastVar2Rval, Context),
+        MLDS_Context = mlds_make_context(Context),
+        AssignStatement = statement(
+            ml_stmt_atomic(assign_if_in_heap(Var1Lval, CastVar2Rval)),
+            MLDS_Context),
 
         % For each field in the construction unification we need to generate
         % an rval.  ExtraRvals need to be inserted at the start of the object.
@@ -823,8 +828,23 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
             Context, FieldStatements, TakeAddrInfos, !Info),
         ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
             MaybeTag, Context, !.Info, TakeAddrStatements),
-        Statements = [AssignStatement | ExtraRvalStatements] ++
-            FieldStatements ++ TakeAddrStatements,
+        IfBody = statement(ml_stmt_block([],
+            ExtraRvalStatements ++ FieldStatements ++ TakeAddrStatements),
+            MLDS_Context),
+
+        % If the reassignment isn't possible because the target is statically
+        % allocated then fall back to dynamic allocation.
+        ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
+            ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr,
+            construct_dynamically, Context, DynamicDecls, DynamicStmt, !Info),
+        IfElse = statement(ml_stmt_block(DynamicDecls, DynamicStmt),
+            MLDS_Context),
+
+        IfStatement = statement(
+            ml_stmt_if_then_else(lval(Var1Lval), IfBody, yes(IfElse)),
+            mlds_make_context(Context)),
+
+        Statements = [AssignStatement, IfStatement],
         Decls = []
     ;
         HowToConstruct = construct_in_region(_RegVar),
