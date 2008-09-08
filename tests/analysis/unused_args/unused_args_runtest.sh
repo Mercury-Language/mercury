@@ -3,7 +3,7 @@
 #-----------------------------------------------------------------------------#
 # Test unused argument optimisation with intermodule analysis framework.
 
-source ../common.sh
+. ../common.sh
 
 set -e
 set -x

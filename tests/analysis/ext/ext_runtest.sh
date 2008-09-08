@@ -3,7 +3,7 @@
 #-----------------------------------------------------------------------------#
 # Test handling of :- external procedures with intermodule analysis.
 
-source ../common.sh
+. ../common.sh
 
 set -e
 set -x

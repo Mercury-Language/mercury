@@ -3,7 +3,7 @@
 #-----------------------------------------------------------------------------#
 # Test the structure reuse analysis with the intermodule analysis framework.
 
-source ../common.sh
+. ../common.sh
 
 set -e
 set -x
