@@ -31,6 +31,7 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
@@ -253,7 +254,7 @@
     % 
 :- pred resolve_pred_overloading(module_info::in, pred_markers::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in, head_type_params::in,
-    sym_name::in, sym_name::out, pred_id::out) is det.
+    prog_context::in, sym_name::in, sym_name::out, pred_id::out) is det.
 
     % Find a predicate or function from the list of pred_ids which matches the
     % given name and argument types.  If the constraint_search argument is
@@ -264,7 +265,7 @@
 :- pred find_matching_pred_id(module_info::in, list(pred_id)::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in, head_type_params::in,
     maybe(constraint_search)::in(maybe(constraint_search)),
-    pred_id::out, sym_name::out) is semidet.
+    prog_context::in, pred_id::out, sym_name::out) is semidet.
 
     % A means to check that the required constraints are available, without
     % knowing in advance how many are required.
@@ -277,14 +278,16 @@
     %
 :- pred get_pred_id_and_proc_id_by_types(is_fully_qualified::in, sym_name::in,
     pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
-    head_type_params::in, module_info::in, pred_id::out, proc_id::out) is det.
+    head_type_params::in, module_info::in, prog_context::in,
+    pred_id::out, proc_id::out) is det.
 
     % Get the pred_id matching a higher-order term with
     % the given argument types, failing if none is found.
     %
 :- pred get_pred_id_by_types(is_fully_qualified::in, sym_name::in,
     pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
-    head_type_params::in, module_info::in, pred_id::out) is semidet.
+    head_type_params::in, module_info::in, prog_context::in, pred_id::out)
+    is semidet.
 
     % Given a pred_id, return the single proc_id, aborting
     % if there are no modes or more than one mode.
@@ -956,7 +959,7 @@ insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index) :-
 %-----------------------------------------------------------------------------%
 
 resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
-        ArgTypes, HeadTypeParams, PredName0, PredName, PredId) :-
+        ArgTypes, HeadTypeParams, Context, PredName0, PredName, PredId) :-
     % Note: calls to preds declared in `.opt' files should always be
     % module qualified, so they should not be considered
     % when resolving overloading.
@@ -975,7 +978,7 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
     % which subsume the actual argument/return types of this function call.
     (
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, HeadTypeParams, no, PredId1, PredName1)
+            ArgTypes, HeadTypeParams, no, Context, PredId1, PredName1)
     ->
         PredId = PredId1,
         PredName = PredName1
@@ -985,9 +988,9 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
         unexpected(this_file, "type error in pred call: no matching pred")
     ).
 
-find_matching_pred_id(ModuleInfo, [PredId | PredIds],
-        TVarSet, ExistQTVars, ArgTypes, HeadTypeParams,
-        MaybeConstraintSearch, ThePredId, PredName) :-
+find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
+        ArgTypes, HeadTypeParams, MaybeConstraintSearch, Context,
+        ThePredId, PredName) :-
     (
         % Lookup the argument types of the candidate predicate
         % (or the argument types + return type of the candidate function).
@@ -1020,22 +1023,31 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds],
         PredName = qualified(Module, PName),
         (
             find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-                ArgTypes, HeadTypeParams, MaybeConstraintSearch, _OtherPredId,
-                _)
+                ArgTypes, HeadTypeParams, MaybeConstraintSearch, Context,
+                OtherPredId, _OtherPredName)
         ->
-            % XXX this should report an error properly, not
-            % via error/1
-            unexpected(this_file, "Type error in predicate call: " ++
-                "unresolvable predicate overloading. " ++
-                "You need to use an explicit module qualifier. " ++
-                "Compile with -V to find out where.")
+            module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
+            pred_info_get_call_id(PredInfo, PredCallId),
+            pred_info_get_call_id(OtherPredInfo, OtherPredCallId),
+            % XXX this is not very nice
+            trace [io(!IO)] (
+                Pieces = [
+                    words("Error: unresolved predicate overloading, matched"),
+                    simple_call(PredCallId), words("and"),
+                    simple_call(OtherPredCallId), suffix("."),
+                    words("You need to use an explicit module qualifier."),
+                    nl],
+                write_error_pieces(Context, 0, Pieces, !IO)
+            ),
+            unexpected(this_file,
+                "find_matching_pred_id: unresolvable predicate overloading")
         ;
             ThePredId = PredId
         )
     ;
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, HeadTypeParams, MaybeConstraintSearch, ThePredId,
-            PredName)
+            ArgTypes, HeadTypeParams, MaybeConstraintSearch, Context,
+            ThePredId, PredName)
     ).
 
     % Check that the universal constraints proven in the caller match the
@@ -1060,7 +1072,7 @@ univ_constraints_match([ProvenConstraint | ProvenConstraints],
     univ_constraints_match(ProvenConstraints, CalleeConstraints).
 
 get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
-        ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, PredId) :-
+        ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, Context, PredId) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     list.length(ArgTypes, Arity),
     (
@@ -1068,7 +1080,7 @@ get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
             PredOrFunc, SymName, Arity, PredIds),
         % Resolve overloading using the argument types.
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, HeadTypeParams, no, PredId0, _PredName)
+            ArgTypes, HeadTypeParams, no, Context, PredId0, _PredName)
     ->
         PredId = PredId0
     ;
@@ -1077,11 +1089,12 @@ get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
     ).
 
 get_pred_id_and_proc_id_by_types(IsFullyQualified, SymName, PredOrFunc,
-        TVarSet, ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, PredId,
-        ProcId) :-
+        TVarSet, ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, Context,
+        PredId, ProcId) :-
     (
         get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
-            ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, PredId0)
+            ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, Context,
+            PredId0)
     ->
         PredId = PredId0
     ;

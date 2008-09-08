@@ -3490,7 +3490,7 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
     SymName = qualified(CalleeModuleName, CalleePredName),
     get_pred_id_and_proc_id_by_types(is_fully_qualified, SymName, pf_predicate,
         TVarSet, ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo0,
-        CalleePredId, CalleeProcId),
+        Context, CalleePredId, CalleeProcId),
     module_info_pred_proc_info(ModuleInfo0, CalleePredId, CalleeProcId,
         CalleePredInfo, CalleeProcInfo),
 

@@ -96,8 +96,8 @@
     % Handle any unresolved overloading for a predicate call.
     %
 :- pred finally_resolve_pred_overloading(list(prog_var)::in,
-    pred_info::in, module_info::in, sym_name::in, sym_name::out,
-    pred_id::in, pred_id::out) is det.
+    pred_info::in, module_info::in, prog_context::in,
+    sym_name::in, sym_name::out, pred_id::in, pred_id::out) is det.
 
     % Work out whether a var-functor unification is actually a function call.
     % If so, replace the unification goal with a call.
@@ -424,8 +424,8 @@ var_and_type_to_pieces(VarSet, TVarSet, Var - Type) =
 
 %-----------------------------------------------------------------------------%
 
-finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
-        !PredId) :-
+finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, Context,
+        !PredName, !PredId) :-
     % In the case of a call to an overloaded predicate, typecheck.m
     % does not figure out the correct pred_id. We must do that here.
 
@@ -440,7 +440,7 @@ finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
         map.apply_to_list(Args0, VarTypes, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
-            ArgTypes, HeadTypeParams, !PredName, !:PredId)
+            ArgTypes, HeadTypeParams, Context, !PredName, !:PredId)
     ;
         !:PredName = get_qualified_pred_name(ModuleInfo, !.PredId)
     ).
@@ -988,9 +988,10 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         GoalPath = goal_info_get_goal_path(GoalInfo0),
         ConstraintSearch =
             search_hlds_constraint_list(ConstraintMap, unproven, GoalPath),
+        Context = goal_info_get_context(GoalInfo0),
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, HeadTypeParams, yes(ConstraintSearch), PredId,
-            QualifiedFuncName)
+            ArgTypes, HeadTypeParams, yes(ConstraintSearch), Context,
+            PredId, QualifiedFuncName)
     ->
         % Convert function calls into predicate calls:
         % replace `X = f(A, B, C)' with `f(A, B, C, X)'.
@@ -1021,9 +1022,10 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         pred_info_get_exist_quant_tvars(!.PredInfo, ExistQVars),
         pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
         pred_info_get_markers(!.PredInfo, Markers),
+        Context = goal_info_get_context(GoalInfo0),
         get_pred_id_by_types(calls_are_fully_qualified(Markers), Name,
             PredOrFunc, TVarSet, ExistQVars, AllArgTypes, HeadTypeParams,
-            ModuleInfo, PredId)
+            ModuleInfo, Context, PredId)
     ->
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ProcIds = pred_info_procids(PredInfo),

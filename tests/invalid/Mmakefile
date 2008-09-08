@@ -23,7 +23,8 @@ MULTIMODULE_PROGS= \
 	test_nested \
 	transitive_import \
 	transitive_import_class \
-	undef_mod_qual
+	undef_mod_qual \
+	unresolved_overloading
 
 SINGLEMODULE= \
 	actual_expected \

@@ -541,10 +541,11 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
         RunPostTypecheck = !.Info ^ pi_run_post_typecheck,
         PredInfo = !.Info ^ pi_pred_info,
         ModuleInfo = !.Info ^ pi_module_info,
+        CallContext = goal_info_get_context(GoalInfo),
         (
             RunPostTypecheck = run_post_typecheck,
             finally_resolve_pred_overloading(ArgVars, PredInfo, ModuleInfo,
-                SymName0, SymName, PredId0, PredId),
+                CallContext, SymName0, SymName, PredId0, PredId),
             (
                 % Convert any calls to private_builtin.unsafe_type_cast
                 % into unsafe_type_cast generic calls.
@@ -564,7 +565,6 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             GoalExpr = GoalExpr0
         ),
         DeclaredPurity = goal_info_get_purity(GoalInfo),
-        CallContext = goal_info_get_context(GoalInfo),
         perform_goal_purity_checks(CallContext, PredId,
             DeclaredPurity, ActualPurity, !Info),
         Purity = ActualPurity,
@@ -929,6 +929,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     % variable's type.
     VarTypes = !.Info ^ pi_vartypes,
     map.lookup(VarTypes, Var, TypeOfVar),
+    Context = goal_info_get_context(GoalInfo),
     (
         ConsId = cons(PName, _),
         type_is_higher_order_details(TypeOfVar, TypePurity, PredOrFunc,
@@ -945,7 +946,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         (
             get_pred_id_by_types(calls_are_fully_qualified(CallerMarkers),
                 PName, PredOrFunc, TVarSet, ExistQTVars, PredArgTypes,
-                HeadTypeParams, ModuleInfo, CalleePredId)
+                HeadTypeParams, ModuleInfo, Context, CalleePredId)
         ->
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_get_purity(CalleePredInfo, CalleePurity),
@@ -970,7 +971,6 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         DeclaredPurity \= purity_pure,
         !.Info ^ pi_implicit_purity = dont_make_implicit_promises
     ->
-        Context = goal_info_get_context(GoalInfo),
         Spec = impure_unification_expr_error(Context, DeclaredPurity),
         purity_info_add_message(Spec, !Info)
     ;
