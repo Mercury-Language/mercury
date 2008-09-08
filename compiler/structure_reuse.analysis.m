@@ -149,7 +149,7 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
         % table.  Add procedures to the module as necessary.  Look up the
         % requests made for procedures in this module by other modules.
         process_intermod_analysis_reuse(!ModuleInfo, ReuseTable0,
-            ExternalRequests)
+            ExternalRequests, MustHaveReuseVersions)
     ;
         IntermodAnalysis = no,
         % Convert imported structure reuse information into structure reuse
@@ -161,7 +161,8 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
         % system.
         process_imported_reuse(!ModuleInfo),
         ReuseTable0 = load_structure_reuse_table(!.ModuleInfo),
-        ExternalRequests = []
+        ExternalRequests = [],
+        MustHaveReuseVersions = []
     ),
 
     some [!ReuseTable] (
@@ -219,11 +220,17 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
         % information (say, from `.trans_opt' files) we decide has no reuse
         % opportunities. Otherwise other modules may contain references to
         % reuse versions of procedures which we never produce.
-        create_forwarding_procedures(ReuseTable0, ReuseTable, !ModuleInfo)
+        maybe_create_forwarding_procedures_intermod_opt(ReuseTable0,
+            ReuseTable, !ModuleInfo)
     ;
-        IntermodAnalysis = yes
-        % We don't need to do anything here as we will have created procedures
-        % corresponding to existing structure reuse answers already.
+        IntermodAnalysis = yes,
+        % We may need to create forwarding procedures for procedures which had
+        % conditional reuse in the `.analysis' file, but which have no reuse
+        % or unconditional reuse now.  We should only need to do this for
+        % procedures with NoClobbers = [].
+        list.foldl(
+            maybe_create_forwarding_procedures_intermod_analysis(ReuseTable),
+            MustHaveReuseVersions, !ModuleInfo)
     ),
 
     ReuseTable = reuse_as_table(ReuseInfoMap, ReuseVersionMap),
@@ -388,18 +395,20 @@ get_numbered_args(I, [N | Ns], [Var | Vars], Selected) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred create_forwarding_procedures(reuse_as_table::in, reuse_as_table::in,
-    module_info::in, module_info::out) is det.
+:- pred maybe_create_forwarding_procedures_intermod_opt(reuse_as_table::in,
+    reuse_as_table::in, module_info::in, module_info::out) is det.
 
-create_forwarding_procedures(InitialReuseTable, FinalReuseTable,
-        !ModuleInfo) :-
-    map.foldl(create_forwarding_procedures_2(FinalReuseTable),
+maybe_create_forwarding_procedures_intermod_opt(
+        InitialReuseTable, FinalReuseTable, !ModuleInfo) :-
+    map.foldl(
+        maybe_create_forwarding_procedures_intermod_opt_2(FinalReuseTable),
         InitialReuseTable ^ reuse_info_map, !ModuleInfo).
 
-:- pred create_forwarding_procedures_2(reuse_as_table::in, pred_proc_id::in,
-    reuse_as_and_status::in, module_info::in, module_info::out) is det.
+:- pred maybe_create_forwarding_procedures_intermod_opt_2(reuse_as_table::in,
+    pred_proc_id::in, reuse_as_and_status::in,
+    module_info::in, module_info::out) is det.
 
-create_forwarding_procedures_2(FinalReuseTable, PPId,
+maybe_create_forwarding_procedures_intermod_opt_2(FinalReuseTable, PPId,
         reuse_as_and_status(InitialReuseAs, _), !ModuleInfo) :-
     PPId = proc(PredId, _),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
@@ -415,6 +424,28 @@ create_forwarding_procedures_2(FinalReuseTable, PPId,
         create_fake_reuse_procedure(PPId, NoClobbers, !ModuleInfo)
     ;
         true
+    ).
+
+:- pred maybe_create_forwarding_procedures_intermod_analysis(
+    reuse_as_table::in, pred_proc_id::in, module_info::in, module_info::out)
+    is det.
+
+maybe_create_forwarding_procedures_intermod_analysis(ReuseTable, PredProcId,
+        !ModuleInfo) :-
+    % The procedure PredProcId would have been listed as having conditional
+    % reuse for call pattern NoClobbers = [] in the analysis registry.  If our
+    % analysis of the procedure didn't create a conditional reuse version,
+    % then we need to produce a forwarding procedure to avoid linking
+    % problems.
+    (
+        reuse_as_table_search(ReuseTable, PredProcId, ReuseAs_Status),
+        ReuseAs_Status = reuse_as_and_status(ReuseAs, _),
+        reuse_as_conditional_reuses(ReuseAs)
+    ->
+        true
+    ;
+        NoClobbers = [],
+        create_fake_reuse_procedure(PredProcId, NoClobbers, !ModuleInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -494,20 +525,24 @@ process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
     % framework.
     %
 :- pred process_intermod_analysis_reuse(module_info::in, module_info::out,
-    reuse_as_table::out, list(sr_request)::out) is det.
+    reuse_as_table::out, list(sr_request)::out, list(pred_proc_id)::out)
+    is det.
 
-process_intermod_analysis_reuse(!ModuleInfo, ReuseTable, ExternalRequests) :-
+process_intermod_analysis_reuse(!ModuleInfo, ReuseTable, ExternalRequests,
+        MustHaveReuseVersions) :-
     module_info_predids(PredIds, !ModuleInfo), 
-    list.foldl3(process_intermod_analysis_reuse_pred, PredIds,
-        !ModuleInfo, reuse_as_table_init, ReuseTable, [], ExternalRequests0),
+    list.foldl4(process_intermod_analysis_reuse_pred, PredIds,
+        !ModuleInfo, reuse_as_table_init, ReuseTable, [], ExternalRequests0,
+        [], MustHaveReuseVersions),
     list.sort_and_remove_dups(ExternalRequests0, ExternalRequests).
 
 :- pred process_intermod_analysis_reuse_pred(pred_id::in,
     module_info::in, module_info::out, reuse_as_table::in, reuse_as_table::out,
-    list(sr_request)::in, list(sr_request)::out) is det.
+    list(sr_request)::in, list(sr_request)::out,
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 process_intermod_analysis_reuse_pred(PredId, !ModuleInfo, !ReuseTable,
-        !ExternalRequests) :- 
+        !ExternalRequests, !MustHaveReuseVersions) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
     ProcIds = pred_info_procids(PredInfo), 
@@ -523,9 +558,9 @@ process_intermod_analysis_reuse_pred(PredId, !ModuleInfo, !ReuseTable,
         % For procedures defined in this module we need to read in the answers
         % from previous passes to know which versions of procedures other
         % modules will be expecting.  We also need to read in new requests.
-        list.foldl(
+        list.foldl2(
             process_intermod_analysis_defined_proc(!.ModuleInfo, PredId),
-            ProcIds, !ExternalRequests)
+            ProcIds, !ExternalRequests, !MustHaveReuseVersions)
     ;
         true
     ).
@@ -603,10 +638,11 @@ structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer, Reuse) :-
     ).
 
 :- pred process_intermod_analysis_defined_proc(module_info::in, pred_id::in,
-    proc_id::in, list(sr_request)::in, list(sr_request)::out) is det.
+    proc_id::in, list(sr_request)::in, list(sr_request)::out,
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 process_intermod_analysis_defined_proc(ModuleInfo, PredId, ProcId,
-        !ExternalRequests) :-
+        !ExternalRequests, !MustHaveReuseVersions) :-
     PPId = proc(PredId, ProcId),
     module_info_get_analysis_info(ModuleInfo, AnalysisInfo),
     module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
@@ -622,7 +658,29 @@ process_intermod_analysis_defined_proc(ModuleInfo, PredId, ProcId,
         % Add new requests from other modules.
         lookup_requests(AnalysisInfo, analysis_name, ModuleName, FuncId,
             NewCalls),
-        list.foldl(add_reuse_request(PPId), NewCalls, !ExternalRequests)
+        list.foldl(add_reuse_request(PPId), NewCalls, !ExternalRequests),
+
+        % A procedure listed as having conditional reuse *must* have a reuse
+        % version procedure, even if in this analysis we don't find
+        % conditional reuse.
+        module_info_proc_info(ModuleInfo, PPId, ProcInfo),
+        FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
+        Call = structure_reuse_call([]),
+        lookup_best_result(AnalysisInfo, ModuleName, FuncId, FuncInfo, Call,
+            MaybeBestResult),
+        (
+            MaybeBestResult = yes(analysis_result(_, Answer, _)),
+            (
+                Answer = structure_reuse_answer_no_reuse
+            ;
+                Answer = structure_reuse_answer_unconditional
+            ;
+                Answer = structure_reuse_answer_conditional(_, _, _),
+                !:MustHaveReuseVersions = [PPId | !.MustHaveReuseVersions]
+            )
+        ;
+            MaybeBestResult = no
+        )
     ;
         true
     ).
