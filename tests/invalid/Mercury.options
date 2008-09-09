@@ -104,6 +104,8 @@ MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-undef_symbol = 		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+MCFLAGS-unresolved_overloading =    --no-intermodule-optimization \
+				    --no-automatic-intermodule-optimization
 
 # Include the verbose part of the error message where we have one.
 #
