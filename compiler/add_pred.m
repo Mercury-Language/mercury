@@ -240,13 +240,10 @@ add_builtin(PredId, Types, !PredInfo) :-
 
     goal_info_init(Context, GoalInfo0),
     NonLocals = proc_arg_vector_to_set(HeadVars),
-    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
     (
         Module = mercury_private_builtin_module,
         (
-            Name = "store_at_ref",
-            StubPrime = no
-        ;
             ( Name = "builtin_compound_eq"
             ; Name = "builtin_compound_lt"
             ),
@@ -254,6 +251,7 @@ add_builtin(PredId, Types, !PredInfo) :-
         )
     ->
         GoalExpr = conj(plain_conj, []),
+        GoalInfo = GoalInfo1,
         ExtraVars = [],
         ExtraTypes = [],
         VarSet = VarSet0,
@@ -292,6 +290,7 @@ add_builtin(PredId, Types, !PredInfo) :-
 
         Reason = promise_purity(dont_make_implicit_promises, purity_semipure),
         GoalExpr = scope(Reason, ConjGoal),
+        GoalInfo = GoalInfo1,
         Stub = no
     ;
         Module = mercury_private_builtin_module,
@@ -301,6 +300,7 @@ add_builtin(PredId, Types, !PredInfo) :-
         ConjGoal = hlds_goal(ConjExpr, GoalInfo),
         Reason = promise_purity(dont_make_implicit_promises, purity_impure),
         GoalExpr = scope(Reason, ConjGoal),
+        GoalInfo = GoalInfo1,
         ExtraVars = [],
         ExtraTypes = [],
         VarSet = VarSet0,
@@ -314,6 +314,8 @@ add_builtin(PredId, Types, !PredInfo) :-
         % XXX ARGVEC
         GoalExpr = plain_call(PredId, ModeId, HeadVarList, inline_builtin,
             MaybeUnifyContext, SymName),
+        pred_info_get_purity(!.PredInfo, Purity),
+        goal_info_set_purity(Purity, GoalInfo1, GoalInfo),
         ExtraVars = [],
         ExtraTypes = [],
         VarSet = VarSet0,

@@ -1558,6 +1558,7 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
     is semidet.
 
 no_type_info_builtin_2(private_builtin, "store_at_ref", 2).
+no_type_info_builtin_2(private_builtin, "store_at_ref_impure", 2).
 no_type_info_builtin_2(private_builtin, "unsafe_type_cast", 2).
 no_type_info_builtin_2(builtin, "unsafe_promise_unique", 2).
 no_type_info_builtin_2(private_builtin,

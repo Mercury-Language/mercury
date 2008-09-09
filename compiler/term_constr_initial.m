@@ -558,6 +558,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
             ConstraintsPrime = [make_vars_eq_constraint(SizeVar1, SizeVar2)]
         ;
             ( PredName = "store_at_ref"
+            ; PredName = "store_at_ref_impure"
             ; PredName = "builtin_compound_eq"
             ; PredName = "builtin_compound_lt"
             )

@@ -181,6 +181,8 @@ builtin_translation("private_builtin", "trace_set_io_state", 0, [_X],
 
 builtin_translation("private_builtin", "store_at_ref", 0, [X, Y],
     ref_assign(X, Y)).
+builtin_translation("private_builtin", "store_at_ref_impure", 0, [X, Y],
+    ref_assign(X, Y)).
 
     % Note that the code we generate for unsafe_type_cast is not type-correct.
     % Back-ends that require type-correct intermediate code (e.g. the MLDS

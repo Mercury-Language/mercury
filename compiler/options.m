@@ -2630,6 +2630,8 @@ long_option("foreign-enum-switch-fix",
                                     compiler_sufficiently_recent).
 long_option("failing-disjunct-in-switch-dup-fix",
                                     compiler_sufficiently_recent).
+long_option("store-at-ref-impure-2008-09-11",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("feedback-file",        feedback_file).
 

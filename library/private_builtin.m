@@ -1450,6 +1450,7 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
     % will happen if this is used in programs.
     %
 :- pred store_at_ref(store_at_ref_type(T)::in, T::in) is det.
+% :- impure pred store_at_ref_impure(store_at_ref_type(T)::in, T::in) is det.
 
     % This type should be used only by the program transformation that
     % introduces calls to store_at_ref. Any other use is will cause bad things
