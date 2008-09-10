@@ -1160,6 +1160,8 @@ enum MR_long_option {
     MR_SOLUTIONS_HEAP_SIZE_KWORDS,
     MR_TRAIL_SIZE,
     MR_TRAIL_SIZE_KWORDS,
+    MR_TRAIL_SEGMENT_SIZE,
+    MR_TRAIL_SEGMENT_SIZE_KWORDS,
     MR_HEAP_REDZONE_SIZE,
     MR_HEAP_REDZONE_SIZE_KWORDS,
     MR_DETSTACK_REDZONE_SIZE,
@@ -1241,6 +1243,8 @@ struct MR_option MR_long_opts[] = {
     { "solutions-heap-size-kwords",     1, 0, MR_SOLUTIONS_HEAP_SIZE_KWORDS },
     { "trail-size",                     1, 0, MR_TRAIL_SIZE },
     { "trail-size-kwords",              1, 0, MR_TRAIL_SIZE_KWORDS },
+    { "trail-segment-size",             1, 0, MR_TRAIL_SEGMENT_SIZE },
+    { "trail-segment-size-kwords",      1, 0, MR_TRAIL_SEGMENT_SIZE_KWORDS },
     { "heap-redzone-size",              1, 0, MR_HEAP_REDZONE_SIZE },
     { "heap-redzone-size-kwords",       1, 0, MR_HEAP_REDZONE_SIZE_KWORDS },
     { "detstack-redzone-size",          1, 0, MR_DETSTACK_REDZONE_SIZE },
@@ -1435,16 +1439,40 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_trail_size = size;
+                #if !defined(MR_TRAIL_SEGMENTS)
+                    MR_trail_size = size;
+                #endif
                 break;
 
             case MR_TRAIL_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
                     MR_usage();
                 }
-
-                MR_trail_size = size * sizeof(MR_Word);
+                
+                #if !defined(MR_TRAIL_SEGMENTS)
+                    MR_trail_size = size * sizeof(MR_Word);
+                #endif
                 break;
+
+            case MR_TRAIL_SEGMENT_SIZE:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                #if defined(MR_TRAIL_SEGMENTS)
+                    MR_trail_size = size;
+                #endif
+                break;
+
+            case MR_TRAIL_SEGMENT_SIZE_KWORDS:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                #if defined(MR_TRAIL_SEGMENTS)
+                    MR_trail_size = size * sizeof(MR_Word);
+                #endif
+                break; 
 
             case MR_HEAP_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {

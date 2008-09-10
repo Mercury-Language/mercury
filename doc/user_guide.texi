@@ -9646,6 +9646,7 @@ multiplied by the word size in bytes.
 @findex --trail-size
 @cindex Trail size
 Sets the size of the trail to @var{size} kilobytes.
+This option is ignored in grades that use trail segments.
 
 @sp 1
 @item --trail-size-kwords @var{size}
@@ -9653,6 +9654,22 @@ Sets the size of the trail to @var{size} kilobytes.
 @cindex Trail size
 Sets the size of the trail to @var{size} kilobytes
 multiplied by the word size in bytes.
+This option is ignored in grades that use trail segments.
+
+@sp 1
+@item --trail-segment-size @var{size}
+@findex --trail-segment-size
+@cindex Trail size
+Sets the size of each trail segment to be @var{size} kilobytes.
+This option is ignored in grades that do not use trail segments.
+
+@sp 1
+@item --trail-segment-size-kwords @var{size}
+@findex --trail-seggment-size-kwords
+@cindex Trail size
+Set the size of each trail segment to be @var{size} kilobytes
+multiplied by the words size in bytes.
+This option is ignored in grades that do not use trail segements.
 
 @sp 1
 @item --genstack-size @var{size}
