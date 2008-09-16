@@ -62,6 +62,10 @@ ENDINIT
 #include    "mercury_memory_handlers.h" /* for MR_default_handler */
 #include    "mercury_thread.h"          /* for MR_debug_threads */
 
+#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
+  #define snprintf	_snprintf
+#endif
+
 /* global variables concerned with testing (i.e. not with the engine) */
 
 /* command-line options */
