@@ -291,7 +291,7 @@
     % main and orelse goals. If the type is top_level_atomic_goal or
     % nested_atomic_goal, then the conversion predicates *have* been added.
 :- type atomic_goal_type
-    --->    unknown_atomic_goal_type 
+    --->    unknown_atomic_goal_type
     ;       top_level_atomic_goal
     ;       nested_atomic_goal.
 
@@ -573,7 +573,7 @@
 
 :- inst rhs_lambda_goal
     --->    rhs_lambda_goal(ground, ground, ground, ground, ground, ground,
-                ground, ground, ground). 
+                ground, ground, ground).
 
     % Was the constructor originally of the form 'new ctor'(...).
     %
@@ -1073,7 +1073,7 @@
 
 :- type missed_message == string.
 
-    % Goal Information used by the deep profiler.
+    % Information about the goal used by the deep profiler.
     %
 :- type dp_goal_info
     --->    dp_goal_info(
@@ -1081,15 +1081,14 @@
                 maybe(dp_coverage_goal_info)
             ).
 
-    % Descrbe weather this goal has been introduced because as instrumentation
-    % used by the deep profiler.
+    % Was this goal introduced by the deep profiler as instrumentation code?
     %
 :- type goal_is_mdprof_inst
     --->    goal_is_mdprof_inst
     ;       goal_is_not_mdprof_inst.
 
-    % Information used by the deep profilier to preform coverage profiling.
-    % Predicates to operate on these types exist in deep_profiling.m
+    % Information used by the deep profiler to perform coverage profiling.
+    % The predicates that operate on these types are in deep_profiling.m.
     %
 :- type dp_coverage_goal_info
     --->    dp_coverage_goal_info(
@@ -1100,11 +1099,10 @@
 :- type goal_trivial
     --->    goal_is_trivial
     ;       goal_is_nontrivial.
-   
+
 :- type goal_has_port_counts
     --->    goal_has_port_counts
     ;       goal_does_not_have_port_counts.
-
 
 :- pred goal_info_init(hlds_goal_info::out) is det.
 :- pred goal_info_init(prog_context::in, hlds_goal_info::out) is det.

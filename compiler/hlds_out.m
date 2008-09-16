@@ -1444,25 +1444,32 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ( string.contains_char(Verbose, 'E') ->
         MaybeDPInfo = goal_info_get_maybe_dp_info(GoalInfo),
         (
-            MaybeDPInfo = yes(dp_goal_info(_, MaybeDPCoverageInfo)),
+            MaybeDPInfo = yes(dp_goal_info(MdprofInst, MaybeDPCoverageInfo)),
             (
-                MaybeDPCoverageInfo = yes(dp_coverage_goal_info(Trivial,
-                    HasPortCounts)),
+                MdprofInst = goal_is_mdprof_inst,
+                write_indent(Indent, !IO),
+                io.write_string("% mdprof instrumentation\n", !IO)
+            ;
+                MdprofInst = goal_is_not_mdprof_inst
+            ),
+            (
+                MaybeDPCoverageInfo = yes(CoverageInfo),
+                CoverageInfo = dp_coverage_goal_info(IsTrivial, HasPortCounts),
                 write_indent(Indent, !IO),
                 (
-                    Trivial = goal_is_trivial,
-                    io.write_string("% Goal is trivial, ", !IO)
+                    IsTrivial = goal_is_trivial,
+                    io.write_string("% trivial goal\n", !IO)
                 ;
-                    Trivial = goal_is_nontrivial,
-                    io.write_string("% Goal is non-trivial, ", !IO)
+                    IsTrivial = goal_is_nontrivial,
+                    io.write_string("% nontrivial goal\n", !IO)
                 ),
+                write_indent(Indent, !IO),
                 (
                     HasPortCounts = goal_has_port_counts,
-                    io.write_string("Goal has port counts avalible.\n", !IO)
+                    io.write_string("% has port counts\n", !IO)
                 ;
                     HasPortCounts = goal_does_not_have_port_counts,
-                    io.write_string("Goal does not have port counts avalible.\n", 
-                        !IO)
+                    io.write_string("% does not have port counts\n", !IO)
                 )
             ;
                 MaybeDPCoverageInfo = no
