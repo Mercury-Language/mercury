@@ -29,12 +29,18 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "mercury_conf.h"		/* for MR_HAVE_UNISTD_H */
 #include "mercury_misc.h"               /* for MR_fatal_error */
 #include "mercury_trace_term.h"         /* for MR_Cterm etc */
 
 #include "mercury_event_spec.h"
 #include "mercury_event_spec_missing.h"
 #include "mercury_event_parser.h"
+
+#ifndef MR_HAVE_UNISTD_H
+#define YY_NO_UNISTD_H
+#endif
+
 
 /*
 ** We should #include mercury_event_scanner.h as well, but flex puts into the

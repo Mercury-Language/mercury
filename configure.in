@@ -1569,6 +1569,15 @@ AC_CACHE_VAL(mercury_cv_int_least64_type,
             exit(0);
         }
 
+    /* Check for __int64 when using MSVC */
+    #ifdef _MSCVER
+        if (sizeof(__int64) * CHAR_BIT >= 64)
+        {
+            fprintf(fp, "__int64\n");
+            exit(0);
+        }
+    #endif
+
         fprintf(fp, "unknown\n");
         exit(1);
     }],
