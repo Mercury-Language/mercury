@@ -133,7 +133,8 @@
                 csf_kind                    :: call_site_kind_and_info(
                                                 normal_callee_id),
                 csf_summary_perf            :: perf_row_data(call_site_desc),
-                csf_sub_callees             :: list(perf_row_data(proc_desc))
+                csf_sub_callees             :: list(perf_row_data(proc_desc)),
+                csf_goal_path               :: goal_path
             ).
 
 :- type normal_callee_id
@@ -142,7 +143,21 @@
                 nci_type_subst              :: string
             ).
 
-:- type procrep_coverage_info == proc_rep.
+:- type procrep_coverage_info
+    --->    procrep_coverage_info(
+                prci_proc                   :: proc_static_ptr,
+                prci_proc_rep               :: proc_rep(coverage_info)
+            ).
+
+:- type coverage_info
+    --->    coverage_unknown
+    ;       coverage_known_det(int)
+                % Coverage is known both before and after the goal, and the
+                % coverage is the same before as it is after.
+
+    ;       coverage_known(int, int)
+    ;       coverage_known_before(int)
+    ;       coverage_known_after(int).
 
 :- type proc_callers_report
     --->    proc_callers_report(

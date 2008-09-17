@@ -49,6 +49,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module svmap.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%
@@ -299,6 +300,13 @@ create_call_site_summary(Deep, CSSPtr) = CallSitePerf :-
     deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
     KindAndCallee = CSS ^ css_kind,
     CallerPSPtr = CSS ^ css_container,
+    GoalPathString = CSS ^ css_goal_path,
+    ( goal_path_from_string(GoalPathString, GoalPathPrime) ->
+        GoalPath = GoalPathPrime
+    ;
+        error("create_call_site_summary: " ++ 
+            "Couldn't convert string to goal path: " ++ GoalPathString)
+    ),
 
     deep_lookup_call_site_calls(Deep, CSSPtr, CallSiteCallMap),
     map.to_assoc_list(CallSiteCallMap, CallSiteCalls),
@@ -350,7 +358,8 @@ create_call_site_summary(Deep, CSSPtr) = CallSitePerf :-
         own_and_inherit_to_perf_row_data(Deep, CallSiteDesc, SumOwn, SumDesc,
             SummaryRowData)
     ),
-    CallSitePerf = call_site_perf(KindAndInfo, SummaryRowData, SubRowDatas).
+    CallSitePerf = call_site_perf(KindAndInfo, SummaryRowData, SubRowDatas, 
+        GoalPath).
 
 :- type call_site_callee_perf
     --->    call_site_callee_perf(
@@ -540,14 +549,57 @@ generate_procrep_coverage_dump_report(Deep, ProgRep, PSPtr, MaybeReport) :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         ProcLabel = PS ^ ps_id,
-        ( progrep_search_proc(ProgRep, ProcLabel, ProcRep) ->
-            MaybeReport = ok(ProcRep)
+        ( progrep_search_proc(ProgRep, ProcLabel, ProcRep0) ->
+            % Information about the procedure.
+            deep_lookup_ps_own(Deep, PSPtr, Own),
+
+            % Gather call site information.
+            CallSitesArray = PS ^ ps_sites,
+            array.foldl(create_cs_summary_add_to_map(Deep), CallSitesArray, 
+                map.init) = CallSitesMap,
+
+            % Gather information about coverage points.
+            CoveragePointsArray = PS ^ ps_coverage_points,
+            array.foldl2(add_coverage_point_to_map, CoveragePointsArray, 
+                map.init, SolnsCoveragePointMap,
+                map.init, BranchCoveragePointMap),
+
+            procrep_annotate_with_coverage(Own, CallSitesMap,
+                SolnsCoveragePointMap, BranchCoveragePointMap, 
+                ProcRep0, ProcRep),
+            MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep))
         ;
-            MaybeReport = 
+            MaybeReport =
                 error("Program Representation doesn't contain procedure")
         )
     ;
         MaybeReport = error("Invalid proc_static index")
+    ).
+
+:- func create_cs_summary_add_to_map(deep, call_site_static_ptr, 
+    map(goal_path, call_site_perf)) =  map(goal_path, call_site_perf).
+
+create_cs_summary_add_to_map(Deep, CSStatic, Map0) = Map :-
+    create_call_site_summary(Deep, CSStatic) = CSSummary,
+    GoalPath = CSSummary ^ csf_goal_path,
+    map.det_insert(Map0, GoalPath, CSSummary, Map).
+
+:- pred add_coverage_point_to_map(coverage_point::in, 
+    map(goal_path, coverage_point)::in, map(goal_path, coverage_point)::out, 
+    map(goal_path, coverage_point)::in, map(goal_path, coverage_point)::out)
+    is det.
+
+add_coverage_point_to_map(CoveragePoint, !SolnsMap, !BranchMap) :-
+    CoveragePoint = coverage_point(_, GoalPath, CPType),
+    (
+        ( CPType = cp_type_solns_may_fail
+        ; CPType = cp_type_solns_multi
+        ; CPType = cp_type_solns_any
+        ),
+        svmap.det_insert(GoalPath, CoveragePoint, !SolnsMap)
+    ;
+        CPType = cp_type_branch_arm,
+        svmap.det_insert(GoalPath, CoveragePoint, !BranchMap)
     ).
 
 %-----------------------------------------------------------------------------%

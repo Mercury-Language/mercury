@@ -811,6 +811,7 @@ detach_process(Result, !IO) :-
     ;       localhost
     ;       modules
     ;       proc
+    ;       procrep_coverage
     ;       quit
     ;       root
     ;       record_startup
@@ -848,6 +849,7 @@ long("help",                help).
 long("localhost",           localhost).
 long("modules",             modules).
 long("proc",                proc).
+long("procrep-coverage",    procrep_coverage).
 long("quit",                quit).
 long("root",                root).
 long("record-startup",      record_startup).
@@ -870,6 +872,7 @@ defaults(help,                  bool(no)).
 defaults(localhost,             bool(no)).
 defaults(modules,               bool(no)).
 defaults(proc,                  int(0)).
+defaults(procrep_coverage,      int(0)).
 defaults(quit,                  bool(no)).
 defaults(root,                  bool(no)).
 defaults(record_loop,           bool(yes)).
@@ -886,15 +889,18 @@ default_cmd(Options) = Cmd :-
     lookup_bool_option(Options, root, Root),
     lookup_bool_option(Options, modules, Modules),
     lookup_int_option(Options, clique, CliqueNum),
-    lookup_int_option(Options, proc, ProcNum),
+    lookup_int_option(Options, proc, ProcProcNum),
+    lookup_int_option(Options, procrep_coverage, ProcrepCoverageProcNum),
     ( Root = yes ->
         Cmd = deep_cmd_root(no)
     ; Modules = yes ->
         Cmd = deep_cmd_program_modules
     ; CliqueNum > 0 ->
         Cmd = deep_cmd_clique(clique_ptr(CliqueNum))
-    ; ProcNum > 0 ->
-        Cmd = deep_cmd_proc(proc_static_ptr(ProcNum))
+    ; ProcProcNum > 0 ->
+        Cmd = deep_cmd_proc(proc_static_ptr(ProcProcNum))
+    ; ProcrepCoverageProcNum > 0 ->
+        Cmd = deep_cmd_procrep_coverage(proc_static_ptr(ProcrepCoverageProcNum))
     ; Quit = yes ->
         Cmd = deep_cmd_quit
     ;

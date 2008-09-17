@@ -120,16 +120,20 @@ main2(ProgName, Args, Options, !IO) :-
         read_and_startup(Machine, ScriptName, FileName, Canonical,
             MaybeOutput, DumpStages, DumpOptions, Res, !IO),
         (
-            ( Res = deep_and_error(Deep, _)
-            ; Res = deep_and_progrep(Deep, _)
+            (
+                Res = deep_and_error(Deep, _),
+                MaybeProgrep = error("Couldn't read Deep.procrep file")
+            ; 
+                Res = deep_and_progrep(Deep, ProgRep),
+                MaybeProgrep = ok(ProgRep)
             ),
             lookup_bool_option(Options, test, Test),
             (
                 Test = no
             ;
                 Test = yes,
-                lookup_string_option(Options, test_dir, TestDir),
-                test_server(TestDir, default_preferences(Deep), Deep, !IO)
+                test_server(default_preferences(Deep), Deep, MaybeProgrep,
+                    Options, !IO)
             )
         ;
             Res = error(Error),
@@ -202,59 +206,81 @@ write_version_message(ProgName, !IO) :-
 
 write_help_message(ProgName) -->
     io.format("Usage: %s [<options>] <filename>\n", [s(ProgName)]),
-    io.format("<filename> must name a deep profiling data file.\n", []),
-    io.format("You should specify one of the following options:\n", []),
-    io.format("--help      Generate this help message.\n", []),
-    io.format("--version   Report the program's version number.\n", []),
-    io.format("--verbose   Generate progress messages during startup.\n", []),
-    io.format("--test      Test the deep profiler, generating all\n", []),
-    io.format("            possible web pages of the popular types.\n", []),
-    io.format("--verify-profile\n", []),
-    io.format("            Verify that <filename> is a well-formed\n",
-        []),
-    io.format("            deep profiling data file.\n", []),
-    io.nl,
-    io.format("You may also specify the following options:.\n", []),
-    io.format("--test-dir <dirname>\n", []),
-    io.format("            Put the generated web pages into <dirname>.\n",
-        []).
+    io.write_string(
+        "<filename> must name a deep profiling data file.\n" ++
+        "You should specify one of the following options:\n" ++
+        "--help      Generate this help message.\n" ++
+        "--version   Report the program's version number.\n" ++
+        "--verbose   Generate progress messages during startup.\n" ++
+        "--test      Test the deep profiler, generating all\n" ++
+        "\t\t\tpossible web pages of the popular types.\n" ++
+        "--verify-profile\n" ++
+        "\t\t\tVerify that <filename> is a well-formed deep profiling\n" ++ 
+        "\t\t\tdata file.\n" ++
+        "\n" ++
+        "You may also specify the following options:.\n" ++
+        "--test-dir <dirname>\n" ++
+        "\t\t\tPut the generated web pages into <dirname>.\n" ++
+        "--no-compress\n" ++
+        "\t\t\tDon't compress the resulting files, this speeds the test.").
     % --canonical-clique is not documented because it is not yet supported
 
 %-----------------------------------------------------------------------------%
 
-:- pred test_server(string::in, preferences::in, deep::in,
-    io::di, io::uo) is cc_multi.
+:- pred test_server(preferences::in, deep::in, maybe_error(prog_rep)::in,
+    option_table::in, io::di, io::uo) is cc_multi.
 
-test_server(DirName, Pref, Deep, !IO) :-
+test_server(Pref, Deep, MaybeProgrep, Options, !IO) :-
+    lookup_string_option(Options, test_dir, DirName),
     string.format("test -d %s || mkdir -p %s", [s(DirName), s(DirName)], Cmd),
     io.call_system(Cmd, _, !IO),
-    array.max(Deep ^ clique_members, NumCliques),
-    test_cliques(1, NumCliques, DirName, Pref, Deep, !IO),
+    
+    %XXX: These features have been disabled.  Configuration options should be
+    % introduced to enable them as the user desires.
+    % array.max(Deep ^ clique_members, NumCliques),
+    % test_cliques(1, NumCliques, DirName, Pref, Deep, !IO),
+    % test_procs(1, NumProcStatics, DirName, Pref, Deep, !IO).
+    
     array.max(Deep ^ proc_statics, NumProcStatics),
-    test_procs(1, NumProcStatics, DirName, Pref, Deep, !IO).
+    test_procrep_coverages(1, NumProcStatics, Pref, Deep, MaybeProgrep,
+        Options, !IO).
 
-:- pred test_cliques(int::in, int::in, string::in, preferences::in, deep::in,
-    io::di, io::uo) is cc_multi.
+:- pred test_cliques(int::in, int::in, option_table::in, preferences::in,
+    deep::in, io::di, io::uo) is cc_multi.
 
-test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
+test_cliques(Cur, Max, Options, Pref, Deep, !IO) :-
     ( Cur =< Max ->
         try_exec(deep_cmd_clique(clique_ptr(Cur)), Pref, Deep, progrep_error,
             HTML, !IO),
-        write_test_html(DirName, "clique", Cur, HTML, !IO),
-        test_cliques(Cur + 1, Max, DirName, Pref, Deep, !IO)
+        write_test_html(Options, "clique", Cur, HTML, !IO),
+        test_cliques(Cur + 1, Max, Options, Pref, Deep, !IO)
     ;
         true
     ).
 
-:- pred test_procs(int::in, int::in, string::in, preferences::in, deep::in,
-    io::di, io::uo) is cc_multi.
+:- pred test_procs(int::in, int::in, option_table::in, preferences::in,
+    deep::in, io::di, io::uo) is cc_multi.
 
-test_procs(Cur, Max, DirName, Pref, Deep, !IO) :-
+test_procs(Cur, Max, Options, Pref, Deep, !IO) :-
     ( Cur =< Max ->
         try_exec(deep_cmd_proc(proc_static_ptr(Cur)), Pref, Deep,
             progrep_error, HTML, !IO),
-        write_test_html(DirName, "proc", Cur, HTML, !IO),
-        test_procs(Cur + 1, Max, DirName, Pref, Deep, !IO)
+        write_test_html(Options, "proc", Cur, HTML, !IO),
+        test_procs(Cur + 1, Max, Options, Pref, Deep, !IO)
+    ;
+        true
+    ).
+
+:- pred test_procrep_coverages(int::in, int::in, preferences::in, deep::in,
+    maybe_error(prog_rep)::in, option_table::in, io::di, io::uo) is cc_multi.
+
+test_procrep_coverages(Cur, Max, Pref, Deep, MaybeProgrep, Options, !IO) :-
+    ( Cur =< Max ->
+        try_exec(deep_cmd_procrep_coverage(proc_static_ptr(Cur)), Pref, Deep,
+            MaybeProgrep, HTML, !IO),
+        write_test_html(Options, "procrep_coverage", Cur, HTML, !IO),
+        test_procrep_coverages(Cur + 1, Max, Pref, Deep, MaybeProgrep,
+            Options, !IO)
     ;
         true
     ).
@@ -264,10 +290,10 @@ test_procs(Cur, Max, DirName, Pref, Deep, !IO) :-
 progrep_error = 
     error("No Program Representation available when using mdprof_test").
 
-:- pred write_test_html(string::in, string::in, int::in, string::in,
+:- pred write_test_html(option_table::in, string::in, int::in, string::in,
     io::di, io::uo) is det.
 
-write_test_html(DirName, BaseName, Num, HTML, !IO) :-
+write_test_html(Options, BaseName, Num, HTML, !IO) :-
     % For large programs such as the Mercury compiler, the profiler data
     % file may contain hundreds of thousands of cliques. We therefore put
     % each batch of pages in a different subdirectory, thus limiting the
@@ -275,6 +301,7 @@ write_test_html(DirName, BaseName, Num, HTML, !IO) :-
     %
     % XXX consider splitting up this predicate
     Bunch = (Num - 1) // 1000,
+    lookup_string_option(Options, test_dir, DirName),
     string.format("%s/%s_%04d",
         [s(DirName), s(BaseName), i(Bunch)], BunchName),
     ( (Num - 1) rem 1000 = 0 ->
@@ -291,8 +318,14 @@ write_test_html(DirName, BaseName, Num, HTML, !IO) :-
         Res = ok(Stream),
         io.write_string(Stream, HTML, !IO),
         io.close_output(Stream, !IO),
-        string.format("gzip %s", [s(FileName)], GzipCmd),
-        io.call_system(GzipCmd, _, !IO)
+        lookup_bool_option(Options, compress, Compress),
+        (
+            Compress = yes,
+            string.format("gzip %s", [s(FileName)], GzipCmd),
+            io.call_system(GzipCmd, _, !IO)
+        ;
+            Compress = no
+        )
     ;
         Res = error(Err),
         io.error_message(Err, ErrMsg),
@@ -305,7 +338,7 @@ write_test_html(DirName, BaseName, Num, HTML, !IO) :-
     --->    canonical_clique
     ;       dump
     ;       dump_options
-    ;       flat
+    ;       compress
     ;       help
     ;       test
     ;       test_dir
@@ -327,6 +360,7 @@ short('v',  verbose).
 :- pred long(string::in, option::out) is semidet.
 
 long("canonical-clique",    canonical_clique).
+long("compress",            compress).
 long("dump",                dump).
 long("dump-options",        dump_options).
 long("help",                help).
@@ -339,6 +373,7 @@ long("verify-profile",      verify_profile).
 :- pred defaults(option::out, option_data::out) is multi.
 
 defaults(canonical_clique,  bool(no)).
+defaults(compress,          bool(yes)).
 defaults(dump,              accumulating([])).
 defaults(dump_options,      accumulating([])).
 defaults(help,              bool(no)).

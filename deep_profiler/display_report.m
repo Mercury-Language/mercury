@@ -118,7 +118,7 @@ report_to_display(Deep, Prefs, Report) = Display :-
         Report = report_procrep_coverage_dump(MaybeProcrepCoverageInfo),
         (
             MaybeProcrepCoverageInfo = ok(ProcrepCoverageInfo),
-            display_report_procrep_coverage_info(ProcrepCoverageInfo,
+            display_report_procrep_coverage_info(Prefs, ProcrepCoverageInfo,
                 Display)
         ;
             MaybeProcrepCoverageInfo = error(Msg),
@@ -574,6 +574,7 @@ display_report_proc(Prefs, ProcReport, Display) :-
     SortControls = sort_controls(Prefs, Cmd),
     FieldControls = field_controls(Prefs, Cmd),
     FormatControls = format_controls(Prefs, Cmd),
+    ProcReportControls = proc_reports_controls(Prefs, PSPtr, Cmd),
     MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
 
     Display = display(yes(Title),
@@ -583,13 +584,14 @@ display_report_proc(Prefs, ProcReport, Display) :-
         display_paragraph_break, SortControls,
         display_paragraph_break, FieldControls,
         display_paragraph_break, FormatControls,
+        display_paragraph_break, ProcReportControls,
         display_paragraph_break, MenuRestartQuitControls]).
 
 :- func report_proc_call_site(preferences, call_site_perf) = list(table_row).
 
 report_proc_call_site(Prefs, CallSitePerf) = Rows :-
     CallSitePerf =
-        call_site_perf(KindAndCallee, SummaryPerfRowData, SubPerfs0),
+        call_site_perf(KindAndCallee, SummaryPerfRowData, SubPerfs0, _),
 
     CallSiteDesc = SummaryPerfRowData ^ perf_row_subject,
     FileName = CallSiteDesc ^ csdesc_file_name,
@@ -993,15 +995,51 @@ make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum,
 % Code to display procrep_coverage dumps 
 %
 
-:- pred display_report_procrep_coverage_info(procrep_coverage_info::in,
-    display::out) is det.
+:- pred display_report_procrep_coverage_info(preferences::in,
+    procrep_coverage_info::in, display::out) is det.
 
-display_report_procrep_coverage_info(ProcrepCoverageInfo, Display) :-
-    Title = "Procrep coverage dump",
-    print_proc_to_strings(ProcrepCoverageInfo, ProcRepStrings),
+display_report_procrep_coverage_info(Prefs, ProcrepCoverageReport, Display) :-
+    ProcrepCoverageReport = procrep_coverage_info(PSPtr, ProcrepCoverage),
+    print_proc_to_strings(ProcrepCoverage, ProcRepStrings),
     string.append_list(list(ProcRepStrings), ProcRepString),
-    Display = display(yes(Title), [display_verbatim(ProcRepString)]).
-    
+    CoverageInfoItem = display_verbatim(ProcRepString),
+
+    Cmd = deep_cmd_procrep_coverage(PSPtr),
+    ProcReportControls = proc_reports_controls(Prefs, PSPtr, Cmd),
+    MenuResetQuitControls = cmds_menu_restart_quit(yes(Prefs)),
+    Controls = [display_paragraph_break, ProcReportControls, 
+                display_paragraph_break, MenuResetQuitControls], 
+
+    Title = "Procrep coverage dump",
+    Display = display(yes(Title), [CoverageInfoItem] ++ Controls).
+
+:- instance goal_annotation(coverage_info) where [
+        pred(print_goal_annotation_to_strings/2) is coverage_to_cord_string
+    ].
+
+    % Print the coverage information for a goal, this is used by
+    % print_proc_to_strings.
+    %
+:- pred coverage_to_cord_string(coverage_info::in, cord(string)::out) is det.
+
+coverage_to_cord_string(Coverage, cord.singleton(String)) :-
+    (
+        Coverage = coverage_unknown,
+        String = " _ - _"
+    ;
+        Coverage = coverage_known(Before, After),
+        String = string.format(" %d - %d", [i(Before), i(After)])
+    ;
+        Coverage = coverage_known_det(Count),
+        String = string.format(" %d - %d", [i(Count), i(Count)])
+    ;
+        Coverage = coverage_known_before(Before),
+        String = string.format(" %d - _", [i(Before)])
+    ;
+        Coverage = coverage_known_after(After),
+        String = string.format(" _ - %d", [i(After)])
+    ).
+
 
 %-----------------------------------------------------------------------------%
 %
@@ -2530,6 +2568,38 @@ set_colour_column_groups(Colour, !Prefs) :-
 set_box_tables(Box, !Prefs) :-
     !Prefs ^ pref_box := Box.
 
+%----------------------------------------------------------------------------%
+%
+% Controls for related procedure reports.
+%
+
+:- func proc_reports_controls(preferences, proc_static_ptr, cmd) = display_item.
+
+proc_reports_controls(Prefs, Proc, NotCmd) = ControlsItem :-
+    make_cmd_controls_item(Prefs, proc_reports(Proc, NotCmd),
+        ProcReportControls),
+    ControlsItem = display_list(list_class_vertical_no_bullets,
+        yes("Related procedure reports:"), [ProcReportControls]).
+
+:- func proc_reports(proc_static_ptr, cmd) = assoc_list(cmd, string).
+
+proc_reports(Proc, NotCmd) = Reports :-
+    Reports0 = [
+        deep_cmd_proc(Proc) - "Procedure",
+        deep_cmd_procrep_coverage(Proc) -
+            "Coverage annotated Procedure Representation"
+        ],
+    list.filter((pred((Cmd - _)::in) is semidet :-
+            Cmd \= NotCmd
+        ), Reports0, Reports).
+
+:- pred make_cmd_controls_item(preferences::in, assoc_list(cmd, string)::in, 
+    display_item::out) is det.
+
+make_cmd_controls_item(Prefs, LabeledCmds, Item) :-
+    list.map(make_control(yes(Prefs)), LabeledCmds, CmdItems),
+    Item = display_list(list_class_horizontal, no, CmdItems).
+
 %-----------------------------------------------------------------------------%
 %
 % Control whether we display inactive modules.
@@ -2796,12 +2866,21 @@ call_site_desc_to_cell(Prefs, CallSiteDesc) = table_cell(Data) :-
 make_labelled_table_row(Label - Value) =
     table_row([table_cell(td_s(Label)), table_cell(Value)]).
 
-    % Make a link for use in the menu report.
+    % Make a link from a command and label.
     %
 :- pred make_link(pair(cmd, string)::in, display_item::out) is det.
 
 make_link(Cmd - Label, Item) :-
     Item = display_link(deep_link(Cmd, no, Label, link_class_link)).
+
+    % Make a control from a command and label and optional preferences
+    % structure.
+    %
+:- pred make_control(maybe(preferences)::in, pair(cmd, string)::in,
+    display_item::out) is det.
+
+make_control(MaybePrefs, Cmd - Label, Item) :-
+    Item = display_link(deep_link(Cmd, MaybePrefs, Label, link_class_control)).
 
 %-----------------------------------------------------------------------------%
 %
