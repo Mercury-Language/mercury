@@ -82,7 +82,7 @@ apply_deep_profiling_transformation(!ModuleInfo) :-
     module_info_predids(PredIds, !ModuleInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_get_preds(PredTable0, PredMap0),
-    list.foldl(transform_predicate(!.ModuleInfo), PredIds, PredMap0, PredMap),
+    list.foldl(transform_predicate(!.ModuleInfo), PredIds, PredMap0, PredMap), 
     predicate_table_set_preds(PredMap, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
@@ -2047,6 +2047,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         CoverageAfterKnown0, NextCoverageAfterKnown, !Info, AddedImpurity) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Detism = GoalInfo0 ^ goal_info_get_determinism,
+    CPOptions = !.Info ^ ci_coverage_profiling_opts,
 
     % Depending on command line arguments first pass information may or may not
     % be available, if it is not available, we assume semi-sensible defaults.
@@ -2074,7 +2075,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
     % Consider inserting a coverage point after this goal to measure how
     % many solutions it may have.
     (
-        (
+        (   
             % Never insert coverage points on goals that are part of the deep
             % profiling instrumentation.
             IsMDProfInst = goal_is_mdprof_inst
@@ -2107,7 +2108,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             ( Detism = detism_semi
             ; Detism = detism_cc_non
             ),
-            CoverMayFail = !.Info ^ ci_coverage_profiling_opts ^ cpo_may_fail,
+            CoverMayFail = CPOptions ^ cpo_may_fail,
             (
                 CoverMayFail = yes,
                 MaybeCPType = yes(cp_type_solns_may_fail)
@@ -2117,7 +2118,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             )
         ;
             Detism = detism_multi,
-            CoverMulti = !.Info ^ ci_coverage_profiling_opts ^ cpo_multi,
+            CoverMulti = CPOptions ^ cpo_multi,
             (
                 CoverMulti = yes,
                 MaybeCPType = yes(cp_type_solns_multi)
@@ -2127,7 +2128,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             )
         ;
             Detism = detism_non,
-            CoverAny = !.Info ^ ci_coverage_profiling_opts ^ cpo_any,
+            CoverAny = CPOptions ^ cpo_any,
             (
                 CoverAny = yes,
                 MaybeCPType = yes(cp_type_solns_any)
@@ -2139,18 +2140,19 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             ( Detism = detism_erroneous
             ; Detism = detism_failure
             ),
-            % Execution cannot reach the point after this goal, so we need
-            % no coverage point.
+            % Execution cannot reach the point after this goal, so we do not
+            % need a coverage point.
             MaybeCPType = no
         ;
             ( Detism = detism_det
             ; Detism = detism_cc_multi
             ),
-            % This should never occur, as coverage points should already have
-            % been inserted to ensure coverage is known here, unless the
-            % relevant kind of coverage points are disabled. We don't insert
-            % a coverage point here since we shouldn't have to.
-            % XXX In that case, why don't we call unexpected() here? -zs
+            % Coverage isn't known here, however we do not insert a coverage
+            % point to count the solutions of the goal.  The coverage at this
+            % point may not be valuable, for example, the goal may be trivial.
+            % Or the goal may be a conjunction, in which case insert a coverage
+            % point after the last conjunct rather than after the whole
+            % conjunction.
             MaybeCPType = no
         )
     ),
@@ -2527,8 +2529,7 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
     (
         CPOBranchIf = yes,
         CondHasPortCounts = goal_does_not_have_port_counts,
-        % XXX This test looks to be a bug; I think it should be reversed. -zs
-        IsMDProfInst = goal_is_mdprof_inst
+        IsMDProfInst = goal_is_not_mdprof_inst
     ->
         (
             CoverageBeforeThenKnown1 = coverage_after_unknown,
@@ -2666,11 +2667,16 @@ insert_coverage_point_before(CPInfo, !Goal, !Info) :-
     --->    coverage_after_known
     ;       coverage_after_unknown.
 
-    % At a branch of execution two coverage known values must be merged,
-    % this is at the beginning of the branch since it's used for the main
-    % pass which is done in reverse.
+    % Merge two coverage_after_known values at the beginning of a branch.
     %
-    % XXX That documentation does not make sense.
+    % The coverage profiling algorithm moves right to left through conjunctions
+    % and disjunctions, and from inner goals to outer goals on all non-atomic
+    % goals.  It may reach a branch of execution knowing the coverage known
+    % information entering both branches, this predicate computes the coverage
+    % known information for the branch as a whole.  For example.  In an
+    % if-then-else this can compute weather the coverage is known after the
+    % condition based in weather the coverage is known before both the then and
+    % else branches.
     %
 :- pred coverage_after_known_branch(coverage_after_known::in,
     coverage_after_known::in, coverage_after_known::out) is det.
@@ -2769,7 +2775,10 @@ has_port_counts_if_det(Detism, HasPortCounts0, HasPortCounts) :-
     % Used to gather some information about goals before the coverage
     % transformation.
     %
-    % XXX Document *what* information this pass gathers.
+    % This pass gathers the information in the dp_coverage_goal_info structure,
+    % namely weather the goal is trivial (if it and none of it's subgoals are
+    % calls),  And weather a port count is available from the deep profiler
+    % from which the coverage _after_ this goal can be computed.
     %
 :- pred coverage_prof_first_pass(coverage_profiling_options::in, hlds_goal::in,
     hlds_goal::out, goal_has_port_counts::in, dp_coverage_goal_info::out)
@@ -2779,17 +2788,18 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore, Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         % XXX: Not all call goals have associated call sites, therefore not all
-        % of these will have port counts.  See above in the deep_profiling
-        % transformation.
+        % of these will have port counts.  For example inline foreign code does
+        % not get instrumented by the deep profiler.  See above in the
+        % deep_profiling transformation.
         %
         % This doesn't matter for the near future, since we're using a single
-        % pass coverage profiling algorithm.  This will be important when a
-        % naive assumption in the second pass is fixed (even when this first
-        % pass is not used).
+        % pass coverage profiling algorithm.  This will need to be fixed when
+        % the two-pass coverage profiling is enabled.  Or if a naive assumption
+        % in the second pass is corrected, (See the XXX comment at the
+        % beginning of coverage_prof_second_pass_goal regarding the defaults
+        % that are assumed if the information from the first pass is not
+        % available.).
         %
-        % XXX I don't understand this comment. Are you talking about builtin
-        % calls? Calls to the profiling primitives themselves? What is the
-        % naive assumption, and why is it a problem? -zs
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
