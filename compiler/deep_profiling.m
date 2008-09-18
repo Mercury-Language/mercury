@@ -2008,7 +2008,7 @@ coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
     (
         CoverageProfilingOptions ^ cpo_use_2pass = yes,
         coverage_prof_first_pass(CoverageProfilingOptions, !Goal,
-            goal_has_port_counts, _)
+            port_counts_give_coverage_after, _)
     ;
         CoverageProfilingOptions ^ cpo_use_2pass = no
     ),
@@ -2055,7 +2055,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
     DPInfo = dp_goal_info(IsMDProfInst, MaybeDPCoverageInfo),
     (
         MaybeDPCoverageInfo =
-            yes(dp_coverage_goal_info(GoalTrivial, GoalHasPortCounts))
+            yes(dp_coverage_goal_info(GoalTrivial, GoalPortCountsCoverageAfter))
     ;
         MaybeDPCoverageInfo = no,
 
@@ -2067,7 +2067,15 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         % atomic goals and fall back to these defaults for any other goal.
 
         GoalTrivial = goal_is_nontrivial,
-        GoalHasPortCounts = goal_does_not_have_port_counts
+        GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after
+    ),
+    
+    (
+        GoalPortCountsCoverageAfter = port_counts_give_coverage_after,
+        CoverageAfterKnown1 = coverage_after_known
+    ;
+        GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after,
+        CoverageAfterKnown1 = CoverageAfterKnown0 
     ),
 
     % Step 1.
@@ -2080,13 +2088,9 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             % profiling instrumentation.
             IsMDProfInst = goal_is_mdprof_inst
         ;
-            % The goal itself has the counter we need; adding a second counter
-            % would be redundant.
-            GoalHasPortCounts = goal_has_port_counts
-        ;
             % We already have execution counts for the program point after this
             % goal; adding a counter would be redundant.
-            CoverageAfterKnown0 = coverage_after_known
+            CoverageAfterKnown1 = coverage_after_known
         ;
             % We don't need to know the execution count of this goal, since
             % it is too cheap to matter.
@@ -2168,10 +2172,10 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         (
             % If the goal has a port count, then coverage is known at the
             % point directy before this goal.
-            GoalHasPortCounts = goal_has_port_counts,
+            GoalPortCountsCoverageAfter = port_counts_give_coverage_after,
             CoverageAfterKnown = coverage_after_known
         ;
-            GoalHasPortCounts = goal_does_not_have_port_counts,
+            GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after,
             (
                 % If there is not exactly one solution then the coverage is
                 % not known.
@@ -2188,7 +2192,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
                 ( Detism = detism_det
                 ; Detism = detism_cc_multi
                 ),
-                CoverageAfterKnown = CoverageAfterKnown0
+                CoverageAfterKnown = CoverageAfterKnown1
             )
         )
     ),
@@ -2445,59 +2449,71 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
     % This helps later to insert fewer coverage points in the beginning of
     % the branches, and may also help reduce coverage points within the
     % branches.
-
+            
+    ThenPortCountsCoverageAfter = goal_get_maybe_dp_port_counts_coverage(Then0),
+    ElsePortCountsCoverageAfter = goal_get_maybe_dp_port_counts_coverage(Else0),
     (
         CoverageAfterITEKnown = coverage_after_known,
         ThenDetism = Then0 ^ hlds_goal_info ^ goal_info_get_determinism,
+        ElseDetism = Else0 ^ hlds_goal_info ^ goal_info_get_determinism,
         (
             ( ThenDetism = detism_det
             ; ThenDetism = detism_cc_multi
             ),
-            ElseDetism = Else0 ^ hlds_goal_info ^ goal_info_get_determinism,
+            ( ElseDetism = detism_det
+            ; ElseDetism = detism_cc_multi
+            )
+        ->
             (
-                ( ElseDetism = detism_det
-                ; ElseDetism = detism_cc_multi
-                ),
-
-                ThenHasPortCounts = goal_get_maybe_dp_has_port_counts(Then0),
-                (
-                    ThenHasPortCounts = goal_does_not_have_port_counts,
-
-                    CoverageAfterElseKnown = coverage_after_known,
-                    CoverageAfterThenKnown = coverage_after_unknown
-                ;
-                    ThenHasPortCounts = goal_has_port_counts,
-
-                    % Although we don't know if Else has port counts, at
-                    % this point we're either making the deliberate
-                    % decision below or an arbitrary decision, so
-                    % it doesn't matter if Else has port counts or not.
-
-                    CoverageAfterElseKnown = coverage_after_unknown,
-                    CoverageAfterThenKnown = coverage_after_known
-                )
+                ThenPortCountsCoverageAfter = 
+                    no_port_counts_give_coverage_after,
+                ElsePortCountsCoverageAfter = 
+                    no_port_counts_give_coverage_after,
+                
+                % The coverage at the end of the else goal can be calculated
+                % from the coverage at the end of the then goal.
+                CoverageAfterThenKnown = coverage_after_unknown,
+                CoverageAfterElseKnown = coverage_after_known
             ;
-                ( ElseDetism = detism_semi
-                ; ElseDetism = detism_multi
-                ; ElseDetism = detism_non
-                ; ElseDetism = detism_cc_non
-                ; ElseDetism = detism_erroneous
-                ; ElseDetism = detism_failure
-                ),
-                CoverageAfterElseKnown = coverage_after_unknown,
-                CoverageAfterThenKnown = coverage_after_unknown
+                ThenPortCountsCoverageAfter = 
+                    no_port_counts_give_coverage_after,
+                ElsePortCountsCoverageAfter = port_counts_give_coverage_after,
+
+                % The coverage at the end of the then goal can be calculated
+                % from the coverage at the end of the else goal.
+                CoverageAfterThenKnown = coverage_after_known,
+                CoverageAfterElseKnown = coverage_after_known
+            ;
+                ThenPortCountsCoverageAfter = port_counts_give_coverage_after,
+
+                % The coverage at the end of the else goal (if it doesn't have
+                % port counts), can be calculated from the coverage of the then
+                % goal.  Or it's already known because the port counts from
+                % within the goal give the coverage information.
+                CoverageAfterThenKnown = coverage_after_known,
+                CoverageAfterElseKnown = coverage_after_known
             )
         ;
-            ( ThenDetism = detism_semi
-            ; ThenDetism = detism_multi
-            ; ThenDetism = detism_non
-            ; ThenDetism = detism_cc_non
-            ; ThenDetism = detism_erroneous
-            ; ThenDetism = detism_failure
+            % The arms of the switch are nondeterministic.  Set the coverage to
+            % unknown for each arm unless port counts are available from within
+            % that goal.
+            (
+                ThenPortCountsCoverageAfter = port_counts_give_coverage_after,
+                CoverageAfterThenKnown = coverage_after_known
+            ;   
+                ThenPortCountsCoverageAfter =
+                    no_port_counts_give_coverage_after,
+                CoverageAfterThenKnown = coverage_after_unknown
             ),
-            CoverageAfterElseKnown = coverage_after_unknown,
-            CoverageAfterThenKnown = coverage_after_unknown
-        )
+            (
+                ElsePortCountsCoverageAfter = port_counts_give_coverage_after,
+                CoverageAfterElseKnown = coverage_after_known
+            ;   
+                ElsePortCountsCoverageAfter =
+                    no_port_counts_give_coverage_after,
+                CoverageAfterElseKnown = coverage_after_unknown
+            )
+        )        
     ;
         CoverageAfterITEKnown = coverage_after_unknown,
         CoverageAfterElseKnown = coverage_after_unknown,
@@ -2524,11 +2540,11 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
     % beginning of each branch,
 
     CPOBranchIf = !.Info ^ ci_coverage_profiling_opts ^ cpo_branch_ite,
-    CondHasPortCounts = goal_get_maybe_dp_has_port_counts(Cond0),
+    CondPortCountsCoverageAfter = goal_get_maybe_dp_port_counts_coverage(Cond0),
     DPInfo = dp_goal_info(IsMDProfInst, _),
     (
         CPOBranchIf = yes,
-        CondHasPortCounts = goal_does_not_have_port_counts,
+        CondPortCountsCoverageAfter = no_port_counts_give_coverage_after,
         IsMDProfInst = goal_is_not_mdprof_inst
     ->
         (
@@ -2602,16 +2618,18 @@ goal_info_get_maybe_dp_coverage_info(GoalInfo) = MaybeCoverageInfo :-
         MaybeCoverageInfo = no
     ).
 
-:- func goal_get_maybe_dp_has_port_counts(hlds_goal) = goal_has_port_counts.
+:- func goal_get_maybe_dp_port_counts_coverage(hlds_goal) =
+    port_counts_give_coverage_after.
 
-goal_get_maybe_dp_has_port_counts(Goal) = HasPortCounts :-
+goal_get_maybe_dp_port_counts_coverage(Goal) = PortCountsGiveCoverageAfter :-
     Goal = hlds_goal(_, GoalInfo),
     MaybeCoverageInfo = goal_info_get_maybe_dp_coverage_info(GoalInfo),
     (
-        MaybeCoverageInfo = yes(dp_coverage_goal_info(_, HasPortCounts))
+        MaybeCoverageInfo = 
+            yes(dp_coverage_goal_info(_, PortCountsGiveCoverageAfter))
     ;
         MaybeCoverageInfo = no,
-        HasPortCounts = goal_does_not_have_port_counts
+        PortCountsGiveCoverageAfter = no_port_counts_give_coverage_after
     ).
 
     % Set the 'goal_is_mdprof_inst' field in the goal_dp_info structure
@@ -2715,17 +2733,18 @@ goal_trivial_and(A, B, Trivial) :-
         Trivial = goal_is_nontrivial
     ).
 
-:- pred goal_has_port_counts_and(goal_has_port_counts::in,
-    goal_has_port_counts::in, goal_has_port_counts::out) is det.
+:- pred port_counts_give_coverage_after_and(port_counts_give_coverage_after::in,
+    port_counts_give_coverage_after::in, port_counts_give_coverage_after::out)
+    is det.
 
-goal_has_port_counts_and(A, B, HasPortCounts) :-
+port_counts_give_coverage_after_and(A, B, PortCountsCoverageAfter) :-
     (
-        A = goal_has_port_counts,
-        B = goal_has_port_counts
+        A = port_counts_give_coverage_after,
+        B = port_counts_give_coverage_after
     ->
-        HasPortCounts = goal_has_port_counts
+        PortCountsCoverageAfter = port_counts_give_coverage_after
     ;
-        HasPortCounts = goal_does_not_have_port_counts
+        PortCountsCoverageAfter = no_port_counts_give_coverage_after
     ).
 
     % Given a goal, whether it has its own port counts and whether port counts
@@ -2733,18 +2752,20 @@ goal_has_port_counts_and(A, B, HasPortCounts) :-
     % counts allows us to determine how often execution reaches the point
     % immediately after the goal.
     %
-:- pred has_port_counts_after(hlds_goal::in, goal_has_port_counts::in,
-    goal_has_port_counts::in, goal_has_port_counts::out) is det.
+:- pred has_port_counts_after(hlds_goal::in,
+    port_counts_give_coverage_after::in,
+    port_counts_give_coverage_after::in, port_counts_give_coverage_after::out) 
+    is det.
 
 has_port_counts_after(Goal, PCDirect, PCBefore, PC) :-
     (
         % The trivial case. If port counts are directly available,
         % then they can be used to determine coverage immediately after it.
 
-        PCDirect = goal_has_port_counts,
-        PC = goal_has_port_counts
+        PCDirect = port_counts_give_coverage_after,
+        PC = port_counts_give_coverage_after
     ;
-        PCDirect = goal_does_not_have_port_counts,
+        PCDirect = no_port_counts_give_coverage_after,
 
         % If port counts aren't directly available but are before this goal
         % and this goal behaves deterministically (it cannot fail or redo),
@@ -2758,18 +2779,20 @@ has_port_counts_after(Goal, PCDirect, PCBefore, PC) :-
     % Given the current goal's determinism and wheather the next earliest goal
     % has port counts does this goal have port counts
     %
-:- pred has_port_counts_if_det(determinism::in, goal_has_port_counts::in,
-    goal_has_port_counts::out) is det.
+:- pred has_port_counts_if_det(determinism::in,
+    port_counts_give_coverage_after::in, port_counts_give_coverage_after::out)
+    is det.
 
-has_port_counts_if_det(Detism, HasPortCounts0, HasPortCounts) :-
+has_port_counts_if_det(Detism, PortCountsCoverageAfter0,
+        PortCountsCoverageAfter) :-
     (
         ( Detism = detism_det
         ; Detism = detism_cc_multi
         )
     ->
-        HasPortCounts = HasPortCounts0
+        PortCountsCoverageAfter = PortCountsCoverageAfter0
     ;
-        HasPortCounts = goal_does_not_have_port_counts
+        PortCountsCoverageAfter = no_port_counts_give_coverage_after
     ).
 
     % Used to gather some information about goals before the coverage
@@ -2781,10 +2804,11 @@ has_port_counts_if_det(Detism, HasPortCounts0, HasPortCounts) :-
     % from which the coverage _after_ this goal can be computed.
     %
 :- pred coverage_prof_first_pass(coverage_profiling_options::in, hlds_goal::in,
-    hlds_goal::out, goal_has_port_counts::in, dp_coverage_goal_info::out)
-    is det.
+    hlds_goal::out, port_counts_give_coverage_after::in,
+    dp_coverage_goal_info::out) is det.
 
-coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore, Info) :-
+coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
+        Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         % XXX: Not all call goals have associated call sites, therefore not all
@@ -2805,23 +2829,24 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore, Info) :-
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         Trivial0 = goal_is_nontrivial,
-        HasPortCountsDirect = goal_has_port_counts,
+        PortCountsCoverageAfterDirect = port_counts_give_coverage_after,
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = unify(_, _, _, _, _),
         Trivial0 = goal_is_trivial,
-        HasPortCountsDirect = goal_does_not_have_port_counts,
+        PortCountsCoverageAfterDirect = no_port_counts_give_coverage_after,
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Goals0),
         map_foldl2(coverage_prof_first_pass_conj(CPOptions), Goals0, Goals,
-            goal_is_trivial, Trivial0, HasPortCountsBefore,
-            HasPortCountsDirect),
+            goal_is_trivial, Trivial0, PortCountsCoverageAfterBefore,
+            PortCountsCoverageAfterDirect),
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
         coverage_prof_first_pass_disj(CPOptions, Goals0, Goals,
-            Trivial0, HasPortCountsBefore, HasPortCountsDirect0),
+            Trivial0, PortCountsCoverageAfterBefore,
+            PortCountsCoverageAfterDirect0),
         GoalExpr = disj(Goals),
 
         % Only if the disjunction cannot fail can we know the coverage after
@@ -2830,34 +2855,34 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore, Info) :-
         determinism_components(Detism, CanFail, _),
         (
             CanFail = can_fail,
-            HasPortCountsDirect = goal_does_not_have_port_counts
+            PortCountsCoverageAfterDirect = no_port_counts_give_coverage_after
         ;
             CanFail = cannot_fail,
-            HasPortCountsDirect0 = HasPortCountsDirect
+            PortCountsCoverageAfterDirect0 = PortCountsCoverageAfterDirect
         )
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         coverage_prof_first_pass_switchcase(CPOptions, Cases0, Cases, Trivial0,
-            HasPortCountsCases),
+            PortCountsCoverageAfterCases),
         GoalExpr = switch(Var, CanFail, Cases),
         (
             CanFail = can_fail,
-            HasPortCountsDirect = goal_does_not_have_port_counts
+            PortCountsCoverageAfterDirect = no_port_counts_give_coverage_after
         ;
             CanFail = cannot_fail,
-            HasPortCountsDirect = HasPortCountsCases
+            PortCountsCoverageAfterDirect = PortCountsCoverageAfterCases
         )
     ;
         GoalExpr0 = negation(InnerGoal0),
         coverage_prof_first_pass(CPOptions, InnerGoal0, InnerGoal,
-            HasPortCountsBefore,
-            dp_coverage_goal_info(Trivial0, HasPortCountsDirect)),
+            PortCountsCoverageAfterBefore,
+            dp_coverage_goal_info(Trivial0, PortCountsCoverageAfterDirect)),
         GoalExpr = negation(InnerGoal)
     ;
         GoalExpr0 = scope(Reason, InnerGoal0),
         coverage_prof_first_pass(CPOptions, InnerGoal0, InnerGoal,
-            HasPortCountsBefore,
-            dp_coverage_goal_info(Trivial0, HasPortCountsDirect)),
+            PortCountsCoverageAfterBefore,
+            dp_coverage_goal_info(Trivial0, PortCountsCoverageAfterDirect)),
         GoalExpr = scope(Reason, InnerGoal)
     ;
         GoalExpr0 = if_then_else(Vars, CondGoal0, ThenGoal0, ElseGoal0),
@@ -2866,15 +2891,15 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore, Info) :-
         % port counts provided by the cond goal if it has them.
 
         coverage_prof_first_pass(CPOptions, CondGoal0, CondGoal,
-            HasPortCountsBefore,
-            dp_coverage_goal_info(TrivialCond, HasPortCountsCond)),
+            PortCountsCoverageAfterBefore,
+            dp_coverage_goal_info(TrivialCond, PortCountsCoverageAfterCond)),
 
         coverage_prof_first_pass(CPOptions, ThenGoal0, ThenGoal,
-            HasPortCountsCond,
-            dp_coverage_goal_info(TrivialThen, HasPortCountsThen)),
+            PortCountsCoverageAfterCond,
+            dp_coverage_goal_info(TrivialThen, PortCountsCoverageAfterThen)),
         coverage_prof_first_pass(CPOptions, ElseGoal0, ElseGoal,
-            HasPortCountsCond,
-            dp_coverage_goal_info(TrivialElse, HasPortCountsElse)),
+            PortCountsCoverageAfterCond,
+            dp_coverage_goal_info(TrivialElse, PortCountsCoverageAfterElse)),
 
         GoalExpr = if_then_else(Vars, CondGoal, ThenGoal, ElseGoal),
 
@@ -2886,8 +2911,8 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore, Info) :-
         % And it has port counts iff it will end in a goal with a port count
         % regardless of how the condition evaluates.
 
-        goal_has_port_counts_and(HasPortCountsThen, HasPortCountsElse,
-            HasPortCountsDirect)
+        port_counts_give_coverage_after_and(PortCountsCoverageAfterThen,
+            PortCountsCoverageAfterElse, PortCountsCoverageAfterDirect)
     ;
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "coverage_prof_first_pass: shorthand")
@@ -2895,11 +2920,11 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore, Info) :-
 
     (
         CPOptions ^ cpo_use_portcounts = yes,
-        has_port_counts_after(Goal0, HasPortCountsDirect, HasPortCountsBefore,
-            HasPortCounts)
+        has_port_counts_after(Goal0, PortCountsCoverageAfterDirect,
+            PortCountsCoverageAfterBefore, PortCountsCoverageAfter)
     ;
         CPOptions ^ cpo_use_portcounts = no,
-        HasPortCounts = goal_does_not_have_port_counts
+        PortCountsCoverageAfter = no_port_counts_give_coverage_after
     ),
 
     (
@@ -2911,7 +2936,7 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore, Info) :-
     ),
 
     % Annotate the goal with this new information.
-    Info = dp_coverage_goal_info(Trivial, HasPortCounts),
+    Info = dp_coverage_goal_info(Trivial, PortCountsCoverageAfter),
     goal_info_get_maybe_dp_info(GoalInfo0) = MaybeDPInfo0,
     (
         MaybeDPInfo0 = yes(dp_goal_info(IsProfilingInstrumentation, _)),
@@ -2927,12 +2952,13 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore, Info) :-
     %
 :- pred coverage_prof_first_pass_conj(coverage_profiling_options::in,
     hlds_goal::in, hlds_goal::out, goal_trivial::in, goal_trivial::out,
-    goal_has_port_counts::in, goal_has_port_counts::out) is det.
+    port_counts_give_coverage_after::in, port_counts_give_coverage_after::out)
+    is det.
 
 coverage_prof_first_pass_conj(CPOptions, Goal0, Goal, TrivialAcc, Trivial,
-        HasPortCountsAcc, HasPortCounts) :-
-    coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsAcc,
-        dp_coverage_goal_info(TrivialGoal, HasPortCounts)),
+        PortCountsCoverageAfterAcc, PortCountsCoverageAfter) :-
+    coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterAcc,
+        dp_coverage_goal_info(TrivialGoal, PortCountsCoverageAfter)),
     goal_trivial_and(TrivialAcc, TrivialGoal, Trivial).
 
     % Combine information about goals within a disjunction.
@@ -2944,18 +2970,21 @@ coverage_prof_first_pass_conj(CPOptions, Goal0, Goal, TrivialAcc, Trivial,
     %
 :- pred coverage_prof_first_pass_disj(coverage_profiling_options::in,
     list(hlds_goal)::in, list(hlds_goal)::out, goal_trivial::out,
-    goal_has_port_counts::in, goal_has_port_counts::out) is det.
+    port_counts_give_coverage_after::in, port_counts_give_coverage_after::out)
+    is det.
 
-coverage_prof_first_pass_disj(_, [], [], goal_is_trivial, !HasPortCounts).
+coverage_prof_first_pass_disj(_, [], [], goal_is_trivial,
+    !PortCountsCoverageAfter).
 coverage_prof_first_pass_disj(CPOptions, [Goal0 | Goals0], [Goal | Goals],
-        Trivial, HasPortCountsBefore, HasPortCounts) :-
-    coverage_prof_first_pass(CPOptions, Goal0, Goal, HasPortCountsBefore,
-        dp_coverage_goal_info(TrivialGoal, HasPortCountsGoal)),
+        Trivial, PortCountsCoverageAfterBefore, PortCountsCoverageAfter) :-
+    coverage_prof_first_pass(CPOptions, Goal0, Goal,
+        PortCountsCoverageAfterBefore,
+        dp_coverage_goal_info(TrivialGoal, PortCountsCoverageAfterGoal)),
     coverage_prof_first_pass_disj(CPOptions, Goals0, Goals, TrivialDisj,
-        goal_does_not_have_port_counts, HasPortCountsDisj),
+        no_port_counts_give_coverage_after, PortCountsCoverageAfterDisj),
     goal_trivial_and(TrivialGoal, TrivialDisj, Trivial),
-    goal_has_port_counts_and(HasPortCountsGoal, HasPortCountsDisj,
-        HasPortCounts).
+    port_counts_give_coverage_after_and(PortCountsCoverageAfterGoal, 
+        PortCountsCoverageAfterDisj, PortCountsCoverageAfter).
 
     % A switch is handled like a disjunction except that it can't be known
     % how often execution will enter the first case, so this also cannot use
@@ -2963,22 +2992,22 @@ coverage_prof_first_pass_disj(CPOptions, [Goal0 | Goals0], [Goal | Goals],
     %
 :- pred coverage_prof_first_pass_switchcase(coverage_profiling_options::in,
     list(case)::in, list(case)::out, goal_trivial::out,
-    goal_has_port_counts::out) is det.
+    port_counts_give_coverage_after::out) is det.
 
 coverage_prof_first_pass_switchcase(_, [], [],
-        goal_is_trivial, goal_has_port_counts).
+        goal_is_trivial, port_counts_give_coverage_after).
 coverage_prof_first_pass_switchcase(CPOptions,
-        [Case0 | Cases0], [Case | Cases], Trivial, HasPortCounts) :-
+        [Case0 | Cases0], [Case | Cases], Trivial, PortCountsCoverageAfter) :-
     Case0 = case(FirstFunctor, LaterFunctors, Goal0),
 
     coverage_prof_first_pass(CPOptions, Goal0, Goal,
-        goal_does_not_have_port_counts,
-        dp_coverage_goal_info(TrivialGoal, HasPortCountsGoal)),
+        no_port_counts_give_coverage_after,
+        dp_coverage_goal_info(TrivialGoal, PortCountsCoverageAfterGoal)),
     coverage_prof_first_pass_switchcase(CPOptions, Cases0, Cases,
-        TrivialSwitchcase, HasPortCountsSwitchcase),
+        TrivialSwitchcase, PortCountsCoverageAfterSwitchcase),
     goal_trivial_and(TrivialGoal, TrivialSwitchcase, Trivial),
-    goal_has_port_counts_and(HasPortCountsGoal, HasPortCountsSwitchcase,
-        HasPortCounts),
+    port_counts_give_coverage_after_and(PortCountsCoverageAfterGoal,
+        PortCountsCoverageAfterSwitchcase, PortCountsCoverageAfter),
 
     Case = case(FirstFunctor, LaterFunctors, Goal).
 

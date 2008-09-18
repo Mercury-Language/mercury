@@ -1454,7 +1454,8 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
             ),
             (
                 MaybeDPCoverageInfo = yes(CoverageInfo),
-                CoverageInfo = dp_coverage_goal_info(IsTrivial, HasPortCounts),
+                CoverageInfo = dp_coverage_goal_info(IsTrivial,
+                    PortCountsGiveCoverageAfter),
                 write_indent(Indent, !IO),
                 (
                     IsTrivial = goal_is_trivial,
@@ -1465,11 +1466,14 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
                 ),
                 write_indent(Indent, !IO),
                 (
-                    HasPortCounts = goal_has_port_counts,
-                    io.write_string("% has port counts\n", !IO)
+                    PortCountsGiveCoverageAfter =
+                        port_counts_give_coverage_after,
+                    io.write_string("% port counts give coverage after\n", !IO)
                 ;
-                    HasPortCounts = goal_does_not_have_port_counts,
-                    io.write_string("% does not have port counts\n", !IO)
+                    PortCountsGiveCoverageAfter =
+                        no_port_counts_give_coverage_after,
+                    io.write_string("% no port counts give coverage after\n", 
+                        !IO)
                 )
             ;
                 MaybeDPCoverageInfo = no

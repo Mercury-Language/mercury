@@ -1093,16 +1093,22 @@
 :- type dp_coverage_goal_info
     --->    dp_coverage_goal_info(
                 goal_trivial,
-                goal_has_port_counts
+                port_counts_give_coverage_after
             ).
 
+    % A goal is trivial if it is a simple atomic goal (not a call), or it's a
+    % non-atomic goal and all it's descendants are trivial.
+    %
 :- type goal_trivial
     --->    goal_is_trivial
     ;       goal_is_nontrivial.
 
-:- type goal_has_port_counts
-    --->    goal_has_port_counts
-    ;       goal_does_not_have_port_counts.
+    % A goal has port counts that can be used to calculate the coverage at the
+    % end of that goal.
+    %
+:- type port_counts_give_coverage_after
+    --->    port_counts_give_coverage_after
+    ;       no_port_counts_give_coverage_after.
 
 :- pred goal_info_init(hlds_goal_info::out) is det.
 :- pred goal_info_init(prog_context::in, hlds_goal_info::out) is det.
