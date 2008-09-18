@@ -269,13 +269,23 @@ ints:	$(MC_PROG).ints
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
+# We need the shenanigans with .compiler_tags to avoid situations in which an
+# "mmake tags" in this directory does nothing even in the absence of a tags
+# file in this directory, because mmake uses VPATH to find ../library/tags
+# and believes it to be the tags file we are asking for.
+
+.PHONY: tags
+tags:	.compiler_tags
+
+.compiler_tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
 	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
+	touch .compiler_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags ; \
 	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m ; fi
+	touch .compiler_tags
 
 $(MC_PROG).stats: source_stats.awk $($(MC_PROG).ms)
 	awk -f `vpath_find source_stats.awk` \
