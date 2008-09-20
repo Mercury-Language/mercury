@@ -1052,7 +1052,9 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
             Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo)
         ;
             AddForceCommit = yes,
-            InnerGoal = hlds_goal(scope(Reason, SubGoal), GoalInfo),
+            goal_info_set_mdprof_inst(goal_is_mdprof_inst, GoalInfo, 
+                InnerGoalInfo),
+            InnerGoal = hlds_goal(scope(Reason, SubGoal), InnerGoalInfo),
             Goal = hlds_goal(scope(commit(force_pruning), InnerGoal), GoalInfo)
         )
     ;
@@ -2166,34 +2168,35 @@ coverage_prof_second_pass_goal(Goal0, Goal,
     % Update coverage known information.
     (
         MaybeCPType = yes(_),
-        CoverageAfterKnown = coverage_after_known
+        CoverageAfterKnown2 = coverage_after_known
     ;
         MaybeCPType = no,
+        CoverageAfterKnown2 = CoverageAfterKnown1
+    ),
+    % If the goal has a port count, then coverage is known at the point directy
+    % before this goal.
+    (
+        GoalPortCountsCoverageAfter = port_counts_give_coverage_after,
+        CoverageAfterKnown = coverage_after_known
+    ;
+        GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after,
         (
-            % If the goal has a port count, then coverage is known at the
-            % point directy before this goal.
-            GoalPortCountsCoverageAfter = port_counts_give_coverage_after,
-            CoverageAfterKnown = coverage_after_known
+            % If there is not exactly one solution then the coverage is
+            % not known.
+            ( Detism = detism_semi
+            ; Detism = detism_multi
+            ; Detism = detism_non
+            ; Detism = detism_cc_non
+            ; Detism = detism_erroneous
+            ; Detism = detism_failure
+            ),
+            CoverageAfterKnown = coverage_after_unknown
         ;
-            GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after,
-            (
-                % If there is not exactly one solution then the coverage is
-                % not known.
-                ( Detism = detism_semi
-                ; Detism = detism_multi
-                ; Detism = detism_non
-                ; Detism = detism_cc_non
-                ; Detism = detism_erroneous
-                ; Detism = detism_failure
-                ),
-                CoverageAfterKnown = coverage_after_unknown
-            ;
-                % Otherwise the coverage remains the same.
-                ( Detism = detism_det
-                ; Detism = detism_cc_multi
-                ),
-                CoverageAfterKnown = CoverageAfterKnown1
-            )
+            % Otherwise the coverage remains the same.
+            ( Detism = detism_det
+            ; Detism = detism_cc_multi
+            ),
+            CoverageAfterKnown = CoverageAfterKnown2
         )
     ),
 
@@ -2254,13 +2257,24 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         GoalExpr1 = switch(Var, SwitchCanFail, Cases)
     ;
         GoalExpr0 = negation(NegGoal0),
-        coverage_prof_second_pass_goal(NegGoal0, NegGoal, CoverageAfterKnown,
-            NextCoverageAfterKnown, !Info, AddedImpurityInner),
+        % The coverage after a negated goal is always unknown.
+        coverage_prof_second_pass_goal(NegGoal0, NegGoal, 
+            coverage_after_unknown, NextCoverageAfterKnown, !Info,
+            AddedImpurityInner),
         GoalExpr1 = negation(NegGoal)
     ;
         GoalExpr0 = scope(Reason, ScopeGoal0),
+        % A scope may cut away solutions, if it does we don't know the number
+        % of solutions of the scoped goal.
+        ScopedGoalDetism =
+            ScopeGoal0 ^ hlds_goal_info ^ goal_info_get_determinism,
+        ( ScopedGoalDetism = Detism ->
+            CoverageAfterScopedGoalKnown = CoverageAfterKnown
+        ;
+            CoverageAfterScopedGoalKnown = coverage_after_unknown
+        ),
         coverage_prof_second_pass_goal(ScopeGoal0, ScopeGoal,
-            CoverageAfterKnown, NextCoverageAfterKnown, !Info,
+            CoverageAfterScopedGoalKnown, NextCoverageAfterKnown, !Info,
             AddedImpurityInner),
         GoalExpr1 = scope(Reason, ScopeGoal)
     ;
@@ -2494,25 +2508,9 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
                 CoverageAfterElseKnown = coverage_after_known
             )
         ;
-            % The arms of the switch are nondeterministic.  Set the coverage to
-            % unknown for each arm unless port counts are available from within
-            % that goal.
-            (
-                ThenPortCountsCoverageAfter = port_counts_give_coverage_after,
-                CoverageAfterThenKnown = coverage_after_known
-            ;   
-                ThenPortCountsCoverageAfter =
-                    no_port_counts_give_coverage_after,
-                CoverageAfterThenKnown = coverage_after_unknown
-            ),
-            (
-                ElsePortCountsCoverageAfter = port_counts_give_coverage_after,
-                CoverageAfterElseKnown = coverage_after_known
-            ;   
-                ElsePortCountsCoverageAfter =
-                    no_port_counts_give_coverage_after,
-                CoverageAfterElseKnown = coverage_after_unknown
-            )
+            % The branches of the ITE are not deterministic.
+            CoverageAfterThenKnown = coverage_after_unknown,
+            CoverageAfterElseKnown = coverage_after_unknown
         )        
     ;
         CoverageAfterITEKnown = coverage_after_unknown,
@@ -2555,25 +2553,24 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
         ;
             CoverageBeforeThenKnown1 = coverage_after_known,
             InsertCPThen = no
-        ),
-        (
-            CoverageBeforeElseKnown1 = coverage_after_unknown,
-            ElsePath = goal_info_get_goal_path(Else0 ^ hlds_goal_info),
-            InsertCPElse = yes(coverage_point_info(ElsePath,
-                cp_type_branch_arm))
-        ;
-            CoverageBeforeElseKnown1 = coverage_after_known,
-            InsertCPElse = no
         )
     ;
         % Don't insert any coverage points,
-        InsertCPThen = no,
+        InsertCPThen = no
+    ),
+    (
+        CoverageBeforeElseKnown1 = coverage_after_unknown,
+        ElsePath = goal_info_get_goal_path(Else0 ^ hlds_goal_info),
+        InsertCPElse = yes(coverage_point_info(ElsePath,
+            cp_type_branch_arm))
+    ;
+        CoverageBeforeElseKnown1 = coverage_after_known,
         InsertCPElse = no
     ),
 
     % Insert any coverage points.
     maybe_insert_coverage_point_before(InsertCPElse, Else1, Else,
-        CoverageBeforeElseKnown1, CoverageBeforeElseKnown, !Info,
+        CoverageBeforeElseKnown1, _CoverageBeforeElseKnown, !Info,
         AddedImpurityElseCP),
     bool.or(AddedImpurityElseGoal, AddedImpurityElseCP, AddedImpurityElse),
 
@@ -2583,8 +2580,7 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
     bool.or(AddedImpurityThenGoal, AddedImpurityThenCP, AddedImpurityThen),
 
     % Transform Cond branch.
-    coverage_after_known_branch(CoverageBeforeThenKnown,
-        CoverageBeforeElseKnown, CoverageKnownAfterCond),
+    CoverageKnownAfterCond = CoverageBeforeThenKnown,
     coverage_prof_second_pass_goal(Cond0, Cond,
         CoverageKnownAfterCond, NextCoverageAfterKnown, !Info,
         AddedImpurityCond),
