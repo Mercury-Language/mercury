@@ -298,9 +298,7 @@
     ;       coverage_profiling
    
             % What types of coverage points to instrument the code with.
-    ;       profile_deep_coverage_may_fail
-    ;       profile_deep_coverage_multi
-    ;       profile_deep_coverage_any
+    ;       profile_deep_coverage_after_goal
     ;       profile_deep_coverage_branch_ite
     ;       profile_deep_coverage_branch_switch
     ;       profile_deep_coverage_branch_disj
@@ -1165,9 +1163,7 @@ option_defaults_2(compilation_model_option, [
     profile_deep                        -   bool(no),
     use_activation_counts               -   bool(no),
     coverage_profiling                  -   bool(no),
-    profile_deep_coverage_may_fail      -   bool(yes),
-    profile_deep_coverage_multi         -   bool(yes),
-    profile_deep_coverage_any           -   bool(yes),
+    profile_deep_coverage_after_goal    -   bool(yes),
     profile_deep_coverage_branch_ite    -   bool(yes),
     profile_deep_coverage_branch_switch -   bool(yes),
     profile_deep_coverage_branch_disj   -   bool(yes),
@@ -1996,12 +1992,8 @@ long_option("profile-deep",         profile_deep).
 long_option("use-activation-counts",    use_activation_counts).
 long_option("coverage-profiling", 
                     coverage_profiling).
-long_option("profile-deep-coverage-may-fail",
-                    profile_deep_coverage_may_fail).
-long_option("profile-deep-coverage-multi", 
-                    profile_deep_coverage_multi).
-long_option("profile-deep-coverage-any", 
-                    profile_deep_coverage_any).
+long_option("profile-deep-coverage-after-goal",
+                    profile_deep_coverage_after_goal).
 long_option("profile-deep-coverage-branch-ite",
                     profile_deep_coverage_branch_ite).
 long_option("profile-deep-coverage-branch-switch",

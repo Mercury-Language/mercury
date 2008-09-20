@@ -60,9 +60,7 @@ struct MR_ProfilingMetrics_Struct {
 ** mdbcomp/program_representation.m when updating this structure.
 */
 typedef enum {
-	MR_cp_type_solns_may_fail,
-	MR_cp_type_solns_multi,
-	MR_cp_type_solns_any,
+	MR_cp_type_coverage_after,
 	MR_cp_type_branch_arm
 } MR_CPType; 
 

@@ -1946,9 +1946,7 @@ extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo) :-
                 % These fields correspond to coverage profiling options that
                 % may be specified on the command line.  Except cpu_use_2pass.
 
-                cpo_may_fail            :: bool,
-                cpo_multi               :: bool,
-                cpo_any                 :: bool,
+                cpo_coverage_after_goal :: bool,
                 cpo_branch_ite          :: bool,
                 cpo_branch_switch       :: bool,
                 cpo_branch_disj         :: bool,
@@ -1971,12 +1969,8 @@ coverage_profiling_options(ModuleInfo, CoveragePointOptions) :-
     module_info_get_globals(ModuleInfo, Globals),
 
     % Coverage point types.
-    globals.lookup_bool_option(Globals, profile_deep_coverage_may_fail,
-        MayFail),
-    globals.lookup_bool_option(Globals, profile_deep_coverage_multi,
-        Multi),
-    globals.lookup_bool_option(Globals, profile_deep_coverage_any,
-        Any),
+    globals.lookup_bool_option(Globals, profile_deep_coverage_after_goal,
+        CoverageAfterGoal),
     globals.lookup_bool_option(Globals, profile_deep_coverage_branch_ite,
         BranchIf),
     globals.lookup_bool_option(Globals, profile_deep_coverage_branch_switch,
@@ -1991,7 +1985,7 @@ coverage_profiling_options(ModuleInfo, CoveragePointOptions) :-
         UseTrivial),
     bool.or(UsePortCounts, UseTrivial, Use2Pass),
 
-    CoveragePointOptions = coverage_profiling_options(MayFail, Multi, Any,
+    CoveragePointOptions = coverage_profiling_options(CoverageAfterGoal,
         BranchIf, BranchSwitch, BranchDisj, UsePortCounts, UseTrivial,
         Use2Pass).
 
@@ -2027,8 +2021,7 @@ coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
     % information from the goal_info structure.
     %
     % Step 1: Make a decision whether to insert a coverage point after this
-    % goal or not. This applies to may_fail multi and any coverage point
-    % types only. Other coverage point types are handled seperately.
+    % goal or not.
     %
     % Step 2: Determine if coverage information is known for goals that
     % execute before this goal completes. This includes goals before this
@@ -2110,55 +2103,12 @@ coverage_prof_second_pass_goal(Goal0, Goal,
     ->
         MaybeCPType = no
     ;
+        CoverageAfterGoals = CPOptions ^ cpo_coverage_after_goal,
         (
-            ( Detism = detism_semi
-            ; Detism = detism_cc_non
-            ),
-            CoverMayFail = CPOptions ^ cpo_may_fail,
-            (
-                CoverMayFail = yes,
-                MaybeCPType = yes(cp_type_solns_may_fail)
-            ;
-                CoverMayFail = no,
-                MaybeCPType = no
-            )
+            CoverageAfterGoals  = yes,
+            MaybeCPType = yes(cp_type_coverage_after)
         ;
-            Detism = detism_multi,
-            CoverMulti = CPOptions ^ cpo_multi,
-            (
-                CoverMulti = yes,
-                MaybeCPType = yes(cp_type_solns_multi)
-            ;
-                CoverMulti = no,
-                MaybeCPType = no
-            )
-        ;
-            Detism = detism_non,
-            CoverAny = CPOptions ^ cpo_any,
-            (
-                CoverAny = yes,
-                MaybeCPType = yes(cp_type_solns_any)
-            ;
-                CoverAny = no,
-                MaybeCPType = no
-            )
-        ;
-            ( Detism = detism_erroneous
-            ; Detism = detism_failure
-            ),
-            % Execution cannot reach the point after this goal, so we do not
-            % need a coverage point.
-            MaybeCPType = no
-        ;
-            ( Detism = detism_det
-            ; Detism = detism_cc_multi
-            ),
-            % Coverage isn't known here, however we do not insert a coverage
-            % point to count the solutions of the goal.  The coverage at this
-            % point may not be valuable, for example, the goal may be trivial.
-            % Or the goal may be a conjunction, in which case insert a coverage
-            % point after the last conjunct rather than after the whole
-            % conjunction.
+            CoverageAfterGoals = no,
             MaybeCPType = no
         )
     ),

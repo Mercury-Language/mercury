@@ -620,12 +620,10 @@
             ).
 
 % This enumeration specifies the type of coverage point.  A branch arm is an
-% arm of an if-then-else, switch or disj goal, the type can be determined by
-% the goal_path above.
+% arm of an if-then-else, switch or disj goal.  The coverage_after type is used
+% to measure the coverage after the goal it's coverage point referrs to.
 :- type cp_type
-    --->    cp_type_solns_may_fail
-    ;       cp_type_solns_multi
-    ;       cp_type_solns_any
+    --->    cp_type_coverage_after
     ;       cp_type_branch_arm.
 
 
@@ -1688,18 +1686,14 @@ pred_is_external("backjump", "builtin_backjump", 1).
 % section.
 %
 
-coverage_point_type_c_value(cp_type_solns_may_fail,
-    "MR_cp_type_solns_may_fail").
-coverage_point_type_c_value(cp_type_solns_multi, "MR_cp_type_solns_multi").
-coverage_point_type_c_value(cp_type_solns_any, "MR_cp_type_solns_any").
+coverage_point_type_c_value(cp_type_coverage_after, 
+    "MR_cp_type_coverage_after").
 coverage_point_type_c_value(cp_type_branch_arm, "MR_cp_type_branch_arm").
 
 :- pragma foreign_enum("C", cp_type/0,
     [
-        cp_type_solns_may_fail - "MR_cp_type_solns_may_fail",
-        cp_type_solns_multi    - "MR_cp_type_solns_multi",
-        cp_type_solns_any      - "MR_cp_type_solns_any",
-        cp_type_branch_arm     - "MR_cp_type_branch_arm"
+        cp_type_coverage_after  - "MR_cp_type_coverage_after",
+        cp_type_branch_arm      - "MR_cp_type_branch_arm"
     ]).
 
 %-----------------------------------------------------------------------------%
