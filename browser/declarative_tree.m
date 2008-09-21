@@ -1293,7 +1293,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 "mismatch on disj"))
         )
     ;
-        GoalExpr = switch_rep(_SwitchVar, Cases),
+        GoalExpr = switch_rep(_SwitchVar, _SwitchCanFail, Cases),
         (
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_switch(_, Label),

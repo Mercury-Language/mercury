@@ -26,18 +26,16 @@ proc_defn_rep(
     conj_rep(
       [|](
         goal_rep(
-          atomic_goal_rep(
-            "dependency.m", 
-            20, 
-            [|](2, []), 
-            plain_call_rep("dependency", "p", [|](2, []))), 
-          det_rep), 
+          atomic_goal_rep("dependency.m", 20, [|](2, []), plain_call_rep/3), 
+          det_rep, 
+          unit), 
         [|](
-          goal_rep(ite_rep(goal_rep/2, goal_rep/2, goal_rep/2), det_rep), 
+          goal_rep(ite_rep/3, det_rep, unit), 
           [|](
-            goal_rep(atomic_goal_rep/4, det_rep), 
-            [|](goal_rep/2, [|](goal_rep/2, [|]/2)))))), 
-    cc_multidet_rep), 
+            goal_rep(atomic_goal_rep/4, det_rep, unit), 
+            [|](goal_rep/3, [|](goal_rep/3, [|]/2)))))), 
+    cc_multidet_rep, 
+    unit), 
   empty, 
   cc_multidet_rep)
 mdb> dd -d 3 -n 7

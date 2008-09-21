@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2001-2007 The University of Melbourne.
+** Copyright (C) 2001-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -711,7 +711,7 @@ MR_write_out_procrep_id_string(FILE *fp)
     ** Must be the same as procrep_id_string in
     ** mdbcomp/program_representation.m
     */
-    const char  *id_string = "Mercury deep profiler procrep version 3\n";
+    const char  *id_string = "Mercury deep profiler procrep version 4\n";
 
     fputs(id_string, fp);
 }

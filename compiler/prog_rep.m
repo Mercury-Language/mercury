@@ -284,9 +284,11 @@ goal_to_byte_list(hlds_goal(GoalExpr, GoalInfo), InstMap0, Info, Bytes,
             unexpected(this_file, "goal_expr_to_byte_list: complicated_unify")
         )
     ;
-        GoalExpr = switch(SwitchVar, _, Cases),
+        GoalExpr = switch(SwitchVar, CanFail, Cases),
         cases_to_byte_list(Cases, InstMap0, Info, CasesBytes, !StackInfo),
+        CanFailByte = can_fail_to_byte(CanFail),
         ExprBytes = [goal_type_to_byte(goal_switch)] ++
+            [CanFailByte] ++
             var_to_byte_list(Info, SwitchVar) ++
             length_to_byte_list(Cases) ++ CasesBytes
     ;
@@ -594,6 +596,11 @@ lineno_to_byte_list(VarNum) = Bytes :-
 
 method_num_to_byte_list(VarNum) = Bytes :-
     short_to_byte_list(VarNum, Bytes).
+
+:- func can_fail_to_byte(can_fail) = int.
+
+can_fail_to_byte(can_fail) = 0.
+can_fail_to_byte(cannot_fail) = 1.
 
 %---------------------------------------------------------------------------%
 

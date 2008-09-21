@@ -157,10 +157,10 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
             cord.singleton(" (\n") ++ DisjString ++ indent(Indent) ++
             cord.singleton(")\n") 
     ;
-        GoalExprRep = switch_rep(SwitchVarRep, CasesRep),
+        GoalExprRep = switch_rep(SwitchVarRep, CanFail, CasesRep),
         lookup_var_name(VarTable, SwitchVarRep, SwitchVarName),
-        string.format(" ( switch on %s\n", [s(SwitchVarName)],
-            SwitchOpenString),
+        string.format(" ( %s switch on %s\n", 
+            [s(string(CanFail)), s(SwitchVarName)], SwitchOpenString),
         print_switch_to_strings(VarTable, Indent, CasesRep, no, SwitchString),
         Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++
             cord.singleton(SwitchOpenString) ++ SwitchString ++ 
@@ -580,10 +580,10 @@ goal_annotate_coverage(Info, GoalPath, !Coverage, Goal0, Goal) :-
             Disjuncts0, Disjuncts),
         GoalExpr = disj_rep(Disjuncts)
     ;
-        GoalExpr0 = switch_rep(Var, Cases0),
+        GoalExpr0 = switch_rep(Var, CanFail, Cases0),
         switch_annotate_coverage(Info, Detism, GoalPath, !Coverage,
             Cases0, Cases),
-        GoalExpr = switch_rep(Var, Cases)
+        GoalExpr = switch_rep(Var, CanFail, Cases)
     ;
         GoalExpr0 = ite_rep(Cond0, Then0, Else0),
         ite_annotate_coverage(Info, GoalPath, !Coverage, Cond0, Cond,

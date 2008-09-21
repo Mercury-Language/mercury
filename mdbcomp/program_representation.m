@@ -174,6 +174,9 @@
                 var_rep,            
                     % The variable being switched on.
                 
+                switch_can_fail_rep,
+                    % Completeness of the switch.
+
                 list(case_rep(GoalAnnotation))
                     % The switch arms in the original order.
             )
@@ -220,6 +223,10 @@
             ).
 
 :- type case_rep == case_rep(unit).
+
+:- type switch_can_fail_rep
+    --->    switch_can_fail
+    ;       switch_can_not_fail.
 
 :- type atomic_goal_rep
     --->    unify_construct_rep(
@@ -702,7 +709,7 @@ goal_generates_internal_event(goal_rep(GoalExpr, _, _)) =
 
 goal_expr_generates_internal_event(conj_rep(_)) = no.
 goal_expr_generates_internal_event(disj_rep(_)) = yes.
-goal_expr_generates_internal_event(switch_rep(_, _)) = yes.
+goal_expr_generates_internal_event(switch_rep(_, _, _)) = yes.
 goal_expr_generates_internal_event(ite_rep(_, _, _)) = yes.
 goal_expr_generates_internal_event(negation_rep(_)) = yes.
 goal_expr_generates_internal_event(scope_rep(_, _)) = no.
@@ -880,8 +887,6 @@ determinism_representation(failure_rep, 0).
 determinism_representation(cc_nondet_rep, 10).
 determinism_representation(cc_multidet_rep, 14).
 
-%-----------------------------------------------------------------------------%
-
 goal_type_to_byte(Type) = TypeInt :-
     goal_type_byte(TypeInt, Type).
 
@@ -1028,7 +1033,7 @@ read_prog_rep_file(FileName, Result, !IO) :-
     %
 :- func procrep_id_string = string.
 
-procrep_id_string = "Mercury deep profiler procrep version 3\n".
+procrep_id_string = "Mercury deep profiler procrep version 4\n".
 
 :- pred read_module_reps(bytecode::in,
     module_map(unit)::in, module_map(unit)::out,
@@ -1220,9 +1225,10 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             GoalExpr = ite_rep(Cond, Then, Else)
         ;
             GoalType = goal_switch,
+            read_switch_can_fail(ByteCode, CanFail, !Pos),
             read_var(VarNumRep, ByteCode, Var, !Pos),
             read_cases(VarNumRep, ByteCode, StringTable, Info, Cases, !Pos),
-            GoalExpr = switch_rep(Var, Cases)
+            GoalExpr = switch_rep(Var, CanFail, Cases)
         ;
             GoalType = goal_assign,
             read_var(VarNumRep, ByteCode, Target, !Pos),
@@ -1521,6 +1527,25 @@ read_determinism(ByteCode, Detism, !Pos) :-
         Detism = DetismPrime
     ;
         error("read_goal: bad detism")
+    ).
+
+:- pred read_switch_can_fail(bytecode::in, switch_can_fail_rep::out,
+    int::in, int::out) is semidet.
+    
+read_switch_can_fail(Bytecode, CanFail, !Pos) :-
+    read_byte(Bytecode, CanFailByte, !Pos),
+    (
+        ( 
+            CanFailByte = 0,
+            CanFailPrime = switch_can_fail
+        ;
+            CanFailByte = 1,
+            CanFailPrime = switch_can_not_fail
+        )
+    ->
+        CanFail = CanFailPrime
+    ;
+        error("read_goal: bad switch_can_fail")
     ).
 
 %-----------------------------------------------------------------------------%
