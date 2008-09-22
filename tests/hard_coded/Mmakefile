@@ -82,6 +82,7 @@ ORDINARY_PROGS=	\
 	failure_unify \
 	field_syntax \
 	finalise_decl \
+	finalize_to_bitmap \
 	float_field \
 	float_map \
 	float_reg \

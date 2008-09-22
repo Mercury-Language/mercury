@@ -266,9 +266,13 @@ finalize_to_bitmap(write_buffer(Buffer)) = !:BM :-
 
 copy_out_bitmap(FilledBM, !Index, !BM) :-
     Size = FilledBM ^ num_bits,
-    !:Index = !.Index - Size,
-    !:BM = bitmap.copy_bits(FilledBM, 0, !.BM, !.Index, Size).
-   
+    ( Size > 0 ->
+        !:Index = !.Index - Size,
+        !:BM = bitmap.copy_bits(FilledBM, 0, !.BM, !.Index, Size)
+    ;
+        true
+    ).
+
 :- pred maybe_make_room(bit_buffer(Stream, State)::bit_buffer_di,
     bit_buffer(Stream, State)::bit_buffer_uo) is det
     <= stream.writer(Stream, bitmap.slice, State).
