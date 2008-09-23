@@ -227,6 +227,9 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury compiler:
 
+* We have added support for trail segments, which allow programs to grow
+  the trail on demand.
+
 * Shared libraries are now used by default on Linux/x86 systems.
 
 * Support for the reserve tag grades has been removed.
@@ -414,6 +417,11 @@ Changes to the Mercury language:
 	Z = apply(AnyFunc, W)			% W = Z + A
 
 Changes to the Mercury compiler:
+
+* The option `--trail-segments', or grade component `.trseg', causes
+  programs to execute using trail segments, where segments can be allocated
+  at runtime, instead of using a fixed size trail.  This can prevent trail
+  exhaustion, but execution time will be increased.
 
 * There's a new back-end that targets Erlang.
 
