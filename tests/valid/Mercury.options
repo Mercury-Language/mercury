@@ -29,6 +29,7 @@ MCFLAGS-solver_type_bug_2       = --solver-type-auto-init
 MCFLAGS-solver_type_mutable_bug = --solver-type-auto-init
 
 MCFLAGS-builtin_false		= --intermodule-optimization
+MCFLAGS-bug85			= -O0 --deforestation
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-constraint_prop_bug	= -O0 --common-struct --local-constraint-propagation
 MCFLAGS-deforest_bug		= -O3
