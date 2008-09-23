@@ -60,6 +60,9 @@ MCFLAGS-analysis = --no-common-struct
 # mmc -r analysis.file.c -s asm_fast.gc -O4 --intermodule-optimisation
 MCFLAGS-analysis.file = --no-optimise-higher-order
 
+# Workaround for bug 85 in Mantis.
+MCFLAGS-ll_backend.deep_profiling = -O2
+
 # This works around bug 32 in Mantis.
 MCFLAGS-check_hlds.check_typeclass = --no-loop-invariants
 
