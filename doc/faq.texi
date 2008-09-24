@@ -75,11 +75,60 @@ into another language, under the above conditions for modified versions.
 @node Top,,, (mercury)
 @top The Mercury Frequently Asked Questions List, version <VERSION>
 @menu
+* Installing::      Problems during compilation and installation.
 * Programming::     Common programming errors.
 * Unimplemented::   Problems caused by unimplemented Mercury features.
 * Last resort::     What to do when all else fails.
 @end menu
 @end ifnottex
+
+@node Installing
+@chapter Problems during compilation and installation.
+
+@enumerate
+
+@item
+@emph{The compiler crashes during the ``make install'' phase}
+@sp 1
+
+An incompatibility between Mercury's low-level C backend and some GCC
+optimizations in GCC 4.2 seems to be causing problems.  Try using a different
+version of GCC, otherwise the following instructions may help.
+
+After unpacking the tarball but before running @samp{configure}, create a file in
+the root directory of the unpacked source named @samp{Mmake.params} containing
+the line @samp{-EXTRA_CFLAGS=-O0}, and run @samp{configure} as
+@samp{./configure --with-llds-base-grade=none --with-default-grade=hlc.gc}.
+This disables GCC's optimizations and nearly all of Mercury's optimizations for
+the low-level C backend.
+
+Programs built using this Mercury installation will use the high-level C
+backend by default.  To build a program in the low-level C grade the GCC
+optimizations should be disabled by creating a @samp{Mmake.params} file in the
+root directory of the program, as described above for the compiler.
+
+See bugs 66 and 77 in the bug database.
+
+@sp 1
+@item
+@emph{The ``make install'' phase takes ages!  What's going on?}
+@sp 1
+
+Mercury supports many grades.  A grade is a combination the target language and
+feature options.  These features include garbage collection, debugging and
+profiling support.  See ``Grades and grade components'' in the User's Guide.
+
+During the ``make install'' phase the newly built compiler is used to compile
+the standard library in each of the selected grades.  The runtime system is
+also rebuilt for each grade. 
+
+To install fewer grades and reduce the time ``make install'' takes, see the
+configure script's options, in particular @samp{--disable-most-grades}.
+Alternatively, run @samp{make install LIBGRADES=<grades>} instead, where
+``<grades>'' is a space-separated list of grades.
+
+
+@end enumerate
 
 @node Programming
 @chapter Common programming errors
