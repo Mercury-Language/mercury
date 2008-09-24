@@ -217,7 +217,7 @@ lookup(Map, Key, Value) :-
                 map.search(Map, Key, Value1)
         then
                 Value = Value1
-        ;
+        else 
                 Value = -1
         ).
 @end example
