@@ -2730,7 +2730,8 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0,
             warn_stubs                      -   bool(Enable),
             warn_dead_procs                 -   bool(Enable),
             warn_table_with_inline          -   bool(Enable),
-            warn_non_term_special_preds     -   bool(Enable)
+            warn_non_term_special_preds     -   bool(Enable),
+            warn_insts_without_matching_type -  bool(Enable)
         ], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
     override_options([
