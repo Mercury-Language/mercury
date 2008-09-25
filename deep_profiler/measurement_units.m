@@ -77,6 +77,8 @@
     %
 :- func format_percent(percent) = string.
 
+:- pred percent_at_or_above_threshold(int::in, percent::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %
 % Time
@@ -186,6 +188,9 @@ percent(P) = PF :-
 
 format_percent(percent_float(P)) = String :-
     string.format("%.2f", [f(P * 100.0)], String).
+
+percent_at_or_above_threshold(Threshold, percent_float(P)) :-
+    (P * float(100)) >= float(Threshold).
 
 %-----------------------------------------------------------------------------%
 %

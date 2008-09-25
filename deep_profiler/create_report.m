@@ -25,7 +25,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred create_report(cmd::in, deep::in, maybe_error(prog_rep)::in, 
+:- pred create_report(cmd::in, deep::in, maybe_error(prog_rep)::in,
     deep_report::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -39,6 +39,7 @@
 :- import_module top_procs.
 
 :- import_module array.
+:- import_module assoc_list.
 :- import_module exception.
 :- import_module float.
 :- import_module int.
@@ -78,6 +79,14 @@ create_report(Cmd, Deep, MaybeProgRep, Report) :-
             NumCallseqs, NumCSD, NumCSS, NumPD, NumPS, NumCliques),
         Report = report_menu(ok(MenuReport))
     ;
+        Cmd = deep_cmd_root(MaybePercent),
+        create_root_report(Deep, MaybePercent, MaybeCliqueReport),
+        Report = report_clique(MaybeCliqueReport)
+    ;
+        Cmd = deep_cmd_clique(CliquePtr),
+        create_clique_report(Deep, CliquePtr, MaybeCliqueReport),
+        Report = report_clique(MaybeCliqueReport)
+    ;
         Cmd = deep_cmd_program_modules,
         create_program_modules_report(Deep, MaybeProgramModulesReport),
         Report = report_program_modules(MaybeProgramModulesReport)
@@ -92,14 +101,14 @@ create_report(Cmd, Deep, MaybeProgRep, Report) :-
         Report = report_top_procs(MaybeTopProcsReport)
     ;
         Cmd = deep_cmd_procrep_coverage(PSPtr),
-        (   
+        (
             MaybeProgRep = ok(ProgRep),
             generate_procrep_coverage_dump_report(Deep, ProgRep, PSPtr,
                 MaybeProcrepCoverageReport)
         ;
             MaybeProgRep = error(Error),
-            MaybeProcrepCoverageReport = 
-                error("No procedure representation information: " ++ Error) 
+            MaybeProcrepCoverageReport =
+                error("No procedure representation information: " ++ Error)
         ),
         Report = report_procrep_coverage_dump(MaybeProcrepCoverageReport)
     ;
@@ -130,22 +139,339 @@ create_report(Cmd, Deep, MaybeProgRep, Report) :-
             MaybeCallSiteStaticDump),
         Report = report_call_site_dynamic_dump(MaybeCallSiteStaticDump)
     ;
+        Cmd = deep_cmd_dump_clique(CliquePtr),
+        create_clique_dump_report(Deep, CliquePtr, MaybeCliqueDump),
+        Report = report_clique_dump(MaybeCliqueDump)
+    ;
         Cmd = deep_cmd_restart,
         error("create_report/3", "unexpected restart command")
-    ;
-        ( Cmd = deep_cmd_root(_)
-        ; Cmd = deep_cmd_clique(_)
-        ; Cmd = deep_cmd_dump_clique(_)
-        ),
-        error("create_report/3", "Command not supported: " ++ string(Cmd))
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to build a clique report for the root clique, or the clique where
+% the action begins.
+%
+
+:- pred create_root_report(deep::in, maybe(int)::in,
+    maybe_error(clique_report)::out) is det.
+
+create_root_report(Deep, MaybePercent, MaybeReport) :-
+    deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
+    create_clique_report(Deep, RootCliquePtr, MaybeRootCliqueReport),
+    (
+        MaybeRootCliqueReport = error(_),
+        MaybeReport = MaybeRootCliqueReport
+    ;
+        MaybeRootCliqueReport = ok(RootCliqueReport),
+        (
+            MaybePercent = no,
+            MaybeReport = ok(RootCliqueReport)
+        ;
+            MaybePercent = yes(Percent),
+            find_start_of_action(Deep, Percent, RootCliqueReport, Report),
+            MaybeReport = ok(Report)
+        )
+    ).
+
+:- pred find_start_of_action(deep::in, int::in,
+    clique_report::in, clique_report::out) is det.
+
+find_start_of_action(Deep, Percent, CurrentReport, SelectedReport) :-
+    CurrentReport = clique_report(_, _, CliqueProcs),
+    list.foldl(find_start_of_action_clique_proc(Percent), CliqueProcs,
+        [], ActionCliquePtrs),
+    (
+        ActionCliquePtrs = [ActionCliquePtr],
+        create_clique_report(Deep, ActionCliquePtr, MaybeActionCliqueReport),
+        MaybeActionCliqueReport = ok(ActionCliqueReport)
+    ->
+        find_start_of_action(Deep, Percent, ActionCliqueReport, SelectedReport)
+    ;
+        SelectedReport = CurrentReport
+    ).
+
+:- pred find_start_of_action_clique_proc(int::in, clique_proc_report::in,
+    list(clique_ptr)::in, list(clique_ptr)::out) is det.
+
+find_start_of_action_clique_proc(Percent, CliqueProcReport,
+        !ActionCliquePtrs) :-
+    CliqueProcReport = clique_proc_report(_, FirstPDReport, LaterPDReports),
+    find_start_of_action_clique_proc_dynamic(Percent,
+        FirstPDReport, !ActionCliquePtrs),
+    list.foldl(find_start_of_action_clique_proc_dynamic(Percent),
+        LaterPDReports, !ActionCliquePtrs).
+
+:- pred find_start_of_action_clique_proc_dynamic(int::in,
+    clique_proc_dynamic_report::in,
+    list(clique_ptr)::in, list(clique_ptr)::out) is det.
+
+find_start_of_action_clique_proc_dynamic(Percent, CliquePDReport,
+        !ActionCliquePtrs) :-
+    CliquePDReport = clique_proc_dynamic_report(_, CallSites),
+    list.foldl(find_start_of_action_call_site(Percent), CallSites,
+        !ActionCliquePtrs).
+
+:- pred find_start_of_action_call_site(int::in, clique_call_site_report::in,
+    list(clique_ptr)::in, list(clique_ptr)::out) is det.
+
+find_start_of_action_call_site(Percent, CallSiteReport, !ActionCliquePtrs) :-
+    CallSiteReport = clique_call_site_report(_, _, CalleeRowDatas),
+    list.foldl(find_start_of_action_callee(Percent), CalleeRowDatas,
+        !ActionCliquePtrs).
+
+:- pred find_start_of_action_callee(int::in, perf_row_data(clique_desc)::in,
+    list(clique_ptr)::in, list(clique_ptr)::out) is det.
+
+find_start_of_action_callee(Percent, RowData, !ActionCliquePtrs) :-
+    MaybeTotalPerf = RowData ^ perf_row_maybe_total,
+    (
+        MaybeTotalPerf = no,
+        error("find_start_of_action_callee: no total perf")
+    ;
+        MaybeTotalPerf = yes(TotalPerf),
+        CallSeqsPercent = TotalPerf ^ perf_row_callseqs_percent,
+        ( percent_at_or_above_threshold(Percent, CallSeqsPercent) ->
+            CliqueDesc = RowData ^ perf_row_subject,
+            CliquePtr = CliqueDesc ^ cdesc_clique_ptr,
+            !:ActionCliquePtrs = [CliquePtr | !.ActionCliquePtrs]
+        ;
+            true
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to build a clique report.
+%
+
+    % Create a clique report, from the given data with the specified
+    % parameters.
+    %
+:- pred create_clique_report(deep::in, clique_ptr::in,
+    maybe_error(clique_report)::out) is det.
+
+create_clique_report(Deep, CliquePtr, MaybeCliqueReport) :-
+    AncestorRowDatas = find_clique_ancestors(Deep, CliquePtr),
+
+    deep_lookup_clique_members(Deep, CliquePtr, PDPtrs),
+    list.foldl(group_proc_dynamics_by_proc_static(Deep), PDPtrs,
+        map.init, PStoPDsMap),
+    map.to_assoc_list(PStoPDsMap, PStoPDsList0),
+    deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
+    ( valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) ->
+        deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
+        EntryPDPtr = EntryCSD ^ csd_callee,
+        list.filter(proc_group_contains(EntryPDPtr), PStoPDsList0,
+            EntryGroup, RestGroup),
+        PStoPDsList = EntryGroup ++ RestGroup
+    ;
+        PStoPDsList = PStoPDsList0
+    ),
+    list.map(create_clique_proc_report(Deep, CliquePtr),
+        PStoPDsList, CliqueProcs),
+
+    CliqueReport = clique_report(CliquePtr, AncestorRowDatas, CliqueProcs),
+    MaybeCliqueReport = ok(CliqueReport).
+
+:- func find_clique_ancestors(deep, clique_ptr) =
+    list(perf_row_data(ancestor_desc)).
+
+find_clique_ancestors(Deep, CliquePtr) = Ancestors :-
+    deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
+    ( valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) ->
+        deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
+        EntryPDPtr = EntryCSD ^ csd_caller,
+        ( EntryPDPtr = Deep ^ root ->
+            % We could return the true root node, which is the Mercury runtime
+            % system, but that is of no interest to either users or programs.
+            Ancestors = []
+        ;
+            deep_lookup_clique_index(Deep, EntryPDPtr, EntryCliquePtr),
+            CalleePDPtr = EntryCSD ^ csd_callee,
+            deep_lookup_proc_dynamics(Deep, CalleePDPtr, CalleePD),
+            CalleePSPtr = CalleePD ^ pd_proc_static,
+            CalleeDesc = describe_proc(Deep, CalleePSPtr),
+            deep_lookup_call_site_static_map(Deep, EntryCSDPtr, EntryCSSPtr),
+            EntryCallSiteDesc = describe_call_site(Deep, EntryCSSPtr),
+            AncestorDesc = ancestor_desc(EntryCliquePtr, CliquePtr,
+                CalleeDesc, EntryCallSiteDesc),
+            Own = EntryCSD ^ csd_own_prof,
+            deep_lookup_csd_desc(Deep, EntryCSDPtr, Desc),
+            own_and_inherit_to_perf_row_data(Deep, AncestorDesc, Own, Desc,
+                Parent),
+            MoreAncestors = find_clique_ancestors(Deep, EntryCliquePtr),
+            Ancestors = [Parent | MoreAncestors]
+        )
+    ;
+        Ancestors = []
+    ).
+
+:- pred group_proc_dynamics_by_proc_static(deep::in, proc_dynamic_ptr::in,
+    map(proc_static_ptr, list(proc_dynamic_ptr))::in,
+    map(proc_static_ptr, list(proc_dynamic_ptr))::out) is det.
+
+group_proc_dynamics_by_proc_static(Deep, PDPtr, PStoPDsMap0, PStoPDsMap) :-
+    require(valid_proc_dynamic_ptr(Deep, PDPtr),
+        "group_proc_dynamics_by_proc_static: invalid PDPtr"),
+    deep_lookup_proc_dynamics(Deep, PDPtr, PD),
+    PSPtr = PD ^ pd_proc_static,
+    ( map.search(PStoPDsMap0, PSPtr, PSPDs0) ->
+        PSPDs = [PDPtr | PSPDs0],
+        map.det_update(PStoPDsMap0, PSPtr, PSPDs, PStoPDsMap)
+    ;
+        map.det_insert(PStoPDsMap0, PSPtr, [PDPtr], PStoPDsMap)
+    ).
+
+:- pred proc_group_contains(proc_dynamic_ptr::in,
+    pair(proc_static_ptr, list(proc_dynamic_ptr))::in) is semidet.
+
+proc_group_contains(EntryPDPtr, _ - PDPtrs) :-
+    list.member(EntryPDPtr, PDPtrs).
+
+:- pred create_clique_proc_report(deep::in, clique_ptr::in,
+    pair(proc_static_ptr, list(proc_dynamic_ptr))::in,
+    clique_proc_report::out) is det.
+
+create_clique_proc_report(Deep, CliquePtr, PSPtr - PDPtrs, CliqueProcReport) :-
+    (
+        PDPtrs = [],
+        error("create_clique_proc_report", "PDPtrs = []")
+    ;
+        PDPtrs = [FirstPDPtr | LaterPDPtrs],
+        ProcDesc = describe_proc(Deep, PSPtr),
+        create_clique_proc_dynamic_report(Deep, CliquePtr, ProcDesc,
+            FirstPDPtr, FirstPDOwn, FirstPDDesc, FirstPDReport),
+        list.map3(create_clique_proc_dynamic_report(Deep, CliquePtr, ProcDesc),
+            LaterPDPtrs, LaterPDOwns, LaterPDDescs, LaterPDReports),
+        SummaryOwn = sum_own_infos([FirstPDOwn | LaterPDOwns]),
+        SummaryDesc = sum_inherit_infos([FirstPDDesc | LaterPDDescs]),
+        own_and_inherit_to_perf_row_data(Deep, ProcDesc,
+            SummaryOwn, SummaryDesc, ProcSummaryRowData),
+        CliqueProcReport = clique_proc_report(ProcSummaryRowData,
+            FirstPDReport, LaterPDReports)
+    ).
+
+:- pred create_clique_proc_dynamic_report(deep::in, clique_ptr::in,
+    proc_desc::in, proc_dynamic_ptr::in,
+    own_prof_info::out, inherit_prof_info::out,
+    clique_proc_dynamic_report::out) is det.
+
+create_clique_proc_dynamic_report(Deep, _CliquePtr, ProcDesc, PDPtr,
+        Own, Desc, CliquePDReport) :-
+    ( valid_proc_dynamic_ptr(Deep, PDPtr) ->
+        deep_lookup_pd_own(Deep, PDPtr, Own),
+        deep_lookup_pd_desc(Deep, PDPtr, Desc),
+        own_and_inherit_to_perf_row_data(Deep, ProcDesc, Own, Desc,
+            PDRowData),
+        deep_lookup_proc_dynamics(Deep, PDPtr, PD),
+        PSPtr = PD ^ pd_proc_static,
+        require(unify(PSPtr, ProcDesc ^ pdesc_ps_ptr),
+            "create_clique_proc_dynamic_report: psptr mismatch"),
+        create_child_call_site_reports(Deep, PDPtr, CliqueCallSiteReports),
+        CliquePDReport = clique_proc_dynamic_report(PDRowData,
+            CliqueCallSiteReports)
+    ;
+        error("invalid proc_dynamic index")
+    ).
+
+:- pred create_child_call_site_reports(deep::in, proc_dynamic_ptr::in,
+    list(clique_call_site_report)::out) is det.
+
+create_child_call_site_reports(Deep, PDPtr, CliqueCallSiteReports) :-
+    deep_lookup_proc_dynamics(Deep, PDPtr, PD),
+    PSPtr = PD ^ pd_proc_static,
+    CSDArray = PD ^ pd_sites,
+    deep_lookup_proc_statics(Deep, PSPtr, PS),
+    CSSArray = PS ^ ps_sites,
+    array.to_list(CSDArray, CSDSlots),
+    array.to_list(CSSArray, CSSSlots),
+    assoc_list.from_corresponding_lists(CSSSlots, CSDSlots, PairedSlots),
+    list.map(create_child_call_site_report(Deep), PairedSlots,
+        CliqueCallSiteReports).
+
+:- pred create_child_call_site_report(deep::in,
+    pair(call_site_static_ptr, call_site_array_slot)::in,
+    clique_call_site_report::out) is det.
+
+create_child_call_site_report(Deep, Pair, CliqueCallSiteReport) :-
+    Pair = CSSPtr - CallSiteArraySlot,
+    deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
+    CallSiteDesc = describe_call_site(Deep, CSSPtr),
+    Kind = CSS ^ css_kind,
+    (
+        Kind = normal_call_and_callee(CalleePSPtr, TypeSubst),
+        KnownCalleeDesc = describe_proc(Deep, CalleePSPtr),
+        ProcDescKind = normal_call_and_callee(KnownCalleeDesc, TypeSubst),
+        (
+            CallSiteArraySlot = slot_normal(CSDPtr)
+        ;
+            CallSiteArraySlot = slot_multi(_, _),
+            error("create_child_call_site_report: normal_call error")
+        ),
+        ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+            create_callee_clique_perf_row_data(Deep, CSDPtr,
+                Own, Desc, CalleeCliqueRowData),
+            CalleeCliqueRowDatas = [CalleeCliqueRowData]
+        ;
+            Own = zero_own_prof_info,
+            Desc = zero_inherit_prof_info,
+            CalleeCliqueRowDatas = []
+        )
+    ;
+        (
+            Kind = special_call_and_no_callee,
+            ProcDescKind = special_call_and_no_callee
+        ;
+            Kind = higher_order_call_and_no_callee,
+            ProcDescKind = higher_order_call_and_no_callee
+        ;
+            Kind = method_call_and_no_callee,
+            ProcDescKind = method_call_and_no_callee
+        ;
+            Kind = callback_and_no_callee,
+            ProcDescKind = callback_and_no_callee
+        ),
+        (
+            CallSiteArraySlot = slot_normal(_),
+            error("create_child_call_site_report: non-normal_call error")
+        ;
+            CallSiteArraySlot = slot_multi(_IsZeroed, CSDPtrsArray),
+            array.to_list(CSDPtrsArray, CSDPtrs)
+        ),
+        list.map3(create_callee_clique_perf_row_data(Deep), CSDPtrs,
+            Owns, Descs, CalleeCliqueRowDatas),
+        Own = sum_own_infos(Owns),
+        Desc = sum_inherit_infos(Descs)
+    ),
+    own_and_inherit_to_perf_row_data(Deep, CallSiteDesc, Own, Desc,
+        SummaryRowData),
+    CliqueCallSiteReport = clique_call_site_report(SummaryRowData,
+        ProcDescKind, CalleeCliqueRowDatas).
+
+:- pred create_callee_clique_perf_row_data(deep::in, call_site_dynamic_ptr::in,
+    own_prof_info::out, inherit_prof_info::out,
+    perf_row_data(clique_desc)::out) is det.
+
+create_callee_clique_perf_row_data(Deep, CSDPtr, Own, Desc,
+        CalleeCliqueRowData) :-
+    require(valid_call_site_dynamic_ptr(Deep, CSDPtr),
+        "create_callee_clique_perf_row_data: invalid call_site_dynamic_ptr"),
+    deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
+    CalleePDPtr = CSD ^ csd_callee,
+    Own = CSD ^ csd_own_prof,
+    deep_lookup_csd_desc(Deep, CSDPtr, Desc),
+    deep_lookup_clique_index(Deep, CalleePDPtr, CalleeCliquePtr),
+    CliqueDesc = describe_clique(Deep, CalleeCliquePtr),
+    own_and_inherit_to_perf_row_data(Deep, CliqueDesc, Own, Desc,
+        CalleeCliqueRowData).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to build a program_modules report.
 %
 
-    % Create a modules report, from the given data with the specified
+    % Create a program_modules report, from the given data with the specified
     % parameters.
     %
 :- pred create_program_modules_report(deep::in,
@@ -193,7 +519,7 @@ module_pair_to_row_data(Deep, ModuleName - ModuleData) = ModuleRowData :-
 
 create_module_report(Deep, ModuleName, MaybeModuleReport) :-
     ( map.search(Deep ^ module_data, ModuleName, ModuleData) ->
-        PSPtrs = ModuleData ^ module_procs, 
+        PSPtrs = ModuleData ^ module_procs,
         ProcRowDatas = list.map(proc_to_active_row_data(Deep), PSPtrs),
         ModuleReport = module_report(ModuleName, ProcRowDatas),
         MaybeModuleReport = ok(ModuleReport)
@@ -304,7 +630,7 @@ create_call_site_summary(Deep, CSSPtr) = CallSitePerf :-
     ( goal_path_from_string(GoalPathString, GoalPathPrime) ->
         GoalPath = GoalPathPrime
     ;
-        error("create_call_site_summary: " ++ 
+        error("create_call_site_summary: " ++
             "Couldn't convert string to goal path: " ++ GoalPathString)
     ),
 
@@ -358,7 +684,7 @@ create_call_site_summary(Deep, CSSPtr) = CallSitePerf :-
         own_and_inherit_to_perf_row_data(Deep, CallSiteDesc, SumOwn, SumDesc,
             SummaryRowData)
     ),
-    CallSitePerf = call_site_perf(KindAndInfo, SummaryRowData, SubRowDatas, 
+    CallSitePerf = call_site_perf(KindAndInfo, SummaryRowData, SubRowDatas,
         GoalPath).
 
 :- type call_site_callee_perf
@@ -555,17 +881,17 @@ generate_procrep_coverage_dump_report(Deep, ProgRep, PSPtr, MaybeReport) :-
 
             % Gather call site information.
             CallSitesArray = PS ^ ps_sites,
-            array.foldl(create_cs_summary_add_to_map(Deep), CallSitesArray, 
+            array.foldl(create_cs_summary_add_to_map(Deep), CallSitesArray,
                 map.init) = CallSitesMap,
 
             % Gather information about coverage points.
             CoveragePointsArray = PS ^ ps_coverage_points,
-            array.foldl2(add_coverage_point_to_map, CoveragePointsArray, 
+            array.foldl2(add_coverage_point_to_map, CoveragePointsArray,
                 map.init, SolnsCoveragePointMap,
                 map.init, BranchCoveragePointMap),
 
             procrep_annotate_with_coverage(Own, CallSitesMap,
-                SolnsCoveragePointMap, BranchCoveragePointMap, 
+                SolnsCoveragePointMap, BranchCoveragePointMap,
                 ProcRep0, ProcRep),
             MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep))
         ;
@@ -576,7 +902,7 @@ generate_procrep_coverage_dump_report(Deep, ProgRep, PSPtr, MaybeReport) :-
         MaybeReport = error("Invalid proc_static index")
     ).
 
-:- func create_cs_summary_add_to_map(deep, call_site_static_ptr, 
+:- func create_cs_summary_add_to_map(deep, call_site_static_ptr,
     map(goal_path, call_site_perf)) =  map(goal_path, call_site_perf).
 
 create_cs_summary_add_to_map(Deep, CSStatic, Map0) = Map :-
@@ -584,8 +910,8 @@ create_cs_summary_add_to_map(Deep, CSStatic, Map0) = Map :-
     GoalPath = CSSummary ^ csf_goal_path,
     map.det_insert(Map0, GoalPath, CSSummary, Map).
 
-:- pred add_coverage_point_to_map(coverage_point::in, 
-    map(goal_path, coverage_point)::in, map(goal_path, coverage_point)::out, 
+:- pred add_coverage_point_to_map(coverage_point::in,
+    map(goal_path, coverage_point)::in, map(goal_path, coverage_point)::out,
     map(goal_path, coverage_point)::in, map(goal_path, coverage_point)::out)
     is det.
 
@@ -678,6 +1004,21 @@ create_call_site_dynamic_dump_report(Deep, CSDPtr,
         MaybeCallSiteDynamicDumpInfo = ok(CallSiteDynamicDumpInfo)
     ;
         MaybeCallSiteDynamicDumpInfo = error("invalid call_site_dynamic index")
+    ).
+
+:- pred create_clique_dump_report(deep::in, clique_ptr::in,
+    maybe_error(clique_dump_info)::out) is det.
+
+create_clique_dump_report(Deep, CliquePtr, MaybeCliqueDumpInfo) :-
+    ( valid_clique_ptr(Deep, CliquePtr) ->
+        CliqueDesc = describe_clique(Deep, CliquePtr),
+        deep_lookup_clique_parents(Deep, CliquePtr, ParentCSDPtr),
+        deep_lookup_clique_members(Deep, CliquePtr, MemberPDPtrs),
+        CliqueDumpInfo = clique_dump_info(CliqueDesc, ParentCSDPtr,
+            MemberPDPtrs),
+        MaybeCliqueDumpInfo = ok(CliqueDumpInfo)
+    ;
+        MaybeCliqueDumpInfo = error("invalid clique_ptr")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -867,8 +1208,17 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
 describe_clique(Deep, CliquePtr) = CliqueDesc :-
     ( valid_clique_ptr(Deep, CliquePtr) ->
         deep_lookup_clique_members(Deep, CliquePtr, MemberPDPtrs),
-        ProcDescs = list.map(describe_clique_member(Deep), MemberPDPtrs),
-        CliqueDesc = clique_desc(CliquePtr, ProcDescs)
+        deep_lookup_clique_parents(Deep, CliquePtr, ParentCSDPtr),
+        deep_lookup_call_site_dynamics(Deep, ParentCSDPtr, ParentCSD),
+        EntryPDPtr = ParentCSD ^ csd_callee,
+        ( list.delete_first(MemberPDPtrs, EntryPDPtr, OtherPDPtrs) ->
+            EntryProcDesc = describe_clique_member(Deep, EntryPDPtr),
+            OtherProcDescs =
+                list.map(describe_clique_member(Deep), OtherPDPtrs),
+            CliqueDesc = clique_desc(CliquePtr, EntryProcDesc, OtherProcDescs)
+        ;
+            error("describe_clique", "entry pdptr not a member")
+        )
     ;
         error("describe_clique", "invalid clique_ptr")
     ).

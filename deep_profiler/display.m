@@ -190,7 +190,19 @@
             )
     ;       td_p(percent)
     ;       td_s(string)
+    ;       td_as(attr_string)
     ;       td_t(time).
+
+:- type attr_string
+    --->    attr_str(
+                list(str_attr),
+                string
+            ).
+
+:- type str_attr
+    --->    attr_bold
+    ;       attr_italic
+    ;       attr_underline.
 
 %-----------------------------------------------------------------------------%
 %
@@ -217,7 +229,7 @@
                 maybe(preferences),
 
                 % A label for the link.
-                string,
+                attr_string,
 
                 % Class of the link; may control how it is displayed.
                 link_class

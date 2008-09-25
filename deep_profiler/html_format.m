@@ -160,12 +160,14 @@
     % escapes.
     %
 :- func escape_html_string(string) = string.
+:- func escape_html_attr_string(attr_string) = string.
 
     % Like escape_html_string, but additionally inserts zero-width space
     % characters to suggest where long strings can be broken over multiple
     % lines.
     %
 :- func escape_break_html_string(string) = string.
+:- func escape_break_html_attr_string(attr_string) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -386,7 +388,7 @@ table_to_html(FormatInfo, !StyleControlMap, Table, HTML) :-
         map_join_html(table_header_group_to_html_row_1(FormatInfo, THNumRows),
             !StyleControlMap, THCells, InnerHeaderRowOneHTML),
         HeaderRowOneHTML =
-            wrap_tags("<tr>", "</tr>\n", InnerHeaderRowOneHTML),
+            wrap_tags("<tr>\n", "</tr>\n", InnerHeaderRowOneHTML),
         (
             THNumRows = one_header_row,
             HeaderRowTwoHTML = empty_html
@@ -395,12 +397,12 @@ table_to_html(FormatInfo, !StyleControlMap, Table, HTML) :-
             map_join_html(table_header_group_to_html_row_2(FormatInfo),
                 !StyleControlMap, THCells, InnerHeaderRowTwoHTML),
             HeaderRowTwoHTML =
-                wrap_tags("<tr>", "</tr>\n", InnerHeaderRowTwoHTML)
+                wrap_tags("<tr>\n", "</tr>\n", InnerHeaderRowTwoHTML)
         ),
         InnerHeaderRowThree =
             string.format("<td colspan=\"%d\"/>", [i(NumColumns)]),
         HeaderRowThreeHTML =
-            wrap_tags("<tr>", "</tr>\n",  str_to_html(InnerHeaderRowThree)),
+            wrap_tags("<tr>", "</tr>",  str_to_html(InnerHeaderRowThree)),
         HeaderHTML = HeaderRowOneHTML ++ HeaderRowTwoHTML ++ HeaderRowThreeHTML
     ;
         MaybeHeader = no,
@@ -413,7 +415,10 @@ table_to_html(FormatInfo, !StyleControlMap, Table, HTML) :-
         !StyleControlMap, BodyRows, BodyRowsHTML),
 
     % Construct the table.
-    HTML = wrap_tags(TableStartTag, TableEndTag, HeaderHTML ++ BodyRowsHTML).
+    WrappedHeaderHTML = wrap_tags("<thead>\n", "</thead>\n", HeaderHTML),
+    WrappedBodyHTML = wrap_tags("<tbody>\n", "</tbody>\n", BodyRowsHTML),
+    HTML = wrap_tags(TableStartTag, TableEndTag,
+        WrappedHeaderHTML ++ WrappedBodyHTML).
 
 %-----------------------------------------------------------------------------%
 
@@ -593,7 +598,7 @@ table_row_to_html(FormatInfo, MaybeColClassMap, NumColumns, !StyleControlMap,
         TableRow = table_row(Cells),
         map_join_html_count(table_cell_to_html(FormatInfo, MaybeColClassMap),
             !StyleControlMap, 0, Cells, InnerHTML),
-        HTML = wrap_tags("<tr>", "</tr>\n", InnerHTML)
+        HTML = wrap_tags("<tr>\n", "</tr>\n", InnerHTML)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -663,6 +668,8 @@ table_data_to_html(_, td_p(Percent)) =
     str_to_html(format_percent(Percent)).
 table_data_to_html(_, td_s(String)) =
     str_to_html(escape_break_html_string(String)).
+table_data_to_html(_, td_as(AttrString)) =
+    str_to_html(escape_break_html_attr_string(AttrString)).
 table_data_to_html(_, td_t(Time)) =
     str_to_html(format_time(Time)).
 
@@ -855,7 +862,7 @@ link_to_html(FormatInfo, Link) = HTML :-
         FormatString = "<a class=\"link\" href=\"%s\">%s</a>"
     ),
     string.format(FormatString,
-        [s(URL), s(escape_break_html_string(Label))], HTMLStr),
+        [s(URL), s(escape_break_html_attr_string(Label))], HTMLStr),
     HTML = str_to_html(HTMLStr).
 
     % Transform a pseudo link into HTML.
@@ -3121,8 +3128,31 @@ plural(N) = Plural :-
 escape_html_string(String) =
     replace_special_chars(special_html_char, String).
 
+escape_html_attr_string(attr_str(Attrs, String)) =
+    handle_html_attrs(Attrs, replace_special_chars(special_html_char, String)).
+
 escape_break_html_string(String) =
     replace_special_chars(special_html_char_or_break, String).
+
+escape_break_html_attr_string(attr_str(Attrs, String)) =
+    handle_html_attrs(Attrs,
+        replace_special_chars(special_html_char_or_break, String)).
+
+:- func handle_html_attrs(list(str_attr), string) = string.
+
+handle_html_attrs([], Str) = Str.
+handle_html_attrs([Attr | Attrs], InsideStr) = Str :-
+    InnerStr = handle_html_attrs(Attrs, InsideStr),
+    (
+        Attr = attr_bold,
+        Str = "<b>" ++ InnerStr ++ "</b>"
+    ;
+        Attr = attr_italic,
+        Str = "<i>" ++ InnerStr ++ "</i>"
+    ;
+        Attr = attr_underline,
+        Str = "<u>" ++ InnerStr ++ "</u>"
+    ).
 
 :- func replace_special_chars(pred(char, string)::in(pred(in, out) is semidet),
     string::in) = (string::out) is det.

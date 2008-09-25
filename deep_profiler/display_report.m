@@ -69,6 +69,15 @@ report_to_display(Deep, Prefs, Report) = Display :-
             Display = display(no, [display_heading(Msg)])
         )
     ;
+        Report = report_clique(MaybeCliqueReport),
+        (
+            MaybeCliqueReport = ok(CliqueReport),
+            display_report_clique(Prefs, CliqueReport, Display)
+        ;
+            MaybeCliqueReport = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
+    ;
         Report = report_program_modules(MaybeProgramModulesReport),
         (
             MaybeProgramModulesReport = ok(ProgramModulesReport),
@@ -161,6 +170,15 @@ report_to_display(Deep, Prefs, Report) = Display :-
                 CallSiteDynamicDumpInfo, Display)
         ;
             MaybeCallSiteDynamicDumpInfo = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
+    ;
+        Report = report_clique_dump(MaybeCliqueDumpInfo),
+        (
+            MaybeCliqueDumpInfo = ok(CliqueDumpInfo),
+            display_report_clique_dump(Prefs, CliqueDumpInfo, Display)
+        ;
+            MaybeCliqueDumpInfo = error(Msg),
             Display = display(no, [display_heading(Msg)])
         )
     ).
@@ -287,6 +305,241 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
 
 %-----------------------------------------------------------------------------%
 %
+% Code to display a clique report.
+%
+
+    % Create a display_report structure for a clique report.
+    %
+:- pred display_report_clique(preferences::in, clique_report::in,
+    display::out) is det.
+
+display_report_clique(Prefs, CliqueReport, Display) :-
+    CliqueReport = clique_report(CliquePtr, InnerToOuterAncestorCallSites0,
+        CliqueProcs0),
+    Cmd = deep_cmd_clique(CliquePtr),
+    CliquePtr = clique_ptr(CliqueNum),
+    Title = string.format("Clique %d:", [i(CliqueNum)]),
+
+    % Build the table of all modules.
+    SortByContextPrefs = Prefs ^ pref_criteria := by_context,
+    SortByNamePrefs = Prefs ^ pref_criteria := by_name,
+    SourceHeaderCell = td_l(deep_link(Cmd, yes(SortByContextPrefs),
+        attr_str([], "Source"), link_class_link)),
+    ProcHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs),
+        attr_str([], "Procedure"), link_class_link)),
+    SourceHeaderGroup =
+        make_single_table_header_group(SourceHeaderCell,
+            table_column_class_source_context, column_do_not_colour),
+    ProcHeaderGroup =
+        make_single_table_header_group(ProcHeaderCell,
+            table_column_class_proc, column_do_not_colour),
+    MakeHeaderData = override_order_criteria_header_data(Cmd),
+    perf_table_header(total_columns_meaningful, Prefs, MakeHeaderData,
+        PerfHeaderGroups),
+    AllHeaderGroups = [SourceHeaderGroup, ProcHeaderGroup] ++ PerfHeaderGroups,
+    header_groups_to_header(AllHeaderGroups, NumColumns, Header),
+
+    list.length(InnerToOuterAncestorCallSites0, NumAncestors),
+    MaybeAncestorLimit = Prefs ^ pref_anc,
+    (
+        MaybeAncestorLimit = yes(AncestorLimit),
+        NumAncestors > AncestorLimit
+    ->
+        AncestorTitle = string.format("The %d closest ancestor call sites:",
+            [i(AncestorLimit)]),
+        list.take_upto(AncestorLimit,
+            InnerToOuterAncestorCallSites0, InnerToOuterAncestorCallSites)
+    ;
+        AncestorTitle = "Ancestor call sites:",
+        InnerToOuterAncestorCallSites = InnerToOuterAncestorCallSites0
+    ),
+
+    list.reverse(InnerToOuterAncestorCallSites, AncestorCallSites),
+    AncestorDataRows = list.map(clique_ancestor_to_row(Prefs),
+        AncestorCallSites),
+    AncestorSectionHeaderRow = table_section_header(td_s(AncestorTitle)),
+    AncestorRows = [AncestorSectionHeaderRow, table_separator_row] ++
+        AncestorDataRows,
+
+    CliqueProcsHeaderRow =
+        table_section_header(td_s("Procedures of the clique:")),
+
+    sort_clique_procs_by_preferences(Prefs, CliqueProcs0, CliqueProcs),
+    ProcRowLists = list.map(clique_proc_to_table_rows(Prefs, CliquePtr),
+        CliqueProcs),
+    list.condense(ProcRowLists, ProcRows),
+
+    AllRows = AncestorRows ++
+        [table_separator_row, CliqueProcsHeaderRow, table_separator_row] ++
+        ProcRows,
+    Table = table(table_class_box_if_pref, NumColumns, yes(Header), AllRows),
+    DisplayTable = display_table(Table),
+
+    % Build controls at the bottom of the page.
+    AncestorControls = ancestor_controls(Prefs, Cmd),
+    FieldControls = field_controls(Prefs, Cmd),
+    FormatControls = format_controls(Prefs, Cmd),
+    MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
+
+    Display = display(yes(Title),
+        [DisplayTable,
+        display_paragraph_break, AncestorControls,
+        display_paragraph_break, FieldControls,
+        display_paragraph_break, FormatControls,
+        display_paragraph_break, MenuRestartQuitControls]).
+
+:- func clique_ancestor_to_row(preferences, perf_row_data(ancestor_desc))
+    = table_row.
+
+clique_ancestor_to_row(Prefs, AncestorRowData) = Row :-
+    AncestorDesc = AncestorRowData ^ perf_row_subject,
+    CallSiteDesc = AncestorDesc ^ ad_call_site_desc,
+    SourceCell = call_site_desc_source_cell(CallSiteDesc),
+    CliqueProcCell = call_site_desc_clique_proc_cell(Prefs, AncestorDesc),
+    Fields = Prefs ^ pref_fields,
+    perf_table_row(total_columns_meaningful, Fields, AncestorRowData,
+        PerfCells),
+    AllCells = [SourceCell, CliqueProcCell] ++ PerfCells,
+    Row = table_row(AllCells).
+
+:- func clique_proc_to_table_rows(preferences, clique_ptr, clique_proc_report)
+    = list(table_row).
+
+clique_proc_to_table_rows(Prefs, CliquePtr, CliqueProcReport) = ProcRows :-
+    CliqueProcReport = clique_proc_report(SummaryRowData,
+        FirstPDReport, LaterPDReports),
+    (
+        LaterPDReports = [],
+        ProcRows = clique_proc_dynamic_to_table_rows(Prefs, CliquePtr,
+            FirstPDReport)
+    ;
+        LaterPDReports = [_ | _],
+        AllPDReports = [FirstPDReport | LaterPDReports],
+        sort_clique_proc_dynamics_by_preferences(Prefs, AllPDReports,
+            SortedAllPDReports),
+        PDProcRowLists =
+            list.map(clique_proc_dynamic_to_table_rows(Prefs, CliquePtr),
+                SortedAllPDReports),
+        % Do we want separators between the rows of different proc dynamics?
+        list.condense(PDProcRowLists, PDProcRows),
+        Fields = Prefs ^ pref_fields,
+        perf_table_row(total_columns_meaningful, Fields, SummaryRowData,
+            SummaryPerfCells),
+        ProcDesc = SummaryRowData ^ perf_row_subject,
+        SourceCell = proc_desc_to_source_cell(ProcDesc),
+        ProcCell = proc_desc_to_prefix_proc_name_cell(Prefs, [attr_bold],
+            ProcDesc, "summary "),
+        SummaryRowCells = [SourceCell, ProcCell] ++ SummaryPerfCells,
+        SummaryRow = table_row(SummaryRowCells),
+        ProcRows = [SummaryRow, table_separator_row] ++ PDProcRows
+    ).
+
+:- func clique_proc_dynamic_to_table_rows(preferences, clique_ptr,
+    clique_proc_dynamic_report) = list(table_row).
+
+clique_proc_dynamic_to_table_rows(Prefs, CliquePtr, CliqueProcDynamicReport)
+        = ProcRows :-
+    CliqueProcDynamicReport = clique_proc_dynamic_report(SummaryRowData,
+        CallSiteReports),
+    ProcDesc = SummaryRowData ^ perf_row_subject,
+    ProcCell = proc_desc_to_proc_name_cell_span(Prefs, [attr_bold],
+        ProcDesc, 2),
+    Fields = Prefs ^ pref_fields,
+    perf_table_row(total_columns_meaningful, Fields, SummaryRowData,
+        SummaryPerfCells),
+    SummaryRowCells = [ProcCell] ++ SummaryPerfCells,
+    SummaryRow = table_row(SummaryRowCells),
+    CallSiteRowLists =
+        list.map(clique_call_site_to_rows(Prefs, CliquePtr), CallSiteReports),
+    list.condense(CallSiteRowLists, CallSiteRows),
+    ProcRows = [SummaryRow, table_separator_row] ++ CallSiteRows.
+
+:- func clique_call_site_to_rows(preferences, clique_ptr,
+    clique_call_site_report) = list(table_row).
+
+clique_call_site_to_rows(Prefs, CliquePtr, CallSiteReport) = Rows :-
+    CallSiteReport = clique_call_site_report(CallSiteRowData, Kind,
+        CalleePerfs),
+    CallSiteDesc = CallSiteRowData ^ perf_row_subject,
+    SourceCell = call_site_desc_source_cell(CallSiteDesc),
+    Fields = Prefs ^ pref_fields,
+    perf_table_row(total_columns_meaningful, Fields, CallSiteRowData,
+        SummaryPerfCells),
+    (
+        Kind = normal_call_and_callee(CalleeProcDesc, _TypeSubst),
+        (
+            CalleePerfs = [],
+            CalleeProcCell = proc_desc_to_prefix_proc_name_cell(Prefs,
+                [], CalleeProcDesc, "no calls made to "),
+            RowCells = [SourceCell, CalleeProcCell] ++ SummaryPerfCells,
+            Row = table_row(RowCells),
+            Rows = [Row]
+        ;
+            CalleePerfs = [CalleePerf],
+            CalleeCliqueDesc = CalleePerf ^ perf_row_subject,
+            CalleeProcCell = clique_desc_to_non_self_link_proc_name_cell(Prefs,
+                CalleeCliqueDesc, CliquePtr),
+            RowCells = [SourceCell, CalleeProcCell] ++ SummaryPerfCells,
+            Row = table_row(RowCells),
+            Rows = [Row]
+        ;
+            CalleePerfs = [_, _ | _],
+            error("clique_call_site_to_rows: more than one callee at normal")
+        )
+    ;
+        (
+            Kind = special_call_and_no_callee,
+            CalleeCellStr0 = "special call"
+        ;
+            Kind = higher_order_call_and_no_callee,
+            CalleeCellStr0 = "higher order call"
+        ;
+            Kind = method_call_and_no_callee,
+            CalleeCellStr0 = "method call"
+        ;
+            Kind = callback_and_no_callee,
+            CalleeCellStr0 = "callback"
+        ),
+        (
+            CalleePerfs = [],
+            CalleeCellStr = CalleeCellStr0 ++ " (no calls made)"
+        ;
+            CalleePerfs = [_ | _],
+            CalleeCellStr = CalleeCellStr0 ++ " (summary)"
+        ),
+        CalleeCell = table_cell(td_s(CalleeCellStr)),
+        SummaryRowCells = [SourceCell, CalleeCell] ++ SummaryPerfCells,
+        SummaryRow = table_row(SummaryRowCells),
+        Summarize = Prefs ^ pref_summarize,
+        (
+            Summarize = summarize,
+            Rows = [SummaryRow]
+        ;
+            Summarize = do_not_summarize,
+            sort_clique_rows_by_preferences(Prefs, CalleePerfs,
+                SortedCalleePerfs),
+            CalleeRows =
+                list.map(clique_call_site_callee_to_row(Prefs, CliquePtr),
+                    SortedCalleePerfs),
+            Rows = [SummaryRow] ++ CalleeRows
+        )
+    ).
+
+:- func clique_call_site_callee_to_row(preferences, clique_ptr,
+    perf_row_data(clique_desc)) = table_row.
+
+clique_call_site_callee_to_row(Prefs, CliquePtr, CalleeRowData) = Row :-
+    CalleeCliqueDesc = CalleeRowData ^ perf_row_subject,
+    CalleeProcCell = clique_desc_to_non_self_link_proc_name_cell(Prefs,
+        CalleeCliqueDesc, CliquePtr),
+    Fields = Prefs ^ pref_fields,
+    perf_table_row(total_columns_meaningful, Fields, CalleeRowData, PerfCells),
+    EmptyCell = table_cell(td_s("")),
+    Cells = [EmptyCell, CalleeProcCell] ++ PerfCells,
+    Row = table_row(Cells).
+
+%-----------------------------------------------------------------------------%
+%
 % Code to display a program_modules report.
 %
 
@@ -315,8 +568,8 @@ display_report_program_modules(Prefs, ProgramModulesReport, Display) :-
 
     % Build the table of all modules.
     SortByNamePrefs = Prefs ^ pref_criteria := by_name,
-    ModuleHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs), "Module",
-        link_class_link)),
+    ModuleHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs),
+        attr_str([], "Module"), link_class_link)),
     RankHeaderGroup =
         make_single_table_header_group(td_s("Rank"),
             table_column_class_ordinal_rank, column_do_not_colour),
@@ -332,7 +585,7 @@ display_report_program_modules(Prefs, ProgramModulesReport, Display) :-
 
     list.map_foldl(
         maybe_ranked_subject_perf_table_row(Prefs, ranked,
-            total_columns_not_meaningful, module_active_to_cell),
+            total_columns_not_meaningful, module_active_to_module_name_cell),
         ModuleRowDatas, Rows, 1, _),
     Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
     DisplayTable = display_table(Table),
@@ -395,8 +648,8 @@ display_report_module(Prefs, ModuleReport, Display) :-
 
     % Build the table of all modules.
     SortByNamePrefs = Prefs ^ pref_criteria := by_name,
-    ProcHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs), "Procedure",
-        link_class_link)),
+    ProcHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs),
+        attr_str([], "Procedure"), link_class_link)),
     RankHeaderGroup =
         make_single_table_header_group(td_s("Rank"),
             table_column_class_ordinal_rank, column_do_not_colour),
@@ -412,7 +665,7 @@ display_report_module(Prefs, ModuleReport, Display) :-
 
     list.map_foldl(
         maybe_ranked_subject_perf_table_row(Prefs, ranked,
-            total_columns_meaningful, proc_active_to_cell),
+            total_columns_meaningful, proc_active_to_proc_name_cell),
         ProcRowDatas, Rows, 1, _),
     Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
     DisplayTable = display_table(Table),
@@ -459,7 +712,7 @@ display_report_top_procs(Prefs, TopProcsReport, Display) :-
         NumColumns, Header),
     list.map_foldl(
         maybe_ranked_subject_perf_table_row(Prefs, ranked,
-            total_columns_meaningful, proc_desc_to_cell),
+            total_columns_meaningful, proc_desc_to_proc_name_cell),
         TopProcs, Rows, 1, _),
     Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
     DisplayTable = display_table(Table),
@@ -594,10 +847,7 @@ report_proc_call_site(Prefs, CallSitePerf) = Rows :-
         call_site_perf(KindAndCallee, SummaryPerfRowData, SubPerfs0, _),
 
     CallSiteDesc = SummaryPerfRowData ^ perf_row_subject,
-    FileName = CallSiteDesc ^ csdesc_file_name,
-    LineNumber = CallSiteDesc ^ csdesc_line_number,
-    Context = string.format("%s:%d", [s(FileName), i(LineNumber)]),
-    ContextCell = table_cell(td_s(Context)),
+    ContextCell = call_site_desc_source_cell(CallSiteDesc),
 
     (
         KindAndCallee = normal_call_and_info(NormalCalleeId),
@@ -612,7 +862,7 @@ report_proc_call_site(Prefs, CallSitePerf) = Rows :-
         CalleePSPtr = CalleeDesc ^ pdesc_ps_ptr,
         CallSiteLinkCmd = deep_cmd_proc(CalleePSPtr),
         CallSiteLink = deep_link(CallSiteLinkCmd, yes(Prefs),
-            CallSiteStr, link_class_link),
+            attr_str([], CallSiteStr), link_class_link),
         CallSiteCell = table_cell(td_l(CallSiteLink)),
 
         require(unify(SubPerfs0, []),
@@ -656,18 +906,10 @@ report_proc_call_site(Prefs, CallSitePerf) = Rows :-
 
 report_proc_call_site_callee(Prefs, RowData) = Row :-
     Fields = Prefs ^ pref_fields,
-
     EmptyCell = table_empty_cell,
-
     ProcDesc = RowData ^ perf_row_subject,
-    ProcDesc = proc_desc(PSPtr, _FileName, _LineNumber, RefinedName),
-    ProcLinkCmd = deep_cmd_proc(PSPtr),
-    ProcLink = deep_link(ProcLinkCmd, yes(Prefs), RefinedName,
-        link_class_link),
-    ProcCell = table_cell(td_l(ProcLink)),
-
+    ProcCell = proc_desc_to_proc_name_cell(Prefs, ProcDesc),
     perf_table_row(total_columns_meaningful, Fields, RowData, PerfCells),
-
     Cells = [EmptyCell, ProcCell] ++ PerfCells,
     Row = table_row(Cells).
 
@@ -892,17 +1134,8 @@ display_caller_call_site(Prefs, CallSiteRowData, Row, !RowNum) :-
     !:RowNum = !.RowNum + 1,
 
     CallSiteDesc = CallSiteRowData ^ perf_row_subject,
-    PSPtr = CallSiteDesc ^ csdesc_container,
-    FileName = CallSiteDesc ^ csdesc_file_name,
-    LineNumber = CallSiteDesc ^ csdesc_line_number,
-    CallerRefinedName = CallSiteDesc ^ csdesc_caller_refined_name,
-
-    Source = string.format("%s:%d", [s(FileName), i(LineNumber)]),
-    SourceCell = table_cell(td_s(Source)),
-    ProcLinkCmd = deep_cmd_proc(PSPtr),
-    ProcLink = deep_link(ProcLinkCmd, yes(Prefs), CallerRefinedName,
-        link_class_link),
-    ProcCell = table_cell(td_l(ProcLink)),
+    SourceCell = call_site_desc_to_source_cell(CallSiteDesc),
+    ProcCell = call_site_desc_to_caller_proc_name_cell(Prefs, CallSiteDesc),
 
     Fields = Prefs ^ pref_fields,
     perf_table_row(total_columns_meaningful, Fields, CallSiteRowData,
@@ -918,17 +1151,8 @@ display_caller_proc(Prefs, ProcRowData, Row, !RowNum) :-
     !:RowNum = !.RowNum + 1,
 
     ProcDesc = ProcRowData ^ perf_row_subject,
-    PSPtr = ProcDesc ^ pdesc_ps_ptr,
-    FileName = ProcDesc ^ pdesc_file_name,
-    LineNumber = ProcDesc ^ pdesc_line_number,
-    RefinedName = ProcDesc ^ pdesc_refined_name,
-
-    Source = string.format("%s:%d", [s(FileName), i(LineNumber)]),
-    SourceCell = table_cell(td_s(Source)),
-    ProcLinkCmd = deep_cmd_proc(PSPtr),
-    ProcLink = deep_link(ProcLinkCmd, yes(Prefs), RefinedName,
-        link_class_link),
-    ProcCell = table_cell(td_l(ProcLink)),
+    SourceCell = proc_desc_to_source_cell(ProcDesc),
+    ProcCell = proc_desc_to_proc_name_cell(Prefs, ProcDesc),
 
     Fields = Prefs ^ pref_fields,
     perf_table_row(total_columns_meaningful, Fields, ProcRowData, PerfCells),
@@ -958,17 +1182,17 @@ display_caller_clique(Prefs, CliqueRowData, Row, !RowNum) :-
     !:RowNum = !.RowNum + 1,
 
     CliqueDesc = CliqueRowData ^ perf_row_subject,
-    CliquePtr = CliqueDesc ^ cdesc_clique_ptr,
+    CliqueDesc = clique_desc(CliquePtr, EntryProcDesc, OtherProcDescs),
     CliquePtr = clique_ptr(CliqueNum),
 
     CliqueLinkCmd = deep_cmd_clique(CliquePtr),
     CliqueText = string.format("clique %d", [i(CliqueNum)]),
-    CliqueLink = deep_link(CliqueLinkCmd, yes(Prefs), CliqueText,
+    CliqueLink = deep_link(CliqueLinkCmd, yes(Prefs), attr_str([], CliqueText),
         link_class_link),
     CliqueCell = table_cell(td_l(CliqueLink)),
 
     MembersStrs = list.map(project_proc_desc_refined_name,
-        CliqueDesc ^ cdesc_members),
+        [EntryProcDesc | OtherProcDescs]),
     MembersStr = string.join_list(", ", MembersStrs),
     MembersCell = table_cell(td_s(MembersStr)),
 
@@ -987,12 +1211,12 @@ project_proc_desc_refined_name(ProcDesc) = ProcDesc ^ pdesc_refined_name.
 make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum,
         ContourExcl) = Item :-
     Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, ContourExcl),
-    Link = deep_link(Cmd, yes(Prefs), Label, link_class_control),
+    Link = deep_link(Cmd, yes(Prefs), attr_str([], Label), link_class_control),
     Item = display_link(Link).
-            
+
 %-----------------------------------------------------------------------------%
 %
-% Code to display procrep_coverage dumps 
+% Code to display procrep_coverage dumps
 %
 
 :- pred display_report_procrep_coverage_info(preferences::in,
@@ -1007,8 +1231,8 @@ display_report_procrep_coverage_info(Prefs, ProcrepCoverageReport, Display) :-
     Cmd = deep_cmd_procrep_coverage(PSPtr),
     ProcReportControls = proc_reports_controls(Prefs, PSPtr, Cmd),
     MenuResetQuitControls = cmds_menu_restart_quit(yes(Prefs)),
-    Controls = [display_paragraph_break, ProcReportControls, 
-                display_paragraph_break, MenuResetQuitControls], 
+    Controls = [display_paragraph_break, ProcReportControls,
+                display_paragraph_break, MenuResetQuitControls],
 
     Title = "Procrep coverage dump",
     Display = display(yes(Title), [CoverageInfoItem] ++ Controls).
@@ -1082,7 +1306,7 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
     string.format("Dump of proc_dynamic %d", [i(PDI)], Title),
 
     ProcStaticLink = deep_link(deep_cmd_dump_proc_static(PSPtr), yes(Prefs),
-        string.int_to_string(PSI), link_class_link),
+        attr_str([], string.int_to_string(PSI)), link_class_link),
     MainValues =
         [("Proc static:"            - td_l(ProcStaticLink)),
         ("Raw name:"                - td_s(RawName)),
@@ -1115,7 +1339,8 @@ dump_psd_call_site(Prefs, CallSite, Rows, !CallSiteCounter) :-
         CallSite = slot_normal(CSDPtr),
         CSDPtr = call_site_dynamic_ptr(CSDI),
         CSDLink = deep_link(deep_cmd_dump_call_site_dynamic(CSDPtr),
-            yes(Prefs), string.int_to_string(CSDI), link_class_link),
+            yes(Prefs), attr_str([], string.int_to_string(CSDI)),
+            link_class_link),
         CSDCell = table_cell(td_l(CSDLink)),
         FirstRow = table_row([CallSiteNumCell, CSDCell]),
         Rows = [FirstRow]
@@ -1144,7 +1369,7 @@ dump_psd_call_site(Prefs, CallSite, Rows, !CallSiteCounter) :-
 dump_psd_call_site_multi_entry(Prefs, CSDPtr, Row) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
     CSDLink = deep_link(deep_cmd_dump_call_site_dynamic(CSDPtr), yes(Prefs),
-        string.int_to_string(CSDI), link_class_link),
+        attr_str([], string.int_to_string(CSDI)), link_class_link),
     CSDCell = table_cell(td_l(CSDLink)),
     EmptyCell = table_cell(td_s("")),
     Row = table_row([EmptyCell, CSDCell]).
@@ -1163,7 +1388,7 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
 
     ContainingProcStaticLink = deep_link(
         deep_cmd_dump_proc_static(ContainingPSPtr), yes(Prefs),
-        string.int_to_string(ContainingPSI), link_class_link),
+        attr_str([], string.int_to_string(ContainingPSI)), link_class_link),
 
     (
         CallSiteKind = normal_call_and_callee(CalleePSPtr, TypeSpecDesc),
@@ -1175,8 +1400,8 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
             CalleeDesc = CalleeDesc0 ++ " typespec " ++ TypeSpecDesc
         ),
         CalleeProcStaticLink = deep_link(
-            deep_cmd_dump_proc_static(CalleePSPtr), yes(Prefs), CalleeDesc,
-            link_class_link),
+            deep_cmd_dump_proc_static(CalleePSPtr), yes(Prefs),
+            attr_str([], CalleeDesc), link_class_link),
         CallSiteKindData = td_l(CalleeProcStaticLink)
     ;
         CallSiteKind = special_call_and_no_callee,
@@ -1208,20 +1433,22 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
 :- pred display_report_call_site_dynamic_dump(preferences::in,
     call_site_dynamic_dump_info::in, display::out) is det.
 
-display_report_call_site_dynamic_dump(Prefs, CallSiteStaticDumpInfo,
+display_report_call_site_dynamic_dump(Prefs, CallSiteDynamiccDumpInfo,
         Display) :-
-    CallSiteStaticDumpInfo = call_site_dynamic_dump_info(CSDPtr,
+    CallSiteDynamiccDumpInfo = call_site_dynamic_dump_info(CSDPtr,
         CallerPDPtr, CalleePDPtr, RowData),
     CSDPtr = call_site_dynamic_ptr(CSDI),
     string.format("Dump of call_site_dynamic %d", [i(CSDI)], Title),
 
     CallerPDPtr = proc_dynamic_ptr(CallerPDI),
     CallerProcDynamicLink = deep_link(deep_cmd_dump_proc_dynamic(CallerPDPtr),
-        yes(Prefs), string.int_to_string(CallerPDI), link_class_link),
+        yes(Prefs), attr_str([], string.int_to_string(CallerPDI)),
+        link_class_link),
 
     CalleePDPtr = proc_dynamic_ptr(CalleePDI),
     CalleeProcDynamicLink = deep_link(deep_cmd_dump_proc_dynamic(CalleePDPtr),
-        yes(Prefs), string.int_to_string(CalleePDI), link_class_link),
+        yes(Prefs), attr_str([], string.int_to_string(CalleePDI)),
+        link_class_link),
 
     FirstValues =
         [("Caller proc_dynamic:"    - td_l(CallerProcDynamicLink)),
@@ -1234,12 +1461,54 @@ display_report_call_site_dynamic_dump(Prefs, CallSiteStaticDumpInfo,
     maybe_ranked_proc_table_header(Prefs, non_ranked, MakeHeaderData,
         NumColumns, Header),
     maybe_ranked_subject_perf_table_row(Prefs, non_ranked,
-        total_columns_meaningful, call_site_desc_to_cell, RowData, PerfRow,
-        1, _),
+        total_columns_meaningful, call_site_desc_to_name_path_slot_cell,
+        RowData, PerfRow, 1, _),
     PerfTable = table(table_class_box, NumColumns, yes(Header), [PerfRow]),
 
     Display = display(yes(Title),
         [display_table(FirstTable), display_table(PerfTable)]).
+
+    % Create a display_report structure for a clique_dump report.
+    %
+:- pred display_report_clique_dump(preferences::in, clique_dump_info::in,
+    display::out) is det.
+
+display_report_clique_dump(Prefs, CliqueDumpInfo, Display) :-
+    CliqueDumpInfo = clique_dump_info(CliqueDesc, EntryCSDPtr, MemberPDPtrs),
+    CliquePtr = CliqueDesc ^ cdesc_clique_ptr,
+    CliquePtr = clique_ptr(CliqueNum),
+    string.format("Dump of clique %d", [i(CliqueNum)], Title),
+
+    EntryCSDPtr = call_site_dynamic_ptr(EntryCSDI),
+    EntryLink = deep_link(deep_cmd_dump_call_site_dynamic(EntryCSDPtr),
+        yes(Prefs), attr_str([], string.int_to_string(EntryCSDI)),
+        link_class_link),
+
+    list.map_foldl(display_report_clique_dump_member(Prefs), MemberPDPtrs,
+        MemberPDLinks, "Member proc_dynamics:", _),
+
+    Values =
+        [("Caller call_site_dynamic:" - td_l(EntryLink))] ++
+        MemberPDLinks,
+
+    Rows = list.map(make_labelled_table_row, Values),
+    Table = table(table_class_do_not_box, 2, no, Rows),
+
+    Display = display(yes(Title), [display_table(Table)]).
+
+:- pred display_report_clique_dump_member(preferences::in,
+    proc_dynamic_ptr::in, pair(string, table_data)::out,
+    string::in, string::out) is det.
+
+display_report_clique_dump_member(Prefs, PDPtr, Pair, !Label) :-
+    PDLabel = !.Label,
+    !:Label = "",
+    PDPtr = proc_dynamic_ptr(PDI),
+    Link = deep_link(deep_cmd_dump_proc_dynamic(PDPtr),
+        yes(Prefs), attr_str([], string.int_to_string(PDI)),
+        link_class_link),
+    PDData = td_l(Link),
+    Pair = PDLabel - PDData.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1260,10 +1529,12 @@ override_order_criteria_header_data(Cmd, Prefs0, Criteria, Label)
     ( Criteria = Criteria0 ->
         % Should we display a simple string to indicate that this link
         % leads back to the same page, or would that be confusing?
-        Link = deep_link(Cmd, yes(Prefs), Label, link_class_link),
+        Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
+            link_class_link),
         TableData = td_l(Link)
     ;
-        Link = deep_link(Cmd, yes(Prefs), Label, link_class_link),
+        Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
+            link_class_link),
         TableData = td_l(Link)
     ).
 
@@ -1286,10 +1557,12 @@ top_procs_order_criteria_header_data(DisplayLimit0, CostKind0, InclDesc0,
         ( Cmd = Cmd0 ->
             % Should we display a simple string to indicate that this link
             % leads back to the same page, or would that be confusing?
-            Link = deep_link(Cmd, yes(Prefs0), Label, link_class_link),
+            Link = deep_link(Cmd, yes(Prefs0), attr_str([], Label),
+                link_class_link),
             TableData = td_l(Link)
         ;
-            Link = deep_link(Cmd, yes(Prefs0), Label, link_class_link),
+            Link = deep_link(Cmd, yes(Prefs0), attr_str([], Label),
+                link_class_link),
             TableData = td_l(Link)
         )
     ).
@@ -2082,6 +2355,31 @@ maybe_ranked_subject_perf_table_row(Prefs, Ranked, TotalsMeaningful,
 
 %-----------------------------------------------------------------------------%
 %
+% Some utility procedures.
+%
+
+:- func call_site_desc_source_cell(call_site_desc) = table_cell.
+
+call_site_desc_source_cell(CallSiteDesc) = Cell :-
+    FileName = CallSiteDesc ^ csdesc_file_name,
+    LineNumber = CallSiteDesc ^ csdesc_line_number,
+    Context = string.format("%s:%d", [s(FileName), i(LineNumber)]),
+    Cell = table_cell(td_s(Context)).
+
+:- func call_site_desc_clique_proc_cell(preferences, ancestor_desc)
+    = table_cell.
+
+call_site_desc_clique_proc_cell(Prefs, AncestorDesc) = Cell :-
+    AncestorDesc = ancestor_desc(CallerCliquePtr, _CalleeCliquePtr,
+        _CalleeProcDesc, CallSiteDesc),
+    ContainingProcName = CallSiteDesc ^ csdesc_caller_refined_name,
+    Cmd = deep_cmd_clique(CallerCliquePtr),
+    Link = deep_link(Cmd, yes(Prefs), attr_str([], ContainingProcName),
+        link_class_link),
+    Cell = table_cell(td_l(Link)).
+
+%-----------------------------------------------------------------------------%
+%
 % The basic predicates for creating the controls at the bottoms of pages.
 %
 
@@ -2122,7 +2420,8 @@ make_top_procs_cmd_item(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
         % Item = display_pseudo_link(PseudoLink),
         % Items = [Item]
     ;
-        Link = deep_link(Cmd, yes(Prefs), Label, link_class_control),
+        Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
+            link_class_control),
         Item = display_link(Link),
         Items = [Item]
     ).
@@ -2164,7 +2463,8 @@ make_first_proc_callers_cmd_item(Prefs, Cmd0, PSPtr, CallerGroups, ContourExcl,
         % Item = display_pseudo_link(PseudoLink),
         % Items = [Item]
     ;
-        Link = deep_link(Cmd, yes(Prefs), Label, link_class_control),
+        Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
+            link_class_control),
         Item = display_link(Link),
         Items = [Item]
     ).
@@ -2195,7 +2495,8 @@ make_prefs_control_item(Prefs0, Cmd, Label - PrefMaker, Items) :-
         % Item = display_pseudo_link(PseudoLink),
         % Items = [Item]
     ;
-        Link = deep_link(Cmd, yes(Prefs), Label, link_class_control),
+        Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
+            link_class_control),
         Item = display_link(Link),
         Items = [Item]
     ).
@@ -2585,15 +2886,16 @@ proc_reports_controls(Prefs, Proc, NotCmd) = ControlsItem :-
 
 proc_reports(Proc, NotCmd) = Reports :-
     Reports0 = [
-        deep_cmd_proc(Proc) - "Procedure",
+        deep_cmd_proc(Proc) -
+            "Procedure",
         deep_cmd_procrep_coverage(Proc) -
-            "Coverage annotated Procedure Representation"
-        ],
+            "Coverage annotated procedure representation"
+    ],
     list.filter((pred((Cmd - _)::in) is semidet :-
             Cmd \= NotCmd
         ), Reports0, Reports).
 
-:- pred make_cmd_controls_item(preferences::in, assoc_list(cmd, string)::in, 
+:- pred make_cmd_controls_item(preferences::in, assoc_list(cmd, string)::in,
     display_item::out) is det.
 
 make_cmd_controls_item(Prefs, LabeledCmds, Item) :-
@@ -2661,6 +2963,68 @@ inactive_proc_toggles = [
 
 set_inactive_procs(Status, !Prefs) :-
     !Prefs ^ pref_inactive ^ inactive_procs := Status.
+
+%-----------------------------------------------------------------------------%
+%
+% Control how many ancestors we display.
+%
+
+:- func ancestor_controls(preferences, cmd) = display_item.
+
+ancestor_controls(Prefs, Cmd) = ControlsItem :-
+    MaybeAncestorLimit = Prefs ^ pref_anc,
+    (
+        MaybeAncestorLimit = no,
+        make_prefs_controls_item(Prefs, Cmd, no,
+            ancestor_toggles_no, AncestorControls)
+    ;
+        MaybeAncestorLimit = yes(AncestorLimit),
+        make_prefs_controls_item(Prefs, Cmd, no,
+            ancestor_toggles_yes(AncestorLimit), AncestorControls)
+    ),
+    Controls = [AncestorControls],
+    ControlsItem = display_list(list_class_vertical_no_bullets,
+        yes("Toggle display of ancestors:"), Controls).
+
+:- func ancestor_toggles_no =
+    (assoc_list(string, (pred(preferences, preferences)))::
+    out(list_skel(pair(ground, (pred(in, out) is det))))) is det.
+
+ancestor_toggles_no = [
+    "One ancestor" -
+        set_ancestor_limit(yes(1)),
+    "Two ancestors" -
+        set_ancestor_limit(yes(2)),
+    "Three ancestors" -
+        set_ancestor_limit(yes(3)),
+    "Five ancestors" -
+        set_ancestor_limit(yes(5)),
+    "Ten ancestors" -
+        set_ancestor_limit(yes(10))
+].
+
+:- func ancestor_toggles_yes(int::in) =
+    (assoc_list(string, (pred(preferences, preferences)))::
+    out(list_skel(pair(ground, (pred(in, out) is det))))) is det.
+
+ancestor_toggles_yes(CurrentLimit) = [
+    "Halve ancestors" -
+        set_ancestor_limit(yes(CurrentLimit // 2)),
+    "Remove an ancestor" -
+        set_ancestor_limit(yes(CurrentLimit - 1)),
+    "Add an ancestor" -
+        set_ancestor_limit(yes(CurrentLimit + 1)),
+    "Double ancestors" -
+        set_ancestor_limit(yes(CurrentLimit * 2)),
+    "Unlimited ancestors" -
+        set_ancestor_limit(no)
+].
+
+:- pred set_ancestor_limit(maybe(int)::in,
+    preferences::in, preferences::out) is det.
+
+set_ancestor_limit(MaybeAncestorLimit, !Prefs) :-
+    !Prefs ^ pref_anc := MaybeAncestorLimit.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2809,12 +3173,12 @@ set_memory_fields(MemoryFields, !Prefs) :-
 :- func cmds_menu_restart_quit(maybe(preferences)) = display_item.
 
 cmds_menu_restart_quit(MaybePrefs) = ControlsItem :-
-    Menu = display_link(deep_link(deep_cmd_menu, MaybePrefs, "Menu",
-        link_class_control)),
-    Restart = display_link(deep_link(deep_cmd_restart, MaybePrefs, "Restart",
-        link_class_control)),
-    Quit = display_link(deep_link(deep_cmd_quit, MaybePrefs, "Quit",
-        link_class_control)),
+    Menu = display_link(deep_link(deep_cmd_menu, MaybePrefs,
+        attr_str([], "Menu"), link_class_control)),
+    Restart = display_link(deep_link(deep_cmd_restart, MaybePrefs,
+        attr_str([], "Restart"), link_class_control)),
+    Quit = display_link(deep_link(deep_cmd_quit, MaybePrefs,
+        attr_str([], "Quit"), link_class_control)),
     List = display_list(list_class_horizontal, no,
         [Menu, Restart, Quit]),
     ControlsItem = display_list(list_class_vertical_no_bullets,
@@ -2822,37 +3186,110 @@ cmds_menu_restart_quit(MaybePrefs) = ControlsItem :-
 
 %-----------------------------------------------------------------------------%
 %
-% Convert procedure and call site descriptions into table cells.
+% Convert procedure, call site and clique descriptions into table cells.
 %
 
-:- func module_active_to_cell(preferences, module_active) = table_cell.
+:- func module_active_to_module_name_cell(preferences, module_active) =
+    table_cell.
 
-module_active_to_cell(Prefs, ModuleActive) = table_cell(Data) :-
+module_active_to_module_name_cell(Prefs, ModuleActive) = Cell :-
     ModuleName = ModuleActive ^ ma_module_name,
     Cmd = deep_cmd_module(ModuleName),
-    Data = td_l(deep_link(Cmd, yes(Prefs), ModuleName, link_class_link)).
+    Link = deep_link(Cmd, yes(Prefs), attr_str([], ModuleName),
+        link_class_link),
+    Cell = table_cell(td_l(Link)).
 
-:- func proc_active_to_cell(preferences, proc_active) = table_cell.
+:- func proc_active_to_proc_name_cell(preferences, proc_active) = table_cell.
 
-proc_active_to_cell(Prefs, ProcActive) =
-    proc_desc_to_cell(Prefs, ProcActive ^ pa_proc_desc).
+proc_active_to_proc_name_cell(Prefs, ProcActive) =
+    proc_desc_to_proc_name_cell(Prefs, ProcActive ^ pa_proc_desc).
 
-:- func proc_desc_to_cell(preferences, proc_desc) = table_cell.
+:- func proc_desc_to_source_cell(proc_desc) = table_cell.
 
-proc_desc_to_cell(Prefs, ProcDesc) = table_cell(Data) :-
-    ProcDesc = proc_desc(PSPtr, _FileName, _LineNumber, RefinedName),
+proc_desc_to_source_cell(ProcDesc) = Cell :-
+    FileName = ProcDesc ^ pdesc_file_name,
+    LineNumber = ProcDesc ^ pdesc_line_number,
+    Source = string.format("%s:%d", [s(FileName), i(LineNumber)]),
+    Cell = table_cell(td_s(Source)).
+
+:- func proc_desc_to_proc_name_cell(preferences, proc_desc) = table_cell.
+
+proc_desc_to_proc_name_cell(Prefs, ProcDesc) = Cell :-
+    PSPtr = ProcDesc ^ pdesc_ps_ptr,
+    RefinedName = ProcDesc ^ pdesc_refined_name,
     Cmd = deep_cmd_proc(PSPtr),
-    Data = td_l(deep_link(Cmd, yes(Prefs), RefinedName, link_class_link)).
+    Link = deep_link(Cmd, yes(Prefs), attr_str([], RefinedName),
+        link_class_link),
+    Cell = table_cell(td_l(Link)).
 
-:- func call_site_desc_to_cell(preferences, call_site_desc) = table_cell.
+:- func proc_desc_to_proc_name_cell_span(preferences, list(str_attr),
+    proc_desc, int) = table_cell.
 
-call_site_desc_to_cell(Prefs, CallSiteDesc) = table_cell(Data) :-
+proc_desc_to_proc_name_cell_span(Prefs, Attrs, ProcDesc, Span) = Cell :-
+    PSPtr = ProcDesc ^ pdesc_ps_ptr,
+    RefinedName = ProcDesc ^ pdesc_refined_name,
+    Cmd = deep_cmd_proc(PSPtr),
+    Link = deep_link(Cmd, yes(Prefs), attr_str(Attrs, RefinedName),
+        link_class_link),
+    Cell = table_multi_cell(td_l(Link), Span).
+
+:- func proc_desc_to_prefix_proc_name_cell(preferences, list(str_attr),
+    proc_desc, string) = table_cell.
+
+proc_desc_to_prefix_proc_name_cell(Prefs, Attrs, ProcDesc, Prefix) = Cell :-
+    PSPtr = ProcDesc ^ pdesc_ps_ptr,
+    RefinedName = ProcDesc ^ pdesc_refined_name,
+    Cmd = deep_cmd_proc(PSPtr),
+    Link = deep_link(Cmd, yes(Prefs), attr_str(Attrs, Prefix ++ RefinedName),
+        link_class_link),
+    Cell = table_cell(td_l(Link)).
+
+:- func call_site_desc_to_name_path_slot_cell(preferences, call_site_desc)
+    = table_cell.
+
+call_site_desc_to_name_path_slot_cell(Prefs, CallSiteDesc) = Cell :-
     CallSiteDesc = call_site_desc(CSSPtr, _ContainerPSPtr,
         _FileName, _LineNumber, RefinedName, SlotNumber, GoalPath),
     string.format("%s @ %s #%d", [s(RefinedName), s(GoalPath), i(SlotNumber)],
         Name),
     Cmd = deep_cmd_dump_call_site_static(CSSPtr),
-    Data = td_l(deep_link(Cmd, yes(Prefs), Name, link_class_link)).
+    Link = deep_link(Cmd, yes(Prefs), attr_str([], Name), link_class_link),
+    Cell = table_cell(td_l(Link)).
+
+:- func call_site_desc_to_source_cell(call_site_desc) = table_cell.
+
+call_site_desc_to_source_cell(CallSiteDesc) = Cell :-
+    FileName = CallSiteDesc ^ csdesc_file_name,
+    LineNumber = CallSiteDesc ^ csdesc_line_number,
+    Source = string.format("%s:%d", [s(FileName), i(LineNumber)]),
+    Cell = table_cell(td_s(Source)).
+
+:- func call_site_desc_to_caller_proc_name_cell(preferences,
+    call_site_desc) = table_cell.
+
+call_site_desc_to_caller_proc_name_cell(Prefs, CallSiteDesc) = Cell :-
+    PSPtr = CallSiteDesc ^ csdesc_container,
+    CallerRefinedName = CallSiteDesc ^ csdesc_caller_refined_name,
+    Cmd = deep_cmd_proc(PSPtr),
+    Link = deep_link(Cmd, yes(Prefs), attr_str([], CallerRefinedName),
+        link_class_link),
+    Cell = table_cell(td_l(Link)).
+
+:- func clique_desc_to_non_self_link_proc_name_cell(preferences,
+    clique_desc, clique_ptr) = table_cell.
+
+clique_desc_to_non_self_link_proc_name_cell(Prefs, CliqueDesc, SelfCliquePtr)
+        = Cell :-
+    CliqueDesc = clique_desc(CliquePtr, EntryProcDesc, _OtherProcDescs),
+    EntryProcName = EntryProcDesc ^ pdesc_refined_name,
+    ( CliquePtr = SelfCliquePtr ->
+        Cell = table_cell(td_s(EntryProcName))
+    ;
+        Cmd = deep_cmd_clique(CliquePtr),
+        Link = deep_link(Cmd, yes(Prefs), attr_str([], EntryProcName),
+            link_class_link),
+        Cell = table_cell(td_l(Link))
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2871,7 +3308,8 @@ make_labelled_table_row(Label - Value) =
 :- pred make_link(pair(cmd, string)::in, display_item::out) is det.
 
 make_link(Cmd - Label, Item) :-
-    Item = display_link(deep_link(Cmd, no, Label, link_class_link)).
+    Item = display_link(deep_link(Cmd, no, attr_str([], Label),
+        link_class_link)).
 
     % Make a control from a command and label and optional preferences
     % structure.
@@ -2880,7 +3318,166 @@ make_link(Cmd - Label, Item) :-
     display_item::out) is det.
 
 make_control(MaybePrefs, Cmd - Label, Item) :-
-    Item = display_link(deep_link(Cmd, MaybePrefs, Label, link_class_control)).
+    Item = display_link(deep_link(Cmd, MaybePrefs, attr_str([], Label),
+        link_class_control)).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort procedures in a clique by the preferred criteria of performance.
+%
+
+:- pred sort_clique_procs_by_preferences(preferences::in,
+    list(clique_proc_report)::in, list(clique_proc_report)::out) is det.
+
+sort_clique_procs_by_preferences(Prefs, !CliqueProcs) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        OrderCriteria = by_context,
+        list.sort(compare_clique_procs_by_context, !CliqueProcs)
+    ;
+        OrderCriteria = by_name,
+        list.sort(compare_clique_procs_by_name, !CliqueProcs)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        list.sort(compare_clique_procs_by_cost(CostKind, InclDesc, Scope),
+            !CliqueProcs),
+        % We want the most expensive procedures to appear first.
+        list.reverse(!CliqueProcs)
+    ).
+
+:- pred compare_clique_procs_by_context(
+    clique_proc_report::in, clique_proc_report::in, comparison_result::out)
+    is det.
+
+compare_clique_procs_by_context(CliqueProcReportA, CliqueProcReportB,
+        Result) :-
+    CliqueProcDescA = CliqueProcReportA ^ cpr_proc_summary ^ perf_row_subject,
+    CliqueProcDescB = CliqueProcReportB ^ cpr_proc_summary ^ perf_row_subject,
+    compare_proc_descs_by_context(CliqueProcDescA, CliqueProcDescB, Result).
+
+:- pred compare_clique_procs_by_name(
+    clique_proc_report::in, clique_proc_report::in, comparison_result::out)
+    is det.
+
+compare_clique_procs_by_name(CliqueProcReportA, CliqueProcReportB, Result) :-
+    CliqueProcDescA = CliqueProcReportA ^ cpr_proc_summary ^ perf_row_subject,
+    CliqueProcDescB = CliqueProcReportB ^ cpr_proc_summary ^ perf_row_subject,
+    compare_proc_descs_by_name(CliqueProcDescA, CliqueProcDescB, Result).
+
+:- pred compare_clique_procs_by_cost(
+    cost_kind::in, include_descendants::in, measurement_scope::in,
+    clique_proc_report::in, clique_proc_report::in, comparison_result::out)
+    is det.
+
+compare_clique_procs_by_cost(CostKind, InclDesc, Scope,
+        CliqueProcReportA, CliqueProcReportB, Result) :-
+    ProcRowDataA = CliqueProcReportA ^ cpr_proc_summary,
+    ProcRowDataB = CliqueProcReportB ^ cpr_proc_summary,
+    compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope,
+        ProcRowDataA, ProcRowDataB, Result).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort proc_dynamics in a clique by the preferred criteria of performance.
+%
+
+:- pred sort_clique_proc_dynamics_by_preferences(preferences::in,
+    list(clique_proc_dynamic_report)::in,
+    list(clique_proc_dynamic_report)::out) is det.
+
+sort_clique_proc_dynamics_by_preferences(Prefs, !CliqueProcDynamics) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        ( OrderCriteria = by_context
+        ; OrderCriteria = by_name
+        ),
+        % All the proc_dynamics we want to sort have the same name and context,
+        % so it does not make sense to sort on these criteria. Instead, we sort
+        % on the default performance criteria.
+        CostKind = default_cost_kind,
+        InclDesc = default_incl_desc,
+        Scope = default_scope
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope)
+    ),
+    list.sort(compare_clique_proc_dynamics_by_cost(CostKind, InclDesc, Scope),
+        !CliqueProcDynamics),
+    % We want the most expensive procedures to appear first.
+    list.reverse(!CliqueProcDynamics).
+
+:- pred compare_clique_proc_dynamics_by_cost(
+    cost_kind::in, include_descendants::in, measurement_scope::in,
+    clique_proc_dynamic_report::in, clique_proc_dynamic_report::in,
+    comparison_result::out) is det.
+
+compare_clique_proc_dynamics_by_cost(CostKind, InclDesc, Scope,
+        CliqueProcDynamicReportA, CliqueProcDynamicReportB, Result) :-
+    ProcDynamicRowDataA = CliqueProcDynamicReportA ^ cpdr_proc_summary,
+    ProcDynamicRowDataB = CliqueProcDynamicReportB ^ cpdr_proc_summary,
+    compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope,
+        ProcDynamicRowDataA, ProcDynamicRowDataB, Result).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort clique_call_site_reports by the preferred criteria of performance.
+%
+
+:- pred sort_clique_call_site_reports_by_preferences(preferences::in,
+    list(clique_call_site_report)::in, list(clique_call_site_report)::out)
+    is det.
+
+sort_clique_call_site_reports_by_preferences(Prefs, !CallSiteReports) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        OrderCriteria = by_context,
+        list.sort(compare_clique_call_site_reports_by_context,
+            !CallSiteReports)
+    ;
+        OrderCriteria = by_name,
+        list.sort(compare_clique_call_site_reports_by_name, !CallSiteReports)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        list.sort(compare_clique_call_site_reports_by_cost(CostKind,
+            InclDesc, Scope), !CallSiteReports),
+        % We want the most expensive call sites to appear first.
+        list.reverse(!CallSiteReports)
+    ).
+
+:- pred compare_clique_call_site_reports_by_context(
+    clique_call_site_report::in, clique_call_site_report::in,
+    comparison_result::out) is det.
+
+compare_clique_call_site_reports_by_context(CallSiteReportA,
+        CallSiteReportB, Result) :-
+    CallSiteDescA =
+        CallSiteReportA ^ ccsr_call_site_summary ^ perf_row_subject,
+    CallSiteDescB =
+        CallSiteReportB ^ ccsr_call_site_summary ^ perf_row_subject,
+    compare_call_site_descs_by_context(CallSiteDescA, CallSiteDescB, Result).
+
+:- pred compare_clique_call_site_reports_by_name(
+    clique_call_site_report::in, clique_call_site_report::in,
+    comparison_result::out) is det.
+
+compare_clique_call_site_reports_by_name(CallSiteReportA, CallSiteReportB,
+        Result) :-
+    CallSiteDescA =
+        CallSiteReportA ^ ccsr_call_site_summary ^ perf_row_subject,
+    CallSiteDescB =
+        CallSiteReportB ^ ccsr_call_site_summary ^ perf_row_subject,
+    compare_call_site_descs_by_name(CallSiteDescA, CallSiteDescB, Result).
+
+:- pred compare_clique_call_site_reports_by_cost(
+    cost_kind::in, include_descendants::in, measurement_scope::in,
+    clique_call_site_report::in, clique_call_site_report::in,
+    comparison_result::out) is det.
+
+compare_clique_call_site_reports_by_cost(CostKind, InclDesc, Scope,
+        CliqueCallSiteReportA, CliqueCallSiteReportB, Result) :-
+    PerfA = CliqueCallSiteReportA ^ ccsr_call_site_summary,
+    PerfB = CliqueCallSiteReportB ^ ccsr_call_site_summary,
+    compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope, PerfA, PerfB,
+        Result).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2912,20 +3509,7 @@ sort_call_sites_by_preferences(Prefs, !CallSitePerfs) :-
 compare_call_site_perfs_by_context(CallSitePerfA, CallSitePerfB, Result) :-
     CallSiteDescA = CallSitePerfA ^ csf_summary_perf ^ perf_row_subject,
     CallSiteDescB = CallSitePerfB ^ csf_summary_perf ^ perf_row_subject,
-    FileNameA = CallSiteDescA ^ csdesc_file_name,
-    FileNameB = CallSiteDescB ^ csdesc_file_name,
-    compare(FileNameResult, FileNameA, FileNameB),
-    (
-        ( FileNameResult = (<)
-        ; FileNameResult = (>)
-        ),
-        Result = FileNameResult
-    ;
-        FileNameResult = (=),
-        LineNumberA = CallSiteDescA ^ csdesc_line_number,
-        LineNumberB = CallSiteDescB ^ csdesc_line_number,
-        compare(Result, LineNumberA, LineNumberB)
-    ).
+    compare_call_site_descs_by_context(CallSiteDescA, CallSiteDescB, Result).
 
 :- pred compare_call_site_perfs_by_name(
     call_site_perf::in, call_site_perf::in, comparison_result::out) is det.
@@ -2933,9 +3517,7 @@ compare_call_site_perfs_by_context(CallSitePerfA, CallSitePerfB, Result) :-
 compare_call_site_perfs_by_name(CallSitePerfA, CallSitePerfB, Result) :-
     CallSiteDescA = CallSitePerfA ^ csf_summary_perf ^ perf_row_subject,
     CallSiteDescB = CallSitePerfB ^ csf_summary_perf ^ perf_row_subject,
-    NameA = CallSiteDescA ^ csdesc_caller_refined_name,
-    NameB = CallSiteDescB ^ csdesc_caller_refined_name,
-    compare(Result, NameA, NameB).
+    compare_call_site_descs_by_name(CallSiteDescA, CallSiteDescB, Result).
 
 :- pred compare_call_site_perfs_by_cost(
     cost_kind::in, include_descendants::in, measurement_scope::in,
@@ -2981,20 +3563,7 @@ compare_call_site_desc_rows_by_context(
         CallSiteDescRowDataA, CallSiteDescRowDataB, Result) :-
     CallSiteDescA = CallSiteDescRowDataA ^ perf_row_subject,
     CallSiteDescB = CallSiteDescRowDataB ^ perf_row_subject,
-    FileNameA = CallSiteDescA ^ csdesc_file_name,
-    FileNameB = CallSiteDescB ^ csdesc_file_name,
-    compare(FileNameResult, FileNameA, FileNameB),
-    (
-        ( FileNameResult = (<)
-        ; FileNameResult = (>)
-        ),
-        Result = FileNameResult
-    ;
-        FileNameResult = (=),
-        LineNumberA = CallSiteDescA ^ csdesc_line_number,
-        LineNumberB = CallSiteDescB ^ csdesc_line_number,
-        compare(Result, LineNumberA, LineNumberB)
-    ).
+    compare_call_site_descs_by_context(CallSiteDescA, CallSiteDescB, Result).
 
 :- pred compare_call_site_desc_rows_by_name(
     perf_row_data(call_site_desc)::in, perf_row_data(call_site_desc)::in,
@@ -3004,9 +3573,7 @@ compare_call_site_desc_rows_by_name(CallSiteDescRowDataA, CallSiteDescRowDataB,
         Result) :-
     CallSiteDescA = CallSiteDescRowDataA ^ perf_row_subject,
     CallSiteDescB = CallSiteDescRowDataB ^ perf_row_subject,
-    NameA = CallSiteDescA ^ csdesc_caller_refined_name,
-    NameB = CallSiteDescB ^ csdesc_caller_refined_name,
-    compare(Result, NameA, NameB).
+    compare_call_site_descs_by_name(CallSiteDescA, CallSiteDescB, Result).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3050,28 +3617,7 @@ compare_proc_desc_rows_by_context(ProcDescRowDataA, ProcDescRowDataB,
 compare_proc_desc_rows_by_name(ProcDescRowDataA, ProcDescRowDataB, Result) :-
     ProcDescA = ProcDescRowDataA ^ perf_row_subject,
     ProcDescB = ProcDescRowDataB ^ perf_row_subject,
-    NameA = ProcDescA ^ pdesc_refined_name,
-    NameB = ProcDescB ^ pdesc_refined_name,
-    compare(Result, NameA, NameB).
-
-:- pred compare_proc_descs_by_context(proc_desc::in, proc_desc::in,
-    comparison_result::out) is det.
-
-compare_proc_descs_by_context(ProcDescA, ProcDescB, Result) :-
-    FileNameA = ProcDescA ^ pdesc_file_name,
-    FileNameB = ProcDescB ^ pdesc_file_name,
-    compare(FileNameResult, FileNameA, FileNameB),
-    (
-        ( FileNameResult = (<)
-        ; FileNameResult = (>)
-        ),
-        Result = FileNameResult
-    ;
-        FileNameResult = (=),
-        LineNumberA = ProcDescA ^ pdesc_line_number,
-        LineNumberB = ProcDescB ^ pdesc_line_number,
-        compare(Result, LineNumberA, LineNumberB)
-    ).
+    compare_proc_descs_by_name(ProcDescA, ProcDescB, Result).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3103,10 +3649,8 @@ sort_proc_active_rows_by_preferences(Prefs, !ProcRowDatas) :-
     comparison_result::out) is det.
 
 compare_proc_active_rows_by_context(ProcRowDataA, ProcRowDataB, Result) :-
-    ProcActiveA = ProcRowDataA ^ perf_row_subject,
-    ProcActiveB = ProcRowDataB ^ perf_row_subject,
-    ProcDescA = ProcActiveA ^ pa_proc_desc,
-    ProcDescB = ProcActiveB ^ pa_proc_desc,
+    ProcDescA = ProcRowDataA ^ perf_row_subject ^ pa_proc_desc,
+    ProcDescB = ProcRowDataB ^ perf_row_subject ^ pa_proc_desc,
     compare_proc_descs_by_context(ProcDescA, ProcDescB, Result).
 
 :- pred compare_proc_active_rows_by_name(
@@ -3114,11 +3658,9 @@ compare_proc_active_rows_by_context(ProcRowDataA, ProcRowDataB, Result) :-
     comparison_result::out) is det.
 
 compare_proc_active_rows_by_name(ModuleRowDataA, ModuleRowDataB, Result) :-
-    ProcActiveA = ModuleRowDataA ^ perf_row_subject,
-    ProcActiveB = ModuleRowDataB ^ perf_row_subject,
-    ProcNameA = ProcActiveA ^ pa_proc_desc ^ pdesc_refined_name,
-    ProcNameB = ProcActiveB ^ pa_proc_desc ^ pdesc_refined_name,
-    compare(Result, ProcNameA, ProcNameB).
+    ProcDescA = ModuleRowDataA ^ perf_row_subject ^ pa_proc_desc,
+    ProcDescB = ModuleRowDataB ^ perf_row_subject ^ pa_proc_desc,
+    compare_proc_descs_by_name(ProcDescA, ProcDescB, Result).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3242,16 +3784,68 @@ compare_clique_rows_by_first_proc_name(CliqueRowDataA, CliqueRowDataB,
         Result) :-
     CliqueDescA = CliqueRowDataA ^ perf_row_subject,
     CliqueDescB = CliqueRowDataB ^ perf_row_subject,
-    ProcDescsA = CliqueDescA ^ cdesc_members,
-    ProcDescsB = CliqueDescB ^ cdesc_members,
+    EntryProcDescA = CliqueDescA ^ cdesc_entry_member,
+    EntryProcDescB = CliqueDescB ^ cdesc_entry_member,
+    compare_proc_descs_by_context(EntryProcDescA, EntryProcDescB, Result).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort call_site_descs and proc_descs by context and by name.
+%
+
+:- pred compare_call_site_descs_by_context(
+    call_site_desc::in, call_site_desc::in, comparison_result::out) is det.
+
+compare_call_site_descs_by_context(CallSiteDescA, CallSiteDescB, Result) :-
+    FileNameA = CallSiteDescA ^ csdesc_file_name,
+    FileNameB = CallSiteDescB ^ csdesc_file_name,
+    compare(FileNameResult, FileNameA, FileNameB),
     (
-        ProcDescsA = [FirstProcDescA | _],
-        ProcDescsB = [FirstProcDescB | _]
-    ->
-        compare_proc_descs_by_context(FirstProcDescA, FirstProcDescB, Result)
+        ( FileNameResult = (<)
+        ; FileNameResult = (>)
+        ),
+        Result = FileNameResult
     ;
-        error("compare_clique_rows_by_first_proc_name: missing first proc")
+        FileNameResult = (=),
+        LineNumberA = CallSiteDescA ^ csdesc_line_number,
+        LineNumberB = CallSiteDescB ^ csdesc_line_number,
+        compare(Result, LineNumberA, LineNumberB)
     ).
+
+:- pred compare_proc_descs_by_context(proc_desc::in, proc_desc::in,
+    comparison_result::out) is det.
+
+compare_proc_descs_by_context(ProcDescA, ProcDescB, Result) :-
+    FileNameA = ProcDescA ^ pdesc_file_name,
+    FileNameB = ProcDescB ^ pdesc_file_name,
+    compare(FileNameResult, FileNameA, FileNameB),
+    (
+        ( FileNameResult = (<)
+        ; FileNameResult = (>)
+        ),
+        Result = FileNameResult
+    ;
+        FileNameResult = (=),
+        LineNumberA = ProcDescA ^ pdesc_line_number,
+        LineNumberB = ProcDescB ^ pdesc_line_number,
+        compare(Result, LineNumberA, LineNumberB)
+    ).
+
+:- pred compare_call_site_descs_by_name(call_site_desc::in, call_site_desc::in,
+    comparison_result::out) is det.
+
+compare_call_site_descs_by_name(CallSiteDescA, CallSiteDescB, Result) :-
+    NameA = CallSiteDescA ^ csdesc_caller_refined_name,
+    NameB = CallSiteDescB ^ csdesc_caller_refined_name,
+    compare(Result, NameA, NameB).
+
+:- pred compare_proc_descs_by_name(proc_desc::in, proc_desc::in,
+    comparison_result::out) is det.
+
+compare_proc_descs_by_name(ProcDescA, ProcDescB, Result) :-
+    NameA = ProcDescA ^ pdesc_refined_name,
+    NameB = ProcDescB ^ pdesc_refined_name,
+    compare(Result, NameA, NameB).
 
 %-----------------------------------------------------------------------------%
 %

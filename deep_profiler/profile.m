@@ -220,9 +220,12 @@
     ;       callback.
 
 :- type call_site_kind_and_callee
+    == call_site_kind_and_callee(proc_static_ptr).
+
+:- type call_site_kind_and_callee(T)
     --->    normal_call_and_callee(
                 % The identity of the callee.
-                proc_static_ptr,
+                T,
 
                 % A description of the type substitution, if any and if known.
                 string

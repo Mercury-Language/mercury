@@ -402,6 +402,8 @@ exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO) :-
         ; Cmd = deep_cmd_restart
         ; Cmd = deep_cmd_timeout(_)
         ; Cmd = deep_cmd_menu
+        ; Cmd = deep_cmd_root(_)
+        ; Cmd = deep_cmd_clique(_)
         ; Cmd = deep_cmd_program_modules
         ; Cmd = deep_cmd_module(_)
         ; Cmd = deep_cmd_top_procs(_, _, _, _)
@@ -411,6 +413,7 @@ exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO) :-
         ; Cmd = deep_cmd_dump_proc_dynamic(_)
         ; Cmd = deep_cmd_dump_call_site_static(_)
         ; Cmd = deep_cmd_dump_call_site_dynamic(_)
+        ; Cmd = deep_cmd_dump_clique(_)
         ),
         (
             FileExists = yes,
@@ -419,12 +422,6 @@ exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO) :-
             FileExists = no,
             new_exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO)
         )
-    ;
-        ( Cmd = deep_cmd_root(_)
-        ; Cmd = deep_cmd_clique(_)
-        ; Cmd = deep_cmd_dump_clique(_)
-        ),
-        old_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
     ;
         Cmd = deep_cmd_procrep_coverage(_),
         new_exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO)
@@ -1725,16 +1722,11 @@ call_site_dynamic_to_html(Pref, Deep, CallSiteDisplay, MaybeCallerCliquePtr,
     ;       assume_within_clique.
 
 :- func ancestor_display = call_site_display.
-:- func upward_display = call_site_display.
 :- func downward_display = call_site_display.
 :- func downward_summary_display = call_site_display.
 
 ancestor_display =
     call_site_display(call_context, caller_proc_name, caller_clique,
-        wrap_url_always).
-
-upward_display =
-    call_site_display(call_context, caller_proc_name, callee_clique,
         wrap_url_always).
 
 downward_display =

@@ -38,6 +38,7 @@
 :- type deep_report
     --->    report_message(message_report)
     ;       report_menu(maybe_error(menu_report))
+    ;       report_clique(maybe_error(clique_report))
     ;       report_program_modules(maybe_error(program_modules_report))
     ;       report_module(maybe_error(module_report))
     ;       report_top_procs(maybe_error(top_procs_report))
@@ -49,7 +50,8 @@
     ;       report_call_site_static_dump(
                 maybe_error(call_site_static_dump_info))
     ;       report_call_site_dynamic_dump(
-                maybe_error(call_site_dynamic_dump_info)).
+                maybe_error(call_site_dynamic_dump_info))
+    ;       report_clique_dump(maybe_error(clique_dump_info)).
 
 :- type message_report
     --->    message_report(
@@ -76,6 +78,60 @@
                 menu_num_pd                 :: int,
                 menu_num_ps                 :: int,
                 menu_num_clique             :: int
+            ).
+
+:- type clique_report
+    --->    clique_report(
+                % The clique the report is for.
+                cr_clique_ptr               :: clique_ptr,
+
+                % The ancestor call sites of the clique,
+                % - from the innermost ancestor call site (in the parent)
+                % - to the outermost ancestor call site (in main/2).
+                cr_ancestor_call_sites      :: list(
+                                                perf_row_data(ancestor_desc)),
+
+                % Reports for every procedure in the clique.
+                cr_clique_procs             :: list(clique_proc_report)
+            ).
+
+:- type clique_proc_report
+    --->    clique_proc_report(
+                % Summary information for the cost of this procedure in this
+                % clique.
+                cpr_proc_summary            :: perf_row_data(proc_desc),
+
+                cpr_first_proc_dynamic      :: clique_proc_dynamic_report,
+                cpr_other_proc_dynamics     :: list(clique_proc_dynamic_report)
+            ).
+
+:- type clique_proc_dynamic_report
+    --->    clique_proc_dynamic_report(
+                % Summary information for the cost of this proc _dynamic
+                % in this clique.
+                cpdr_proc_summary            :: perf_row_data(proc_desc),
+
+                % Information about the costs of the call sites in this
+                % procedure in this clique.
+                cpdr_call_sites              :: list(clique_call_site_report)
+            ).
+
+:- type clique_call_site_report
+    --->    clique_call_site_report(
+                % The id of the call site, and the summary performance for
+                % that call site.
+                ccsr_call_site_summary      :: perf_row_data(call_site_desc),
+
+                ccsr_kind_and_callee        :: call_site_kind_and_callee(
+                                                proc_desc),
+
+                % All the callees and their associated performance information.
+                % If ccsr_kind_and_callee indicates a normal call, the list
+                % will have either zero entries (no calls through this site)
+                % or one entry (some calls through this site). If this is
+                % some other kind of call site, the list may have any number
+                % of entries.
+                ccsr_callee_perfs           :: list(perf_row_data(clique_desc))
             ).
 
 :- type program_modules_report
@@ -238,6 +294,20 @@
                 csddi_own_perf              :: perf_row_data(call_site_desc)
             ).
 
+:- type clique_dump_info
+    --->    clique_dump_info(
+                cdi_clique_desc             :: clique_desc,
+                cdi_caller_csd_ptr          :: call_site_dynamic_ptr,
+                cdi_member_pdptrs           :: list(proc_dynamic_ptr)
+            ).
+
+    % This type represents information about the performance of the subject.
+    % It is intended to be displayed on a browser page or used by a tool as is.
+    % It is NOT intended to be subject to further processing, such as adding
+    % two perf_row_datas together. Any such arithmetic is much better done
+    % on the data structures from which perf_row_datas are derived
+    % (own_prof_info and inherit_prof_info in the measurements module).
+    %
 :- type perf_row_data(T)
     --->    perf_row_data(
                 % The item represented by this data row.
@@ -261,7 +331,7 @@
                 % represent clock ticks, whereas for time, we use more
                 % user-friendly units. When the total time for the program
                 % is close to zero, i.e. the number of ticks or quanta is zero
-                % for the whole programs, then the percentage may be zero
+                % for the whole program, then the percentage may be zero
                 % for everyhing (it used to be a NaN for 0/0, but we now
                 % check explicitly for division by zero).
                 perf_row_ticks             :: int,
@@ -348,12 +418,27 @@
                 csdesc_goal_path            :: string
             ).
 
+:- type ancestor_desc
+    --->    ancestor_desc(
+                % The caller and callee cliques.
+                ad_caller_clique_ptr        :: clique_ptr,
+                ad_callee_clique_ptr        :: clique_ptr,
+
+                % The callee procedure.
+                ad_callee_pdesc             :: proc_desc,
+
+                % The description of the call site. This includes a description
+                % of the caller procedure.
+                ad_call_site_desc           :: call_site_desc
+            ).
+
     % The description of a clique in a report structure.
     %
 :- type clique_desc
     --->    clique_desc(
                 cdesc_clique_ptr            :: clique_ptr,
-                cdesc_members               :: list(proc_desc)
+                cdesc_entry_member          :: proc_desc,
+                cdesc_other_members         :: list(proc_desc)
             ).
 
 %-----------------------------------------------------------------------------%
