@@ -119,9 +119,13 @@
 :- func commas(int) = string.
 
     % Format a floating point number, placing commas between groups of three
-    % digits in the integer part.
+    % digits in the integer part. The first argument is a format string.
     %
 :- func decimal_fraction(string, float) = string.
+
+:- func one_decimal_fraction(float) = string.
+:- func two_decimal_fraction(float) = string.
+:- func four_decimal_fraction(float) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -278,6 +282,12 @@ decimal_fraction(Format, Measure) = Representation :-
     ;
         error("decimal_fraction: Didn't split on decimal point properly")
     ).
+
+one_decimal_fraction(Measure) = decimal_fraction("%.1f", Measure).
+
+two_decimal_fraction(Measure) = decimal_fraction("%.2f", Measure).
+
+four_decimal_fraction(Measure) = decimal_fraction("%.4f", Measure).
 
 %-----------------------------------------------------------------------------%
 
