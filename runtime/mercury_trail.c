@@ -44,7 +44,11 @@ MR_reset_trail_zone(void);
 void
 MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 {
-    MR_TrailEntry *tr_ptr;
+    MR_TrailEntry   *tr_ptr;
+
+#if defined(MR_TRAIL_SEGMENTS)
+    MR_TrailEntry   *tr_base;
+#endif
     /* Not needed, since MR_trail_ptr is never a real reg: */
     /* MR_restore_transient_registers(); */
     tr_ptr = MR_trail_ptr;
@@ -54,6 +58,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
     case MR_commit:
     
         /* Just handle the function trail entries */
+        tr_base = MR_TRAIL_BASE;
         while (tr_ptr != old_trail_ptr) {
             tr_ptr--;
             if (MR_get_trail_entry_kind(tr_ptr) == MR_func_entry) {
@@ -68,7 +73,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
             ** (invoking function trail entires as we go) until we find it.
             */ 
             #if defined(MR_TRAIL_SEGMENTS)
-                if (tr_ptr == MR_TRAIL_BASE 
+                if (tr_ptr == tr_base
                     && tr_ptr != old_trail_ptr)
                 {
                     MR_MemoryZones  *prev_zones;
@@ -109,6 +114,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
     case MR_exception:
     case MR_retry:
         /* Handle both function and value trail entries */
+        tr_base = MR_TRAIL_BASE;
         while (tr_ptr != old_trail_ptr) {
             tr_ptr--;
             if (MR_get_trail_entry_kind(tr_ptr) == MR_func_entry) {
@@ -119,11 +125,12 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
                     MR_get_trail_entry_value(tr_ptr);
             }
             #if defined(MR_TRAIL_SEGMENTS)
-                if (tr_ptr == MR_TRAIL_BASE 
+                if (tr_ptr == tr_base
                     && tr_ptr != old_trail_ptr)
                 {
                     MR_pop_trail_segment();
                     tr_ptr = MR_trail_ptr;
+                    tr_base = MR_TRAIL_BASE;
                 }
             #endif 
         }
@@ -189,17 +196,19 @@ static void
 MR_reset_trail_zone(void) {
     
     MR_TrailEntry   *tr_ptr;
-
+    MR_TrailEntry   *tr_base;
+    
     tr_ptr = MR_trail_ptr;
+    tr_base = MR_TRAIL_BASE;
 
-    while (tr_ptr != MR_TRAIL_BASE) {
+    while (tr_ptr != tr_base) {
         tr_ptr--;
         if (MR_get_trail_entry_kind(tr_ptr) == MR_func_entry) {
             (*MR_get_trail_entry_untrail_func(tr_ptr))(
                 MR_get_trail_entry_datum(tr_ptr), MR_gc);
         }
     }
-    MR_trail_ptr = MR_TRAIL_BASE;
+    MR_trail_ptr = tr_base;
 }
 
 /*---------------------------------------------------------------------------*/
