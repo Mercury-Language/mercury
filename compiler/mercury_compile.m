@@ -4409,7 +4409,7 @@ maybe_deep_profiling(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Applying deep profiling transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        apply_deep_profiling_transformation(!HLDS),
+        apply_deep_profiling_transformation(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

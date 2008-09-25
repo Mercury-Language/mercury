@@ -20,10 +20,12 @@
 
 :- import_module hlds.hlds_module.
 
+:- import_module io.
+
 %-----------------------------------------------------------------------------%
 
-:- pred apply_deep_profiling_transformation(module_info::in, module_info::out)
-    is det.
+:- pred apply_deep_profiling_transformation(module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -36,11 +38,13 @@
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -69,7 +73,7 @@
 
 %-----------------------------------------------------------------------------%
 
-apply_deep_profiling_transformation(!ModuleInfo) :-
+apply_deep_profiling_transformation(!ModuleInfo, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, deep_profile_tail_recursion,
         TailRecursion),
@@ -82,7 +86,8 @@ apply_deep_profiling_transformation(!ModuleInfo) :-
     module_info_predids(PredIds, !ModuleInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_get_preds(PredTable0, PredMap0),
-    list.foldl(transform_predicate(!.ModuleInfo), PredIds, PredMap0, PredMap), 
+    list.foldl2(transform_predicate(!.ModuleInfo), PredIds, PredMap0, PredMap,
+        !IO), 
     predicate_table_set_preds(PredMap, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
@@ -444,21 +449,21 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
 %-----------------------------------------------------------------------------%
 
 :- pred transform_predicate(module_info::in, pred_id::in,
-    pred_table::in, pred_table::out) is det.
+    pred_table::in, pred_table::out, io::di, io::uo) is det.
 
-transform_predicate(ModuleInfo, PredId, PredMap0, PredMap) :-
+transform_predicate(ModuleInfo, PredId, PredMap0, PredMap, !IO) :-
     map.lookup(PredMap0, PredId, PredInfo0),
     ProcIds = pred_info_non_imported_procids(PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
-    list.foldl(maybe_transform_procedure(ModuleInfo, PredId),
-        ProcIds, ProcTable0, ProcTable),
+    list.foldl2(maybe_transform_procedure(ModuleInfo, PredId),
+        ProcIds, ProcTable0, ProcTable, !IO),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
     map.det_update(PredMap0, PredId, PredInfo, PredMap).
 
 :- pred maybe_transform_procedure(module_info::in, pred_id::in, proc_id::in,
-    proc_table::in, proc_table::out) is det.
+    proc_table::in, proc_table::out, io::di, io::uo) is det.
 
-maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
+maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable, !IO) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
     PredModuleName = predicate_module(ModuleInfo, PredId),
@@ -476,6 +481,12 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
     ->
         true
     ;
+        module_info_get_globals(ModuleInfo, Globals), 
+        globals.lookup_bool_option(Globals, verbose, Verbose),
+        ProcName = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
+        maybe_write_string(Verbose, 
+            string.format("Deep profiling: %s\n", [s(ProcName)]), 
+            !IO),
         deep_prof_transform_proc(ModuleInfo, proc(PredId, ProcId),
             ProcInfo0, ProcInfo),
         map.det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable)
@@ -1946,16 +1957,16 @@ extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo) :-
                 % These fields correspond to coverage profiling options that
                 % may be specified on the command line.  Except cpu_use_2pass.
 
-                cpo_coverage_after_goal :: bool,
-                cpo_branch_ite          :: bool,
-                cpo_branch_switch       :: bool,
-                cpo_branch_disj         :: bool,
-                cpo_use_portcounts      :: bool,
-                cpo_use_trivial         :: bool,
+                cpo_coverage_after_goal     :: bool,
+                cpo_branch_ite              :: bool,
+                cpo_branch_switch           :: bool,
+                cpo_branch_disj             :: bool,
+                cpo_use_portcounts          :: bool,
+                cpo_use_trivial             :: bool,
 
                 % cpu_use_2pass is true if some information needs to be
                 % collected in an initial forwards-pass.
-                cpo_use_2pass           :: bool
+                cpo_use_2pass               :: bool
             ).
 
     % Return wheather each coverage point type should be enabled and iff
@@ -2008,7 +2019,7 @@ coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
     ;
         CoverageProfilingOptions ^ cpo_use_2pass = no
     ),
-    coverage_prof_second_pass_goal(!Goal, coverage_after_known, _,
+    coverage_prof_second_pass_goal(!Goal, coverage_before_known, _,
         CoverageInfo0, CoverageInfo, _),
     CoverageInfo ^ ci_coverage_points = CoveragePointsMap,
     CoverageInfo ^ ci_var_info = !:VarInfo,
@@ -2017,140 +2028,42 @@ coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
     % Transform a goal for coverage profiling. This is the second pass of
     % the coverage profiling transformation, and it consists of several steps.
     %
-    % If the first pass has been performed then we collect the relevant
-    % information from the goal_info structure.
+    % Step 1: Apply transformation recursively.
     %
-    % Step 1: Make a decision whether to insert a coverage point after this
-    % goal or not.
-    %
-    % Step 2: Determine if coverage information is known for goals that
-    % execute before this goal completes. This includes goals before this
-    % goal (such as within a conjunction) or goals within this goal.
-    % Information collected in the first pass is used here.
-    %
-    % Step 3: Transform inner goals if this goal is non-atomic.
-    %
-    % Step 4: Insert a coverage point after this goal if we decided to do so
-    % at step 1.  This is done here after any inner goals have been
-    % transformed.
+    % Step 2: Consider inserting a coverage point after this goal to measure
+    % how many times it succeeds.
+    % 
+    % Step 3: Insert the coverage point if we decided to earlier.
     %
 :- pred coverage_prof_second_pass_goal(hlds_goal::in, hlds_goal::out,
-    coverage_after_known::in, coverage_after_known::out,
+    coverage_before_known::in, coverage_before_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
 coverage_prof_second_pass_goal(Goal0, Goal,
-        CoverageAfterKnown0, NextCoverageAfterKnown, !Info, AddedImpurity) :-
+        CoverageBeforeKnown, NextCoverageBeforeKnown, !Info, AddedImpurity) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Detism = GoalInfo0 ^ goal_info_get_determinism,
     CPOptions = !.Info ^ ci_coverage_profiling_opts,
+    GoalPath = goal_info_get_goal_path(GoalInfo0),
 
-    % Depending on command line arguments first pass information may or may not
-    % be available, if it is not available, we assume semi-sensible defaults.
+    (
+        IsMDProfInst = goal_is_not_mdprof_inst,
+        CoverageBeforeKnown = coverage_before_unknown
+    ->
+        unexpected(this_file, string.format(
+            "coverage_prof_second_pass_goal: Coverage information is unknown\n"
+            ++ "\tGoalPath: %s",
+            [s(goal_path_to_string(GoalPath))]))
+    ;
+        true
+    ),
+
+    % Currently the first pass is unsupported, we don't make use of the
+    % information it provides.
     DPInfo = goal_info_get_dp_info(GoalInfo0),
-    DPInfo = dp_goal_info(IsMDProfInst, MaybeDPCoverageInfo),
-    (
-        MaybeDPCoverageInfo =
-            yes(dp_coverage_goal_info(GoalTrivial, GoalPortCountsCoverageAfter))
-    ;
-        MaybeDPCoverageInfo = no,
-
-        % XXX: Zoltan says;
-        % Is this the best default you can get? You should be able to do
-        % better for goals like unifications.
-        %
-        % pbone: I agree.  Idealy we should get more accurate information for
-        % atomic goals and fall back to these defaults for any other goal.
-
-        GoalTrivial = goal_is_nontrivial,
-        GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after
-    ),
-    
-    (
-        GoalPortCountsCoverageAfter = port_counts_give_coverage_after,
-        CoverageAfterKnown1 = coverage_after_known
-    ;
-        GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after,
-        CoverageAfterKnown1 = CoverageAfterKnown0 
-    ),
+    DPInfo = dp_goal_info(IsMDProfInst, _MaybeDPCoverageInfo),
 
     % Step 1.
-    %
-    % Consider inserting a coverage point after this goal to measure how
-    % many solutions it may have.
-    (
-        (   
-            % Never insert coverage points on goals that are part of the deep
-            % profiling instrumentation.
-            IsMDProfInst = goal_is_mdprof_inst
-        ;
-            % We already have execution counts for the program point after this
-            % goal; adding a counter would be redundant.
-            CoverageAfterKnown1 = coverage_after_known
-        ;
-            % We don't need to know the execution count of this goal, since
-            % it is too cheap to matter.
-            GoalTrivial = goal_is_trivial
-        ;
-            % Never insert coverage points after conjunctions; wait until
-            % the algorithm recurses to inside the conjunction and make a
-            % better decision about the last conjunct. This can reduce the
-            % number of coverage points inserted in some cases.
-            GoalExpr0 = conj(plain_conj, _)
-
-            % We haven't yet thought about whether or not we should treat
-            % parallel conjunctions the same way.
-        )
-    ->
-        MaybeCPType = no
-    ;
-        CoverageAfterGoals = CPOptions ^ cpo_coverage_after_goal,
-        (
-            CoverageAfterGoals  = yes,
-            MaybeCPType = yes(cp_type_coverage_after)
-        ;
-            CoverageAfterGoals = no,
-            MaybeCPType = no
-        )
-    ),
-
-    % Step 2.
-    %
-    % Update coverage known information.
-    (
-        MaybeCPType = yes(_),
-        CoverageAfterKnown2 = coverage_after_known
-    ;
-        MaybeCPType = no,
-        CoverageAfterKnown2 = CoverageAfterKnown1
-    ),
-    % If the goal has a port count, then coverage is known at the point directy
-    % before this goal.
-    (
-        GoalPortCountsCoverageAfter = port_counts_give_coverage_after,
-        CoverageAfterKnown = coverage_after_known
-    ;
-        GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after,
-        (
-            % If there is not exactly one solution then the coverage is
-            % not known.
-            ( Detism = detism_semi
-            ; Detism = detism_multi
-            ; Detism = detism_non
-            ; Detism = detism_cc_non
-            ; Detism = detism_erroneous
-            ; Detism = detism_failure
-            ),
-            CoverageAfterKnown = coverage_after_unknown
-        ;
-            % Otherwise the coverage remains the same.
-            ( Detism = detism_det
-            ; Detism = detism_cc_multi
-            ),
-            CoverageAfterKnown = CoverageAfterKnown2
-        )
-    ),
-
-    % Step 3.
     %
     % Apply transformation recursively.
     (
@@ -2159,93 +2072,112 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         ; GoalExpr0 = generic_call(_, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
+        ( goal_expr_has_call_site(GoalExpr0) ->
+            NextCoverageBeforeKnown0 = coverage_before_known
+        ;
+            coverage_known_after_goal_with_detism(Detism, 
+                CoverageBeforeKnown, NextCoverageBeforeKnown0)
+        ),
         AddedImpurityInner = no,
-        GoalExpr1 = GoalExpr0,
-        NextCoverageAfterKnown = CoverageAfterKnown
+        GoalExpr1 = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Goals0),
         coverage_prof_second_pass_conj(ConjType, Goals0, Goals,
-            CoverageAfterKnown, NextCoverageAfterKnown, !Info,
+            CoverageBeforeKnown, NextCoverageBeforeKnown0, !Info,
             AddedImpurityInner),
         GoalExpr1 = conj(ConjType, Goals)
     ;
-        % There may be optimizations that can allow us to avoid inserting
-        % superfluous coverage points, however they are most likely to be
-        % non-trivial.
-
         GoalExpr0 = disj(Goals0),
-        coverage_prof_second_pass_disj(DPInfo, Goals0, Goals, !Info,
-            AddedImpurityInner),
-        (
-            ( Detism = detism_det
-            ; Detism = detism_cc_multi
-            ),
-            NextCoverageAfterKnown = CoverageAfterKnown
-        ;
-            ( Detism = detism_semi
-            ; Detism = detism_multi
-            ; Detism = detism_non
-            ; Detism = detism_cc_non
-            ; Detism = detism_erroneous
-            ; Detism = detism_failure
-            ),
-            NextCoverageAfterKnown = coverage_after_unknown
-        ),
+        coverage_prof_second_pass_disj(DPInfo, 
+            CoverageBeforeKnown, NextCoverageBeforeKnown0,
+            Goals0, Goals, !Info, AddedImpurityInner),
         GoalExpr1 = disj(Goals)
     ;
         GoalExpr0 = switch(Var, SwitchCanFail, Cases0),
         coverage_prof_second_pass_switchcase(DPInfo, SwitchCanFail,
-            Cases0, Cases, CoverageAfterKnown, NextCoverageAfterKnown0, !Info,
-            AddedImpurityInner),
-        (
-            SwitchCanFail = cannot_fail,
-            NextCoverageAfterKnown = NextCoverageAfterKnown0
-        ;
-            SwitchCanFail = can_fail,
-            NextCoverageAfterKnown = coverage_after_unknown
-        ),
+            Cases0, Cases, CoverageBeforeKnown, NextCoverageBeforeKnown0,
+            !Info, AddedImpurityInner),
         GoalExpr1 = switch(Var, SwitchCanFail, Cases)
     ;
         GoalExpr0 = negation(NegGoal0),
-        % The coverage after a negated goal is always unknown.
         coverage_prof_second_pass_goal(NegGoal0, NegGoal, 
-            coverage_after_unknown, NextCoverageAfterKnown, !Info,
+            CoverageBeforeKnown, _, !Info,
             AddedImpurityInner),
+        % The coverage after a negated goal cannot be inferred from it's inner
+        % goals.
+        coverage_known_after_goal_with_detism(Detism, 
+            CoverageBeforeKnown, NextCoverageBeforeKnown0),
         GoalExpr1 = negation(NegGoal)
     ;
         GoalExpr0 = scope(Reason, ScopeGoal0),
+        coverage_prof_second_pass_goal(ScopeGoal0, ScopeGoal,
+            CoverageBeforeKnown, CoverageAfterScopedGoalKnown, !Info,
+            AddedImpurityInner),
         % A scope may cut away solutions, if it does we don't know the number
         % of solutions of the scoped goal.
         ScopedGoalDetism =
             ScopeGoal0 ^ hlds_goal_info ^ goal_info_get_determinism,
         ( ScopedGoalDetism = Detism ->
-            CoverageAfterScopedGoalKnown = CoverageAfterKnown
+            NextCoverageBeforeKnown0 = CoverageAfterScopedGoalKnown
         ;
-            CoverageAfterScopedGoalKnown = coverage_after_unknown
+            coverage_known_after_goal_with_detism(Detism, 
+                CoverageBeforeKnown, NextCoverageBeforeKnown0)
         ),
-        coverage_prof_second_pass_goal(ScopeGoal0, ScopeGoal,
-            CoverageAfterScopedGoalKnown, NextCoverageAfterKnown, !Info,
-            AddedImpurityInner),
         GoalExpr1 = scope(Reason, ScopeGoal)
     ;
         GoalExpr0 = if_then_else(ITEExistVars, Cond, Then, Else),
         coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond, Then, Else,
-            GoalExpr1, CoverageAfterKnown, NextCoverageAfterKnown, !Info,
+            GoalExpr1, CoverageBeforeKnown, NextCoverageBeforeKnown0, !Info,
             AddedImpurityInner)
     ;
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "coverage_prof_second_pass_goal: shorthand")
     ),
-    add_impurity_if_needed(AddedImpurityInner, GoalInfo0, GoalInfo1),
-    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
+
+    % Step 3.
+    %
+    % Consider inserting a coverage point after this goal to measure how many
+    % times it succeeds.
+    (
+        (   
+            % Never insert coverage points on goals that are part of the deep
+            % profiling instrumentation.
+            IsMDProfInst = goal_is_mdprof_inst
+        ;
+            % We already have execution counts for the program point after this
+            % goal; adding a counter would be redundant.
+            NextCoverageBeforeKnown0 = coverage_before_known
+        ;
+            % Never insert coverage points after conjunctions; wait until
+            % the algorithm recurses to inside the conjunction and make a
+            % better decision about the last conjunct. This can reduce the
+            % number of coverage points inserted in some cases.
+            GoalExpr0 = conj(_, _)
+        )
+    ->
+        MaybeCPType = no,
+        NextCoverageBeforeKnown = NextCoverageBeforeKnown0
+    ;
+        CoverageAfterGoals = CPOptions ^ cpo_coverage_after_goal,
+        (
+            CoverageAfterGoals  = yes,
+            MaybeCPType = yes(cp_type_coverage_after),
+            NextCoverageBeforeKnown = coverage_before_known
+        ;
+            CoverageAfterGoals = no,
+            MaybeCPType = no,
+            NextCoverageBeforeKnown = NextCoverageBeforeKnown0
+        )
+    ),
 
     % Step 4.
     %
     % Insert the coverage point if we decided to earlier.
+    add_impurity_if_needed(AddedImpurityInner, GoalInfo0, GoalInfo1),
+    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     (
         MaybeCPType = yes(CPType),
-        Path = goal_info_get_goal_path(GoalInfo1),
-        CPInfo = coverage_point_info(Path, CPType),
+        CPInfo = coverage_point_info(GoalPath, CPType),
 
         make_coverage_point(CPInfo, CPGoals, !Info),
         create_conj_from_list([Goal1 | CPGoals], plain_conj, Goal),
@@ -2255,28 +2187,69 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         MaybeCPType = no,
         Goal = Goal1,
         AddedImpurity = AddedImpurityInner
+    ). 
+
+    % True if the deep profiler will instrument this call site and the port
+    % counts from it are useful for coverage profiling.
+    %
+:- pred goal_expr_has_call_site(hlds_goal_expr::in) is semidet.
+
+goal_expr_has_call_site(GoalExpr) :-
+    (
+        GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
+        ( BuiltinState = out_of_line_builtin
+        ; BuiltinState = not_builtin
+        )
+    ;
+        GoalExpr = generic_call(GenericCall, _, _, _),
+        ( GenericCall = higher_order(_, _, _, _)
+        ; GenericCall = class_method(_, _, _, _)
+        )
+    ;        
+        % Even though the deep profiler creates a call site when these may
+        % call mercury the coverage propagation code cannot make use of the
+        % port counts, since they measure how often Mercury is re-entered,
+        % not how often this call is made.
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        fail
     ).
 
-    % Perform the coverage profiling transformation for conjuncts starting
-    % at the tail of the goal list and moving back towards the head.  The
-    % goal list represents the list of goals within a conjunction minus
-    % 'Pos' goals removed from the head.
-    %
-    % This is done tail first as to take advantage of knowledge of goals after
-    % the current goal within the conjunction.
+:- pred coverage_known_after_goal_with_detism(determinism::in,
+    coverage_before_known::in, coverage_before_known::out) is det.
+
+coverage_known_after_goal_with_detism(Detism, !CoverageKnown) :-
+    (
+        ( Detism = detism_semi
+        ; Detism = detism_multi
+        ; Detism = detism_non
+        ; Detism = detism_cc_non
+        ; Detism = detism_erroneous
+        ; Detism = detism_failure
+        ),
+        !:CoverageKnown = coverage_before_unknown
+    ;
+        ( Detism = detism_det
+        ; Detism = detism_cc_multi
+        )
+    ).
+
+    % Perform the coverage profiling transformation for conjuncts.  The goal
+    % list represents the list of goals within a conjunction minus 'Pos' goals
+    % removed from the head.
     %
 :- pred coverage_prof_second_pass_conj(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
-    coverage_after_known::in, coverage_after_known::out,
+    coverage_before_known::in, coverage_before_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_conj(_, [], [], !CoverageAfterKnown, !Info, no).
+coverage_prof_second_pass_conj(_, [], [], !CoverageBeforeKnown, !Info, no).
 coverage_prof_second_pass_conj(ConjType, [Goal0 | Goals0], Goals,
-        CoverageAfterKnown0, NextCoverageAfterKnown, !Info, AddedImpurity) :-
-    coverage_prof_second_pass_conj(ConjType, Goals0, Goals1,
-        CoverageAfterKnown0, CoverageAfterKnown, !Info, AddedImpurityTail),
+        CoverageBeforeKnown, NextCoverageBeforeKnown, !Info, AddedImpurity) :-
     coverage_prof_second_pass_goal(Goal0, Goal1,
-        CoverageAfterKnown, NextCoverageAfterKnown, !Info, AddedImpurityHead),
+        CoverageBeforeKnown, CoverageBeforeTailKnown, !Info, AddedImpurityHead),
+
+    % Flatten the conjunction, this is necessary when coverage points are
+    % inserted into conjuncts.
     (
         Goal1 = hlds_goal(conj(plain_conj, ConjGoals), _),
         ConjType = plain_conj
@@ -2285,198 +2258,215 @@ coverage_prof_second_pass_conj(ConjType, [Goal0 | Goals0], Goals,
     ;
         Goals = [Goal1 | Goals1]
     ),
+
+    coverage_prof_second_pass_conj(ConjType, Goals0, Goals1,
+        CoverageBeforeTailKnown, NextCoverageBeforeKnown, !Info,
+        AddedImpurityTail),
     bool.or(AddedImpurityHead, AddedImpurityTail, AddedImpurity).
 
     % Perform the coverage profiling transformation over goals within a
     % disjunction.  The list of goals represents the tail of the disjunction
     % currently being transformed.
     %
-    % Disjuncts are also transformed in reverse order, as knowledge from
-    % later disjuncts can be used to reduce the number of coverage points
-    % placed in earlier disjuncts.
-    %
-:- pred coverage_prof_second_pass_disj(
-    dp_goal_info::in, list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred coverage_prof_second_pass_disj(dp_goal_info::in, 
+    coverage_before_known::in, coverage_before_known::out,
+    list(hlds_goal)::in, list(hlds_goal)::out, 
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_disj(_, [], [], !Info, no).
-coverage_prof_second_pass_disj(DPInfo, [Goal0 | Goals0], [Goal | Goals], !Info,
-        AddedImpurity) :-
-    % Transform the tail of the disjunction.
-    coverage_prof_second_pass_disj(DPInfo, Goals0, Goals, !Info,
-        AddedImpurityTail),
+coverage_prof_second_pass_disj(DPInfo, CoverageBeforeKnown,
+        NextCoverageBeforeKnown, Disjs0, Disjs, !Info, AddedImpurity) :-
+    % If the disjunction was introduced by the deep profiling pass, it has two
+    % disjuncts and it's second disjunct has 'failure' determinism, then
+    % perform the coverage profiling pass on the first disjunct as if this
+    % is the only goal. 
+    (
+        DPInfo = dp_goal_info(goal_is_mdprof_inst, _),
+        Disjs0 = [FirstDisj0, SecondDisj],
+        SecondDisj ^ hlds_goal_info ^ goal_info_get_determinism = detism_failure
+    ->
+        coverage_prof_second_pass_goal(FirstDisj0, FirstDisj,
+            CoverageBeforeKnown, NextCoverageBeforeKnown, !Info,
+            AddedImpurity),
+        Disjs = [FirstDisj, SecondDisj]
+    ;
+        coverage_prof_second_pass_disj_2(DPInfo, CoverageBeforeKnown, 
+            Disjs0, Disjs, !Info, AddedImpurity),
+        NextCoverageBeforeKnown = coverage_before_unknown
+    ).
 
-    % Transform this goal and optionally add a coverage point before it.
-    coverage_prof_second_pass_goal(Goal0, Goal1,
-        coverage_after_unknown, NextCoverageAfterKnown, !Info,
-        AddedImpurityHead0),
+:- pred coverage_prof_second_pass_disj_2(dp_goal_info::in, 
+    coverage_before_known::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, 
+    proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
+
+coverage_prof_second_pass_disj_2(_, _, [], [], !Info, no).
+coverage_prof_second_pass_disj_2(DPInfo, CoverageBeforeKnown0, 
+        [Goal0 | Goals0], [Goal | Goals], !Info, AddedImpurity) :-
+    % If coverage is unknown before the disjunct, then decide to insert a
+    % branch coverage point at the beginning of the disjunct.
     CPOBranchDisj = !.Info ^ ci_coverage_profiling_opts ^ cpo_branch_disj,
     DPInfo = dp_goal_info(IsMDProfInst, _),
     (
         CPOBranchDisj = yes,
-        NextCoverageAfterKnown = coverage_after_unknown,
+        CoverageBeforeKnown0 = coverage_before_unknown,
         IsMDProfInst = goal_is_not_mdprof_inst
+    ->
+        InsertCP = yes,
+        CoverageBeforeKnown = coverage_before_known
+    ;
+        InsertCP = no,
+        CoverageBeforeKnown = CoverageBeforeKnown0
+    ),
+
+    % Transform the disjunct its self.
+    coverage_prof_second_pass_goal(Goal0, Goal1,
+        CoverageBeforeKnown, _CoverageAfterHeadKnown, !Info,
+        AddedImpurityHead),
+
+    % Transform the tail of the disjunction.
+    coverage_prof_second_pass_disj_2(DPInfo,
+        coverage_before_unknown, Goals0, Goals, !Info,
+        AddedImpurityTail),
+
+    % Insert the coverage point if we decided to above.
+    (
+        InsertCP = yes
     ->
         DisjPath = goal_info_get_goal_path(Goal0 ^ hlds_goal_info),
         insert_coverage_point_before(coverage_point_info(DisjPath,
             cp_type_branch_arm), Goal1, Goal, !Info),
-        AddedImpurityHead = yes
+        AddedImpurity = yes
     ;
         Goal = Goal1,
-        AddedImpurityHead = AddedImpurityHead0
-    ),
+        AddedImpurity = bool.or(AddedImpurityHead, AddedImpurityTail)
+    ).
 
-    bool.or(AddedImpurityHead, AddedImpurityTail, AddedImpurity).
-
+    % coverage_prof_second_pass_switchcase(DPInfo, SwitchCanFial, !Cases,
+    %   CoverageBeforeSwitch, !Info, AddedImpurity).
+    %
+    % Preform coverage profiling transformation on switch cases. 
+    %
 :- pred coverage_prof_second_pass_switchcase(dp_goal_info::in, can_fail::in,
-    list(case)::in, list(case)::out,
-    coverage_after_known::in, coverage_after_known::out,
+    list(case)::in, list(case)::out, 
+    coverage_before_known::in, coverage_before_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_switchcase(_, _, [], [], _, coverage_after_known,
-        !Info, no).
-coverage_prof_second_pass_switchcase(DPInfo, SwitchCanFail,
-        [Case0 | Cases0], [Case | Cases], CoverageAfterSwitchKnown,
-        NextCoverageAfterKnown, !Info, AddedImpurity) :-
+coverage_prof_second_pass_switchcase(DPInfo, CanFail, Cases0, Cases,
+        CoverageBeforeSwitchKnown, CoverageAfterSwitchKnown, !Info, AddedImpurity) :-
+    % If the switch can fail then the coverage after it will be unknown.
+    (
+        CanFail = can_fail,
+        CoverageAfterSwitchKnown0 = coverage_before_unknown
+    ;
+        CanFail = cannot_fail,
+        CoverageAfterSwitchKnown0 = coverage_before_known
+    ),
+    coverage_prof_second_pass_switchcase_2(DPInfo, CanFail, Cases0, Cases,
+        CoverageBeforeSwitchKnown, coverage_before_known,
+        CoverageAfterSwitchKnown0, CoverageAfterSwitchKnown, !Info,
+        AddedImpurity).
+
+:- pred coverage_prof_second_pass_switchcase_2(dp_goal_info::in, can_fail::in,
+    list(case)::in, list(case)::out, coverage_before_known::in, 
+    coverage_before_known::in, 
+    coverage_before_known::in,  coverage_before_known::out,
+    proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
+
+coverage_prof_second_pass_switchcase_2(_, _, [], [], _, _,
+        !CoverageAfterSwitchKnown, !Info, no). 
+
+coverage_prof_second_pass_switchcase_2(DPInfo, SwitchCanFail,
+        [Case0 | Cases0], [Case | Cases], CoverageBeforeSwitchKnown,
+        CoverageBeforeEveryCaseKnown, !CoverageAfterSwitchKnown, !Info,
+        AddedImpurity) :-
     Goal0 = Case0 ^ case_goal,
 
     % If the switch cannot fail and this is the last case then the coverage
-    % at the end of this case can be computed from the coverage after the
-    % entire switch and coverage information for the tail of the switch
-    % such as branch coverage points.
-
+    % at the beginning of this case can be computed from the coverage before the
+    % entire switch and coverage information for the tail of the switch such as
+    % branch coverage points.
     (
         Cases0 = [],
         (
             SwitchCanFail = cannot_fail,
-            CoverageAfterHeadKnown = CoverageAfterSwitchKnown
+            CoverageBeforeHeadKnown0 = coverage_before_known_and(
+                CoverageBeforeSwitchKnown, CoverageBeforeEveryCaseKnown)
         ;
             SwitchCanFail = can_fail,
-            CoverageAfterHeadKnown = coverage_after_unknown
+            CoverageBeforeHeadKnown0 = coverage_before_unknown
         )
     ;
         Cases0 = [_ | _],
-        CoverageAfterHeadKnown = coverage_after_unknown
+        CoverageBeforeHeadKnown0 = coverage_before_unknown
     ),
 
-    coverage_prof_second_pass_goal(Goal0, Goal1, CoverageAfterHeadKnown,
-        NextCoverageAfterKnown0, !Info, AddedImpurityHead0),
-
-    % Possibly insert coverage point.
+    % Decide whether to insert a coverage point here.
     CPOBranchSwitch = !.Info ^ ci_coverage_profiling_opts ^
         cpo_branch_switch,
     DPInfo = dp_goal_info(IsMDProfInst, _),
     (
         CPOBranchSwitch = yes,
-        NextCoverageAfterKnown0 = coverage_after_unknown,
+        CoverageBeforeHeadKnown0 = coverage_before_unknown,
         IsMDProfInst = goal_is_not_mdprof_inst
     ->
+        InsertCP = yes,
+        CoverageBeforeHeadKnown = coverage_before_known
+    ;      
+        InsertCP = no,
+        CoverageBeforeHeadKnown = CoverageBeforeHeadKnown0
+    ),
+        
+    coverage_prof_second_pass_goal(Goal0, Goal1, CoverageBeforeHeadKnown,
+        CoverageAfterCaseKnown, !Info, AddedImpurityHead0),
+    !:CoverageAfterSwitchKnown = coverage_before_known_and(
+        CoverageAfterCaseKnown, !.CoverageAfterSwitchKnown),
+
+    % Possibly insert coverage point.
+    (   
+        InsertCP = yes,
         CasePath = goal_info_get_goal_path(Goal0 ^ hlds_goal_info),
         insert_coverage_point_before(coverage_point_info(CasePath,
             cp_type_branch_arm), Goal1, Goal, !Info),
-        AddedImpurityHead = yes,
-        NextCoverageAfterKnownHead = coverage_after_known
+        AddedImpurityHead = yes
     ;
+        InsertCP = no,
         Goal = Goal1,
-        AddedImpurityHead = AddedImpurityHead0,
-        NextCoverageAfterKnownHead = NextCoverageAfterKnown0
+        AddedImpurityHead = AddedImpurityHead0
     ),
 
     % Handle recursive case and prepare output variables.
-    coverage_prof_second_pass_switchcase(DPInfo, SwitchCanFail, Cases0, Cases,
-        CoverageAfterSwitchKnown, NextCoverageAfterKnownTail, !Info,
-        AddedImpurityTail),
+    NextCoverageBeforeEveryCaseKnown = coverage_before_known_and(
+        CoverageBeforeEveryCaseKnown, CoverageBeforeHeadKnown),
+    coverage_prof_second_pass_switchcase_2(DPInfo, SwitchCanFail, Cases0, Cases,
+        CoverageBeforeSwitchKnown, NextCoverageBeforeEveryCaseKnown, 
+        !CoverageAfterSwitchKnown, !Info, AddedImpurityTail),
     Case = Case0 ^ case_goal := Goal,
-    coverage_after_known_branch(NextCoverageAfterKnownHead,
-        NextCoverageAfterKnownTail, NextCoverageAfterKnown),
     bool.or(AddedImpurityHead, AddedImpurityTail, AddedImpurity).
 
     % Determine if branch coverage points should be inserted in either or
     % both of the then and else branches, insert them and transform the
     % sub-goals.
     %
-    % This is performed by first transforming the Else and Then branches,
-    % then making decisions about cooverage points and inserting them, then
-    % transforming the condition and constructing the new ITE goal_expr.
+    % This is performed by first transforming the condition goal,
+    % then making decisions about coverage points and inserting them, then
+    % transforming the then and else branches and constructing the new ITE
+    % goal_expr.
     %
 :- pred coverage_prof_second_pass_ite(dp_goal_info::in, list(prog_var)::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_expr::out,
-    coverage_after_known::in, coverage_after_known::out,
+    coverage_before_known::in, coverage_before_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
 coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
-        GoalExpr, CoverageAfterITEKnown, NextCoverageAfterKnown,
+        GoalExpr, CoverageBeforeITEKnown, NextCoverageBeforeKnown,
         !Info, AddedImpurity) :-
-    % If the then and else goals have exactly one solution and coverage is
-    % known after the ite, then the coverage at the end of one branch can
-    % be computed from the other branch and the coverage known after the ite.
-    % This helps later to insert fewer coverage points in the beginning of
-    % the branches, and may also help reduce coverage points within the
-    % branches.
-            
-    ThenPortCountsCoverageAfter = goal_get_maybe_dp_port_counts_coverage(Then0),
-    ElsePortCountsCoverageAfter = goal_get_maybe_dp_port_counts_coverage(Else0),
-    (
-        CoverageAfterITEKnown = coverage_after_known,
-        ThenDetism = Then0 ^ hlds_goal_info ^ goal_info_get_determinism,
-        ElseDetism = Else0 ^ hlds_goal_info ^ goal_info_get_determinism,
-        (
-            ( ThenDetism = detism_det
-            ; ThenDetism = detism_cc_multi
-            ),
-            ( ElseDetism = detism_det
-            ; ElseDetism = detism_cc_multi
-            )
-        ->
-            (
-                ThenPortCountsCoverageAfter = 
-                    no_port_counts_give_coverage_after,
-                ElsePortCountsCoverageAfter = 
-                    no_port_counts_give_coverage_after,
-                
-                % The coverage at the end of the else goal can be calculated
-                % from the coverage at the end of the then goal.
-                CoverageAfterThenKnown = coverage_after_unknown,
-                CoverageAfterElseKnown = coverage_after_known
-            ;
-                ThenPortCountsCoverageAfter = 
-                    no_port_counts_give_coverage_after,
-                ElsePortCountsCoverageAfter = port_counts_give_coverage_after,
+    % Transform Cond branch.
+    coverage_prof_second_pass_goal(Cond0, Cond,
+        CoverageBeforeITEKnown, CoverageKnownAfterCond, !Info,
+        AddedImpurityCond),
 
-                % The coverage at the end of the then goal can be calculated
-                % from the coverage at the end of the else goal.
-                CoverageAfterThenKnown = coverage_after_known,
-                CoverageAfterElseKnown = coverage_after_known
-            ;
-                ThenPortCountsCoverageAfter = port_counts_give_coverage_after,
-
-                % The coverage at the end of the else goal (if it doesn't have
-                % port counts), can be calculated from the coverage of the then
-                % goal.  Or it's already known because the port counts from
-                % within the goal give the coverage information.
-                CoverageAfterThenKnown = coverage_after_known,
-                CoverageAfterElseKnown = coverage_after_known
-            )
-        ;
-            % The branches of the ITE are not deterministic.
-            CoverageAfterThenKnown = coverage_after_unknown,
-            CoverageAfterElseKnown = coverage_after_unknown
-        )        
-    ;
-        CoverageAfterITEKnown = coverage_after_unknown,
-        CoverageAfterElseKnown = coverage_after_unknown,
-        CoverageAfterThenKnown = coverage_after_unknown
-    ),
-
-    % Transform Else branch,
-    coverage_prof_second_pass_goal(Else0, Else1,
-        CoverageAfterElseKnown, CoverageBeforeElseKnown1, !Info,
-        AddedImpurityElseGoal),
-
-    % Transform Then branch.
-    coverage_prof_second_pass_goal(Then0, Then1,
-        CoverageAfterThenKnown, CoverageBeforeThenKnown1, !Info,
-        AddedImpurityThenGoal),
+    CoverageKnownBeforeThen0 = CoverageKnownAfterCond,
+    CoverageKnownBeforeElse0 = coverage_before_unknown,
 
     % Gather information and decide what coverage points to insert.
     %
@@ -2486,59 +2476,69 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
     %
     % Whatever we do we will ensure that the coverage will be known at the
     % beginning of each branch,
-
     CPOBranchIf = !.Info ^ ci_coverage_profiling_opts ^ cpo_branch_ite,
-    CondPortCountsCoverageAfter = goal_get_maybe_dp_port_counts_coverage(Cond0),
     DPInfo = dp_goal_info(IsMDProfInst, _),
     (
         CPOBranchIf = yes,
-        CondPortCountsCoverageAfter = no_port_counts_give_coverage_after,
         IsMDProfInst = goal_is_not_mdprof_inst
     ->
         (
-            CoverageBeforeThenKnown1 = coverage_after_unknown,
+            CoverageKnownBeforeThen0 = coverage_before_unknown,
             ThenPath = goal_info_get_goal_path(Then0 ^ hlds_goal_info),
             InsertCPThen = yes(coverage_point_info(ThenPath,
                 cp_type_branch_arm))
         ;
-            CoverageBeforeThenKnown1 = coverage_after_known,
+            CoverageKnownBeforeThen0 = coverage_before_known,
             InsertCPThen = no
-        )
-    ;
-        % Don't insert any coverage points,
-        InsertCPThen = no
-    ),
-    (
-        CoverageBeforeElseKnown1 = coverage_after_unknown,
+        ),
+        % Always insert a coverage point for the else branch.
         ElsePath = goal_info_get_goal_path(Else0 ^ hlds_goal_info),
         InsertCPElse = yes(coverage_point_info(ElsePath,
-            cp_type_branch_arm))
+            cp_type_branch_arm)),
+        CoverageKnownBeforeThen = coverage_before_known,
+        CoverageKnownBeforeElse = coverage_before_known
     ;
-        CoverageBeforeElseKnown1 = coverage_after_known,
-        InsertCPElse = no
+        % Don't insert any coverage points,
+        InsertCPThen = no,
+        InsertCPElse = no,
+        CoverageKnownBeforeThen = CoverageKnownBeforeThen0,
+        CoverageKnownBeforeElse = CoverageKnownBeforeElse0
     ),
 
+    % Transform Then and Else branches,
+    coverage_prof_second_pass_goal(Then0, Then1,
+        CoverageKnownBeforeThen, NextCoverageKnownThen, !Info,
+        AddedImpurityThenGoal),
+    coverage_prof_second_pass_goal(Else0, Else1,
+        CoverageKnownBeforeElse, NextCoverageKnownElse, !Info,
+        AddedImpurityElseGoal),
+
     % Insert any coverage points.
-    maybe_insert_coverage_point_before(InsertCPElse, Else1, Else,
-        CoverageBeforeElseKnown1, _CoverageBeforeElseKnown, !Info,
-        AddedImpurityElseCP),
-    bool.or(AddedImpurityElseGoal, AddedImpurityElseCP, AddedImpurityElse),
-
-    maybe_insert_coverage_point_before(InsertCPThen, Then1, Then,
-        CoverageBeforeThenKnown1, CoverageBeforeThenKnown, !Info,
-        AddedImpurityThenCP),
-    bool.or(AddedImpurityThenGoal, AddedImpurityThenCP, AddedImpurityThen),
-
-    % Transform Cond branch.
-    CoverageKnownAfterCond = CoverageBeforeThenKnown,
-    coverage_prof_second_pass_goal(Cond0, Cond,
-        CoverageKnownAfterCond, NextCoverageAfterKnown, !Info,
-        AddedImpurityCond),
+    (
+        InsertCPThen = yes(CPInfoThen),
+        insert_coverage_point_before(CPInfoThen, Then1, Then, !Info),
+        AddedImpurityThen = yes
+    ;
+        InsertCPThen = no,
+        Then = Then1,
+        AddedImpurityThen = AddedImpurityThenGoal
+    ),
+    (
+        InsertCPElse = yes(CPInfoElse),
+        insert_coverage_point_before(CPInfoElse, Else1, Else, !Info),
+        AddedImpurityElse = yes
+    ;
+        InsertCPElse = no,
+        Else = Else1,
+        AddedImpurityElse = AddedImpurityElseGoal
+    ),
 
     % Build goal experession and tidy up.
     AddedImpurity = bool.or(AddedImpurityCond,
         bool.or(AddedImpurityThen, AddedImpurityElse)),
-    GoalExpr = if_then_else(ITEExistVars, Cond, Then, Else).
+    GoalExpr = if_then_else(ITEExistVars, Cond, Then, Else),
+    NextCoverageBeforeKnown = coverage_before_known_and(
+        NextCoverageKnownThen, NextCoverageKnownElse).
 
 :- func goal_info_get_dp_info(hlds_goal_info) = dp_goal_info.
 
@@ -2600,12 +2600,12 @@ goal_info_set_mdprof_inst(IsMDProfInst, !GoalInfo) :-
     %
 :- pred maybe_insert_coverage_point_before(maybe(coverage_point_info)::in,
     hlds_goal::in, hlds_goal::out,
-    coverage_after_known::in, coverage_after_known::out,
+    coverage_before_known::in, coverage_before_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-maybe_insert_coverage_point_before(no, !Goal, !CoverageAfterKnown, !Info, no).
+maybe_insert_coverage_point_before(no, !Goal, !CoverageBeforeKnown, !Info, no).
 maybe_insert_coverage_point_before(yes(CPInfo), !Goal,
-        _, coverage_after_known, !Info, yes) :-
+        _, coverage_before_known, !Info, yes) :-
     insert_coverage_point_before(CPInfo, !Goal, !Info).
 
     % Insert a coverage point before the given goal. This returns a flat
@@ -2627,30 +2627,20 @@ insert_coverage_point_before(CPInfo, !Goal, !Info) :-
     % Used to describe if coverage information is known at a partiular point
     % within a procedure.
     %
-:- type coverage_after_known
-    --->    coverage_after_known
-    ;       coverage_after_unknown.
+:- type coverage_before_known
+    --->    coverage_before_known
+    ;       coverage_before_unknown.
 
-    % Merge two coverage_after_known values at the beginning of a branch.
-    %
-    % The coverage profiling algorithm moves right to left through conjunctions
-    % and disjunctions, and from inner goals to outer goals on all non-atomic
-    % goals.  It may reach a branch of execution knowing the coverage known
-    % information entering both branches, this predicate computes the coverage
-    % known information for the branch as a whole.  For example.  In an
-    % if-then-else this can compute weather the coverage is known after the
-    % condition based in weather the coverage is known before both the then and
-    % else branches.
-    %
-:- pred coverage_after_known_branch(coverage_after_known::in,
-    coverage_after_known::in, coverage_after_known::out) is det.
+    % The logical 'and' of coverage_before_known values.
+:- func coverage_before_known_and(coverage_before_known, coverage_before_known)
+    = coverage_before_known.
 
-coverage_after_known_branch(coverage_after_known, coverage_after_known,
-    coverage_after_known).
-coverage_after_known_branch(coverage_after_known, coverage_after_unknown,
-    coverage_after_unknown).
-coverage_after_known_branch(coverage_after_unknown, _,
-    coverage_after_unknown).
+coverage_before_known_and(coverage_before_known, coverage_before_known) =
+    coverage_before_known.
+coverage_before_known_and(coverage_before_known, coverage_before_unknown) =
+    coverage_before_unknown.
+coverage_before_known_and(coverage_before_unknown, _) =
+    coverage_before_unknown.
 
     % Create a coverage info struture, initializing some values to sensible
     % defaults.
@@ -2722,7 +2712,7 @@ has_port_counts_after(Goal, PCDirect, PCBefore, PC) :-
         has_port_counts_if_det(Detism, PCBefore, PC)
     ).
 
-    % Given the current goal's determinism and wheather the next earliest goal
+    % Given the current goal's determinism and whether the next earliest goal
     % has port counts does this goal have port counts
     %
 :- pred has_port_counts_if_det(determinism::in,
@@ -2745,9 +2735,12 @@ has_port_counts_if_det(Detism, PortCountsCoverageAfter0,
     % transformation.
     %
     % This pass gathers the information in the dp_coverage_goal_info structure,
-    % namely weather the goal is trivial (if it and none of it's subgoals are
-    % calls),  And weather a port count is available from the deep profiler
+    % namely whether the goal is trivial (if it and none of it's subgoals are
+    % calls),  And whether a port count is available from the deep profiler
     % from which the coverage _after_ this goal can be computed.
+    %
+    % XXX: Currently the first pass is unsupported. The second pass does not
+    % use the information it generates.
     %
 :- pred coverage_prof_first_pass(coverage_profiling_options::in, hlds_goal::in,
     hlds_goal::out, port_counts_give_coverage_after::in,

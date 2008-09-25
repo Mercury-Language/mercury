@@ -304,6 +304,7 @@
     ;       profile_deep_coverage_branch_disj
 
             % Tunables for the coverage profiling pass.
+            % XXX: Currently both these options are unsupported.
     ;       profile_deep_coverage_use_portcounts
     ;       profile_deep_coverage_use_trivial
 
@@ -1167,8 +1168,8 @@ option_defaults_2(compilation_model_option, [
     profile_deep_coverage_branch_ite    -   bool(yes),
     profile_deep_coverage_branch_switch -   bool(yes),
     profile_deep_coverage_branch_disj   -   bool(yes),
-    profile_deep_coverage_use_portcounts -  bool(yes),
-    profile_deep_coverage_use_trivial   -   bool(yes),
+    profile_deep_coverage_use_portcounts -  bool(no),
+    profile_deep_coverage_use_trivial   -   bool(no),
     profile_for_implicit_parallelism    -   bool(no),
     use_zeroing_for_ho_cycles           -   bool(yes),
     use_lots_of_ho_specialization       -   bool(no),
