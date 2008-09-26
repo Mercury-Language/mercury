@@ -45,10 +45,8 @@ void
 MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 {
     MR_TrailEntry   *tr_ptr;
-
-#if defined(MR_TRAIL_SEGMENTS)
     MR_TrailEntry   *tr_base;
-#endif
+    
     /* Not needed, since MR_trail_ptr is never a real reg: */
     /* MR_restore_transient_registers(); */
     tr_ptr = MR_trail_ptr;
