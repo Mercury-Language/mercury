@@ -1,21 +1,21 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: profiling_builtin.m.
 % Authors: conway, zs.
 % Stability: low.
-% 
+%
 % This file is automatically imported into every module when deep profiling
 % is enabled. It contains support predicates used for deep profiling.
 % The tasks of the support predicates are described in some detail in
 % ``Engineering a profiler for a logic programming language'' by Thomas Conway
 % and Zoltan Somogyi.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -811,15 +811,39 @@
 :- pragma foreign_proc("C",
     increment_coverage_point_count(_ProcLayout::in, _CPIndex::in),
     [thread_safe, will_not_call_mercury],
-"{
-/*
- * This builtin is only ever used when code is instrumented with an inline
- * version,  from complier/deep_profiling.m
- */
-MR_fatal_error(
-    ""increment_coverage_point_count: builtin cannot be called normally"");
-}").
+    % The code of this predicate is duplicated bodily in deep_profiling.m
+    % in the compiler directory, so any changes here should also be made there.
+"
+#ifdef MR_DEEP_PROFILING
+    const MR_ProcLayout *pl;
+    MR_ProcStatic       *ps;
 
+    MR_enter_instrumentation();
+
+  #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
+    if (MR_calldebug && MR_lld_print_enabled) {
+        MR_print_deep_prof_vars(stdout, ""increment_coverage_point_count"");
+        printf("", ProcLayout: 0x%x, CPIndex: %d\\n"", ProcLayout, CPIndex);
+    }
+  #endif
+
+    pl = (const MR_ProcLayout *) ProcLayout;
+
+    MR_deep_assert(NULL, NULL, NULL, pl != NULL);
+    ps = pl->MR_sle_proc_static;
+    MR_deep_assert(NULL, pl, NULL, ps != NULL);
+
+    MR_deep_assert(NULL, pl, ps, CPIndex >= ps->MR_ps_num_coverage_points);
+    MR_deep_assert(NULL, pl, ps, ps->MR_ps_coverage_points != NULL);
+
+    ps->MR_ps_coverage_points[CPIndex]++;
+
+    MR_leave_instrumentation();
+#else
+    MR_fatal_error(
+        ""increment_coverage_point_count: deep profiling not enabled"");
+#endif /* MR_DEEP_PROFILING */
+").
 
 %---------------------------------------------------------------------------%
 % instances of save_recursion_depth_N
