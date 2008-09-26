@@ -208,12 +208,14 @@
 :- type coverage_info
     --->    coverage_unknown
     ;       coverage_known_det(int)
-                % Coverage is known both before and after the goal, and the
-                % coverage is the same before as it is after.
-
+            % Coverage is known both before and after the goal, and the
+            % coverage is the same before as it is after.
     ;       coverage_known(int, int)
+            % Coverage is known both before and after the goal.
     ;       coverage_known_before(int)
+            % Coverage is known only before the goal.
     ;       coverage_known_after(int).
+            % Coverage is known only before after goal.
 
 :- type proc_callers_report
     --->    proc_callers_report(

@@ -149,7 +149,7 @@
     --->    goal_rep(
                 goal_expr_rep       :: goal_expr_rep(GoalAnnotation),
                     % The expression this goal represents.
-                
+
                 goal_detism_rep     :: detism_rep,
                     % The determinism of this goal.
 
@@ -163,41 +163,37 @@
 
 :- type goal_expr_rep(GoalAnnotation)
     --->    conj_rep(
+                % The conjuncts in the original order.
                 list(goal_rep(GoalAnnotation))
-                    % The conjuncts in the original order.
             )
     ;       disj_rep(
+                % The disjuncts in the original order.
                 list(goal_rep(GoalAnnotation))
-                    % The disjuncts in the original order.
             )
     ;       switch_rep(
-                var_rep,            
-                    % The variable being switched on.
-                
-                switch_can_fail_rep,
-                    % Completeness of the switch.
+                % The variable being switched on.
+                var_rep,
 
+                % Completeness of the switch.
+                switch_can_fail_rep,
+
+                % The switch arms in the original order.
                 list(case_rep(GoalAnnotation))
-                    % The switch arms in the original order.
             )
     ;       ite_rep(
+                % The condition, the then branch and the else branch.
                 goal_rep(GoalAnnotation),
-                    % Condition.
-                
                 goal_rep(GoalAnnotation),
-                    % Then branch.
-                
                 goal_rep(GoalAnnotation)
-                    % Else branch.
             )
     ;       negation_rep(
+                % The negated goal.
                 goal_rep(GoalAnnotation)
-                    % The negated goal.
             )
     ;       scope_rep(
+                % The quantified goal.
                 goal_rep(GoalAnnotation),
-                    % The quantified goal.
-                
+
                 maybe_cut
             )
     ;       atomic_goal_rep(
@@ -210,19 +206,22 @@
 
 :- type case_rep(GoalAnnotation)
     --->    case_rep(
-                cons_id_arity_rep,  
-                    % The name and arity of the first function symbol for which
-                    % this switch arm is applicable.
-                
-                list(cons_id_arity_rep),
-                    % The names and arities of any other function symbols for
-                    % this switch arm.
-                
-                goal_rep(GoalAnnotation)
-                    % The code of the switch arm.
+                % The name and arity of the first function symbol for which
+                % this switch arm is applicable.
+                cr_main_cons_id     :: cons_id_arity_rep,
+
+                % The names and arities of any other function symbols for
+                % this switch arm.
+                cr_other_cons_ids   :: list(cons_id_arity_rep),
+
+                % The code of the switch arm.
+                cr_case_goal        :: goal_rep(GoalAnnotation)
             ).
 
 :- type case_rep == case_rep(unit).
+
+:- func project_case_rep_goal(case_rep(GoalAnnotation)) =
+    goal_rep(GoalAnnotation).
 
 :- type switch_can_fail_rep
     --->    switch_can_fail
@@ -426,7 +425,7 @@
 :- type maybe_cut
     --->    scope_is_cut
     ;       scope_is_no_cut.
-    
+
     % The empty goal path.
     %
 :- func empty_goal_path = goal_path.
@@ -444,7 +443,7 @@
     %
 :- func goal_path_remove_last(goal_path) = goal_path is semidet.
 
-    % Remove the last item from the goal path, returning it and the new 
+    % Remove the last item from the goal path, returning it and the new
     % goal path.
     %
 :- pred goal_path_remove_last(goal_path::in, goal_path::out,
@@ -617,13 +616,14 @@
 
 :- type coverage_point_info
     --->    coverage_point_info(
+                % Identifies the goal that this coverage point is near.
+                % If cp_type is cp_type_branch_arm, the coverage point is
+                % immediately before this goal, otherwise it is immediately
+                % after.
                 goal_path,
-                    % Identifies the goal that this coverage point is near.  If
-                    % cp_type is cp_type_branch_arm the coverage point is
-                    % immediately before this goal, otherwise it is immediately
-                    % after.
+
+                % The type of this coverage point.
                 cp_type
-                    % The type of this coverage point.
             ).
 
 % This enumeration specifies the type of coverage point.  A branch arm is an
@@ -632,7 +632,6 @@
 :- type cp_type
     --->    cp_type_coverage_after
     ;       cp_type_branch_arm.
-
 
     % Gives the value in C for this coverage point type.
     %
@@ -919,6 +918,10 @@ goal_type_byte(19, goal_event_call).
 
 %-----------------------------------------------------------------------------%
 
+project_case_rep_goal(Case) = Case ^ cr_case_goal.
+
+%-----------------------------------------------------------------------------%
+
 var_num_rep_byte(byte, 0).
 var_num_rep_byte(short, 1).
 
@@ -928,7 +931,7 @@ lookup_var_name(VarTable, VarRep, String) :-
     ( map.search(VarTable, VarRep, StringPrime) ->
         String = StringPrime
     ;
-        % Generate an automatic name for the variable. 
+        % Generate an automatic name for the variable.
         String = string.format("V_%d", [i(VarRep)])
     ).
 
@@ -1061,7 +1064,7 @@ read_module_rep(ByteCode, ModuleRep, !Pos) :-
     ModuleRep = module_rep(ModuleName, StringTable, ProcReps).
 
 :- pred read_proc_reps(bytecode::in, string_table::in,
-    proc_map(unit)::in, proc_map(unit)::out, int::in, int::out) 
+    proc_map(unit)::in, proc_map(unit)::out, int::in, int::out)
     is semidet.
 
 read_proc_reps(ByteCode, StringTable, !ProcReps, !Pos) :-
@@ -1072,7 +1075,7 @@ read_proc_reps(ByteCode, StringTable, !ProcReps, !Pos) :-
     ;
         MoreProcs = next_proc,
         read_proc_rep(ByteCode, StringTable, ProcRep, !Pos),
-        svmap.det_insert(ProcRep ^ pr_id, ProcRep, !ProcReps), 
+        svmap.det_insert(ProcRep ^ pr_id, ProcRep, !ProcReps),
         read_proc_reps(ByteCode, StringTable, !ProcReps, !Pos)
     ).
 
@@ -1085,7 +1088,7 @@ read_proc_rep(ByteCode, StringTable, ProcRep, !Pos) :-
     read_int32(ByteCode, Size, !Pos),
     read_string_via_offset(ByteCode, StringTable, FileName, !Pos),
     Info = read_proc_rep_info(FileName),
-    read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos), 
+    read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos),
     read_vars(VarNumRep, ByteCode, HeadVars, !Pos),
     read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
     read_determinism(ByteCode, Detism, !Pos),
@@ -1131,11 +1134,11 @@ read_string_proc_label(ByteCode, ProcLabel, !Pos) :-
 
     % Read the var table from the bytecode.  The var table names all the
     % variables used in the procedure representation.
-    % 
+    %
     % The representation of variables and the variable table restricts the
     % number of possible variables in a procedure to 2^16.
     %
-:- pred read_var_table(bytecode::in, string_table::in,  var_num_rep::out, 
+:- pred read_var_table(bytecode::in, string_table::in,  var_num_rep::out,
     map(var_rep, string)::out, int::in, int::out) is semidet.
 
 read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos) :-
@@ -1157,7 +1160,7 @@ read_var_table_entries(NumVarsInTable, VarNumRep, ByteCode, StringTable,
         read_var(VarNumRep, ByteCode, VarRep, !Pos),
         read_string_via_offset(ByteCode, StringTable, VarName, !Pos),
         svmap.insert(VarRep, VarName, !VarTable),
-        read_var_table_entries(NumVarsInTable - 1, VarNumRep, ByteCode, 
+        read_var_table_entries(NumVarsInTable - 1, VarNumRep, ByteCode,
             StringTable, !VarTable, !Pos)
     ;
         % No more variables to read.
@@ -1383,14 +1386,15 @@ read_goals_2(VarNumRep, ByteCode, StringTable, Info, N, Goals, !Pos) :-
     ).
 
 :- pred read_cases(var_num_rep::in, bytecode::in, string_table::in,
-    read_proc_rep_info::in, list(case_rep(unit))::out, int::in, int::out) is semidet.
+    read_proc_rep_info::in, list(case_rep(unit))::out, int::in, int::out)
+    is semidet.
 
 read_cases(VarNumRep, ByteCode, StringTable, Info, Cases, !Pos) :-
     read_length(ByteCode, Len, !Pos),
     read_cases_2(VarNumRep, ByteCode, StringTable, Info, Len, Cases, !Pos).
 
 :- pred read_cases_2(var_num_rep::in, bytecode::in, string_table::in,
-    read_proc_rep_info::in, int::in, list(case_rep(unit))::out, 
+    read_proc_rep_info::in, int::in, list(case_rep(unit))::out,
     int::in, int::out) is semidet.
 
 read_cases_2(VarNumRep, ByteCode, StringTable, Info, N, Cases, !Pos) :-
@@ -1518,7 +1522,7 @@ read_var_num_rep(ByteCode, VarNumRep, !Pos) :-
         error("read_var_num_rep: unknown var_num_rep")
     ).
 
-:- pred read_determinism(bytecode::in, detism_rep::out, int::in, int::out) 
+:- pred read_determinism(bytecode::in, detism_rep::out, int::in, int::out)
     is semidet.
 
 read_determinism(ByteCode, Detism, !Pos) :-
@@ -1531,11 +1535,11 @@ read_determinism(ByteCode, Detism, !Pos) :-
 
 :- pred read_switch_can_fail(bytecode::in, switch_can_fail_rep::out,
     int::in, int::out) is semidet.
-    
+
 read_switch_can_fail(Bytecode, CanFail, !Pos) :-
     read_byte(Bytecode, CanFailByte, !Pos),
     (
-        ( 
+        (
             CanFailByte = 0,
             CanFailPrime = switch_can_fail
         ;
@@ -1703,7 +1707,6 @@ pred_is_external("backjump", "builtin_backjump", 1).
     }
 ").
 
-
 %-----------------------------------------------------------------------------%
 
 %
@@ -1711,9 +1714,10 @@ pred_is_external("backjump", "builtin_backjump", 1).
 % section.
 %
 
-coverage_point_type_c_value(cp_type_coverage_after, 
+coverage_point_type_c_value(cp_type_coverage_after,
     "MR_cp_type_coverage_after").
-coverage_point_type_c_value(cp_type_branch_arm, "MR_cp_type_branch_arm").
+coverage_point_type_c_value(cp_type_branch_arm,
+    "MR_cp_type_branch_arm").
 
 :- pragma foreign_enum("C", cp_type/0,
     [

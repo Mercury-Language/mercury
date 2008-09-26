@@ -12,7 +12,7 @@
 % Utilities for working with the program representation structures in the
 % mdbcomp library.  This file is not part of the mdbcomp library, since it
 % contains routines only used by the deep profiling tools.  Code here should be
-% moved into the mdbcomp.program_representation.m module if it's to be used by
+% moved into the mdbcomp.program_representation.m module if it is to be used by
 % other tools.
 %
 %-----------------------------------------------------------------------------%
@@ -33,26 +33,25 @@
 
 %----------------------------------------------------------------------------%
 
-    % Ugly-print a module to a string representation.  A cord of strings is
-    % returned rather than a string, since this reduces the cost of string
-    % concatenations.
+    % Ugly-print a module to a string representation. We return a cord of
+    % strings is returned rather than a string, since this reduces the cost
+    % of string concatenations.
     %
 :- pred print_module_to_strings(module_rep::in, cord(string)::out) is det.
 
     % Print a procedure to a string representation.
     %
-:- pred print_proc_to_strings(proc_rep(GoalAnn), cord(string)) <=
-    (goal_annotation(GoalAnn)).
-:- mode print_proc_to_strings(in, out) is det.
+:- pred print_proc_to_strings(proc_rep(GoalAnn)::in, cord(string)::out) is det
+    <= goal_annotation(GoalAnn).
 
 %----------------------------------------------------------------------------%
 
 :- typeclass goal_annotation(T) where [
-            % Print the goal annotation for inclusion by print_proc_to_strings
-            % above.
-            %
-        pred print_goal_annotation_to_strings(T::in, cord(string)::out) is det
-    ].
+    % Print the goal annotation for inclusion by print_proc_to_strings
+    % above.
+    %
+    pred print_goal_annotation_to_strings(T::in, cord(string)::out) is det
+].
 
     % A goal with no particular annotation has empty strings printed for goal
     % annotations.
@@ -61,7 +60,7 @@
 
 %----------------------------------------------------------------------------%
 
-    % Search a program representation for the given procedure and return it's
+    % Search a program representation for the given procedure and return its
     % procedure representation if found, otherwise fail.
     %
 :- pred progrep_search_proc(prog_rep::in, string_proc_label::in, proc_rep::out)
@@ -73,7 +72,7 @@
     %
 :- pred procrep_annotate_with_coverage(own_prof_info::in,
     map(goal_path, call_site_perf)::in, map(goal_path, coverage_point)::in,
-    map(goal_path, coverage_point)::in, proc_rep::in, 
+    map(goal_path, coverage_point)::in, proc_rep::in,
     proc_rep(coverage_info)::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -95,12 +94,20 @@
 
 print_module_to_strings(ModuleRep, Strings) :-
     ModuleRep = module_rep(ModuleName, _StringTable, ProcReps),
-    map.foldl((pred(_::in, Proc::in, Str0::in, Str::out) is det :-
-            print_proc_to_strings(Proc, Str1),
-            Str = Str0 ++ Str1
-        ), ProcReps, cord.empty, ProcStrings),
-    Strings = cord.cons(string.format("Module %s\n", [s(ModuleName)]), 
+    map.foldl(accumulate_print_proc_to_strings, ProcReps,
+        cord.empty, ProcStrings),
+    Strings = cord.cons(string.format("Module %s\n", [s(ModuleName)]),
         ProcStrings).
+
+    % Print a procedure to a string representation.
+    %
+:- pred accumulate_print_proc_to_strings(string_proc_label::in,
+    proc_rep(GoalAnn)::in, cord(string)::in, cord(string)::out) is det
+    <= goal_annotation(GoalAnn).
+
+accumulate_print_proc_to_strings(_, Proc, !Strings) :-
+    print_proc_to_strings(Proc, ProcStrings),
+    !:Strings = !.Strings ++ ProcStrings.
 
 print_proc_to_strings(ProcRep, Strings) :-
     ProcRep = proc_rep(ProcLabel, ProcDefnRep),
@@ -111,7 +118,7 @@ print_proc_to_strings(ProcRep, Strings) :-
     Strings = ProcLabelString ++ ArgsString ++ cord.singleton(" :-\n") ++
         GoalString ++ nl.
 
-:- pred print_proc_label_to_strings(detism_rep::in, string_proc_label::in, 
+:- pred print_proc_label_to_strings(detism_rep::in, string_proc_label::in,
     cord(string)::out) is det.
 
 print_proc_label_to_strings(Detism, ProcLabel, Strings) :-
@@ -138,9 +145,8 @@ print_proc_label_to_strings(Detism, ProcLabel, Strings) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_goal_to_strings(var_table, int, goal_rep(GoalAnn), cord(string))
-    <= goal_annotation(GoalAnn).
-:- mode print_goal_to_strings(in, in, in, out) is det.
+:- pred print_goal_to_strings(var_table::in, int::in, goal_rep(GoalAnn)::in,
+    cord(string)::out) is det <= goal_annotation(GoalAnn).
 
 print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
     GoalRep = goal_rep(GoalExprRep, DetismRep, GoalAnnotation),
@@ -148,22 +154,21 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
     print_goal_annotation_to_strings(GoalAnnotation, GoalAnnotationString),
     (
         GoalExprRep = conj_rep(ConjGoalReps),
-        print_conj_to_strings(VarTable, Indent, ConjGoalReps,
-            Strings)
+        print_conj_to_strings(VarTable, Indent, ConjGoalReps, Strings)
     ;
         GoalExprRep = disj_rep(DisjGoalReps),
         print_disj_to_strings(VarTable, Indent, DisjGoalReps, no, DisjString),
         Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++
             cord.singleton(" (\n") ++ DisjString ++ indent(Indent) ++
-            cord.singleton(")\n") 
+            cord.singleton(")\n")
     ;
         GoalExprRep = switch_rep(SwitchVarRep, CanFail, CasesRep),
         lookup_var_name(VarTable, SwitchVarRep, SwitchVarName),
-        string.format(" ( %s switch on %s\n", 
+        string.format(" ( %s switch on %s\n",
             [s(string(CanFail)), s(SwitchVarName)], SwitchOpenString),
         print_switch_to_strings(VarTable, Indent, CasesRep, no, SwitchString),
         Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++
-            cord.singleton(SwitchOpenString) ++ SwitchString ++ 
+            cord.singleton(SwitchOpenString) ++ SwitchString ++
             indent(Indent) ++ cord.singleton(")\n")
     ;
         GoalExprRep = ite_rep(CondRep, ThenRep, ElseRep),
@@ -188,12 +193,12 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
             CutString = cord.singleton(" cut")
         ;
             MaybeCut = scope_is_no_cut,
-            CutString = cord.empty 
+            CutString = cord.empty
         ),
         print_goal_to_strings(VarTable, Indent + 1, SubGoalRep, SubGoalString),
-        Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++ 
+        Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++
             cord.singleton(" scope") ++ CutString ++ cord.singleton(" (\n") ++
-            SubGoalString ++ indent(Indent) ++ cord.singleton(")\n") 
+            SubGoalString ++ indent(Indent) ++ cord.singleton(")\n")
     ;
         GoalExprRep = atomic_goal_rep(_FileName, _LineNumber,
             _BoundVars, AtomicGoalRep),
@@ -201,9 +206,9 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
             DetismRep, AtomicGoalRep, Strings)
     ).
 
-:- pred print_conj_to_strings(var_table, int, list(goal_rep(GoalAnn)),
-    cord(string)) <= goal_annotation(GoalAnn).
-:- mode print_conj_to_strings(in, in, in, out) is det.
+:- pred print_conj_to_strings(var_table::in, int::in,
+    list(goal_rep(GoalAnn))::in, cord(string)::out) is det
+    <= goal_annotation(GoalAnn).
 
 print_conj_to_strings(VarTable, Indent, GoalReps, Strings) :-
     (
@@ -214,9 +219,9 @@ print_conj_to_strings(VarTable, Indent, GoalReps, Strings) :-
         print_conj_2_to_strings(VarTable, Indent, GoalReps, Strings)
     ).
 
-:- pred print_conj_2_to_strings(var_table, int, list(goal_rep(GoalAnn)), 
-    cord(string)) <= goal_annotation(GoalAnn).
-:- mode print_conj_2_to_strings(in, in, in, out) is det.
+:- pred print_conj_2_to_strings(var_table::in, int::in,
+    list(goal_rep(GoalAnn))::in, cord(string)::out) is det
+    <= goal_annotation(GoalAnn).
 
 print_conj_2_to_strings(_, _Indent, [], cord.empty).
 print_conj_2_to_strings(VarTable, Indent, [GoalRep | GoalReps], Strings) :-
@@ -229,12 +234,13 @@ print_conj_2_to_strings(VarTable, Indent, [GoalRep | GoalReps], Strings) :-
     print_conj_2_to_strings(VarTable, Indent, GoalReps, ConjString),
     Strings = GoalString ++ ConjString.
 
-:- pred print_disj_to_strings(var_table, int, list(goal_rep(GoalAnn)), bool,
-    cord(string)) <= goal_annotation(GoalAnn).
-:- mode print_disj_to_strings(in, in, in, in, out) is det.
+:- pred print_disj_to_strings(var_table::in, int::in,
+    list(goal_rep(GoalAnn))::in, bool::in, cord(string)::out) is det
+    <= goal_annotation(GoalAnn).
 
 print_disj_to_strings(_, _Indent, [], _PrintSemi, cord.empty).
-print_disj_to_strings(VarTable, Indent, [GoalRep | GoalReps], PrintSemi, Strings) :-
+print_disj_to_strings(VarTable, Indent, [GoalRep | GoalReps], PrintSemi,
+        Strings) :-
     (
         PrintSemi = no,
         DelimString = cord.empty
@@ -246,12 +252,13 @@ print_disj_to_strings(VarTable, Indent, [GoalRep | GoalReps], PrintSemi, Strings
     print_disj_to_strings(VarTable, Indent, GoalReps, yes, DisjString),
     Strings = DelimString ++ GoalString ++ DisjString.
 
-:- pred print_switch_to_strings(var_table, int, list(case_rep(GoalAnn)), bool,
-    cord(string)) <= goal_annotation(GoalAnn).
-:- mode print_switch_to_strings(in, in, in, in, out) is det.
+:- pred print_switch_to_strings(var_table::in, int::in,
+    list(case_rep(GoalAnn))::in, bool::in, cord(string)::out) is det
+    <= goal_annotation(GoalAnn).
 
 print_switch_to_strings(_, _Indent, [], _PrintSemi, cord.empty).
-print_switch_to_strings(VarTable, Indent, [CaseRep | CaseReps], PrintSemi, Strings) :-
+print_switch_to_strings(VarTable, Indent, [CaseRep | CaseReps], PrintSemi,
+        Strings) :-
     (
         PrintSemi = no,
         DelimString = cord.empty
@@ -297,7 +304,7 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
         string.format(" %s %s %s", [s(VarName), s(UnifyOp), s(ConsIdRep)],
             UnifyString),
         print_args_to_strings(VarTable, ArgReps, ArgsString),
-        Strings0 = cord.cons(UnifyString, ArgsString) 
+        Strings0 = cord.cons(UnifyString, ArgsString)
     ;
         (
             AtomicGoalRep = partial_construct_rep(VarRep, ConsIdRep,
@@ -335,7 +342,7 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
         AtomicGoalRep = pragma_foreign_code_rep(Args),
         print_args_to_strings(VarTable, Args, ArgsString),
         Strings0 = cord.singleton(" foreign_proc(") ++ ArgsString ++
-            cord.singleton(")") 
+            cord.singleton(")")
     ;
         AtomicGoalRep = higher_order_call_rep(HOVarRep, Args),
         lookup_var_name(VarTable, HOVarRep, HOVarName),
@@ -386,16 +393,17 @@ print_args_to_strings(VarTable, Args, Strings) :-
         Strings = cord.cons("(", cord.snoc(ArgsStr, ")"))
     ).
 
-:- pred print_args_2_to_strings(var_table::in, list(var_rep)::in, 
+:- pred print_args_2_to_strings(var_table::in, list(var_rep)::in,
     cord(string)::in, cord(string)::out) is det.
 
-print_args_2_to_strings(_,        [],                 _,      cord.empty).
+print_args_2_to_strings(_, [], _, cord.empty).
 print_args_2_to_strings(VarTable, [VarRep | VarReps], Prefix, Strings) :-
     lookup_var_name(VarTable, VarRep, VarName),
-    print_args_2_to_strings(VarTable, VarReps, cord.singleton(", "), ArgsString),
+    print_args_2_to_strings(VarTable, VarReps, cord.singleton(", "),
+        ArgsString),
     Strings = Prefix ++ cord.cons(VarName, ArgsString).
 
-:- pred print_maybe_args_to_strings(var_table::in, list(maybe(var_rep))::in, 
+:- pred print_maybe_args_to_strings(var_table::in, list(maybe(var_rep))::in,
     cord(string)::out) is det.
 
 print_maybe_args_to_strings(VarTable, MaybeArgs, Strings) :-
@@ -412,7 +420,8 @@ print_maybe_args_to_strings(VarTable, MaybeArgs, Strings) :-
     cord(string)::in, cord(string)::out) is det.
 
 print_maybe_args_2_to_strings(_, [], _, cord.empty).
-print_maybe_args_2_to_strings(VarTable, [MaybeVarRep | MaybeVarReps], Prefix, Strings) :-
+print_maybe_args_2_to_strings(VarTable, [MaybeVarRep | MaybeVarReps], Prefix,
+        Strings) :-
     (
         MaybeVarRep = no,
         VarName = "_"
@@ -472,8 +481,8 @@ nl = cord.singleton("\n").
 %----------------------------------------------------------------------------%
 
 :- instance goal_annotation(unit) where [
-        pred(print_goal_annotation_to_strings/2) is print_unit_to_strings
-    ].
+    pred(print_goal_annotation_to_strings/2) is print_unit_to_strings
+].
 
 :- pred print_unit_to_strings(unit::in, cord(string)::out) is det.
 
@@ -490,7 +499,7 @@ progrep_search_proc(ProgRep, ProcLabel, ProcRep) :-
 
     % Search for a module within a program representation.
     %
-:- pred progrep_search_module(prog_rep::in, string::in, module_rep::out) 
+:- pred progrep_search_module(prog_rep::in, string::in, module_rep::out)
     is semidet.
 
 progrep_search_module(ProgRep, ModuleName, ModuleRep) :-
@@ -510,11 +519,11 @@ modulerep_search_proc(ModuleRep, ProcLabel, ProcRep) :-
     % Annotate a procedure representation structure with coverage information.
     %
     % The following trace flags control debugging for this predicate.
-    %   
+    %
     %   debug_coverage_propagation:
     %       Print out diagnostic messages to aid in the debugging of the
     %       propagation coverage algorithm.
-    %   
+    %
     %   no_coverage_propagation_assertions:
     %       Disable assertions used to test this algorithm, This allows the
     %       algorithm to proceed past the problem and allow the programmer to
@@ -532,15 +541,15 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
         ;
             Coverage = coverage_known(Calls, Exits)
         ),
-        CoverageReference =
-            coverage_reference_info(CallSites, SolnsCoveragePoints, 
-                BranchCoveragePoints),
+        CoverageReference = coverage_reference_info(CallSites,
+            SolnsCoveragePoints, BranchCoveragePoints),
         goal_annotate_coverage(CoverageReference, empty_goal_path, Coverage, _,
             !GoalRep),
         !:ProcDefn = !.ProcDefn ^ pdr_goal := !.GoalRep,
         !:ProcRep = !.ProcRep ^ pr_defn := !.ProcDefn
     ).
 
+    % XXX with arbitrary what?
     % These maps are keyed by goal_path, which is a structure with arbitrary,
     % comparing these structures is less efficient than comparing simple
     % structures like the alternative goal_path_string, however, that involves
@@ -557,11 +566,13 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
 
     % Try to get coverage information from:
     %   + Port counts if this is an atomic goal.
-    %   + A solution count from a coverage point after the goal
+    %   + A solution count from a coverage point after the goal.
     %   + If the goal is in a conjunction and it is not the first conjunct, try
     %     to get the solution count of the previous goal.
     %
     % This does not check for branch entry counts.
+    %
+    % XXX I don't understand what exactly the above is trying to say. -zs
     %
 :- pred get_coverage_information(coverage_reference_info::in,
     goal_expr_rep(T)::in, goal_path::in, detism_rep::in,
@@ -582,19 +593,19 @@ get_coverage_information(Info, GoalExpr, GoalPath, Detism, !Coverage) :-
         ; AtomicGoal = pragma_foreign_code_rep(_)
         )
     ->
-        ( 
-            map.search(Info ^ cri_call_sites, GoalPath, CallSite), 
-            % Callback call sites measure the port counts when mercury is
+        (
+            map.search(Info ^ cri_call_sites, GoalPath, CallSite),
+            % Callback call sites measure the port counts when Mercury is
             % re-entered, not the number of calls made from this call site.
             CallSite ^ csf_kind \= callback_and_no_info
         ->
             Summary = CallSite ^ csf_summary_perf,
-            % Entry due to redo is not counted at the point before the
-            % goal, it's represented when the number of exists is greater
-            % than the number of calls,  This won't work with nondet code
+            % Entry due to redo is not counted at the point before the goal,
+            % it is represented when the number of exists is greater than
+            % the number of calls. XXX This won't work with nondet code,
             % which should be fixed in the future.
             Calls = Summary ^ perf_row_calls,
-            Exits = Summary ^ perf_row_exits, 
+            Exits = Summary ^ perf_row_exits,
             !:Coverage = coverage_known(Calls, Exits)
         ;
             (
@@ -665,12 +676,12 @@ goal_annotate_coverage(Info, GoalPath, !Coverage, Goal0, Goal) :-
         GoalExpr = ite_rep(Cond, Then, Else)
     ;
         GoalExpr0 = negation_rep(NegGoal0),
-        negation_annotate_coverage(Info, GoalPath, !Coverage, 
-            NegGoal0, NegGoal), 
+        negation_annotate_coverage(Info, GoalPath, !Coverage,
+            NegGoal0, NegGoal),
         GoalExpr = negation_rep(NegGoal)
     ;
         GoalExpr0 = scope_rep(ScopedGoal0, MaybeCut),
-        scope_annotate_coverage(Info, GoalPath, MaybeCut, !Coverage, 
+        scope_annotate_coverage(Info, GoalPath, MaybeCut, !Coverage,
             ScopedGoal0, ScopedGoal),
         GoalExpr = scope_rep(ScopedGoal, MaybeCut)
     ;
@@ -679,22 +690,21 @@ goal_annotate_coverage(Info, GoalPath, !Coverage, Goal0, Goal) :-
     ),
     propagate_coverage(Detism, GoalPath, !Coverage),
     Goal = goal_rep(GoalExpr, Detism, !.Coverage),
-    trace [ compile_time(flag("debug_coverage_propagation")), io(!IO) ] (
+    trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
         io.write_string("goal_annotate_coverage: done\n", !IO),
-        io.format("\tGoalPath: %s\n\tDetism %s\n\tCoverage; %s\n", 
-            [s(goal_path_to_string(GoalPath)), 
-             s(string(Detism)), 
+        io.format("\tGoalPath: %s\n\tDetism %s\n\tCoverage; %s\n",
+            [s(goal_path_to_string(GoalPath)),
+             s(string(Detism)),
              s(string(!.Coverage))], !IO)
     ),
-    trace [ compile_time(not flag("no_coverage_propagation_assertions")) ]
-    (
+    trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
         require(check_coverage_complete(!.Coverage, GoalExpr),
-            string.format("check_coverage_complete failed\n" ++ 
+            string.format("check_coverage_complete failed\n" ++
                 "\tCoverage: %s\n\tGoalPath: %s\n",
                 [s(string(!.Coverage)), s(goal_path_to_string(GoalPath))])),
-    require(check_coverage_regarding_detism(!.Coverage, Detism), 
-        string.format("check_coverage_regarding_detism failed: %s %s", 
-                [s(string(!.Coverage)), s(string(Detism))]))
+        require(check_coverage_regarding_detism(!.Coverage, Detism),
+            string.format("check_coverage_regarding_detism failed: %s %s",
+                    [s(string(!.Coverage)), s(string(Detism))]))
     ).
 
     % Annotate a conjunction with coverage information.
@@ -720,8 +730,7 @@ conj_annotate_coverage_2(_, GoalPath, ConjunctNum, !Coverage, [], []) :-
     % The empty conjunction is equivalent to 'true' which is deterministic,
     ConjGoalPath = goal_path_add_at_end(GoalPath, step_conj(ConjunctNum)),
     propagate_det_coverage(ConjGoalPath, !Coverage).
-
-conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, !Coverage, 
+conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, !Coverage,
         [Conj0 | Conjs0], [Conj | Conjs]) :-
     split_coverage(!.Coverage, CoverageBefore0, CoverageAfter0),
 
@@ -730,9 +739,9 @@ conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, !Coverage,
         CoverageBefore0, HeadCoverage, Conj0, Conj),
     split_coverage(HeadCoverage, CoverageBefore, CoverageAfterHead),
     goal_transition_coverage(CoverageAfterHead, CoverageBeforeTail),
-    
-    TailCoverage0 = merge_coverage(CoverageBeforeTail, CoverageAfter0), 
-    conj_annotate_coverage_2(Info, GoalPath, ConjunctNum+1, 
+
+    TailCoverage0 = merge_coverage(CoverageBeforeTail, CoverageAfter0),
+    conj_annotate_coverage_2(Info, GoalPath, ConjunctNum+1,
         TailCoverage0, TailCoverage, Conjs0, Conjs),
     CoverageAfter = get_coverage_after(TailCoverage),
 
@@ -750,7 +759,7 @@ conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, !Coverage,
     goal_path::in, coverage_info::in, coverage_info::out,
     list(goal_rep(unit))::in, list(goal_rep(coverage_info))::out) is det.
 
-disj_annotate_coverage(Info, Detism, GoalPath, !Coverage, 
+disj_annotate_coverage(Info, Detism, GoalPath, !Coverage,
         Disjs0, Disjs) :-
     CoverageBefore0 = get_coverage_before(!.Coverage),
     Solutions = detism_get_solutions(Detism),
@@ -763,7 +772,6 @@ disj_annotate_coverage(Info, Detism, GoalPath, !Coverage,
     list(goal_rep)::in, list(goal_rep(coverage_info))::out) is det.
 
 disj_annotate_coverage_2(_, _, _, _, _, [], []).
-
 disj_annotate_coverage_2(Info, GoalPath, DisjNum, Solutions, CoverageBefore0,
         [Disj0 | Disjs0], [Disj | Disjs]) :-
     DisjGoalPath = goal_path_add_at_end(GoalPath, step_disj(DisjNum)),
@@ -777,12 +785,12 @@ disj_annotate_coverage_2(Info, GoalPath, DisjNum, Solutions, CoverageBefore0,
     goal_annotate_coverage(Info, DisjGoalPath, CoverageBefore1, _CoverageDisj,
         Disj0, Disj),
 
-    disj_annotate_coverage_2(Info, GoalPath, DisjNum + 1, Solutions, 
+    disj_annotate_coverage_2(Info, GoalPath, DisjNum + 1, Solutions,
         coverage_unknown, Disjs0, Disjs).
 
-:- pred switch_annotate_coverage(coverage_reference_info::in, 
-    switch_can_fail_rep::in, goal_path::in, 
-    coverage_info::in, coverage_info::out, 
+:- pred switch_annotate_coverage(coverage_reference_info::in,
+    switch_can_fail_rep::in, goal_path::in,
+    coverage_info::in, coverage_info::out,
     list(case_rep(unit))::in, list(case_rep(coverage_info))::out) is det.
 
 switch_annotate_coverage(Info, CanFail, GoalPath, !Coverage, Cases0, Cases) :-
@@ -818,15 +826,17 @@ switch_annotate_coverage(Info, CanFail, GoalPath, !Coverage, Cases0, Cases) :-
         !:Coverage = SwitchCoverage
     ),
 
-    trace [ compile_time(flag("debug_coverage_propagation")), io(!IO) ]
-        io.format("Switch: Coverage0: %s\n", [s(string(Coverage0))], !IO),
-    trace [ compile_time(not flag("no_coverage_propagation_assertions")) ]
+    trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
+        io.format("Switch: Coverage0: %s\n", [s(string(Coverage0))], !IO)
+    ),
+    trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
         require(check_switch_coverage(CanFail, Cases, !.Coverage),
-        string.format("check_switch_coverage failed\n\t" ++ 
-                "CanFail: %s\n\tCases: %s\n\tCoverage: %s\n",
-            [s(string(CanFail)), s(string(Cases)), s(string(!.Coverage))])).
+        string.format("check_switch_coverage failed\n\t" ++
+            "CanFail: %s\n\tCases: %s\n\tCoverage: %s\n",
+            [s(string(CanFail)), s(string(Cases)), s(string(!.Coverage))]))
+    ).
 
-    % switch_annotate_coverage_2(Info, Detism, GoalPath, CaseNum, 
+    % switch_annotate_coverage_2(Info, Detism, GoalPath, CaseNum,
     %   !CoverageSum, SwitchCoverage, !Cases),
     %
     % Perform coverage annotation on cases from the left to the right, The head
@@ -839,18 +849,16 @@ switch_annotate_coverage(Info, CanFail, GoalPath, !Coverage, Cases0, Cases) :-
     % the end of the last goal may need to be computed from the coverage of
     % each of the other goals.
     %
-:- pred switch_annotate_coverage_2(coverage_reference_info::in, 
+:- pred switch_annotate_coverage_2(coverage_reference_info::in,
     switch_can_fail_rep::in, goal_path::in, int::in, coverage_info::in,
-    coverage_info::out, coverage_info::in, 
+    coverage_info::out, coverage_info::in,
     list(case_rep(unit))::in, list(case_rep(coverage_info))::out) is det.
 
 switch_annotate_coverage_2(_, _, _, _, !CoverageSum, _, [], []).
+switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum, !CoverageSum,
+        SwitchCoverage, [ Case0 | Cases0 ], [ Case | Cases ]) :-
+    CaseGoalPath = goal_path_add_at_end(GoalPath, step_switch(CaseNum, no)),
 
-switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum, 
-        !CoverageSum, SwitchCoverage, [ Case0 | Cases0 ], [ Case | Cases ]) :-
-    CaseGoalPath = goal_path_add_at_end(GoalPath, 
-        step_switch(CaseNum, no)),
-    
     % If this is the last case in the switch, then it's coverage information
     % may be computed from the coverage of other cases and the coverage of the
     % whole switch.  This is only done for the last goal, since only this
@@ -858,7 +866,6 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
     %
     % If we can't calculate it's coverage information then try to retrieve the
     % information from a coverage point associated with the switch branch.
-    %
     (
         Cases0 = [],
         CanFail = switch_can_not_fail
@@ -867,7 +874,7 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
             coverage_count_before(SwitchCoverage, SwitchCountBefore),
             coverage_count_before(!.CoverageSum, SumCountBefore)
         ->
-            CoverageBefore0 = 
+            CoverageBefore0 =
                 coverage_known_before(SwitchCountBefore - SumCountBefore)
         ;
             % Search for a coverage point for this case.
@@ -877,7 +884,7 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
             coverage_count_after(SwitchCoverage, SwitchCountAfter),
             coverage_count_after(!.CoverageSum, SumCountAfter)
         ->
-            CoverageAfter0 = 
+            CoverageAfter0 =
                 coverage_known_after(SwitchCountAfter - SumCountAfter)
         ;
             CoverageAfter0 = coverage_unknown
@@ -893,7 +900,7 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
     goal_annotate_coverage(Info, CaseGoalPath, Coverage0, Coverage,
         Goal0, Goal),
     Case = case_rep(ConsID, OtherConsIDs, Goal),
-  
+
     % Keep a sum of the coverage seen in cases so far.
     (
         coverage_count_before(!.CoverageSum, SumCountBefore1),
@@ -926,7 +933,7 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
     %   Lookup coverage information for the then and else goals if it cannot be
     %   inferred from the condition goal.  Set the coverage before the then and
     %   else goals.
-    %   
+    %
     % Step 3:
     %   Call goal_annotate_coverage for the then and else goals.
     %
@@ -934,8 +941,8 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
     %   Calculate the coverage at the end of the entire switch.
     %
 :- pred ite_annotate_coverage(coverage_reference_info::in, goal_path::in,
-    coverage_info::in, coverage_info::out, 
-    goal_rep::in, goal_rep(coverage_info)::out, 
+    coverage_info::in, coverage_info::out,
+    goal_rep::in, goal_rep(coverage_info)::out,
     goal_rep::in, goal_rep(coverage_info)::out,
     goal_rep::in, goal_rep(coverage_info)::out) is det.
 
@@ -949,15 +956,13 @@ ite_annotate_coverage(Info, GoalPath, !Coverage,
 
     % Step 1:
     %   Call goal_annotate_coverage for the condition goal.
-    goal_annotate_coverage(Info, CondGoalPath, CoverageBefore0, CondCoverage, 
+    goal_annotate_coverage(Info, CondGoalPath, CoverageBefore0, CondCoverage,
         Cond0, Cond),
 
     % Step 2:
     %   Lookup coverage information for the then and else goals.  Set the
     %   coverage before the then and else goals.
-    (
-        coverage_count_after(CondCoverage, CountAfterCond)
-    ->
+    ( coverage_count_after(CondCoverage, CountAfterCond) ->
         ThenCoverage0 = coverage_known_before(CountAfterCond)
     ;
         get_branch_coverage(Info, ThenGoalPath, ThenCoverage0)
@@ -965,21 +970,21 @@ ite_annotate_coverage(Info, GoalPath, !Coverage,
     get_branch_coverage(Info, ElseGoalPath, ElseCoverage0),
 
         trace [ compile_time(flag("debug_coverage_propagation")), io(!IO) ] (
-        io.format("ITE Coverage inferred after then and else branches:\n" ++ 
-            "\tWhole: %s\n\tThen: %s\n\tElse: %s\n" ++ 
-            "\tGoalPath %s\n", 
-            [s(string(!.Coverage)), 
+        io.format("ITE Coverage inferred after then and else branches:\n" ++
+            "\tWhole: %s\n\tThen: %s\n\tElse: %s\n" ++
+            "\tGoalPath %s\n",
+            [s(string(!.Coverage)),
             s(string(ThenCoverage0)), s(string(ElseCoverage0)),
             s(goal_path_to_string(GoalPath))], !IO)
     ),
-    
+
     % Step 3:
     %   Call goal_annotate_coverage for the then and else goals.
     goal_annotate_coverage(Info, ThenGoalPath, ThenCoverage0, ThenCoverage,
         Then0, Then),
     goal_annotate_coverage(Info, ElseGoalPath, ElseCoverage0, ElseCoverage,
         Else0, Else),
-    
+
     % Step 4:
     %   Calculate the coverage at the end of the entire switch.
     (
@@ -994,27 +999,29 @@ ite_annotate_coverage(Info, GoalPath, !Coverage,
         CoverageAfter = CoverageAfter0
     ;
         CoverageAfter0 = coverage_unknown,
-    (
+        (
             coverage_count_after(ThenCoverage, CountAfterThen1),
             coverage_count_after(ElseCoverage, CountAfterElse1)
-    ->
+        ->
             CoverageAfter =
                 coverage_known_after(CountAfterThen1 + CountAfterElse1)
-    ;
+        ;
             CoverageAfter = coverage_unknown
         )
     ),
     !:Coverage = merge_coverage(CoverageBefore, CoverageAfter),
 
-    trace [ compile_time(not flag("no_coverage_propagation_assertions")) ]
-    require(check_ite_coverage(!.Coverage, CondCoverage, ThenCoverage,
-            ElseCoverage, CondDetism), 
-        string.format("check_ite_coverage/4 failed\n" ++ 
-                "\tWhole: %s\n\tCond: %s\n\tThen: %s\n\tElse: %s\n" ++ 
+    trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
+        require(
+            check_ite_coverage(!.Coverage, CondCoverage, ThenCoverage,
+                ElseCoverage, CondDetism),
+            string.format("check_ite_coverage/4 failed\n" ++
+                "\tWhole: %s\n\tCond: %s\n\tThen: %s\n\tElse: %s\n" ++
                 "\tGoalPath: %s\n",
-            [s(string(!.Coverage)), s(string(CondCoverage)),
-                s(string(ThenCoverage)), s(string(ElseCoverage)),
-                s(goal_path_to_string(GoalPath))])).
+                [s(string(!.Coverage)), s(string(CondCoverage)),
+                    s(string(ThenCoverage)), s(string(ElseCoverage)),
+                    s(goal_path_to_string(GoalPath))]))
+    ).
 
 :- pred not_unify(T::in, T::in) is semidet.
 
@@ -1027,9 +1034,7 @@ not_unify(A, B) :- not unify(A, B).
     coverage_info::out(coverage_before)) is det.
 
 get_branch_coverage(Info, GoalPath, Coverage) :-
-    ( 
-        map.search(Info ^ cri_branch_coverage_points, GoalPath, CP)
-    ->
+    ( map.search(Info ^ cri_branch_coverage_points, GoalPath, CP) ->
         CP = coverage_point(Count, _, _),
         Coverage = coverage_known_before(Count)
     ;
@@ -1037,18 +1042,18 @@ get_branch_coverage(Info, GoalPath, Coverage) :-
     ).
 
 :- pred negation_annotate_coverage(coverage_reference_info::in, goal_path::in,
-    coverage_info::in, coverage_info::out, 
+    coverage_info::in, coverage_info::out,
     goal_rep::in, goal_rep(coverage_info)::out) is det.
 
 negation_annotate_coverage(Info, GoalPath, Coverage0, Coverage,
         NegGoal0, NegGoal) :-
     split_coverage(Coverage0, CoverageBefore0, CoverageAfter0),
     Coverage1 = merge_coverage(CoverageBefore0, coverage_unknown),
-    
+
     NegGoalPath = goal_path_add_at_end(GoalPath, step_neg),
     goal_annotate_coverage(Info, NegGoalPath, Coverage1, Coverage2,
         NegGoal0, NegGoal),
-   
+
     CoverageBefore2 = get_coverage_before(Coverage2),
     (
         CoverageBefore2 = coverage_unknown,
@@ -1058,15 +1063,16 @@ negation_annotate_coverage(Info, GoalPath, Coverage0, Coverage,
         CoverageBefore = CoverageBefore2
     ),
     Coverage = merge_coverage(CoverageBefore, CoverageAfter0),
-    trace [compile_time(flag("debug_coverage_propagation")), io(!IO) ]
+    trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
         io.format("Negation: setting negation coverage: %s\n",
-            [s(string(Coverage))], !IO).
-        
+            [s(string(Coverage))], !IO)
+    ).
+
 :- pred scope_annotate_coverage(coverage_reference_info::in, goal_path::in,
     maybe_cut::in, coverage_info::in, coverage_info::out,
     goal_rep::in, goal_rep(coverage_info)::out) is det.
 
-scope_annotate_coverage(Info, GoalPath, MaybeCut, !Coverage, 
+scope_annotate_coverage(Info, GoalPath, MaybeCut, !Coverage,
         ScopedGoal0, ScopedGoal) :-
     ScopeCoverageAfter0 = get_coverage_after(!.Coverage),
     maybe_cut_discard_solutions(MaybeCut, !Coverage),
@@ -1103,64 +1109,118 @@ maybe_cut_discard_solutions(MaybeCut, !Coverage) :-
     ;
         MaybeCut = scope_is_no_cut
     ).
-    
+
 %----------------------------------------------------------------------------%
 %
 % These predicates are used to check that computed coverage counts make sense.
 %
-    
+
     % Check that the coverage of a goal makes sense given the determinism of
     % that goal.
     %
-:- pred check_coverage_regarding_detism(coverage_info::in, detism_rep::in) 
+:- pred check_coverage_regarding_detism(coverage_info::in, detism_rep::in)
     is semidet.
 
 check_coverage_regarding_detism(Coverage, Detism) :-
-    ( Detism = det_rep
-    ; Detism = cc_multidet_rep
-    ),
-    ( Coverage = coverage_known(Count, Count)
-    ; Coverage = coverage_known_det(_)
-    ; Coverage = coverage_unknown
-    ).
-check_coverage_regarding_detism(Coverage, Detism) :-
-    ( Detism = semidet_rep
-    ; Detism = cc_nondet_rep
-    ),
-    (
-        Coverage = coverage_known(Entry, Exit),
-        Entry >= Exit
-    ; Coverage = coverage_known_before(_)
-    ; Coverage = coverage_known_after(_)
-    ; Coverage = coverage_known_det(_)
-    ; Coverage = coverage_unknown
-    ).
-check_coverage_regarding_detism(Coverage, multidet_rep) :-
-    (
-        Coverage = coverage_known(Entry, Exit),
-        Entry =< Exit
-    ; Coverage = coverage_known_before(_)
-    ; Coverage = coverage_known_after(_)
-    ; Coverage = coverage_known_det(_)
-    ; Coverage = coverage_unknown
-    ).
-check_coverage_regarding_detism(Coverage, Detism) :-
-    ( Detism = erroneous_rep
-    ; Detism = failure_rep
-    ),
-    ( Coverage = coverage_known(_, 0)
-    % This probably wont occur, but might
-    ; Coverage = coverage_known_det(0)
-    ; Coverage = coverage_known_before(_)
-    ; Coverage = coverage_known_after(0)
-    % This shouldn't occur, we should infer at least coverage_known_after(0)
-    ; Coverage = coverage_unknown
-    ).
-check_coverage_regarding_detism(_Coverage, nondet_rep).
+    detism_coverage_ok(Coverage, Detism) = yes.
 
-    % Check that the coverages over the switch make sense.  This works only for
+:- func detism_coverage_ok(coverage_info, detism_rep) = bool.
+
+detism_coverage_ok(Coverage, Detism) = OK :-
+    (
+        ( Detism = det_rep
+        ; Detism = cc_multidet_rep
+        ),
+        (
+            ( Coverage = coverage_known_det(_)
+            ; Coverage = coverage_unknown
+            ),
+            OK = yes
+        ;
+            Coverage = coverage_known(Entry, Exit),
+            ( Entry = Exit ->
+                OK = yes
+            ;
+                OK = no
+            )
+        ;
+            ( Coverage = coverage_known_before(_)
+            ; Coverage = coverage_known_after(_)
+            ),
+            % If you known coverage at one of these points, you can compute
+            % the coverage at the other point.
+            OK = no
+        )
+    ;
+        ( Detism = semidet_rep
+        ; Detism = cc_nondet_rep
+        ),
+        (
+            ( Coverage = coverage_known_before(_)
+            ; Coverage = coverage_known_after(_)
+            ; Coverage = coverage_known_det(_)
+            ; Coverage = coverage_unknown
+            ),
+            OK = yes
+        ;
+            Coverage = coverage_known(Entry, Exit),
+            ( Entry >= Exit ->
+                OK = yes
+            ;
+                OK = no
+            )
+        )
+    ;
+        Detism = multidet_rep,
+        (
+            ( Coverage = coverage_known_before(_)
+            ; Coverage = coverage_known_after(_)
+            ; Coverage = coverage_known_det(_)
+            ; Coverage = coverage_unknown
+            ),
+            OK = yes
+        ;
+            Coverage = coverage_known(Entry, Exit),
+            ( Entry =< Exit ->
+                OK = yes
+            ;
+                OK = no
+            )
+        )
+    ;
+        Detism = nondet_rep,
+        OK = yes
+    ;
+        ( Detism = erroneous_rep
+        ; Detism = failure_rep
+        ),
+        (
+            % The coverage_known_dert case probably won't occur, but it might.
+            ( Coverage = coverage_known(_, Exit)
+            ; Coverage = coverage_known_det(Exit)
+            ; Coverage = coverage_known_after(Exit)
+            ),
+            ( Exit = 0 ->
+                OK = yes
+            ;
+                OK = no
+            )
+        ;
+            Coverage = coverage_known_before(_),
+            OK = yes
+        ;
+            Coverage = coverage_unknown,
+            % This shouldn't occur, we should infer at least
+            % coverage_known_after(0).
+            OK = yes
+        )
+    ).
+
+    % Check that the coverages over the switch make sense. This works only for
     % deterministic switches.
-    % 
+    %
+    % XXX What does "make sense" mean?
+    %
 :- pred check_switch_coverage(switch_can_fail_rep::in,
     list(case_rep(coverage_info))::in, coverage_info::in) is semidet.
 
@@ -1170,7 +1230,7 @@ check_switch_coverage(CanFail, Cases, Coverage) :-
         list.foldl(sum_switch_case_coverage, Cases, yes(0), MaybeSum),
         (
             MaybeSum = yes(Sum),
-            ( 
+            (
                 ( Coverage = coverage_known_det(Sum)
                 ; Coverage = coverage_known(Sum, _)
                 ; Coverage = coverage_known_before(Sum)
@@ -1247,14 +1307,14 @@ check_ite_coverage(WholeCoverage, CondCoverage, ThenCoverage, ElseCoverage,
         ),
         coverage_count_before(CondCoverage, CondBeforePrime),
         coverage_count_after(CondCoverage, CondAfterPrime),
-        coverage_count_before(ElseCoverage, ElseBefore)  
+        coverage_count_before(ElseCoverage, ElseBefore)
     ->
         ElseBefore = CondBeforePrime - CondAfterPrime
     ;
         true
     ).
 
-:- pred check_coverage_complete(coverage_info::in, goal_expr_rep(T)::in) 
+:- pred check_coverage_complete(coverage_info::in, goal_expr_rep(T)::in)
     is semidet.
 
 check_coverage_complete(coverage_known(_, _), _GoalExpr).
@@ -1268,48 +1328,57 @@ check_coverage_complete(coverage_known_det(_), _GoalExpr).
 %    ),
 %    goal_expr_is_trivial(GoalExpr).
 
-:- pred goal_is_trivial(goal_rep(T)::in) is semidet.
+:- func goal_is_trivial(goal_rep(T)) = bool.
 
-goal_is_trivial(Goal) :-
+goal_is_trivial(Goal) = IsTrivial:-
     GoalExpr = Goal ^ goal_expr_rep,
-    goal_expr_is_trivial(GoalExpr).
+    IsTrivial = goal_expr_is_trivial(GoalExpr).
 
-:- pred goal_expr_is_trivial(goal_expr_rep(T)::in) is semidet.
+:- func goal_expr_is_trivial(goal_expr_rep(T)) = bool.
 
-goal_expr_is_trivial(conj_rep(Conjs)) :-
-    list.all_true(goal_is_trivial, Conjs). 
-
-goal_expr_is_trivial(disj_rep(Disjs)) :-
-    list.all_true(goal_is_trivial, Disjs).
-
-goal_expr_is_trivial(switch_rep(_, _, Cases)) :-
-    list.all_true((pred(Case::in) is semidet :-
-        Case = case_rep(_, _, Goal),
-        goal_is_trivial(Goal)), Cases).
-
-goal_expr_is_trivial(ite_rep(Cond, Then, Else)) :-
-    goal_is_trivial(Cond),
-    goal_is_trivial(Then),
-    goal_is_trivial(Else).
-
-goal_expr_is_trivial(negation_rep(SubGoal)) :-
-    goal_is_trivial(SubGoal).
-
-goal_expr_is_trivial(scope_rep(SubGoal, _)) :-
-    goal_is_trivial(SubGoal).
-
-goal_expr_is_trivial(atomic_goal_rep(_, _, _, AtomicGoal)) :-
-    ( AtomicGoal = unify_construct_rep(_, _, _)
-    ; AtomicGoal = unify_deconstruct_rep(_, _, _)
-    ; AtomicGoal = partial_deconstruct_rep(_, _, _)
-    ; AtomicGoal = partial_construct_rep(_, _, _)
-    ; AtomicGoal = unify_assign_rep(_, _)
-    ; AtomicGoal = cast_rep(_, _)
-    ; AtomicGoal = unify_simple_test_rep(_, _)
-    % Built-in calls are probably cheap enough to consider to be trivial.
-    ; AtomicGoal = builtin_call_rep(_, _, _)
-    ; AtomicGoal = pragma_foreign_code_rep(_)
-    ; AtomicGoal = event_call_rep(_, _) 
+goal_expr_is_trivial(GoalRep) = IsTrivial :-
+    (
+        (
+            GoalRep = conj_rep(SubGoalReps)
+        ;
+            GoalRep = disj_rep(SubGoalReps)
+        ;
+            GoalRep = switch_rep(_, _, CaseReps),
+            SubGoalReps = list.map(project_case_rep_goal, CaseReps)
+        ;
+            GoalRep = ite_rep(CondRep, ThenRep, ElseRep),
+            SubGoalReps = [CondRep, ThenRep, ElseRep]
+        ),
+        SubGoalIsTrivials = list.map(goal_is_trivial, SubGoalReps),
+        bool.and_list(SubGoalIsTrivials, IsTrivial)
+    ;
+        ( GoalRep = negation_rep(SubGoalRep)
+        ; GoalRep = scope_rep(SubGoalRep, _)
+        ),
+        IsTrivial = goal_is_trivial(SubGoalRep)
+    ;
+        GoalRep = atomic_goal_rep(_, _, _, AtomicGoalRep),
+        (
+            ( AtomicGoalRep = plain_call_rep(_, _, _)
+            ; AtomicGoalRep = higher_order_call_rep(_, _)
+            ; AtomicGoalRep = method_call_rep(_, _, _)
+            ),
+            IsTrivial = no
+        ;
+            ( AtomicGoalRep = unify_construct_rep(_, _, _)
+            ; AtomicGoalRep = unify_deconstruct_rep(_, _, _)
+            ; AtomicGoalRep = partial_deconstruct_rep(_, _, _)
+            ; AtomicGoalRep = partial_construct_rep(_, _, _)
+            ; AtomicGoalRep = unify_assign_rep(_, _)
+            ; AtomicGoalRep = cast_rep(_, _)
+            ; AtomicGoalRep = unify_simple_test_rep(_, _)
+            % Built-in calls are cheap enough to consider to be trivial.
+            ; AtomicGoalRep = builtin_call_rep(_, _, _)
+            ; AtomicGoalRep = pragma_foreign_code_rep(_)
+            ; AtomicGoalRep = event_call_rep(_, _)
+            ),
+            IsTrivial = yes
+        )
     ).
 
 %----------------------------------------------------------------------------%
@@ -1324,7 +1393,7 @@ goal_expr_is_trivial(atomic_goal_rep(_, _, _, AtomicGoal)) :-
 coverage_count_before(coverage_known(Count, _), Count).
 coverage_count_before(coverage_known_before(Count), Count).
 coverage_count_before(coverage_known_det(Count), Count).
-    
+
     % Retreive the 'after' coverage count, or fail.
     %
 :- pred coverage_count_after(coverage_info::in, int::out) is semidet.
@@ -1334,7 +1403,8 @@ coverage_count_after(coverage_known_after(Count), Count).
 coverage_count_after(coverage_known_det(Count), Count).
 
     % The coverage before a det goal should always equal the coverage after.
-:- pred propagate_det_coverage(goal_path::in, 
+    %
+:- pred propagate_det_coverage(goal_path::in,
     coverage_info::in, coverage_info::out) is det.
 
 propagate_det_coverage(GoalPath, !Coverage) :-
@@ -1344,12 +1414,14 @@ propagate_det_coverage(GoalPath, !Coverage) :-
         !.Coverage = coverage_known_det(_)
     ;
         !.Coverage = coverage_known(Before, After),
-        trace [compile_time(not flag("no_coverage_propagation_assertions"))]
-            require(unify(Before, After), 
+        trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
+            require(unify(Before, After),
                 format("Coverage before /= after for a det goal: %s, GP: %s",
-                    [s(string(!.Coverage)), s(goal_path_to_string(GoalPath))])),
-            !:Coverage = coverage_known_det(Before)
-        ;
+                    [s(string(!.Coverage)),
+                    s(goal_path_to_string(GoalPath))]))
+        ),
+        !:Coverage = coverage_known_det(Before)
+    ;
         ( !.Coverage = coverage_known_before(Coverage)
         ; !.Coverage = coverage_known_after(Coverage)
         ),
@@ -1359,7 +1431,7 @@ propagate_det_coverage(GoalPath, !Coverage) :-
     % If the determinism is deterministic or cc_multi use
     % propagate_det_coverage.
     %
-:- pred propagate_coverage(detism_rep::in, goal_path::in, 
+:- pred propagate_coverage(detism_rep::in, goal_path::in,
     coverage_info::in, coverage_info::out) is det.
 
 propagate_coverage(Detism, GoalPath, !Coverage) :-
@@ -1371,7 +1443,8 @@ propagate_coverage(Detism, GoalPath, !Coverage) :-
     % to calculate coverage for trivial goals.
     (
         ( Detism = det_rep
-        ; Detism = cc_multidet_rep ),
+        ; Detism = cc_multidet_rep
+        ),
         propagate_det_coverage(GoalPath, !Coverage)
     ;
         Detism = semidet_rep
