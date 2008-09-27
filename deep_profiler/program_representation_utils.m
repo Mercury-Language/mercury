@@ -549,13 +549,11 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
         !:ProcRep = !.ProcRep ^ pr_defn := !.ProcDefn
     ).
 
-    % XXX with arbitrary what?
-    % These maps are keyed by goal_path, which is a structure with arbitrary,
-    % comparing these structures is less efficient than comparing simple
-    % structures like the alternative goal_path_string, however, that involves
-    % frequently constructing strings from goal paths.  Using goal_path_string
-    % may be faster but I'd rather not make this optimisation without first
-    % testing it.
+    % These maps are keyed by goal_path, comparing these structures is less
+    % efficient than comparing simple structures like the alternative
+    % goal_path_string, however, that involves frequently constructing strings
+    % from goal paths.  Using goal_path_string may be faster but I'd rather not
+    % make this optimisation without first testing it.
     %
 :- type coverage_reference_info
     --->    coverage_reference_info(
@@ -567,12 +565,8 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
     % Try to get coverage information from:
     %   + Port counts if this is an atomic goal.
     %   + A solution count from a coverage point after the goal.
-    %   + If the goal is in a conjunction and it is not the first conjunct, try
-    %     to get the solution count of the previous goal.
     %
-    % This does not check for branch entry counts.
-    %
-    % XXX I don't understand what exactly the above is trying to say. -zs
+    % XXX: Move this predicate back into the coverage propagation code.
     %
 :- pred get_coverage_information(coverage_reference_info::in,
     goal_expr_rep(T)::in, goal_path::in, detism_rep::in,
@@ -1216,10 +1210,8 @@ detism_coverage_ok(Coverage, Detism) = OK :-
         )
     ).
 
-    % Check that the coverages over the switch make sense. This works only for
-    % deterministic switches.
-    %
-    % XXX What does "make sense" mean?
+    % Check that the coverage on the switch goal and it's cases do not
+    % contradict with each other.  This works only for deterministic switches.
     %
 :- pred check_switch_coverage(switch_can_fail_rep::in,
     list(case_rep(coverage_info))::in, coverage_info::in) is semidet.

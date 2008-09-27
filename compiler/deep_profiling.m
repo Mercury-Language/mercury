@@ -2249,10 +2249,11 @@ coverage_known_after_goal_with_detism(Detism, !CoverageKnown) :-
         )
     ).
 
-    % Perform the coverage profiling transformation for conjuncts. The goal
-    % list represents the list of goals within a conjunction minus 'Pos' goals
-    % removed from the head.
-    % XXX What does that mean?
+    % Perform the coverage profiling transformation for conjuncts.
+    %
+    % The goal list represents the tail of a conjunction.  Pos is the position
+    % of this list within the entire conjunction, if this is the entire
+    % conjunction then Pos should be 1.
     %
 :- pred coverage_prof_second_pass_conj(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
@@ -2300,7 +2301,11 @@ coverage_prof_second_pass_disj(DPInfo, CoverageBeforeKnown,
         Disjuncts0 = [FirstDisjunct0, SecondDisjunct],
         goal_info_get_determinism(SecondDisjunct ^ hlds_goal_info) =
             detism_failure
-        % XXX Would this be a better test here?
+        % XXX: zs: Would this be a better test here?
+        % pbone: I don't think so, the deep profiler doesn't seem to add this
+        % feature to disjuncts that end in failure, it is probably a good idea
+        % to add this annotation to prevent later compiler passes from breaking
+        % the deep profiler. 
         % goal_has_feature(SecondDisjunct, feature_preserve_backtrack_into)
     ->
         coverage_prof_second_pass_goal(FirstDisjunct0, FirstDisjunct,
@@ -2401,9 +2406,8 @@ coverage_prof_second_pass_switchcase_2(DPInfo, SwitchCanFail,
 
     % If the switch cannot fail and this is the last case, then the coverage
     % at the beginning of this case can be computed from the coverage before
-    % the entire switch and coverage information for the tail of the switch
-    % such as branch coverage points.
-    % XXX The last part of that sentence does not make sense.
+    % the entire switch and coverage information from each of the other
+    % branches of the switch.
     (
         Cases0 = [],
         (
@@ -2759,22 +2763,8 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
     ;
         GoalExpr0 = disj(Goals0),
         coverage_prof_first_pass_disj(CPOptions, Goals0, Goals, Trivial0,
-            PortCountsCoverageAfterBefore, PortCountsCoverageAfterDirect0),
-        GoalExpr = disj(Goals),
-
-        % Only if the disjunction cannot fail can we know the coverage after
-        % the disjunction if port counts are available from every disjunct.
-        % XXX What port counts? A disjunct need not contain a call.
-        % do you mean coverage information from the end of each disjunct?
-        Detism = goal_info_get_determinism(GoalInfo0),
-        determinism_components(Detism, CanFail, _),
-        (
-            CanFail = can_fail,
-            PortCountsCoverageAfterDirect = no_port_counts_give_coverage_after
-        ;
-            CanFail = cannot_fail,
-            PortCountsCoverageAfterDirect = PortCountsCoverageAfterDirect0
-        )
+            PortCountsCoverageAfterBefore, PortCountsCoverageAfterDirect),
+        GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         coverage_prof_first_pass_switchcase(CPOptions, Cases0, Cases, Trivial0,
@@ -2891,10 +2881,9 @@ coverage_prof_first_pass_conj(CPOptions, Goal0, Goal, TrivialAcc, Trivial,
 coverage_prof_first_pass_disj(_, [], [], goal_is_trivial,
         !PortCountsCoverageAfter).
 coverage_prof_first_pass_disj(CPOptions, [Goal0 | Goals0], [Goal | Goals],
-        Trivial, PortCountsCoverageAfterBefore, PortCountsCoverageAfter) :-
-    % XXX What kind of name is PortCountsCoverageAfterBefore?
+        Trivial, PortCountsCoverageBeforeDisjunct, PortCountsCoverageAfter) :-
     coverage_prof_first_pass(CPOptions, Goal0, Goal,
-        PortCountsCoverageAfterBefore,
+        PortCountsCoverageBeforeDisjunct,
         dp_coverage_goal_info(TrivialGoal, PortCountsCoverageAfterGoal)),
     coverage_prof_first_pass_disj(CPOptions, Goals0, Goals, TrivialDisj,
         no_port_counts_give_coverage_after, PortCountsCoverageAfterDisj),
@@ -2902,13 +2891,9 @@ coverage_prof_first_pass_disj(CPOptions, [Goal0 | Goals0], [Goal | Goals],
     port_counts_give_coverage_after_and(PortCountsCoverageAfterGoal,
         PortCountsCoverageAfterDisj, PortCountsCoverageAfter).
 
-    % A switch is handled like a disjunction except that it can't be known
-    % how often execution will enter the first case, so this also cannot use
-    % the portcount of a goal before it.
-    %
-    % XXX This is wrong: there should be more differences than that, since you
-    % a failure in one switch arm doesn't cause a jump to the start of the next
-    % arm.
+    % A switch is a special type of disjunction.  The important difference here
+    % is that the coverage of the first case cannot be inferred from the
+    % coverage before the switch.
     %
 :- pred coverage_prof_first_pass_switchcase(coverage_profiling_options::in,
     list(case)::in, list(case)::out, goal_trivial::out,
@@ -2987,7 +2972,7 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
     PredName = "increment_coverage_point_count",
     PredArity = 2,
     ArgVars = [ProcLayoutVar, CPIndexVar],
-    % XXX The body of increment_coverage_point_count includes several
+    % Note: The body of increment_coverage_point_count includes several
     % assertions. If these are enabled, then bodily including the C code
     % at EVERY coverage point will cause significant code bloat. Generating
     % a call to a predicate with the same code in library/profiling_builtin.m
@@ -3063,14 +3048,14 @@ proc_static_cons_id(CoverageInfo, ProcStaticConsId) :-
 
 coverage_point_ll_code(ForeignProcAttrs, ForeignCodeImpl) :-
     some [!ForeignProcAttrs] (
-        % I don't think this would be thread safe but the cost of the mutexes
-        % may be too high.
-        % XXX Correctness is more important than cost. The right solution
-        % would be to add a mechanism that, in par grades, allows us to replace
-        % the general foreign code mutex with one that guards only the data
-        % coverage data structure we are updating, since that would yield
-        % a LOT less contention.
+        % XXX When running this code in a parallel grade the contention for the
+        % foreign code mutex may be very expensive.  TO improve this we should
+        % add a mechanism that, in par grades, allows us to replace the general
+        % foreign code mutex with one that guards only the data coverage data
+        % structure we are updating, since that would yield a LOT less
+        % contention.
         !:ForeignProcAttrs = default_attributes(lang_c),
+        set_thread_safe(proc_not_thread_safe, !ForeignProcAttrs),
         set_may_call_mercury(proc_will_not_call_mercury, !ForeignProcAttrs),
         set_purity(purity_impure, !ForeignProcAttrs),
         set_terminates(proc_terminates, !ForeignProcAttrs),

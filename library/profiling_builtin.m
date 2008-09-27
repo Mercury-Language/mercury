@@ -809,7 +809,7 @@
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    increment_coverage_point_count(_ProcLayout::in, _CPIndex::in),
+    increment_coverage_point_count(ProcLayout::in, CPIndex::in),
     [thread_safe, will_not_call_mercury],
     % The code of this predicate is duplicated bodily in deep_profiling.m
     % in the compiler directory, so any changes here should also be made there.
