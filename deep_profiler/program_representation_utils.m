@@ -562,79 +562,6 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
                 cri_branch_coverage_points  :: map(goal_path, coverage_point)
             ).
 
-    % Try to get coverage information from:
-    %   + Port counts if this is an atomic goal.
-    %   + A solution count from a coverage point after the goal.
-    %
-    % XXX: Move this predicate back into the coverage propagation code.
-    %
-:- pred get_coverage_information(coverage_reference_info::in,
-    goal_expr_rep(T)::in, goal_path::in, detism_rep::in,
-    coverage_info::in, coverage_info::out) is det.
-
-get_coverage_information(Info, GoalExpr, GoalPath, Detism, !Coverage) :-
-    % Try to get coverage information from goal port counts.
-    (
-        ( !.Coverage = coverage_unknown
-        ; !.Coverage = coverage_known_before(_)
-        ; !.Coverage = coverage_known_after(_)
-        ),
-        GoalExpr = atomic_goal_rep(_, _, _, AtomicGoal),
-        ( AtomicGoal = higher_order_call_rep(_, _)
-        ; AtomicGoal = method_call_rep(_, _, _)
-        ; AtomicGoal = plain_call_rep(_, _, _)
-        ; AtomicGoal = builtin_call_rep(_, _, _)
-        ; AtomicGoal = pragma_foreign_code_rep(_)
-        )
-    ->
-        (
-            map.search(Info ^ cri_call_sites, GoalPath, CallSite),
-            % Callback call sites measure the port counts when Mercury is
-            % re-entered, not the number of calls made from this call site.
-            CallSite ^ csf_kind \= callback_and_no_info
-        ->
-            Summary = CallSite ^ csf_summary_perf,
-            % Entry due to redo is not counted at the point before the goal,
-            % it is represented when the number of exists is greater than
-            % the number of calls. XXX This won't work with nondet code,
-            % which should be fixed in the future.
-            Calls = Summary ^ perf_row_calls,
-            Exits = Summary ^ perf_row_exits,
-            !:Coverage = coverage_known(Calls, Exits)
-        ;
-            (
-                % These goal call types must have call sites, whereas some
-                % builtins and foreign code pragmas may not.
-                ( AtomicGoal = higher_order_call_rep(_, _)
-                ; AtomicGoal = method_call_rep(_, _, _)
-                ; AtomicGoal = plain_call_rep(_, _, _)
-                )
-            ->
-                error("Couldn't look up call site for port counts GP: " ++
-                    goal_path_to_string(GoalPath))
-            ;
-                true
-            )
-        )
-    ;
-        true
-    ),
-
-    % Search for a coverage point after this goal.
-    (
-        ( !.Coverage = coverage_unknown
-        ; !.Coverage = coverage_known_before(_)
-        ),
-        map.search(Info ^ cri_solns_coverage_points, GoalPath, CoveragePoint1)
-    ->
-        CoveragePoint1 = coverage_point(Count1, _, _),
-        !:Coverage = merge_coverage(!.Coverage, coverage_known_after(Count1))
-    ;
-        true
-    ),
-
-    propagate_coverage(Detism, GoalPath, !Coverage).
-
     % Annotate a goal and it's children with coverage information.
     %
 :- pred goal_annotate_coverage(coverage_reference_info::in, goal_path::in,
@@ -643,9 +570,6 @@ get_coverage_information(Info, GoalExpr, GoalPath, Detism, !Coverage) :-
 
 goal_annotate_coverage(Info, GoalPath, !Coverage, Goal0, Goal) :-
     Goal0 = goal_rep(GoalExpr0, Detism, _),
-
-    % Gather any coverage information about this goal and apply it.
-    get_coverage_information(Info, GoalExpr0, GoalPath, Detism, !Coverage),
 
     % Calculate coverage of any inner goals.
     (
@@ -672,18 +596,84 @@ goal_annotate_coverage(Info, GoalPath, !Coverage, Goal0, Goal) :-
         GoalExpr0 = negation_rep(NegGoal0),
         negation_annotate_coverage(Info, GoalPath, !Coverage,
             NegGoal0, NegGoal),
+        propagate_coverage(Detism, GoalPath, !Coverage),
         GoalExpr = negation_rep(NegGoal)
     ;
         GoalExpr0 = scope_rep(ScopedGoal0, MaybeCut),
         scope_annotate_coverage(Info, GoalPath, MaybeCut, !Coverage,
             ScopedGoal0, ScopedGoal),
+        (
+            MaybeCut = scope_is_cut,
+            propagate_coverage(Detism, GoalPath, !Coverage)
+        ;
+            MaybeCut = scope_is_no_cut 
+        ),
         GoalExpr = scope_rep(ScopedGoal, MaybeCut)
     ;
         GoalExpr0 = atomic_goal_rep(Filename, Line, Vars, AtomicGoal),
-        GoalExpr = atomic_goal_rep(Filename, Line, Vars, AtomicGoal)
+        GoalExpr = atomic_goal_rep(Filename, Line, Vars, AtomicGoal),
+        (
+            ( AtomicGoal = higher_order_call_rep(_, _)
+            ; AtomicGoal = method_call_rep(_, _, _)
+            ; AtomicGoal = plain_call_rep(_, _, _)
+            % While inline builtins don't have call sites out of line builtins
+            % do, and the bytecode representation doesn't distinguish these
+            % types of builtins.
+            ; AtomicGoal = builtin_call_rep(_, _, _)
+            ),
+            ( map.search(Info ^ cri_call_sites, GoalPath, CallSite) ->
+                Summary = CallSite ^ csf_summary_perf,
+                % Entry due to redo is not counted at the point before the
+                % goal, it is represented when the number of exists is greater
+                % than the number of calls. XXX This won't work with nondet
+                % code, which should be fixed in the future.
+                Calls = Summary ^ perf_row_calls,
+                Exits = Summary ^ perf_row_exits,
+                !:Coverage = coverage_known(Calls, Exits)
+            ;
+                (
+                    % These goal call types must have call sites, whereas some
+                    % builtins and foreign code pragmas may not.
+                    ( AtomicGoal = higher_order_call_rep(_, _)
+                    ; AtomicGoal = method_call_rep(_, _, _)
+                    ; AtomicGoal = plain_call_rep(_, _, _)
+                    )
+                ->
+                    error("Couldn't look up call site for port counts GP: " ++
+                        goal_path_to_string(GoalPath))
+                ;
+                    propagate_coverage(Detism, GoalPath, !Coverage)
+                )
+            )
+        ;
+            ( AtomicGoal = unify_construct_rep(_, _, _)
+            ; AtomicGoal = unify_deconstruct_rep(_, _, _)
+            ; AtomicGoal = partial_construct_rep(_, _, _)
+            ; AtomicGoal = partial_deconstruct_rep(_, _, _)
+            ; AtomicGoal = unify_assign_rep(_, _)
+            ; AtomicGoal = cast_rep(_, _)
+            ; AtomicGoal = unify_simple_test_rep(_, _)
+            ; AtomicGoal = pragma_foreign_code_rep(_)
+            ; AtomicGoal = event_call_rep(_, _)
+            ),
+            propagate_coverage(Detism, GoalPath, !Coverage)
+        )
     ),
-    propagate_coverage(Detism, GoalPath, !Coverage),
+
+    % Search for a coverage point after this goal.
+    (
+        ( !.Coverage = coverage_unknown
+        ; !.Coverage = coverage_known_before(_)
+        ),
+        map.search(Info ^ cri_solns_coverage_points, GoalPath, CoveragePoint1)
+    ->
+        CoveragePoint1 = coverage_point(Count1, _, _),
+        !:Coverage = merge_coverage(!.Coverage, coverage_known_after(Count1))
+    ;
+        true
+    ),
     Goal = goal_rep(GoalExpr, Detism, !.Coverage),
+
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
         io.write_string("goal_annotate_coverage: done\n", !IO),
         io.format("\tGoalPath: %s\n\tDetism %s\n\tCoverage; %s\n",
