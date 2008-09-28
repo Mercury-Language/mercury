@@ -791,35 +791,10 @@ disj_annotate_coverage_2(Info, GoalPath, DisjNum, Solutions, CoverageBefore0,
 switch_annotate_coverage(Info, CanFail, GoalPath, !Coverage, Cases0, Cases) :-
     Coverage0 = !.Coverage,
     switch_annotate_coverage_2(Info, CanFail, GoalPath, 1,
-        coverage_known_det(0), SwitchCoverage, !.Coverage, Cases0, Cases),
-    % Use the newly computed coverage if it's more informed than the current
-    % coverage.
-    (
-        !.Coverage = coverage_known_det(_)
-    ;
-        !.Coverage = coverage_known(_, _)
-    ;
-        !.Coverage = coverage_known_before(Before),
-        (
-            coverage_count_after(SwitchCoverage, After)
-        ->
-            !:Coverage = coverage_known(Before, After)
-        ;
-            true
-        )
-    ;
-        !.Coverage = coverage_known_after(After),
-        (
-            coverage_count_before(SwitchCoverage, Before)
-        ->
-            !:Coverage = coverage_known(Before, After)
-        ;
-            true
-        )
-    ;
-        !.Coverage = coverage_unknown,
-        !:Coverage = SwitchCoverage
-    ),
+        coverage_known_det(0), CoverageFromSwitch, !.Coverage, Cases0, Cases),
+    CoverageBeforeSwitch = get_coverage_before(!.Coverage),
+    CoverageAfterSwitch = get_coverage_after(CoverageFromSwitch),
+    !:Coverage = merge_coverage(CoverageBeforeSwitch, CoverageAfterSwitch),
 
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
         io.format("Switch: Coverage0: %s\n", [s(string(Coverage0))], !IO)
