@@ -2314,16 +2314,18 @@ coverage_prof_second_pass_disj(DPInfo, CoverageBeforeKnown,
         Disjuncts = [FirstDisjunct, SecondDisjunct]
     ;
         coverage_prof_second_pass_disj_2(DPInfo, CoverageBeforeKnown,
-            Disjuncts0, Disjuncts, !Info, AddedImpurity),
-        NextCoverageBeforeKnown = coverage_before_unknown
+            coverage_before_known, NextCoverageBeforeKnown,
+            Disjuncts0, Disjuncts, !Info, AddedImpurity)
     ).
 
 :- pred coverage_prof_second_pass_disj_2(dp_goal_info::in,
-    coverage_before_known::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    coverage_before_known::in,
+    coverage_before_known::in, coverage_before_known::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_disj_2(_, _, [], [], !Info, no).
-coverage_prof_second_pass_disj_2(DPInfo, CoverageBeforeKnown0,
+coverage_prof_second_pass_disj_2(_, _, !CoverageKnownAfter, [], [], !Info, no).
+coverage_prof_second_pass_disj_2(DPInfo, CoverageBeforeKnown0, !CoverageAfterKnown,
         [HeadDisjunct0 | TailDisjuncts0], [HeadDisjunct | TailDisjuncts],
         !Info, AddedImpurity) :-
     % Decide whether we want to insert a branch coverage point at the beginning
@@ -2344,10 +2346,13 @@ coverage_prof_second_pass_disj_2(DPInfo, CoverageBeforeKnown0,
     ),
 
     coverage_prof_second_pass_goal(HeadDisjunct0, HeadDisjunct1,
-        CoverageBeforeKnown, _CoverageAfterHeadKnown, !Info,
+        CoverageBeforeKnown, CoverageAfterDisjKnown, !Info,
         AddedImpurityHead),
+    !:CoverageAfterKnown = 
+        coverage_before_known_and(!.CoverageAfterKnown, CoverageAfterDisjKnown),
     coverage_prof_second_pass_disj_2(DPInfo, coverage_before_unknown,
-        TailDisjuncts0, TailDisjuncts, !Info, AddedImpurityTail),
+        !CoverageAfterKnown, TailDisjuncts0, TailDisjuncts, !Info,
+        AddedImpurityTail),
 
     % Insert the coverage point if we decided to above.
     (

@@ -737,7 +737,7 @@ conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, !Coverage,
     %   - The coverage before a disjunction is equal to the coverage before the
     %     first disjunct.
     %   - The coverage after a disjunction is equal to the sum of coverages
-    %     after each disjunct.  This rule is not yet implemented.
+    %     after each disjunct.
     %
 :- pred disj_annotate_coverage(coverage_reference_info::in, detism_rep::in,
     goal_path::in, coverage_info::in, coverage_info::out,
@@ -745,19 +745,21 @@ conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, !Coverage,
 
 disj_annotate_coverage(Info, Detism, GoalPath, !Coverage,
         Disjs0, Disjs) :-
-    CoverageBefore0 = get_coverage_before(!.Coverage),
+    CoverageBefore = get_coverage_before(!.Coverage),
     Solutions = detism_get_solutions(Detism),
     disj_annotate_coverage_2(Info, GoalPath, 1, Solutions,
-        CoverageBefore0, Disjs0, Disjs).
+        CoverageBefore, coverage_known_after(0), CoverageAfter, Disjs0, Disjs),
+    !:Coverage = merge_coverage(CoverageBefore, CoverageAfter).
 
 :- pred disj_annotate_coverage_2(coverage_reference_info::in,
     goal_path::in, int::in, solution_count::in,
-    coverage_info::in(coverage_before),
+    coverage_info::in(coverage_before), 
+    coverage_info::in(coverage_after), coverage_info::out(coverage_after),
     list(goal_rep)::in, list(goal_rep(coverage_info))::out) is det.
 
-disj_annotate_coverage_2(_, _, _, _, _, [], []).
+disj_annotate_coverage_2(_, _, _, _, _, !CoverageAfter, [], []).
 disj_annotate_coverage_2(Info, GoalPath, DisjNum, Solutions, CoverageBefore0,
-        [Disj0 | Disjs0], [Disj | Disjs]) :-
+        !CoverageAfter, [Disj0 | Disjs0], [Disj | Disjs]) :-
     DisjGoalPath = goal_path_add_at_end(GoalPath, step_disj(DisjNum)),
     (
         CoverageBefore0 = coverage_unknown,
@@ -766,11 +768,20 @@ disj_annotate_coverage_2(Info, GoalPath, DisjNum, Solutions, CoverageBefore0,
         CoverageBefore0 = coverage_known_before(_),
         CoverageBefore1 = CoverageBefore0
     ),
-    goal_annotate_coverage(Info, DisjGoalPath, CoverageBefore1, _CoverageDisj,
+    goal_annotate_coverage(Info, DisjGoalPath, CoverageBefore1, CoverageDisj,
         Disj0, Disj),
+    (
+        coverage_count_after(!.CoverageAfter, CoverageAfter0),
+        coverage_count_after(CoverageDisj, CoverageAfterDisj)
+    ->
+        !:CoverageAfter = 
+            coverage_known_after(CoverageAfter0 + CoverageAfterDisj)
+    ;
+        !:CoverageAfter = coverage_unknown
+    ),
 
     disj_annotate_coverage_2(Info, GoalPath, DisjNum + 1, Solutions,
-        coverage_unknown, Disjs0, Disjs).
+        coverage_unknown, !CoverageAfter, Disjs0, Disjs).
 
 :- pred switch_annotate_coverage(coverage_reference_info::in,
     switch_can_fail_rep::in, goal_path::in,
@@ -879,7 +890,7 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum, !CoverageSum,
         get_branch_coverage(Info, CaseGoalPath, Coverage0)
     ),
 
-    % Look for a coverage point for this switch case.
+    % Calculate and annotate the coverage for the case itself.
     Case0 = case_rep(ConsID, OtherConsIDs, Goal0),
     goal_annotate_coverage(Info, CaseGoalPath, Coverage0, Coverage,
         Goal0, Goal),
