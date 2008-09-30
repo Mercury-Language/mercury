@@ -5164,25 +5164,34 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
             !.DumpInfo = prev_dumped_hlds(PrevDumpFileName, PrevHLDS),
             HLDS = PrevHLDS
         ->
-            CurDumpFileName = PrevDumpFileName,
-            io.open_output(DumpFileName, Res, !IO),
+            globals.lookup_bool_option(Globals, dump_same_hlds, DumpSameHLDS),
             (
-                Res = ok(FileStream),
-                io.write_string(FileStream, "This stage is identical " ++
-                    "to the stage in " ++ PrevDumpFileName ++ ".\n", !IO),
-                io.close_output(FileStream, !IO)
+                DumpSameHLDS = no
+                % Don't create a dump file for this stage, and keep the records
+                % about previously dumped stages as they are.
             ;
-                Res = error(IOError),
-                maybe_write_string(Verbose, "\n", !IO),
-                Msg = "can't open file `" ++ DumpFileName ++
-                    "' for output: " ++ io.error_message(IOError),
-                report_error(Msg, !IO)
+                DumpSameHLDS = yes,
+                CurDumpFileName = PrevDumpFileName,
+                io.open_output(DumpFileName, Res, !IO),
+                (
+                    Res = ok(FileStream),
+                    io.write_string(FileStream, "This stage is identical " ++
+                        "to the stage in " ++ PrevDumpFileName ++ ".\n", !IO),
+                    io.close_output(FileStream, !IO)
+                ;
+                    Res = error(IOError),
+                    maybe_write_string(Verbose, "\n", !IO),
+                    Msg = "can't open file `" ++ DumpFileName ++
+                        "' for output: " ++ io.error_message(IOError),
+                    report_error(Msg, !IO)
+                ),
+                !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
             )
         ;
             dump_hlds(DumpFileName, HLDS, !IO),
-            CurDumpFileName = DumpFileName
-        ),
-        !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
+            CurDumpFileName = DumpFileName,
+            !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
+        )
     ; should_dump_stage(StageNum, StageNumStr, StageName, DumpTraceStages) ->
         module_info_get_name(HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".trace_counts", do_create_dirs,

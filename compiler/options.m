@@ -230,6 +230,7 @@
     ;       dump_hlds_alias
     ;       dump_hlds_options
     ;       dump_hlds_file_suffix
+    ;       dump_same_hlds
     ;       dump_mlds
     ;       verbose_dump_mlds
     ;       mode_constraints
@@ -1110,6 +1111,7 @@ option_defaults_2(aux_output_option, [
     dump_hlds_alias                     -   string(""),
     dump_hlds_options                   -   string(""),
     dump_hlds_file_suffix               -   string(""),
+    dump_same_hlds                      -   bool(no),
     dump_mlds                           -   accumulating([]),
     verbose_dump_mlds                   -   accumulating([]),
     mode_constraints                    -   bool(no),
@@ -1931,6 +1933,7 @@ long_option("dump-hlds-pred-name",  dump_hlds_pred_name).
 long_option("dump-hlds-alias",      dump_hlds_alias).
 long_option("dump-hlds-options",    dump_hlds_options).
 long_option("dump-hlds-file-suffix", dump_hlds_file_suffix).
+long_option("dump-same-hlds",       dump_same_hlds).
 long_option("dump-mlds",            dump_mlds).
 long_option("mlds-dump",            dump_mlds).
 long_option("verbose-dump-mlds",    verbose_dump_mlds).
@@ -3611,6 +3614,9 @@ options_help_aux_output -->
         "--dump-hlds-file-suffix <suffix>",
         "\tAppend the given suffix to the names of the files created by",
         "\tthe `--dump-hlds' option.",
+        "--dump-same-hlds",
+        "\tCreate a file for a HLDS stage even if the file notes only that",
+        "\tthis stage is identical to the previously dumped HLDS stage.",
         "--dump-mlds <stage number or name>",
         "\tDump the MLDS (medium level intermediate representation)",
         "\tafter the specified stage, as C code,",

@@ -6862,6 +6862,12 @@ Append the given suffix to the names of the files created by the
 @samp{--dump-hlds} option. 
 
 @sp 1
+@item --dump-same-hlds
+@findex --dump-same-hlds
+Create a file for a HLDS stage even if the file notes only that
+this stage is identical to the previously dumped HLDS stage.
+
+@sp 1
 @item --dump-mlds @var{stage}
 @findex --dump-mlds
 Dump the MLDS (a C-like intermediate representation) after
