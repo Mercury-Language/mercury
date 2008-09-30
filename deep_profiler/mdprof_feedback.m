@@ -83,13 +83,13 @@ main(!IO) :-
             check_options(Options, RequestedFeedbackInfo)
         ->
             lookup_bool_option(Options, verbose, Verbose),
-            read_deep_file(InputFileName, Verbose, MaybeDeepAndProgrep, !IO),
+            read_deep_file(InputFileName, Verbose, MaybeDeepAndProgRep, !IO),
             (
                 ( 
-                    MaybeDeepAndProgrep = deep_and_error(Deep, _ProgrepError)
+                    MaybeDeepAndProgRep = deep_and_error(Deep, _ProgRepError)
                 ; 
-                    % _Progrep will be used bo a later version of this program.
-                    MaybeDeepAndProgrep = deep_and_progrep(Deep, _Progrep)
+                    % _ProgRep will be used by a later version of this program.
+                    MaybeDeepAndProgRep = deep_and_progrep(Deep, _ProgRep)
                 ),
                 feedback.read_or_create(OutputFileName, FeedbackReadResult,
                     !IO),
@@ -120,7 +120,7 @@ main(!IO) :-
                     io.set_exit_status(1, !IO)
                 )
             ;
-                MaybeDeepAndProgrep = error(Error),
+                MaybeDeepAndProgRep = error(Error),
                 io.stderr_stream(Stderr, !IO),
                 io.set_exit_status(1, !IO),
                 io.format(Stderr, "%s: error reading %s: %s\n",
@@ -156,7 +156,7 @@ help_message =
                 This is stored in the feedback file.
 
     The following options select sets of feedback information useful
-    for particular compiler optimizations.
+    for particular compiler optimizations:
 
     --implicit-parallelism
                 Generate information that the compiler can use for automatic
@@ -176,7 +176,7 @@ help_message =
                 parallelism, measured on the profiler's call sequence counts.
 
     The following options select specific types of feedback information
-    and parameterise them
+    and parameterise them:
 
     --calls-above-threshold-sorted
                 A list of calls whose typical cost (in call sequence counts) is
@@ -365,7 +365,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
         Options = !.Options
     ),
 
-    % For each feedback type determine if it is requested and fill in the the
+    % For each feedback type, determine if it is requested and fill in the
     % field in the RequestedFeedbackInfo structure.
     lookup_bool_option(Options, calls_above_threshold_sorted,
         CallsAboveThresholdSorted),
@@ -379,19 +379,15 @@ check_options(Options0, RequestedFeedbackInfo) :-
             error("Invalid value for calls_above_threshold_sorted_measure: " ++
                 Measure)
         ),
-        CallsAboveThresholdSortedOpts ^ cats_measure = MeasureType,
         lookup_int_option(Options, implicit_parallelism_proc_cost_threshold,
             CATSThreshold),
-        CallsAboveThresholdSortedOpts ^ cats_threshold = CATSThreshold,
-        MaybeCallsAboveThresholdSortedOpts =
-            yes(CallsAboveThresholdSortedOpts)
+        CallsAboveThresholdSortedOpts =
+            calls_above_threshold_sorted_opts(MeasureType, CATSThreshold),
+        MaybeCallsAboveThresholdSortedOpts = yes(CallsAboveThresholdSortedOpts)
     ;
         CallsAboveThresholdSorted = no,
         MaybeCallsAboveThresholdSortedOpts = no
     ),
-    RequestedFeedbackInfo ^ maybe_calls_above_threshold_sorted =
-        MaybeCallsAboveThresholdSortedOpts,
-    
     lookup_bool_option(Options, candidate_parallel_conjunctions,
         CandidateParallelConjunctions),
     (
@@ -423,8 +419,9 @@ check_options(Options0, RequestedFeedbackInfo) :-
         CandidateParallelConjunctions = no,
         MaybeCandidateParallelConjunctionsOpts = no
     ),
-    RequestedFeedbackInfo ^ maybe_candidate_parallel_conjunctions = 
-        MaybeCandidateParallelConjunctionsOpts.
+    RequestedFeedbackInfo =
+        requested_feedback_info(MaybeCallsAboveThresholdSortedOpts,
+            MaybeCandidateParallelConjunctionsOpts).
 
     % Adjust command line options when one option implies other options.
     %
@@ -438,7 +435,8 @@ option_implies(Option, ImpliedOption, ImpliedValue, !Options) :-
         true
     ).
 
-    % Manipulate the option table.
+    % Set the value of an option in the option table.
+    %
 :- pred set_option(option::in, option_data::in,
     option_table(option)::in, option_table(option)::out) is det.
 

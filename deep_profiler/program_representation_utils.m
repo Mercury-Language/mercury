@@ -562,7 +562,7 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
                 cri_branch_coverage_points  :: map(goal_path, coverage_point)
             ).
 
-    % Annotate a goal and it's children with coverage information.
+    % Annotate a goal and its children with coverage information.
     %
 :- pred goal_annotate_coverage(coverage_reference_info::in, goal_path::in,
     coverage_info::in, coverage_info::out,
@@ -613,13 +613,9 @@ goal_annotate_coverage(Info, GoalPath, !Coverage, Goal0, Goal) :-
         GoalExpr0 = atomic_goal_rep(Filename, Line, Vars, AtomicGoal),
         GoalExpr = atomic_goal_rep(Filename, Line, Vars, AtomicGoal),
         (
-            ( AtomicGoal = higher_order_call_rep(_, _)
+            ( AtomicGoal = plain_call_rep(_, _, _)
+            ; AtomicGoal = higher_order_call_rep(_, _)
             ; AtomicGoal = method_call_rep(_, _, _)
-            ; AtomicGoal = plain_call_rep(_, _, _)
-            % While inline builtins don't have call sites out of line builtins
-            % do, and the bytecode representation doesn't distinguish these
-            % types of builtins.
-            ; AtomicGoal = builtin_call_rep(_, _, _)
             ),
             ( map.search(Info ^ cri_call_sites, GoalPath, CallSite) ->
                 Summary = CallSite ^ csf_summary_perf,
@@ -631,22 +627,12 @@ goal_annotate_coverage(Info, GoalPath, !Coverage, Goal0, Goal) :-
                 Exits = Summary ^ perf_row_exits,
                 !:Coverage = coverage_known(Calls, Exits)
             ;
-                (
-                    % These goal call types must have call sites, whereas some
-                    % builtins and foreign code pragmas may not.
-                    ( AtomicGoal = higher_order_call_rep(_, _)
-                    ; AtomicGoal = method_call_rep(_, _, _)
-                    ; AtomicGoal = plain_call_rep(_, _, _)
-                    )
-                ->
-                    error("Couldn't look up call site for port counts GP: " ++
-                        goal_path_to_string(GoalPath))
-                ;
-                    propagate_coverage(Detism, GoalPath, !Coverage)
-                )
+                error("Couldn't look up call site for port counts GP: " ++
+                    goal_path_to_string(GoalPath))
             )
         ;
-            ( AtomicGoal = unify_construct_rep(_, _, _)
+            ( AtomicGoal = builtin_call_rep(_, _, _)
+            ; AtomicGoal = unify_construct_rep(_, _, _)
             ; AtomicGoal = unify_deconstruct_rep(_, _, _)
             ; AtomicGoal = partial_construct_rep(_, _, _)
             ; AtomicGoal = partial_deconstruct_rep(_, _, _)
@@ -703,7 +689,7 @@ conj_annotate_coverage(Info, GoalPath, !Coverage, Conjs0, Conjs) :-
     % Annotate a conjunction with coverage information.
     %
     % The list of goals is the tail of a conjunction, the coverage argument
-    % describes the coverage of this list of goals if it where the entire
+    % describes the coverage of this list of goals if it were the entire
     % conjunction.  Each goal also has it's own coverage.
     %
 :- pred conj_annotate_coverage_2(coverage_reference_info::in, goal_path::in,

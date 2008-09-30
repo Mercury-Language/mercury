@@ -356,14 +356,16 @@ goal_to_byte_list(hlds_goal(GoalExpr, GoalInfo), InstMap0, Info, Bytes,
                 vars_to_byte_list(Info, Args) ++
                 AtomicBytes
         ;
-            ( Builtin = inline_builtin
-            ; Builtin = out_of_line_builtin
-            ),
+            Builtin = inline_builtin,
             ExprBytes = [goal_type_to_byte(goal_builtin_call)] ++
                 ModuleNameBytes ++
                 PredNameBytes ++
                 vars_to_byte_list(Info, Args) ++
                 AtomicBytes
+        ;
+            Builtin = out_of_line_builtin,
+            unexpected(this_file,
+                "goal_expr_to_byte_list: out_of_line_builtin")
         )
     ;
         GoalExpr = call_foreign_proc(_, _PredId, _, Args, _, _, _),

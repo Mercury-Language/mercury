@@ -292,6 +292,7 @@
                 list(var_rep)       % the call's arguments
             )
     ;       builtin_call_rep(
+                % This represents inline builtins only.
                 string,             % name of called pred's module
                 string,             % name of the called pred
                 list(var_rep)       % the call's arguments
