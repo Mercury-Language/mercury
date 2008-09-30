@@ -42,12 +42,14 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module char.
+:- import_module float.
 :- import_module getopt.
 :- import_module int.
 :- import_module library.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module require.
 :- import_module string.
 :- import_module svmap.
 
@@ -77,8 +79,6 @@ main(!IO) :-
         ->
             write_help_message(ProgName, !IO)
         ;
-            % XXX What was the point of this test?
-            % ProfileProgName \= "",
             Args = [InputFileName, OutputFileName],
             check_options(Options, RequestedFeedbackInfo)
         ->
@@ -91,20 +91,32 @@ main(!IO) :-
                     % _Progrep will be used bo a later version of this program.
                     MaybeDeepAndProgrep = deep_and_progrep(Deep, _Progrep)
                 ),
-                feedback.read_or_create(OutputFileName, Feedback0, !IO),
-                process_deep_to_feedback(RequestedFeedbackInfo,
-                    Deep, Feedback0, Feedback),
-                write_feedback_file(OutputFileName, ProfileProgName, Feedback,
-                    WriteResult, !IO),
+                feedback.read_or_create(OutputFileName, FeedbackReadResult,
+                    !IO),
                 (
-                    WriteResult = ok
+                    FeedbackReadResult = ok(Feedback0),
+                    process_deep_to_feedback(RequestedFeedbackInfo,
+                        Deep, Feedback0, Feedback),
+                    write_feedback_file(OutputFileName, ProfileProgName,
+                        Feedback, WriteResult, !IO),
+                    (
+                        WriteResult = ok
+                    ;
+                        ( WriteResult = open_error(Error)
+                        ; WriteResult = write_error(Error)
+                        ),
+                        io.error_message(Error, ErrorMessage),
+                        io.stderr_stream(Stderr, !IO),
+                        io.format(Stderr, "%s: %s\n",
+                            [s(OutputFileName), s(ErrorMessage)], !IO),
+                        io.set_exit_status(1, !IO)
+                    )
                 ;
-                    ( WriteResult = open_error(Error)
-                    ; WriteResult = write_error(Error)
-                    ),
-                    io.error_message(Error, ErrorMessage),
-                    io.format("%s: %s\n",
-                        [s(OutputFileName), s(ErrorMessage)], !IO),
+                    FeedbackReadResult = error(FeedbackReadError),
+                    feedback.read_error_message_string(OutputFileName,
+                        FeedbackReadError, Message),
+                    io.stderr_stream(Stderr, !IO),
+                    io.write_string(Stderr, Message, !IO),
                     io.set_exit_status(1, !IO)
                 )
             ;
@@ -149,20 +161,38 @@ help_message =
     --implicit-parallelism
                 Generate information that the compiler can use for automatic
                 parallelization.
+    --desired-parallelism <value>
+                The amount of desired parallelism for implicit parallelism,
+                value must be a floating point number above 1.0.
+    --implicit-parallelism-sparking-cost <value>
+                The cost of creating a spark, measured in the deep profiler's
+                call sequence counts.
+    --implicit-parallelism-locking-cost <value>
+                The cost of maintaining a lock for a single dependant variable
+                in a conjunction, measured in the profiler's call sequence
+                counts.
+    --implicit-parallelism-proc-cost-threshold <value>
+                The cost threshold for procedures to be considered for implicit
+                parallelism, measured on the profiler's call sequence counts.
 
     The following options select specific types of feedback information
     and parameterise them
 
     --calls-above-threshold-sorted
-                A list of calls whose typical cost (in call sequence counts)
-                is above a given threshold. The next two options allow you
-                to specify the threshold and what 'typical' means.
-    --calls-above-threshold-sorted-threshold <value>
-                Set the threshold to <value>.
+                A list of calls whose typical cost (in call sequence counts) is
+                above a given threshold. This option uses the
+                --desired-parallelism option to specify the threshold,
+                --calls-above-threshold-sorted-measure specifies what 'typical'
+                means.  This option is deprecated.
     --calls-above-threshold-sorted-measure mean|median
                 mean: Use mean(call site dynamic cost) as the typical cost.
                 median: Use median(call site dynamic cost) as the typical cost.
                 The default is 'mean'.
+
+    --candidate-parallel-conjunctions
+                Produce a list of candidate parallel conjunctions for implicit
+                parallelism.  This option uses the implicit parallelism
+                settings above.
 ".
 
 :- pred write_help_message(string::in, io::di, io::uo) is det.
@@ -216,13 +246,21 @@ read_deep_file(Input, Verbose, MaybeDeepAndProgrep, !IO) :-
     ;       verbose
     ;       version
 
-            % The calls above threshold sorted feedback information
+            % The calls above threshold sorted feedback information, this is
+            % used for the old implicit parallelism implementation.
     ;       calls_above_threshold_sorted
     ;       calls_above_threshold_sorted_measure
-    ;       calls_above_threshold_sorted_threshold
+
+            % A list of candidate parallel conjunctions is produced for the new
+            % implicit parallelism implementation.
+    ;       candidate_parallel_conjunctions
 
             % Provide suitable feedback information for implicit parallelism
-    ;       implicit_parallelism.
+    ;       implicit_parallelism
+    ;       desired_parallelism
+    ;       implicit_parallelism_sparking_cost
+    ;       implicit_parallelism_locking_cost
+    ;       implicit_parallelism_proc_cost_threshold.
 
 :- pred short(char::in, option::out) is semidet.
 
@@ -233,18 +271,24 @@ short('v',  version).
 
 :- pred long(string::in, option::out) is semidet.
 
-long("help",                help).
-long("verbose",             verbose).
-long("version",             version).
-long("program-name",        program_name).
+long("help",                                help).
+long("verbose",                             verbose).
+long("version",                             version).
+long("program-name",                        program_name).
 
-long("calls-above-threshold-sorted", calls_above_threshold_sorted).
+long("calls-above-threshold-sorted",        calls_above_threshold_sorted).
 long("calls-above-threshold-sorted-measure",
     calls_above_threshold_sorted_measure).
-long("calls-above-threshold-sorted-threshold",
-    calls_above_threshold_sorted_threshold).
 
-long("implicit-parallelism",    implicit_parallelism).
+long("candidate-parallel-conjunctions",     candidate_parallel_conjunctions).
+
+long("implicit-parallelism",                implicit_parallelism).
+
+long("desired-parallelism",                 desired_parallelism).
+long("implicit-parallelism-sparking-cost",  implicit_parallelism_sparking_cost).
+long("implicit-parallelism-locking-cost",   implicit_parallelism_locking_cost).
+long("implicit-parallelism-proc-cost-threshold", 
+    implicit_parallelism_proc_cost_threshold).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
@@ -255,9 +299,16 @@ defaults(version,           bool(no)).
 
 defaults(calls_above_threshold_sorted,              bool(no)).
 defaults(calls_above_threshold_sorted_measure,      string("mean")).
-defaults(calls_above_threshold_sorted_threshold,    int(100000)).
 
-defaults(implicit_parallelism,  bool(no)).
+defaults(candidate_parallel_conjunctions,           bool(no)).
+
+defaults(implicit_parallelism,                      bool(no)).
+defaults(desired_parallelism,                       string("4.0")).
+% XXX: These values have been chosen arbitrarily, appropriately values should
+% be tested for.
+defaults(implicit_parallelism_sparking_cost,        int(100)).
+defaults(implicit_parallelism_locking_cost,         int(100)).
+defaults(implicit_parallelism_proc_cost_threshold,  int(100000)).
 
 :- pred construct_measure(string::in, stat_measure::out) is semidet.
 
@@ -271,13 +322,23 @@ construct_measure("median",     stat_median).
 :- type requested_feedback_info
     --->    requested_feedback_info(
                 maybe_calls_above_threshold_sorted
-                    :: maybe(calls_above_threshold_sorted_opts)
+                    :: maybe(calls_above_threshold_sorted_opts),
+                maybe_candidate_parallel_conjunctions
+                    :: maybe(candidate_parallel_conjunctions_opts)
             ).
 
 :- type calls_above_threshold_sorted_opts
     --->    calls_above_threshold_sorted_opts(
-                measure         :: stat_measure,
-                threshold       :: int
+                cats_measure                :: stat_measure,
+                cats_threshold              :: int
+            ).
+
+:- type candidate_parallel_conjunctions_opts
+    --->    candidate_parallel_conjunctions_opts(
+                cpc_desired_parallelism     :: float,
+                cpc_sparking_cost           :: int,
+                cpc_locking_cost            :: int,
+                cpc_threshold               :: int
             ).
 
     % Check all the command line options and return a well-typed representation
@@ -285,12 +346,24 @@ construct_measure("median",     stat_median).
     % those implications are also handled here.
     %
 :- pred check_options(option_table(option)::in, requested_feedback_info::out)
-    is semidet.
+    is det.
 
 check_options(Options0, RequestedFeedbackInfo) :-
     % Handle options that imply other options here.
-    option_implies(implicit_parallelism, calls_above_threshold_sorted, yes,
-        Options0, Options),
+    some [!Options]
+    (
+        !:Options = Options0,
+        lookup_bool_option(!.Options, implicit_parallelism,
+            ImplicitParallelism),
+        (
+            ImplicitParallelism = yes,
+            set_option(calls_above_threshold_sorted, bool(yes), !Options),
+            set_option(candidate_parallel_conjunctions, bool(yes), !Options)
+        ;
+            ImplicitParallelism = no
+        ),
+        Options = !.Options
+    ),
 
     % For each feedback type determine if it is requested and fill in the the
     % field in the RequestedFeedbackInfo structure.
@@ -300,12 +373,16 @@ check_options(Options0, RequestedFeedbackInfo) :-
         CallsAboveThresholdSorted = yes,
         lookup_string_option(Options, calls_above_threshold_sorted_measure,
             Measure),
-        % TODO: this goal is semidet, but this predicate should be det.
-        construct_measure(Measure, MeasureType),
-        CallsAboveThresholdSortedOpts ^ measure = MeasureType,
-        lookup_int_option(Options, calls_above_threshold_sorted_threshold,
-            Threshold),
-        CallsAboveThresholdSortedOpts ^ threshold = Threshold,
+        ( construct_measure(Measure, MeasureTypePrime) ->
+            MeasureType = MeasureTypePrime
+        ;
+            error("Invalid value for calls_above_threshold_sorted_measure: " ++
+                Measure)
+        ),
+        CallsAboveThresholdSortedOpts ^ cats_measure = MeasureType,
+        lookup_int_option(Options, implicit_parallelism_proc_cost_threshold,
+            CATSThreshold),
+        CallsAboveThresholdSortedOpts ^ cats_threshold = CATSThreshold,
         MaybeCallsAboveThresholdSortedOpts =
             yes(CallsAboveThresholdSortedOpts)
     ;
@@ -313,7 +390,41 @@ check_options(Options0, RequestedFeedbackInfo) :-
         MaybeCallsAboveThresholdSortedOpts = no
     ),
     RequestedFeedbackInfo ^ maybe_calls_above_threshold_sorted =
-        MaybeCallsAboveThresholdSortedOpts.
+        MaybeCallsAboveThresholdSortedOpts,
+    
+    lookup_bool_option(Options, candidate_parallel_conjunctions,
+        CandidateParallelConjunctions),
+    (
+        CandidateParallelConjunctions = yes,
+        lookup_string_option(Options, desired_parallelism,
+            DesiredParallelismStr),
+        (
+            string.to_float(DesiredParallelismStr, DesiredParallelism),
+            DesiredParallelism > 1.0
+        ->
+            CandidateParallelConjunctionsOpts ^ cpc_desired_parallelism =
+                DesiredParallelism
+        ;
+            error("Invalid value for desired_parallelism: " ++ 
+                DesiredParallelismStr)
+        ),
+        lookup_int_option(Options, implicit_parallelism_sparking_cost,
+            SparkingCost),
+        CandidateParallelConjunctionsOpts ^ cpc_sparking_cost = SparkingCost,
+        lookup_int_option(Options, implicit_parallelism_locking_cost,
+            LockingCost),
+        CandidateParallelConjunctionsOpts ^ cpc_locking_cost = LockingCost,
+        lookup_int_option(Options, implicit_parallelism_proc_cost_threshold,
+            CPCThreshold),
+        CandidateParallelConjunctionsOpts ^ cpc_threshold = CPCThreshold,
+        MaybeCandidateParallelConjunctionsOpts =
+            yes(CandidateParallelConjunctionsOpts)
+    ;
+        CandidateParallelConjunctions = no,
+        MaybeCandidateParallelConjunctionsOpts = no
+    ),
+    RequestedFeedbackInfo ^ maybe_candidate_parallel_conjunctions = 
+        MaybeCandidateParallelConjunctionsOpts.
 
     % Adjust command line options when one option implies other options.
     %
@@ -322,10 +433,17 @@ check_options(Options0, RequestedFeedbackInfo) :-
 
 option_implies(Option, ImpliedOption, ImpliedValue, !Options) :-
     ( lookup_bool_option(!.Options, Option, yes) ->
-        svmap.set(ImpliedOption, bool(ImpliedValue), !Options)
+        set_option(ImpliedOption, bool(ImpliedValue), !Options)
     ;
         true
     ).
+
+    % Manipulate the option table.
+:- pred set_option(option::in, option_data::in,
+    option_table(option)::in, option_table(option)::out) is det.
+
+set_option(Option, Value, !Options) :-
+    svmap.set(Option, Value, !Options).
 
 %----------------------------------------------------------------------------%
 
@@ -365,8 +483,7 @@ css_list_above_threshold(Options, Deep, !Feedback) :-
     list.map(css_to_call(Deep), AboveThresholdCSSs, Calls),
     FeedbackData = feedback_data_calls_above_threshold_sorted(Threshold,
         MeasureType, Calls),
-    FeedbackType = feedback_type_calls_above_threshold_sorted,
-    put_feedback_data(FeedbackType, FeedbackData, !Feedback).
+    put_feedback_data(FeedbackData, !Feedback).
 
     % Determine those CSSs whose CSDs' average/median call sequence counts
     % exceed the given threshold.

@@ -110,10 +110,10 @@ construct_call_site_kind("callback",            csk_callback).
 apply_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
     module_info_get_globals(ModuleInfo0, Globals),
     globals.get_feedback_info(Globals, FeedbackInfo),
-    get_feedback_data(feedback_type_calls_above_threshold_sorted,
-        MaybeFeedbackData, FeedbackInfo),
     (
-        MaybeFeedbackData = yes(FeedbackData),
+        FeedbackData = feedback_data_calls_above_threshold_sorted(_, _, _),
+        get_feedback_data(FeedbackInfo, FeedbackData)
+    ->
         some [!ModuleInfo]
         (
             !:ModuleInfo = ModuleInfo0,
@@ -126,7 +126,6 @@ apply_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
             MaybeModuleInfo = yes(!.ModuleInfo)
         )
     ;
-        MaybeFeedbackData = no,
         MaybeModuleInfo = no
     ).
 

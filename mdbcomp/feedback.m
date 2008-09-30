@@ -22,6 +22,7 @@
 
 :- import_module mdbcomp.program_representation.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module io.
 :- import_module list.
@@ -36,48 +37,88 @@
 
 %-----------------------------------------------------------------------------%
 
-    % This type is used as a key for the data that may be fed back into the
-    % compiler.
-    %
-    % NOTE: When making changes to this structure, be sure to increment
-    % the file format version number towards the bottom of this file.
-    %
-:- type feedback_type
-    --->    feedback_type_calls_above_threshold_sorted.
-            % Feedback data of this type represents a list of call sites
-            % sorted in descending order of mean or median call cost where
-            % that cost is greater than a given threshold.
-
-%-----------------------------------------------------------------------------%
-
     % This type stores the data that may be fed back into the compiler.
     % Each constructor here corresponds to a constructor of the feedback_type
     % type.
     %
-    % TODO: We need a mechanism to ensure that the answer for a given query
-    % (a value of type feedback_type) is always the corresponding value
-    % in this type. The right solution would be to represent a query as
-    % a partially instantiated data structure that we later fill in,
-    % but Mercury doesn't yet let us do that.
-    %
     % NOTE: When making changes to this structure or structures in
-    % mdbcomp.program_representation, be sure to increment the file format
-    % version number towards the bottom of this file.
+    % mdbcomp.program_representation, be sure to:
+    %
+    %   - Increment the file format version number towards the bottom of this
+    %     file.
+    %
+    %   - Update the feedback_data_query instantiation state below.
+    %
+    %   - Update the feedback_type structure within this file.
+    %
+    %   - Update the feedback_data_type/2 predicate in this file.
     %
 :- type feedback_data
     --->    feedback_data_calls_above_threshold_sorted(
+                    % Feedback data of this type represents a list of call
+                    % sites sorted in descending order of mean or median call
+                    % cost where that cost is greater than a given threshold.
+ 
                 threshold       :: int,
                 stat_measure    :: stat_measure,
                 calls           :: list(call_site)
+            )
+    ;       feedback_data_candidate_parallel_conjunctions(
+                    % Data of this type represents a list of candidate
+                    % conjunctions for implicit parallelism.
+
+                desired_parallelism :: float,
+                    % The number of desired busy sparks.
+
+                sparking_cost       :: int,
+                    % The cost of creating a spark in call sequence counts.
+
+                locking_cost        :: int,
+                    % The cost of maintaining a lock on a single dependant
+                    % variable in call sequence counts.
+
+                conjunctions        :: assoc_list(string, assoc_list(
+                                         string_proc_label, 
+                                         candidate_par_conjunction))
+                    % Assoclist of module name and an assoclist of procedure
+                    % labels and candidate parallel conjunctions.
             ).
+
+:- inst feedback_data_query
+    --->    feedback_data_calls_above_threshold_sorted(free, free, free)
+    ;       feedback_data_candidate_parallel_conjunctions(free, free, free,
+                free).
 
 :- type stat_measure
     --->    stat_mean
     ;       stat_median.
 
+    % A conjunction that is a candidate for parallelisation, it is identified
+    % by a procedure label, goal path to the conjunction and the call sites
+    % within the conjunction that are to be parallelised.
+    %
+:- type candidate_par_conjunction
+    --->    candidate_par_conjunction(
+                goal_path       :: goal_path_string,
+                conjuncts       :: list(candidate_par_conjunct)
+            ).
+
+:- type candidate_par_conjunct
+    --->    candidate_par_conjunct(
+                callee          :: call_type_and_callee,
+                vars            :: list(variable_in_par_conjunct),
+                cost            :: int
+            ).
+
+:- type variable_in_par_conjunct
+    --->    variable_in_par_conjunct(
+                maybe_name              :: maybe(string),
+                cost_before_first_use   :: int
+            ).
+
 %-----------------------------------------------------------------------------%
 
-    % put_feedback_data(InfoType, Info, !State)
+    % put_feedback_data(Type, Data, !Info)
     %
     % 'Put' feedback data into the feedback files.  Data is stored based on
     % the type of information being stored.
@@ -85,22 +126,31 @@
     % Data loaded from file (not added with put) will be removed from the
     % internal state when data for the same info type is added.
     %
-:- pred put_feedback_data(feedback_type::in, feedback_data::in,
+    % This will throw an exception if the feedback_type and feedback_data don't
+    % match. 
+    %
+:- pred put_feedback_data(feedback_data::in,
     feedback_info::in, feedback_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % get_feedback_data(InfoType, MaybeInfo, State).
+    % get_feedback_data(Info, Type, MaybeData).
     %
     % To query the feedback files 'get' will give a value for a given info type
     % if it exists.
     %
-:- pred get_feedback_data(feedback_type::in, maybe(feedback_data)::out,
-    feedback_info::in) is det.
+    % This will throw an exception if the feedback_type and feedback_data
+    % within the Info structure do not match.
+    %
+:- pred get_feedback_data(feedback_info::in, 
+    feedback_data::feedback_data_query) is semidet.
+
+:- mode feedback_data_query ==
+    feedback_data_query >> ground.
 
 %-----------------------------------------------------------------------------%
 
-    % read_feedback_file(Path, FeedbackState, !IO)
+    % read_feedback_file(Path, FeedbackInfo, !IO)
     %
     % This predicate reads in feedback data from a specified file.
     % It should be called once per compiler invocation.
@@ -138,19 +188,20 @@
     % Try to read in a feedback file, if the file doesn't exist create a new
     % empty feedback state in memory.
     %
-:- pred read_or_create(string::in, feedback_info::out, io::di, io::uo) is det.
+:- pred read_or_create(string::in, feedback_read_result(feedback_info)::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % init_feedback_info = FeedbackState
+    % init_feedback_info = FeedbackInfo
     %
-    % Create a new empty feedback state.
+    % Create a new empty feedback info structure.
     %
 :- func init_feedback_info = feedback_info.
 
 %-----------------------------------------------------------------------------%
 
-    % write_feedback_file(Path, ProgName, FeedbackState, FeedbackWriteResult,
+    % write_feedback_file(Path, ProgName, FeedbackInfo, FeedbackWriteResult,
     %   !IO)
     %
     % Write out the feedback data to a given file name.
@@ -170,6 +221,7 @@
 
 :- import_module exception.
 :- import_module map.
+:- import_module require.
 :- import_module svmap.
 :- import_module unit.
 :- import_module univ.
@@ -179,24 +231,60 @@
 :- type feedback_info
     ---> feedback_info(map(feedback_type, feedback_data)).
 
+    % This type is used as a key for the data that may be fed back into the
+    % compiler.
+    %
+:- type feedback_type
+    --->    feedback_type_calls_above_threshold_sorted
+    ;       feedback_type_candidate_parallel_conjunctions.
+
 %-----------------------------------------------------------------------------%
 
-get_feedback_data(Type, MaybeData, Info) :-
+get_feedback_data(Info, Data) :-
+    feedback_data_type(Type, Data),
     Info = feedback_info(Map),
-    ( map.search(Map, Type, Data) ->
-        MaybeData = yes(Data)
+    map.search(Map, Type, DataPrime),
+    % This disjunction will either unify Data to DataPrime, or throw an
+    % exception, the impure annotation is required so to avoid a compiler
+    % warning saying that the second disjunct will not succeed, which must be
+    % promised away.
+    promise_pure (
+        Data = DataPrime
     ;
-        MaybeData = no
+        impure impure_true,
+        feedback_data_mismatch_error("get_feedback_data/3: ", Type,
+            DataPrime)
     ).
 
 %-----------------------------------------------------------------------------%
 
-put_feedback_data(Type, Data, !Info) :-
+put_feedback_data(Data, !Info) :-
+    feedback_data_type(Type, Data),
     some [!Map] (
         !.Info = feedback_info(!:Map),
         svmap.set(Type, Data, !Map),
         !:Info = feedback_info(!.Map)
     ).
+
+%----------------------------------------------------------------------------%
+
+:- pred feedback_data_type(feedback_type, feedback_data).
+
+:- mode feedback_data_type(out, in(feedback_data_query)) is det.
+:- mode feedback_data_type(out, in) is det.
+
+feedback_data_type(feedback_type_calls_above_threshold_sorted,
+    feedback_data_calls_above_threshold_sorted(_, _, _)).
+feedback_data_type(feedback_type_candidate_parallel_conjunctions,
+    feedback_data_candidate_parallel_conjunctions(_, _, _, _)).
+
+:- pred feedback_data_mismatch_error(string::in, feedback_type::in, 
+    feedback_data::in) is erroneous.
+
+feedback_data_mismatch_error(Predicate, Type, Data) :-
+    error(string.format(
+        "%s: Feedback data doesn't match type\n\tType: %s\n\tData: %s\n",
+        [s(Predicate), s(string(Type)), s(string(Data))])).
 
 %-----------------------------------------------------------------------------%
 
@@ -299,8 +387,8 @@ read_no_check_line(Stream, _, Result, !IO) :-
 read_data(Stream, _, Result, !IO) :-
     io.read(Stream, ReadResultDataAssocList, !IO),
     (
-        ReadResultDataAssocList = ok(DataAssocList),
-        map.det_insert_from_assoc_list(map.init, DataAssocList, Map),
+        ReadResultDataAssocList = ok(DataList),
+        list.foldl(det_insert_feedback_data, DataList, map.init, Map),
         Result = ok(feedback_info(Map))
     ;
         ReadResultDataAssocList = eof,
@@ -310,16 +398,38 @@ read_data(Stream, _, Result, !IO) :-
         Result = error(parse_error(Error, Line))
     ).
 
+:- pred det_insert_feedback_data(feedback_data::in, map(feedback_type,
+    feedback_data)::in, map(feedback_type, feedback_data)::out) is det.
+
+det_insert_feedback_data(Data, !Map) :-
+    feedback_data_type(Key, Data),
+    svmap.det_insert(Key, Data, !Map).
+
 %-----------------------------------------------------------------------------%
 
-read_or_create(Path, Feedback, !IO) :-
-    read_feedback_file(Path, ReadResultFeedback, !IO),
+read_or_create(Path, ReadResultFeedback, !IO) :-
+    read_feedback_file(Path, ReadResultFeedback1, !IO),
     (
-        ReadResultFeedback = ok(Feedback)
+        ReadResultFeedback1 = ok(_),
+        ReadResultFeedback = ReadResultFeedback1
     ;
-        ReadResultFeedback = error(Error),
-        display_read_error(Path, Error, !IO),
-        Feedback = init_feedback_info
+        ReadResultFeedback1 = error(Error),
+        (
+            % XXX: Assume that an open error is probably caused by the file not
+            % existing, (but we can't be sure because io.error is a string
+            % internally, and error messages may change and are not portable).
+            Error = open_error(_),
+            ReadResultFeedback = ok(init_feedback_info)
+        ;
+            ( Error = read_error(_)
+            ; Error = parse_error(_, _)
+            ; Error = unexpected_eof
+            ; Error = incorrect_version
+            ; Error = incorrect_first_line
+            ; Error = incorrect_program_name
+            ),
+            ReadResultFeedback = ReadResultFeedback1
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -405,7 +515,7 @@ write_feedback_file_2(Stream, ProgName, Feedback, unit, !IO) :-
     io.write_string(Stream, ProgName, !IO),
     io.nl(Stream, !IO),
     Feedback = feedback_info(Map),
-    map.to_assoc_list(Map, FeedbackList),
+    map.values(Map, FeedbackList),
     io.write(Stream, FeedbackList, !IO),
     io.write_string(Stream, ".\n", !IO),
     io.close_output(Stream, !IO).
@@ -418,7 +528,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "1".
+feedback_version = "2".
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.
