@@ -47,7 +47,7 @@ else
     PATH="$TOPDIR/$HOST:$PATH"
 fi
 
-case $HOST in mundroo*|mundula)
+case $HOST in mundula)
     PATH="/usr/local/apps/ssh-1.2.32/bin:$PATH"
     ;;
 esac
@@ -63,7 +63,7 @@ then
     :
 else
     case "$HOST" in
-        neptune|pluto|eris)
+        neptune|goofy|eris)
         CVSROOT=":ext:mercury@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
         ;;
         *)
@@ -87,10 +87,8 @@ umask 022
 # (Most of it should build fine with 128 Mb,
 # but building the --split-c-files versions of
 # the libraries needs more, at least for dec-alpha-osf*.)
+# On Cygwin ulimit doesn't work properly, so don't use it.
 case $HOST in
-    # ulimit doesn't work properly under cygwin, so don't use it on
-    # uranus.
-    uranus) ;;
     *)      ulimit -S -t 300
             ulimit -S -d 250000
             ;;
@@ -109,10 +107,6 @@ export CLASSPATH
 # Host to use to build the release of the day source distribution
 # for the mercury-compiler, mercury-tests, and mercury-extras distributions.
 ROTD_HOST=jupiter
-
-# Host to use to build the G12 rlease of the day source distribution
-# for the mercury-compiler, mercury-tests, and mercury-extras distributions.
-G12_ROTD_HOST=swordfish
 
 # Host to use to build the release of the day mercury-gcc source distribution.
 # We don't currently test the gcc backend.
@@ -252,18 +246,15 @@ case $HOST in
         OPTIMIZE="-O4"
         ;;
     
-    pluto)
+    goofy)
         OPTIMIZE="-O2 --intermodule-optimization"
         ;;
     
-    $G12_ROTD_HOST|swordfish)
-        case $BRANCH in
-            g12) OPTIMIZE="-O3" ;;
-            *)   OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation" ;;
-        esac
+    swordfish)
+        OPTIMIZE="-O4 --constraint-propagation" 
         ;;
-    
-    mundroo|mundula)
+
+    mundula)
         OPTIMIZE=-O2; use_cp_opt="--use-cp"
         # On mundroo, "mkdir -p scripts" aborts
         # if scripts is a symbolic link to a directory.
@@ -273,22 +264,14 @@ case $HOST in
         OPTIMIZE="-O3"
         ;;
 
-    ceres)
-        OPTIMIZE="-O5"
-        ;;
-
-    uranus)
-        OPTIMIZE="-O3"
-        ;;
-
     taura)
         OPTIMIZE="-O5 --intermodule-optimization"
         ;;
 esac
 
 # On some systems, the file system we're using does not support links.
+# On systems running Cygwin use the following:  LN="cp -r"; LN_S="cp -r"
 case $HOST in
-    uranus) LN="cp -r"; LN_S="cp -r" ;;
     *)      LN="ln"; LN_S="ln -s" ;;
 esac
 
@@ -323,7 +306,7 @@ esac
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-    earth|ceres|aral|jupiter|swordfish|saturn|uranus|neptune|pluto|taura)
+    earth|aral|jupiter|swordfish|saturn|neptune|goofy|taura)
         INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH
         ;;
 
@@ -355,7 +338,7 @@ PATH="$INSTALL_DIR/bin:$PATH"
 #
 PARALLEL=
 case $HOST in
-    saturn|pluto|taura) PARALLEL="-j2" ;;
+    saturn|goofy|taura) PARALLEL="-j2" ;;
     eris)               PARALLEL="-j2" ;;
     *)                  PARALLEL= ;;
 esac
@@ -375,7 +358,7 @@ esac
 # df (disk free) command
 DF=df
 case $HOST in
-    mundroo|mundula) DF="df -k" ;;
+    mundula) DF="df -k" ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -427,29 +410,6 @@ status=0
 # a debugging grade and a trailing grade.
 
 case $HOST in
-    ceres)
-        # On these hosts, test the high-level back-end more:
-        # bootstrap the compiler in hlc.gc,
-        # use hlc.gc as the default grade,
-        # and install & test various other hlc-related grades.
-        CONFIG_OPTS=""
-        DEFAULT_GRADE="hlc.gc"
-        export DEFAULT_GRADE
-        INSTALL_GRADE="hlc.gc"
-        INSTALL_LIBGRADES="hlc.gc   \
-            hlc.gc.prof             \
-            hlc.gc.memprof          \
-            hlc.gc.tr               \
-            hlc.par.gc              \
-            asm_fast.gc             \
-            asm_fast.gc.tr          \
-            asm_fast.gc.tr.debug"
-        # The erlang grade requires mmc --make.
-        if test "$USE_MMC_MAKE" != ""
-        then
-            INSTALL_LIBGRADES="$INSTALL_LIBGRADES erlang"
-        fi
-        ;;
     saturn)
         CONFIG_OPTS="--disable-dotnet-grades"
         INSTALL_LIBGRADES="asm_fast.gc  \
@@ -478,7 +438,7 @@ case $HOST in
             asm_fast.gc.tr.memprof          \
             asm_fast.gc.tr.profdeep"        
         ;;
-    pluto)
+    goofy)
         DEFAULT_GRADE="hlc.gc"
         export DEFAULT_GRADE
         INSTALL_GRADE="hlc.gc"
@@ -530,35 +490,14 @@ case $HOST in
         # swordfish is being used by the G12 group at the moment, so
         # it requires trailing versions of most of the grades.
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-java-grade"
-        case $BRANCH in
-            g12)
-                DEFAULT_GRADE="hlc.gc.tr"
-                export $DEFAULT_GRADE
-                INSTALL_LIBGRADES="hlc.gc.tr        \
-                    hl.gc.tr                        \
-                    asm_fast.gc.tr                  \
-                    asm_fast.gc.tr.prof             \
-                    asm_fast.gc.tr.memprof          \
-                    asm_fast.gc.tr.profdeep         \
-                    asm_fast.gc.tr.debug"
-                ;;
-            *)
-                INSTALL_LIBGRADES="asm_fast.gc      \
-                    hlc.gc.tr                       \
-                    hlc.gc.tr.prof                  \
-                    hlc.gc.tr.memprof               \
-                    asm_fast.gc.tr                  \
-                    asm_fast.gc.tr.prof             \
-                    asm_fast.gc.tr.memprof          \
-                    asm_fast.gc.tr.profdeep         \
-                    asm_fast.gc.tr.decldebug        \
-                    hlc.gc"
-                ;;
-        esac
+        INSTALL_LIBGRADES="asm_fast.gc      \
+            hlc.gc.trseg                    \
+            hlc.gc.trseg.prof               \
+            asm_fast.gc.tr                  \
+            asm_fast.gc.tr.profdeep         \
+            asm_fast.gc.tr.decldebug        \
+            hlc.gc"
         ;; 
-    uranus)
-        CONFIG_OPTS=""
-        ;;
     eris)
         # The asm_fast grades don't work on Darwin.
         # The reg grades don't work with the default gcc compiler
@@ -877,12 +816,11 @@ GRADES="`(cd $DIR/mercury && $MMAKE echo_libgrades)`"
 
 echo "test_mercury starting to create distribution at `date`" 1>&2
 
-case $HOST in $ROTD_HOST|$G12_ROTD_HOST)
-    # The tests on $ROTD_HOST and $G12_ROTD_HOST are run with
-    # `--intermodule-optimization', so we need to do a `mmake realclean'
-    # before building the C files for the source distribution. The extra
-    # compilation time for `--intermodule-optimization' is probably not
-    # acceptable for the source distribution.
+case $HOST in $ROTD_HOST)
+    # The tests on $ROTD_HOST are run with `--intermodule-optimization', so we
+    # need to do a `mmake realclean' before building the C files for the source
+    # distribution. The extra compilation time for `--intermodule-optimization'
+    # is probably not acceptable for the source distribution.
     { cd $DIR/mercury &&
     $MMAKE realclean MMAKEFLAGS=$PARALLEL &&
     (cd $DIR/tests &&
@@ -1064,9 +1002,6 @@ case $HOST in
     swordfish)
         fullname=i686-pc-linux-libc2.3-gnu-O4-intermod
         ;;
-    ceres)  
-        fullname=i686-pc-linux-libc2.3-gnu-O5-hlc
-        ;;
     aral)   
         fullname=i686-pc-linux-libc2.3-gnu-O3
         ;;
@@ -1076,7 +1011,7 @@ case $HOST in
     neptune)
         fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O4
         ;;
-    pluto)
+    goofy)
         fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O2-intermod-hlc
         ;;
     *)
@@ -1094,7 +1029,6 @@ fullname_tag=`echo $fullname | tr ' .' __`
 
 # On murlibobo building the binary distribution takes a lot of CPU time.
 case $HOST in
-    uranus) ;;
     *)      ulimit -S -t unlimited ;;
 esac
 
@@ -1237,7 +1171,7 @@ esac
 
 # Now rebuild the index files on the WWW site.
 case $HOST in 
-    $ROTD_HOST|$G12_ROTD_HOST)
+    $ROTD_HOST)
         echo "test_mercury generating www index files, starting at `date`" 1>&2
         (
         cd $BETA_WEBDIR_TOP &&

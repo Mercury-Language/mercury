@@ -57,7 +57,7 @@ if [ -d $CVSROOT/. ]; then
 	:
 else
 	case "$HOST" in
-	neptune|pluto|eris)
+	neptune|goofy|eris)
 	    CVSROOT=":ext:mercury@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
 	    ;;
 	*)
@@ -120,7 +120,7 @@ case "$BRANCH" in
 	   uranus|swordfish)
 		BRANCH=latest
 		;;
-	   saturn|neptune|pluto|eris)
+	   saturn|neptune|goofy|eris)
  	       	BRANCH=latest
 		#case $DAY in
 		#	*[02468]) BRANCH=$release_branch ;;
