@@ -1689,8 +1689,7 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
         LinkTargetType = executable,
         Linkage = "static"
     ->
-        globals.io_lookup_string_option(linker_static_flags, StaticOpts,
-            !IO)
+        globals.io_lookup_string_option(linker_static_flags, StaticOpts, !IO)
     ;
         StaticOpts = ""
     ),
