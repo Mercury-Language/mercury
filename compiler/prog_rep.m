@@ -100,12 +100,14 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
     represent_var_table_as_bytecode(IncludeVarTable, VarNumMap, VarNumRep,
         VarTableBytes, !StackInfo),
     Info = prog_rep_info(FileName, VarTypes, VarNumMap, VarNumRep, ModuleInfo),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
 
     string_to_byte_list(FileName, FileNameBytes, !StackInfo),
     goal_to_byte_list(Goal, InstMap0, Info, GoalBytes, !StackInfo),
     DetismByte = represent_determinism(ProcDetism),
     ProcRepBytes0 = FileNameBytes ++ VarTableBytes ++
-        vars_to_byte_list(Info, HeadVars) ++ GoalBytes ++ [DetismByte],
+        head_vars_to_byte_list(Info, InstMap0, InstmapDelta, HeadVars) ++
+        GoalBytes ++ [DetismByte],
     int32_to_byte_list(list.length(ProcRepBytes0) + 4, LimitBytes),
     ProcRepBytes = LimitBytes ++ ProcRepBytes0.
 
@@ -552,13 +554,6 @@ vars_to_byte_list(Info, Vars) =
     length_to_byte_list(Vars) ++
     list.condense(list.map(var_to_byte_list(Info), Vars)).
 
-:- func maybe_vars_to_byte_list(prog_rep_info, list(maybe(prog_var))) =
-    list(int).
-
-maybe_vars_to_byte_list(Info, Vars) =
-    length_to_byte_list(Vars) ++
-    list.condense(list.map(maybe_var_to_byte_list(Info), Vars)).
-
 :- func var_to_byte_list(prog_rep_info, prog_var) = list(int).
 
 var_to_byte_list(Info, Var) = Bytes :-
@@ -570,6 +565,13 @@ var_to_byte_list(Info, Var) = Bytes :-
         Info ^ pri_var_num_rep = short,
         short_to_byte_list(VarNum, Bytes)
     ).
+
+:- func maybe_vars_to_byte_list(prog_rep_info, list(maybe(prog_var))) =
+    list(int).
+
+maybe_vars_to_byte_list(Info, Vars) =
+    length_to_byte_list(Vars) ++
+    list.condense(list.map(maybe_var_to_byte_list(Info), Vars)).
 
 :- func maybe_var_to_byte_list(prog_rep_info, maybe(prog_var)) = list(int).
 
@@ -583,6 +585,50 @@ maybe_var_to_byte_list(Info, MaybeVar) = Bytes :-
         MaybeVar = no,
         Bytes = [0]
     ).
+
+:- func head_vars_to_byte_list(prog_rep_info, instmap, instmap_delta,
+    list(prog_var)) = list(int).
+
+head_vars_to_byte_list(Info, InitialInstmap, InstmapDelta, Vars) =
+    length_to_byte_list(Vars) ++
+    list.condense(list.map(
+        head_var_to_byte_list(Info, InitialInstmap, InstmapDelta), Vars)).
+
+:- func head_var_to_byte_list(prog_rep_info, instmap, instmap_delta,
+    prog_var) = list(int).
+
+head_var_to_byte_list(Info, InitialInstmap, InstmapDelta, Var) = Bytes :-
+    var_to_byte_list(Info, Var) = VarBytes,
+    ModuleInfo = Info ^ pri_module_info,
+    lookup_var(InitialInstmap, Var, InitialInst),
+    ( instmap_delta_search_var(InstmapDelta, Var, FinalInstPrime) ->
+        FinalInst = FinalInstPrime
+    ;
+        % if the variable is not in the instmap delta, then its instantiation
+        % cannot possibly change.  It has the same instantiation that it begun
+        % with.
+        FinalInst = InitialInst
+    ),
+    Bytes = VarBytes ++ [inst_to_byte(ModuleInfo, InitialInst),
+        inst_to_byte(ModuleInfo, FinalInst)].
+
+:- func inst_to_byte(module_info, mer_inst) = int.
+
+inst_to_byte(ModuleInfo, MerInst) = Byte :-
+    (
+        ( MerInst = free
+        ; MerInst = free(_)
+        )
+    ->
+        InstRep = ir_free_rep
+    ;
+        inst_is_ground(ModuleInfo, MerInst)
+    ->
+        InstRep = ir_ground_rep
+    ;
+        InstRep = ir_other_rep
+    ),
+    inst_representation(InstRep, Byte).
 
 :- func length_to_byte_list(list(T)) = list(int).
 

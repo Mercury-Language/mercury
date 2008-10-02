@@ -113,7 +113,7 @@ print_proc_to_strings(ProcRep, Strings) :-
     ProcRep = proc_rep(ProcLabel, ProcDefnRep),
     ProcDefnRep = proc_defn_rep(ArgVarReps, GoalRep, VarTable, Detism),
     print_proc_label_to_strings(Detism, ProcLabel, ProcLabelString),
-    print_args_to_strings(VarTable, ArgVarReps, ArgsString),
+    print_args_to_strings(print_head_var, VarTable, ArgVarReps, ArgsString),
     print_goal_to_strings(VarTable, 1, GoalRep, GoalString),
     Strings = ProcLabelString ++ ArgsString ++ cord.singleton(" :-\n") ++
         GoalString ++ nl.
@@ -303,7 +303,7 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
         lookup_var_name(VarTable, VarRep, VarName),
         string.format(" %s %s %s", [s(VarName), s(UnifyOp), s(ConsIdRep)],
             UnifyString),
-        print_args_to_strings(VarTable, ArgReps, ArgsString),
+        print_args_to_strings(lookup_var_name, VarTable, ArgReps, ArgsString),
         Strings0 = cord.cons(UnifyString, ArgsString)
     ;
         (
@@ -318,7 +318,8 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
         lookup_var_name(VarTable, VarRep, VarName),
         string.format(" %s %s %s", [s(VarName), s(UnifyOp), s(ConsIdRep)],
             UnifyString),
-        print_maybe_args_to_strings(VarTable, MaybeArgReps, ArgsString),
+        print_args_to_strings(print_maybe_var, VarTable, MaybeArgReps,
+            ArgsString),
         Strings0 = cord.cons(UnifyString, ArgsString)
     ;
         AtomicGoalRep = unify_assign_rep(TargetRep, SourceRep),
@@ -340,14 +341,14 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
         Strings0 = cord.singleton(String)
     ;
         AtomicGoalRep = pragma_foreign_code_rep(Args),
-        print_args_to_strings(VarTable, Args, ArgsString),
+        print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.singleton(" foreign_proc(") ++ ArgsString ++
             cord.singleton(")")
     ;
         AtomicGoalRep = higher_order_call_rep(HOVarRep, Args),
         lookup_var_name(VarTable, HOVarRep, HOVarName),
         string.format(" %s(", [s(HOVarName)], HeadString),
-        print_args_to_strings(VarTable, Args, ArgsString),
+        print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.singleton(HeadString) ++ ArgsString ++
             cord.singleton(")")
     ;
@@ -355,23 +356,23 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
         lookup_var_name(VarTable, TCIVarRep, TCIVarName),
         string.format(" method %d of %s(", [i(MethodNumber), s(TCIVarName)],
             HeadString),
-        print_args_to_strings(VarTable, Args, ArgsString),
+        print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.singleton(HeadString) ++ ArgsString ++
             cord.singleton(")")
     ;
         AtomicGoalRep = plain_call_rep(Module, Pred, Args),
         string.format(" %s.%s", [s(Module), s(Pred)], HeadString),
-        print_args_to_strings(VarTable, Args, ArgsString),
+        print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.cons(HeadString, ArgsString)
     ;
         AtomicGoalRep = builtin_call_rep(Module, Pred, Args),
         string.format(" builtin %s.%s", [s(Module), s(Pred)], HeadString),
-        print_args_to_strings(VarTable, Args, ArgsString),
+        print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.cons(HeadString, ArgsString)
     ;
         AtomicGoalRep = event_call_rep(Event, Args),
         string.format(" event %s", [s(Event)], HeadString),
-        print_args_to_strings(VarTable, Args, ArgsString),
+        print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.cons(HeadString, ArgsString)
     ),
     detism_to_string(DetismRep, DetismString),
@@ -380,58 +381,53 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_args_to_strings(var_table::in, list(var_rep)::in,
-    cord(string)::out) is det.
+:- pred print_args_to_strings(pred(var_table, T, string), var_table,
+    list(T), cord(string)).
+:- mode print_args_to_strings(pred(in, in, out) is det, in, in, out) is det.
 
-print_args_to_strings(VarTable, Args, Strings) :-
+print_args_to_strings(PrintArg, VarTable, Args, Strings) :-
     (
         Args = [],
         Strings = cord.empty
     ;
         Args = [_ | _],
-        print_args_2_to_strings(VarTable, Args, cord.empty, ArgsStr),
+        print_args_2_to_strings(PrintArg, VarTable, Args, cord.empty, ArgsStr),
         Strings = cord.cons("(", cord.snoc(ArgsStr, ")"))
     ).
 
-:- pred print_args_2_to_strings(var_table::in, list(var_rep)::in,
-    cord(string)::in, cord(string)::out) is det.
+:- pred print_args_2_to_strings(pred(var_table, T, string), var_table,
+    list(T), cord(string), cord(string)).
+:- mode print_args_2_to_strings(pred(in, in, out) is det, in, in, in, out) 
+    is det.
 
-print_args_2_to_strings(_, [], _, cord.empty).
-print_args_2_to_strings(VarTable, [VarRep | VarReps], Prefix, Strings) :-
+print_args_2_to_strings(_, _, [], _, cord.empty).
+print_args_2_to_strings(PrintArg, VarTable, [Arg | Args], Prefix, Strings) :-
+    PrintArg(VarTable, Arg, ArgName),
+    print_args_2_to_strings(PrintArg, VarTable, Args, cord.singleton(", "),
+        ArgsString),
+    Strings = Prefix ++ cord.cons(ArgName, ArgsString).
+
+:- pred print_maybe_var(var_table::in, maybe(var_rep)::in, string::out) is det.
+
+print_maybe_var(_, no, "_").
+print_maybe_var(VarTable, yes(VarRep), VarName) :-
+    lookup_var_name(VarTable, VarRep, VarName).
+
+:- pred print_head_var(var_table::in, head_var_rep::in, string::out) is det. 
+
+print_head_var(VarTable, head_var_rep(VarRep, VarMode), String) :-
     lookup_var_name(VarTable, VarRep, VarName),
-    print_args_2_to_strings(VarTable, VarReps, cord.singleton(", "),
-        ArgsString),
-    Strings = Prefix ++ cord.cons(VarName, ArgsString).
+    VarMode = var_mode_rep(InitialInst, FinalInst),
+    inst_rep_to_string(InitialInst, InitialInstStr),
+    inst_rep_to_string(FinalInst, FinalInstStr),
+    String = string.format("%s::(%s >> %s)", 
+        [s(VarName), s(InitialInstStr), s(FinalInstStr)]).
 
-:- pred print_maybe_args_to_strings(var_table::in, list(maybe(var_rep))::in,
-    cord(string)::out) is det.
+:- pred inst_rep_to_string(inst_rep::in, string::out) is det.
 
-print_maybe_args_to_strings(VarTable, MaybeArgs, Strings) :-
-    (
-        MaybeArgs = [],
-        Strings = cord.empty
-    ;
-        MaybeArgs = [_ | _],
-        print_maybe_args_2_to_strings(VarTable, MaybeArgs, cord.empty, ArgsStr),
-        Strings = cord.cons("(", cord.snoc(ArgsStr, ")"))
-    ).
-
-:- pred print_maybe_args_2_to_strings(var_table::in, list(maybe(var_rep))::in,
-    cord(string)::in, cord(string)::out) is det.
-
-print_maybe_args_2_to_strings(_, [], _, cord.empty).
-print_maybe_args_2_to_strings(VarTable, [MaybeVarRep | MaybeVarReps], Prefix,
-        Strings) :-
-    (
-        MaybeVarRep = no,
-        VarName = "_"
-    ;
-        MaybeVarRep = yes(VarRep),
-        lookup_var_name(VarTable, VarRep, VarName)
-    ),
-    print_maybe_args_2_to_strings(VarTable, MaybeVarReps, cord.singleton(", "),
-        ArgsString),
-    Strings = Prefix ++ cord.cons(VarName, ArgsString).
+inst_rep_to_string(ir_free_rep, "free").
+inst_rep_to_string(ir_ground_rep, "ground").
+inst_rep_to_string(ir_other_rep, "other").
 
 :- func indent(int) = cord(string).
 

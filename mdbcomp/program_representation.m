@@ -130,7 +130,7 @@
     --->    proc_defn_rep(
                 % The head variables, in order, including the ones introduced
                 % by the compiler.
-                pdr_head_vars           :: list(var_rep),
+                pdr_head_vars           :: list(head_var_rep),
 
                 % The procedure body.
                 pdr_goal                :: goal_rep(GoalAnnotation),
@@ -304,6 +304,25 @@
 
 :- type var_rep ==  int.
 
+:- type head_var_rep 
+    --->    head_var_rep(
+                head_var_var        :: var_rep,
+                head_var_mode       :: var_mode_rep
+            ).
+
+:- type var_mode_rep
+    --->    var_mode_rep(
+                vm_initial_inst     :: inst_rep,
+                vm_final_inst       :: inst_rep
+            ).
+
+:- type inst_rep
+    --->    ir_free_rep
+    ;       ir_ground_rep
+    ;       ir_other_rep.
+                % Instantiation states that arn't understood by the bytecode
+                % representation are grouped within this value.
+
 :- type cons_id_arity_rep
     --->    cons_id_arity_rep(
                 cons_id_rep,
@@ -363,6 +382,8 @@
     %
 :- func atomic_goal_identifiable(atomic_goal_rep) =
     maybe(atomic_goal_id).
+
+:- func head_var_to_var(head_var_rep) = var_rep.
 
 %-----------------------------------------------------------------------------%
 
@@ -548,6 +569,10 @@
 :- mode determinism_representation(in, out) is det.
 :- mode determinism_representation(out, in) is semidet.
 
+:- pred inst_representation(inst_rep, int).
+:- mode inst_representation(in, out) is det.
+:- mode inst_representation(out, in) is semidet.
+
 :- type bytecode_goal_type
     --->    goal_conj
     ;       goal_disj
@@ -732,6 +757,8 @@ atomic_goal_identifiable(plain_call_rep(Module, Name, Args)) =
     yes(atomic_goal_id(Module, Name, length(Args))).
 atomic_goal_identifiable(event_call_rep(_, _)) = no.
 
+head_var_to_var(head_var_rep(Var, _)) = Var.
+
 :- pragma foreign_export("C", proc_defn_rep_type = out,
     "ML_proc_defn_rep_type").
 
@@ -887,6 +914,10 @@ determinism_representation(failure_rep, 0).
 determinism_representation(cc_nondet_rep, 10).
 determinism_representation(cc_multidet_rep, 14).
 
+inst_representation(ir_free_rep, 0).
+inst_representation(ir_ground_rep, 1).
+inst_representation(ir_other_rep, 2).
+
 goal_type_to_byte(Type) = TypeInt :-
     goal_type_byte(TypeInt, Type).
 
@@ -1037,7 +1068,7 @@ read_prog_rep_file(FileName, Result, !IO) :-
     %
 :- func procrep_id_string = string.
 
-procrep_id_string = "Mercury deep profiler procrep version 4\n".
+procrep_id_string = "Mercury deep profiler procrep version 5\n".
 
 :- pred read_module_reps(bytecode::in,
     module_map(unit)::in, module_map(unit)::out,
@@ -1090,7 +1121,7 @@ read_proc_rep(ByteCode, StringTable, ProcRep, !Pos) :-
     read_string_via_offset(ByteCode, StringTable, FileName, !Pos),
     Info = read_proc_rep_info(FileName),
     read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos),
-    read_vars(VarNumRep, ByteCode, HeadVars, !Pos),
+    read_head_vars(VarNumRep, ByteCode, HeadVars, !Pos),
     read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
     read_determinism(ByteCode, Detism, !Pos),
     ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarTable, Detism),
@@ -1190,7 +1221,7 @@ trace_read_proc_defn_rep(Bytes, LabelLayout, ProcDefnRep) :-
         read_string_via_offset(ByteCode, StringTable, FileName, !Pos),
         Info = read_proc_rep_info(FileName),
         read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos),
-        read_vars(VarNumRep, ByteCode, HeadVars, !Pos),
+        read_head_vars(VarNumRep, ByteCode, HeadVars, !Pos),
         read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
         read_determinism(ByteCode, Detism, !Pos),
         ProcDefnRep = proc_defn_rep(HeadVars, Goal, VarTable, Detism),
@@ -1370,21 +1401,8 @@ read_atomic_info(VarNumRep, ByteCode, StringTable, Info, AtomicGoal, GoalExpr,
 
 read_goals(VarNumRep, ByteCode, StringTable, Info, Goals, !Pos) :-
     read_length(ByteCode, Len, !Pos),
-    read_goals_2(VarNumRep, ByteCode, StringTable, Info, Len, Goals, !Pos).
-
-:- pred read_goals_2(var_num_rep::in, bytecode::in, string_table::in,
-    read_proc_rep_info::in, int::in, list(goal_rep)::out, int::in, int::out)
-    is semidet.
-
-read_goals_2(VarNumRep, ByteCode, StringTable, Info, N, Goals, !Pos) :-
-    ( N > 0 ->
-        read_goal(VarNumRep, ByteCode, StringTable, Info, Head, !Pos),
-        read_goals_2(VarNumRep, ByteCode, StringTable, Info, N - 1, Tail,
-            !Pos),
-        Goals = [Head | Tail]
-    ;
-        Goals = []
-    ).
+    read_n_items(read_goal(VarNumRep, ByteCode, StringTable, Info), Len, Goals,
+        !Pos). 
 
 :- pred read_cases(var_num_rep::in, bytecode::in, string_table::in,
     read_proc_rep_info::in, list(case_rep(unit))::out, int::in, int::out)
@@ -1392,26 +1410,20 @@ read_goals_2(VarNumRep, ByteCode, StringTable, Info, N, Goals, !Pos) :-
 
 read_cases(VarNumRep, ByteCode, StringTable, Info, Cases, !Pos) :-
     read_length(ByteCode, Len, !Pos),
-    read_cases_2(VarNumRep, ByteCode, StringTable, Info, Len, Cases, !Pos).
+    read_n_items(read_case(VarNumRep, ByteCode, StringTable, Info), Len, Cases,
+        !Pos).
 
-:- pred read_cases_2(var_num_rep::in, bytecode::in, string_table::in,
-    read_proc_rep_info::in, int::in, list(case_rep(unit))::out,
+:- pred read_case(var_num_rep::in, bytecode::in, string_table::in,
+    read_proc_rep_info::in, case_rep(unit)::out,
     int::in, int::out) is semidet.
 
-read_cases_2(VarNumRep, ByteCode, StringTable, Info, N, Cases, !Pos) :-
-    ( N > 0 ->
-        read_cons_id_arity(ByteCode, StringTable, MainConsId, !Pos),
-        read_length(ByteCode, NumOtherConsIds, !Pos),
-        read_n_cons_id_arities(ByteCode, StringTable, NumOtherConsIds,
-            OtherConsIds, !Pos),
-        read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
-        Head = case_rep(MainConsId, OtherConsIds, Goal),
-        read_cases_2(VarNumRep, ByteCode, StringTable, Info, N - 1, Tail,
-            !Pos),
-        Cases = [Head | Tail]
-    ;
-        Cases = []
-    ).
+read_case(VarNumRep, ByteCode, StringTable, Info, Case, !Pos) :-
+    read_cons_id_arity(ByteCode, StringTable, MainConsId, !Pos),
+    read_length(ByteCode, NumOtherConsIds, !Pos),
+    read_n_items(read_cons_id_arity(ByteCode, StringTable), NumOtherConsIds,
+        OtherConsIds, !Pos),
+    read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos),
+    Case = case_rep(MainConsId, OtherConsIds, Goal).
 
 :- pred read_cons_id_arity(bytecode::in, string_table::in,
     cons_id_arity_rep::out, int::in, int::out) is semidet.
@@ -1421,63 +1433,12 @@ read_cons_id_arity(ByteCode, StringTable, ConsId, !Pos) :-
     read_short(ByteCode, ConsIdArity, !Pos),
     ConsId = cons_id_arity_rep(ConsIdFunctor, ConsIdArity).
 
-:- pred read_n_cons_id_arities(bytecode::in, string_table::in, int::in,
-    list(cons_id_arity_rep)::out, int::in, int::out) is semidet.
-
-read_n_cons_id_arities(ByteCode, StringTable, N, ConsIds, !Pos) :-
-    ( N > 0 ->
-        read_cons_id_arity(ByteCode, StringTable, Head, !Pos),
-        read_n_cons_id_arities(ByteCode, StringTable, N - 1, Tail, !Pos),
-        ConsIds = [Head | Tail]
-    ;
-        ConsIds = []
-    ).
-
 :- pred read_vars(var_num_rep::in, bytecode::in, list(var_rep)::out,
     int::in, int::out) is semidet.
 
 read_vars(VarNumRep, ByteCode, Vars, !Pos) :-
     read_length(ByteCode, Len, !Pos),
-    read_vars_2(VarNumRep, ByteCode, Len, Vars, !Pos).
-
-:- pred read_vars_2(var_num_rep::in, bytecode::in, int::in,
-    list(var_rep)::out, int::in, int::out) is semidet.
-
-read_vars_2(VarNumRep, ByteCode, N, Vars, !Pos) :-
-    ( N > 0 ->
-        read_var(VarNumRep, ByteCode, Head, !Pos),
-        read_vars_2(VarNumRep, ByteCode, N - 1, Tail, !Pos),
-        Vars = [Head | Tail]
-    ;
-        Vars = []
-    ).
-
-:- pred read_maybe_vars(var_num_rep::in, bytecode::in,
-    list(maybe(var_rep))::out, int::in, int::out) is semidet.
-
-read_maybe_vars(VarNumRep, ByteCode, MaybeVars, !Pos) :-
-    read_length(ByteCode, Len, !Pos),
-    read_maybe_vars_2(VarNumRep, ByteCode, Len, MaybeVars, !Pos).
-
-:- pred read_maybe_vars_2(var_num_rep::in, bytecode::in, int::in,
-    list(maybe(var_rep))::out, int::in, int::out) is semidet.
-
-read_maybe_vars_2(VarNumRep, ByteCode, N, MaybeVars, !Pos) :-
-    ( N > 0 ->
-        read_byte(ByteCode, YesOrNo, !Pos),
-        ( YesOrNo = 1 ->
-            read_var(VarNumRep, ByteCode, Head, !Pos),
-            MaybeHead = yes(Head)
-        ; YesOrNo = 0 ->
-            MaybeHead = no
-        ;
-            error("read_maybe_vars_2: invalid yes or no flag")
-        ),
-        read_maybe_vars_2(VarNumRep, ByteCode, N - 1, Tail, !Pos),
-        MaybeVars = [MaybeHead | Tail]
-    ;
-        MaybeVars = []
-    ).
+    read_n_items(read_var(VarNumRep, ByteCode), Len, Vars, !Pos).
 
 :- pred read_var(var_num_rep::in, bytecode::in, var_rep::out,
     int::in, int::out) is semidet.
@@ -1490,6 +1451,49 @@ read_var(VarNumRep, ByteCode, Var, !Pos) :-
         VarNumRep = short,
         read_short(ByteCode, Var, !Pos)
     ).
+
+:- pred read_maybe_vars(var_num_rep::in, bytecode::in,
+    list(maybe(var_rep))::out, int::in, int::out) is semidet.
+
+read_maybe_vars(VarNumRep, ByteCode, MaybeVars, !Pos) :-
+    read_length(ByteCode, Len, !Pos),
+    read_n_items(read_maybe_var(VarNumRep, ByteCode), Len, MaybeVars, !Pos).
+
+:- pred read_maybe_var(var_num_rep::in, bytecode::in,
+    maybe(var_rep)::out, int::in, int::out) is semidet.
+
+read_maybe_var(VarNumRep, ByteCode, MaybeVar, !Pos) :-
+    read_byte(ByteCode, YesOrNo, !Pos),
+    ( YesOrNo = 1 ->
+        read_var(VarNumRep, ByteCode, Var, !Pos),
+        MaybeVar = yes(Var)
+    ; YesOrNo = 0 ->
+        MaybeVar = no
+    ;
+        error("read_maybe_var: invalid yes or no flag")
+    ).
+
+:- pred read_head_vars(var_num_rep::in, bytecode::in,
+    list(head_var_rep)::out, int::in, int::out) is semidet.
+
+read_head_vars(VarNumRep, ByteCode, HeadVars, !Pos) :-
+    read_length(ByteCode, Len, !Pos),
+    read_n_items(read_head_var(VarNumRep, ByteCode), Len, HeadVars, !Pos).
+
+:- pred read_head_var(var_num_rep::in, bytecode::in, head_var_rep::out, 
+    int::in, int::out) is semidet.
+
+read_head_var(VarNumRep, ByteCode, HeadVar, !Pos) :-
+    read_var(VarNumRep, ByteCode, Var, !Pos),
+    read_inst(ByteCode, InitialInst, !Pos),
+    read_inst(ByteCode, FinalInst, !Pos),
+    HeadVar = head_var_rep(Var, var_mode_rep(InitialInst, FinalInst)).
+
+:- pred read_inst(bytecode::in, inst_rep::out, int::in, int::out) is semidet.
+
+read_inst(ByteCode, Inst, !Pos) :-
+    read_byte(ByteCode, Byte, !Pos),
+    inst_representation(Inst, Byte).
 
 :- pred read_length(bytecode::in, var_rep::out, int::in, int::out) is semidet.
 
@@ -1551,6 +1555,23 @@ read_switch_can_fail(Bytecode, CanFail, !Pos) :-
         CanFail = CanFailPrime
     ;
         error("read_goal: bad switch_can_fail")
+    ).
+
+    % An abstraction to read the given number of items using the higher order
+    % predicate.
+    %
+:- pred read_n_items(pred(T, int, int), int, list(T), int, int).
+:- mode read_n_items(pred(out, in, out) is det, in, out, in, out) is det.
+:- mode read_n_items(pred(out, in, out) is semidet, in, out, in, out) 
+    is semidet.
+
+read_n_items(Read, N, Items, !Pos) :-
+    ( N > 0 ->
+        Read(Item, !Pos),
+        read_n_items(Read, N - 1, TailItems, !Pos),
+        Items = [ Item | TailItems ]
+    ;
+        Items = []
     ).
 
 %-----------------------------------------------------------------------------%
