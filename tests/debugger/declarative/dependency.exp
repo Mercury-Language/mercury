@@ -21,19 +21,14 @@ mdb> format raw_pretty
 mdb> p proc_body
 	
 proc_defn_rep(
-  [|](1, []), 
+  [|](head_var_rep(1, var_mode_rep(ir_free, ir_ground)), []), 
   goal_rep(
     conj_rep(
       [|](
-        goal_rep(
-          atomic_goal_rep("dependency.m", 20, [|](2, []), plain_call_rep/3), 
-          det_rep, 
-          unit), 
+        goal_rep(atomic_goal_rep/4, det_rep, unit), 
         [|](
           goal_rep(ite_rep/3, det_rep, unit), 
-          [|](
-            goal_rep(atomic_goal_rep/4, det_rep, unit), 
-            [|](goal_rep/3, [|](goal_rep/3, [|]/2)))))), 
+          [|](goal_rep/3, [|](goal_rep/3, [|]/2))))), 
     cc_multidet_rep, 
     unit), 
   empty, 
