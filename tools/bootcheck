@@ -147,14 +147,13 @@ Options:
         Make the trace, browser, ssdb libraries empty. This can be useful
         when trying to track down the reason why they are being linked
         into the compiler in the first place.
-    --keep-deep-data
-        Keep the Deep.data files resulting from the bootcheck. The
-        usual behavior is to delete them in the interest of conserving
-        disk space.
+    --delete-deep-data
+        Delete any Deep.data and Deep.procrep files created by the bootcheck,
+        in the interest of conserving disk space.
     --deep-all-write
         In deep profiling grades, write out the profiling tree on every
         invocation. (The default is to write it out only for every 25th
-        invocation, on average.
+        invocation, on average.)
     --deep-debug
         Turn on the flag that enables debugging output from the deep
         profiling runtime.
@@ -214,7 +213,7 @@ type_stats=""
 trace_count=false
 coverage_test=false
 disable_debug_libs=false
-delete_deep_data=true
+delete_deep_data=false
 deep_write_sample=true
 deep_debug=false
 progress=false
@@ -222,6 +221,11 @@ progress=false
 if test -f .KEEP_OBJS
 then
     keep_objs=true
+fi
+
+if test -f .DELETE_DEEP_DATA
+then
+    delete_deep_data=true
 fi
 
 if test -f .BOOT_GRADE
@@ -392,8 +396,8 @@ while test $# -gt 0; do
     --disable-debug-libs)
         disable_debug_libs=true ;;
 
-    --keep-deep-data)
-        delete_deep_data=false ;;
+    --delete-deep-data)
+        delete_deep_data=true ;;
 
     --deep-all-write)
         deep_write_sample=false ;;
@@ -1766,7 +1770,9 @@ fi
 
 if $delete_deep_data
 then
-    (cd $root; find stage2 tests -name Deep.data -print | xargs /bin/rm -f)
+    (cd $root; \
+        find stage2 tests -name Deep.data -o -name Deep.procrep -print \
+        | xargs /bin/rm -f)
 fi
 
 #-----------------------------------------------------------------------------#
