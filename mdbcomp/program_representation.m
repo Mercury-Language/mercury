@@ -224,8 +224,8 @@
     goal_rep(GoalAnnotation).
 
 :- type switch_can_fail_rep
-    --->    switch_can_fail
-    ;       switch_can_not_fail.
+    --->    switch_can_fail_rep
+    ;       switch_can_not_fail_rep.
 
 :- type atomic_goal_rep
     --->    unify_construct_rep(
@@ -1546,10 +1546,10 @@ read_switch_can_fail(Bytecode, CanFail, !Pos) :-
     (
         (
             CanFailByte = 0,
-            CanFailPrime = switch_can_fail
+            CanFailPrime = switch_can_fail_rep
         ;
             CanFailByte = 1,
-            CanFailPrime = switch_can_not_fail
+            CanFailPrime = switch_can_not_fail_rep
         )
     ->
         CanFail = CanFailPrime

@@ -1254,7 +1254,7 @@ coverage_to_cord_string(Coverage, cord.singleton(String)) :-
         Coverage = coverage_known(Before, After),
         String = string.format(" %d - %d", [i(Before), i(After)])
     ;
-        Coverage = coverage_known_det(Count),
+        Coverage = coverage_known_same(Count),
         String = string.format(" %d - %d", [i(Count), i(Count)])
     ;
         Coverage = coverage_known_before(Before),
