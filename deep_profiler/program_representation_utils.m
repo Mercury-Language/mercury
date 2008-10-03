@@ -164,11 +164,12 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
     ;
         GoalExprRep = switch_rep(SwitchVarRep, CanFail, CasesRep),
         lookup_var_name(VarTable, SwitchVarRep, SwitchVarName),
-        string.format(" ( %s switch on %s\n",
-            [s(string(CanFail)), s(SwitchVarName)], SwitchOpenString),
+        string.format(" %s switch on %s\n",
+            [s(string(CanFail)), s(SwitchVarName)], SwitchOnString),
         print_switch_to_strings(VarTable, Indent, CasesRep, no, SwitchString),
         Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++
-            cord.singleton(SwitchOpenString) ++ SwitchString ++
+            cord.singleton(SwitchOnString) ++
+            indent(Indent) ++ cord.singleton("(\n") ++ SwitchString ++
             indent(Indent) ++ cord.singleton(")\n")
     ;
         GoalExprRep = ite_rep(CondRep, ThenRep, ElseRep),
@@ -397,7 +398,7 @@ print_args_to_strings(PrintArg, VarTable, Args, Strings) :-
 
 :- pred print_args_2_to_strings(pred(var_table, T, string), var_table,
     list(T), cord(string), cord(string)).
-:- mode print_args_2_to_strings(pred(in, in, out) is det, in, in, in, out) 
+:- mode print_args_2_to_strings(pred(in, in, out) is det, in, in, in, out)
     is det.
 
 print_args_2_to_strings(_, _, [], _, cord.empty).
@@ -413,14 +414,14 @@ print_maybe_var(_, no, "_").
 print_maybe_var(VarTable, yes(VarRep), VarName) :-
     lookup_var_name(VarTable, VarRep, VarName).
 
-:- pred print_head_var(var_table::in, head_var_rep::in, string::out) is det. 
+:- pred print_head_var(var_table::in, head_var_rep::in, string::out) is det.
 
 print_head_var(VarTable, head_var_rep(VarRep, VarMode), String) :-
     lookup_var_name(VarTable, VarRep, VarName),
     VarMode = var_mode_rep(InitialInst, FinalInst),
     inst_rep_to_string(InitialInst, InitialInstStr),
     inst_rep_to_string(FinalInst, FinalInstStr),
-    String = string.format("%s::(%s >> %s)", 
+    String = string.format("%s::(%s >> %s)",
         [s(VarName), s(InitialInstStr), s(FinalInstStr)]).
 
 :- pred inst_rep_to_string(inst_rep::in, string::out) is det.
