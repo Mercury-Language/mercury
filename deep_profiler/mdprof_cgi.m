@@ -424,18 +424,12 @@ handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
         RecordStartup = no,
         MaybeStartupStream = no
     ),
-    read_and_startup(Machine, ScriptName, FileName, Canonical,
-        MaybeStartupStream, [], Res, !IO),
+    read_and_startup_default_deep_options(Machine, ScriptName, FileName,
+        Canonical, MaybeStartupStream, [], StartupResult, !IO),
     (
-        (
-            Res = deep_and_progrep(Deep, Progrep),
-            MaybeProgrep = ok(Progrep)
-        ;
-            Res = deep_and_error(Deep, Error),
-            MaybeProgrep = error(Error)
-        ),
+        StartupResult = ok(Deep),
         Pref = solidify_preference(Deep, PrefInd),
-        try_exec(Cmd, Pref, Deep, MaybeProgrep, HTML, !IO),
+        try_exec(Cmd, Pref, Deep, HTML, !IO),
         (
             MaybeStartupStream = yes(StartupStream1),
             io.format(StartupStream1, "query 0 output:\n%s\n", [s(HTML)], !IO),
@@ -459,8 +453,7 @@ handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
                 io.write_string(HTML, !IO),
                 io.flush_output(!IO),
                 start_server(Options, ToServerPipe, FromServerPipe,
-                    MaybeStartupStream, MutexFile, WantFile, Deep, MaybeProgrep,
-                    !IO)
+                    MaybeStartupStream, MutexFile, WantFile, Deep, !IO)
             ;
                 Success = no,
                 release_lock(Debug, MutexFile, !IO),
@@ -470,7 +463,7 @@ handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
             )
         )
     ;
-        Res = error(Error),
+        StartupResult = error(Error),
         release_lock(Debug, MutexFile, !IO),
         remove_want_file(WantFile, !IO),
         io.set_exit_status(1, !IO),
@@ -482,11 +475,10 @@ handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
     %
 :- pred start_server(option_table::in, string::in, string::in,
     maybe(io.output_stream)::in, string::in, string::in, 
-    deep::in, maybe_error(prog_rep)::in,
-    io::di, io::uo) is cc_multi.
+    deep::in, io::di, io::uo) is cc_multi.
 
 start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
-        MutexFile, WantFile, Deep, MaybeProgrep, !IO) :-
+        MutexFile, WantFile, Deep, !IO) :-
     lookup_bool_option(Options, detach_process, DetachProcess),
     lookup_bool_option(Options, record_loop, RecordLoop),
     lookup_bool_option(Options, debug, Debug),
@@ -543,7 +535,7 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
         lookup_int_option(Options, timeout, TimeOut),
         lookup_bool_option(Options, canonical_clique, Canonical),
         server_loop(ToServerPipe, FromServerPipe, TimeOut,
-            MaybeDebugStream, Debug, Canonical, 0, Deep, MaybeProgrep, !IO)
+            MaybeDebugStream, Debug, Canonical, 0, Deep, !IO)
     ;
         DetachRes = in_parent,
         % We are in the parent after we spawned the child. We cause the process
@@ -569,11 +561,10 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 
 :- pred server_loop(string::in, string::in, int::in,
     maybe(io.output_stream)::in, bool::in, bool::in, int::in, 
-    deep::in, maybe_error(prog_rep)::in,
-    io::di, io::uo) is cc_multi.
+    deep::in, io::di, io::uo) is cc_multi.
 
 server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
-        Debug, Canonical, QueryNum0, Deep0, MaybeProgrep0, !IO) :-
+        Debug, Canonical, QueryNum0, Deep0, !IO) :-
     setup_timeout(TimeOut0, !IO),
     QueryNum = QueryNum0 + 1,
     recv_term(ToServerPipe, Debug, CmdPref0, !IO),
@@ -590,29 +581,21 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
     CmdPref0 = cmd_pref(Cmd0, PrefInd0),
 
     ( Cmd0 = deep_cmd_restart ->
-        read_and_startup(Deep0 ^ server_name_port, Deep0 ^ script_name,
-            Deep0 ^ data_file_name, Canonical, MaybeStartupStream, [],
-            MaybeDeepAndProgrep, !IO),
+        read_and_startup_default_deep_options(Deep0 ^ server_name_port,
+            Deep0 ^ script_name, Deep0 ^ data_file_name, Canonical,
+            MaybeStartupStream, [], MaybeDeep, !IO),
         (
-            (
-                MaybeDeepAndProgrep = deep_and_progrep(Deep, Progrep),
-                MaybeProgrep = ok(Progrep)
-            ;
-                MaybeDeepAndProgrep = deep_and_error(Deep, Error),
-                MaybeProgrep = error(Error) 
-            ),
+            MaybeDeep = ok(Deep),
             MaybeMsg = no,
             Cmd = deep_cmd_menu
         ;
-            MaybeDeepAndProgrep = error(ErrorMsg),
+            MaybeDeep = error(ErrorMsg),
             MaybeMsg = yes(ErrorMsg),
             Deep = Deep0,
-            MaybeProgrep = MaybeProgrep0,
             Cmd = deep_cmd_quit
         )
     ;
         Deep = Deep0,
-        MaybeProgrep = MaybeProgrep0,
         MaybeMsg = no,
         Cmd = Cmd0
     ),
@@ -621,7 +604,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         MaybeMsg = yes(HTML)
     ;
         MaybeMsg = no,
-        try_exec(Cmd, Pref0, Deep, MaybeProgrep, HTML, !IO)
+        try_exec(Cmd, Pref0, Deep, HTML, !IO)
     ),
 
     ResponseFileName = response_file_name(Deep0 ^ data_file_name, QueryNum),
@@ -654,10 +637,10 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         delete_cleanup_files(!IO)
     ; Cmd = deep_cmd_timeout(TimeOut) ->
         server_loop(ToServerPipe, FromServerPipe, TimeOut, MaybeStartupStream,
-            Debug, Canonical, QueryNum, Deep, MaybeProgrep, !IO)
+            Debug, Canonical, QueryNum, Deep, !IO)
     ;
         server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
-            Debug, Canonical, QueryNum, Deep, MaybeProgrep, !IO)
+            Debug, Canonical, QueryNum, Deep, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -118,25 +118,18 @@ main2(ProgName, Args, Options, !IO) :-
             MaybeOutput = yes(Stdout)
         ),
         read_and_startup(Machine, ScriptName, FileName, Canonical,
-            MaybeOutput, DumpStages, DumpOptions, Res, !IO),
+            MaybeOutput, DumpStages, DumpOptions, StartupResult, !IO),
         (
-            (
-                Res = deep_and_error(Deep, _),
-                MaybeProgrep = error("Couldn't read Deep.procrep file")
-            ; 
-                Res = deep_and_progrep(Deep, ProgRep),
-                MaybeProgrep = ok(ProgRep)
-            ),
+            StartupResult = ok(Deep),
             lookup_bool_option(Options, test, Test),
             (
                 Test = no
             ;
                 Test = yes,
-                test_server(default_preferences(Deep), Deep, MaybeProgrep,
-                    Options, !IO)
+                test_server(default_preferences(Deep), Deep, Options, !IO)
             )
         ;
-            Res = error(Error),
+            StartupResult = error(Error),
             io.set_exit_status(1, !IO),
             io.format("%s: error reading %s: %s\n",
                 [s(ProgName), s(FileName), s(Error)], !IO)
@@ -180,9 +173,7 @@ verify_profile_2(ProgName, Options, FileName, !IO) :-
     read_and_startup(Machine, ScriptName, FileName, Canonical, no,
         [], default_dump_options, Res, !IO),
     (
-        Res = deep_and_error(_Deep, _ProgrepError)
-    ;
-        Res = deep_and_progrep(_Deep, _Progrep)
+        Res = ok(_Deep)
     ;
         Res = error(Error),
         io.set_exit_status(1, !IO),
@@ -227,10 +218,10 @@ write_help_message(ProgName) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred test_server(preferences::in, deep::in, maybe_error(prog_rep)::in,
+:- pred test_server(preferences::in, deep::in,
     option_table::in, io::di, io::uo) is cc_multi.
 
-test_server(Pref, Deep, MaybeProgrep, Options, !IO) :-
+test_server(Pref, Deep, Options, !IO) :-
     lookup_string_option(Options, test_dir, DirName),
     string.format("test -d %s || mkdir -p %s", [s(DirName), s(DirName)], Cmd),
     io.call_system(Cmd, _, !IO),
@@ -242,16 +233,14 @@ test_server(Pref, Deep, MaybeProgrep, Options, !IO) :-
     % test_procs(1, NumProcStatics, DirName, Pref, Deep, !IO).
     
     array.max(Deep ^ proc_statics, NumProcStatics),
-    test_procrep_coverages(1, NumProcStatics, Pref, Deep, MaybeProgrep,
-        Options, !IO).
+    test_procrep_coverages(1, NumProcStatics, Pref, Deep, Options, !IO).
 
 :- pred test_cliques(int::in, int::in, option_table::in, preferences::in,
     deep::in, io::di, io::uo) is cc_multi.
 
 test_cliques(Cur, Max, Options, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_clique(clique_ptr(Cur)), Pref, Deep, progrep_error,
-            HTML, !IO),
+        try_exec(deep_cmd_clique(clique_ptr(Cur)), Pref, Deep, HTML, !IO),
         write_test_html(Options, "clique", Cur, HTML, !IO),
         test_cliques(Cur + 1, Max, Options, Pref, Deep, !IO)
     ;
@@ -263,8 +252,7 @@ test_cliques(Cur, Max, Options, Pref, Deep, !IO) :-
 
 test_procs(Cur, Max, Options, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_proc(proc_static_ptr(Cur)), Pref, Deep,
-            progrep_error, HTML, !IO),
+        try_exec(deep_cmd_proc(proc_static_ptr(Cur)), Pref, Deep, HTML, !IO),
         write_test_html(Options, "proc", Cur, HTML, !IO),
         test_procs(Cur + 1, Max, Options, Pref, Deep, !IO)
     ;
@@ -272,15 +260,14 @@ test_procs(Cur, Max, Options, Pref, Deep, !IO) :-
     ).
 
 :- pred test_procrep_coverages(int::in, int::in, preferences::in, deep::in,
-    maybe_error(prog_rep)::in, option_table::in, io::di, io::uo) is cc_multi.
+    option_table::in, io::di, io::uo) is cc_multi.
 
-test_procrep_coverages(Cur, Max, Pref, Deep, MaybeProgrep, Options, !IO) :-
+test_procrep_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
     ( Cur =< Max ->
         try_exec(deep_cmd_procrep_coverage(proc_static_ptr(Cur)), Pref, Deep,
-            MaybeProgrep, HTML, !IO),
+            HTML, !IO),
         write_test_html(Options, "procrep_coverage", Cur, HTML, !IO),
-        test_procrep_coverages(Cur + 1, Max, Pref, Deep, MaybeProgrep,
-            Options, !IO)
+        test_procrep_coverages(Cur + 1, Max, Pref, Deep, Options, !IO)
     ;
         true
     ).

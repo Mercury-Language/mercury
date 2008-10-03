@@ -27,8 +27,6 @@
 :- module query.
 :- interface.
 
-:- import_module mdbcomp.
-:- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
 :- import_module profile.
 
@@ -38,8 +36,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred try_exec(cmd::in, preferences::in, deep::in, maybe_error(prog_rep)::in,
-    string::out, io::di, io::uo) is cc_multi.
+:- pred try_exec(cmd::in, preferences::in, deep::in, string::out,
+    io::di, io::uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %
@@ -341,8 +339,8 @@
 
 %-----------------------------------------------------------------------------%
 
-try_exec(Cmd, Pref, Deep, MaybeProgrep, HTML, !IO) :-
-    try_io(exec(Cmd, Pref, Deep, MaybeProgrep), Result, !IO),
+try_exec(Cmd, Pref, Deep, HTML, !IO) :-
+    try_io(exec(Cmd, Pref, Deep), Result, !IO),
     (
         Result = succeeded(HTML)
     ;
@@ -371,10 +369,10 @@ try_exec(Cmd, Pref, Deep, MaybeProgrep, HTML, !IO) :-
             [s(Msg)])
     ).
 
-:- pred exec(cmd::in, preferences::in, deep::in, maybe_error(prog_rep)::in,
+:- pred exec(cmd::in, preferences::in, deep::in,
     string::out, io::di, io::uo) is det.
 
-exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO) :-
+exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
     % XXX While we are working on converting the deep profiler to use
     % the new report structures, we can use the presence or absence
     % of this file to tell mdprof_cgi which method we want to use at the
@@ -412,20 +410,20 @@ exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO) :-
             old_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
         ;
             FileExists = no,
-            new_exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO)
+            new_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
         )
     ;
         Cmd = deep_cmd_procrep_coverage(_),
-        new_exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO)
+        new_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
     ).
 
     % Run the command through the new report generation code.
     %
-:- pred new_exec(cmd::in, preferences::in, deep::in, maybe_error(prog_rep)::in,
-    string::out, io::di, io::uo) is det.
+:- pred new_exec(cmd::in, preferences::in, deep::in, string::out,
+    io::di, io::uo) is det.
 
-new_exec(Cmd, Prefs, Deep, MaybeProgRep, HTMLStr, !IO) :-
-    create_report(Cmd, Deep, MaybeProgRep, Report),
+new_exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
+    create_report(Cmd, Deep, Report),
     Display = report_to_display(Deep, Prefs, Report),
     HTML = htmlize_display(Deep, Prefs, Display),
     HTMLStr = html_to_string(HTML).

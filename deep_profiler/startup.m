@@ -20,8 +20,6 @@
 :- interface.
 
 :- import_module dump.
-:- import_module mdbcomp.
-:- import_module mdbcomp.program_representation.
 :- import_module profile.
 
 :- import_module bool.
@@ -31,27 +29,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    % The result of read_and_startup below.
-    %
-:- type maybe_deep_and_progrep
-    --->    error(string)
-                % This error was raised while reading the Deep data.
+:- pred read_and_startup_default_deep_options(string::in, string::in,
+    string::in, bool::in, maybe(io.output_stream)::in, list(string)::in,
+    maybe_error(deep)::out, io::di, io::uo) is det.
 
-    ;       deep_and_error(deep, string)
-                % The Deep data was read succesfully, but the reading the
-                % Progrep data raised an error.
-                
-    ;       deep_and_progrep(deep, prog_rep).
-                % Both Deep and Progrep files where read successfully.
-
-
-:- pred read_and_startup(string::in, string::in, string::in, bool::in,
-    maybe(io.output_stream)::in, list(string)::in, maybe_deep_and_progrep::out,
-    io::di, io::uo) is det.
-
-:- pred read_and_startup(string::in, string::in, string::in, bool::in,
-    maybe(io.output_stream)::in, list(string)::in, dump_options::in,
-    maybe_deep_and_progrep::out, io::di, io::uo) is det.
+:- pred read_and_startup(string::in, string::in,
+    string::in, bool::in, maybe(io.output_stream)::in, list(string)::in,
+    dump_options::in, maybe_error(deep)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -62,6 +46,8 @@
 :- import_module callgraph.
 :- import_module canonical.
 :- import_module exclude.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module measurements.
 :- import_module profile.
 :- import_module read_profile.
@@ -76,46 +62,58 @@
 
 %-----------------------------------------------------------------------------%
 
-read_and_startup(Machine, ScriptName, DataFileName, Canonical,
-        MaybeOutputStream, DumpStages, Res, !IO) :-
+read_and_startup_default_deep_options(Machine, ScriptName, DataFileName,
+        Canonical, MaybeOutputStream, DumpStages, Res, !IO) :-
     read_and_startup(Machine, ScriptName, DataFileName, Canonical,
         MaybeOutputStream, DumpStages, default_dump_options, Res, !IO).
 
 read_and_startup(Machine, ScriptName, DataFileName, Canonical,
-        MaybeOutputStream, DumpStages, DumpOptions, Res, !IO) :-
+        MaybeOutputStream, DumpStages, DumpOptions, Result, !IO) :-
     maybe_report_stats(MaybeOutputStream, !IO),
     maybe_report_msg(MaybeOutputStream,
         "% Reading graph data...\n", !IO),
-    read_call_graph(DataFileName, Res0, !IO),
+    read_call_graph(DataFileName, DataFileResult, !IO),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
     (
-        Res0 = ok(InitDeep),
-        startup(Machine, ScriptName, DataFileName, 
+        DataFileResult = ok(InitDeep),
+        startup(Machine, ScriptName, DataFileName,
             Canonical, MaybeOutputStream, DumpStages, DumpOptions,
-            InitDeep, Deep, !IO),
-        ProgrepFileName = make_progrep_filename(DataFileName),
+            InitDeep, Deep0, !IO),
+        ProgRepFileName = make_progrep_filename(DataFileName),
         maybe_report_msg(MaybeOutputStream,
-            "% Reading progrep data...\n", !IO),
-        read_prog_rep_file(ProgrepFileName, Res1, !IO),
+            "% Reading program representation...\n", !IO),
+        read_prog_rep_file(ProgRepFileName, ProgRepResult, !IO),
         (
-            Res1 = ok(Progrep),
+            ProgRepResult = ok(ProgRep),
             maybe_report_msg(MaybeOutputStream,
                 "% Done.\n", !IO),
-            Res = deep_and_progrep(Deep, Progrep)
+            Deep = Deep0 ^ procrep_file := yes(ok(ProgRep))
         ;
-            Res1 = error(Error),
-            ErrorMessage = io.error_message(Error),
-            maybe_report_msg(MaybeOutputStream,
-                "% Error: " ++ ErrorMessage ++ "\n", !IO),
-            % This error isn't displayed until a query needs the progrep
-            % data.
-            Res = deep_and_error(Deep, ErrorMessage)
-        )
+            ProgRepResult = error(Error),
+            (
+                io.open_input(ProgRepFileName, OpenProgRepResult, !IO),
+                (
+                    OpenProgRepResult = ok(ProgRepStream),
+                    % The file exists, so the error message describes something
+                    % wrong with the file.
+                    io.close_input(ProgRepStream, !IO),
+                    ErrorMessage = io.error_message(Error),
+                    maybe_report_msg(MaybeOutputStream,
+                        "% Error: " ++ ErrorMessage ++ "\n", !IO),
+                    Deep = Deep0 ^ procrep_file := yes(error(ErrorMessage))
+                ;
+                    OpenProgRepResult = error(_),
+                    % The file does not exist.
+                    Deep = Deep0 ^ procrep_file := no
+                )
+            )
+        ),
+        Result = ok(Deep)
     ;
-        Res0 = error(Error),
-        Res = error(Error)
+        DataFileResult = error(Error),
+        Result = error(Error)
     ).
 
 :- func make_progrep_filename(string) = string.
@@ -124,8 +122,7 @@ make_progrep_filename(DataFileName) = ProgrepFileName :-
     ( remove_suffix(DataFileName, ".data", BaseFileName) ->
         ProgrepFileName = BaseFileName ++ ".procrep"
     ;
-        error("Couldn't remove suffix from deep file name: " ++
-            DataFileName)
+        error("Couldn't remove suffix from deep file name: " ++ DataFileName)
     ).
 
 :- pred startup(string::in, string::in, string::in, bool::in,
@@ -262,16 +259,20 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
     array.init(NCSDs, map.init, CSDCompTable0),
 
     ModuleData = map.map_values(initialize_module_data, ModuleProcs),
-    % The field holding DummyExcludeError is given its proper, non-dummy value
-    % a few calls below.
+    % The field holding DummyMaybeExcludeFile is given its proper,
+    % non-dummy value a few calls below.
     DummyMaybeExcludeFile = no,
+    % The field holding DummyMaybeProcRepFile is given its proper,
+    % non-dummy value outside this predicate.
+    DummyMaybeProcRepFile = no,
     !:Deep = deep(InitStats, Machine, ScriptName, DataFileName, Root,
         CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics,
         CliqueIndex, Cliques, CliqueParents, CliqueMaybeChildren,
         ProcCallers, CallSiteStaticMap, CallSiteCalls,
         PDOwn, PDDesc0, CSDDesc0,
         PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
-        PDCompTable0, CSDCompTable0, ModuleData, DummyMaybeExcludeFile),
+        PDCompTable0, CSDCompTable0, ModuleData,
+        DummyMaybeExcludeFile, DummyMaybeProcRepFile),
 
     read_exclude_file(contour_file_name(DataFileName), !.Deep,
         MaybeMaybeExcludeFile, !IO),

@@ -16,23 +16,21 @@
 :- module create_report.
 :- interface.
 
-:- import_module maybe.
-:- import_module mdbcomp.
-:- import_module mdbcomp.program_representation.
 :- import_module profile.
 :- import_module query.
 :- import_module report.
 
 %-----------------------------------------------------------------------------%
 
-:- pred create_report(cmd::in, deep::in, maybe_error(prog_rep)::in,
-    deep_report::out) is det.
+:- pred create_report(cmd::in, deep::in, deep_report::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module apply_exclusion.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
 :- import_module measurements.
 :- import_module program_representation_utils.
@@ -55,7 +53,7 @@
 
 %-----------------------------------------------------------------------------%
 
-create_report(Cmd, Deep, MaybeProgRep, Report) :-
+create_report(Cmd, Deep, Report) :-
     (
         Cmd = deep_cmd_quit,
         Msg = string.format("Shutting down deep profile server for %s.",
@@ -101,15 +99,8 @@ create_report(Cmd, Deep, MaybeProgRep, Report) :-
         Report = report_top_procs(MaybeTopProcsReport)
     ;
         Cmd = deep_cmd_procrep_coverage(PSPtr),
-        (
-            MaybeProgRep = ok(ProgRep),
-            generate_procrep_coverage_dump_report(Deep, ProgRep, PSPtr,
-                MaybeProcrepCoverageReport)
-        ;
-            MaybeProgRep = error(Error),
-            MaybeProcrepCoverageReport =
-                error("No procedure representation information: " ++ Error)
-        ),
+        generate_procrep_coverage_dump_report(Deep, PSPtr,
+            MaybeProcrepCoverageReport),
         Report = report_procrep_coverage_dump(MaybeProcrepCoverageReport)
     ;
         Cmd = deep_cmd_proc(PSPtr),
@@ -868,38 +859,50 @@ create_proc_caller_cliques(Deep, CalleePSPtr, CliquePtr - CSDPtrs) =
 % Code to generate the coverage annotated procedure representation report.
 %
 
-:- pred generate_procrep_coverage_dump_report(deep::in, prog_rep::in,
+:- pred generate_procrep_coverage_dump_report(deep::in,
     proc_static_ptr::in, maybe_error(procrep_coverage_info)::out) is det.
 
-generate_procrep_coverage_dump_report(Deep, ProgRep, PSPtr, MaybeReport) :-
-    ( valid_proc_static_ptr(Deep, PSPtr) ->
-        deep_lookup_proc_statics(Deep, PSPtr, PS),
-        ProcLabel = PS ^ ps_id,
-        ( progrep_search_proc(ProgRep, ProcLabel, ProcRep0) ->
-            % Information about the procedure.
-            deep_lookup_ps_own(Deep, PSPtr, Own),
-
-            % Gather call site information.
-            CallSitesArray = PS ^ ps_sites,
-            array.foldl(create_cs_summary_add_to_map(Deep), CallSitesArray,
-                map.init) = CallSitesMap,
-
-            % Gather information about coverage points.
-            CoveragePointsArray = PS ^ ps_coverage_points,
-            array.foldl2(add_coverage_point_to_map, CoveragePointsArray,
-                map.init, SolnsCoveragePointMap,
-                map.init, BranchCoveragePointMap),
-
-            procrep_annotate_with_coverage(Own, CallSitesMap,
-                SolnsCoveragePointMap, BranchCoveragePointMap,
-                ProcRep0, ProcRep),
-            MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep))
-        ;
-            MaybeReport =
-                error("Program Representation doesn't contain procedure")
-        )
+generate_procrep_coverage_dump_report(Deep, PSPtr, MaybeReport) :-
+    MaybeProgRepResult = Deep ^ procrep_file,
+    (
+        MaybeProgRepResult = no,
+        MaybeReport = error("There is no readable " ++
+            "procedure representation information file.")
     ;
-        MaybeReport = error("Invalid proc_static index")
+        MaybeProgRepResult = yes(error(Error)),
+        MaybeReport = error("Error reading procedure representation " ++
+            "information file: " ++ Error)
+    ;
+        MaybeProgRepResult = yes(ok(ProgRep)),
+        ( valid_proc_static_ptr(Deep, PSPtr) ->
+            deep_lookup_proc_statics(Deep, PSPtr, PS),
+            ProcLabel = PS ^ ps_id,
+            ( progrep_search_proc(ProgRep, ProcLabel, ProcRep0) ->
+                % Information about the procedure.
+                deep_lookup_ps_own(Deep, PSPtr, Own),
+
+                % Gather call site information.
+                CallSitesArray = PS ^ ps_sites,
+                array.foldl(create_cs_summary_add_to_map(Deep), CallSitesArray,
+                    map.init) = CallSitesMap,
+
+                % Gather information about coverage points.
+                CoveragePointsArray = PS ^ ps_coverage_points,
+                array.foldl2(add_coverage_point_to_map, CoveragePointsArray,
+                    map.init, SolnsCoveragePointMap,
+                    map.init, BranchCoveragePointMap),
+
+                procrep_annotate_with_coverage(Own, CallSitesMap,
+                    SolnsCoveragePointMap, BranchCoveragePointMap,
+                    ProcRep0, ProcRep),
+                MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep))
+            ;
+                MaybeReport =
+                    error("Program Representation doesn't contain procedure")
+            )
+        ;
+            MaybeReport = error("Invalid proc_static index")
+        )
     ).
 
 :- func create_cs_summary_add_to_map(deep, call_site_static_ptr,

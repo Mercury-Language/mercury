@@ -124,7 +124,15 @@
                 % MaybeExcludeFile = ok(ExcludeFile). The other case is
                 % MaybeExcludeFile = error(ErrorMsg), which shows that the
                 % contour exclusion file was malformed.
-                exclude_contour_file    :: maybe(maybe_error(exclude_file))
+                exclude_contour_file    :: maybe(maybe_error(exclude_file)),
+
+                % If this field is `no', then there is no (readable) proc
+                % representation file. If this field is yes(MaybeProcRepFile),
+                % then there are again two possibilities. The normal case is
+                % MaybeProcRepFile = ok(ProcRepFile). The other case is
+                % MaybeProcRepFile = error(ErrorMsg), which shows that the
+                % proc representation file was malformed.
+                procrep_file            :: maybe(maybe_error(prog_rep))
             ).
 
 :- type compensation_table == map(proc_static_ptr, inherit_prof_info).

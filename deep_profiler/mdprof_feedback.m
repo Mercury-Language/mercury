@@ -83,14 +83,9 @@ main(!IO) :-
             check_options(Options, RequestedFeedbackInfo)
         ->
             lookup_bool_option(Options, verbose, Verbose),
-            read_deep_file(InputFileName, Verbose, MaybeDeepAndProgRep, !IO),
+            read_deep_file(InputFileName, Verbose, MaybeDeep, !IO),
             (
-                ( 
-                    MaybeDeepAndProgRep = deep_and_error(Deep, _ProgRepError)
-                ; 
-                    % _ProgRep will be used by a later version of this program.
-                    MaybeDeepAndProgRep = deep_and_progrep(Deep, _ProgRep)
-                ),
+                MaybeDeep = ok(Deep),
                 feedback.read_or_create(OutputFileName, FeedbackReadResult,
                     !IO),
                 (
@@ -120,7 +115,7 @@ main(!IO) :-
                     io.set_exit_status(1, !IO)
                 )
             ;
-                MaybeDeepAndProgRep = error(Error),
+                MaybeDeep = error(Error),
                 io.stderr_stream(Stderr, !IO),
                 io.set_exit_status(1, !IO),
                 io.format(Stderr, "%s: error reading %s: %s\n",
@@ -213,10 +208,10 @@ write_version_message(ProgName, !IO) :-
 
     % Read a deep profiling data file.
     %
-:- pred read_deep_file(string::in, bool::in, maybe_deep_and_progrep::out,
+:- pred read_deep_file(string::in, bool::in, maybe_error(deep)::out,
     io::di, io::uo) is det.
 
-read_deep_file(Input, Verbose, MaybeDeepAndProgrep, !IO) :-
+read_deep_file(Input, Verbose, MaybeDeep, !IO) :-
     server_name_port(Machine, !IO),
     script_name(ScriptName, !IO),
     (
@@ -227,8 +222,8 @@ read_deep_file(Input, Verbose, MaybeDeepAndProgrep, !IO) :-
         Verbose = no,
         MaybeOutput = no
     ),
-    read_and_startup(Machine, ScriptName, Input, no, MaybeOutput,
-        [], MaybeDeepAndProgrep, !IO).
+    read_and_startup_default_deep_options(Machine, ScriptName, Input, no,
+        MaybeOutput, [], MaybeDeep, !IO).
 
 %----------------------------------------------------------------------------%
 %
