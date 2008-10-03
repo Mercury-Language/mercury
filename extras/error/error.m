@@ -1,22 +1,20 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2000,2003, 2006-2007 The University of Melbourne.
+% vim: ts=4 sw=4 et ft=mercury
+%------------------------------------------------------------------------------%
+% Copyright (C) 2000,2003, 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
 % Author: Tom Conway <conway@cs.mu.oz.au>
 %
-% Modifications by:	Tyson Dowd <trd@cs.mu.oz.au>
+% Modifications by: Tyson Dowd <trd@cs.mu.oz.au>
 %
 % error: a tool like the old unix tool of the same name.
 %
 % error will process compiler error message, and insert them into source
 % files as comments.  This means you can fix a bunch of errors all in a
 % single editing session.
-%
-% PLEASE NOTE: This is experimental software -- it will modify your
-% source files.  Please be sure to back up your work before using this
-% program.
 %
 % error takes a list of files on the command line, and looks for errors
 % in the common format:
@@ -41,18 +39,18 @@
 % error messages in this format, so does gcc).
 %
 % If the -v option is given, error will first insert the error messages,
-% and then invoke your editor on the list of files which contained errors.  
+% and then invoke your editor on the list of files which contained errors.
 % error looks in the environment variable EDITOR for your editor, and if
-% that isn't found, it will attempt to use the editor "vi".
+% that isn't found, it will attempt to use "vim".
 %
 % possible improvements:
-%	- better error handling
-%	- look for variables other than EDITOR 
-%	- usage message, help message
-%	- take input from stdin if no filenames given or if - is a
-%	  filename
-%	- handle options using getopt
-%	- handle other commenting styles than /* .... */
+%   - better error handling
+%   - look for variables other than EDITOR
+%   - usage message, help message
+%   - take input from stdin if no filenames given or if - is a
+%     filename
+%   - handle options using getopt
+%   - handle other commenting styles than /* .... */
 
 :- module error.
 
@@ -60,292 +58,273 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bool, char, int, list, map, maybe, pair, string.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module maybe.
+:- import_module pair.
+:- import_module string.
 
-:- type errors	== map(file, map(line_number, list(message))).
-
-:- type file	== string.
-
+:- type file_error_map == map(line_number, list(message)).
+:- type error_map == map(filename, file_error_map).
+:- type filename == string.
 :- type line_number == int.
+:- type message == string.
 
-:- type message	== string.
+main(!IO) :-
+    io.command_line_arguments(Args0, !IO),
+    ( Args0 = ["-v" | Args1] ->
+        InvokeEditor = yes,
+        Args = Args1
+    ;
+        InvokeEditor = no,
+        Args = Args0
+    ),
+    map.init(ErrorMap0),
+    read_error_files(Args, ErrorMap0, ErrorMap, [], ProblemMsgs,
+        [], IgnoreMsgs, !IO),
+    io.stderr_stream(StdErr, !IO),
+    (
+        ProblemMsgs = [_ | _],
+        list.foldl(io.write_string(StdErr), ProblemMsgs, !IO)
+    ;
+        ProblemMsgs = [],
+        % Print out all the lines in error files we couldn't parse.
+        list.foldl(io.write_string(StdErr), IgnoreMsgs, !IO),
 
-main -->
-	io__command_line_arguments(Args0),
-	{ Args0 = ["-v" | Args1] ->
-		EditErrors = yes,
-		Args = Args1
-	;
-		EditErrors = no,
-		Args = Args0
-	},
-	{ map__init(Errors0) },
-	read_error_files(Args, Errors0, MErrors),
-	(
-		{ MErrors = no }
-	;
-		{ MErrors = yes(Errors) },
-		process_errors(Errors),
-		( { EditErrors = yes } ->	
-			edit_errors(Errors)
-		;
-			[]	
-		)
-	).
+        % Insert all the error lines we COULD parse into the files they name.
+        process_error_map(ErrorMap, !IO),
+        (
+            InvokeEditor = yes,
+            invoke_editor(ErrorMap, !IO)
+        ;
+            InvokeEditor = no
+        )
+    ).
 
 %------------------------------------------------------------------------------%
 
-:- pred read_error_files(list(string), errors, maybe(errors),
-		io__state, io__state).
-:- mode read_error_files(in, in, out, di, uo) is det.
+:- pred read_error_files(list(string)::in, error_map::in, error_map::out,
+    list(string)::in, list(string)::out, list(string)::in, list(string)::out,
+    io::di, io::uo) is det.
 
-read_error_files([], Errors, yes(Errors)) --> [].
-read_error_files([Name|Names], Errors0, MErrors) -->
-	io__see(Name, Res),
-	(
-		{ Res = ok },
-		read_errors(Errors0, MErrors0),
-		io__seen,
-		(
-			{ MErrors0 = no },
-			{ MErrors = no }
-		;
-			{ MErrors0 = yes(Errors1) },
-			read_error_files(Names, Errors1, MErrors)
-		)
-	;
-		{ Res = error(Err) },
-		{ io__error_message(Err, Msg) },
-		io__stderr_stream(StdErr),
-		io__format(StdErr, "error: %s\n", [s(Msg)]),
-		{ MErrors = no }
-	).
+read_error_files([], !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO).
+read_error_files([FileName | FileNames], !ErrorMap, !ProblemMsgs, !IgnoreMsgs,
+        !IO) :-
+    io.open_input(FileName, Result, !IO),
+    (
+        Result = ok(Stream),
+        read_errors(Stream, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO),
+        io.close_input(Stream, !IO),
+        read_error_files(FileNames, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO)
+    ;
+        Result = error(Error),
+        io.error_message(Error, ErrorMsg),
+        string.format("error: %s\n", [s(ErrorMsg)], ProblemMsg),
+        !:ProblemMsgs = !.ProblemMsgs ++ [ProblemMsg]
+    ).
 
-:- pred read_errors(errors, maybe(errors), io__state, io__state).
-:- mode read_errors(in, out, di, uo) is det.
+:- pred read_errors(io.input_stream::in, error_map::in, error_map::out,
+    list(string)::in, list(string)::out, list(string)::in, list(string)::out,
+    io::di, io::uo) is det.
 
-read_errors(Errors0, MErrors) -->
-	io__read_line(Res),
-	(
-		{ Res = eof },
-		{ MErrors = yes(Errors0) }
-	;
-		{ Res = error(Err) },
-		{ io__error_message(Err, Msg) },
-		io__stderr_stream(StdErr),
-		io__format(StdErr, "error: %s\n", [s(Msg)]),
-		{ MErrors = no }
-	;
-		{ Res = ok(Chars) },
-		( { parse_error(Chars, File, Line, Message) } ->
-			{ insert_error(Errors0, File, Line, Message, Errors1) }
-		;
-			{ string__from_char_list(Chars, Str) },
-			io__stderr_stream(StdErr),
-			io__format(StdErr, "error: %s", [s(Str)]),
-			{ Errors1 = Errors0 }
-		),
-		read_errors(Errors1, MErrors)
-	).
+read_errors(Stream, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO) :-
+    io.read_line(Stream, Result, !IO),
+    (
+        Result = eof
+    ;
+        Result = error(Error),
+        io.error_message(Error, ErrorMsg),
+        string.format("error: %s\n", [s(ErrorMsg)], ProblemMsg),
+        !:ProblemMsgs = !.ProblemMsgs ++ [ProblemMsg]
+    ;
+        Result = ok(Chars),
+        ( parse_error(Chars, File, Line, Message) ->
+            insert_error(File, Line, Message, !ErrorMap)
+        ;
+            string.from_char_list(Chars, Str),
+            string.format("ignoring: %s", [s(Str)], IgnoreMsg),
+            !:IgnoreMsgs = !.IgnoreMsgs ++ [IgnoreMsg]
+        ),
+        read_errors(Stream, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO)
+    ).
 
-:- pred insert_error(errors, file, line_number, message, errors).
-:- mode insert_error(in, in, in, in, out) is det.
+:- pred insert_error(filename::in, line_number::in, message::in,
+    error_map::in, error_map::out) is det.
 
-insert_error(Errs0, File, Line, Message, Errs) :-
-	( search(Errs0, File, FileErrs0) ->
-		( search(FileErrs0, Line, Messages0) ->
-			append(Messages0, [Message], Messages)
-		;
-			Messages = [Message]
-		),
-		set(FileErrs0, Line, Messages, FileErrs)
-	;
-		map__from_assoc_list([Line - [Message]], FileErrs)
-	),
-	set(Errs0, File, FileErrs, Errs).
+insert_error(FileName, LineNumber, Message, ErrorMap0, ErrorMap) :-
+    ( map.search(ErrorMap0, FileName, FileMap0) ->
+        ( map.search(FileMap0, LineNumber, Messages0) ->
+            Messages = Messages0 ++ [Message]
+        ;
+            Messages = [Message]
+        ),
+        set(FileMap0, LineNumber, Messages, FileMap),
+        map.det_update(ErrorMap0, FileName, FileMap, ErrorMap)
+    ;
+        map.from_assoc_list([LineNumber - [Message]], FileMap),
+        map.det_insert(ErrorMap0, FileName, FileMap, ErrorMap)
+    ).
 
-:- pred parse_error(list(char), file, line_number, message).
-:- mode parse_error(in, out, out, out) is semidet.
+:- pred parse_error(list(char)::in, filename::out, line_number::out,
+    message::out) is semidet.
 
 parse_error(Chars, File, Line, Message) :-
-	takewhile((pred(C0::in) is semidet :-
-		C0 \= (':')
-	), Chars, FileChars, [_|Rest0]),
-	takewhile((pred(C1::in) is semidet :-
-		C1 \= (':')
-	), Rest0, LineChars, [_|Rest1]), % throw away the :
-	takewhile((pred(C2::in) is semidet :-
-		C2 \= ('\n')
-	), Rest1, MsgChars, _),
-	string__from_char_list(FileChars, File),
-	string__from_char_list(LineChars, LineStr),
-	string__to_int(LineStr, Line),
-	string__from_char_list(MsgChars, Message).
+    takewhile((pred(C0::in) is semidet :-
+        C0 \= (':')
+    ), Chars, FileChars, [_|Rest0]),
+    takewhile((pred(C1::in) is semidet :-
+        C1 \= (':')
+    ), Rest0, LineChars, [_|Rest1]), % throw away the :
+    takewhile((pred(C2::in) is semidet :-
+        C2 \= ('\n')
+    ), Rest1, MsgChars, _),
+    string.from_char_list(FileChars, File),
+    string.from_char_list(LineChars, LineStr),
+    string.to_int(LineStr, Line),
+    string.from_char_list(MsgChars, Message).
 
 %------------------------------------------------------------------------------%
 
-:- pred process_errors(errors, io__state, io__state).
-:- mode process_errors(in, di, uo) is det.
+:- pred process_error_map(error_map::in, io::di, io::uo) is det.
 
-process_errors(Errors) -->
-	{ map__to_assoc_list(Errors, FileErrorList) },
-	process_2(FileErrorList).
+process_error_map(ErrorMap, !IO) :-
+    map.to_assoc_list(ErrorMap, ErrorList),
+    process_error_map_2(ErrorList, !IO).
 
-:- pred process_2(list(pair(file, map(line_number, list(message)))),
-		io__state, io__state).
-:- mode process_2(in, di, uo) is det.
+:- pred process_error_map_2(assoc_list(filename, file_error_map)::in,
+    io::di, io::uo) is det.
 
-process_2([]) --> [].
-process_2([File - FileErrors|Rest]) -->
-	{ map__to_assoc_list(FileErrors, LineErrorList) },
-	{ string__append(File, ".orig", OrigFile) },
-	rename(File, OrigFile, Res0),
-	(
-		{ Res0 = yes },
-		io__see(OrigFile, Res1),
-		(
-			{ Res1 = ok },
-			io__tell(File, Res2),
-			(
-				{ Res2 = ok },
-				merge_file(LineErrorList, 1),
-				io__told,
-				io__remove_file(OrigFile, _),
-				% io__stderr_stream(StdErr),
-				io__write_string(File),
-				io__nl
-			;
-				{ Res2 = error(Err) },
-				{ io__error_message(Err, Msg) },
-				io__stderr_stream(StdErr),
-				io__format(StdErr, "error: %s\n", [s(Msg)]),
-				rename(OrigFile, File, _)
-			),
-			io__seen
-		;
-			{ Res1 = error(Err) },
-			{ io__error_message(Err, Msg) },
-			io__stderr_stream(StdErr),
-			io__format(StdErr, "error: %s\n", [s(Msg)]),
-			rename(OrigFile, File, _)
-		)
-	;
-		{ Res0 = no },
-		io__stderr_stream(StdErr),
-		io__write_string(StdErr, "error: unable to rename file.\n")
-	),
-	process_2(Rest).
+process_error_map_2([], !IO).
+process_error_map_2([Head | Tail], !IO) :-
+    Head = FileName - FileErrorMap,
+    map.to_assoc_list(FileErrorMap, FileErrorList),
+    string.append(FileName, ".orig", OrigFileName),
+    io.rename_file(FileName, OrigFileName, RenameResult, !IO),
+    (
+        RenameResult = ok,
+        io.open_input(OrigFileName, InputResult, !IO),
+        (
+            InputResult = ok(InputStream),
+            io.open_output(FileName, Res2, !IO),
+            (
+                Res2 = ok(OutputStream),
+                merge_file(InputStream, OutputStream, FileErrorList, 1, !IO),
+                io.close_output(OutputStream, !IO),
+                % There is nothing we can do if the remove fails.
+                io.remove_file(OrigFileName, _RemoveResult, !IO),
 
-:- pred merge_file(list(pair(line_number, list(message))), int,
-	io__state, io__state).
-:- mode merge_file(in, in, di, uo) is det.
+                % progress message.
+                io.format("updated %s\n", [s(FileName)], !IO)
+            ;
+                Res2 = error(Err),
+                io.error_message(Err, Msg),
+                io.stderr_stream(StdErr, !IO),
+                io.format(StdErr, "error: %s\n", [s(Msg)], !IO),
+                io.rename_file(OrigFileName, FileName, _, !IO)
+            ),
+            io.close_input(InputStream, !IO)
+        ;
+            InputResult = error(Error),
+            io.error_message(Error, ErrorMsg),
+            io.stderr_stream(StdErr, !IO),
+            io.format(StdErr, "error: %s\n", [s(ErrorMsg)], !IO),
+            % There is nothing we can do if the rename fails.
+            io.rename_file(OrigFileName, FileName, _RenameResult, !IO)
+        )
+    ;
+        RenameResult = error(Error),
+        io.error_message(Error, ErrorMsg),
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr, "error: cannot rename file: %s.\n", [s(ErrorMsg)],
+            !IO)
+    ),
+    process_error_map_2(Tail, !IO).
 
-merge_file([], _) -->
-	copy_rest.
-merge_file([ELine - Errors|Rest], CurrentLine) -->
-	( { ELine =< CurrentLine } ->
-		foldl((pred(Error::in, di, uo) is det -->
-			io__write_string("/* ###"),
-			io__write_string(Error),
-			io__write_string(" */\n")
-		), Errors),
-		merge_file(Rest, CurrentLine)
-	;
-		io__read_line(Res0),
-		(
-			{ Res0 = eof },
-			error_rest([ELine - Errors|Rest])
-		;
-			{ Res0 = error(Err) },
-			{ io__error_message(Err, Msg) },
-			io__stderr_stream(StdErr),
-			io__format(StdErr, "error: %s\n", [s(Msg)])
-		;
-			{ Res0 = ok(Chars) },
-			{ string__from_char_list(Chars, Str) },
-			io__write_string(Str),
-			merge_file([ELine - Errors|Rest], CurrentLine + 1)
-		)
-	).
+:- pred merge_file(io.input_stream::in, io.output_stream::in,
+    assoc_list(line_number, list(message))::in, int::in, io::di, io::uo)
+    is det.
 
-:- pred copy_rest(io__state, io__state).
-:- mode copy_rest(di, uo) is det.
+merge_file(InputStream, OutputStream, [], _, !IO) :-
+    copy_rest(InputStream, OutputStream, !IO).
+merge_file(InputStream, OutputStream, [Head | Tail], CurrentLineNumber, !IO) :-
+    Head = LineNumber - Msgs,
+    ( LineNumber =< CurrentLineNumber ->
+        CommentMsgs = list.map(make_comment, Msgs),
+        list.foldl(io.write_string(OutputStream), CommentMsgs, !IO),
+        merge_file(InputStream, OutputStream, Tail, CurrentLineNumber, !IO)
+    ;
+        io.read_line(InputStream, Res0, !IO),
+        (
+            Res0 = eof,
+            error_rest(OutputStream, [Head | Tail], !IO)
+        ;
+            Res0 = error(Err),
+            io.error_message(Err, Msg),
+            io.stderr_stream(StdErr, !IO),
+            io.format(StdErr, "error: %s\n", [s(Msg)], !IO)
+        ;
+            Res0 = ok(Chars),
+            string.from_char_list(Chars, Str),
+            io.write_string(OutputStream, Str, !IO),
+            merge_file(InputStream, OutputStream,
+                [Head | Tail], CurrentLineNumber + 1, !IO)
+        )
+    ).
 
-copy_rest -->
-	io__read_line(Res0),
-	(
-		{ Res0 = eof }
-	;
-		{ Res0 = error(Err) },
-		{ io__error_message(Err, Msg) },
-		io__stderr_stream(StdErr),
-		io__format(StdErr, "error: %s\n", [s(Msg)])
-	;
-		{ Res0 = ok(Chars) },
-		{ string__from_char_list(Chars, Str) },
-		io__write_string(Str),
-		copy_rest
-	).
+:- pred copy_rest(io.input_stream::in, io.output_stream::in, io::di, io::uo)
+    is det.
 
-:- pred error_rest(list(pair(line_number, list(message))), io__state, io__state).
-:- mode error_rest(in, di, uo) is det.
+copy_rest(InputStream, OutputStream, !IO) :-
+    io.read_line(InputStream, Result, !IO),
+    (
+        Result = eof
+    ;
+        Result = error(Error),
+        io.error_message(Error, ErrorMsg),
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr, "error: %s\n", [s(ErrorMsg)], !IO)
+    ;
+        Result = ok(Chars),
+        string.from_char_list(Chars, Str),
+        io.write_string(OutputStream, Str, !IO),
+        copy_rest(InputStream, OutputStream, !IO)
+    ).
 
-error_rest([]) --> [].
-error_rest([_Line - Messages|Rest]) -->
-	foldl((pred(Error::in, di, uo) is det -->
-		io__write_string("/* ### "),
-		io__write_string(Error),
-		io__write_string(" */\n")
-	), Messages),
-	error_rest(Rest).
+:- pred error_rest(io.output_stream::in,
+    assoc_list(line_number, list(message))::in, io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
+error_rest(_OutputStream, [], !IO).
+error_rest(OutputStream, [Head | Tail], !IO) :-
+    Head = _LineNumber - Msgs,
+    CommentMsgs = list.map(make_comment, Msgs),
+    list.foldl(io.write_string(OutputStream), CommentMsgs, !IO),
+    error_rest(OutputStream, Tail, !IO).
 
-:- pragma foreign_decl("C", "#include <unistd.h>").
+:- func make_comment(string) = string.
 
-:- pred rename(string, string, bool, io__state, io__state).
-:- mode rename(in, in, out, di, uo) is det.
-
-:- pragma foreign_proc("C",
-	rename(Old::in, New::in, Res::out, IO0::di, IO::uo),
-	[promise_pure, will_not_call_mercury],
-"
-	int err;
-	err = rename(Old, New);
-	Res = (err == 0 ? MR_YES : MR_NO);
-	IO = IO0;
-").
+make_comment(Msg) = "/* ### " ++ Msg ++ " */\n".
 
 %------------------------------------------------------------------------------%
 
-:- pred edit_errors(errors, io__state, io__state).
-:- mode edit_errors(in, di, uo) is det.
+:- pred invoke_editor(error_map::in, io::di, io::uo) is det.
 
-edit_errors(Errors) -->
-		% Get the editor
-	io__get_environment_var("EDITOR", MaybeEditor),
-	{ Editor = (if MaybeEditor = yes(Editor0) then Editor0 else "vi" ) },
+invoke_editor(ErrorMap, !IO) :-
+    io.get_environment_var("EDITOR", MaybeEditor, !IO),
+    Editor = (if MaybeEditor = yes(Editor0) then Editor0 else "vim" ),
 
-		% Get all the files in reverse order
-	{ map__sorted_keys(Errors, FileList0) },
-	{ list__reverse(FileList0, FileList) },
+    map.sorted_keys(ErrorMap, FileNames),
+    AllFileNames = string.join_list(" ", FileNames),
 
-		% Append all the filenames together (this will reverse
-		% the order again.
-	{ list__foldl((pred(X::in, Y::in, Z::out) is det :-
-			string__append(" ", X, XSpace),
-			string__append(XSpace, Y, Z)),
-		FileList, "", FilesString) },
-	{ string__format("%s +/### %s", [s(Editor), s(FilesString)], 
-		CommandStr) },
-
-		% XXX we ignore the error status, that isn't nice.
-	io__call_system(CommandStr, _Res).
-
+    string.format("%s +/### %s", [s(Editor), s(AllFileNames)], CommandStr),
+    % XXX We ignore the error status, which isn't nice.
+    io.call_system(CommandStr, _Res, !IO).
