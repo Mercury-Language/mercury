@@ -617,13 +617,6 @@ create_call_site_summary(Deep, CSSPtr) = CallSitePerf :-
     deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
     KindAndCallee = CSS ^ css_kind,
     CallerPSPtr = CSS ^ css_container,
-    GoalPathString = CSS ^ css_goal_path,
-    ( goal_path_from_string(GoalPathString, GoalPathPrime) ->
-        GoalPath = GoalPathPrime
-    ;
-        error("create_call_site_summary: " ++
-            "Couldn't convert string to goal path: " ++ GoalPathString)
-    ),
 
     deep_lookup_call_site_calls(Deep, CSSPtr, CallSiteCallMap),
     map.to_assoc_list(CallSiteCallMap, CallSiteCalls),
@@ -675,8 +668,7 @@ create_call_site_summary(Deep, CSSPtr) = CallSitePerf :-
         own_and_inherit_to_perf_row_data(Deep, CallSiteDesc, SumOwn, SumDesc,
             SummaryRowData)
     ),
-    CallSitePerf = call_site_perf(KindAndInfo, SummaryRowData, SubRowDatas,
-        GoalPath).
+    CallSitePerf = call_site_perf(KindAndInfo, SummaryRowData, SubRowDatas).
 
 :- type call_site_callee_perf
     --->    call_site_callee_perf(
@@ -910,7 +902,8 @@ generate_procrep_coverage_dump_report(Deep, PSPtr, MaybeReport) :-
 
 create_cs_summary_add_to_map(Deep, CSStatic, Map0) = Map :-
     create_call_site_summary(Deep, CSStatic) = CSSummary,
-    GoalPath = CSSummary ^ csf_goal_path,
+    GoalPath = CSSummary ^ csf_summary_perf ^ perf_row_subject 
+        ^ csdesc_goal_path,
     map.det_insert(Map0, GoalPath, CSSummary, Map).
 
 :- pred add_coverage_point_to_map(coverage_point::in,
@@ -1189,17 +1182,18 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
     ( valid_call_site_static_ptr(Deep, CSSPtr) ->
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
         CSS = call_site_static(ContainingPSPtr, SlotNumber, _Kind, LineNumber,
-            GoalPath),
+            GoalPathString),
         deep_lookup_proc_statics(Deep, ContainingPSPtr, ContainingPS),
         FileName = ContainingPS ^ ps_file_name,
-        RefinedName = ContainingPS ^ ps_refined_id
+        RefinedName = ContainingPS ^ ps_refined_id,
+        goal_path_from_string_det(GoalPathString, GoalPath)
     ;
         ContainingPSPtr = dummy_proc_static_ptr,
         FileName = "",
         LineNumber = 0,
         RefinedName = "mercury_runtime",
         SlotNumber = -1,
-        GoalPath = ""
+        GoalPath = empty_goal_path 
     ),
     CallSiteDesc = call_site_desc(CSSPtr, ContainingPSPtr,
         FileName, LineNumber, RefinedName, SlotNumber, GoalPath).

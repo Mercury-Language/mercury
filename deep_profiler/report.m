@@ -189,8 +189,7 @@
                 csf_kind                    :: call_site_kind_and_info(
                                                 normal_callee_id),
                 csf_summary_perf            :: perf_row_data(call_site_desc),
-                csf_sub_callees             :: list(perf_row_data(proc_desc)),
-                csf_goal_path               :: goal_path
+                csf_sub_callees             :: list(perf_row_data(proc_desc))
             ).
 
 :- type normal_callee_id
@@ -417,7 +416,7 @@
                 csdesc_line_number          :: int,
                 csdesc_caller_refined_name  :: string,
                 csdesc_slot_number          :: int,
-                csdesc_goal_path            :: string
+                csdesc_goal_path            :: goal_path 
             ).
 
 :- type ancestor_desc

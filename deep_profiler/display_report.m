@@ -844,7 +844,7 @@ display_report_proc(Prefs, ProcReport, Display) :-
 
 report_proc_call_site(Prefs, CallSitePerf) = Rows :-
     CallSitePerf =
-        call_site_perf(KindAndCallee, SummaryPerfRowData, SubPerfs0, _),
+        call_site_perf(KindAndCallee, SummaryPerfRowData, SubPerfs0),
 
     CallSiteDesc = SummaryPerfRowData ^ perf_row_subject,
     ContextCell = call_site_desc_source_cell(CallSiteDesc),
@@ -3250,8 +3250,9 @@ proc_desc_to_prefix_proc_name_cell(Prefs, Attrs, ProcDesc, Prefix) = Cell :-
 call_site_desc_to_name_path_slot_cell(Prefs, CallSiteDesc) = Cell :-
     CallSiteDesc = call_site_desc(CSSPtr, _ContainerPSPtr,
         _FileName, _LineNumber, RefinedName, SlotNumber, GoalPath),
-    string.format("%s @ %s #%d", [s(RefinedName), s(GoalPath), i(SlotNumber)],
-        Name),
+    GoalPathStr = goal_path_to_string(GoalPath),
+    string.format("%s @ %s #%d", 
+        [s(RefinedName), s(GoalPathStr), i(SlotNumber)], Name),
     Cmd = deep_cmd_dump_call_site_static(CSSPtr),
     Link = deep_link(Cmd, yes(Prefs), attr_str([], Name), link_class_link),
     Cell = table_cell(td_l(Link)).
