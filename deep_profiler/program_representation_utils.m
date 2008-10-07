@@ -583,8 +583,6 @@ goal_annotate_coverage(Info, GoalPath, !Before, !After, Goal0, Goal) :-
     Goal0 = goal_rep(GoalExpr0, Detism, _),
 
     % Calculate coverage of any inner goals.
-    % XXX Why call propagate_detism_coverage only for cut scope goals and
-    % atomic goals?
     (
         GoalExpr0 = conj_rep(Conjuncts0),
         conj_annotate_coverage(Info, GoalPath, !Before, !After,
@@ -607,20 +605,13 @@ goal_annotate_coverage(Info, GoalPath, !Before, !After, Goal0, Goal) :-
         GoalExpr = ite_rep(Cond, Then, Else)
     ;
         GoalExpr0 = negation_rep(NegGoal0),
-        negation_annotate_coverage(Info, GoalPath, !Before, !After,
+        negation_annotate_coverage(Info, GoalPath, Detism, !Before, !After,
             NegGoal0, NegGoal),
-        propagate_detism_coverage(Detism, GoalPath, !Before, !After),
         GoalExpr = negation_rep(NegGoal)
     ;
         GoalExpr0 = scope_rep(ScopedGoal0, MaybeCut),
-        scope_annotate_coverage(Info, GoalPath, MaybeCut, !Before, !After,
-            ScopedGoal0, ScopedGoal),
-        (
-            MaybeCut = scope_is_cut,
-            propagate_detism_coverage(Detism, GoalPath, !Before, !After)
-        ;
-            MaybeCut = scope_is_no_cut
-        ),
+        scope_annotate_coverage(Info, GoalPath, MaybeCut, Detism, 
+            !Before, !After, ScopedGoal0, ScopedGoal),
         GoalExpr = scope_rep(ScopedGoal, MaybeCut)
     ;
         GoalExpr0 = atomic_goal_rep(Filename, Line, Vars, AtomicGoal),
@@ -767,7 +758,9 @@ conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, !Before, !After,
 disj_annotate_coverage(Info, Detism, GoalPath, !Before, !After,
         Disjs0, Disjs) :-
     % XXX In theory, we could update Before using information from any counter
-    % at the start of the difirst disjunct, but we don't do that (yet).
+    % at the start of the first disjunct, but we don't do that (yet).  This may
+    % not be useful for some disjunctions, for example those called from a
+    % single solution context or committed-choice.
     CoverageBefore = !.Before,
     Solutions = detism_get_solutions(Detism),
     disj_annotate_coverage_2(Info, GoalPath, 1, Solutions,
@@ -939,10 +932,12 @@ ite_annotate_coverage(Info, GoalPath, !Before, !After,
         BeforeThen0 = before_unknown,
         get_branch_start_coverage(Info, ThenGoalPath, BeforeThen1)
     ),
-    % XXX It should be possible, if the condition is not at_most_many,
-    % to compute BeforeElse as the difference between the counts in
-    % the initial value of !.Before and AfterCond, if both are known.
-    % check_ite_coverage already knows the relationship.
+    % XXX It should be possible, if the condition is not at_most_many and does
+    % not throw exceptions, to compute BeforeElse as the difference between the
+    % counts in the initial value of !.Before and AfterCond, if both are known.
+    % check_ite_coverage already knows the relationship.  Using exception
+    % counts on call goals and propagating them through the coverage annotation
+    % algorithms can solve this.
     get_branch_start_coverage(Info, ElseGoalPath, BeforeElse1),
 
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
@@ -1008,30 +1003,34 @@ get_branch_start_coverage(Info, GoalPath, Before) :-
     ).
 
 :- pred negation_annotate_coverage(coverage_reference_info::in, goal_path::in,
-    coverage_before::in, coverage_before::out,
+    detism_rep::in, coverage_before::in, coverage_before::out,
     coverage_after::in, coverage_after::out,
     goal_rep::in, goal_rep(coverage_info)::out) is det.
 
-negation_annotate_coverage(Info, GoalPath, !Before, !After,
+negation_annotate_coverage(Info, GoalPath, Detism, !Before, !After,
         NegGoal0, NegGoal) :-
-    % XXX We never update or even access !After.
     NegGoalPath = goal_path_add_at_end(GoalPath, step_neg),
     goal_annotate_coverage(Info, NegGoalPath,
         !Before, after_unknown, _CoverageAfter, NegGoal0, NegGoal),
+    % Set the coverage after based on the coverage before and the determinism
+    % of the entire goal.  There's no reason to update the coverage before this
+    % goal since it has already been applied to the inner goal.
+    propagate_detism_coverage(Detism, GoalPath, !.Before, _Before, !After), 
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
         io.format("Negation: setting negation: before %s, after %s\n",
             [s(string(!.Before)), s(string(!.After))], !IO)
     ).
 
 :- pred scope_annotate_coverage(coverage_reference_info::in,
-    goal_path::in, maybe_cut::in,
+    goal_path::in, maybe_cut::in, detism_rep::in,
     coverage_before::in, coverage_before::out,
     coverage_after::in, coverage_after::out,
     goal_rep::in, goal_rep(coverage_info)::out) is det.
 
-scope_annotate_coverage(Info, GoalPath, MaybeCut, !Before, !After,
+scope_annotate_coverage(Info, GoalPath, MaybeCut, Detism, !Before, !After,
         ScopedGoal0, ScopedGoal) :-
     ScopeGoalPath = goal_path_add_at_end(GoalPath, step_scope(MaybeCut)),
+    AfterScopeGoal = !.After,
     (
         MaybeCut = scope_is_cut,
         AfterScopedGoal0 = after_unknown
@@ -1043,7 +1042,16 @@ scope_annotate_coverage(Info, GoalPath, MaybeCut, !Before, !After,
         !Before, AfterScopedGoal0, AfterScopedGoal, ScopedGoal0, ScopedGoal),
     (
         MaybeCut = scope_is_cut,
-        !:After = after_unknown
+        (
+            AfterScopeGoal = after_known(_),
+            !:After = AfterScopeGoal
+        ;
+            AfterScopeGoal = after_unknown,
+            % If coverage is unknown after the scoped goal try to infer it from
+            % the determinism of the goal.
+            propagate_detism_coverage(Detism, GoalPath, !.Before, _Before,
+                after_unknown, !:After)
+        )
     ;
         MaybeCut = scope_is_no_cut,
         !:After = AfterScopedGoal
@@ -1077,7 +1085,10 @@ detism_coverage_ok(Coverage, Detism) = OK :-
             OK = yes
         ;
             Coverage = coverage_known(Entry, Exit),
-            ( Entry = Exit ->
+            % Execution may leave via the Excp port rather than the exit port.
+            % so the exit port count may be smaller than or equal to the entry
+            % port count.
+            ( Entry >= Exit ->
                 OK = yes
             ;
                 OK = no
@@ -1119,12 +1130,10 @@ detism_coverage_ok(Coverage, Detism) = OK :-
             ),
             OK = yes
         ;
-            Coverage = coverage_known(Entry, Exit),
-            ( Entry =< Exit ->
-                OK = yes
-            ;
-                OK = no
-            )
+            Coverage = coverage_known(_Entry, _Exit),
+            % If the goal throws exceptions no inequalities can be used to
+            % check the correctness of the coverage information.
+            OK = yes
         )
     ;
         Detism = nondet_rep,
@@ -1209,7 +1218,7 @@ sum_switch_case_coverage(case_rep(_, _, Goal), !Acc) :-
     detism_rep::in) is semidet.
 
 check_ite_coverage(Before, After, BeforeCond, AfterCond,
-        BeforeThen, AfterThen, BeforeElse, AfterElse, CondDetism) :-
+        BeforeThen, AfterThen, _BeforeElse, AfterElse, CondDetism) :-
     (
         Before = before_known(BeforeExecCount),
         BeforeCond = before_known(BeforeCondExecCount)
@@ -1235,29 +1244,22 @@ check_ite_coverage(Before, After, BeforeCond, AfterCond,
     ;
         true
     ),
-    NumSolutions = detism_get_solutions(CondDetism),
-    (
-        ( NumSolutions = at_most_zero_rep
-        ; NumSolutions = at_most_one_rep
-        ),
+    % Since the condition may throw exceptions and exception count information
+    % is not propagated checking the coverage before the else goal based on the
+    % coverage before and after the condition goal cannot be done.
+    
+    ( AfterCond = after_known(AfterCondExecCount2) ->
+        NumSolutions = detism_get_solutions(CondDetism),
         (
-            BeforeCond = before_known(BeforeCondExecCount2),
-            AfterCond = after_known(AfterCondExecCount2),
-            BeforeElse = before_known(BeforeElseExecCount)
-        ->
-            BeforeElseExecCount = BeforeCondExecCount2 - AfterCondExecCount2,
-            (
-                NumSolutions = at_most_zero_rep,
-                AfterCondExecCount2 = 0
-            ;
-                NumSolutions = at_most_one_rep
-            )
+            NumSolutions = at_most_zero_rep,
+            AfterCondExecCount2 = 0
         ;
-            true
+            ( NumSolutions = at_most_one_rep
+            ; NumSolutions = at_most_many_rep
+            )
         )
     ;
-        NumSolutions = at_most_many_rep
-        % There is no relationship we can check here.
+        true
     ).
 
 :- pred check_coverage_complete(coverage_info::in, goal_expr_rep(T)::in)
@@ -1364,6 +1366,10 @@ propagate_det_coverage(GoalPath, !Before, !After) :-
     % If the determinism is deterministic or cc_multi use
     % propagate_det_coverage.
     %
+    % Note: This predicate must not be called on deterministic call goals,
+    % since the coverage after the call may be different to the coverage before
+    % if the called code throws an exception.
+    %
 :- pred propagate_detism_coverage(detism_rep::in, goal_path::in,
     coverage_before::in, coverage_before::out,
     coverage_after::in, coverage_after::out) is det.
@@ -1371,10 +1377,10 @@ propagate_det_coverage(GoalPath, !Before, !After) :-
 propagate_detism_coverage(Detism, GoalPath, !Before, !After) :-
     % TODO: Infer that if a goal has a coverage of exactly 0 before it, then it
     % must have a coverage of exactly 0 after it.  And that a goal that cannot
-    % fail that has a coverage of 0 after it, must have a coverage of 0 before
-    % it - Since the coverage profiling and propagation algorithms are already
-    % complete this isn't required.  It should be considered if we choose not
-    % to calculate coverage for trivial goals.
+    % fail or throw an exception that has a coverage of 0 after it, must have a
+    % coverage of 0 before it - Since the coverage profiling and propagation
+    % algorithms are already complete this isn't required.  It should be
+    % considered if we choose not to calculate coverage for trivial goals.
     (
         ( Detism = det_rep
         ; Detism = cc_multidet_rep
