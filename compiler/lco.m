@@ -1021,17 +1021,9 @@ is_grounding(ModuleInfo, InstMap0, InstMap, Var - _AddrVar) :-
     hlds_goal::out) is det.
 
 make_store_goal(ModuleInfo, Var - AddrVar, Goal) :-
-    generate_simple_call(mercury_private_builtin_module, "store_at_ref",
-        pf_predicate, only_mode, detism_det, purity_pure, [AddrVar, Var],
-        [], [], ModuleInfo, term.context_init, Goal0),
-    %
-    % XXX the following hack is used to stop simplify from trying to
-    %      optimise the introduced call away.  store_at_ref/2 should
-    %      really be declared to be impure.
-    %
-    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    goal_info_set_purity(purity_impure, GoalInfo0, GoalInfo),
-    Goal  = hlds_goal(GoalExpr, GoalInfo).
+    generate_simple_call(mercury_private_builtin_module, "store_at_ref_impure",
+        pf_predicate, only_mode, detism_det, purity_impure, [AddrVar, Var],
+        [], [], ModuleInfo, term.context_init, Goal).
 
 %-----------------------------------------------------------------------------%
 

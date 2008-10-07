@@ -38,6 +38,7 @@ MCFLAGS-intermod_type_qual =	--intermodule-optimization
 MCFLAGS-intermod_type_qual2 =	--intermodule-optimization
 MCFLAGS-intermod_multimode =	--intermodule-optimization
 MCFLAGS-intermod_multimode_main = --intermodule-optimization
+MCFLAGS-lco_no_inline	    =	--optimize-constructor-last-call --no-inline-builtins
 MCFLAGS-reuse_ho            =	--ctgc --no-optimise-higher-order
 MCFLAGS-sharing_comb	    =	--ctgc --structure-sharing-widening 2
 MCFLAGS-uncond_reuse	    =	--ctgc

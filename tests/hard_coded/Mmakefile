@@ -138,6 +138,7 @@ ORDINARY_PROGS=	\
 	intermod_type_qual \
 	intermod_unused_args \
 	join_list \
+	lco_no_inline \
 	list_series_int \
 	loop_inv_test \
 	loop_inv_test1 \

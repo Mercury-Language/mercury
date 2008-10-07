@@ -1446,11 +1446,15 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
 
 :- pred unsafe_type_cast(T1::in, T2::out) is det.
 
-    % store_at_ref/2 is used internally by the compiler. Bad things
+    % store_at_ref_impure/2 is used internally by the compiler. Bad things
     % will happen if this is used in programs.
     %
+:- impure pred store_at_ref_impure(store_at_ref_type(T)::in, T::in) is det.
+
+    % This is deprecated. The compiler should now generate calls to
+    % store_at_ref_impure.
+    %
 :- pred store_at_ref(store_at_ref_type(T)::in, T::in) is det.
-% :- impure pred store_at_ref_impure(store_at_ref_type(T)::in, T::in) is det.
 
     % This type should be used only by the program transformation that
     % introduces calls to store_at_ref. Any other use is will cause bad things

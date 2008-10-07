@@ -347,6 +347,7 @@ EOF
             --no-no-det-warning-compound-compare-2007-07-17 \
             --foreign-enum-switch-fix \
             --no-ssdb \
+            --store-at-ref-impure-2008-09-11 \
             </dev/null >&AC_FD_CC 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
         # Test for the --record-term-sizes-as-words option.
