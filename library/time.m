@@ -331,7 +331,7 @@ time.times(Tms, Result, !IO) :-
         Result = Ret
     ).
 
-:- pragma foreign_decl(c, "
+:- pragma foreign_decl(c, local, "
 #ifdef MR_WIN32
     #include <windows.h>
     typedef union
@@ -347,7 +347,7 @@ time.times(Tms, Result, !IO) :-
 :- pragma foreign_proc("C",
     time.c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io, may_not_duplicate],
 "{
 #ifdef MR_HAVE_POSIX_TIMES
     struct tms t;
