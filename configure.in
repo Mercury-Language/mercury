@@ -835,6 +835,25 @@ else
     AC_MSG_RESULT([no])
 fi
 
+# Determine if we are on a system which has a restricted
+# command line length.  This is true if we are building
+# under mingw or using the MS C compiler
+RESTRICTED_COMMAND_LINE_OPT=
+case "$host" in
+    *mingw*)
+        RESTRICTED_COMMAND_LINE_OPT=--restricted-command-line
+        ;;
+    *)
+        if test "$ac_microsoft" = "yes"
+        then
+            RESTRICTED_COMMAND_LINE_OPT=--restricted-command-line
+        else
+            RESTRICTED_COMMAND_LINE_OPT=
+        fi
+        ;;
+esac
+AC_SUBST(RESTRICTED_COMMAND_LINE_OPT)
+
 LDFLAGS_FOR_TRACE=
 LD_LIBFLAGS_FOR_TRACE=
 if test "$ac_microsoft" = "yes" ; then
