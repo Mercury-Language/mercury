@@ -8999,7 +8999,6 @@ Install the specified C header file along with a Mercury library.
 @sp 1
 @item --restricted-command-line
 @findex --restricted-command-line
-@findex --extra-lib-header
 Enable this option if your shell doesn't support long command lines.
 This option uses temporary files to pass arguments to sub-commands.
 (This option is only supported by @samp{mmc --make})
