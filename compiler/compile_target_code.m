@@ -1819,7 +1819,9 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
             % we first create an archive of all of the 
             %
             RestrictedCommandLine = yes,
-            io.make_temp(TmpArchive, !IO),
+            io.make_temp(TmpFile, !IO),
+            globals.io_lookup_string_option(library_extension, LibExt, !IO),
+            TmpArchive = TmpFile ++ LibExt,
             create_archive(ErrorStream, TmpArchive, yes, ObjectsList,
                 ArchiveSucceeded, !IO),
             MaybeDeleteTmpArchive = yes(TmpArchive),
