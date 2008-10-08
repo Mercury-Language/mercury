@@ -1052,34 +1052,10 @@ make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
         list.map_foldl(
             module_name_to_file_name_ext(TargetExt, do_not_create_dirs),
             AllModules, AllTargetFilesList, !IO),
-        join_quoted_string_list(AllTargetFilesList, "", "\n", "",
-            TargetFileNames),
-        
-        io.make_temp(TmpFile, !IO),
-        io.open_output(TmpFile, OpenResult, !IO),
-        (
-            OpenResult = ok(TmpStream),
-            io.write_string(TmpStream, TargetFileNames, !IO),
-            io.close_output(TmpStream, !IO),
 
-            MkInitCmd = string.append_list([MkInit, " -k -f ", TmpFile]),
-            invoke_system_command(InitFileStream, cmd_verbose_commands,
-                MkInitCmd, MkInitOK0, !IO),
+        invoke_mkinit(InitFileStream, cmd_verbose_commands,
+            MkInit, " -k ", AllTargetFilesList, MkInitOK, !IO),
 
-            io.remove_file(TmpFile, RemoveResult, !IO),
-            (
-                RemoveResult = ok,
-                MkInitOK = MkInitOK0
-            ;
-                RemoveResult = error(_),
-                MkInitOK = no
-            )
-        ;
-            OpenResult = error(_),
-            MkInitOK = no
-        ),
-
-       
         ( 
             MkInitOK =  yes,
             globals.io_lookup_maybe_string_option(extra_init_command,
@@ -1151,6 +1127,38 @@ make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
 
 module_name_to_file_name_ext(Ext, MkDir, ModuleName, FileName, !IO) :-
     module_name_to_file_name(ModuleName, Ext, MkDir, FileName, !IO).
+
+:- pred invoke_mkinit(io.output_stream::in, command_verbosity::in,
+    string::in, string::in, list(file_name)::in, bool::out,
+    io::di, io::uo) is det.
+
+invoke_mkinit(InitFileStream, Verbosity,
+        MkInit, Args, FileNames, MkInitOK, !IO) :-
+    join_quoted_string_list(FileNames, "", "\n", "", TargetFileNames),
+
+    io.make_temp(TmpFile, !IO),
+    io.open_output(TmpFile, OpenResult, !IO),
+    (
+        OpenResult = ok(TmpStream),
+        io.write_string(TmpStream, TargetFileNames, !IO),
+        io.close_output(TmpStream, !IO),
+
+        MkInitCmd = string.append_list([MkInit, " ", Args, " -f ", TmpFile]),
+        invoke_system_command(InitFileStream, Verbosity,
+            MkInitCmd, MkInitOK0, !IO),
+
+        io.remove_file(TmpFile, RemoveResult, !IO),
+        (
+            RemoveResult = ok,
+            MkInitOK = MkInitOK0
+        ;
+            RemoveResult = error(_),
+            MkInitOK = no
+        )
+    ;
+        OpenResult = error(_),
+        MkInitOK = no
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1359,7 +1367,6 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
 
     list.map_foldl(module_name_to_file_name_ext(TargetExt, do_not_create_dirs),
         ModuleNames, TargetFileNameList, !IO),
-    join_quoted_string_list(TargetFileNameList, "", "", " ", TargetFileNames),
 
     globals.io_lookup_accumulating_option(init_file_directories,
         InitFileDirsList, !IO),
@@ -1389,8 +1396,6 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
         SourceDebug = no,
         InitFileNamesList = InitFileNamesList2
     ),
-
-    join_quoted_string_list(InitFileNamesList, "", "", " ", InitFileNames),
 
     globals.io_lookup_accumulating_option(runtime_flags, RuntimeFlagsList,
         !IO),
@@ -1424,9 +1429,8 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
     ),
 
     TmpInitTargetFileName = InitTargetFileName ++ ".tmp",
-    MkInitCmd = string.append_list(
-        [   MkInit,
-            " -g ", Grade,
+    MkInitArgs = string.append_list(
+        [   " -g ", Grade,
             " ", TraceOpt,
             " ", ExtraInitsOpt,
             " ", NoMainOpt,
@@ -1434,12 +1438,13 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
             " ", RuntimeFlags,
             " -o ", quote_arg(TmpInitTargetFileName),
             " ", InitFileDirs,
-            " ", InitFileNames, 
-            " ", TargetFileNames,
             ModuleNameOption
         ]),
-    invoke_system_command(ErrorStream, cmd_verbose_commands, MkInitCmd,
+
+    invoke_mkinit(ErrorStream, cmd_verbose_commands,
+        MkInit, MkInitArgs, TargetFileNameList ++ InitFileNamesList,
         MkInitOk, !IO),
+
     maybe_report_stats(Stats, !IO),
     (
         MkInitOk = yes,
@@ -1719,7 +1724,6 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
     % Find which system libraries are needed.
     get_system_libs(LinkTargetType, SystemLibs, !IO),
 
-    join_quoted_string_list(ObjectsList, "", "", " ", Objects),
     globals.io_lookup_accumulating_option(LDFlagsOpt, LDFlagsList, !IO),
     join_string_list(LDFlagsList, "", "", " ", LDFlags),
     globals.io_lookup_accumulating_option(link_library_directories,
@@ -1806,42 +1810,76 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
         join_quoted_string_list(LinkLibrariesList, "", "", " ",
             LinkLibraries),
 
-        % Note that LDFlags may contain `-l' options so it should come
-        % after Objects.
-        globals.io_lookup_string_option(CommandOpt, Command, !IO),
-        string.append_list([
-                Command, " ",
-                StaticOpts, " ",
-                StripOpt, " ",
-                UndefOpt, " ",
-                ThreadOpts, " ",
-                TraceOpts, " ",
-                " -o ", OutputFileName, " ",
-                Objects, " ",
-                LinkOptSep, " ",
-                LinkLibraryDirectories, " ",
-                RpathOpts, " ",
-                InstallNameOpt, " ",
-                DebugOpts, " ",
-                LDFlags, " ",
-                LinkLibraries, " ",
-                MercuryStdLibs, " ",
-                SystemLibs], LinkCmd),
-
-        globals.io_lookup_bool_option(demangle, Demangle, !IO),
+        globals.io_lookup_bool_option(restricted_command_line,
+            RestrictedCommandLine, !IO),
         (
-            Demangle = yes,
-            globals.io_lookup_string_option(demangle_command,
-                DemangleCmd, !IO),
-            MaybeDemangleCmd = yes(DemangleCmd)
+            % If we have a restricted command line then it's possible
+            % that following link command will call sub-commands its self
+            % and thus overflow the command line, so in this case
+            % we first create an archive of all of the 
+            %
+            RestrictedCommandLine = yes,
+            io.make_temp(TmpArchive, !IO),
+            create_archive(ErrorStream, TmpArchive, yes, ObjectsList,
+                ArchiveSucceeded, !IO),
+            MaybeDeleteTmpArchive = yes(TmpArchive),
+            Objects = TmpArchive
         ;
-            Demangle = no,
-            MaybeDemangleCmd = no
+            RestrictedCommandLine = no,
+            ArchiveSucceeded = yes,
+            MaybeDeleteTmpArchive = no,
+            join_quoted_string_list(ObjectsList, "", "", " ", Objects)
         ),
+        
+        ( 
+            ArchiveSucceeded = yes,
 
-        invoke_system_command_maybe_filter_output(ErrorStream,
-            cmd_verbose_commands, LinkCmd, MaybeDemangleCmd, LinkSucceeded,
-            !IO)
+            % Note that LDFlags may contain `-l' options so it should come
+            % after Objects.
+            globals.io_lookup_string_option(CommandOpt, Command, !IO),
+            string.append_list([
+                    Command, " ",
+                    StaticOpts, " ",
+                    StripOpt, " ",
+                    UndefOpt, " ",
+                    ThreadOpts, " ",
+                    TraceOpts, " ",
+                    " -o ", OutputFileName, " ",
+                    Objects, " ",
+                    LinkOptSep, " ",
+                    LinkLibraryDirectories, " ",
+                    RpathOpts, " ",
+                    InstallNameOpt, " ",
+                    DebugOpts, " ",
+                    LDFlags, " ",
+                    LinkLibraries, " ",
+                    MercuryStdLibs, " ",
+                    SystemLibs], LinkCmd),
+
+            globals.io_lookup_bool_option(demangle, Demangle, !IO),
+            (
+                Demangle = yes,
+                globals.io_lookup_string_option(demangle_command,
+                    DemangleCmd, !IO),
+                MaybeDemangleCmd = yes(DemangleCmd)
+            ;
+                Demangle = no,
+                MaybeDemangleCmd = no
+            ),
+
+            invoke_system_command_maybe_filter_output(ErrorStream,
+                cmd_verbose_commands, LinkCmd, MaybeDemangleCmd,
+                LinkSucceeded, !IO)
+        ;
+            ArchiveSucceeded = no,
+            LinkSucceeded = no
+        ),
+        (
+            MaybeDeleteTmpArchive = yes(FileToDelete),
+            io.remove_file(FileToDelete, _, !IO)
+        ;
+            MaybeDeleteTmpArchive = no
+        )
     ;
         LibrariesSucceeded = no,
         LinkSucceeded = no
@@ -2203,45 +2241,14 @@ create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
         % Quoting would prevent that.
         join_string_list(ObjectList, "", "", " ", Objects)
     ),
-    ( ArCmd = "lib" ->
-            
-        %
-        % If we are using lib, we are on windows and windows doesn't
-        % handle long command lines, so place the list of object
-        % files in a file and pass that file as an argument to lib.
-        %
-        io.make_temp(TmpFile, !IO),
-        io.open_output(TmpFile, OpenResult, !IO),
-        (
-            OpenResult = ok(TmpStream),
-            io.write_string(TmpStream, Objects, !IO),
-            io.close_output(TmpStream, !IO),
 
-            MakeLibCmd = string.append_list([
-                ArCmd, " ", ArFlags, " ", ArOutputFlag,
-                LibFileName, " @", TmpFile]),
-            invoke_system_command(ErrorStream, cmd_verbose_commands,
-                MakeLibCmd, MakeLibCmdSucceeded0, !IO),
+    MakeLibCmdArgs = string.append_list([
+        ArFlags, " ", ArOutputFlag, " ",
+        LibFileName, " ", Objects]),
 
-            io.remove_file(TmpFile, RemoveResult, !IO),
-            (
-                RemoveResult = ok,
-                MakeLibCmdSucceeded = MakeLibCmdSucceeded0
-            ;
-                RemoveResult = error(_),
-                MakeLibCmdSucceeded = no
-            )
-        ;
-            OpenResult = error(_),
-            MakeLibCmdSucceeded = no
-        )
-    ;
-        MakeLibCmd = string.append_list([
-            ArCmd, " ", ArFlags, " ", ArOutputFlag, " ",
-            LibFileName, " ", Objects]),
-        invoke_system_command(ErrorStream, cmd_verbose_commands,
-            MakeLibCmd, MakeLibCmdSucceeded, !IO)
-    ),
+    invoke_long_system_command(ErrorStream, cmd_verbose_commands,
+        ArCmd, MakeLibCmdArgs, MakeLibCmdSucceeded, !IO),
+
     (
         ( RanLib = ""
         ; MakeLibCmdSucceeded = no
@@ -2610,7 +2617,6 @@ make_standalone_int_body(Basename, !IO) :-
         SourceDebug = no,
         InitFiles = InitFiles2
     ),
-    join_string_list(InitFiles, "", "", " ", InitFilesList),
     globals.lookup_accumulating_option(Globals, runtime_flags,
         RuntimeFlagsList),
     join_quoted_string_list(RuntimeFlagsList, "-r ", "", " ", RuntimeFlags),
@@ -2628,18 +2634,18 @@ make_standalone_int_body(Basename, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
     CFileName = Basename ++ ".c",
     io.output_stream(ErrorStream, !IO),
-    MkInitCmd = string.append_list(
-        [   MkInit,
-            " -g ", Grade,
+    MkInitArgs = string.append_list(
+        [   " -g ", Grade,
             " ", TraceOpt,
             " ", ExperimentalComplexityOpt,
             " ", RuntimeFlags,
             " -o ", quote_arg(CFileName),
             " ", InitFileDirs,
-            " -s ", InitFilesList
+            " -s "
         ]),
-    invoke_system_command(ErrorStream, cmd_verbose_commands,
-        MkInitCmd, MkInitCmdOk, !IO),
+
+    invoke_mkinit(ErrorStream, cmd_verbose_commands,
+        MkInit, MkInitArgs, InitFiles, MkInitCmdOk, !IO),
     (
         MkInitCmdOk = yes,
         get_object_code_type(executable, PIC, !IO),
@@ -2664,6 +2670,85 @@ make_standalone_int_body(Basename, !IO) :-
         io.write_string("standalone interface in `", !IO),
         io.write_string(CFileName, !IO),
         io.write_string("'\n", !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    %
+    % invoke_long_system_command attempts to use the @file style of
+    % calling to avoid command line length arguments on various systems.
+    % If the underlying tool chain doesn't support this it just calls
+    % the normal invoke_system_command and hopes the command isn't too
+    % long.
+    %
+:- pred invoke_long_system_command(io.output_stream::in,
+    command_verbosity::in, string::in, string::in,
+    bool::out, io::di, io::uo) is det.
+
+invoke_long_system_command(ErrorStream, Verbosity, Cmd, Args, Succeeded, !IO) :-
+    invoke_long_system_command_maybe_filter_output(ErrorStream, Verbosity,
+        Cmd, Args, no, Succeeded, !IO).
+
+:- pred invoke_long_system_command_maybe_filter_output(io.output_stream::in,
+    command_verbosity::in, string::in, string::in, maybe(string)::in,
+    bool::out, io::di, io::uo) is det.
+
+invoke_long_system_command_maybe_filter_output(ErrorStream, Verbosity,
+        Cmd, Args, MaybeProcessOutput, Succeeded, !IO) :-
+    globals.io_lookup_bool_option(restricted_command_line,
+        RestrictedCommandLine, !IO),
+
+    (
+        RestrictedCommandLine = yes,
+
+        %
+        % Avoid generating very long command lines by using @files
+        %
+        io.make_temp(TmpFile, !IO),
+        io.open_output(TmpFile, OpenResult, !IO),
+        (
+            OpenResult = ok(TmpStream),
+
+            % We need to escape any \ before writing them to
+            % the file, otherwise we lose them
+            TmpFileArgs = string.replace_all(Args, "\\", "\\\\"),
+
+            io.write_string(TmpStream, TmpFileArgs, !IO),
+            io.close_output(TmpStream, !IO),
+
+            globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+            (
+                VeryVerbose = yes,
+                io.write_string("% Args placed in @" ++ TmpFile ++ ": `", !IO),
+                io.write_string(TmpFileArgs, !IO),
+                io.write_string("'\n", !IO),
+                io.flush_output(!IO)
+            ;
+                VeryVerbose = no
+            ),
+
+            FullCmd = string.append_list([Cmd, " @", TmpFile]),
+            invoke_system_command(ErrorStream, Verbosity,
+                FullCmd, Succeeded0, !IO),
+
+            io.remove_file(TmpFile, RemoveResult, !IO),
+            (
+                RemoveResult = ok,
+                Succeeded = Succeeded0
+            ;
+                RemoveResult = error(_),
+                Succeeded = no
+            )
+        ;
+            OpenResult = error(_),
+            Succeeded = no
+        )
+        
+    ;
+        RestrictedCommandLine = no,
+        FullCmd = Cmd ++ " " ++ Args,
+        invoke_system_command_maybe_filter_output(ErrorStream, Verbosity,
+            FullCmd, MaybeProcessOutput, Succeeded, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

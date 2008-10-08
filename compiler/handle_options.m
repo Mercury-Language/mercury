@@ -2282,6 +2282,8 @@ long_usage(!IO) :-
         "are assumed to be source file names.\n", !IO),
     io.write_string("\tArguments that do not end in `.m' " ++
         "are assumed to be module names.\n", !IO),
+    io.write_string("\tArguments in the form @file are replaced " ++
+        "with the contents of the file.\n", !IO),
     io.write_string("Options:\n", !IO),
     options_help(!IO).
 

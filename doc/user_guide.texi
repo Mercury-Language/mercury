@@ -269,6 +269,13 @@ To make the compiler look in another file for a module, use
 to file name, where @var{sources-files} is the list of source files in
 the directory (@pxref{Output options}).
 
+Arguments to @samp{mmc} may also be in @samp{@@file}.
+The @samp{@@file} argument is replaced with arguments
+representing the contents of the file.
+This argument processing is done recursively.
+The contents of the @samp{@@file} is split into arguments
+one per line in the file.
+
 To compile a program which consists of just a single source file,
 use the command
 
@@ -8987,6 +8994,14 @@ Report run times for commands executed by @samp{mmc --make}.
 @findex --extra-library-header
 @findex --extra-lib-header
 Install the specified C header file along with a Mercury library.
+(This option is only supported by @samp{mmc --make})
+
+@sp 1
+@item --restricted-command-line
+@findex --restricted-command-line
+@findex --extra-lib-header
+Enable this option if your shell doesn't support long command lines.
+This option uses temporary files to pass arguments to sub-commands.
 (This option is only supported by @samp{mmc --make})
 
 @end table

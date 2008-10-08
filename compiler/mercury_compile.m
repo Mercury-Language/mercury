@@ -232,6 +232,21 @@ real_main(!IO) :-
     io.set_output_stream(StdErr, _, !IO),
     io.command_line_arguments(Args0, !IO),
 
+        % Replace all @file arguments with the contents of the file
+    expand_at_file_arguments(Args0, Res, !IO),
+    ( Res = ok(Args),
+        real_main_2(Args, !IO)
+    ; Res = error(E),
+        io.set_exit_status(1, !IO),
+
+        io.write_string(io.error_message(E), !IO),
+        io.nl(!IO)
+    ).
+
+
+:- pred real_main_2(list(string)::in, io::di, io::uo) is det.
+
+real_main_2(Args0, !IO) :-
     % read_args_file and globals.io_printing_usage may attempt
     % to look up options, so we need to initialize the globals.
     handle_options([], _, _, _, _, !IO),
@@ -261,14 +276,13 @@ real_main(!IO) :-
             Variables = options_variables_init,
             MaybeMCFlags = no
         ;
-            Errors0 = [],
-            read_options_files(options_variables_init, MaybeVariables0, !IO),
+            Errors0 = [], read_options_files(options_variables_init, MaybeVariables0, !IO),
             (
                 MaybeVariables0 = yes(Variables0),
                 lookup_mmc_options(Variables0, MaybeMCFlags0, !IO),
                 (
                     MaybeMCFlags0 = yes(MCFlags0),
-                    real_main_2(MCFlags0, MaybeMCFlags, Args0,
+                    real_main_3(MCFlags0, MaybeMCFlags, Args0,
                         Variables0, Variables, !IO)
 
                 ;
@@ -295,11 +309,11 @@ real_main(!IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred real_main_2(list(string)::in, maybe(list(string))::out,
+:- pred real_main_3(list(string)::in, maybe(list(string))::out,
     list(string)::in, options_variables::in, options_variables::out,
     io::di, io::uo) is det.
 
-real_main_2(MCFlags0, MaybeMCFlags, Args0, Variables0, Variables, !IO) :-
+real_main_3(MCFlags0, MaybeMCFlags, Args0, Variables0, Variables, !IO) :-
     % Process the options again to find out which configuration file to read.
     handle_options(MCFlags0 ++ Args0, Errors, _, _, _, !IO),
     (
@@ -5390,6 +5404,73 @@ elds_to_erlang(ModuleInfo, ELDS, !IO) :-
     maybe_write_string(Verbose, "% Finished converting ELDS to Erlang.\n",
         !IO),
     maybe_report_stats(Stats, !IO).
+
+%-----------------------------------------------------------------------------%
+
+    %
+    % Expand @File arguments.
+    % Each argument in the above form is replaced with a list of arguments
+    % where each arg is each line in the file File which is not just whitespace.
+    %
+:- pred expand_at_file_arguments(list(string)::in, io.res(list(string))::out,
+    io::di, io::uo) is det.
+
+expand_at_file_arguments([], ok([]), !IO).
+expand_at_file_arguments([Arg | Args], Result, !IO) :-
+    ( string.remove_prefix("@", Arg, File) ->
+        io.open_input(File, OpenRes, !IO),
+        ( OpenRes = ok(S),
+            expand_file_into_arg_list(S, ReadRes, !IO),
+            ( ReadRes = ok(FileArgs),
+                expand_at_file_arguments(FileArgs ++ Args, Result, !IO)
+            ; ReadRes = error(E),
+                Result = error(at_file_error(File, E))
+            )
+        ; OpenRes = error(_E),
+            Msg = "mercury_compile: cannot open '" ++ File ++ "'",
+            Result = error(io.make_io_error(Msg))
+        )
+    ;
+        expand_at_file_arguments(Args, Result0, !IO),
+        ( Result0 = ok(ExpandedArgs),
+            Result = ok([Arg | ExpandedArgs])
+        ; Result0 = error(E),
+            Result = error(E)
+        )
+    ).
+
+:- func at_file_error(string, io.error) = io.error.
+
+at_file_error(File, E) = 
+    io.make_io_error("While attempting to process '" ++ File ++
+            "' the following error occurred: " ++ io.error_message(E)).
+  
+    %
+    % Read each of the command line arguments from the given input file.
+    % Note lines which consist purely of whitespace are ignored.
+    %
+:- pred expand_file_into_arg_list(io.input_stream::in, io.res(list(string))::out,
+    io::di, io::uo) is det.
+
+expand_file_into_arg_list(S, Res, !IO) :-
+    io.read_line_as_string(S, LineRes, !IO),
+    ( LineRes = ok(Line),
+        expand_file_into_arg_list(S, Res0, !IO),
+        ( Res0 = ok(Lines),
+            StrippedLine = strip(Line),
+            ( StrippedLine = "" ->
+                Res = ok(Lines)
+            ;
+                Res = ok([StrippedLine | Lines])
+            )
+        ; Res0 = error(_E),
+            Res = Res0
+        )
+    ; LineRes = eof,
+        Res = ok([])
+    ; LineRes = error(E),
+        Res = error(E)
+    ).
 
 %-----------------------------------------------------------------------------%
 

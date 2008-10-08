@@ -889,6 +889,7 @@
     ;       libgrade_install_check
     ;       show_make_times
     ;       extra_library_header
+    ;       restricted_command_line
 
     % Miscellaneous Options
     ;       filenames_from_stdin
@@ -1722,7 +1723,8 @@ option_defaults_2(build_system_option, [
     use_search_directories_for_intermod -   bool(yes),
     libgrade_install_check              -   bool(yes),
     show_make_times                     -   bool(no),
-    extra_library_header                -   accumulating([])
+    extra_library_header                -   accumulating([]),
+    restricted_command_line             -   bool(no)
 ]).
 option_defaults_2(miscellaneous_option, [
     % Miscellaneous Options
@@ -2603,6 +2605,7 @@ long_option("libgrade-install-check", libgrade_install_check).
 long_option("show-make-times",      show_make_times).
 long_option("extra-lib-header",     extra_library_header).
 long_option("extra-library-header", extra_library_header).
+long_option("restricted-command-line", restricted_command_line).
 
 % misc options
 long_option("typecheck-ambiguity-warn-limit",
@@ -5304,6 +5307,10 @@ options_help_build_system -->
         "--extra-library-header <file>, --extra-lib-header <file>",
         "\tInstall the specified C header file with along with",
         "\ta Mercury library.",
+        "\t(This option is only supported by `mmc --make'.)",
+        "--restricted-command-line",
+        "\tEnable this option if your shell doesn't support long command lines.",
+        "\tThis option uses temporary files to pass arguments to sub-commands.",
         "\t(This option is only supported by `mmc --make'.)"
     ]).
 
