@@ -124,6 +124,8 @@
     % On non-POSIX systems that do not support this functionality,
     % this procedure may simply always throw an exception.
     %
+    % Currently on Win32 the child part of 'tms' is always zero.
+    %
 :- pred time.times(tms::out, clock_t::out, io::di, io::uo) is det.
 
     % time.clk_tck:
@@ -329,6 +331,16 @@ time.times(Tms, Result, !IO) :-
         Result = Ret
     ).
 
+:- pragma foreign_decl(c, "
+#ifdef MR_WIN32
+    #include <windows.h>
+    typedef union
+    {
+        FILETIME ft;
+        __int64 i64;
+    } timeKernel;
+#endif
+").
 :- pred time.c_times(int::out, int::out, int::out, int::out, int::out,
     io::di, io::uo) is det.
 
@@ -347,7 +359,30 @@ time.times(Tms, Result, !IO) :-
     CUt = (MR_Integer) t.tms_cutime;
     CSt = (MR_Integer) t.tms_cstime;
 #else
+  #ifdef MR_WIN32
+    HANDLE hProcess;
+    FILETIME ftCreation, ftExit, ftKernel, ftUser;
+    timeKernel user, kernel;
+
+    int factor;
+
+    hProcess = GetCurrentProcess();
+    GetProcessTimes(hProcess, &ftCreation, &ftExit, &ftKernel, &ftUser);
+
+    factor = 10000000U / MR_CLOCK_TICKS_PER_SECOND;
+    
+    user.ft = ftUser;
+    kernel.ft = ftKernel;
+
+    Ut = (MR_Integer) (user.i64 / factor);
+    St = (MR_Integer) (kernel.i64 / factor);
+
+        /* XXX Not sure how to return children times */
+    CUt = 0;
+    CSt = 0;
+  #else
     Ret = -1;
+  #endif
 #endif
     MR_update_io(IO0, IO);
 }").
