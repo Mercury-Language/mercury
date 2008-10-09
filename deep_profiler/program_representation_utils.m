@@ -549,12 +549,13 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
         !:GoalRep = !.ProcDefn ^ pdr_goal,
         Calls = calls(OwnProf),
         Exits = exits(OwnProf),
-        Before0 = before_known(Calls),
-        After0 = after_known(Exits),
+        Before = before_known(Calls),
         CoverageReference = coverage_reference_info(CallSites,
             SolnsCoveragePoints, BranchCoveragePoints),
         goal_annotate_coverage(CoverageReference, empty_goal_path,
-            Before0, _, After0, _, !GoalRep),
+            Before, After, !GoalRep),
+        require(unify(After, after_known(Exits)),
+            "Coverage after procedure not equal with exit count of procedure"),
         !:ProcDefn = !.ProcDefn ^ pdr_goal := !.GoalRep,
         !:ProcRep = !.ProcRep ^ pr_defn := !.ProcDefn
     ).
@@ -575,43 +576,42 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
     % Annotate a goal and its children with coverage information.
     %
 :- pred goal_annotate_coverage(coverage_reference_info::in, goal_path::in,
-    coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out,
+    coverage_before::in, coverage_after::out,
     goal_rep(unit)::in, goal_rep(coverage_info)::out) is det.
 
-goal_annotate_coverage(Info, GoalPath, !Before, !After, Goal0, Goal) :-
+goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
     Goal0 = goal_rep(GoalExpr0, Detism, _),
 
     % Calculate coverage of any inner goals.
     (
         GoalExpr0 = conj_rep(Conjuncts0),
-        conj_annotate_coverage(Info, GoalPath, !Before, !After,
+        conj_annotate_coverage(Info, GoalPath, Before, After0,
             Conjuncts0, Conjuncts),
         GoalExpr = conj_rep(Conjuncts)
     ;
         GoalExpr0 = disj_rep(Disjuncts0),
-        disj_annotate_coverage(Info, Detism, GoalPath, !Before, !After,
+        disj_annotate_coverage(Info, Detism, GoalPath, Before, After0,
             Disjuncts0, Disjuncts),
         GoalExpr = disj_rep(Disjuncts)
     ;
         GoalExpr0 = switch_rep(Var, CanFail, Cases0),
-        switch_annotate_coverage(Info, CanFail, GoalPath, !Before, !After,
+        switch_annotate_coverage(Info, CanFail, GoalPath, Before, After0,
             Cases0, Cases),
         GoalExpr = switch_rep(Var, CanFail, Cases)
     ;
         GoalExpr0 = ite_rep(Cond0, Then0, Else0),
-        ite_annotate_coverage(Info, GoalPath, !Before, !After, Cond0, Cond,
+        ite_annotate_coverage(Info, GoalPath, Before, After0, Cond0, Cond,
             Then0, Then, Else0, Else),
         GoalExpr = ite_rep(Cond, Then, Else)
     ;
         GoalExpr0 = negation_rep(NegGoal0),
-        negation_annotate_coverage(Info, GoalPath, Detism, !Before, !After,
+        negation_annotate_coverage(Info, GoalPath, Before, After0,
             NegGoal0, NegGoal),
         GoalExpr = negation_rep(NegGoal)
     ;
         GoalExpr0 = scope_rep(ScopedGoal0, MaybeCut),
-        scope_annotate_coverage(Info, GoalPath, MaybeCut, Detism, 
-            !Before, !After, ScopedGoal0, ScopedGoal),
+        scope_annotate_coverage(Info, GoalPath, MaybeCut,  Before, After0,
+            ScopedGoal0, ScopedGoal),
         GoalExpr = scope_rep(ScopedGoal, MaybeCut)
     ;
         GoalExpr0 = atomic_goal_rep(Filename, Line, Vars, AtomicGoal),
@@ -630,8 +630,9 @@ goal_annotate_coverage(Info, GoalPath, !Before, !After, Goal0, Goal) :-
                 % code, which should be fixed in the future.
                 Calls = Summary ^ perf_row_calls,
                 Exits = Summary ^ perf_row_exits,
-                !:Before = before_known(Calls),
-                !:After = after_known(Exits)
+                require(unify(Before, before_known(Calls)),
+                  "Coverage before call doesn't match calls port on call site"),
+                After0 = after_known(Exits)
             ;
                 error("Couldn't look up call site for port counts GP: " ++
                     goal_path_to_string(GoalPath))
@@ -648,18 +649,22 @@ goal_annotate_coverage(Info, GoalPath, !Before, !After, Goal0, Goal) :-
             ; AtomicGoal = pragma_foreign_code_rep(_)
             ; AtomicGoal = event_call_rep(_, _)
             ),
-            propagate_detism_coverage(Detism, GoalPath, !Before, !After)
+            propagate_detism_coverage(Detism, Before, After0)
         )
     ),
 
-    % Search for a coverage point after this goal.
+    % Search for a coverage point after this goal.  This search is performed
+    % even when the coverage has been calculated from inner goals, since this
+    % is used to perform an assertion that these two sources agree about the
+    % coverage after this goal.
     ( map.search(Info ^ cri_solns_coverage_points, GoalPath, CoveragePoint) ->
         CoveragePoint = coverage_point(CoverageAfterCount, _, _),
-        after_count_from_either_source(after_known(CoverageAfterCount), !After)
+        after_count_from_either_source(after_known(CoverageAfterCount),
+            After0, After)
     ;
-        true
+        After0 = After
     ),
-    GoalCoverage = construct_before_after_coverage(!.Before, !.After),
+    GoalCoverage = construct_before_after_coverage(Before, After),
     Goal = goal_rep(GoalExpr, Detism, GoalCoverage),
 
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
@@ -708,12 +713,11 @@ construct_before_after_coverage(Before, After) = Coverage :-
     % Annotate a conjunction with coverage information.
     %
 :- pred conj_annotate_coverage(coverage_reference_info::in, goal_path::in,
-    coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out,
+    coverage_before::in, coverage_after::out,
     list(goal_rep(unit))::in, list(goal_rep(coverage_info))::out) is det.
 
-conj_annotate_coverage(Info, GoalPath, !Before, !After, Conjs0, Conjs) :-
-    conj_annotate_coverage_2(Info, GoalPath, 1, !Before, !After,
+conj_annotate_coverage(Info, GoalPath, Before, After, Conjs0, Conjs) :-
+    conj_annotate_coverage_2(Info, GoalPath, 1, Before, After,
         Conjs0, Conjs).
 
     % Annotate a conjunction with coverage information.
@@ -723,23 +727,20 @@ conj_annotate_coverage(Info, GoalPath, !Before, !After, Conjs0, Conjs) :-
     % conjunction.  Each goal also has it's own coverage.
     %
 :- pred conj_annotate_coverage_2(coverage_reference_info::in,
-    goal_path::in, int::in,
-    coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out,
+    goal_path::in, int::in, coverage_before::in, coverage_after::out,
     list(goal_rep(unit))::in, list(goal_rep(coverage_info))::out) is det.
 
-conj_annotate_coverage_2(_, GoalPath, ConjunctNum, !Before, !After, [], []) :-
+conj_annotate_coverage_2(_, _, _, Before, After, [], []) :-
     % The empty conjunction is equivalent to 'true' which is deterministic,
-    ConjGoalPath = goal_path_add_at_end(GoalPath, step_conj(ConjunctNum)),
-    propagate_det_coverage(ConjGoalPath, !Before, !After).
-conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, !Before, !After,
+    propagate_det_coverage(Before, After).
+conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, Before, After,
         [Conj0 | Conjs0], [Conj | Conjs]) :-
     HeadGoalPath = goal_path_add_at_end(GoalPath, step_conj(ConjunctNum)),
     goal_annotate_coverage(Info, HeadGoalPath,
-        !Before, after_unknown, CoverageAfterHead, Conj0, Conj),
+        Before, CoverageAfterHead, Conj0, Conj),
     after_to_before_coverage(CoverageAfterHead, CoverageBeforeTail),
     conj_annotate_coverage_2(Info, GoalPath, ConjunctNum + 1,
-        CoverageBeforeTail, _, !After, Conjs0, Conjs).
+        CoverageBeforeTail, After, Conjs0, Conjs).
 
     % Compute the coverage information for a disjunction.
     %
@@ -750,22 +751,19 @@ conj_annotate_coverage_2(Info, GoalPath, ConjunctNum, !Before, !After,
     %     after each disjunct.
     %
 :- pred disj_annotate_coverage(coverage_reference_info::in,
-    detism_rep::in, goal_path::in,
-    coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out,
+    detism_rep::in, goal_path::in, coverage_before::in, coverage_after::out,
     list(goal_rep(unit))::in, list(goal_rep(coverage_info))::out) is det.
 
-disj_annotate_coverage(Info, Detism, GoalPath, !Before, !After,
+disj_annotate_coverage(Info, Detism, GoalPath, Before, After,
         Disjs0, Disjs) :-
     % XXX In theory, we could update Before using information from any counter
     % at the start of the first disjunct, but we don't do that (yet).  This may
     % not be useful for some disjunctions, for example those called from a
     % single solution context or committed-choice.
-    CoverageBefore = !.Before,
     Solutions = detism_get_solutions(Detism),
     disj_annotate_coverage_2(Info, GoalPath, 1, Solutions,
-        CoverageBefore, sum_after_known(0), SumAfterDisjuncts, Disjs0, Disjs),
-    after_count_from_either_source_sum(SumAfterDisjuncts, !After).
+        Before, sum_after_known(0), SumAfterDisjuncts, Disjs0, Disjs),
+    count_sum_to_count(SumAfterDisjuncts, After).
 
 :- pred disj_annotate_coverage_2(coverage_reference_info::in,
     goal_path::in, int::in, solution_count_rep::in, coverage_before::in,
@@ -778,13 +776,13 @@ disj_annotate_coverage_2(Info, GoalPath, DisjNum, Solutions,
     DisjGoalPath = goal_path_add_at_end(GoalPath, step_disj(DisjNum)),
     (
         Before0 = before_known(_),
-        Before1 = Before0
+        Before = Before0
     ;
         Before0 = before_unknown,
-        get_branch_start_coverage(Info, DisjGoalPath, Before1)
+        get_branch_start_coverage(Info, DisjGoalPath, Before)
     ),
     goal_annotate_coverage(Info, DisjGoalPath,
-        Before1, _, after_unknown, After, Disj0, Disj),
+        Before, After, Disj0, Disj),
     sum_after_coverage(After, !SumAfter),
     % We don't know how many times the start of the next disjunct is executed
     % unless we have a counter there.
@@ -793,42 +791,45 @@ disj_annotate_coverage_2(Info, GoalPath, DisjNum, Solutions,
 
 :- pred switch_annotate_coverage(coverage_reference_info::in,
     switch_can_fail_rep::in, goal_path::in,
-    coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out,
+    coverage_before::in, coverage_after::out,
     list(case_rep(unit))::in, list(case_rep(coverage_info))::out) is det.
 
-switch_annotate_coverage(Info, CanFail, GoalPath, !Before, !After,
+switch_annotate_coverage(Info, CanFail, GoalPath, Before, After,
         Cases0, Cases) :-
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
-        io.format("Switch: Before0: %s, After0: %s\n",
-            [s(string(!.Before)), s(string(!.After))], !IO)
+        io.format("Switch: Before0: %s\n",
+            [s(string(Before))], !IO)
     ),
 
     switch_annotate_coverage_2(Info, CanFail, GoalPath, 1,
-        sum_before_known(0), SumBefore, sum_after_known(0), SumAfter,
-        !.Before, !.After, Cases0, Cases),
+        sum_before_known(0), _SumBefore, sum_after_known(0), SumAfter,
+        Before, Cases0, Cases),
     % For can_fail switches, the sum of the exec counts at the starts of the
     % arms may be less than the exec count at the start of the switch. However,
     % even for can_fail switches, the sum of the exec counts at the *ends* of
     % the arms will always equal the exec count at the end of the switch.
-    (
-        CanFail = switch_can_not_fail_rep,
-        before_count_from_either_source_sum(SumBefore, !Before)
-    ;
-        CanFail = switch_can_fail_rep
-    ),
-    after_count_from_either_source_sum(SumAfter, !After),
+    count_sum_to_count(SumAfter, After),
+    % Note: This code was removed this while simplifying the algorithm, it does
+    % not infer any extra coverage information since coverage is known before
+    % all goals before goal_annotate_coverage is called, it may be useful if we
+    % allow coverage to be incomplete for trivial goals.
+    %(
+    %    CanFail = switch_can_not_fail_rep,
+    %    before_count_from_either_source_sum(SumBefore, !Before)
+    %;
+    %    CanFail = switch_can_fail_rep
+    %),
 
     trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
-        require(check_switch_coverage(CanFail, Cases, !.Before),
+        require(check_switch_coverage(CanFail, Cases, Before),
             string.format("check_switch_coverage failed\n\t" ++
                 "CanFail: %s\n\tCases: %s\n\tBefore: %s, After: %s\n",
                 [s(string(CanFail)), s(string(Cases)),
-                s(string(!.Before)), s(string(!.After))]))
+                s(string(Before)), s(string(After))]))
     ).
 
     % switch_annotate_coverage_2(Info, Detism, GoalPath, CaseNum,
-    %   !CoverageSum, SwitchCoverage, !Cases),
+    %   !CoverageSum, CoverageBeforeSwitch, !Cases),
     %
     % Perform coverage annotation on cases from the left to the right.
     % The head of the !.Cases list is case number CaseNum, SwitchCoverage
@@ -844,12 +845,12 @@ switch_annotate_coverage(Info, CanFail, GoalPath, !Before, !After,
     switch_can_fail_rep::in, goal_path::in, int::in,
     sum_coverage_before::in, sum_coverage_before::out,
     sum_coverage_after::in, sum_coverage_after::out,
-    coverage_before::in, coverage_after::in,
+    coverage_before::in,
     list(case_rep(unit))::in, list(case_rep(coverage_info))::out) is det.
 
-switch_annotate_coverage_2(_, _, _, _, !SumBefore, !SumAfter, _, _, [], []).
+switch_annotate_coverage_2(_, _, _, _, !SumBefore, !SumAfter, _, [], []).
 switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
-        !SumBefore, !SumAfter, SwitchBefore, SwitchAfter,
+        !SumBefore, !SumAfter, SwitchBefore,
         [Case0 | Cases0], [Case | Cases]) :-
     CaseGoalPath = goal_path_add_at_end(GoalPath, step_switch(CaseNum, no)),
 
@@ -862,36 +863,20 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
     % retrieve the information from a coverage point associated with the case.
     (
         Cases0 = [],
-        CanFail = switch_can_not_fail_rep
+        CanFail = switch_can_not_fail_rep,
+        SwitchBefore = before_known(SwitchBeforeExecCount),
+        !.SumBefore = sum_before_known(SumBeforeExecCount)
     ->
-        (
-            SwitchBefore = before_known(SwitchBeforeExecCount),
-            !.SumBefore = sum_before_known(SumBeforeExecCount)
-        ->
-            BeforeCase0 =
-                before_known(SwitchBeforeExecCount - SumBeforeExecCount)
-        ;
-            % Search for a coverage point for this case.
-            get_branch_start_coverage(Info, CaseGoalPath, BeforeCase0)
-        ),
-        (
-            SwitchAfter = after_known(SwitchAfterExecCount),
-            !.SumAfter = sum_after_known(SumAfterExecCount)
-        ->
-            AfterCase0 = after_known(SwitchAfterExecCount - SumAfterExecCount)
-        ;
-            AfterCase0 = after_unknown
-        )
+        BeforeCase = before_known(SwitchBeforeExecCount - SumBeforeExecCount)
     ;
         % Search for a coverage point for this case.
-        get_branch_start_coverage(Info, CaseGoalPath, BeforeCase0),
-        AfterCase0 = after_unknown
+        get_branch_start_coverage(Info, CaseGoalPath, BeforeCase)
     ),
 
     % Calculate and annotate the coverage for the case itself.
     Case0 = case_rep(ConsID, OtherConsIDs, Goal0),
     goal_annotate_coverage(Info, CaseGoalPath,
-        BeforeCase0, BeforeCase, AfterCase0, AfterCase, Goal0, Goal),
+        BeforeCase, AfterCase, Goal0, Goal),
     Case = case_rep(ConsID, OtherConsIDs, Goal),
 
     % Keep a sum of the execution counts seen in cases so far.
@@ -899,18 +884,17 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
     sum_after_coverage(AfterCase, !SumAfter),
 
     switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum + 1,
-        !SumBefore, !SumAfter, SwitchBefore, SwitchAfter, Cases0, Cases).
+        !SumBefore, !SumAfter, SwitchBefore, Cases0, Cases).
 
     % Propagate coverage information for if-then-else goals.
     %
 :- pred ite_annotate_coverage(coverage_reference_info::in, goal_path::in,
-    coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out,
+    coverage_before::in, coverage_after::out,
     goal_rep::in, goal_rep(coverage_info)::out,
     goal_rep::in, goal_rep(coverage_info)::out,
     goal_rep::in, goal_rep(coverage_info)::out) is det.
 
-ite_annotate_coverage(Info, GoalPath, !Before, !After,
+ite_annotate_coverage(Info, GoalPath, Before, After,
         Cond0, Cond, Then0, Then, Else0, Else) :-
     CondGoalPath = goal_path_add_at_end(GoalPath, step_ite_cond),
     ThenGoalPath = goal_path_add_at_end(GoalPath, step_ite_then),
@@ -920,17 +904,17 @@ ite_annotate_coverage(Info, GoalPath, !Before, !After,
     % Step 1:
     %   Call goal_annotate_coverage for the condition goal.
     goal_annotate_coverage(Info, CondGoalPath,
-        !.Before, BeforeCond, after_unknown, AfterCond, Cond0, Cond),
+        Before, AfterCond, Cond0, Cond),
     after_to_before_coverage(AfterCond, BeforeThen0),
 
     % Step 2:
     %   Lookup coverage information for the starts of the then and else goals.
     (
         BeforeThen0 = before_known(_),
-        BeforeThen1 = BeforeThen0
+        BeforeThen = BeforeThen0
     ;
         BeforeThen0 = before_unknown,
-        get_branch_start_coverage(Info, ThenGoalPath, BeforeThen1)
+        get_branch_start_coverage(Info, ThenGoalPath, BeforeThen)
     ),
     % XXX It should be possible, if the condition is not at_most_many and does
     % not throw exceptions, to compute BeforeElse as the difference between the
@@ -938,47 +922,44 @@ ite_annotate_coverage(Info, GoalPath, !Before, !After,
     % check_ite_coverage already knows the relationship.  Using exception
     % counts on call goals and propagating them through the coverage annotation
     % algorithms can solve this.
-    get_branch_start_coverage(Info, ElseGoalPath, BeforeElse1),
+    get_branch_start_coverage(Info, ElseGoalPath, BeforeElse),
 
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
         io.format("ITE Coverage inferred before then and else branches:\n" ++
-            "\tWhole: %s %s\n\tThen: %s\n\tElse: %s\n" ++
+            "\tWhole: %s \n\tThen: %s\n\tElse: %s\n" ++
             "\tGoalPath %s\n",
-            [s(string(!.Before)), s(string(!.After)),
-            s(string(BeforeThen1)), s(string(BeforeElse1)),
+            [s(string(Before)), s(string(BeforeThen)), s(string(BeforeElse)),
             s(goal_path_to_string(GoalPath))], !IO)
     ),
 
     % Step 3:
     %   Call goal_annotate_coverage for the then and else goals.
     goal_annotate_coverage(Info, ThenGoalPath,
-        BeforeThen1, BeforeThen, after_unknown, AfterThen, Then0, Then),
+        BeforeThen, AfterThen, Then0, Then),
     goal_annotate_coverage(Info, ElseGoalPath,
-        BeforeElse1, BeforeElse, after_unknown, AfterElse, Else0, Else),
+        BeforeElse, AfterElse, Else0, Else),
 
     % Step 4:
     %   Update what we know about the if-then-else as a whole.
-    before_count_from_either_source(BeforeCond, !Before),
     (
         AfterThen = after_known(AfterThenExecCount),
         AfterElse = after_known(AfterElseExecCount)
     ->
-        AfterThenElse = after_known(AfterThenExecCount + AfterElseExecCount),
-        after_count_from_either_source(AfterThenElse, !After)
+        After = after_known(AfterThenExecCount + AfterElseExecCount)
     ;
-        true
+        After = after_unknown
     ),
 
     trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
         require(
-            check_ite_coverage(!.Before, !.After, BeforeCond, AfterCond,
+            check_ite_coverage(Before, After, Before, AfterCond,
                 BeforeThen, AfterThen, BeforeElse, AfterElse, CondDetism),
             string.format("check_ite_coverage/4 failed\n" ++
                 "\tWhole: %s %s\n" ++
                 "\tCond: %s %s\n\tThen: %s %s\n\tElse: %s %s\n" ++
                 "\tGoalPath: %s\n",
-                [s(string(!.Before)), s(string(!.After)),
-                s(string(BeforeCond)), s(string(AfterCond)),
+                [s(string(Before)), s(string(After)),
+                s(string(Before)), s(string(AfterCond)),
                 s(string(BeforeThen)), s(string(AfterThen)),
                 s(string(BeforeElse)), s(string(AfterElse)),
                 s(goal_path_to_string(GoalPath))]))
@@ -1003,58 +984,36 @@ get_branch_start_coverage(Info, GoalPath, Before) :-
     ).
 
 :- pred negation_annotate_coverage(coverage_reference_info::in, goal_path::in,
-    detism_rep::in, coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out,
+    coverage_before::in, coverage_after::out,
     goal_rep::in, goal_rep(coverage_info)::out) is det.
 
-negation_annotate_coverage(Info, GoalPath, Detism, !Before, !After,
+negation_annotate_coverage(Info, GoalPath, Before, After,
         NegGoal0, NegGoal) :-
     NegGoalPath = goal_path_add_at_end(GoalPath, step_neg),
     goal_annotate_coverage(Info, NegGoalPath,
-        !Before, after_unknown, _CoverageAfter, NegGoal0, NegGoal),
-    % Set the coverage after based on the coverage before and the determinism
-    % of the entire goal.  There's no reason to update the coverage before this
-    % goal since it has already been applied to the inner goal.
-    propagate_detism_coverage(Detism, GoalPath, !.Before, _Before, !After), 
+        Before, _CoverageAfter, NegGoal0, NegGoal),
+    % The coverage after a negation is always unknown.
+    After = after_unknown,
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
         io.format("Negation: setting negation: before %s, after %s\n",
-            [s(string(!.Before)), s(string(!.After))], !IO)
+            [s(string(Before)), s(string(After))], !IO)
     ).
 
 :- pred scope_annotate_coverage(coverage_reference_info::in,
-    goal_path::in, maybe_cut::in, detism_rep::in,
-    coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out,
+    goal_path::in, maybe_cut::in, coverage_before::in, coverage_after::out,
     goal_rep::in, goal_rep(coverage_info)::out) is det.
 
-scope_annotate_coverage(Info, GoalPath, MaybeCut, Detism, !Before, !After,
+scope_annotate_coverage(Info, GoalPath, MaybeCut, Before, After,
         ScopedGoal0, ScopedGoal) :-
     ScopeGoalPath = goal_path_add_at_end(GoalPath, step_scope(MaybeCut)),
-    AfterScopeGoal = !.After,
-    (
-        MaybeCut = scope_is_cut,
-        AfterScopedGoal0 = after_unknown
-    ;
-        MaybeCut = scope_is_no_cut,
-        AfterScopedGoal0 = !.After
-    ),
     goal_annotate_coverage(Info, ScopeGoalPath,
-        !Before, AfterScopedGoal0, AfterScopedGoal, ScopedGoal0, ScopedGoal),
+        Before, AfterScopedGoal, ScopedGoal0, ScopedGoal),
     (
         MaybeCut = scope_is_cut,
-        (
-            AfterScopeGoal = after_known(_),
-            !:After = AfterScopeGoal
-        ;
-            AfterScopeGoal = after_unknown,
-            % If coverage is unknown after the scoped goal try to infer it from
-            % the determinism of the goal.
-            propagate_detism_coverage(Detism, GoalPath, !.Before, _Before,
-                after_unknown, !:After)
-        )
+        After = after_unknown
     ;
         MaybeCut = scope_is_no_cut,
-        !:After = AfterScopedGoal
+        After = AfterScopedGoal
     ).
 
 %----------------------------------------------------------------------------%
@@ -1336,45 +1295,30 @@ goal_expr_is_trivial(GoalRep) = IsTrivial :-
 
     % The coverage before a det goal should always equal the coverage after.
     %
-:- pred propagate_det_coverage(goal_path::in,
-    coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out) is det.
+:- pred propagate_det_coverage( coverage_before::in, coverage_after::out) 
+    is det.
 
-propagate_det_coverage(GoalPath, !Before, !After) :-
+propagate_det_coverage(Before, After) :-
     (
-        !.Before = before_unknown,
-        !.After = after_unknown
+        Before = before_unknown,
+        After = after_unknown
     ;
-        !.Before = before_known(BeforeExecCount),
-        !.After = after_known(AfterExecCount),
-        trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
-            require(unify(BeforeExecCount, AfterExecCount),
-                format("Coverage before %d /= after %d for a det goal: GP: %s",
-                    [i(BeforeExecCount), i(AfterExecCount),
-                    s(goal_path_to_string(GoalPath))]))
-        )
-    ;
-        !.Before = before_known(BeforeExecCount),
-        !.After = after_unknown,
-        !:After = after_known(BeforeExecCount)
-    ;
-        !.Before = before_unknown,
-        !.After = after_known(AfterExecCount),
-        !:Before = before_known(AfterExecCount)
+        Before = before_known(Count),
+        After = after_known(Count)
     ).
 
     % If the determinism is deterministic or cc_multi use
     % propagate_det_coverage.
     %
-    % Note: This predicate must not be called on deterministic call goals,
-    % since the coverage after the call may be different to the coverage before
-    % if the called code throws an exception.
+    % Note: This predicate must not be called on deterministic call goals or on
+    % any deterministic non-atomic goal, since the coverage after the call may
+    % be different to the coverage before if the called code throws an
+    % exception.
     %
-:- pred propagate_detism_coverage(detism_rep::in, goal_path::in,
-    coverage_before::in, coverage_before::out,
-    coverage_after::in, coverage_after::out) is det.
+:- pred propagate_detism_coverage(detism_rep::in,
+    coverage_before::in, coverage_after::out) is det.
 
-propagate_detism_coverage(Detism, GoalPath, !Before, !After) :-
+propagate_detism_coverage(Detism, Before, After) :-
     % TODO: Infer that if a goal has a coverage of exactly 0 before it, then it
     % must have a coverage of exactly 0 after it.  And that a goal that cannot
     % fail or throw an exception that has a coverage of 0 after it, must have a
@@ -1385,20 +1329,21 @@ propagate_detism_coverage(Detism, GoalPath, !Before, !After) :-
         ( Detism = det_rep
         ; Detism = cc_multidet_rep
         ),
-        propagate_det_coverage(GoalPath, !Before, !After)
+        propagate_det_coverage(Before, After)
     ;
         ( Detism = erroneous_rep
         ; Detism = failure_rep
         ),
         % Execution never reaches the end of these goals.
-        !:After = after_known(0)
+        After = after_known(0)
     ;
         ( Detism = semidet_rep
         ; Detism = nondet_rep
         ; Detism = multidet_rep
         ; Detism = cc_nondet_rep
-        )
+        ),
         % We can infer nothing for goals with these determinisms.
+        After = after_unknown
     ).
 
 :- pred after_to_before_coverage(coverage_after::in, coverage_before::out)
@@ -1437,29 +1382,12 @@ after_count_from_either_source(AfterA, AfterB, After) :-
         After = after_known(AfterCountA)
     ).
 
-:- pred after_count_from_either_source_sum(sum_coverage_after::in,
-    coverage_after::in, coverage_after::out) is det.
+    % Convert a sum_coverage_after to a coverage_after.
+    %
+:- pred count_sum_to_count(sum_coverage_after::in, coverage_after::out) is det.
 
-after_count_from_either_source_sum(AfterA, AfterB, After) :-
-    (
-        AfterA = sum_after_unknown,
-        AfterB = after_unknown,
-        After = after_unknown
-    ;
-        AfterA = sum_after_unknown,
-        AfterB = after_known(AfterCount),
-        After = after_known(AfterCount)
-    ;
-        AfterA = sum_after_known(AfterCount),
-        AfterB = after_unknown,
-        After = after_known(AfterCount)
-    ;
-        AfterA = sum_after_known(AfterCountA),
-        AfterB = after_known(AfterCountB),
-        require(unify(AfterCountA, AfterCountB),
-            "after_count_from_either_source: mismatch"),
-        After = after_known(AfterCountA)
-    ).
+count_sum_to_count(sum_after_unknown, after_unknown).
+count_sum_to_count(sum_after_known(C), after_known(C)).
 
 :- pred before_count_from_either_source(coverage_before::in,
     coverage_before::in, coverage_before::out) is det.
