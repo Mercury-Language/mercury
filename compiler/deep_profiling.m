@@ -2146,8 +2146,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             CoverageBeforeKnown, _, !Info, AddedImpurityInner),
         % The coverage after a negated goal cannot be inferred from its inner
         % goals.
-        coverage_known_after_goal_with_detism(Detism,
-            CoverageBeforeKnown, NextCoverageBeforeKnown0),
+        NextCoverageBeforeKnown0 = coverage_before_unknown,
         GoalExpr1 = negation(NegGoal)
     ;
         GoalExpr0 = scope(Reason, ScopeGoal0),
@@ -2161,8 +2160,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         ( ScopedGoalDetism = Detism ->
             NextCoverageBeforeKnown0 = CoverageAfterScopedGoalKnown
         ;
-            coverage_known_after_goal_with_detism(Detism,
-                CoverageBeforeKnown, NextCoverageBeforeKnown0)
+            NextCoverageBeforeKnown0 = coverage_before_unknown
         ),
         GoalExpr1 = scope(Reason, ScopeGoal)
     ;
@@ -2188,12 +2186,6 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             % We already have execution counts for the program point after this
             % goal; adding a counter would be redundant.
             NextCoverageBeforeKnown0 = coverage_before_known
-        ;
-            % Never insert coverage points after conjunctions; wait until
-            % the algorithm recurses to inside the conjunction and make a
-            % better decision about the last conjunct. This can reduce the
-            % number of coverage points inserted in some cases.
-            GoalExpr0 = conj(_, _)
         )
     ->
         MaybeAddCP = no,
@@ -2302,11 +2294,11 @@ coverage_prof_second_pass_disj(DPInfo, CoverageBeforeKnown,
         goal_info_get_determinism(SecondDisjunct ^ hlds_goal_info) =
             detism_failure
         % XXX: zs: Would this be a better test here?
+        % goal_has_feature(SecondDisjunct, feature_preserve_backtrack_into)
         % pbone: I don't think so, the deep profiler doesn't seem to add this
         % feature to disjuncts that end in failure, it is probably a good idea
         % to add this annotation to prevent later compiler passes from breaking
         % the deep profiler. 
-        % goal_has_feature(SecondDisjunct, feature_preserve_backtrack_into)
     ->
         coverage_prof_second_pass_goal(FirstDisjunct0, FirstDisjunct,
             CoverageBeforeKnown, NextCoverageBeforeKnown, !Info,
