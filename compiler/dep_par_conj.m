@@ -170,85 +170,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % This type holds information relevant to the synchronization
-    % transformation.
-    %
-:- type sync_info
-    --->    sync_info(
-                % The current module. This field is read only.
-                sync_module_info            :: module_info,
-
-                % Variables which should not be replaced by futures in this
-                % pass because it has already been done. This field is
-                % read only.
-                sync_ignore_vars            :: set(prog_var),
-
-                % The varset and vartypes for the procedure being analysed.
-                % These fields are updated when we add new variables.
-                sync_varset                 :: prog_varset,
-                sync_vartypes               :: vartypes
-
-                % XXX We may also need the rtti_var_maps.
-            ).
-
-    % This type holds information relevant to the specialization
-    % transformation.
-    %
-:- type spec_info
-    --->    spec_info(
-                % The set of parallelised procedures that we have already
-                % created. This field is constant: it should never be updated.
-                % (The set of done procs is updated only between the lifetimes
-                % of values of this type.)
-                spec_done_procs             :: done_par_procs,
-
-                % The current module. Updated when requesting a new
-                % specialization, since to get the pred_id for the specialized
-                % predicate we need to update the module_info.
-                spec_module_info            :: module_info,
-
-                % Parallelised procedures waiting to be added. Updated when
-                % requesting a new specialization.
-                spec_pending_procs          :: pending_par_procs
-            ).
-
-    % Parallelised procedures that have been added to the module already.
-    % The calling pattern is the original pred_proc_id of the procedure
-    % being called, plus the list of arguments which have been replaced
-    % by futures.
-    %
-:- type done_par_procs == map(par_proc_call_pattern, new_par_proc).
-
-    % Parallelised procedures that are scheduled to be added.
-    % One or more procedures in the module will already be making calls
-    % to the scheduled procedure.
-    %
-:- type pending_par_procs == assoc_list(par_proc_call_pattern, new_par_proc).
-
-:- type par_proc_call_pattern
-    --->    par_proc_call_pattern(
-                old_ppid        :: pred_proc_id,
-                future_args     :: list(arg_pos)
-            ).
-
-:- type new_par_proc
-    --->    new_par_proc(
-                new_ppid        :: pred_proc_id,
-                new_name        :: sym_name
-            ).
-
-:- type arg_pos == int.
-
-    % A map from a variable to the future object created for that variable.
-    % If it maps e.g. X to FutureX, then
-    %
-    % - after a producer binds X to a value, it will signal FutureX, and
-    % - before a consumer needs X, it will wait on FutureX.
-    %
-:- type future_map == map(prog_var, prog_var).
-
-%-----------------------------------------------------------------------------%
-
 impl_dep_par_conjs_in_module(!ModuleInfo) :-
     InitialModuleInfo = !.ModuleInfo,
 
@@ -272,6 +193,31 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
         InitialModuleInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% The synchronization transformation.
+%
+
+    % This type holds information relevant to the synchronization
+    % transformation.
+    %
+:- type sync_info
+    --->    sync_info(
+                % The current module. This field is read only.
+                sync_module_info            :: module_info,
+
+                % Variables which should not be replaced by futures in this
+                % pass because it has already been done. This field is
+                % read only.
+                sync_ignore_vars            :: set(prog_var),
+
+                % The varset and vartypes for the procedure being analysed.
+                % These fields are updated when we add new variables.
+                sync_varset                 :: prog_varset,
+                sync_vartypes               :: vartypes
+
+                % XXX We may also need the rtti_var_maps.
+            ).
 
 :- pred maybe_sync_dep_par_conjs_in_pred(pred_id::in,
     module_info::in, module_info::out,
@@ -329,184 +275,9 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
         !:ProcsToScan = [PredProcId | !.ProcsToScan]
     ).
 
-:- pred fixup_and_reinsert_proc(pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
-
-fixup_and_reinsert_proc(PredId, ProcId, !.PredInfo, !.ProcInfo, !ModuleInfo) :-
-    requantify_proc(!ProcInfo),
-    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
-        !ProcInfo, !ModuleInfo),
-    pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo),
-    repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
-    module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
-
-%-----------------------------------------------------------------------------%
-
-:- pred find_specialization_requests_in_proc(done_par_procs::in,
-    pred_proc_id::in, module_info::in, module_info::out,
-    pending_par_procs::in, pending_par_procs::out) is det.
-
-find_specialization_requests_in_proc(DoneProcs, PredProcId, !ModuleInfo,
-        !PendingParProcs) :-
-    PredProcId = proc(PredId, ProcId),
-    some [!PredInfo, !ProcInfo, !Goal, !SpecInfo] (
-        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-            !:PredInfo, !:ProcInfo),
-        proc_info_get_goal(!.ProcInfo, !:Goal),
-        !:SpecInfo = spec_info(DoneProcs, !.ModuleInfo, !.PendingParProcs),
-        specialize_sequences_in_goal(!Goal, !SpecInfo),
-        !.SpecInfo = spec_info(_, !:ModuleInfo, !:PendingParProcs),
-        proc_info_set_goal(!.Goal, !ProcInfo),
-        % Optimization oppotunity: we should not fix up the same procedure
-        % twice, i.e. in sync_dep_par_conjs_in_proc and here.
-        fixup_and_reinsert_proc(PredId, ProcId, !.PredInfo, !.ProcInfo,
-            !ModuleInfo)
-    ).
-
-:- pred add_requested_specialized_par_procs(pending_par_procs::in,
-    done_par_procs::in, module_info::in, module_info::in, module_info::out)
-    is det.
-
-add_requested_specialized_par_procs(!.PendingParProcs, !.DoneParProcs,
-        InitialModuleInfo, !ModuleInfo) :-
-    (
-        !.PendingParProcs = []
-    ;
-        !.PendingParProcs = [CallPattern - NewProc | !:PendingParProcs],
-        % Move the procedure we are about to parallelise into the list of
-        % done procedures, in case of recursive calls.
-        svmap.det_insert(CallPattern, NewProc, !DoneParProcs),
-        add_requested_specialized_par_proc(CallPattern, NewProc,
-            !PendingParProcs, !.DoneParProcs, InitialModuleInfo, !ModuleInfo),
-        add_requested_specialized_par_procs(!.PendingParProcs, !.DoneParProcs,
-            InitialModuleInfo, !ModuleInfo)
-    ).
-
-:- pred add_requested_specialized_par_proc(par_proc_call_pattern::in,
-    new_par_proc::in, pending_par_procs::in, pending_par_procs::out,
-    done_par_procs::in, module_info::in, module_info::in, module_info::out)
-    is det.
-
-add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
-        DoneParProcs, InitialModuleInfo, !ModuleInfo) :-
-    CallPattern = par_proc_call_pattern(OldPredProcId, FutureArgs),
-    NewProc = new_par_proc(NewPredProcId, _Name),
-    OldPredProcId = proc(OldPredId, OldProcId),
-    NewPredProcId = proc(NewPredId, NewProcId),
-
-    some [!VarSet, !VarTypes, !NewProcInfo] (
-        % Get the proc_info from _before_ the dependent parallel conjunction
-        % pass was ever run, so we get untransformed procedure bodies.
-        % Our transformation does not attempt to handle already transformed
-        % parallel conjunctions.
-        module_info_proc_info(InitialModuleInfo, OldPredId, OldProcId,
-            !:NewProcInfo),
-        proc_info_get_varset(!.NewProcInfo, !:VarSet),
-        proc_info_get_vartypes(!.NewProcInfo, !:VarTypes),
-        proc_info_get_headvars(!.NewProcInfo, HeadVars0),
-        proc_info_get_argmodes(!.NewProcInfo, ArgModes0),
-        proc_info_get_goal(!.NewProcInfo, Goal0),
-        proc_info_get_initial_instmap(!.NewProcInfo, InitialModuleInfo,
-            InstMap0),
-
-        % Set up the mapping from head variables to futures.
-        list.foldl3(map_arg_to_new_future(HeadVars0), FutureArgs,
-            map.init, FutureMap, !VarSet, !VarTypes),
-
-        % Replace head variables by their futures.
-        replace_head_vars(!.ModuleInfo, FutureMap,
-            HeadVars0, HeadVars, ArgModes0, ArgModes),
-
-        % Insert signals and waits into the procedure body. We treat the body
-        % as it were a conjunct of a parallel conjunction, since it is.
-        SharedVars = set.from_list(map.keys(FutureMap)),
-        sync_dep_par_conjunct(!.ModuleInfo, par_conjunct_is_proc_body,
-            SharedVars, FutureMap, Goal0, Goal, InstMap0, _,
-            !VarSet, !VarTypes),
-
-        proc_info_set_varset(!.VarSet, !NewProcInfo),
-        proc_info_set_vartypes(!.VarTypes, !NewProcInfo),
-        proc_info_set_headvars(HeadVars, !NewProcInfo),
-        proc_info_set_argmodes(ArgModes, !NewProcInfo),
-        proc_info_set_goal(Goal, !NewProcInfo),
-
-        module_info_pred_info(!.ModuleInfo, NewPredId, NewPredInfo0),
-
-        % Mark this predicate impure if it no longer has any output arguments
-        % (having been replaced by a future, which is an input argument which
-        % is destructively updated).
-        ( any_output_arguments(!.ModuleInfo, ArgModes) ->
-            NewPredInfo = NewPredInfo0
-        ;
-            pred_info_get_markers(NewPredInfo0, Markers0),
-            add_marker(marker_is_impure, Markers0, Markers),
-            pred_info_set_markers(Markers, NewPredInfo0, NewPredInfo)
-        ),
-
-        fixup_and_reinsert_proc(NewPredId, NewProcId, NewPredInfo,
-            !.NewProcInfo, !ModuleInfo),
-
-        % Look for and process any dependent parallel conjunctions inside
-        % the newly created (sort of; the previous version was only a
-        % placeholder) specialized procedure.
-        IgnoreVars = set.from_list(map.keys(FutureMap)),
-        sync_dep_par_conjs_in_proc(NewPredId, NewProcId, IgnoreVars,
-            !ModuleInfo, [], _ProcsToScan),
-        find_specialization_requests_in_proc(DoneParProcs, NewPredProcId,
-            !ModuleInfo, !PendingParProcs)
-    ).
-
-:- pred map_arg_to_new_future(list(prog_var)::in, arg_pos::in,
-    future_map::in, future_map::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-
-map_arg_to_new_future(HeadVars, FutureArg, !FutureMap, !VarSet, !VarTypes) :-
-    HeadVar = list.det_index1(HeadVars, FutureArg),
-    map.lookup(!.VarTypes, HeadVar, VarType),
-    make_future_var(HeadVar, VarType, !VarSet, !VarTypes, FutureVar),
-    svmap.det_insert(HeadVar, FutureVar, !FutureMap).
-
-:- pred replace_head_vars(module_info::in, future_map::in,
-    prog_vars::in, prog_vars::out, list(mer_mode)::in, list(mer_mode)::out)
-    is det.
-
-replace_head_vars(_ModuleInfo, _FutureMap, [], [], [], []).
-replace_head_vars(ModuleInfo, FutureMap,
-        [Var0 | Vars0], [Var | Vars], [Mode0 | Modes0], [Mode | Modes]) :-
-    ( map.search(FutureMap, Var0, FutureVar) ->
-        Var = FutureVar,
-        ( mode_is_input(ModuleInfo, Mode0) ->
-            Mode = Mode0
-        ; mode_is_output(ModuleInfo, Mode0) ->
-            Mode = (ground(shared, none) -> ground(shared, none))
-        ;
-            sorry(this_file,
-                "dependent parallel conjunction transformation " ++
-                "only understands input and output modes")
-        )
-    ;
-        Var = Var0,
-        Mode = Mode0
-    ),
-    replace_head_vars(ModuleInfo, FutureMap, Vars0, Vars, Modes0, Modes).
-replace_head_vars(_, _, [_ | _], _, [], _) :-
-    unexpected(this_file, "replace_head_vars: length mismatch").
-replace_head_vars(_, _, [], _, [_ | _], _) :-
-    unexpected(this_file, "replace_head_vars: length mismatch").
-
-:- pred any_output_arguments(module_info::in, list(mer_mode)::in) is semidet.
-
-any_output_arguments(ModuleInfo, [Mode | Modes]) :-
-    ( mode_is_output(ModuleInfo, Mode)
-    ; any_output_arguments(ModuleInfo, Modes)
-    ).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-    % Determine if a parallel conjunction is a dependent parallel conjunction.
-    % If so, allocate futures for variables shared between conjuncts.
-    % Insert wait and signal calls for those futures into the conjuncts.
+    % Traverse the goal looking for dependent parallel conjunctions,
+    % and insert code to synchronize the accesses of the various
+    % parallel conjuncts to the variables they share.
     %
 :- pred sync_dep_par_conjs_in_goal(hlds_goal::in, hlds_goal::out,
     instmap::in, instmap::out, sync_info::in, sync_info::out)
@@ -735,64 +506,6 @@ sync_dep_par_conjunct(ModuleInfo, ParConjunctStatus, SharedVars, FutureMap,
         )
     ),
     update_instmap(!.Goal, !InstMap).
-
-%-----------------------------------------------------------------------------%
-
-    % If a variable is nonlocal to a conjunct, and appears in the
-    % instmap_delta of a _different_ conjunct, then we say that variable is
-    % shared.
-    %
-    % (1) A variable must be nonlocal to a conjunct if it is shared.
-    % (2) If the variable does not appear in the instmap_delta
-    %     of any of the conjuncts of the parallel conjunction
-    %     then it could not have been further instantiated within
-    %     by the conjunction as a whole.
-    %
-    % XXX This code is probably too complicated.  I think Thomas already had a
-    % more elegant way to find the shared variables somewhere, using multisets.
-    %
-find_shared_variables(ModuleInfo, InstMap, Goals) = SharedVars :-
-    list.map2(get_nonlocals_and_instmaps, Goals, Nonlocals, InstMapDeltas),
-    find_shared_variables_2(ModuleInfo, 0, Nonlocals, InstMap, InstMapDeltas,
-        set.init, SharedVars).
-
-:- pred get_nonlocals_and_instmaps(hlds_goal::in,
-    set(prog_var)::out, instmap_delta::out) is det.
-
-get_nonlocals_and_instmaps(hlds_goal(_, GoalInfo), Nonlocals, InstMapDelta) :-
-    Nonlocals = goal_info_get_nonlocals(GoalInfo),
-    InstMapDelta = goal_info_get_instmap_delta(GoalInfo).
-
-:- pred find_shared_variables_2(module_info::in, int::in,
-    list(set(prog_var))::in, instmap::in, list(instmap_delta)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
-
-find_shared_variables_2(_ModuleInfo, _ConjunctIndex,
-        [], _InstMap, _InstMapDeltas, !SharedVars).
-find_shared_variables_2(ModuleInfo, ConjunctIndex,
-        [Nonlocals | MoreNonlocals], InstMap, InstMapDeltas, !SharedVars) :-
-    det_delete_nth(ConjunctIndex, InstMapDeltas, InstMapDeltasB),
-    % Keep only nonlocals which were not already bound at the start of the
-    % parallel conjunction.
-    Filter = (pred(Var::in) is semidet :-
-        instmap.lookup_var(InstMap, Var, VarInst),
-        not inst_is_bound(ModuleInfo, VarInst)
-    ),
-    UnboundNonlocals = set.filter(Filter, Nonlocals),
-    Changed =
-        set.filter(changed_var(ModuleInfo, InstMapDeltasB), UnboundNonlocals),
-    set.union(Changed, !SharedVars),
-    find_shared_variables_2(ModuleInfo, ConjunctIndex+1, MoreNonlocals,
-        InstMap, InstMapDeltas, !SharedVars).
-
-:- pred changed_var(module_info::in, list(instmap_delta)::in, prog_var::in)
-    is semidet.
-
-changed_var(ModuleInfo, InstMapDeltas, UnboundVar) :-
-    % Is the unbound nonlocal bound in one of the conjuncts?
-    list.member(InstMapDelta, InstMapDeltas),
-    instmap_delta_search_var(InstMapDelta, UnboundVar, Inst),
-    inst_is_bound(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -1217,21 +930,232 @@ insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
         Cases0, Cases, !VarSet, !VarTypes).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% The specialization transformation.
+%
 
-:- pred var_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
+    % This type holds information relevant to the specialization
+    % transformation.
+    %
+:- type spec_info
+    --->    spec_info(
+                % The set of parallelised procedures that we have already
+                % created. This field is constant: it should never be updated.
+                % (The set of done procs is updated only between the lifetimes
+                % of values of this type.)
+                spec_done_procs             :: done_par_procs,
 
-var_in_nonlocals(Var, Goal) :-
-    set.member(Var, goal_get_nonlocals(Goal)).
+                % The current module. Updated when requesting a new
+                % specialization, since to get the pred_id for the specialized
+                % predicate we need to update the module_info.
+                spec_module_info            :: module_info,
 
-:- pred var_not_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
+                % Parallelised procedures waiting to be added. Updated when
+                % requesting a new specialization.
+                spec_pending_procs          :: pending_par_procs
+            ).
 
-var_not_in_nonlocals(Var, Goal) :-
-    not var_in_nonlocals(Var, Goal).
+    % Parallelised procedures that have been added to the module already.
+    % The calling pattern is the original pred_proc_id of the procedure
+    % being called, plus the list of arguments which have been replaced
+    % by futures.
+    %
+:- type done_par_procs == map(par_proc_call_pattern, new_par_proc).
+
+    % Parallelised procedures that are scheduled to be added.
+    % One or more procedures in the module will already be making calls
+    % to the scheduled procedure.
+    %
+:- type pending_par_procs == assoc_list(par_proc_call_pattern, new_par_proc).
+
+:- type par_proc_call_pattern
+    --->    par_proc_call_pattern(
+                old_ppid        :: pred_proc_id,
+                future_args     :: list(arg_pos)
+            ).
+
+:- type new_par_proc
+    --->    new_par_proc(
+                new_ppid        :: pred_proc_id,
+                new_name        :: sym_name
+            ).
+
+:- type arg_pos == int.
+
+    % A map from a variable to the future object created for that variable.
+    % If it maps e.g. X to FutureX, then
+    %
+    % - after a producer binds X to a value, it will signal FutureX, and
+    % - before a consumer needs X, it will wait on FutureX.
+    %
+:- type future_map == map(prog_var, prog_var).
+
+%-----------------------------------------------------------------------------%
+
+:- pred find_specialization_requests_in_proc(done_par_procs::in,
+    pred_proc_id::in, module_info::in, module_info::out,
+    pending_par_procs::in, pending_par_procs::out) is det.
+
+find_specialization_requests_in_proc(DoneProcs, PredProcId, !ModuleInfo,
+        !PendingParProcs) :-
+    PredProcId = proc(PredId, ProcId),
+    some [!PredInfo, !ProcInfo, !Goal, !SpecInfo] (
+        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+            !:PredInfo, !:ProcInfo),
+        proc_info_get_goal(!.ProcInfo, !:Goal),
+        !:SpecInfo = spec_info(DoneProcs, !.ModuleInfo, !.PendingParProcs),
+        specialize_sequences_in_goal(!Goal, !SpecInfo),
+        !.SpecInfo = spec_info(_, !:ModuleInfo, !:PendingParProcs),
+        proc_info_set_goal(!.Goal, !ProcInfo),
+        % Optimization oppotunity: we should not fix up the same procedure
+        % twice, i.e. in sync_dep_par_conjs_in_proc and here.
+        fixup_and_reinsert_proc(PredId, ProcId, !.PredInfo, !.ProcInfo,
+            !ModuleInfo)
+    ).
+
+:- pred add_requested_specialized_par_procs(pending_par_procs::in,
+    done_par_procs::in, module_info::in, module_info::in, module_info::out)
+    is det.
+
+add_requested_specialized_par_procs(!.PendingParProcs, !.DoneParProcs,
+        InitialModuleInfo, !ModuleInfo) :-
+    (
+        !.PendingParProcs = []
+    ;
+        !.PendingParProcs = [CallPattern - NewProc | !:PendingParProcs],
+        % Move the procedure we are about to parallelise into the list of
+        % done procedures, in case of recursive calls.
+        svmap.det_insert(CallPattern, NewProc, !DoneParProcs),
+        add_requested_specialized_par_proc(CallPattern, NewProc,
+            !PendingParProcs, !.DoneParProcs, InitialModuleInfo, !ModuleInfo),
+        add_requested_specialized_par_procs(!.PendingParProcs, !.DoneParProcs,
+            InitialModuleInfo, !ModuleInfo)
+    ).
+
+:- pred add_requested_specialized_par_proc(par_proc_call_pattern::in,
+    new_par_proc::in, pending_par_procs::in, pending_par_procs::out,
+    done_par_procs::in, module_info::in, module_info::in, module_info::out)
+    is det.
+
+add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
+        DoneParProcs, InitialModuleInfo, !ModuleInfo) :-
+    CallPattern = par_proc_call_pattern(OldPredProcId, FutureArgs),
+    NewProc = new_par_proc(NewPredProcId, _Name),
+    OldPredProcId = proc(OldPredId, OldProcId),
+    NewPredProcId = proc(NewPredId, NewProcId),
+
+    some [!VarSet, !VarTypes, !NewProcInfo] (
+        % Get the proc_info from _before_ the dependent parallel conjunction
+        % pass was ever run, so we get untransformed procedure bodies.
+        % Our transformation does not attempt to handle already transformed
+        % parallel conjunctions.
+        module_info_proc_info(InitialModuleInfo, OldPredId, OldProcId,
+            !:NewProcInfo),
+        proc_info_get_varset(!.NewProcInfo, !:VarSet),
+        proc_info_get_vartypes(!.NewProcInfo, !:VarTypes),
+        proc_info_get_headvars(!.NewProcInfo, HeadVars0),
+        proc_info_get_argmodes(!.NewProcInfo, ArgModes0),
+        proc_info_get_goal(!.NewProcInfo, Goal0),
+        proc_info_get_initial_instmap(!.NewProcInfo, InitialModuleInfo,
+            InstMap0),
+
+        % Set up the mapping from head variables to futures.
+        list.foldl3(map_arg_to_new_future(HeadVars0), FutureArgs,
+            map.init, FutureMap, !VarSet, !VarTypes),
+
+        % Replace head variables by their futures.
+        replace_head_vars(!.ModuleInfo, FutureMap,
+            HeadVars0, HeadVars, ArgModes0, ArgModes),
+
+        % Insert signals and waits into the procedure body. We treat the body
+        % as it were a conjunct of a parallel conjunction, since it is.
+        SharedVars = set.from_list(map.keys(FutureMap)),
+        sync_dep_par_conjunct(!.ModuleInfo, par_conjunct_is_proc_body,
+            SharedVars, FutureMap, Goal0, Goal, InstMap0, _,
+            !VarSet, !VarTypes),
+
+        proc_info_set_varset(!.VarSet, !NewProcInfo),
+        proc_info_set_vartypes(!.VarTypes, !NewProcInfo),
+        proc_info_set_headvars(HeadVars, !NewProcInfo),
+        proc_info_set_argmodes(ArgModes, !NewProcInfo),
+        proc_info_set_goal(Goal, !NewProcInfo),
+
+        module_info_pred_info(!.ModuleInfo, NewPredId, NewPredInfo0),
+
+        % Mark this predicate impure if it no longer has any output arguments
+        % (having been replaced by a future, which is an input argument which
+        % is destructively updated).
+        ( any_output_arguments(!.ModuleInfo, ArgModes) ->
+            NewPredInfo = NewPredInfo0
+        ;
+            pred_info_get_markers(NewPredInfo0, Markers0),
+            add_marker(marker_is_impure, Markers0, Markers),
+            pred_info_set_markers(Markers, NewPredInfo0, NewPredInfo)
+        ),
+
+        fixup_and_reinsert_proc(NewPredId, NewProcId, NewPredInfo,
+            !.NewProcInfo, !ModuleInfo),
+
+        % Look for and process any dependent parallel conjunctions inside
+        % the newly created (sort of; the previous version was only a
+        % placeholder) specialized procedure.
+        IgnoreVars = set.from_list(map.keys(FutureMap)),
+        sync_dep_par_conjs_in_proc(NewPredId, NewProcId, IgnoreVars,
+            !ModuleInfo, [], _ProcsToScan),
+        find_specialization_requests_in_proc(DoneParProcs, NewPredProcId,
+            !ModuleInfo, !PendingParProcs)
+    ).
+
+:- pred map_arg_to_new_future(list(prog_var)::in, arg_pos::in,
+    future_map::in, future_map::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+map_arg_to_new_future(HeadVars, FutureArg, !FutureMap, !VarSet, !VarTypes) :-
+    HeadVar = list.det_index1(HeadVars, FutureArg),
+    map.lookup(!.VarTypes, HeadVar, VarType),
+    make_future_var(HeadVar, VarType, !VarSet, !VarTypes, FutureVar),
+    svmap.det_insert(HeadVar, FutureVar, !FutureMap).
+
+:- pred replace_head_vars(module_info::in, future_map::in,
+    prog_vars::in, prog_vars::out, list(mer_mode)::in, list(mer_mode)::out)
+    is det.
+
+replace_head_vars(_ModuleInfo, _FutureMap, [], [], [], []).
+replace_head_vars(ModuleInfo, FutureMap,
+        [Var0 | Vars0], [Var | Vars], [Mode0 | Modes0], [Mode | Modes]) :-
+    ( map.search(FutureMap, Var0, FutureVar) ->
+        Var = FutureVar,
+        ( mode_is_input(ModuleInfo, Mode0) ->
+            Mode = Mode0
+        ; mode_is_output(ModuleInfo, Mode0) ->
+            Mode = (ground(shared, none) -> ground(shared, none))
+        ;
+            sorry(this_file,
+                "dependent parallel conjunction transformation " ++
+                "only understands input and output modes")
+        )
+    ;
+        Var = Var0,
+        Mode = Mode0
+    ),
+    replace_head_vars(ModuleInfo, FutureMap, Vars0, Vars, Modes0, Modes).
+replace_head_vars(_, _, [_ | _], _, [], _) :-
+    unexpected(this_file, "replace_head_vars: length mismatch").
+replace_head_vars(_, _, [], _, [_ | _], _) :-
+    unexpected(this_file, "replace_head_vars: length mismatch").
+
+:- pred any_output_arguments(module_info::in, list(mer_mode)::in) is semidet.
+
+any_output_arguments(ModuleInfo, [Mode | Modes]) :-
+    ( mode_is_output(ModuleInfo, Mode)
+    ; any_output_arguments(ModuleInfo, Modes)
+    ).
 
 %-----------------------------------------------------------------------------%
 
     % Replace contiguous sequences of waits, a call to P, then signals by a
-    % call to a parallelised procedure P'.  Queue P' to be created later,
+    % call to a parallelised procedure P'. Queue P' to be created later,
     % if it has not been created already.
     %
 :- pred specialize_sequences_in_goal(hlds_goal::in, hlds_goal::out,
@@ -1341,6 +1265,8 @@ specialize_sequences_in_cases([Case0 | Cases0], [Case | Cases], !SpecInfo) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     specialize_sequences_in_cases(Cases0, Cases, !SpecInfo).
 
+%-----------------------------------------------------------------------------%
+
 :- inst call_goal_expr
     ==  bound(plain_call(ground, ground, ground, ground, ground, ground)).
 
@@ -1388,9 +1314,9 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
             % to make sure the variable is bound.  We assume the get goals will
             % be simplified away if they turn out to be unnecessary.
             %
-            % XXX the simplify pass that comes later doesn't always remove
-            %     these calls even if they're unnecessary
-            %
+            % XXX The simplify pass that comes later doesn't always remove
+            % these calls, even if they're unnecessary.
+
             list.map(make_get_goal(!.SpecInfo ^ spec_module_info),
                 SignalPairs ++ WaitPairs, GetGoals),
 
@@ -1513,6 +1439,8 @@ number_future_args(ArgNo, [Arg | Args], WaitSignalVars, !RevAcc) :-
         true
     ),
     number_future_args(ArgNo+1, Args, WaitSignalVars, !RevAcc).
+
+%-----------------------------------------------------------------------------%
 
 :- pred create_new_spec_parallel_pred(list(arg_pos)::in, pred_proc_id::in,
     pred_proc_id::out, string::out, module_info::in, module_info::out) is det.
@@ -1746,11 +1674,92 @@ conjoin_goals_update_goal_infos(!.GoalInfo, GoalA, GoalB, Goal) :-
     conjoin_goal_and_goal_list_update_goal_infos(!.GoalInfo, GoalA, GoalListB,
         Goal).
 
+%-----------------------------------------------------------------------------%
+
+    % If a variable is nonlocal to a conjunct, and appears in the
+    % instmap_delta of a _different_ conjunct, then we say that variable is
+    % shared.
+    %
+    % (1) A variable must be nonlocal to a conjunct if it is shared.
+    % (2) If the variable does not appear in the instmap_delta
+    %     of any of the conjuncts of the parallel conjunction
+    %     then it could not have been further instantiated within
+    %     by the conjunction as a whole.
+    %
+    % XXX This code is probably too complicated.  I think Thomas already had a
+    % more elegant way to find the shared variables somewhere, using multisets.
+    %
+find_shared_variables(ModuleInfo, InstMap, Goals) = SharedVars :-
+    list.map2(get_nonlocals_and_instmaps, Goals, Nonlocals, InstMapDeltas),
+    find_shared_variables_2(ModuleInfo, 0, Nonlocals, InstMap, InstMapDeltas,
+        set.init, SharedVars).
+
+:- pred get_nonlocals_and_instmaps(hlds_goal::in,
+    set(prog_var)::out, instmap_delta::out) is det.
+
+get_nonlocals_and_instmaps(hlds_goal(_, GoalInfo), Nonlocals, InstMapDelta) :-
+    Nonlocals = goal_info_get_nonlocals(GoalInfo),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo).
+
+:- pred find_shared_variables_2(module_info::in, int::in,
+    list(set(prog_var))::in, instmap::in, list(instmap_delta)::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+find_shared_variables_2(_ModuleInfo, _ConjunctIndex,
+        [], _InstMap, _InstMapDeltas, !SharedVars).
+find_shared_variables_2(ModuleInfo, ConjunctIndex,
+        [Nonlocals | MoreNonlocals], InstMap, InstMapDeltas, !SharedVars) :-
+    det_delete_nth(ConjunctIndex, InstMapDeltas, InstMapDeltasB),
+    % Keep only nonlocals which were not already bound at the start of the
+    % parallel conjunction.
+    Filter = (pred(Var::in) is semidet :-
+        instmap.lookup_var(InstMap, Var, VarInst),
+        not inst_is_bound(ModuleInfo, VarInst)
+    ),
+    UnboundNonlocals = set.filter(Filter, Nonlocals),
+    Changed =
+        set.filter(changed_var(ModuleInfo, InstMapDeltasB), UnboundNonlocals),
+    set.union(Changed, !SharedVars),
+    find_shared_variables_2(ModuleInfo, ConjunctIndex+1, MoreNonlocals,
+        InstMap, InstMapDeltas, !SharedVars).
+
+:- pred changed_var(module_info::in, list(instmap_delta)::in, prog_var::in)
+    is semidet.
+
+changed_var(ModuleInfo, InstMapDeltas, UnboundVar) :-
+    % Is the unbound nonlocal bound in one of the conjuncts?
+    list.member(InstMapDelta, InstMapDeltas),
+    instmap_delta_search_var(InstMapDelta, UnboundVar, Inst),
+    inst_is_bound(ModuleInfo, Inst).
+
+%-----------------------------------------------------------------------------%
+
+:- pred fixup_and_reinsert_proc(pred_id::in, proc_id::in,
+    pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
+
+fixup_and_reinsert_proc(PredId, ProcId, !.PredInfo, !.ProcInfo, !ModuleInfo) :-
+    requantify_proc(!ProcInfo),
+    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+        !ProcInfo, !ModuleInfo),
+    pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo),
+    repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
+    module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
+
 :- pred det_delete_nth(int::in, list(T)::in, list(T)::out) is det.
 
 det_delete_nth(N, List0, List) :-
     list.det_split_list(N, List0, Left, Right),
     List = Left ++ det_tail(Right).
+
+:- pred var_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
+
+var_in_nonlocals(Var, Goal) :-
+    set.member(Var, goal_get_nonlocals(Goal)).
+
+:- pred var_not_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
+
+var_not_in_nonlocals(Var, Goal) :-
+    not var_in_nonlocals(Var, Goal).
 
 %-----------------------------------------------------------------------------%
 
