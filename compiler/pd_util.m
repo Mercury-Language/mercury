@@ -76,12 +76,12 @@
 
     % Recompute the non-locals of the goal.
     %
-:- pred requantify_goal(set(prog_var)::in,
+:- pred pd_requantify_goal(set(prog_var)::in,
     hlds_goal::in, hlds_goal::out, pd_info::in, pd_info::out) is det.
 
     % Apply mode_util.recompute_instmap_delta to the goal.
     %
-:- pred recompute_instmap_delta(hlds_goal::in, hlds_goal::out,
+:- pred pd_recompute_instmap_delta(hlds_goal::in, hlds_goal::out,
     pd_info::in, pd_info::out) is det.
 
     % Convert from information about the argument positions to
@@ -219,8 +219,8 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
             Changed = yes,
             pd_debug_output_goal(!.PDInfo,
                 "after constraints, before recompute\n", !.Goal, !IO),
-            requantify_goal(NonLocals, !Goal, !PDInfo),
-            recompute_instmap_delta(!Goal, !PDInfo),
+            pd_requantify_goal(NonLocals, !Goal, !PDInfo),
+            pd_recompute_instmap_delta(!Goal, !PDInfo),
             rerun_det_analysis(!Goal, !PDInfo, !IO),
             module_info_get_globals(ModuleInfo, Globals),
             simplify.find_simplifications(no, Globals, Simplifications),
@@ -781,7 +781,7 @@ combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
 
 %-----------------------------------------------------------------------------%
 
-requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
+pd_requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
     some [!ProcInfo] (
         pd_info_get_proc_info(!.PDInfo, !:ProcInfo),
         proc_info_get_varset(!.ProcInfo, VarSet0),
@@ -795,7 +795,7 @@ requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
         pd_info_set_proc_info(!.ProcInfo, !PDInfo)
     ).
 
-recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
+pd_recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),

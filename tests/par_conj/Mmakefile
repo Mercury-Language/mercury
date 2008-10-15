@@ -6,6 +6,9 @@ THIS_DIR = par_conj
 
 # please keep these lists sorted
 DEP_PAR_CONJ_PROGS= \
+	consume_in_some_branches \
+	consume_in_some_branches_and_after \
+	consume_wait \
 	dep_par_1 \
 	dep_par_2 \
 	dep_par_3 \
@@ -149,8 +152,11 @@ threads_hang.out: threads_hang
 # threads to see the bug.
 spawn_many.out: spawn_many
 	ulimit -s 256 && \
-		MERCURY_OPTIONS='-P2 --detstack-size 32 --small-detstack-size 32 \
-			--nondetstack-size 16 --small-nondetstack-size 16' \
+		MERCURY_OPTIONS="-P2 \
+			--detstack-size 32 \
+			--small-detstack-size 32 \
+			--nondetstack-size 16 \
+			--small-nondetstack-size 16" \
 		./spawn_many 2>&1 > spawn_many.out || \
 		{ grep . $@ /dev/null; exit 1; }
 

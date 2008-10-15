@@ -452,9 +452,9 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
 create_canonical_variables(OrigVars, CanonVars, !DelayInfo) :-
     VarSet0 = !.DelayInfo ^ dpi_varset,
     VarTypes0 = !.DelayInfo ^ dpi_vartypes,
-    create_variables(OrigVars, VarSet0, VarTypes0,
-        VarSet0, VarSet, VarTypes0, VarTypes, map.init, Subn),
-    rename_var_list(must_rename, Subn, OrigVars, CanonVars),
+    clone_variables(OrigVars, VarSet0, VarTypes0,
+        VarSet0, VarSet, VarTypes0, VarTypes, map.init, Renaming),
+    rename_var_list(must_rename, Renaming, OrigVars, CanonVars),
     !DelayInfo ^ dpi_varset := VarSet,
     !DelayInfo ^ dpi_vartypes := VarTypes.
 

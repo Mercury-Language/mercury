@@ -32,17 +32,29 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type dead_proc_pass
-    --->    dead_proc_warning_pass
-    ;       dead_proc_final_optimization_pass.
+:- type maybe_elim_opt_imported
+    --->    elim_opt_imported
+    ;       do_not_elim_opt_imported.
 
-    % Eliminate dead procedures. If the first argument is `warning_pass',
-    % also warn about any user-defined procedures that are dead.
-    % If the first argument is `final_optimization_pass', also eliminate
-    % any opt_imported procedures.
+    % Eliminate dead procedures. If the first argument is `elim_opt_imported',
+    % also eliminate any opt_imported procedures.
     %
-:- pred dead_proc_elim(dead_proc_pass::in, module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+    % The last argument will be a list of warnings about any user-defined
+    % procedures that are dead, but the caller is free to ignore this list.
+    %
+:- pred dead_proc_elim(maybe_elim_opt_imported::in,
+    module_info::in, module_info::out, list(error_spec)::out) is det.
+
+:- type needed_map == map(entity, maybe_needed).
+
+:- type entity
+    --->    entity_proc(pred_id, proc_id)
+    ;       entity_table_struct(pred_id, proc_id)
+    ;       entity_type_ctor(module_name, string, int).
+
+:- type maybe_needed
+    --->    not_eliminable
+    ;       maybe_eliminable(num_references :: int).
 
     % Analyze which entities are needed, and for those entities which are
     % needed, record how many times they are referenced (this information
@@ -58,17 +70,6 @@
     % after mode analysis.
     %
 :- pred dead_pred_elim(module_info::in, module_info::out) is det.
-
-:- type entity
-    --->    entity_proc(pred_id, proc_id)
-    ;       entity_table_struct(pred_id, proc_id)
-    ;       entity_type_ctor(module_name, string, int).
-
-:- type needed_map == map(entity, maybe_needed).
-
-:- type maybe_needed
-    --->    not_eliminable
-    ;       maybe_eliminable(num_references :: int).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -127,9 +128,9 @@
 :- type entity_queue    ==  queue(entity).
 :- type examined_set    ==  set(entity).
 
-dead_proc_elim(Pass, !ModuleInfo, Specs) :-
+dead_proc_elim(ElimOptImported, !ModuleInfo, Specs) :-
     dead_proc_analyze(!ModuleInfo, Needed),
-    dead_proc_eliminate(Pass, Needed, !ModuleInfo, Specs).
+    dead_proc_eliminate(ElimOptImported, Needed, !ModuleInfo, Specs).
 
 %-----------------------------------------------------------------------------%
 
@@ -622,33 +623,36 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
 
 :- type proc_elim_info
     --->    proc_elim_info(
+                % Collected usage counts.
                 proc_elim_needed_map    :: needed_map,
-                                        % Collected usage counts.
+
                 proc_elim_module_info   :: module_info,
+
+                % Table of predicates in this module: preds and procs
+                % in this table may be eliminated.
                 proc_elim_pred_table    :: pred_table,
-                                        % Table of predicates in this module:
-                                        % preds and procs in this table
-                                        % may be eliminated.
+
+                % Has anything changed.
                 proc_elim_changed       :: bool,
-                                        % Has anything changed.
+
+                % A list of warning messages.
                 proc_elim_warnings      :: list(error_spec)
-                                        % A list of warning messages.
             ).
 
     % Given the information about which entities are needed,
     % eliminate procedures which are not needed.
     %
-:- pred dead_proc_eliminate(dead_proc_pass::in, needed_map::in,
+:- pred dead_proc_eliminate(maybe_elim_opt_imported::in, needed_map::in,
     module_info::in, module_info::out, list(error_spec)::out) is det.
 
-dead_proc_eliminate(Pass, !.Needed, !ModuleInfo, Specs) :-
+dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo, Specs) :-
     module_info_predids(PredIds, !ModuleInfo),
     module_info_preds(!.ModuleInfo, PredTable0),
 
     Changed0 = no,
     ProcElimInfo0 = proc_elim_info(!.Needed, !.ModuleInfo, PredTable0,
         Changed0, []),
-    list.foldl(dead_proc_eliminate_pred(Pass), PredIds,
+    list.foldl(dead_proc_eliminate_pred(ElimOptImported), PredIds,
         ProcElimInfo0, ProcElimInfo),
     ProcElimInfo = proc_elim_info(!:Needed, !:ModuleInfo, PredTable,
         Changed, Specs),
@@ -675,10 +679,10 @@ dead_proc_eliminate(Pass, !.Needed, !ModuleInfo, Specs) :-
 
     % Eliminate any unused procedures for this pred.
     %
-:- pred dead_proc_eliminate_pred(dead_proc_pass::in, pred_id::in,
+:- pred dead_proc_eliminate_pred(maybe_elim_opt_imported::in, pred_id::in,
     proc_elim_info::in, proc_elim_info::out) is det.
 
-dead_proc_eliminate_pred(Pass, PredId, !ProcElimInfo) :-
+dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
     !.ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable0, Changed0,
         Specs0),
     map.lookup(PredTable0, PredId, PredInfo0),
@@ -735,9 +739,9 @@ dead_proc_eliminate_pred(Pass, PredId, !ProcElimInfo) :-
         % Don't generate code in the current module for unoptimized
         % opt_imported preds (that is, for opt_imported preds which we have not
         % by this point managed to inline or specialize; this code should be
-        % called with `Pass = final_optimization_pass' only after inlining
+        % called with `ElimOptImported = elim_opt_imported' only after inlining
         % and specialization is complete).
-        Pass = dead_proc_final_optimization_pass,
+        ElimOptImported = elim_opt_imported,
         Status = status_opt_imported
     ->
         Changed = yes,

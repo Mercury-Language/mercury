@@ -567,64 +567,71 @@ simplify_process_clause_body_goal(!Goal, !Info) :-
 :- pred do_process_clause_body_goal(hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out) is det.
 
-do_process_clause_body_goal(Goal0, Goal, !Info) :-
+do_process_clause_body_goal(!Goal, !Info) :-
+    !.Goal = hlds_goal(_, GoalInfo0),
+    Detism = goal_info_get_determinism(GoalInfo0),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
     simplify_info_get_instmap(!.Info, InstMap0),
-    simplify_goal(Goal0, Goal1, !Info),
-    simplify_info_get_varset(!.Info, VarSet0),
-    simplify_info_get_var_types(!.Info, VarTypes0),
-    simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+
+    simplify_goal(!Goal, !Info),
+
     ( simplify_info_requantify(!.Info) ->
-        Goal1 = hlds_goal(_, GoalInfo1),
-        NonLocals = goal_info_get_nonlocals(GoalInfo1),
-        implicitly_quantify_goal(NonLocals, _, Goal1, Goal2,
-            VarSet0, VarSet1, VarTypes0, VarTypes1,
-            RttiVarMaps0, RttiVarMaps1),
+        some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo] (
+            simplify_info_get_varset(!.Info, !:VarSet),
+            simplify_info_get_var_types(!.Info, !:VarTypes),
+            simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
+            implicitly_quantify_goal(NonLocals, _, !Goal,
+                !VarSet, !VarTypes, !RttiVarMaps),
 
-        simplify_info_set_varset(VarSet1, !Info),
-        simplify_info_set_var_types(VarTypes1, !Info),
-        simplify_info_set_rtti_varmaps(RttiVarMaps1, !Info),
+            simplify_info_set_varset(!.VarSet, !Info),
+            simplify_info_set_var_types(!.VarTypes, !Info),
+            simplify_info_set_rtti_varmaps(!.RttiVarMaps, !Info),
 
-        % Always recompute instmap_deltas for atomic goals - this is safer
-        % in the case where unused variables should no longer be included
-        % in the instmap_delta for a goal.
-        % In the alias branch this is necessary anyway.
-        simplify_info_get_module_info(!.Info, ModuleInfo0),
-        recompute_instmap_delta(recompute_atomic_instmap_deltas, Goal2, Goal3,
-            VarTypes1, !.Info ^ simp_inst_varset, InstMap0,
-            ModuleInfo0, ModuleInfo1),
-        simplify_info_set_module_info(ModuleInfo1, !Info)
+            % Always recompute instmap_deltas for atomic goals - this is safer
+            % in the case where unused variables should no longer be included
+            % in the instmap_delta for a goal.
+            % In the alias branch this is necessary anyway.
+            simplify_info_get_module_info(!.Info, !:ModuleInfo),
+            InstVarSet = !.Info ^ simp_inst_varset,
+            recompute_instmap_delta(recompute_atomic_instmap_deltas, !Goal,
+                !.VarTypes, InstVarSet, InstMap0, !ModuleInfo),
+            simplify_info_set_module_info(!.ModuleInfo, !Info)
+        )
     ;
-        Goal3 = Goal1
+        true
     ),
     ( simplify_info_rerun_det(!.Info) ->
-        Goal0 = hlds_goal(_, GoalInfo0),
-        Detism = goal_info_get_determinism(GoalInfo0),
-        det_get_soln_context(Detism, SolnContext),
+        some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo, !ProcInfo,
+            !DetInfo]
+        (
+            det_get_soln_context(Detism, SolnContext),
 
-        % det_infer_goal looks up the proc_info in the module_info
-        % for the vartypes, so we'd better stick them back in the module_info.
-        simplify_info_get_module_info(!.Info, ModuleInfo2),
-        simplify_info_get_varset(!.Info, VarSet2),
-        simplify_info_get_var_types(!.Info, VarTypes2),
-        simplify_info_get_det_info(!.Info, DetInfo2),
-        simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps2),
-        det_info_get_pred_id(DetInfo2, PredId),
-        det_info_get_proc_id(DetInfo2, ProcId),
-        module_info_pred_proc_info(ModuleInfo2, PredId, ProcId,
-            PredInfo, ProcInfo0),
-        proc_info_set_vartypes(VarTypes2, ProcInfo0, ProcInfo1),
-        proc_info_set_varset(VarSet2, ProcInfo1, ProcInfo2),
-        proc_info_set_rtti_varmaps(RttiVarMaps2, ProcInfo2, ProcInfo),
-        module_info_set_pred_proc_info(PredId, ProcId,
-            PredInfo, ProcInfo, ModuleInfo2, ModuleInfo3),
-        simplify_info_set_module_info(ModuleInfo3, !Info),
+            % Det_infer_goal looks up the proc_info in the module_info
+            % for the vartypes, so we'd better stick them back in the
+            % module_info.
+            simplify_info_get_module_info(!.Info, !:ModuleInfo),
+            simplify_info_get_varset(!.Info, !:VarSet),
+            simplify_info_get_var_types(!.Info, !:VarTypes),
+            simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
+            simplify_info_get_det_info(!.Info, !:DetInfo),
+            det_info_get_pred_id(!.DetInfo, PredId),
+            det_info_get_proc_id(!.DetInfo, ProcId),
+            module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+                PredInfo, !:ProcInfo),
+            proc_info_set_vartypes(!.VarTypes, !ProcInfo),
+            proc_info_set_varset(!.VarSet, !ProcInfo),
+            proc_info_set_rtti_varmaps(!.RttiVarMaps, !ProcInfo),
+            module_info_set_pred_proc_info(PredId, ProcId,
+                PredInfo, !.ProcInfo, !ModuleInfo),
+            simplify_info_set_module_info(!.ModuleInfo, !Info),
 
-        simplify_info_get_det_info(!.Info, DetInfo0),
-        det_infer_goal(Goal3, Goal, InstMap0, SolnContext, [], no,
-            _, _, DetInfo0, DetInfo, [], _),
-        simplify_info_set_det_info(DetInfo, !Info)
+            simplify_info_get_det_info(!.Info, !:DetInfo),
+            det_infer_goal(!Goal, InstMap0, SolnContext, [], no,
+                _, _, !DetInfo, [], _),
+            simplify_info_set_det_info(!.DetInfo, !Info)
+        )
     ;
-        Goal = Goal3
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1221,8 +1228,8 @@ simplify_goal_2_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo0,
             GoalExpr, GoalInfo, !Info)
     ;
-        call_goal(PredId, ProcId, Args, IsBuiltin, GoalExpr0, GoalExpr,
-            GoalInfo0, GoalInfo, !Info)
+        simplify_call_goal(PredId, ProcId, Args, IsBuiltin,
+            GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
     ).
 
 :- pred simplify_goal_2_unify(
@@ -1774,7 +1781,7 @@ simplify_goal_2_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     simplify_info::in, simplify_info::out) is det.
 
 simplify_goal_2_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
-    GoalExpr0 = scope(Reason0, SubGoal0), 
+    GoalExpr0 = scope(Reason0, SubGoal0),
     simplify_info_get_common_info(!.Info, Common),
     simplify_goal(SubGoal0, SubGoal, !Info),
     nested_scopes(Reason0, SubGoal, GoalInfo0, Goal1),
@@ -2126,12 +2133,13 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred call_goal(pred_id::in, proc_id::in, list(prog_var)::in,
+:- pred simplify_call_goal(pred_id::in, proc_id::in, list(prog_var)::in,
     builtin_state::in, hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
+simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
+        !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
         PredInfo, ProcInfo),

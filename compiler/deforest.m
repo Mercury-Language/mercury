@@ -1440,7 +1440,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
     proc_info_get_varset(FirstProcInfo, FirstVersionVarSet),
     proc_info_get_vartypes(FirstProcInfo, FirstVersionVarTypes),
 
-    goal_util.create_variables(FirstVersionVars,
+    clone_variables(FirstVersionVars,
         FirstVersionVarSet, FirstVersionVarTypes,
         !VarSet, !VarTypes, FirstRenaming0, FirstRenaming),
     must_rename_vars_in_goal(FirstRenaming,
@@ -1899,7 +1899,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         ( set.equal(NonLocals1, NonLocals) ->
             Goal2 = Goal1
         ;
-            pd_util.requantify_goal(NonLocals, Goal1, Goal2, !PDInfo)
+            pd_requantify_goal(NonLocals, Goal1, Goal2, !PDInfo)
         ),
 
         % Push the extra information from the call through the goal.

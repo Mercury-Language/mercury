@@ -1434,7 +1434,7 @@ rename_apart(RenameSet, RenameMap, !Goal, !Info) :-
         get_varset(!.Info, Varset0),
         get_vartypes(!.Info, VarTypes0),
         map.init(RenameMap0),
-        goal_util.create_variables(RenameList, Varset0, VarTypes0,
+        clone_variables(RenameList, Varset0, VarTypes0,
             Varset0, Varset, VarTypes0, VarTypes, RenameMap0, RenameMap),
         rename_some_vars_in_goal(RenameMap, !Goal),
         set_varset(Varset, !Info),

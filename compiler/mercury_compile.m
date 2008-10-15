@@ -103,6 +103,7 @@
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.granularity.
 :- import_module transform_hlds.dep_par_conj.
+:- import_module transform_hlds.parallel_to_plain_conj.
 :- import_module transform_hlds.size_prof.
 :- import_module ll_backend.deep_profiling.
 
@@ -2744,9 +2745,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_lco(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 175, "lco", !DumpInfo, !IO),
 
-    maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 180, "dead_procs", !DumpInfo, !IO),
-
     maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
 
@@ -2756,7 +2754,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 201, "distance_granularity", !DumpInfo, !IO),
 
-    maybe_dependent_par_conj(Verbose, Stats, !HLDS, !IO),
+    maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 205, "dependent_par_conj", !DumpInfo, !IO),
 
     % If we are compiling in a deep profiling grade then now rerun simplify.
@@ -2792,6 +2790,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     % XXX This may be moved to later.
     maybe_region_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 240, "region_analysis", !DumpInfo, !IO),
+
+    maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 250, "dead_procs", !DumpInfo, !IO),
 
     maybe_dump_hlds(!.HLDS, 299, "middle_pass", !DumpInfo, !IO).
 
@@ -3400,7 +3401,7 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% Warning about dead procedures...\n",
             !IO),
         maybe_flush_output(Verbose, !IO),
-        dead_proc_elim(dead_proc_warning_pass, !.HLDS, _HLDS1, Specs),
+        dead_proc_elim(do_not_elim_opt_imported, !.HLDS, _HLDS1, Specs),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         module_info_get_globals(!.HLDS, Globals),
@@ -4109,7 +4110,7 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% Eliminating dead procedures...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         % Ignore any warning messages generated.
-        dead_proc_elim(dead_proc_final_optimization_pass, !HLDS, _Specs),
+        dead_proc_elim(elim_opt_imported, !HLDS, _ElimSpecs),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -4252,21 +4253,29 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
         true
     ).
 
-:- pred maybe_dependent_par_conj(bool::in, bool::in,
+:- pred maybe_impl_dependent_par_conjs(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_dependent_par_conj(Verbose, Stats, !HLDS, !IO) :-
+maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_contains_par_conj(!.HLDS, ContainsParConj),
     (
         ContainsParConj = yes,
-        % This pass also converts dependent parallel conjunctions into
-        % plain conjunctions if we are not building in a parallel grade.
-        maybe_write_string(Verbose,
-            "% Dependent parallel conjunction transformation...\n", !IO),
-        maybe_flush_output(Verbose, !IO),
-        dependent_par_conj(!HLDS, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
+        module_info_get_globals(!.HLDS, Globals),
+        current_grade_supports_par_conj(Globals, SupportsParConj),
+        (
+            SupportsParConj = no,
+            process_all_nonimported_procs(update_proc(parallel_to_plain_conjs),
+                !HLDS, !IO)
+        ;
+            SupportsParConj = yes,
+            maybe_write_string(Verbose,
+                "% Dependent parallel conjunction transformation...\n", !IO),
+            maybe_flush_output(Verbose, !IO),
+            impl_dep_par_conjs_in_module(!HLDS),
+            dead_proc_elim(do_not_elim_opt_imported, !HLDS, _ElimSpecs),
+            maybe_write_string(Verbose, "% done.\n", !IO),
+            maybe_report_stats(Stats, !IO)
+        )
     ;
         ContainsParConj = no
     ).

@@ -809,13 +809,12 @@ get_type_substitution(HeadTypes, ArgTypes,
     ).
 
 rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,
-        CalleeVarTypes, VarTypes, Subn, CalledGoal, Goal) :-
-    map.from_corresponding_lists(HeadVars, ArgVars, Subn0),
+        CalleeVarTypes, VarTypes, Renaming, CalledGoal, Goal) :-
+    map.from_corresponding_lists(HeadVars, ArgVars, Renaming0),
     varset.vars(CalleeVarSet, CalleeListOfVars),
-    goal_util.create_variables(CalleeListOfVars,
-        CalleeVarSet, CalleeVarTypes,
-        VarSet0, VarSet, VarTypes1, VarTypes, Subn0, Subn),
-    must_rename_vars_in_goal(Subn, CalledGoal, Goal).
+    clone_variables(CalleeListOfVars, CalleeVarSet, CalleeVarTypes,
+        VarSet0, VarSet, VarTypes1, VarTypes, Renaming0, Renaming),
+    must_rename_vars_in_goal(Renaming, CalledGoal, Goal).
 
 %-----------------------------------------------------------------------------%
 

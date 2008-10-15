@@ -1138,6 +1138,9 @@ specialized versions without them (unused_args.m); type_infos are often unused.
   in producers and the waits as late as possible in the consumers, creating
   specialized versions of predicates as needed.
 
+<li> parallel_to_plain_conj.m transforms parallel conjunctions to plain
+  conjunctions, for use in grades that do not support AND-parallelism.
+
 <li> granularity.m tries to ensure that programs do not generate too much
   parallelism. Its goal is to minimize parallelism's overhead while still
   gaining all the parallelism the machine can actually exploit.
@@ -1831,6 +1834,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2008-07-21 03:10:25 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2008-10-15 04:06:10 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -50,27 +50,41 @@
     % ( Goal' -> UnifyGoals, ... ; ...), where Goal' has its output
     % variables (OutputVars) replaced with new variables (NewVars),
     % with the mapping from OutputVars to NewVars being Renaming.
-    % VarTypes and Varset are updated for the new variables. The final
+    % VarTypes and VarSet are updated for the new variables. The final
     % insts of NewVar are taken from the insts of the corresponding
     % OutputVar in InstMapDelta (the initial inst is free).
     %
-:- pred create_renaming(prog_vars::in, instmap_delta::in,
+:- pred create_renaming(list(prog_var)::in, instmap_delta::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    hlds_goals::out, prog_vars::out, prog_var_renaming::out) is det.
+    list(hlds_goal)::out, list(prog_var)::out, prog_var_renaming::out) is det.
 
-    % create_variables(OldVariables, OldVarNames, OldVarTypes,
-    %   !Varset, !VarTypes, !Subn):
+    % clone_variable(OldVar, OldVarSet, OldVarTypes,
+    %   !VarSet, !VarTypes, !Renaming, CloneVar):
     %
-    % create_variables takes a list of variables, a varset, and map
-    % from vars to types and an initial substitution, and creates new instances
-    % of each of the source variables in the substitution, adding each new
-    % variable to the varset and the var types map. The name and type of each
-    % new variable is found by looking up in the type map given in the 5th
-    % argument - the last input. (This interface will not easily admit
-    % uniqueness in the type map for this reason - such is the sacrifice
-    % for generality.)
+    % clone_variable typically takes an old variable OldVar, and creates a
+    % clone of it, adding the clone variable to !VarSet and !VarType, and
+    % adding a mapping from the old variable to its clone in !Renaming.
+    % The name and type of the clone are taken from OldVarSet and OldVarTypes.
+    % However, if OldVar already has a clone, as shown by it already being a
+    % key in !.Renaming, clone_variable does nothing. Either way, the identity
+    % of the clone variable is returned in CloneVar.
     %
-:- pred create_variables(prog_vars::in, prog_varset::in, vartypes::in,
+    % (This interface will not easily admit uniqueness in the varset and
+    % vartypes arguments; such is the sacrifice for generality.)
+    %
+:- pred clone_variable(prog_var::in, prog_varset::in, vartypes::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    prog_var_renaming::in, prog_var_renaming::out, prog_var::out) is det.
+
+    % clone_variables(OldVars, OldVarSet, OldVarTypes,
+    %   !VarSet, !VarTypes, !Renaming):
+    %
+    % Invoke clone_variable on each variable in OldVars.
+    %
+    % The caller can find the identity of the clone of each variable in OldVars
+    % by looking it up in !:Renaming.
+    %
+:- pred clone_variables(list(prog_var)::in, prog_varset::in, vartypes::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
@@ -84,12 +98,12 @@
     % Unlike quantification.goal_vars, this predicate returns
     % even the explicitly quantified variables.
     %
-:- pred goals_goal_vars(hlds_goals::in,
+:- pred goals_goal_vars(list(hlds_goal)::in,
     set(prog_var)::in, set(prog_var)::out) is det.
 
     % Return all the variables in a generic call.
     %
-:- pred generic_call_vars(generic_call::in, prog_vars::out) is det.
+:- pred generic_call_vars(generic_call::in, list(prog_var)::out) is det.
 
     % Attach the given goal features to the given goal and all its subgoals.
     %
@@ -135,7 +149,7 @@
 
     % Return an indication of the size of the list of goals.
     %
-:- pred goals_size(hlds_goals::in, int::out) is det.
+:- pred goals_size(list(hlds_goal)::in, int::out) is det.
 
     % Return an indication of the size of the list of clauses.
     %
@@ -194,11 +208,11 @@
     % Returns all the predids that are called along with the list of
     % arguments.
 :- pred predids_with_args_from_goal(hlds_goal::in,
-    list({pred_id, prog_vars})::out) is det.
+    list({pred_id, list(prog_var)})::out) is det.
 
     % Returns all the predids that are used in a list of goals.
     %
-:- pred predids_from_goals(hlds_goals::in, list(pred_id)::out) is det.
+:- pred predids_from_goals(list(hlds_goal)::in, list(pred_id)::out) is det.
 
     % Returns all the procedures that are used within a goal.
     %
@@ -211,7 +225,7 @@
     % This aborts if any of the constructors are existentially typed.
     %
 :- pred switch_to_disjunction(prog_var::in, list(case)::in,
-    instmap::in, hlds_goals::out, prog_varset::in, prog_varset::out,
+    instmap::in, list(hlds_goal)::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, module_info::in, module_info::out) is det.
 
     % Convert a case into a conjunction by adding a tag test
@@ -232,7 +246,7 @@
 
     % Flatten a list of goals of a conjunction.
     %
-:- pred flatten_conj(hlds_goals::in, hlds_goals::out) is det.
+:- pred flatten_conj(list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
     % Create a conjunction of the specified type using the specified goals,
     % This fills in the hlds_goal_info.
@@ -320,8 +334,8 @@
     % If ModeNo = mode_no(N) then the Nth procedure is used, counting
     % from 0.
     %
-:- pred generate_simple_call(module_name::in, string::in,
-    pred_or_func::in, mode_no::in, determinism::in, purity::in, prog_vars::in,
+:- pred generate_simple_call(module_name::in, string::in, pred_or_func::in,
+    mode_no::in, determinism::in, purity::in, list(prog_var)::in,
     list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
@@ -406,9 +420,10 @@ create_renaming(OrigVars, InstMapDelta, !VarSet, !VarTypes, Unifies, NewVars,
     list.reverse(RevNewVars, NewVars),
     list.reverse(RevUnifies, Unifies).
 
-:- pred create_renaming_2(prog_vars::in, instmap_delta::in,
+:- pred create_renaming_2(list(prog_var)::in, instmap_delta::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    list(prog_var)::in, list(prog_var)::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
 create_renaming_2([], _, !VarSet, !VarTypes, !RevUnifies, !RevNewVars,
@@ -440,26 +455,33 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
 
 %-----------------------------------------------------------------------------%
 
-create_variables([], _OldVarNames, _OldVarTypes, !Varset, !VarTypes, !Subn).
-create_variables([V | Vs], OldVarNames, OldVarTypes, !Varset, !VarTypes,
-        !Subn) :-
-    ( map.contains(!.Subn, V) ->
-        true
+clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
+        CloneVar) :-
+    ( map.search(!.Renaming, Var, CloneVarPrime) ->
+        CloneVar = CloneVarPrime
     ;
-        svvarset.new_var(NV, !Varset),
-        ( varset.search_name(OldVarNames, V, Name) ->
-            svvarset.name_var(NV, Name, !Varset)
+        svvarset.new_var(CloneVar, !VarSet),
+        ( varset.search_name(OldVarNames, Var, Name) ->
+            svvarset.name_var(CloneVar, Name, !VarSet)
         ;
             true
         ),
-        svmap.det_insert(V, NV, !Subn),
-        ( map.search(OldVarTypes, V, VT) ->
-            svmap.set(NV, VT, !VarTypes)
+        svmap.det_insert(Var, CloneVar, !Renaming),
+        ( map.search(OldVarTypes, Var, VarType) ->
+            svmap.set(CloneVar, VarType, !VarTypes)
         ;
+            % XXX This should never happen after typechecking.
             true
         )
-    ),
-    create_variables(Vs, OldVarNames, OldVarTypes, !Varset, !VarTypes, !Subn).
+    ).
+
+clone_variables([], _, _, !VarSet, !VarTypes, !Renaming).
+clone_variables([Var | Vars], OldVarNames, OldVarTypes, !VarSet, !VarTypes,
+        !Renaming) :-
+    clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes,
+        !Renaming, _CloneVar),
+    clone_variables(Vars, OldVarNames, OldVarTypes, !VarSet, !VarTypes,
+        !Renaming).
 
 %-----------------------------------------------------------------------------%
 
@@ -928,7 +950,7 @@ goal_expr_size(GoalExpr, Size) :-
 goal_calls(hlds_goal(GoalExpr, _), PredProcId) :-
     goal_expr_calls(GoalExpr, PredProcId).
 
-:- pred goals_calls(hlds_goals, pred_proc_id).
+:- pred goals_calls(list(hlds_goal), pred_proc_id).
 :- mode goals_calls(in, in) is semidet.
 :- mode goals_calls(in, out) is nondet.
 
@@ -986,7 +1008,7 @@ goal_expr_calls(plain_call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
 goal_calls_pred_id(hlds_goal(GoalExpr, _), PredId) :-
     goal_expr_calls_pred_id(GoalExpr, PredId).
 
-:- pred goals_calls_pred_id(hlds_goals, pred_id).
+:- pred goals_calls_pred_id(list(hlds_goal), pred_id).
 :- mode goals_calls_pred_id(in, in) is semidet.
 :- mode goals_calls_pred_id(in, out) is nondet.
 
@@ -1136,7 +1158,7 @@ goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
     Unify = construct(_, _, _, _, HowToConstruct, _, _),
     HowToConstruct = reuse_cell(_).
 
-:- pred goals_contain_reconstruction(hlds_goals::in) is semidet.
+:- pred goals_contain_reconstruction(list(hlds_goal)::in) is semidet.
 
 goals_contain_reconstruction(Goals) :-
     list.member(Goal, Goals),
