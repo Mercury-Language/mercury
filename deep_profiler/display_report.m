@@ -181,6 +181,15 @@ report_to_display(Deep, Prefs, Report) = Display :-
             MaybeCliqueDumpInfo = error(Msg),
             Display = display(no, [display_heading(Msg)])
         )
+    ;
+        Report = report_proc_var_use_dump(MaybeProcVarUseDumpInfo),
+        (
+            MaybeProcVarUseDumpInfo = ok(ProcVarUseDumpInfo),
+            display_report_proc_var_use_dump(Prefs, ProcVarUseDumpInfo, Display)
+        ;
+            MaybeProcVarUseDumpInfo = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1509,6 +1518,28 @@ display_report_clique_dump_member(Prefs, PDPtr, Pair, !Label) :-
         link_class_link),
     PDData = td_l(Link),
     Pair = PDLabel - PDData.
+
+:- pred display_report_proc_var_use_dump(preferences::in,
+    proc_var_use_dump_info::in, display::out) is det.
+
+display_report_proc_var_use_dump(_Prefs, ProcVarUseDumpInfo, Display) :-
+    ProcVarUseDumpInfo = proc_var_use_dump_info(AverageProcCost, VarUses),
+    ProcCostRow = table_row([table_cell(td_s("Average Proc Cost: ")),
+                             table_cell(td_f(AverageProcCost))]),
+    format_proc_var_uses(VarUses, 1, VarUseRows),
+    Rows = [ ProcCostRow | VarUseRows ],
+    Table = table(table_class_do_not_box, 2, no, Rows),
+    Title = "Dump of procedure's var use info",
+    Display = display(yes(Title), [display_table(Table)]). 
+
+:- pred format_proc_var_uses(list(var_use_info)::in, int::in, 
+    list(table_row)::out) is det.
+
+format_proc_var_uses([], _, []).
+format_proc_var_uses([VarUse | VarUses], RowNum, [Row | Rows]) :-
+    format_proc_var_uses(VarUses, RowNum+1, Rows),
+    Row = table_row([table_cell(td_s(format("Argument: %i", [i(RowNum)]))), 
+                     table_cell(td_s(string(VarUse)))]).
 
 %-----------------------------------------------------------------------------%
 %

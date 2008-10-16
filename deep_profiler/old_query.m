@@ -138,7 +138,11 @@ old_exec(Cmd, Pref, Deep, HTML, !IO) :-
 old_exec(deep_cmd_dump_clique(CliquePtr), _Pref, Deep, HTML, !IO) :-
     HTML = generate_clique_debug_page(CliquePtr, Deep).
 old_exec(deep_cmd_procrep_coverage(_), _, _, HTML, !IO) :-
-    HTML = "query.m: deep_cmd_procrep_coverage is unsupported by old_exec\n". 
+    HTML = 
+        "old_query.m: deep_cmd_procrep_coverage is unsupported by old_exec\n". 
+old_exec(deep_cmd_dump_proc_var_use(_), _, _, HTML, !IO) :-
+    HTML = 
+        "old_query.m: deep_cmd_dump_proc_var_use is unsupported by old_exec\n".
 
 %-----------------------------------------------------------------------------%
 

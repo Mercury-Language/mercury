@@ -16,6 +16,7 @@
 :- module create_report.
 :- interface.
 
+:- import_module maybe.
 :- import_module profile.
 :- import_module query.
 :- import_module report.
@@ -25,6 +26,23 @@
 :- pred create_report(cmd::in, deep::in, deep_report::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+    % Create a proc var use dump report.
+    %
+:- pred create_proc_var_use_dump_report(deep::in, proc_static_ptr::in, 
+    maybe_error(proc_var_use_dump_info)::out) is det.
+
+    % Create a proc report.
+    %
+:- pred create_proc_report(deep::in, proc_static_ptr::in,
+    maybe_error(proc_report)::out) is det.
+
+    % Create a procrep coverage report.
+    %
+:- pred create_procrep_coverage_report(deep::in,
+    proc_static_ptr::in, maybe_error(procrep_coverage_info)::out) is det.
+
+%----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -44,9 +62,9 @@
 :- import_module list.
 :- import_module map.
 :- import_module math.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module svmap.
 :- import_module univ.
@@ -99,7 +117,7 @@ create_report(Cmd, Deep, Report) :-
         Report = report_top_procs(MaybeTopProcsReport)
     ;
         Cmd = deep_cmd_procrep_coverage(PSPtr),
-        generate_procrep_coverage_dump_report(Deep, PSPtr,
+        create_procrep_coverage_report(Deep, PSPtr,
             MaybeProcrepCoverageReport),
         Report = report_procrep_coverage_dump(MaybeProcrepCoverageReport)
     ;
@@ -133,6 +151,10 @@ create_report(Cmd, Deep, Report) :-
         Cmd = deep_cmd_dump_clique(CliquePtr),
         create_clique_dump_report(Deep, CliquePtr, MaybeCliqueDump),
         Report = report_clique_dump(MaybeCliqueDump)
+    ;
+        Cmd = deep_cmd_dump_proc_var_use(PSPtr),
+        create_proc_var_use_dump_report(Deep, PSPtr, MaybeProcVarUseDump),
+        Report = report_proc_var_use_dump(MaybeProcVarUseDump)
     ;
         Cmd = deep_cmd_restart,
         error("create_report/3", "unexpected restart command")
@@ -585,9 +607,6 @@ create_top_procs_report(Deep, Limit, CostKind, InclDesc0, Scope0,
 % Code to build a proc report.
 %
 
-:- pred create_proc_report(deep::in, proc_static_ptr::in,
-    maybe_error(proc_report)::out) is det.
-
 create_proc_report(Deep, PSPtr, MaybeProcReport) :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         ProcDesc = describe_proc(Deep, PSPtr),
@@ -848,13 +867,10 @@ create_proc_caller_cliques(Deep, CalleePSPtr, CliquePtr - CSDPtrs) =
 
 %----------------------------------------------------------------------------%
 %
-% Code to generate the coverage annotated procedure representation report.
+% Code to create the coverage annotated procedure representation report.
 %
 
-:- pred generate_procrep_coverage_dump_report(deep::in,
-    proc_static_ptr::in, maybe_error(procrep_coverage_info)::out) is det.
-
-generate_procrep_coverage_dump_report(Deep, PSPtr, MaybeReport) :-
+create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
     MaybeProgRepResult = Deep ^ procrep_file,
     (
         MaybeProgRepResult = no,
@@ -875,8 +891,8 @@ generate_procrep_coverage_dump_report(Deep, PSPtr, MaybeReport) :-
 
                 % Gather call site information.
                 CallSitesArray = PS ^ ps_sites,
-                array.foldl(create_cs_summary_add_to_map(Deep), CallSitesArray,
-                    map.init) = CallSitesMap,
+                CallSitesMap = array.foldl(create_cs_summary_add_to_map(Deep), 
+                    CallSitesArray, map.init),
 
                 % Gather information about coverage points.
                 CoveragePointsArray = PS ^ ps_coverage_points,
@@ -890,7 +906,8 @@ generate_procrep_coverage_dump_report(Deep, PSPtr, MaybeReport) :-
                 MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep))
             ;
                 MaybeReport =
-                    error("Program Representation doesn't contain procedure")
+                    error("Program Representation doesn't contain procedure: " 
+                        ++ string(PSPtr))
             )
         ;
             MaybeReport = error("Invalid proc_static index")
@@ -1016,6 +1033,10 @@ create_clique_dump_report(Deep, CliquePtr, MaybeCliqueDumpInfo) :-
     ;
         MaybeCliqueDumpInfo = error("invalid clique_ptr")
     ).
+
+create_proc_var_use_dump_report(Deep, PSPtr, MaybeProcVarUseDump) :-
+    generic_vars_first_use(head_vars_all, Deep, PSPtr, set.init,
+        MaybeProcVarUseDump).
 
 %-----------------------------------------------------------------------------%
 

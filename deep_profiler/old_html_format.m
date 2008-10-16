@@ -408,6 +408,7 @@ command_relevant_toggles(deep_cmd_dump_proc_dynamic(_)) = [].
 command_relevant_toggles(deep_cmd_dump_call_site_static(_)) = [].
 command_relevant_toggles(deep_cmd_dump_call_site_dynamic(_)) = [].
 command_relevant_toggles(deep_cmd_dump_clique(_)) = [].
+command_relevant_toggles(deep_cmd_dump_proc_var_use(_)) = [].
 
 :- func footer_field_toggle(cmd, preferences, deep) = string.
 

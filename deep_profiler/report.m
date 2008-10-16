@@ -51,7 +51,8 @@
                 maybe_error(call_site_static_dump_info))
     ;       report_call_site_dynamic_dump(
                 maybe_error(call_site_dynamic_dump_info))
-    ;       report_clique_dump(maybe_error(clique_dump_info)).
+    ;       report_clique_dump(maybe_error(clique_dump_info))
+    ;       report_proc_var_use_dump(maybe_error(proc_var_use_dump_info)).
 
 :- type message_report
     --->    message_report(
@@ -302,6 +303,35 @@
                 cdi_member_pdptrs           :: list(proc_dynamic_ptr)
             ).
 
+:- type proc_var_use_dump_info
+    --->    proc_var_use_dump_info(
+                pvui_total_proc_time        :: float,
+                pvui_var_uses               :: list(var_use_info)
+            ).
+
+    % Gives information about the use of a variable measured in average call
+    % sequence counts since either the beginning or the end of the procedure.
+    %
+:- type var_use_info
+    --->    var_use_info(
+                vui_cost_until_use          :: cost_until_var_use,
+                vui_use_type                :: var_use_type
+            ).
+
+:- type var_use_type
+    --->    var_use_production
+                % The variable is produced: free >> ground
+    
+    ;       var_use_consumption
+                % The variable is consumed: free >> free
+ 
+    ;       var_use_other.
+                % The variable is used in some other way.
+
+:- type cost_until_var_use
+    --->    cost_since_proc_start(float)
+    ;       cost_before_proc_end(float).
+
     % This type represents information about the performance of the subject.
     % It is intended to be displayed on a browser page or used by a tool as is.
     % It is NOT intended to be subject to further processing, such as adding
@@ -333,7 +363,7 @@
                 % user-friendly units. When the total time for the program
                 % is close to zero, i.e. the number of ticks or quanta is zero
                 % for the whole program, then the percentage may be zero
-                % for everyhing (it used to be a NaN for 0/0, but we now
+                % for everything (it used to be a NaN for 0/0, but we now
                 % check explicitly for division by zero).
                 perf_row_ticks             :: int,
                 perf_row_time              :: time,
