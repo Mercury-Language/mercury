@@ -80,6 +80,58 @@
 
 %----------------------------------------------------------------------------%
 
+    % A map of variables to instantiation states,  Like inst_map within the
+    % compiler.
+    %
+:- type inst_map.
+
+    % Build the initial inst for a procedure.
+    %
+:- func initial_inst_map(proc_defn_rep) = inst_map.
+
+    % inst_map_ground_vars(Vars, !InstMap, SeenDuplicateInstantiaton).
+    %
+    % Make the variables in the given list ground in the new copy of the inst
+    % map.
+    %
+    % SeenDuplicateInstantiation will be true iff at least one of these
+    % variables is already ground.
+    %
+:- pred inst_map_ground_vars(list(var_rep)::in, set(var_rep)::in, inst_map::in,
+    inst_map::out, seen_duplicate_instantiation::out) is det.
+    
+    % This type represents whether a traversal has seen more than one
+    % instantiation of a variable within a single branch.  If at the end of a
+    % traversal a duplicate instantiation has been seen we can either accept a
+    % pessimistic default or abort parallelisation of this particular
+    % conjunction.
+    %
+:- type seen_duplicate_instantiation
+    --->    seen_duplicate_instantiation
+    ;       have_not_seen_duplicate_instantiation.
+
+:- func merge_seen_duplicate_instantiation(seen_duplicate_instantiation,
+    seen_duplicate_instantiation) = seen_duplicate_instantiation.
+
+    % Retrieve the instantiatedness of a variable, and variables that it's
+    % binding depends upon from the instmap, if the variable is new ir_free is
+    % returned and the variables it depends upon is the empty set.
+    %
+:- pred inst_map_get(inst_map::in, var_rep::in, inst_rep::out,
+    set(var_rep)::out) is det.
+
+    % Merge two inst maps from different branches of execution.
+    %
+:- func merge_inst_map(inst_map, detism_rep, inst_map, detism_rep) = inst_map.
+
+    % Retrieve all the variables this variable depends upon,  indirect
+    % dependencies are also returned.
+    %
+:- pred inst_map_get_var_deps(inst_map::in, var_rep::in, set(var_rep)::out) 
+    is det.
+
+%----------------------------------------------------------------------------%
+
     % geneirc_vars_first_use(HeadVarsToVars, Deep, PSPtr, CallStack,
     %   VarUseInfos, ProcAverageCost).
     %
@@ -98,6 +150,16 @@
 :- pred head_vars_all(list(head_var_rep)::in, list(var_rep)::out,
     list(var_use_type)::out) is det.
 
+:- pred var_mode_to_var_use(var_mode_rep::in, var_use_type::out) is det.
+                    
+:- pred pessimistic_var_use_info(var_use_type::in, var_use_info::out) is det.
+
+%----------------------------------------------------------------------------%
+
+    % Retrieve a set of all the vars involved with this atomic goal.
+    %
+:- pred atomic_goal_get_vars(atomic_goal_rep::in, set(var_rep)::out) is det.
+
 %----------------------------------------------------------------------------%
 
 :- implementation.
@@ -112,6 +174,7 @@
 :- import_module io.
 :- import_module map.
 :- import_module require.
+:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 
@@ -511,10 +574,10 @@ print_unit_to_strings(_, cord.empty).
 %----------------------------------------------------------------------------%
 
 progrep_search_proc(ProgRep, ProcLabel, ProcRep) :-
-    ( ProcLabel = str_ordinary_proc_label(_, Module, _DefModule, _, _, _)
-    ; ProcLabel = str_special_proc_label(_, Module, _DefModule, _, _, _)
+    ( ProcLabel = str_ordinary_proc_label(_, _DeclModule, DefModule, _, _, _)
+    ; ProcLabel = str_special_proc_label(_, _DeclModule, DefModule, _, _, _)
     ),
-    progrep_search_module(ProgRep, Module, ModuleRep),
+    progrep_search_module(ProgRep, DefModule, ModuleRep),
     modulerep_search_proc(ModuleRep, ProcLabel, ProcRep).
 
     % Search for a module within a program representation.
@@ -1487,39 +1550,6 @@ sum_after_coverage(After, !SumAfter) :-
     ).
 
 %----------------------------------------------------------------------------%
-
-:- type solution_count_rep
-    --->    at_most_zero_rep
-    ;       at_most_one_rep   % Including committed choice.
-    ;       at_most_many_rep.
-
-:- func detism_get_solutions(detism_rep) = solution_count_rep.
-
-detism_get_solutions(det_rep) =         at_most_one_rep.
-detism_get_solutions(semidet_rep) =     at_most_one_rep.
-detism_get_solutions(multidet_rep) =    at_most_many_rep.
-detism_get_solutions(nondet_rep) =      at_most_many_rep.
-detism_get_solutions(cc_multidet_rep) = at_most_one_rep.
-detism_get_solutions(cc_nondet_rep) =   at_most_one_rep.
-detism_get_solutions(erroneous_rep) =   at_most_zero_rep.
-detism_get_solutions(failure_rep) =     at_most_zero_rep.
-
-:- type can_fail_rep
-    --->    can_fail_rep
-    ;       cannot_fail_rep.
-
-:- func detism_get_can_fail(detism_rep) = can_fail_rep.
-
-detism_get_can_fail(det_rep) =          cannot_fail_rep.
-detism_get_can_fail(semidet_rep) =      can_fail_rep.
-detism_get_can_fail(multidet_rep) =     cannot_fail_rep.
-detism_get_can_fail(nondet_rep) =       can_fail_rep.
-detism_get_can_fail(cc_multidet_rep) =  cannot_fail_rep.
-detism_get_can_fail(cc_nondet_rep) =    can_fail_rep.
-detism_get_can_fail(erroneous_rep) =    cannot_fail_rep.
-detism_get_can_fail(failure_rep) =      can_fail_rep.
-
-%----------------------------------------------------------------------------%
 %
 % Coverage information helper predicates.
 %
@@ -1567,10 +1597,9 @@ get_coverage_before_and_after(coverage_known_same(Count), Count, Count).
     % lookup anyway to find cost information, This will callback to the deep
     % profiler as it crosses procedure boundaries.
     %
-    % Another value should be used to describe if we're looking for a producer
-    % or consumer, this affects how pessimistic defaults are calculated.  XXX:
-    % This is not yet implemented for now I implement the first time a variable
-    % is consumed and then hopefully extend that code.
+    % This does not follow higher order or method calls.  It may be possible to
+    % follow call the calls seen during profiling and aggregate their variable
+    % use information based on how often they are called from that call site.
     %
 :- pred goal_var_first_use(goal_path::in, goal_rep(coverage_info)::in,
     var_first_use_static_info::in, float::in, float::out, found_first_use::out)
@@ -1663,7 +1692,7 @@ call_var_first_use(AtomicGoal, BoundVars, GoalPath, StaticInfo,
     ProcCost = RowData ^ perf_row_callseqs_percall,
     % XXX: this doesn't work for (mutually-)recursive calls, the deep profiler
     % sets their cost to 1.0.  For now we just have to hope that the variables
-    % we're searching for are used in the recursive call so the trick above
+    % we're searching for are used in the recursive call so the trick below 
     % works.
     NextCostSoFar = CostSoFar + ProcCost,
     
@@ -1782,31 +1811,7 @@ atomic_trivial_var_first_use(AtomicGoal, BoundVars, CostSoFar, StaticInfo,
         FoundFirstUse) :-
     Var = StaticInfo ^ fui_var,
     VarUseType = StaticInfo ^ fui_var_use,
-    ( 
-        ( AtomicGoal = unify_construct_rep(UnifyVar, _, Vars0)
-        ; AtomicGoal = unify_deconstruct_rep(UnifyVar, _, Vars0)
-        ),
-        Vars = [UnifyVar | Vars0]
-    ;
-        ( AtomicGoal = 
-            partial_construct_rep(UnifyVar, _, MaybeVars0)
-        ; AtomicGoal = 
-            partial_deconstruct_rep(UnifyVar, _, MaybeVars0)
-        ),
-        list.filter_map(maybe_x_to_x, MaybeVars0, Vars0),
-        Vars = [UnifyVar | Vars0]
-    ;
-        ( AtomicGoal = unify_assign_rep(VarA, VarB)
-        ; AtomicGoal = cast_rep(VarA, VarB)
-        ; AtomicGoal = unify_simple_test_rep(VarA, VarB)
-        ),
-        Vars = [ VarA, VarB ]
-    ;
-        ( AtomicGoal = pragma_foreign_code_rep(Vars)
-        ; AtomicGoal = event_call_rep(_, Vars)
-        ; AtomicGoal = builtin_call_rep(_, _, Vars)
-        )
-    ),
+    atomic_goal_get_vars(AtomicGoal, Vars),
     (
         member(Var, Vars),
         (
@@ -1937,8 +1942,6 @@ disj_var_first_use_2(GoalPath, DisjNum, [Disj | Disjs], StaticInfo, !CostSoFar,
     ;
         HeadFoundFirstUse = found_first_use(HeadCost),
         TailFoundFirstUse = found_first_use(TailCost),
-        % A simple average, this gets overridden later anyway.
-        % XXX: no it doesn't.
         (
             VarUseType = var_use_consumption,
             % The variable is probably consumed in the first disjunct even if
@@ -2159,16 +2162,7 @@ proc_var_first_use(Deep, PSPtr, ArgNum, VarUseType, CallStack, VarUseInfo) :-
         % pointer points to the foreign code which can't be looked up even
         % though it uses a 'plain_call' call site.
         % Return a pessimistic default here.
-        (
-            VarUseType = var_use_consumption,
-            CostUntilUse = cost_since_proc_start(0.0)
-        ;
-            ( VarUseType = var_use_production
-            ; VarUseType = var_use_other
-            ),
-            CostUntilUse = cost_before_proc_end(0.0)
-        ),
-        VarUseInfo = var_use_info(CostUntilUse, VarUseType)
+        pessimistic_var_use_info(VarUseType, VarUseInfo)
     ),
     trace [compile_time(flag("debug_first_var_use")), io(!IO)]
         io.format("Trace: prog_var_first_use: %s\n",
@@ -2188,8 +2182,6 @@ head_vars_all(HeadVars, Vars, VarUseTypes) :-
             var_mode_to_var_use(VarMode, VarUseType)
         ), HeadVars, Vars, VarUseTypes).
 
-:- pred var_mode_to_var_use(var_mode_rep::in, var_use_type::out) is det.
-
 var_mode_to_var_use(var_mode_rep(InitialInst, FinalInst), VarUseType) :-
     (
         InitialInst = ir_ground_rep,
@@ -2204,6 +2196,18 @@ var_mode_to_var_use(var_mode_rep(InitialInst, FinalInst), VarUseType) :-
     ;
         VarUseType = var_use_other
     ).
+
+pessimistic_var_use_info(VarUseType, VarUseInfo) :-
+    (
+        VarUseType = var_use_consumption,
+        CostUntilUse = cost_since_proc_start(0.0)
+    ;
+        ( VarUseType = var_use_production
+        ; VarUseType = var_use_other
+        ),
+        CostUntilUse = cost_before_proc_end(0.0)
+    ),
+    VarUseInfo = var_use_info(CostUntilUse, VarUseType).
 
     % Perform the var_first_use for the vars returned by the closure. 
     %
@@ -2266,27 +2270,240 @@ goal_var_first_use_wrapper(Deep, CallStack, CallSiteMap, Goal, Var,
             ; VarUseType = var_use_other
             ),
             CostUntilUse = cost_before_proc_end(CostUntilUseRaw)
-        )
+        ),
+        VarUseInfo = var_use_info(CostUntilUse, VarUseType)
     ;
         % If the first use has not been found, then use the average cost of the
         % procedure as the cost before the first use, since the variable is
         % never used.
         FoundFirstUse = have_not_found_first_use,
+        pessimistic_var_use_info(VarUseType, VarUseInfo)
+    ).
+
+%----------------------------------------------------------------------------%
+
+:- type inst_map
+    --->    inst_map(
+                map(var_rep, inst_rep),
+                    % The actual inst map.
+                
+                map(var_rep, set(var_rep))
+                    % A tree describing dependencies between bound variables.
+            ).
+
+initial_inst_map(ProcDefn) = InstMap :-
+    HeadVars = ProcDefn ^ pdr_head_vars, 
+    list.foldl(add_head_var_inst_to_map, HeadVars, 
+        inst_map(map.init, map.init), InstMap). 
+
+:- pred add_head_var_inst_to_map(head_var_rep::in, 
+    inst_map::in, inst_map::out) is det.
+
+add_head_var_inst_to_map(head_var_rep(VarRep, ModeRep), !InstMap) :-
+    ModeRep = var_mode_rep(InitialInstRep, _),
+    add_inst_mapping(VarRep, InitialInstRep, set.init, !InstMap).
+
+    % Add an inst mapping.
+    %
+:- pred add_inst_mapping(var_rep::in, inst_rep::in, set(var_rep)::in,
+    inst_map::in, inst_map::out) is det.
+
+add_inst_mapping(VarRep, InstRep, DepVars, InstMap0, InstMap) :-
+    InstMap0 = inst_map(VarToInst0, VarToDepVars0),
+    map.det_insert(VarToInst0, VarRep, InstRep, VarToInst),
+    map.det_insert(VarToDepVars0, VarRep, DepVars, VarToDepVars),
+    InstMap = inst_map(VarToInst, VarToDepVars).
+
+merge_inst_map(InstMapA, DetismA, InstMapB, DetismB) = InstMap :-
+    (
+        ( DetismA = erroneous_rep
+        ; DetismA = failure_rep
+        ),
+        InstMap = InstMapB
+    ;
+        ( DetismA = det_rep
+        ; DetismA = semidet_rep
+        ; DetismA = nondet_rep
+        ; DetismA = multidet_rep
+        ; DetismA = cc_nondet_rep
+        ; DetismA = cc_multidet_rep
+        ),
         (
-            VarUseType = var_use_consumption,
-            CostUntilUse = cost_since_proc_start(0.0)
-        ;
-            ( VarUseType = var_use_production
-            ; VarUseType = var_use_other
+            ( DetismB = erroneous_rep
+            ; DetismB = failure_rep
             ),
-            CostUntilUse = cost_before_proc_end(0.0)
+            InstMap = InstMapA
+        ;
+            ( DetismB = det_rep
+            ; DetismB = semidet_rep
+            ; DetismB = nondet_rep
+            ; DetismB = multidet_rep
+            ; DetismB = cc_nondet_rep
+            ; DetismB = cc_multidet_rep
+            ),
+            InstMapA = inst_map(VarToInstA, VarToDepVarsA),
+            InstMapB = inst_map(VarToInstB, VarToDepVarsB),
+            map.union(inst_intersect, VarToInstA, VarToInstB, VarToInst),
+            map.union(set.union, VarToDepVarsA, VarToDepVarsB, VarToDepVars),
+            InstMap = inst_map(VarToInst, VarToDepVars)
         )
+    ).
+
+:- pred inst_intersect(inst_rep::in, inst_rep::in, inst_rep::out) is det.
+
+inst_intersect(ir_free_rep,     ir_free_rep,    ir_free_rep).
+inst_intersect(ir_free_rep,     ir_ground_rep,  ir_other_rep).
+inst_intersect(ir_free_rep,     ir_other_rep,   ir_other_rep).
+inst_intersect(ir_ground_rep,   ir_free_rep,    ir_other_rep).
+inst_intersect(ir_ground_rep,   ir_ground_rep,  ir_ground_rep).
+inst_intersect(ir_ground_rep,   ir_other_rep,   ir_other_rep).
+inst_intersect(ir_other_rep,    ir_free_rep,    ir_other_rep).
+inst_intersect(ir_other_rep,    ir_ground_rep,  ir_other_rep).
+inst_intersect(ir_other_rep,    ir_other_rep,   ir_other_rep).
+
+inst_map_ground_vars(Vars, DepVars, !InstMap, SeenDuplicateInstantiation) :-
+    list.foldl2(inst_map_ground_var(DepVars), Vars, !InstMap,
+        have_not_seen_duplicate_instantiation, SeenDuplicateInstantiation).
+
+:- pred inst_map_ground_var(set(var_rep)::in, var_rep::in, 
+    inst_map::in, inst_map::out, seen_duplicate_instantiation::in,
+    seen_duplicate_instantiation::out) is det.
+
+inst_map_ground_var(DepVars0, Var, InstMap0, InstMap, !SeenDuplicateInstantiation) :-
+    InstMap0 = inst_map(VarToInst0, VarToDepVars0),
+    ( map.search(VarToInst0, Var, InstPrime) ->
+        Inst = InstPrime
+    ;
+        Inst = ir_free_rep
     ),
-    VarUseInfo = var_use_info(CostUntilUse, VarUseType).
+    (
+        Inst = ir_free_rep,
+        NewInst = ir_ground_rep,
+        DepVars = DepVars0
+    ;
+        ( Inst = ir_ground_rep
+        ; Inst = ir_other_rep
+        ),
+        NewInst = ir_other_rep,
+        map.lookup(VarToDepVars0, Var, DepVarsFromIM),
+        DepVars = set.union(DepVars0,  DepVarsFromIM),
+        !:SeenDuplicateInstantiation = seen_duplicate_instantiation
+    ),
+    map.set(VarToInst0, Var, NewInst, VarToInst),
+    map.set(VarToDepVars0, Var, DepVars, VarToDepVars),
+    InstMap = inst_map(VarToInst, VarToDepVars).
 
-:- pred maybe_x_to_x(maybe(T)::in, T::out) is semidet.
+inst_map_get(inst_map(VarToInst, VarToDepVars), Var, Inst, DepVars) :-
+    ( map.search(VarToInst, Var, InstPrime) ->
+        Inst = InstPrime,
+        map.lookup(VarToDepVars, Var, DepVars)
+    ;
+        Inst = ir_free_rep,
+        DepVars = set.init
+    ).
 
-maybe_x_to_x(yes(X), X).
+inst_map_get_var_deps(inst_map(_, VarToDepVars), VarRep, DepVars) :-
+    inst_map_get_var_deps_2(VarToDepVars, VarRep, set.init, DepVars).
+
+:- pred inst_map_get_var_deps_2(map(var_rep, set(var_rep))::in, var_rep::in, 
+    set(var_rep)::in, set(var_rep)::out) is det.
+
+inst_map_get_var_deps_2(VarToDepVars, VarRep, !Set) :-
+    ( set.contains(!.Set, VarRep) ->
+        true
+        % This variable has already been visited, this prevents following any
+        % (impossible) cycles in the graph, or following the same path twice
+        % when there are diamonds in the graph.
+    ;
+        ( map.search(VarToDepVars, VarRep, DepVars) ->
+            !:Set = set.union(!.Set, DepVars),
+            set.fold(inst_map_get_var_deps_2(VarToDepVars), DepVars, !Set)
+        ;
+            true
+        )
+    ).
+
+%----------------------------------------------------------------------------%
+
+atomic_goal_get_vars(AtomicGoal, Vars) :-
+    ( 
+        ( AtomicGoal = unify_construct_rep(Var, _, VarsL)
+        ; AtomicGoal = unify_deconstruct_rep(Var, _, VarsL)
+        ; AtomicGoal = higher_order_call_rep(Var, VarsL)
+        ; AtomicGoal = method_call_rep(Var, _, VarsL)
+        ),
+        Vars0 = list_to_set(VarsL),
+        set.insert(Vars0, Var, Vars)
+    ;
+        ( AtomicGoal = partial_construct_rep(Var, _, MaybeVars)
+        ; AtomicGoal = partial_deconstruct_rep(Var, _, MaybeVars)
+        ),
+        list.foldl((pred(MaybeVar::in, Set0::in, Set::out) is det :-
+                (
+                    MaybeVar = yes(VarI),
+                    set.insert(Set0, VarI, Set)
+                ;
+                    MaybeVar = no,
+                    Set = Set0
+                )), MaybeVars, set.init, Vars0),
+        set.insert(Vars0, Var, Vars)
+    ;
+        ( AtomicGoal = unify_assign_rep(VarA, VarB)
+        ; AtomicGoal = cast_rep(VarA, VarB)
+        ; AtomicGoal = unify_simple_test_rep(VarA, VarB)
+        ),
+        Vars = list_to_set([ VarA, VarB ])
+    ;
+        ( AtomicGoal = pragma_foreign_code_rep(VarsL)
+        ; AtomicGoal = event_call_rep(_, VarsL)
+        ; AtomicGoal = builtin_call_rep(_, _, VarsL)
+        ; AtomicGoal = plain_call_rep(_, _, VarsL)
+        ),
+        Vars = list_to_set(VarsL)
+    ).
+    
+merge_seen_duplicate_instantiation(A, B) = R :-
+    (
+        A = have_not_seen_duplicate_instantiation,
+        B = have_not_seen_duplicate_instantiation
+    ->
+        R = have_not_seen_duplicate_instantiation
+    ;
+        R = seen_duplicate_instantiation
+    ).
+
+%----------------------------------------------------------------------------%
+
+:- type solution_count_rep
+    --->    at_most_zero_rep
+    ;       at_most_one_rep   % Including committed choice.
+    ;       at_most_many_rep.
+
+:- func detism_get_solutions(detism_rep) = solution_count_rep.
+
+detism_get_solutions(det_rep) =         at_most_one_rep.
+detism_get_solutions(semidet_rep) =     at_most_one_rep.
+detism_get_solutions(multidet_rep) =    at_most_many_rep.
+detism_get_solutions(nondet_rep) =      at_most_many_rep.
+detism_get_solutions(cc_multidet_rep) = at_most_one_rep.
+detism_get_solutions(cc_nondet_rep) =   at_most_one_rep.
+detism_get_solutions(erroneous_rep) =   at_most_zero_rep.
+detism_get_solutions(failure_rep) =     at_most_zero_rep.
+
+:- type can_fail_rep
+    --->    can_fail_rep
+    ;       cannot_fail_rep.
+
+:- func detism_get_can_fail(detism_rep) = can_fail_rep.
+
+detism_get_can_fail(det_rep) =          cannot_fail_rep.
+detism_get_can_fail(semidet_rep) =      can_fail_rep.
+detism_get_can_fail(multidet_rep) =     cannot_fail_rep.
+detism_get_can_fail(nondet_rep) =       can_fail_rep.
+detism_get_can_fail(cc_multidet_rep) =  cannot_fail_rep.
+detism_get_can_fail(cc_nondet_rep) =    can_fail_rep.
+detism_get_can_fail(erroneous_rep) =    cannot_fail_rep.
+detism_get_can_fail(failure_rep) =      can_fail_rep.
 
 %----------------------------------------------------------------------------%
 

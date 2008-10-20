@@ -332,6 +332,9 @@
     --->    cost_since_proc_start(float)
     ;       cost_before_proc_end(float).
 
+:- func cost_until_to_cost_since_start(cost_until_var_use, float) = float.
+:- func cost_until_to_cost_before_end(cost_until_var_use, float) = float.
+
     % This type represents information about the performance of the subject.
     % It is intended to be displayed on a browser page or used by a tool as is.
     % It is NOT intended to be subject to further processing, such as adding
@@ -471,6 +474,25 @@
                 cdesc_entry_member          :: proc_desc,
                 cdesc_other_members         :: list(proc_desc)
             ).
+
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module float.
+
+%----------------------------------------------------------------------------%
+
+cost_until_to_cost_since_start(cost_since_proc_start(Cost), _WholeCost) = 
+    Cost.
+cost_until_to_cost_since_start(cost_before_proc_end(Cost), WholeCost) = 
+    WholeCost - Cost.
+
+cost_until_to_cost_before_end(cost_since_proc_start(Cost), WholeCost) = 
+    WholeCost - Cost.
+cost_until_to_cost_before_end(cost_before_proc_end(Cost), _WholeCost) = 
+    Cost.
 
 %-----------------------------------------------------------------------------%
 :- end_module report.

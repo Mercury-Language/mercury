@@ -27,6 +27,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module pair.
+:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -77,9 +79,8 @@
                     % The cost of maintaining a lock on a single dependant
                     % variable in call sequence counts.
 
-                conjunctions        :: assoc_list(string, assoc_list(
-                                         string_proc_label, 
-                                         candidate_par_conjunction))
+                conjunctions        :: assoc_list(string_proc_label,
+                                            candidate_par_conjunction)
                     % Assoclist of module name and an assoclist of procedure
                     % labels and candidate parallel conjunctions.
             ).
@@ -97,50 +98,61 @@
     % by a procedure label, goal path to the conjunction and the call sites
     % within the conjunction that are to be parallelised.
     %
+    % TODO: In the future support more expressive candidate parallel
+    % conjunctions, so that more opportunities for parallelism can be found.
+    % Although it's probably not a good idea to parallelise three conjuncts or
+    % more against one another without first having a good system for reaching
+    % and maintaining the target amount of parallelism, this may involve
+    % distance granularity.
+    %
 :- type candidate_par_conjunction
     --->    candidate_par_conjunction(
                 goal_path       :: goal_path_string,
-                conjuncts       :: list(candidate_par_conjunct)
+                    % The path within the procedure to this conjunuction.
+                
+                par_conjunct_a  :: candidate_par_conjunct,
+                par_conjunct_b  :: candidate_par_conjunct,
+                    % The conjuncts worth parallelising
+
+                dependence      :: conjuncts_are_dependant,
+
+                speedup         :: float
             ).
 
 :- type candidate_par_conjunct
     --->    candidate_par_conjunct(
-                callee          :: call_type_and_callee,
-                vars            :: list(variable_in_par_conjunct),
-                cost            :: int
+                callee                  :: maybe(pair(string, string)),
+                vars                    :: list(maybe(string)),
+                cost                    :: float,
+                include_unifications    :: int
+                    % The number of unifications between conjuncts that should
+                    % be executed in sequence with this call.
             ).
 
-:- type variable_in_par_conjunct
-    --->    variable_in_par_conjunct(
-                maybe_name              :: maybe(string),
-                cost_before_first_use   :: int
-            ).
+:- type conjuncts_are_dependant
+    --->    conjuncts_are_dependant(
+                dependant_vars          :: set(var_rep)
+            )
+    ;       conjuncts_are_independent.
 
 %-----------------------------------------------------------------------------%
 
-    % put_feedback_data(Type, Data, !Info)
+    % put_feedback_data(Data, !Info)
     %
-    % 'Put' feedback data into the feedback files.  Data is stored based on
-    % the type of information being stored.
+    % Put feedback data into the feedback files.
     %
     % Data loaded from file (not added with put) will be removed from the
-    % internal state when data for the same info type is added.
-    %
-    % This will throw an exception if the feedback_type and feedback_data don't
-    % match. 
+    % internal state when data for the same type is added.
     %
 :- pred put_feedback_data(feedback_data::in,
     feedback_info::in, feedback_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % get_feedback_data(Info, Type, MaybeData).
+    % get_feedback_data(Info, Data).
     %
-    % To query the feedback files 'get' will give a value for a given info type
-    % if it exists.
-    %
-    % This will throw an exception if the feedback_type and feedback_data
-    % within the Info structure do not match.
+    % When given a partially instantiated Data term representing the query this
+    % will either fully instantiate the term or fail.
     %
 :- pred get_feedback_data(feedback_info::in, 
     feedback_data::feedback_data_query) is semidet.
@@ -528,7 +540,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "2".
+feedback_version = "3".
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.
