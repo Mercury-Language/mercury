@@ -192,8 +192,11 @@ lambda_process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     (
         MustRecomputeNonLocals = yes,
         implicitly_quantify_clause_body(HeadVars, _Warnings,
-            Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes,
-            RttiVarMaps1, RttiVarMaps)
+            Goal1, Goal2, VarSet1, VarSet, VarTypes1, VarTypes,
+            RttiVarMaps1, RttiVarMaps),
+        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+        recompute_instmap_delta(recompute_atomic_instmap_deltas,
+            Goal2, Goal, VarTypes, InstVarSet0, InstMap0, !ModuleInfo)
     ;
         MustRecomputeNonLocals = no,
         Goal = Goal1,

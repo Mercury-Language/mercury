@@ -142,6 +142,7 @@ OTHER_PROGS= \
 	intermod_user_sharing \
 	lambda_inference\
 	lambda_instmap_bug \
+	lambda_instmap_bug2 \
 	lambda_output \
 	lambda_quant \
 	lambda_quant_bug \
