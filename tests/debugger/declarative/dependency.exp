@@ -21,7 +21,7 @@ mdb> format raw_pretty
 mdb> p proc_body
 	
 proc_defn_rep(
-  [|](head_var_rep(1, var_mode_rep(ir_free, ir_ground)), []), 
+  [|](head_var_rep(1, var_mode_rep(ir_free_rep, ir_ground_rep)), []), 
   goal_rep(
     conj_rep(
       [|](
