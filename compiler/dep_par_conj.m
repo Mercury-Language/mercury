@@ -1767,6 +1767,10 @@ should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing, SpecInfo) :-
     ;       seen_wait_negligible_cost_before
     ;       seen_wait_non_negligible_cost_before.
 
+    % Separate cost_before_wait into its components: seen (yes/no) and
+    % non-negligible cost (yes/no), or put it back together. The fact that
+    % the costs are the costs of different things for different values of seen
+    % is just something we have to live with.
 :- pred cost_before_wait_components(cost_before_wait, bool, bool).
 :- mode cost_before_wait_components(in, out, out) is det.
 :- mode cost_before_wait_components(out, in, in) is det.
@@ -1974,22 +1978,22 @@ should_we_push_wait_in_conj(Var, [Goal | Goals], CostBeforeWait) :-
 :- pred should_we_push_wait_in_cases(prog_var::in, list(case)::in,
     bool::in, cost_before_wait::out) is det.
 
-should_we_push_wait_in_cases(_, [], !.SeenWait, CostBeforeWait) :-
+should_we_push_wait_in_cases(_, [], SeenWait, CostBeforeWait) :-
     (
-        !.SeenWait = no,
+        SeenWait = no,
         CostBeforeWait = not_seen_wait_negligible_cost_so_far
     ;
-        !.SeenWait = yes,
+        SeenWait = yes,
         CostBeforeWait = seen_wait_negligible_cost_before
     ).
-should_we_push_wait_in_cases(Var, [Case | Cases], !.SeenWait, CostBeforeWait) :-
+should_we_push_wait_in_cases(Var, [Case | Cases], SeenWait, CostBeforeWait) :-
     Case = case(_MainConsId, _OtherConsIds, Goal),
     should_we_push_wait(Var, Goal, CostBeforeWaitHead),
     (
         CostBeforeWaitHead = not_seen_wait_negligible_cost_so_far,
         % Nothing significant happens in this switch arm; whether we want
         % to push the wait depends on the rest of the arms.
-        should_we_push_wait_in_cases(Var, Cases, !.SeenWait, CostBeforeWait)
+        should_we_push_wait_in_cases(Var, Cases, SeenWait, CostBeforeWait)
     ;
         CostBeforeWaitHead = not_seen_wait_non_negligible_cost_so_far,
         % We already know that we will want to push the wait, since doing
@@ -2000,8 +2004,8 @@ should_we_push_wait_in_cases(Var, [Case | Cases], !.SeenWait, CostBeforeWait) :-
         % There is no benefit along this execution path to pushing the wait,
         % but there may be benefit along execution paths involving other switch
         % arms.
-        !:SeenWait = yes,
-        should_we_push_wait_in_cases(Var, Cases, !.SeenWait, CostBeforeWait)
+        NewSeenWait = yes,
+        should_we_push_wait_in_cases(Var, Cases, NewSeenWait, CostBeforeWait)
     ;
         CostBeforeWaitHead = seen_wait_non_negligible_cost_before,
         % We already know that we will want to push the wait, since doing
@@ -2059,9 +2063,6 @@ should_we_push_signal(Var, Goal, !Signal) :-
     % would mean that there is never any point in pushing signals, rendering
     % this entire code useless.
     (
-        % With generic calls, the only safe assumption is that they produce
-        % Var just before return. With foreign code, the signal is done after
-        % the return to Mercury execution.
         GoalExpr = unify(_, _, _, _, _),
         ( set.member(Var, NonLocals) ->
             seen_produced_var(!Signal)
@@ -2069,6 +2070,9 @@ should_we_push_signal(Var, Goal, !Signal) :-
             true
         )
     ;
+        % With generic calls, the only safe assumption is that they produce
+        % Var just before return. With foreign code, the signal is done after
+        % the return to Mercury execution.
         ( GoalExpr = generic_call(_, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -2101,7 +2105,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
         GoalExpr = disj(Disjuncts),
         % What we do in this case doesn't usually matter. Semidet disjunctions
         % cannot bind any nonlocal variables (and thus cannot bind Var).
-        % Nondent disjunctions can bind variables, but we want to parallelize
+        % Nondet disjunctions can bind variables, but we want to parallelize
         % only model_det code. The only case where what we do here matters
         % is when a nondet disjunction is inside a scope that commits to the
         % first success.
@@ -2178,8 +2182,8 @@ should_we_push_signal_in_plain_conj(Var, [Conjunct | Conjuncts], !Signal) :-
     should_we_push_signal(Var, Conjunct, !Signal),
     (
         !.Signal = seen_signal_non_negligible_cost_after
-        % There is point in looking at Conjuncts; we already know we want to
-        % push the signal.
+        % There is no point in looking at Conjuncts; we already know
+        % we want to push the signal.
     ;
         ( !.Signal = not_seen_signal
         ; !.Signal = seen_signal_negligible_cost_after
@@ -2219,8 +2223,8 @@ should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
         )
     ;
         ConjunctSignal = seen_signal_non_negligible_cost_after,
-        % There is point in looking at Conjuncts; we already know we want to
-        % push the signal.
+        % There is no point in looking at Conjuncts; we already know
+        % we want to push the signal.
         !:FinalSignal = seen_signal_non_negligible_cost_after
     ),
     FinalSignal = !.FinalSignal,
