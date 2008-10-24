@@ -1,18 +1,18 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: std_util.m.
 % Main author: fjh.
 % Stability: high.
-% 
-% This file contains higher-order programming constructs and other 
+%
+% This file contains higher-order programming constructs and other
 % useful standard utilities.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -68,7 +68,14 @@
     %   Odds  = list.filter(odd, Xs)
     %   Evens = list.filter(isnt(odd), Xs)
     %
-:- pred isnt(pred(T)::(pred(in) is semidet), T::in) is semidet.
+:- pred isnt(pred(T)::in(pred(in) is semidet), T::in) is semidet.
+
+    % negate(Pred) <=> not Pred
+    %
+    % This is useful in higher order programming, e.g.
+    %   expect(negate(Pred), ...)
+    %
+:- pred negate((pred)::in((pred) is semidet)) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -96,6 +103,9 @@ pow(F, N, X) =
 
 isnt(P, X) :-
     not P(X).
+
+negate(P) :-
+    not P.
 
 id(X) = X.
 
