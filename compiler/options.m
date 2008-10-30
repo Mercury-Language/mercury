@@ -626,6 +626,7 @@
     ;       tuple_costs_ratio
     ;       tuple_min_args
     ;       always_specialize_in_dep_par_conjs
+    ;       allow_some_paths_only_waits
     ;       control_granularity
     ;       distance_granularity
     ;       parallelism_target
@@ -1468,6 +1469,7 @@ option_defaults_2(optimization_option, [
     tuple_costs_ratio                   -   int(100),
     tuple_min_args                      -   int(4),
     always_specialize_in_dep_par_conjs  -   bool(no),
+    allow_some_paths_only_waits         -   bool(yes),
     control_granularity                 -   bool(no),
     distance_granularity                -   int(0),
     parallelism_target                  -   int(4),
@@ -2326,6 +2328,8 @@ long_option("tuple-costs-ratio",    tuple_costs_ratio).
 long_option("tuple-min-args",       tuple_min_args).
 long_option("always-specialize-in-dep-par-conjs",
                                     always_specialize_in_dep_par_conjs).
+long_option("allow-some-paths-only-waits",
+                                    allow_some_paths_only_waits).
 long_option("control-granularity",  control_granularity).
 long_option("distance-granularity", distance_granularity).
 long_option("parallelism-target",   parallelism_target).

@@ -214,12 +214,15 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
                 % read only.
                 sync_ignore_vars            :: set(prog_var),
 
+                % The value of the --allow-some-paths-only-waits option.
+                % Read-only.
+                sync_allow_some_paths_only  :: bool,
+
                 % The varset and vartypes for the procedure being analysed.
                 % These fields are updated when we add new variables.
+                % XXX We may also need the rtti_var_maps.
                 sync_varset                 :: prog_varset,
                 sync_vartypes               :: vartypes
-
-                % XXX We may also need the rtti_var_maps.
             ).
 
 :- pred maybe_sync_dep_par_conjs_in_pred(pred_id::in,
@@ -260,10 +263,14 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+        module_info_get_globals(!.ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, allow_some_paths_only_waits,
+            AllowSomePathsOnly),
 
-        !:SyncInfo = sync_info(!.ModuleInfo, IgnoreVars, !.VarSet, !.VarTypes),
+        !:SyncInfo = sync_info(!.ModuleInfo, IgnoreVars, AllowSomePathsOnly,
+            !.VarSet, !.VarTypes),
         sync_dep_par_conjs_in_goal(!Goal, InstMap0, _, !SyncInfo),
-        !.SyncInfo = sync_info(_, _, !:VarSet, !:VarTypes),
+        !.SyncInfo = sync_info(_, _, _, !:VarSet, !:VarTypes),
         % XXX RTTI varmaps may need to be updated
 
         % We really only need to run this part if something changed, but we
@@ -382,7 +389,8 @@ sync_dep_par_conjs_in_cases([Case0 | Cases0], [Case | Cases], InstMap0,
     is det.
 
 maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
-    !.SyncInfo = sync_info(ModuleInfo, IgnoreVars, VarSet0, VarTypes0),
+    !.SyncInfo = sync_info(ModuleInfo, IgnoreVars, AllowSomePathsOnly,
+        VarSet0, VarTypes0),
     % Find the variables that are shared between conjuncts.
     SharedVars0 = find_shared_variables(ModuleInfo, InstMap, Conjuncts),
 
@@ -395,9 +403,11 @@ maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
         % Independent parallel conjunctions need no transformation.
         par_conj_list_to_goal(Conjuncts, GoalInfo, NewGoal)
     ;
-        sync_dep_par_conj(ModuleInfo, SharedVars, Conjuncts, GoalInfo, NewGoal,
-            InstMap, VarSet0, VarSet, VarTypes0, VarTypes),
-        !:SyncInfo = sync_info(ModuleInfo, IgnoreVars, VarSet, VarTypes)
+        sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars,
+            Conjuncts, GoalInfo, NewGoal, InstMap,
+            VarSet0, VarSet, VarTypes0, VarTypes),
+        !:SyncInfo = sync_info(ModuleInfo, IgnoreVars, AllowSomePathsOnly,
+            VarSet, VarTypes)
     ).
 
     % Transforming the parallel conjunction.
@@ -424,18 +434,18 @@ maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
     %           append(AB_10, A, ABA)
     %       ).
     %
-:- pred sync_dep_par_conj(module_info::in, set(prog_var)::in,
+:- pred sync_dep_par_conj(module_info::in, bool::in, set(prog_var)::in,
     list(hlds_goal)::in, hlds_goal_info::in, hlds_goal::out, instmap::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-sync_dep_par_conj(ModuleInfo, SharedVars, Goals, GoalInfo, NewGoal, InstMap,
-        !VarSet, !VarTypes) :-
+sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
+        NewGoal, InstMap, !VarSet, !VarTypes) :-
     SharedVarsList = set.to_sorted_list(SharedVars),
     list.map_foldl3(allocate_future(ModuleInfo), SharedVarsList,
         AllocateFutures, !VarSet, !VarTypes, map.init, FutureMap),
     list.map_foldl3(
-        sync_dep_par_conjunct(ModuleInfo, par_conjunct_is_in_conjunction,
-            SharedVars, FutureMap),
+        sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly,
+            par_conjunct_is_in_conjunction, SharedVars, FutureMap),
         Goals, NewGoals, InstMap, _, !VarSet, !VarTypes),
 
     LastGoal = hlds_goal(conj(parallel_conj, NewGoals), GoalInfo),
@@ -461,13 +471,13 @@ sync_dep_par_conj(ModuleInfo, SharedVars, Goals, GoalInfo, NewGoal, InstMap,
     --->    par_conjunct_is_in_conjunction
     ;       par_conjunct_is_proc_body.
 
-:- pred sync_dep_par_conjunct(module_info::in, par_conjunct_status::in,
-    set(prog_var)::in, future_map::in,
+:- pred sync_dep_par_conjunct(module_info::in, bool::in,
+    par_conjunct_status::in, set(prog_var)::in, future_map::in,
     hlds_goal::in, hlds_goal::out, instmap::in, instmap::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-sync_dep_par_conjunct(ModuleInfo, ParConjunctStatus, SharedVars, FutureMap,
-        !Goal, !InstMap, !VarSet, !VarTypes) :-
+sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, ParConjunctStatus,
+        SharedVars, FutureMap, !Goal, !InstMap, !VarSet, !VarTypes) :-
     Nonlocals = goal_get_nonlocals(!.Goal),
     set.intersect(Nonlocals, SharedVars, NonlocalSharedVars),
     ( set.empty(NonlocalSharedVars) ->
@@ -489,8 +499,11 @@ sync_dep_par_conjunct(ModuleInfo, ParConjunctStatus, SharedVars, FutureMap,
         ProducedVarsList = set.to_sorted_list(ProducedVars),
 
         % Insert waits into the conjunct, as late as possible.
-        list.foldl3(insert_wait_in_goal(ModuleInfo, FutureMap),
-            ConsumedVarsList, !Goal, !VarSet, !VarTypes),
+        list.map_foldl3(
+            insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+                FutureMap),
+            ConsumedVarsList, _WaitedOnAllSuccessPaths,
+            !Goal, !VarSet, !VarTypes),
 
         % Insert signals into the conjunct, as early as possible.
         list.foldl3(insert_signal_in_goal(ModuleInfo, FutureMap),
@@ -512,6 +525,22 @@ sync_dep_par_conjunct(ModuleInfo, ParConjunctStatus, SharedVars, FutureMap,
 
 %-----------------------------------------------------------------------------%
 
+:- type waited_on_all_success_paths
+    --->    waited_on_all_success_paths
+    ;       not_waited_on_all_success_paths.
+
+:- pred join_branches(waited_on_all_success_paths::in,
+    waited_on_all_success_paths::in, waited_on_all_success_paths::out) is det.
+
+join_branches(waited_on_all_success_paths, waited_on_all_success_paths,
+    waited_on_all_success_paths).
+join_branches(waited_on_all_success_paths, not_waited_on_all_success_paths,
+    not_waited_on_all_success_paths).
+join_branches(not_waited_on_all_success_paths, waited_on_all_success_paths,
+    not_waited_on_all_success_paths).
+join_branches(not_waited_on_all_success_paths, not_waited_on_all_success_paths,
+    not_waited_on_all_success_paths).
+
     % insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar, Goal0, Goal,
     %   !VarSet, !VarTypes):
     %
@@ -526,56 +555,94 @@ sync_dep_par_conjunct(ModuleInfo, ParConjunctStatus, SharedVars, FutureMap,
     % (We must ensure that if one branch of a branched goal inserts a wait
     % for a variable, then *all* branches of that goal insert a wait.)
     %
-:- pred insert_wait_in_goal(module_info::in, future_map::in, prog_var::in,
-    hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+:- pred insert_wait_in_goal(module_info::in, bool::in, future_map::in,
+    prog_var::in, waited_on_all_success_paths::out,
+    hlds_goal::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
-        Goal0, Goal, !VarSet, !VarTypes) :-
+insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
+        WaitedOnAllSuccessPaths, Goal0, Goal, !VarSet, !VarTypes) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    % InvariantEstablished should be true if AllowSomePathsOnly = no
+    % implies WaitedOnAllSuccessPaths0 = waited_on_all_success_paths.
     ( var_in_nonlocals(ConsumedVar, Goal0) ->
-        Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         (
             GoalExpr0 = conj(ConjType, Goals0),
+            InvariantEstablished = yes,
             (
                 ConjType = plain_conj,
-                insert_wait_in_plain_conj(ModuleInfo, FutureMap, ConsumedVar,
-                    have_not_waited_in_conjunct, Waited,
+                insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly,
+                    FutureMap, ConsumedVar, WaitedOnAllSuccessPaths0,
                     Goals0, Goals, !VarSet, !VarTypes)
             ;
                 ConjType = parallel_conj,
-                insert_wait_in_par_conj(ModuleInfo, FutureMap, ConsumedVar,
-                    have_not_waited_in_conjunct, Waited,
-                    Goals0, Goals, !VarSet, !VarTypes)
+                insert_wait_in_par_conj(ModuleInfo, AllowSomePathsOnly,
+                    FutureMap, ConsumedVar,
+                    have_not_waited_in_conjunct, WaitedInConjunct,
+                    Goals0, Goals, !VarSet, !VarTypes),
+                (
+                    WaitedInConjunct = have_not_waited_in_conjunct,
+                    WaitedOnAllSuccessPaths0 = not_waited_on_all_success_paths
+                ;
+                    WaitedInConjunct =
+                        waited_in_conjunct(WaitedOnAllSuccessPaths0)
+                )
             ),
             GoalExpr = conj(ConjType, Goals),
-            Goal1 = hlds_goal(GoalExpr, GoalInfo0),
+            Goal1 = hlds_goal(GoalExpr, GoalInfo0)
+        ;
+            GoalExpr0 = disj(Disjuncts0),
+            InvariantEstablished = yes,
             (
-                Waited = waited_in_conjunct,
-                Goal = Goal1
+                Disjuncts0 = [],
+                % This path ends in failure.
+                WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
+                Goal1 = Goal0
             ;
-                Waited = have_not_waited_in_conjunct,
-                insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
-                    Goal1, Goal, !VarSet, !VarTypes)
+                Disjuncts0 = [FirstDisjunct0 | LaterDisjuncts0],
+                insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+                    FutureMap, ConsumedVar,
+                    FirstWaitedOnAllSuccessPaths,
+                    FirstDisjunct0, FirstDisjunct, !VarSet, !VarTypes),
+                insert_wait_in_disj(ModuleInfo, AllowSomePathsOnly,
+                    FutureMap, ConsumedVar,
+                    FirstWaitedOnAllSuccessPaths, WaitedOnAllSuccessPaths0,
+                    LaterDisjuncts0, LaterDisjuncts, !VarSet, !VarTypes),
+                Disjuncts = [FirstDisjunct | LaterDisjuncts],
+                GoalExpr = disj(Disjuncts),
+                Goal1 = hlds_goal(GoalExpr, GoalInfo0)
             )
         ;
-            GoalExpr0 = disj(Goals0),
-            insert_wait_in_disj(ModuleInfo, FutureMap, ConsumedVar,
-                Goals0, Goals, !VarSet, !VarTypes),
-            GoalExpr = disj(Goals),
-            Goal = hlds_goal(GoalExpr, GoalInfo0)
-        ;
             GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
+            InvariantEstablished = yes,
             ( ConsumedVar = SwitchVar ->
                 insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-                    Goal0, Goal, !VarSet, !VarTypes)
+                    Goal0, Goal1, !VarSet, !VarTypes),
+                WaitedOnAllSuccessPaths0 = waited_on_all_success_paths
             ;
-                insert_wait_in_cases(ModuleInfo, FutureMap, ConsumedVar,
-                    Cases0, Cases, !VarSet, !VarTypes),
-                GoalExpr = switch(SwitchVar, CanFail, Cases),
-                Goal = hlds_goal(GoalExpr, GoalInfo0)
+                (
+                    Cases0 = [],
+                    unexpected(this_file, "insert_wait_in_goal: no cases")
+                ;
+                    Cases0 = [FirstCase0 | LaterCases0],
+                    FirstCase0 = case(MainConsId, OtherConsIds, FirstGoal0),
+                    insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+                        FutureMap, ConsumedVar,
+                        FirstWaitedOnAllSuccessPaths,
+                        FirstGoal0, FirstGoal, !VarSet, !VarTypes),
+                    FirstCase = case(MainConsId, OtherConsIds, FirstGoal),
+                    insert_wait_in_cases(ModuleInfo, AllowSomePathsOnly,
+                        FutureMap, ConsumedVar,
+                        FirstWaitedOnAllSuccessPaths, WaitedOnAllSuccessPaths0,
+                        LaterCases0, LaterCases, !VarSet, !VarTypes),
+                    Cases = [FirstCase | LaterCases],
+                    GoalExpr = switch(SwitchVar, CanFail, Cases),
+                    Goal1 = hlds_goal(GoalExpr, GoalInfo0)
+                )
             )
         ;
             GoalExpr0 = if_then_else(Quant, Cond, Then0, Else0),
+            InvariantEstablished = yes,
             ( var_in_nonlocals(ConsumedVar, Cond) ->
                 % XXX We could try to wait for the shared variable only when
                 % the condition needs it. This would require also waiting
@@ -586,45 +653,110 @@ insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
                 % if-then-else, so we would have to do tricks like renaming
                 % the variable waited-for by the condition, and then assigning
                 % the renamed variable to its original name in the then-part.
+                WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
                 insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-                    Goal0, Goal, !VarSet, !VarTypes)
+                    Goal0, Goal1, !VarSet, !VarTypes)
             ;
                 % If ConsumedVar is not in the nonlocals of Cond, then it
                 % must be in the nonlocals of at least one of Then0 and Else0.
-                insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
+                insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+                    FutureMap, ConsumedVar,
+                    ThenWaitedOnAllSuccessPaths,
                     Then0, Then, !VarSet, !VarTypes),
-                insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
+                insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+                    FutureMap, ConsumedVar,
+                    ElseWaitedOnAllSuccessPaths,
                     Else0, Else, !VarSet, !VarTypes),
+                join_branches(ThenWaitedOnAllSuccessPaths,
+                    ElseWaitedOnAllSuccessPaths, WaitedOnAllSuccessPaths0),
                 GoalExpr = if_then_else(Quant, Cond, Then, Else),
-                Goal = hlds_goal(GoalExpr, GoalInfo0)
+                Goal1 = hlds_goal(GoalExpr, GoalInfo0)
             )
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
-            insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
+            InvariantEstablished = yes,
+            insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+                FutureMap, ConsumedVar, WaitedOnAllSuccessPaths0,
                 SubGoal0, SubGoal, !VarSet, !VarTypes),
             GoalExpr = scope(Reason, SubGoal),
-            Goal = hlds_goal(GoalExpr, GoalInfo0)
+            Goal1 = hlds_goal(GoalExpr, GoalInfo0)
         ;
             GoalExpr0 = negation(_SubGoal0),
+            InvariantEstablished = yes,
             % We treat the negated goal just as we treat the condition of
             % an if-then-else.
+            WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
             insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-                Goal0, Goal, !VarSet, !VarTypes)
+                Goal0, Goal1, !VarSet, !VarTypes)
         ;
             ( GoalExpr0 = unify(_, _, _, _, _)
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)
             ; GoalExpr0 = generic_call(_, _, _, _)
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
             ),
+            InvariantEstablished = no,
+            WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
             insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-                Goal0, Goal, !VarSet, !VarTypes)
+                Goal0, Goal1, !VarSet, !VarTypes)
         ;
             GoalExpr0 = shorthand(_),
             unexpected(this_file, "insert_wait_in_goal: shorthand")
+        ),
+        (
+            WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
+            Goal2 = Goal1
+        ;
+            WaitedOnAllSuccessPaths0 = not_waited_on_all_success_paths,
+            % Some code in this goal may wait on ConsumedVar, and some code
+            % in later conjoined goals may wait on ConsumedVar. We must
+            % therefore ensure that the wait operations instantiate different
+            % variables. We do so by renaming any occurrences of ConsumedVar
+            % in this goal.
+            % so we shouldn't update the argument of waited_in_conjunct.
+            clone_variable(ConsumedVar, !.VarSet, !.VarTypes,
+                !VarSet, !VarTypes, map.init, Renaming, _CloneVar),
+            rename_some_vars_in_goal(Renaming, Goal1, Goal2)
         )
     ;
-        insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
-            Goal0, Goal, !VarSet, !VarTypes)
+        InvariantEstablished = no,
+        WaitedOnAllSuccessPaths0 = not_waited_on_all_success_paths,
+        Goal2 = Goal0
+    ),
+    Detism = goal_info_get_determinism(GoalInfo0),
+    determinism_components(Detism, _, MaxSolns),
+    (
+        MaxSolns = at_most_zero,
+        WaitedOnAllSuccessPaths = waited_on_all_success_paths,
+        Goal = Goal2
+    ;
+        ( MaxSolns = at_most_one
+        ; MaxSolns = at_most_many
+        ; MaxSolns = at_most_many_cc
+        ),
+        (
+            WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
+            WaitedOnAllSuccessPaths = WaitedOnAllSuccessPaths0,
+            Goal = Goal2
+        ;
+            WaitedOnAllSuccessPaths0 = not_waited_on_all_success_paths,
+            (
+                AllowSomePathsOnly = yes,
+                WaitedOnAllSuccessPaths = WaitedOnAllSuccessPaths0,
+                Goal = Goal2
+            ;
+                AllowSomePathsOnly = no,
+                (
+                    InvariantEstablished = no,
+                    WaitedOnAllSuccessPaths = waited_on_all_success_paths,
+                    insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
+                        Goal2, Goal, !VarSet, !VarTypes)
+                ;
+                    InvariantEstablished = yes,
+                    unexpected(this_file, "insert_wait_in_goal: " ++
+                        "not_waited_on_all_success_paths invariant violation")
+                )
+            )
+        )
     ).
 
 :- pred insert_wait_before_goal(module_info::in, future_map::in,
@@ -649,105 +781,137 @@ insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
     conjoin_goals_update_goal_infos(Goal0 ^ hlds_goal_info, Goal0, WaitGoal,
         Goal).
 
-:- type waited_in_conjunct
-    --->    waited_in_conjunct
-    ;       have_not_waited_in_conjunct.
-
     % Insert a wait for ConsumedVar in the first goal in the conjunction
     % that references it. Any later conjuncts will get the waited-for variable
     % without having to call wait.
     %
-:- pred insert_wait_in_plain_conj(module_info::in, future_map::in,
-    prog_var::in, waited_in_conjunct::in, waited_in_conjunct::out,
+:- pred insert_wait_in_plain_conj(module_info::in, bool::in, future_map::in,
+    prog_var::in, waited_on_all_success_paths::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-insert_wait_in_plain_conj(_ModuleInfo, _FutureMap, _ConsumedVar, !Waited,
-        [], [], !VarSet, !VarTypes).
-insert_wait_in_plain_conj(ModuleInfo, FutureMap, ConsumedVar, !Waited,
-        [Goal0 | Goals0], Goals, !VarSet, !VarTypes) :-
-    ( var_in_nonlocals(ConsumedVar, Goal0) ->
-        % ConsumedVar appears in Goal0, so wait for it in Goal0. The code
-        % in Goals0 will then be able to access ConsumedVar without any further
-        % waiting.
-        insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
-            Goal0, Goal, !VarSet, !VarTypes),
-        ( Goal ^ hlds_goal_expr = conj(plain_conj, GoalConj) ->
-            Goals = GoalConj ++ Goals0
+insert_wait_in_plain_conj(_, _, _, _,
+        not_waited_on_all_success_paths, [], [], !VarSet, !VarTypes).
+insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
+        ConsumedVar, WaitedOnAllSuccessPaths,
+        [FirstGoal0 | LaterGoals0], Goals, !VarSet, !VarTypes) :-
+    ( var_in_nonlocals(ConsumedVar, FirstGoal0) ->
+        insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+            FutureMap, ConsumedVar, GoalWaitedOnAllSuccessPaths,
+            FirstGoal0, FirstGoal, !VarSet, !VarTypes),
+        (
+            % We wait for ConsumedVar on all paths FirstGoal that can lead
+            % to LaterGoals0, so the code in LaterGoals0 will be able to
+            % access ConsumedVar without any further waiting.
+            GoalWaitedOnAllSuccessPaths = waited_on_all_success_paths,
+            WaitedOnAllSuccessPaths = waited_on_all_success_paths,
+            LaterGoals = LaterGoals0
         ;
-            Goals = [Goal | Goals0]
+            GoalWaitedOnAllSuccessPaths = not_waited_on_all_success_paths,
+            insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly,
+                FutureMap, ConsumedVar, WaitedOnAllSuccessPaths,
+                LaterGoals0, LaterGoals, !VarSet, !VarTypes)
         ),
-        !:Waited = waited_in_conjunct
+        ( FirstGoal ^ hlds_goal_expr = conj(plain_conj, FirstGoalConj) ->
+            Goals = FirstGoalConj ++ LaterGoals
+        ;
+            Goals = [FirstGoal | LaterGoals]
+        )
     ;
-        % ConsumedVar does not appear in Goal0, so wait for it in Goals0.
-        insert_wait_in_plain_conj(ModuleInfo, FutureMap, ConsumedVar, !Waited,
-            Goals0, Goals1, !VarSet, !VarTypes),
-        Goals = [Goal0 | Goals1]
+        % ConsumedVar does not appear in FirstGoal0, so wait for it
+        % in LaterGoals0.
+        insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
+            ConsumedVar, WaitedOnAllSuccessPaths, LaterGoals0, LaterGoals1,
+            !VarSet, !VarTypes),
+        Goals = [FirstGoal0 | LaterGoals1]
     ).
+
+    % Have we inserted waits into any one of the parallel conjuncts yet?
+    % If yes, say whether the first such conjunct (the one in which we
+    % do *not* rename the waited for instance of ConsumedVar) waits for
+    % ConsumedVar on all success paths.
+    %
+:- type waited_in_conjunct
+    --->    waited_in_conjunct(waited_on_all_success_paths)
+    ;       have_not_waited_in_conjunct.
 
     % Insert a wait for ConsumedVar in the *every* goal in the conjunction
     % that references it. "Later" conjuncts cannot get the variable that
     % "earlier" conjuncts waited for, since those waits may not have finished
     % yet.
     %
-:- pred insert_wait_in_par_conj(module_info::in, future_map::in, prog_var::in,
+:- pred insert_wait_in_par_conj(module_info::in, bool::in,
+    future_map::in, prog_var::in,
     waited_in_conjunct::in, waited_in_conjunct::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-insert_wait_in_par_conj(_ModuleInfo, _FutureMap, _ConsumedVar, !Waited,
-        [], [], !VarSet, !VarTypes).
-insert_wait_in_par_conj(ModuleInfo, FutureMap, ConsumedVar, !Waited,
-        [Goal0 | Goals0], [Goal | Goals], !VarSet, !VarTypes) :-
+insert_wait_in_par_conj(_, _, _, _,
+        !WaitedInConjunct, [], [], !VarSet, !VarTypes).
+insert_wait_in_par_conj(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
+        !WaitedInConjunct, [Goal0 | Goals0], [Goal | Goals],
+        !VarSet, !VarTypes) :-
     ( var_in_nonlocals(ConsumedVar, Goal0) ->
         % ConsumedVar appears in Goal0, so wait for it in Goal0, but the code
         % in Goals0 will *not* be able to access ConsumedVar without waiting,
         % since the conjuncts are executed independently.
-        insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
-            Goal0, Goal1, !VarSet, !VarTypes),
+        insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap,
+            ConsumedVar, WaitedOnAllSuccessPaths, Goal0, Goal1,
+            !VarSet, !VarTypes),
         (
-            !.Waited = have_not_waited_in_conjunct,
+            !.WaitedInConjunct = have_not_waited_in_conjunct,
+            !:WaitedInConjunct = waited_in_conjunct(WaitedOnAllSuccessPaths),
             Goal = Goal1
         ;
-            !.Waited = waited_in_conjunct,
+            !.WaitedInConjunct = waited_in_conjunct(_),
+            % This is not the first conjunct that waits for ConsumedVar,
+            % so we shouldn't update the argument of waited_in_conjunct.
             clone_variable(ConsumedVar, !.VarSet, !.VarTypes,
                 !VarSet, !VarTypes, map.init, Renaming, _CloneVar),
             rename_some_vars_in_goal(Renaming, Goal1, Goal)
-        ),
-        !:Waited = waited_in_conjunct
+        )
     ;
         Goal = Goal0
     ),
-    insert_wait_in_par_conj(ModuleInfo, FutureMap, ConsumedVar, !Waited,
-        Goals0, Goals, !VarSet, !VarTypes).
+    insert_wait_in_par_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
+        ConsumedVar, !WaitedInConjunct, Goals0, Goals, !VarSet, !VarTypes).
 
-:- pred insert_wait_in_disj(module_info::in, future_map::in, prog_var::in,
+:- pred insert_wait_in_disj(module_info::in, bool::in,
+    future_map::in, prog_var::in,
+    waited_on_all_success_paths::in, waited_on_all_success_paths::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-insert_wait_in_disj(_ModuleInfo, _FutureMap, _ConsumedVar,
-        [], [], !VarSet, !VarTypes).
-insert_wait_in_disj(ModuleInfo, FutureMap, ConsumedVar,
-        [Goal0 | Goals0], [Goal | Goals], !VarSet, !VarTypes) :-
-    insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
+insert_wait_in_disj(_, _, _, _,
+        !WaitedOnAllSuccessPaths, [], [], !VarSet, !VarTypes).
+insert_wait_in_disj(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
+        !WaitedOnAllSuccessPaths, [Goal0 | Goals0], [Goal | Goals],
+        !VarSet, !VarTypes) :-
+    insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
+        FirstWaitedOnAllSuccessPaths,
         Goal0, Goal, !VarSet, !VarTypes),
-    insert_wait_in_disj(ModuleInfo, FutureMap, ConsumedVar,
-        Goals0, Goals, !VarSet, !VarTypes).
+    join_branches(FirstWaitedOnAllSuccessPaths, !WaitedOnAllSuccessPaths),
+    insert_wait_in_disj(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
+        !WaitedOnAllSuccessPaths, Goals0, Goals, !VarSet, !VarTypes).
 
-:- pred insert_wait_in_cases(module_info::in, future_map::in, prog_var::in,
+:- pred insert_wait_in_cases(module_info::in, bool::in,
+    future_map::in, prog_var::in,
+    waited_on_all_success_paths::in, waited_on_all_success_paths::out,
     list(case)::in, list(case)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-insert_wait_in_cases(_ModuleInfo, _FutureMap, _ConsumedVar,
-        [], [], !VarSet, !VarTypes).
-insert_wait_in_cases(ModuleInfo, FutureMap, ConsumedVar,
-        [Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes) :-
+insert_wait_in_cases(_, _, _, _,
+        !WaitedOnAllSuccessPaths, [], [], !VarSet, !VarTypes).
+insert_wait_in_cases(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
+        !WaitedOnAllSuccessPaths, [Case0 | Cases0], [Case | Cases],
+        !VarSet, !VarTypes) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
-        Goal0, Goal, !VarSet, !VarTypes),
+    insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
+        FirstWaitedOnAllSuccessPaths, Goal0, Goal, !VarSet, !VarTypes),
     Case = case(MainConsId, OtherConsIds, Goal),
-    insert_wait_in_cases(ModuleInfo, FutureMap, ConsumedVar,
-        Cases0, Cases, !VarSet, !VarTypes).
+    join_branches(FirstWaitedOnAllSuccessPaths, !WaitedOnAllSuccessPaths),
+    insert_wait_in_cases(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
+        !WaitedOnAllSuccessPaths, Cases0, Cases, !VarSet, !VarTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1111,10 +1275,13 @@ add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
 
         % Insert signals and waits into the procedure body. We treat the body
         % as it were a conjunct of a parallel conjunction, since it is.
+        module_info_get_globals(InitialModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, allow_some_paths_only_waits,
+            AllowSomePathsOnly),
         SharedVars = set.from_list(map.keys(FutureMap)),
-        sync_dep_par_conjunct(!.ModuleInfo, par_conjunct_is_proc_body,
-            SharedVars, FutureMap, Goal0, Goal, InstMap0, _,
-            !VarSet, !VarTypes),
+        sync_dep_par_conjunct(!.ModuleInfo, AllowSomePathsOnly,
+            par_conjunct_is_proc_body, SharedVars, FutureMap, Goal0, Goal,
+            InstMap0, _, !VarSet, !VarTypes),
 
         proc_info_set_varset(!.VarSet, !NewProcInfo),
         proc_info_set_vartypes(!.VarTypes, !NewProcInfo),

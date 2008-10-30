@@ -47,12 +47,17 @@ main(!IO) :-
 :- pragma no_inline(q/3).
 
 q(X, Y, Z) :-
-    ( Y = 2 ->
+    ( test(Y) ->
         A = Y
     ;
         A = X
     ),
     Z = X + A.
+
+:- pred test(int::in) is semidet.
+:- pragma no_inline(test/1).
+
+test(2).
 
 :- pred r(int::in, int::in, int::out) is det.
 :- pragma no_inline(r/3).
