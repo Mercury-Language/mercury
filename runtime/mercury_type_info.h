@@ -737,9 +737,9 @@ extern  MR_ConstString  MR_ctor_rep_name[];
 **
 ** Note that the arity cannot be zero, so we do not have to worry about
 ** zero-size arrays. On the other hand, type classes with more than even two
-** arguments can be expected to be very rare, so having five as a fixed limit
-** should not be a problem. If it is, we can lift the limit by defining
-** MR_TypeClassConstraint_N on demand for all N > 5.
+** arguments can be expected to be very rare.  We define
+** MR_TypeClassConstraint_N on demand for all N > 10 in the low-level grades
+** but not yet in high-level grades.
 **
 ** We will have to rethink this structure once we start supporting constructor
 ** classes.
@@ -756,6 +756,11 @@ MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_2, 2);
 MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_3, 3);
 MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_4, 4);
 MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_5, 5);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_6, 6);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_7, 7);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_8, 8);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_9, 9);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_10, 10);
 
 typedef MR_TypeClassConstraint_5Struct          MR_TypeClassConstraintStruct;
 typedef const MR_TypeClassConstraintStruct      *MR_TypeClassConstraint;

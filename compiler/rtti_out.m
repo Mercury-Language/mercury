@@ -1580,7 +1580,7 @@ rtti_type_class_constraint_template_arity(TCRttiName, Arity) :-
 
 :- func max_always_declared_arity_type_class_constraint = int.
 
-max_always_declared_arity_type_class_constraint = 5.
+max_always_declared_arity_type_class_constraint = 10.
 
 %-----------------------------------------------------------------------------%
 

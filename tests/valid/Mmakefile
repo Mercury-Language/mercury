@@ -42,6 +42,7 @@ TYPECLASS_PROGS= \
 	superclass_improvement \
 	tc_map_lookup \
 	time_yaowl \
+	typeclass_constraint_arity \
 	typeclass_constraint_no_var \
 	typeclass_constraint_nonvar_bug \
 	typeclass_det_warning
