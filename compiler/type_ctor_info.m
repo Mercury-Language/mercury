@@ -290,8 +290,12 @@ construct_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
 construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
         TypeArity, _Status, HldsDefn, UnifyPredProcId, ComparePredProcId),
-    make_rtti_proc_label(UnifyPredProcId, ModuleInfo, UnifyProcLabel),
-    make_rtti_proc_label(ComparePredProcId, ModuleInfo, CompareProcLabel),
+    UnifyPredProcId = proc(UnifyPredId, UnifyProcId),
+    UnifyProcLabel = make_rtti_proc_label(ModuleInfo,
+        UnifyPredId, UnifyProcId),
+    ComparePredProcId = proc(ComparePredId, CompareProcId),
+    CompareProcLabel = make_rtti_proc_label(ModuleInfo,
+        ComparePredId, CompareProcId),
     type_to_univ(UnifyProcLabel, UnifyUniv),
     type_to_univ(CompareProcLabel, CompareUniv),
     hlds_data.get_type_defn_body(HldsDefn, TypeBody),
@@ -456,13 +460,6 @@ impl_type_ctor("private_builtin", "redofr", 0, impl_ctor_redofr).
 impl_type_ctor("private_builtin", "trail_ptr", 0, impl_ctor_trail_ptr).
 impl_type_ctor("private_builtin", "ticket", 0, impl_ctor_ticket).
 impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
-
-:- pred make_rtti_proc_label(pred_proc_id::in, module_info::in,
-    rtti_proc_label::out) is det.
-
-make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
-    PredProcId = proc(PredId, ProcId),
-    ProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId).
 
 %---------------------------------------------------------------------------%
 

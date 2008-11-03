@@ -52,6 +52,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.
+:- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
@@ -74,6 +75,11 @@
 %-----------------------------------------------------------------------------%
 
 apply_deep_profiling_transformation(!ModuleInfo, !IO) :-
+    % XXX The dead proc elimination pass changes the status of opt_imported
+    % predicates, which changes what labels they get generated. The
+    % call_site_static structures we generate must match the labels created
+    % during code generation.
+    dead_proc_elim(elim_opt_imported, !ModuleInfo, _ElimSpecs),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, deep_profile_tail_recursion,
         TailRecursion),
@@ -482,10 +488,10 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable, !IO) :-
         true
     ;
         module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, verbose, Verbose),
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         ProcName = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
-        maybe_write_string(Verbose,
-            string.format("Deep profiling: %s\n", [s(ProcName)]),
+        maybe_write_string(VeryVerbose,
+            string.format("%% Deep profiling: %s\n", [s(ProcName)]),
             !IO),
         deep_prof_transform_proc(ModuleInfo, proc(PredId, ProcId),
             ProcInfo0, ProcInfo),

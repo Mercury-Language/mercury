@@ -108,10 +108,13 @@ make_entry_label(ModuleInfo, PredId, ProcId, Immed) = ProcAddr :-
     ProcAddr = make_entry_label_from_rtti(RttiProcLabel, Immed).
 
 make_entry_label_from_rtti(RttiProcLabel, Immed) = ProcAddr :-
-    ( RttiProcLabel ^ proc_is_imported = yes ->
+    ProcIsImported = RttiProcLabel ^ proc_is_imported,
+    (
+        ProcIsImported = yes,
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
         ProcAddr = code_imported_proc(ProcLabel)
     ;
+        ProcIsImported = no,
         Label = make_local_entry_label_from_rtti(RttiProcLabel, Immed),
         ProcAddr = code_label(Label)
     ).
@@ -129,9 +132,12 @@ make_local_entry_label_from_rtti(RttiProcLabel, Immed) = Label :-
         % If we want to define the label or use it to put it into a data
         % structure, a label that is usable only within the current C module
         % won't do.
-        ( RttiProcLabel ^ proc_is_exported = yes ->
+        ProcIsExported = RttiProcLabel ^ proc_is_exported,
+        (
+            ProcIsExported = yes,
             EntryType = entry_label_exported
         ;
+            ProcIsExported = no,
             EntryType = entry_label_local
         ),
         Label = entry_label(EntryType, ProcLabel)

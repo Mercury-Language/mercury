@@ -4144,7 +4144,8 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         ),
         (
             MaybeDeepLayout = yes(DeepLayout),
-            DeepLayout = hlds_deep_layout(_, ExcpVars),
+            DeepLayout = hlds_deep_layout(ProcStatic, ExcpVars),
+            write_hlds_proc_static(ProcStatic, !IO),
             ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD,
                 MaybeOldOutermost),
             io.write_string("% deep layout info: ", !IO),
@@ -4240,6 +4241,74 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         write_goal(Goal, ModuleInfo, VarSet, AppendVarNums, Indent1, ".\n",
             !IO)
     ).
+
+:- pred write_hlds_proc_static(hlds_proc_static::in, io::di, io::uo) is det.
+
+write_hlds_proc_static(ProcStatic, !IO) :-
+    ProcStatic = hlds_proc_static(FileName, LineNumber,
+        InInterface, CallSiteStatics, CoveragePoints),
+    io.write_string("% proc static filename: ", !IO),
+    io.write_string(FileName, !IO),
+    io.nl(!IO),
+    io.write_string("% proc static line number: ", !IO),
+    io.write_int(LineNumber, !IO),
+    io.nl(!IO),
+    io.write_string("% proc static is interface: ", !IO),
+    io.write(InInterface, !IO),
+    io.nl(!IO),
+    list.foldl2(write_hlds_ps_call_site, CallSiteStatics, 0, _, !IO),
+    list.foldl2(write_hlds_ps_coverage_point, CoveragePoints, 0, _, !IO).
+
+:- pred write_hlds_ps_call_site(call_site_static_data::in, int::in, int::out,
+    io::di, io::uo) is det.
+
+write_hlds_ps_call_site(CallSiteStaticData, !SlotNum, !IO) :-
+    io.format("%% call site static slot %d\n", [i(!.SlotNum)], !IO),
+    (
+        CallSiteStaticData = normal_call(CalleeRttiProcLabel, TypeSubst,
+            FileName, LineNumber, GoalPath),
+        io.write_string("% normal call to ", !IO),
+        io.write(CalleeRttiProcLabel, !IO),
+        io.nl(!IO),
+        io.format("%% type subst <%s>, goal path <%s>\n",
+            [s(TypeSubst), s(goal_path_to_string(GoalPath))], !IO),
+        io.format("%% filename <%s>, line number <%d>\n",
+            [s(FileName), i(LineNumber)], !IO)
+    ;
+        (
+            CallSiteStaticData = special_call(FileName, LineNumber, GoalPath),
+            io.write_string("% special call\n", !IO)
+        ;
+            CallSiteStaticData = higher_order_call(FileName, LineNumber,
+                GoalPath),
+            io.write_string("% higher order call\n", !IO)
+        ;
+            CallSiteStaticData = method_call(FileName, LineNumber, GoalPath),
+            io.write_string("% method call\n", !IO)
+        ;
+            CallSiteStaticData = callback(FileName, LineNumber, GoalPath),
+            io.write_string("% callback\n", !IO)
+        ),
+        io.format("%% filename <%s>, line number <%d>, goal path <%s>\n",
+            [s(FileName), i(LineNumber), s(goal_path_to_string(GoalPath))],
+            !IO)
+    ),
+    !:SlotNum = !.SlotNum + 1.
+
+:- pred write_hlds_ps_coverage_point(coverage_point_info::in,
+    int::in, int::out, io::di, io::uo) is det.
+
+write_hlds_ps_coverage_point(CoveragePointInfo, !SlotNum, !IO) :-
+    CoveragePointInfo = coverage_point_info(GoalPath, PointType),
+    io.format("%% coverage point slot %d: goal path <%s>, type %s\n",
+        [i(!.SlotNum), s(goal_path_to_string(GoalPath)),
+            s(coverage_point_to_string(PointType))], !IO),
+    !:SlotNum = !.SlotNum + 1.
+
+:- func coverage_point_to_string(cp_type) = string.
+
+coverage_point_to_string(cp_type_coverage_after) = "after".
+coverage_point_to_string(cp_type_branch_arm) = "branch arm".
 
 determinism_to_string(detism_det) = "det".
 determinism_to_string(detism_semi) = "semidet".

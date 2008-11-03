@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2007 The University of Melbourne.
+% Copyright (C) 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,8 +28,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
-
     % Return the id of the procedure specified by the rtti_proc_label.
     %
 :- func make_proc_label_from_rtti(rtti_proc_label) = proc_label.
@@ -37,17 +35,6 @@
     % Return the id of the specified procedure.
     %
 :- func make_proc_label(module_info, pred_id, proc_id) = proc_label.
-
-    % make_user_proc_label(ModuleName, PredIsImported,
-    %   PredOrFunc, ModuleName, PredName, Arity, ProcId) = Label:
-    %
-    % Make a proc_label for a user-defined procedure.
-    %
-    % The PredIsImported argument should be the result of
-    % calling pred_info_is_imported.
-    %
-:- func make_user_proc_label(module_name, bool, pred_or_func, module_name,
-    string, arity, proc_id) = proc_label.
 
     % Return the id of the specified mode of the unification procedure
     % for the given type.
@@ -64,6 +51,7 @@
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 
+:- import_module bool.
 :- import_module list.
 :- import_module pair.
 :- import_module string.
@@ -113,6 +101,17 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     make_proc_label_from_rtti(RttiProcLabel) = ProcLabel.
+
+    % make_user_proc_label(ModuleName, PredIsImported,
+    %   PredOrFunc, ModuleName, PredName, Arity, ProcId) = Label:
+    %
+    % Make a proc_label for a user-defined procedure.
+    %
+    % The PredIsImported argument should be the result of
+    % calling pred_info_is_imported.
+    %
+:- func make_user_proc_label(module_name, bool, pred_or_func,
+    module_name, string, arity, proc_id) = proc_label.
 
 make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
         PredName, PredArity, ProcId) = ProcLabel :-
