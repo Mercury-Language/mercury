@@ -148,6 +148,8 @@ mkdir $TMPDIR/browser || exit 1
 touch $TMPDIR/browser/MDB_FLAGS.in || exit 1
 mkdir $TMPDIR/slice || exit 1
 touch $TMPDIR/slice/SLICE_FLAGS.in || exit 1
+mkdir $TMPDIR/ssdb || exit 1
+touch $TMPDIR/ssdb/SSDB_FLAGS.in || exit 1
 mkdir $TMPDIR/profiler || exit 1
 touch $TMPDIR/profiler/PROF_FLAGS.in || exit 1
 mkdir $TMPDIR/deep_profiler || exit 1
