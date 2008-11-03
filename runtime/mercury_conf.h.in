@@ -133,6 +133,7 @@
 ** 	MR_HAVE_PTHREAD_H	we have <pthread.h>
 **	MR_HAVE_TIME_H		we have <time.h>
 ** 	MR_HAVE_SPAWN_H		we have <spawn.h>
+**	MR_HAVE_FENV_H		we have <fenv.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -159,6 +160,7 @@
 #undef	MR_HAVE_PTHREAD_H
 #undef	MR_HAVE_TIME_H
 #undef	MR_HAVE_SPAWN_H
+#undef	MR_HAVE_FENV_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
@@ -256,6 +258,7 @@
 **	MR_HAVE_PUTENV		we have the putenv() function.
 **	MR_HAVE__PUTENV		we have the _putenv() function.
 **	MR_HAVE_POSIX_SPAWN	we have the posix_spawn() function.
+**	MR_HAVE_FESETROUND	we have the fesetround() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -316,6 +319,7 @@
 #undef	MR_HAVE_PUTENV
 #undef	MR_HAVE__PUTENV
 #undef	MR_HAVE_POSIX_SPAWN
+#undef	MR_HAVE_FESETROUND
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

@@ -7617,7 +7617,7 @@ debugging.
 @sp 1
 @item @code{--no-profile-deep-coverage-use-portcounts}
 @findex --no-profile-deep-coverage-use-portcounts
-Turn off usage of port counts in the deep profilier to provide some coverage
+Turn off usage of port counts in the deep profiler to provide some coverage
 information.
 
 @sp
@@ -9692,11 +9692,11 @@ This option is ignored in grades that do not use trail segments.
 
 @sp 1
 @item --trail-segment-size-kwords @var{size}
-@findex --trail-seggment-size-kwords
+@findex --trail-segment-size-kwords
 @cindex Trail size
 Set the size of each trail segment to be @var{size} kilobytes
 multiplied by the words size in bytes.
-This option is ignored in grades that do not use trail segements.
+This option is ignored in grades that do not use trail segments.
 
 @sp 1
 @item --genstack-size @var{size}
@@ -9988,6 +9988,14 @@ the time spent doing garbage collection so far.
 Its only effect is to enable the @samp{report_stats} predicate
 in the @samp{benchmarking} module of the standard library
 to report this information.
+
+@sp 1
+@item --fp-rounding-mode @var{mode}
+@findex --fp-rounding-mode  @var{mode}
+Set the rounding mode for floating point operations to @var{mode}.
+Recognised modes are @samp{downward}, @samp{upward}, @samp{to_nearest}
+and @samp{toward_zero}.  Exactly what modes are available and even
+if it is possible to set the rounding mode is system dependent.
 
 @end table
 

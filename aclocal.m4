@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2004, 2006-2007 The University of Melbourne.
+# Copyright (C) 1999,2001-2004, 2006-2008 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -50,6 +50,43 @@ if test "$mercury_cv_have_ieee_func" = yes; then
 	AC_DEFINE_UNQUOTED($mercury_cv_ieee_func_define)
 else
 	AC_MSG_RESULT(no)
+fi
+])
+
+#-----------------------------------------------------------------------------#
+
+# Test for C99 fp environment functions in the math library.
+# The second argument to this macro should be the flags required by the
+# C compiler to link against the math library.  This is needed because
+# some OSs, e.g. Mac OS X, don't have a separate math library.
+
+AC_DEFUN([MERCURY_CHECK_FOR_FENV_FUNC],
+[
+AC_MSG_CHECKING(for $1 function)
+mercury_cv_math_func_define="MR_HAVE_`echo $1 | \
+	tr abcdefghijklmnopqrstuvwxyz./ ABCDEFGHIJKLMNOPQRSTUVWXYZ__`"
+
+save_libs="$LIBS"
+LIBS="$2 $LIBS"
+
+AC_TRY_LINK([
+#ifdef MR_HAVE_FENV_H
+	#include <fenv.h>
+#endif
+],[
+
+	int i = 0;
+	$1(i);
+],[mercury_cv_have_math_func=yes],[mercury_cv_have_math_func=no])
+
+LIBS="$save_libs"
+
+if test "$mercury_cv_have_math_func" = "yes"
+then
+	AC_MSG_RESULT([yes])
+	AC_DEFINE_UNQUOTED([$mercury_cv_math_func_define])
+else
+	AC_MSG_RESULT([no])
 fi
 ])
 

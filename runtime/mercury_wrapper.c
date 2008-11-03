@@ -51,6 +51,10 @@ ENDINIT
   #include <excpt.h>
 #endif
 
+#ifdef MR_HAVE_FENV_H
+  #include <fenv.h>
+#endif
+
 #include    "mercury_getopt.h"
 #include    "mercury_timing.h"
 #include    "mercury_init.h"
@@ -1221,7 +1225,8 @@ enum MR_long_option {
     MR_MEM_USAGE_REPORT,
     MR_BOEHM_GC_MUNMAP,
     MR_BOEHM_GC_FREE_SPACE_DIVISOR,
-    MR_BOEHM_GC_CALC_TIME
+    MR_BOEHM_GC_CALC_TIME,
+    MR_FP_ROUNDING_MODE
 };
 
 struct MR_option MR_long_opts[] = {
@@ -1325,6 +1330,7 @@ struct MR_option MR_long_opts[] = {
     { "boehm-gc-munmap",                0, 0, MR_BOEHM_GC_MUNMAP },
     { "boehm-gc-free-space-divisor",    1, 0, MR_BOEHM_GC_FREE_SPACE_DIVISOR },
     { "boehm-gc-calc-time",             0, 0, MR_BOEHM_GC_CALC_TIME },
+    { "fp-rounding-mode",               1, 0, MR_FP_ROUNDING_MODE }, 
 
     /* This needs to be kept at the end. */
     { NULL,                             0, 0, 0 }
@@ -1896,6 +1902,70 @@ MR_process_options(int argc, char **argv)
             case MR_BOEHM_GC_CALC_TIME:
 #ifdef MR_BOEHM_GC
                 GC_mercury_calc_gc_time = MR_TRUE;
+#endif
+                break;
+
+            case MR_FP_ROUNDING_MODE:
+#if defined(MR_HAVE_FENV_H) && defined(MR_HAVE_FESETROUND)
+                {
+                    int     rounding_mode;
+                   
+                    /*
+                    ** Particular rounding modes are only supported if the
+                    ** corresponding FE_* macro is defined.  The four below are
+                    ** the ones from C99.  C99 says that these macros
+                    ** should expand to a nonnegative value, so we use a negative value
+                    ** to indicate that the selected rounding mode is not supported by
+                    ** the system.
+                    */
+                    if (MR_streq(MR_optarg, "downward")) {
+                        #if defined(FE_DOWNWARD)
+                            rounding_mode = FE_DOWNWARD;
+                        #else
+                            rounding_mode = -1;
+                        #endif
+                    } else if (MR_streq(MR_optarg, "upward")) {
+                        #if defined(FE_UPWARD)
+                            rounding_mode = FE_UPWARD;
+                        #else
+                            rounding_mode = -1;
+                        #endif 
+                    } else if (MR_streq(MR_optarg, "toward_zero")) {
+                        #if defined(FE_TOWARDZERO)
+                            rounding_mode = FE_TOWARDZERO;
+                        #else
+                            rounding_mode = -1;
+                        #endif
+                    } else if (MR_streq(MR_optarg, "to_nearest")) {
+                        #if defined(FE_TONEAREST)
+                            rounding_mode = FE_TONEAREST;
+                        #else
+                            rounding_mode = -1;
+                        #endif
+                    } else {
+                        MR_usage();
+                    }
+
+                    if (rounding_mode < 0) {
+                        printf("Mercury runtime: the selected rounding mode is "
+                            "not supported by this system.\n");
+                        fflush(stdout);
+                        exit(1);
+                    } else {
+                        if (fesetround(rounding_mode) != 0) {
+                            printf("Mercury runtime: could not establish selected "
+                                "rounding mode.\n");
+                            fflush(stdout);
+                            exit(1);
+                        }
+                   }
+                }
+#else
+                printf("Mercury runtime: `--fp-rounding-mode' is specified "
+                    "in MERCURY_OPTIONS\n");
+                printf("but the rounding mode cannot be changed on this system.\n");
+                fflush(stdout);
+                exit(1);
 #endif
                 break;
 
