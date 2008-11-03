@@ -56,6 +56,9 @@ AC_PREREQ(2.58)
 # Strip out --no-create and --no-recursion added by config.status.
 # Remove any --prefix and --enable-reconfigure arguments passed by
 # mercury_config.
+# Strip out any site or system specific configuration files since their
+# presence when reconfiguring will result in the command line use to invoke
+# configure being invalid.
 # Also quote any args containing shell metacharacters.
 #
 # NOTE: Some macros, e.g. AC_CHECK_PROG, overwrite the argument list,
@@ -78,6 +81,8 @@ do
             --prefix=*)
                 ;;
             --enable-reconfigure=*)
+                ;;
+            *config.site)
                 ;;
             *" "*|*"    "*|*[[\[\]\~\#\$\^\&\*\(\)\{\}\\\|\;\<\>\?]]*)
                 # The argument needs to be quoted.
