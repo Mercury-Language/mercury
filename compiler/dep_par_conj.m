@@ -977,10 +977,29 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             unexpected(this_file, "negation binds shared variable")
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
-            insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
-                SubGoal0, SubGoal, !VarSet, !VarTypes),
-            GoalExpr = scope(Reason, SubGoal),
-            Goal = hlds_goal(GoalExpr, GoalInfo0)
+            SubGoal0 = hlds_goal(_, SubGoalInfo0),
+            Detism0 = goal_info_get_determinism(GoalInfo0),
+            SubDetism0 = goal_info_get_determinism(SubGoalInfo0),
+            determinism_components(Detism0, _, MaxSolns0),
+            determinism_components(SubDetism0, _, SubMaxSolns0),
+            (
+                SubMaxSolns0 = at_most_many,
+                MaxSolns0 \= at_most_many
+            ->
+                % The value of ProducedVar is not stable inside SubGoal0,
+                % i.e. SubGoal0 can generate a value for ProducedVar and then
+                % backtrack over the goal that generated it. In such cases,
+                % we can signal the availability of ProducedVar only when it
+                % has become stable, which is when the scope has cut away
+                % any possibility of further backtracking inside SubGoal0.
+                insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
+                    Goal0, Goal, !VarSet, !VarTypes)
+            ;
+                insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
+                    SubGoal0, SubGoal, !VarSet, !VarTypes),
+                GoalExpr = scope(Reason, SubGoal),
+                Goal = hlds_goal(GoalExpr, GoalInfo0)
+            )
         ;
             ( GoalExpr0 = unify(_, _, _, _, _)
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)

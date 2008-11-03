@@ -49,7 +49,8 @@ DEP_PAR_CONJ_PROGS= \
 	dep_par_26 \
 	dep_par_27 \
 	dep_par_28 \
-	dep_par_29
+	dep_par_29 \
+	produce_in_nondet_disj
 
 INDEP_PAR_CONJ_PROGS = \
 	indep_par_append \
