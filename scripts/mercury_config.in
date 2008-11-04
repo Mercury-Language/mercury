@@ -43,6 +43,7 @@ Configure options:
 #---------------------------------------------------------------------------#
 
 default_grade=${MERCURY_DEFAULT_GRADE-@DEFAULT_GRADE@}
+libgrades="@LIBGRADES@"
 input_prefix=@prefix@
 output_prefix=@CONFIG_PREFIX@
 exe_ext=@EXT_FOR_EXE@
@@ -156,11 +157,14 @@ touch $TMPDIR/profiler/PROF_FLAGS.in || exit 1
 mkdir $TMPDIR/deep_profiler || exit 1
 touch $TMPDIR/deep_profiler/DEEP_FLAGS.in || exit 1
 
+enable_libgrades=`echo $libgrades | sed 's/ /,/g'`
+
 cd $TMPDIR
 case $# in
 	0)
 		./configure @RECONFIGURE_ARGS@ \
 			--with-default-grade="$default_grade" \
+			--enable-libgrades="$enable_libgrades" \
 			--cache-file=/dev/null \
 			--prefix="$input_prefix" \
 			--enable-reconfigure="$output_prefix" || exit 1
@@ -168,6 +172,7 @@ case $# in
 	*)
 		./configure @RECONFIGURE_ARGS@ "$@" \
 			--with-default-grade="$default_grade" \
+			--enable-libgrades="$enable_libgrades" \
 			--cache-file=/dev/null \
 			--prefix="$input_prefix" \
 			--enable-reconfigure="$output_prefix" || exit 1
