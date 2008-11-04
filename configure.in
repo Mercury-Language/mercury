@@ -57,7 +57,7 @@ AC_PREREQ(2.58)
 # Remove any --prefix and --enable-reconfigure arguments passed by
 # mercury_config.
 # Strip out any site or system specific configuration files since their
-# presence when reconfiguring will result in the command line use to invoke
+# presence when reconfiguring will result in the command line used to invoke
 # configure being invalid.
 # Also quote any args containing shell metacharacters.
 #
