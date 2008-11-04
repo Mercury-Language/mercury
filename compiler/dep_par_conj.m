@@ -800,14 +800,20 @@ insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
             FutureMap, ConsumedVar, GoalWaitedOnAllSuccessPaths,
             FirstGoal0, FirstGoal, !VarSet, !VarTypes),
         (
-            % We wait for ConsumedVar on all paths FirstGoal that can lead
+            GoalWaitedOnAllSuccessPaths = waited_on_all_success_paths,
+            % We wait for ConsumedVar on all paths FirstGoal1 that can lead
             % to LaterGoals0, so the code in LaterGoals0 will be able to
             % access ConsumedVar without any further waiting.
-            GoalWaitedOnAllSuccessPaths = waited_on_all_success_paths,
             WaitedOnAllSuccessPaths = waited_on_all_success_paths,
             LaterGoals = LaterGoals0
         ;
             GoalWaitedOnAllSuccessPaths = not_waited_on_all_success_paths,
+            % We waited for ConsumedVar on some but not all paths in FirstGoal0
+            % that can lead to LaterGoals0. LaterGoals may therefore also wait
+            % for ConsumedVar, and any such waits will also bind ConsumedVar. 
+            % We do not want both FirstGoal and LaterGoals binding ConsumedVar,
+            % so the call to insert_wait_in_goal above has replaced all
+            % occurrences of ConsumedVar in FirstGoal with a fresh variable.
             insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly,
                 FutureMap, ConsumedVar, WaitedOnAllSuccessPaths,
                 LaterGoals0, LaterGoals, !VarSet, !VarTypes)
