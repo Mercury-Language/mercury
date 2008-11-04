@@ -51,8 +51,8 @@ UTILS			= $(UTIL_PROGFILENAMES) util/mtags \
 #-----------------------------------------------------------------------------#
 
 all:
-	# since this is a binary distribution, we don't need to
-	# make anything
+	# Since this is a binary distribution, we don't need to
+	# make anything.
 	@echo "-- The binary distribution does not need building."
 	@echo "-- Use \`make install' to install"
 
@@ -63,15 +63,6 @@ all:
 install: install_bin install_lib install_info install_man \
 		install_scripts install_emacs_scripts \
 		install_mmake install_mdb install_util
-	@echo
-	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
-	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
-	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH,"
-	@echo "-- and to add the following lines to the \`.emacs' file"
-	@echo "-- in your home directory:"
-	@echo "	(add-to-list 'load-path "
-	@echo "		\"$(INSTALL_ELISP_DIR)\")"
-	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 .PHONY: install_bin
 install_bin:
@@ -155,6 +146,15 @@ include $(MMAKE_VARS)
 
 .PHONY: post_install
 post_install: install_cgi_progs install_gac
+	@echo
+	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
+	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
+	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH,"
+	@echo "-- and to add the following lines to the \`.emacs' file"
+	@echo "-- in your home directory:"
+	@echo "	(add-to-list 'load-path "
+	@echo "		\"$(INSTALL_ELISP_DIR)\")"
+	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 # The code of the install_cgi_progs target is duplicated from the code
 # of the install_cgi_progs target in deep_profiler/Mmakefile. However,
