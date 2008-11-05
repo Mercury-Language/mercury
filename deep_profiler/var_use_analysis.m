@@ -531,6 +531,7 @@ switch_var_first_use(GoalPath, SwitchedOnVar, Cases, StaticInfo,
             FoundFirstUse = have_not_found_first_use
         ;
             VarUseType = StaticInfo ^ fui_var_use,
+            % XXX: These are the wrong way around.
             (
                 VarUseType = var_use_consumption,
                 DefaultCost = CostBeforeSwitch

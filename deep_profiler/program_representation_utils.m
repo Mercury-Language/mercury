@@ -122,6 +122,22 @@
     %
 :- pred atomic_goal_get_vars(atomic_goal_rep::in, set(var_rep)::out) is det.
 
+
+%----------------------------------------------------------------------------%
+
+:- type solution_count_rep
+    --->    at_most_zero_rep
+    ;       at_most_one_rep   % Including committed choice.
+    ;       at_most_many_rep.
+
+:- func detism_get_solutions(detism_rep) = solution_count_rep.
+
+:- type can_fail_rep
+    --->    can_fail_rep
+    ;       cannot_fail_rep.
+
+:- func detism_get_can_fail(detism_rep) = can_fail_rep.
+
 %----------------------------------------------------------------------------%
 
 :- implementation.
@@ -750,6 +766,26 @@ merge_seen_duplicate_instantiation(A, B) = R :-
     ;
         R = seen_duplicate_instantiation
     ).
+
+%----------------------------------------------------------------------------%
+
+detism_get_solutions(det_rep) =         at_most_one_rep.
+detism_get_solutions(semidet_rep) =     at_most_one_rep.
+detism_get_solutions(multidet_rep) =    at_most_many_rep.
+detism_get_solutions(nondet_rep) =      at_most_many_rep.
+detism_get_solutions(cc_multidet_rep) = at_most_one_rep.
+detism_get_solutions(cc_nondet_rep) =   at_most_one_rep.
+detism_get_solutions(erroneous_rep) =   at_most_zero_rep.
+detism_get_solutions(failure_rep) =     at_most_zero_rep.
+
+detism_get_can_fail(det_rep) =          cannot_fail_rep.
+detism_get_can_fail(semidet_rep) =      can_fail_rep.
+detism_get_can_fail(multidet_rep) =     cannot_fail_rep.
+detism_get_can_fail(nondet_rep) =       can_fail_rep.
+detism_get_can_fail(cc_multidet_rep) =  cannot_fail_rep.
+detism_get_can_fail(cc_nondet_rep) =    can_fail_rep.
+detism_get_can_fail(erroneous_rep) =    cannot_fail_rep.
+detism_get_can_fail(failure_rep) =      can_fail_rep.
 
 %----------------------------------------------------------------------------%
 
