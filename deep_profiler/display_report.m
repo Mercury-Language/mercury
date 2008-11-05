@@ -35,10 +35,12 @@
 
 :- implementation.
 
+:- import_module coverage.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
 :- import_module program_representation_utils.
+:- import_module var_use_analysis.
 
 :- import_module array.
 :- import_module assoc_list.

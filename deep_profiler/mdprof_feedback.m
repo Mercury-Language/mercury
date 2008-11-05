@@ -41,6 +41,7 @@
 :- import_module query. % For the cmd structure
 :- import_module report.
 :- import_module startup.
+:- import_module var_use_analysis.
 
 :- import_module array.
 :- import_module assoc_list.

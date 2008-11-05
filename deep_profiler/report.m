@@ -20,6 +20,7 @@
 :- module report.
 :- interface.
 
+:- import_module coverage.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
@@ -28,6 +29,7 @@
 % then this module may depend on those data structures but not the rest of
 % query.
 :- import_module query.
+:- import_module var_use_analysis.
 
 :- import_module list.
 :- import_module maybe.
@@ -205,18 +207,6 @@
                 prci_proc_rep               :: proc_rep(coverage_info)
             ).
 
-:- type coverage_info
-    --->    coverage_unknown
-    ;       coverage_known_same(int)
-            % Coverage is known both before and after the goal, and the
-            % coverage is the same before as it is after.
-    ;       coverage_known(int, int)
-            % Coverage is known both before and after the goal.
-    ;       coverage_known_before(int)
-            % Coverage is known only before the goal.
-    ;       coverage_known_after(int).
-            % Coverage is known only before after goal.
-
 :- type proc_callers_report
     --->    proc_callers_report(
                 % The id of the procedure.
@@ -308,32 +298,6 @@
                 pvui_total_proc_time        :: float,
                 pvui_var_uses               :: list(var_use_info)
             ).
-
-    % Gives information about the use of a variable measured in average call
-    % sequence counts since either the beginning or the end of the procedure.
-    %
-:- type var_use_info
-    --->    var_use_info(
-                vui_cost_until_use          :: cost_until_var_use,
-                vui_use_type                :: var_use_type
-            ).
-
-:- type var_use_type
-    --->    var_use_production
-                % The variable is produced: free >> ground
-    
-    ;       var_use_consumption
-                % The variable is consumed: free >> free
- 
-    ;       var_use_other.
-                % The variable is used in some other way.
-
-:- type cost_until_var_use
-    --->    cost_since_proc_start(float)
-    ;       cost_before_proc_end(float).
-
-:- func cost_until_to_cost_since_start(cost_until_var_use, float) = float.
-:- func cost_until_to_cost_before_end(cost_until_var_use, float) = float.
 
     % This type represents information about the performance of the subject.
     % It is intended to be displayed on a browser page or used by a tool as is.
@@ -474,25 +438,6 @@
                 cdesc_entry_member          :: proc_desc,
                 cdesc_other_members         :: list(proc_desc)
             ).
-
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module float.
-
-%----------------------------------------------------------------------------%
-
-cost_until_to_cost_since_start(cost_since_proc_start(Cost), _WholeCost) = 
-    Cost.
-cost_until_to_cost_since_start(cost_before_proc_end(Cost), WholeCost) = 
-    WholeCost - Cost.
-
-cost_until_to_cost_before_end(cost_since_proc_start(Cost), WholeCost) = 
-    WholeCost - Cost.
-cost_until_to_cost_before_end(cost_before_proc_end(Cost), _WholeCost) = 
-    Cost.
 
 %-----------------------------------------------------------------------------%
 :- end_module report.
