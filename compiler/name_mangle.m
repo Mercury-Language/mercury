@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2007 The University of Melbourne.
+% Copyright (C) 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -264,7 +264,6 @@ maybe_qualify_name(Module0, Name0) = Name :-
 output_base_typeclass_info_name(TCName, TypeNames, !IO) :-
     Str = make_base_typeclass_info_name(TCName, TypeNames),
     io.write_string(mercury_data_prefix, !IO),
-    io.write_string("__", !IO),
     io.write_string(Str, !IO).
 
 make_base_typeclass_info_name(TCName, TypeNames) = Str :-
