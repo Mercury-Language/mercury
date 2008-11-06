@@ -310,7 +310,7 @@
 
 :- type var_rep ==  int.
 
-:- type head_var_rep 
+:- type head_var_rep
     --->    head_var_rep(
                 head_var_var        :: var_rep,
                 head_var_mode       :: var_mode_rep
@@ -346,6 +346,19 @@
     ;       cc_multidet_rep
     ;       erroneous_rep
     ;       failure_rep.
+
+:- type solution_count_rep
+    --->    at_most_zero_rep
+    ;       at_most_one_rep   % Including committed choice.
+    ;       at_most_many_rep.
+
+:- type can_fail_rep
+    --->    can_fail_rep
+    ;       cannot_fail_rep.
+
+:- func detism_get_solutions(detism_rep) = solution_count_rep.
+
+:- func detism_get_can_fail(detism_rep) = can_fail_rep.
 
     % A table of var_rep to string mappings.
     %
@@ -964,6 +977,26 @@ project_case_rep_goal(Case) = Case ^ cr_case_goal.
 
 %-----------------------------------------------------------------------------%
 
+detism_get_solutions(det_rep) =         at_most_one_rep.
+detism_get_solutions(semidet_rep) =     at_most_one_rep.
+detism_get_solutions(multidet_rep) =    at_most_many_rep.
+detism_get_solutions(nondet_rep) =      at_most_many_rep.
+detism_get_solutions(cc_multidet_rep) = at_most_one_rep.
+detism_get_solutions(cc_nondet_rep) =   at_most_one_rep.
+detism_get_solutions(erroneous_rep) =   at_most_zero_rep.
+detism_get_solutions(failure_rep) =     at_most_zero_rep.
+
+detism_get_can_fail(det_rep) =          cannot_fail_rep.
+detism_get_can_fail(semidet_rep) =      can_fail_rep.
+detism_get_can_fail(multidet_rep) =     cannot_fail_rep.
+detism_get_can_fail(nondet_rep) =       can_fail_rep.
+detism_get_can_fail(cc_multidet_rep) =  cannot_fail_rep.
+detism_get_can_fail(cc_nondet_rep) =    can_fail_rep.
+detism_get_can_fail(erroneous_rep) =    cannot_fail_rep.
+detism_get_can_fail(failure_rep) =      can_fail_rep.
+
+%-----------------------------------------------------------------------------%
+
 var_num_rep_byte(byte, 0).
 var_num_rep_byte(short, 1).
 
@@ -1415,7 +1448,7 @@ read_atomic_info(VarNumRep, ByteCode, StringTable, Info, AtomicGoal, GoalExpr,
 read_goals(VarNumRep, ByteCode, StringTable, Info, Goals, !Pos) :-
     read_length(ByteCode, Len, !Pos),
     read_n_items(read_goal(VarNumRep, ByteCode, StringTable, Info), Len, Goals,
-        !Pos). 
+        !Pos).
 
 :- pred read_cases(var_num_rep::in, bytecode::in, string_table::in,
     read_proc_rep_info::in, list(case_rep(unit))::out, int::in, int::out)
@@ -1493,7 +1526,7 @@ read_head_vars(VarNumRep, ByteCode, HeadVars, !Pos) :-
     read_length(ByteCode, Len, !Pos),
     read_n_items(read_head_var(VarNumRep, ByteCode), Len, HeadVars, !Pos).
 
-:- pred read_head_var(var_num_rep::in, bytecode::in, head_var_rep::out, 
+:- pred read_head_var(var_num_rep::in, bytecode::in, head_var_rep::out,
     int::in, int::out) is semidet.
 
 read_head_var(VarNumRep, ByteCode, HeadVar, !Pos) :-
@@ -1575,7 +1608,7 @@ read_switch_can_fail(Bytecode, CanFail, !Pos) :-
     %
 :- pred read_n_items(pred(T, int, int), int, list(T), int, int).
 :- mode read_n_items(pred(out, in, out) is det, in, out, in, out) is det.
-:- mode read_n_items(pred(out, in, out) is semidet, in, out, in, out) 
+:- mode read_n_items(pred(out, in, out) is semidet, in, out, in, out)
     is semidet.
 
 read_n_items(Read, N, Items, !Pos) :-
