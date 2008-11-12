@@ -1812,8 +1812,10 @@ if test "$mercury_cv_low_tag_bits" -lt 2; then
         exit 1
     fi
 fi
-if test "$mercury_cv_low_tag_bits" -gt 2; then
-    if test "$BOOTSTRAP_MC" = ""; then
+if test "$mercury_cv_low_tag_bits" -gt 2
+then
+    if test "$BOOTSTRAP_MC" = "" -a "$reconfiguring" = "no"
+    then
         AC_MSG_WARN(bootstrapping using only 2 low tag bits)
         mercury_cv_low_tag_bits=2
     fi
@@ -1927,8 +1929,10 @@ AC_CACHE_VAL(mercury_cv_unboxed_floats,
     [mercury_cv_unboxed_floats=no])
 )
 AC_MSG_RESULT($mercury_cv_unboxed_floats)
-if test "$mercury_cv_unboxed_floats" = yes; then
-    if test "$BOOTSTRAP_MC" = ""; then
+if test "$mercury_cv_unboxed_floats" = yes
+then
+    if test "$BOOTSTRAP_MC" = "" -a "$reconfiguring" = "no"
+    then
         AC_MSG_WARN(
 [Mercury compiler not yet installed -
 ****    cannot use unboxed floats, bootstrapping using boxed floats
