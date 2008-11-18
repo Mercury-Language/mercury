@@ -133,8 +133,6 @@ binary_distribution: bindist.Makefile bindist.INSTALL
 	(dir=`pwd` && cd .. && \
 		tar -cf $$dir/$(MERCURY_VERSION)/extras.tar extras && \
 		gzip $$dir/$(MERCURY_VERSION)/extras.tar)
-	# This code is provided in the Aditi distribution.
-	rm -rf $(MERCURY_VERSION)/extras/aditi
 	if [ -d ../tests ]; then					\
 		(dir=`pwd` && cd .. && \
 			tar -cf $$dir/$(MERCURY_VERSION)/tests.tar tests && \
