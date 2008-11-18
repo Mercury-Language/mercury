@@ -523,6 +523,13 @@ while ($#ARGV >= 0)
                     output_name();
                 }
 
+                # Skip blank lines and comments.
+                while ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
+                    $_ = <SRCFILE> || last;
+                    chop;
+                    $body = $_;
+                }
+
                 last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
 
                 $_ = <SRCFILE> || last;
@@ -545,6 +552,13 @@ while ($#ARGV >= 0)
                     $name =~ s/[\/)].*//;
                     $kind = "tcim"; # tcim == type class instance method
                     output_name();
+                }
+
+                # Skip blank lines and comments.
+                while ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
+                    $_ = <SRCFILE> || last;
+                    chop;
+                    $body = $_;
                 }
 
                 last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
