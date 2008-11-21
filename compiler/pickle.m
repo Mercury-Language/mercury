@@ -429,11 +429,15 @@ pickle_float(Float, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (sizeof(MR_Float) == sizeof(float)) {
-        MR_uint_least32_t *p = (MR_uint_least32_t *) &Flt;
+        MR_uint_least32_t   *p;
+
+        p = (MR_uint_least32_t *) &Flt;
         A = *p;
         B = 0;
     } else {
-        MR_uint_least64_t *p = (MR_uint_least64_t *) &Flt;
+        MR_uint_least64_t   *p;
+
+        p = (MR_uint_least64_t *) &Flt;
         A = (*p >> 32) & 0xffffffff;
         B = (*p >>  0) & 0xffffffff;
     }
@@ -454,12 +458,18 @@ unpickle_float(Handle, Float, !State) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (sizeof(MR_Float) == sizeof(float)) {
-        MR_Float *p = (MR_Float *) &A;
+        MR_Float    *p;
+
+        p = (MR_Float *) &A;
         Flt = *p;
         (void) B;
     } else {
-        MR_uint_least64_t tmp = (A << 32) | (B & 0xffffffff);
-        MR_Float *p = (MR_Float *) &tmp;
+        MR_uint_least64_t   tmp;
+        MR_Float            *p;
+
+        tmp = (((MR_uint_least64_t) A) << 32) |
+            (((MR_uint_least64_t) B) & 0xffffffff);
+        p = (MR_Float *) &tmp;
         Flt = *p;
     }
 ").
