@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1997-2007 The University of Melbourne.
+** vim: ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1997-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,12 +18,12 @@
 #ifndef MERCURY_TRACE_BASE_H
 #define MERCURY_TRACE_BASE_H
 
-#include "mercury_engine.h"	/* for MR_MAXFLAG */
+#include "mercury_engine.h"         /* for MR_MAXFLAG */
 #include "mercury_stack_layout.h"
 #include "mercury_std.h"
-#include "mercury_tabling.h"	/* for MR_TableNode */
-#include "mercury_goto.h"	/* for MR_declare_entry */
-#include <stdio.h>		/* for FILE; should be after mercury headers */
+#include "mercury_tabling.h"        /* for MR_TableNode */
+#include "mercury_goto.h"           /* for MR_declare_entry */
+#include <stdio.h>      /* for FILE; should be after mercury headers */
 
 /*
 ** This enum should EXACTLY match
@@ -31,71 +34,74 @@
 ** - the function `port_number' in compiler/trace_params.m.
 */
 
-typedef	enum {
-	MR_PORT_CALL,
-	MR_PORT_EXIT,
-	MR_PORT_REDO,
-	MR_PORT_FAIL,
-	MR_PORT_EXCEPTION,
-	MR_PORT_COND,
-	MR_PORT_THEN,
-	MR_PORT_ELSE,
-	MR_PORT_NEG_ENTER,
-	MR_PORT_NEG_SUCCESS,	/* negated goal failed; negation succeeds */
-	MR_PORT_NEG_FAILURE,	/* negated goal succeeded; negation fails */
-	MR_PORT_DISJ_FIRST,
-	MR_PORT_DISJ_LATER,
-	MR_PORT_SWITCH,
-	MR_PORT_FOREIGN_PROC_FIRST,
-	MR_PORT_FOREIGN_PROC_LATER,
-	MR_PORT_USER,
-	MR_PORT_NONE
+typedef enum {
+    MR_PORT_CALL,
+    MR_PORT_EXIT,
+    MR_PORT_REDO,
+    MR_PORT_FAIL,
+    MR_PORT_TAILREC_CALL,
+    MR_PORT_EXCEPTION,
+    MR_PORT_COND,
+    MR_PORT_THEN,
+    MR_PORT_ELSE,
+    MR_PORT_NEG_ENTER,
+    MR_PORT_NEG_SUCCESS,    /* negated goal failed; negation succeeds */
+    MR_PORT_NEG_FAILURE,    /* negated goal succeeded; negation fails */
+    MR_PORT_DISJ_FIRST,
+    MR_PORT_DISJ_LATER,
+    MR_PORT_SWITCH,
+    MR_PORT_FOREIGN_PROC_FIRST,
+    MR_PORT_FOREIGN_PROC_LATER,
+    MR_PORT_USER,
+    MR_PORT_NONE
 } MR_TracePort;
 
-#define	MR_PORT_NUM_PORTS		((int) MR_PORT_NONE + 1)
+#define MR_PORT_NUM_PORTS       ((int) MR_PORT_NONE + 1)
 
-#define	MR_TRACE_PORT_ACTUAL_NAMES \
-	"CALL",	\
-	"EXIT", \
-	"REDO", \
-	"FAIL", \
-	"EXCP", \
-	"COND", \
-	"THEN", \
-	"ELSE", \
-	"NEGE", \
-	"NEGS", \
-	"NEGF", \
-	"DSJF", \
-	"DSJL", \
-	"SWTC", \
-	"FRST", \
-	"LATR", \
-	"USER", \
-	"NONE"
+#define MR_TRACE_PORT_ACTUAL_NAMES \
+    "CALL", \
+    "EXIT", \
+    "REDO", \
+    "FAIL", \
+    "TAIL", \
+    "EXCP", \
+    "COND", \
+    "THEN", \
+    "ELSE", \
+    "NEGE", \
+    "NEGS", \
+    "NEGF", \
+    "DSJF", \
+    "DSJL", \
+    "SWTC", \
+    "FRST", \
+    "LATR", \
+    "USER", \
+    "NONE"
 
-#define	MR_TRACE_PORT_SIMPLIFIED_NAMES \
-	"CALL",	\
-	"EXIT", \
-	"REDO", \
-	"FAIL", \
-	"EXCP", \
-	"COND", \
-	"THEN", \
-	"ELSE", \
-	"NEGE", \
-	"NEGS", \
-	"NEGF", \
-	"DISJ", \
-	"DISJ", \
-	"SWTC", \
-	"FRST", \
-	"LATR", \
-	"USER", \
-	"NONE"
+#define MR_TRACE_PORT_SIMPLIFIED_NAMES \
+    "CALL", \
+    "EXIT", \
+    "REDO", \
+    "FAIL", \
+    "TAIL", \
+    "EXCP", \
+    "COND", \
+    "THEN", \
+    "ELSE", \
+    "NEGE", \
+    "NEGS", \
+    "NEGF", \
+    "DISJ", \
+    "DISJ", \
+    "SWTC", \
+    "FRST", \
+    "LATR", \
+    "USER", \
+    "NONE"
 
-extern	const char 	*MR_actual_port_names[];
-extern	const char 	*MR_simplified_port_names[];
+extern  const char  *MR_actual_port_names[];
+extern  const char  *MR_simplified_port_names[];
 
 /*
 ** The following array says if a label inside a procedure is
@@ -107,27 +113,32 @@ typedef enum {
     PATH_ONLY, PORT_ONLY, PORT_AND_PATH
 } MR_PathPort;
 
-extern	MR_PathPort     MR_named_count_port[MR_PORT_NUM_PORTS];
+extern  MR_PathPort     MR_named_count_port[MR_PORT_NUM_PORTS];
 
-extern	void		MR_trace_name_count_port_ensure_init(void);
+extern  void            MR_trace_name_count_port_ensure_init(void);
 
-#define MR_trace_incr_seq()		((MR_Word) ++MR_trace_call_seqno)
-#define MR_trace_incr_depth()		((MR_Word) ++MR_trace_call_depth)
+#define MR_trace_incr_seq()         ((MR_Word) ++MR_trace_call_seqno)
+#define MR_trace_incr_depth()       ((MR_Word) ++MR_trace_call_depth)
 
-#define	MR_trace_fill_std_slots(s1, s2, s3)			\
-	(((s1) = MR_trace_event_number),			\
-	((s2) = MR_trace_incr_seq()),				\
-	((s3) = MR_trace_incr_depth()))				\
+#define MR_trace_fill_std_slots(s1, s2, s3)                             \
+    (((s1) = MR_trace_event_number),                                    \
+    ((s2) = MR_trace_incr_seq()),                                       \
+    ((s3) = MR_trace_incr_depth()))
 
-#define MR_trace_reset_depth(d)					\
-	(MR_trace_call_depth = (MR_Unsigned) (d))
+#define MR_trace_tailrec_std_slots(s1, s2, s3)                          \
+    (((s1) = MR_trace_event_number),                                    \
+    ((s2) = MR_trace_incr_seq()),                                       \
+    ((s3) = (s3) + 1))
 
-#define MR_trace_reset_depth_from_full(d)			\
-	((MR_trace_call_depth = (MR_Unsigned) (d)),		\
-	(MR_trace_from_full = MR_TRUE))
-#define MR_trace_reset_depth_from_shallow(d)			\
-	((MR_trace_call_depth = (MR_Unsigned) (d)),		\
-	(MR_trace_from_full = MR_FALSE))
+#define MR_trace_reset_depth(d)                                         \
+    (MR_trace_call_depth = (MR_Unsigned) (d))
+
+#define MR_trace_reset_depth_from_full(d)                               \
+    ((MR_trace_call_depth = (MR_Unsigned) (d)),                         \
+    (MR_trace_from_full = MR_TRUE))
+#define MR_trace_reset_depth_from_shallow(d)                            \
+    ((MR_trace_call_depth = (MR_Unsigned) (d)),                         \
+    (MR_trace_from_full = MR_FALSE))
 
 /*
 ** MR_trace is called from Mercury modules compiled with tracing.
@@ -141,11 +152,11 @@ extern	void		MR_trace_name_count_port_ensure_init(void);
 ** after the event. (NULL means it should continue as usual.)
 */
 
-extern	MR_Code	*MR_trace(const MR_LabelLayout *);
-extern	MR_Code	*MR_trace_fake(const MR_LabelLayout *);
-extern	MR_Code	*MR_trace_count(const MR_LabelLayout *);
+extern  MR_Code                 *MR_trace(const MR_LabelLayout *);
+extern  MR_Code                 *MR_trace_fake(const MR_LabelLayout *);
+extern  MR_Code                 *MR_trace_count(const MR_LabelLayout *);
 
-extern	MR_Code	*MR_user_trace(const MR_LabelLayout *);
+extern  MR_Code                 *MR_user_trace(const MR_LabelLayout *);
 
 /*
 ** These three variables implement a table of module layout structures,
@@ -154,12 +165,12 @@ extern	MR_Code	*MR_user_trace(const MR_LabelLayout *);
 ** Insertions are handled by MR_insert_module_info_into_module_table.
 */
 
-extern	const MR_ModuleLayout	**MR_module_infos;
-extern	unsigned		MR_module_info_next;
-extern	unsigned		MR_module_info_max;
+extern  const MR_ModuleLayout   **MR_module_infos;
+extern  unsigned                MR_module_info_next;
+extern  unsigned                MR_module_info_max;
 
-extern	void	MR_insert_module_info_into_module_table(
-			const MR_ModuleLayout *module_layout);
+extern  void                    MR_insert_module_info_into_module_table(
+                                    const MR_ModuleLayout *module_layout);
 
 /*
 ** For every label reachable from the module table, write the id of the label
@@ -176,10 +187,11 @@ extern	void	MR_insert_module_info_into_module_table(
 ** argument.
 */
 
-#define	MR_TRACE_COUNT_FILE_ID	    "Mercury trace counts file\n"
+#define MR_TRACE_COUNT_FILE_ID      "Mercury trace counts file\n"
 
-extern	unsigned int	MR_trace_write_label_exec_counts(FILE *fp,
-				const char *progname, MR_bool coverage_test);
+extern  unsigned int            MR_trace_write_label_exec_counts(FILE *fp,
+                                    const char *progname,
+                                    MR_bool coverage_test);
 
 /*
 ** Figure out where (to which file) to write out the label execution counts,
@@ -190,7 +202,7 @@ extern	unsigned int	MR_trace_write_label_exec_counts(FILE *fp,
 ** MR_register_exception_cleanup.
 */
 
-extern	void		MR_trace_record_label_exec_counts(void *dummy);
+extern  void                    MR_trace_record_label_exec_counts(void *dummy);
 
 /*
 ** MR_trace_init() is called from mercury_runtime_init()
@@ -212,15 +224,15 @@ extern	void		MR_trace_record_label_exec_counts(void *dummy);
 ** after all Mercury code, including finalization code, has terminated.
 */
 
-extern	void	MR_trace_init(void);
-extern	void	MR_trace_start(MR_bool enabled);
-extern	void	MR_trace_end(void);
-extern	void	MR_trace_final(void);
+extern  void    MR_trace_init(void);
+extern  void    MR_trace_start(MR_bool enabled);
+extern  void    MR_trace_end(void);
+extern  void    MR_trace_final(void);
 
 /*
 ** Kill any windows created by mdb.
 */
-extern	void	(*MR_trace_shutdown)(void);
+extern  void    (*MR_trace_shutdown)(void);
 
 /*
 ** The globals that define the interface between the tracing subsystem
@@ -244,7 +256,7 @@ extern	void	(*MR_trace_shutdown)(void);
 ** arise if we got retries from within the descendants.
 */
 
-extern	MR_bool		MR_debug_enabled;
+extern  MR_bool     MR_debug_enabled;
 
 /*
 ** MR_debug_ever_enabled will keep the same value throughout the execution of
@@ -253,7 +265,7 @@ extern	MR_bool		MR_debug_enabled;
 ** use its value to test whether tracing was ever enabled.
 */
 
-extern	MR_bool		MR_debug_ever_enabled;
+extern  MR_bool     MR_debug_ever_enabled;
 
 /*
 ** When writing out trace counts at the end of execution, we will write out
@@ -261,7 +273,7 @@ extern	MR_bool		MR_debug_ever_enabled;
 ** MR_coverage_test_enabled is true.
 */
 
-extern	MR_bool		MR_coverage_test_enabled;
+extern  MR_bool     MR_coverage_test_enabled;
 
 /*
 ** If MR_trace_count_summary_file is not NULL, then its value gives the
@@ -274,9 +286,9 @@ extern	MR_bool		MR_coverage_test_enabled;
 ** trace counts in one file (the one named by MR_trace_count_summary_file).
 */
 
-extern	const char	*MR_trace_count_summary_file;
-extern	const char	*MR_trace_count_summary_cmd;
-extern	unsigned int	MR_trace_count_summary_max;
+extern  const char      *MR_trace_count_summary_file;
+extern  const char      *MR_trace_count_summary_cmd;
+extern  unsigned int    MR_trace_count_summary_max;
 
 /*
 ** MR_trace_count_enabled will keep the same value throughout the execution of
@@ -285,14 +297,14 @@ extern	unsigned int	MR_trace_count_summary_max;
 ** use its value to test whether tracing was ever enabled.
 */
 
-extern	MR_bool		MR_trace_count_enabled;
+extern  MR_bool     MR_trace_count_enabled;
 
 /*
 ** MR_trace_counts_file records the filename to use when dumping trace counts.
 ** It may be NULL, in which case a unique file name will be generated.
 */
 
-extern 	char		*MR_trace_counts_file;
+extern  char        *MR_trace_counts_file;
 
 /*
 ** MR_trace checks whether MR_trace_func_enabled is true, and return
@@ -309,13 +321,13 @@ extern 	char		*MR_trace_counts_file;
 ** of MR_trace_func_enabled can exploit this.
 */
 
-extern	MR_bool		MR_trace_func_enabled;
+extern  MR_bool     MR_trace_func_enabled;
 
-#define	MR_update_trace_func_enabled()				\
-	do {							\
-		MR_trace_func_enabled = 			\
-			MR_debug_enabled || MR_trace_count_enabled; \
-	} while (0)
+#define MR_update_trace_func_enabled()                                  \
+    do {                                                                \
+        MR_trace_func_enabled =                                         \
+            MR_debug_enabled || MR_trace_count_enabled;                 \
+    } while (0)
 
 /*
 ** MR_selected_trace_func_ptr contains the address of the function to call
@@ -325,8 +337,8 @@ extern	MR_bool		MR_trace_func_enabled;
 ** it must be declared `volatile'.
 */
 
-extern	MR_Code 	*(*volatile MR_selected_trace_func_ptr)(
-				const MR_LabelLayout *);
+extern  MR_Code     *(*volatile MR_selected_trace_func_ptr)(
+                        const MR_LabelLayout *);
 
 /*
 ** MR_trace_call_seqno counts distinct calls. The prologue of every
@@ -346,8 +358,8 @@ extern	MR_Code 	*(*volatile MR_selected_trace_func_ptr)(
 ** variables.
 */
 
-extern	MR_Unsigned	MR_trace_call_seqno;
-extern	MR_Unsigned	MR_trace_call_depth;
+extern  MR_Unsigned MR_trace_call_seqno;
+extern  MR_Unsigned MR_trace_call_depth;
 
 /*
 ** MR_trace_event_number is a simple counter of events. This is used in
@@ -356,7 +368,7 @@ extern	MR_Unsigned	MR_trace_call_depth;
 ** the programmer can zero in on the source of the problem more quickly.
 */
 
-extern	MR_Unsigned	MR_trace_event_number;
+extern  MR_Unsigned MR_trace_event_number;
 
 /*
 ** MR_trace_from_full is a boolean that is set before every call;
@@ -371,7 +383,7 @@ extern	MR_Unsigned	MR_trace_event_number;
 ** control in the debugger when main/2 is called.
 */
 
-extern	MR_bool		MR_trace_from_full;
+extern  MR_bool     MR_trace_from_full;
 
 /*
 ** If set to true, MR_standardize_event_details modifies how functions that
@@ -386,10 +398,10 @@ extern	MR_bool		MR_trace_from_full;
 ** the standardization itself.
 */
 
-extern	MR_bool		MR_standardize_event_details;
+extern  MR_bool     MR_standardize_event_details;
 
-extern	MR_Unsigned	MR_standardize_event_num(MR_Unsigned event_num);
-extern	MR_Unsigned	MR_standardize_call_num(MR_Unsigned call_num);
+extern  MR_Unsigned MR_standardize_event_num(MR_Unsigned event_num);
+extern  MR_Unsigned MR_standardize_call_num(MR_Unsigned call_num);
 
 /*
 ** Do we want to use the debugger within this process, or do want to use
@@ -398,13 +410,13 @@ extern	MR_Unsigned	MR_standardize_call_num(MR_Unsigned call_num);
 */
 
 typedef enum {
-	MR_TRACE_INTERNAL,
+    MR_TRACE_INTERNAL,
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-	MR_TRACE_EXTERNAL
+    MR_TRACE_EXTERNAL
 #endif
 } MR_Trace_Type;
 
-extern	MR_Trace_Type	MR_trace_handler;
+extern  MR_Trace_Type   MR_trace_handler;
 
 /*
 ** MR_trace_unhide_events is a boolean. Normally, it is set to false, which
@@ -424,76 +436,100 @@ extern	MR_Trace_Type	MR_trace_handler;
 ** while building the annotated trace.
 */
 
-extern	MR_bool		MR_trace_unhide_events;
-extern	MR_bool		MR_trace_have_unhid_events;
+extern  MR_bool     MR_trace_unhide_events;
+extern  MR_bool     MR_trace_have_unhid_events;
+
+/*
+** When executing a retry on a call that has reused the stack frame of some
+** of its ancestors, we start executing the code of the procedure from the very
+** beginning. This code sets the stack slot that contains the count of
+** how many times that stack frame was reused to zero. This is the right thing
+** to do for normal execution, but doing it after a retry screws up the
+** debugger's picture of the stack.
+**
+** These two variables are part of the fix for this problem. The boolean
+** MR_trace_tailrec_have_reused_frames is almost always false. However,
+** when we are executing a retry of a procedure with TAIL events, we set it
+** momentarily to true, and set MR_trace_tailrec_num_reused_frames to the
+** original value of the frame reuse counter. We make the procedure prologue
+** for procedures with TAIL events check MR_trace_tailrec_have_reused_frames,
+** and it is set, we initialize the slot not to zero but to the value in
+** MR_trace_tailrec_num_reused_frames (we also reset the boolean to false).
+**
+** Note that the contents of MR_trace_tailrec_num_reused_frames are valid
+** only when MR_trace_tailrec_have_reused_frames is true.
+*/
+
+MR_bool             MR_trace_tailrec_have_reused_frames;
+MR_Unsigned         MR_trace_tailrec_num_reused_frames;
 
 /*
 ** The details of I/O tabling are documented in library/table_builtin.m.
 */
 
 typedef enum {
-	/* from program start to first debugger event */
-	MR_IO_TABLING_UNINIT,
+    /* from program start to first debugger event */
+    MR_IO_TABLING_UNINIT,
 
-	/* from first debugger event to "table_io start" command */
-	MR_IO_TABLING_BEFORE,
+    /* from first debugger event to "table_io start" command */
+    MR_IO_TABLING_BEFORE,
 
-	/* from "table_io start" command to "table_io end" command */
-	MR_IO_TABLING_DURING,
+    /* from "table_io start" command to "table_io end" command */
+    MR_IO_TABLING_DURING,
 
-	/* from "table_io end" command to program exit */
-	MR_IO_TABLING_AFTER
+    /* from "table_io end" command to program exit */
+    MR_IO_TABLING_AFTER
 } MR_IoTablingPhase;
 
-typedef	MR_Unsigned	MR_IoActionNum;
+typedef MR_Unsigned MR_IoActionNum;
 
-#define	MR_IO_ACTION_MAX	((MR_IoActionNum) -1)
+#define MR_IO_ACTION_MAX    ((MR_IoActionNum) -1)
 
-extern	MR_IoTablingPhase	MR_io_tabling_phase;
+extern  MR_IoTablingPhase   MR_io_tabling_phase;
 
 /* True iff I/O tabling is enabled. */
-extern	MR_bool		MR_io_tabling_enabled;
+extern  MR_bool             MR_io_tabling_enabled;
 
 /* The root of the trie that we use for tabling I/O. */
-extern	MR_TableNode	MR_io_tabling_pointer;
+extern  MR_TableNode        MR_io_tabling_pointer;
 
 /* The I/O action number of the last I/O action. */
-extern	MR_IoActionNum	MR_io_tabling_counter;
+extern  MR_IoActionNum      MR_io_tabling_counter;
 
 /* The highest I/O action number ever reached ("hwm" = "high water mark"). */
-extern	MR_IoActionNum	MR_io_tabling_counter_hwm;
+extern  MR_IoActionNum      MR_io_tabling_counter_hwm;
 
 /* The highest I/O action number which is too early to be tabled. */
-extern	MR_IoActionNum	MR_io_tabling_start;
+extern  MR_IoActionNum      MR_io_tabling_start;
 
 /* The highest I/O action number which is to be tabled. */
-extern	MR_IoActionNum	MR_io_tabling_end;
+extern  MR_IoActionNum      MR_io_tabling_end;
 
 /* The event number at which I/O tabling was started; zero before start. */
-extern	MR_Unsigned	MR_io_tabling_start_event_num;
+extern  MR_Unsigned         MR_io_tabling_start_event_num;
 
 /* The event number at which I/O tabling was stopped; zero before stop. */
-extern	MR_Unsigned	MR_io_tabling_stop_event_num;
+extern  MR_Unsigned         MR_io_tabling_stop_event_num;
 
 /* The flag that controls whether we should generate diagnostics. */
-extern	MR_bool		MR_io_tabling_debug;
+extern  MR_bool             MR_io_tabling_debug;
 
 /* The flag that controls whether I/O tabling is allowed at all. */
-extern	MR_bool		MR_io_tabling_allowed;
+extern  MR_bool             MR_io_tabling_allowed;
 
 /*
 ** These functions will report the number of the last event,
 ** if there have been some events, and will do nothing otherwise.
 */
 
-extern	void	MR_trace_report(FILE *fp);
-extern	void	MR_trace_report_raw(int fd);
+extern  void    MR_trace_report(FILE *fp);
+extern  void    MR_trace_report_raw(int fd);
 
 /*
 ** If MR_trace_report_msg is not NULL, it will be included in messages
 ** from MR_trace_report.
 */
-extern	char	*MR_trace_report_msg;
+extern  char    *MR_trace_report_msg;
 
 /*
 ** This function prints an error message and aborts.  It should be
@@ -501,7 +537,7 @@ extern	char	*MR_trace_report_msg;
 ** not passed to c2init.
 */
 
-extern	void	MR_tracing_not_enabled(void);
+extern  void    MR_tracing_not_enabled(void);
 
 /*
 ** Return the details of I/O action <action_number> in three pieces:
@@ -520,9 +556,9 @@ extern	void	MR_tracing_not_enabled(void);
 ** function will return MR_FALSE, otherwise it will return MR_TRUE.
 */
 
-extern	MR_bool	MR_trace_get_action(MR_IoActionNum action_number,
-			MR_ConstString *proc_name_ptr, MR_Word *is_func_ptr,
-			MR_Word *arg_list_ptr);
+extern  MR_bool     MR_trace_get_action(MR_IoActionNum action_number,
+                        MR_ConstString *proc_name_ptr, MR_Word *is_func_ptr,
+                        MR_Word *arg_list_ptr);
 
 /*
 ** MR_turn_off_debug saves the current values of the variables controlling
@@ -534,33 +570,34 @@ extern	MR_bool	MR_trace_get_action(MR_IoActionNum action_number,
 */
 
 typedef struct {
-	MR_bool		MR_sds_debug_enabled;
-	MR_bool		MR_sds_io_tabling_enabled;
-	MR_bool		MR_sds_debugflags[MR_MAXFLAG];
-	MR_bool		MR_sds_include_counter_vars;
-	MR_Unsigned	MR_sds_trace_call_seqno;
-	MR_Unsigned	MR_sds_trace_call_depth;
-	MR_Unsigned	MR_sds_trace_event_number;
+    MR_bool     MR_sds_debug_enabled;
+    MR_bool     MR_sds_io_tabling_enabled;
+    MR_bool     MR_sds_debugflags[MR_MAXFLAG];
+    MR_bool     MR_sds_include_counter_vars;
+    MR_Unsigned MR_sds_trace_call_seqno;
+    MR_Unsigned MR_sds_trace_call_depth;
+    MR_Unsigned MR_sds_trace_event_number;
 } MR_SavedDebugState;
 
-extern	void	MR_turn_off_debug(MR_SavedDebugState *saved_state,
-			MR_bool include_counter_vars);
-extern	void	MR_turn_debug_back_on(const MR_SavedDebugState *saved_state);
+extern  void        MR_turn_off_debug(MR_SavedDebugState *saved_state,
+                        MR_bool include_counter_vars);
+extern  void        MR_turn_debug_back_on(
+                        const MR_SavedDebugState *saved_state);
 
 /*
 ** These functions allow library/exceptions.m to tell the debuggers
 ** which exception has been thrown.
 */
 
-extern	void	MR_trace_set_exception_value(MR_Word exception);
-extern	MR_Word	MR_trace_get_exception_value(void);
+extern  void        MR_trace_set_exception_value(MR_Word exception);
+extern  MR_Word     MR_trace_get_exception_value(void);
 
 /*
 ** Return a pointer to the execution count of a particular label.
 */
 
-extern	MR_Unsigned *MR_trace_lookup_trace_count(
-	const MR_LabelLayout *label_layout);
+extern  MR_Unsigned *MR_trace_lookup_trace_count(
+                        const MR_LabelLayout *label_layout);
 
 /*
 ** If MR_TRACE_HISTOGRAM is defined, MR_trace maintains two arrays of integers,
@@ -580,19 +617,19 @@ extern	MR_Unsigned *MR_trace_lookup_trace_count(
 ** program.
 */
 
-#ifdef	MR_TRACE_HISTOGRAM
+#ifdef  MR_TRACE_HISTOGRAM
 
-extern	int	*MR_trace_histogram_all;
-extern	int	*MR_trace_histogram_exp;
-extern	int	MR_trace_histogram_max;
-extern	int	MR_trace_histogram_hwm;
+extern  int     *MR_trace_histogram_all;
+extern  int     *MR_trace_histogram_exp;
+extern  int     MR_trace_histogram_max;
+extern  int     MR_trace_histogram_hwm;
 
-extern	void	MR_trace_print_histogram(FILE *fp, const char *which,
-			int *histogram, int max);
+extern  void    MR_trace_print_histogram(FILE *fp, const char *which,
+                    int *histogram, int max);
 
-#endif	/* MR_TRACE_HISTOGRAM */
+#endif  /* MR_TRACE_HISTOGRAM */
 
-extern	void	MR_io_tabling_stats(FILE *fp);
+extern  void    MR_io_tabling_stats(FILE *fp);
 
 /*
 ** These two functions work on a table that maps proc layout structures
@@ -610,55 +647,56 @@ extern	void	MR_io_tabling_stats(FILE *fp);
 ** the answer is "no".
 */
 
-extern	void	MR_insert_proc_defn_rep(const MR_ProcLayout *proc_layout,
-			MR_Word proc_defn_rep);
-extern	MR_Word MR_lookup_proc_defn_rep(const MR_ProcLayout *proc_layout);
+extern  void    MR_insert_proc_defn_rep(const MR_ProcLayout *proc_layout,
+                    MR_Word proc_defn_rep);
+extern  MR_Word MR_lookup_proc_defn_rep(const MR_ProcLayout *proc_layout);
 
-#ifndef	MR_HIGHLEVEL_CODE
+#ifndef MR_HIGHLEVEL_CODE
 
 MR_declare_entry(MR_do_trace_redo_fail_shallow);
 MR_declare_entry(MR_do_trace_redo_fail_deep);
 
-#endif	/* !MR_HIGHLEVEL_CODE */
+#endif  /* !MR_HIGHLEVEL_CODE */
 
 /*
 ** The compiler emits the following macro at each system-defined trace event.
 */
 
-#define	MR_EVENT(label)							\
-	{								\
-		MR_Code *MR_jumpaddr;					\
-		MR_save_transient_registers();				\
-		MR_jumpaddr = MR_trace((const MR_LabelLayout *)	\
-			&MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));	\
-		MR_restore_transient_registers();			\
-		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);		\
-	}
+#define MR_EVENT(label)                                                 \
+    {                                                                   \
+        MR_Code *MR_jumpaddr;                                           \
+        MR_save_transient_registers();                                  \
+        MR_jumpaddr = MR_trace((const MR_LabelLayout *)                 \
+            &MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));               \
+        MR_restore_transient_registers();                               \
+        if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);                  \
+    }
 
 /*
 ** The compiler emits the following macro at each user-defined trace event.
 */
 
-#define	MR_USER_EVENT(label)						\
-	{								\
-		MR_Code *MR_jumpaddr;					\
-		MR_save_transient_registers();				\
-		MR_jumpaddr = MR_user_trace((const MR_LabelLayout *)	\
-			&MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));	\
-		MR_restore_transient_registers();			\
-		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);		\
-	}
+#define MR_USER_EVENT(label)                                            \
+    {                                                                   \
+        MR_Code *MR_jumpaddr;                                           \
+        MR_save_transient_registers();                                  \
+        MR_jumpaddr = MR_user_trace((const MR_LabelLayout *)            \
+            &MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));               \
+        MR_restore_transient_registers();                               \
+        if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);                  \
+    }
 
 /*
 ** When using the heap pointer, we need to restore it, in case it is
 ** transient.
 */
 
-#define MR_TRACE_USE_HP(STATEMENTS) do {				\
-		MR_restore_transient_registers();			\
-		STATEMENTS;						\
-		MR_save_transient_registers();				\
-	} while (0)
+#define MR_TRACE_USE_HP(STATEMENTS)                                     \
+    do {                                                                \
+        MR_restore_transient_registers();                               \
+        STATEMENTS;                                                     \
+        MR_save_transient_registers();                                  \
+    } while (0)
 
 /*
 ** When calling Mercury code defined using `pragma export', we need
@@ -675,48 +713,48 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 */
 
 #if defined(MR_DEEP_PROFILING) && defined(MR_EXEC_TRACE)
-  #define MR_TRACE_CALL_MERCURY_DEEP_BEGIN				\
-	do {								\
-		MR_disable_deep_profiling_in_debugger = MR_TRUE;	\
-	} while (0)
-  #define MR_TRACE_CALL_MERCURY_DEEP_END				\
-	do {								\
-		MR_disable_deep_profiling_in_debugger = MR_FALSE;	\
-	} while (0)
+  #define MR_TRACE_CALL_MERCURY_DEEP_BEGIN                              \
+    do {                                                                \
+        MR_disable_deep_profiling_in_debugger = MR_TRUE;                \
+    } while (0)
+  #define MR_TRACE_CALL_MERCURY_DEEP_END                                \
+    do {                                                                \
+        MR_disable_deep_profiling_in_debugger = MR_FALSE;               \
+    } while (0)
 #else
-  #define MR_TRACE_CALL_MERCURY_DEEP_BEGIN	((void) 0)
-  #define MR_TRACE_CALL_MERCURY_DEEP_END	((void) 0)
+  #define MR_TRACE_CALL_MERCURY_DEEP_BEGIN  ((void) 0)
+  #define MR_TRACE_CALL_MERCURY_DEEP_END    ((void) 0)
 #endif
 
-#define MR_TRACE_CALL_MERCURY(STATEMENTS) 				\
-	do {								\
-		MR_bool		saved_debug_enabled;			\
-		MR_bool		saved_io_enabled;			\
-		MR_Unsigned     saved_trace_call_seqno;			\
-		MR_Unsigned     saved_trace_call_depth;			\
-		MR_Unsigned     saved_trace_event_number;		\
-									\
-		MR_TRACE_CALL_MERCURY_DEEP_BEGIN;			\
-		saved_debug_enabled = MR_debug_enabled;			\
-		saved_io_enabled = MR_io_tabling_enabled;		\
-		saved_trace_call_seqno = MR_trace_call_seqno;		\
-		saved_trace_call_depth = MR_trace_call_depth;		\
-		saved_trace_event_number = MR_trace_event_number;	\
-		MR_debug_enabled = MR_FALSE;				\
-		MR_update_trace_func_enabled();				\
-		MR_io_tabling_enabled = MR_FALSE;			\
-		MR_restore_transient_registers();			\
-		MR_save_registers();					\
-		STATEMENTS;						\
-		MR_restore_registers();					\
-		MR_save_transient_registers();				\
-		MR_debug_enabled = saved_debug_enabled;			\
-		MR_update_trace_func_enabled();				\
-		MR_io_tabling_enabled = saved_io_enabled;		\
-		MR_trace_call_seqno = saved_trace_call_seqno;		\
-		MR_trace_call_depth = saved_trace_call_depth;		\
-		MR_trace_event_number = saved_trace_event_number;	\
-		MR_TRACE_CALL_MERCURY_DEEP_END;				\
-	} while (0)
+#define MR_TRACE_CALL_MERCURY(STATEMENTS)                               \
+    do {                                                                \
+        MR_bool     saved_debug_enabled;                                \
+        MR_bool     saved_io_enabled;                                   \
+        MR_Unsigned     saved_trace_call_seqno;                         \
+        MR_Unsigned     saved_trace_call_depth;                         \
+        MR_Unsigned     saved_trace_event_number;                       \
+                                                                        \
+        MR_TRACE_CALL_MERCURY_DEEP_BEGIN;                               \
+        saved_debug_enabled = MR_debug_enabled;                         \
+        saved_io_enabled = MR_io_tabling_enabled;                       \
+        saved_trace_call_seqno = MR_trace_call_seqno;                   \
+        saved_trace_call_depth = MR_trace_call_depth;                   \
+        saved_trace_event_number = MR_trace_event_number;               \
+        MR_debug_enabled = MR_FALSE;                                    \
+        MR_update_trace_func_enabled();                                 \
+        MR_io_tabling_enabled = MR_FALSE;                               \
+        MR_restore_transient_registers();                               \
+        MR_save_registers();                                            \
+        STATEMENTS;                                                     \
+        MR_restore_registers();                                         \
+        MR_save_transient_registers();                                  \
+        MR_debug_enabled = saved_debug_enabled;                         \
+        MR_update_trace_func_enabled();                                 \
+        MR_io_tabling_enabled = saved_io_enabled;                       \
+        MR_trace_call_seqno = saved_trace_call_seqno;                   \
+        MR_trace_call_depth = saved_trace_call_depth;                   \
+        MR_trace_event_number = saved_trace_event_number;               \
+        MR_TRACE_CALL_MERCURY_DEEP_END;                                 \
+    } while (0)
 
 #endif /* MERCURY_TRACE_BASE_H */

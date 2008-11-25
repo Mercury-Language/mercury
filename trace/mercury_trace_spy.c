@@ -302,6 +302,7 @@ MR_event_matches_spy_point(const MR_LabelLayout *layout,
     const char              *problem;
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
+    MR_Level                actual_level;
 
     enabled = MR_FALSE;
     action = MR_SPY_PRINT;
@@ -324,9 +325,9 @@ MR_event_matches_spy_point(const MR_LabelLayout *layout,
             base_sp = MR_sp;
             base_curfr = MR_curfr;
             parent = MR_find_nth_ancestor(layout, 1, &base_sp, &base_curfr,
-                &problem);
-            if (parent != NULL && 0 <=
-                (slot = MR_search_spy_table_for_label(parent)))
+                &actual_level, &problem);
+            if (parent != NULL && actual_level == 1 &&
+                0 <= (slot = MR_search_spy_table_for_label(parent)))
             {
                 point = MR_spy_points[MR_spied_labels[slot].MR_sl_point_num];
                 if (point->MR_spy_when != MR_SPY_LINENO) {

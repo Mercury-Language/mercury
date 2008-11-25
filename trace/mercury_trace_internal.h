@@ -24,7 +24,7 @@
 
 extern  MR_Code     *MR_trace_event_internal(MR_TraceCmdInfo *cmd,
                         MR_bool interactive, MR_SpyPrintList print_list,
-                        MR_EventInfo *event_info);
+                        MR_EventInfo *event_info, const char *msg);
 
 extern  void        MR_trace_event_print_internal_report(
                         MR_EventInfo *event_info);
@@ -85,9 +85,12 @@ extern  void    MR_trace_usage_cur_cmd(void);
 
 /*
 ** Print a message about this command being a no-op from this port.
+** The second variant is when the command is a no-op only because of
+** the reuse of stack frames by tail recursive procedures.
 */
 
 extern  void    MR_trace_do_noop(void);
+extern  void    MR_trace_do_noop_tail_rec(void);
 
 /*
 ** If the given word is the name of a valid command, return its info.

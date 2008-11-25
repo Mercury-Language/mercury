@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -72,6 +72,7 @@
 :- func given_trace_level_is_none(trace_level) = bool.
 :- func trace_level_allows_delay_death(trace_level) = bool.
 :- func trace_needs_return_info(trace_level, trace_suppress_items) = bool.
+:- func trace_level_allows_tail_rec(trace_level) = bool.
 
     % Should optimization passes maintain meaningful variable names
     % where possible.
@@ -210,7 +211,8 @@ eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
         EffTraceLevel = none
     ;
         pred_info_get_origin(PredInfo, Origin),
-        ( Origin = origin_special_pred(SpecialPred - _) ->
+        (
+            Origin = origin_special_pred(SpecialPred - _),
             % Unify and compare predicates can be called from the generic
             % unify and compare predicates in builtin.m, so they can be called
             % from outside this module even if they don't have their address
@@ -235,40 +237,63 @@ eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
                 SpecialPred = spec_pred_init,
                 EffTraceLevel = TraceLevel
             )
-        ; Origin = origin_created(io_tabling) ->
-            % Predicates called by a predicate that is I/O tabled should not be
-            % traced. If such a predicate were allowed to generate events then
-            % the event numbers of events after the I/O primitive would be
-            % different between the first and subsequent (idempotent)
-            % executions of the same I/O action.
-            EffTraceLevel = none
         ;
-            pred_info_get_import_status(PredInfo, Status),
+            Origin = origin_created(PredCreation),
             (
-                TraceLevel = shallow,
-                status_is_exported(Status) = no,
-                proc_info_get_is_address_taken(ProcInfo, address_is_not_taken)
-            ->
-                proc_info_get_has_user_event(ProcInfo, ProcHasUserEvent),
-                (
-                    ProcHasUserEvent = yes,
-                    EffTraceLevel = basic_user
-                ;
-                    ProcHasUserEvent = no,
-                    module_info_get_contains_user_event(ModuleInfo,
-                        ModuleHasUserEvent),
-                    (
-                        ModuleHasUserEvent = yes,
-                        EffTraceLevel = basic
-                    ;
-                        ModuleHasUserEvent = no,
-                        EffTraceLevel = none
-                    )
-                )
+                PredCreation = created_by_io_tabling,
+                % Predicates called by a predicate that is I/O tabled
+                % should not be traced. If such a predicate were allowed
+                % to generate events, then the event numbers of events
+                % after the I/O primitive would be different between
+                % the first and subsequent (idempotent) executions
+                % of the same I/O action.
+                EffTraceLevel = none
             ;
-                EffTraceLevel = TraceLevel
+                PredCreation = created_by_deforestation,
+                EffTraceLevel = usual_eff_trace_level(ModuleInfo,
+                    PredInfo, ProcInfo, TraceLevel)
+            )
+        ;
+            ( Origin = origin_instance_method(_, _)
+            ; Origin = origin_transformed(_, _, _)
+            ; Origin = origin_assertion(_, _)
+            ; Origin = origin_lambda(_, _, _)
+            ; Origin = origin_user(_)
+            ),
+            EffTraceLevel = usual_eff_trace_level(ModuleInfo,
+                PredInfo, ProcInfo, TraceLevel)
+        )
+    ).
+
+:- func usual_eff_trace_level(module_info, pred_info, proc_info, trace_level)
+    = trace_level.
+
+usual_eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
+        = EffTraceLevel :-
+    pred_info_get_import_status(PredInfo, Status),
+    (
+        TraceLevel = shallow,
+        status_is_exported(Status) = no,
+        proc_info_get_is_address_taken(ProcInfo, address_is_not_taken)
+    ->
+        proc_info_get_has_user_event(ProcInfo, ProcHasUserEvent),
+        (
+            ProcHasUserEvent = yes,
+            EffTraceLevel = basic_user
+        ;
+            ProcHasUserEvent = no,
+            module_info_get_contains_user_event(ModuleInfo,
+                ModuleHasUserEvent),
+            (
+                ModuleHasUserEvent = yes,
+                EffTraceLevel = basic
+            ;
+                ModuleHasUserEvent = no,
+                EffTraceLevel = none
             )
         )
+    ;
+        EffTraceLevel = TraceLevel
     ).
 
 given_trace_level_is_none(TraceLevel) =
@@ -363,6 +388,13 @@ trace_level_needs_meaningful_var_names(basic_user) = yes.
 trace_level_needs_meaningful_var_names(shallow) = no.
 trace_level_needs_meaningful_var_names(deep) = yes.
 trace_level_needs_meaningful_var_names(decl_rep) = yes.
+
+trace_level_allows_tail_rec(none) = yes.
+trace_level_allows_tail_rec(basic) = yes.
+trace_level_allows_tail_rec(basic_user) = yes.
+trace_level_allows_tail_rec(shallow) = no.
+trace_level_allows_tail_rec(deep) = yes.
+trace_level_allows_tail_rec(decl_rep) = no.
 
 trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
     (
@@ -467,6 +499,7 @@ convert_port_name("nondet_foreign_proc_first") =
 convert_port_name("latr") = port_nondet_foreign_proc_later.
 convert_port_name("nondet_foreign_proc_later") =
     port_nondet_foreign_proc_later.
+convert_port_name("tail") = port_tailrec_call.
 convert_port_name("user") = port_user.
 
 :- func convert_port_class_name(string) = list(trace_port) is semidet.
@@ -552,6 +585,7 @@ trace_port_category(port_disj_first)          = port_cat_internal.
 trace_port_category(port_disj_later)          = port_cat_internal.
 trace_port_category(port_nondet_foreign_proc_first) = port_cat_internal.
 trace_port_category(port_nondet_foreign_proc_later) = port_cat_internal.
+trace_port_category(port_tailrec_call)        = port_cat_interface.
 trace_port_category(port_user)                = port_cat_user.
 
 :- func trace_level_port_categories(trace_level) = list(port_category).
@@ -614,16 +648,17 @@ port_number(port_call) = 0.
 port_number(port_exit) = 1.
 port_number(port_redo) = 2.
 port_number(port_fail) = 3.
-port_number(port_exception) = 4.
-port_number(port_ite_cond) = 5.
-port_number(port_ite_then) = 6.
-port_number(port_ite_else) = 7.
-port_number(port_neg_enter) = 8.
-port_number(port_neg_success) = 9.
-port_number(port_neg_failure) = 10.
-port_number(port_disj_first) = 11.
-port_number(port_disj_later) = 12.
-port_number(port_switch) = 13.
-port_number(port_nondet_foreign_proc_first) = 14.
-port_number(port_nondet_foreign_proc_later) = 15.
-port_number(port_user) = 16.
+port_number(port_tailrec_call) = 4.
+port_number(port_exception) = 5.
+port_number(port_ite_cond) = 6.
+port_number(port_ite_then) = 7.
+port_number(port_ite_else) = 8.
+port_number(port_neg_enter) = 9.
+port_number(port_neg_success) = 10.
+port_number(port_neg_failure) = 11.
+port_number(port_disj_first) = 12.
+port_number(port_disj_later) = 13.
+port_number(port_switch) = 14.
+port_number(port_nondet_foreign_proc_first) = 15.
+port_number(port_nondet_foreign_proc_later) = 16.
+port_number(port_user) = 17.

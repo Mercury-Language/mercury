@@ -640,11 +640,20 @@ init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
         eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
             = no
     ->
-        trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
-            TraceInfo, !CI),
+        proc_info_get_has_tail_call_events(ProcInfo, HasTailCallEvents),
+        (
+            HasTailCallEvents = tail_call_events,
+            get_next_label(TailRecLabel, !CI),
+            MaybeTailRecLabel = yes(TailRecLabel)
+        ;
+            HasTailCallEvents = no_tail_call_events,
+            MaybeTailRecLabel = no
+        ),
+        trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
+            TraceSlotInfo, TraceInfo, !CI),
         set_maybe_trace_info(yes(TraceInfo), !CI)
     ;
-        TraceSlotInfo = trace_slot_info(no, no, no, no, no)
+        TraceSlotInfo = trace_slot_info(no, no, no, no, no, no)
     ).
 
 %---------------------------------------------------------------------------%

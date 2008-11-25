@@ -55,8 +55,10 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.llds.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
@@ -73,7 +75,8 @@
 :- type external_trace_port
     --->    external_port_call
     ;       external_port_exit
-    ;       external_port_fail.
+    ;       external_port_fail
+    ;       external_port_tailrec_call.
 
     % These ports are different from other internal ports (even neg_enter)
     % because their goal path identifies not the goal we are about to enter
@@ -89,47 +92,44 @@
 
 :- type trace_info.
 
+:- pred get_trace_maybe_tail_rec_info(trace_info::in,
+    maybe(pair(lval, label))::out) is det.
+
 :- type trace_slot_info
     --->    trace_slot_info(
+                % If the procedure is shallow traced, this will be yes(N),
+                % where stack slot N is the slot that holds the value of the
+                % from-full flag at call. Otherwise, it will be no.
                 slot_from_full      :: maybe(int),
-                                    % If the procedure is shallow traced,
-                                    % this will be yes(N), where stack
-                                    % slot N is the slot that holds the
-                                    % value of the from-full flag at call.
-                                    % Otherwise, it will be no.
 
+                % If the procedure has io state arguments this will be yes(N),
+                % where stack slot N is the slot that holds the saved value
+                % of the io sequence number. Otherwise, it will be no.
                 slot_io             :: maybe(int),
-                                    % If the procedure has io state
-                                    % arguments this will be yes(N), where
-                                    % stack slot N is the slot that holds
-                                    % the saved value of the io sequence
-                                    % number. Otherwise, it will be no.
 
+                % If --use-trail is set, this will be yes(M), where stack slots
+                % M and M+1 are the slots that hold the saved values of the
+                % trail pointer and the ticket counter respectively at the time
+                % of the call. Otherwise, it will be no.
                 slot_trail          :: maybe(int),
-                                    % If --use-trail is set, this will
-                                    % be yes(M), where stack slots M
-                                    % and M+1 are the slots that hold the
-                                    % saved values of the trail pointer
-                                    % and the ticket counter respectively
-                                    % at the time of the call. Otherwise,
-                                    % it will be no.
 
+                % If the procedure lives on the det stack but creates
+                % temporary frames on the nondet stack, this will be yes(M),
+                % where stack slot M is reserved to hold the value of maxfr
+                % at the time of the call. Otherwise, it will be no.
                 slot_maxfr          :: maybe(int),
-                                    % If the procedure lives on the det
-                                    % stack but creates temporary frames
-                                    % on the nondet stack, this will be
-                                    % yes(M), where stack slot M is
-                                    % reserved to hold the value of maxfr
-                                    % at the time of the call. Otherwise,
-                                    % it will be no.
 
-                slot_call_table     :: maybe(int)
-                                    % If the procedure's evaluation method
-                                    % is memo, loopcheck or minimal model,
-                                    % this will be yes(M), where stack slot
-                                    % M holds the variable that represents
-                                    % the tip of the call table. Otherwise,
-                                    % it will be no.
+                % If the procedure's evaluation method is memo, loopcheck
+                % or minimal model, this will be yes(M), where stack slot
+                % M holds the variable that represents the tip of the
+                % call table. Otherwise, it will be no.
+                slot_call_table     :: maybe(int),
+
+                % If the procedure has tail recursive call events, this
+                % will be yes(M), where stack slot M holds the variable
+                % that represents number of times a tail recursive call
+                % has reused this stack frame. Otherwise, it will be no.
+                slot_tail_rec       :: maybe(int)
             ).
 
     % Return the set of input variables whose values should be preserved
@@ -164,7 +164,7 @@
     % for eventual use in the constructing the procedure's layout structure.
     %
 :- pred trace_setup(module_info::in, pred_info::in, proc_info::in,
-    globals::in, trace_slot_info::out, trace_info::out,
+    globals::in, maybe(label)::in, trace_slot_info::out, trace_info::out,
     code_info::in, code_info::out) is det.
 
     % Generate code to fill in the reserved stack slots.
@@ -202,18 +202,22 @@
 :- pred generate_user_event_code(user_event_info::in, hlds_goal_info::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
+:- pred generate_tailrec_event_code(trace_info::in,
+    assoc_list(prog_var, arg_info)::in, goal_path::in, prog_context::in,
+    code_tree::out, label::out, code_info::in, code_info::out) is det.
+
 :- type external_event_info
     --->    external_event_info(
-                label,      % The label associated with the
-                            % external event.
+                % The label associated with the external event.
+                label,
 
+                % The map giving the locations of the typeinfo variables
+                % needed to describe the types of the variables live at the
+                % event.
                 map(tvar, set(layout_locn)),
-                            % The map saying where the typeinfo
-                            % variables needed to describe the
-                            % types of the variables live at the
-                            % event are.
 
-                code_tree   % The code generated for the event.
+                % The code generated for the event.
+                code_tree
             ).
 
     % Generate code for an external trace event.
@@ -238,6 +242,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
@@ -252,7 +257,6 @@
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
@@ -269,6 +273,11 @@
     %
 :- type trace_port_info
     --->    port_info_external
+    ;       port_info_tailrec_call(
+                goal_path,      % The path of the tail recursive call.
+                assoc_list(prog_var, arg_info)
+                                % The list of arguments of this call.
+            )
     ;       port_info_internal(
                 goal_path,      % The path of the goal whose start
                                 % this port represents.
@@ -356,7 +365,13 @@ do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
     %           layout; if there is no such slot, that field will
     %           contain -1.
     %
-    % stage 7:  If the procedure's evaluation method is memo, loopcheck
+    % stage 7:  If the procedure has tail call events, we allocate a slot
+    %           to hold a variable that counts how many tail events we have
+    %           executed in this stack frame so far. The number of this slot
+    %           is recorded in the maybe_tail_rec field in the proc layout;
+    %           if there is no such slot, that field will contain -1.
+    %
+    % stage 8:  If the procedure's evaluation method is memo, loopcheck
     %           or minimal model, we allocate a slot to hold the
     %           variable that represents the tip of the call table.
     %           The debugger needs this, because when it executes a
@@ -364,6 +379,10 @@ do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
     %           The number of this slot is recorded in the maybe_table
     %           field in the proc layout; if there is no such slot,
     %           that field will contain -1.
+    %           (This should be the last stage; add new ones before this one.)
+    %
+    % If you add any more stages, please consider that any new slots
+    % may need to be reset or adjusted before TAIL events.
     %
     % The procedure's layout structure does not need to include
     % information about the presence or absence of the slot holding
@@ -402,7 +421,9 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         MaybeTableVarInfo = no
     ;
         FixedSlots = yes,
+        % Stage 1.
         Fixed = 3, % event#, call#, call depth
+        % Stage 2.
         (
             proc_info_interface_code_model(ProcInfo) = model_non,
             eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
@@ -412,6 +433,7 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         ;
             RedoLayout = 0
         ),
+        % Stage 3.
         (
             eff_trace_level_needs_from_full_slot(ModuleInfo, PredInfo,
                 ProcInfo, TraceLevel) = yes
@@ -420,6 +442,7 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         ;
             FromFull = 0
         ),
+        % Stage 4.
         (
             TraceTableIo = yes,
             IoSeq = 1
@@ -427,6 +450,7 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
             TraceTableIo = no,
             IoSeq = 0
         ),
+        % Stage 5.
         globals.lookup_bool_option(Globals, use_trail, UseTrail),
         (
             UseTrail = yes,
@@ -435,6 +459,7 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
             UseTrail = no,
             Trail = 0
         ),
+        % Stage 6.
         proc_info_get_need_maxfr_slot(ProcInfo, NeedMaxfr),
         (
             NeedMaxfr = yes,
@@ -443,7 +468,18 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
             NeedMaxfr = no,
             Maxfr = 0
         ),
-        ReservedSlots0 = Fixed + RedoLayout + FromFull + IoSeq + Trail + Maxfr,
+        % Stage 7.
+        proc_info_get_has_tail_call_events(ProcInfo, TailCallEvents),
+        (
+            TailCallEvents = tail_call_events,
+            TailRec = 1
+        ;
+            TailCallEvents = no_tail_call_events,
+            TailRec = 0
+        ),
+        ReservedSlots0 = Fixed + RedoLayout + FromFull + IoSeq + Trail +
+            Maxfr + TailRec,
+        % Stage 8.
         proc_info_get_call_table_tip(ProcInfo, MaybeCallTableVar),
         (
             MaybeCallTableVar = yes(CallTableVar),
@@ -456,93 +492,119 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         )
     ).
 
-trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
-        !CI) :-
+trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
+        TraceSlotInfo, TraceInfo, !CI) :-
     CodeModel = get_proc_model(!.CI),
     globals.get_trace_level(Globals, TraceLevel),
     globals.get_trace_suppress(Globals, TraceSuppress),
     globals.lookup_bool_option(Globals, trace_table_io, TraceTableIo),
     TraceRedo = eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
         TraceLevel, TraceSuppress, port_redo),
-    (
-        TraceRedo = yes,
-        CodeModel = model_non
-    ->
-        get_next_label(RedoLayoutLabel, !CI),
-        MaybeRedoLayoutLabel = yes(RedoLayoutLabel),
-        NextSlotAfterRedoLayout = 5
-    ;
-        MaybeRedoLayoutLabel = no,
-        NextSlotAfterRedoLayout = 4
-    ),
-    FromFullSlot = eff_trace_level_needs_from_full_slot(ModuleInfo, PredInfo,
-        ProcInfo, TraceLevel),
-    StackId = code_model_to_main_stack(CodeModel),
-    (
-        FromFullSlot = no,
-        MaybeFromFullSlot = no,
-        MaybeFromFullSlotLval = no,
-        NextSlotAfterFromFull = NextSlotAfterRedoLayout
-    ;
-        FromFullSlot = yes,
-        MaybeFromFullSlot = yes(NextSlotAfterRedoLayout),
-        CallFromFullSlot = stack_slot_num_to_lval(StackId,
-            NextSlotAfterRedoLayout),
-        MaybeFromFullSlotLval = yes(CallFromFullSlot),
-        NextSlotAfterFromFull = NextSlotAfterRedoLayout + 1
-    ),
-    (
-        TraceTableIo = yes,
-        MaybeIoSeqSlot = yes(NextSlotAfterFromFull),
-        IoSeqLval = stack_slot_num_to_lval(StackId, NextSlotAfterFromFull),
-        MaybeIoSeqLval = yes(IoSeqLval),
-        NextSlotAfterIoSeq = NextSlotAfterFromFull + 1
-    ;
-        TraceTableIo = no,
-        MaybeIoSeqSlot = no,
-        MaybeIoSeqLval = no,
-        NextSlotAfterIoSeq = NextSlotAfterFromFull
-    ),
-    globals.lookup_bool_option(Globals, use_trail, UseTrail),
-    (
-        UseTrail = yes,
-        MaybeTrailSlot = yes(NextSlotAfterIoSeq),
-        TrailLval = stack_slot_num_to_lval(StackId, NextSlotAfterIoSeq),
-        TicketLval = stack_slot_num_to_lval(StackId, NextSlotAfterIoSeq + 1),
-        MaybeTrailLvals = yes(TrailLval - TicketLval),
-        NextSlotAfterTrail = NextSlotAfterIoSeq + 2
-    ;
-        UseTrail = no,
-        MaybeTrailSlot = no,
-        MaybeTrailLvals = no,
-        NextSlotAfterTrail = NextSlotAfterIoSeq
-    ),
-    proc_info_get_need_maxfr_slot(ProcInfo, NeedMaxfr),
-    (
-        NeedMaxfr = yes,
-        MaybeMaxfrSlot = yes(NextSlotAfterTrail),
-        MaxfrLval = stack_slot_num_to_lval(StackId, NextSlotAfterTrail),
-        MaybeMaxfrLval = yes(MaxfrLval),
-        NextSlotAfterMaxfr = NextSlotAfterTrail + 1
-    ;
-        NeedMaxfr = no,
-        MaybeMaxfrSlot = no,
-        MaybeMaxfrLval = no,
-        NextSlotAfterMaxfr = NextSlotAfterTrail
-    ),
-    ( proc_info_get_call_table_tip(ProcInfo, yes(_)) ->
-        MaybeCallTableSlot = yes(NextSlotAfterMaxfr),
-        CallTableLval = stack_slot_num_to_lval(StackId, NextSlotAfterMaxfr),
-        MaybeCallTableLval = yes(CallTableLval)
-    ;
-        MaybeCallTableSlot = no,
-        MaybeCallTableLval = no
+    some [!NextSlot] (
+        % Stages 1 and 2.
+        (
+            TraceRedo = yes,
+            CodeModel = model_non
+        ->
+            get_next_label(RedoLayoutLabel, !CI),
+            MaybeRedoLayoutLabel = yes(RedoLayoutLabel),
+            % We always reserve slots 1, 2 and 3, and we reserve slot 4
+            % for the redo layout label.
+            !:NextSlot = 5
+        ;
+            MaybeRedoLayoutLabel = no,
+            % We always reserve slots 1, 2 and 3.
+            !:NextSlot = 4
+        ),
+        % Stage 3.
+        HasFromFullSlot = eff_trace_level_needs_from_full_slot(ModuleInfo,
+            PredInfo, ProcInfo, TraceLevel),
+        StackId = code_model_to_main_stack(CodeModel),
+        (
+            HasFromFullSlot = yes,
+            FromFullSlot = !.NextSlot,
+            MaybeFromFullSlot = yes(FromFullSlot),
+            FromFullSlotLval = stack_slot_num_to_lval(StackId, FromFullSlot),
+            MaybeFromFullSlotLval = yes(FromFullSlotLval),
+            !:NextSlot = !.NextSlot + 1
+        ;
+            HasFromFullSlot = no,
+            MaybeFromFullSlot = no,
+            MaybeFromFullSlotLval = no
+        ),
+        % Stage 4.
+        (
+            TraceTableIo = yes,
+            IoSeqSlot = !.NextSlot,
+            MaybeIoSeqSlot = yes(IoSeqSlot),
+            IoSeqLval = stack_slot_num_to_lval(StackId, IoSeqSlot),
+            MaybeIoSeqLval = yes(IoSeqLval),
+            !:NextSlot = !.NextSlot + 1
+        ;
+            TraceTableIo = no,
+            MaybeIoSeqSlot = no,
+            MaybeIoSeqLval = no
+        ),
+        % Stage 5.
+        globals.lookup_bool_option(Globals, use_trail, UseTrail),
+        (
+            UseTrail = yes,
+            TrailSlot = !.NextSlot,
+            TicketSlot = !.NextSlot + 1,
+            MaybeTrailSlot = yes(TrailSlot),
+            TrailLval = stack_slot_num_to_lval(StackId, TrailSlot),
+            TicketLval = stack_slot_num_to_lval(StackId, TicketSlot),
+            MaybeTrailLvals = yes(TrailLval - TicketLval),
+            !:NextSlot = !.NextSlot + 2
+        ;
+            UseTrail = no,
+            MaybeTrailSlot = no,
+            MaybeTrailLvals = no
+        ),
+        % Stage 6.
+        proc_info_get_need_maxfr_slot(ProcInfo, NeedMaxfr),
+        (
+            NeedMaxfr = yes,
+            MaxfrSlot = !.NextSlot,
+            MaybeMaxfrSlot = yes(MaxfrSlot),
+            MaxfrLval = stack_slot_num_to_lval(StackId, MaxfrSlot),
+            MaybeMaxfrLval = yes(MaxfrLval),
+            !:NextSlot = !.NextSlot + 1
+        ;
+            NeedMaxfr = no,
+            MaybeMaxfrSlot = no,
+            MaybeMaxfrLval = no
+        ),
+        % Stage 7.
+        (
+            MaybeTailRecLabel = yes(TailRecLabel),
+            TailRecSlot = !.NextSlot,
+            MaybeTailRecSlot = yes(TailRecSlot),
+            TailRecLval = stack_slot_num_to_lval(StackId, TailRecSlot),
+            MaybeTailRecInfo = yes(TailRecLval - TailRecLabel),
+            !:NextSlot = !.NextSlot + 1
+        ;
+            MaybeTailRecLabel = no,
+            MaybeTailRecSlot = no,
+            MaybeTailRecInfo = no
+        ),
+        % Stage 8.
+        ( proc_info_get_call_table_tip(ProcInfo, yes(_)) ->
+            CallTableSlot = !.NextSlot,
+            MaybeCallTableSlot = yes(CallTableSlot),
+            CallTableLval = stack_slot_num_to_lval(StackId, CallTableSlot),
+            MaybeCallTableLval = yes(CallTableLval)
+        ;
+            MaybeCallTableSlot = no,
+            MaybeCallTableLval = no
+        )
     ),
     TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
-        MaybeTrailSlot, MaybeMaxfrSlot, MaybeCallTableSlot),
+        MaybeTrailSlot, MaybeMaxfrSlot, MaybeCallTableSlot, MaybeTailRecSlot),
     TraceInfo = trace_info(TraceLevel, TraceSuppress,
         MaybeFromFullSlotLval, MaybeIoSeqLval, MaybeTrailLvals,
-        MaybeMaxfrLval, MaybeCallTableLval, MaybeRedoLayoutLabel).
+        MaybeMaxfrLval, MaybeCallTableLval, MaybeTailRecInfo,
+        MaybeRedoLayoutLabel).
 
 generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     CodeModel = get_proc_model(CI),
@@ -551,6 +613,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     MaybeTrailLvals    = TraceInfo ^ trail_lvals,
     MaybeMaxfrLval     = TraceInfo ^ maxfr_lval,
     MaybeCallTableLval = TraceInfo ^ call_table_tip_lval,
+    MaybeTailRecInfo   = TraceInfo ^ tail_rec_info,
     MaybeRedoLabel     = TraceInfo ^ redo_label,
     event_num_slot(CodeModel, EventNumLval),
     call_num_slot(CodeModel, CallNumLval),
@@ -558,67 +621,64 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     stackref_to_string(EventNumLval, EventNumStr),
     stackref_to_string(CallNumLval, CallNumStr),
     stackref_to_string(CallDepthLval, CallDepthStr),
-    string.append_list(["\t\tMR_trace_fill_std_slots(",
-        EventNumStr, ", ", CallNumStr, ", ", CallDepthStr, ");\n"
-    ], FillThreeSlots),
-    (
-        MaybeIoSeqSlot = yes(IoSeqLval),
-        stackref_to_string(IoSeqLval, IoSeqStr),
-        string.append_list([
-            FillThreeSlots,
-            "\t\t", IoSeqStr, " = MR_io_tabling_counter;\n"
-        ], FillSlotsUptoIoSeq)
-    ;
-        MaybeIoSeqSlot = no,
-        FillSlotsUptoIoSeq = FillThreeSlots
-    ),
-    (
-        MaybeRedoLabel = yes(RedoLayoutLabel),
-        redo_layout_slot(CodeModel, RedoLayoutLval),
-        stackref_to_string(RedoLayoutLval, RedoLayoutStr),
-        LayoutAddrStr =
-            layout_out.make_label_layout_name(RedoLayoutLabel),
-        string.append_list([
-            FillSlotsUptoIoSeq,
-            "\t\t", RedoLayoutStr,
-                " = (MR_Word) (const MR_Word *) &", LayoutAddrStr, ";\n"
-        ], FillSlotsUptoRedo),
-        MaybeLayoutLabel = yes(RedoLayoutLabel)
-    ;
-        MaybeRedoLabel = no,
-        FillSlotsUptoRedo = FillSlotsUptoIoSeq,
-        MaybeLayoutLabel = no
-    ),
-    (
-        % This could be done by generating proper LLDS instead of C.
-        % However, in shallow traced code we want to execute this
-        % only when the caller is deep traced, and everything inside
-        % that test must be in C code.
-        MaybeTrailLvals = yes(TrailLval - TicketLval),
-        stackref_to_string(TrailLval, TrailLvalStr),
-        stackref_to_string(TicketLval, TicketLvalStr),
-        string.append_list([
-            FillSlotsUptoRedo,
-            "\t\tMR_mark_ticket_stack(", TicketLvalStr, ");\n",
-            "\t\tMR_store_ticket(", TrailLvalStr, ");\n"
-        ], FillSlotsUptoTrail)
-    ;
-        MaybeTrailLvals = no,
-        FillSlotsUptoTrail = FillSlotsUptoRedo
-    ),
-    (
-        MaybeFromFullSlot = yes(CallFromFullSlot),
-        stackref_to_string(CallFromFullSlot, CallFromFullSlotStr),
-        TraceStmt1 =
-            "\t\t" ++ CallFromFullSlotStr ++ " = MR_trace_from_full;\n" ++
-            "\t\tif (MR_trace_from_full) {\n" ++
-            FillSlotsUptoTrail ++
-            "\t\t} else {\n" ++
-            "\t\t\t" ++ CallDepthStr ++ " = MR_trace_call_depth;\n" ++
-            "\t\t}\n"
-    ;
-        MaybeFromFullSlot = no,
-        TraceStmt1 = FillSlotsUptoTrail
+    some [!CodeStr] (
+        % Stage 1.
+        !:CodeStr = "\t\tMR_trace_fill_std_slots(" ++ EventNumStr ++ ", " ++
+            CallNumStr ++ ", " ++ CallDepthStr ++ ");\n",
+        % Stage 2.
+        (
+            MaybeRedoLabel = yes(RedoLayoutLabel),
+            redo_layout_slot(CodeModel, RedoLayoutLval),
+            stackref_to_string(RedoLayoutLval, RedoLayoutStr),
+            LayoutAddrStr =
+                layout_out.make_label_layout_name(RedoLayoutLabel),
+            !:CodeStr = !.CodeStr ++ "\t\t" ++ RedoLayoutStr ++
+                " = (MR_Word) (const MR_Word *) &" ++ LayoutAddrStr ++ ";\n",
+            MaybeLayoutLabel = yes(RedoLayoutLabel)
+        ;
+            MaybeRedoLabel = no,
+            MaybeLayoutLabel = no
+        ),
+        % Stage 3 is handled later.
+        % Stage 4.
+        (
+            MaybeIoSeqSlot = yes(IoSeqLval),
+            stackref_to_string(IoSeqLval, IoSeqStr),
+            !:CodeStr = !.CodeStr ++
+                "\t\t" ++ IoSeqStr ++ " = MR_io_tabling_counter;\n"
+        ;
+            MaybeIoSeqSlot = no
+        ),
+        % Stage 5.
+        (
+            % This could be done by generating proper LLDS instead of C.
+            % However, in shallow traced code we want to execute this
+            % only when the caller is deep traced, and everything inside
+            % that test must be in C code.
+            MaybeTrailLvals = yes(TrailLval - TicketLval),
+            stackref_to_string(TrailLval, TrailLvalStr),
+            stackref_to_string(TicketLval, TicketLvalStr),
+            !:CodeStr = !.CodeStr ++
+                "\t\tMR_mark_ticket_stack(" ++ TicketLvalStr ++ ");\n" ++
+                "\t\tMR_store_ticket(" ++ TrailLvalStr ++ ");\n"
+        ;
+            MaybeTrailLvals = no
+        ),
+        % Stage 3.
+        (
+            MaybeFromFullSlot = yes(CallFromFullSlot),
+            stackref_to_string(CallFromFullSlot, CallFromFullSlotStr),
+            !:CodeStr =
+                "\t\t" ++ CallFromFullSlotStr ++ " = MR_trace_from_full;\n" ++
+                "\t\tif (MR_trace_from_full) {\n" ++
+                !.CodeStr ++
+                "\t\t} else {\n" ++
+                "\t\t\t" ++ CallDepthStr ++ " = MR_trace_call_depth;\n" ++
+                "\t\t}\n"
+        ;
+            MaybeFromFullSlot = no
+        ),
+        TraceStmt1 = !.CodeStr
     ),
     TraceComponents1 = [foreign_proc_raw_code(cannot_branch_away,
         proc_does_not_affect_liveness, live_lvals_info(set.init), TraceStmt1)],
@@ -627,6 +687,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
             proc_will_not_call_mercury, no, no, MaybeLayoutLabel,
             no, yes, proc_may_not_duplicate), "")
     ]),
+    % Stage 6.
     (
         MaybeMaxfrLval = yes(MaxfrLval),
         TraceCode2 = node([
@@ -636,23 +697,49 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         MaybeMaxfrLval = no,
         TraceCode2 = empty
     ),
+    % Stage 7.
     (
-        MaybeCallTableLval = yes(CallTableLval),
-        stackref_to_string(CallTableLval, CallTableLvalStr),
-        TraceStmt3 = "\t\t" ++ CallTableLvalStr ++ " = 0;\n",
+        MaybeTailRecInfo = yes(TailRecLval - _TailRecLabel),
+        stackref_to_string(TailRecLval, TailRecLvalStr),
+        TraceStmt3 =
+            "\t\tif (MR_trace_tailrec_have_reused_frames) {\n" ++
+            "\t\t\t" ++ TailRecLvalStr ++
+                " = MR_trace_tailrec_num_reused_frames;\n" ++
+            "\t\t\tMR_trace_tailrec_have_reused_frames = MR_FALSE;\n" ++
+            "\t\t} else {" ++
+            "\t\t\t" ++ TailRecLvalStr ++ " = 0;\n" ++
+            "\t\t}",
         TraceComponents3 = [foreign_proc_raw_code(cannot_branch_away,
             proc_does_not_affect_liveness, live_lvals_info(set.init),
             TraceStmt3)],
         TraceCode3 = node([
             llds_instr(foreign_proc_code([], TraceComponents3,
                 proc_will_not_call_mercury, no, no, no, no, yes,
+                proc_may_not_duplicate),
+                "initialize tail recursion count")
+        ])
+    ;
+        MaybeTailRecInfo = no,
+        TraceCode3 = empty
+    ),
+    % Stage 8.
+    (
+        MaybeCallTableLval = yes(CallTableLval),
+        stackref_to_string(CallTableLval, CallTableLvalStr),
+        TraceStmt4 = "\t\t" ++ CallTableLvalStr ++ " = 0;\n",
+        TraceComponents4 = [foreign_proc_raw_code(cannot_branch_away,
+            proc_does_not_affect_liveness, live_lvals_info(set.init),
+            TraceStmt4)],
+        TraceCode4 = node([
+            llds_instr(foreign_proc_code([], TraceComponents4,
+                proc_will_not_call_mercury, no, no, no, no, yes,
                 proc_may_not_duplicate), "")
         ])
     ;
         MaybeCallTableLval = no,
-        TraceCode3 = empty
+        TraceCode4 = empty
     ),
-    TraceCode = tree(TraceCode1, tree(TraceCode2, TraceCode3)).
+    TraceCode = tree_list([TraceCode1, TraceCode2, TraceCode3, TraceCode4]).
 
 trace_prepare_for_call(CI, TraceCode) :-
     get_maybe_trace_info(CI, MaybeTraceInfo),
@@ -821,6 +908,120 @@ generate_external_event_code(ExternalPort, TraceInfo, Context,
         MaybeExternalInfo = no
     ).
 
+generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalPath, Context,
+        Code, TailRecLabel, !CI) :-
+    Port = port_tailrec_call,
+    PortInfo = port_info_tailrec_call(GoalPath, ArgsInfos),
+    HideEvent = no,
+    MaybeUserInfo = no,
+    generate_event_code(Port, PortInfo, yes(TraceInfo), Context, HideEvent,
+        MaybeUserInfo, _Label, _TvarDataMap, Code, !CI),
+    MaybeTailRecInfo = TraceInfo ^ tail_rec_info,
+    (
+        MaybeTailRecInfo = yes(_ - TailRecLabel)
+    ;
+        MaybeTailRecInfo = no,
+        unexpected(this_file, "generate_tailrec_event_code: no tail rec label")
+    ).
+
+:- pred generate_tailrec_reset_slots_code(trace_info::in,
+    code_tree::out, code_info::in, code_info::out) is det.
+
+generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
+    % We reset all the debugging slots that need to be reset. We handle them
+    % in the order of allocation.
+    % Stage 1.
+    CodeModel = get_proc_model(!.CI),
+    event_num_slot(CodeModel, EventNumLval),
+    call_num_slot(CodeModel, CallNumLval),
+    call_depth_slot(CodeModel, CallDepthLval),
+    stackref_to_string(EventNumLval, EventNumStr),
+    stackref_to_string(CallNumLval, CallNumStr),
+    stackref_to_string(CallDepthLval, CallDepthStr),
+    StdSlotCodeStr = "\t\tMR_trace_tailrec_std_slots(" ++
+        EventNumStr ++ ", " ++ CallNumStr ++ ", " ++ CallDepthStr ++ ");\n",
+    % Stage 2.
+    % Tail recursion events cannot happen in model_non procedures, so stage 2
+    % will not allocate any slots.
+    MaybeRedoLabelLval = TraceInfo ^ redo_label,
+    expect(unify(MaybeRedoLabelLval, no), this_file,
+        "redo label in procedure with TAIL event"),
+    % Stage 3.
+    % Tail recursion events are disabled if the trace level is shallow tracing,
+    % so stage 3 will not allocate any slots.
+    MaybeFromFullLval = TraceInfo ^ from_full_lval,
+    expect(unify(MaybeFromFullLval, no), this_file,
+        "from_full slot in procedure with TAIL event"),
+    % Stage 4.
+    MaybeIoSeqSlot = TraceInfo ^ io_seq_lval,
+    (
+        MaybeIoSeqSlot = yes(IoSeqLval),
+        stackref_to_string(IoSeqLval, IoSeqStr),
+        IoSeqCodeStr = "\t\t" ++ IoSeqStr ++ " = MR_io_tabling_counter;\n"
+    ;
+        MaybeIoSeqSlot = no,
+        IoSeqCodeStr = ""
+    ),
+    % Stage 5.
+    MaybeTrailLvals = TraceInfo ^ trail_lvals,
+    (
+        MaybeTrailLvals = yes(TrailLval - TicketLval),
+        stackref_to_string(TrailLval, TrailLvalStr),
+        stackref_to_string(TicketLval, TicketLvalStr),
+        TrailCodeStr =
+            "\t\tMR_mark_ticket_stack(" ++ TicketLvalStr ++ ");\n" ++
+            "\t\tMR_store_ticket(" ++ TrailLvalStr ++ ");\n"
+    ;
+        MaybeTrailLvals = no,
+        TrailCodeStr = ""
+    ),
+    % Stage 6.
+    MaybeMaxfrLval = TraceInfo ^ maxfr_lval,
+    (
+        MaybeMaxfrLval = yes(MaxfrLval),
+        MaxfrCode = node([
+            llds_instr(assign(MaxfrLval, lval(maxfr)), "save initial maxfr")
+        ])
+    ;
+        MaybeMaxfrLval = no,
+        MaxfrCode = empty
+    ),
+    % Stage 7.
+    TailRecInfo = TraceInfo ^ tail_rec_info,
+    (
+        TailRecInfo = yes(TailRecLval - _),
+        TailRecLvalCode = node([
+            llds_instr(assign(TailRecLval,
+                binop(int_add, lval(TailRecLval), const(llconst_int(1)))),
+                "increment tail recursion counter")
+        ])
+    ;
+        TailRecInfo = no,
+        unexpected(this_file,
+            "generate_tailrec_reset_slots_code: no tail rec lval")
+    ),
+    % Stage 8.
+    MaybeCallTableLval = TraceInfo ^ call_table_tip_lval,
+    (
+        MaybeCallTableLval = yes(CallTableLval),
+        stackref_to_string(CallTableLval, CallTableLvalStr),
+        CallTableCodeStr = "\t\t" ++ CallTableLvalStr ++ " = 0;\n"
+    ;
+        MaybeCallTableLval = no,
+        CallTableCodeStr = ""
+    ),
+    ForeignLangCodeStr = StdSlotCodeStr ++ IoSeqCodeStr ++ TrailCodeStr ++
+        CallTableCodeStr,
+    ForeignLangComponents = [foreign_proc_raw_code(cannot_branch_away,
+        proc_does_not_affect_liveness, live_lvals_info(set.init),
+        ForeignLangCodeStr)],
+    ForeignLangCode = node([
+        llds_instr(foreign_proc_code([], ForeignLangComponents,
+            proc_will_not_call_mercury, no, no, no,
+            no, yes, proc_may_duplicate), "")
+    ]),
+    Code = tree_list([ForeignLangCode, MaxfrCode, TailRecLvalCode]).
+
 :- pred generate_event_code(trace_port::in, trace_port_info::in,
     maybe(trace_info)::in, prog_context::in, bool::in,
     maybe(user_event_info)::in, label::out,
@@ -834,19 +1035,38 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     (
         PortInfo = port_info_external,
         LiveVars = LiveVars0,
-        Path = empty_goal_path
+        Path = empty_goal_path,
+        TailRecResetCode = empty
+    ;
+        PortInfo = port_info_tailrec_call(Path, ArgsInfos),
+        % The pre_goal_update has added the output variables of the recursive
+        % call to the set of live variables; we must undo this.
+        find_output_vars(ArgsInfos, [], OutputVars),
+        list.delete_elems(LiveVars0, OutputVars, LiveVars),
+        (
+            MaybeTraceInfo = yes(TailRecTraceInfo),
+            generate_tailrec_reset_slots_code(TailRecTraceInfo,
+                TailRecResetCode, !CI)
+        ;
+            MaybeTraceInfo = no,
+            unexpected(this_file,
+                "generate_event_code: tailrec call without TraceInfo")
+        )
     ;
         PortInfo = port_info_internal(Path, PreDeaths),
         ResumeVars = current_resume_point_vars(!.CI),
         set.difference(PreDeaths, ResumeVars, RealPreDeaths),
         set.to_sorted_list(RealPreDeaths, RealPreDeathList),
-        list.delete_elems(LiveVars0, RealPreDeathList, LiveVars)
+        list.delete_elems(LiveVars0, RealPreDeathList, LiveVars),
+        TailRecResetCode = empty
     ;
         PortInfo = port_info_negation_end(Path),
-        LiveVars = LiveVars0
+        LiveVars = LiveVars0,
+        TailRecResetCode = empty
     ;
         PortInfo = port_info_user(Path),
-        LiveVars = LiveVars0
+        LiveVars = LiveVars0,
+        TailRecResetCode = empty
     ;
         PortInfo = port_info_nondet_foreign_proc,
         LiveVars = [],
@@ -857,7 +1077,8 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         ;
             unexpected(this_file,
                 "generate_event_code: bad nondet foreign_proc port")
-        )
+        ),
+        TailRecResetCode = empty
     ),
     VarTypes = get_var_types(!.CI),
     get_varset(!.CI, VarSet),
@@ -938,7 +1159,23 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
                 proc_may_call_mercury, no, no, yes(Label), no, yes,
                 proc_may_not_duplicate), "")
         ]),
-    Code = tree(ProduceCode, TraceCode).
+    Code = tree_list([ProduceCode, TailRecResetCode, TraceCode]).
+
+:- pred find_output_vars(assoc_list(prog_var, arg_info)::in,
+    list(prog_var)::in, list(prog_var)::out) is det.
+
+find_output_vars([], !OutputVars).
+find_output_vars([Arg - Info | ArgsInfos], !OutputVars) :-
+    Info = arg_info(_ArgLoc, Mode),
+    (
+        Mode = top_out,
+        !:OutputVars = [Arg | !.OutputVars]
+    ;
+        Mode = top_in
+    ;
+        Mode = top_unused
+    ),
+    find_output_vars(ArgsInfos, !OutputVars).
 
 :- func find_lval_in_var_info(layout_var_info) = lval.
 
@@ -1075,6 +1312,7 @@ stackref_to_string(Lval, LvalStr) :-
 convert_external_port_type(external_port_call) = port_call.
 convert_external_port_type(external_port_exit) = port_exit.
 convert_external_port_type(external_port_fail) = port_fail.
+convert_external_port_type(external_port_tailrec_call) = port_tailrec_call.
 
 :- func convert_nondet_foreign_proc_port_type(nondet_foreign_proc_trace_port)
     = trace_port.
@@ -1145,49 +1383,48 @@ redo_layout_slot(CodeModel, RedoLayoutSlot) :-
                 trace_level             :: trace_level,
                 trace_suppress_items    :: trace_suppress_items,
 
+                % If the trace level is shallow, the lval of the slot
+                % that holds the from-full flag.
                 from_full_lval          :: maybe(lval),
-                                        % If the trace level is shallow,
-                                        % the lval of the slot that holds the
-                                        % from-full flag.
 
+                % If the procedure has I/O state arguments, the lval
+                % of the slot that holds the initial value of the
+                % I/O action counter.
                 io_seq_lval             :: maybe(lval),
-                                        % If the procedure has I/O state
-                                        % arguments, the lval of the slot
-                                        % that holds the initial value of the
-                                        % I/O action counter.
 
+                % If trailing is enabled, the lvals of the slots that hold
+                % the value of the trail pointer and the ticket counter
+                % at the time of the call.
                 trail_lvals             :: maybe(pair(lval)),
-                                        % If trailing is enabled, the lvals
-                                        % of the slots that hold the value
-                                        % of the trail pointer and the ticket
-                                        % counter at the time of the call.
 
+                % If we reserve a slot for holding the value of maxfr
+                % at entry for use in implementing retry, the lval of the slot.
                 maxfr_lval              :: maybe(lval),
-                                        % If we reserve a slot for holding
-                                        % the value of maxfr at entry for use
-                                        % in implementing retry, the lval of
-                                        % the slot.
 
+                % If we reserve a slot for holding the value of the call table
+                % tip variable, the lval of this variable.
                 call_table_tip_lval     :: maybe(lval),
-                                        % If we reserve a slot for holding
-                                        % the value of the call table tip
-                                        % variable, the lval of this variable.
 
+                % If we reserve a slot for holding the number of times the
+                % stack frame was reused by tail recursive calls, the lval
+                % holding this counter, and the label that a tail recursive
+                % call should jump to. 
+                tail_rec_info           :: maybe(pair(lval, label)),
+
+                % If we are generating redo events, this has the label
+                % associated with the fail event, which we then reserve
+                % in advance, so we can put the address of its layout struct
+                % into the slot which holds the layout for the redo event
+                % (the two events have identical layouts).
                 redo_label              :: maybe(label)
-                                        % If we are generating redo events,
-                                        % this has the label associated with
-                                        % the fail event, which we then reserve
-                                        % in advance, so we can put the
-                                        % address of its layout struct
-                                        % into the slot which holds the
-                                        % layout for the redo event (the
-                                        % two events have identical layouts).
             ).
+
+get_trace_maybe_tail_rec_info(TraceInfo, TraceInfo ^ tail_rec_info).
 
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
-this_file = "trace.m".
+this_file = "trace_gen.m".
 
 %-----------------------------------------------------------------------------%

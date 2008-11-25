@@ -52,7 +52,7 @@
     % that records information about layout structures.
     %
 :- pred generate_proc_code(pred_info::in, proc_info::in,
-    proc_id::in, pred_id::in, module_info::in,
+    pred_id::in, proc_id::in, module_info::in,
     global_data::in, global_data::out, c_procedure::out) is det.
 
     % Return the message that identifies the procedure to pass to
@@ -158,7 +158,7 @@ generate_code_parallel(ModuleInfo0, PredIds, !GlobalData, Procedures) :-
     % unbalanced.  Splitting the list in any other way (as we do) does mean
     % that the generated code will be slightly different due to the static
     % data being reordered.
-    % 
+    %
     % We only try to make use of two processors (threads) for now.  Using more
     % processors efficiently probably requires knowing how many processors are
     % available, so we can divide the pred list whilst minimise the time
@@ -253,7 +253,7 @@ generate_pred_code_par(ModuleInfo, PredId, Predicates, !GlobalData) :-
 
     % Translate a HLDS predicate to LLDS.
     %
-:- pred generate_pred_code(module_info::in, 
+:- pred generate_pred_code(module_info::in,
     pred_id::in, pred_info::in, list(proc_id)::in, list(c_procedure)::out,
     global_data::in, global_data::out) is det.
 
@@ -273,7 +273,7 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
         !GlobalData, !Procs) :-
     pred_info_get_procedures(PredInfo, ProcInfos),
     map.lookup(ProcInfos, ProcId, ProcInfo),
-    generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
+    generate_proc_code(PredInfo, ProcInfo, PredId, ProcId, ModuleInfo0,
         !GlobalData, Proc),
     !:Procs = [Proc | !.Procs],
     generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
@@ -298,7 +298,7 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 
 %---------------------------------------------------------------------------%
 
-generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
+generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
         !GlobalData, Proc) :-
     % The modified module_info and proc_info are both discarded
     % on return from generate_proc_code.
@@ -546,7 +546,7 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
         unexpected(this_file,
             "generate_deep_prof_info: no HLDS deep profiling layout info")
     ),
-    HLDSDeepLayout = hlds_deep_layout(HLDSProcStatic, HLDSExcpVars), 
+    HLDSDeepLayout = hlds_deep_layout(HLDSProcStatic, HLDSExcpVars),
     HLDSDeepInfo ^ deep_orig_body = OriginalProcBody,
     HLDSExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
         MaybeOldOutermostVar),
@@ -640,18 +640,30 @@ generate_category_code(model_det, ProcContext, Goal, ResumePoint,
         (
             MaybeTraceInfo = yes(TraceInfo),
             generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
-                TraceCallCode, !CI)
+                TraceCallCode, !CI),
+            get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
+            (
+                MaybeTailRecInfo = yes(_TailRecLval - TailRecLabel),
+                TailRecLabelCode = node([
+                    llds_instr(label(TailRecLabel), "tail recursion label")
+                ])
+            ;
+                MaybeTailRecInfo = no,
+                TailRecLabelCode = empty
+            )
         ;
             MaybeTraceInfo = no,
             MaybeTraceCallLabel = no,
-            TraceCallCode = empty
+            TraceCallCode = empty,
+            TailRecLabelCode = empty
         ),
         generate_goal(model_det, Goal, BodyCode, !CI),
         generate_entry(!.CI, model_det, Goal, ResumePoint, FrameInfo,
             EntryCode),
         generate_exit(model_det, FrameInfo, TraceSlotInfo, ProcContext,
             _, ExitCode, !CI),
-        Code = tree_list([EntryCode, TraceCallCode, BodyCode, ExitCode])
+        Code = tree_list([EntryCode, TraceCallCode, TailRecLabelCode,
+            BodyCode, ExitCode])
     ).
 
 generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
@@ -667,6 +679,16 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         MaybeTraceInfo = yes(TraceInfo),
         generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
             TraceCallCode, !CI),
+        get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
+        (
+            MaybeTailRecInfo = yes(_TailRecLval - TailRecLabel),
+            TailRecLabelCode = node([
+                llds_instr(label(TailRecLabel), "tail recursion label")
+            ])
+        ;
+            MaybeTailRecInfo = no,
+            TailRecLabelCode = empty
+        ),
         generate_goal(model_semi, Goal, BodyCode, !CI),
         generate_entry(!.CI, model_semi, Goal, ResumePoint,
             FrameInfo, EntryCode),
@@ -688,8 +710,9 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
             MaybeFailExternalInfo = no,
             TraceFailCode = empty
         ),
-        Code = tree_list([EntryCode, TraceCallCode, BodyCode, ExitCode,
-            ResumeCode, TraceFailCode, RestoreDeallocCode, FailCode])
+        Code = tree_list([EntryCode, TraceCallCode, TailRecLabelCode,
+            BodyCode, ExitCode, ResumeCode, TraceFailCode,
+            RestoreDeallocCode, FailCode])
     ;
         MaybeTraceInfo = no,
         MaybeTraceCallLabel = no,
@@ -710,6 +733,9 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
         MaybeTraceInfo = yes(TraceInfo),
         generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
             TraceCallCode, !CI),
+        get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
+        expect(unify(MaybeTailRecInfo, no), this_file,
+            "tail recursive call in model_non code"),
         generate_goal(model_non, Goal, BodyCode, !CI),
         generate_entry(!.CI, model_non, Goal, ResumePoint,
             FrameInfo, EntryCode),

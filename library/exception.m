@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1764,6 +1764,7 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
         MR_Code                     *MR_jumpaddr;
         MR_StackWalkStepResult      result;
         const char                  *problem;
+        MR_Unsigned                 reused_frames;
   #ifdef MR_DEEP_PROFILING
         MR_CallSiteDynamic          *csd;
         const MR_ProcLayout         *pl;
@@ -1894,9 +1895,12 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
             }
         }
 
-        /* Unwind the stacks back to the previous stack frame. */
+        /*
+        ** Unwind the stacks back to the previous stack frame.
+        ** Note that we don't care whether the frame has been reused.
+        */
         result = MR_stack_walk_step(entry_layout, &return_label_layout,
-            &base_sp, &base_curfr, &problem);
+            &base_sp, &base_curfr, &reused_frames, &problem);
         if (result != MR_STEP_OK) {
             WARNING(problem);
             return NULL;

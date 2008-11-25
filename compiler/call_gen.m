@@ -97,7 +97,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs, !CI),
 
     % Figure out what the call model is.
-    call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI),
+    prepare_for_call(CodeModel, CallModel, TraceResetCode, !CI),
 
     % Make the call. Note that the construction of CallCode will be moved
     % *after* the code that computes ReturnLiveLvalues.
@@ -127,7 +127,23 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     % If the call can fail, generate code to check for and handle the failure.
     handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
-    Code = tree_list([SetupCode, TraceCode, CallCode, FailHandlingCode]).
+    get_maybe_trace_info(!.CI, MaybeTraceInfo),
+    (
+        goal_info_has_feature(GoalInfo, feature_debug_tail_rec_call),
+        MaybeTraceInfo = yes(TraceInfo)
+    ->
+        generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalPath, Context,
+            TraceTailRecResetAndEventCode, TailRecLabel, !CI),
+        JumpCode = node([
+            llds_instr(livevals(LiveVals), ""),
+            llds_instr(goto(code_label(TailRecLabel)),
+                "tail recursive jump")
+        ]),
+        Code = tree_list([SetupCode, TraceTailRecResetAndEventCode, JumpCode])
+    ;
+        Code = tree_list([SetupCode, TraceResetCode, CallCode,
+            FailHandlingCode])
+    ).
 
 %---------------------------------------------------------------------------%
 

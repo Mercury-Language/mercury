@@ -68,6 +68,7 @@
 
     % High-level HLDS transformations.
 :- import_module check_hlds.check_typeclass.
+:- import_module hlds.mark_tail_calls.
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.trans_opt.
 :- import_module transform_hlds.equiv_type_hlds.
@@ -164,6 +165,7 @@
 :- import_module check_hlds.unused_imports.
 :- import_module check_hlds.xml_documentation.
 :- import_module hlds.arg_info.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
@@ -2865,6 +2867,9 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     compute_liveness(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 330, "liveness", !DumpInfo, !IO),
 
+    maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 332, "mark_debug_tailrec_calls", !DumpInfo, !IO),
+
     compute_stack_vars(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 335, "stackvars", !DumpInfo, !IO),
 
@@ -3050,6 +3055,17 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
         !.HLDS, !IO),
     detect_liveness_proc(PredId, ProcId, !.HLDS, !ProcInfo, !IO),
+    globals.lookup_bool_option(Globals, exec_trace_tail_rec, ExecTraceTailRec),
+    (
+        ExecTraceTailRec = yes,
+        write_proc_progress_message(
+            "% Marking directly tail recursive calls in ", PredId, ProcId,
+            !.HLDS, !IO),
+        mark_tail_calls(feature_debug_tail_rec_call, PredId, ProcId,
+            !.HLDS, PredInfo, !ProcInfo)
+    ;
+        ExecTraceTailRec = no
+    ),
     write_proc_progress_message("% Allocating stack slots in ", PredId,
         ProcId, !.HLDS, !IO),
     allocate_stack_slots_in_proc(PredId, ProcId, !.HLDS, !ProcInfo, !IO),
@@ -3067,7 +3083,7 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     ),
     write_proc_progress_message("% Generating low-level (LLDS) code for ",
         PredId, ProcId, !.HLDS, !IO),
-    generate_proc_code(PredInfo, !.ProcInfo, ProcId, PredId, !.HLDS,
+    generate_proc_code(PredInfo, !.ProcInfo, PredId, ProcId, !.HLDS,
         !GlobalData, ProcCode0),
     globals.lookup_bool_option(Globals, optimize, Optimize),
     (
@@ -4567,6 +4583,27 @@ compute_liveness(Verbose, Stats, !HLDS, !IO) :-
     ),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
+
+:- pred maybe_mark_tail_rec_calls(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, exec_trace_tail_rec, ExecTraceTailRec),
+    (
+        ExecTraceTailRec = yes,
+        maybe_write_string(Verbose,
+            "% Marking directly tail recursive calls...", !IO),
+        maybe_flush_output(Verbose, !IO),
+        process_all_nonimported_procs(
+            update_proc_predprocid(
+                mark_tail_calls(feature_debug_tail_rec_call)),
+            !HLDS, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        ExecTraceTailRec = no
+    ).
 
 :- pred compute_stack_vars(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

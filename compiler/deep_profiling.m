@@ -237,7 +237,8 @@ apply_deep_prof_tail_rec_to_goal(Goal0, Goal, TailRecInfo, !FoundTailCall,
             ClonePredProcId = proc(ClonePredId, CloneProcId),
             GoalExpr = plain_call(ClonePredId, CloneProcId, Args,
                 Builtin, UnifyContext, SymName),
-            goal_info_add_feature(feature_tailcall, GoalInfo0, GoalInfo),
+            goal_info_add_feature(feature_deep_tail_rec_call,
+                GoalInfo0, GoalInfo),
             Goal = hlds_goal(GoalExpr, GoalInfo),
             !:FoundTailCall = yes
         ;
@@ -392,7 +393,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
     ;
         GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
         Features = goal_info_get_features(GoalInfo),
-        ( set.member(feature_tailcall, Features) ->
+        ( set.member(feature_deep_tail_rec_call, Features) ->
             !:TailCallSites = [!.N | !.TailCallSites]
         ;
             true
@@ -1142,7 +1143,7 @@ deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ModuleInfo = !.DeepInfo ^ deep_module_info,
     GoalFeatures = goal_info_get_features(GoalInfo0),
-    goal_info_remove_feature(feature_tailcall, GoalInfo0, GoalInfo1),
+    goal_info_remove_feature(feature_deep_tail_rec_call, GoalInfo0, GoalInfo1),
     make_impure(GoalInfo1, GoalInfo2),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst, GoalInfo2,
         MdprofInstGoalInfo),
@@ -1172,7 +1173,7 @@ deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
     CallKind = classify_call(ModuleInfo, GoalExpr0),
     (
         CallKind = call_class_normal(PredProcId),
-        ( set.member(feature_tailcall, GoalFeatures) ->
+        ( set.member(feature_deep_tail_rec_call, GoalFeatures) ->
             generate_deep_det_call(ModuleInfo, "prepare_for_tail_call", 1,
                 [SiteNumVar], [], PrepareGoal)
         ;
@@ -1258,7 +1259,7 @@ deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
     !:DeepInfo = !.DeepInfo ^ deep_call_sites :=
         (!.DeepInfo ^ deep_call_sites ++ [CallSite]),
     (
-        set.member(feature_tailcall, GoalFeatures),
+        set.member(feature_deep_tail_rec_call, GoalFeatures),
         !.DeepInfo ^ deep_maybe_rec_info = yes(RecInfo),
         RecInfo ^ role = outer_proc(_)
     ->

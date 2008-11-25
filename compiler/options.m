@@ -207,13 +207,14 @@
     ;       trace_table_io_all
     ;       trace_goal_flags
     ;       prof_optimized
-    ;       delay_death
+    ;       exec_trace_tail_rec
     ;       suppress_trace
     ;       force_disable_tracing
             % Force no tracing, even in .debug grades. This is used to turn off
             % tracing in the browser directory while still allowing the browser
             % library to be linked in with an executable compiled in a .debug
             % grade.
+    ;       delay_death
 
     ;       stack_trace_higher_order
     ;       force_disable_ssdebug
@@ -1096,6 +1097,7 @@ option_defaults_2(aux_output_option, [
     trace_table_io_all                  -   bool(no),
     trace_goal_flags                    -   accumulating([]),
     prof_optimized                      -   bool(no),
+    exec_trace_tail_rec                 -   bool(no),
     suppress_trace                      -   string(""),
     force_disable_tracing               -   bool(no),
     delay_death                         -   bool(yes),
@@ -1920,6 +1922,7 @@ long_option("trace-table-io-all",   trace_table_io_all).
 long_option("trace-flag",           trace_goal_flags).
 long_option("profile-optimised",    prof_optimized).
 long_option("profile-optimized",    prof_optimized).
+long_option("exec-trace-tail-rec",  exec_trace_tail_rec).
 long_option("suppress-trace",       suppress_trace).
 long_option("force-disable-tracing",    force_disable_tracing).
 long_option("delay-death",          delay_death).
@@ -3512,6 +3515,12 @@ options_help_aux_output -->
         "\tof execution tracing.",
         "\tSee the Debugging chapter of the Mercury User's Guide",
         "\tfor details.",
+        "--exec-trace-tail-rec",
+        "\tGenerate TAIL events for self-tail-recursive calls instead of",
+        "\tEXIT events. This allows these recursive calls to reuse",
+        "\ttheir parent call's stack frame, but it also means that",
+        "\tthe debugger won't have access to the contents of the reused",
+        "\tstack frames",
 %       "--suppress-trace <suppress-items>,",
 %       "\tSuppress the named aspects of the execution tracing system.",
 %       This is a developer-only option:

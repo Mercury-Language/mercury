@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -118,9 +118,17 @@ MR_Next
 MR_trace_cmd_next(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_Unsigned     depth;
-    MR_Unsigned     stop_depth;
-    MR_Unsigned     n;
+    const MR_ProcLayout     *proc_layout;
+    const MR_LabelLayout    *ancestor_layout;
+    MR_Unsigned             depth;
+    MR_Unsigned             stop_depth;
+    MR_Unsigned             n;
+    MR_TracePort            port;
+    MR_Word                 *base_sp;
+    MR_Word                 *base_curfr;
+    MR_Unsigned             reused_frames;
+    MR_Level                actual_level;
+    const char              *problem;       /* not used */
 
     depth = event_info->MR_call_depth;
     cmd->MR_trace_strict = MR_TRUE;
@@ -132,18 +140,46 @@ MR_trace_cmd_next(char **words, int word_count, MR_TraceCmdInfo *cmd,
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         stop_depth = depth - n;
     } else if (word_count == 1) {
+        n = 0;
         stop_depth = depth;
     } else {
         MR_trace_usage_cur_cmd();
         return KEEP_INTERACTING;
     }
 
-    if (depth == stop_depth && MR_port_is_final(event_info->MR_trace_port)) {
+    base_sp = MR_saved_sp(event_info->MR_saved_regs);
+    base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
+    proc_layout = event_info->MR_event_sll->MR_sll_entry;
+    MR_trace_find_reused_frames(proc_layout, base_sp, reused_frames);
+    port = event_info->MR_trace_port;
+
+    if (depth == stop_depth &&
+        (MR_port_is_final(port) || port == MR_PORT_TAILREC_CALL))
+    {
         MR_trace_do_noop();
+    } else if (depth - reused_frames <= stop_depth && stop_depth < depth) {
+        MR_trace_do_noop_tail_rec();
     } else {
-        cmd->MR_trace_cmd = MR_CMD_NEXT;
-        cmd->MR_trace_stop_depth = stop_depth;
-        return STOP_INTERACTING;
+        ancestor_layout = MR_find_nth_ancestor(event_info->MR_event_sll,
+            n, &base_sp, &base_curfr, &actual_level, &problem);
+        if (ancestor_layout == NULL) {
+            fflush(MR_mdb_out);
+            if (problem != NULL) {
+                fprintf(MR_mdb_err, "mdb: %s\n", problem);
+            } else {
+                fprintf(MR_mdb_err, "mdb: not that many ancestors.\n");
+            }
+            return KEEP_INTERACTING;
+        } else if (actual_level != n) {
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err,
+                "mdb: that stack frame has been reused, "
+                "will stop in reusing call.\n");
+        } else {
+            cmd->MR_trace_cmd = MR_CMD_NEXT;
+            cmd->MR_trace_stop_depth = stop_depth;
+            return STOP_INTERACTING;
+        }
     }
 
     return KEEP_INTERACTING;
@@ -153,9 +189,17 @@ MR_Next
 MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_Unsigned depth;
-    MR_Unsigned stop_depth;
-    MR_Unsigned n;
+    const MR_ProcLayout     *proc_layout;
+    const MR_LabelLayout    *ancestor_layout;
+    MR_Unsigned             depth;
+    MR_Unsigned             stop_depth;
+    MR_Unsigned             n;
+    MR_TracePort            port;
+    MR_Word                 *base_sp;
+    MR_Word                 *base_curfr;
+    MR_Unsigned             reused_frames;
+    MR_Level                actual_level;
+    const char              *problem;       /* not used */
 
     depth = event_info->MR_call_depth;
     cmd->MR_trace_strict = MR_TRUE;
@@ -167,18 +211,47 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         stop_depth = depth - n;
     } else if (word_count == 1) {
+        n = 0;
         stop_depth = depth;
     } else {
         MR_trace_usage_cur_cmd();
         return KEEP_INTERACTING;
     }
 
-    if (depth == stop_depth && MR_port_is_final(event_info->MR_trace_port)) {
+    base_sp = MR_saved_sp(event_info->MR_saved_regs);
+    base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
+    proc_layout = event_info->MR_event_sll->MR_sll_entry;
+    MR_trace_find_reused_frames(proc_layout, base_sp, reused_frames);
+    port = event_info->MR_trace_port;
+
+    if (MR_port_is_final(port) && depth == stop_depth) {
         MR_trace_do_noop();
+    } else if (MR_port_is_final(port) &&
+        depth - reused_frames <= stop_depth && stop_depth < depth)
+    {
+        MR_trace_do_noop_tail_rec();
     } else {
-        cmd->MR_trace_cmd = MR_CMD_FINISH;
-        cmd->MR_trace_stop_depth = stop_depth;
-        return STOP_INTERACTING;
+        ancestor_layout = MR_find_nth_ancestor(event_info->MR_event_sll,
+            n, &base_sp, &base_curfr, &actual_level, &problem);
+        if (ancestor_layout == NULL) {
+            fflush(MR_mdb_out);
+            if (problem != NULL) {
+                fprintf(MR_mdb_err, "mdb: %s\n", problem);
+            } else {
+                fprintf(MR_mdb_err, "mdb: not that many ancestors.\n");
+            }
+            return KEEP_INTERACTING;
+        } else if (actual_level != n) {
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err, "%d %d\n", (int) n, (int) actual_level);
+            fprintf(MR_mdb_err,
+                "mdb: that stack frame has been reused, "
+                "will stop at finish of reusing call.\n");
+        } else {
+            cmd->MR_trace_cmd = MR_CMD_FINISH;
+            cmd->MR_trace_stop_depth = stop_depth;
+            return STOP_INTERACTING;
+        }
     }
 
     return KEEP_INTERACTING;
@@ -188,10 +261,10 @@ MR_Next
 MR_trace_cmd_fail(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_Determinism  detism;
-    MR_Unsigned     depth;
-    MR_Unsigned     stop_depth;
-    MR_Unsigned     n;
+    MR_Determinism      detism;
+    MR_Unsigned         depth;
+    MR_Unsigned         stop_depth;
+    MR_Unsigned         n;
 
     detism = event_info->MR_event_sll->MR_sll_entry->MR_sle_detism;
     depth = event_info->MR_call_depth;
@@ -218,6 +291,12 @@ MR_trace_cmd_fail(char **words, int word_count, MR_TraceCmdInfo *cmd,
             MR_detism_names[detism]);
         return KEEP_INTERACTING;
     }
+
+    /*
+    ** A procedure that lives on the nondet stack cannot have its stack frame
+    ** reused by tail recursive calls (at least not when any kind of debugging
+    ** is enabled).
+    */
 
     if (depth == stop_depth && event_info->MR_trace_port == MR_PORT_FAIL) {
         MR_trace_do_noop();

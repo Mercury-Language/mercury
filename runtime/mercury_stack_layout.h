@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab
+*/
+/*
 ** Copyright (C) 1998-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -31,13 +34,13 @@
 */
 
 #include "mercury_types.h"
-#include "mercury_std.h"			/* for MR_VARIABLE_SIZED */
+#include "mercury_std.h"                /* for MR_VARIABLE_SIZED */
 #include "mercury_tags.h"
-#include "mercury_type_info.h"			/* for MR_PseudoTypeInfo */
-#include "mercury_proc_id.h"			/* for MR_ProcId */
-#include "mercury_goto.h"			/* for MR_PROC_LAYOUT etc */
-#include "mercury_tabling.h"			/* for MR_TableTrieStep etc */
-#include "mercury_bootstrap.h"			/* for MR_Table_Trie_Step */
+#include "mercury_type_info.h"          /* for MR_PseudoTypeInfo */
+#include "mercury_proc_id.h"            /* for MR_ProcId */
+#include "mercury_goto.h"               /* for MR_PROC_LAYOUT etc */
+#include "mercury_tabling.h"            /* for MR_TableTrieStep etc */
+#include "mercury_bootstrap.h"          /* for MR_Table_Trie_Step */
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -57,29 +60,29 @@
 ** in mdbcomp/program_representation.m.
 */
 
-typedef	MR_int_least16_t	MR_Determinism;
+typedef MR_int_least16_t    MR_Determinism;
 
-#define	MR_DETISM_DET		6
-#define	MR_DETISM_SEMI		2
-#define	MR_DETISM_NON		3
-#define	MR_DETISM_MULTI		7
-#define	MR_DETISM_ERRONEOUS	4
-#define	MR_DETISM_FAILURE	0
-#define	MR_DETISM_CCNON		10
-#define	MR_DETISM_CCMULTI	14
+#define MR_DETISM_DET       6
+#define MR_DETISM_SEMI      2
+#define MR_DETISM_NON       3
+#define MR_DETISM_MULTI     7
+#define MR_DETISM_ERRONEOUS 4
+#define MR_DETISM_FAILURE   0
+#define MR_DETISM_CCNON     10
+#define MR_DETISM_CCMULTI   14
 
-#define	MR_DETISM_MAX		14
+#define MR_DETISM_MAX       14
 
-#define MR_DETISM_AT_MOST_ZERO(d)	(((d) & 3) == 0)
-#define MR_DETISM_AT_MOST_ONE(d)	(((d) & 3) == 2)
-#define MR_DETISM_AT_MOST_MANY(d)	(((d) & 1) != 0)
+#define MR_DETISM_AT_MOST_ZERO(d)   (((d) & 3) == 0)
+#define MR_DETISM_AT_MOST_ONE(d)    (((d) & 3) == 2)
+#define MR_DETISM_AT_MOST_MANY(d)   (((d) & 1) != 0)
 
-#define MR_DETISM_CAN_FAIL(d)		(((d) & 4) == 0)
+#define MR_DETISM_CAN_FAIL(d)       (((d) & 4) == 0)
 
-#define MR_DETISM_FIRST_SOLN(d)		(((d) & 8) != 0)
+#define MR_DETISM_FIRST_SOLN(d)     (((d) & 8) != 0)
 
-#define MR_DETISM_DET_STACK(d)		(!MR_DETISM_AT_MOST_MANY(d) \
-					|| MR_DETISM_FIRST_SOLN(d))
+#define MR_DETISM_DET_STACK(d)      (!MR_DETISM_AT_MOST_MANY(d) \
+                                    || MR_DETISM_FIRST_SOLN(d))
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -98,20 +101,20 @@ typedef	MR_int_least16_t	MR_Determinism;
 ** describes the different tag values. The interpretation of the rest of
 ** the word depends on the location type:
 **
-** Locn			Rest
+** Locn                 Rest
 **
-** MR_r(Num)		Num (register number)
-** MR_f(Num)		Num (register number)
-** MR_stackvar(Num)	Num (stack slot number)
-** MR_framevar(Num)	Num (stack slot number)
+** MR_r(Num)            Num (register number)
+** MR_f(Num)            Num (register number)
+** MR_stackvar(Num)     Num (stack slot number)
+** MR_framevar(Num)     Num (stack slot number)
 ** MR_succip
 ** MR_maxfr
 ** MR_curfr
 ** MR_hp
 ** MR_sp
-** constant		See below
-** indirect(Base, N)	See below
-** unknown		(The location is not known)
+** constant             See below
+** indirect(Base, N)    See below
+** unknown              (The location is not known)
 **
 ** For constants, the rest of the word is a pointer to static data. The
 ** pointer has only two low tag bits free, so we reserve every four-bit tag
@@ -131,62 +134,62 @@ typedef	MR_int_least16_t	MR_Determinism;
 */
 
 struct MR_LongLval_Struct {
-	MR_Unsigned	MR_long_lval;
+    MR_Unsigned MR_long_lval;
 };
 
 typedef enum {
-	MR_LONG_LVAL_TYPE_CONS_0,
-	MR_LONG_LVAL_TYPE_R,
-	MR_LONG_LVAL_TYPE_F,
-	MR_LONG_LVAL_TYPE_STACKVAR,
-	MR_LONG_LVAL_TYPE_CONS_1,
-	MR_LONG_LVAL_TYPE_FRAMEVAR,
-	MR_LONG_LVAL_TYPE_SUCCIP,
-	MR_LONG_LVAL_TYPE_MAXFR,
-	MR_LONG_LVAL_TYPE_CONS_2,
-	MR_LONG_LVAL_TYPE_CURFR,
-	MR_LONG_LVAL_TYPE_HP,
-	MR_LONG_LVAL_TYPE_SP,
-	MR_LONG_LVAL_TYPE_CONS_3,
-	MR_LONG_LVAL_TYPE_INDIRECT,
-	MR_LONG_LVAL_TYPE_UNKNOWN
+    MR_LONG_LVAL_TYPE_CONS_0,
+    MR_LONG_LVAL_TYPE_R,
+    MR_LONG_LVAL_TYPE_F,
+    MR_LONG_LVAL_TYPE_STACKVAR,
+    MR_LONG_LVAL_TYPE_CONS_1,
+    MR_LONG_LVAL_TYPE_FRAMEVAR,
+    MR_LONG_LVAL_TYPE_SUCCIP,
+    MR_LONG_LVAL_TYPE_MAXFR,
+    MR_LONG_LVAL_TYPE_CONS_2,
+    MR_LONG_LVAL_TYPE_CURFR,
+    MR_LONG_LVAL_TYPE_HP,
+    MR_LONG_LVAL_TYPE_SP,
+    MR_LONG_LVAL_TYPE_CONS_3,
+    MR_LONG_LVAL_TYPE_INDIRECT,
+    MR_LONG_LVAL_TYPE_UNKNOWN
 } MR_LongLvalType;
 
 /* This must be in sync with stack_layout.long_lval_tag_bits */
-#define MR_LONG_LVAL_TAGBITS		4
+#define MR_LONG_LVAL_TAGBITS        4
 
-#define MR_LONG_LVAL_CONST_TAGBITS	2
+#define MR_LONG_LVAL_CONST_TAGBITS  2
 
-#define MR_LONG_LVAL_TYPE(Locn)						\
-	((MR_LongLvalType)						\
-		((Locn).MR_long_lval & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
+#define MR_LONG_LVAL_TYPE(Locn)                                             \
+    ((MR_LongLvalType)                                                      \
+        ((Locn).MR_long_lval & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
 
-#define MR_LONG_LVAL_NUMBER(Locn)					\
-	((int) (Locn).MR_long_lval >> MR_LONG_LVAL_TAGBITS)
+#define MR_LONG_LVAL_NUMBER(Locn)                                           \
+    ((int) (Locn).MR_long_lval >> MR_LONG_LVAL_TAGBITS)
 
-#define MR_LONG_LVAL_CONST(Locn)					\
-	(* (MR_Word *) ((Locn).MR_long_lval &				\
-		~ ((1 << MR_LONG_LVAL_CONST_TAGBITS) - 1)))
+#define MR_LONG_LVAL_CONST(Locn)                                            \
+    (* (MR_Word *) ((Locn).MR_long_lval &                                   \
+        ~ ((1 << MR_LONG_LVAL_CONST_TAGBITS) - 1)))
 
 /* This must be in sync with stack_layout.offset_bits */
-#define MR_LONG_LVAL_OFFSETBITS	6
+#define MR_LONG_LVAL_OFFSETBITS 6
 
-#define MR_LONG_LVAL_INDIRECT_OFFSET(LocnNumber)			\
-	((int) ((LocnNumber).MR_long_lval &				\
-		((1 << MR_LONG_LVAL_OFFSETBITS) - 1)))
+#define MR_LONG_LVAL_INDIRECT_OFFSET(LocnNumber)                            \
+    ((int) ((LocnNumber).MR_long_lval &                                     \
+        ((1 << MR_LONG_LVAL_OFFSETBITS) - 1)))
 
-#define MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(LocnNumber)			\
-	(((MR_uint_least32_t) (LocnNumber).MR_long_lval)		\
-		>> MR_LONG_LVAL_OFFSETBITS)
+#define MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(LocnNumber)                     \
+    (((MR_uint_least32_t) (LocnNumber).MR_long_lval)                        \
+        >> MR_LONG_LVAL_OFFSETBITS)
 
-#define	MR_LONG_LVAL_STACKVAR_INT(n)					\
-	(((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_STACKVAR)
+#define MR_LONG_LVAL_STACKVAR_INT(n)                                        \
+    (((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_STACKVAR)
 
-#define	MR_LONG_LVAL_FRAMEVAR_INT(n)					\
-	(((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_FRAMEVAR)
+#define MR_LONG_LVAL_FRAMEVAR_INT(n)                                        \
+    (((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_FRAMEVAR)
 
-#define	MR_LONG_LVAL_R_REG_INT(n)					\
-	(((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
+#define MR_LONG_LVAL_R_REG_INT(n)                                           \
+    (((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
 
 /*
 ** MR_ShortLval is a MR_uint_least8_t which describes an location. This
@@ -198,46 +201,46 @@ typedef enum {
 ** the different tag values. The interpretation of the rest of the word
 ** depends on the location type:
 **
-** Locn			Tag	Rest
-** MR_r(Num)		 0	Num (register number)
-** MR_stackvar(Num)	 1	Num (stack slot number)
-** MR_framevar(Num)	 2	Num (stack slot number)
-** special reg		 3	MR_LongLvalType
+** Locn             Tag Rest
+** MR_r(Num)         0  Num (register number)
+** MR_stackvar(Num)  1  Num (stack slot number)
+** MR_framevar(Num)  2  Num (stack slot number)
+** special reg       3  MR_LongLvalType
 **
 ** This data is generated in stack_layout.represent_locn_as_byte,
 ** which must be kept in sync with the constants and macros defined here.
 */
 
-typedef MR_uint_least8_t	MR_ShortLval;
+typedef MR_uint_least8_t    MR_ShortLval;
 
 typedef enum {
-	MR_SHORT_LVAL_TYPE_R,
-	MR_SHORT_LVAL_TYPE_STACKVAR,
-	MR_SHORT_LVAL_TYPE_FRAMEVAR,
-	MR_SHORT_LVAL_TYPE_SPECIAL
+    MR_SHORT_LVAL_TYPE_R,
+    MR_SHORT_LVAL_TYPE_STACKVAR,
+    MR_SHORT_LVAL_TYPE_FRAMEVAR,
+    MR_SHORT_LVAL_TYPE_SPECIAL
 } MR_ShortLval_Type;
 
 /* This must be in sync with stack_layout.short_lval_tag_bits */
-#define MR_SHORT_LVAL_TAGBITS	2
+#define MR_SHORT_LVAL_TAGBITS   2
 
-#define MR_SHORT_LVAL_TYPE(Locn)					\
-	((MR_ShortLval_Type)						\
-		(((MR_Word) Locn) & ((1 << MR_SHORT_LVAL_TAGBITS) - 1)))
+#define MR_SHORT_LVAL_TYPE(Locn)                                            \
+    ((MR_ShortLval_Type)                                                    \
+        (((MR_Word) Locn) & ((1 << MR_SHORT_LVAL_TAGBITS) - 1)))
 
-#define MR_SHORT_LVAL_NUMBER(Locn)					\
-	((int) ((MR_Word) Locn) >> MR_SHORT_LVAL_TAGBITS)
+#define MR_SHORT_LVAL_NUMBER(Locn)                                          \
+    ((int) ((MR_Word) Locn) >> MR_SHORT_LVAL_TAGBITS)
 
-#define	MR_SHORT_LVAL_STACKVAR(n)					\
-	((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
-		+ MR_SHORT_LVAL_TYPE_STACKVAR))
+#define MR_SHORT_LVAL_STACKVAR(n)                                           \
+    ((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)                         \
+        + MR_SHORT_LVAL_TYPE_STACKVAR))
 
-#define	MR_SHORT_LVAL_FRAMEVAR(n)					\
-	((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
-		+ MR_SHORT_LVAL_TYPE_FRAMEVAR))
+#define MR_SHORT_LVAL_FRAMEVAR(n)                                           \
+    ((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)                         \
+        + MR_SHORT_LVAL_TYPE_FRAMEVAR))
 
-#define	MR_SHORT_LVAL_R_REG(n)						\
-	((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
-		+ MR_SHORT_LVAL_TYPE_R))
+#define MR_SHORT_LVAL_R_REG(n)                                              \
+    ((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)                         \
+        + MR_SHORT_LVAL_TYPE_R))
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -281,12 +284,12 @@ typedef enum {
 ** other variables, slowing it down.)
 */
 
-typedef	MR_uint_least16_t		MR_HLDSVarNum;
+typedef MR_uint_least16_t       MR_HLDSVarNum;
 
 struct MR_UserEvent_Struct {
-	MR_uint_least16_t		MR_ue_event_number;
-	MR_LongLval			*MR_ue_attr_locns;
-	const MR_HLDSVarNum		*MR_ue_attr_var_nums;
+    MR_uint_least16_t           MR_ue_event_number;
+    MR_LongLval                 *MR_ue_attr_locns;
+    const MR_HLDSVarNum         *MR_ue_attr_var_nums;
 };
 
 /*
@@ -324,29 +327,29 @@ struct MR_UserEvent_Struct {
 */
 
 struct MR_SynthAttr_Struct {
-	MR_int_least16_t		MR_sa_func_attr;
-	MR_int_least16_t		MR_sa_num_arg_attrs;
-	MR_uint_least16_t		*MR_sa_arg_attrs;
-	MR_int_least16_t		*MR_sa_depend_attrs;
+    MR_int_least16_t        MR_sa_func_attr;
+    MR_int_least16_t        MR_sa_num_arg_attrs;
+    MR_uint_least16_t       *MR_sa_arg_attrs;
+    MR_int_least16_t        *MR_sa_depend_attrs;
 };
 
 struct MR_UserEventSpec_Struct {
-	const char			*MR_ues_event_name;
-	MR_uint_least16_t		MR_ues_num_attrs;
-	const char			**MR_ues_attr_names;
-	MR_TypeInfo			*MR_ues_attr_types;
-	MR_SynthAttr			*MR_ues_synth_attrs;
-	MR_int_least16_t		*MR_ues_synth_attr_order;
+    const char              *MR_ues_event_name;
+    MR_uint_least16_t       MR_ues_num_attrs;
+    const char              **MR_ues_attr_names;
+    MR_TypeInfo             *MR_ues_attr_types;
+    MR_SynthAttr            *MR_ues_synth_attrs;
+    MR_int_least16_t        *MR_ues_synth_attr_order;
 };
 
-#define	MR_user_event_spec(label_layout)	\
-	label_layout->MR_sll_entry->MR_sle_module_layout->		\
-	MR_ml_user_event_specs[label_layout->MR_sll_user_event->	\
-		MR_ue_event_number]
+#define MR_user_event_spec(label_layout)                                    \
+    label_layout->MR_sll_entry->MR_sle_module_layout->                      \
+    MR_ml_user_event_specs[label_layout->MR_sll_user_event->                \
+        MR_ue_event_number]
 
-#define	MR_user_event_set_name(label_layout)	\
-	label_layout->MR_sll_entry->MR_sle_module_layout->		\
-	MR_ml_user_event_set_name
+#define MR_user_event_set_name(label_layout)                                \
+    label_layout->MR_sll_entry->MR_sle_module_layout->                      \
+    MR_ml_user_event_set_name
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -469,66 +472,66 @@ struct MR_UserEventSpec_Struct {
 */
 
 struct MR_TypeParamLocns_Struct {
-	MR_uint_least32_t		MR_tp_param_count;
-	MR_LongLval			MR_tp_param_locns[MR_VARIABLE_SIZED];
+    MR_uint_least32_t       MR_tp_param_count;
+    MR_LongLval             MR_tp_param_locns[MR_VARIABLE_SIZED];
 };
 
 struct MR_LabelLayout_Struct {
-	const MR_ProcLayout		*MR_sll_entry;
-	MR_int_least8_t			MR_sll_port;
-	MR_int_least8_t			MR_sll_hidden;
-	MR_uint_least16_t		MR_sll_label_num_in_module;
-	MR_uint_least32_t		MR_sll_goal_path;
-	const MR_UserEvent		*MR_sll_user_event;
-	MR_Integer			MR_sll_var_count; /* >= 0 */
-	const void			*MR_sll_locns_types;
-	const MR_HLDSVarNum		*MR_sll_var_nums;
-	const MR_TypeParamLocns		*MR_sll_tvars;
+    const MR_ProcLayout     *MR_sll_entry;
+    MR_int_least8_t         MR_sll_port;
+    MR_int_least8_t         MR_sll_hidden;
+    MR_uint_least16_t       MR_sll_label_num_in_module;
+    MR_uint_least32_t       MR_sll_goal_path;
+    const MR_UserEvent      *MR_sll_user_event;
+    MR_Integer              MR_sll_var_count; /* >= 0 */
+    const void              *MR_sll_locns_types;
+    const MR_HLDSVarNum     *MR_sll_var_nums;
+    const MR_TypeParamLocns     *MR_sll_tvars;
 };
 
-typedef	struct MR_LabelLayoutNoVarInfo_Struct {
-	const MR_ProcLayout		*MR_sll_entry;
-	MR_int_least8_t			MR_sll_port;
-	MR_int_least8_t			MR_sll_hidden;
-	MR_uint_least16_t		MR_sll_label_num_in_module;
-	MR_uint_least32_t		MR_sll_goal_path;
-	const MR_UserEvent		*MR_sll_user_event;
-	MR_Integer			MR_sll_var_count; /* < 0 */
+typedef struct MR_LabelLayoutNoVarInfo_Struct {
+    const MR_ProcLayout     *MR_sll_entry;
+    MR_int_least8_t         MR_sll_port;
+    MR_int_least8_t         MR_sll_hidden;
+    MR_uint_least16_t       MR_sll_label_num_in_module;
+    MR_uint_least32_t       MR_sll_goal_path;
+    const MR_UserEvent      *MR_sll_user_event;
+    MR_Integer              MR_sll_var_count; /* < 0 */
 } MR_LabelLayoutNoVarInfo;
 
-#define	MR_label_goal_path(layout)					\
-	((MR_PROC_LAYOUT_HAS_EXEC_TRACE((layout)->MR_sll_entry)) ?	\
-		((layout)->MR_sll_entry->MR_sle_module_layout		\
-			->MR_ml_string_table				\
-		+ (layout)->MR_sll_goal_path)				\
-	: "")
+#define MR_label_goal_path(layout)                                          \
+    ((MR_PROC_LAYOUT_HAS_EXEC_TRACE((layout)->MR_sll_entry)) ?              \
+        ((layout)->MR_sll_entry->MR_sle_module_layout                       \
+            ->MR_ml_string_table                                            \
+        + (layout)->MR_sll_goal_path)                                       \
+    : "")
 
-#define	MR_SHORT_COUNT_BITS	10
-#define	MR_SHORT_COUNT_MASK	((1 << MR_SHORT_COUNT_BITS) - 1)
+#define MR_SHORT_COUNT_BITS 10
+#define MR_SHORT_COUNT_MASK ((1 << MR_SHORT_COUNT_BITS) - 1)
 
-#define	MR_has_valid_var_count(sll)					\
-		(((sll)->MR_sll_var_count) >= 0)
-#define	MR_has_valid_var_info(sll)					\
-		(((sll)->MR_sll_var_count) > 0)
-#define	MR_long_desc_var_count(sll)					\
-		(((sll)->MR_sll_var_count) >> MR_SHORT_COUNT_BITS)
-#define	MR_short_desc_var_count(sll)					\
-		(((sll)->MR_sll_var_count) & MR_SHORT_COUNT_MASK)
-#define	MR_all_desc_var_count(sll)					\
-		(MR_long_desc_var_count(sll) + MR_short_desc_var_count(sll))
+#define MR_has_valid_var_count(sll)                                         \
+        (((sll)->MR_sll_var_count) >= 0)
+#define MR_has_valid_var_info(sll)                                          \
+        (((sll)->MR_sll_var_count) > 0)
+#define MR_long_desc_var_count(sll)                                         \
+        (((sll)->MR_sll_var_count) >> MR_SHORT_COUNT_BITS)
+#define MR_short_desc_var_count(sll)                                        \
+        (((sll)->MR_sll_var_count) & MR_SHORT_COUNT_MASK)
+#define MR_all_desc_var_count(sll)                                          \
+        (MR_long_desc_var_count(sll) + MR_short_desc_var_count(sll))
 
-#define	MR_var_pti(sll, i)						\
-		(((MR_PseudoTypeInfo *) ((sll)->MR_sll_locns_types))[(i)])
-#define	MR_end_of_var_ptis(sll)						\
-		(&MR_var_pti((sll), MR_all_desc_var_count(sll)))
-#define	MR_long_desc_var_locn(sll, i)					\
-		(((MR_LongLval *) MR_end_of_var_ptis(sll))[(i)])
-#define	MR_end_of_long_desc_var_locns(sll)				\
-		(&MR_long_desc_var_locn((sll), MR_long_desc_var_count(sll)))
-#define	MR_short_desc_var_locn(sll, i)					\
-		(((MR_ShortLval *)					\
-			MR_end_of_long_desc_var_locns(sll))		\
-				[((i) - MR_long_desc_var_count(sll))])
+#define MR_var_pti(sll, i)                                                  \
+        (((MR_PseudoTypeInfo *) ((sll)->MR_sll_locns_types))[(i)])
+#define MR_end_of_var_ptis(sll)                                             \
+        (&MR_var_pti((sll), MR_all_desc_var_count(sll)))
+#define MR_long_desc_var_locn(sll, i)                                       \
+        (((MR_LongLval *) MR_end_of_var_ptis(sll))[(i)])
+#define MR_end_of_long_desc_var_locns(sll)                                  \
+        (&MR_long_desc_var_locn((sll), MR_long_desc_var_count(sll)))
+#define MR_short_desc_var_locn(sll, i)                                      \
+        (((MR_ShortLval *)                                                  \
+            MR_end_of_long_desc_var_locns(sll))                             \
+                [((i) - MR_long_desc_var_count(sll))])
 
 /*
 ** Define a stack layout for an internal label.
@@ -541,24 +544,24 @@ typedef	struct MR_LabelLayoutNoVarInfo_Struct {
 ** live value information as well to these macros.
 */
 
-#define	MR_LAYOUT_FROM_LABEL(label)					\
-	MR_PASTE2(mercury_data__label_layout__, label)
+#define MR_LAYOUT_FROM_LABEL(label)                                         \
+    MR_PASTE2(mercury_data__label_layout__, label)
 
-#define	MR_LABEL_LAYOUT_REF(label)					\
-	((const MR_LabelLayout *) &MR_LAYOUT_FROM_LABEL(MR_add_prefix(label)))
+#define MR_LABEL_LAYOUT_REF(label)                                          \
+    ((const MR_LabelLayout *) &MR_LAYOUT_FROM_LABEL(MR_add_prefix(label)))
 
-#define MR_MAKE_USER_INTERNAL_LAYOUT(module, name, arity, mode, label)	\
-	MR_LabelLayoutNoVarInfo					\
-	MR_label_layout_user_name(module, name, arity, mode, label) = {	\
-		(MR_ProcLayout *) &					\
-			MR_proc_layout_user_name(module, name, arity, mode), \
-		0,							\
-		-1,							\
-		MR_FALSE,						\
-		0,							\
-		0,							\
-		-1		/* No info about live values */		\
-	}
+#define MR_MAKE_USER_INTERNAL_LAYOUT(module, name, arity, mode, label)      \
+    MR_LabelLayoutNoVarInfo                                                 \
+    MR_label_layout_user_name(module, name, arity, mode, label) = {         \
+        (MR_ProcLayout *) &                                                 \
+            MR_proc_layout_user_name(module, name, arity, mode),            \
+        0,                                                                  \
+        -1,                                                                 \
+        MR_FALSE,                                                           \
+        0,                                                                  \
+        0,                                                                  \
+        -1      /* No info about live values */                             \
+    }
 
 /*
 ** These macros are used as shorthands in generated C source files.
@@ -566,196 +569,196 @@ typedef	struct MR_LabelLayoutNoVarInfo_Struct {
 ** the others are the fields of MR_LabelLayouts.
 */
 
-#define	MR_DEF_LL_GEN(e, ln, port, h, num, path, s, vc, lt, vn, tv)	\
-	static const MR_LabelLayout					\
-		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
-	= {								\
-		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
-		MR_PASTE2(MR_PORT_, port),				\
-		(h), (num), (path), (s), (vc),				\
-		((const void *) lt),					\
-		((const MR_uint_least16_t *) vn),			\
-		((const MR_TypeParamLocns *) tv)			\
-	}
+#define MR_DEF_LL_GEN(e, ln, port, h, num, path, s, vc, lt, vn, tv)         \
+    static const MR_LabelLayout                                             \
+        MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln))           \
+    = {                                                                     \
+        MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
+        MR_PASTE2(MR_PORT_, port),                                          \
+        (h), (num), (path), (s), (vc),                                      \
+        ((const void *) lt),                                                \
+        ((const MR_uint_least16_t *) vn),                                   \
+        ((const MR_TypeParamLocns *) tv)                                    \
+    }
 
-#define	MR_DEF_LLNVI_GEN(e, ln, port, s, h, num, path)			\
-	static const MR_LabelLayoutNoVarInfo			\
-		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
-	= {								\
-		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
-		MR_PASTE2(MR_PORT_, port),				\
-		(h), (path), (s), (num), -1				\
-	}
+#define MR_DEF_LLNVI_GEN(e, ln, port, s, h, num, path)                      \
+    static const MR_LabelLayoutNoVarInfo                                    \
+        MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln))           \
+    = {                                                                     \
+        MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
+        MR_PASTE2(MR_PORT_, port),                                          \
+        (h), (path), (s), (num), -1                                         \
+    }
 
 
-#define	MR_DEF_LL(e, ln, port, num, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc, lt, vn, tv)
+#define MR_DEF_LL(e, ln, port, num, path, vc, lt, vn, tv)                   \
+    MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc, lt, vn, tv)
 
-#define	MR_DEF_LLT(e, ln, port, num, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc, lt, vn, tv)
+#define MR_DEF_LLT(e, ln, port, num, path, vc, lt, vn, tv)                  \
+    MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc, lt, vn, tv)
 
-#define	MR_DEF_LL_U(e, ln, port, num, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,			\
-		&MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
-		vc, lt, vn, tv)
+#define MR_DEF_LL_U(e, ln, port, num, path, vc, lt, vn, tv)                 \
+    MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,                         \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
+        vc, lt, vn, tv)
 
-#define	MR_DEF_LLT_U(e, ln, port, num, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,			\
-		&MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
-		vc, lt, vn, tv)
+#define MR_DEF_LLT_U(e, ln, port, num, path, vc, lt, vn, tv)                \
+    MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,                          \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
+        vc, lt, vn, tv)
 
-#define	MR_DEF_LLXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc,	\
-		MR_XCOMMON(ltt, ltc),					\
-		MR_XCOMMON(vnt, vnc),					\
-		MR_XCOMMON(tvt, tvc))
+#define MR_DEF_LLXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
+    MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc,               \
+        MR_XCOMMON(ltt, ltc),                                               \
+        MR_XCOMMON(vnt, vnc),                                               \
+        MR_XCOMMON(tvt, tvc))
 
-#define	MR_DEF_LLXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc,	\
-		MR_XCOMMON(ltt, ltc),					\
-		MR_XCOMMON(vnt, vnc), 0)
+#define MR_DEF_LLXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)       \
+    MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc,               \
+        MR_XCOMMON(ltt, ltc),                                               \
+        MR_XCOMMON(vnt, vnc), 0)
 
-#define	MR_DEF_LLTXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc,	\
-		MR_XCOMMON(ltt, ltc),					\
-		MR_XCOMMON(vnt, vnc),					\
-		MR_XCOMMON(tvt, tvc))
+#define MR_DEF_LLTXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
+    MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc,                \
+        MR_XCOMMON(ltt, ltc),                                               \
+        MR_XCOMMON(vnt, vnc),                                               \
+        MR_XCOMMON(tvt, tvc))
 
-#define	MR_DEF_LLTXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc,	\
-		MR_XCOMMON(ltt, ltc),					\
-		MR_XCOMMON(vnt, vnc), 0)
+#define MR_DEF_LLTXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)      \
+    MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc,                \
+        MR_XCOMMON(ltt, ltc),                                               \
+        MR_XCOMMON(vnt, vnc), 0)
 
-#define	MR_DEF_LLXCCC_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,			\
-		&MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
-		vc,							\
-		MR_XCOMMON(ltt, ltc),					\
-		MR_XCOMMON(vnt, vnc),					\
-		MR_XCOMMON(tvt, tvc))
+#define MR_DEF_LLXCCC_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
+    MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,                         \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
+        vc,                                                                 \
+        MR_XCOMMON(ltt, ltc),                                               \
+        MR_XCOMMON(vnt, vnc),                                               \
+        MR_XCOMMON(tvt, tvc))
 
-#define	MR_DEF_LLXCC0_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,			\
-		&MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
-		vc,							\
-		MR_XCOMMON(ltt, ltc),					\
-		MR_XCOMMON(vnt, vnc), 0)
+#define MR_DEF_LLXCC0_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)     \
+    MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,                         \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
+        vc,                                                                 \
+        MR_XCOMMON(ltt, ltc),                                               \
+        MR_XCOMMON(vnt, vnc), 0)
 
-#define	MR_DEF_LLTXCCC_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,			\
-		&MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
-		vc,							\
-		MR_XCOMMON(ltt, ltc),					\
-		MR_XCOMMON(vnt, vnc),					\
-		MR_XCOMMON(tvt, tvc))
+#define MR_DEF_LLTXCCC_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
+    MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,                          \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
+        vc,                                                                 \
+        MR_XCOMMON(ltt, ltc),                                               \
+        MR_XCOMMON(vnt, vnc),                                               \
+        MR_XCOMMON(tvt, tvc))
 
-#define	MR_DEF_LLTXCC0_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,			\
-		&MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
-		vc,							\
-		MR_XCOMMON(ltt, ltc),					\
-		MR_XCOMMON(vnt, vnc), 0)
+#define MR_DEF_LLTXCC0_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)    \
+    MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,                          \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
+        vc,                                                                 \
+        MR_XCOMMON(ltt, ltc),                                               \
+        MR_XCOMMON(vnt, vnc), 0)
 
-#define	MR_DEF_LLNVI(e, ln, port, num, path)				\
-	MR_DEF_LLNVI_GEN(e, ln, port, NULL, MR_FALSE, path)
+#define MR_DEF_LLNVI(e, ln, port, num, path)                                \
+    MR_DEF_LLNVI_GEN(e, ln, port, NULL, MR_FALSE, path)
 
-#define	MR_DEF_LLNVIT(e, ln, port, num, path)				\
-	MR_DEF_LLNVI_GEN(e, ln, port, NULL, MR_TRUE, path)
+#define MR_DEF_LLNVIT(e, ln, port, num, path)                               \
+    MR_DEF_LLNVI_GEN(e, ln, port, NULL, MR_TRUE, path)
 
-#define	MR_DEF_LLNVI_U(e, ln, port, num, path)				\
-	MR_DEF_LLNVI_GEN(e, ln, port,					\
-		&MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
-		MR_FALSE, path)
+#define MR_DEF_LLNVI_U(e, ln, port, num, path)                              \
+    MR_DEF_LLNVI_GEN(e, ln, port,                                           \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
+        MR_FALSE, path)
 
-#define	MR_DEF_LLNVIT_U(e, ln, port, num, path)				\
-	MR_DEF_LLNVI_GEN(e, ln, port,					\
-		&MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
-		MR_TRUE, path)
+#define MR_DEF_LLNVIT_U(e, ln, port, num, path)                             \
+    MR_DEF_LLNVI_GEN(e, ln, port,                                           \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
+        MR_TRUE, path)
 
-#define MR_DECL_LL(e, ln)						\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln));		\
-	static const MR_LabelLayout					\
-		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)); \
+#define MR_DECL_LL(e, ln)                                                   \
+    MR_declare_label(MR_label_name(MR_add_prefix(e), ln));                  \
+    static const MR_LabelLayout                                             \
+        MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln));          \
 
-#define MR_DECL_LLNVI(e, ln)						\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln));		\
-	static const MR_LabelLayoutNoVarInfo			\
-		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)); \
+#define MR_DECL_LLNVI(e, ln)                                                \
+    MR_declare_label(MR_label_name(MR_add_prefix(e), ln));                  \
+    static const MR_LabelLayoutNoVarInfo                                    \
+        MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln));          \
 
-#define MR_DECL_LL1(e, ln1)						\
-	MR_DECL_LL(e, ln1)
+#define MR_DECL_LL1(e, ln1)                                                 \
+    MR_DECL_LL(e, ln1)
 
-#define MR_DECL_LL2(e, ln1, ln2)					\
-	MR_DECL_LL(e, ln1)						\
-	MR_DECL_LL(e, ln2)
+#define MR_DECL_LL2(e, ln1, ln2)                                            \
+    MR_DECL_LL(e, ln1)                                                      \
+    MR_DECL_LL(e, ln2)
 
-#define MR_DECL_LL3(e, ln1, ln2, ln3)					\
-	MR_DECL_LL(e, ln1)						\
-	MR_DECL_LL(e, ln2)						\
-	MR_DECL_LL(e, ln3)
+#define MR_DECL_LL3(e, ln1, ln2, ln3)                                       \
+    MR_DECL_LL(e, ln1)                                                      \
+    MR_DECL_LL(e, ln2)                                                      \
+    MR_DECL_LL(e, ln3)
 
-#define MR_DECL_LL4(e, ln1, ln2, ln3, ln4)				\
-	MR_DECL_LL(e, ln1)						\
-	MR_DECL_LL(e, ln2)						\
-	MR_DECL_LL(e, ln3)						\
-	MR_DECL_LL(e, ln4)
+#define MR_DECL_LL4(e, ln1, ln2, ln3, ln4)                                  \
+    MR_DECL_LL(e, ln1)                                                      \
+    MR_DECL_LL(e, ln2)                                                      \
+    MR_DECL_LL(e, ln3)                                                      \
+    MR_DECL_LL(e, ln4)
 
-#define MR_DECL_LL5(e, ln1, ln2, ln3, ln4, ln5)				\
-	MR_DECL_LL(e, ln1)						\
-	MR_DECL_LL(e, ln2)						\
-	MR_DECL_LL(e, ln3)						\
-	MR_DECL_LL(e, ln4)						\
-	MR_DECL_LL(e, ln5)
+#define MR_DECL_LL5(e, ln1, ln2, ln3, ln4, ln5)                             \
+    MR_DECL_LL(e, ln1)                                                      \
+    MR_DECL_LL(e, ln2)                                                      \
+    MR_DECL_LL(e, ln3)                                                      \
+    MR_DECL_LL(e, ln4)                                                      \
+    MR_DECL_LL(e, ln5)
 
-#define MR_DECL_LL6(e, ln1, ln2, ln3, ln4, ln5, ln6)			\
-	MR_DECL_LL(e, ln1)						\
-	MR_DECL_LL(e, ln2)						\
-	MR_DECL_LL(e, ln3)						\
-	MR_DECL_LL(e, ln4)						\
-	MR_DECL_LL(e, ln5)						\
-	MR_DECL_LL(e, ln6)
+#define MR_DECL_LL6(e, ln1, ln2, ln3, ln4, ln5, ln6)                        \
+    MR_DECL_LL(e, ln1)                                                      \
+    MR_DECL_LL(e, ln2)                                                      \
+    MR_DECL_LL(e, ln3)                                                      \
+    MR_DECL_LL(e, ln4)                                                      \
+    MR_DECL_LL(e, ln5)                                                      \
+    MR_DECL_LL(e, ln6)
 
-#define MR_DECL_LL7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
-	MR_DECL_LL(e, ln1)						\
-	MR_DECL_LL(e, ln2)						\
-	MR_DECL_LL(e, ln3)						\
-	MR_DECL_LL(e, ln4)						\
-	MR_DECL_LL(e, ln5)						\
-	MR_DECL_LL(e, ln6)						\
-	MR_DECL_LL(e, ln7)
+#define MR_DECL_LL7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)                   \
+    MR_DECL_LL(e, ln1)                                                      \
+    MR_DECL_LL(e, ln2)                                                      \
+    MR_DECL_LL(e, ln3)                                                      \
+    MR_DECL_LL(e, ln4)                                                      \
+    MR_DECL_LL(e, ln5)                                                      \
+    MR_DECL_LL(e, ln6)                                                      \
+    MR_DECL_LL(e, ln7)
 
-#define MR_DECL_LL8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)		\
-	MR_DECL_LL(e, ln1)						\
-	MR_DECL_LL(e, ln2)						\
-	MR_DECL_LL(e, ln3)						\
-	MR_DECL_LL(e, ln4)						\
-	MR_DECL_LL(e, ln5)						\
-	MR_DECL_LL(e, ln6)						\
-	MR_DECL_LL(e, ln7)						\
-	MR_DECL_LL(e, ln8)
+#define MR_DECL_LL8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)              \
+    MR_DECL_LL(e, ln1)                                                      \
+    MR_DECL_LL(e, ln2)                                                      \
+    MR_DECL_LL(e, ln3)                                                      \
+    MR_DECL_LL(e, ln4)                                                      \
+    MR_DECL_LL(e, ln5)                                                      \
+    MR_DECL_LL(e, ln6)                                                      \
+    MR_DECL_LL(e, ln7)                                                      \
+    MR_DECL_LL(e, ln8)
 
-#define MR_DECL_LL9(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8, ln9)	\
-	MR_DECL_LL(e, ln1)						\
-	MR_DECL_LL(e, ln2)						\
-	MR_DECL_LL(e, ln3)						\
-	MR_DECL_LL(e, ln4)						\
-	MR_DECL_LL(e, ln5)						\
-	MR_DECL_LL(e, ln6)						\
-	MR_DECL_LL(e, ln7)						\
-	MR_DECL_LL(e, ln8)						\
-	MR_DECL_LL(e, ln9)
+#define MR_DECL_LL9(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8, ln9)         \
+    MR_DECL_LL(e, ln1)                                                      \
+    MR_DECL_LL(e, ln2)                                                      \
+    MR_DECL_LL(e, ln3)                                                      \
+    MR_DECL_LL(e, ln4)                                                      \
+    MR_DECL_LL(e, ln5)                                                      \
+    MR_DECL_LL(e, ln6)                                                      \
+    MR_DECL_LL(e, ln7)                                                      \
+    MR_DECL_LL(e, ln8)                                                      \
+    MR_DECL_LL(e, ln9)
 
-#define MR_DECL_LL10(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8, ln9, ln10) \
-	MR_DECL_LL(e, ln1)						\
-	MR_DECL_LL(e, ln2)						\
-	MR_DECL_LL(e, ln3)						\
-	MR_DECL_LL(e, ln4)						\
-	MR_DECL_LL(e, ln5)						\
-	MR_DECL_LL(e, ln6)						\
-	MR_DECL_LL(e, ln7)						\
-	MR_DECL_LL(e, ln8)						\
-	MR_DECL_LL(e, ln9)						\
-	MR_DECL_LL(e, ln10)
+#define MR_DECL_LL10(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8, ln9, ln10)  \
+    MR_DECL_LL(e, ln1)                                                      \
+    MR_DECL_LL(e, ln2)                                                      \
+    MR_DECL_LL(e, ln3)                                                      \
+    MR_DECL_LL(e, ln4)                                                      \
+    MR_DECL_LL(e, ln5)                                                      \
+    MR_DECL_LL(e, ln6)                                                      \
+    MR_DECL_LL(e, ln7)                                                      \
+    MR_DECL_LL(e, ln8)                                                      \
+    MR_DECL_LL(e, ln9)                                                      \
+    MR_DECL_LL(e, ln10)
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -780,10 +783,10 @@ typedef	struct MR_LabelLayoutNoVarInfo_Struct {
 */
 
 typedef struct MR_TableIoDecl_Struct {
-	const MR_ProcLayout		*MR_table_io_decl_proc;
-	MR_Integer			MR_table_io_decl_filtered_arity;
-	const MR_PseudoTypeInfo		*MR_table_io_decl_ptis;
-	const MR_TypeParamLocns	*MR_table_io_decl_type_params;
+    const MR_ProcLayout         *MR_table_io_decl_proc;
+    MR_Integer                  MR_table_io_decl_filtered_arity;
+    const MR_PseudoTypeInfo     *MR_table_io_decl_ptis;
+    const MR_TypeParamLocns     *MR_table_io_decl_type_params;
 } MR_TableIoDecl;
 
 /*
@@ -799,10 +802,10 @@ typedef struct MR_TableIoDecl_Struct {
 */
 
 typedef union {
-	const void			*MR_table_init;
-	const MR_TableIoDecl		*MR_table_io_decl;
-	const MR_Table_Gen		*MR_table_gen;
-	MR_ProcTableInfo		*MR_table_proc;
+    const void                  *MR_table_init;
+    const MR_TableIoDecl        *MR_table_io_decl;
+    const MR_Table_Gen          *MR_table_gen;
+    MR_ProcTableInfo            *MR_table_proc;
 } MR_TableInfo;
 
 /*
@@ -824,14 +827,14 @@ typedef union {
 */
 
 typedef struct MR_StackTraversal_Struct {
-	MR_Code			*MR_trav_code_addr;
-	MR_LongLval		MR_trav_succip_locn;
-	MR_int_least16_t	MR_trav_stack_slots;
-	MR_Determinism		MR_trav_detism;
+    MR_Code                     *MR_trav_code_addr;
+    MR_LongLval                 MR_trav_succip_locn;
+    MR_int_least16_t            MR_trav_stack_slots;
+    MR_Determinism              MR_trav_detism;
 } MR_StackTraversal;
 
-#define	MR_PROC_LAYOUT_IS_UCI(entry)			\
-	MR_PROC_ID_IS_UCI(entry->MR_sle_proc_id)
+#define MR_PROC_LAYOUT_IS_UCI(entry)            \
+    MR_PROC_ID_IS_UCI(entry->MR_sle_proc_id)
 
 /*
 ** The MR_ExecTrace structure contains the following fields.
@@ -913,69 +916,99 @@ typedef struct MR_StackTraversal_Struct {
 ** The flags field encodes boolean properties of the procedure. For now,
 ** the only property is whether the procedure has a pair of I/O state
 ** arguments.
+**
+** If the procedure lives on the nondet stack, or if it cannot create any
+** temporary nondet stack frames, the maybe_maxfr field will contain a negative
+** number. If it lives on the det stack, and can create temporary nondet stack
+** frames, it will contain the number of the stack slot that contains the
+** value of maxfr on entry, for use in executing the retry debugger command
+** from the middle of the procedure.
 */
 
-#define	MR_EVAL_METHOD_MEMO_STRICT	MR_EVAL_METHOD_MEMO
-#define	MR_EVAL_METHOD_MEMO_FAST_LOOSE	MR_EVAL_METHOD_MEMO
-#define	MR_EVAL_METHOD_MEMO_SPECIFIED	MR_EVAL_METHOD_MEMO
-
-typedef	enum {
-	MR_EVAL_METHOD_NORMAL,
-	MR_EVAL_METHOD_LOOP_CHECK,
-	MR_EVAL_METHOD_MEMO,
-	MR_EVAL_METHOD_MINIMAL_STACK_COPY,
-	MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER,
-	MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR,
-	MR_EVAL_METHOD_TABLE_IO,
-	MR_EVAL_METHOD_TABLE_IO_DECL,
-	MR_EVAL_METHOD_TABLE_IO_UNITIZE,
-	MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL
-} MR_EvalMethod;
-
-typedef	MR_int_least8_t		MR_EvalMethodInt;
+#define MR_EVAL_METHOD_MEMO_STRICT  MR_EVAL_METHOD_MEMO
+#define MR_EVAL_METHOD_MEMO_FAST_LOOSE  MR_EVAL_METHOD_MEMO
+#define MR_EVAL_METHOD_MEMO_SPECIFIED   MR_EVAL_METHOD_MEMO
 
 typedef enum {
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_NONE),
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_BASIC),
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_BASIC_USER),
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_SHALLOW),
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DEEP),
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DECL_REP)
+    MR_EVAL_METHOD_NORMAL,
+    MR_EVAL_METHOD_LOOP_CHECK,
+    MR_EVAL_METHOD_MEMO,
+    MR_EVAL_METHOD_MINIMAL_STACK_COPY,
+    MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER,
+    MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR,
+    MR_EVAL_METHOD_TABLE_IO,
+    MR_EVAL_METHOD_TABLE_IO_DECL,
+    MR_EVAL_METHOD_TABLE_IO_UNITIZE,
+    MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL
+} MR_EvalMethod;
+
+typedef MR_int_least8_t     MR_EvalMethodInt;
+
+typedef enum {
+    MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_NONE),
+    MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_BASIC),
+    MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_BASIC_USER),
+    MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_SHALLOW),
+    MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DEEP),
+    MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DECL_REP)
 } MR_TraceLevel;
 
-typedef	MR_int_least8_t		MR_TraceLevelInt;
+typedef MR_int_least8_t     MR_TraceLevelInt;
 
-typedef	struct MR_ExecTrace_Struct {
-	const MR_LabelLayout	*MR_exec_call_label;
-	const MR_ModuleLayout	*MR_exec_module_layout;
-	const MR_LabelLayout	**MR_exec_labels;
-	MR_uint_least32_t	MR_exec_num_labels;
-	MR_TableInfo		MR_exec_table_info;
-	const MR_uint_least16_t	*MR_exec_head_var_nums;
-	const MR_uint_least32_t	*MR_exec_used_var_names;
-	MR_uint_least16_t	MR_exec_num_head_vars;
-	MR_uint_least16_t	MR_exec_max_named_var_num;
-	MR_uint_least16_t	MR_exec_max_r_num;
-	MR_int_least8_t		MR_exec_maybe_from_full;
-	MR_int_least8_t		MR_exec_maybe_io_seq;
-	MR_int_least8_t		MR_exec_maybe_trail;
-	MR_int_least8_t		MR_exec_maybe_maxfr;
-	MR_EvalMethodInt	MR_exec_eval_method_CAST_ME;
-	MR_int_least8_t		MR_exec_maybe_call_table;
-	MR_TraceLevelInt	MR_exec_trace_level_CAST_ME;
-	MR_uint_least8_t	MR_exec_flags;
+typedef struct MR_ExecTrace_Struct {
+    const MR_LabelLayout        *MR_exec_call_label;
+    const MR_ModuleLayout       *MR_exec_module_layout;
+    const MR_LabelLayout        **MR_exec_labels;
+    MR_uint_least32_t           MR_exec_num_labels;
+    MR_TableInfo                MR_exec_table_info;
+    const MR_uint_least16_t     *MR_exec_head_var_nums;
+    const MR_uint_least32_t     *MR_exec_used_var_names;
+    MR_uint_least16_t           MR_exec_num_head_vars;
+    MR_uint_least16_t           MR_exec_max_named_var_num;
+    MR_uint_least16_t           MR_exec_max_r_num;
+    MR_int_least8_t             MR_exec_maybe_from_full;
+    MR_int_least8_t             MR_exec_maybe_io_seq;
+    MR_int_least8_t             MR_exec_maybe_trail;
+    MR_int_least8_t             MR_exec_maybe_maxfr;
+    MR_EvalMethodInt            MR_exec_eval_method_CAST_ME;
+    MR_int_least8_t             MR_exec_maybe_call_table;
+    MR_TraceLevelInt            MR_exec_trace_level_CAST_ME;
+    MR_uint_least8_t            MR_exec_flags;
+    MR_int_least8_t             MR_exec_maybe_tail_rec;
 } MR_ExecTrace;
 
-#define MR_compute_max_mr_num(max_mr_num, layout)			\
-	do {								\
-		int	max_r_num;					\
-									\
-		max_r_num = (layout)->MR_sll_entry->MR_sle_max_r_num +	\
-			MR_NUM_SPECIAL_REG;				\
-		max_mr_num = MR_max(max_r_num, MR_FIRST_UNREAL_R_SLOT); \
-	} while (0)
+#define MR_compute_max_mr_num(max_mr_num, layout)                           \
+    do {                                                                    \
+        int max_r_num;                                                      \
+                                                                            \
+        max_r_num = (layout)->MR_sll_entry->MR_sle_max_r_num +              \
+            MR_NUM_SPECIAL_REG;                                             \
+        max_mr_num = MR_max(max_r_num, MR_FIRST_UNREAL_R_SLOT);             \
+    } while (0)
 
-#define	MR_PROC_LAYOUT_FLAG_HAS_IO_STATE_PAIR	0x1
+#define MR_PROC_LAYOUT_FLAG_HAS_IO_STATE_PAIR   0x1
+
+#define MR_trace_find_reused_frames(proc_layout, sp, reused_frames)         \
+    do {                                                                    \
+        const MR_ExecTrace  *exec_trace;                                    \
+        int                 tailrec_slot;                                   \
+                                                                            \
+        exec_trace = proc_layout->MR_sle_exec_trace;                        \
+        if (exec_trace == NULL) {                                           \
+            (reused_frames) = 0;                                            \
+        } else {                                                            \
+            tailrec_slot = proc_layout->MR_sle_maybe_tailrec;               \
+            if (tailrec_slot <= 0) {                                        \
+                (reused_frames) = 0;                                        \
+            } else {                                                        \
+                if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {      \
+                    (reused_frames) = MR_based_stackvar((sp), tailrec_slot);\
+                } else {                                                    \
+                    MR_fatal_error("tailrec reuses nondet stack frames");   \
+                }                                                           \
+            }                                                               \
+        }                                                                   \
+    } while (0)
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -1048,104 +1081,104 @@ typedef	struct MR_ExecTrace_Struct {
 */
 
 struct MR_ProcLayout_Struct {
-	MR_StackTraversal			MR_sle_traversal;
-	MR_ProcId				MR_sle_proc_id;
-	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
-	MR_ProcStatic				*MR_sle_proc_static;
-	const MR_uint_least8_t			*MR_sle_body_bytes;
-	const MR_ModuleCommonLayout		*MR_sle_module_common_layout;
+    MR_StackTraversal                   MR_sle_traversal;
+    MR_ProcId                           MR_sle_proc_id;
+    MR_STATIC_CODE_CONST MR_ExecTrace   *MR_sle_exec_trace;
+    MR_ProcStatic                       *MR_sle_proc_static;
+    const MR_uint_least8_t              *MR_sle_body_bytes;
+    const MR_ModuleCommonLayout         *MR_sle_module_common_layout;
 };
 
-typedef	struct MR_ProcLayoutUser_Struct {
-	MR_StackTraversal			MR_user_traversal;
-	MR_UserProcId				MR_user_id;
-	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
-	MR_ProcStatic				*MR_sle_proc_static;
-	const MR_uint_least8_t			*MR_sle_body_bytes;
-	const MR_ModuleCommonLayout		*MR_sle_module_common_layout;
+typedef struct MR_ProcLayoutUser_Struct {
+    MR_StackTraversal                   MR_user_traversal;
+    MR_UserProcId                       MR_user_id;
+    MR_STATIC_CODE_CONST MR_ExecTrace   *MR_sle_exec_trace;
+    MR_ProcStatic                       *MR_sle_proc_static;
+    const MR_uint_least8_t              *MR_sle_body_bytes;
+    const MR_ModuleCommonLayout         *MR_sle_module_common_layout;
 } MR_ProcLayoutUser;
 
-typedef	struct MR_ProcLayoutUCI_Struct {
-	MR_StackTraversal			MR_uci_traversal;
-	MR_UCIProcId				MR_uci_id;
-	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
-	MR_ProcStatic				*MR_sle_proc_static;
-	const MR_uint_least8_t			*MR_sle_body_bytes;
-	const MR_ModuleCommonLayout		*MR_sle_module_common_layout;
+typedef struct MR_ProcLayoutUCI_Struct {
+    MR_StackTraversal                   MR_uci_traversal;
+    MR_UCIProcId                        MR_uci_id;
+    MR_STATIC_CODE_CONST MR_ExecTrace   *MR_sle_exec_trace;
+    MR_ProcStatic                       *MR_sle_proc_static;
+    const MR_uint_least8_t              *MR_sle_body_bytes;
+    const MR_ModuleCommonLayout         *MR_sle_module_common_layout;
 } MR_ProcLayoutUCI;
 
-typedef	struct MR_ProcLayout_Traversal_Struct {
-	MR_StackTraversal	MR_trav_traversal;
-	MR_Word			MR_trav_no_proc_id;	/* will be -1 */
+typedef struct MR_ProcLayout_Traversal_Struct {
+    MR_StackTraversal                   MR_trav_traversal;
+    MR_Word                             MR_trav_no_proc_id; /* will be -1 */
 } MR_ProcLayout_Traversal;
 
-#define	MR_PROC_LAYOUT_HAS_PROC_ID(entry)			\
-		(MR_PROC_ID_EXISTS(entry->MR_sle_proc_id))
+#define MR_PROC_LAYOUT_HAS_PROC_ID(entry)                                   \
+        (MR_PROC_ID_EXISTS(entry->MR_sle_proc_id))
 
-#define	MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)			\
-		(MR_PROC_LAYOUT_HAS_PROC_ID(entry) &&		\
-		entry->MR_sle_exec_trace != NULL)
+#define MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)                                \
+        (MR_PROC_LAYOUT_HAS_PROC_ID(entry) &&                               \
+        entry->MR_sle_exec_trace != NULL)
 
-#define	MR_PROC_LAYOUT_HAS_PROC_STATIC(entry)			\
-		(MR_PROC_LAYOUT_HAS_PROC_ID(entry) &&		\
-		entry->MR_sle_proc_static != NULL)
+#define MR_PROC_LAYOUT_HAS_PROC_STATIC(entry)                               \
+        (MR_PROC_LAYOUT_HAS_PROC_ID(entry) &&                               \
+        entry->MR_sle_proc_static != NULL)
 
-#define	MR_PROC_LAYOUT_HAS_THIRD_GROUP(entry)			\
-		(MR_PROC_LAYOUT_HAS_PROC_ID(entry) &&		\
-		( entry->MR_sle_exec_trace != NULL		\
-		|| entry->MR_sle_proc_static != NULL))
+#define MR_PROC_LAYOUT_HAS_THIRD_GROUP(entry)                               \
+        (MR_PROC_LAYOUT_HAS_PROC_ID(entry) &&                               \
+        ( entry->MR_sle_exec_trace != NULL                                  \
+        || entry->MR_sle_proc_static != NULL))
 
-#define	MR_sle_code_addr	MR_sle_traversal.MR_trav_code_addr
-#define	MR_sle_succip_locn	MR_sle_traversal.MR_trav_succip_locn
-#define	MR_sle_stack_slots	MR_sle_traversal.MR_trav_stack_slots
-#define	MR_sle_detism		MR_sle_traversal.MR_trav_detism
+#define MR_sle_code_addr        MR_sle_traversal.MR_trav_code_addr
+#define MR_sle_succip_locn      MR_sle_traversal.MR_trav_succip_locn
+#define MR_sle_stack_slots      MR_sle_traversal.MR_trav_stack_slots
+#define MR_sle_detism           MR_sle_traversal.MR_trav_detism
 
-#define	MR_sle_user		MR_sle_proc_id.MR_proc_user
-#define	MR_sle_uci		MR_sle_proc_id.MR_proc_uci
+#define MR_sle_user             MR_sle_proc_id.MR_proc_user
+#define MR_sle_uci              MR_sle_proc_id.MR_proc_uci
 
-#define	MR_sle_call_label	MR_sle_exec_trace->MR_exec_call_label
-#define	MR_sle_module_layout	MR_sle_exec_trace->MR_exec_module_layout
-#define	MR_sle_labels           MR_sle_exec_trace->MR_exec_labels
-#define	MR_sle_num_labels       MR_sle_exec_trace->MR_exec_num_labels
-#define	MR_sle_tabling_pointer	MR_sle_exec_trace->MR_exec_tabling_pointer
-#define	MR_sle_table_info	MR_sle_exec_trace->MR_exec_table_info
-#define	MR_sle_head_var_nums	MR_sle_exec_trace->MR_exec_head_var_nums
-#define	MR_sle_num_head_vars	MR_sle_exec_trace->MR_exec_num_head_vars
-#define	MR_sle_used_var_names	MR_sle_exec_trace->MR_exec_used_var_names
-#define	MR_sle_max_named_var_num MR_sle_exec_trace->MR_exec_max_named_var_num
-#define	MR_sle_max_r_num	MR_sle_exec_trace->MR_exec_max_r_num
-#define	MR_sle_maybe_from_full	MR_sle_exec_trace->MR_exec_maybe_from_full
-#define	MR_sle_maybe_io_seq	MR_sle_exec_trace->MR_exec_maybe_io_seq
-#define	MR_sle_maybe_trail	MR_sle_exec_trace->MR_exec_maybe_trail
-#define	MR_sle_maybe_maxfr	MR_sle_exec_trace->MR_exec_maybe_maxfr
-#define	MR_sle_maybe_call_table MR_sle_exec_trace->MR_exec_maybe_call_table
-#define	MR_sle_maybe_decl_debug MR_sle_exec_trace->MR_exec_maybe_decl_debug
+#define MR_sle_call_label       MR_sle_exec_trace->MR_exec_call_label
+#define MR_sle_module_layout    MR_sle_exec_trace->MR_exec_module_layout
+#define MR_sle_labels           MR_sle_exec_trace->MR_exec_labels
+#define MR_sle_num_labels       MR_sle_exec_trace->MR_exec_num_labels
+#define MR_sle_tabling_pointer  MR_sle_exec_trace->MR_exec_tabling_pointer
+#define MR_sle_table_info       MR_sle_exec_trace->MR_exec_table_info
+#define MR_sle_head_var_nums    MR_sle_exec_trace->MR_exec_head_var_nums
+#define MR_sle_num_head_vars    MR_sle_exec_trace->MR_exec_num_head_vars
+#define MR_sle_used_var_names   MR_sle_exec_trace->MR_exec_used_var_names
+#define MR_sle_max_named_var_num MR_sle_exec_trace->MR_exec_max_named_var_num
+#define MR_sle_max_r_num        MR_sle_exec_trace->MR_exec_max_r_num
+#define MR_sle_maybe_from_full  MR_sle_exec_trace->MR_exec_maybe_from_full
+#define MR_sle_maybe_io_seq     MR_sle_exec_trace->MR_exec_maybe_io_seq
+#define MR_sle_maybe_trail      MR_sle_exec_trace->MR_exec_maybe_trail
+#define MR_sle_maybe_maxfr      MR_sle_exec_trace->MR_exec_maybe_maxfr
+#define MR_sle_maybe_call_table MR_sle_exec_trace->MR_exec_maybe_call_table
+#define MR_sle_maybe_decl_debug MR_sle_exec_trace->MR_exec_maybe_decl_debug
+#define MR_sle_maybe_tailrec    MR_sle_exec_trace->MR_exec_maybe_tail_rec
 
-#define	MR_sle_eval_method(proc_layout_ptr)				\
-	((MR_EvalMethod) (proc_layout_ptr)->				\
-		MR_sle_exec_trace->MR_exec_eval_method_CAST_ME)
+#define MR_sle_eval_method(proc_layout_ptr)                                 \
+    ((MR_EvalMethod) (proc_layout_ptr)->                                    \
+        MR_sle_exec_trace->MR_exec_eval_method_CAST_ME)
 
-#define	MR_sle_trace_level(proc_layout_ptr)				\
-	((MR_TraceLevel) (proc_layout_ptr)->				\
-		MR_sle_exec_trace->MR_exec_trace_level_CAST_ME)
+#define MR_sle_trace_level(proc_layout_ptr)                                 \
+    ((MR_TraceLevel) (proc_layout_ptr)->                                    \
+        MR_sle_exec_trace->MR_exec_trace_level_CAST_ME)
 
-#define	MR_proc_has_io_state_pair(proc_layout_ptr)			\
-	((proc_layout_ptr)->MR_sle_exec_trace->MR_exec_flags		\
-		& MR_PROC_LAYOUT_FLAG_HAS_IO_STATE_PAIR)
+#define MR_proc_has_io_state_pair(proc_layout_ptr)                          \
+    ((proc_layout_ptr)->MR_sle_exec_trace->MR_exec_flags                    \
+        & MR_PROC_LAYOUT_FLAG_HAS_IO_STATE_PAIR)
 
-	/* Adjust the arity of functions for printing. */
-#define MR_sle_user_adjusted_arity(entry)				\
-	((entry)->MR_sle_user.MR_user_arity -				\
-		(((entry)->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION) \
-		? 1 : 0))
+    /* Adjust the arity of functions for printing. */
+#define MR_sle_user_adjusted_arity(entry)                                   \
+    ((entry)->MR_sle_user.MR_user_arity -                                   \
+        (((entry)->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION) ? 1 : 0))
 
 /*
 ** Return the name (if any) of the variable with the given HLDS variable number
 ** in the procedure indicated by the first argument.
 */
 
-extern	MR_ConstString	MR_hlds_var_name(const MR_ProcLayout *entry,
-				int hlds_var_num);
+extern  MR_ConstString  MR_hlds_var_name(const MR_ProcLayout *entry,
+                            int hlds_var_num);
 
 /*
 ** Given a string, see whether its end consists a sequence of digits.
@@ -1153,7 +1186,7 @@ extern	MR_ConstString	MR_hlds_var_name(const MR_ProcLayout *entry,
 ** to the start of the string. Otherwise, return a negative number.
 */
 
-extern	int		MR_find_start_of_num_suffix(const char *str);
+extern  int             MR_find_start_of_num_suffix(const char *str);
 
 
 /*
@@ -1180,121 +1213,121 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 ** variant types listed above.)
 */
 
-#define	MR_PROC_NO_SLOT_COUNT		-1
+#define MR_PROC_NO_SLOT_COUNT       -1
 
-#ifdef	MR_STATIC_CODE_ADDRESSES
- #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		MR_ENTRY(entry)
- #define	MR_INIT_PROC_LAYOUT_ADDR(entry)		do { } while (0)
+#ifdef  MR_STATIC_CODE_ADDRESSES
+ #define    MR_MAKE_PROC_LAYOUT_ADDR(entry)     MR_ENTRY(entry)
+ #define    MR_INIT_PROC_LAYOUT_ADDR(entry)     do { } while (0)
 #else
- #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		((MR_Code *) NULL)
- #define	MR_INIT_PROC_LAYOUT_ADDR(entry)				\
-		do {							\
-			((MR_ProcLayout *) &				\
-			MR_PASTE2(mercury_data__proc_layout__, entry))	\
-				->MR_sle_code_addr = MR_ENTRY(entry);	\
-		} while (0)
+ #define    MR_MAKE_PROC_LAYOUT_ADDR(entry)     ((MR_Code *) NULL)
+ #define    MR_INIT_PROC_LAYOUT_ADDR(entry)                                 \
+        do {                                                                \
+            ((MR_ProcLayout *) &                                            \
+            MR_PASTE2(mercury_data__proc_layout__, entry))                  \
+                ->MR_sle_code_addr = MR_ENTRY(entry);                       \
+        } while (0)
 #endif
 
 #define MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(sc, detism, slots, succip_locn, \
-		pf, module, name, arity, mode, proc_static)		\
-	MR_declare_entry(MR_proc_entry_user_name(module, name,		\
-		arity, mode));						\
-	sc const MR_ProcLayoutUser					\
-	MR_proc_layout_user_name(module, name, arity, mode) = {		\
-		{							\
-			MR_MAKE_PROC_LAYOUT_ADDR(			\
-				MR_proc_entry_user_name(module, name,	\
-					arity, mode)),			\
-			{ succip_locn },				\
-			slots,						\
-			detism						\
-		},							\
-		{							\
-			pf,						\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(name),				\
-			arity,						\
-			mode						\
-		},							\
-		NULL,							\
-		(MR_ProcStatic *) proc_static				\
-	}
+        pf, module, name, arity, mode, proc_static)                         \
+    MR_declare_entry(MR_proc_entry_user_name(module, name,                  \
+        arity, mode));                                                      \
+    sc const MR_ProcLayoutUser                                              \
+    MR_proc_layout_user_name(module, name, arity, mode) = {                 \
+        {                                                                   \
+            MR_MAKE_PROC_LAYOUT_ADDR(                                       \
+                MR_proc_entry_user_name(module, name,                       \
+                    arity, mode)),                                          \
+            { succip_locn },                                                \
+            slots,                                                          \
+            detism                                                          \
+        },                                                                  \
+        {                                                                   \
+            pf,                                                             \
+            MR_STRINGIFY(module),                                           \
+            MR_STRINGIFY(module),                                           \
+            MR_STRINGIFY(name),                                             \
+            arity,                                                          \
+            mode                                                            \
+        },                                                                  \
+        NULL,                                                               \
+        (MR_ProcStatic *) proc_static                                       \
+    }
 
 #define MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(sc, detism, slots, succip_locn, \
-		module, name, type, arity, mode, proc_static)		\
-	MR_declare_entry(MR_proc_entry_uci_name(module, name,		\
-		type, arity, mode));					\
-	sc const MR_ProcLayoutUCI					\
-	MR_proc_layout_uci_name(module, name, type, arity, mode) = {	\
-		{							\
-			MR_MAKE_PROC_LAYOUT_ADDR(			\
-				MR_proc_entry_uci_name(module, name,	\
-					type, arity, mode)),		\
-			{ succip_locn },				\
-			slots,						\
-			detism						\
-		},							\
-		{							\
-			MR_STRINGIFY(type),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(name),				\
-			arity,						\
-			mode						\
-		},							\
-		NULL,							\
-		(MR_ProcStatic *) proc_static				\
-	}
+        module, name, type, arity, mode, proc_static)                       \
+    MR_declare_entry(MR_proc_entry_uci_name(module, name,                   \
+        type, arity, mode));                                                \
+    sc const MR_ProcLayoutUCI                                               \
+    MR_proc_layout_uci_name(module, name, type, arity, mode) = {            \
+        {                                                                   \
+            MR_MAKE_PROC_LAYOUT_ADDR(                                       \
+                MR_proc_entry_uci_name(module, name,                        \
+                    type, arity, mode)),                                    \
+            { succip_locn },                                                \
+            slots,                                                          \
+            detism                                                          \
+        },                                                                  \
+        {                                                                   \
+            MR_STRINGIFY(type),                                             \
+            MR_STRINGIFY(module),                                           \
+            MR_STRINGIFY(module),                                           \
+            MR_STRINGIFY(name),                                             \
+            arity,                                                          \
+            mode                                                            \
+        },                                                                  \
+        NULL,                                                               \
+        (MR_ProcStatic *) proc_static                                       \
+    }
 
 #define MR_NO_EXTERN_DECL
 
-#define MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
-		pf, module, name, arity, mode)				\
-	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(static, detism, slots,	\
-		succip_locn, pf, module, name, arity, mode,		\
-		&MR_proc_static_user_name(module, name, arity, mode))
-#define MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
-		pf, module, name, arity, mode)				\
-	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(MR_NO_EXTERN_DECL, detism, slots,\
-		succip_locn, pf, module, name, arity, mode,		\
-		&MR_proc_static_user_name(module, name, arity, mode))
+#define MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn,  \
+        pf, module, name, arity, mode)                                      \
+    MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(static, detism, slots,             \
+        succip_locn, pf, module, name, arity, mode,                         \
+        &MR_proc_static_user_name(module, name, arity, mode))
+#define MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn,  \
+        pf, module, name, arity, mode)                                      \
+    MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(MR_NO_EXTERN_DECL, detism, slots,  \
+        succip_locn, pf, module, name, arity, mode,                         \
+        &MR_proc_static_user_name(module, name, arity, mode))
 
-#define MR_STATIC_UCI_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
-		module, name, type, arity, mode)			\
-	MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(static, detism, slots,	\
-		succip_locn, module, name, type, arity, mode,		\
-		&MR_proc_static_uci_name(module, name, type, arity, mode))
-#define MR_EXTERN_UCI_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
-		module, name, type, arity, mode)			\
-	MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(MR_NO_EXTERN_DECL, detism, slots,\
-		succip_locn, module, name, type, arity, mode,		\
-		&MR_proc_static_uci_name(module, name, type, arity, mode))
+#define MR_STATIC_UCI_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn,   \
+        module, name, type, arity, mode)                                    \
+    MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(static, detism, slots,              \
+        succip_locn, module, name, type, arity, mode,                       \
+        &MR_proc_static_uci_name(module, name, type, arity, mode))
+#define MR_EXTERN_UCI_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn,   \
+        module, name, type, arity, mode)                                    \
+    MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(MR_NO_EXTERN_DECL, detism, slots,   \
+        succip_locn, module, name, type, arity, mode,                       \
+        &MR_proc_static_uci_name(module, name, type, arity, mode))
 
-#define MR_STATIC_USER_PROC_ID_PROC_LAYOUT(detism, slots, succip_locn,	\
-		pf, module, name, arity, mode)				\
-	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(static, detism, slots,	\
-		succip_locn, pf, module, name, arity, mode, NULL)
-#define MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(detism, slots, succip_locn,	\
-		pf, module, name, arity, mode)				\
-	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(MR_NO_EXTERN_DECL, detism, slots,\
-		succip_locn, pf, module, name, arity, mode, NULL)
+#define MR_STATIC_USER_PROC_ID_PROC_LAYOUT(detism, slots, succip_locn,      \
+        pf, module, name, arity, mode)                                      \
+    MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(static, detism, slots,             \
+        succip_locn, pf, module, name, arity, mode, NULL)
+#define MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(detism, slots, succip_locn,      \
+        pf, module, name, arity, mode)                                      \
+    MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(MR_NO_EXTERN_DECL, detism, slots,  \
+        succip_locn, pf, module, name, arity, mode, NULL)
 
 #define MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(mod, n, a)                       \
-	const MR_ProcLayoutUCI					\
-		MR_proc_layout_uci_name(mod, __Unify__, n, a, 0);	\
-	const MR_ProcLayoutUCI					\
-		MR_proc_layout_uci_name(mod, __Compare__, n, a, 0);	\
-	const MR_ProcLayoutUCI					\
-		MR_proc_layout_uci_name(mod, __CompareRep__, n, a, 0);
+    const MR_ProcLayoutUCI                                                  \
+        MR_proc_layout_uci_name(mod, __Unify__, n, a, 0);                   \
+    const MR_ProcLayoutUCI                                                  \
+        MR_proc_layout_uci_name(mod, __Compare__, n, a, 0);                 \
+    const MR_ProcLayoutUCI                                                  \
+        MR_proc_layout_uci_name(mod, __CompareRep__, n, a, 0);
 
 /*
 ** In procedures compiled with execution tracing, three items are stored
 ** in stack slots with fixed numbers. They are:
 **
-**	the event number of the last event before the call event,
-**	the call number, and
-**	the call depth.
+**  the event number of the last event before the call event,
+**  the call number, and
+**  the call depth.
 **
 ** Note that the first slot does not store the number of the call event
 ** itself, but rather the number of the call event minus one. The reason
@@ -1314,16 +1347,16 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 #define MR_call_num_framevar(base_curfr)     MR_based_framevar(base_curfr, 2)
 #define MR_call_depth_framevar(base_curfr)   MR_based_framevar(base_curfr, 3)
 
-#define MR_event_num_stackvar(base_sp)	     MR_based_stackvar(base_sp, 1)
-#define MR_call_num_stackvar(base_sp)	     MR_based_stackvar(base_sp, 2)
-#define MR_call_depth_stackvar(base_sp)	     MR_based_stackvar(base_sp, 3)
+#define MR_event_num_stackvar(base_sp)       MR_based_stackvar(base_sp, 1)
+#define MR_call_num_stackvar(base_sp)        MR_based_stackvar(base_sp, 2)
+#define MR_call_depth_stackvar(base_sp)      MR_based_stackvar(base_sp, 3)
 
 /*
 ** In model_non procedures compiled with --trace-redo, one or two other items
 ** are stored in fixed stack slots. These are
 **
-**	the address of the layout structure for the redo event
-**	the saved copy of the from-full flag (only if trace level is shallow)
+**  the address of the layout structure for the redo event
+**  the saved copy of the from-full flag (only if trace level is shallow)
 **
 ** The following macros will access these slots. They should be used only from
 ** within the code that calls MR_trace for the REDO event.
@@ -1386,11 +1419,11 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 */
 
 typedef struct MR_ModuleFileLayout_Struct {
-	MR_ConstString			MR_mfl_filename;
-	MR_Integer			MR_mfl_label_count;
-	/* the following fields point to arrays of size MR_mfl_label_count */
-	const MR_int_least16_t		*MR_mfl_label_lineno;
-	const MR_LabelLayout		**MR_mfl_label_layout;
+    MR_ConstString                  MR_mfl_filename;
+    MR_Integer                      MR_mfl_label_count;
+    /* the following fields point to arrays of size MR_mfl_label_count */
+    const MR_int_least16_t          *MR_mfl_label_lineno;
+    const MR_LabelLayout            **MR_mfl_label_layout;
 } MR_ModuleFileLayout;
 
 /*
@@ -1403,40 +1436,40 @@ typedef struct MR_ModuleFileLayout_Struct {
 ** compiler/layout_out.m.
 */
 
-#define	MR_LAYOUT_VERSION		MR_LAYOUT_VERSION__COMMON
-#define	MR_LAYOUT_VERSION__USER_DEFINED	1
-#define	MR_LAYOUT_VERSION__EVENTSETNAME	2
-#define	MR_LAYOUT_VERSION__SYNTH_ATTR	3
-#define	MR_LAYOUT_VERSION__COMMON	4
+#define MR_LAYOUT_VERSION                   MR_LAYOUT_VERSION__COMMON
+#define MR_LAYOUT_VERSION__USER_DEFINED     1
+#define MR_LAYOUT_VERSION__EVENTSETNAME     2
+#define MR_LAYOUT_VERSION__SYNTH_ATTR       3
+#define MR_LAYOUT_VERSION__COMMON           4
 
 struct MR_ModuleCommonLayout_Struct {
-	MR_uint_least8_t                MR_mlc_version_number;
-	MR_ConstString			MR_mlc_name;
-	MR_Integer			MR_mlc_string_table_size;
-	const char			*MR_mlc_string_table;
+    MR_uint_least8_t                MR_mlc_version_number;
+    MR_ConstString                  MR_mlc_name;
+    MR_Integer                      MR_mlc_string_table_size;
+    const char                      *MR_mlc_string_table;
 };
 
 struct MR_ModuleLayout_Struct {
-	const MR_ModuleCommonLayout	*MR_ml_common;
-	MR_Integer			MR_ml_proc_count;
-	const MR_ProcLayout		**MR_ml_procs;
-	MR_Integer			MR_ml_filename_count;
-	const MR_ModuleFileLayout	**MR_ml_module_file_layout;
-	MR_TraceLevel			MR_ml_trace_level;
-	MR_int_least32_t		MR_ml_suppressed_events;
-	MR_int_least32_t		MR_ml_num_label_exec_counts;
-	MR_Unsigned			*MR_ml_label_exec_count;
-	const char			*MR_ml_user_event_set_name;
-	const char			*MR_ml_user_event_set_desc;
-	MR_int_least16_t		MR_ml_user_event_max_num_attr;
-	MR_int_least16_t		MR_ml_num_user_event_specs;
-	MR_UserEventSpec		*MR_ml_user_event_specs;
+    const MR_ModuleCommonLayout     *MR_ml_common;
+    MR_Integer                      MR_ml_proc_count;
+    const MR_ProcLayout             **MR_ml_procs;
+    MR_Integer                      MR_ml_filename_count;
+    const MR_ModuleFileLayout       **MR_ml_module_file_layout;
+    MR_TraceLevel                   MR_ml_trace_level;
+    MR_int_least32_t                MR_ml_suppressed_events;
+    MR_int_least32_t                MR_ml_num_label_exec_counts;
+    MR_Unsigned                     *MR_ml_label_exec_count;
+    const char                      *MR_ml_user_event_set_name;
+    const char                      *MR_ml_user_event_set_desc;
+    MR_int_least16_t                MR_ml_user_event_max_num_attr;
+    MR_int_least16_t                MR_ml_num_user_event_specs;
+    MR_UserEventSpec                *MR_ml_user_event_specs;
 };
 
-#define	MR_ml_version_number	MR_ml_common->MR_mlc_version_number
-#define	MR_ml_name		MR_ml_common->MR_mlc_name
-#define	MR_ml_string_table_size	MR_ml_common->MR_mlc_string_table_size
-#define	MR_ml_string_table	MR_ml_common->MR_mlc_string_table
+#define MR_ml_version_number        MR_ml_common->MR_mlc_version_number
+#define MR_ml_name                  MR_ml_common->MR_mlc_name
+#define MR_ml_string_table_size     MR_ml_common->MR_mlc_string_table_size
+#define MR_ml_string_table          MR_ml_common->MR_mlc_string_table
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -1452,27 +1485,27 @@ struct MR_ModuleLayout_Struct {
 */
 
 struct MR_ClosureId_Struct {
-	MR_ProcId		MR_closure_proc_id;
-	MR_ConstString		MR_closure_module_name;
-	MR_ConstString		MR_closure_file_name;
-	MR_Integer		MR_closure_line_number;
-	MR_ConstString		MR_closure_goal_path;
+    MR_ProcId                       MR_closure_proc_id;
+    MR_ConstString                  MR_closure_module_name;
+    MR_ConstString                  MR_closure_file_name;
+    MR_Integer                      MR_closure_line_number;
+    MR_ConstString                  MR_closure_goal_path;
 };
 
 struct MR_UserClosureId_Struct {
-	MR_UserProcId		MR_user_closure_proc_id;
-	MR_ConstString		MR_user_closure_module_name;
-	MR_ConstString		MR_user_closure_file_name;
-	MR_Integer		MR_user_closure_line_number;
-	MR_ConstString		MR_user_closure_goal_path;
+    MR_UserProcId                   MR_user_closure_proc_id;
+    MR_ConstString                  MR_user_closure_module_name;
+    MR_ConstString                  MR_user_closure_file_name;
+    MR_Integer                      MR_user_closure_line_number;
+    MR_ConstString                  MR_user_closure_goal_path;
 };
 
 struct MR_UCIClosureId_Struct {
-	MR_UCIProcId		MR_uci_closure_proc_id;
-	MR_ConstString		MR_uci_closure_module_name;
-	MR_ConstString		MR_uci_closure_file_name;
-	MR_Integer		MR_uci_closure_line_number;
-	MR_ConstString		MR_uci_closure_goal_path;
+    MR_UCIProcId                    MR_uci_closure_proc_id;
+    MR_ConstString                  MR_uci_closure_module_name;
+    MR_ConstString                  MR_uci_closure_file_name;
+    MR_Integer                      MR_uci_closure_line_number;
+    MR_ConstString                  MR_uci_closure_goal_path;
 };
 
 #endif /* not MERCURY_STACK_LAYOUT_H */

@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1998-2001, 2003-2006 The University of Melbourne.
+** vim: ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1998-2001, 2003-2006, 2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,14 +15,14 @@
 #include <stdio.h>
 
 /*
-** mercury_stack_trace.h -
-**	Definitions for use by the stack tracing.
+** mercury_stack_trace.h:
+**
+** Definitions for use by the stack tracing.
 */
 
 typedef MR_Unsigned MR_FrameLimit;
 typedef MR_Unsigned MR_SpecLineLimit;
 typedef MR_Unsigned MR_Level;
-
 
 /*---------------------------------------------------------------------------*/
 
@@ -47,9 +50,9 @@ typedef MR_Unsigned MR_Level;
 ** using `:- external'.
 */
 
-extern	void	MR_dump_stack(MR_Code *success_pointer,
-			MR_Word *det_stack_pointer,
-			MR_Word *current_frame, MR_bool include_trace_data);
+extern  void    MR_dump_stack(MR_Code *success_pointer,
+                    MR_Word *det_stack_pointer, MR_Word *current_frame,
+                    MR_bool include_trace_data);
 
 /*
 ** MR_dump_stack_from_layout
@@ -66,23 +69,48 @@ extern	void	MR_dump_stack(MR_Code *success_pointer,
 ** why the dump was cut short.
 */
 
-typedef	void		(*MR_PrintStackRecord)(FILE *fp,
-				const MR_ProcLayout *proc_layout,
-				int count, MR_Level level,
-				MR_Word *base_sp, MR_Word * base_curfr,
-				const char *filename, int linenumber,
-				const char *goal_path,
-				MR_bool context_mismatch);
+typedef struct {
+    /*
+    ** The min_level and max_level fields give the range of call levels
+    ** covered by this dump record. The frame_count field gives the number
+    ** of stack frames covered by this dump record.
+    **
+    ** Normally, each call has its own frame, which translates into
+    ** max_level+1-min_level being equal to frame_count. However,
+    ** frame_count can be less than this if the procedure has tail
+    ** recursion events. However, frame_count does not have to be one
+    ** for such procedures, since not all recursive calls are tail
+    ** recursive calls.
+    **
+    ** If include_trace_data is TRUE, frame_count should be 1.
+    */
+    const MR_ProcLayout     *MR_sdi_proc_layout;
+    MR_Level                MR_sdi_min_level;
+    MR_Level                MR_sdi_max_level;
+    MR_Unsigned             MR_sdi_num_frames;
+    const char              *MR_sdi_filename;
+    int                     MR_sdi_linenumber;
+    MR_bool                 MR_sdi_context_mismatch;
 
-extern	const char	*MR_dump_stack_from_layout(FILE *fp,
-				const MR_LabelLayout *label_layout,
-				MR_Word *det_stack_pointer,
-				MR_Word *current_frame,
-				MR_bool include_trace_data,
-				MR_bool include_contexts,
-				MR_FrameLimit frame_limit,
-				MR_SpecLineLimit line_limit,
-				MR_PrintStackRecord print_stack_record);
+    /* These fields are meaningful only if include_trace_data is TRUE. */
+    MR_Word                 *MR_sdi_base_sp;
+    MR_Word                 *MR_sdi_base_curfr;
+    const char              *MR_sdi_goal_path;
+} MR_StackDumpInfo;
+
+typedef void        (*MR_PrintStackRecord)(FILE *fp,
+                        MR_bool include_trace_data,
+                        MR_StackDumpInfo dump_info);
+
+extern  const char  *MR_dump_stack_from_layout(FILE *fp,
+                        const MR_LabelLayout *label_layout,
+                        MR_Word *det_stack_pointer,
+                        MR_Word *current_frame,
+                        MR_bool include_trace_data,
+                        MR_bool include_contexts,
+                        MR_FrameLimit frame_limit,
+                        MR_SpecLineLimit line_limit,
+                        MR_PrintStackRecord print_stack_record);
 
 /*
 ** MR_dump_nondet_stack
@@ -93,9 +121,9 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 ** The output format is not meant to be intelligible to non-implementors.
 */
 
-extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr,
-			MR_FrameLimit frame_limit,
-			MR_SpecLineLimit line_limit, MR_Word *maxfr);
+extern  void        MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr,
+                        MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
+                        MR_Word *maxfr);
 
 /*
 ** MR_dump_nondet_stack_from_layout
@@ -106,11 +134,11 @@ extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr,
 ** The output format is not meant to be intelligible to non-implementors.
 */
 
-extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
-			MR_Word *limit_addr, MR_FrameLimit frame_limit,
-			MR_SpecLineLimit line_limit, MR_Word *maxfr,
-			const MR_LabelLayout *label_layout,
-			MR_Word *base_sp, MR_Word *base_curfr);
+extern  void        MR_dump_nondet_stack_from_layout(FILE *fp,
+                        MR_Word *limit_addr, MR_FrameLimit frame_limit,
+                        MR_SpecLineLimit line_limit, MR_Word *maxfr,
+                        const MR_LabelLayout *label_layout,
+                        MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
 ** MR_traverse_nondet_stack_from_layout
@@ -119,15 +147,15 @@ extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
 ** function for each frame.
 */
 
-typedef void MR_Traverse_Nondet_Frame_Func(void *user_data,
-			const MR_LabelLayout *layout, MR_Word *base_sp,
-			MR_Word *base_curfr);
+typedef void        MR_Traverse_Nondet_Frame_Func(void *user_data,
+                        const MR_LabelLayout *layout, MR_Word *base_sp,
+                        MR_Word *base_curfr);
 
-extern	void	MR_traverse_nondet_stack_from_layout(
-			MR_Word *maxfr, const MR_LabelLayout *label_layout,
-			MR_Word *base_sp, MR_Word *base_curfr,
-			MR_Traverse_Nondet_Frame_Func *traverse_frame_func,
-			void *traverse_frame_func_data);
+extern  void        MR_traverse_nondet_stack_from_layout(
+                        MR_Word *maxfr, const MR_LabelLayout *label_layout,
+                        MR_Word *base_sp, MR_Word *base_curfr,
+                        MR_Traverse_Nondet_Frame_Func *traverse_frame_func,
+                        void *traverse_frame_func_data);
 
 /*
 ** MR_find_nth_ancestor
@@ -145,10 +173,11 @@ extern	void	MR_traverse_nondet_stack_from_layout(
 ** and problem will point to an error message.
 */
 
-extern	const MR_LabelLayout *MR_find_nth_ancestor(
-			const MR_LabelLayout *label_layout,
-			MR_Level ancestor_level, MR_Word **stack_trace_sp,
-			MR_Word **stack_trace_curfr, const char **problem);
+extern  const MR_LabelLayout *MR_find_nth_ancestor(
+                        const MR_LabelLayout *label_layout,
+                        MR_Level ancestor_level, MR_Word **stack_trace_sp,
+                        MR_Word **stack_trace_curfr,
+                        MR_Level *actual_level_ptr, const char **problem);
 
 /*
 ** MR_stack_walk_step
@@ -157,18 +186,20 @@ extern	const MR_LabelLayout *MR_find_nth_ancestor(
 ** frame (which is the topmost stack frame from the two stack
 ** pointers given), and moves down one stack frame, i.e. to the
 ** caller's frame, setting the stack pointers to their new levels.
+** The number of times that the topmost stack has been reused
+** is returned in *reused_frames_ptr.
 **
-** return_label_layout will be set to the stack_layout of the
+** *return_label_layout_ptr will be set to the stack_layout of the
 ** continuation label, or NULL if the bottom of the stack has
 ** been reached.
 **
 ** The meanings of the possible return values from MR_stack_walk_step
 ** are as follows:
 **
-** MR_STEP_OK:			everything is fine.
-** MR_STEP_ERROR_BEFORE:	entry_layout has no valid stack trace info.
-** MR_STEP_ERROR_AFTER:		entry_layout has valid stack trace info,
-**				but its caller does not.
+** MR_STEP_OK:              everything is fine.
+** MR_STEP_ERROR_BEFORE:    entry_layout has no valid stack trace info.
+** MR_STEP_ERROR_AFTER:     entry_layout has valid stack trace info,
+**                          but its caller does not.
 **
 ** If a MR_stack_walk_step encounters a problem, it will set problem_ptr
 ** to point to a string representation of the error.
@@ -180,17 +211,18 @@ extern	const MR_LabelLayout *MR_find_nth_ancestor(
 */
 
 typedef enum {
-	MR_STEP_ERROR_BEFORE,
-	MR_STEP_ERROR_AFTER,
-	MR_STEP_OK
+    MR_STEP_ERROR_BEFORE,
+    MR_STEP_ERROR_AFTER,
+    MR_STEP_OK
 } MR_StackWalkStepResult;
 
 extern  MR_StackWalkStepResult
-		MR_stack_walk_step(const MR_ProcLayout *entry_layout,
-			const MR_LabelLayout **return_label_layout,
-			MR_Word **stack_trace_sp_ptr,
-			MR_Word **stack_trace_curfr_ptr,
-			const char **problem_ptr);
+                    MR_stack_walk_step(const MR_ProcLayout *entry_layout,
+                        const MR_LabelLayout **return_label_layout,
+                        MR_Word **stack_trace_sp_ptr,
+                        MR_Word **stack_trace_curfr_ptr,
+                        MR_Unsigned *reused_frames_ptr,
+                        const char **problem_ptr);
 
 /*
 ** MR_stack_trace_bottom should be set to the address of global_success,
@@ -198,7 +230,7 @@ extern  MR_StackWalkStepResult
 ** reach a stack frame whose saved succip slot contains this address.
 */
 
-extern	MR_Code	*MR_stack_trace_bottom;
+extern  MR_Code         *MR_stack_trace_bottom;
 
 /*
 ** MR_nondet_stack_trace_bottom should be set to the address of the buffer
@@ -207,7 +239,7 @@ extern	MR_Code	*MR_stack_trace_bottom;
 ** the redoip and redofr slots of this frame may be hijacked.
 */
 
-extern	MR_Word	*MR_nondet_stack_trace_bottom;
+extern  MR_Word         *MR_nondet_stack_trace_bottom;
 
 /*
 ** The different Mercury determinisms are internally represented by integers.
@@ -215,7 +247,7 @@ extern	MR_Word	*MR_nondet_stack_trace_bottom;
 ** the names that are usually used to denote determinisms.
 */
 
-extern	const char *MR_detism_names[];
+extern  const char      *MR_detism_names[];
 
 /*
 ** MR_find_context attempts to look up the file name and line number
@@ -224,8 +256,8 @@ extern	const char *MR_detism_names[];
 ** otherwise, it returns MR_FALSE.
 */
 
-extern	MR_bool	MR_find_context(const MR_LabelLayout *label,
-			const char **fileptr, int *lineptr);
+extern  MR_bool         MR_find_context(const MR_LabelLayout *label,
+                            const char **fileptr, int *lineptr);
 
 /*
 ** MR_print_call_trace_info prints the call event number, call sequence number
@@ -239,14 +271,14 @@ extern	MR_bool	MR_find_context(const MR_LabelLayout *label,
 ** MR_print_call_trace_info are satisfied.
 */
 
-extern	void	MR_print_call_trace_info(FILE *fp,
-			const MR_ProcLayout *proc_layout,
-			MR_Word *base_sp, MR_Word *base_curfr);
+extern  void            MR_print_call_trace_info(FILE *fp,
+                            const MR_ProcLayout *proc_layout,
+                            MR_Word *base_sp, MR_Word *base_curfr);
 
-extern	void	MR_maybe_print_call_trace_info(FILE *fp,
-			MR_bool include_trace_data,
-			const MR_ProcLayout *proc_layout,
-			MR_Word *base_sp, MR_Word *base_curfr);
+extern  void            MR_maybe_print_call_trace_info(FILE *fp,
+                            MR_bool include_trace_data,
+                            const MR_ProcLayout *proc_layout,
+                            MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
 ** MR_print_proc_id prints an identification of the given procedure,
@@ -255,21 +287,22 @@ extern	void	MR_maybe_print_call_trace_info(FILE *fp,
 ** the caller can put something else after the procedure id on the same line.
 */
 
-extern	void	MR_print_proc_id(FILE *fp, const MR_ProcLayout *entry);
+extern  void            MR_print_proc_id(FILE *fp, const MR_ProcLayout *entry);
 
 /*
 ** MR_print_pred_id prints everything that MR_print_proc_id does, except
 ** the mode number and determinism.
 */
 
-extern	void	MR_print_pred_id(FILE *fp, const MR_ProcLayout *entry);
+extern  void            MR_print_pred_id(FILE *fp, const MR_ProcLayout *entry);
 
 /*
 ** MR_print_proc_spec prints a string that uniquely specifies the given
 ** procedure to the debugger.
 */
 
-extern	void	MR_print_proc_spec(FILE *fp, const MR_ProcLayout *entry);
+extern  void            MR_print_proc_spec(FILE *fp,
+                            const MR_ProcLayout *entry);
 
 /*
 ** MR_print_proc_separate prints a string that uniquely specifies the given
@@ -277,7 +310,8 @@ extern	void	MR_print_proc_spec(FILE *fp, const MR_ProcLayout *entry);
 ** to allow the output to be processed by tools (e.g. awk scripts).
 */
 
-extern	void	MR_print_proc_separate(FILE *fp, const MR_ProcLayout *entry);
+extern  void            MR_print_proc_separate(FILE *fp,
+                            const MR_ProcLayout *entry);
 
 /*
 ** MR_print_proc_id_trace_and_context prints an identification of the given
@@ -288,41 +322,39 @@ extern	void	MR_print_proc_separate(FILE *fp, const MR_ProcLayout *entry);
 ** to print for user defined events.
 */
 
-typedef	enum {
-	MR_CONTEXT_NOWHERE,
-	MR_CONTEXT_BEFORE,
-	MR_CONTEXT_AFTER,
-	MR_CONTEXT_PREVLINE,
-	MR_CONTEXT_NEXTLINE
+typedef enum {
+    MR_CONTEXT_NOWHERE,
+    MR_CONTEXT_BEFORE,
+    MR_CONTEXT_AFTER,
+    MR_CONTEXT_PREVLINE,
+    MR_CONTEXT_NEXTLINE
 } MR_ContextPosition;
 
-typedef	enum {
-	MR_USER_EVENT_CONTEXT_NONE,
-	MR_USER_EVENT_CONTEXT_FILE,
-	MR_USER_EVENT_CONTEXT_PROC,
-	MR_USER_EVENT_CONTEXT_FULL
+typedef enum {
+    MR_USER_EVENT_CONTEXT_NONE,
+    MR_USER_EVENT_CONTEXT_FILE,
+    MR_USER_EVENT_CONTEXT_PROC,
+    MR_USER_EVENT_CONTEXT_FULL
 } MR_UserEventContext;
 
-extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
-			MR_bool include_trace_data, MR_ContextPosition pos,
-			MR_UserEventContext user_event_context,
-			const MR_ProcLayout *proc_layout,
-			const char *maybe_user_event_name,
-			MR_Word *base_sp, MR_Word *base_curfr,
-			const char *path, const char *filename, int lineno,
-			MR_bool print_parent,
-			const char *parent_filename,
-			int parent_lineno, int indent);
+extern  void        MR_print_proc_id_trace_and_context(FILE *fp,
+                        MR_bool include_trace_data, MR_ContextPosition pos,
+                        MR_UserEventContext user_event_context,
+                        const MR_ProcLayout *proc_layout,
+                        const char *maybe_user_event_name,
+                        MR_Word *base_sp, MR_Word *base_curfr,
+                        const char *path, const char *filename, int lineno,
+                        MR_bool print_parent,
+                        const char *parent_filename, int parent_lineno,
+                        int indent);
 
 /*
 ** MR_dump_stack_record_print() prints one line of a stack dump.
 */
 
-extern	void	MR_dump_stack_record_print(FILE *fp,
-			const MR_ProcLayout *proc_layout, int count,
-			MR_Level start_level, MR_Word *base_sp, MR_Word *base_curfr,
-			const char *filename, int linenumber,
-			const char *goal_path, MR_bool context_mismatch);
+extern  void        MR_dump_stack_record_print(FILE *fp,
+                        MR_bool include_trace_data,
+                        MR_StackDumpInfo dump_info);
 
 /*
 ** Find the first call event on the stack whose event number or sequence number
@@ -333,16 +365,16 @@ extern	void	MR_dump_stack_record_print(FILE *fp,
 ** found.
 */
 
-typedef	enum {
-	MR_FIND_FIRST_CALL_BEFORE_SEQ,
-	MR_FIND_FIRST_CALL_BEFORE_EVENT
+typedef enum {
+    MR_FIND_FIRST_CALL_BEFORE_SEQ,
+    MR_FIND_FIRST_CALL_BEFORE_EVENT
 } MR_FindFirstCallSeqOrEvent;
 
-extern	int	MR_find_first_call_less_eq_seq_or_event(
-			MR_FindFirstCallSeqOrEvent seq_or_event,
-			MR_Unsigned seq_no_or_event_no,
-			const MR_LabelLayout *label_layout,
-			MR_Word *det_stack_pointer, MR_Word *current_frame,
-			const char **problem);
+extern  int         MR_find_first_call_less_eq_seq_or_event(
+                        MR_FindFirstCallSeqOrEvent seq_or_event,
+                        MR_Unsigned seq_no_or_event_no,
+                        const MR_LabelLayout *label_layout,
+                        MR_Word *det_stack_pointer, MR_Word *current_frame,
+                        const char **problem);
 
 #endif /* MERCURY_STACK_TRACE_H */

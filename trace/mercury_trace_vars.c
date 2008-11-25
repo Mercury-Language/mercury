@@ -349,15 +349,18 @@ MR_trace_set_level(int ancestor_level, MR_bool print_optionals)
     MR_Word                 *base_curfr;
     const MR_LabelLayout    *top_layout;
     const MR_LabelLayout    *level_layout;
+    MR_Level                actual_level;
 
     problem = NULL;
     top_layout = MR_point.MR_point_top_layout;
     base_sp = MR_saved_sp(MR_point.MR_point_top_saved_regs);
     base_curfr = MR_saved_curfr(MR_point.MR_point_top_saved_regs);
     level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
-        &base_sp, &base_curfr, &problem);
+        &base_sp, &base_curfr, &actual_level, &problem);
 
-    if (level_layout != NULL) {
+    if (actual_level != ancestor_level) {
+        return "The stack frame of that call has been reused";
+    } else if (level_layout != NULL) {
         return MR_trace_set_level_from_layout(level_layout,
             base_sp, base_curfr, ancestor_level, print_optionals);
     } else {

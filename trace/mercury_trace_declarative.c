@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -795,6 +795,7 @@ MR_trace_construct_node(MR_EventInfo *event_info)
             /* do nothing */
             break;
 
+        case MR_PORT_TAILREC_CALL:
         default:
             MR_fatal_error("MR_trace_construct_node: unknown port");
     }
@@ -878,6 +879,7 @@ MR_trace_decl_call(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_Word                     *base_sp;
     MR_Word                     *base_curfr;
     MR_Word                     maybe_return_label;
+    MR_Unsigned                 reused_frames;
 
     if (MR_edt_depth == MR_edt_max_depth) {
         at_depth_limit = MR_TRUE;
@@ -892,7 +894,8 @@ MR_trace_decl_call(MR_EventInfo *event_info, MR_TraceNode prev)
     base_sp = MR_saved_sp(event_info->MR_saved_regs);
     base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
     result = MR_stack_walk_step(event_proc_layout, &return_label_layout,
-        &base_sp, &base_curfr, &problem);
+        &base_sp, &base_curfr, &reused_frames, &problem);
+    assert(reused_frames == 0);
 
     /*
     ** return_label_layout may be NULL even if result is MR_STEP_OK, if
@@ -934,9 +937,9 @@ MR_trace_decl_exit(MR_EventInfo *event_info, MR_TraceNode prev)
 
     MR_TRACE_CALL_MERCURY(
         /*
-        ** We need to add 1 to MR_edt_depth since this is an EXIT
-        ** event, so 1 should already have been subtracted from
-        ** MR_edt_depth in MR_trace_calculate_event_depth.
+        ** We need to add 1 to MR_edt_depth since this is an EXIT event,
+        ** so 1 should already have been subtracted from MR_edt_depth
+        ** in MR_trace_calculate_event_depth.
         */
         MR_trace_maybe_update_implicit_tree_ideal_depth(
             MR_edt_depth + 1, call);
@@ -1757,7 +1760,7 @@ MR_trace_restart_decl_debug(MR_TraceNode call_preceding, MR_Unsigned event,
         MR_selected_trace_func_ptr = MR_trace_real;
         MR_debug_enabled = MR_TRUE;
         MR_update_trace_func_enabled();
-        return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
+        return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info, NULL);
     }
 
     return jumpaddr;
@@ -1904,7 +1907,7 @@ MR_decl_diagnosis(MR_TraceNode root, MR_TraceCmdInfo *cmd,
         MR_debug_enabled = MR_TRUE;
         MR_update_trace_func_enabled();
 
-        return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
+        return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info, NULL);
     }
 
     if (MR_trace_decl_debug_debugger_mode) {
@@ -2072,7 +2075,8 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_TraceCmdInfo *cmd,
             MR_selected_trace_func_ptr = MR_trace_real;
             MR_debug_enabled = MR_TRUE;
             MR_update_trace_func_enabled();
-            return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
+            return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info,
+                NULL);
         }
     } else {
         /*

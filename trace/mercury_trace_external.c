@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -230,10 +230,7 @@ static int      MR_get_var_number(MR_Word debugger_request);
 static void     MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
                     const char *extra, MR_Word *base_sp, MR_Word *base_curfr);
 static void     MR_dump_stack_record_print_to_socket(FILE *fp,
-                    const MR_ProcLayout *entry_layout, int count,
-                    MR_Level start_level, MR_Word *base_sp, MR_Word *base_curfr,
-                    const char *filename, int linenumber,
-                    const char *goal_path, MR_bool context_mismatch);
+                    MR_bool include_trace_data, MR_StackDumpInfo dump_info);
 static void     MR_get_list_modules_to_import(MR_Word debugger_request,
                     MR_Integer *modules_list_length_ptr,
                     MR_Word *modules_list_ptr);
@@ -645,11 +642,13 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                 if (MR_debug_socket) {
                     fprintf(stderr, "\nMercury runtime: REQUEST_STACK\n");
                 }
+
                 MR_trace_init_modules();
                 message = MR_dump_stack_from_layout(stdout, layout,
                     MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
                     include_trace_data, MR_FALSE, 0, 0,
                     &MR_dump_stack_record_print_to_socket);
+
                 MR_send_message_to_socket("end_stack");
                 if (message != NULL) {
                     MR_send_message_to_socket_format("error(\"%s\").\n",
@@ -1264,15 +1263,25 @@ MR_get_var_number(MR_Word debugger_request)
 */
 
 static void
-MR_dump_stack_record_print_to_socket(FILE *fp,
-    const MR_ProcLayout *entry_layout, int count, MR_Level start_level,
-    MR_Word *base_sp, MR_Word *base_curfr,
-    const char *filename, int linenumber,
-    const char *goal_path, MR_bool context_mismatch)
+MR_dump_stack_record_print_to_socket(FILE *fp, MR_bool include_trace_data,
+    MR_StackDumpInfo dump_info)
 {
+    /*
+    ** XXX If the external debugger is ever needed again, it should be updated
+    ** to send information across the socket about about any reuse of a stack
+    ** frame by tail recursion events.
+    */
+
+    if (dump_info.MR_sdi_min_level != dump_info.MR_sdi_max_level) {
+        MR_fatal_error(
+            "dumping stack frames of multiple calls to external debugger");
+    }
+
     MR_send_message_to_socket_format(
-        "level(%" MR_INTEGER_LENGTH_MODIFIER "u).\n", start_level);
-    MR_print_proc_id_to_socket(entry_layout, NULL, base_sp, base_curfr);
+        "level(%" MR_INTEGER_LENGTH_MODIFIER "u).\n",
+        dump_info.MR_sdi_min_level);
+    MR_print_proc_id_to_socket(dump_info.MR_sdi_proc_layout, NULL,
+        dump_info.MR_sdi_base_sp, dump_info.MR_sdi_base_curfr);
 }
 
 static void
@@ -1491,6 +1500,7 @@ MR_get_line_number(MR_Word *saved_regs, const MR_LabelLayout *layout,
     int                     lineno = 0;
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
+    MR_Unsigned             reused_frames;
 
     if MR_port_is_interface(port) {
         /*
@@ -1501,7 +1511,9 @@ MR_get_line_number(MR_Word *saved_regs, const MR_LabelLayout *layout,
         base_sp = MR_saved_sp(saved_regs);
         base_curfr = MR_saved_curfr(saved_regs);
         parent_layout = MR_find_nth_ancestor(layout, 1, &base_sp, &base_curfr,
-            &problem);
+            &reused_frames, &problem);
+        /* The external debugger does not (yet) know about reused frames. */
+        assert(reused_frames == 0);
         if (parent_layout != NULL) {
             (void) MR_find_context(parent_layout, &filename, &lineno);
         }

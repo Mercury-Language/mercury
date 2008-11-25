@@ -648,7 +648,7 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
         NeedsAllNames, MaxVarNum, VarNameVector, !Info),
     list.map(convert_var_to_int(VarNumMap), HeadVars, HeadVarNumVector),
     TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
-        MaybeTrailSlots, MaybeMaxfrSlot, MaybeCallTableSlot),
+        MaybeTrailSlots, MaybeMaxfrSlot, MaybeCallTableSlot, MaybeTailRecSlot),
     ModuleInfo = !.Info ^ module_info,
     (
         MaybeCallLabel = yes(CallLabel),
@@ -689,7 +689,7 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
         EventDataAddrs, MaybeTableDataAddr, HeadVarNumVector, VarNameVector,
         MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
         MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
-        MaybeCallTableSlot, EffTraceLevel, Flags).
+        MaybeCallTableSlot, MaybeTailRecSlot, EffTraceLevel, Flags).
 
 :- pred collect_event_data_addrs(list(internal_label_info)::in,
     list(data_addr)::in, list(data_addr)::out,
@@ -709,6 +709,7 @@ collect_event_data_addrs([Info | Infos], !RevInterfaces, !RevInternals) :-
             ; Port = port_exit
             ; Port = port_redo
             ; Port = port_fail
+            ; Port = port_tailrec_call
             ),
             LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
             DataAddr = layout_addr(LayoutName),

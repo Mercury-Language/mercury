@@ -198,7 +198,7 @@ MR_SavedDebugState  MR_saved_debug_state;
 
 MR_Code *
 MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
-    MR_SpyPrintList print_list, MR_EventInfo *event_info)
+    MR_SpyPrintList print_list, MR_EventInfo *event_info, const char *msg)
 {
     MR_Code     *jumpaddr;
     char        *line;
@@ -228,6 +228,10 @@ MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
         fprintf(MR_mdb_err, ": %s.\n", MR_spy_point_cond_problem);
         MR_spy_point_cond_bad = NULL;
         MR_spy_point_cond_problem = NULL;
+    }
+
+    if (msg != NULL) {
+        fprintf(MR_mdb_out, "%s", msg);
     }
 
     MR_trace_event_print_internal_report(event_info);
@@ -744,6 +748,15 @@ MR_trace_do_noop(void)
 {
     fflush(MR_mdb_out);
     fprintf(MR_mdb_err, "This command is a no-op from this port.\n");
+}
+
+void
+MR_trace_do_noop_tail_rec(void)
+{
+    fflush(MR_mdb_out);
+    fprintf(MR_mdb_err,
+        "Due to the reuse of stack frames by tail recursive procedures,\n"
+        "this command is a no-op from this port.\n");
 }
 
 /*
@@ -1345,7 +1358,7 @@ MR_trace_event_internal_report(MR_TraceCmdInfo *cmd,
                     case 'q':
                         MR_free(buf);
                         return MR_trace_event_internal(cmd, MR_TRUE, NULL,
-                            event_info);
+                            event_info, NULL);
 
                     default:
                         fflush(MR_mdb_out);
@@ -1388,6 +1401,7 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
     MR_Word                 *base_curfr;
     int                     indent;
     const char              *maybe_user_event_name;
+    MR_Level                actual_level;
 
     lineno = 0;
     parent_lineno = 0;
@@ -1447,8 +1461,8 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
         base_sp = MR_saved_sp(event_info->MR_saved_regs);
         base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
         parent = MR_find_nth_ancestor(label_layout, 1, &base_sp, &base_curfr,
-            &problem);
-        if (parent != NULL) {
+            &actual_level, &problem);
+        if (actual_level == 1 && parent != NULL) {
             (void) MR_find_context(parent, &parent_filename, &parent_lineno);
         }
     }

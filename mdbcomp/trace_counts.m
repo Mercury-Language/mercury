@@ -690,6 +690,7 @@ string_to_trace_port("CALL", port_call).
 string_to_trace_port("EXIT", port_exit).
 string_to_trace_port("REDO", port_redo).
 string_to_trace_port("FAIL", port_fail).
+string_to_trace_port("TAIL", port_tailrec_call).
 string_to_trace_port("EXCP", port_exception).
 string_to_trace_port("COND", port_ite_cond).
 string_to_trace_port("THEN", port_ite_then).
@@ -720,6 +721,7 @@ make_path_port(_GoalPath, port_call) = port_only(port_call).
 make_path_port(_GoalPath, port_exit) = port_only(port_exit).
 make_path_port(_GoalPath, port_redo) = port_only(port_redo).
 make_path_port(_GoalPath, port_fail) = port_only(port_fail).
+make_path_port(GoalPath, port_tailrec_call) = path_only(GoalPath).
 make_path_port(_GoalPath, port_exception) = port_only(port_exception).
 make_path_port(GoalPath, port_ite_cond) = path_only(GoalPath).
 make_path_port(GoalPath, port_ite_then) = path_only(GoalPath).
@@ -735,7 +737,7 @@ make_path_port(GoalPath, port_disj_later) = path_only(GoalPath).
 make_path_port(GoalPath, port_switch) = path_only(GoalPath).
 make_path_port(GoalPath, port_nondet_foreign_proc_first) = path_only(GoalPath).
 make_path_port(GoalPath, port_nondet_foreign_proc_later) = path_only(GoalPath).
-make_path_port(_GoalPath, port_user) = port_only(port_call).
+make_path_port(_GoalPath, port_user) = port_only(port_user).
 
 %-----------------------------------------------------------------------------%
 

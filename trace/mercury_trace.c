@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2007 The University of Melbourne.
+** Copyright (C) 1997-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -74,7 +74,7 @@ MR_Code             *MR_trace_real(const MR_LabelLayout *layout);
 static  MR_Code     *MR_trace_event(MR_TraceCmdInfo *cmd,
                         MR_bool interactive, const MR_LabelLayout *layout,
                         MR_TracePort port, MR_Unsigned seqno,
-                        MR_Unsigned depth);
+                        MR_Unsigned depth, const char *msg);
 static  MR_bool     MR_in_traced_region(const MR_ProcLayout *proc_layout,
                         MR_Word *base_sp, MR_Word *base_curfr);
 static  MR_bool     MR_is_io_state(MR_TypeInfoParams type_params,
@@ -199,41 +199,43 @@ MR_trace_real(const MR_LabelLayout *layout)
 
     switch (MR_trace_ctrl.MR_trace_cmd) {
         case MR_CMD_COLLECT:
-          {
+            {
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-            MR_EventInfo    event_info;
-            MR_Word         *saved_regs = event_info.MR_saved_regs;
-            const char      *path;
-            MR_bool         stop_collecting = MR_FALSE;
-            int             lineno = 0;
+                MR_EventInfo    event_info;
+                MR_Word         *saved_regs = event_info.MR_saved_regs;
+                const char      *path;
+                MR_bool         stop_collecting = MR_FALSE;
+                int             lineno = 0;
 
-            MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);
-            port = (MR_TracePort) layout->MR_sll_port;
-            path = MR_label_goal_path(layout);
-            MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
-            MR_trace_init_point_vars(layout, saved_regs, port, MR_FALSE);
+                MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);
+                port = (MR_TracePort) layout->MR_sll_port;
+                path = MR_label_goal_path(layout);
+                MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num,
+                    saved_regs);
+                MR_trace_init_point_vars(layout, saved_regs, port, MR_FALSE);
 
-            lineno = MR_get_line_number(saved_regs, layout, port);
+                lineno = MR_get_line_number(saved_regs, layout, port);
 
-            MR_COLLECT_filter(MR_trace_ctrl.MR_filter_ptr, seqno, depth, port,
-                layout, path, lineno, &stop_collecting);
-            MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs);
-            if (stop_collecting) {
-                MR_trace_ctrl.MR_trace_cmd = MR_CMD_STEP;
-                return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                    seqno, depth);
-            }
+                MR_COLLECT_filter(MR_trace_ctrl.MR_filter_ptr, seqno, depth,
+                    port, layout, path, lineno, &stop_collecting);
+                MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num,
+                    saved_regs);
+                if (stop_collecting) {
+                    MR_trace_ctrl.MR_trace_cmd = MR_CMD_STEP;
+                    return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout,
+                        port, seqno, depth, NULL);
+                }
 #else
-            MR_fatal_error("attempt to use external debugger");
+                MR_fatal_error("attempt to use external debugger");
 #endif
 
-            goto check_stop_print;
-          }
+                goto check_stop_print;
+            }
 
         case MR_CMD_STEP:
             port = (MR_TracePort) layout->MR_sll_port;
             return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                seqno, depth);
+                seqno, depth, NULL);
 
         case MR_CMD_GOTO:
 #if 0
@@ -251,32 +253,67 @@ MR_trace_real(const MR_LabelLayout *layout)
             {
                 port = (MR_TracePort) layout->MR_sll_port;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                    seqno, depth);
+                    seqno, depth, NULL);
             } else {
                 goto check_stop_print;
             }
 
         case MR_CMD_NEXT:
-            if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
-                goto check_stop_print;
-            } else {
-                port = (MR_TracePort) layout->MR_sll_port;
-                return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                    seqno, depth);
+            {
+                const MR_ProcLayout *proc_layout;
+                MR_Unsigned         stop_depth;
+                MR_Unsigned         reused_frames;
+                const char          *msg;
+
+                stop_depth = MR_trace_ctrl.MR_trace_stop_depth;
+                proc_layout = layout->MR_sll_entry;
+                MR_trace_find_reused_frames(proc_layout, MR_sp, reused_frames);
+
+                if (depth - reused_frames <= stop_depth && stop_depth <= depth)
+                {
+                    if (depth != stop_depth) {
+                        msg = "This is the next event of a call"
+                            " that reused the selected stack frame.\n";
+                    } else {
+                        msg = NULL;
+                    }
+
+                    port = (MR_TracePort) layout->MR_sll_port;
+                    return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout,
+                        port, seqno, depth, msg);
+                } else {
+                    goto check_stop_print;
+                }
             }
 
         case MR_CMD_FINISH:
-            if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
-                goto check_stop_print;
-            } else {
-                port = (MR_TracePort) layout->MR_sll_port;
+            port = (MR_TracePort) layout->MR_sll_port;
+            if (MR_port_is_final(port)) {
+                const MR_ProcLayout *proc_layout;
+                MR_Unsigned         stop_depth;
+                MR_Unsigned         reused_frames;
+                const char          *msg;
 
-                if (! MR_port_is_final(port)) {
-                    goto check_stop_print;
-                } else {
+                stop_depth = MR_trace_ctrl.MR_trace_stop_depth;
+                proc_layout = layout->MR_sll_entry;
+                MR_trace_find_reused_frames(proc_layout, MR_sp, reused_frames);
+
+                if (depth - reused_frames <= stop_depth && stop_depth <= depth)
+                {
+                    if (depth != stop_depth) {
+                        msg = "This is the finish of a call"
+                            " that reused the selected stack frame.\n";
+                    } else {
+                        msg = NULL;
+                    }
+
                     return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout,
-                        port, seqno, depth);
+                        port, seqno, depth, msg);
+                } else {
+                    goto check_stop_print;
                 }
+            } else {
+                goto check_stop_print;
             }
 
         case MR_CMD_FAIL:
@@ -287,7 +324,7 @@ MR_trace_real(const MR_LabelLayout *layout)
 
                 if (port == MR_PORT_FAIL || port == MR_PORT_EXCEPTION) {
                     return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout,
-                        port, seqno, depth);
+                        port, seqno, depth, NULL);
                 } else {
                     goto check_stop_print;
                 }
@@ -300,7 +337,7 @@ MR_trace_real(const MR_LabelLayout *layout)
                 port != MR_PORT_EXCEPTION)
             {
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                    seqno, depth);
+                    seqno, depth, NULL);
             } else {
                 goto check_stop_print;
             }
@@ -309,7 +346,7 @@ MR_trace_real(const MR_LabelLayout *layout)
             port = (MR_TracePort) layout->MR_sll_port;
             if (port == MR_PORT_EXCEPTION) {
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                    seqno, depth);
+                    seqno, depth, NULL);
             } else {
                 goto check_stop_print;
             }
@@ -318,7 +355,7 @@ MR_trace_real(const MR_LabelLayout *layout)
             port = (MR_TracePort) layout->MR_sll_port;
             if (port != MR_PORT_EXIT) {
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                    seqno, depth);
+                    seqno, depth, NULL);
             } else {
                 goto check_stop_print;
             }
@@ -327,7 +364,7 @@ MR_trace_real(const MR_LabelLayout *layout)
             port = (MR_TracePort) layout->MR_sll_port;
             if (port == MR_PORT_USER) {
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                    seqno, depth);
+                    seqno, depth, NULL);
             } else {
                 goto check_stop_print;
             }
@@ -336,7 +373,7 @@ MR_trace_real(const MR_LabelLayout *layout)
             if (MR_trace_ctrl.MR_trace_stop_depth <= depth) {
                 port = (MR_TracePort) layout->MR_sll_port;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                    seqno, depth);
+                    seqno, depth, NULL);
             } else {
                 goto check_stop_print;
             }
@@ -345,7 +382,7 @@ MR_trace_real(const MR_LabelLayout *layout)
             if (MR_trace_ctrl.MR_trace_stop_depth >= depth) {
                 port = (MR_TracePort) layout->MR_sll_port;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                    seqno, depth);
+                    seqno, depth, NULL);
             } else {
                 goto check_stop_print;
             }
@@ -405,7 +442,7 @@ check_stop_print:
         if (! match) {
             if (MR_trace_ctrl.MR_trace_print_level == MR_PRINT_LEVEL_ALL) {
                 return MR_trace_event(&MR_trace_ctrl, MR_FALSE, layout, port,
-                    seqno, depth);
+                    seqno, depth, NULL);
             }
 
             return NULL;
@@ -413,7 +450,7 @@ check_stop_print:
 
         if ((! MR_trace_ctrl.MR_trace_strict) && action == MR_SPY_STOP) {
             return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                seqno, depth);
+                seqno, depth, NULL);
         }
 
         if (MR_trace_ctrl.MR_trace_print_level != MR_PRINT_LEVEL_NONE) {
@@ -424,7 +461,7 @@ check_stop_print:
             */
 
             return MR_trace_event(&MR_trace_ctrl, MR_FALSE, layout, port,
-                seqno, depth);
+                seqno, depth, NULL);
         }
     }
 
@@ -467,7 +504,8 @@ MR_trace_interrupt(const MR_LabelLayout *layout)
 
     port = (MR_TracePort) layout->MR_sll_port;
     MR_trace_event_number++;
-    return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port, seqno, depth);
+    return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port, seqno, depth,
+        NULL);
 }
 
 void
@@ -535,7 +573,7 @@ MR_trace_interrupt_handler(void)
 static MR_Code *
 MR_trace_event(MR_TraceCmdInfo *cmd, MR_bool interactive,
     const MR_LabelLayout *layout, MR_TracePort port,
-    MR_Unsigned seqno, MR_Unsigned depth)
+    MR_Unsigned seqno, MR_Unsigned depth, const char *msg)
 {
     MR_TRACE_EVENT_DECL_AND_SETUP
 
@@ -563,7 +601,7 @@ MR_trace_event(MR_TraceCmdInfo *cmd, MR_bool interactive,
                 (void) MR_event_matches_spy_point(layout, port, &action,
                     &print_list);
                 jumpaddr = MR_trace_event_internal(cmd, interactive,
-                    print_list, &event_info);
+                    print_list, &event_info, msg);
             }
 #ifdef MR_USE_EXTERNAL_DEBUGGER
             break;
@@ -662,6 +700,7 @@ MR_trace_retry(MR_EventInfo *event_info,
     int                     i;
     MR_bool                 succeeded;
     MR_Word                 *saved_regs;
+    MR_Unsigned             reused_frames;
     MR_bool                 has_io_state;
     MR_bool                 io_actions_were_performed;
     MR_bool                 is_io_state;
@@ -934,6 +973,12 @@ MR_trace_retry(MR_EventInfo *event_info,
     MR_saved_curfr_word(saved_regs) = (MR_Word) base_curfr;
     MR_saved_maxfr_word(saved_regs) = (MR_Word) base_maxfr;
 
+    MR_trace_find_reused_frames(level_layout, base_sp, reused_frames);
+    if (reused_frames != 0) {
+        MR_trace_tailrec_have_reused_frames = MR_TRUE;
+        MR_trace_tailrec_num_reused_frames = reused_frames;
+    }
+
     /*
     ** If the retried call is shallow traced, it must have been called from
     ** a deep traced region, since otherwise we wouldn't have had
@@ -1184,7 +1229,8 @@ MR_unwind_stacks_for_retry(const MR_LabelLayout *top_layout,
     MR_StackWalkStepResult      result;
     const MR_ProcLayout         *level_layout;
     const MR_LabelLayout        *return_label_layout;
-    int                         i;
+    MR_Level                    level;
+    MR_Unsigned                 reused_frames;
 
     if (ancestor_level < 0) {
         *problem = "no such stack frame";
@@ -1220,9 +1266,10 @@ MR_unwind_stacks_for_retry(const MR_LabelLayout *top_layout,
     fprintf(MR_mdb_out, "\n");
 #endif
 
-    for (i = 0; i < ancestor_level; i++) {
+    level = 0;
+    while (level < ancestor_level) {
         result = MR_stack_walk_step(level_layout, &return_label_layout,
-            base_sp_ptr, base_curfr_ptr, problem);
+            base_sp_ptr, base_curfr_ptr, &reused_frames, problem);
         if (result != MR_STEP_OK || return_label_layout == NULL) {
             if (*problem == NULL) {
                 *problem = "not that many ancestors";
@@ -1240,6 +1287,7 @@ MR_unwind_stacks_for_retry(const MR_LabelLayout *top_layout,
         fprintf(MR_mdb_out, "\n");
         MR_print_nondetstackptr(MR_mdb_out, *maxfr_ptr);
         fprintf(MR_mdb_out, "\n");
+        fprintf(MR_mdb_out, "reused_frames: %ld\n", (long) reused_frames);
 #endif
 
         level_layout = return_label_layout->MR_sll_entry;
@@ -1248,10 +1296,11 @@ MR_unwind_stacks_for_retry(const MR_LabelLayout *top_layout,
         ** Don't unwind to builtin_catch, because builtin_catch has
         ** no CALL event, even though it has a stack frame.
         */
-        if ((i == ancestor_level - 1) &&
+        if ((level == ancestor_level - 1) &&
             MR_trace_proc_layout_is_builtin_catch(level_layout))
         {
-            i--;
+            /* XXX This seems like it will induce an infinite loop. */
+            level--;
         }
 
         *problem = MR_undo_updates_of_maxfr(level_layout,
@@ -1263,6 +1312,13 @@ MR_unwind_stacks_for_retry(const MR_LabelLayout *top_layout,
 
         MR_maybe_record_call_table(level_layout,
             *base_sp_ptr, *base_curfr_ptr);
+
+        level += 1 + reused_frames;
+    }
+
+    if (level != ancestor_level) {
+        *problem = "cannot retry a call whose stack frame has been reused";
+        return NULL;
     }
 
 #ifdef  MR_DEBUG_RETRY_STACKS
@@ -1272,6 +1328,7 @@ MR_unwind_stacks_for_retry(const MR_LabelLayout *top_layout,
     fprintf(MR_mdb_out, "\n");
     MR_print_nondetstackptr(MR_mdb_out, *maxfr_ptr);
     fprintf(MR_mdb_out, "\n");
+    fprintf(MR_mdb_out, "final level: %ld\n", (long) level);
 #endif
 
     return return_label_layout;

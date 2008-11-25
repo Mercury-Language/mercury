@@ -6,7 +6,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2007 The University of Melbourne.
+** Copyright (C) 1997-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -73,6 +73,9 @@ MR_Trace_Type       MR_trace_handler = MR_TRACE_INTERNAL;
 
 MR_bool             MR_trace_unhide_events = MR_FALSE;
 MR_bool             MR_trace_have_unhid_events = MR_FALSE;
+
+MR_bool             MR_trace_tailrec_have_reused_frames = MR_FALSE;
+MR_Unsigned         MR_trace_tailrec_num_reused_frames = 0;
 
 /*
 ** I/O tabling is documented in library/table_builtin.m

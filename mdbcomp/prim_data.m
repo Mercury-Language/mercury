@@ -39,6 +39,7 @@
     ;       port_exit
     ;       port_redo
     ;       port_fail
+    ;       port_tailrec_call
     ;       port_exception
     ;       port_ite_cond
     ;       port_ite_then

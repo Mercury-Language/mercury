@@ -304,129 +304,123 @@
 :- type pred_markers.
 
 :- type marker
-    --->    marker_stub % The predicate has no clauses. typecheck.m will
-                        % generate a body for the predicate which just throws
-                        % an exception. This marker is used to tell purity
-                        % analysis and determinism analysis not to issue
-                        % warnings for these predicates.
+    --->    marker_stub
+            % The predicate has no clauses. typecheck.m will generate a body
+            % for the predicate which just throws an exception. This marker
+            % is used to tell purity analysis and determinism analysis
+            % not to issue warnings for these predicates.
 
     ;       marker_infer_type
-                        % Requests type inference for the predicate.
-                        % These markers are inserted by make_hlds
-                        % for undeclared predicates.
+            % Requests type inference for the predicate. These markers are
+            % inserted by make_hlds for undeclared predicates.
 
     ;       marker_infer_modes
-                        % Requests mode inference for the predicate.
-                        % These markers are inserted by make_hlds
-                        % for undeclared predicates.
+            % Requests mode inference for the predicate. These markers are
+            % inserted by make_hlds for undeclared predicates.
 
     ;       marker_obsolete
-                        % Requests warnings if this predicate is used.
-                        % Used for pragma(obsolete).
+            % Requests warnings if this predicate is used.
+            % Used for pragma(obsolete).
 
     ;       marker_user_marked_inline
-                        % The user requests that this be predicate should
-                        % be inlined, even if it exceeds the usual size limits.
-                        % Used for pragma(inline).
-                        % Mutually exclusive with marker_user_marked_no_inline.
+            % The user requests that this be predicate should be inlined,
+            % even if it exceeds the usual size limits. Used for
+            % pragma(inline). Mutually exclusive with
+            % marker_user_marked_no_inline.
 
     ;       marker_user_marked_no_inline
-                        % The user requests that this be predicate should
-                        % not be inlined. Used for pragma(no_inline).
-                        % Mutually exclusive with marker_user_marked_inline.
+            % The user requests that this be predicate should not be inlined.
+            % Used for pragma(no_inline). Mutually exclusive with
+            % marker_user_marked_inline.
 
     ;       marker_heuristic_inline
-                        % The compiler (meaning probably inlining.m) requests
-                        % that this predicate be inlined. Does not override
-                        % marker_user_marked_no_inline.
+            % The compiler (meaning probably inlining.m) requests that this
+            % predicate be inlined. Does not override
+            % marker_user_marked_no_inline.
 
     ;       marker_class_method
-                        % Requests that this predicate be transformed into
-                        % the appropriate call to a class method.
+            % Requests that this predicate be transformed into the appropriate
+            % call to a class method.
 
     ;       marker_class_instance_method
-                        % This predicate was automatically generated for the
-                        % implementation of a class method for an instance.
+            % This predicate was automatically generated for the implementation
+            % of a class method for an instance.
 
     ;       marker_named_class_instance_method
-                        % This predicate was automatically generated for the
-                        % implementation of a class method for an instance,
-                        % and the instance was defined using the named syntax
-                        % (e.g. "pred(...) is ...") rather than the clause
-                        % syntax. (For such predicates, we output slightly
-                        % different error messages.)
+            % This predicate was automatically generated for the implementation
+            % of a class method for an instance, and the instance was defined
+            % using the named syntax (e.g. "pred(...) is ...") rather than
+            % the clause syntax. (For such predicates, we output slightly
+            % different error messages.)
 
     ;       marker_is_impure
-                        % Requests that no transformation that would be
-                        % inappropriate for impure code be performed on calls
-                        % to this predicate. This includes reordering calls
-                        % to it relative to other goals (in both conjunctions
-                        % and disjunctions), and removing redundant calls
-                        % to it.
+            % Requests that no transformation that would be inappropriate for
+            % impure code be performed on calls to this predicate. This
+            % includes reordering calls to it relative to other goals
+            % (in both conjunctions and disjunctions), and removing
+            % redundant calls to it.
 
     ;       marker_is_semipure
-                        % Requests that no transformation that would be
-                        % inappropriate for semipure code be performed on
-                        % calls to this predicate. This includes removing
-                        % redundant calls to it on different sides of an
-                        % impure goal.
+            % Requests that no transformation that would be inappropriate
+            % for semipure code be performed on calls to this predicate.
+            % This includes removing redundant calls to it on different sides
+            % of an impure goal.
 
     ;       marker_promised_pure
-                        % Requests that calls to this predicate be transformed
-                        % as usual, despite any impure or semipure markers
-                        % present.
+            % Requests that calls to this predicate be transformed as usual,
+            % despite any impure or semipure markers present.
 
     ;       marker_promised_semipure
-                        % Requests that calls to this predicate be treated as
-                        % semipure, despite any impure calls in the body.
+            % Requests that calls to this predicate be treated as semipure,
+            % despite any impure calls in the body.
 
     ;       marker_promised_equivalent_clauses
-                        % Promises that all modes of the predicate have
-                        % equivalent semantics, event if they are defined by
-                        % different sets of mode-specific clauses.
+            % Promises that all modes of the predicate have equivalent
+            % semantics, event if they are defined by different sets of
+            % mode-specific clauses.
 
     % The terminates and does_not_terminate pragmas are kept as markers
     % to ensure that conflicting declarations are not made by the user.
     % Otherwise, the information could be added to the ProcInfos directly.
 
     ;       marker_terminates
-                        % The user guarantees that this predicate will
-                        % terminate for all (finite?) input.
+            % The user guarantees that this predicate will terminate
+            % for all (finite?) input.
+
     ;       marker_does_not_terminate
-                        % States that this predicate does not terminate.
-                        % This is useful for pragma foreign_code, which the
-                        % compiler assumes to be terminating.
+            % States that this predicate does not terminate. This is useful
+            % for pragma foreign_code, which the compiler assumes to be
+            % terminating.
+
     ;       marker_check_termination
-                        % The user requires the compiler to guarantee
-                        % the termination of this predicate. If the compiler
-                        % cannot guarantee termination then it must give an
-                        % error message.
+            % The user requires the compiler to guarantee the termination
+            % of this predicate. If the compiler cannot guarantee termination
+            % then it must give an error message.
 
     ;       marker_calls_are_fully_qualified
-                        % All calls in this predicate are fully qualified.
-                        % This occurs for predicates read from `.opt' files
-                        % and compiler-generated predicates.
+            % All calls in this predicate are fully qualified. This occurs for
+            % predicates read from `.opt' files and compiler-generated
+            % predicates.
+
     ;       marker_mode_check_clauses
-                        % Each clause of the predicate should be modechecked
-                        % separately. Used for predicates defined by lots of
-                        % clauses (usually facts) for which the compiler's
-                        % quadratic behavior during mode checking (in
-                        % inst_match.bound_inst_list_contains_instname and
-                        % instmap.merge) would be unacceptable.
+            % Each clause of the predicate should be modechecked separately.
+            % Used for predicates defined by lots of clauses (usually facts)
+            % for which the compiler's quadratic behavior during mode checking
+            % (in inst_match.bound_inst_list_contains_instname and
+            % instmap.merge) would be unacceptable.
 
     ;       marker_mutable_access_pred.
-                        % This predicate is part of the machinery used to
-                        % access mutables.  This marker is used to inform
-                        % inlining that we should _always_ attempt to
-                        % inline this predicate across module boundaries.
+            % This predicate is part of the machinery used to access mutables.
+            % This marker is used to inform inlining that we should _always_
+            % attempt to inline this predicate across module boundaries.
 
     % An abstract set of attributes.
 :- type pred_attributes.
 
 :- type attribute
     --->    custom(mer_type).
-                        % A custom attribute, indended to be associated
-                        % with this predicate in the underlying implementation.
+            % A custom attribute, indended to be associated
+            % with this predicate in the underlying implementation.
 
 :- type pred_transformation
     --->    transform_higher_order_specialization(
@@ -477,10 +471,10 @@
     ;       transform_structure_reuse.
 
 :- type pred_creation
-    --->    deforestation
+    --->    created_by_deforestation
                 % I/O tabling will create a new predicate if the predicate
                 % to be I/O tabled must not be inlined.
-    ;       io_tabling.
+    ;       created_by_io_tabling.
 
 :- type pred_origin
     --->    origin_special_pred(special_pred)
@@ -1906,6 +1900,10 @@ attribute_list_to_attributes(Attributes, Attributes).
     list(prog_var)::in, hlds_goal::in, rtti_varmaps::in,
     proc_info::in, proc_info::out) is det.
 
+:- type tail_call_events
+    --->    tail_call_events
+    ;       no_tail_call_events.
+
     % Predicates to get fields of proc_infos.
 
 :- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
@@ -1939,6 +1937,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_get_need_maxfr_slot(proc_info::in, bool::out) is det.
 :- pred proc_info_get_has_user_event(proc_info::in, bool::out) is det.
 :- pred proc_info_get_has_parallel_conj(proc_info::in, bool::out) is det.
+:- pred proc_info_get_has_tail_call_events(proc_info::in,
+    tail_call_events::out) is det.
 :- pred proc_info_get_call_table_tip(proc_info::in,
     maybe(prog_var)::out) is det.
 :- pred proc_info_get_maybe_proc_table_io_info(proc_info::in,
@@ -1997,6 +1997,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_has_user_event(bool::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_has_parallel_conj(bool::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_has_tail_call_events(tail_call_events::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_call_table_tip(maybe(prog_var)::in,
     proc_info::in, proc_info::out) is det.
@@ -2285,7 +2287,9 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % This slot is set by the simplification pass.
                 % Note that after some optimization passes, this flag
                 % may be a conservative approximation.
-                proc_has_parallel_conj        :: bool,
+                proc_has_parallel_conj      :: bool,
+
+                proc_has_tail_call_events   :: tail_call_events,
 
                 % If the procedure's evaluation method is memo, loopcheck or
                 % minimal, this slot identifies the variable that holds the tip
@@ -2466,8 +2470,8 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
-        ArgInfo, InitialLiveness, no, no, no, no, no, no, no, no, no,
-        VarNameRemap, SharingInfo, ReuseInfo),
+        ArgInfo, InitialLiveness, no, no, no, no_tail_call_events,
+        no, no, no, no, no, no, VarNameRemap, SharingInfo, ReuseInfo),
     ProcInfo = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
         ClauseBody, CanProcess, ModeErrors, RttiVarMaps, eval_normal,
@@ -2497,8 +2501,8 @@ proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken,
-        StackSlots, no, Liveness, no, no, no, no, no, no, no, no, no,
-        VarNameRemap, SharingInfo, ReuseInfo),
+        StackSlots, no, Liveness, no, no, no, no_tail_call_events,
+        no, no, no, no, no, no, VarNameRemap, SharingInfo, ReuseInfo),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, no, HeadModes, no, MaybeHeadLives,
         MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
@@ -2536,6 +2540,8 @@ proc_info_get_need_maxfr_slot(PI, PI ^ proc_sub_info ^ need_maxfr_slot).
 proc_info_get_has_user_event(PI, PI ^ proc_sub_info ^ proc_has_user_event).
 proc_info_get_has_parallel_conj(PI,
     PI ^ proc_sub_info ^ proc_has_parallel_conj).
+proc_info_get_has_tail_call_events(PI,
+    PI ^ proc_sub_info ^ proc_has_tail_call_events).
 proc_info_get_call_table_tip(PI, PI ^ proc_sub_info ^ call_table_tip).
 proc_info_get_maybe_proc_table_io_info(PI,
     PI ^ proc_sub_info ^ maybe_table_io_info).
@@ -2576,6 +2582,8 @@ proc_info_set_has_user_event(HUE, PI,
     PI ^ proc_sub_info ^ proc_has_user_event := HUE).
 proc_info_set_has_parallel_conj(HPC, PI,
     PI ^ proc_sub_info ^ proc_has_parallel_conj := HPC).
+proc_info_set_has_tail_call_events(HPC, PI,
+    PI ^ proc_sub_info ^ proc_has_tail_call_events := HPC).
 proc_info_set_call_table_tip(CTT, PI,
     PI ^ proc_sub_info ^ call_table_tip := CTT).
 proc_info_set_maybe_proc_table_io_info(MTI, PI,

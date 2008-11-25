@@ -57,6 +57,8 @@ MCFLAGS-synth_attr_impure = --event-set-file-name synth_attr_impure_spec
 # The -O2 is to prevent spurious inconsistencies.
 MCFLAGS-solver_test = -O2 --no-optimize-dead-procs --solver-type-auto-init
 
+MCFLAGS-tailrec1 = --trace deep --exec-trace-tail-rec --trace-table-io-all
+
 # We need to use shared libraries for interactive queries to work.
 # The following is necessary for shared libraries to work on Linux.
 GRADEFLAGS-interactive = --pic-reg

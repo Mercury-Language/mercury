@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1021,8 +1021,10 @@ MR_trace_maybe_sync_source_window(MR_EventInfo *event_info, MR_bool verbose)
     const char              *parent_filename;
     int                     parent_lineno;
     const char              *problem; /* not used */
-    MR_Word                 *base_sp, *base_curfr;
+    MR_Word                 *base_sp;
+    MR_Word                 *base_curfr;
     const char              *msg;
+    MR_Level                actual_level;
 
     if (MR_trace_source_server.server_name != NULL) {
         lineno = 0;
@@ -1030,25 +1032,27 @@ MR_trace_maybe_sync_source_window(MR_EventInfo *event_info, MR_bool verbose)
         parent_lineno = 0;
         parent_filename = "";
 
+        if (filename[0] == '\0') {
+            (void) MR_find_context(event_info->MR_event_sll,
+                &filename, &lineno);
+        }
+
         /*
-        ** At interface ports we send both the parent context and
-        ** the current context.  Otherwise, we just send the current
-        ** context.
+        ** At interface ports we send both the parent context and the
+        ** current context. Otherwise, we just send the current context.
         */
         if (MR_port_is_interface(event_info->MR_trace_port)) {
             base_sp = MR_saved_sp(event_info->MR_saved_regs);
             base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
             parent = MR_find_nth_ancestor(event_info->MR_event_sll, 1,
-                &base_sp, &base_curfr, &problem);
-            if (parent != NULL) {
+                &base_sp, &base_curfr, &actual_level, &problem);
+            if (actual_level != 1) {
+                parent_filename = filename;
+                parent_lineno = lineno;
+            } else if (parent != NULL) {
                 (void) MR_find_context(parent, &parent_filename,
                    &parent_lineno);
             }
-        }
-
-        if (filename[0] == '\0') {
-            (void) MR_find_context(event_info->MR_event_sll,
-                    &filename, &lineno);
         }
 
         msg = MR_trace_source_sync(&MR_trace_source_server, filename, lineno,

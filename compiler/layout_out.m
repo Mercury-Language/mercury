@@ -890,6 +890,7 @@ trace_port_to_string(port_disj_later) =          "DISJ_LATER".
 trace_port_to_string(port_switch) =              "SWITCH".
 trace_port_to_string(port_nondet_foreign_proc_first) = "FOREIGN_PROC_FIRST".
 trace_port_to_string(port_nondet_foreign_proc_later) = "FOREIGN_PROC_LATER".
+trace_port_to_string(port_tailrec_call) =        "TAILREC_CALL".
 trace_port_to_string(port_user) =                "USER".
 
 %-----------------------------------------------------------------------------%
@@ -1092,7 +1093,7 @@ output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
         EventDataAddrs, MaybeTableInfo, _HeadVarNums, _VarNames, _MaxVarNum,
         _MaxRegNum, _MaybeFromFullSlot, _MaybeIoSeqSlot,
         _MaybeTrailSlot, _MaybeMaxfrSlot, _EvalMethod,
-        _MaybeCallTableSlot, _EffTraceLevel, _Flags),
+        _MaybeCallTableSlot, _MaybeTailRecSlot, _EffTraceLevel, _Flags),
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
     ModuleName = get_defining_module_name(ProcLabel),
     output_label_layout_addrs_in_vector(EventDataAddrs, "MR_DECL_LABEL_LAYOUT",
@@ -1166,7 +1167,8 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
     ExecTrace = proc_layout_exec_trace(MaybeCallLabelDetails,
         EventDataAddrs, MaybeTableInfo, HeadVarNums, _VarNames, MaxVarNum,
         MaxRegNum, MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
-        MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot, EffTraceLevel, Flags),
+        MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot, MaybeTailRecSlot,
+        EffTraceLevel, Flags),
 
     (
         EventDataAddrs = []
@@ -1246,6 +1248,8 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
     io.write_string(trace_level_rep(EffTraceLevel), !IO),
     io.write_string(",\n", !IO),
     io.write_int(Flags, !IO),
+    io.write_string(",\n", !IO),
+    write_maybe_slot_num(MaybeTailRecSlot, !IO),
     io.write_string("\n};\n", !IO).
 
 :- pred write_maybe_slot_num(maybe(int)::in, io::di, io::uo) is det.

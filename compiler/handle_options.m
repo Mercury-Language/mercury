@@ -219,8 +219,8 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         Target = TargetPrime
     ;
         Target = target_c,     % dummy
+        % XXX When the x86_64 backend is documented modify the line below.
         add_error("Invalid target option " ++
-% XXX When the x86_64 backend is documented modify the line below.
             "(must be `c', `asm', `il', `java', or `erlang')", !Errors)
     ),
     map.lookup(!.OptionTable, gc, GC_Method0),
@@ -1280,8 +1280,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %     paths across optimization levels
         %   - enabling stack layouts
         %   - enabling typeinfo liveness
-        globals.lookup_bool_option(!.Globals, trace_optimized,
-            TraceOptimized),
+        globals.lookup_bool_option(!.Globals, trace_optimized, TraceOptimized),
         ( given_trace_level_is_none(TraceLevel) = no ->
             (
                 TraceOptimized = no,
@@ -1369,9 +1368,18 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
             % To support up-level printing, we need to save variables across
             % a call even if the call cannot succeed.
-            globals.set_option(opt_no_return_calls, bool(no), !Globals)
+            globals.set_option(opt_no_return_calls, bool(no), !Globals),
+
+            % The declarative debugger does not (yet) know about tail calls.
+            ( trace_level_allows_tail_rec(TraceLevel) = no ->
+                globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
+            ;
+                true
+            )
         ;
-            true
+            % Since there will be no call and exit events, there is no point
+            % in trying to turn them into tailcall events.
+            globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
         ),
 
         option_implies(profile_deep, procid_stack_layout, bool(yes), !Globals),

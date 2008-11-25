@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,7 +28,7 @@
 
 static  MR_StackWalkStepResult
                     MR_stack_walk_succip_layout(MR_Code *success,
-                        const MR_LabelLayout **return_label_layout,
+                        const MR_LabelLayout **return_label_layout_ptr,
                         MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr,
                         const char **problem_ptr);
 
@@ -73,9 +73,11 @@ static  void        MR_dump_stack_record_init(MR_bool include_trace_data,
 static  int         MR_dump_stack_record_frame(FILE *fp,
                         const MR_LabelLayout *label_layout,
                         MR_Word *base_sp, MR_Word *base_curfr,
+                        MR_Unsigned reused_frames,
                         MR_PrintStackRecord print_stack_record,
                         MR_bool at_line_limit);
 static  void        MR_dump_stack_record_flush(FILE *fp,
+                        MR_bool include_trace_data,
                         MR_PrintStackRecord print_stack_record);
 
 static  void        MR_print_proc_id_internal(FILE *fp,
@@ -152,17 +154,18 @@ MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
     MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
     MR_PrintStackRecord print_stack_record)
 {
-    MR_StackWalkStepResult          result;
-    const MR_ProcLayout             *proc_layout;
-    const MR_LabelLayout            *cur_label_layout;
-    const MR_LabelLayout            *prev_label_layout;
-    const char                      *problem;
-    MR_Word                         *stack_trace_sp;
-    MR_Word                         *stack_trace_curfr;
-    MR_Word                         *old_trace_sp;
-    MR_Word                         *old_trace_curfr;
-    int                             frames_dumped_so_far;
-    int                             lines_dumped_so_far;
+    MR_StackWalkStepResult  result;
+    const MR_ProcLayout     *proc_layout;
+    const MR_LabelLayout    *cur_label_layout;
+    const MR_LabelLayout    *prev_label_layout;
+    const char              *problem;
+    MR_Word                 *stack_trace_sp;
+    MR_Word                 *stack_trace_curfr;
+    MR_Word                 *old_trace_sp;
+    MR_Word                 *old_trace_curfr;
+    int                     frames_dumped_so_far;
+    int                     lines_dumped_so_far;
+    MR_Unsigned             reused_frames;
 
     MR_do_init_modules();
     MR_dump_stack_record_init(include_trace_data, include_contexts);
@@ -176,13 +179,15 @@ MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
     lines_dumped_so_far = 0;
     do {
         if (frame_limit > 0 && frames_dumped_so_far >= frame_limit) {
-            MR_dump_stack_record_flush(fp, print_stack_record);
+            MR_dump_stack_record_flush(fp, include_trace_data,
+                print_stack_record);
             fprintf(fp, "<more stack frames snipped>\n");
             return NULL;
         }
 
         if (line_limit > 0 && lines_dumped_so_far >= line_limit) {
-            MR_dump_stack_record_flush(fp, print_stack_record);
+            MR_dump_stack_record_flush(fp, include_trace_data,
+                print_stack_record);
             fprintf(fp, "<more stack frames snipped>\n");
             return NULL;
         }
@@ -194,43 +199,51 @@ MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
         old_trace_curfr = stack_trace_curfr;
 
         result = MR_stack_walk_step(proc_layout, &cur_label_layout,
-            &stack_trace_sp, &stack_trace_curfr, &problem);
+            &stack_trace_sp, &stack_trace_curfr, &reused_frames, &problem);
         if (result == MR_STEP_ERROR_BEFORE) {
-            MR_dump_stack_record_flush(fp, print_stack_record);
+            MR_dump_stack_record_flush(fp, include_trace_data,
+                print_stack_record);
             return problem;
         } else if (result == MR_STEP_ERROR_AFTER) {
             (void) MR_dump_stack_record_frame(fp, prev_label_layout,
-                old_trace_sp, old_trace_curfr, print_stack_record, MR_FALSE);
+                old_trace_sp, old_trace_curfr, reused_frames,
+                print_stack_record, MR_FALSE);
 
-            MR_dump_stack_record_flush(fp, print_stack_record);
+            MR_dump_stack_record_flush(fp, include_trace_data,
+                print_stack_record);
             return problem;
         } else {
             lines_dumped_so_far += MR_dump_stack_record_frame(fp,
                 prev_label_layout, old_trace_sp, old_trace_curfr,
-                print_stack_record, lines_dumped_so_far == line_limit);
+                reused_frames, print_stack_record,
+                lines_dumped_so_far == line_limit);
         }
 
         frames_dumped_so_far++;
     } while (cur_label_layout != NULL);
 
-    MR_dump_stack_record_flush(fp, print_stack_record);
+    MR_dump_stack_record_flush(fp, include_trace_data, print_stack_record);
     return NULL;
 }
 
 const MR_LabelLayout *
 MR_find_nth_ancestor(const MR_LabelLayout *label_layout,
     MR_Level ancestor_level, MR_Word **stack_trace_sp,
-    MR_Word **stack_trace_curfr, const char **problem)
+    MR_Word **stack_trace_curfr, MR_Level *actual_level_ptr,
+    const char **problem)
 {
     MR_StackWalkStepResult  result;
     const MR_LabelLayout    *return_label_layout;
-    MR_Unsigned             i;
+    MR_Unsigned             level;
+    MR_Unsigned             reused_frames;
 
     MR_do_init_modules();
     *problem = NULL;
-    for (i = 0; i < ancestor_level && label_layout != NULL; i++) {
+    level = 0;
+    while (level < ancestor_level && label_layout != NULL) {
         result = MR_stack_walk_step(label_layout->MR_sll_entry,
-            &return_label_layout, stack_trace_sp, stack_trace_curfr, problem);
+            &return_label_layout, stack_trace_sp, stack_trace_curfr,
+            &reused_frames, problem);
 
         if (result != MR_STEP_OK) {
             /* *problem has already been filled in */
@@ -238,28 +251,32 @@ MR_find_nth_ancestor(const MR_LabelLayout *label_layout,
         }
 
         label_layout = return_label_layout;
+        level += 1 + reused_frames;
     }
 
     if (label_layout == NULL && *problem == NULL) {
         *problem = "not that many ancestors";
     }
 
+    *actual_level_ptr = level;
     return label_layout;
 }
 
 MR_StackWalkStepResult
 MR_stack_walk_step(const MR_ProcLayout *proc_layout,
-    const MR_LabelLayout **return_label_layout,
+    const MR_LabelLayout **return_label_layout_ptr,
     MR_Word **stack_trace_sp_ptr, MR_Word **stack_trace_curfr_ptr,
-    const char **problem_ptr)
+    MR_Unsigned *reused_frames_ptr, const char **problem_ptr)
 {
     MR_LongLval             location;
     MR_LongLvalType         type;
     int                     number;
     int                     determinism;
     MR_Code                 *success;
+    MR_Unsigned             reused_frames;
+    int tailrec_slot;
 
-    *return_label_layout = NULL;
+    *return_label_layout_ptr = NULL;
 
     determinism = proc_layout->MR_sle_detism;
     if (determinism < 0) {
@@ -283,6 +300,11 @@ MR_stack_walk_step(const MR_ProcLayout *proc_layout,
         }
 
         success = (MR_Code *) MR_based_stackvar(*stack_trace_sp_ptr, number);
+
+        MR_trace_find_reused_frames(proc_layout, *stack_trace_sp_ptr,
+            reused_frames);
+        *reused_frames_ptr = reused_frames;
+
         *stack_trace_sp_ptr = *stack_trace_sp_ptr -
             proc_layout->MR_sle_stack_slots;
     } else {
@@ -297,16 +319,17 @@ MR_stack_walk_step(const MR_ProcLayout *proc_layout,
         */
 
         success = MR_succip_slot(*stack_trace_curfr_ptr);
+        *reused_frames_ptr = 0;
         *stack_trace_curfr_ptr = MR_succfr_slot(*stack_trace_curfr_ptr);
     }
 
-    return MR_stack_walk_succip_layout(success, return_label_layout,
+    return MR_stack_walk_succip_layout(success, return_label_layout_ptr,
         stack_trace_sp_ptr, stack_trace_curfr_ptr, problem_ptr);
 }
 
 static MR_StackWalkStepResult
 MR_stack_walk_succip_layout(MR_Code *success,
-    const MR_LabelLayout **return_label_layout,
+    const MR_LabelLayout **return_label_layout_ptr,
     MR_Word **stack_trace_sp_ptr, MR_Word **stack_trace_curfr_ptr,
     const char **problem_ptr)
 {
@@ -335,7 +358,7 @@ MR_stack_walk_succip_layout(MR_Code *success,
         return MR_STEP_ERROR_AFTER;
     }
 
-    *return_label_layout = label->MR_internal_layout;
+    *return_label_layout_ptr = label->MR_internal_layout;
     return MR_STEP_OK;
 }
 
@@ -693,7 +716,9 @@ MR_traverse_nondet_stack_frame(void *info, MR_Nondet_Frame_Category category,
     MR_Word *top_fr, const MR_LabelLayout *top_layout, MR_Word *base_sp,
     MR_Word *base_curfr, int level_number)
 {
-    MR_Traverse_Nondet_Frame_Func_Info *func_info = info;
+    MR_Traverse_Nondet_Frame_Func_Info *func_info;
+
+    func_info = (MR_Traverse_Nondet_Frame_Func_Info *) info;
     if (category != MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH) {
         func_info->func(func_info->func_data, top_layout, base_sp, base_curfr);
     }
@@ -709,6 +734,7 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
     MR_Word                     *current_frame;
     MR_StackWalkStepResult      result;
     const char                  *problem;
+    MR_Unsigned                 reused_frames;
 
     label_layout = top_layout;
     stack_pointer = base_sp;
@@ -716,23 +742,21 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
 
     MR_nondet_branch_info_next = 0;
 
-    /*
-    ** Skip past any model_det frames.
-    */
+    /* Skip past any model_det frames. */
     do {
         proc_layout = label_layout->MR_sll_entry;
         if (!MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
             break;
         }
         result = MR_stack_walk_step(proc_layout, &label_layout,
-            &stack_pointer, &current_frame, &problem);
+            &stack_pointer, &current_frame, &reused_frames, &problem);
         if (result == MR_STEP_ERROR_BEFORE || result == MR_STEP_ERROR_AFTER) {
             MR_fatal_error(problem);
         }
 
     } while (label_layout != NULL);
 
-    /* double-check that we didn't skip any model_non frames */
+    /* Double-check that we didn't skip any model_non frames. */
     assert(current_frame == base_curfr);
 
     if (label_layout != NULL) {
@@ -764,6 +788,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
     MR_Code                     *success;
     const char                  *problem;
     MR_Nondet_Frame_Category    category;
+    MR_Unsigned                 reused_frames;
 
     if (MR_find_matching_branch(fr, &branch)) {
         base_sp = MR_nondet_branch_infos[branch].branch_sp;
@@ -785,7 +810,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
         */
         while (MR_TRUE) {
             result = MR_stack_walk_step(proc_layout, &label_layout,
-                &base_sp, &base_curfr, &problem);
+                &base_sp, &base_curfr, &reused_frames, &problem);
 
             if (result != MR_STEP_OK) {
                 return problem;
@@ -862,7 +887,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
             proc_layout = label_layout->MR_sll_entry;
             topfr = fr;
             result = MR_stack_walk_step(proc_layout, &label_layout,
-                &base_sp, &base_curfr, &problem);
+                &base_sp, &base_curfr, &reused_frames, &problem);
         }
 
         if (result != MR_STEP_OK) {
@@ -879,10 +904,10 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
             /*
             ** We must have found the common ancestor of the procedure call
             ** whose variables we just printed and the call currently being
-            ** executed. While this common ancestor must include model_non code,
-            ** this may be inside a commit in a procedure that lives on the
-            ** det stack. If that is the case, the common ancestor must not be
-            ** put into MR_nondet_branch_info.
+            ** executed. While this common ancestor must include model_non
+            ** code, this may be inside a commit in a procedure that lives
+            ** on the det stack. If that is the case, the common ancestor
+            ** must not be put into MR_nondet_branch_info.
             */
 
             return NULL;
@@ -891,7 +916,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
 
     if (! MR_find_matching_branch(base_curfr, &branch)) {
         MR_ensure_room_for_next(MR_nondet_branch_info, MR_Nondet_Branch_Info,
-                MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
+            MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
         last = MR_nondet_branch_info_next;
         MR_nondet_branch_infos[last].branch_layout = label_layout;
         MR_nondet_branch_infos[last].branch_sp = base_sp;
@@ -1032,15 +1057,8 @@ MR_erase_temp_redoip(MR_Word *fr)
 
 /**************************************************************************/
 
-static  const MR_ProcLayout    *prev_entry_layout;
-static  int                     prev_entry_layout_count;
-static  int                     prev_entry_start_level;
-static  MR_Word                 *prev_entry_base_sp;
-static  MR_Word                 *prev_entry_base_curfr;
-static  const char              *prev_entry_filename;
-static  int                     prev_entry_linenumber;
-static  const char              *prev_entry_goal_path;
-static  MR_bool                 prev_entry_context_mismatch;
+static  MR_StackDumpInfo        prev_dump_info;
+
 static  int                     current_level;
 static  MR_bool                 trace_data_enabled;
 static  MR_bool                 contexts_enabled;
@@ -1048,26 +1066,24 @@ static  MR_bool                 contexts_enabled;
 static void
 MR_dump_stack_record_init(MR_bool include_trace_data, MR_bool include_contexts)
 {
-    prev_entry_layout = NULL;
-    prev_entry_layout_count = 0;
-    prev_entry_start_level = 0;
+    prev_dump_info.MR_sdi_proc_layout = NULL;
     current_level = 0;
-    contexts_enabled = include_contexts;
     trace_data_enabled = include_trace_data;
+    contexts_enabled = include_contexts;
 }
 
 static int
 MR_dump_stack_record_frame(FILE *fp, const MR_LabelLayout *label_layout,
-    MR_Word *base_sp, MR_Word *base_curfr,
+    MR_Word *base_sp, MR_Word *base_curfr, MR_Unsigned reused_frames,
     MR_PrintStackRecord print_stack_record, MR_bool at_line_limit)
 {
-    const MR_ProcLayout     *entry_layout;
+    const MR_ProcLayout     *proc_layout;
     const char              *filename;
     int                     linenumber;
     MR_bool                 must_flush;
     int                     lines_printed;
 
-    entry_layout = label_layout->MR_sll_entry;
+    proc_layout = label_layout->MR_sll_entry;
     if (! MR_find_context(label_layout, &filename, &linenumber)
         || ! contexts_enabled)
     {
@@ -1081,83 +1097,98 @@ MR_dump_stack_record_frame(FILE *fp, const MR_LabelLayout *label_layout,
     ** We cannot merge two calls even to the same procedure if we are printing
     ** trace data, since this will differ between the calls.
     **
-    ** Note that it is not possible for two calls to the same procedure to differ
-    ** on whether the procedure has trace layout data or not.
+    ** Note that it is not possible for two calls to the same procedure
+    ** to differ on whether the procedure has trace layout data or not.
     */
-    must_flush = (entry_layout != prev_entry_layout) || trace_data_enabled;
+    must_flush = (proc_layout != prev_dump_info.MR_sdi_proc_layout)
+        || trace_data_enabled;
 
     if (must_flush) {
         if (! at_line_limit) {
-            MR_dump_stack_record_flush(fp, print_stack_record);
+            MR_dump_stack_record_flush(fp, trace_data_enabled,
+                print_stack_record);
         }
 
-        prev_entry_layout = entry_layout;
-        prev_entry_layout_count = 1;
-        prev_entry_start_level = current_level;
-        prev_entry_base_sp = base_sp;
-        prev_entry_base_curfr = base_curfr;
-        prev_entry_filename = filename;
-        prev_entry_linenumber = linenumber;
-        prev_entry_goal_path = MR_label_goal_path(label_layout);
-        prev_entry_context_mismatch = MR_FALSE;
+        prev_dump_info.MR_sdi_proc_layout = proc_layout;
+        prev_dump_info.MR_sdi_num_frames = 1;
+        prev_dump_info.MR_sdi_min_level = current_level;
+        prev_dump_info.MR_sdi_max_level = current_level + reused_frames;
+        prev_dump_info.MR_sdi_filename = filename;
+        prev_dump_info.MR_sdi_linenumber = linenumber;
+        prev_dump_info.MR_sdi_context_mismatch = MR_FALSE;
+
+        prev_dump_info.MR_sdi_base_sp = base_sp;
+        prev_dump_info.MR_sdi_base_curfr = base_curfr;
+        prev_dump_info.MR_sdi_goal_path = MR_label_goal_path(label_layout);
+
         lines_printed = 1;
     } else {
-        prev_entry_layout_count++;
-        if (prev_entry_filename != filename
-            || prev_entry_linenumber != linenumber)
+        prev_dump_info.MR_sdi_num_frames++;
+        prev_dump_info.MR_sdi_max_level = current_level + reused_frames;
+        if (prev_dump_info.MR_sdi_filename != filename
+            || prev_dump_info.MR_sdi_linenumber != linenumber)
         {
-            prev_entry_context_mismatch = MR_TRUE;
+            prev_dump_info.MR_sdi_context_mismatch = MR_TRUE;
         }
+
         lines_printed = 0;
     }
 
-    current_level++;
+    current_level += 1 + reused_frames;
     return lines_printed;
 }
 
 static void
-MR_dump_stack_record_flush(FILE *fp, MR_PrintStackRecord print_stack_record)
+MR_dump_stack_record_flush(FILE *fp, MR_bool include_trace_data,
+    MR_PrintStackRecord print_stack_record)
 {
-    if (prev_entry_layout != NULL) {
-        print_stack_record(fp, prev_entry_layout,
-            prev_entry_layout_count, prev_entry_start_level,
-            prev_entry_base_sp, prev_entry_base_curfr,
-            prev_entry_filename, prev_entry_linenumber,
-            prev_entry_goal_path, prev_entry_context_mismatch);
+    if (prev_dump_info.MR_sdi_proc_layout != NULL) {
+        print_stack_record(fp, include_trace_data, prev_dump_info);
     }
 }
 
 void
-MR_dump_stack_record_print(FILE *fp, const MR_ProcLayout *proc_layout,
-    int count, MR_Level start_level, MR_Word *base_sp, MR_Word *base_curfr,
-    const char *filename, int linenumber, const char *goal_path,
-    MR_bool context_mismatch)
+MR_dump_stack_record_print(FILE *fp, MR_bool include_trace_data,
+    const MR_StackDumpInfo dump_info)
 {
-    fprintf(fp, "%4" MR_INTEGER_LENGTH_MODIFIER "d ", start_level);
+    MR_Level    num_levels;
 
-    if (count > 1) {
-        fprintf(fp, " %3d* ", count);
-    } else if (! trace_data_enabled) {
-        fprintf(fp, "%5s ", "");
-    } else {
-        /*
-        ** If we are printing trace data, we need all the horizonal
-        ** room we can get, and there will not be any repeated lines,
-        ** so we don't reserve space for the repeat counts.
-        */
+    num_levels = dump_info.MR_sdi_max_level + 1 - dump_info.MR_sdi_min_level;
+    fprintf(fp, "%4" MR_INTEGER_LENGTH_MODIFIER "d ",
+        dump_info.MR_sdi_min_level);
+
+    /*
+    ** If we are printing trace data, we need all the horizontal room
+    ** we can get, and there will not be any repeated lines, so we do not
+    ** reserve space for the repeat counts.
+    */
+    if (! include_trace_data) {
+        if (num_levels > 1) {
+            if (num_levels != dump_info.MR_sdi_num_frames) {
+                fprintf(fp, " %3dx ", num_levels);
+            } else {
+                fprintf(fp, " %3d* ", num_levels);
+            }
+        } else {
+            fprintf(fp, "%5s ", "");
+        }
     }
 
-    MR_maybe_print_call_trace_info(fp, trace_data_enabled, proc_layout,
-        base_sp, base_curfr);
-    MR_print_proc_id(fp, proc_layout);
-    if (MR_strdiff(filename, "") && linenumber > 0) {
-        fprintf(fp, " (%s:%d%s)", filename, linenumber,
-            context_mismatch ? " and others" : "");
+    MR_maybe_print_call_trace_info(fp, trace_data_enabled,
+        dump_info.MR_sdi_proc_layout,
+        dump_info.MR_sdi_base_sp, dump_info.MR_sdi_base_curfr);
+    MR_print_proc_id(fp, dump_info.MR_sdi_proc_layout);
+    if (MR_strdiff(dump_info.MR_sdi_filename, "")
+        && dump_info.MR_sdi_linenumber > 0)
+    {
+        fprintf(fp, " (%s:%d%s)",
+            dump_info.MR_sdi_filename, dump_info.MR_sdi_linenumber,
+            dump_info.MR_sdi_context_mismatch ? " and others" : "");
     }
 
     if (trace_data_enabled) {
-        if (MR_strdiff(goal_path, "")) {
-            fprintf(fp, " %s", goal_path);
+        if (MR_strdiff(dump_info.MR_sdi_goal_path, "")) {
+            fprintf(fp, " %s", dump_info.MR_sdi_goal_path);
         } else {
             fprintf(fp, " (empty)");
         }
@@ -1564,9 +1595,8 @@ MR_call_details_are_valid(const MR_ProcLayout *proc_layout, MR_Word *base_sp,
         MR_Integer maybe_from_full = proc_layout->MR_sle_maybe_from_full;
         if (maybe_from_full > 0) {
             /*
-            ** For procedures compiled with shallow
-            ** tracing, the details will be valid only
-            ** if the value of MR_from_full saved in
+            ** For procedures compiled with shallow tracing, the details
+            ** will be valid only if the value of MR_from_full saved in
             ** the appropriate stack slot was MR_TRUE.
             */
             if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
@@ -1631,6 +1661,7 @@ MR_find_first_call_less_eq_seq_or_event(
     MR_Word                 *stack_trace_sp;
     MR_Word                 *stack_trace_curfr;
     int                     ancestor_level;
+    MR_Unsigned             reused_frames;
 
     MR_do_init_modules();
 
@@ -1641,22 +1672,22 @@ MR_find_first_call_less_eq_seq_or_event(
 
     ancestor_level = 0;
     while (cur_label_layout != NULL) {
-
         if (MR_call_is_before_event_or_seq(seq_or_event, seq_no_or_event_no,
                 cur_label_layout->MR_sll_entry, stack_trace_sp,
-                stack_trace_curfr)) {
+                stack_trace_curfr))
+        {
             return ancestor_level;
         }
 
         result = MR_stack_walk_step(cur_label_layout->MR_sll_entry,
-            &cur_label_layout, &stack_trace_sp, &stack_trace_curfr, problem);
+            &cur_label_layout, &stack_trace_sp, &stack_trace_curfr,
+            &reused_frames, problem);
 
         if (result != MR_STEP_OK) {
             return -1;
         }
 
-        ancestor_level++;
-
+        ancestor_level += 1 + reused_frames;
     } while (cur_label_layout != NULL);
 
     *problem = "no more stack";

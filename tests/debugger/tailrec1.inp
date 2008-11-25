@@ -1,0 +1,49 @@
+echo on
+register --quiet
+table_io allow
+table_io start
+context none
+break tailrec1_read_line
+continue
+finish
+print *
+stack
+stack -d
+continue
+finish
+stack
+stack -d
+continue
+finish
+continue
+finish
+step
+step
+step
+print *
+continue
+finish
+continue
+finish
+print *
+retry -f
+stack
+stack -d
+finish
+print *
+level 1
+print *
+level 2
+retry -f 3
+retry -f 1
+stack
+stack -d
+continue
+finish
+continue
+finish
+step
+next
+next 3
+delete *
+continue

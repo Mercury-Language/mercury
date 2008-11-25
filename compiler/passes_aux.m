@@ -35,7 +35,7 @@
     ;       update_proc_predid(pred(pred_id, module_info, proc_info,
                 proc_info))
     ;       update_proc_predprocid(pred(pred_id, proc_id, module_info,
-                proc_info, proc_info))
+                pred_info, proc_info, proc_info))
     ;       update_proc_io(pred(pred_id, proc_id, module_info,
                 proc_info, proc_info, io, io))
     ;       update_proc_error(pred(pred_id, proc_id, module_info, module_info,
@@ -77,7 +77,7 @@
 :- inst task ==
     bound(( update_proc(pred(in, in, out) is det)
         ;   update_proc_predid(pred(in, in, in, out) is det)
-        ;   update_proc_predprocid(pred(in, in, in, in, out) is det)
+        ;   update_proc_predprocid(pred(in, in, in, in, in, out) is det)
         ;   update_proc_io(pred(in, in, in, in, out, di, uo) is det)
         ;   update_proc_error(pred(in, in, in, out, in, out, out, out, di, uo)
                 is det)
@@ -293,7 +293,7 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
         Closure(PredId, !.ModuleInfo, Proc0, Proc)
     ;
         !.Task = update_proc_predprocid(Closure),
-        Closure(PredId, ProcId, !.ModuleInfo, Proc0, Proc)
+        Closure(PredId, ProcId, !.ModuleInfo, Pred0, Proc0, Proc)
     ;
         !.Task = update_proc_io(Closure),
         Closure(PredId, ProcId, !.ModuleInfo, Proc0, Proc, !IO)
