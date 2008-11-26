@@ -486,7 +486,7 @@ struct MR_LabelLayout_Struct {
     MR_Integer              MR_sll_var_count; /* >= 0 */
     const void              *MR_sll_locns_types;
     const MR_HLDSVarNum     *MR_sll_var_nums;
-    const MR_TypeParamLocns     *MR_sll_tvars;
+    const MR_TypeParamLocns *MR_sll_tvars;
 };
 
 typedef struct MR_LabelLayoutNoVarInfo_Struct {
@@ -569,25 +569,25 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
 ** the others are the fields of MR_LabelLayouts.
 */
 
-#define MR_DEF_LL_GEN(e, ln, port, h, num, path, s, vc, lt, vn, tv)         \
+#define MR_DEF_LL_GEN(e, ln, port, h, num, path, ue, vc, lt, vn, tv)        \
     static const MR_LabelLayout                                             \
         MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln))           \
     = {                                                                     \
         MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
         MR_PASTE2(MR_PORT_, port),                                          \
-        (h), (num), (path), (s), (vc),                                      \
+        (h), (num), (path), (ue), (vc),                                     \
         ((const void *) lt),                                                \
         ((const MR_uint_least16_t *) vn),                                   \
         ((const MR_TypeParamLocns *) tv)                                    \
     }
 
-#define MR_DEF_LLNVI_GEN(e, ln, port, s, h, num, path)                      \
+#define MR_DEF_LLNVI_GEN(e, ln, port, h, num, path, ue)                     \
     static const MR_LabelLayoutNoVarInfo                                    \
         MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln))           \
     = {                                                                     \
         MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
         MR_PASTE2(MR_PORT_, port),                                          \
-        (h), (path), (s), (num), -1                                         \
+        (h), (num), (path), (ue), -1                                        \
     }
 
 
@@ -660,20 +660,18 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
         MR_XCOMMON(vnt, vnc), 0)
 
 #define MR_DEF_LLNVI(e, ln, port, num, path)                                \
-    MR_DEF_LLNVI_GEN(e, ln, port, NULL, MR_FALSE, path)
+    MR_DEF_LLNVI_GEN(e, ln, port, MR_FALSE, path, NULL)
 
 #define MR_DEF_LLNVIT(e, ln, port, num, path)                               \
-    MR_DEF_LLNVI_GEN(e, ln, port, NULL, MR_TRUE, path)
+    MR_DEF_LLNVI_GEN(e, ln, port, MR_TRUE, path, NULL)
 
 #define MR_DEF_LLNVI_U(e, ln, port, num, path)                              \
-    MR_DEF_LLNVI_GEN(e, ln, port,                                           \
-        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
-        MR_FALSE, path)
+    MR_DEF_LLNVI_GEN(e, ln, port, MR_FALSE, num, path,                      \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)))
 
 #define MR_DEF_LLNVIT_U(e, ln, port, num, path)                             \
-    MR_DEF_LLNVI_GEN(e, ln, port,                                           \
-        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
-        MR_TRUE, path)
+    MR_DEF_LLNVI_GEN(e, ln, port, MR_TRUE, num, path,                       \
+        &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)))
 
 #define MR_DECL_LL(e, ln)                                                   \
     MR_declare_label(MR_label_name(MR_add_prefix(e), ln));                  \
