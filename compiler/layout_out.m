@@ -2127,14 +2127,14 @@ output_proc_static_data_defn(RttiProcLabel, ProcLayoutProcStatic,
         DeepExcpVars, _),
     HLDSProcStatic = hlds_proc_static(FileName, LineNumber, IsInInterface,
         CallSites, CoveragePoints),
-   
+
     % Write out data the proc static will reference.
     list.foldl2(output_call_site_static_decl, CallSites, !DeclSet, !IO),
     output_call_site_static_array(RttiProcLabel, CallSites, !DeclSet, !IO),
     output_coverage_point_static_array(RttiProcLabel, CoveragePoints, !DeclSet,
         !IO),
     length(CoveragePoints, NumCoveragePoints),
-    output_coverage_point_dynamic_array(RttiProcLabel, NumCoveragePoints, 
+    output_coverage_point_dynamic_array(RttiProcLabel, NumCoveragePoints,
         !DeclSet, !IO),
 
     % Write out the proc static.
@@ -2175,7 +2175,7 @@ output_proc_static_data_defn(RttiProcLabel, ProcLayoutProcStatic,
     CoveragePointStaticName = proc_static_coverage_point_static(RttiProcLabel),
     output_layout_name(CoveragePointStaticName, !IO),
     io.write_string(",\n", !IO),
-    CoveragePointDynamicName = 
+    CoveragePointDynamicName =
         proc_static_coverage_point_dynamic(RttiProcLabel),
     output_layout_name(CoveragePointDynamicName, !IO),
     io.write_string("};\n", !IO),
@@ -2259,14 +2259,13 @@ output_call_site_static_decl(CallSiteStatic, !DeclSet, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-
 % Write out a C representation of the coverage point static data.
-:- pred output_coverage_point_static_array(rtti_proc_label::in, 
+:- pred output_coverage_point_static_array(rtti_proc_label::in,
     list(coverage_point_info)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
 output_coverage_point_static_array(RttiProcLabel, CoveragePoints, !DeclSet,
-        !IO) :- 
+        !IO) :-
     LayoutName = proc_static_coverage_point_static(RttiProcLabel),
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(LayoutName, yes, !IO),
@@ -2275,8 +2274,7 @@ output_coverage_point_static_array(RttiProcLabel, CoveragePoints, !DeclSet,
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
 
-
-:- pred output_coverage_point_static(coverage_point_info::in, io::di, io::uo) 
+:- pred output_coverage_point_static(coverage_point_info::in, io::di, io::uo)
     is det.
 
 output_coverage_point_static(coverage_point_info(GoalPath, CPType), !IO) :-
@@ -2288,11 +2286,11 @@ output_coverage_point_static(coverage_point_info(GoalPath, CPType), !IO) :-
     io.write_string(CPTypeCValue, !IO),
     io.write_string(" },\n", !IO).
 
-
-:- pred output_coverage_point_dynamic_array(rtti_proc_label::in, int::in, 
+:- pred output_coverage_point_dynamic_array(rtti_proc_label::in, int::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_coverage_point_dynamic_array(RttiProcLabel, NumCoveragePoints, !DeclSet, !IO) :-
+output_coverage_point_dynamic_array(RttiProcLabel, NumCoveragePoints,
+        !DeclSet, !IO) :-
     LayoutName = proc_static_coverage_point_dynamic(RttiProcLabel),
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(LayoutName, yes, !IO),
@@ -2301,7 +2299,6 @@ output_coverage_point_dynamic_array(RttiProcLabel, NumCoveragePoints, !DeclSet, 
     io.write_strings(Zeros, !IO),
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
-
 
 %-----------------------------------------------------------------------------%
 

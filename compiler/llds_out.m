@@ -1492,9 +1492,7 @@ insert_code_addr_decl(ProcLabel, LabelNum, !DeclSet) :-
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
-    %
     % Declare the stack layout entry for this label, if needed.
-    %
     ( map.search(StackLayoutLabels, Label, DataAddr) ->
         (
             Label = internal_label(LabelNum, ProcLabel),
@@ -1515,8 +1513,7 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
             io.write_int(LabelNum, !IO),
             % The final semicolon is in the macro definition.
             io.write_string(")\n", !IO),
-            % The macro declares both the label layout structure
-            % and the label.
+            % The macro declares both the label layout structure and the label.
             AlreadyDeclaredLabel = yes
         ;
             output_stack_layout_decl(DataAddr, !DeclSet, !IO),
@@ -1527,9 +1524,7 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
     ),
     (
         AlreadyDeclaredLabel = no,
-        %
         % Declare the label itself.
-        %
         (
             Label = entry_label(entry_label_exported, _),
             DeclMacro = "MR_def_extern_entry("
@@ -3240,7 +3235,7 @@ output_live_value_type(live_value_var(Var, Name, Type, LldsInst), !IO) :-
     io.write_string(", ", !IO),
     io.write_string(Name, !IO),
     io.write_string(", ", !IO),
-        % XXX Fake type varset
+    % XXX Fake type varset
     varset.init(NewTVarset),
     mercury_output_type(NewTVarset, no, Type, !IO),
     io.write_string(", ", !IO),
@@ -3249,7 +3244,7 @@ output_live_value_type(live_value_var(Var, Name, Type, LldsInst), !IO) :-
         io.write_string("ground", !IO)
     ;
         LldsInst = llds_inst_partial(Inst),
-            % XXX Fake inst varset
+        % XXX Fake inst varset
         varset.init(NewIVarset),
         mercury_output_inst(Inst, NewIVarset, !IO)
     ),
@@ -3282,11 +3277,13 @@ output_rval_decls(Lval, !DeclSet, !IO) :-
     output_rval_decls_format(Lval, "", "", 0, _, !DeclSet, !IO).
 
     % output_rval_decls_format(Rval, FirstIndent, LaterIndent, N0, N,
-    % !DeclSet) outputs the declarations of any static constants,
-    % etc. that need to be declared before output_rval(Rval) is called.
-    % FirstIndent is output before the first declaration, while
-    % LaterIndent is output before all later declaration; N0 and N
-    % give the number of declarations output before and after this call.
+    %   !DeclSet, !IO)
+    %
+    % Outputs the declarations of any static constants, etc. that need to be
+    % declared before output_rval(Rval) is called. FirstIndent is output
+    % before the first declaration, while LaterIndent is output before
+    % all later declaration; N0 and N give the number of declarations output
+    % before and after this call.
     %
     % Every time we emit a declaration for a symbol, we insert it into the
     % set of symbols we've already declared. That way, we avoid generating
