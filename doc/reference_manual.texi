@@ -9342,7 +9342,7 @@ this condition is true
 if the module is compiled with the option @samp{--trace-flag=@var{FlagName}}.
 The second has the form @samp{grade(debug)};
 this condition is true
-if the module is compiled with in a debugging grade.
+if the module is compiled in a debugging grade.
 (We may support the specification of other kinds of grades in the future.)
 The third has the form @samp{tracelevel(shallow)}, or @samp{tracelevel(deep)};
 this condition is true (irrespective of grade)
