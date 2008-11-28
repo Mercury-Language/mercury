@@ -682,7 +682,7 @@
     pred(in, in, out, in, out, in, out, in, out) is det, in, in, out, in, out,
     in, out, in, out) is det.
 :- mode list.map_corresponding_foldl3(
-    pred(in, in, out, in, out, in ,out, di, uo) is det, in, in, out, in, out,
+    pred(in, in, out, in, out, in, out, di, uo) is det, in, in, out, in, out,
     in, out, di, uo) is det.
 
     % list.map_corresponding3_foldl/7 is like list.map_corresponding3 except

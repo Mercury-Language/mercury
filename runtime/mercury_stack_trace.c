@@ -274,7 +274,6 @@ MR_stack_walk_step(const MR_ProcLayout *proc_layout,
     int                     determinism;
     MR_Code                 *success;
     MR_Unsigned             reused_frames;
-    int tailrec_slot;
 
     *return_label_layout_ptr = NULL;
 
