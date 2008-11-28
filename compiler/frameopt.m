@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001,2003-2007 The University of Melbourne.
+% Copyright (C) 1994-2001,2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -486,7 +486,7 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
     func late_setup_code(En) = list(instruction),
     func non_teardown_exit_code(Ex) = list(instruction),
     func describe_entry(En) = string,
-    func describe_exit(proc_label, Ex) = string
+    func describe_exit(maybe(proc_label), Ex) = string
 ].
 
 :- instance block_entry_exit(det_entry_info, det_exit_info) where [
@@ -2254,19 +2254,20 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
         SideLabels, MaybeFallThrough, Type),
     expect(unify(Label, BlockLabel), this_file,
         "describe_block: label mismatch"),
-    LabelStr = dump_label(yes(ProcLabel), Label),
-    BlockInstrsStr = dump_fullinstrs(ProcLabel, yes, BlockInstrs),
+    YesProcLabel = yes(ProcLabel),
+    LabelStr = dump_label(YesProcLabel, Label),
+    BlockInstrsStr = dump_fullinstrs(YesProcLabel, yes, BlockInstrs),
     Heading = "\nBLOCK " ++ LabelStr ++ "\n\n",
     ( map.search(PredMap, Label, PredLabel) ->
         PredStr = "previous label " ++
-            dump_label(yes(ProcLabel), PredLabel) ++ "\n"
+            dump_label(YesProcLabel, PredLabel) ++ "\n"
     ;
         PredStr = "no previous label\n"
     ),
     (
         FallInto = yes(FallIntoFromLabel),
         FallIntoStr = "fallen into from " ++
-            dump_label(yes(ProcLabel), FallIntoFromLabel) ++ "\n"
+            dump_label(YesProcLabel, FallIntoFromLabel) ++ "\n"
     ;
         FallInto = no,
         FallIntoStr = "not fallen into\n"
@@ -2277,12 +2278,12 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
     ;
         SideLabels = [_ | _],
         SideStr = "side labels " ++
-            dump_labels(yes(ProcLabel), SideLabels) ++ "\n"
+            dump_labels(YesProcLabel, SideLabels) ++ "\n"
     ),
     (
         MaybeFallThrough = yes(FallThroughLabel),
         FallThroughStr = "falls through to " ++
-            dump_label(yes(ProcLabel), FallThroughLabel) ++ "\n"
+            dump_label(YesProcLabel, FallThroughLabel) ++ "\n"
     ;
         MaybeFallThrough = no,
         FallThroughStr = "does not fall through\n"
@@ -2309,7 +2310,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
                 TypeStr2 = TypeStr1 ++ "\n"
             ;
                 TypeStr2 = TypeStr1 ++ " " ++
-                    describe_reason(ProcLabel, UsesReason) ++ "\n"
+                    describe_reason(YesProcLabel, UsesReason) ++ "\n"
             )
         ;
             UsesFrame = block_doesnt_need_frame,
@@ -2326,7 +2327,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
             ;
                 NeedsFrame = block_needs_frame(NeedsReasonSet),
                 set.to_sorted_list(NeedsReasonSet, NeedsReasons),
-                ReasonsStr = describe_top_reasons(ProcLabel, NeedsReasons),
+                ReasonsStr = describe_top_reasons(YesProcLabel, NeedsReasons),
                 TypeStr = TypeStr2 ++ "does need frame\n" ++ ReasonsStr
             )
         ;
@@ -2337,7 +2338,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
         Type = exit_block(Exit),
         expect(unify(MaybeFallThrough, no), this_file,
             "describe_block: exit_block, MaybeFallThrough=yes(_)"),
-        TypeStr = "exit_block\n" ++ describe_exit(ProcLabel, Exit)
+        TypeStr = "exit_block\n" ++ describe_exit(YesProcLabel, Exit)
     ),
     Comment = Heading ++ PredStr ++ FallIntoStr ++ SideStr ++ FallThroughStr
         ++ TypeStr ++ "CODE:\n" ++ BlockInstrsStr,
@@ -2351,15 +2352,15 @@ describe_det_entry(det_entry(Size, Msg, Kind)) =
     ", kind: " ++ dump_stack_incr_kind(Kind) ++
     "\n".
 
-:- func describe_det_exit(proc_label, det_exit_info) = string.
+:- func describe_det_exit(maybe(proc_label), det_exit_info) = string.
 
-describe_det_exit(ProcLabel, det_exit(RestoreSuccip, Livevals, Goto)) =
+describe_det_exit(MaybeProcLabel, det_exit(RestoreSuccip, Livevals, Goto)) =
     "restore:  "
-    ++ dump_fullinstrs(ProcLabel, yes, RestoreSuccip)
+    ++ dump_fullinstrs(MaybeProcLabel, yes, RestoreSuccip)
     ++ "livevals: "
-    ++ dump_fullinstrs(ProcLabel, yes, Livevals)
+    ++ dump_fullinstrs(MaybeProcLabel, yes, Livevals)
     ++ "goto:     "
-    ++ dump_fullinstr(ProcLabel, yes, Goto).
+    ++ dump_fullinstr(MaybeProcLabel, yes, Goto).
 
 :- func describe_nondet_entry(nondet_entry_info) = string.
 
@@ -2372,59 +2373,61 @@ describe_nondet_entry(nondet_entry(Msg, Size, Redoip)) =
     ++ dump_code_addr(no, Redoip)
     ++ "\n".
 
-:- func describe_nondet_exit(proc_label, nondet_exit_info) = string.
+:- func describe_nondet_exit(maybe(proc_label), nondet_exit_info) = string.
 
-describe_nondet_exit(ProcLabel, nondet_plain_exit(Livevals, Goto)) =
+describe_nondet_exit(MaybeProcLabel, nondet_plain_exit(Livevals, Goto)) =
     "livevals: "
-    ++ dump_fullinstrs(ProcLabel, yes, Livevals)
+    ++ dump_fullinstrs(MaybeProcLabel, yes, Livevals)
     ++ "goto:     "
-    ++ dump_fullinstr(ProcLabel, yes, Goto).
-describe_nondet_exit(ProcLabel, nondet_teardown_exit(Succip, Maxfr, Curfr,
+    ++ dump_fullinstr(MaybeProcLabel, yes, Goto).
+describe_nondet_exit(MaybeProcLabel, nondet_teardown_exit(Succip, Maxfr, Curfr,
         Livevals, Goto)) =
     "succip: "
-    ++ dump_fullinstr(ProcLabel, yes, Succip)
+    ++ dump_fullinstr(MaybeProcLabel, yes, Succip)
     ++ "maxfr: "
-    ++ dump_fullinstr(ProcLabel, yes, Maxfr)
+    ++ dump_fullinstr(MaybeProcLabel, yes, Maxfr)
     ++ "curfr: "
-    ++ dump_fullinstr(ProcLabel, yes, Curfr)
+    ++ dump_fullinstr(MaybeProcLabel, yes, Curfr)
     ++ "livevals: "
-    ++ dump_fullinstrs(ProcLabel, yes, Livevals)
+    ++ dump_fullinstrs(MaybeProcLabel, yes, Livevals)
     ++ "goto:     "
-    ++ dump_fullinstr(ProcLabel, yes, Goto).
+    ++ dump_fullinstr(MaybeProcLabel, yes, Goto).
 
-:- func describe_top_reasons(proc_label, list(needs_frame_reason)) = string.
+:- func describe_top_reasons(maybe(proc_label), list(needs_frame_reason))
+    = string.
 
-describe_top_reasons(_ProcLabel, []) = "".
-describe_top_reasons(ProcLabel, [Reason | Reasons]) =
-    describe_reason(ProcLabel, Reason) ++ "\n" ++
-    describe_top_reasons(ProcLabel, Reasons).
+describe_top_reasons(_MaybeProcLabel, []) = "".
+describe_top_reasons(MaybeProcLabel, [Reason | Reasons]) =
+    describe_reason(MaybeProcLabel, Reason) ++ "\n" ++
+    describe_top_reasons(MaybeProcLabel, Reasons).
 
-:- func describe_reason(proc_label, needs_frame_reason) = string.
+:- func describe_reason(maybe(proc_label), needs_frame_reason) = string.
 
-describe_reason(ProcLabel, code_needs_frame(Label)) =
-    "code " ++ dump_label(yes(ProcLabel), Label).
-describe_reason(_ProcLabel, keep_frame) = "keep_frame".
-describe_reason(_ProcLabel, redoip_label) = "redoip_label".
-describe_reason(ProcLabel, frontier(Label, Reasons)) =
-    "frontier(" ++ dump_label(yes(ProcLabel), Label) ++ ", {"
-        ++ describe_reasons(ProcLabel, to_sorted_list(Reasons)) ++ "})".
-describe_reason(ProcLabel, jump_around(Label, Reasons)) =
-    "jump_around(" ++ dump_label(yes(ProcLabel), Label) ++ ", {"
-        ++ describe_reasons(ProcLabel, to_sorted_list(Reasons)) ++ "})".
-describe_reason(ProcLabel, succ_propagated(Label, Reason)) =
-    "successor(" ++ dump_label(yes(ProcLabel), Label) ++ ", "
-        ++ describe_reason(ProcLabel, Reason) ++ ")".
-describe_reason(ProcLabel, pred_propagated(Label, Reason)) =
-    "predecessor(" ++ dump_label(yes(ProcLabel), Label) ++ ", "
-        ++ describe_reason(ProcLabel, Reason) ++ ")".
+describe_reason(MaybeProcLabel, code_needs_frame(Label)) =
+    "code " ++ dump_label(MaybeProcLabel, Label).
+describe_reason(_MaybeProcLabel, keep_frame) = "keep_frame".
+describe_reason(_MaybeProcLabel, redoip_label) = "redoip_label".
+describe_reason(MaybeProcLabel, frontier(Label, Reasons)) =
+    "frontier(" ++ dump_label(MaybeProcLabel, Label) ++ ", {"
+        ++ describe_reasons(MaybeProcLabel, to_sorted_list(Reasons)) ++ "})".
+describe_reason(MaybeProcLabel, jump_around(Label, Reasons)) =
+    "jump_around(" ++ dump_label(MaybeProcLabel, Label) ++ ", {"
+        ++ describe_reasons(MaybeProcLabel, to_sorted_list(Reasons)) ++ "})".
+describe_reason(MaybeProcLabel, succ_propagated(Label, Reason)) =
+    "successor(" ++ dump_label(MaybeProcLabel, Label) ++ ", "
+        ++ describe_reason(MaybeProcLabel, Reason) ++ ")".
+describe_reason(MaybeProcLabel, pred_propagated(Label, Reason)) =
+    "predecessor(" ++ dump_label(MaybeProcLabel, Label) ++ ", "
+        ++ describe_reason(MaybeProcLabel, Reason) ++ ")".
 
-:- func describe_reasons(proc_label, list(needs_frame_reason)) = string.
+:- func describe_reasons(maybe(proc_label), list(needs_frame_reason)) = string.
 
 describe_reasons(_, []) = "".
-describe_reasons(ProcLabel, [Reason]) = describe_reason(ProcLabel, Reason).
-describe_reasons(ProcLabel, [Reason1, Reason2 | Reasons]) =
-    describe_reason(ProcLabel, Reason1) ++ ", " ++
-    describe_reasons(ProcLabel, [Reason2 | Reasons]).
+describe_reasons(MaybeProcLabel, [Reason]) =
+    describe_reason(MaybeProcLabel, Reason).
+describe_reasons(MaybeProcLabel, [Reason1, Reason2 | Reasons]) =
+    describe_reason(MaybeProcLabel, Reason1) ++ ", " ++
+    describe_reasons(MaybeProcLabel, [Reason2 | Reasons]).
 
 %-----------------------------------------------------------------------------%
 

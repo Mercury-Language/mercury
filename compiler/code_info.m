@@ -12,7 +12,7 @@
 % This file defines the code_info type and various operations on it.
 % The code_info structure is the 'state' of the code generator.
 %
-% This file is organized into nine submodules:
+% This file is organized into ten submodules:
 %
 %   - the code_info structure and its access predicates
 %   - simple wrappers around access predicates
@@ -23,6 +23,7 @@
 %   - interfacing to var_locn
 %   - managing the info required by garbage collection and value numbering
 %   - managing stack slots
+%   - support for debugging the code generator itself.
 %
 %---------------------------------------------------------------------------%
 
@@ -65,16 +66,19 @@
 :- import_module backend_libs.proc_label.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
+:- import_module ll_backend.opt_debug.
 :- import_module ll_backend.var_locn.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
+:- import_module io.
 :- import_module pair.
 :- import_module set.
 :- import_module stack.
@@ -2029,7 +2033,7 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-:- type simple_neg_info     ==  fail_info.
+:- type simple_neg_info ==  fail_info.
 
 enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CI) :-
     get_fail_info(!.CI, FailInfo0),
@@ -2916,13 +2920,33 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         ResumeLocs = resume_locs_orig_only,
         get_next_label(OrigLabel, !CI),
         OrigAddr = code_label(OrigLabel),
-        ResumePoint = orig_only(OrigMap, OrigAddr)
+        ResumePoint = orig_only(OrigMap, OrigAddr),
+        trace [compiletime(flag("codegen_goal")), io(!IO)] (
+            ( should_trace_code_gen(!.CI) ->
+                code_info.get_varset(!.CI, VarSet),
+                io.write_string("orig_only\n", !IO),
+                output_resume_map(VarSet, OrigMap, !IO),
+                io.flush_output(!IO)
+            ;
+                true
+            )
+        )
     ;
         ResumeLocs = resume_locs_stack_only,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
         get_next_label(StackLabel, !CI),
         StackAddr = code_label(StackLabel),
-        ResumePoint = stack_only(StackMap, StackAddr)
+        ResumePoint = stack_only(StackMap, StackAddr),
+        trace [compiletime(flag("codegen_goal")), io(!IO)] (
+            ( should_trace_code_gen(!.CI) ->
+                code_info.get_varset(!.CI, VarSet),
+                io.write_string("stack_only\n", !IO),
+                output_resume_map(VarSet, StackMap, !IO),
+                io.flush_output(!IO)
+            ;
+                true
+            )
+        )
     ;
         ResumeLocs = resume_locs_orig_and_stack,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
@@ -2930,7 +2954,20 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         OrigAddr = code_label(OrigLabel),
         get_next_label(StackLabel, !CI),
         StackAddr = code_label(StackLabel),
-        ResumePoint = orig_and_stack(OrigMap, OrigAddr, StackMap, StackAddr)
+        ResumePoint = orig_and_stack(OrigMap, OrigAddr, StackMap, StackAddr),
+        trace [compiletime(flag("codegen_goal")), io(!IO)] (
+            ( should_trace_code_gen(!.CI) ->
+                code_info.get_varset(!.CI, VarSet),
+                io.write_string("stack_and_orig\n", !IO),
+                io.write_string("orig:\n", !IO),
+                output_resume_map(VarSet, OrigMap, !IO),
+                io.write_string("stack:\n", !IO),
+                output_resume_map(VarSet, StackMap, !IO),
+                io.flush_output(!IO)
+            ;
+                true
+            )
+        )
     ;
         ResumeLocs = resume_locs_stack_and_orig,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
@@ -2938,7 +2975,20 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         StackAddr = code_label(StackLabel),
         get_next_label(OrigLabel, !CI),
         OrigAddr = code_label(OrigLabel),
-        ResumePoint = stack_and_orig(StackMap, StackAddr, OrigMap, OrigAddr)
+        ResumePoint = stack_and_orig(StackMap, StackAddr, OrigMap, OrigAddr),
+        trace [compiletime(flag("codegen_goal")), io(!IO)] (
+            ( should_trace_code_gen(!.CI) ->
+                code_info.get_varset(!.CI, VarSet),
+                io.write_string("stack_and_orig\n", !IO),
+                io.write_string("stack:\n", !IO),
+                output_resume_map(VarSet, StackMap, !IO),
+                io.write_string("orig:\n", !IO),
+                output_resume_map(VarSet, OrigMap, !IO),
+                io.flush_output(!IO)
+            ;
+                true
+            )
+        )
     ).
 
 :- pred make_stack_resume_map(set(prog_var)::in, stack_slots::in,
@@ -3020,7 +3070,7 @@ generate_resume_point(ResumePoint, Code, !CI) :-
             llds_instr(label(Label2), "orig failure continuation after stack")
         ]),
         set_var_locations(Map2, !CI),
-        Code = tree(Label1Code, tree(PlaceCode, Label2Code))
+        Code = tree_list([Label1Code, PlaceCode, Label2Code])
     ;
         ResumePoint = orig_and_stack(Map1, Addr1, Map2, Addr2),
         extract_label_from_code_addr(Addr1, Label1),
@@ -3036,7 +3086,7 @@ generate_resume_point(ResumePoint, Code, !CI) :-
         ]),
         set_var_locations(Map2, !CI),
         generate_resume_layout(Label2, Map2, !CI),
-        Code = tree(Label1Code, tree(PlaceCode, Label2Code))
+        Code = tree_list([Label1Code, PlaceCode, Label2Code])
     ).
 
 :- pred extract_label_from_code_addr(code_addr::in, label::out) is det.
@@ -4547,6 +4597,45 @@ max_var_slot_2([L | Ls], !Max) :-
         int.max(N, !Max)
     ),
     max_var_slot_2(Ls, !Max).
+
+%---------------------------------------------------------------------------%
+
+    % Submodule for debugging the code generator itself.
+
+:- interface.
+
+    % Should we trace the operation of the code generator.
+    %
+:- pred should_trace_code_gen(code_info::in) is semidet.
+
+:- implementation.
+
+should_trace_code_gen(CI) :-
+    code_info.get_pred_id(CI, PredId),
+    pred_id_to_int(PredId, PredIdInt),
+    code_info.get_module_info(CI, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_int_option(Globals, debug_code_gen_pred_id, DebugPredIdInt),
+    PredIdInt = DebugPredIdInt.
+
+:- pred output_resume_map(prog_varset::in, map(prog_var, set(lval))::in,
+    io::di, io::uo) is det.
+
+output_resume_map(VarSet, ResumeMap, !IO) :-
+    map.to_assoc_list(ResumeMap, ResumeAssocList),
+    list.foldl(output_resume_map_element(VarSet), ResumeAssocList, !IO).
+
+:- pred output_resume_map_element(prog_varset::in,
+    pair(prog_var, set(lval))::in, io::di, io::uo) is det.
+
+output_resume_map_element(VarSet, Var - LvalSet, !IO) :-
+    io.write_string(describe_var(VarSet, Var), !IO),
+    io.write_string(": ", !IO),
+    Lvals = set.to_sorted_list(LvalSet),
+    LvalDescs = list.map(dump_lval(no), Lvals),
+    SpaceLvalDescs = list.map(string.append(" "), LvalDescs),
+    io.write_string(string.append_list(SpaceLvalDescs), !IO),
+    io.nl(!IO).
 
 %---------------------------------------------------------------------------%
 

@@ -19,7 +19,7 @@
 % by disj_gen, for parallel conjunctions by par_conj_gen, and for foreign_procs
 % by pragma_c_gen. The only goals handled directly by code_gen are sequential
 % conjunctions.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.code_gen.
@@ -42,6 +42,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
@@ -51,6 +52,7 @@
 :- import_module ll_backend.commit_gen.
 :- import_module ll_backend.disj_gen.
 :- import_module ll_backend.ite_gen.
+:- import_module ll_backend.opt_debug.
 :- import_module ll_backend.par_conj_gen.
 :- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.switch_gen.
@@ -58,22 +60,39 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
-generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
+generate_goal(ContextModel, Goal, Code, !CI) :-
     % Generate a goal. This predicate arranges for the necessary updates of
     % the generic data structures before and after the actual code generation,
     % which is delegated to goal-specific predicates.
 
     get_forward_live_vars(!.CI, ForwardLiveVarsBeforeGoal),
 
+    % This block of code should be optimized away if the trace goals
+    % are not enabled.
+    code_info.get_module_info(!.CI, ModuleInfo),
+    code_info.get_varset(!.CI, VarSet),
+    GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
+
+    trace [compiletime(flag("codegen_goal")), io(!IO)] (
+        ( should_trace_code_gen(!.CI) ->
+            io.format("\nGOAL START: %s\n", [s(GoalDesc)], !IO)
+        ;
+            true
+        )
+    ),
+
     % Make any changes to liveness before Goal.
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     HasSubGoals = goal_expr_has_subgoals(GoalExpr),
     pre_goal_update(GoalInfo, HasSubGoals, !CI),
     get_instmap(!.CI, InstMap),
@@ -160,6 +179,16 @@ generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
         post_goal_update(GoalInfo, !CI)
     ;
         Code = empty
+    ),
+    trace [compiletime(flag("codegen_goal")), io(!IO)] (
+        ( should_trace_code_gen(!.CI) ->
+            io.format("\nGOAL FINISH: %s\n", [s(GoalDesc)], !IO),
+            InstrLists = tree.flatten(Code),
+            list.condense(InstrLists, Instrs),
+            write_instrs(Instrs, no, yes, !IO)
+        ;
+            true
+        )
     ).
 
 :- func compute_deep_save_excp_vars(proc_info) = list(prog_var).

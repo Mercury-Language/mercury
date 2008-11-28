@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002,2003-2007 The University of Melbourne.
+% Copyright (C) 2002,2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% Pre-passes to transform or annotate the HLDS
+% Pre-passes to transform or annotate the HLDS.
 :- include_module deep_profiling.   % transform
 :- include_module saved_vars.       % transform
 :- include_module stack_opt.        % transform
@@ -29,7 +29,7 @@
    :- include_module follow_vars.   % annotate
 :- include_module store_alloc.      % annotate
 
-% The llds data structure itself
+% The LLDS data structure itself.
 :- include_module llds.
 :- include_module code_util.
 

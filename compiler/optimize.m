@@ -62,6 +62,7 @@
 :- import_module dir.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
 :- import_module string.
 
@@ -187,7 +188,7 @@ init_opt_debug_info(Name, Arity, PredProcId, ProcLabel, Instrs0, Counter,
             io.set_output_stream(FileStream, OutputStream, !IO),
             counter.allocate(NextLabel, Counter, _),
             opt_debug.msg(yes, NextLabel, "before optimization", !IO),
-            opt_debug.maybe_dump_instrs(yes, ProcLabel, Instrs0, !IO),
+            opt_debug.maybe_write_instrs(yes, yes(ProcLabel), Instrs0, !IO),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO)
         ;
@@ -242,7 +243,7 @@ maybe_opt_debug(Instrs, Counter, Suffix, Msg, ProcLabel, !OptDebugInfo, !IO) :-
                 io.write_string("same as previous version\n", !IO)
             ;
                 Same = no,
-                opt_debug.maybe_dump_instrs(yes, ProcLabel, Instrs, !IO)
+                opt_debug.maybe_write_instrs(yes, yes(ProcLabel), Instrs, !IO)
             ),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO)

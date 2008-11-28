@@ -145,6 +145,7 @@
     ;       debug_modes_verbose
     ;       debug_modes_pred_id
     ;       debug_det
+    ;       debug_code_gen_pred_id
     ;       debug_opt
     ;       debug_term          % term = constraint termination analysis 
     ;       debug_opt_pred_id
@@ -1036,6 +1037,7 @@ option_defaults_2(verbosity_option, [
     debug_modes_verbose                 -   bool(no),
     debug_modes_pred_id                 -   int(-1),
     debug_det                           -   bool(no),
+    debug_code_gen_pred_id              -   int(-1),
     debug_term                          -   bool(no),
     debug_opt                           -   bool(no),
     debug_opt_pred_id                   -   accumulating([]),
@@ -1845,6 +1847,7 @@ long_option("debug-modes-verbose",  debug_modes_verbose).
 long_option("debug-modes-pred-id",  debug_modes_pred_id).
 long_option("debug-determinism",    debug_det).
 long_option("debug-det",            debug_det).
+long_option("debug-code-gen-pred-id",   debug_code_gen_pred_id).
 long_option("debug-termination",    debug_term).
 long_option("debug-term",           debug_term).
 long_option("debug-opt",            debug_opt).
@@ -3348,6 +3351,12 @@ options_help_verbosity -->
         "\tpred id.",
         "--debug-det, --debug-determinism",
         "\tOutput detailed debugging traces of determinism analysis.",
+% --debug-code-gen-pred-id <n> is a developer only option,
+% and it is effective only if the compiler was compiled with the right
+% trace flags.
+%       "--debug-code-gen-pred-id <n>",
+%       "\tOutput detailed debugging traces of code generation for the",
+%       "\tpredicate or function with the given pred id.",
 % The new termination analyser is currently a work-in-progress.
 %
         %"--debug-term, --debug-termination",

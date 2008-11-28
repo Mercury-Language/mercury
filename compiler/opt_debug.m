@@ -35,8 +35,30 @@
 
 :- pred msg(bool::in, int::in, string::in, io::di, io::uo) is det.
 
-:- pred maybe_dump_instrs(bool::in, proc_label::in, list(instruction)::in,
+    % maybe_write_instrs(OptDebug, MaybeProcLabel, Instrs, !IO):
+    %
+    % If OptDebug = yes, write out the given list of instructions,
+    % Use the value of the auto_comments option to decide whether
+    % to include comments in the output.
+    %
+:- pred maybe_write_instrs(bool::in, maybe(proc_label)::in,
+    list(instruction)::in, io::di, io::uo) is det.
+
+    % write_instrs(MaybeProcLabel, Instrs, PrintComments, !IO):
+    %
+    % Write out the given list of instructions, together with comments if
+    % PrintComments = yes.
+    %
+:- pred write_instrs(list(instruction)::in, maybe(proc_label)::in, bool::in,
     io::di, io::uo) is det.
+
+    % Return a string representation of a list of instructions; the string
+    % is the same as what write_instrs would print. Returning it as a string
+    % is significantly more expensive (due to all the string appends required).
+    % so dump_instrs should only be used for printing instruction sequences
+    % whose size should be naturally limited.
+    %
+:- func dump_instrs(maybe(proc_label), bool, list(instruction)) = string.
 
 :- func dump_intlist(list(int)) = string.
 
@@ -104,11 +126,11 @@
 
 :- func dump_stack_incr_kind(stack_incr_kind) = string.
 
-:- func dump_instr(proc_label, bool, instr) = string.
+:- func dump_instr(maybe(proc_label), bool, instr) = string.
 
-:- func dump_fullinstr(proc_label, bool, instruction) = string.
+:- func dump_fullinstr(maybe(proc_label), bool, instruction) = string.
 
-:- func dump_fullinstrs(proc_label, bool, list(instruction)) = string.
+:- func dump_fullinstrs(maybe(proc_label), bool, list(instruction)) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -150,30 +172,27 @@ msg(OptDebug, LabelNo, Msg, !IO) :-
         OptDebug = no
     ).
 
-maybe_dump_instrs(OptDebug, ProcLabel, Instrs, !IO) :-
+maybe_write_instrs(OptDebug, MaybeProcLabel, Instrs, !IO) :-
     (
         OptDebug = yes,
         globals.io_lookup_bool_option(auto_comments, PrintComments,
             !IO),
-        dump_instrs_2(Instrs, ProcLabel, PrintComments, !IO)
+        write_instrs(Instrs, MaybeProcLabel, PrintComments, !IO)
     ;
         OptDebug = no
     ).
 
-:- pred dump_instrs_2(list(instruction)::in, proc_label::in, bool::in,
-    io::di, io::uo) is det.
-
-dump_instrs_2([], _ProcLabel, _PrintComments, !IO).
-dump_instrs_2([Instr | Instrs], ProcLabel, PrintComments, !IO) :-
+write_instrs([], _MaybeProcLabel, _PrintComments, !IO).
+write_instrs([Instr | Instrs], MaybeProcLabel, PrintComments, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(_) ->
-        io.write_string(dump_instr(ProcLabel, PrintComments, Uinstr), !IO)
+        io.write_string(dump_instr(MaybeProcLabel, PrintComments, Uinstr), !IO)
     ; Uinstr = comment(InstrComment) ->
         io.write_string("\t% ", !IO),
         string.foldl(print_comment_char, InstrComment, !IO)
     ;
         io.write_string("\t", !IO),
-        io.write_string(dump_instr(ProcLabel, PrintComments, Uinstr), !IO)
+        io.write_string(dump_instr(MaybeProcLabel, PrintComments, Uinstr), !IO)
     ),
     (
         PrintComments = yes,
@@ -184,26 +203,18 @@ dump_instrs_2([Instr | Instrs], ProcLabel, PrintComments, !IO) :-
         true
     ),
     io.nl(!IO),
-    dump_instrs_2(Instrs, ProcLabel, PrintComments, !IO).
+    write_instrs(Instrs, MaybeProcLabel, PrintComments, !IO).
 
-    % Return a string representation of a list of instructions; the string
-    % is the same as what dump_instrs_2 would print. Returning it as a string
-    % is significantly more expensive (due to all the string appends required),
-    % but we use dump_instrs only for printing blocks, whose size should be
-    % naturally limited.
-    %
-:- func dump_instrs(proc_label, bool, list(instruction)) = string.
-
-dump_instrs(_ProcLabel, _PrintComments, []) = "".
-dump_instrs(ProcLabel, PrintComments, [Instr | Instrs]) = Str :-
+dump_instrs(_MaybeProcLabel, _PrintComments, []) = "".
+dump_instrs(MaybeProcLabel, PrintComments, [Instr | Instrs]) = Str :-
     Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(_) ->
-        InstrStr0 = dump_instr(ProcLabel, PrintComments, Uinstr)
+        InstrStr0 = dump_instr(MaybeProcLabel, PrintComments, Uinstr)
     ; Uinstr = comment(InstrComment) ->
         string.foldl(dump_comment_char, InstrComment, "", InstrCommentStr),
         InstrStr0 = "\t% " ++ InstrCommentStr
     ;
-        InstrStr0 = "\t" ++ dump_instr(ProcLabel, PrintComments, Uinstr)
+        InstrStr0 = "\t" ++ dump_instr(MaybeProcLabel, PrintComments, Uinstr)
     ),
     (
         PrintComments = yes,
@@ -213,7 +224,7 @@ dump_instrs(ProcLabel, PrintComments, [Instr | Instrs]) = Str :-
     ;
         InstrStr = InstrStr0 ++ "\n"
     ),
-    InstrsStr = dump_instrs(ProcLabel, PrintComments, Instrs),
+    InstrsStr = dump_instrs(MaybeProcLabel, PrintComments, Instrs),
     Str = InstrStr ++ InstrsStr.
 
 :- pred print_comment_char(char::in, io::di, io::uo) is det.
@@ -701,27 +712,27 @@ dump_code_model(model_non) = "model_non".
 dump_stack_incr_kind(stack_incr_leaf) = "leaf".
 dump_stack_incr_kind(stack_incr_nonleaf) = "nonleaf".
 
-dump_instr(ProcLabel, PrintComments, Instr) = Str :-
+dump_instr(MaybeProcLabel, PrintComments, Instr) = Str :-
     (
         Instr = comment(Comment),
         Str = "comment(" ++ Comment ++ ")"
     ;
         Instr = livevals(Livevals),
-        Str = "livevals(" ++ dump_livevals(yes(ProcLabel), Livevals) ++ ")"
+        Str = "livevals(" ++ dump_livevals(MaybeProcLabel, Livevals) ++ ")"
     ;
         Instr = block(RTemps, FTemps, Instrs),
         Str = "block(" ++ int_to_string(RTemps) ++ ", "
             ++ int_to_string(FTemps) ++ ",\n"
-            ++ dump_instrs(ProcLabel, PrintComments, Instrs)
+            ++ dump_instrs(MaybeProcLabel, PrintComments, Instrs)
             ++ ")"
     ;
         Instr = assign(Lval, Rval),
-        Str = dump_lval(yes(ProcLabel), Lval) ++ " := " ++
-            dump_rval(yes(ProcLabel), Rval)
+        Str = dump_lval(MaybeProcLabel, Lval) ++ " := " ++
+            dump_rval(MaybeProcLabel, Rval)
     ;
         Instr = keep_assign(Lval, Rval),
-        Str = "keep " ++ dump_lval(yes(ProcLabel), Lval) ++ " := " ++
-            dump_rval(yes(ProcLabel), Rval)
+        Str = "keep " ++ dump_lval(MaybeProcLabel, Lval) ++ " := " ++
+            dump_rval(MaybeProcLabel, Rval)
     ;
         Instr = llcall(Callee, ReturnLabel, _LiveInfo, _Context, _GoalPath,
             CallModel),
@@ -741,14 +752,14 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             CallModel = call_model_nondet(unchecked_tail_call),
             CallModelStr = "nondet unchecked_tail_call"
         ),
-        Str = "call(" ++ dump_code_addr(yes(ProcLabel), Callee) ++ ", "
-            ++ dump_code_addr(yes(ProcLabel), ReturnLabel) ++ ", ..., "
+        Str = "call(" ++ dump_code_addr(MaybeProcLabel, Callee) ++ ", "
+            ++ dump_code_addr(MaybeProcLabel, ReturnLabel) ++ ", ..., "
             ++ CallModelStr ++ ")"
     ;
         Instr = mkframe(FrameInfo, MaybeRedoip),
         (
             MaybeRedoip = yes(Redoip),
-            R_str = dump_code_addr(yes(ProcLabel), Redoip)
+            R_str = dump_code_addr(MaybeProcLabel, Redoip)
         ;
             MaybeRedoip = no,
             R_str = "no_redoip"
@@ -776,28 +787,28 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         )
     ;
         Instr = label(Label),
-        Str = dump_label(yes(ProcLabel), Label) ++ ":"
+        Str = dump_label(MaybeProcLabel, Label) ++ ":"
     ;
         Instr = goto(CodeAddr),
-        Str = "goto " ++ dump_code_addr(yes(ProcLabel), CodeAddr)
+        Str = "goto " ++ dump_code_addr(MaybeProcLabel, CodeAddr)
     ;
         Instr = computed_goto(Rval, Labels),
-        Str = "computed_goto " ++ dump_rval(yes(ProcLabel), Rval) ++ ":"
-            ++ dump_labels_or_not_reached(yes(ProcLabel), Labels)
+        Str = "computed_goto " ++ dump_rval(MaybeProcLabel, Rval) ++ ":"
+            ++ dump_labels_or_not_reached(MaybeProcLabel, Labels)
     ;
         Instr = arbitrary_c_code(AL, _, Code),
         Str = "arbitrary_c_code(" ++ dump_affects_liveness(AL) ++ "\n" ++
             Code ++ ")"
     ;
         Instr = if_val(Rval, CodeAddr),
-        Str = "if (" ++ dump_rval(yes(ProcLabel), Rval) ++ ") goto "
-            ++ dump_code_addr(yes(ProcLabel), CodeAddr)
+        Str = "if (" ++ dump_rval(MaybeProcLabel, Rval) ++ ") goto "
+            ++ dump_code_addr(MaybeProcLabel, CodeAddr)
     ;
         Instr = save_maxfr(Lval),
-        Str = "save_maxfr(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
+        Str = "save_maxfr(" ++ dump_lval(MaybeProcLabel, Lval) ++ ")"
     ;
         Instr = restore_maxfr(Lval),
-        Str = "restore_maxfr(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
+        Str = "restore_maxfr(" ++ dump_lval(MaybeProcLabel, Lval) ++ ")"
     ;
         Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Size, _, MayUseAtomic,
             MaybeRegionRval, MaybeReuse),
@@ -834,24 +845,24 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
                 Flag_str = "no"
             ;
                 MaybeFlagLval = yes(FlagLval),
-                Flag_str = dump_lval(yes(ProcLabel), FlagLval)
+                Flag_str = dump_lval(MaybeProcLabel, FlagLval)
             )
         ),
-        Str = "incr_hp(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", " ++
+        Str = "incr_hp(" ++ dump_lval(MaybeProcLabel, Lval) ++ ", " ++
             T_str ++ ", " ++ O_str ++ ", " ++
-            dump_rval(yes(ProcLabel), Size) ++ ", " ++
+            dump_rval(MaybeProcLabel, Size) ++ ", " ++
             dump_may_use_atomic(MayUseAtomic) ++ ", " ++
             Region_str ++ ", " ++
             Reuse_str ++ ", " ++ Flag_str ++ ")"
     ;
         Instr = mark_hp(Lval),
-        Str = "mark_hp(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
+        Str = "mark_hp(" ++ dump_lval(MaybeProcLabel, Lval) ++ ")"
     ;
         Instr = restore_hp(Rval),
-        Str = "restore_hp(" ++ dump_rval(yes(ProcLabel), Rval) ++ ")"
+        Str = "restore_hp(" ++ dump_rval(MaybeProcLabel, Rval) ++ ")"
     ;
         Instr = free_heap(Rval),
-        Str = "free_heap(" ++ dump_rval(yes(ProcLabel), Rval) ++ ")"
+        Str = "free_heap(" ++ dump_rval(MaybeProcLabel, Rval) ++ ")"
     ;
         Instr = push_region_frame(StackId, EmbeddedStackFrame),
         Str = "push_region_frame(" ++
@@ -882,9 +893,9 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "region_fill_frame(" ++
             FillOpStr ++ "," ++
             dump_embedded_stack_frame_id(EmbeddedStackFrame) ++ "," ++
-            dump_rval(yes(ProcLabel), IdRval) ++ "," ++
-            dump_lval(yes(ProcLabel), NumLval) ++ "," ++
-            dump_lval(yes(ProcLabel), AddrLval) ++ ")"
+            dump_rval(MaybeProcLabel, IdRval) ++ "," ++
+            dump_lval(MaybeProcLabel, NumLval) ++ "," ++
+            dump_lval(MaybeProcLabel, AddrLval) ++ ")"
     ;
         Instr = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval),
         (
@@ -906,7 +917,7 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "region_set_fixed_slot(" ++
             SetOpStr ++ "," ++
             dump_embedded_stack_frame_id(EmbeddedStackFrame) ++ "," ++
-            dump_rval(yes(ProcLabel), ValueRval) ++ ")"
+            dump_rval(MaybeProcLabel, ValueRval) ++ ")"
     ;
         Instr = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame),
         (
@@ -945,10 +956,10 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             dump_embedded_stack_frame_id(EmbeddedStackFrame) ++ ")"
     ;
         Instr = store_ticket(Lval),
-        Str = "store_ticket(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
+        Str = "store_ticket(" ++ dump_lval(MaybeProcLabel, Lval) ++ ")"
     ;
         Instr = reset_ticket(Rval, _Reason),
-        Str = "reset_ticket(" ++ dump_rval(yes(ProcLabel), Rval) ++ ", _)"
+        Str = "reset_ticket(" ++ dump_rval(MaybeProcLabel, Rval) ++ ", _)"
     ;
         Instr = discard_ticket,
         Str = "discard_ticket"
@@ -957,10 +968,10 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "prune_ticket"
     ;
         Instr = mark_ticket_stack(Lval),
-        Str = "mark_ticket_stack(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
+        Str = "mark_ticket_stack(" ++ dump_lval(MaybeProcLabel, Lval) ++ ")"
     ;
         Instr = prune_tickets_to(Rval),
-        Str = "prune_tickets_to(" ++ dump_rval(yes(ProcLabel), Rval) ++ ")"
+        Str = "prune_tickets_to(" ++ dump_rval(MaybeProcLabel, Rval) ++ ")"
     ;
         Instr = incr_sp(Size, _, Kind),
         Str = "incr_sp(" ++ int_to_string(Size) ++ ", " ++
@@ -973,20 +984,19 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "decr_sp_and_return(" ++ int_to_string(Size) ++ ")"
     ;
         Instr = init_sync_term(Lval, N),
-        Str = "init_sync_term(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", "
+        Str = "init_sync_term(" ++ dump_lval(MaybeProcLabel, Lval) ++ ", "
             ++ int_to_string(N) ++ ")"
     ;
         Instr = fork_new_child(Lval, Child),
-        Str = "fork_new_child(" ++ dump_lval(yes(ProcLabel), Lval)
-            ++ dump_label(yes(ProcLabel), Child) ++ ", " ++ ")"
+        Str = "fork_new_child(" ++ dump_lval(MaybeProcLabel, Lval)
+            ++ dump_label(MaybeProcLabel, Child) ++ ", " ++ ")"
     ;
         Instr = join_and_continue(Lval, Label),
-        Str = "join_and_continue(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", "
-            ++ dump_label(yes(ProcLabel), Label) ++ ")"
+        Str = "join_and_continue(" ++ dump_lval(MaybeProcLabel, Lval) ++ ", "
+            ++ dump_label(MaybeProcLabel, Label) ++ ")"
     ;
         Instr = foreign_proc_code(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF,
             SSR, MD),
-        MaybeProcLabel = yes(ProcLabel),
         Str = "foreign_proc_code(\n"
             ++ "declarations:\n" ++ dump_decls(Decls)
             ++ "components:\n" ++ dump_components(MaybeProcLabel, Comps)
@@ -1126,17 +1136,18 @@ dump_output_component(MaybeProcLabel,
 dump_maybe_dummy(is_not_dummy_type) = "".
 dump_maybe_dummy(is_dummy_type) = " (dummy)".
 
-dump_fullinstr(ProcLabel, PrintComments, llds_instr(Uinstr, Comment)) = Str :-
+dump_fullinstr(MaybeProcLabel, PrintComments, llds_instr(Uinstr, Comment))
+        = Str :-
     (
         PrintComments = no,
-        Str = dump_instr(ProcLabel, PrintComments, Uinstr) ++ "\n"
+        Str = dump_instr(MaybeProcLabel, PrintComments, Uinstr) ++ "\n"
     ;
         PrintComments = yes,
-        Str = dump_instr(ProcLabel, PrintComments, Uinstr) ++
+        Str = dump_instr(MaybeProcLabel, PrintComments, Uinstr) ++
             " - " ++ Comment ++ "\n"
     ).
 
-dump_fullinstrs(_ProcLabel, _PrintComments, []) = "".
-dump_fullinstrs(ProcLabel, PrintComments, [Instr | Instrs]) =
-    dump_fullinstr(ProcLabel, PrintComments, Instr)
-    ++ dump_fullinstrs(ProcLabel, PrintComments, Instrs).
+dump_fullinstrs(_MaybeProcLabel, _PrintComments, []) = "".
+dump_fullinstrs(MaybeProcLabel, PrintComments, [Instr | Instrs]) =
+    dump_fullinstr(MaybeProcLabel, PrintComments, Instr)
+    ++ dump_fullinstrs(MaybeProcLabel, PrintComments, Instrs).

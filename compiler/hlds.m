@@ -40,6 +40,7 @@
 :- include_module hhf.
 
 % Modules for pretty-printing it.
+:- include_module hlds_desc.
 :- include_module hlds_out.
 
 % Miscellaneous utilities.

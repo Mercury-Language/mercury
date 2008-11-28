@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +49,7 @@
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.continuation_info.
+:- import_module ll_backend.opt_debug.
 :- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
@@ -58,6 +59,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -213,6 +215,17 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     reset_to_position(BranchStart, !CI),
     generate_resume_point(ResumePoint, ResumeCode, !CI),
 
+    trace [compiletime(flag("codegen_goal")), io(!S)] (
+        ( should_trace_code_gen(!.CI) ->
+            ResumeInstrLists = tree.flatten(ResumeCode),
+            list.condense(ResumeInstrLists, ResumeInstrs),
+            io.write_string("\nRESUME INSTRS:\n", !S),
+            write_instrs(ResumeInstrs, no, yes, !S)
+        ;
+            true
+        )
+    ),
+
     % Restore the heap pointer and solver state if necessary.
     maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
     maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
@@ -223,6 +236,17 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         !CI),
     code_gen.generate_goal(CodeModel, ElseGoal, ElseCode, !CI),
     generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, ElseSaveCode, !CI),
+
+    trace [compiletime(flag("codegen_goal")), io(!S)] (
+        ( should_trace_code_gen(!.CI) ->
+            ElseSaveInstrLists = tree.flatten(ElseSaveCode),
+            list.condense(ElseSaveInstrLists, ElseSaveInstrs),
+            io.write_string("\nBRANCH END INSTRS:\n", !S),
+            write_instrs(ElseSaveInstrs, no, yes, !S)
+        ;
+            true
+        )
+    ),
 
     get_next_label(EndLabel, !CI),
     JumpToEndCode = node([
