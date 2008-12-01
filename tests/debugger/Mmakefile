@@ -210,9 +210,9 @@ else
     endif
 endif
 
-SUBDIRS=declarative
-TESTS=$(PROGS)
-TESTS_DIR=..
+SUBDIRS = declarative
+TESTS = $(sort $(PROGS))
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 # The minimum trace level in .decldebug grades is --trace decl.

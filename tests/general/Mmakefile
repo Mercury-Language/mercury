@@ -106,8 +106,8 @@ endif
 NOT_WORKING =	dnf
 
 SUBDIRS = accumulator string_format
-TESTS=$(PROGS)
-TESTS_DIR=..
+TESTS = $(sort $(PROGS))
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

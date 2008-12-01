@@ -641,7 +641,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-TESTS = $(PROGS)
+TESTS = $(sort $(PROGS))
 SUBDIRS = typeclasses sub-modules exceptions purity
 TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common

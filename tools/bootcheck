@@ -942,7 +942,7 @@ then
         if (cd $stage2dir && \
             $MMAKE $mmake_opts dep_library dep_mdbcomp \
             dep_browser dep_ssdb dep_compiler \
-            dep_profiler dep_deep_profiler)
+            dep_slice dep_profiler dep_deep_profiler)
         then
             echo "building of stage 2 dependencies successful"
         else
@@ -951,7 +951,7 @@ then
         fi
 
         if (cd $stage2dir/library && \
-            $MMAKE $mmake_opts $jfactor mercury)
+            $MMAKE $mmake_opts $jfactor all-ints mercury)
         then
             echo "building of stage 2 library successful"
         else

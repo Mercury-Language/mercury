@@ -20,9 +20,9 @@ endif
 # `--use-grade-subdirs' doesn't work with Mmake.
 MMAKE_USE_MMC_MAKE=yes
 
-TESTS = $(PROGS)
+TESTS = $(sort $(PROGS))
 SUBDIRS = 
-TESTS_DIR=..
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

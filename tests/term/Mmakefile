@@ -89,9 +89,9 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-TESTS=$(PROGS)
-SUBDIRS=
-TESTS_DIR=..
+TESTS = $(sort $(PROGS))
+SUBDIRS =
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 %.runtest: %.trans_opt_res ;

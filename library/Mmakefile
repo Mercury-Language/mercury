@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2007 The University of Melbourne.
+# Copyright (C) 1997-2008 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -176,19 +176,19 @@ check:	$(STD_LIB_NAME).check
 
 ifeq ($(LIBRARY_INTERMODULE),yes)
 
-all-ints: ints int3s opts trans_opts
+all-ints: int3s ints opts trans_opts
 
 else
 
-all-ints: ints int3s
+all-ints: int3s ints
 
 endif
 
-.PHONY: ints
-ints:	$(STD_LIB_NAME).ints
-
 .PHONY: int3s
 int3s:	$(STD_LIB_NAME).int3s
+
+.PHONY: ints
+ints:	$(STD_LIB_NAME).ints
 
 .PHONY: opts
 opts:	$(STD_LIB_NAME).opts

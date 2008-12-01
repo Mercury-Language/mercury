@@ -21,9 +21,9 @@ ifneq ($(origin WORKSPACE),undefined)
     endif
 endif
 
-SUBDIRS=
-TESTS=$(PROGS)
-TESTS_DIR=..
+SUBDIRS =
+TESTS = $(sort $(PROGS))
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 %.runtest: %.res ;

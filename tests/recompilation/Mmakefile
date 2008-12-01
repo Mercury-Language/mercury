@@ -52,9 +52,9 @@ else
 		$(TESTS_SHOULD_FAIL)
 endif
 
-TESTS= $(PROGS:%=%-nodepend)
-SUBDIRS=
-TESTS_DIR=..
+TESTS= $(sort $(PROGS:%=%-nodepend))
+SUBDIRS =
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they
