@@ -376,13 +376,13 @@ display_report_clique(Prefs, CliqueReport, Display) :-
         table_section_header(td_s("Procedures of the clique:")),
 
     sort_clique_procs_by_preferences(Prefs, CliqueProcs0, CliqueProcs),
-    ProcRowLists = list.map(clique_proc_to_table_rows(Prefs, CliquePtr),
+    ProcRowLists0 = list.map(clique_proc_to_table_rows(Prefs, CliquePtr),
         CliqueProcs),
+    ProcRowLists = list.map(add_front_separator_row, ProcRowLists0),
     list.condense(ProcRowLists, ProcRows),
 
     AllRows = AncestorRows ++
-        [table_separator_row, CliqueProcsHeaderRow, table_separator_row] ++
-        ProcRows,
+        [table_separator_row, CliqueProcsHeaderRow] ++ ProcRows,
     Table = table(table_class_box_if_pref, NumColumns, yes(Header), AllRows),
     DisplayTable = display_table(Table),
 
@@ -398,6 +398,10 @@ display_report_clique(Prefs, CliqueReport, Display) :-
         display_paragraph_break, FieldControls,
         display_paragraph_break, FormatControls,
         display_paragraph_break, MenuRestartQuitControls]).
+
+:- func add_front_separator_row(list(table_row)) = list(table_row).
+
+add_front_separator_row(Rows) = [table_separator_row | Rows].
 
 :- func clique_ancestor_to_row(preferences, perf_row_data(ancestor_desc))
     = table_row.
@@ -451,7 +455,7 @@ clique_proc_to_table_rows(Prefs, CliquePtr, CliqueProcReport) = ProcRows :-
 clique_proc_dynamic_to_table_rows(Prefs, CliquePtr, CliqueProcDynamicReport)
         = ProcRows :-
     CliqueProcDynamicReport = clique_proc_dynamic_report(SummaryRowData,
-        CallSiteReports),
+        CallSiteReports0),
     ProcDesc = SummaryRowData ^ perf_row_subject,
     ProcCell = proc_desc_to_proc_name_cell_span(Prefs, [attr_bold],
         ProcDesc, 2),
@@ -460,6 +464,8 @@ clique_proc_dynamic_to_table_rows(Prefs, CliquePtr, CliqueProcDynamicReport)
         SummaryPerfCells),
     SummaryRowCells = [ProcCell] ++ SummaryPerfCells,
     SummaryRow = table_row(SummaryRowCells),
+    sort_clique_call_site_reports_by_preferences(Prefs,
+        CallSiteReports0, CallSiteReports),
     CallSiteRowLists =
         list.map(clique_call_site_to_rows(Prefs, CliquePtr), CallSiteReports),
     list.condense(CallSiteRowLists, CallSiteRows),
