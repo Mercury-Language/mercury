@@ -107,7 +107,7 @@
 :- import_module hlds.make_hlds.superhomogeneous.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_sym_name.
 
 :- import_module bool.
 :- import_module int.

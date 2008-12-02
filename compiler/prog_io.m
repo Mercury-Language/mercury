@@ -182,64 +182,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% A QualifiedTerm is one of
-%   Name(Args)
-%   Module.Name(Args)
-% (or if Args is empty, one of
-%   Name
-%   Module.Name)
-% where Module is a SymName. For backwards compatibility, we allow `__'
-% as an alternative to `.'.
-
-    % Sym_name_and_args takes a term and returns a sym_name that is its
-    % top function symbol, and a list of its argument terms. It fails
-    % if the input is not valid syntax for a QualifiedTerm.
-    %
-:- pred sym_name_and_args(term(T)::in, sym_name::out, list(term(T))::out)
-    is semidet.
-
-    % parse_qualified_term(Term, _ContainingTerm, VarSet, ContextPieces,
-    %   Result):
-    %
-    % Parse Term into a sym_name that is its top function symbol and a
-    % list of its argument terms, and if successful return them in Result.
-    % (parse_qualified_term thus does the same job as sym_name_and_args
-    % if it succeeds.) However, in case it does not succced,
-    % parse_qualified_term also takes as input Varset (from which the variables
-    % in Term are taken), the term containing Term, and a format_component
-    % list describing the context from which it was called, e.g.
-    % "In clause head:". XXX Currently, _ContainingTerm isn't used;
-    % maybe it should be deleted.
-    %
-    % Note: parse_qualified_term is used for places where a symbol is _used_,
-    % where no default module name exists for the sym_name. For places
-    % where a symbol is _defined_, use parse_implicitly_qualified_term.
-    %
-    % If you care only about the case where Result = ok2(SymName, Args),
-    % use sym_name_and_args.
-    %
-:- pred parse_qualified_term(term(T)::in, term(T)::in, varset::in,
-    list(format_component)::in, maybe_functor(T)::out) is det.
-
-    % parse_implicitly_qualified_term(ModuleName, Term, _ContainingTerm,
-    %   VarSet, ContextPieces, Result):
-    %
-    % Parse Term into a sym_name that is its top function symbol and a
-    % list of its argument terms, and if successful return them in Result.
-    % This predicate thus does almost the same job as the predicate
-    % parse_implicitly_qualified_term above, the difference being that
-    % that if the sym_name is qualified, then we check whether it is qualified
-    % with ModuleName, and if it isn't qualified, then we qualify it with
-    % Modulename (unless ModuleName is root_module_name). This is the
-    % right thing to do for clause heads, which is the intended job of
-    % parse_implicitly_qualified_term.
-    %
-:- pred parse_implicitly_qualified_term(module_name::in, term(T)::in,
-    term(T)::in, varset::in, list(format_component)::in, maybe_functor(T)::out)
-    is det.
-
-%-----------------------------------------------------------------------------%
-
     % Replace all occurrences of inst_var(I) with
     % constrained_inst_var(I, ground(shared, none)).
     %
@@ -272,7 +214,9 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_dcg.
 :- import_module parse_tree.prog_io_goal.
+:- import_module parse_tree.prog_io_mutable.
 :- import_module parse_tree.prog_io_pragma.
+:- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_typeclass.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
@@ -483,20 +427,21 @@ find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
 :- pred search_for_module_source_2(list(dir_name)::in, module_name::in,
     module_name::in, maybe_error(file_name)::out, io::di, io::uo) is det.
 
-search_for_module_source_2(Dirs, ModuleName, PartialModuleName, Result, !IO) :-
+search_for_module_source_2(Dirs, ModuleName, PartialModuleName, MaybeFileName,
+        !IO) :-
     module_name_to_file_name(PartialModuleName, ".m", do_not_create_dirs,
         FileName, !IO),
-    search_for_file(Dirs, FileName, Result0, !IO),
+    search_for_file(Dirs, FileName, MaybeFileName0, !IO),
     (
-        Result0 = ok(_),
-        Result = Result0
+        MaybeFileName0 = ok(_),
+        MaybeFileName = MaybeFileName0
     ;
-        Result0 = error(_),
+        MaybeFileName0 = error(_),
         ( PartialModuleName1 = drop_one_qualifier(PartialModuleName) ->
             search_for_module_source_2(Dirs, ModuleName, PartialModuleName1,
-                Result, !IO)
+                MaybeFileName, !IO)
         ;
-            Result = error(find_source_error(ModuleName, Dirs, no))
+            MaybeFileName = error(find_source_error(ModuleName, Dirs, no))
         )
     ).
 
@@ -1581,7 +1526,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
             ModuleName, VarSet, MaybeWhereTerm),
         % The code to process `where' attributes will return an error
         % if solver attributes are given for a non-solver type. Because
-        % this is a du type, if the unification with WhereResult succeeds
+        % this is a du type, if the unification with MaybeWhere succeeds
         % then _NoSolverTypeDetails is guaranteed to be `no'.
         (
             MaybeTypeCtorAndArgs = ok2(Name, Params),
@@ -1780,24 +1725,25 @@ convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms])
     term, list(term)) = maybe1(list(constructor_arg)).
 
 convert_constructor_arg_list_2(ModuleName, VarSet, MaybeFieldName,
-        TypeTerm, Terms) = Result :-
+        TypeTerm, Terms) = MaybeArgs :-
     ContextPieces = [words("In type definition:")],
-    parse_type(TypeTerm, VarSet, ContextPieces, TypeResult),
+    parse_type(TypeTerm, VarSet, ContextPieces, MaybeType),
     (
-        TypeResult = ok1(Type),
+        MaybeType = ok1(Type),
         Context = get_term_context(TypeTerm),
         Arg = ctor_arg(MaybeFieldName, Type, Context),
-        Result0 = convert_constructor_arg_list(ModuleName, VarSet, Terms),
+        MaybeTailArgs =
+            convert_constructor_arg_list(ModuleName, VarSet, Terms),
         (
-            Result0 = error1(Specs),
-            Result  = error1(Specs)
+            MaybeTailArgs = error1(Specs),
+            MaybeArgs  = error1(Specs)
         ;
-            Result0 = ok1(Args),
-            Result  = ok1([Arg | Args])
+            MaybeTailArgs = ok1(Args),
+            MaybeArgs  = ok1([Arg | Args])
         )
     ;
-        TypeResult = error1(Specs),
-        Result = error1(Specs)
+        MaybeType = error1(Specs),
+        MaybeArgs = error1(Specs)
     ).
 
 :- pred process_du_ctors(list(type_param)::in, varset::in, term::in,
@@ -2282,30 +2228,31 @@ parse_where_initialisation_is(ModuleName, VarSet, Term) = Result :-
 
 :- func parse_where_pred_is(module_name, varset, term) = maybe1(sym_name).
 
-parse_where_pred_is(ModuleName, VarSet, Term) = Result :-
-    parse_implicitly_qualified_symbol_name(ModuleName, VarSet, Term, Result).
+parse_where_pred_is(ModuleName, VarSet, Term) = MaybeSymName :-
+    parse_implicitly_qualified_symbol_name(ModuleName, VarSet, Term,
+        MaybeSymName).
 
 :- func parse_where_inst_is(module_name, term) = maybe1(mer_inst).
 
-parse_where_inst_is(_ModuleName, Term) = Result :-
+parse_where_inst_is(_ModuleName, Term) = MaybeInst :-
     (
         convert_inst(no_allow_constrained_inst_var, Term, Inst),
         not inst_contains_unconstrained_var(Inst)
     ->
-        Result = ok1(Inst)
+        MaybeInst = ok1(Inst)
     ;
         Pieces = [words("Error: expected a ground, unconstrained inst."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeInst = error1([Spec])
     ).
 
 :- func parse_where_type_is(module_name, varset, term) = maybe1(mer_type).
 
-parse_where_type_is(_ModuleName, VarSet, Term) = Result :-
+parse_where_type_is(_ModuleName, VarSet, Term) = MaybeType :-
     % XXX We should pass meaningful ContextPieces.
     ContextPieces = [],
-    parse_type(Term, VarSet, ContextPieces, Result).
+    parse_type(Term, VarSet, ContextPieces, MaybeType).
 
 :- func parse_where_mutable_is(module_name, term) = maybe1(list(item)).
 
@@ -3503,8 +3450,8 @@ get_constraints(QuantType, ModuleName, VarSet, !Attributes,
     ->
         parse_class_and_inst_constraints(ModuleName, VarSet, ConstraintsTerm,
             MaybeHeadConstraints),
-        % there may be more constraints of the same type --
-        % collect them all and combine them
+        % There may be more constraints of the same type;
+        % collect them all and combine them.
         get_constraints(QuantType, ModuleName, VarSet, !Attributes,
             MaybeTailConstraints),
         (
@@ -3566,311 +3513,6 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Context,
     ;
         MaybeGoal0 = error1(Specs),
         MaybeItem = error1(Specs)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred parse_initialise_decl(module_name::in, varset::in, term::in,
-    prog_context::in, int::in, maybe1(item)::out) is det.
-
-parse_initialise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
-    parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
-    (
-        MaybeSymNameSpecifier = error1(Specs),
-        MaybeItem = error1(Specs)
-    ;
-        MaybeSymNameSpecifier = ok1(SymNameSpecifier),
-        (
-            SymNameSpecifier = name(_),
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error:"), quote("initialise"),
-                words("declaration"), words("requires arity, found"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeItem = error1([Spec])
-        ;
-            SymNameSpecifier = name_arity(SymName, Arity),
-            (
-                ( Arity = 0 ; Arity = 2 )
-            ->
-                ItemInitialise = item_initialise_info(user, SymName, Arity,
-                    Context, SeqNum),
-                Item = item_initialise(ItemInitialise),
-                MaybeItem = ok1(Item)
-            ;
-                TermStr = describe_error_term(VarSet, Term),
-                Pieces = [words("Error:"), quote("initialise"),
-                    words("declaration specifies a predicate"),
-                    words("whose arity is not zero or two:"),
-                    words(TermStr), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
-                MaybeItem = error1([Spec])
-            )
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred parse_finalise_decl(module_name::in, varset::in, term::in,
-    prog_context::in, int::in, maybe1(item)::out) is det.
-
-parse_finalise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
-    parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
-    (
-        MaybeSymNameSpecifier = error1(Specs),
-        MaybeItem = error1(Specs)
-    ;
-        MaybeSymNameSpecifier = ok1(SymNameSpecifier),
-        (
-            SymNameSpecifier = name(_),
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error:"), quote("finalise"),
-                words("declaration"), words("requires arity, found"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeItem = error1([Spec])
-        ;
-            SymNameSpecifier = name_arity(SymName, Arity),
-            (
-                ( Arity = 0 ; Arity = 2 )
-            ->
-                ItemFinalise = item_finalise_info(user, SymName, Arity,
-                    Context, SeqNum),
-                Item = item_finalise(ItemFinalise),
-                MaybeItem = ok1(Item)
-            ;
-                TermStr = describe_error_term(VarSet, Term),
-                Pieces = [words("Error:"), quote("finalise"),
-                    words("declaration specifies a predicate"),
-                    words("whose arity is not zero or two:"),
-                    words(TermStr), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
-                MaybeItem = error1([Spec])
-            )
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Mutable declarations
-%
-% See prog_mutable.m for implementation details.
-%
-
-:- pred parse_mutable_decl(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item)::out) is semidet.
-
-parse_mutable_decl(_ModuleName, VarSet, Terms, Context, SeqNum, MaybeItem) :-
-    Terms = [NameTerm, TypeTerm, ValueTerm, InstTerm | OptMutAttrsTerm],
-    parse_mutable_name(NameTerm, MaybeName),
-    parse_mutable_type(VarSet, TypeTerm, MaybeType),
-    term.coerce(ValueTerm, Value),
-    varset.coerce(VarSet, ProgVarSet),
-    parse_mutable_inst(VarSet, InstTerm, MaybeInst),
-
-    % The list of attributes is optional.
-    (
-        OptMutAttrsTerm = [],
-        MaybeMutAttrs = ok1(default_mutable_attributes)
-    ;
-        OptMutAttrsTerm = [MutAttrsTerm],
-        parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs)
-    ),
-    (
-        MaybeName = ok1(Name),
-        MaybeType = ok1(Type),
-        MaybeInst = ok1(Inst),
-        MaybeMutAttrs = ok1(MutAttrs)
-    ->
-        % We *must* attach the varset to the mutable item because if the
-        % initial value is non-ground, then the initial value will be a
-        % variable and the mutable initialisation predicate will contain
-        % references to it.  Ignoring the varset may lead to later compiler
-        % passes attempting to reuse this variable when fresh variables are
-        % allocated.
-        ItemMutable = item_mutable_info(Name, Type, Value, Inst, MutAttrs,
-            ProgVarSet, Context, SeqNum),
-        Item = item_mutable(ItemMutable),
-        MaybeItem = ok1(Item)
-    ;
-        Specs = get_any_errors1(MaybeName) ++ get_any_errors1(MaybeType) ++
-            get_any_errors1(MaybeInst) ++ get_any_errors1(MaybeMutAttrs),
-        MaybeItem = error1(Specs)
-    ).
-
-:- pred parse_mutable_name(term::in, maybe1(string)::out) is det.
-
-parse_mutable_name(NameTerm, MaybeName) :-
-    ( NameTerm = term.functor(atom(Name), [], _) ->
-        MaybeName = ok1(Name)
-    ;
-        Pieces = [words("Error: invalid mutable name."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
-        MaybeName = error1([Spec])
-    ).
-
-:- pred parse_mutable_type(varset::in, term::in, maybe1(mer_type)::out) is det.
-
-parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
-    ( term.contains_var(TypeTerm, _) ->
-        TypeTermStr = describe_error_term(VarSet, TypeTerm),
-        Pieces = [words("Error: the type in a mutable declaration"),
-            words("cannot contain variables:"),
-            words(TypeTermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
-        MaybeType = error1([Spec])
-    ;
-        ContextPieces = [],
-        parse_type(TypeTerm, VarSet, ContextPieces, MaybeType)
-    ).
-
-:- pred parse_mutable_inst(varset::in, term::in, maybe1(mer_inst)::out) is det.
-
-parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
-    ( term.contains_var(InstTerm, _) ->
-        InstTermStr = describe_error_term(VarSet, InstTerm),
-        Pieces = [words("Error: the inst in a mutable declaration"),
-            words("cannot contain variables:"),
-            words(InstTermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
-        MaybeInst = error1([Spec])
-    ; convert_inst(no_allow_constrained_inst_var, InstTerm, Inst) ->
-        MaybeInst = ok1(Inst)
-    ;
-        Pieces = [words("Error: invalid inst in mutable declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
-        MaybeInst = error1([Spec])
-    ).
-
-:- type collected_mutable_attribute
-    --->    mutable_attr_trailed(mutable_trailed)
-    ;       mutable_attr_foreign_name(foreign_name)
-    ;       mutable_attr_attach_to_io_state(bool)
-    ;       mutable_attr_constant(bool)
-    ;       mutable_attr_thread_local(mutable_thread_local).
-
-:- pred parse_mutable_attrs(varset::in, term::in,
-    maybe1(mutable_var_attributes)::out) is det.
-
-parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
-    Attributes0 = default_mutable_attributes,
-    ConflictingAttributes = [
-        mutable_attr_trailed(mutable_trailed) -
-            mutable_attr_trailed(mutable_untrailed),
-        mutable_attr_trailed(mutable_trailed) -
-            mutable_attr_thread_local(mutable_thread_local),
-        mutable_attr_constant(yes) - mutable_attr_trailed(mutable_trailed),
-        mutable_attr_constant(yes) - mutable_attr_attach_to_io_state(yes),
-        mutable_attr_constant(yes) -
-            mutable_attr_thread_local(mutable_thread_local)
-    ],
-    (
-        list_term_to_term_list(MutAttrsTerm, MutAttrTerms),
-        map_parser(parse_mutable_attr, MutAttrTerms, MaybeAttrList),
-        MaybeAttrList = ok1(CollectedMutAttrs)
-    ->
-        % We check for trailed/untrailed, constant/trailed,
-        % trailed/thread_local, constant/attach_to_io_state,
-        % constant/thread_local conflicts here and deal with conflicting
-        % foreign_name attributes in make_hlds_passes.m.
-        (
-            list.member(Conflict1 - Conflict2, ConflictingAttributes),
-            list.member(Conflict1, CollectedMutAttrs),
-            list.member(Conflict2, CollectedMutAttrs)
-        ->
-            % XXX Should generate more specific error message.
-            MutAttrsStr = mercury_term_to_string(VarSet, no, MutAttrsTerm),
-            Pieces = [words("Error: conflicting attributes"),
-                words("in attribute list:"), nl,
-                words(MutAttrsStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(MutAttrsTerm),
-                    [always(Pieces)])]),
-            MaybeMutAttrs = error1([Spec])
-        ;
-            list.foldl(process_mutable_attribute, CollectedMutAttrs,
-                Attributes0, Attributes),
-            MaybeMutAttrs = ok1(Attributes)
-        )
-    ;
-        MutAttrsStr = mercury_term_to_string(VarSet, no, MutAttrsTerm),
-        Pieces = [words("Error: malformed attribute list"),
-            words("in mutable declaration:"),
-            words(MutAttrsStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(MutAttrsTerm), [always(Pieces)])]),
-        MaybeMutAttrs = error1([Spec])
-    ).
-
-:- pred process_mutable_attribute(collected_mutable_attribute::in,
-    mutable_var_attributes::in, mutable_var_attributes::out) is det.
-
-process_mutable_attribute(mutable_attr_trailed(Trailed), !Attributes) :-
-    set_mutable_var_trailed(Trailed, !Attributes).
-process_mutable_attribute(mutable_attr_foreign_name(ForeignName),
-        !Attributes) :-
-    set_mutable_add_foreign_name(ForeignName, !Attributes).
-process_mutable_attribute(mutable_attr_attach_to_io_state(AttachToIOState),
-        !Attributes) :-
-    set_mutable_var_attach_to_io_state(AttachToIOState, !Attributes).
-process_mutable_attribute(mutable_attr_constant(Constant), !Attributes) :-
-    set_mutable_var_constant(Constant, !Attributes),
-    (
-        Constant = yes,
-        set_mutable_var_trailed(mutable_untrailed, !Attributes),
-        set_mutable_var_attach_to_io_state(no, !Attributes)
-    ;
-        Constant = no
-    ).
-process_mutable_attribute(mutable_attr_thread_local(ThrLocal), !Attributes) :-
-    set_mutable_var_thread_local(ThrLocal, !Attributes).
-
-:- pred parse_mutable_attr(term::in,
-    maybe1(collected_mutable_attribute)::out) is det.
-
-parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
-    (
-        MutAttrTerm = term.functor(term.atom(String), [], _),
-        (
-            String  = "untrailed",
-            MutAttr = mutable_attr_trailed(mutable_untrailed)
-        ;
-            String = "trailed",
-            MutAttr = mutable_attr_trailed(mutable_trailed)
-        ;
-            String  = "attach_to_io_state",
-            MutAttr = mutable_attr_attach_to_io_state(yes)
-        ;
-            String = "constant",
-            MutAttr = mutable_attr_constant(yes)
-        ;
-            String = "thread_local",
-            MutAttr = mutable_attr_thread_local(mutable_thread_local)
-        )
-    ->
-        MutAttrResult = ok1(MutAttr)
-    ;
-        MutAttrTerm = term.functor(term.atom("foreign_name"), Args, _),
-        Args = [LangTerm, ForeignNameTerm],
-        parse_foreign_language(LangTerm, Lang),
-        ForeignNameTerm = term.functor(term.string(ForeignName), [], _)
-    ->
-        MutAttr = mutable_attr_foreign_name(foreign_name(Lang, ForeignName)),
-        MutAttrResult = ok1(MutAttr)
-    ;
-        Pieces = [words("Error: unrecognised attribute"),
-            words("in mutable declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(MutAttrTerm), [always(Pieces)])]),
-        MutAttrResult = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -4287,250 +3929,6 @@ parse_module_name(DefaultModuleName, VarSet, Term, MaybeModule) :-
 
 %-----------------------------------------------------------------------------%
 
-    % A SymbolNameSpecifier is one of
-    %   SymbolName
-    %   SymbolName/Arity
-    %       Matches only symbols of the specified arity.
-    %
-:- pred parse_symbol_name_specifier(varset::in, term::in,
-    maybe1(sym_name_specifier)::out) is det.
-
-parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier) :-
-    root_module_name(DefaultModule),
-    parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet,
-        Term, MaybeSymNameSpecifier).
-
-:- pred parse_implicitly_qualified_symbol_name_specifier(module_name::in,
-    varset::in, term::in, maybe1(sym_name_specifier)::out) is det.
-
-parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
-        MaybeSymNameSpecifier) :-
-    ( Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) ->
-        ( ArityTerm = term.functor(term.integer(Arity), [], _) ->
-            ( Arity >= 0 ->
-                parse_implicitly_qualified_symbol_name(DefaultModule, VarSet,
-                    NameTerm, MaybeName),
-                process_maybe1(make_name_arity_specifier(Arity),
-                    MaybeName, MaybeSymNameSpecifier)
-            ;
-                Pieces = [words("Error: arity in symbol name specifier"),
-                    words("must be a non-negative integer."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
-                MaybeSymNameSpecifier = error1([Spec])
-            )
-        ;
-            Pieces = [words("Error: arity in symbol name specifier"),
-                words("must be an integer."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeSymNameSpecifier = error1([Spec])
-        )
-    ;
-        parse_implicitly_qualified_symbol_name(DefaultModule, VarSet, Term,
-            MaybeSymbolName),
-        process_maybe1(make_name_specifier, MaybeSymbolName,
-            MaybeSymNameSpecifier)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-    % A SymbolName is one of
-    %   Name
-    %       Matches symbols with the specified name in the
-    %       current namespace.
-    %   Module.Name
-    %       Matches symbols with the specified name exported
-    %       by the specified module (where Module is itself a SymbolName).
-    %
-    % We also allow the syntax `Module__Name' as an alternative
-    % for `Module.Name'.
-    %
-:- pred parse_symbol_name(varset(T)::in, term(T)::in, maybe1(sym_name)::out)
-    is det.
-
-parse_symbol_name(VarSet, Term, MaybeSymName) :-
-    (
-        Term = term.functor(term.atom(FunctorName), [ModuleTerm, NameTerm],
-            TermContext),
-        ( FunctorName = ":"
-        ; FunctorName = "."
-        )
-    ->
-        ( NameTerm = term.functor(term.atom(Name), [], _) ->
-            parse_symbol_name(VarSet, ModuleTerm, MaybeModule),
-            (
-                MaybeModule = ok1(Module),
-                MaybeSymName = ok1(qualified(Module, Name))
-            ;
-                MaybeModule = error1(_ModuleResultSpecs),
-                % XXX We should say "module name" OR "identifier", not both.
-                Pieces = [words("Error: module name identifier"),
-                    words("expected before"), quote(FunctorName),
-                    words("in qualified symbol name."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(TermContext, [always(Pieces)])]),
-                % XXX Should we include _ModuleResultSpecs?
-                MaybeSymName = error1([Spec])
-            )
-        ;
-            Pieces = [words("Error: identifier expected after"),
-                quote(FunctorName), words("in qualified symbol name."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
-            MaybeSymName = error1([Spec])
-        )
-    ;
-        ( Term = term.functor(term.atom(Name), [], _) ->
-            SymName = string_to_sym_name_sep(Name, "__"),
-            MaybeSymName = ok1(SymName)
-        ;
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error: symbol name expected at"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeSymName = error1([Spec])
-        )
-    ).
-
-:- pred parse_implicitly_qualified_symbol_name(module_name::in, varset::in,
-    term::in, maybe1(sym_name)::out) is det.
-
-parse_implicitly_qualified_symbol_name(DefaultModName, VarSet, Term,
-        MaybeSymName) :-
-    parse_symbol_name(VarSet, Term, MaybeSymName0),
-    (
-        MaybeSymName0 = ok1(SymName),
-        (
-            root_module_name(DefaultModName)
-        ->
-            MaybeSymName = MaybeSymName0
-        ;
-            SymName = qualified(ModName, _),
-            \+ match_sym_name(ModName, DefaultModName)
-        ->
-            Pieces = [words("Error: module qualifier in definition"),
-                words("does not match preceding"), quote(":- module"),
-                words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeSymName = error1([Spec])
-
-        ;
-            UnqualName = unqualify_name(SymName),
-            MaybeSymName = ok1(qualified(DefaultModName, UnqualName))
-        )
-    ;
-        MaybeSymName0 = error1(_),
-        MaybeSymName = MaybeSymName0
-    ).
-
-%-----------------------------------------------------------------------------%
-
-parse_implicitly_qualified_term(DefaultModuleName, Term, ContainingTerm,
-        VarSet, ContextPieces, MaybeSymNameAndArgs) :-
-    parse_qualified_term(Term, ContainingTerm, VarSet, ContextPieces,
-        MaybeSymNameAndArgs0),
-    (
-        MaybeSymNameAndArgs0 = ok2(SymName, Args),
-        (
-            root_module_name(DefaultModuleName)
-        ->
-            MaybeSymNameAndArgs = MaybeSymNameAndArgs0
-        ;
-            SymName = qualified(ModuleName, _),
-            \+ match_sym_name(ModuleName, DefaultModuleName)
-        ->
-            Pieces = [words("Error: module qualifier in definition"),
-                words("does not match preceding"), quote(":- module"),
-                words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeSymNameAndArgs = error2([Spec])
-        ;
-            UnqualName = unqualify_name(SymName),
-            QualSymName = qualified(DefaultModuleName, UnqualName),
-            MaybeSymNameAndArgs = ok2(QualSymName, Args)
-        )
-    ;
-        MaybeSymNameAndArgs0 = error2(_),
-        MaybeSymNameAndArgs = MaybeSymNameAndArgs0
-    ).
-
-sym_name_and_args(Term, SymName, Args) :-
-    % The values of VarSet and ContextPieces do not matter here, since
-    % we succeed only if they aren't used.
-    VarSet = varset.init,
-    ContextPieces = [],
-    parse_qualified_term(Term, Term, VarSet, ContextPieces,
-        ok2(SymName, Args)).
-
-parse_qualified_term(Term, _ContainingTerm, VarSet, ContextPieces,
-        MaybeSymNameAndArgs) :-
-    % XXX We should delete the _ContainingTerm argument.
-    (
-        Term = term.functor(Functor, FunctorArgs, TermContext),
-        Functor = term.atom("."),
-        FunctorArgs = [ModuleTerm, NameArgsTerm]
-    ->
-        ( NameArgsTerm = term.functor(term.atom(Name), Args, _) ->
-            varset.coerce(VarSet, GenericVarSet),
-            parse_symbol_name(GenericVarSet, ModuleTerm, MaybeModule),
-            (
-                MaybeModule = ok1(Module),
-                MaybeSymNameAndArgs = ok2(qualified(Module, Name), Args)
-            ;
-                MaybeModule = error1(_),
-                ModuleTermStr = describe_error_term(GenericVarSet, ModuleTerm),
-                % XXX We should say "module name" OR "identifier", not both.
-                Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-                    words("Error: module name identifier expected before '.'"),
-                    words("in qualified symbol name, not"),
-                    words(ModuleTermStr), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(TermContext, [always(Pieces)])]),
-                MaybeSymNameAndArgs = error2([Spec])
-            )
-        ;
-            varset.coerce(VarSet, GenericVarSet),
-            TermStr = describe_error_term(GenericVarSet, Term),
-            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-                words("Error: identifier expected after '.'"),
-                words("in qualified symbol name, not"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
-            MaybeSymNameAndArgs = error2([Spec])
-        )
-    ;
-        varset.coerce(VarSet, GenericVarSet),
-        ( Term = term.functor(term.atom(Name), Args, _) ->
-            SymName = string_to_sym_name_sep(Name, "__"),
-            MaybeSymNameAndArgs = ok2(SymName, Args)
-        ;
-            TermStr = describe_error_term(GenericVarSet, Term),
-            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-                words("Error: atom expected at"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeSymNameAndArgs = error2([Spec])
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-
-    % We use the empty module name ('') as the "root" module name; when adding
-    % default module qualifiers in parse_implicitly_qualified_{term,symbol},
-    % if the default module is the root module then we don't add any qualifier.
-    %
-:- pred root_module_name(module_name::out) is det.
-
-root_module_name(unqualified("")).
-
-%-----------------------------------------------------------------------------%
-
 :- pred get_is_solver_type(is_solver_type::out,
     decl_attrs::in, decl_attrs::out) is det.
 
@@ -4591,17 +3989,6 @@ make_import(Syms, md_import(Syms)).
 :- pred make_export(list(module_specifier)::in, module_defn::out) is det.
 
 make_export(Syms, md_export(Syms)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred make_name_arity_specifier(arity::in, sym_name::in,
-    sym_name_specifier::out) is det.
-
-make_name_arity_specifier(Arity, Name, name_arity(Name, Arity)).
-
-:- pred make_name_specifier(sym_name::in, sym_name_specifier::out) is det.
-
-make_name_specifier(Name, name(Name)).
 
 %-----------------------------------------------------------------------------%
 

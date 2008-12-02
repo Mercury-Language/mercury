@@ -61,9 +61,9 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_data.   % for type field_access_type
-:- import_module hlds.hlds_pred.   % for field_access_function_name,
-                                   % type pred_id.
+:- import_module hlds.hlds_data.    % for type field_access_type
+:- import_module hlds.hlds_pred.    % for field_access_function_name,
+                                    % type pred_id.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -72,9 +72,10 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.usage.

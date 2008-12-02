@@ -30,7 +30,9 @@
 :- include_module prog_io. 
    :- include_module prog_io_dcg.
    :- include_module prog_io_goal.
+   :- include_module prog_io_mutable.
    :- include_module prog_io_pragma.
+   :- include_module prog_io_sym_name.
    :- include_module prog_io_typeclass.
    :- include_module prog_io_util.
 

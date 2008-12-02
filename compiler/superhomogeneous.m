@@ -121,7 +121,7 @@
 :- import_module libs.compiler_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_dcg.
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_util.

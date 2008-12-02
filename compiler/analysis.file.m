@@ -116,7 +116,7 @@
 :- import_module libs.pickle.
 :- import_module parse_tree.
 :- import_module parse_tree.module_cmds.        % XXX unwanted dependency
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_out.
 
 %-----------------------------------------------------------------------------%
