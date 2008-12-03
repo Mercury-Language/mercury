@@ -35,7 +35,20 @@ A ^ elem_from_end(I) = A ^ elem(max(A) - I).
 :- func (array(T) ^ elem_from_end(int) := T)  = array(T).
 :- mode (array_di ^ elem_from_end(in)  := in) = array_uo is det.
 
-(A ^ elem_from_end(I) := X) = (A ^ elem(max(A) - I) := X).
+% This formatting gives each part of the term a different context.
+% This is a regression test for a bug in which the code that recognized
+% field accesses insisted on the same context for parts of the term.
+(A
+    ^
+        elem_from_end(I)
+            :=
+                X)
+                    =
+                        (A
+                            ^
+                                elem(max(A) - I)
+                                    :=
+                                        X).
 
 %-----------------------------------------------------------------------------%
 

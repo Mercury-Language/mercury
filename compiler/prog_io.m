@@ -2197,15 +2197,14 @@ get_quant_vars(QuantType, ModuleName, !Attributes, !Vars) :-
 
 desugar_field_access(Term) = DesugaredTerm :-
     (
-        Term = functor(atom("^"), [A, RHS], _),
-        RHS  = functor(atom(FieldName), Bs, Context)
+        Term = functor(atom("^"), [A, RHS], Context),
+        RHS  = functor(atom(FieldName), Bs, _)
     ->
         DesugaredTerm = functor(atom(FieldName), Bs ++ [A], Context)
     ;
-        % XXX We shouldn't insist on the context of LHS and RHS being the same.
         Term = functor(atom(":="), [LHS, X], _),
         LHS  = functor(atom("^"), [A, RHS], Context),
-        RHS  = functor(atom(FieldName), Bs, Context)
+        RHS  = functor(atom(FieldName), Bs, _)
     ->
         FunctionName = FieldName ++ " :=",
         DesugaredTerm = functor(atom(FunctionName), Bs ++ [A, X], Context)
