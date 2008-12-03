@@ -32,6 +32,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -178,6 +179,53 @@
     is det.
 
 :- pred list_term_to_term_list(term::in, list(term)::out) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+:- type decl_attribute
+    --->    decl_attr_purity(purity)
+    ;       decl_attr_quantifier(quantifier_type, list(var))
+    ;       decl_attr_constraints(quantifier_type, term)
+            % the term here is the (not yet parsed) list of constraints
+    ;       decl_attr_solver_type.
+
+:- type quantifier_type
+    --->    quant_type_exist
+    ;       quant_type_univ.
+
+    % The term associated with each decl_attribute is the term containing
+    % both the attribute and the declaration that that attribute modifies;
+    % this term is used when printing out error messages for cases when
+    % attributes are used on declarations where they are not allowed.
+:- type decl_attrs == assoc_list(decl_attribute, term.context).
+
+:- pred parse_decl_attribute(string::in, list(term)::in, decl_attribute::out,
+    term::out) is semidet.
+
+:- pred check_no_attributes(maybe1(T)::in, decl_attrs::in, maybe1(T)::out)
+    is det.
+
+:- func attribute_description(decl_attribute) = string.
+
+%-----------------------------------------------------------------------------%
+
+    % parse_condition_suffix(Term, BeforeCondTerm, Condition):
+    %
+    % Bind Condition to a representation of the 'where' condition of Term,
+    % if any, and bind BeforeCondTerm to the other part of Term. If Term
+    % does not contain a condition, then set Condition to true.
+    %
+    % NU-Prolog supported type declarations of the form
+    %   :- pred p(T) where p(X) : sorted(X).
+    % or
+    %   :- type sorted_list(T) = list(T) where X : sorted(X).
+    %   :- pred p(sorted_list(T).
+    % There is some code here to support that sort of thing, but
+    % probably we would now need to use a different syntax, since
+    % Mercury now uses `where' for different purposes (e.g. specifying
+    % user-defined equality predicates, and also for type classes ...)
+    %
+:- pred parse_condition_suffix(term::in, term::out, condition::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1001,6 +1049,83 @@ list_term_to_term_list(Term, Terms) :-
         Term = term.functor(term.atom("[]"), [], _),
         Terms = []
     ).
+
+%-----------------------------------------------------------------------------%
+
+parse_decl_attribute(Functor, ArgTerms, Attribute, SubTerm) :-
+    (
+        Functor = "impure",
+        ArgTerms = [SubTerm],
+        Attribute = decl_attr_purity(purity_impure)
+    ;
+        Functor = "semipure",
+        ArgTerms = [SubTerm],
+        Attribute = decl_attr_purity(purity_semipure)
+    ;
+        Functor = "<=",
+        ArgTerms = [SubTerm, ConstraintsTerm],
+        Attribute = decl_attr_constraints(quant_type_univ, ConstraintsTerm)
+    ;
+        Functor = "=>",
+        ArgTerms = [SubTerm, ConstraintsTerm],
+        Attribute = decl_attr_constraints(quant_type_exist, ConstraintsTerm)
+    ;
+        Functor = "some",
+        ArgTerms = [TVarsTerm, SubTerm],
+        parse_list_of_vars(TVarsTerm, TVars),
+        Attribute = decl_attr_quantifier(quant_type_exist, TVars)
+    ;
+        Functor = "all",
+        ArgTerms = [TVarsTerm, SubTerm],
+        parse_list_of_vars(TVarsTerm, TVars),
+        Attribute = decl_attr_quantifier(quant_type_univ, TVars)
+    ;
+        Functor = "solver",
+        ArgTerms = [SubTerm],
+        Attribute = decl_attr_solver_type
+    ).
+
+check_no_attributes(Result0, Attributes, Result) :-
+    (
+        Result0 = ok1(_),
+        Attributes = [Attr - Context | _]
+    ->
+        % XXX Shouldn't we mention EVERY element of Attributes?
+        Pieces = [words("Error:"), words(attribute_description(Attr)),
+            words("not allowed here."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        Result = error1([Spec])
+    ;
+        Result = Result0
+    ).
+
+attribute_description(decl_attr_purity(_)) = "purity specifier".
+attribute_description(decl_attr_quantifier(quant_type_univ, _)) =
+    "universal quantifier (`all')".
+attribute_description(decl_attr_quantifier(quant_type_exist, _)) =
+    "existential quantifier (`some')".
+attribute_description(decl_attr_constraints(quant_type_univ, _)) =
+    "type class constraint (`<=')".
+attribute_description(decl_attr_constraints(quant_type_exist, _)) =
+    "existentially quantified type class constraint (`=>')".
+attribute_description(decl_attr_solver_type) = "solver type specifier".
+
+%-----------------------------------------------------------------------------%
+
+parse_condition_suffix(Term, Term, cond_true).
+
+% parse_condition_suffix(B, Body, Condition) :-
+%   (
+%       B = term.functor(term.atom("where"), [Body1, Condition1],
+%           _Context)
+%   ->
+%       Body = Body1,
+%       Condition = where(Condition1)
+%   ;
+%       Body = B,
+%       Condition = true
+%   ).
 
 %-----------------------------------------------------------------------------%
 
