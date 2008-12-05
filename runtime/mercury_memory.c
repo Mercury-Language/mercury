@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1994-2000,2002-2004, 2006 The University of Melbourne.
+** Copyright (C) 1994-2000,2002-2004, 2006, 2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -276,7 +276,7 @@ MR_realloc(void *old_ptr, size_t num_bytes)
 char *
 MR_copy_string(const char *s)
 {
-    int len;
+    int     len;
     char    *copy;
 
     if (s == NULL) {
@@ -286,6 +286,20 @@ MR_copy_string(const char *s)
         copy = MR_malloc(len + 1);
         strcpy(copy, s);
         return copy;
+    }
+}
+
+void
+MR_ensure_big_enough_buffer(char **buffer_ptr, int *buffer_size_ptr,
+    int needed_size)
+{
+    if (*buffer_size_ptr < needed_size) {
+        *buffer_size_ptr = 2 * needed_size;
+        if (*buffer_ptr == NULL) {
+            *buffer_ptr = MR_malloc(*buffer_size_ptr);
+        } else {
+            *buffer_ptr = MR_realloc((void *) *buffer_ptr, *buffer_size_ptr);
+        }
     }
 }
 

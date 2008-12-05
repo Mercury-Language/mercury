@@ -1453,7 +1453,7 @@ MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
         bad_path = MR_trace_browse_var(out, print_var_name, type_info, value,
             name, path, browser, caller, format);
         if (bad_path != NULL) {
-            return MR_trace_bad_path_in_var(&var_spec, bad_path);
+            return MR_trace_bad_path_in_var(&var_spec, path, bad_path);
         }
     } else {
         int success_count;
@@ -1564,38 +1564,92 @@ MR_trace_print_size_all(FILE *out)
 #endif
 }
 
-#define BAD_PATH_BUFFER_SIZE    128
-#define BAD_PATH_MSG_PREFIX     "the path "
-#define BAD_PATH_MSG_SUFFIX     " does not exist"
+#define BAD_PATH_MSG_AT                 "at "
+#define BAD_PATH_MSG_THE_PATH           "the path "
+#define BAD_PATH_MSG_DOES_NOT_EXIST     " does not exist"
 
-static  char    MR_trace_bad_path_buffer[BAD_PATH_BUFFER_SIZE];
+static  char    *MR_trace_bad_path_buffer = NULL;
+static  int     MR_trace_bad_path_buffer_size = 0;
+static  char    *MR_trace_good_path_buffer = NULL;
+static  int     MR_trace_good_path_buffer_size = 0;
 
 const char *
-MR_trace_bad_path(const char *path)
+MR_trace_bad_path(char *fullpath, char *badpath)
 {
-    if (strlen(BAD_PATH_MSG_PREFIX) + strlen(path) +
-        strlen(BAD_PATH_MSG_SUFFIX) < BAD_PATH_BUFFER_SIZE)
-    {
-        sprintf(MR_trace_bad_path_buffer, "%s%s%s", BAD_PATH_MSG_PREFIX, path,
-            BAD_PATH_MSG_SUFFIX);
-        return MR_trace_bad_path_buffer;
-    } else {
-        return "the given path does not exist";
+    char    *s;
+    MR_bool found;
+    int     needed_bad_buf_len;
+    int     needed_good_buf_len;
+    char    *good_buf_ptr;
+
+    found = MR_FALSE;
+    s = fullpath;
+    needed_good_buf_len = 0;
+    while (*s != '\0') {
+        if (s == badpath) {
+            found = MR_TRUE;
+            break;
+        }
+
+        s++;
+        needed_good_buf_len++;
     }
+
+    if (! found) {
+        MR_fatal_error("MR_trace_bad_path: bad_path is not in fullpath");
+    }
+
+    if (needed_good_buf_len == 0) {
+        needed_bad_buf_len = strlen(BAD_PATH_MSG_THE_PATH) + strlen(badpath) +
+            strlen(BAD_PATH_MSG_DOES_NOT_EXIST);
+        MR_ensure_big_enough_buffer(&MR_trace_bad_path_buffer,
+            &MR_trace_bad_path_buffer_size, needed_bad_buf_len);
+        sprintf(MR_trace_bad_path_buffer, "%s%s%s",
+            BAD_PATH_MSG_THE_PATH, badpath, BAD_PATH_MSG_DOES_NOT_EXIST);
+    } else {
+        MR_ensure_big_enough_buffer(&MR_trace_good_path_buffer,
+            &MR_trace_good_path_buffer_size, needed_good_buf_len);
+
+        s = fullpath;
+        good_buf_ptr = MR_trace_good_path_buffer;
+        while (*s != '\0') {
+            if (s == badpath) {
+                break;
+            }
+
+            *good_buf_ptr = *s;
+            s++;
+            good_buf_ptr++;
+        }
+
+        *good_buf_ptr = '\0';
+
+        needed_bad_buf_len = strlen(BAD_PATH_MSG_AT) + needed_good_buf_len +
+            1 + strlen(BAD_PATH_MSG_THE_PATH) + strlen(badpath) +
+            strlen(BAD_PATH_MSG_DOES_NOT_EXIST);
+        MR_ensure_big_enough_buffer(&MR_trace_bad_path_buffer,
+            &MR_trace_bad_path_buffer_size, needed_bad_buf_len);
+        sprintf(MR_trace_bad_path_buffer, "%s%s %s%s%s",
+            BAD_PATH_MSG_AT, MR_trace_good_path_buffer,
+            BAD_PATH_MSG_THE_PATH, badpath, BAD_PATH_MSG_DOES_NOT_EXIST);
+    }
+
+    return MR_trace_bad_path_buffer;
 }
 
-#define BAD_VAR_PATH_BUFFER_SIZE    128
-#define BAD_VAR_PATH_MSG_MIDDLE     " in variable "
+#define BAD_VAR_PATH_MSG_IN_VAR     " in variable "
 
-static char MR_trace_bad_path_in_var_buffer[BAD_VAR_PATH_BUFFER_SIZE];
+static  char    *MR_trace_bad_path_in_var_buffer = NULL;
+static  int     MR_trace_bad_path_in_var_buffer_size = 0;
 
 const char *
-MR_trace_bad_path_in_var(MR_VarSpec *var_spec, const char *path)
+MR_trace_bad_path_in_var(MR_VarSpec *var_spec, char *fullpath, char *badpath)
 {
     const char  *path_msg;
     int         suffix_len;
+    int         needed_len;
 
-    path_msg = MR_trace_bad_path(path);
+    path_msg = MR_trace_bad_path(fullpath, badpath);
     suffix_len = 0;
     switch (var_spec->MR_var_spec_kind) {
         case MR_VAR_SPEC_NUMBER:
@@ -1616,40 +1670,38 @@ MR_trace_bad_path_in_var(MR_VarSpec *var_spec, const char *path)
             break;
     }
 
-    if (strlen(path_msg) + strlen(BAD_VAR_PATH_MSG_MIDDLE) + suffix_len
-        < BAD_PATH_BUFFER_SIZE)
-    {
-        switch (var_spec->MR_var_spec_kind) {
-            case MR_VAR_SPEC_NUMBER:
-                sprintf(MR_trace_bad_path_in_var_buffer,
+    needed_len = strlen(path_msg) + strlen(BAD_VAR_PATH_MSG_IN_VAR) +
+        suffix_len;
+    MR_ensure_big_enough_buffer(&MR_trace_bad_path_in_var_buffer,
+        &MR_trace_bad_path_in_var_buffer_size, needed_len);
+    switch (var_spec->MR_var_spec_kind) {
+        case MR_VAR_SPEC_NUMBER:
+            sprintf(MR_trace_bad_path_in_var_buffer,
                 "%s%s%" MR_INTEGER_LENGTH_MODIFIER "u",
-                    path_msg, BAD_VAR_PATH_MSG_MIDDLE,
-                    var_spec->MR_var_spec_number);
-                break;
+                path_msg, BAD_VAR_PATH_MSG_IN_VAR,
+                var_spec->MR_var_spec_number);
+            break;
 
-            case MR_VAR_SPEC_NAME:
-                sprintf(MR_trace_bad_path_in_var_buffer, "%s%s%s",
-                    path_msg, BAD_VAR_PATH_MSG_MIDDLE,
-                    var_spec->MR_var_spec_name);
-                break;
+        case MR_VAR_SPEC_NAME:
+            sprintf(MR_trace_bad_path_in_var_buffer, "%s%s%s",
+                path_msg, BAD_VAR_PATH_MSG_IN_VAR,
+                var_spec->MR_var_spec_name);
+            break;
 
-            case MR_VAR_SPEC_HELD_NAME:
-                sprintf(MR_trace_bad_path_in_var_buffer, "%s%s$%s",
-                    path_msg, BAD_VAR_PATH_MSG_MIDDLE,
-                    var_spec->MR_var_spec_name);
-                break;
+        case MR_VAR_SPEC_HELD_NAME:
+            sprintf(MR_trace_bad_path_in_var_buffer, "%s%s$%s",
+                path_msg, BAD_VAR_PATH_MSG_IN_VAR,
+                var_spec->MR_var_spec_name);
+            break;
 
-            case MR_VAR_SPEC_ATTRIBUTE:
-                sprintf(MR_trace_bad_path_in_var_buffer, "%s%s!%s",
-                    path_msg, BAD_VAR_PATH_MSG_MIDDLE,
-                    var_spec->MR_var_spec_name);
-                break;
-        }
-
-        return MR_trace_bad_path_in_var_buffer;
-    } else {
-        return path_msg;
+        case MR_VAR_SPEC_ATTRIBUTE:
+            sprintf(MR_trace_bad_path_in_var_buffer, "%s%s!%s",
+                path_msg, BAD_VAR_PATH_MSG_IN_VAR,
+                var_spec->MR_var_spec_name);
+            break;
     }
+
+    return MR_trace_bad_path_in_var_buffer;
 }
 
 const char *

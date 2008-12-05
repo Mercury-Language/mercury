@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000,2002, 2004, 2006 The University of Melbourne.
+** Copyright (C) 1994-2000,2002, 2004, 2006, 2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -90,12 +90,26 @@ extern	void	MR_init_heap(void);
 ** MR_malloc(bytes):
 **	Allocates the given number of bytes.
 **
+** MR_realloc(old, bytes):
+**	Allocates the given number of bytes, copies over the old contents of
+**	the previously allocated block pointed to by old, and then frees that
+**	old block.
+**
+** MR_ensure_big_enough_buffer(buffer_ptr, buffer_size_ptr, needed_size):
+**	Given a character buffer pointed to by buffer_ptr whose is given by
+**	*buffer_size_ptr, ensure that the buffer is big enough to hold
+**	needed_size characters. If it needs to make the block bigger,
+**	this function will update both *buffer_ptr and *buffer_size_ptr.
+**
 ** MR_free(ptr):
 **	Deallocates the memory.
 */
 
 extern	void	*MR_malloc(size_t n);
 extern	void	*MR_realloc(void *old, size_t n);
+extern	void 	MR_ensure_big_enough_buffer(char **buffer_ptr,
+			int *buffer_size_ptr, int needed_size);
+
 
 #define MR_free(ptr) free(ptr)
 #define MR_free_func free

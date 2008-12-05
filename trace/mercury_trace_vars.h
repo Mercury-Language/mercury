@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2007 The University of Melbourne.
+** Copyright (C) 1999-2008 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -312,7 +312,7 @@ extern  char        *MR_select_specified_subterm(char *path,
 ** or MR_trace_bad_path_in_var.
 */
 
-extern  const char  *MR_trace_bad_path(const char *path);
+extern  const char  *MR_trace_bad_path(char *fullpath, char *badpath);
 
 /*
 ** Given a path specification that does not exist within the specified
@@ -323,7 +323,7 @@ extern  const char  *MR_trace_bad_path(const char *path);
 */
 
 extern  const char  *MR_trace_bad_path_in_var(MR_VarSpec *var_spec,
-                        const char *path);
+                        char *fullpath, char *badpath);
 
 /*
 ** Print the size of the specified variable(s) to the specified file.

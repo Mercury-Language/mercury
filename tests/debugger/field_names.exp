@@ -13,7 +13,7 @@ mdb> p 5
 mdb> p 5^1x
 mdb: bad component selector.
 mdb> p 5^1^x
-mdb: the path x does not exist in variable 5.
+mdb: at 1^ the path x does not exist in variable 5.
 mdb> p 5^x
 mdb: the path x does not exist in variable 5.
 mdb> p 5^1
@@ -113,19 +113,19 @@ mdb> p 5^3^t1a
 mdb> p 5^3^t1b
        HeadVar__5^3^t1b       	42
 mdb> p 5^3^t1c
-mdb: the path t1c does not exist in variable 5.
+mdb: at 3^ the path t1c does not exist in variable 5.
 mdb> p 5^3^t1d
        HeadVar__5^3^t1d       	44
 mdb> p 5^3^t1e
-mdb: the path t1e does not exist in variable 5.
+mdb: at 3^ the path t1e does not exist in variable 5.
 mdb> p 5^4
        HeadVar__5^4           	t1f2(51, 52, 53)
 mdb> p 5^4^t1a
-mdb: the path t1a does not exist in variable 5.
+mdb: at 4^ the path t1a does not exist in variable 5.
 mdb> p 5^4^t1e
        HeadVar__5^4^t1e       	51
 mdb> p 5^4^t1f
-mdb: the path t1f does not exist in variable 5.
+mdb: at 4^ the path t1f does not exist in variable 5.
 mdb> p 5^4^t1g
        HeadVar__5^4^t1g       	53
 mdb> p 5^t2a
@@ -137,19 +137,19 @@ mdb> p 5^t2b^t1a
 mdb> p 5^t2b^t1b
        HeadVar__5^t2b^t1b     	42
 mdb> p 5^t2b^t1c
-mdb: the path t1c does not exist in variable 5.
+mdb: at t2b^ the path t1c does not exist in variable 5.
 mdb> p 5^t2b^t1d
        HeadVar__5^t2b^t1d     	44
 mdb> p 5^t2b^t1e
-mdb: the path t1e does not exist in variable 5.
+mdb: at t2b^ the path t1e does not exist in variable 5.
 mdb> p 5^t2c
        HeadVar__5^t2c         	t1f2(51, 52, 53)
 mdb> p 5^t2c^t1a
-mdb: the path t1a does not exist in variable 5.
+mdb: at t2c^ the path t1a does not exist in variable 5.
 mdb> p 5^t2c^t1e
        HeadVar__5^t2c^t1e     	51
 mdb> p 5^t2c^t1f
-mdb: the path t1f does not exist in variable 5.
+mdb: at t2c^ the path t1f does not exist in variable 5.
 mdb> p 5^t2c^t1g
        HeadVar__5^t2c^t1g     	53
 mdb> browse 5
@@ -182,7 +182,7 @@ mdb> p 4^1
 mdb> p 4^1^1
        HeadVar__4^1^1         	51
 mdb> p 4^1^t1a
-mdb: the path t1a does not exist in variable 4.
+mdb: at 1^ the path t1a does not exist in variable 4.
 mdb> p 4^1^t1e
        HeadVar__4^1^t1e       	51
 mdb> p 4^1^t1g
@@ -192,9 +192,9 @@ mdb> p 4^2
 mdb> p 4^3
        HeadVar__4^3           	"xyzzy"
 mdb> p 4^3^1
-mdb: the path 1 does not exist in variable 4.
+mdb: at 3^ the path 1 does not exist in variable 4.
 mdb> p 4^3^t1a
-mdb: the path t1a does not exist in variable 4.
+mdb: at 3^ the path t1a does not exist in variable 4.
 mdb> p 4^4
        HeadVar__4^4           	t1f1(41, 42, 43, 44)
 mdb> p 4^4^t1a
@@ -202,17 +202,17 @@ mdb> p 4^4^t1a
 mdb> p 4^4^t1b
        HeadVar__4^4^t1b       	42
 mdb> p 4^4^t1c
-mdb: the path t1c does not exist in variable 4.
+mdb: at 4^ the path t1c does not exist in variable 4.
 mdb> p 4^4^t1d
        HeadVar__4^4^t1d       	44
 mdb> p 4^4^t1e
-mdb: the path t1e does not exist in variable 4.
+mdb: at 4^ the path t1e does not exist in variable 4.
 mdb> p 4^t3a
        HeadVar__4^t3a         	t1f2(51, 52, 53)
 mdb> p 4^t3a^1
        HeadVar__4^t3a^1       	51
 mdb> p 4^t3a^t1a
-mdb: the path t1a does not exist in variable 4.
+mdb: at t3a^ the path t1a does not exist in variable 4.
 mdb> p 4^t3a^t1e
        HeadVar__4^t3a^t1e     	51
 mdb> p 4^t3a^t1g
@@ -228,11 +228,11 @@ mdb> p 4^t3d^t1a
 mdb> p 4^t3d^t1b
        HeadVar__4^t3d^t1b     	42
 mdb> p 4^t3d^t1c
-mdb: the path t1c does not exist in variable 4.
+mdb: at t3d^ the path t1c does not exist in variable 4.
 mdb> p 4^t3d^t1d
        HeadVar__4^t3d^t1d     	44
 mdb> p 4^t3d^t1e
-mdb: the path t1e does not exist in variable 4.
+mdb: at t3d^ the path t1e does not exist in variable 4.
 mdb> p 4^t3e^t1a
 mdb: the path t3e^t1a does not exist in variable 4.
 mdb> step
@@ -250,19 +250,19 @@ mdb> p 2^3^t1a
 mdb> p 2^3^t1b
        A(1) (arg 2)^3^t1b     	42
 mdb> p 2^3^t1c
-mdb: the path t1c does not exist in variable 2.
+mdb: at 3^ the path t1c does not exist in variable 2.
 mdb> p 2^3^t1d
        A(1) (arg 2)^3^t1d     	44
 mdb> p 2^3^t1e
-mdb: the path t1e does not exist in variable 2.
+mdb: at 3^ the path t1e does not exist in variable 2.
 mdb> p 2^4
        A(1) (arg 2)^4         	t1f2(51, 52, 53)
 mdb> p 2^4^t1a
-mdb: the path t1a does not exist in variable 2.
+mdb: at 4^ the path t1a does not exist in variable 2.
 mdb> p 2^4^t1e
        A(1) (arg 2)^4^t1e     	51
 mdb> p 2^4^t1f
-mdb: the path t1f does not exist in variable 2.
+mdb: at 4^ the path t1f does not exist in variable 2.
 mdb> p 2^4^t1g
        A(1) (arg 2)^4^t1g     	53
 mdb> p 2^t2a
@@ -274,19 +274,19 @@ mdb> p 2^t2b^t1a
 mdb> p 2^t2b^t1b
        A(1) (arg 2)^t2b^t1b   	42
 mdb> p 2^t2b^t1c
-mdb: the path t1c does not exist in variable 2.
+mdb: at t2b^ the path t1c does not exist in variable 2.
 mdb> p 2^t2b^t1d
        A(1) (arg 2)^t2b^t1d   	44
 mdb> p 2^t2b^t1e
-mdb: the path t1e does not exist in variable 2.
+mdb: at t2b^ the path t1e does not exist in variable 2.
 mdb> p 2^t2c
        A(1) (arg 2)^t2c       	t1f2(51, 52, 53)
 mdb> p 2^t2c^t1a
-mdb: the path t1a does not exist in variable 2.
+mdb: at t2c^ the path t1a does not exist in variable 2.
 mdb> p 2^t2c^t1e
        A(1) (arg 2)^t2c^t1e   	51
 mdb> p 2^t2c^t1f
-mdb: the path t1f does not exist in variable 2.
+mdb: at t2c^ the path t1f does not exist in variable 2.
 mdb> p 2^t2c^t1g
        A(1) (arg 2)^t2c^t1g   	53
 mdb> step

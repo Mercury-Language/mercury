@@ -587,7 +587,8 @@ MR_spy_cond_is_true(MR_SpyPoint *point, const MR_LabelLayout *label_layout)
 
     if (bad_path != NULL) {
         if (cond->MR_cond_require_var) {
-            MR_spy_point_cond_problem = MR_trace_bad_path(bad_path);
+            MR_spy_point_cond_problem = MR_trace_bad_path(cond->MR_cond_path,
+                bad_path);
             retval = MR_TRUE;
         } else {
             MR_spy_point_cond_problem = NULL;
