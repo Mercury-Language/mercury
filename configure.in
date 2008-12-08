@@ -4698,19 +4698,29 @@ MERCURY_CHECK_READLINE
 # Check for flex and bison
 #
 
-AC_PROG_LEX
-if test "`basename $LEX`" != "flex"
+# We only require flex and bison if we are going to compile the trace
+# directory.  We don't need them if we are reconfiguring an existing
+# installation.  We omit these tests in that case because otherwise users
+# would have to flex and bison available in order to install the binary
+# distribution.
+#
+if test "$reconfiguring" = "no"
 then
-    AC_MSG_ERROR([You need flex to build Mercury])
-fi
 
-AC_PROG_YACC
-# AC_PROG_YACC may bind YACC to e.g. "bison -y"; we care only about
-# the program name.
-YACCPROG=`echo $YACC | sed 's/ .*//'`
-if test "`basename $YACCPROG`" != "bison"
-then
-    AC_MSG_ERROR([You need bison to build Mercury])
+    AC_PROG_LEX
+    if test "`basename $LEX`" != "flex"
+    then
+        AC_MSG_ERROR([You need flex to build Mercury])
+    fi
+
+    AC_PROG_YACC
+    # AC_PROG_YACC may bind YACC to e.g. "bison -y"; we care only about
+    # the program name.
+    YACCPROG=`echo $YACC | sed 's/ .*//'`
+    if test "`basename $YACCPROG`" != "bison"
+    then
+        AC_MSG_ERROR([You need bison to build Mercury])
+    fi
 fi
 
 #-----------------------------------------------------------------------------#
