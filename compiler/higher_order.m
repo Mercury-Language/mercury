@@ -131,14 +131,14 @@ specialize_higher_order(!ModuleInfo, !IO) :-
             !GlobalInfo ^ hogi_params ^ param_do_user_type_spec := yes,
             list.foldl(get_specialization_requests, UserSpecPredList,
                 !GlobalInfo),
-            process_requests(!GlobalInfo, !IO)
+            process_ho_spec_requests(!GlobalInfo, !IO)
         ),
 
         ( bool.or_list([HigherOrder, TypeSpec, UserTypeSpec], yes) ->
             % Process all other specializations until no more requests
             % are generated.
             list.foldl(get_specialization_requests, PredIds, !GlobalInfo),
-            recursively_process_requests(!GlobalInfo, !IO)
+            recursively_process_ho_spec_requests(!GlobalInfo, !IO)
         ;
             true
         ),
@@ -153,10 +153,10 @@ specialize_higher_order(!ModuleInfo, !IO) :-
     % Process one lot of requests, returning requests for any
     % new specializations made possible by the first lot.
     %
-:- pred process_requests(higher_order_global_info::in,
+:- pred process_ho_spec_requests(higher_order_global_info::in,
     higher_order_global_info::out, io::di, io::uo) is det.
 
-process_requests(!GlobalInfo, !IO) :-
+process_ho_spec_requests(!GlobalInfo, !IO) :-
     filter_requests(Requests, LoopRequests, !GlobalInfo, !IO),
     (
         Requests = []
@@ -170,8 +170,8 @@ process_requests(!GlobalInfo, !IO) :-
                 !PredProcsToFix),
             set.to_sorted_list(!.PredProcsToFix, PredProcs)
         ),
-        fixup_specialized_versions(NewPredList, !GlobalInfo),
-        fixup_preds(PredProcs, !GlobalInfo),
+        ho_fixup_specialized_versions(NewPredList, !GlobalInfo),
+        ho_fixup_preds(PredProcs, !GlobalInfo),
         (
             NewPredList = [_ | _],
             % The dependencies may have changed, so the dependency graph
@@ -186,15 +186,15 @@ process_requests(!GlobalInfo, !IO) :-
 
     % Process requests until there are no new requests to process.
     %
-:- pred recursively_process_requests(higher_order_global_info::in,
+:- pred recursively_process_ho_spec_requests(higher_order_global_info::in,
     higher_order_global_info::out, io::di, io::uo) is det.
 
-recursively_process_requests(!GlobalInfo, !IO) :-
+recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
     ( set.empty(!.GlobalInfo ^ hogi_requests) ->
         true
     ;
-        process_requests(!GlobalInfo, !IO),
-        recursively_process_requests(!GlobalInfo, !IO)
+        process_ho_spec_requests(!GlobalInfo, !IO),
+        recursively_process_ho_spec_requests(!GlobalInfo, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -202,10 +202,10 @@ recursively_process_requests(!GlobalInfo, !IO) :-
 :- type higher_order_global_info
     --->    higher_order_global_info(
                 % Requested versions.
-                hogi_requests       :: set(request),
+                hogi_requests       :: set(ho_request),
 
                 % Specialized versions for each predicate
-                % not changed by traverse_proc_body.
+                % not changed by ho_traverse_proc_body.
                 hogi_new_preds      :: new_preds,
 
                 % Extra information about each specialized version.
@@ -234,10 +234,10 @@ recursively_process_requests(!GlobalInfo, !IO) :-
                 hoi_pred_info           :: pred_info,
                 hoi_proc_info           :: proc_info,
 
-                hoi_changed             :: changed
+                hoi_changed             :: ho_changed
             ).
 
-:- type request
+:- type ho_request
     --->    ho_request(
                 % Calling predicate.
                 rq_caller           :: pred_proc_id,
@@ -270,11 +270,10 @@ recursively_process_requests(!GlobalInfo, !IO) :-
                 rq_call_context     :: context
             ).
 
-    % Stores cons_id, index in argument vector, number of
-    % curried arguments of a higher order argument, higher-order
-    % curried arguments with known values.
-    % For cons_ids other than pred_const and `type_info',
-    % the arguments must be constants
+    % Stores cons_id, index in argument vector, number of curried arguments
+    % of a higher order argument, higher-order curried arguments with known
+    % values. For cons_ids other than pred_const and `type_info', the arguments
+    % must be constants.
     %
 :- type higher_order_arg
     --->    higher_order_arg(
@@ -414,12 +413,12 @@ recursively_process_requests(!GlobalInfo, !IO) :-
                 np_is_user_spec         :: bool
             ).
 
-    % Returned by traverse_proc_body.
+    % Returned by ho_traverse_proc_body.
     %
-:- type changed
-    --->    changed     % Need to requantify goal + check other procs
-    ;       request     % Need to check other procs
-    ;       unchanged.  % Do nothing more for this predicate
+:- type ho_changed
+    --->    ho_changed      % Need to requantify goal + check other procs
+    ;       ho_request      % Need to check other procs
+    ;       ho_unchanged.   % Do nothing more for this predicate
 
 :- func get_np_version_ppid(new_pred) = pred_proc_id.
 
@@ -438,8 +437,8 @@ get_specialization_requests(PredId, !GlobalInfo) :-
         NonImportedProcs = []
     ;
         NonImportedProcs = [ProcId | _],
-        list.foldl(traverse_proc(need_not_recompute, PredId), NonImportedProcs,
-            !GlobalInfo),
+        list.foldl(ho_traverse_proc(need_not_recompute, PredId),
+            NonImportedProcs, !GlobalInfo),
 
         ModuleInfo1 = !.GlobalInfo ^ hogi_module_info,
         module_info_proc_info(ModuleInfo1, PredId, ProcId, ProcInfo),
@@ -454,16 +453,16 @@ get_specialization_requests(PredId, !GlobalInfo) :-
     % It fixes up all the other procedures, ignoring the goal_size and requests
     % that come out, since that information has already been collected.
     %
-:- pred traverse_proc(must_recompute::in, pred_id::in, proc_id::in,
+:- pred ho_traverse_proc(must_recompute::in, pred_id::in, proc_id::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
+ho_traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
     map.init(PredVars0),
     module_info_pred_proc_info(!.GlobalInfo ^ hogi_module_info,
         PredId, ProcId, PredInfo0, ProcInfo0),
     Info0 = higher_order_info(!.GlobalInfo, PredVars0, proc(PredId, ProcId),
-        PredInfo0, ProcInfo0, unchanged),
-    traverse_proc_body(MustRecompute, Info0, Info),
+        PredInfo0, ProcInfo0, ho_unchanged),
+    ho_traverse_proc_body(MustRecompute, Info0, Info),
     Info = higher_order_info(!:GlobalInfo, _, _, PredInfo, ProcInfo, _),
     ModuleInfo0 = !.GlobalInfo ^ hogi_module_info,
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
@@ -475,12 +474,12 @@ traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
 % Goal traversal
 %
 
-:- pred fixup_proc_info(must_recompute::in, hlds_goal::in,
+:- pred ho_fixup_proc_info(must_recompute::in, hlds_goal::in,
     higher_order_info::in, higher_order_info::out) is det.
 
-fixup_proc_info(MustRecompute, Goal0, !Info) :-
+ho_fixup_proc_info(MustRecompute, Goal0, !Info) :-
     (
-        ( !.Info ^ hoi_changed = changed
+        ( !.Info ^ hoi_changed = ho_changed
         ; MustRecompute = must_recompute
         )
     ->
@@ -503,10 +502,10 @@ fixup_proc_info(MustRecompute, Goal0, !Info) :-
         true
     ).
 
-:- pred traverse_proc_body(must_recompute::in,
+:- pred ho_traverse_proc_body(must_recompute::in,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_proc_body(MustRecompute, !Info) :-
+ho_traverse_proc_body(MustRecompute, !Info) :-
     % Lookup the initial known bindings of the variables if this procedure
     % is a specialised version.
     VersionInfoMap = !.Info ^ hoi_global_info ^ hogi_version_info,
@@ -519,8 +518,8 @@ traverse_proc_body(MustRecompute, !Info) :-
         true
     ),
     proc_info_get_goal(!.Info ^ hoi_proc_info, Goal0),
-    traverse_goal(Goal0, Goal, !Info),
-    fixup_proc_info(MustRecompute, Goal, !Info).
+    ho_traverse_goal(Goal0, Goal, !Info),
+    ho_fixup_proc_info(MustRecompute, Goal, !Info).
 
     % Traverses the goal collecting higher order variables for which the value
     % is known, and specializing calls and adding specialization requests
@@ -528,31 +527,31 @@ traverse_proc_body(MustRecompute, !Info) :-
     % we can specialize is call/N. The pred_proc_id is that of the current
     % procedure, used to find out which procedures need fixing up later.
     %
-:- pred traverse_goal(hlds_goal::in, hlds_goal::out,
+:- pred ho_traverse_goal(hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_goal(Goal0, Goal, !Info) :-
+ho_traverse_goal(Goal0, Goal, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            list.map_foldl(traverse_goal, Goals0, Goals, !Info)
+            list.map_foldl(ho_traverse_goal, Goals0, Goals, !Info)
         ;
             ConjType = parallel_conj,
-            traverse_independent_goals(Goals0, Goals, !Info)
+            ho_traverse_parallel_conj(Goals0, Goals, !Info)
         ),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
-        traverse_independent_goals(Goals0, Goals, !Info),
+        ho_traverse_disj(Goals0, Goals, !Info),
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         % A switch is treated as a disjunction.
-        traverse_cases(Cases0, Cases, !Info),
+        ho_traverse_cases(Cases0, Cases, !Info),
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -586,11 +585,11 @@ traverse_goal(Goal0, Goal, !Info) :-
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         % If-then-elses are handled as disjunctions.
         get_pre_branch_info(!.Info, PreInfo),
-        traverse_goal(Cond0, Cond, !Info),
-        traverse_goal(Then0, Then, !Info),
+        ho_traverse_goal(Cond0, Cond, !Info),
+        ho_traverse_goal(Then0, Then, !Info),
         get_post_branch_info(!.Info, PostThenInfo),
         set_pre_branch_info(PreInfo, !Info),
-        traverse_goal(Else0, Else, !Info),
+        ho_traverse_goal(Else0, Else, !Info),
         get_post_branch_info(!.Info, PostElseInfo),
         merge_post_branch_infos(PostThenInfo, PostElseInfo, PostInfo),
         set_post_branch_info(PostInfo, !Info),
@@ -598,12 +597,12 @@ traverse_goal(Goal0, Goal, !Info) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
-        traverse_goal(SubGoal0, SubGoal, !Info),
+        ho_traverse_goal(SubGoal0, SubGoal, !Info),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        traverse_goal(SubGoal0, SubGoal, !Info),
+        ho_traverse_goal(SubGoal0, SubGoal, !Info),
         GoalExpr = scope(Reason, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -624,19 +623,51 @@ traverse_goal(Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "traverse_goal: unexpected shorthand")
+        unexpected(this_file, "ho_traverse_goal: unexpected shorthand")
     ).
+
+    % To process a parallel conjunction, we process each conjunct with the
+    % specialization information before the conjunct, then merge the
+    % results to give the specialization information after the conjunction.
+    %
+:- pred ho_traverse_parallel_conj(hlds_goals::in, hlds_goals::out,
+    higher_order_info::in, higher_order_info::out) is det.
+
+ho_traverse_parallel_conj(Goals0, Goals, !Info) :-
+    (
+        Goals0 = [],
+        unexpected(this_file, "ho_traverse_parallel_conj: empty list")
+    ;
+        Goals0 = [_ | _],
+        get_pre_branch_info(!.Info, PreInfo),
+        ho_traverse_parallel_conj_2(PreInfo, Goals0, Goals, [], PostInfos,
+            !Info),
+        merge_post_branch_infos_into_one(PostInfos, PostInfo),
+        set_post_branch_info(PostInfo, !Info)
+    ).
+
+:- pred ho_traverse_parallel_conj_2(pre_branch_info::in,
+    hlds_goals::in, hlds_goals::out,
+    list(post_branch_info)::in, list(post_branch_info)::out,
+    higher_order_info::in, higher_order_info::out) is det.
+
+ho_traverse_parallel_conj_2(_, [], [], !PostInfos, !Info).
+ho_traverse_parallel_conj_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
+        !PostInfos, !Info) :-
+    set_pre_branch_info(PreInfo, !Info),
+    ho_traverse_goal(Goal0, Goal, !Info),
+    get_post_branch_info(!.Info, GoalPostInfo),
+    !:PostInfos = [GoalPostInfo | !.PostInfos],
+    ho_traverse_parallel_conj_2(PreInfo, Goals0, Goals, !PostInfos, !Info).
 
     % To process a disjunction, we process each disjunct with the
     % specialization information before the goal, then merge the
     % results to give the specialization information after the disjunction.
     %
-    % We do the same for parallel conjunctions.
-    %
-:- pred traverse_independent_goals(hlds_goals::in, hlds_goals::out,
+:- pred ho_traverse_disj(list(hlds_goal)::in, list(hlds_goal)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_independent_goals(Goals0, Goals, !Info) :-
+ho_traverse_disj(Goals0, Goals, !Info) :-
     % We handle empty lists separately because merge_post_branch_infos_into_one
     % works only on nonempty lists.
     (
@@ -645,59 +676,59 @@ traverse_independent_goals(Goals0, Goals, !Info) :-
     ;
         Goals0 = [_ | _],
         get_pre_branch_info(!.Info, PreInfo),
-        traverse_independent_goals_2(PreInfo, Goals0, Goals, [], PostInfos,
-            !Info),
+        ho_traverse_disj_2(PreInfo, Goals0, Goals, [], PostInfos, !Info),
         merge_post_branch_infos_into_one(PostInfos, PostInfo),
         set_post_branch_info(PostInfo, !Info)
     ).
 
-:- pred traverse_independent_goals_2(pre_branch_info::in,
-    hlds_goals::in, hlds_goals::out,
+:- pred ho_traverse_disj_2(pre_branch_info::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     list(post_branch_info)::in, list(post_branch_info)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_independent_goals_2(_, [], [], !PostInfos, !Info).
-traverse_independent_goals_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
+ho_traverse_disj_2(_, [], [], !PostInfos, !Info).
+ho_traverse_disj_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
         !PostInfos, !Info) :-
     set_pre_branch_info(PreInfo, !Info),
-    traverse_goal(Goal0, Goal, !Info),
+    ho_traverse_goal(Goal0, Goal, !Info),
     get_post_branch_info(!.Info, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
-    traverse_independent_goals_2(PreInfo, Goals0, Goals, !PostInfos, !Info).
+    ho_traverse_disj_2(PreInfo, Goals0, Goals, !PostInfos, !Info).
 
     % Switches are treated in exactly the same way as disjunctions.
     %
-:- pred traverse_cases(list(case)::in, list(case)::out,
+:- pred ho_traverse_cases(list(case)::in, list(case)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_cases(Cases0, Cases, !Info) :-
+ho_traverse_cases(Cases0, Cases, !Info) :-
     % We handle empty lists separately because merge_post_branch_infos_into_one
     % works only on nonempty lists.
     (
         Cases0 = [],
-        unexpected(this_file, "traverse_cases: empty list of cases")
+        unexpected(this_file, "ho_traverse_cases: empty list of cases")
     ;
         Cases0 = [_ | _],
         get_pre_branch_info(!.Info, PreInfo),
-        traverse_cases_2(PreInfo, Cases0, Cases, [], PostInfos, !Info),
+        ho_traverse_cases_2(PreInfo, Cases0, Cases, [], PostInfos, !Info),
         merge_post_branch_infos_into_one(PostInfos, PostInfo),
         set_post_branch_info(PostInfo, !Info)
     ).
 
-:- pred traverse_cases_2(pre_branch_info::in, list(case)::in, list(case)::out,
+:- pred ho_traverse_cases_2(pre_branch_info::in,
+    list(case)::in, list(case)::out,
     list(post_branch_info)::in, list(post_branch_info)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_cases_2(_, [], [], !PostInfos, !Info).
-traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
+ho_traverse_cases_2(_, [], [], !PostInfos, !Info).
+ho_traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
         !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    traverse_goal(Goal0, Goal, !Info),
+    ho_traverse_goal(Goal0, Goal, !Info),
     Case = case(MainConsId, OtherConsIds, Goal),
     get_post_branch_info(!.Info, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
-    traverse_cases_2(PreInfo, Cases0, Cases, !PostInfos, !Info).
+    ho_traverse_cases_2(PreInfo, Cases0, Cases, !PostInfos, !Info).
 
 :- type pre_branch_info
     --->    pre_branch_info(pred_vars).
@@ -1160,7 +1191,7 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
     MaybeContext = no,
     GoalExpr1 = plain_call(PredId, ProcId, AllArgs, Builtin, MaybeContext,
         SymName),
-    !:Info = !.Info ^ hoi_changed := changed,
+    !:Info = !.Info ^ hoi_changed := ho_changed,
     maybe_specialize_call(hlds_goal(GoalExpr1, GoalInfo),
         hlds_goal(GoalExpr, _), !Info).
 
@@ -1182,7 +1213,7 @@ maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
             MaybeContext, GoalInfo, HaveSpecialPreds, GoalExpr1, !Info)
     ->
         GoalExpr = GoalExpr1,
-        !:Info = !.Info ^ hoi_changed := changed
+        !:Info = !.Info ^ hoi_changed := ho_changed
     ;
         polymorphism.is_typeclass_info_manipulator(ModuleInfo0,
             CalledPred, Manipulator)
@@ -1318,7 +1349,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
                 UniMode, Unify, Context),
 
             % Make sure any constants in the ExtraTypeInfoGoals are recorded.
-            list.map_foldl(traverse_goal, ExtraTypeInfoGoals0,
+            list.map_foldl(ho_traverse_goal, ExtraTypeInfoGoals0,
                 ExtraTypeInfoGoals, !Info),
             (
                 ExtraTypeInfoGoals = [],
@@ -1420,7 +1451,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             CallGoal = plain_call(NewCalledPred, NewCalledProc, Args,
                 IsBuiltin, MaybeContext, NewName),
             Result = specialized(ExtraTypeInfoGoals, CallGoal),
-            !:Info = !.Info ^ hoi_changed := changed
+            !:Info = !.Info ^ hoi_changed := ho_changed
         ;
             % There is a known higher order variable in the call, so we
             % put in a request for a specialized version of the pred.
@@ -1431,7 +1462,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
                 Requests0 = !.Info ^ hoi_global_info ^ hogi_requests,
                 Changed0 = !.Info ^ hoi_changed,
                 set.insert(Requests0, Request, Requests),
-                update_changed_status(Changed0, request, Changed),
+                update_changed_status(Changed0, ho_request, Changed),
                 !:Info = !.Info ^ hoi_global_info ^ hogi_requests := Requests,
                 !:Info = !.Info ^ hoi_changed := Changed
             ;
@@ -1561,7 +1592,7 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
 
 :- type find_result
     --->    find_result_match(match)
-    ;       find_result_request(request)
+    ;       find_result_request(ho_request)
     ;       find_result_no_request.
 
 :- type match
@@ -1741,7 +1772,7 @@ construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     !:Info = !.Info ^ hoi_global_info ^ hogi_module_info := ModuleInfo.
 
 :- pred search_for_version(higher_order_info::in, ho_params::in,
-    module_info::in, request::in, list(new_pred)::in,
+    module_info::in, ho_request::in, list(new_pred)::in,
     maybe(match)::in, match::out) is semidet.
 
 search_for_version(_, _, _, _, [], yes(Match), Match).
@@ -1785,7 +1816,7 @@ search_for_version(Info, Params, ModuleInfo, Request, [Version | Versions],
     % maybe ordering the list of extra type_infos in the caller predicate
     % to match up with those in the caller.
     %
-:- pred version_matches(ho_params::in, module_info::in, request::in,
+:- pred version_matches(ho_params::in, module_info::in, ho_request::in,
     new_pred::in, match::out) is semidet.
 
 version_matches(Params, ModuleInfo, Request, Version, Match) :-
@@ -1936,13 +1967,14 @@ maybe_add_alias(LVar, RVar, !Info) :-
         true
     ).
 
-:- pred update_changed_status(changed::in, changed::in, changed::out) is det.
+:- pred update_changed_status(ho_changed::in, ho_changed::in, ho_changed::out)
+    is det.
 
-update_changed_status(changed, _, changed).
-update_changed_status(request, changed, changed).
-update_changed_status(request, request, request).
-update_changed_status(request, unchanged, request).
-update_changed_status(unchanged, Changed, Changed).
+update_changed_status(ho_changed, _, ho_changed).
+update_changed_status(ho_request, ho_changed, ho_changed).
+update_changed_status(ho_request, ho_request, ho_request).
+update_changed_status(ho_request, ho_unchanged, ho_request).
+update_changed_status(ho_unchanged, Changed, Changed).
 
 %-----------------------------------------------------------------------------%
 
@@ -1995,7 +2027,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         Uni = assign(TypeInfoVar, TypeInfoArg),
         Goal = unify(TypeInfoVar, rhs_var(TypeInfoArg), out_mode - in_mode,
             Uni, unify_context(umc_explicit, [])),
-        !:Info = !.Info ^ hoi_changed := changed
+        !:Info = !.Info ^ hoi_changed := ho_changed
     ;
         Goal = Goal0
     ).
@@ -2388,7 +2420,7 @@ unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg, UnwrappedArg, Goal,
     % examples involving recursively building up lambda expressions
     % this can create ridiculous numbers of versions.
     %
-:- pred filter_requests(list(request)::out, list(request)::out,
+:- pred filter_requests(list(ho_request)::out, list(ho_request)::out,
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
@@ -2398,9 +2430,9 @@ filter_requests(FilteredRequests, LoopRequests, !Info, !IO) :-
     list.foldl3(filter_requests_2(!.Info), Requests0,
         [], FilteredRequests, [], LoopRequests, !IO).
 
-:- pred filter_requests_2(higher_order_global_info::in, request::in,
-    list(request)::in, list(request)::out,
-    list(request)::in, list(request)::out, io::di, io::uo) is det.
+:- pred filter_requests_2(higher_order_global_info::in, ho_request::in,
+    list(ho_request)::in, list(ho_request)::out,
+    list(ho_request)::in, list(ho_request)::out, io::di, io::uo) is det.
 
 filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
     ModuleInfo = Info ^ hogi_module_info,
@@ -2479,7 +2511,7 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
         )
     ).
 
-:- pred create_new_preds(list(request)::in, list(new_pred)::in,
+:- pred create_new_preds(list(ho_request)::in, list(new_pred)::in,
     list(new_pred)::out, set(pred_proc_id)::in, set(pred_proc_id)::out,
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
@@ -2514,7 +2546,7 @@ create_new_preds([Request | Requests], !NewPredList, !PredsToFix, !Info,
     % loop check failed, check whether the version was created for another
     % request for which the loop check succeeded.
     %
-:- pred check_loop_request(higher_order_global_info::in, request::in,
+:- pred check_loop_request(higher_order_global_info::in, ho_request::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
 check_loop_request(Info, Request, !PredsToFix) :-
@@ -2535,7 +2567,7 @@ check_loop_request(Info, Request, !PredsToFix) :-
 
     % Here we create the pred_info for the new predicate.
     %
-:- pred create_new_pred(request::in, new_pred::out,
+:- pred create_new_pred(ho_request::in, new_pred::out,
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
@@ -2745,31 +2777,31 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
     --->    must_recompute
     ;       need_not_recompute.
 
-:- pred fixup_preds(list(pred_proc_id)::in, higher_order_global_info::in,
+:- pred ho_fixup_preds(list(pred_proc_id)::in, higher_order_global_info::in,
     higher_order_global_info::out) is det.
 
-fixup_preds(PredProcIds, !Info) :-
+ho_fixup_preds(PredProcIds, !Info) :-
     Requests0 = !.Info ^ hogi_requests,
-    list.foldl(fixup_pred(need_not_recompute), PredProcIds, !Info),
+    list.foldl(ho_fixup_pred(need_not_recompute), PredProcIds, !Info),
     % Any additional requests must have already been denied.
     !:Info = !.Info ^ hogi_requests := Requests0.
 
-:- pred fixup_specialized_versions(list(new_pred)::in,
+:- pred ho_fixup_specialized_versions(list(new_pred)::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-fixup_specialized_versions(NewPredList, !Info) :-
+ho_fixup_specialized_versions(NewPredList, !Info) :-
     NewPredProcIds = list.map(get_np_version_ppid, NewPredList),
     % Reprocess the goals to find any new specializations made
     % possible by the specializations performed in this pass.
-    list.foldl(fixup_pred(must_recompute), NewPredProcIds, !Info).
+    list.foldl(ho_fixup_pred(must_recompute), NewPredProcIds, !Info).
 
     % Fixup calls to specialized predicates.
     %
-:- pred fixup_pred(must_recompute::in, pred_proc_id::in,
+:- pred ho_fixup_pred(must_recompute::in, pred_proc_id::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-fixup_pred(MustRecompute, proc(PredId, ProcId), !GlobalInfo) :-
-    traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo).
+ho_fixup_pred(MustRecompute, proc(PredId, ProcId), !GlobalInfo) :-
+    ho_traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -3018,7 +3050,7 @@ update_var_types(VarAndType, !Map) :-
     % specialised. If not, unused_args.m can clean them up.
     %
     % Build the initial pred_vars map which records higher-order and
-    % type_info constants for a call to traverse_proc_body.
+    % type_info constants for a call to ho_traverse_proc_body.
     %
     % Build a var-var renaming from the requesting call's arguments to
     % the headvars of the specialized version.
@@ -3081,8 +3113,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 
     (
         IsConst = no,
-        % Make traverse_proc_body pretend that the input higher-order argument
-        % is built using the new arguments as its curried arguments.
+        % Make ho_traverse_proc_body pretend that the input higher-order
+        % argument is built using the new arguments as its curried arguments.
         svmap.det_insert(LVar, constant(ConsId, CurriedHeadVars1),
             !PredVars)
     ;
