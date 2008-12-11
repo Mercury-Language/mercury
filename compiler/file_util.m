@@ -195,7 +195,8 @@ get_install_name_option(OutputFileName, InstallNameOpt, !IO) :-
     ;
         InstallNamePath = InstallNamePath0
     ),
-    InstallNameOpt = InstallNameFlag ++ InstallNamePath / OutputFileName.
+    InstallNameOpt = InstallNameFlag ++
+        quote_arg(InstallNamePath / OutputFileName).
 
 %-----------------------------------------------------------------------------%
 

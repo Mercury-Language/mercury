@@ -1330,7 +1330,7 @@ install_library_grade_2(LinkSucceeded0, ModuleName, AllModules,
     % the current grade.
     %
     % NOTE: changes here may require changes to
-    %       modules.get_install_name_option/4.
+    %       file_util.get_install_name_option/4.
     %
 :- pred install_library_grade_files(bool::in, string::in, module_name::in,
     list(module_name)::in, bool::out, make_info::in, make_info::out,
