@@ -1745,7 +1745,8 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
         )
     ->
         globals.io_lookup_accumulating_option(
-            runtime_link_library_directories, RpathDirs, !IO),
+            runtime_link_library_directories, RpathDirs0, !IO),
+        RpathDirs = list.map(quote_arg, RpathDirs0),
         ( 
             RpathDirs = [],
             RpathOpts = ""
