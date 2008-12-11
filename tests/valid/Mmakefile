@@ -287,6 +287,9 @@ CTGC_PROGS = \
 RESERVE_TAG_PROGS = \
 	reserve_tag
 
+# XXX The type checker can't handle the following test cases yet:
+#	ambiguity_stress_test
+#
 # XXX The mode system can't handle the following test cases yet:
 #	assoc_list_bug
 #	determinism
