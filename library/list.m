@@ -701,17 +701,17 @@
     % value in End.
     %
 :- pred list.foldl(pred(L, A, A), list(L), A, A).
-:- mode list.foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list.foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode list.foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode list.foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list.foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode list.foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode list.foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode list.foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode list.foldl(pred(in, in, out) is multi, in, in, out) is multi.
 :- mode list.foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode list.foldl(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode list.foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode list.foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode list.foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
 :- func list.foldl(func(L, A) = A, list(L), A) = A.
 
@@ -753,6 +753,8 @@
     in, in, out, in, out) is semidet.
 :- mode list.foldl2(pred(in, in, out, mdi, muo) is semidet,
     in, in, out, mdi, muo) is semidet.
+:- mode list.foldl2(pred(in, in, out, di, uo) is semidet,
+    in, in, out, di, uo) is semidet.
 :- mode list.foldl2(pred(in, in, out, in, out) is nondet,
     in, in, out, in, out) is nondet.
 :- mode list.foldl2(pred(in, in, out, mdi, muo) is nondet,

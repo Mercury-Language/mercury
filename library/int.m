@@ -242,12 +242,19 @@
     %
 :- pred int.fold_up(pred(int, T, T), int, int, T, T).
 :- mode int.fold_up(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode int.fold_up(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
 :- mode int.fold_up(pred(in, di, uo) is det, in, in, di, uo) is det.
 :- mode int.fold_up(pred(in, array_di, array_uo) is det, in, in,
     array_di, array_uo) is det.
 :- mode int.fold_up(pred(in, in, out) is semidet, in, in, in, out)
     is semidet.
+:- mode int.fold_up(pred(in, mdi, muo) is semidet, in, in, mdi, muo)
+    is semidet.
+:- mode int.fold_up(pred(in, di, uo) is semidet, in, in, di, uo)
+    is semidet.
 :- mode int.fold_up(pred(in, in, out) is nondet, in, in, in, out)
+    is nondet.
+:- mode int.fold_up(pred(in, mdi, muo) is nondet, in, in, mdi, muo) 
     is nondet.
 :- mode int.fold_up(pred(in, di, uo) is cc_multi, in, in, di, uo)
     is cc_multi.
@@ -266,16 +273,23 @@
     %
 :- pred int.fold_down(pred(int, T, T), int, int, T, T).
 :- mode int.fold_down(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode int.fold_down(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
 :- mode int.fold_down(pred(in, di, uo) is det, in, in, di, uo) is det.
 :- mode int.fold_down(pred(in, array_di, array_uo) is det, in, in,
     array_di, array_uo) is det.
 :- mode int.fold_down(pred(in, in, out) is semidet, in, in, in, out)
     is semidet.
+:- mode int.fold_down(pred(in, mdi, muo) is semidet, in, in, mdi, muo)
+    is semidet.
+:- mode int.fold_down(pred(in, di, uo) is semidet, in, in, di, uo)
+    is semidet.
 :- mode int.fold_down(pred(in, in, out) is nondet, in, in, in, out)
     is nondet.
-:- mode int.fold_down(pred(in, di, uo) is cc_multi, in, in, di, uo)
-    is cc_multi.
+:- mode int.fold_down(pred(in, mdi, muo) is nondet, in, in, mdi, muo)
+    is nondet.
 :- mode int.fold_down(pred(in, in, out) is cc_multi, in, in, in, out)
+    is cc_multi.
+:- mode int.fold_down(pred(in, di, uo) is cc_multi, in, in, di, uo)
     is cc_multi.
 
     % fold_down(F, Low, High, Acc) <=> list.foldr(F, Low .. High, Acc)
@@ -292,14 +306,22 @@
 :- pred int.fold_up2(pred(int, T, T, U, U), int, int, T, T, U, U).
 :- mode int.fold_up2(pred(in, in, out, in, out) is det, in, in, in, out,
     in, out) is det.
-:- mode int.fold_up2(pred(in, in, out, in, out) is semidet, in, in,
-    in, out, in, out) is semidet.
-:- mode int.fold_up2(pred(in, in, out, in, out) is nondet, in, in,
-    in, out, in, out) is nondet.
+:- mode int.fold_up2(pred(in, in, out, mdi, muo) is det, in, in, in, out,
+    mdi, muo) is det.
 :- mode int.fold_up2(pred(in, in, out, di, uo) is det, in, in, in, out,
     di, uo) is det.
 :- mode int.fold_up2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
     di, uo) is det.
+:- mode int.fold_up2(pred(in, in, out, in, out) is semidet, in, in,
+    in, out, in, out) is semidet.
+:- mode int.fold_up2(pred(in, in, out, mdi, muo) is semidet, in, in,
+    in, out, mdi, muo) is semidet.
+:- mode int.fold_up2(pred(in, in, out, di, uo) is semidet, in, in,
+    in, out, di, uo) is semidet.
+:- mode int.fold_up2(pred(in, in, out, in, out) is nondet, in, in,
+    in, out, in, out) is nondet.
+:- mode int.fold_up2(pred(in, in, out, mdi, muo) is nondet, in, in,
+    in, out, mdi, muo) is nondet.
 
     % fold_down2(F, Low, High, !Acc1, !Acc2) <=>
     %   list.foldr2(F, Low .. High, !Acc1, Acc2).
@@ -309,14 +331,20 @@
 :- pred int.fold_down2(pred(int, T, T, U, U), int, int, T, T, U, U).
 :- mode int.fold_down2(pred(in, in, out, in, out) is det, in, in, in, out,
     in, out) is det.
-:- mode int.fold_down2(pred(in, in, out, in, out) is semidet, in, in,
-    in, out, in, out) is semidet.
-:- mode int.fold_down2(pred(in, in, out, in, out) is nondet, in, in,
-    in, out, in, out) is nondet.
+:- mode int.fold_down2(pred(in, in, out, mdi, muo) is det, in, in, in, out,
+    mdi, muo) is det.
 :- mode int.fold_down2(pred(in, in, out, di, uo) is det, in, in, in, out,
     di, uo) is det.
 :- mode int.fold_down2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
     di, uo) is det.
+:- mode int.fold_down2(pred(in, in, out, in, out) is semidet, in, in,
+    in, out, in, out) is semidet.
+:- mode int.fold_down2(pred(in, in, out, di, uo) is semidet, in, in,
+    in, out, di, uo) is semidet.
+:- mode int.fold_down2(pred(in, in, out, in, out) is nondet, in, in,
+    in, out, in, out) is nondet.
+:- mode int.fold_down2(pred(in, in, out, mdi, muo) is nondet, in, in,
+    in, out, mdi, muo) is nondet.
 
     % Convert an int to a pretty_printer.doc for formatting.
     %
