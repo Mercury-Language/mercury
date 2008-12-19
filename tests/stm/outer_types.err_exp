@@ -1,0 +1,4 @@
+outer_types.m:031: The types of the two outer variables differ.
+Uncaught Mercury exception:
+Software Error: modes.m: Unexpected: modecheck_goal_shorthand atomic_goal: mismatched outer var type
+Stack dump not available in this grade.
