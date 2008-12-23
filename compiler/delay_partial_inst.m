@@ -282,9 +282,13 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         Goal = hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        delay_partial_inst_in_goal(InstMap0, SubGoal0, SubGoal,
-            !.ConstructMap, _, !DelayInfo),
-        Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Goal = Goal0
+        ;
+            delay_partial_inst_in_goal(InstMap0, SubGoal0, SubGoal,
+                !.ConstructMap, _, !DelayInfo),
+            Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
+        )
     ;
         GoalExpr0 = unify(LHS, RHS0, Mode, Unify, Context),
         (

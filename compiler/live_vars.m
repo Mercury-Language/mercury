@@ -323,31 +323,43 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         GoalInfo = GoalInfo0
     ;
-        GoalExpr0 = negation(Goal0),
-        build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
+        GoalExpr0 = negation(SubGoal0),
+        build_live_sets_in_goal(SubGoal0, SubGoal, ResumeVars0, AllocData,
             !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
-        GoalExpr = negation(Goal),
+        GoalExpr = negation(SubGoal),
         GoalInfo = GoalInfo0
     ;
-        GoalExpr0 = scope(Reason, Goal0),
-        NondetLiveness0 = !.NondetLiveness,
-        build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
-            !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
-        % If the "some" goal cannot succeed more than once, then execution
-        % cannot backtrack into the inner goal once control has left it.
-        % Therefore the code following the scope can reuse any stack slots
-        % needed by nondet code in the inner goal.
-        CodeModel = goal_info_get_code_model(GoalInfo0),
-        (
-            CodeModel = model_non
+        GoalExpr0 = scope(Reason, SubGoal0),
+        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+            % We do not modify construct unifications or conjunctions,
+            % so we do not modify these scopes, which contain only a
+            % conjunction of construct unifications.
+            GoalExpr = GoalExpr0,
+            GoalInfo = GoalInfo0,
+            % The scope does not contain any calls, resume points or parallel
+            % conjunctions, so there are no updates to !StackAlloc,
+            % !NondetLiveness, or !ParStackVars.
+            set.insert(!.Liveness, TermVar, !:Liveness)
         ;
-            ( CodeModel = model_det
-            ; CodeModel = model_semi
+            NondetLiveness0 = !.NondetLiveness,
+            build_live_sets_in_goal(SubGoal0, SubGoal, ResumeVars0, AllocData,
+                !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
+            % If the "some" goal cannot succeed more than once, then execution
+            % cannot backtrack into the inner goal once control has left it.
+            % Therefore the code following the scope can reuse any stack slots
+            % needed by nondet code in the inner goal.
+            CodeModel = goal_info_get_code_model(GoalInfo0),
+            (
+                CodeModel = model_non
+            ;
+                ( CodeModel = model_det
+                ; CodeModel = model_semi
+                ),
+                !:NondetLiveness = NondetLiveness0
             ),
-            !:NondetLiveness = NondetLiveness0
-        ),
-        GoalExpr = scope(Reason, Goal),
-        GoalInfo = GoalInfo0
+            GoalExpr = scope(Reason, SubGoal),
+            GoalInfo = GoalInfo0
+        )
     ;
         GoalExpr0 = generic_call(GenericCall, ArgVars, Modes, _Det),
         GoalExpr = GoalExpr0,

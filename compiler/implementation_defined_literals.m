@@ -136,6 +136,8 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
+        % Implementation-defined literals may appear in
+        % from_ground_term_construct scopes.
         subst_literals_in_goal(Info, SubGoal0, SubGoal),
         GoalExpr = scope(Reason, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)

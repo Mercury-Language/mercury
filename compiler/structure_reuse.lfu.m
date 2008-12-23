@@ -119,38 +119,34 @@ forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
     InstantiadedBefore = !.InstantiatedVars,
 
     (
-        GoalExpr0 = conj(A,Goals0)
-    ->
+        GoalExpr0 = conj(ConjType, Goals0),
         forward_use_in_conj(VarTypes, Goals0, Goals,
             !InstantiatedVars, !DeadVars),
-        GoalExpr = conj(A, Goals)
+        GoalExpr = conj(ConjType, Goals)
     ;
-        GoalExpr0 = switch(A, B, Cases0)
-    ->
+        GoalExpr0 = switch(Var, CanFail, Cases0),
         forward_use_in_cases(VarTypes, Cases0, Cases,
             !InstantiatedVars, !DeadVars),
-        GoalExpr = switch(A, B, Cases)
+        GoalExpr = switch(Var, CanFail, Cases)
     ;
-        GoalExpr0 = disj(Disj0)
-    ->
+        GoalExpr0 = disj(Disj0),
         forward_use_in_disj(VarTypes, Disj0, Disj,
             !InstantiatedVars, !DeadVars),
         GoalExpr = disj(Disj)
     ;
-        GoalExpr0 = negation(Goal0)
-    ->
-        forward_use_in_goal(VarTypes, Goal0, Goal,
+        GoalExpr0 = negation(SubGoal0),
+        forward_use_in_goal(VarTypes, SubGoal0, SubGoal,
             !InstantiatedVars, !DeadVars),
-        GoalExpr = negation(Goal)
+        GoalExpr = negation(SubGoal)
     ;
-        GoalExpr0 = scope(A, Goal0)
-    ->
-        forward_use_in_goal(VarTypes, Goal0, Goal,
+        GoalExpr0 = scope(Reason, SubGoal0),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
+        forward_use_in_goal(VarTypes, SubGoal0, SubGoal,
             !InstantiatedVars, !DeadVars),
-        GoalExpr = scope(A, Goal)
+        GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = if_then_else(V, Cond0, Then0, Else0)
-    ->
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         Inst0 = !.InstantiatedVars,
         Dead0 = !.DeadVars,
         forward_use_in_goal(VarTypes, Cond0, Cond,
@@ -160,10 +156,19 @@ forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
         forward_use_in_goal(VarTypes, Else0, Else, Inst0, Inst1, Dead0, Dead1),
         set.union(Inst1, !InstantiatedVars),
         set.union(Dead1, !DeadVars),
-        GoalExpr = if_then_else(V, Cond, Then, Else)
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
+        ( GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         unexpected(this_file,
-            "Atomic goal in forward_use_in_composite_goal.")
+            "forward_use_in_composite_goal: atomic goal")
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file,
+            "forward_use_in_composite_goal: shorthand")
     ),
     set.difference(InstantiadedBefore, !.DeadVars, LFU),
     goal_info_set_lfu(LFU, GoalInfo0, GoalInfo),
@@ -266,6 +271,8 @@ add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
         Expr = negation(Goal)
     ;
         Expr0 = scope(Reason, Goal0),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
         Expr = scope(Reason, Goal)
     ;

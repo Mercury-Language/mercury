@@ -26,6 +26,7 @@
 :- import_module getopt_io.
 :- import_module io.
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -73,6 +74,11 @@
     %
 :- pred grade_directory_component(globals::in, string::out) is det.
 
+    % Return the number of functions symbols at or above which a ground term's
+    % superhomogeneous form should be wrapped in a from_ground_term scope.
+    %
+:- func get_from_ground_term_threshold = maybe(int).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -91,7 +97,6 @@
 :- import_module int.
 :- import_module library.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module solutions.
@@ -2060,6 +2065,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 !Globals)
         ),
 
+        globals.lookup_int_option(!.Globals, from_ground_term_threshold,
+            FromGroundTermThreshold),
+        set_maybe_from_ground_term_threshold(yes(FromGroundTermThreshold),
+            !IO),
+
         (
             HighLevel = no,
             postprocess_options_lowlevel(!Globals)
@@ -2068,6 +2078,15 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ),
         postprocess_options_libgrades(!Globals, !Errors),
         globals.io_set_globals(!.Globals, !IO)
+    ).
+
+:- mutable(maybe_from_ground_term_threshold, maybe(int), no, ground,
+    [untrailed, attach_to_io_state]).
+
+% get_from_ground_term_threshold = yes(5).
+get_from_ground_term_threshold = MaybeThreshold :-
+    promise_pure (
+        semipure get_maybe_from_ground_term_threshold(MaybeThreshold)
     ).
 
     % These option implications only affect the low-level (LLDS) code

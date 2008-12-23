@@ -479,79 +479,99 @@ intermod_traverse_goal(Goal0, Goal, DoWrite, !Info) :-
 :- pred intermod_traverse_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
     bool::out, intermod_info::in, intermod_info::out) is det.
 
-intermod_traverse_goal_expr(conj(ConjType, Goals0), conj(ConjType, Goals),
-        DoWrite, !Info) :-
-    intermod_traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
-intermod_traverse_goal_expr(disj(Goals0), disj(Goals), DoWrite, !Info) :-
-    intermod_traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
-intermod_traverse_goal_expr(Goal, Goal, DoWrite, !Info) :-
-    Goal = plain_call(PredId, _, _, _, _, _),
-    % Ensure that the called predicate will be exported.
-    add_proc(PredId, DoWrite, !Info).
-intermod_traverse_goal_expr(Goal @ generic_call(CallType, _, _, _), Goal,
-        DoWrite, !Info) :-
+intermod_traverse_goal_expr(GoalExpr0, GoalExpr, DoWrite, !Info) :-
     (
-        CallType = higher_order(_, _, _, _),
-        DoWrite = yes
+        GoalExpr0 = unify(LVar, RHS0, Mode, Kind, UnifyContext),
+        % Export declarations for preds used in higher order pred constants
+        % or function calls.
+        module_qualify_unify_rhs(RHS0, RHS, DoWrite, !Info),
+        GoalExpr = unify(LVar, RHS, Mode, Kind, UnifyContext)
     ;
-        ( CallType = class_method(_, _, _, _)
-        ; CallType = event_call(_)
-        ; CallType = cast(_)
-        ),
-        DoWrite = no
-    ).
-intermod_traverse_goal_expr(switch(Var, CanFail, Cases0),
-        switch(Var, CanFail, Cases), DoWrite, !Info) :-
-    intermod_traverse_cases(Cases0, Cases, DoWrite, !Info).
-    % Export declarations for preds used in higher order pred constants
-    % or function calls.
-intermod_traverse_goal_expr(unify(LVar, RHS0, C, D, E),
-        unify(LVar, RHS, C, D, E), DoWrite, !Info) :-
-    module_qualify_unify_rhs(RHS0, RHS, DoWrite, !Info).
-intermod_traverse_goal_expr(negation(Goal0), negation(Goal), DoWrite, !Info) :-
-    intermod_traverse_goal(Goal0, Goal, DoWrite, !Info).
-intermod_traverse_goal_expr(scope(Reason, Goal0), scope(Reason, Goal),
-        DoWrite, !Info) :-
-    intermod_traverse_goal(Goal0, Goal, DoWrite, !Info).
-intermod_traverse_goal_expr(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else), DoWrite, !Info) :-
-    intermod_traverse_goal(Cond0, Cond, DoWrite1, !Info),
-    intermod_traverse_goal(Then0, Then, DoWrite2, !Info),
-    intermod_traverse_goal(Else0, Else, DoWrite3, !Info),
-    bool.and_list([DoWrite1, DoWrite2, DoWrite3], DoWrite).
-    % Inlineable exported pragma_foreign_code goals can't use any
-    % non-exported types, so we just write out the clauses.
-intermod_traverse_goal_expr(Goal @ call_foreign_proc(Attrs, _, _, _, _, _, _),
-        Goal, DoWrite, !Info) :-
-    MaybeMayDuplicate = get_may_duplicate(Attrs),
-    (
-        MaybeMayDuplicate = yes(MayDuplicate),
+        GoalExpr0 = plain_call(PredId, _, _, _, _, _),
+        % Ensure that the called predicate will be exported.
+        add_proc(PredId, DoWrite, !Info),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = generic_call(CallType, _, _, _),
+        GoalExpr = GoalExpr0,
         (
-            MayDuplicate = proc_may_duplicate,
+            CallType = higher_order(_, _, _, _),
             DoWrite = yes
         ;
-            MayDuplicate = proc_may_not_duplicate,
+            ( CallType = class_method(_, _, _, _)
+            ; CallType = event_call(_)
+            ; CallType = cast(_)
+            ),
             DoWrite = no
         )
     ;
-        MaybeMayDuplicate = no,
-        DoWrite = yes
-    ).
-intermod_traverse_goal_expr(shorthand(ShortHand0), shorthand(ShortHand),
-        DoWrite, !Info) :-
-    (
-        ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-            MainGoal0, OrElseGoals0),
-        intermod_traverse_goal(MainGoal0, MainGoal, DoWrite1, !Info),
-        intermod_traverse_list_of_goals(OrElseGoals0, OrElseGoals, DoWrite2,
-            !Info),
-        bool.and(DoWrite1, DoWrite2, DoWrite),
-        ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-            MainGoal, OrElseGoals)
+        GoalExpr0 = call_foreign_proc(Attrs, _, _, _, _, _, _),
+        GoalExpr = GoalExpr0,
+        % Inlineable exported pragma_foreign_code goals can't use any
+        % non-exported types, so we just write out the clauses.
+        MaybeMayDuplicate = get_may_duplicate(Attrs),
+        (
+            MaybeMayDuplicate = yes(MayDuplicate),
+            (
+                MayDuplicate = proc_may_duplicate,
+                DoWrite = yes
+            ;
+                MayDuplicate = proc_may_not_duplicate,
+                DoWrite = no
+            )
+        ;
+            MaybeMayDuplicate = no,
+            DoWrite = yes
+        )
     ;
-        ShortHand0 = bi_implication(_, _),
-        % These should have been expanded out by now.
-        unexpected(this_file, "intermod_traverse_goal_expr: bi_implication")
+        GoalExpr0 = conj(ConjType, Goals0),
+        intermod_traverse_list_of_goals(Goals0, Goals, DoWrite, !Info),
+        GoalExpr = conj(ConjType, Goals)
+    ;
+        GoalExpr0 = disj(Goals0),
+        intermod_traverse_list_of_goals(Goals0, Goals, DoWrite, !Info),
+        GoalExpr = disj(Goals)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        intermod_traverse_cases(Cases0, Cases, DoWrite, !Info),
+        GoalExpr = switch(Var, CanFail, Cases)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        intermod_traverse_goal(Cond0, Cond, DoWrite1, !Info),
+        intermod_traverse_goal(Then0, Then, DoWrite2, !Info),
+        intermod_traverse_goal(Else0, Else, DoWrite3, !Info),
+        bool.and_list([DoWrite1, DoWrite2, DoWrite3], DoWrite),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        intermod_traverse_goal(SubGoal0, SubGoal, DoWrite, !Info),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        % Mode analysis hasn't been run yet, so we don't know yet whether
+        % from_ground_term_construct scopes actually satisfy their invariants,
+        % specifically the invariant that say they contain no calls or
+        % higher-order constants. We therefore cannot special-case them here.
+        intermod_traverse_goal(SubGoal0, SubGoal, DoWrite, !Info),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0),
+            intermod_traverse_goal(MainGoal0, MainGoal, DoWrite1, !Info),
+            intermod_traverse_list_of_goals(OrElseGoals0, OrElseGoals, DoWrite2,
+                !Info),
+            bool.and(DoWrite1, DoWrite2, DoWrite),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals)
+        ;
+            ShortHand0 = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected(this_file,
+                "intermod_traverse_goal_expr: bi_implication")
+        ),
+        GoalExpr = shorthand(ShortHand)
     ).
 
 :- pred intermod_traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
@@ -619,16 +639,14 @@ add_proc_2(PredId, DoWrite, !Info) :-
     ProcIds = pred_info_procids(PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     (
-        %
         % Calling compiler-generated procedures is fine; we don't need
         % to output declarations for them to the `.opt' file, since they
         % will be recreated every time anyway.
-        %
+
         is_unify_or_compare_pred(PredInfo)
     ->
         DoWrite = yes
     ;
-        %
         % Don't write the caller to the `.opt' file if it calls a pred
         % without mode or determinism decls, because we'd need to include
         % the mode decls for the callee in the `.opt' file and (since
@@ -637,7 +655,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
         %
         % XXX This prevents intermodule optimizations in such cases,
         % which is a pity.
-        %
+
         (
             check_marker(Markers, marker_infer_modes)
         ;
@@ -671,17 +689,16 @@ add_proc_2(PredId, DoWrite, !Info) :-
         % the compiler generated mutable access predicates we can ensure
         % that reordering is not necessary by construction, so it's safe
         % to include them in .opt files.
-        %
+
         pred_info_get_purity(PredInfo, purity_impure),
         not check_marker(Markers, marker_mutable_access_pred)
     ->
         DoWrite = no
     ;
-        %
         % If a pred whose code we're going to put in the .opt file calls
         % a predicate which is exported, then we don't need to do anything
         % special.
-        %
+
         (
             Status = status_exported
         ;
@@ -691,21 +708,19 @@ add_proc_2(PredId, DoWrite, !Info) :-
     ->
         DoWrite = yes
     ;
-        %
         % Declarations for class methods will be recreated from the class
         % declaration in the `.opt' file. Declarations for local classes
         % are always written to the `.opt' file.
-        %
+
         pred_info_get_markers(PredInfo, Markers),
         check_marker(Markers, marker_class_method)
     ->
         DoWrite = yes
     ;
-        %
         % If a pred whose code we're going to put in the `.opt' file calls
         % a predicate which is local to that module, then we need to put
         % the declaration for the called predicate in the `.opt' file.
-        %
+
         import_status_to_write(Status)
     ->
         DoWrite = yes,
@@ -717,9 +732,8 @@ add_proc_2(PredId, DoWrite, !Info) :-
         ; Status = status_opt_imported
         )
     ->
-        %
         % Imported pred - add import for module.
-        %
+
         DoWrite = yes,
         PredModule = pred_info_module(PredInfo),
         intermod_info_get_modules(!.Info, Modules0),
@@ -743,9 +757,11 @@ module_qualify_unify_rhs(RHS0, RHS, DoWrite, !Info) :-
         RHS = RHS0,
         DoWrite = yes
     ;
-        RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, H, Goal0),
+        RHS0 = rhs_lambda_goal(Purity, HOGroundness, PorF, EvalMethod,
+            NonLocals, QuantVars, Modes, Detism, Goal0),
         intermod_traverse_goal(Goal0, Goal, DoWrite, !Info),
-        RHS = rhs_lambda_goal(A, B, C, D, E, F, G, H, Goal)
+        RHS = rhs_lambda_goal(Purity, HOGroundness, PorF, EvalMethod,
+            NonLocals, QuantVars, Modes, Detism, Goal)
     ;
         RHS0 = rhs_functor(Functor, _Exist, _Vars),
         RHS = RHS0,
@@ -795,11 +811,11 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
     DefinedThisModule = status_defined_in_this_module(Status),
     (
         DefinedThisModule = yes,
-        %
+
         % The bodies are always stripped from instance declarations
         % before writing them to `int' files, so the full instance
         % declaration should be written even for exported instances.
-        %
+
         SaveInfo = !.Info,
         (
             Interface0 = instance_body_concrete(Methods0),
@@ -943,7 +959,6 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
         MethodArity, MethodCallTVarSet, MethodCallExistQTVars,
         MethodCallArgTypes, MethodCallHeadTypeParams, MethodContext,
         MaybePredId, InstanceMethodName) :-
-
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     (
         is_field_access_function_name(ModuleInfo, InstanceMethodName0,
@@ -1081,14 +1096,13 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
 
-    %
     % Note that we don't resolve overloading for the foreign definitions
     % which won't be used on this back-end, because their unification and
     % comparison predicates have not been typechecked. They are only written
     % to the `.opt' it can be handy when building against a workspace
     % for the other definitions to be present (e.g. when testing compiling
     % a module to IL when the workspace was compiled to C).
-    %
+
     (
         ( Target = target_c
         ; Target = target_asm
@@ -1722,7 +1736,8 @@ write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
         (
             % Pull the foreign code out of the goal.
             Goal = hlds_goal(conj(plain_conj, Goals), _),
-            list.filter((pred(X::in) is semidet :-
+            list.filter(
+                (pred(X::in) is semidet :-
                     X = hlds_goal(call_foreign_proc(_, _, _, _, _, _, _), _)
                 ), Goals, [ForeignCodeGoal]),
             ForeignCodeGoal = hlds_goal(call_foreign_proc(Attributes,
@@ -2308,7 +2323,7 @@ grab_opt_files(!Module, FoundError, !IO) :-
     % the .opt file for the current module. These are needed because we can
     % probably remove more arguments with intermod_unused_args, but the
     % interface for other modules must remain the same.
-    % 
+    %
     % Similarly for the  :- pragma structure_reuse(...) declarations. With more
     % information available when making the target code than when writing the
     % `.opt' file, it can turn out that procedure which seemed to have
@@ -2355,9 +2370,7 @@ grab_opt_files(!Module, FoundError, !IO) :-
         [], AncestorImports1,
         [], AncestorImports2, !Module, !IO),
 
-    %
     % Figure out which .int files are needed by the .opt files
-    %
     get_dependencies(OptItems, NewImportDeps0, NewUseDeps0),
     globals.io_get_globals(Globals, !IO),
     get_implicit_dependencies(OptItems, Globals,

@@ -275,8 +275,15 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         leave_branch_start(branch_ite, StartAnchor, BeforeId, MaybeResumeVars,
             CondOpenIntervals, !IntervalInfo)
     ;
-        GoalExpr = scope(_Reason, SubGoal),
-        build_interval_info_in_goal(SubGoal, !IntervalInfo, !Acc)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+            % We treat this scope as a construction unification that unifies
+            % TermVar with a single big variable-free term, since this is what
+            % the generated code will do.
+            require_access([TermVar], !IntervalInfo)
+        ;
+            build_interval_info_in_goal(SubGoal, !IntervalInfo, !Acc)
+        )
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, ArgModes, _Detism),
         goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
@@ -947,22 +954,27 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             rename_var_list(need_not_rename, !.VarRename, Vars0, Vars),
             Reason = exist_quant(Vars)
         ;
-            Reason0 = from_ground_term(Var0),
+            Reason0 = from_ground_term(Var0, Kind),
             rename_var(need_not_rename, !.VarRename, Var0, Var),
-            Reason = from_ground_term(Var)
+            Reason = from_ground_term(Var, Kind)
         ;
             ( Reason0 = promise_purity(_, _)
             ; Reason0 = promise_solutions(_, _)
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)
             ; Reason0 = trace_goal(_, _, _, _, _)
-            ), 
+            ),
             Reason = Reason0
         ),
-        record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,
-            InsertMap, MaybeFeature),
-        GoalExpr = scope(Reason, SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % There won't be any decisions to record.
+            Goal = Goal0
+        ;
+            record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,
+                InsertMap, MaybeFeature),
+            GoalExpr = scope(Reason, SubGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ;
         GoalExpr0 = generic_call(GenericCall, _, _, _),
         % Casts are generated inline.

@@ -289,6 +289,8 @@ collect_non_local_and_in_cond_regions_expr(_, _, _, _, _,
 collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
         ResurRenamingProc, ResurRenamingAnnoProc, scope(_, Goal),
         !NonLocalRegionsProc, !InCondRegionsProc) :-
+    % XXX We should special-case the handling of from_ground_term_construct
+    % scopes.
     collect_non_local_and_in_cond_regions_goal(Graph, LRBeforeProc,
         LRAfterProc, ResurRenamingProc, ResurRenamingAnnoProc, Goal,
         !NonLocalRegionsProc, !InCondRegionsProc).
@@ -514,6 +516,8 @@ collect_non_local_regions_in_ite_compound_goal(Graph, LRBeforeProc,
             Goal, !NonLocalRegionProc)
     ;
         Expr = scope(_, Goal),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         collect_non_local_regions_in_ite(Graph,
             LRBeforeProc, LRAfterProc,
             ResurRenamingProc, ResurRenamingAnnoProc,
@@ -689,6 +693,8 @@ collect_regions_created_in_condition_compound_goal(Graph,
             Goal, !InCondRegionsProc)
     ;
         Expr = scope(_, Goal),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         collect_regions_created_in_condition(Graph,
             LRBeforeProc, LRAfterProc,
             ResurRenamingProc, ResurRenamingAnnoProc,
@@ -852,6 +858,8 @@ collect_ite_renaming_expr(unify(_, _, _, _, _), _, _, !IteRenamingProc).
 
 collect_ite_renaming_expr(scope(_, Goal), IteRenamedRegionProc,
         Graph, !IteRenamingProc) :-
+    % XXX We should special-case the handling of from_ground_term_construct
+    % scopes.
     collect_ite_renaming_goal(IteRenamedRegionProc, Graph, Goal,
         !IteRenamingProc).
 
@@ -960,6 +968,8 @@ collect_ite_renaming_in_condition_compound_goal(IteRenamedRegionProc,
             Graph, Goal, !IteRenamingProc)
     ;
         Expr = scope(_, Goal),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         collect_ite_renaming_in_condition(IteRenamedRegionProc,
             Graph, Goal, !IteRenamingProc)
     ;

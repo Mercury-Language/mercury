@@ -197,8 +197,12 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        find_follow_vars_in_goal(SubGoal0, SubGoal, VarTypes, ModuleInfo,
-            !FollowVarsMap, !NextNonReserved),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            SubGoal = SubGoal0
+        ;
+            find_follow_vars_in_goal(SubGoal0, SubGoal, VarTypes, ModuleInfo,
+                !FollowVarsMap, !NextNonReserved)
+        ),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = unify(_, _, _, Unification, _),

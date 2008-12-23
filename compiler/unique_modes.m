@@ -167,8 +167,8 @@ unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo, !IO) :-
 
 make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
     mode_info_get_instmap(ModeInfo0, FullInstMap0),
-    ( instmap.is_reachable(FullInstMap0) ->
-        instmap.vars_list(FullInstMap0, AllVars),
+    ( instmap_is_reachable(FullInstMap0) ->
+        instmap_vars_list(FullInstMap0, AllVars),
         select_nondet_live_vars(AllVars, ModeInfo0, NondetLiveVars),
         make_var_list_mostly_uniq(NondetLiveVars, ModeInfo0, ModeInfo)
     ;
@@ -210,7 +210,7 @@ select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
 select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_instmap(ModeInfo, InstMap0),
-    instmap.lookup_var(InstMap0, Var, Inst0),
+    instmap_lookup_var(InstMap0, Var, Inst0),
     mode_info_get_var_types(ModeInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     (
@@ -240,10 +240,10 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
         % Only variables which are `unique' need to be changed.
-        instmap.is_reachable(InstMap0),
-        instmap.vars_list(InstMap0, Vars),
+        instmap_is_reachable(InstMap0),
+        instmap_vars_list(InstMap0, Vars),
         list.member(Var, Vars),
-        instmap.lookup_var(InstMap0, Var, Inst0),
+        instmap_lookup_var(InstMap0, Var, Inst0),
         inst_expand(ModuleInfo0, Inst0, Inst1),
         ( Inst1 = ground(unique, _)
         ; Inst1 = bound(unique, _)
@@ -252,7 +252,7 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
     ->
         make_mostly_uniq_inst(Inst0, Inst, ModuleInfo0, ModuleInfo),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
-        instmap.set(Var, Inst, InstMap0, InstMap),
+        instmap_set_var(Var, Inst, InstMap0, InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
         true
@@ -440,7 +440,7 @@ unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
     mode_info_remove_live_vars(ThenVars, !ModeInfo),
     mode_info_unlock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapCond),
-    ( instmap.is_reachable(InstMapCond) ->
+    ( instmap_is_reachable(InstMapCond) ->
         unique_modes_check_goal(Then0, Then, !ModeInfo, !IO),
         mode_info_get_instmap(!.ModeInfo, InstMapThen)
     ;
@@ -498,11 +498,21 @@ unique_modes_check_goal_negation(SubGoal0, GoalInfo0, GoalExpr,
 
 unique_modes_check_goal_scope(Reason, SubGoal0, GoalExpr, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "scope", !ModeInfo, !IO),
-    ( Reason = from_ground_term(_) ->
-        mode_info_get_in_from_ground_term(!.ModeInfo, WasInFromGroundTerm),
-        mode_info_set_in_from_ground_term(in_from_ground_term, !ModeInfo),
-        unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
-        mode_info_set_in_from_ground_term(WasInFromGroundTerm, !ModeInfo)
+    ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        % The subgoal was left in its final state during (non-unique) mode
+        % checking. All we need to do here is to add the relevant information
+        % in the goal to ModeInfo.
+        SubGoal = SubGoal0,
+        SubGoal = hlds_goal(_, SubGoalInfo),
+        InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo),
+        ( instmap_delta_search_var(InstMapDelta, TermVar, TermVarInst) ->
+            mode_info_get_instmap(!.ModeInfo, InstMap0),
+            instmap_set_var(TermVar, TermVarInst, InstMap0, InstMap),
+            mode_info_set_instmap(InstMap, !ModeInfo)
+        ;
+            unexpected(this_file,
+                "unique_modes_check_goal_scope: term var not in InstMapDelta")
+        )
     ;
         unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo, !IO)
     ),
@@ -594,9 +604,9 @@ unique_modes_check_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr,
     ;
         Cases0 = [_ | _],
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        unique_modes_check_case_list(Cases0, Var, Cases, InstMapList,
+        unique_modes_check_case_list(Cases0, Var, Cases, InstMaps,
             !ModeInfo, !IO),
-        instmap_merge(NonLocals, InstMapList, merge_disj, !ModeInfo)
+        instmap_merge(NonLocals, InstMaps, merge_disj, !ModeInfo)
     ),
     GoalExpr = switch(Var, CanFail, Cases),
     mode_checkpoint(exit, "switch", !ModeInfo, !IO).
@@ -699,7 +709,7 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
         % mode error in callee for this mode
         WaitingVars = set.list_to_set(ArgVars),
         mode_info_get_instmap(!.ModeInfo, InstMap),
-        instmap.lookup_vars(ArgVars, InstMap, ArgInsts),
+        instmap_lookup_vars(InstMap, ArgVars, ArgInsts),
         mode_info_error(WaitingVars,
             mode_error_in_callee(ArgVars, ArgInsts, PredId, ProcId0,
                 ProcInfo ^ mode_errors),
@@ -828,7 +838,7 @@ unique_modes_check_conj_2(ConjType, Goal0, Goals0, [Goal | Goals], !ModeInfo,
     mode_info_remove_live_vars(NonLocals, !ModeInfo),
     unique_modes_check_goal(Goal0, Goal, !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    ( instmap.is_unreachable(InstMap) ->
+    ( instmap_is_unreachable(InstMap) ->
         % We should not mode-analyse the remaining goals, since they are
         % unreachable. Instead we optimize them away, so that later passes
         % won't complain about them not having unique mode information.
@@ -886,12 +896,13 @@ unique_modes_check_par_conj_0(NonLocalVarsBag, !ModeInfo) :-
         Multiplicity > 1
     ), NonLocalVarsList, SharedList),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    instmap.lookup_vars(SharedList, InstMap0, VarInsts),
+    instmap_lookup_vars(InstMap0, SharedList, VarInsts),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     make_shared_inst_list(VarInsts, SharedVarInsts,
         ModuleInfo0, ModuleInfo1),
     mode_info_set_module_info(ModuleInfo1, !ModeInfo),
-    instmap.set_vars(SharedList, SharedVarInsts, InstMap0, InstMap1),
+    instmap_set_vars_corresponding(SharedList, SharedVarInsts,
+        InstMap0, InstMap1),
     mode_info_set_instmap(InstMap1, !ModeInfo).
 
     % Just process each conjunct in turn. Because we have already done
@@ -979,7 +990,7 @@ unique_modes_check_case_list([Case0 | Cases0], Var, [Case | Cases],
     modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap1),
-    ( instmap.is_reachable(InstMap1) ->
+    ( instmap_is_reachable(InstMap1) ->
         unique_modes_check_goal(Goal0, Goal1, !ModeInfo, !IO)
     ;
         % We should not mode-analyse the goal, since it is unreachable.

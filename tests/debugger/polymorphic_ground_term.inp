@@ -1,0 +1,19 @@
+echo on
+register --quiet
+context none
+b make_maybe_ground_term
+c
+f
+p *
+c
+f
+p *
+c
+f
+p *
+b make_exist_ground_term
+c
+f
+p *
+delete *
+c

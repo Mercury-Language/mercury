@@ -362,21 +362,26 @@ apply_dg_to_goal(!Goal, CallerPredId, CallerProcId, PredIdSpecialized,
         !:Goal = hlds_goal(GoalExpr, GoalInfo),
         IsRecursiveCallInParallelConj = no
     ;
-        GoalExpr0 = negation(Goal0),
-        apply_dg_to_goal(Goal0, Goal, CallerPredId, CallerProcId,
+        GoalExpr0 = negation(SubGoal0),
+        apply_dg_to_goal(SubGoal0, SubGoal, CallerPredId, CallerProcId,
             PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
             Distance, IsInParallelConj, !MaybeGranularityVar,
             IsRecursiveCallInParallelConj),
-        GoalExpr = negation(Goal),
+        GoalExpr = negation(SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        GoalExpr0 = scope(Reason, Goal0),
-        apply_dg_to_goal(Goal0, Goal, CallerPredId, CallerProcId,
-            PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
-            Distance, IsInParallelConj, !MaybeGranularityVar,
-            IsRecursiveCallInParallelConj),
-        GoalExpr = scope(Reason, Goal),
-        !:Goal = hlds_goal(GoalExpr, GoalInfo)
+        GoalExpr0 = scope(Reason, SubGoal0),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % Return !.Goal as !:Goal.
+            IsRecursiveCallInParallelConj = no
+        ;
+            apply_dg_to_goal(SubGoal0, SubGoal, CallerPredId, CallerProcId,
+                PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
+                Distance, IsInParallelConj, !MaybeGranularityVar,
+                IsRecursiveCallInParallelConj),
+            GoalExpr = scope(Reason, SubGoal),
+            !:Goal = hlds_goal(GoalExpr, GoalInfo)
+        )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         apply_dg_to_goal(Cond0, Cond, CallerPredId, CallerProcId,
@@ -583,10 +588,10 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
 
                     % Var has instmap bound(Distance).
                     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-                    MerInst = bound(shared, [bound_functor(int_const(Distance),
-                        [])]),
-                    instmap_delta_insert(Var, MerInst, InstMapDelta0,
-                        InstMapDelta),
+                    MerInst = bound(shared,
+                        [bound_functor(int_const(Distance), [])]),
+                    instmap_delta_insert_var(Var, MerInst,
+                        InstMapDelta0, InstMapDelta),
                     goal_info_set_instmap_delta(InstMapDelta, GoalInfo0,
                         GoalInfo),
 
@@ -730,8 +735,8 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                         CallBuiltin, CallUnifyContext, CallSymName),
                     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
                     MerInst = ground(shared, none),
-                    instmap_delta_insert(Var, MerInst, InstMapDelta0,
-                        InstMapDelta),
+                    instmap_delta_insert_var(Var, MerInst,
+                        InstMapDelta0, InstMapDelta),
                     goal_info_set_instmap_delta(InstMapDelta, GoalInfo0,
                         GoalInfo),
                     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -908,17 +913,24 @@ update_original_predicate_goal(!Goal, CallerPredId, CallerProcId,
         GoalExpr = switch(Var, CanFail, Cases),
         !:Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        GoalExpr0 = negation(Goal0),
-        update_original_predicate_goal(Goal0, Goal, CallerPredId, CallerProcId,
-            PredIdSpecialized, SymNameSpecialized, !ProcInfo, Distance),
-        GoalExpr = negation(Goal),
+        GoalExpr0 = negation(SubGoal0),
+        update_original_predicate_goal(SubGoal0, SubGoal,
+            CallerPredId, CallerProcId, PredIdSpecialized, SymNameSpecialized,
+            !ProcInfo, Distance),
+        GoalExpr = negation(SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        GoalExpr0 = scope(Reason, Goal0),
-        update_original_predicate_goal(Goal0, Goal, CallerPredId, CallerProcId,
-            PredIdSpecialized, SymNameSpecialized, !ProcInfo, Distance),
-        GoalExpr = scope(Reason, Goal),
-        !:Goal = hlds_goal(GoalExpr, GoalInfo)
+        GoalExpr0 = scope(Reason, SubGoal0),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % Leave !Goal as it is.
+            true
+        ;
+            update_original_predicate_goal(SubGoal0, SubGoal,
+                CallerPredId, CallerProcId,
+                PredIdSpecialized, SymNameSpecialized, !ProcInfo, Distance),
+            GoalExpr = scope(Reason, SubGoal),
+            !:Goal = hlds_goal(GoalExpr, GoalInfo)
+        )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         update_original_predicate_goal(Cond0, Cond, CallerPredId, CallerProcId,
@@ -976,7 +988,7 @@ update_original_predicate_plain_call(!Goal, CallerPredId, CallerProcId,
         goal_info_set_nonlocals(NonLocals, CallInfo0, CallInfo1),
         InstMapDelta0 = goal_info_get_instmap_delta(CallInfo1),
         MerInst = ground(shared, none),
-        instmap_delta_insert(Var, MerInst, InstMapDelta0, InstMapDelta),
+        instmap_delta_insert_var(Var, MerInst, InstMapDelta0, InstMapDelta),
         goal_info_set_instmap_delta(InstMapDelta, CallInfo1, CallInfo),
         Call = hlds_goal(CallExpr, CallInfo),
 

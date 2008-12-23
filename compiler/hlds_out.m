@@ -1704,11 +1704,22 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
         write_indent(Indent, !IO),
         io.write_string("% commit(dont_force_pruning)\n", !IO)
     ;
-        Reason = from_ground_term(Var),
+        Reason = from_ground_term(Var, Kind),
         io.write_string("(\n", !IO),
         write_indent(Indent, !IO),
         io.write_string("% from_ground_term [", !IO),
         mercury_output_var(VarSet, AppendVarNums, Var, !IO),
+        io.write_string(", ", !IO),
+        (
+            Kind = from_ground_term_construct,
+            io.write_string("construct", !IO)
+        ;
+            Kind = from_ground_term_deconstruct,
+            io.write_string("deconstruct", !IO)
+        ;
+            Kind = from_ground_term_other,
+            io.write_string("other", !IO)
+        ),
         io.write_string("]\n", !IO)
     ;
         Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
@@ -3111,10 +3122,10 @@ write_cases(CasesList, Var, ModuleInfo, VarSet, AppendVarNums, Indent,
 write_some(_Vars, _VarSet, !IO).
 
 write_instmap(InstMap, VarSet, AppendVarNums, Indent, !IO) :-
-    ( instmap.is_unreachable(InstMap) ->
+    ( instmap_is_unreachable(InstMap) ->
         io.write_string("unreachable", !IO)
     ;
-        instmap.to_assoc_list(InstMap, AssocList),
+        instmap_to_assoc_list(InstMap, AssocList),
         write_instmap_2(AssocList, VarSet, AppendVarNums, Indent, !IO)
     ).
 

@@ -571,6 +571,7 @@
     ;       inline_simple_threshold
     ;       inline_vars_threshold
     ;       intermod_inline_simple_threshold
+    ;       from_ground_term_threshold
     ;       common_struct
     ;       common_struct_preds
     ;       common_goal
@@ -1416,6 +1417,7 @@ option_defaults_2(optimization_option, [
     intermod_inline_simple_threshold    -   int(5),
                                         % Has no effect until
                                         % --intermodule-optimization.
+    from_ground_term_threshold          -   int(5),
     common_struct                       -   bool(no),
     common_struct_preds                 -   string(""),
     common_goal                         -   bool(yes),
@@ -2202,7 +2204,9 @@ long_option("inline-call-cost",     inline_call_cost).
 long_option("inline-compound-threshold",    inline_compound_threshold).
 long_option("inline-simple-threshold",      inline_simple_threshold).
 long_option("intermod-inline-simple-threshold",
-                    intermod_inline_simple_threshold).
+                                    intermod_inline_simple_threshold).
+long_option("from-ground-term-threshold",
+                                    from_ground_term_threshold).
 long_option("inline-vars-threshold",        inline_vars_threshold).
 long_option("common-struct",        common_struct).
 long_option("common-struct-preds",  common_struct_preds).
@@ -4580,6 +4584,10 @@ options_help_hlds_hlds_optimization -->
         "\tcontaining more than <threshold> variables. Procedures",
         "\tcontaining large numbers of variables can cause",
         "\tslow compilation.",
+%       "--from-ground-term-threshold <n>",
+%       "\tWrap a from_ground_term scope around the expanded,",
+%       "\tsuperhomogeneous form of a ground term that involves at least.",
+%       "\tthe given number of function symbols.",
         "--no-common-struct",
         "\tDisable optimization of common term structures.",
 %       "--common-struct-preds <predids>",

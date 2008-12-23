@@ -2267,6 +2267,8 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, Decls, Statements, !Info) :-
         ml_gen_negation(SubGoal, CodeModel, Context, Decls, Statements, !Info)
     ;
         GoalExpr = scope(_, SubGoal),
+        % XXX We could special-case the handling of from_ground_term_construct
+        % scopes.
         ml_gen_commit(SubGoal, CodeModel, Context, Decls, Statements, !Info)
     ;
         GoalExpr = shorthand(_),

@@ -1257,7 +1257,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
     code_util.max_mentioned_abs_reg(AbsLocs, MaxMentionedReg),
     set_follow_vars(abs_follow_vars(FollowVarsMap, MaxMentionedReg + 1), !CI),
     get_instmap(!.CI, InstMap),
-    ( instmap.is_reachable(InstMap) ->
+    ( instmap_is_reachable(InstMap) ->
         VarLocs = assoc_list.map_values(key_abs_locn_to_lval, AbsVarLocs),
         place_vars(VarLocs, Code, !CI)
     ;

@@ -193,7 +193,7 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 
 det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
-    instmap.no_output_vars(InstMap, InstMapDelta, Vars,
+    instmap_delta_no_output_vars(InstMap, InstMapDelta, Vars,
         DetInfo ^ di_vartypes, ModuleInfo).
 
 %-----------------------------------------------------------------------------%

@@ -632,7 +632,7 @@ erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, Detism, InstMap,
         ( ScopeReason = exist_quant(_)
         ; ScopeReason = promise_purity(_, _)
         ; ScopeReason = barrier(_)
-        ; ScopeReason = from_ground_term(_)
+        ; ScopeReason = from_ground_term(_, _)
         ; ScopeReason = trace_goal(_, _, _, _, _)
             % Trace goals with run-time conditions are transformed into
             % if-then-else goals where the condition is a special foreign_proc
@@ -1005,7 +1005,7 @@ ground_var_in_instmap(Var, !InstMap) :-
     % not bound before the place where the success expression will be
     % inserted).  For our purposes it doesn't matter what insts these variables
     % have, other than not being free, so we just use `ground'.
-    instmap.set(Var, ground(shared, none), !InstMap).
+    instmap_set_var(Var, ground(shared, none), !InstMap).
 
 %-----------------------------------------------------------------------------%
 %

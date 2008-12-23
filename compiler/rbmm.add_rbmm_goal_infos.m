@@ -313,6 +313,8 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
         NameToRegionVarProc, !Expr, !Info) :-
     !.Expr = scope(Reason, Goal0), 
+    % XXX We should special-case the handling of from_ground_term_construct
+    % scopes.
     collect_rbmm_goal_info_goal(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
         NameToRegionVarProc, Goal0, Goal),

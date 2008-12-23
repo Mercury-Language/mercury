@@ -560,7 +560,8 @@ equal_reason(exist_quant(VarsA), exist_quant(VarsB), !Subst) :-
     equal_vars(VarsA, VarsB, !Subst).
 equal_reason(barrier(Removable), barrier(Removable), !Subst).
 equal_reason(commit(ForcePruning), commit(ForcePruning), !Subst).
-equal_reason(from_ground_term(VarA), from_ground_term(VarB), !Subst) :-
+equal_reason(from_ground_term(VarA, Kind), from_ground_term(VarB, Kind),
+        !Subst) :-
     equal_var(VarA, VarB, !Subst).
 
 :- pred equal_goals_shorthand(shorthand_goal_expr::in, shorthand_goal_expr::in,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -275,7 +275,7 @@ initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo,
         [ArgNo - Size | Sizes]) :-
     NextArgNo = ArgNo + 1,
     initial_sizes(ModuleInfo, InstMap, Args, NextArgNo, Sizes),
-    instmap.lookup_var(InstMap, Arg, ArgInst),
+    instmap_lookup_var(InstMap, Arg, ArgInst),
     pd_util.inst_size(ModuleInfo, ArgInst, Size).
 
 %-----------------------------------------------------------------------------%
@@ -291,7 +291,7 @@ get_matching_sizes(ModuleInfo, InstMap, Args,
     get_matching_sizes(ModuleInfo, InstMap, Args, OldSizes, NewSizes,
         OldTotal1, NewTotal1),
     list.index1_det(Args, ArgNo, Arg),
-    instmap.lookup_var(InstMap, Arg, ArgInst),
+    instmap_lookup_var(InstMap, Arg, ArgInst),
     pd_util.inst_size(ModuleInfo, ArgInst, NewSize),
     OldTotal = OldTotal1 + OldSize,
     NewTotal = NewTotal1 + NewSize.

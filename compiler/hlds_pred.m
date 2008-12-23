@@ -1206,8 +1206,8 @@ compute_arg_types_modes([], _, _, _, [], []).
 compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
         [Type | Types], [Mode | Modes]) :-
     map.lookup(VarTypes, Var, Type),
-    instmap.lookup_var(InstMap0, Var, Inst0),
-    instmap.lookup_var(InstMap, Var, Inst),
+    instmap_lookup_var(InstMap0, Var, Inst0),
+    instmap_lookup_var(InstMap, Var, Inst),
     Mode = (Inst0 -> Inst),
     compute_arg_types_modes(Vars, VarTypes, InstMap0, InstMap, Types, Modes).
 
@@ -2616,7 +2616,7 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
     proc_info_get_argmodes(ProcInfo, ArgModes),
     mode_list_get_initial_insts(ModuleInfo, ArgModes, InitialInsts),
     assoc_list.from_corresponding_lists(HeadVars, InitialInsts, InstAL),
-    instmap.from_assoc_list(InstAL, InstMap).
+    instmap_from_assoc_list(InstAL, InstMap).
 
 proc_info_declared_argmodes(ProcInfo, ArgModes) :-
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),

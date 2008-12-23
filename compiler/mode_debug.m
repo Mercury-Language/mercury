@@ -98,8 +98,8 @@ mode_checkpoint_write(Verbose, Minimal, Statistics, Port, Msg, !ModeInfo,
         maybe_report_stats(Statistics, !IO),
         maybe_flush_output(Statistics, !IO),
         mode_info_get_instmap(!.ModeInfo, InstMap),
-        ( instmap.is_reachable(InstMap) ->
-            instmap.to_assoc_list(InstMap, NewInsts),
+        ( instmap_is_reachable(InstMap) ->
+            instmap_to_assoc_list(InstMap, NewInsts),
             mode_info_get_last_checkpoint_insts(!.ModeInfo, OldInstMap),
             mode_info_get_varset(!.ModeInfo, VarSet),
             mode_info_get_instvarset(!.ModeInfo, InstVarSet),
@@ -122,7 +122,7 @@ mode_checkpoint_write(Verbose, Minimal, Statistics, Port, Msg, !ModeInfo,
 write_var_insts([], _, _, _, _, _, !IO).
 write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
         Verbose, Minimal, !IO) :-
-    instmap.lookup_var(OldInstMap, Var, OldInst),
+    instmap_lookup_var(OldInstMap, Var, OldInst),
     (
         (
             identical_insts(Inst, OldInst)

@@ -147,6 +147,8 @@ execution_paths_covered_compound_goal(ProcInfo, CompoundGoal, !ExecPaths) :-
         execution_paths_covered_goal(ProcInfo, Goal, !ExecPaths)
     ;
         Expr = scope(_, Goal),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         execution_paths_covered_goal(ProcInfo, Goal, !ExecPaths)
     ;
         Expr = if_then_else(_V, Cond, Then, Else),

@@ -645,10 +645,15 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         % XXX Check theory, but a negated goal can not create bindings,
         % hence it also can not create additional sharing.
     ;
-        GoalExpr = scope(_, SubGoal),
-        % XXX Check theory.
-        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose,
-            SubGoal, !FixpointTable, !DepProcs, !SharingAs, !Status)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % Ground terms cannot introduce sharing.
+            true
+        ;
+            % XXX Check theory.
+            analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose,
+                SubGoal, !FixpointTable, !DepProcs, !SharingAs, !Status)
+        )
     ;
         GoalExpr = if_then_else(_, IfGoal, ThenGoal, ElseGoal),
         analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose,

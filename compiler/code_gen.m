@@ -96,7 +96,7 @@ generate_goal(ContextModel, Goal, Code, !CI) :-
     HasSubGoals = goal_expr_has_subgoals(GoalExpr),
     pre_goal_update(GoalInfo, HasSubGoals, !CI),
     get_instmap(!.CI, InstMap),
-    ( instmap.is_reachable(InstMap) ->
+    ( instmap_is_reachable(InstMap) ->
         CodeModel = goal_info_get_code_model(GoalInfo),
         % Sanity check: code of some code models should occur
         % only in limited contexts.
@@ -314,7 +314,7 @@ generate_goals([], _, empty, !CI).
 generate_goals([Goal | Goals], CodeModel, Code, !CI) :-
     generate_goal(CodeModel, Goal, Code1, !CI),
     get_instmap(!.CI, Instmap),
-    ( instmap.is_unreachable(Instmap) ->
+    ( instmap_is_unreachable(Instmap) ->
         Code = Code1
     ;
         generate_goals(Goals, CodeModel, Code2, !CI),

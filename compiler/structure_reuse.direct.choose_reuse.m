@@ -634,6 +634,9 @@ compute_match_table_with_continuation(Background, DeadCellTable,
             !Table, !IO)
     ;
         GoalExpr = scope(_, Goal),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes. Since they construct ground terms statically, there is no
+        % uniqueness we can exploit,
         compute_match_table_with_continuation(Background, DeadCellTable,
             Goal, Cont, !Table, !IO)
     ;
@@ -869,6 +872,9 @@ find_match_in_goal_2(Background, Goal, !Match) :-
         GoalExpr = negation(_)
     ;
         GoalExpr = scope(_, ScopeGoal),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes. Since they construct ground terms statically, there is no
+        % uniqueness we can exploit,
         find_match_in_goal_2(Background, ScopeGoal, !Match)
     ;
         GoalExpr = shorthand(_),
@@ -1162,6 +1168,9 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = scope(A, ScopeGoal0),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes. Since they construct ground terms statically, there is no
+        % uniqueness we can exploit,
         annotate_reuses_in_goal(Background, Match, ScopeGoal0, ScopeGoal),
         GoalExpr = scope(A, ScopeGoal),
         GoalInfo = GoalInfo0
@@ -1435,6 +1444,9 @@ check_for_cell_caching_2(DeadCellTable, !Goal):-
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = scope(A, ScopeGoal0),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes. Since they construct ground terms statically, there is no
+        % uniqueness we can exploit,
         check_for_cell_caching_2(DeadCellTable, ScopeGoal0, ScopeGoal),
         GoalExpr = scope(A, ScopeGoal),
         GoalInfo = GoalInfo0

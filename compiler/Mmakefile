@@ -265,6 +265,9 @@ $(MC_PROG)_init.c: $(UTIL_DIR)/mkinit
 check:	$(MC_PROG).check
 
 .PHONY: ints 
+int3s:	$(MC_PROG).int3s
+
+.PHONY: ints 
 ints:	$(MC_PROG).ints
 
 #-----------------------------------------------------------------------------#

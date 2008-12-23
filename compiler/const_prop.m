@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -83,7 +83,7 @@ evaluate_call(ModuleName, PredName, ProcIdInt, Args, VarTypes, InstMap,
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, cross_compiling, CrossCompiling),
     LookupArgs = (func(Var) = arg_hlds_info(Var, Type, Inst) :-
-        instmap.lookup_var(InstMap, Var, Inst),
+        instmap_lookup_var(InstMap, Var, Inst),
         Type = VarTypes ^ det_elem(Var)
     ),
     ArgHldsInfos = list.map(LookupArgs, Args),
@@ -561,7 +561,8 @@ eval_unify(X, Y, Result) :-
 make_assignment_goal(OutputArg, InputArg, Goal, !GoalInfo) :-
     make_assignment(OutputArg, InputArg, Goal),
     Delta0 = goal_info_get_instmap_delta(!.GoalInfo),
-    instmap_delta_set(OutputArg ^ arg_var, InputArg ^ arg_inst, Delta0, Delta),
+    instmap_delta_set_var(OutputArg ^ arg_var, InputArg ^ arg_inst,
+        Delta0, Delta),
     goal_info_set_instmap_delta(Delta, !GoalInfo),
     goal_info_set_determinism(detism_det, !GoalInfo).
 
@@ -571,8 +572,8 @@ make_assignment_goal(OutputArg, InputArg, Goal, !GoalInfo) :-
 make_construction_goal(OutputArg, Cons, Goal, !GoalInfo) :-
     make_construction(OutputArg, Cons, Goal),
     Delta0 = goal_info_get_instmap_delta(!.GoalInfo),
-    instmap_delta_set(OutputArg ^ arg_var, bound(unique,
-        [bound_functor(Cons, [])]), Delta0, Delta),
+    instmap_delta_set_var(OutputArg ^ arg_var,
+        bound(unique, [bound_functor(Cons, [])]), Delta0, Delta),
     goal_info_set_instmap_delta(Delta, !GoalInfo),
     goal_info_set_determinism(detism_det, !GoalInfo).
 

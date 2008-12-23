@@ -355,8 +355,13 @@ is_flat_simple_goal(hlds_goal(GoalExpr, _)) :-
         GoalExpr = negation(Goal),
         is_flat_simple_goal(Goal)
     ;
-        GoalExpr = scope(_, Goal),
-        is_flat_simple_goal(Goal)
+        GoalExpr = scope(Reason, Goal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes are flat and simple by construction.
+            true
+        ;
+            is_flat_simple_goal(Goal)
+        )
     ;
         GoalExpr = plain_call(_, _, _, inline_builtin, _, _)
     ;
@@ -551,8 +556,8 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
 :- pred inlining_in_goal(hlds_goal::in, hlds_goal::out,
     inline_info::in, inline_info::out) is det.
 
-inlining_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo), !Info) :-
+inlining_in_goal(Goal0, Goal, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
         inlining_in_call(PredId, ProcId, ArgVars, Builtin,
@@ -599,14 +604,21 @@ inlining_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        inlining_in_goal(SubGoal0, SubGoal, !Info),
-        GoalExpr = scope(Reason, SubGoal),
-        GoalInfo = GoalInfo0
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % The scope has no calls to inline.
+            GoalExpr = GoalExpr0,
+            GoalInfo = GoalInfo0
+        ;
+            inlining_in_goal(SubGoal0, SubGoal, !Info),
+            GoalExpr = scope(Reason, SubGoal),
+            GoalInfo = GoalInfo0
+        )
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
         unexpected(this_file, "inlining_in_goal: unexpected shorthand")
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred inlining_in_call(pred_id::in, proc_id::in,
     list(prog_var)::in, builtin_state::in, maybe(call_unify_context)::in,

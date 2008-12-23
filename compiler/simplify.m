@@ -791,8 +791,13 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
     (
         simplify_do_elim_removable_scopes(!.Info),
         Goal2 = hlds_goal(scope(Reason2, SomeGoal2), _GoalInfo2),
-        ( Reason2 = barrier(removable)
-        ; Reason2 = from_ground_term(_)
+        (
+            Reason2 = barrier(removable)
+        ;
+            Reason2 = from_ground_term(_, Kind),
+            ( Kind = from_ground_term_deconstruct
+            ; Kind = from_ground_term_other
+            )
         )
     ->
         Goal3 = SomeGoal2
@@ -801,7 +806,7 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
     ),
     simplify_info_maybe_clear_structs(before, Goal3, !Info),
     Goal3 = hlds_goal(GoalExpr3, GoalInfo3),
-    simplify_goal_2(GoalExpr3, GoalExpr, GoalInfo3, GoalInfo4, !Info),
+    simplify_goal_expr(GoalExpr3, GoalExpr, GoalInfo3, GoalInfo4, !Info),
     simplify_info_maybe_clear_structs(after, hlds_goal(GoalExpr, GoalInfo4),
         !Info),
     simplify_info_set_inside_duplicated_for_switch(InsideDuplForSwitch, !Info),
@@ -862,53 +867,53 @@ goal_is_call_to_builtin_false(hlds_goal(GoalExpr, _)) :-
 :- inst goal_expr_foreign_proc == bound(call_foreign_proc(ground, ground,
     ground, ground, ground, ground, ground)).
 
-:- pred simplify_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
+:- pred simplify_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2(!GoalExpr, !GoalInfo, !Info) :-
+simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
     (
         !.GoalExpr = conj(ConjType, Goals),
         (
             ConjType = plain_conj,
-            simplify_goal_2_plain_conj(Goals, !:GoalExpr, !GoalInfo, !Info)
+            simplify_goal_plain_conj(Goals, !:GoalExpr, !GoalInfo, !Info)
         ;
             ConjType = parallel_conj,
-            simplify_goal_2_parallel_conj(Goals, !:GoalExpr, !GoalInfo, !Info)
+            simplify_goal_parallel_conj(Goals, !:GoalExpr, !GoalInfo, !Info)
         )
     ;
         !.GoalExpr = disj(_),
-        simplify_goal_2_disj(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_disj(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = switch(_, _, _),
-        simplify_goal_2_switch(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_switch(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = generic_call(_, _, _, _),
-        simplify_goal_2_generic_call(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_generic_call(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = plain_call(_, _, _, _, _, _),
-        simplify_goal_2_plain_call(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_plain_call(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = unify(_, _, _, _, _),
-        simplify_goal_2_unify(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_unify(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = if_then_else(_, _, _, _),
-        simplify_goal_2_ite(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_ite(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = negation(_),
-        simplify_goal_2_neg(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_neg(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = scope(_, _),
-        simplify_goal_2_scope(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_scope(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        simplify_goal_2_foreign_proc(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_foreign_proc(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal, OrElseGoals),
-            simplify_goal_2_atomic_goal(GoalType, Outer, Inner,
+            simplify_goal_atomic_goal(GoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal, OrElseGoals, !:GoalExpr, !GoalInfo,
                 !Info)
         ;
@@ -918,11 +923,11 @@ simplify_goal_2(!GoalExpr, !GoalInfo, !Info) :-
         )
     ).
 
-:- pred simplify_goal_2_plain_conj(list(hlds_goal)::in, hlds_goal_expr::out,
+:- pred simplify_goal_plain_conj(list(hlds_goal)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     simplify_info_get_instmap(!.Info, InstMap0),
     excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info),
     simplify_conj(Goals1, [], Goals, GoalInfo0, !Info),
@@ -959,11 +964,11 @@ simplify_goal_2_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         GoalInfo = GoalInfo0
     ).
 
-:- pred simplify_goal_2_parallel_conj(list(hlds_goal)::in, hlds_goal_expr::out,
+:- pred simplify_goal_parallel_conj(list(hlds_goal)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     (
         Goals0 = [],
         Context = goal_info_get_context(GoalInfo0),
@@ -982,12 +987,12 @@ simplify_goal_2_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         simplify_info_set_has_parallel_conj(yes, !Info)
     ).
 
-:- pred simplify_goal_2_disj(
+:- pred simplify_goal_disj(
     hlds_goal_expr::in(goal_expr_disj), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     GoalExpr0 = disj(Disjuncts0),
     simplify_info_get_instmap(!.Info, InstMap0),
     simplify_disj(Disjuncts0, [], Disjuncts, [], InstMaps, !.Info, !Info),
@@ -1034,16 +1039,16 @@ simplify_goal_2_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         true
     ).
 
-:- pred simplify_goal_2_switch(
+:- pred simplify_goal_switch(
     hlds_goal_expr::in(goal_expr_switch), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     GoalExpr0 = switch(Var, SwitchCanFail0, Cases0),
     simplify_info_get_instmap(!.Info, InstMap0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
-    instmap.lookup_var(InstMap0, Var, VarInst),
+    instmap_lookup_var(InstMap0, Var, VarInst),
     ( inst_is_bound_to_functors(ModuleInfo0, VarInst, Functors) ->
         functors_to_cons_ids(Functors, ConsIds0),
         list.sort(ConsIds0, ConsIds),
@@ -1053,8 +1058,10 @@ simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         Cases1 = Cases0,
         MaybeConsIds = no
     ),
-    simplify_switch(Var, Cases1, [], Cases, [], InstMaps,
+    simplify_switch(Var, Cases1, [], RevCases, [], InstMaps,
+        not_seen_non_ground_term, SeenNonGroundTerm,
         SwitchCanFail0, SwitchCanFail, !.Info, !Info),
+    list.reverse(RevCases, Cases),
     (
         Cases = [],
         % An empty switch always fails.
@@ -1124,7 +1131,11 @@ simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     ;
         Cases = [_, _ | _],
         GoalExpr = switch(Var, SwitchCanFail, Cases),
-        ( goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal) ->
+        (
+            ( goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal)
+            ; SeenNonGroundTerm = not_seen_non_ground_term
+            )
+        ->
             % Recomputing the instmap delta would take very long and is
             % very unlikely to get any better precision.
             GoalInfo = GoalInfo0
@@ -1154,12 +1165,12 @@ simplify_goal_2_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         true
     ).
 
-:- pred simplify_goal_2_generic_call(
+:- pred simplify_goal_generic_call(
     hlds_goal_expr::in(goal_expr_generic_call), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo, !Info) :-
+simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo, !Info) :-
     GoalExpr0 = generic_call(GenericCall, Args, Modes, Det),
     (
         GenericCall = higher_order(Closure, Purity, _, _),
@@ -1196,12 +1207,12 @@ simplify_goal_2_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo, !Info) :-
         GoalExpr = GoalExpr0
     ).
 
-:- pred simplify_goal_2_plain_call(
+:- pred simplify_goal_plain_call(
     hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     GoalExpr0 = plain_call(PredId, ProcId, Args, IsBuiltin, _, _),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1232,12 +1243,12 @@ simplify_goal_2_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
     ).
 
-:- pred simplify_goal_2_unify(
+:- pred simplify_goal_unify(
     hlds_goal_expr::in(goal_expr_unify), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     GoalExpr0 = unify(LT0, RT0, M, U0, C),
     (
         RT0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
@@ -1309,12 +1320,12 @@ simplify_goal_2_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         )
     ).
 
-:- pred simplify_goal_2_ite(
+:- pred simplify_goal_ite(
     hlds_goal_expr::in(goal_expr_ite), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     % (A -> B ; C) is logically equivalent to (A, B ; ~A, C).
     % If the determinism of A means that one of these disjuncts
     % cannot succeed, then we replace the if-then-else with the
@@ -1443,17 +1454,17 @@ simplify_goal_2_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             ; CondSolns0 = at_most_many
             ; CondSolns0 = at_most_many_cc
             ),
-            simplify_goal_2_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
+            simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
                 GoalInfo0, GoalInfo, !Info)
         )
     ).
 
-:- pred simplify_goal_2_ordinary_ite(list(prog_var)::in,
+:- pred simplify_goal_ordinary_ite(list(prog_var)::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
+simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
         GoalInfo0, GoalInfo, !Info) :-
     ( Else0 = hlds_goal(disj([]), _) ->
         % (A -> C ; fail) is equivalent to (A, C)
@@ -1512,7 +1523,7 @@ simplify_goal_2_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
             )
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
-            simplify_goal_2(IfThenElse, GoalExpr, GoalInfo1, GoalInfo,
+            simplify_goal_expr(IfThenElse, GoalExpr, GoalInfo1, GoalInfo,
                 !Info)
         ;
             simplify_info_get_module_info(!.Info, ModuleInfo),
@@ -1711,12 +1722,12 @@ can_switch_on_type(TypeBody) = CanSwitchOnType :-
         unexpected(this_file, "warn_switch_for_ite_cond: solver type")
     ).
 
-:- pred simplify_goal_2_neg(
+:- pred simplify_goal_neg(
     hlds_goal_expr::in(goal_expr_neg), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     GoalExpr0 = negation(SubGoal0),
     % Can't use calls or unifications seen within a negation,
     % since non-local variables may not be bound within the negation.
@@ -1775,169 +1786,198 @@ simplify_goal_2_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         GoalInfo = GoalInfo0
     ).
 
-:- pred simplify_goal_2_scope(
+:- pred simplify_goal_scope(
     hlds_goal_expr::in(goal_expr_scope), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     GoalExpr0 = scope(Reason0, SubGoal0),
-    simplify_info_get_common_info(!.Info, Common),
-    simplify_goal(SubGoal0, SubGoal, !Info),
-    nested_scopes(Reason0, SubGoal, GoalInfo0, Goal1),
-    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
-    ( GoalExpr1 = scope(FinalReason, FinalSubGoal) ->
+    ( Reason0 = from_ground_term(TermVar, from_ground_term_construct) ->
+        simplify_info_get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, common_struct, CommonStruct),
         (
-            FinalReason = promise_purity(_, _),
-            Goal = Goal1,
-            KeepCommon = yes
-        ;
-            FinalReason = commit(_),
-            Goal = Goal1,
-            KeepCommon = no
-        ;
-            FinalReason = from_ground_term(_),
-            Goal = Goal1,
-            KeepCommon = yes
-        ;
-            FinalReason = barrier(removable),
-            Goal = Goal1,
-            KeepCommon = yes
-        ;
-            FinalReason = barrier(not_removable),
-            Goal = Goal1,
-            KeepCommon = no
-        ;
-            FinalReason = exist_quant(_),
-            Goal = Goal1,
-            KeepCommon = no
-        ;
-            FinalReason = promise_solutions(_, _),
-            Goal = Goal1,
-            KeepCommon = no
-        ;
-            FinalReason = trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr,
-                _, _, _),
-            ( simplify_do_after_front_end(!.Info) ->
-                (
-                    MaybeCompiletimeExpr = yes(CompiletimeExpr),
-                    KeepGoal = evaluate_compile_time_condition(CompiletimeExpr,
-                        !.Info)
-                ;
-                    MaybeCompiletimeExpr = no,
-                    % A missing compile time condition means that the
-                    % trace goal is always compiled in.
-                    KeepGoal = yes
-                ),
-                (
-                    KeepGoal = no,
-                    Context = goal_info_get_context(GoalInfo0),
-                    Goal = true_goal_with_context(Context)
-                ;
-                    KeepGoal = yes,
-                    MaybeRuntimeExpr = no,
-                    % We keep the scope as a marker of the existence of the
-                    % trace scope.
-                    Goal = Goal1
-                ;
-                    KeepGoal = yes,
-                    MaybeRuntimeExpr = yes(RuntimeExpr),
-                    % We want to execute FinalSubGoal if and only if
-                    % RuntimeExpr turns out to be true. We could have the
-                    % code generators treat this kind of scope as if it were
-                    % an if-then-else, but that would require duplicating
-                    % most of the code required to handle code generation
-                    % for if-then-elses. Instead, we transform the scope
-                    % into an if-then-else, thus reducing the problem to one
-                    % that has already been solved.
-                    %
-                    % The evaluation of the runtime condition is done as
-                    % a special kind of foreign_proc, i.e. one that has
-                    % yes(RuntimeExpr) as its foreign_trace_cond field.
-                    % This kind of foreign_proc also acts as the marker
-                    % for the fact that the then-part originated as the goal
-                    % of a trace scope.
-                    simplify_info_get_module_info(!.Info, ModuleInfo),
-                    module_info_get_globals(ModuleInfo, Globals),
-                    globals.get_target(Globals, Target),
-                    PrivateBuiltin = mercury_private_builtin_module,
-                    EvalPredName = "trace_evaluate_runtime_condition",
-                    some [!EvalAttributes] (
-                        (
-                            Target = target_c,
-                            !:EvalAttributes = default_attributes(lang_c)
-                        ;
-                            Target = target_erlang,
-                            !:EvalAttributes = default_attributes(lang_erlang)
-                        ;
-                            ( Target = target_il
-                            ; Target = target_java
-                            ; Target = target_asm
-                            ; Target = target_x86_64
-                            ),
-                            sorry(this_file, "NYI: runtime trace conditions "
-                                ++ "in languages other than C")
-                        ),
-                        set_may_call_mercury(proc_will_not_call_mercury,
-                            !EvalAttributes),
-                        set_thread_safe(proc_thread_safe, !EvalAttributes),
-                        set_purity(purity_semipure, !EvalAttributes),
-                        set_terminates(proc_terminates, !EvalAttributes),
-                        set_may_throw_exception(proc_will_not_throw_exception,
-                            !EvalAttributes),
-                        set_may_modify_trail(proc_will_not_modify_trail,
-                            !EvalAttributes),
-                        set_may_call_mm_tabled(will_not_call_mm_tabled,
-                            !EvalAttributes),
-                        EvalAttributes = !.EvalAttributes
-                    ),
-                    EvalFeatures = [],
-                    % The code field of the call_foreign_proc goal is ignored
-                    % when its foreign_trace_cond field is set to `yes', as
-                    % we do here.
-                    EvalCode = "",
-                    EvalInstMapDeltaSrc = [],
-                    Context = goal_info_get_context(GoalInfo0),
-                    generate_foreign_proc(PrivateBuiltin, EvalPredName,
-                        pf_predicate, only_mode, detism_semi, purity_semipure,
-                        EvalAttributes, [], [], yes(RuntimeExpr), EvalCode,
-                        EvalFeatures, EvalInstMapDeltaSrc, ModuleInfo,
-                        Context, CondGoal),
-                    Goal = hlds_goal(
-                        if_then_else([], CondGoal, FinalSubGoal, true_goal),
-                        GoalInfo1)
-                )
-            ;
-                Goal = Goal1
-            ),
-            KeepCommon = no
-        ),
-        (
-            KeepCommon = yes
-        ;
-            KeepCommon = no,
-            % Replacing calls, constructions or deconstructions outside
-            % a commit with references to variables created inside the commit
-            % would increase the set of output variables of the goal inside
-            % the commit. This is not allowed because it could change the
-            % determinism.
+            CommonStruct = yes,
+            % Traversing the construction unifications inside the scope would
+            % allow common.m to
             %
-            % Thus we need to reset the common_info to what it was before
-            % processing the goal inside the commit, to ensure that we don't
-            % make any such replacements when processing the rest of the goal.
-            simplify_info_set_common_info(Common, !Info)
+            % - replace some of those constructions with references to other
+            %   variables that were constructed the same way, and
+            % - remember those constructions, so that other constructions
+            %   outside the scope could be replaced with references to
+            %   variables built inside the scope.
+            %
+            % Since unifying a variable with a statically constructed ground
+            % term yields code that is at least as fast as unifying that
+            % variable with another variable that is already bound to that
+            % term, and probably faster because it does not require saving the
+            % other variable across calls, neither of these actions would be
+            % an advantage. On the other hand, both would complicate the
+            % required treatment of from_ground_term_construct scopes in
+            % liveness.m, slowing down the liveness pass, as well as this pass.
+            % Since the code inside the scope is already as simple as
+            % it can be, we leave it alone.
+            GoalExpr = GoalExpr0,
+            GoalInfo = GoalInfo0
+        ;
+            CommonStruct = no,
+            % Looking inside the scope may allow us to reduce the number of
+            % memory cells we may need to allocate dynamically. This
+            % improvement in the generated code trumps the cost in compile
+            % time. However, we need to update the reason, since leaving it
+            % as from_ground_term_construct would tell liveness.m that the
+            % code inside the scope hasn't had either of the actions mentioned
+            % in the comment above applied to it, and in this case, we cannot
+            % guarantee that.
+            simplify_goal(SubGoal0, SubGoal, !Info),
+            NewReason = from_ground_term(TermVar, from_ground_term_other),
+            GoalExpr = scope(NewReason, SubGoal),
+            GoalInfo = GoalInfo0
         )
     ;
-        Goal = Goal1
-    ),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
+        simplify_info_get_common_info(!.Info, Common),
+        simplify_goal(SubGoal0, SubGoal, !Info),
+        nested_scopes(Reason0, SubGoal, GoalInfo0, Goal1),
+        Goal1 = hlds_goal(GoalExpr1, _GoalInfo1),
+        ( GoalExpr1 = scope(FinalReason, FinalSubGoal) ->
+            (
+                ( FinalReason = promise_purity(_, _)
+                ; FinalReason = from_ground_term(_, _)
+                ; FinalReason = barrier(removable)
+                ),
+                Goal = Goal1
+            ;
+                ( FinalReason = commit(_)
+                ; FinalReason = exist_quant(_)
+                ; FinalReason = promise_solutions(_, _)
+                ; FinalReason = barrier(not_removable)
+                ),
+                Goal = Goal1,
+                % Replacing calls, constructions or deconstructions outside
+                % a commit with references to variables created inside the
+                % commit would increase the set of output variables of the goal
+                % inside the commit. This is not allowed because it could
+                % change the determinism.
+                %
+                % Thus we need to reset the common_info to what it was before
+                % processing the goal inside the commit, to ensure that we
+                % don't make any such replacements when processing the rest
+                % of the goal.
+                simplify_info_set_common_info(Common, !Info)
+            ;
+                FinalReason = trace_goal(MaybeCompiletimeExpr,
+                    MaybeRuntimeExpr, _, _, _),
+                ( simplify_do_after_front_end(!.Info) ->
+                    simplify_goal_trace_goal(MaybeCompiletimeExpr,
+                        MaybeRuntimeExpr, FinalSubGoal, Goal1, Goal, !Info)
+                ;
+                    Goal = Goal1
+                ),
+                simplify_info_set_common_info(Common, !Info)
+            )
+        ;
+            Goal = Goal1
+        ),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ).
 
-:- pred simplify_goal_2_foreign_proc(
+:- pred simplify_goal_trace_goal(maybe(trace_expr(trace_compiletime))::in,
+    maybe(trace_expr(trace_runtime))::in, hlds_goal::in, hlds_goal::in,
+    hlds_goal::out, simplify_info::in, simplify_info::out) is det.
+
+simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
+        Goal0, Goal, !Info) :-
+    (
+        MaybeCompiletimeExpr = yes(CompiletimeExpr),
+        KeepGoal = evaluate_compile_time_condition(CompiletimeExpr,
+            !.Info)
+    ;
+        MaybeCompiletimeExpr = no,
+        % A missing compile time condition means that the
+        % trace goal is always compiled in.
+        KeepGoal = yes
+    ),
+    (
+        KeepGoal = no,
+        Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
+        Context = goal_info_get_context(GoalInfo0),
+        Goal = true_goal_with_context(Context)
+    ;
+        KeepGoal = yes,
+        MaybeRuntimeExpr = no,
+        % We keep the scope as a marker of the existence of the
+        % trace scope.
+        Goal = Goal0
+    ;
+        KeepGoal = yes,
+        MaybeRuntimeExpr = yes(RuntimeExpr),
+        % We want to execute SubGoal if and only if RuntimeExpr turns out
+        % to be true. We could have the code generators treat this kind of
+        % scope as if it were an if-then-else, but that would require
+        % duplicating most of the code required to handle code generation
+        % for if-then-elses. Instead, we transform the scope into an
+        % if-then-else, thus reducing the problem to one that has already
+        % been solved.
+        %
+        % The evaluation of the runtime condition is done as a special kind
+        % of foreign_proc, i.e. one that has yes(RuntimeExpr) as its
+        % foreign_trace_cond field. This kind of foreign_proc also acts
+        % as the marker for the fact that the then-part originated as the goal
+        % of a trace scope.
+        simplify_info_get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_target(Globals, Target),
+        PrivateBuiltin = mercury_private_builtin_module,
+        EvalPredName = "trace_evaluate_runtime_condition",
+        some [!EvalAttributes] (
+            (
+                Target = target_c,
+                !:EvalAttributes = default_attributes(lang_c)
+            ;
+                Target = target_erlang,
+                !:EvalAttributes = default_attributes(lang_erlang)
+            ;
+                ( Target = target_il
+                ; Target = target_java
+                ; Target = target_asm
+                ; Target = target_x86_64
+                ),
+                sorry(this_file, "NYI: runtime trace conditions "
+                    ++ "in languages other than C")
+            ),
+            set_may_call_mercury(proc_will_not_call_mercury, !EvalAttributes),
+            set_thread_safe(proc_thread_safe, !EvalAttributes),
+            set_purity(purity_semipure, !EvalAttributes),
+            set_terminates(proc_terminates, !EvalAttributes),
+            set_may_throw_exception(proc_will_not_throw_exception,
+                !EvalAttributes),
+            set_may_modify_trail(proc_will_not_modify_trail, !EvalAttributes),
+            set_may_call_mm_tabled(will_not_call_mm_tabled, !EvalAttributes),
+            EvalAttributes = !.EvalAttributes
+        ),
+        EvalFeatures = [],
+        % The code field of the call_foreign_proc goal is ignored when
+        % its foreign_trace_cond field is set to `yes', as we do here.
+        EvalCode = "",
+        EvalInstMapDeltaSrc = [],
+        Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
+        Context = goal_info_get_context(GoalInfo0),
+        generate_foreign_proc(PrivateBuiltin, EvalPredName,
+            pf_predicate, only_mode, detism_semi, purity_semipure,
+            EvalAttributes, [], [], yes(RuntimeExpr), EvalCode,
+            EvalFeatures, EvalInstMapDeltaSrc, ModuleInfo,
+            Context, CondGoal),
+        GoalExpr = if_then_else([], CondGoal, SubGoal, true_goal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ).
+
+:- pred simplify_goal_foreign_proc(
     hlds_goal_expr::in(goal_expr_foreign_proc), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo, !Info) :-
+simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo, !Info) :-
     GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
         Args0, ExtraArgs0, MaybeTraceRuntimeCond, Impl),
     (
@@ -2037,13 +2077,13 @@ evaluate_compile_time_condition(trace_op(Op, ExprA, ExprB), Info) = Result :-
         Result = bool.and(ResultA, ResultB)
     ).
 
-:- pred simplify_goal_2_atomic_goal(atomic_goal_type::in,
+:- pred simplify_goal_atomic_goal(atomic_goal_type::in,
     atomic_interface_vars::in, atomic_interface_vars::in,
     maybe(list(prog_var))::in, hlds_goal::in, list(hlds_goal)::in,
     hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal_2_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+simplify_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
         MainGoal0, OrElseGoals0, GoalExpr, !GoalInfo, !Info) :-
     % XXX STM: At the moment we do not simplify the inner goals as there is
     % a chance that the outer and inner variables will change which will
@@ -2088,8 +2128,8 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     Args    = [TI, R, X, Y],
 
     simplify_info_get_instmap(!.Info, InstMap),
-    instmap.lookup_var(InstMap, X, XInst),
-    instmap.lookup_var(InstMap, Y, YInst),
+    instmap_lookup_var(InstMap, X, XInst),
+    instmap_lookup_var(InstMap, Y, YInst),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     ModeNo =
         ( if inst_is_unique(ModuleInfo, XInst) then
@@ -2508,7 +2548,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             "builtin_unify_pred", pf_predicate, mode_no(0), detism_semi,
             purity_pure, [XVar, YVar], [], [], ModuleInfo, GContext,
             hlds_goal(Call0, _)),
-        simplify_goal_2(Call0, Call1, GoalInfo0, GoalInfo, !Info),
+        simplify_goal_expr(Call0, Call1, GoalInfo0, GoalInfo, !Info),
         Call = hlds_goal(Call1, GoalInfo),
         ExtraGoals = []
     ;
@@ -2568,7 +2608,8 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             make_type_info_vars(TypeArgs, TypeInfoVars, ExtraGoals, !Info),
             call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId,
                 ModuleInfo, Context, GoalInfo0, Call0, CallGoalInfo0),
-            simplify_goal_2(Call0, Call1, CallGoalInfo0, CallGoalInfo1, !Info),
+            simplify_goal_expr(Call0, Call1, CallGoalInfo0, CallGoalInfo1,
+                !Info),
             Call = hlds_goal(Call1, CallGoalInfo1)
         )
     ),
@@ -2766,14 +2807,6 @@ nested_scopes_2(Reason0, Reason, Goal0, Goal) :-
         ->
             Reason2 = exist_quant(Vars0 ++ Vars1)
         ;
-            Reason0 = from_ground_term(_)
-        ->
-            Reason2 = Reason1
-        ;
-            Reason1 = from_ground_term(_)
-        ->
-            Reason2 = Reason0
-        ;
             Reason0 = barrier(Removable0),
             Reason1 = barrier(Removable1)
         ->
@@ -2865,7 +2898,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
             % Delete unreachable goals.
             (
                 simplify_info_get_instmap(!.Info, InstMap1),
-                instmap.is_unreachable(InstMap1)
+                instmap_is_unreachable(InstMap1)
             ;
                 Goal1 = hlds_goal(_, GoalInfo1),
                 Detism1 = goal_info_get_determinism(GoalInfo1),
@@ -3061,15 +3094,20 @@ renaming_transitive_closure(VarRenaming0, VarRenaming) :-
 
 %-----------------------------------------------------------------------------%
 
+:- type seen_non_ground_term
+    --->    not_seen_non_ground_term
+    ;       seen_non_ground_term.
+
 :- pred simplify_switch(prog_var::in, list(case)::in, list(case)::in,
     list(case)::out, list(instmap_delta)::in, list(instmap_delta)::out,
+    seen_non_ground_term::in, seen_non_ground_term::out,
     can_fail::in, can_fail::out, simplify_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_switch(_, [], RevCases, Cases, !InstMaps, !CanFail, _, !Info) :-
-    list.reverse(RevCases, Cases).
-simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
-        !CanFail, Info0, !Info) :-
+simplify_switch(_, [], !RevCases, !InstMaps, !SeenNonGroundTerm, !CanFail,
+        _, !Info).
+simplify_switch(Var, [Case0 | Cases0], !RevCases, !InstMaps,
+        !SeenNonGroundTerm, !CanFail, Info0, !Info) :-
     simplify_info_get_instmap(Info0, InstMap0),
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
@@ -3081,13 +3119,22 @@ simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
     simplify_info_set_instmap(InstMap1, !Info),
     simplify_goal(Goal0, Goal, !Info),
 
-        % Remove failing branches.
+    % Remove failing branches.
     ( Goal = hlds_goal(disj([]), _) ->
-        RevCases = RevCases0,
+        % We don't add the case to RevCases.
         !:CanFail = can_fail
     ;
         Case = case(MainConsId, OtherConsIds, Goal),
-        Goal = hlds_goal(_, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        (
+            GoalExpr = scope(Reason, _),
+            Reason = from_ground_term(_, from_ground_term_construct)
+        ->
+            % Leave SeenNonGroundTerm as it is.
+            true
+        ;
+            !:SeenNonGroundTerm = seen_non_ground_term
+        ),
 
         % Make sure the switched on variable appears in the instmap delta.
         % This avoids an abort in merge_instmap_delta if another branch
@@ -3102,12 +3149,12 @@ simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
         simplify_info_set_module_info(ModuleInfo, !Info),
 
         !:InstMaps = [InstMapDelta | !.InstMaps],
-        RevCases = [Case | RevCases0]
+        !:RevCases = [Case | !.RevCases]
     ),
 
     simplify_info_post_branch_update(Info0, !Info),
-    simplify_switch(Var, Cases0, RevCases, Cases, !InstMaps, !CanFail, Info0,
-        !Info).
+    simplify_switch(Var, Cases0, !RevCases, !InstMaps, !SeenNonGroundTerm,
+        !CanFail, Info0, !Info).
 
     % Create a semidet unification at the start of a singleton case
     % in a can_fail switch.
@@ -3129,7 +3176,7 @@ create_test_unification(Var, ConsId, ConsArity,
     simplify_info_set_varset(VarSet, !Info),
     simplify_info_set_var_types(VarTypes, !Info),
     simplify_info_get_instmap(!.Info, InstMap),
-    instmap.lookup_var(InstMap, Var, Inst0),
+    instmap_lookup_var(InstMap, Var, Inst0),
     (
         inst_expand(ModuleInfo, Inst0, Inst1),
         get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)
@@ -3384,7 +3431,12 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        goal_contains_trace(SubGoal0, SubGoal, ContainsTrace),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            SubGoal = SubGoal0,
+            ContainsTrace = contains_no_trace_goal
+        ;
+            goal_contains_trace(SubGoal0, SubGoal, ContainsTrace)
+        ),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = shorthand(ShortHand0),
@@ -3448,7 +3500,7 @@ case_list_contains_trace([Case0 | Cases0], [Case | Cases], !ContainsTrace) :-
                 simp_inst_varset             :: inst_varset,
 
                 % Does the goal need requantification?
-                simp_requantify              :: bool,       % ZZZ
+                simp_requantify              :: bool,
 
                 % Do we need to recompute instmap_deltas for atomic goals?
                 simp_recompute_atomic        :: bool,

@@ -543,10 +543,15 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes, TransformMap,
-            ModuleInfo),
-        GoalExpr = scope(Reason, SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % There are no calls in these scopes.
+            Goal = Goal0
+        ;
+            fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes,
+                TransformMap, ModuleInfo),
+            GoalExpr = scope(Reason, SubGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
         (

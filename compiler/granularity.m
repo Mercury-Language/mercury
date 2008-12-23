@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -192,9 +192,13 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        runtime_granularity_test_in_goal(SubGoal0, SubGoal, !Changed, SCC,
-            ModuleInfo),
-        GoalExpr = scope(Reason, SubGoal)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            GoalExpr = GoalExpr0
+        ;
+            runtime_granularity_test_in_goal(SubGoal0, SubGoal, !Changed, SCC,
+                ModuleInfo),
+            GoalExpr = scope(Reason, SubGoal)
+        )
     ;
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _)

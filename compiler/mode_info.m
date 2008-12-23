@@ -646,8 +646,8 @@ mode_info_set_instmap(InstMap, !MI) :-
     mode_info_get_instmap(!.MI, InstMap0),
     !MI ^ mi_instmap := InstMap,
     (
-        instmap.is_unreachable(InstMap),
-        instmap.is_reachable(InstMap0)
+        instmap_is_unreachable(InstMap),
+        instmap_is_reachable(InstMap0)
     ->
         mode_info_get_delay_info(!.MI, DelayInfo0),
         delay_info_bind_all_vars(DelayInfo0, DelayInfo),

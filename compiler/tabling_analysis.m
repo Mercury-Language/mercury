@@ -358,11 +358,18 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         Result = get_mm_tabling_status_from_attributes(Attributes),
         MaybeAnalysisStatus = yes(optimal)
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         check_goal_for_mm_tabling(SCC, VarTypes, SubGoal, Result,
             MaybeAnalysisStatus, !ModuleInfo)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Result = mm_tabled_will_not_call,
+            MaybeAnalysisStatus = yes(optimal)
+        ;
+            check_goal_for_mm_tabling(SCC, VarTypes, SubGoal, Result,
+                MaybeAnalysisStatus, !ModuleInfo)
+        )
     ;
         (
             GoalExpr = conj(_, Goals)
@@ -673,8 +680,12 @@ annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         !:GoalExpr = negation(SubGoal)
     ;
         !.GoalExpr = scope(Reason, SubGoal0),
-        annotate_goal(VarTypes, SubGoal0, SubGoal, Status, !ModuleInfo),
-        !:GoalExpr = scope(Reason, SubGoal)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Status = mm_tabled_will_not_call
+        ;
+            annotate_goal(VarTypes, SubGoal0, SubGoal, Status, !ModuleInfo),
+            !:GoalExpr = scope(Reason, SubGoal)
+        )
     ;
         !.GoalExpr = shorthand(_),
         unexpected(this_file, "shorthand goal")
@@ -684,8 +695,7 @@ annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
     mm_tabling_status::out, module_info::in, module_info::out) is det.
 
 annotate_goal_list(VarTypes, !Goals, Status, !ModuleInfo) :-
-    list.map2_foldl(annotate_goal(VarTypes), !Goals, Statuses,
-        !ModuleInfo),
+    list.map2_foldl(annotate_goal(VarTypes), !Goals, Statuses, !ModuleInfo),
     list.foldl(combine_mm_tabling_status, Statuses, mm_tabled_will_not_call,
         Status).
 
@@ -815,7 +825,7 @@ write_pragma_mm_tabling_info(ModuleInfo, TablingInfo, PredId, !IO) :-
     ProcIds = pred_info_procids(PredInfo),
     list.foldl(
         write_pragma_mm_tabling_info_2(ModuleInfo, TablingInfo, PredId,
-            PredInfo), 
+            PredInfo),
         ProcIds, !IO).
 
 :- pred write_pragma_mm_tabling_info_2(module_info::in, mm_tabling_info::in,
@@ -975,7 +985,7 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus,
     (
         MaybeBestStatus = yes(analysis_result(BestCall, BestAnswer,
             AnalysisStatus)),
-        BestAnswer = mm_tabling_analysis_answer(Result), 
+        BestAnswer = mm_tabling_analysis_answer(Result),
         record_dependency(ModuleName, FuncId, no_func_info, BestCall,
             _ : mm_tabling_analysis_answer, !AnalysisInfo)
     ;

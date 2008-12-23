@@ -371,11 +371,18 @@ check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO) :-
         list.foldl3(check_goal_non_term_calls(PPId, VarTypes), Goals,
             !Errors, !ModuleInfo, !IO)
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         check_goal_non_term_calls(PPId, VarTypes, SubGoal,
             !Errors, !ModuleInfo, !IO)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % The scope has no calls, let alone nonterminating calls.
+            true
+        ;
+            check_goal_non_term_calls(PPId, VarTypes, SubGoal,
+                !Errors, !ModuleInfo, !IO)
+        )
     ;
         GoalExpr = shorthand(_),
         unexpected(this_file,

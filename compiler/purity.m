@@ -692,10 +692,14 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             !:Info = !.Info ^ pi_implicit_purity := ImplicitPurity0,
             Purity = PromisedPurity
         ;
+            % We haven't yet classified from_ground_term scopes into
+            % from_ground_term_construct and other kinds, which is a pity,
+            % since from_ground_term_construct scopes do not need purity
+            % checking.
             ( Reason = promise_solutions(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)
-            ; Reason = from_ground_term(_)
+            ; Reason = from_ground_term(_, _)
             ),
             compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
         ;

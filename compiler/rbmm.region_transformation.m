@@ -548,6 +548,8 @@ region_transform_compound_goal(ModuleInfo, Graph,
         !:GoalExpr = negation(Goal)
     ;
         !.GoalExpr = scope(Reason, Goal0),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
             IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc, Goal0, Goal,

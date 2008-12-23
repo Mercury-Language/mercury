@@ -411,6 +411,8 @@ hlds_goal_used_modules(Goal, !UsedModules) :-
         GoalExpr = switch(_, _, Cases),
         list.foldl(case_used_modules, Cases, !UsedModules)
     ;
+        % Even for from_ground_term_construct scopes, we need to check
+        % which modules are referenced by the cons_ids inside.
         ( GoalExpr = negation(SubGoal)
         ; GoalExpr = scope(_, SubGoal)
         ),

@@ -218,11 +218,11 @@ lambda_process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
 :- pred lambda_process_goal(hlds_goal::in, hlds_goal::out,
     lambda_info::in, lambda_info::out) is det.
 
-lambda_process_goal(hlds_goal(GoalExpr0, GoalInfo),
-        hlds_goal(GoalExpr, GoalInfo), !Info) :-
+lambda_process_goal(Goal0, Goal, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
-        GoalExpr0 = unify(XVar, Y, Mode, Unification, Context),
-        lambda_process_unify_goal(XVar, Y, Mode, Unification, Context,
+        GoalExpr0 = unify(LHS, RHS, Mode, Unification, Context),
+        lambda_process_unify_goal(LHS, RHS, Mode, Unification, Context,
             GoalExpr, !Info)
     ;
         GoalExpr0 = conj(ConjType, Goals0),
@@ -233,17 +233,23 @@ lambda_process_goal(hlds_goal(GoalExpr0, GoalInfo),
         lambda_process_goal_list(Goals0, Goals, !Info),
         GoalExpr = disj(Goals)
     ;
-        GoalExpr0 = negation(Goal0),
-        lambda_process_goal(Goal0, Goal, !Info),
-        GoalExpr = negation(Goal)
-    ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         lambda_process_cases(Cases0, Cases, !Info),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
-        GoalExpr0 = scope(Reason, Goal0),
-        lambda_process_goal(Goal0, Goal, !Info),
-        GoalExpr = scope(Reason, Goal)
+        GoalExpr0 = negation(SubGoal0),
+        lambda_process_goal(SubGoal0, SubGoal, !Info),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % If the scope had any rhs_lambda_goals, modes.m wouldn't have
+            % left its kind field as from_ground_term_construct.
+            GoalExpr = GoalExpr0
+        ;
+            lambda_process_goal(SubGoal0, SubGoal, !Info),
+            GoalExpr = scope(Reason, SubGoal)
+        )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         lambda_process_goal(Cond0, Cond, !Info),
@@ -271,7 +277,8 @@ lambda_process_goal(hlds_goal(GoalExpr0, GoalInfo),
             % These should have been expanded out by now.
             unexpected(this_file, "lambda_process_goal_2: bi_implication")
         )
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred lambda_process_goal_list(list(hlds_goal)::in, list(hlds_goal)::out,
     lambda_info::in, lambda_info::out) is det.

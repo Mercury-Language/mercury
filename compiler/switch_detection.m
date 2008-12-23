@@ -274,8 +274,14 @@ detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
-            SubGoal0, SubGoal, !ModuleInfo, !Requant),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % There are neither disjunctions nor deconstruction unifications
+            % inside these scopes.
+            SubGoal = SubGoal0
+        ;
+            detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
+                SubGoal0, SubGoal, !ModuleInfo, !Requant)
+        ),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = unify(_, RHS0, _, _, _),
@@ -525,7 +531,7 @@ detect_switches_in_disj(GoalInfo, AllVars, VarTypes, AllowMulti, Disjuncts0,
         [Var | Vars], InstMap, AgainList0, GoalExpr, !ModuleInfo, !Requant) :-
     % Can we do at least a partial switch on this variable?
     (
-        instmap.lookup_var(InstMap, Var, VarInst0),
+        instmap_lookup_var(InstMap, Var, VarInst0),
         inst_is_bound(!.ModuleInfo, VarInst0),
         partition_disj(AllowMulti, Disjuncts0, Var, GoalInfo, Left, CasesList,
             !Requant)
@@ -895,9 +901,19 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = scope(Reason, SubGoal0),
-        find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal, !Subst,
-            !Result, !Info, FoundDeconstruct),
-        Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % There are no deconstruction unifications inside these scopes.
+            Goal = Goal0,
+            % Whether we want to keep looking at the code that follows them
+            % is a more interesting question. Since we keep going after
+            % construction unifications (whose behavior this scope resembles),
+            % we keep going.
+            FoundDeconstruct = before_deconstruct
+        ;
+            find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal, !Subst,
+                !Result, !Info, FoundDeconstruct),
+            Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo)
+        )
     ;
         GoalExpr0 = conj(ConjType, SubGoals0),
         (
@@ -1003,7 +1019,7 @@ conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
 
 cases_to_switch(Var, VarTypes, AllowMulti, Cases0, InstMap, GoalExpr,
         !ModuleInfo, !Requant) :-
-    instmap.lookup_var(InstMap, Var, VarInst),
+    instmap_lookup_var(InstMap, Var, VarInst),
     ( inst_is_bound_to_functors(!.ModuleInfo, VarInst, Functors) ->
         functors_to_cons_ids(Functors, ConsIds),
         delete_unreachable_cases(Cases0, ConsIds, Cases1),

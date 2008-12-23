@@ -1163,7 +1163,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         ;
             Reason = barrier(_)
         ;
-            Reason = from_ground_term(_)
+            Reason = from_ground_term(_, _)
         ;
             Reason = trace_goal(_, _, _, _, _)
         ),
@@ -2727,7 +2727,6 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
 typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfos,
         ConsErrors) :-
     typecheck_info_get_is_field_access_function(Info, IsFieldAccessFunc),
-    typecheck_info_get_pred_import_status(Info, ImportStatus),
     (
         % If we're typechecking the clause added for a field access function
         % for which the user has supplied type or mode declarations, the goal
@@ -2735,6 +2734,7 @@ typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfos,
         % not constructor applications or function calls. The clauses in
         % `.opt' files will already have been expanded into unifications.
         IsFieldAccessFunc = yes,
+        typecheck_info_get_pred_import_status(Info, ImportStatus),
         ImportStatus \= status_opt_imported
     ->
         (
@@ -2760,7 +2760,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
     empty_hlds_constraints(EmptyConstraints),
 
     % Check if `Functor/Arity' has been defined as a constructor in some
-    % discriminated union type(s).  This gives us a list of possible
+    % discriminated union type(s). This gives us a list of possible
     % cons_type_infos.
     typecheck_info_get_ctors(Info, Ctors),
     (
@@ -2912,11 +2912,20 @@ convert_cons_defn_list(Info, GoalPath, Action, [X | Xs], [Y | Ys]) :-
     convert_cons_defn(Info, GoalPath, Action, X, Y),
     convert_cons_defn_list(Info, GoalPath, Action, Xs, Ys).
 
-:- pred convert_cons_defn(typecheck_info::in, goal_path::in,
-    cons_constraints_action::in, hlds_cons_defn::in,
-    maybe_cons_type_info::out) is det.
+:- pred convert_cons_defn(typecheck_info, goal_path,
+    cons_constraints_action, hlds_cons_defn, maybe_cons_type_info).
+:- mode convert_cons_defn(in, in, in(bound(do_not_flip_constraints)), in, out)
+    is det.
+:- mode convert_cons_defn(in, in, in, in, out) is det.
 
 convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
+    % XXX We should investigate whether the job done by this predicate
+    % on demand and therefore possibly lots of times for the same type,
+    % would be better done just once, either by invoking it (at least with
+    % Action = do_not_flip_constraints) before type checking even starts and
+    % recording the result, or by putting the result into the HLDS_ConsDefn
+    % or some related data structure.
+
     HLDS_ConsDefn = hlds_cons_defn(ExistQVars0, ExistProgConstraints, Args,
         TypeCtor, _),
     ArgTypes = list.map(func(C) = C ^ arg_type, Args),

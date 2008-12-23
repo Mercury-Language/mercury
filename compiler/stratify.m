@@ -16,12 +16,12 @@
 % of the scc. If it encounters a higher order call or a call to an
 % outside module it will also emit a message.
 %
-% It has a second pass which is not currently enabled
+% It has a second pass which is not currently enabled.
 %
 % The second pass looks for possible non stratified code by looking at
 % higher order calls. This second pass works by rebuilding the call
 % graph with any possible arcs that can arise though higher order calls
-% and then traversing the new sccs looking for negative loops
+% and then traversing the new sccs looking for negative loops.
 %
 % The second pass is necessary because the rebuilt call graph does not
 % allow the detection of definite non-stratification.
@@ -192,9 +192,14 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, Error,
         first_order_check_goal(SubGoal, yes, WholeScc,
             ThisPredProcId, Error, !ModuleInfo, !IO)
     ;
-        GoalExpr = scope(_, SubGoal),
-        first_order_check_goal(SubGoal, Negated, WholeScc,
-            ThisPredProcId, Error, !ModuleInfo, !IO)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes cannot contain any calls.
+            true
+        ;
+            first_order_check_goal(SubGoal, Negated, WholeScc,
+                ThisPredProcId, Error, !ModuleInfo, !IO)
+        )
     ;
         ( GoalExpr = plain_call(CPred, CProc, _Args, _BuiltinState, _UC, _Sym)
         ; GoalExpr = call_foreign_proc(_Attributes, CPred, CProc, _, _, _, _)
@@ -334,9 +339,14 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         higher_order_check_goal(SubGoal, yes, WholeScc,
             ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
     ;
-        GoalExpr = scope(_, SubGoal),
-        higher_order_check_goal(SubGoal, Negated, WholeScc,
-            ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes cannot contain any calls.
+            true
+        ;
+            higher_order_check_goal(SubGoal, Negated, WholeScc,
+                ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
+        )
     ;
         GoalExpr = plain_call(_CPred, _CProc, _Args, _Builtin, _UC, Sym),
         (
@@ -604,7 +614,7 @@ add_new_arcs2([Callee | Cs], CallerKey, !DepGraph) :-
     add_new_arcs2(Cs, CallerKey, !DepGraph).
 
     % For each given pred id, pass all non imported procs onto the
-    % process_procs predicate.
+    % stratify_process_procs predicate.
     %
 :- pred expand_predids(list(pred_id)::in, module_info::in,
     call_map::in, call_map::out, ho_map::in, ho_map::out,
@@ -617,26 +627,38 @@ expand_predids([PredId | PredIds], ModuleInfo, !ProcCalls, !HOInfo,
     Procs = pred_info_non_imported_procids(PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    process_procs(Procs, ModuleInfo, PredId, ArgTypes, ProcTable,
+    stratify_process_procs(Procs, ModuleInfo, PredId, ArgTypes, ProcTable,
         !ProcCalls, !HOInfo, !CallsHO),
     expand_predids(PredIds, ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
 
     % For each given proc id, generate the set of procedures it calls
     % and its higher order info structure.
     %
-:- pred process_procs(list(proc_id)::in, module_info::in, pred_id::in,
+:- pred stratify_process_procs(list(proc_id)::in, module_info::in, pred_id::in,
     list(mer_type)::in, proc_table::in, call_map::in, call_map::out,
     ho_map::in, ho_map::out, set(pred_proc_id)::in, set(pred_proc_id)::out)
     is det.
 
-process_procs([], _, _, _, _, !ProcCalls, !HOInfo, !CallsHO).
-process_procs([ProcId | Procs], ModuleInfo, PredId, ArgTypes, ProcTable,
+stratify_process_procs([], _, _, _, _, !ProcCalls, !HOInfo, !CallsHO).
+stratify_process_procs([ProcId | ProcIds], ModuleInfo, PredId, ArgTypes,
+        ProcTable, !ProcCalls, !HOInfo, !CallsHO) :-
+    stratify_process_proc(ProcId, ModuleInfo, PredId, ArgTypes, ProcTable,
+        !ProcCalls, !HOInfo, !CallsHO),
+    stratify_process_procs(ProcIds, ModuleInfo, PredId, ArgTypes, ProcTable,
+        !ProcCalls, !HOInfo, !CallsHO).
+
+:- pred stratify_process_proc(proc_id::in, module_info::in, pred_id::in,
+    list(mer_type)::in, proc_table::in, call_map::in, call_map::out,
+    ho_map::in, ho_map::out, set(pred_proc_id)::in, set(pred_proc_id)::out)
+    is det.
+
+stratify_process_proc(ProcId, ModuleInfo, PredId, ArgTypes, ProcTable,
         !ProcCalls, !HOInfo, !CallsHO) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_get_goal(ProcInfo, Goal),
     PredProcId = proc(PredId, ProcId),
-    check_proc_body(Goal, Calls, HaveAT, CallsHigherOrder),
+    stratify_analyze_proc_body(Goal, Calls, HaveAT, CallsHigherOrder),
     map.det_insert(!.ProcCalls, PredProcId, Calls, !:ProcCalls),
     higherorder_in_out(ArgTypes, ArgModes, ModuleInfo, HOInOut),
     map.det_insert(!.HOInfo, PredProcId, info(HaveAT, HOInOut), !:HOInfo),
@@ -645,9 +667,7 @@ process_procs([ProcId | Procs], ModuleInfo, PredId, ArgTypes, ProcTable,
         set.insert(!.CallsHO, PredProcId, !:CallsHO)
     ;
         CallsHigherOrder = no
-    ),
-    process_procs(Procs, ModuleInfo, PredId, ArgTypes, ProcTable,
-        !ProcCalls, !HOInfo, !CallsHO).
+    ).
 
     % Determine if a given set of modes and types indicates that
     % higher order values can be passed into and/or out of a procedure.
@@ -697,20 +717,21 @@ higherorder_in_out1([Type | Types], [Mode | Modes], ModuleInfo,
     % Return the set of all procedures called in the given goal
     % and all addresses taken in the given goal.
     %
-:- pred check_proc_body(hlds_goal::in, set(pred_proc_id)::out,
+:- pred stratify_analyze_proc_body(hlds_goal::in, set(pred_proc_id)::out,
     set(pred_proc_id)::out, bool::out) is det.
 
-check_proc_body(Goal, Calls, TakenAddrs, CallsHO) :-
+stratify_analyze_proc_body(Goal, Calls, TakenAddrs, CallsHO) :-
     set.init(Calls0),
     set.init(TakenAddrs0),
-    check_goal(Goal, Calls0, Calls, TakenAddrs0, TakenAddrs, no, CallsHO).
+    stratify_analyze_goal(Goal, Calls0, Calls, TakenAddrs0, TakenAddrs,
+        no, CallsHO).
 
-:- pred check_goal(hlds_goal::in,
+:- pred stratify_analyze_goal(hlds_goal::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     bool::in, bool::out) is det.
 
-check_goal(Goal, !Calls, !HasAT, !CallsHO) :-
+stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = unify(_Var, RHS, _Mode, Unification, _Context),
@@ -750,7 +771,7 @@ check_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             % Do nothing.
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected(this_file, "check_goal: complicated_unify")
+            unexpected(this_file, "stratify_analyze_goal: complicated_unify")
         )
     ;
         GoalExpr = plain_call(CPred, CProc, _Args, _Builtin, _UC, _Sym),
@@ -769,53 +790,60 @@ check_goal(Goal, !Calls, !HasAT, !CallsHO) :-
         ( GoalExpr = conj(_ConjType, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        check_goals(Goals, !Calls, !HasAT, !CallsHO)
+        stratify_analyze_goals(Goals, !Calls, !HasAT, !CallsHO)
     ;
         GoalExpr = switch(_Var, _Fail, Cases),
-        check_cases(Cases, !Calls, !HasAT, !CallsHO)
+        stratify_analyze_cases(Cases, !Calls, !HasAT, !CallsHO)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        check_goal(Cond, !Calls, !HasAT, !CallsHO),
-        check_goal(Then, !Calls, !HasAT, !CallsHO),
-        check_goal(Else, !Calls, !HasAT, !CallsHO)
+        stratify_analyze_goal(Cond, !Calls, !HasAT, !CallsHO),
+        stratify_analyze_goal(Then, !Calls, !HasAT, !CallsHO),
+        stratify_analyze_goal(Else, !Calls, !HasAT, !CallsHO)
     ;
-        ( GoalExpr = scope(_Reason, SubGoal)
-        ; GoalExpr = negation(SubGoal)
-        ),
-        check_goal(SubGoal, !Calls, !HasAT, !CallsHO)
+        GoalExpr = negation(SubGoal),
+        stratify_analyze_goal(SubGoal, !Calls, !HasAT, !CallsHO)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % The code in these scopes does not make calls (either first order
+            % or higher order), and it does not take addresses.
+            true
+        ;
+            stratify_analyze_goal(SubGoal, !Calls, !HasAT, !CallsHO)
+        )
     ;
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
-            check_goal(MainGoal, !Calls, !HasAT, !CallsHO),
-            check_goals(OrElseGoals, !Calls, !HasAT, !CallsHO)
+            stratify_analyze_goal(MainGoal, !Calls, !HasAT, !CallsHO),
+            stratify_analyze_goals(OrElseGoals, !Calls, !HasAT, !CallsHO)
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "check_goal: bi_implication")
+            unexpected(this_file, "stratify_analyze_goal: bi_implication")
         )
     ).
 
-:- pred check_goals(list(hlds_goal)::in,
+:- pred stratify_analyze_goals(list(hlds_goal)::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     bool::in, bool::out) is det.
 
-check_goals([], !Calls, !HasAT, !CallsHO).
-check_goals([Goal | Goals], !Calls, !HasAT, !CallsHO) :-
-    check_goal(Goal, !Calls, !HasAT, !CallsHO),
-    check_goals(Goals, !Calls, !HasAT, !CallsHO).
+stratify_analyze_goals([], !Calls, !HasAT, !CallsHO).
+stratify_analyze_goals([Goal | Goals], !Calls, !HasAT, !CallsHO) :-
+    stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO),
+    stratify_analyze_goals(Goals, !Calls, !HasAT, !CallsHO).
 
-:- pred check_cases(list(case)::in,
+:- pred stratify_analyze_cases(list(case)::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     bool::in, bool::out) is det.
 
-check_cases([], !Calls, !HasAT, !CallsHO).
-check_cases([Case | Goals], !Calls, !HasAT, !CallsHO) :-
+stratify_analyze_cases([], !Calls, !HasAT, !CallsHO).
+stratify_analyze_cases([Case | Goals], !Calls, !HasAT, !CallsHO) :-
     Case = case(_, _, Goal),
-    check_goal(Goal, !Calls, !HasAT, !CallsHO),
-    check_cases(Goals, !Calls, !HasAT, !CallsHO).
+    stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO),
+    stratify_analyze_cases(Goals, !Calls, !HasAT, !CallsHO).
 
     % This pred returns a list of all the calls in a given set of goals,
     % including calls in unification lambda functions and pred_proc_id's
@@ -888,10 +916,16 @@ get_called_procs(Goal, !Calls) :-
         get_called_procs(Then, !Calls),
         get_called_procs(Else, !Calls)
     ;
-        ( GoalExpr = scope(_Reason, SubGoal)
-        ; GoalExpr = negation(SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         get_called_procs(SubGoal, !Calls)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % The code in these scopes does not make calls.
+            true
+        ;
+            get_called_procs(SubGoal, !Calls)
+        )
     ;
         GoalExpr = shorthand(ShortHand),
         (

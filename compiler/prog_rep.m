@@ -600,7 +600,7 @@ head_vars_to_byte_list(Info, InitialInstmap, InstmapDelta, Vars) =
 head_var_to_byte_list(Info, InitialInstmap, InstmapDelta, Var) = Bytes :-
     var_to_byte_list(Info, Var) = VarBytes,
     ModuleInfo = Info ^ pri_module_info,
-    lookup_var(InitialInstmap, Var, InitialInst),
+    instmap_lookup_var(InitialInstmap, Var, InitialInst),
     ( instmap_delta_search_var(InstmapDelta, Var, FinalInstPrime) ->
         FinalInst = FinalInstPrime
     ;

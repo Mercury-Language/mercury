@@ -353,8 +353,8 @@ acceptable_detism_for_lco(detism_cc_non).
 :- pred lco_in_goal(hlds_goal::in, hlds_goal::out, lco_info::in, lco_info::out,
     lco_const_info::in) is det.
 
-lco_in_goal(hlds_goal(GoalExpr0, GoalInfo), hlds_goal(GoalExpr, GoalInfo),
-        !Info, ConstInfo) :-
+lco_in_goal(Goal0, Goal, !Info, ConstInfo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -403,8 +403,12 @@ lco_in_goal(hlds_goal(GoalExpr0, GoalInfo), hlds_goal(GoalExpr, GoalInfo),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        lco_in_goal(SubGoal0, SubGoal, !Info, ConstInfo),
-        GoalExpr = scope(Reason, SubGoal)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            GoalExpr = GoalExpr0
+        ;
+            lco_in_goal(SubGoal0, SubGoal, !Info, ConstInfo),
+            GoalExpr = scope(Reason, SubGoal)
+        )
     ;
         ( GoalExpr0 = negation(_)
         ; GoalExpr0 = generic_call(_, _, _, _)
@@ -417,7 +421,8 @@ lco_in_goal(hlds_goal(GoalExpr0, GoalInfo), hlds_goal(GoalExpr, GoalInfo),
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
         unexpected(this_file, "lco_in_goal: shorthand")
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -781,7 +786,7 @@ update_construct_args(Subst, ArgNum, [OrigVar | OrigVars],
         AddrArgsTail, !InstMapDelta),
     ( map.search(Subst, OrigVar, AddrVar) ->
         UpdatedVar = AddrVar,
-        instmap_delta_set(AddrVar, ground(shared, none), !InstMapDelta),
+        instmap_delta_set_var(AddrVar, ground(shared, none), !InstMapDelta),
         AddrArgs = [ArgNum | AddrArgsTail]
     ;
         UpdatedVar = OrigVar,
@@ -921,9 +926,14 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        transform_variant_goal(ModuleInfo, VarToAddr, InstMap0,
-            SubGoal0, SubGoal, Changed),
-        GoalExpr = scope(Reason, SubGoal)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            GoalExpr = GoalExpr0,
+            Changed = no
+        ;
+            transform_variant_goal(ModuleInfo, VarToAddr, InstMap0,
+                SubGoal0, SubGoal, Changed),
+            GoalExpr = scope(Reason, SubGoal)
+        )
     ;
         GoalExpr0 = negation(_),
         GoalExpr = GoalExpr0,
@@ -1012,9 +1022,9 @@ transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
     pair(prog_var)::in) is semidet.
 
 is_grounding(ModuleInfo, InstMap0, InstMap, Var - _AddrVar) :-
-    instmap.lookup_var(InstMap0, Var, Inst0),
+    instmap_lookup_var(InstMap0, Var, Inst0),
     not inst_is_ground(ModuleInfo, Inst0),
-    instmap.lookup_var(InstMap, Var, Inst),
+    instmap_lookup_var(InstMap, Var, Inst),
     inst_is_ground(ModuleInfo, Inst).
 
 :- pred make_store_goal(module_info::in, pair(prog_var)::in,

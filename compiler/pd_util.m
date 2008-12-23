@@ -345,7 +345,7 @@ get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
     ( instmap_delta_search_var(InstMapDelta, NonLocal, FinalInst0) ->
         FinalInst = FinalInst0
     ;
-        instmap.lookup_var(InstMap, NonLocal, FinalInst)
+        instmap_lookup_var(InstMap, NonLocal, FinalInst)
     ),
     ( inst_is_clobbered(ModuleInfo, FinalInst) ->
         true
@@ -613,7 +613,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
     AddExtraInfoVars =
         (pred(ChangedVar::in, Vars0::in, Vars::out) is det :-
             (
-                instmap.lookup_var(InstMap, ChangedVar, VarInst),
+                instmap_lookup_var(InstMap, ChangedVar, VarInst),
                 instmap_delta_search_var(InstMapDelta, ChangedVar,
                     DeltaVarInst),
                 inst_is_bound_to_functors(ModuleInfo, DeltaVarInst, [_]),

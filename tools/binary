@@ -441,46 +441,65 @@ then
         then
             echo skipping test of $testsubdir
         else
-            for subdir in library mdbcomp compiler
+            testsubdir_modules=`ls stage2.ok/$testsubdir`
+            anydiff=false
+            for testsubdir_module in $testsubdir_modules
             do
-                if test "$subdir" = "$testsubdir"
+                if cmp -s stage2.{bad,ok}/$testsubdir/$testsubdir_module
                 then
-                    echo linking stage2/$subdir from stage2.bad/$subdir 1>&2
-                    cp stage2.bad/$subdir/*.[co] stage2/$subdir
-                    cp stage2.bad/$subdir/*.pic_o stage2/$subdir
+                    true
                 else
-                    echo linking stage2/$subdir from stage2.ok/$subdir 1>&2
-                    cp stage2.ok/$subdir/*.[co] stage2/$subdir
-                    cp stage2.ok/$subdir/*.pic_o stage2/$subdir
+                    anydiff=true
                 fi
             done
 
-            binary_step $bootcheck $compile_only $compare_to_bad \
-                $dependency_only $library_only $jfactor -m "$mmake_opts" \
-                $outfile $testdirs -s "$single_command"
-            step_status=$?
-
-            if test -f .stage2_problem
+            if $anydiff
             then
-                echo could not build stage 2 to test
-                exit 1
-            fi
+                echo testing whether the problem is in $testsubdir
 
-            if "$negative"
-            then
-                if test "$step_status" == 0
+                for subdir in library mdbcomp compiler
+                do
+                    if test "$subdir" = "$testsubdir"
+                    then
+                        echo linking stage2/$subdir from stage2.bad/$subdir 1>&2
+                        cp stage2.bad/$subdir/*.[co] stage2/$subdir
+                        cp stage2.bad/$subdir/*.pic_o stage2/$subdir
+                    else
+                        echo linking stage2/$subdir from stage2.ok/$subdir 1>&2
+                        cp stage2.ok/$subdir/*.[co] stage2/$subdir
+                        cp stage2.ok/$subdir/*.pic_o stage2/$subdir
+                    fi
+                done
+
+                binary_step $bootcheck $compile_only $compare_to_bad \
+                    $dependency_only $library_only $jfactor -m "$mmake_opts" \
+                    $outfile $testdirs -s "$single_command"
+                step_status=$?
+
+                if test -f .stage2_problem
                 then
-                    testeddir=$testsubdir
-                    found=true
-                    echo "solution seems to be in the $testeddir directory"
+                    echo could not build stage 2 to test
+                    exit 1
+                fi
+
+                if "$negative"
+                then
+                    if test "$step_status" == 0
+                    then
+                        testeddir=$testsubdir
+                        found=true
+                        echo "solution seems to be in the $testeddir directory"
+                    fi
+                else
+                    if test "$step_status" != 0
+                    then
+                        testeddir=$testsubdir
+                        found=true
+                        echo "problem seems to be in the $testeddir directory"
+                    fi
                 fi
             else
-                if test "$step_status" != 0
-                then
-                    testeddir=$testsubdir
-                    found=true
-                    echo "problem seems to be in the $testeddir directory"
-                fi
+                echo skipping $testsubdir: the two stage2s match
             fi
         fi
     done
@@ -522,7 +541,12 @@ then
     cd stage2/$testeddir
     for module in *.c
     do
-        allmodules="$allmodules `basename $module .c`"
+        if cmp -s $root/stage2.{bad,ok}/$testeddir/$module.c
+        then
+            true
+        else
+            allmodules="$allmodules `basename $module .c`"
+        fi
     done
     cd $root
 else

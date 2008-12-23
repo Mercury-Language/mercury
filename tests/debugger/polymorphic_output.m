@@ -1,3 +1,5 @@
+% vim: ts=4 sw=4 et ft=mercury
+%
 % This is a regression test.
 %
 % It tests for a bug that showed up when tracing
@@ -42,5 +44,5 @@ arg_names(X, I) = Strs :-
         Strs = []
       else
         det_arg(X, canonicalize, I, Arg),
-	Strs = functor_names(Arg) ++ arg_names(X, I - 1)
+        Strs = functor_names(Arg) ++ arg_names(X, I - 1)
     ).

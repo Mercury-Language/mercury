@@ -371,10 +371,16 @@ add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
         add_dependency_arcs_in_goal(Caller, Then, !DepGraph),
         add_dependency_arcs_in_goal(Caller, Else, !DepGraph)
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % The scope references no predicates or procedures.
+            true
+        ;
+            add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
+        )
     ;
         GoalExpr = generic_call(_, _, _, _)
     ;

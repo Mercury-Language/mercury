@@ -46,11 +46,11 @@
 
 %-----------------------------------------------------------------------------%
 %
-% These versions use information from the intermodule-analysis framework
+% These versions use information from the intermodule-analysis framework.
 %
 
 % XXX Eventually we will only use these versions and the others can be
-%     deleted.
+% deleted.
 
     % Return `goal_can_throw' if the given goal may throw an exception; return
     % `goal_cannot_throw' otherwise.
@@ -71,11 +71,10 @@
 
 %-----------------------------------------------------------------------------%
 
-%
 % The first three versions may be more accurate because they can use
 % results of the termination and exception analyses.
 % XXX These don't work with the intermodule-analysis framework, so don't
-%     use them in new code.
+% use them in new code.
 
     % Succeeds if the goal cannot loop forever.
     %
@@ -101,10 +100,8 @@
     %
 :- pred goal_can_loop_or_throw(module_info::in, hlds_goal::in) is semidet.
 
-%
 % These versions do not use the results of the termination or exception
 % analyses.
-%
 
     % Succeeds if the goal cannot loop forever or throw an exception.
     %
@@ -186,7 +183,7 @@
 %-----------------------------------------------------------------------------%
 %
 % A version of goal_cannot_loop_or_throw that uses results from the
-% intermodule-analysis framework
+% intermodule-analysis framework.
 %
 
 goal_can_throw(hlds_goal(GoalExpr, GoalInfo), Result, !ModuleInfo) :-
@@ -246,10 +243,16 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
             Result = cannot_throw
         )
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         goal_can_throw(SubGoal, Result, !ModuleInfo)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes contain only construction unifications.
+            Result = cannot_throw
+        ;
+            goal_can_throw(SubGoal, Result, !ModuleInfo)
+        )
     ;
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
         ExceptionStatus = get_may_throw_exception(Attributes),
@@ -434,10 +437,16 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
             CanLoop = goal_can_loop_func(MaybeModuleInfo, Else)
         )
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         CanLoop = goal_can_loop_func(MaybeModuleInfo, SubGoal)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes contain only construction unifications.
+            CanLoop = no
+        ;
+            CanLoop = goal_can_loop_func(MaybeModuleInfo, SubGoal)
+        )
     ;
         GoalExpr = shorthand(ShortHand),
         (
@@ -555,10 +564,16 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
             CanThrow = goal_can_throw_func(MaybeModuleInfo, Else)
         )
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_Reason, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         CanThrow = goal_can_throw_func(MaybeModuleInfo, SubGoal)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes contain only construction unifications.
+            CanThrow = no
+        ;
+            CanThrow = goal_can_throw_func(MaybeModuleInfo, SubGoal)
+        )
     ;
         GoalExpr = shorthand(ShortHand),
         (
@@ -596,24 +611,41 @@ goal_is_flat(hlds_goal(GoalExpr, _GoalInfo)) = goal_is_flat_expr(GoalExpr).
 
 :- func goal_is_flat_expr(hlds_goal_expr) = bool.
 
-goal_is_flat_expr(generic_call(_, _, _, _)) = yes.
-goal_is_flat_expr(plain_call(_, _, _, _, _, _)) = yes.
-goal_is_flat_expr(unify(_, _, _, _, _)) = yes.
-goal_is_flat_expr(call_foreign_proc(_, _, _, _, _, _, _)) = yes.
-goal_is_flat_expr(conj(ConjType, Goals)) = IsFlat :-
+goal_is_flat_expr(GoalExpr) = IsFlat :-
     (
-        ConjType = parallel_conj,
+        ( GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        IsFlat = yes
+    ;
+        GoalExpr = conj(ConjType, Goals),
+        (
+            ConjType = parallel_conj,
+            IsFlat = no
+        ;
+            ConjType = plain_conj,
+            IsFlat = goal_is_flat_list(Goals)
+        )
+    ;
+        ( GoalExpr = disj(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ; GoalExpr = shorthand(_)
+        ),
         IsFlat = no
     ;
-        ConjType = plain_conj,
-        IsFlat = goal_is_flat_list(Goals)
+        GoalExpr = negation(SubGoal),
+        IsFlat = goal_is_flat(SubGoal)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            IsFlat = yes
+        ;
+            IsFlat = goal_is_flat(SubGoal)
+        )
     ).
-goal_is_flat_expr(disj(_)) = no.
-goal_is_flat_expr(switch(_, _, _)) = no.
-goal_is_flat_expr(if_then_else(_, _, _, _)) = no.
-goal_is_flat_expr(negation(Goal)) = goal_is_flat(Goal).
-goal_is_flat_expr(scope(_, Goal)) = goal_is_flat(Goal).
-goal_is_flat_expr(shorthand(_)) = no.
 
 :- func goal_is_flat_list(list(hlds_goal)) = bool.
 
@@ -654,7 +686,7 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
     ;
         GoalExpr = plain_call(_, _, _, Builtin, _, _),
         (
-            Builtin = inline_builtin, 
+            Builtin = inline_builtin,
             May = no
         ;
             ( Builtin = out_of_line_builtin
@@ -698,10 +730,19 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
             goal_may_allocate_heap(Else, May)
         )
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         goal_may_allocate_heap(SubGoal, May)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes construct ground terms, but they construct them
+            % statically, so if we modify the code above to check the
+            % construct_how field of construction unifications, we could
+            % return May = no here.
+            May = yes
+        ;
+            goal_may_allocate_heap(SubGoal, May)
+        )
     ;
         GoalExpr = shorthand(ShortHand),
         (
@@ -853,10 +894,17 @@ count_recursive_calls(Goal, PredId, ProcId, Min, Max) :-
         int.min(CTMin, EMin, Min),
         int.max(CTMax, EMax, Max)
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         count_recursive_calls(SubGoal, PredId, ProcId, Min, Max)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes contain only construction unifications.
+            Min = 0,
+            Max = 0
+        ;
+            count_recursive_calls(SubGoal, PredId, ProcId, Min, Max)
+        )
     ;
         GoalExpr = shorthand(ShortHand),
         (

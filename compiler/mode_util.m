@@ -1032,7 +1032,7 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal, VarTypes,
     ),
 
     % If the initial instmap is unreachable so is the final instmap.
-    ( instmap.is_unreachable(InstMap0) ->
+    ( instmap_is_unreachable(InstMap0) ->
         instmap_delta_init_unreachable(UnreachableInstMapDelta),
         goal_info_set_instmap_delta(UnreachableInstMapDelta,
             GoalInfo1, GoalInfo)
@@ -1120,8 +1120,14 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal, VarTypes,
-            InstMap0, InstMapDelta, !RI),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            SubGoal = SubGoal0,
+            SubGoal = hlds_goal(_, SubGoalInfo),
+            InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo)
+        ;
+            recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal,
+                VarTypes, InstMap0, InstMapDelta, !RI)
+        ),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = generic_call(_Details, Vars, Modes, Detism),
@@ -1361,8 +1367,8 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
     % This is similar to modecheck_var_has_inst.
     SaveModuleInfo = !.ModuleInfo,
     SaveSub = !.Sub,
-    ( instmap.is_reachable(InstMap) ->
-        instmap.lookup_var(InstMap, Arg, ArgInst),
+    ( instmap_is_reachable(InstMap) ->
+        instmap_lookup_var(InstMap, Arg, ArgInst),
         map.lookup(VarTypes, Arg, Type),
         ( inst_matches_initial(ArgInst, Inst, Type, !ModuleInfo, !Sub) ->
             true
@@ -1394,8 +1400,8 @@ recompute_instmap_delta_call_2([], _, [_ | _], _, !ModuleInfo) :-
 recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
         [Mode | Modes], !ModuleInfo) :-
     % This is similar to modecheck_set_var_inst.
-    ( instmap.is_reachable(InstMap) ->
-        instmap.lookup_var(InstMap, Arg, ArgInst0),
+    ( instmap_is_reachable(InstMap) ->
+        instmap_lookup_var(InstMap, Arg, ArgInst0),
         mode_get_insts(!.ModuleInfo, Mode0, _, FinalInst),
         (
             abstractly_unify_inst(is_dead, ArgInst0, FinalInst,
@@ -1431,7 +1437,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         % as in the old instmap.
 
         OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-        instmap.lookup_var(InstMap, Var, InitialInst),
+        instmap_lookup_var(InstMap, Var, InitialInst),
         ( instmap_delta_search_var(OldInstMapDelta, Var, FinalInst1) ->
             % XXX we need to merge the information in InitialInst
             % and FinalInst1. In puzzle_detism_bug, InitialInst
@@ -1468,7 +1474,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         ->
             UniMode = UniMode0,
             instmap_delta_init_reachable(InstMapDelta0),
-            instmap_delta_set(Var, Inst, InstMapDelta0, InstMapDelta)
+            instmap_delta_set_var(Var, Inst, InstMapDelta0, InstMapDelta)
         ;
             InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             UniMode = UniMode0
@@ -1602,12 +1608,12 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
 fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-    instmap.lookup_var(InstMap0, Var, Inst0),
-    instmap.lookup_var(InstMap, Var, Inst),
+    instmap_lookup_var(InstMap0, Var, Inst0),
+    instmap_lookup_var(InstMap, Var, Inst),
     ( Inst = Inst0 ->
         GoalInfo = GoalInfo0
     ;
-        instmap_delta_set(Var, Inst, InstMapDelta0, InstMapDelta),
+        instmap_delta_set_var(Var, Inst, InstMapDelta0, InstMapDelta),
         goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo)
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).

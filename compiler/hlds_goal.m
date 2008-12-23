@@ -295,6 +295,74 @@
     ;       top_level_atomic_goal
     ;       nested_atomic_goal.
 
+    % Each scope that is created from the expansion of a ground term above
+    % a certain size is classified into one of these three categories.
+    % The categories are for scopes that (a) construct a ground term, (b)
+    % take an existing ground term and test whether it has a given shape, and
+    % (c) everything else (perhaps some parts of the term are matched and some
+    % parts are bound, or some invariant listed below is not guaranteed).
+    %
+    % Many parts of the compiler have special code for handling
+    % from_ground_term_construct scopes, code that avoids scanning the code
+    % inside the scope. This can be a very big win, since that code can be
+    % huge. To make this special casing possible, from_ground_term_construct
+    % scopes promise the following invariants.
+    %
+    % 1. The only nonlocal variable of the scope is the one listed in the
+    %    scope_reason.
+    % 2. The shape of the code inside the scope is a plain conjunction of
+    %    unifications.
+    % 3. These unifications are construct unifications whose construct_how
+    %    field says construct_statically, and in which the nonlocals,
+    %    instmap_delta and determinism fields of the goal_info are
+    %    correctly filled in. The nonlocals will be all the variables in the
+    %    unification, the instmap delta will say that the value being
+    %    constructed is ground (not unique, because it is static), and the
+    %    determinism says that the goal is det. The goal_info of the
+    %    conjunction will be filled in similarly.
+    % 4. None of the these unifications constructs a higher order value.
+    %
+    % Invariants 3 and 4 are established during mode checking, so code executed
+    % before then cannot rely on them.
+    %
+    % If any compiler pass modifies a from_ground_term_construct scope in a way
+    % that invalidates these invariants, it must set the kind field of the
+    % scope to from_ground_term_other.
+    %
+    % For now, we don't optimize from_ground_term_deconstruct and
+    % from_ground_term_other scopes, so there are no invariants required
+    % of them.
+    %
+    % There are several possible alternative designs that could allow the
+    % special-casing of from_ground_term_construct scopes. Here are two
+    % of them.
+    %
+    % One alternative is to have fourth kind, from_ground_term_initial,
+    % which would promise only the first two invariants, so compiler writers
+    % wouldn't have to worry about when a piece of code is executed if they
+    % need to depend on invariants 3 and/or 4. This works, but it leads to
+    % a slight slowdown normal code (code without big ground terms).
+    %
+    % A second alternative is to have the mode checker turn any scope
+    % that it currently keeps as from_ground_term_construct into a new kind
+    % of generic call, one which basically says "this goal binds this variable
+    % to this ground term", with the ground term represented as a ground term,
+    % not as a bunch of construction unifications. The advantage of this
+    % approach would be that we could delete the local variables of these
+    % scopes (of which there can be hundreds of thousands) from the maps stored
+    % in the fields of the pred_info and proc_info (such as the varset and the
+    % var_types), making lookups and other operations on those maps
+    % significantly faster. The drawback would be the need for totally new code
+    % in most parts of the compiler to handle this new kind of goal.
+    % Using from_ground_term_construct, on the other hand, allows us to keep
+    % using the existing code for scopes in e.g. the type checker and the code
+    % generator.
+    %
+:- type from_ground_term_kind
+    --->    from_ground_term_construct
+    ;       from_ground_term_deconstruct
+    ;       from_ground_term_other.
+
 :- type scope_reason
     --->    exist_quant(list(prog_var))
             % The goal inside the scope construct has the listed variables
@@ -358,7 +426,7 @@
             % A barrier says nothing about the determinism of either
             % the inner or the outer goal, or about pruning.
 
-    ;       from_ground_term(prog_var)
+    ;       from_ground_term(prog_var, from_ground_term_kind)
             % The goal inside the scope, which should be a conjunction,
             % results from the conversion of one ground term to
             % superhomogeneous form. The variable specifies what the
@@ -1481,7 +1549,6 @@
     % Return yes if goal(s) contain any foreign code
     %
 :- func goal_has_foreign(hlds_goal) = bool.
-:- func goal_list_has_foreign(list(hlds_goal)) = bool.
 
 :- type has_subgoals
     --->    has_subgoals
@@ -2279,9 +2346,9 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             Reason0 = commit(_),
             Reason = Reason0
         ;
-            Reason0 = from_ground_term(Var0),
+            Reason0 = from_ground_term(Var0, Kind),
             rename_var(Must, Subn, Var0, Var),
-            Reason = from_ground_term(Var)
+            Reason = from_ground_term(Var, Kind)
         ;
             Reason0 = trace_goal(Flag, Grade, Env, Vars, QuantVars0),
             rename_var_list(Must, Subn, QuantVars0, QuantVars),
@@ -2405,8 +2472,17 @@ rename_unify(Must, Subn, Unify0, Unify) :-
             How0 = construct_dynamically,
             How = How0
         ;
-            How0 = construct_statically(_),
-            How = How0
+            How0 = construct_statically(StaticConss0),
+            % XXX This is a potential performance bug. The code that constructs
+            % a ground term with N function symbols will have N construct
+            % unifications with their How0 set to construct_statically, and
+            % they will have an average of N/2 static_cons terms. The cost of
+            % renaming all the variables in them is thus proportional to N^2.
+            % We should look into removing the variables from static_cons
+            % terms, to avoid the need for this renaming.
+            list.map(rename_var_in_static_cons(Must, Subn),
+                StaticConss0, StaticConss),
+            How = construct_statically(StaticConss)
         ;
             How0 = construct_in_region(RegVar0),
             rename_var(Must, Subn, RegVar0, RegVar),
@@ -2455,6 +2531,15 @@ rename_unify(Must, Subn, Unify0, Unify) :-
         rename_var_list(Must, Subn, TypeInfoVars0, TypeInfoVars),
         Unify = complicated_unify(Modes, Cat, TypeInfoVars)
     ).
+
+:- pred rename_var_in_static_cons(must_rename::in, prog_var_renaming::in,
+    static_cons::in, static_cons::out) is det.
+
+rename_var_in_static_cons(Must, Subn, StaticCons0, StaticCons) :-
+    StaticCons0 = static_cons(ConsId, ArgVars0, ArgConss0),
+    list.map(rename_var(Must, Subn), ArgVars0, ArgVars),
+    list.map(rename_var_in_static_cons(Must, Subn), ArgConss0, ArgConss),
+    StaticCons = static_cons(ConsId, ArgVars, ArgConss).
 
 :- pred rename_generic_call(must_rename::in, prog_var_renaming::in,
     generic_call::in, generic_call::out) is det.
@@ -2698,29 +2783,30 @@ all_negated([hlds_goal(conj(plain_conj, NegatedConj), _) | NegatedGoals],
 goal_has_foreign(Goal) = HasForeign :-
     Goal = hlds_goal(GoalExpr, _),
     (
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ),
+        HasForeign = no
+    ;
         GoalExpr = conj(_, Goals),
         HasForeign = goal_list_has_foreign(Goals)
-    ;
-        GoalExpr = plain_call(_, _, _, _, _, _),
-        HasForeign = no
-    ;
-        GoalExpr = generic_call(_, _, _, _),
-        HasForeign = no
-    ;
-        GoalExpr = switch(_, _, _),
-        HasForeign = no
-    ;
-        GoalExpr = unify(_, _, _, _, _),
-        HasForeign = no
     ;
         GoalExpr = disj(Goals),
         HasForeign = goal_list_has_foreign(Goals)
     ;
-        GoalExpr = negation(Goal2),
-        HasForeign = goal_has_foreign(Goal2)
+        GoalExpr = switch(_, _, Cases),
+        HasForeign = case_list_has_foreign(Cases)
     ;
-        GoalExpr = scope(_, Goal2),
-        HasForeign = goal_has_foreign(Goal2)
+        GoalExpr = negation(SubGoal),
+        HasForeign = goal_has_foreign(SubGoal)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            HasForeign = no
+        ;
+            HasForeign = goal_has_foreign(SubGoal)
+        )
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         (
@@ -2748,12 +2834,25 @@ goal_has_foreign(Goal) = HasForeign :-
         )
     ).
 
+:- func goal_list_has_foreign(list(hlds_goal)) = bool.
+
 goal_list_has_foreign([]) = no.
-goal_list_has_foreign([X | Xs]) =
-    ( goal_has_foreign(X) = yes ->
-        yes
+goal_list_has_foreign([Goal | Goals]) = HasForeign :-
+    ( goal_has_foreign(Goal) = yes ->
+        HasForeign = yes
     ;
-        goal_list_has_foreign(Xs)
+        HasForeign = goal_list_has_foreign(Goals)
+    ).
+
+:- func case_list_has_foreign(list(case)) = bool.
+
+case_list_has_foreign([]) = no.
+case_list_has_foreign([Case | Cases]) = HasForeign :-
+    Case = case(_, _, Goal),
+    ( goal_has_foreign(Goal) = yes ->
+        HasForeign = yes
+    ;
+        HasForeign = case_list_has_foreign(Cases)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3026,7 +3125,7 @@ make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
     GoalExpr = unify(Var, RHS, Mode, Unification, Context),
     set.singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(InstMapDelta0),
-    instmap_delta_insert(Var, Inst, InstMapDelta0, InstMapDelta),
+    instmap_delta_insert_var(Var, Inst, InstMapDelta0, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo).
 
 construct_functor(Var, ConsId, Args, Goal) :-

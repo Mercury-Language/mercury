@@ -191,6 +191,8 @@ record_actual_region_arguments_expr(GoalExpr, GoalInfo, ModuleInfo, CallerPPId,
         GoalExpr = unify(_, _, _, _, _)
     ;
         GoalExpr = scope(_, SubGoal),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
             RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, SubGoal,
             !ActualRegionArgProc)

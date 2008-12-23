@@ -187,7 +187,11 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         goal_expr_add_heap_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        goal_add_heap_ops(SubGoal0, SubGoal, !Info),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            SubGoal = SubGoal0
+        ;
+            goal_add_heap_ops(SubGoal0, SubGoal, !Info)
+        ),
         GoalExpr = scope(Reason, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;

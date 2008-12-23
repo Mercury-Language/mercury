@@ -104,8 +104,8 @@ figure_out_output_vars(CI, GoalInfo, OutVars) :-
             % If a variable has a final inst, then it changed
             % instantiatedness during the switch.
             set.member(Var, ChangedVars),
-            instmap.lookup_var(CurrentInstMap, Var, Initial),
-            instmap.lookup_var(InstMapAfter, Var, Final),
+            instmap_lookup_var(CurrentInstMap, Var, Initial),
+            instmap_lookup_var(InstMapAfter, Var, Final),
             mode_is_output(ModuleInfo, (Initial -> Final))
         ),
         solutions.solutions(Lambda, OutVars)

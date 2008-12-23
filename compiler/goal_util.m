@@ -546,7 +546,7 @@ goal_vars_2(Goal, !Set) :-
         ;
             Reason = commit(_)
         ;
-            Reason = from_ground_term(Var),
+            Reason = from_ground_term(Var, _),
             set.insert(!.Set, Var, !:Set)
         ;
             Reason = trace_goal(_, _, _, _, _)
@@ -677,6 +677,9 @@ attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
         GoalExpr = negation(Goal)
     ;
         GoalExpr0 = scope(Reason, Goal0),
+        % For most features there would be no point in attaching them
+        % to the goals inside from_ground_term_construct scopes, but there
+        % may be one or two for which this may be meaningful.
         attach_features_to_all_goals(Features, Goal0, Goal),
         GoalExpr = scope(Reason, Goal)
     ;
@@ -702,31 +705,28 @@ attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
 
 extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         NonLocals, NonLocalTypeInfos) :-
+    % Find all non-local type vars.  That is, type vars that are existentially
+    % quantified or type vars that appear in the type of a non-local prog_var.
 
-        % Find all non-local type vars.  That is, type vars that are
-        % existentially quantified or type vars that appear in the
-        % type of a non-local prog_var.
-        %
     set.to_sorted_list(NonLocals, NonLocalsList),
     map.apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
     type_vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
     list.append(ExistQVars, NonLocalTypeVarsList0, NonLocalTypeVarsList),
     set.list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
 
-        % Find all the type_infos that are non-local, that is,
-        % type_infos for type vars that are non-local in the above
-        % sense.
-        %
+    % Find all the type_infos that are non-local, that is, type_infos for
+    % type vars that are non-local in the above sense.
+
     TypeVarToProgVar = (func(TypeVar) = ProgVar :-
         rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, Locn),
         type_info_locn_var(Locn, ProgVar)
     ),
     NonLocalTypeInfoVars = set.map(TypeVarToProgVar, NonLocalTypeVars),
 
-        % Find all the typeclass_infos that are non-local.  These
-        % include all typeclass_infos that constrain a type variable
-        % that is non-local in the above sense.
-        %
+    % Find all the typeclass_infos that are non-local. These include
+    % all typeclass_infos that constrain a type variable that is non-local
+    % in the above sense.
+
     solutions.solutions_set(
         (pred(Var::out) is nondet :-
             % Search through all arguments of all constraints
@@ -772,10 +772,15 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
         ),
         IsLeaf = proc_body_is_leaf_goals(Goals)
     ;
-        ( GoalExpr = negation(Goal)
-        ; GoalExpr = scope(_, Goal)
-        ),
-        IsLeaf = proc_body_is_leaf(Goal)
+        GoalExpr = negation(SubGoal),
+        IsLeaf = proc_body_is_leaf(SubGoal)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            IsLeaf = is_leaf
+        ;
+            IsLeaf = proc_body_is_leaf(SubGoal)
+        )
     ;
         GoalExpr = switch(_, _, Cases),
         IsLeaf = proc_body_is_leaf_cases(Cases)
@@ -915,9 +920,14 @@ goal_expr_size(GoalExpr, Size) :-
         goal_size(SubGoal, Size1),
         Size = Size1 + 1
     ;
-        GoalExpr = scope(_, SubGoal),
-        goal_size(SubGoal, Size1),
-        Size = Size1 + 1
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes get turned into a single assignment.
+            Size = 1
+        ;
+            goal_size(SubGoal, Size1),
+            Size = Size1 + 1
+        )
     ;
         GoalExpr = shorthand(ShortHand),
         (
@@ -992,8 +1002,13 @@ goal_expr_calls(if_then_else(_, Cond, Then, Else), PredProcId) :-
     ).
 goal_expr_calls(negation(Goal), PredProcId) :-
     goal_calls(Goal, PredProcId).
-goal_expr_calls(scope(_, Goal), PredProcId) :-
-    goal_calls(Goal, PredProcId).
+goal_expr_calls(scope(Reason, Goal), PredProcId) :-
+    ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        % These goals contain only construction unifications.
+        fail
+    ;
+        goal_calls(Goal, PredProcId)
+    ).
 goal_expr_calls(plain_call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
 
 %-----------------------------------------------------------------------------%
@@ -1050,8 +1065,13 @@ goal_expr_calls_pred_id(if_then_else(_, Cond, Then, Else), PredId) :-
     ).
 goal_expr_calls_pred_id(negation(Goal), PredId) :-
     goal_calls_pred_id(Goal, PredId).
-goal_expr_calls_pred_id(scope(_, Goal), PredId) :-
-    goal_calls_pred_id(Goal, PredId).
+goal_expr_calls_pred_id(scope(Reason, Goal), PredId) :-
+    ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        % These goals contain only construction unifications.
+        fail
+    ;
+        goal_calls_pred_id(Goal, PredId)
+    ).
 goal_expr_calls_pred_id(plain_call(PredId, _, _, _, _, _), PredId).
 
 %-----------------------------------------------------------------------------%
@@ -1100,8 +1120,13 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
         GoalExpr = negation(Goal),
         goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
     ;
-        GoalExpr = scope(_, Goal),
-        goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
+        GoalExpr = scope(Reason, Goal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These goals contain only construction unifications.
+            true
+        ;
+            goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
+        )
     ;
         GoalExpr = shorthand(ShortHand),
         (
@@ -1152,8 +1177,14 @@ goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else)) :-
     goals_contain_reconstruction([Cond, Then, Else]).
 goal_expr_contains_reconstruction(negation(Goal)) :-
     goal_contains_reconstruction(Goal).
-goal_expr_contains_reconstruction(scope(_, Goal)) :-
-    goal_contains_reconstruction(Goal).
+goal_expr_contains_reconstruction(scope(Reason, Goal)) :-
+    ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        % These goals contain only construction unifications
+        % that do no reuse.
+        fail
+    ;
+        goal_contains_reconstruction(Goal)
+    ).
 goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
     Unify = construct(_, _, _, _, HowToConstruct, _, _),
     HowToConstruct = reuse_cell(_).
@@ -1207,7 +1238,7 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     map.lookup(!.VarTypes, Var, VarType),
     type_util.get_cons_id_arg_types(!.ModuleInfo, VarType, ConsId, ArgTypes),
     svmap.det_insert_from_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
-    instmap.lookup_var(InstMap, Var, Inst0),
+    instmap_lookup_var(InstMap, Var, Inst0),
     (
         inst_expand(!.ModuleInfo, Inst0, Inst1),
         get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)
@@ -1729,9 +1760,13 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        SubGoal = maybe_strip_equality_pretest(SubGoal0),
-        GoalExpr = scope(Reason, SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Goal = Goal0
+        ;
+            SubGoal = maybe_strip_equality_pretest(SubGoal0),
+            GoalExpr = scope(Reason, SubGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (

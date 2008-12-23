@@ -483,7 +483,7 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
         OldHeadVarList),
 
     map.apply_to_list(ExtraHeadVarList, VarTypes0, ExtraArgTypes),
-    list.append(ExtraArgTypes, ArgTypes0, ArgTypes),
+    ArgTypes = ExtraArgTypes ++ ArgTypes0,
     pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
         PredInfo0, PredInfo1),
 
@@ -672,7 +672,7 @@ polymorphism_process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
     % XXX ARGVEC - revisit this when the proc_info uses proc_arg_vectors.
     proc_info_get_argmodes(!.ProcInfo, ArgModes1),
     ExtraArgModesList = poly_arg_vector_to_list(ExtraArgModes),
-    list.append(ExtraArgModesList, ArgModes1, ArgModes),
+    ArgModes = ExtraArgModesList ++ ArgModes1,
     proc_info_set_argmodes(ArgModes, !ProcInfo).
 
     % XXX document me
@@ -1066,7 +1066,7 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
         ArgVars = ExtraVars ++ ArgVars0,
         CallExpr = GoalExpr0 ^ call_args := ArgVars,
         Call = hlds_goal(CallExpr, GoalInfo),
-        list.append(ExtraGoals, [Call], GoalList),
+        GoalList = ExtraGoals ++ [Call],
         conj_list_to_goal(GoalList, GoalInfo0, Goal)
     ;
         GoalExpr0 = call_foreign_proc(_, PredId, _, _, _, _, _),
@@ -1105,8 +1105,54 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
             polymorphism_process_case_list(Cases0, Cases, !Info),
             GoalExpr = switch(Var, CanFail, Cases)
         ;
-            GoalExpr0 = scope(Reason, SubGoal0),
-            polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+            GoalExpr0 = scope(Reason0, SubGoal0),
+            (
+                Reason0 =
+                    from_ground_term(TermVar, from_ground_term_construct)
+            ->
+                poly_info_get_varset(!.Info, VarSetBefore),
+                MaxVarBefore = varset.max_var(VarSetBefore),
+                polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+                poly_info_get_varset(!.Info, VarSetAfter),
+                MaxVarAfter = varset.max_var(VarSetAfter),
+
+                ( not MaxVarAfter = MaxVarBefore ->
+                    % We did introduced some variables into the scope,
+                    % so we cannot guarantee that the scope still satisfies
+                    % the invariants of from_ground_term_construct scopes.
+                    Reason = from_ground_term(TermVar, from_ground_term_other)
+                ;
+                    poly_info_get_var_types(!.Info, VarTypes),
+                    map.lookup(VarTypes, TermVar, TermVarType),
+                    type_vars(TermVarType, TermVarTypeVars),
+                    (
+                        TermVarTypeVars = [_ | _],
+                        % We may have (and probably did) modified the code in
+                        % the scope by adding a reference to typeinfo variables
+                        % representing TermVarTypeVars.
+                        Reason = from_ground_term(TermVar,
+                            from_ground_term_other)
+                    ;
+                        TermVarTypeVars = [],
+                        % TermVarTypeVars = [] says that there is no
+                        % polymorphism imposed from the outside via TermVar,
+                        % and MaxVarAfter = MaxVarBefore says that there was no
+                        % polymorphism added by the goals inside the scope
+                        % (since those would have required the creation of
+                        % new typeinfo variables).
+                        % XXX zs: I am only 90% sure of the statement in the
+                        % parentheses. If it turns out to be wrong, we would
+                        % have to add a flag to poly_infos that is set whenever
+                        % this pass modifies a goal, at least in ways that
+                        % would invalidate the from_ground_term_construct
+                        % invariant.
+                        Reason = Reason0
+                    )
+                )
+            ;
+                polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+                Reason = Reason0
+            ),
             GoalExpr = scope(Reason, SubGoal)
         ;
             GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
@@ -1147,14 +1193,14 @@ type_info_vars(ModuleInfo, [Arg | Args], InitString) = String :-
     (
         MaybeNameMode = yes(ArgName0 - Mode),
         ( mode_is_output(ModuleInfo, Mode) ->
-            string.append("&", ArgName0, ArgName)
+            ArgName = "&" ++ ArgName0
         ;
             ArgName = ArgName0
         ),
         ( String0 = "" ->
             String = ArgName
         ;
-            String = string.append_list([ArgName, ", ", String0])
+            String = ArgName ++ ", " ++ String0
         )
     ;
         MaybeNameMode = no,
@@ -1204,7 +1250,7 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         fixup_lambda_quantification(ArgVars0, LambdaVars, ExistQVars,
             LambdaGoal1, LambdaGoal, NonLocalTypeInfos, !Info),
         set.to_sorted_list(NonLocalTypeInfos, NonLocalTypeInfosList),
-        list.append(NonLocalTypeInfosList, ArgVars0, ArgVars),
+        ArgVars = NonLocalTypeInfosList ++ ArgVars0,
         Y1 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             ArgVars, LambdaVars, Modes, Det, LambdaGoal),
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
@@ -1372,7 +1418,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         polymorphism_process_existq_unify_functor(ConsDefn,
             IsConstruction, ActualArgTypes, TypeOfX, GoalInfo0,
             ExtraVars, ExtraGoals, !Info),
-        list.append(ExtraVars, ArgVars0, ArgVars),
+        ArgVars = ExtraVars ++ ArgVars0,
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         set.insert_list(NonLocals0, ExtraVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
@@ -1385,7 +1431,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         UnifyExpr = unify(X0, rhs_functor(ConsId, IsConstruction, ArgVars),
             Mode0, Unification, UnifyContext),
         Unify = hlds_goal(UnifyExpr, GoalInfo),
-        list.append(ExtraGoals, [Unify], GoalList),
+        GoalList = ExtraGoals ++ [Unify],
         conj_list_to_goal(GoalList, GoalInfo0, Goal)
     ;
         % We leave construction/deconstruction unifications alone.
@@ -1402,10 +1448,9 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
 convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
         ArgVars0, PredArgTypes, UnifyContext, GoalInfo0, Context,
         ModuleInfo0, Functor, !VarSet, !VarTypes) :-
-
     % Create the new lambda-quantified variables.
     create_fresh_vars(PredArgTypes, LambdaVars, !VarSet, !VarTypes),
-    list.append(ArgVars0, LambdaVars, Args),
+    Args = ArgVars0 ++ LambdaVars,
 
     % Build up the hlds_goal_expr for the call that will form the lambda goal.
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
@@ -1424,7 +1469,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % Construct a goal_info for the lambda goal, making sure to set up
     % the nonlocals field in the goal_info correctly. The goal_path is needed
     % to compute constraint_ids correctly.
-    %
+
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
     set.insert_list(NonLocals, LambdaVars, OutsideVars),
     set.list_to_set(Args, InsideVars),
@@ -1649,7 +1694,7 @@ polymorphism_process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal,
     CallExpr = call_foreign_proc(Attributes, PredId, ProcId,
         Args, ProcExtraArgs, MaybeTraceRuntimeCond, Impl),
     Call = hlds_goal(CallExpr, GoalInfo),
-    list.append(ExtraGoals, [Call], GoalList),
+    GoalList = ExtraGoals ++ [Call],
     conj_list_to_goal(GoalList, GoalInfo0, Goal).
 
 :- pred polymorphism_process_foreign_proc_args(pred_info::in, bool::in,
@@ -1736,7 +1781,7 @@ foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
 foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
         MaybeArgName - native_if_possible) :-
     ( varset.search_name(TypeVarSet, TVar, TypeVarName) ->
-        string.append("TypeInfo_for_", TypeVarName, C_VarName),
+        C_VarName = "TypeInfo_for_" ++ TypeVarName,
         % If the variable name corresponding to the type_info isn't mentioned
         % in the C code fragment, don't pass the variable to the C code at all.
         (
@@ -1765,7 +1810,7 @@ foreign_code_does_not_use_variable(Impl, VarName) :-
 
 underscore_and_tvar_name(TypeVarSet, TVar) = TVarName :-
     varset.lookup_name(TypeVarSet, TVar, TVarName0),
-    string.append("_", TVarName0, TVarName).
+    TVarName = "_" ++ TVarName0.
 
 :- pred polymorphism_process_goal_list(list(hlds_goal)::in,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
@@ -2371,7 +2416,6 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
 construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
         ArgTypeClassInfoVars, ClassId, Constraint, InstanceNum, InstanceTypes,
         SuperClassProofs, ExistQVars, NewVar, NewGoals, !Info) :-
-
     poly_info_get_module_info(!.Info, ModuleInfo),
 
     module_info_get_class_table(ModuleInfo, ClassTable),
@@ -2381,9 +2425,8 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
         ExistQVars, ArgSuperClassVars, SuperClassGoals, !Info),
 
     % Lay out the argument variables as expected in the typeclass_info.
-    list.append(ArgTypeClassInfoVars, ArgSuperClassVars, ArgVars0),
-    list.append(ArgVars0, ArgTypeInfoVars, ArgVars1),
-    list.append(ArgUnconstrainedTypeInfoVars, ArgVars1, ArgVars),
+    ArgVars = ArgUnconstrainedTypeInfoVars ++ ArgTypeClassInfoVars ++
+        ArgSuperClassVars ++ ArgTypeInfoVars,
 
     ClassId = class_id(ClassName, _Arity),
 
@@ -2454,8 +2497,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
     goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
 
     TypeClassInfoGoal = hlds_goal(Unify, GoalInfo),
-    NewGoals0 = [TypeClassInfoGoal, BaseGoal],
-    list.append(NewGoals0, SuperClassGoals, NewGoals).
+    NewGoals = [TypeClassInfoGoal, BaseGoal] ++ SuperClassGoals.
 
 %---------------------------------------------------------------------------%
 
@@ -2734,7 +2776,7 @@ maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity, ArgTypeInfoVars,
             TypeInfoType = type_info_type,
             map.det_update(!.VarTypes, TypeCtorVar, TypeInfoType, !:VarTypes),
             Var = TypeCtorVar,
-            list.append(ArgTypeInfoGoals, ExtraGoals0, ExtraGoals)
+            ExtraGoals = ArgTypeInfoGoals ++ ExtraGoals0
 
             % The type_info to represent Type is just a type_ctor_info. We used
             % to simply change the type of TypeCtorVar from type_ctor_info to
@@ -2912,7 +2954,7 @@ make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars, !Info) :-
     new_type_info_var(Type, type_info, Var, !Info),
     ( varset.search_name(TypeVarSet, TypeVar, TypeVarName) ->
         poly_info_get_varset(!.Info, VarSet0),
-        string.append("TypeInfo_for_", TypeVarName, VarName),
+        VarName = "TypeInfo_for_" ++ TypeVarName,
         varset.name_var(VarSet0, Var, VarName, VarSet),
         poly_info_set_varset(VarSet, !Info)
     ;
@@ -2949,7 +2991,7 @@ new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
         % XXX Perhaps we should record the variables holding
         % type_ctor_infos in the rtti_varmaps somewhere.
     ),
-    string.append(Prefix, VarNumStr, Name),
+    Name = Prefix ++ VarNumStr,
     varset.name_var(!.VarSet, Var, Name, !:VarSet),
     map.set(!.VarTypes, Var, type_info_type, !:VarTypes).
 
@@ -3128,7 +3170,7 @@ new_typeclass_info_var(Constraint, ClassString, Var, !Info) :-
 
     % Introduce new variable.
     varset.new_var(VarSet0, Var, VarSet1),
-    string.append("TypeClassInfo_for_", ClassString, Name),
+    Name = "TypeClassInfo_for_" ++ ClassString,
     varset.name_var(VarSet1, Var, Name, VarSet),
     build_typeclass_info_type(Constraint, DictionaryType),
     map.set(VarTypes0, Var, DictionaryType, VarTypes),
@@ -3470,10 +3512,6 @@ poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_proofs(constraint_proof_map::in,
     poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_constraint_map(constraint_map::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_module_info(module_info::in,
-    poly_info::in, poly_info::out) is det.
 
 poly_info_set_varset(VarSet, !PI) :-
     !PI ^ poly_varset := VarSet.
@@ -3488,10 +3526,6 @@ poly_info_set_rtti_varmaps(RttiVarMaps, !PI) :-
     !PI ^ poly_rtti_varmaps := RttiVarMaps.
 poly_info_set_proofs(Proofs, !PI) :-
     !PI ^ poly_proof_map := Proofs.
-poly_info_set_constraint_map(ConstraintMap, !PI) :-
-    !PI ^ poly_constraint_map := ConstraintMap.
-poly_info_set_module_info(ModuleInfo, !PI) :-
-    !PI ^ poly_module_info := ModuleInfo.
 
 %---------------------------------------------------------------------------%
 

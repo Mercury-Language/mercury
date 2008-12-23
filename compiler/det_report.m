@@ -573,7 +573,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             det_info_get_module_info(!.DetInfo, ModuleInfo),
             (
                 (
-                    instmap.lookup_var(InstMap0, Var, VarInst),
+                    instmap_lookup_var(InstMap0, Var, VarInst),
                     inst_is_bound_to_functors(ModuleInfo, VarInst, Functors)
                 ->
                     functors_to_cons_ids(Functors, ConsIds)

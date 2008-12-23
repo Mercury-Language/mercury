@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,11 +56,11 @@
 
     % Is the instmap reachable?
     %
-:- pred is_reachable(instmap::in) is semidet.
+:- pred instmap_is_reachable(instmap::in) is semidet.
 
     % Is the instmap unreachable?
     %
-:- pred is_unreachable(instmap::in) is semidet.
+:- pred instmap_is_unreachable(instmap::in) is semidet.
 
     % For any instmap InstMapDelta, exactly one of
     % instmap_delta_is_reachable(InstMapDelta) and
@@ -74,7 +74,7 @@
     %
 :- pred instmap_delta_is_unreachable(instmap_delta::in) is semidet.
 
-:- pred from_assoc_list(assoc_list(prog_var, mer_inst)::in,
+:- pred instmap_from_assoc_list(assoc_list(prog_var, mer_inst)::in,
     instmap::out) is det.
 
 :- pred instmap_delta_from_assoc_list(assoc_list(prog_var, mer_inst)::in,
@@ -87,11 +87,11 @@
 
     % Return the set of variables in an instmap.
     %
-:- pred vars(instmap::in, set(prog_var)::out) is det.
+:- pred instmap_vars(instmap::in, set(prog_var)::out) is det.
 
     % Return the list of variables in an instmap.
     %
-:- pred vars_list(instmap::in, list(prog_var)::out) is det.
+:- pred instmap_vars_list(instmap::in, list(prog_var)::out) is det.
 
     % Return the set of variables whose instantiations have
     % changed (or our knowledge about them has changed) across
@@ -127,7 +127,7 @@
 
     % Given an instmap and a variable, determine the inst of that variable.
     %
-:- pred lookup_var(instmap::in, prog_var::in, mer_inst::out) is det.
+:- pred instmap_lookup_var(instmap::in, prog_var::in, mer_inst::out) is det.
 
     % Given an instmap_delta and a variable, determine the new inst
     % of that variable (if any).
@@ -138,25 +138,34 @@
     % Given an instmap and a list of variables, return a list
     % containing the insts of those variable.
     %
-:- pred lookup_vars(list(prog_var)::in, instmap::in,
+:- pred instmap_lookup_vars(instmap::in, list(prog_var)::in,
     list(mer_inst)::out) is det.
 
     % Insert an entry into an instmap_delta. Note that you cannot call
     % instmap_delta_insert for a variable already present.
     %
-:- pred instmap_delta_insert(prog_var::in, mer_inst::in,
+:- pred instmap_delta_insert_var(prog_var::in, mer_inst::in,
     instmap_delta::in, instmap_delta::out) is det.
 
     % Set an entry in an instmap.
     %
-:- pred set(prog_var::in, mer_inst::in, instmap::in, instmap::out) is det.
+:- pred instmap_set_var(prog_var::in, mer_inst::in, instmap::in, instmap::out)
+    is det.
 
-    % Set multiple entries in an instmap.
+    % Set multiple entries in an instmap. None of the insts should be
+    % `not_reached'.
     %
-:- pred set_vars(list(prog_var)::in, list(mer_inst)::in,
+:- pred instmap_set_vars(assoc_list(prog_var, mer_inst)::in,
+    instmap::in, instmap::out) is det.
+:- pred instmap_set_vars_corresponding(list(prog_var)::in, list(mer_inst)::in,
+    instmap::in, instmap::out) is det.
+:- pred instmap_set_vars_same(mer_inst::in, list(prog_var)::in,
     instmap::in, instmap::out) is det.
 
-:- pred instmap_delta_set(prog_var::in, mer_inst::in,
+:- pred instmap_delta_set_var(prog_var::in, mer_inst::in,
+    instmap_delta::in, instmap_delta::out) is det.
+
+:- pred instmap_delta_set_vars_same(mer_inst::in, list(prog_var)::in, 
     instmap_delta::in, instmap_delta::out) is det.
 
     % Bind a variable in an instmap to a functor at the beginning
@@ -247,11 +256,11 @@
 :- pred instmap_delta_delete_vars(list(prog_var)::in,
     instmap_delta::in, instmap_delta::out) is det.
 
-    % `no_output_vars(Instmap, InstmapDelta, Vars, ModuleInfo)'
+    % `instmap_delta_no_output_vars(Instmap, InstmapDelta, Vars, ModuleInfo)'
     % is true if none of the vars in the set Vars could have become more
     % instantiated when InstmapDelta is applied to Instmap.
     %
-:- pred no_output_vars(instmap::in, instmap_delta::in,
+:- pred instmap_delta_no_output_vars(instmap::in, instmap_delta::in,
     set(prog_var)::in, vartypes::in, module_info::in) is semidet.
 
     % merge_instmap_delta(InitialInstMap, NonLocals,
@@ -297,12 +306,12 @@
 :- pred instmap_delta_apply_sub(must_rename::in, map(prog_var, prog_var)::in,
     instmap_delta::in, instmap_delta::out) is det.
 
-:- pred apply_sub(must_rename::in, map(prog_var, prog_var)::in,
+:- pred instmap_apply_sub(must_rename::in, map(prog_var, prog_var)::in,
     instmap::in, instmap::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-:- pred to_assoc_list(instmap::in,
+:- pred instmap_to_assoc_list(instmap::in,
     assoc_list(prog_var, mer_inst)::out) is det.
 
 :- pred instmap_delta_to_assoc_list(instmap_delta::in,
@@ -347,6 +356,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
+:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
@@ -377,9 +387,9 @@ instmap_delta_init_unreachable(unreachable).
 
 %-----------------------------------------------------------------------------%
 
-is_reachable(reachable(_)).
+instmap_is_reachable(reachable(_)).
 
-is_unreachable(unreachable).
+instmap_is_unreachable(unreachable).
 
 instmap_delta_is_reachable(reachable(_)).
 
@@ -387,7 +397,7 @@ instmap_delta_is_unreachable(unreachable).
 
 %-----------------------------------------------------------------------------%
 
-from_assoc_list(AL, reachable(Instmapping)) :-
+instmap_from_assoc_list(AL, reachable(Instmapping)) :-
     map.from_assoc_list(AL, Instmapping).
 
 instmap_delta_from_assoc_list(AL, reachable(Instmapping)) :-
@@ -419,18 +429,18 @@ instmap_delta_from_mode_list_2([Var | Vars], [Mode | Modes], ModuleInfo,
     ( Inst1 = Inst2 ->
         instmap_delta_from_mode_list_2(Vars, Modes, ModuleInfo, !InstMapDelta)
     ;
-        instmap_delta_set(Var, Inst2, !InstMapDelta),
+        instmap_delta_set_var(Var, Inst2, !InstMapDelta),
         instmap_delta_from_mode_list_2(Vars, Modes, ModuleInfo, !InstMapDelta)
     ).
 
 %-----------------------------------------------------------------------------%
 
-vars(Instmap, Vars) :-
-    vars_list(Instmap, VarsList),
+instmap_vars(Instmap, Vars) :-
+    instmap_vars_list(Instmap, VarsList),
     set.list_to_set(VarsList, Vars).
 
-vars_list(unreachable, []).
-vars_list(reachable(InstMapping), VarsList) :-
+instmap_vars_list(unreachable, []).
+instmap_vars_list(reachable(InstMapping), VarsList) :-
     map.keys(InstMapping, VarsList).
 
 instmap_bound_vars(unreachable, _ModuleInfo, set.init).
@@ -457,22 +467,23 @@ instmap_delta_changed_vars(reachable(InstMapping), ChangedVars) :-
 %-----------------------------------------------------------------------------%
 
 instmap_changed_vars(InstMapA, InstMapB, VarTypes, ModuleInfo, ChangedVars) :-
-    vars_list(InstMapB, VarsB),
-    changed_vars_2(VarsB, InstMapA, InstMapB, VarTypes, ModuleInfo,
+    instmap_vars_list(InstMapB, VarsB),
+    instmap_changed_vars_2(VarsB, InstMapA, InstMapB, VarTypes, ModuleInfo,
         ChangedVars).
 
-:- pred changed_vars_2(prog_vars::in, instmap::in, instmap::in, vartypes::in,
-    module_info::in, set(prog_var)::out) is det.
+:- pred instmap_changed_vars_2(prog_vars::in, instmap::in, instmap::in,
+    vartypes::in, module_info::in, set(prog_var)::out) is det.
 
-changed_vars_2([], _InstMapA, _InstMapB, _Types, _ModuleInfo, ChangedVars) :-
+instmap_changed_vars_2([], _InstMapA, _InstMapB, _Types,
+        _ModuleInfo, ChangedVars) :-
     set.init(ChangedVars).
-changed_vars_2([VarB | VarBs], InstMapA, InstMapB, VarTypes, ModuleInfo,
-        ChangedVars) :-
-    changed_vars_2(VarBs, InstMapA, InstMapB, VarTypes, ModuleInfo,
-        ChangedVars0),
+instmap_changed_vars_2([VarB | VarBs], InstMapA, InstMapB, VarTypes,
+        ModuleInfo, ChangedVars) :-
+    instmap_changed_vars_2(VarBs, InstMapA, InstMapB, VarTypes,
+        ModuleInfo, ChangedVars0),
 
-    lookup_var(InstMapA, VarB, InitialInst),
-    lookup_var(InstMapB, VarB, FinalInst),
+    instmap_lookup_var(InstMapA, VarB, InitialInst),
+    instmap_lookup_var(InstMapB, VarB, FinalInst),
     map.lookup(VarTypes, VarB, Type),
 
     ( inst_matches_final(InitialInst, FinalInst, Type, ModuleInfo) ->
@@ -483,8 +494,8 @@ changed_vars_2([VarB | VarBs], InstMapA, InstMapB, VarTypes, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-lookup_var(unreachable, _Var, not_reached).
-lookup_var(reachable(InstMap), Var, Inst) :-
+instmap_lookup_var(unreachable, _Var, not_reached).
+instmap_lookup_var(reachable(InstMap), Var, Inst) :-
     instmapping_lookup_var(InstMap, Var, Inst).
 
 :- pred instmapping_lookup_var(instmapping::in, prog_var::in, mer_inst::out)
@@ -501,26 +512,86 @@ instmap_delta_search_var(unreachable, _, not_reached).
 instmap_delta_search_var(reachable(InstMap), Var, Inst) :-
     map.search(InstMap, Var, Inst).
 
-lookup_vars([], _InstMap, []).
-lookup_vars([Arg|Args], InstMap, [Inst|Insts]) :-
-    lookup_var(InstMap, Arg, Inst),
-    lookup_vars(Args, InstMap, Insts).
+instmap_lookup_vars(_InstMap, [], []).
+instmap_lookup_vars(InstMap, [Arg | Args], [Inst | Insts]) :-
+    instmap_lookup_var(InstMap, Arg, Inst),
+    instmap_lookup_vars(InstMap, Args, Insts).
 
-set(_Var, _Inst, unreachable, unreachable).
-set(Var, Inst, reachable(InstMapping0), reachable(InstMapping)) :-
+instmap_set_var(_Var, _Inst, unreachable, unreachable).
+instmap_set_var(Var, Inst, reachable(InstMapping0), reachable(InstMapping)) :-
     map.set(InstMapping0, Var, Inst, InstMapping).
 
-set_vars([], [], !InstMap).
-set_vars([V | Vs], [I | Is], !InstMap) :-
-    set(V, I, !InstMap),
-    set_vars(Vs, Is, !InstMap).
-set_vars([_ | _], [], !InstMap) :-
-    unexpected(this_file, "set_vars: length mismatch (1)").
-set_vars([], [_ | _], !InstMap) :-
-    unexpected(this_file, "set_vars: length mismatch (2)").
+instmap_set_vars(VarsInsts, !InstMap) :-
+    (
+        !.InstMap = unreachable
+        % Leave the instmap as it is.
+    ;
+        !.InstMap = reachable(InstMapping0),
+        instmapping_set_vars(VarsInsts, InstMapping0, InstMapping),
+        !:InstMap = reachable(InstMapping)
+    ).
 
-instmap_delta_set(_Var, _Inst, unreachable, unreachable).
-instmap_delta_set(Var, Inst, reachable(InstMapping0), Instmap) :-
+:- pred instmapping_set_vars(assoc_list(prog_var, mer_inst)::in,
+    instmapping::in, instmapping::out) is det.
+
+instmapping_set_vars([], !InstMapping).
+instmapping_set_vars([Var - Inst | VarsInsts], !InstMapping) :-
+    expect(negate(unify(Inst, not_reached)), this_file,
+        "instmapping_set_vars: not_reached"),
+    svmap.set(Var, Inst, !InstMapping),
+    instmapping_set_vars(VarsInsts, !InstMapping).
+
+instmap_set_vars_corresponding(Vars, Insts, !InstMap) :-
+    (
+        !.InstMap = unreachable
+        % Leave the instmap as it is.
+    ;
+        !.InstMap = reachable(InstMapping0),
+        instmapping_set_vars_corresponding(Vars, Insts,
+            InstMapping0, InstMapping),
+        !:InstMap = reachable(InstMapping)
+    ).
+
+:- pred instmapping_set_vars_corresponding(
+    list(prog_var)::in, list(mer_inst)::in,
+    instmapping::in, instmapping::out) is det.
+
+instmapping_set_vars_corresponding([], [], !InstMapping).
+instmapping_set_vars_corresponding([Var | Vars], [Inst | Insts],
+        !InstMapping) :-
+    expect(negate(unify(Inst, not_reached)), this_file,
+        "instmapping_set_vars_corresponding: not_reached"),
+    svmap.set(Var, Inst, !InstMapping),
+    instmapping_set_vars_corresponding(Vars, Insts, !InstMapping).
+instmapping_set_vars_corresponding([_ | _], [], !InstMapping) :-
+    unexpected(this_file,
+        "instmapping_set_vars_corresponding: length mismatch (1)").
+instmapping_set_vars_corresponding([], [_ | _], !InstMapingp) :-
+    unexpected(this_file,
+        "instmapping_set_vars_corresponding: length mismatch (2)").
+
+instmap_set_vars_same(Inst, Vars, !InstMap) :-
+    (
+        !.InstMap = unreachable
+        % Leave the instmap as it is.
+    ;
+        !.InstMap = reachable(InstMapping0),
+        expect(negate(unify(Inst, not_reached)), this_file,
+            "instmap_set_vars_same: not_reached"),
+        instmapping_set_vars_same(Inst, Vars, InstMapping0, InstMapping),
+        !:InstMap = reachable(InstMapping)
+    ).
+
+:- pred instmapping_set_vars_same(mer_inst::in, list(prog_var)::in,
+    instmapping::in, instmapping::out) is det.
+
+instmapping_set_vars_same(_, [], !InstMapping).
+instmapping_set_vars_same(Inst, [Var | Vars], !InstMapping) :-
+    svmap.set(Var, Inst, !InstMapping),
+    instmapping_set_vars_same(Inst, Vars, !InstMapping).
+
+instmap_delta_set_var(_Var, _Inst, unreachable, unreachable).
+instmap_delta_set_var(Var, Inst, reachable(InstMapping0), Instmap) :-
     ( Inst = not_reached ->
         Instmap = unreachable
     ;
@@ -528,8 +599,20 @@ instmap_delta_set(Var, Inst, reachable(InstMapping0), Instmap) :-
         Instmap = reachable(InstMapping)
     ).
 
-instmap_delta_insert(_Var, _Inst, unreachable, unreachable).
-instmap_delta_insert(Var, Inst, reachable(InstMapping0), Instmap) :-
+instmap_delta_set_vars_same(Inst, Vars, !InstMapDelta) :-
+    (
+        !.InstMapDelta = unreachable
+        % Leave the instmap as it is.
+    ;
+        !.InstMapDelta = reachable(InstMapping0),
+        expect(negate(unify(Inst, not_reached)), this_file,
+            "instmap_delta_set_vars_same: not_reached"),
+        instmapping_set_vars_same(Inst, Vars, InstMapping0, InstMapping),
+        !:InstMapDelta = reachable(InstMapping)
+    ).
+
+instmap_delta_insert_var(_Var, _Inst, unreachable, unreachable).
+instmap_delta_insert_var(Var, Inst, reachable(InstMapping0), Instmap) :-
     ( Inst = not_reached ->
         Instmap = unreachable
     ;
@@ -547,7 +630,7 @@ instmap_delta_bind_var_to_functor(Var, Type, ConsId, InstMap, !InstmapDelta,
         !.InstmapDelta = reachable(InstmappingDelta0),
 
         % Get the initial inst from the InstMap.
-        lookup_var(InstMap, Var, OldInst),
+        instmap_lookup_var(InstMap, Var, OldInst),
 
         % Compute the new inst by taking the old inst, applying the instmap
         % delta to it, and then unifying with bound(ConsId, ...).
@@ -560,7 +643,7 @@ instmap_delta_bind_var_to_functor(Var, Type, ConsId, InstMap, !InstmapDelta,
 
         % Add `Var :: OldInst -> NewInst' to the instmap delta.
         ( NewInst \= OldInst ->
-            instmap_delta_set(Var, NewInst, !InstmapDelta)
+            instmap_delta_set_var(Var, NewInst, !InstmapDelta)
         ;
             true
         )
@@ -574,7 +657,7 @@ instmap_delta_bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         !.InstmapDelta = reachable(InstmappingDelta0),
 
         % Get the initial inst from the InstMap.
-        lookup_var(InstMap, Var, OldInst),
+        instmap_lookup_var(InstMap, Var, OldInst),
 
         % Compute the new inst by taking the old inst, applying the instmap
         % delta to it, and then unifying with bound(MainConsId, ...).
@@ -588,23 +671,23 @@ instmap_delta_bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
 
         % Add `Var :: OldInst -> NewInst' to the instmap delta.
         ( NewInst \= OldInst ->
-            instmap_delta_set(Var, NewInst, !InstmapDelta)
+            instmap_delta_set_var(Var, NewInst, !InstmapDelta)
         ;
             true
         )
     ).
 
 bind_var_to_functor(Var, Type, ConsId, !InstMap, !ModuleInfo) :-
-    lookup_var(!.InstMap, Var, Inst0),
+    instmap_lookup_var(!.InstMap, Var, Inst0),
     bind_inst_to_functor(Type, ConsId, Inst0, Inst, !ModuleInfo),
-    set(Var, Inst, !InstMap).
+    instmap_set_var(Var, Inst, !InstMap).
 
 bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         !InstMap, !ModuleInfo) :-
-    lookup_var(!.InstMap, Var, Inst0),
+    instmap_lookup_var(!.InstMap, Var, Inst0),
     bind_inst_to_functors(Type, MainConsId, OtherConsIds, Inst0, Inst,
         !ModuleInfo),
-    set(Var, Inst, !InstMap).
+    instmap_set_var(Var, Inst, !InstMap).
 
 :- pred bind_inst_to_functor(mer_type::in, cons_id::in,
     mer_inst::in, mer_inst::out, module_info::in, module_info::out) is det.
@@ -815,7 +898,7 @@ merge_insts_of_vars([Var | Vars], InstMapList, VarTypes, !InstMapping,
 :- pred lookup_var_in_instmap(prog_var::in, instmap::in, mer_inst::out) is det.
 
 lookup_var_in_instmap(Var, InstMap, Inst) :-
-    lookup_var(InstMap, Var, Inst).
+    instmap_lookup_var(InstMap, Var, Inst).
 
     % merge_var_insts:(Insts, Type, !ModuleInfo, MaybeMergedInst):
     %
@@ -846,7 +929,7 @@ lookup_var_in_instmap(Var, InstMap, Inst) :-
     module_info::in, module_info::out, maybe(mer_inst)::out) is det.
 
 merge_var_insts(Insts, Type, !ModuleInfo, MaybeMergedInst) :-
-    % Construct yes(Type) here once per merge_var pass to avoid merge_var_inst 
+    % Construct yes(Type) here once per merge_var pass to avoid merge_var_inst
     % constructing the yes(Type) cell N times per pass.
     merge_var_insts_pass(Insts, yes(Type), [], MergedInsts, !ModuleInfo,
         no, Error),
@@ -1029,7 +1112,7 @@ unify_insts_of_vars([Var | Vars], InitialInstMap, InstMapList,
         !ModuleInfo, !InstMap, ErrorList) :-
     unify_insts_of_vars(Vars, InitialInstMap, InstMapList, !ModuleInfo,
         !InstMap, ErrorListTail),
-    lookup_var(InitialInstMap, Var, InitialVarInst),
+    instmap_lookup_var(InitialInstMap, Var, InitialVarInst),
     unify_var_insts(InstMapList, Var, [], Insts, InitialVarInst, Inst,
         !ModuleInfo, no, Error),
     (
@@ -1057,7 +1140,7 @@ unify_var_insts([], _, !Insts, !Inst, !ModuleInfo, !Error).
 unify_var_insts([InstMap - Nonlocals| Rest], Var, !InstList, !Inst,
         !ModuleInfo, !Error) :-
     ( set.member(Var, Nonlocals) ->
-        lookup_var(InstMap, Var, VarInst),
+        instmap_lookup_var(InstMap, Var, VarInst),
         (
             % We can ignore the determinism of the unification:
             % if it isn't det, then there will be a mode error
@@ -1103,16 +1186,17 @@ compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-no_output_vars(_, unreachable, _, _, _).
-no_output_vars(InstMap0, reachable(InstMapDelta), Vars, VT, M) :-
+instmap_delta_no_output_vars(_, unreachable, _, _, _).
+instmap_delta_no_output_vars(InstMap0, reachable(InstMapDelta), Vars, VT, M) :-
     set.to_sorted_list(Vars, VarList),
-    no_output_vars_2(VarList, InstMap0, InstMapDelta, VT, M).
+    instmap_delta_no_output_vars_2(VarList, InstMap0, InstMapDelta, VT, M).
 
-:- pred no_output_vars_2(list(prog_var)::in, instmap::in,
+:- pred instmap_delta_no_output_vars_2(list(prog_var)::in, instmap::in,
     instmapping::in, vartypes::in, module_info::in) is semidet.
 
-no_output_vars_2([], _, _, _, _).
-no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes, ModuleInfo) :-
+instmap_delta_no_output_vars_2([], _, _, _, _).
+instmap_delta_no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes,
+        ModuleInfo) :-
     % We use `inst_matches_binding' to check that the new inst has only
     % added information or lost uniqueness, not bound anything.
     % If the instmap delta contains the variable, the variable may still
@@ -1120,7 +1204,7 @@ no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes, ModuleInfo) :-
     % rather than an increase in instantiatedness. If the instmap delta
     % doesn't contain the variable, it may still have been (partially) output,
     % if its inst is (or contains) `any'.
-    lookup_var(InstMap0, Var, Inst0),
+    instmap_lookup_var(InstMap0, Var, Inst0),
     ( map.search(InstMapDelta, Var, Inst1) ->
         Inst = Inst1
     ;
@@ -1128,7 +1212,8 @@ no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes, ModuleInfo) :-
     ),
     map.lookup(VarTypes, Var, Type),
     inst_matches_binding(Inst, Inst0, Type, ModuleInfo),
-    no_output_vars_2(Vars, InstMap0, InstMapDelta, VarTypes, ModuleInfo).
+    instmap_delta_no_output_vars_2(Vars, InstMap0, InstMapDelta, VarTypes,
+        ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1168,18 +1253,18 @@ merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes,
     ( map.search(InstMappingA, Var, InstInA) ->
         InstA = InstInA
     ;
-        lookup_var(InstMap, Var, InstA)
+        instmap_lookup_var(InstMap, Var, InstA)
     ),
     ( map.search(InstMappingB, Var, InstInB) ->
         InstB = InstInB
     ;
-        lookup_var(InstMap, Var, InstB)
+        instmap_lookup_var(InstMap, Var, InstB)
     ),
     (
         inst_merge(InstA, InstB, yes(VarTypes ^ det_elem(Var)), Inst1,
             !ModuleInfo)
     ->
-        % XXX Given lookup_var(InstMap, Var, OldInst),
+        % XXX Given instmap_lookup_var(InstMap, Var, OldInst),
         % we should probably set Inst not directly from Inst1, but
         % from a conjunction of OldInst and Inst1. If OldInst says that
         % Var is bound to f, and Inst1 says that it is bound to g,
@@ -1280,7 +1365,7 @@ instmap_delta_apply_sub(Must, Renaming,
     instmap_delta_apply_sub_2(InstMappingAL, Must, Renaming,
         map.init, InstMapping).
 
-apply_sub(Must, Renaming, InstMap0, InstMap) :-
+instmap_apply_sub(Must, Renaming, InstMap0, InstMap) :-
     instmap_delta_apply_sub(Must, Renaming, InstMap0, InstMap).
 
 :- pred instmap_delta_apply_sub_2(assoc_list(prog_var, mer_inst)::in,
@@ -1300,8 +1385,8 @@ instmap_delta_apply_sub_2([Var0 - Inst | VarInsts0], Must, Renaming,
 
 %-----------------------------------------------------------------------------%
 
-to_assoc_list(unreachable, []).
-to_assoc_list(reachable(InstMapping), AL) :-
+instmap_to_assoc_list(unreachable, []).
+instmap_to_assoc_list(reachable(InstMapping), AL) :-
     map.to_assoc_list(InstMapping, AL).
 
 instmap_delta_to_assoc_list(unreachable, []).
@@ -1311,17 +1396,17 @@ instmap_delta_to_assoc_list(reachable(InstMapping), AL) :-
 %-----------------------------------------------------------------------------%
 
 var_is_ground_in_instmap(ModuleInfo, InstMap, Var) :-
-    lookup_var(InstMap, Var, Inst),
+    instmap_lookup_var(InstMap, Var, Inst),
     inst_is_ground(ModuleInfo, Inst).
 
 var_is_any_in_instmap(ModuleInfo, InstMap, Var) :-
-    lookup_var(InstMap, Var, Inst),
+    instmap_lookup_var(InstMap, Var, Inst),
     inst_is_any(ModuleInfo, Inst).
 
 var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta, Var) :-
-    instmap.is_reachable(InstMap),
+    instmap_is_reachable(InstMap),
     instmap_delta_is_reachable(InstMapDelta),
-    instmap.lookup_var(InstMap, Var, OldVarInst),
+    instmap_lookup_var(InstMap, Var, OldVarInst),
     inst_is_free(ModuleInfo, OldVarInst),
     instmap_delta_search_var(InstMapDelta, Var, VarInst),
     inst_is_bound(ModuleInfo, VarInst).

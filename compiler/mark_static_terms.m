@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,59 +62,64 @@ mark_static_terms(_ModuleInfo, !Proc) :-
 :- pred goal_mark_static_terms(hlds_goal::in, hlds_goal::out,
     static_info::in, static_info::out) is det.
 
-goal_mark_static_terms(hlds_goal(GoalExpr0, GoalInfo),
-        hlds_goal(GoalExpr, GoalInfo), !SI) :-
-    goal_expr_mark_static_terms(GoalExpr0, GoalExpr, !SI).
-
-:- pred goal_expr_mark_static_terms(hlds_goal_expr::in, hlds_goal_expr::out,
-    static_info::in, static_info::out) is det.
-
-goal_expr_mark_static_terms(conj(ConjType, Goals0), conj(ConjType, Goals),
-        !SI) :-
-    % It's OK to treat parallel conjunctions as if they were sequential here,
-    % since if we mark any variables as static, the computation of those
-    % variables will be done at compile time.
-    conj_mark_static_terms(Goals0, Goals, !SI).
-
-goal_expr_mark_static_terms(disj(Goals0), disj(Goals), !SI) :-
-    % We revert to the original static_info at the end of branched goals.
-    disj_mark_static_terms(Goals0, Goals, !.SI).
-
-goal_expr_mark_static_terms(switch(A, B, Cases0), switch(A, B, Cases), !SI) :-
-    % We revert to the original static_info at the end of branched goals.
-    cases_mark_static_terms(Cases0, Cases, !.SI).
-
-goal_expr_mark_static_terms(negation(Goal0), negation(Goal), !SI) :-
-    % We revert to the original static_info at the end of the negation.
-    goal_mark_static_terms(Goal0, Goal, !.SI, _SI).
-
-goal_expr_mark_static_terms(scope(A, Goal0), scope(A, Goal), !SI) :-
-    goal_mark_static_terms(Goal0, Goal, !SI).
-
-goal_expr_mark_static_terms(if_then_else(A, Cond0, Then0, Else0),
-        if_then_else(A, Cond, Then, Else), SI0, SI0) :-
-    % We run the Cond and the Then in sequence, and we run the Else
-    % in parallel with that, and then we throw away the static_infos
-    % we computed and revert to the original static_info at the end,
-    % since this was a branched goal.
-    goal_mark_static_terms(Cond0, Cond, SI0, SI_Cond),
-    goal_mark_static_terms(Then0, Then, SI_Cond, _SI_Then),
-    goal_mark_static_terms(Else0, Else, SI0, _SI_Else).
-
-goal_expr_mark_static_terms(Goal @ plain_call(_, _, _, _, _, _), Goal, !SI).
-
-goal_expr_mark_static_terms(Goal @ generic_call(_, _, _, _), Goal, !SI).
-
-goal_expr_mark_static_terms(unify(LHS, RHS, Mode, Unification0, Context),
-        unify(LHS, RHS, Mode, Unification, Context), !SI) :-
-    unification_mark_static_terms(Unification0, Unification, !SI).
-
-goal_expr_mark_static_terms(Goal @ call_foreign_proc(_, _, _, _, _, _, _),
-        Goal, !SI).
-
-goal_expr_mark_static_terms(shorthand(_), _, !SI) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "fill_expr_slots: unexpected shorthand").
+goal_mark_static_terms(Goal0, Goal, !SI) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    (
+        GoalExpr0 = conj(ConjType, Goals0),
+        % It's OK to treat parallel conjunctions as if they were sequential
+        % here, since if we mark any variables as static, the computation
+        %of those variables will be done at compile time.
+        conj_mark_static_terms(Goals0, Goals, !SI),
+        GoalExpr = conj(ConjType, Goals)
+    ;
+        GoalExpr0 = disj(Goals0),
+        % We revert to the original static_info at the end of branched goals.
+        disj_mark_static_terms(Goals0, Goals, !.SI),
+        GoalExpr = disj(Goals)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        % We revert to the original static_info at the end of branched goals.
+        cases_mark_static_terms(Cases0, Cases, !.SI),
+        GoalExpr = switch(Var, CanFail, Cases)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        % We revert to the original static_info at the end of the negation.
+        goal_mark_static_terms(SubGoal0, SubGoal, !.SI, _SI),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        % We should special-case the handling of from_ground_term_construct
+        % scopes, since these already have all their unifications marked
+        % as construct_statically.
+        goal_mark_static_terms(SubGoal0, SubGoal, !SI),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        SI0 = !.SI,
+        % We run the Cond and the Then in sequence, and we run the Else
+        % in parallel with that, and then we throw away the static_infos
+        % we computed and revert to the original static_info at the end,
+        % since this was a branched goal.
+        goal_mark_static_terms(Cond0, Cond, SI0, SI_Cond),
+        goal_mark_static_terms(Then0, Then, SI_Cond, _SI_Then),
+        goal_mark_static_terms(Else0, Else, SI0, _SI_Else),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = unify(LHS, RHS, Mode, Unification0, Context),
+        unification_mark_static_terms(Unification0, Unification, !SI),
+        GoalExpr = unify(LHS, RHS, Mode, Unification, Context)
+    ;
+        GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "goal_mark_static_terms: shorthand")
+    ).
 
 :- pred conj_mark_static_terms(hlds_goals::in, hlds_goals::out,
     static_info::in, static_info::out) is det.

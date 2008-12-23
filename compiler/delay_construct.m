@@ -92,8 +92,8 @@ delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo) :-
 :- pred delay_construct_in_goal(hlds_goal::in, instmap::in,
     delay_construct_info::in, hlds_goal::out) is det.
 
-delay_construct_in_goal(hlds_goal(GoalExpr0, GoalInfo0), InstMap0, DelayInfo,
-        Goal) :-
+delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0), 
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -152,15 +152,19 @@ delay_construct_in_goal(hlds_goal(GoalExpr0, GoalInfo0), InstMap0, DelayInfo,
         Goal = hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        delay_construct_in_goal(SubGoal0, InstMap0, DelayInfo, SubGoal),
-        Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Goal = Goal0
+        ;
+            delay_construct_in_goal(SubGoal0, InstMap0, DelayInfo, SubGoal),
+            Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
+        )
     ;
         ( GoalExpr0 = generic_call(_, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        Goal = hlds_goal(GoalExpr0, GoalInfo0)
+        Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
@@ -209,9 +213,9 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         GoalExpr0 = unify(_, _, _, Unif, _),
         Unif = construct(Var, _, Args, _, _, _, _),
         Args = [_ | _], % We are constructing a cell, not a constant
-        instmap.lookup_var(InstMap0, Var, Inst0),
+        instmap_lookup_var(InstMap0, Var, Inst0),
         inst_is_free(DelayInfo ^ dci_module_info, Inst0),
-        instmap.lookup_var(InstMap1, Var, Inst1),
+        instmap_lookup_var(InstMap1, Var, Inst1),
         inst_is_ground(DelayInfo ^ dci_module_info, Inst1)
     ->
         set.insert(ConstructedVars0, Var, ConstructedVars1),

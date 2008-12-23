@@ -389,104 +389,104 @@ build_abstract_goal(Goal, AbstractGoal, !Info) :-
 :- pred build_abstract_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
     abstract_goal::out, traversal_info::in, traversal_info::out) is det.
 
-build_abstract_goal_2(conj(_, Goals), _, AbstractGoal, !Info) :-
-    % For the purposes of termination analysis there is no
-    % distinction between parallel conjunctions and normal ones.
-    build_abstract_conj(Goals, AbstractGoal, !Info).
-
-build_abstract_goal_2(disj(Goals), _, AbstractGoal, !Info) :-
-    build_abstract_disj(non_switch(Goals), AbstractGoal, !Info).
-
-build_abstract_goal_2(GoalExpr, _, AbstractGoal, !Info) :-
-    GoalExpr = switch(SwitchVar, _, Cases),
-    build_abstract_disj(switch(SwitchVar, Cases), AbstractGoal, !Info).
-
-build_abstract_goal_2(GoalExpr, _, AbstractGoal, !Info) :-
-    GoalExpr = if_then_else(_, Cond, Then, Else),
-
-    % Reduce the if-then goals to an abstract conjunction.
-    build_abstract_conj([Cond, Then], AbstractSuccessGoal, !Info),
-
-    % Work out a failure constraint for the Cond and then abstract the else
-    % branch.  We won't bother do any other simplifications here as the AR
-    % simplification pass will sort all of this out.
-    CondFail = find_failure_constraint_for_goal(Cond, !.Info),
-
-    % XXX FIXME - the local/non-local variable sets end up
-    % being incorrect here.
-    build_abstract_goal(Else, AbstractElse, !Info),
-    AbstractFailureGoal = term_conj([CondFail, AbstractElse], [], []),
-    AbstractDisjuncts = [AbstractSuccessGoal, AbstractFailureGoal],
-    AbstractGoal = term_disj(AbstractDisjuncts, 2, [], []).
-
-build_abstract_goal_2(scope(_, Goal), _, AbstractGoal, !Info) :-
-    build_abstract_goal(Goal, AbstractGoal, !Info).
-
 build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
-    GoalExpr = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
-    CallSizeArgs = prog_vars_to_size_vars(!.Info ^ tti_size_var_map, CallArgs),
-    build_abstract_call(proc(CallPredId, CallProcId), CallSizeArgs,
-        GoalInfo, AbstractGoal, !Info).
-
-build_abstract_goal_2(GoalExpr, _, AbstractGoal, !Info) :-
-    GoalExpr = unify(_, _, _, Unification, _),
-    build_abstract_unification(Unification, AbstractGoal, !Info).
-
-build_abstract_goal_2(negation(Goal), _GoalInfo, AbstractGoal, !Info) :-
-    % Event though a negated goal cannot have any output we still need
-    % to check it for calls to non-terminating procedures.
-    build_abstract_goal(Goal, _, !Info),
-
-    % Find a failure constraint for the goal if
-    % `--term2-propagate-failure-constraints' is enabled,
-    % otherwise just use the constraint that all non-zero input vars
-    % should be non-negative.
-    AbstractGoal = find_failure_constraint_for_goal(Goal, !.Info).
-
-    % XXX Eventually we should provide some facility for specifying the
-    % arg_size constraints for foreign_procs.
-    %
-build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
-    GoalExpr = call_foreign_proc(Attrs, PredId, ProcId, Args, ExtraArgs, _, _),
-
-    % Create non-negativity constraints for each non-zero argument
-    % in the foreign proc.
-    ForeignArgToVar = (func(ForeignArg) = ForeignArg ^ arg_var),
-    ProgVars = list.map(ForeignArgToVar, Args ++ ExtraArgs),
-    SizeVars = prog_vars_to_size_vars(!.Info ^ tti_size_var_map, ProgVars),
-    Constraints = make_arg_constraints(SizeVars, !.Info ^ tti_zeros),
     (
-        (
-            get_terminates(Attrs) = proc_terminates
-        ;
-            get_terminates(Attrs) = depends_on_mercury_calls,
-            get_may_call_mercury(Attrs) = proc_will_not_call_mercury
-        )
-    ->
-        true
+        GoalExpr = conj(_, Goals),
+        % For the purposes of termination analysis there is no
+        % distinction between parallel conjunctions and normal ones.
+        build_abstract_conj(Goals, AbstractGoal, !Info)
     ;
+        GoalExpr = disj(Goals),
+        build_abstract_disj(non_switch(Goals), AbstractGoal, !Info)
+    ;
+        GoalExpr = switch(SwitchVar, _, Cases),
+        build_abstract_disj(switch(SwitchVar, Cases), AbstractGoal, !Info)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+
+        % Reduce the if-then goals to an abstract conjunction.
+        build_abstract_conj([Cond, Then], AbstractSuccessGoal, !Info),
+
+        % Work out a failure constraint for the Cond and then abstract the else
+        % branch.  We won't bother do any other simplifications here as the AR
+        % simplification pass will sort all of this out.
+        CondFail = find_failure_constraint_for_goal(Cond, !.Info),
+
+        % XXX FIXME - the local/non-local variable sets end up
+        % being incorrect here.
+        build_abstract_goal(Else, AbstractElse, !Info),
+        AbstractFailureGoal = term_conj([CondFail, AbstractElse], [], []),
+        AbstractDisjuncts = [AbstractSuccessGoal, AbstractFailureGoal],
+        AbstractGoal = term_disj(AbstractDisjuncts, 2, [], [])
+    ;
+        GoalExpr = scope(_Reason, SubGoal),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
+        build_abstract_goal(SubGoal, AbstractGoal, !Info)
+    ;
+        GoalExpr = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
+        CallSizeArgs = prog_vars_to_size_vars(!.Info ^ tti_size_var_map,
+            CallArgs),
+        build_abstract_call(proc(CallPredId, CallProcId), CallSizeArgs,
+            GoalInfo, AbstractGoal, !Info)
+    ;
+        GoalExpr = unify(_, _, _, Unification, _),
+        build_abstract_unification(Unification, AbstractGoal, !Info)
+    ;
+        GoalExpr = negation(SubGoal),
+        % Event though a negated goal cannot have any output we still need
+        % to check it for calls to non-terminating procedures.
+        build_abstract_goal(SubGoal, _, !Info),
+
+        % Find a failure constraint for the goal if
+        % `--term2-propagate-failure-constraints' is enabled,
+        % otherwise just use the constraint that all non-zero input vars
+        % should be non-negative.
+        AbstractGoal = find_failure_constraint_for_goal(SubGoal, !.Info)
+    ;
+        GoalExpr = call_foreign_proc(Attrs, PredId, ProcId, Args, ExtraArgs,
+            _, _),
+        % XXX Eventually we should provide some facility for specifying the
+        % arg_size constraints for foreign_procs.
+
+        % Create non-negativity constraints for each non-zero argument
+        % in the foreign proc.
+        ForeignArgToVar = (func(ForeignArg) = ForeignArg ^ arg_var),
+        ProgVars = list.map(ForeignArgToVar, Args ++ ExtraArgs),
+        SizeVars = prog_vars_to_size_vars(!.Info ^ tti_size_var_map, ProgVars),
+        Constraints = make_arg_constraints(SizeVars, !.Info ^ tti_zeros),
+        (
+            (
+                get_terminates(Attrs) = proc_terminates
+            ;
+                get_terminates(Attrs) = depends_on_mercury_calls,
+                get_may_call_mercury(Attrs) = proc_will_not_call_mercury
+            )
+        ->
+            true
+        ;
+            Context = goal_info_get_context(GoalInfo),
+            Error = Context - foreign_proc_called(proc(PredId, ProcId)),
+            info_update_errors(Error, !Info)
+        ),
+        Polyhedron = polyhedron.from_constraints(Constraints),
+        AbstractGoal = term_primitive(Polyhedron, [], [])
+    ;
+        GoalExpr = generic_call(_, _, _, _),
+        % XXX At the moment all higher-order calls are eventually treated
+        % as an error. We do not record them as a normal type of error
+        % because this is going to change. To approximate their effect here
+        % just assume that any non-zero output variables from the HO call
+        % are unbounded in size.
+        %
         Context = goal_info_get_context(GoalInfo),
-        Error = Context - foreign_proc_called(proc(PredId, ProcId)),
-        info_update_errors(Error, !Info)
-    ),
-    Polyhedron = polyhedron.from_constraints(Constraints),
-    AbstractGoal = term_primitive(Polyhedron, [], []).
-
-    % XXX At the moment all higher-order calls are eventually treated
-    % as an error.  We do not record them as a normal type of error
-    % because this is going to change.  To approximate their effect
-    % here just assume that any non-zero output variables from the HO call
-    % are unbounded in size.
-    %
-build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
-    GoalExpr = generic_call(_, _, _, _),
-    Context = goal_info_get_context(GoalInfo),
-    AbstractGoal = term_primitive(polyhedron.universe, [], []),
-    info_update_ho_info(Context, !Info).
-
-build_abstract_goal_2(shorthand(_), _, _, _, _) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "build_abstract_goal_2: shorthand").
+        AbstractGoal = term_primitive(polyhedron.universe, [], []),
+        info_update_ho_info(Context, !Info)
+    ;
+        GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "build_abstract_goal_2: shorthand")
+    ).
 
 %------------------------------------------------------------------------------%
 %

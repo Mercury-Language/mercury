@@ -343,6 +343,8 @@ ensure_unique_arguments_in_goal(hlds_goal(!.GoalExpr, !.GoalInfo),
         !:GoalExpr = negation(Goal)
     ;
         !.GoalExpr = scope(Reason, Goal0),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         ensure_unique_arguments_in_goal(Goal0, Goal, !SeenSoFar, !Varset,
             !Vartypes),
         !:GoalExpr = scope(Reason, Goal)

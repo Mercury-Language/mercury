@@ -332,10 +332,14 @@ sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        sync_dep_par_conjs_in_goal(SubGoal0, SubGoal, InstMap0, _,
-            !SyncInfo),
-        GoalExpr = scope(Reason, SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Goal = Goal0
+        ;
+            sync_dep_par_conjs_in_goal(SubGoal0, SubGoal, InstMap0, _,
+                !SyncInfo),
+            GoalExpr = scope(Reason, SubGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ;
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
@@ -675,11 +679,17 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
             InvariantEstablished = yes,
-            insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
-                FutureMap, ConsumedVar, WaitedOnAllSuccessPaths0,
-                SubGoal0, SubGoal, !VarSet, !VarTypes),
-            GoalExpr = scope(Reason, SubGoal),
-            Goal1 = hlds_goal(GoalExpr, GoalInfo0)
+            ( Reason = from_ground_term(_, from_ground_term_construct) ->
+                % These scopes do not consume anything.
+                unexpected(this_file,
+                    "insert_wait_in_goal: from_ground_term_construct")
+            ;
+                insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+                    FutureMap, ConsumedVar, WaitedOnAllSuccessPaths0,
+                    SubGoal0, SubGoal, !VarSet, !VarTypes),
+                GoalExpr = scope(Reason, SubGoal),
+                Goal1 = hlds_goal(GoalExpr, GoalInfo0)
+            )
         ;
             GoalExpr0 = negation(_SubGoal0),
             InvariantEstablished = yes,
@@ -983,28 +993,40 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             unexpected(this_file, "negation binds shared variable")
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
-            SubGoal0 = hlds_goal(_, SubGoalInfo0),
-            Detism0 = goal_info_get_determinism(GoalInfo0),
-            SubDetism0 = goal_info_get_determinism(SubGoalInfo0),
-            determinism_components(Detism0, _, MaxSolns0),
-            determinism_components(SubDetism0, _, SubMaxSolns0),
-            (
-                SubMaxSolns0 = at_most_many,
-                MaxSolns0 \= at_most_many
-            ->
-                % The value of ProducedVar is not stable inside SubGoal0,
-                % i.e. SubGoal0 can generate a value for ProducedVar and then
-                % backtrack over the goal that generated it. In such cases,
-                % we can signal the availability of ProducedVar only when it
-                % has become stable, which is when the scope has cut away
-                % any possibility of further backtracking inside SubGoal0.
+            ( Reason = from_ground_term(_, from_ground_term_construct) ->
+                % Pushing the signal into the scope would invalidate the
+                % invariant that from_ground_term_construct scopes do nothing
+                % except construct a ground term. It would also be pointless,
+                % since the code generator will turn the entire scope into a
+                % single assignment statement. We therefore put he signal
+                % *after* the scope.
                 insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
                     Goal0, Goal, !VarSet, !VarTypes)
             ;
-                insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
-                    SubGoal0, SubGoal, !VarSet, !VarTypes),
-                GoalExpr = scope(Reason, SubGoal),
-                Goal = hlds_goal(GoalExpr, GoalInfo0)
+                SubGoal0 = hlds_goal(_, SubGoalInfo0),
+                Detism0 = goal_info_get_determinism(GoalInfo0),
+                SubDetism0 = goal_info_get_determinism(SubGoalInfo0),
+                determinism_components(Detism0, _, MaxSolns0),
+                determinism_components(SubDetism0, _, SubMaxSolns0),
+                (
+                    SubMaxSolns0 = at_most_many,
+                    MaxSolns0 \= at_most_many
+                ->
+                    % The value of ProducedVar is not stable inside SubGoal0,
+                    % i.e. SubGoal0 can generate a value for ProducedVar and
+                    % then backtrack over the goal that generated it. In such
+                    % cases, we can signal the availability of ProducedVar
+                    % only when it has become stable, which is when the scope
+                    % has cut away any possibility of further backtracking
+                    % inside SubGoal0.
+                    insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
+                        Goal0, Goal, !VarSet, !VarTypes)
+                ;
+                    insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
+                        SubGoal0, SubGoal, !VarSet, !VarTypes),
+                    GoalExpr = scope(Reason, SubGoal),
+                    Goal = hlds_goal(GoalExpr, GoalInfo0)
+                )
             )
         ;
             ( GoalExpr0 = unify(_, _, _, _, _)
@@ -1432,9 +1454,15 @@ specialize_sequences_in_goal(Goal0, Goal, !SpecInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        specialize_sequences_in_goal(SubGoal0, SubGoal, !SpecInfo),
-        GoalExpr = scope(Reason, SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % We don't pu either wait or signal operations in such scopes,
+            % so there is nothing to specialize.
+            Goal = Goal0
+        ;
+            specialize_sequences_in_goal(SubGoal0, SubGoal, !SpecInfo),
+            GoalExpr = scope(Reason, SubGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ;
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
@@ -2130,10 +2158,18 @@ should_we_push_wait(Var, Goal, Wait) :-
             cost_before_wait_components(Wait, Seen, Cost)
         )
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_Reason, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         should_we_push_wait(Var, SubGoal, Wait)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % The SubGoal may be huge, but since the code generator will
+            % turn it all into a single assignment of a pointer to a large
+            % static data structure, its cost in execution time is negligible.
+            Wait = not_seen_wait_negligible_cost_so_far
+        ;
+            should_we_push_wait(Var, SubGoal, Wait)
+        )
     ;
         GoalExpr = shorthand(_),
         unexpected(this_file, "should_we_push_wait: shorthand")
@@ -2359,8 +2395,16 @@ should_we_push_signal(Var, Goal, !Signal) :-
             unexpected(this_file, "seen_signal_non_negligible_cost_after")
         )
     ;
-        GoalExpr = scope(_Reason, SubGoal),
-        should_we_push_signal(Var, SubGoal, !Signal)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+            ( Var = TermVar ->
+                seen_produced_var(!Signal)
+            ;
+                true
+            )
+        ;   
+            should_we_push_signal(Var, SubGoal, !Signal)
+        )
     ;
         GoalExpr = shorthand(_),
         unexpected(this_file, "should_we_push_signal: shorthand")
@@ -2678,7 +2722,7 @@ find_shared_variables_2(ModuleInfo, ConjunctIndex,
     % Keep only nonlocals which were not already bound at the start of the
     % parallel conjunction.
     Filter = (pred(Var::in) is semidet :-
-        instmap.lookup_var(InstMap, Var, VarInst),
+        instmap_lookup_var(InstMap, Var, VarInst),
         not inst_is_bound(ModuleInfo, VarInst)
     ),
     UnboundNonlocals = set.filter(Filter, Nonlocals),

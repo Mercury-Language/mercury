@@ -602,9 +602,13 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ho_traverse_goal(SubGoal0, SubGoal, !Info),
-        GoalExpr = scope(Reason, SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Goal = Goal0
+        ;
+            ho_traverse_goal(SubGoal0, SubGoal, !Info),
+            GoalExpr = scope(Reason, SubGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         Goal = Goal0
@@ -1163,7 +1167,7 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
 
     set.list_to_set(CallArgs, NonLocals),
     instmap_delta_init_reachable(InstMapDelta0),
-    instmap_delta_insert(ResultVar, ground(shared, none),
+    instmap_delta_insert_var(ResultVar, ground(shared, none),
         InstMapDelta0, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     CallGoalExpr = plain_call(PredId, ProcId, CallArgs, not_builtin,

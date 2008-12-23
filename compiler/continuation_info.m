@@ -755,7 +755,7 @@ generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
     ;
         Name = ""
     ),
-    instmap.lookup_var(InstMap, Var, Inst),
+    instmap_lookup_var(InstMap, Var, Inst),
     map.lookup(VarTypes, Var, Type),
     ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
         LldsInst = llds_inst_ground
@@ -798,7 +798,7 @@ build_closure_info([Var | Vars], [Type | Types],
         [ArgInfo | ArgInfos], [Layout | Layouts], InstMap,
         !VarLocs, !TypeVars) :-
     ArgInfo = arg_info(ArgLoc, _ArgMode),
-    instmap.lookup_var(InstMap, Var, Inst),
+    instmap_lookup_var(InstMap, Var, Inst),
     Layout = closure_arg_info(Type, Inst),
     set.singleton_set(Locations, reg(reg_r, ArgLoc)),
     svmap.det_insert(Var, Locations, !VarLocs),

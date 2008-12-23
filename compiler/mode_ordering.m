@@ -312,6 +312,8 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     goal_info_copy_mode_var_sets(SubGoal ^ hlds_goal_info, !GoalInfo).
 
 mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
+    % XXX We should special-case the handling of from_ground_term_construct
+    % scopes.
     Goal0 = scope(Reason, SubGoal0),
     Goal = scope(Reason, SubGoal),
     mode_order_goal(SubGoal0, SubGoal, !MOI),

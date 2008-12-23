@@ -337,9 +337,13 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         !.ClosureInfo, _),
     Goal = hlds_goal(negation(NegatedGoal), GoalInfo).
 process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
-    Goal0 = hlds_goal(scope(Reason, ScopedGoal0), GoalInfo),
-    process_goal(VarTypes, ModuleInfo, ScopedGoal0, ScopedGoal, !ClosureInfo),
-    Goal = hlds_goal(scope(Reason, ScopedGoal), GoalInfo).
+    Goal0 = hlds_goal(scope(Reason, SubGoal0), GoalInfo),
+    ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        SubGoal = SubGoal0
+    ;
+        process_goal(VarTypes, ModuleInfo, SubGoal0, SubGoal, !ClosureInfo)
+    ),
+    Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo).
 process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     Goal0 = hlds_goal(if_then_else(ExistQVars, Cond0, Then0, Else0), GoalInfo),
     process_goal(VarTypes, ModuleInfo, Cond0, Cond, !.ClosureInfo, CondInfo),
@@ -369,7 +373,6 @@ process_goal(_, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     list.filter_map(ForeignHOArgs, Args, OutputForeignHOArgs),
     svmap.det_insert_from_assoc_list(OutputForeignHOArgs, !ClosureInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
-
 process_goal(_, _, hlds_goal(shorthand(_), _), _, _, _) :-
     unexpected(this_file, "shorthand/1 goal during closure analysis.").
 

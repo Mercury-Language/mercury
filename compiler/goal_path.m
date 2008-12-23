@@ -169,6 +169,9 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, GoalExpr0, GoalExpr) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
+        % We should consider not filling in the goal path slots inside
+        % from_ground_term_construct scopes, since we do not use them
+        % for anything.
         SubGoal0 = hlds_goal(_, InnerInfo),
         OuterDetism = goal_info_get_determinism(GoalInfo),
         InnerDetism = goal_info_get_determinism(InnerInfo),

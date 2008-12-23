@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2007 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -222,27 +222,30 @@ pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
     % body for unfolding and deforestation opportunities.
 :- type unfold_info
     --->    unfold_info(
-                proc_info       :: proc_info,
-                instmap         :: instmap,
-                cost_delta      :: int,
-                                % improvement in cost measured while
-                                % processing this procedure
-                local_term_info :: local_term_info,
-                                % information used to prevent
-                                % infinite unfolding within the
-                                % current procedure.
-                pred_info       :: pred_info,
-                parents         :: set(pred_proc_id),
-                pred_proc_id    :: pred_proc_id,
-                                % current pred_proc_id
-                changed         :: bool,
-                                % has anything changed
-                size_delta      :: int,
-                                % increase in size measured while
-                                % processing this procedure
-                rerun_det       :: bool
-                                % does determinism analysis
-                                % need to be rerun.
+                ufi_proc_info       :: proc_info,
+                ufi_instmap         :: instmap,
+
+                % Improvement in cost measured while processing this procedure.
+                ufi_cost_delta      :: int,
+
+                % Information used to prevent infinite unfolding within the
+                % current procedure..
+                ufi_local_term_info :: local_term_info,
+
+                ufi_pred_info       :: pred_info,
+                ufi_parents         :: set(pred_proc_id),
+
+                % Current pred_proc_id.
+                ufi_pred_proc_id    :: pred_proc_id,
+
+                % Has anything changed?
+                ufi_changed         :: bool,
+
+                % Increase in size measured while processing this procedure.
+                ufi_size_delta      :: int,
+
+                % Does determinism analysis need to be rerun.
+                ufi_rerun_det       :: bool
             ).
 
     % pd_arg_info records which procedures have arguments for which
@@ -308,66 +311,66 @@ pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
 
 :- implementation.
 
-pd_info_get_proc_info(PDInfo, UnfoldInfo ^ proc_info) :-
+pd_info_get_proc_info(PDInfo, UnfoldInfo ^ ufi_proc_info) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_instmap(PDInfo, UnfoldInfo ^ instmap) :-
+pd_info_get_instmap(PDInfo, UnfoldInfo ^ ufi_instmap) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_cost_delta(PDInfo, UnfoldInfo ^ cost_delta) :-
+pd_info_get_cost_delta(PDInfo, UnfoldInfo ^ ufi_cost_delta) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_local_term_info(PDInfo, UnfoldInfo ^ local_term_info) :-
+pd_info_get_local_term_info(PDInfo, UnfoldInfo ^ ufi_local_term_info) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_pred_info(PDInfo, UnfoldInfo ^ pred_info) :-
+pd_info_get_pred_info(PDInfo, UnfoldInfo ^ ufi_pred_info) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_parents(PDInfo, UnfoldInfo ^ parents) :-
+pd_info_get_parents(PDInfo, UnfoldInfo ^ ufi_parents) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_pred_proc_id(PDInfo, UnfoldInfo ^ pred_proc_id) :-
+pd_info_get_pred_proc_id(PDInfo, UnfoldInfo ^ ufi_pred_proc_id) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_changed(PDInfo, UnfoldInfo ^ changed) :-
+pd_info_get_changed(PDInfo, UnfoldInfo ^ ufi_changed) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_size_delta(PDInfo, UnfoldInfo ^ size_delta) :-
+pd_info_get_size_delta(PDInfo, UnfoldInfo ^ ufi_size_delta) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_rerun_det(PDInfo, UnfoldInfo ^ rerun_det) :-
+pd_info_get_rerun_det(PDInfo, UnfoldInfo ^ ufi_rerun_det) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
 
 pd_info_set_proc_info(ProcInfo, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ proc_info := ProcInfo,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_proc_info := ProcInfo,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_instmap(InstMap, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ instmap := InstMap,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_instmap := InstMap,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_cost_delta(CostDelta, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ cost_delta := CostDelta,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_cost_delta := CostDelta,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_local_term_info(TermInfo, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ local_term_info := TermInfo,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_local_term_info := TermInfo,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_pred_info(PredInfo, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ pred_info := PredInfo,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_pred_info := PredInfo,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_parents(Parents, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ parents := Parents,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_parents := Parents,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_pred_proc_id(PredProcId, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ pred_proc_id := PredProcId,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_pred_proc_id := PredProcId,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_changed(Changed, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ changed := Changed,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_changed := Changed,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_size_delta(SizeDelta, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ size_delta := SizeDelta,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_size_delta := SizeDelta,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_rerun_det(Rerun, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ rerun_det := Rerun,
+    UnfoldInfo = UnfoldInfo0 ^ ufi_rerun_det := Rerun,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 
 pd_info_incr_cost_delta(Delta1, !PDInfo) :-
@@ -591,9 +594,9 @@ pd_info.goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
 pd_info.check_insts(_, [], _, _, _, _, !ExactSoFar).
 pd_info.check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
         NewInstMap, VarTypes, !ExactSoFar) :-
-    instmap.lookup_var(OldInstMap, OldVar, OldVarInst),
+    instmap_lookup_var(OldInstMap, OldVar, OldVarInst),
     map.lookup(VarRenaming, OldVar, NewVar),
-    instmap.lookup_var(NewInstMap, NewVar, NewVarInst),
+    instmap_lookup_var(NewInstMap, NewVar, NewVarInst),
     map.lookup(VarTypes, NewVar, Type),
     inst_matches_initial(NewVarInst, OldVarInst, Type, ModuleInfo),
     (

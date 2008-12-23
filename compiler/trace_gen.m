@@ -1251,7 +1251,7 @@ trace_produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
     ;
         Name = ""
     ),
-    instmap.lookup_var(InstMap, Var, Inst),
+    instmap_lookup_var(InstMap, Var, Inst),
     ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
         LldsInst = llds_inst_ground
     ;
@@ -1320,7 +1320,7 @@ convert_external_port_type(external_port_tailrec_call) = port_tailrec_call.
 convert_nondet_foreign_proc_port_type(nondet_foreign_proc_first) =
     port_nondet_foreign_proc_first.
 convert_nondet_foreign_proc_port_type(nondet_foreign_proc_later) =
-    port_nondet_foreign_proc_later. 
+    port_nondet_foreign_proc_later.
 
 %-----------------------------------------------------------------------------%
 
@@ -1408,7 +1408,7 @@ redo_layout_slot(CodeModel, RedoLayoutSlot) :-
                 % If we reserve a slot for holding the number of times the
                 % stack frame was reused by tail recursive calls, the lval
                 % holding this counter, and the label that a tail recursive
-                % call should jump to. 
+                % call should jump to.
                 tail_rec_info           :: maybe(pair(lval, label)),
 
                 % If we are generating redo events, this has the label

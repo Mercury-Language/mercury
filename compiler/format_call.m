@@ -443,9 +443,18 @@ traverse_conj([Goal | Goals], CurId, !FormatCallSites, !Counter,
             !Counter, !ConjMaps, !PredMap, !RelevantVars, ModuleInfo),
         svmap.det_insert(SubGoalId, CurId, !PredMap)
     ;
-        GoalExpr = scope(_, SubGoal),
-        traverse_conj([SubGoal], CurId, !FormatCallSites, !Counter,
-            !ConjMaps, !PredMap, !RelevantVars, ModuleInfo)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % These scopes cannot build the format string (since that is
+            % a single constant, from which we don't build such scopes),
+            % or the list of things to print (since that term won't a ground
+            % term except in degenerate cases. These scopes also cannot call
+            % anything.
+            true
+        ;
+            traverse_conj([SubGoal], CurId, !FormatCallSites, !Counter,
+                !ConjMaps, !PredMap, !RelevantVars, ModuleInfo)
+        )
     ;
         GoalExpr = generic_call(_, _, _, _)
     ;

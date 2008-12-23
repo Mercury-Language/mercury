@@ -415,20 +415,22 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
         % XXX To check and compare with the theory.
         GoalExpr0 = negation(_Goal)
     ;
-        GoalExpr0 = scope(A, SubGoal0),
+        GoalExpr0 = scope(Reason, SubGoal0),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo,
             SubGoal0, SubGoal),
-        GoalExpr = scope(A, SubGoal),
+        GoalExpr = scope(Reason, SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = if_then_else(A, IfGoal0, ThenGoal0, ElseGoal0),
+        GoalExpr0 = if_then_else(Vars, IfGoal0, ThenGoal0, ElseGoal0),
         process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo,
             IfGoal0, IfGoal),
         process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo,
             ThenGoal0, ThenGoal),
         process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo,
             ElseGoal0, ElseGoal),
-        GoalExpr = if_then_else(A, IfGoal, ThenGoal, ElseGoal),
+        GoalExpr = if_then_else(Vars, IfGoal, ThenGoal, ElseGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = call_foreign_proc(_Attrs, _ForeignPredId, _ForeignProcId,

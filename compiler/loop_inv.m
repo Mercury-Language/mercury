@@ -141,133 +141,109 @@
 %-----------------------------------------------------------------------------%
 
 hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
+    (
 
-    ( if
+        % We only want to apply this optimization to pure preds (e.g.
+        % not benchmark_det_loop).
+        pred_info_get_purity(PredInfo, purity_pure),
 
-            % We only want to apply this optimization to pure preds (e.g.
-            % not benchmark_det_loop).
-            %
-       pred_info_get_purity(PredInfo, purity_pure),
+        % Next, work out whether this predicate is optimizable and
+        % compute some auxiliary results along the way.
 
-            % Next, work out whether this predicate is optimizable and
-            % compute some auxiliary results along the way.
-
-            % Obtain the requisite info for this procedure.
-            %
         PredProcId = proc(PredId, ProcId),
         proc_info_get_goal(!.ProcInfo, Body),
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_argmodes(!.ProcInfo, HeadVarModes),
 
-            % Find the set of variables that are used as (partly) unique
-            % inputs to calls.  These variables are not safe candidates
-            % for hoisting.  (A variable whose initial bound inst is
-            % inferred as unique may be hoistable if it is not used as a
-            % unique input to any call.)
-            %
+        % Find the set of variables that are used as (partly) unique inputs
+        % to calls. These variables are not safe candidates for hoisting.
+        % (A variable whose initial bound inst is inferred as unique may be
+        % hoistable if it is not used as a unique input to any call.)
         UniquelyUsedVars = uniquely_used_vars(!.ModuleInfo, Body),
 
-            % Find the set of candidate goals that may be invariant
-            % and the set of recursive calls involved.
-            %
-            % A goal must appear on all recursive paths to be a
-            % candidate.
-            %
-            % The recursive calls are the set of calls at the end
-            % of each recursive path.
-            %
+        % Find the set of candidate goals that may be invariant
+        % and the set of recursive calls involved.
+        %
+        % A goal must appear on all recursive paths to be a candidate.
+        %
+        % The recursive calls are the set of calls at the end of each
+        % recursive path.
         invariant_goal_candidates(PredProcId, Body, InvGoals0, RecCalls),
 
-            % We can calculate the set of invariant args from
-            % the set of recursive calls.
-            %
+        % We can calculate the set of invariant args from the set of
+        % recursive calls.
         InvArgs0 = inv_args(!.ModuleInfo, HeadVars, HeadVarModes, RecCalls),
         InvArgs  = InvArgs0 `delete_elems` UniquelyUsedVars,
 
-            % Given the invariant args, we can calculate the set
-            % of invariant goals and vars.
-            %
+        % Given the invariant args, we can calculate the set of
+        % invariant goals and vars.
         inv_goals_vars(!.ModuleInfo, UniquelyUsedVars,
             InvGoals0, InvGoals1, InvArgs, InvVars1),
 
-            % We don't want to hoist out unifications with constants (i.e.
-            % constructions where the RHS has no arguments) or deconstructions
-            % (it's probably cheaper to do the dereference than pass an extra
-            % argument).
-            %
-            % We also don't want to hoist out goals that can't succeed,
-            % e.g. calls to error/1, and in fact we MUST NOT hoist out
-            % such goals, because if we hoisted out such goals, later
-            % passes might think that the code which follows is actually
-            % reachable, which may lead to internal errors because code
-            % which follow a call to error/1 need not be determinism-correct.
-            %
-            % We also must not hoist impure goals.
-            %
-            % So here we compute the subset of InvGoals (and the corresponding
-            % InvVars) that should not be hoisted.
-            %
+        % We don't want to hoist out unifications with constants (i.e.
+        % constructions where the RHS has no arguments) or deconstructions
+        % (it is probably cheaper to do the dereference than pass an extra
+        % argument).
+        %
+        % We also don't want to hoist out goals that can't succeed,
+        % e.g. calls to error/1, and in fact we MUST NOT hoist out
+        % such goals, because if we hoisted out such goals, later
+        % passes might think that the code which follows is actually
+        % reachable, which may lead to internal errors because code
+        % which follow a call to error/1 need not be determinism-correct.
+        %
+        % We also must not hoist impure goals.
+        %
+        % So here we compute the subset of InvGoals (and the corresponding
+        % InvVars) that should not be hoisted.
         dont_hoist(!.ModuleInfo, InvGoals1, DontHoistGoals, DontHoistVars),
 
         InvGoals = InvGoals1 `delete_elems` DontHoistGoals,
         InvVars  = InvVars1  `delete_elems` DontHoistVars,
 
-            % We only apply the optimization if the set of invariant goals
-            % is non-empty.
-            %
+        % We only apply the optimization if the set of invariant goals
+        % is non-empty.
         InvGoals = [_ | _]
 
-            % NOTE!  At this point it is vital that
-            % - none of the InvVars are used as (partially) unique
-            % inputs in any goals;
-            % - all of the InvVars are either head vars or constructed
-            % by one of the InvGoals;
-            % - all non-local vars in InvGoals are also in InvVars.
+        % NOTE!  At this point it is vital that
+        % - none of the InvVars are used as (partially) unique inputs
+        %   in any goals;
+        % - all of the InvVars are either head vars or constructed by one of
+        %   the InvGoals;
+        % - all non-local vars in InvGoals are also in InvVars.
+    ->
 
-      then
-
-            % The set of computed invariant vars is the difference
-            % between the whole invariant var set and the set of
-            % invariant args.
-            %
+        % The set of computed invariant vars is the difference between
+        % the whole invariant var set and the set of invariant args.
         ComputedInvVars = InvVars `delete_elems` InvArgs,
 
-            % We need to calculate the initial instmap for the aux
-            % proc by applying the instmap_deltas from the InvGoals
-            % to InitialInstMap.
-            %
+        % We need to calculate the initial instmap for the aux proc by applying
+        % the instmap_deltas from the InvGoals to InitialInstMap.
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
             InitialInstMap),
         InitialAuxInstMap =
             compute_initial_aux_instmap(InvGoals, InitialInstMap),
 
-            % Create the pred for the aux proc.  This is initially a
-            % copy of the in proc with the head vars extended with the
-            % list of computed inv vars.  The body is adjusted
-            % appropriately in the next step.
-            %
+        % Create the pred for the aux proc.  This is initially a copy of the
+        % in proc with the head vars extended with the list of computed
+        % inv vars. The body is adjusted appropriately in the next step.
         create_aux_pred(PredProcId, HeadVars, ComputedInvVars,
             InitialAuxInstMap, AuxPredProcId, CallAux,
             AuxPredInfo, AuxProcInfo, !ModuleInfo),
 
-            % We update the body of AuxProc by replacing adding the
-            % set of computed invariant vars to the argument list,
-            % replacing invariant goals in InProc with `true', and
-            % recursive calls at the end of recursive paths with
-            % calls to the auxiliary procedure.
-            %
+        % We update the body of AuxProc by replacing adding the set of
+        % computed invariant vars to the argument list, % replacing invariant
+        % goals in InProc with `true', and recursive calls at the end of
+        % recursive paths with calls to the auxiliary procedure.
         gen_aux_proc(InvGoals, PredProcId,
             AuxPredProcId, CallAux, Body, AuxPredInfo, AuxProcInfo,
             !ModuleInfo),
 
-            % We construct OutProc by replacing recursive calls to
-            % the InProc at the end of recursive paths with calls
-            % to the auxiliary procedure.
-            %
+        % We construct OutProc by replacing recursive calls to the InProc
+        % at the end of recursive paths with calls to the auxiliary procedure.
         gen_out_proc(PredProcId, PredInfo, !ProcInfo, CallAux, Body,
             !ModuleInfo)
-
-      else
+    ;
         true
     ).
 
@@ -284,20 +260,18 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
 
 :- type invariant_goal_candidates_acc
     --->    invariant_goal_candidates_acc(
-                    % path_candidates is the list of accumulated invariant
-                    % goal candidates.
-                    %
+                % path_candidates is the list of accumulated invariant
+                % goal candidates.
                 path_candidates         :: hlds_goals,
 
-                    % rec_calls is the list of pairs of recursive calls
-                    % with the path_candidates up to that point.  This is
-                    % extended whenever a recursive call is identified.
-                    %
+                % rec_calls is the list of pairs of recursive calls
+                % with the path_candidates up to that point. This is
+                % extended whenever a recursive call is identified.
                 rec_calls               :: rec_calls
             ).
 
     % invariant_goal_candidates(PredProcId, Body, CandidateInvGoals,
-    %       RecCallGoals)
+    %   RecCallGoals):
     %
     % Computes (a conservative approximation to) the set of candidate
     % invariant atomic goals in Body and the set of recursive calls
@@ -307,104 +281,84 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
     hlds_goals::out, hlds_goals::out) is det.
 
 invariant_goal_candidates(PredProcId, Body, CandidateInvGoals, RecCallGoals) :-
-    invariant_goal_candidates_acc(_, RecCalls) =
-        invariant_goal_candidates_2(PredProcId, Body,
-            invariant_goal_candidates_acc([], [])),
+    GoalCandidates0 = invariant_goal_candidates_acc([], []),
+    invariant_goal_candidates_2(PredProcId, Body,
+        GoalCandidates0, GoalCandidates),
+    GoalCandidates = invariant_goal_candidates_acc(_, RecCalls),
     assoc_list.keys_and_values(RecCalls, RecCallGoals, CandidateInvGoalsList),
     CandidateInvGoals = intersect_candidate_inv_goals(CandidateInvGoalsList).
 
 %-----------------------------------------------------------------------------%
 
-:- func invariant_goal_candidates_2(pred_proc_id, hlds_goal,
-            invariant_goal_candidates_acc
-        ) = invariant_goal_candidates_acc.
+:- pred invariant_goal_candidates_2(pred_proc_id::in, hlds_goal::in,
+    invariant_goal_candidates_acc::in, invariant_goal_candidates_acc::out)
+    is det.
 
-invariant_goal_candidates_2(PPId,
-        hlds_goal(Call @ plain_call(PredId, ProcId, _, _, _, _), GoalInfo),
-        IGCs) =
-    ( if   proc(PredId, ProcId) = PPId
-      then add_recursive_call(hlds_goal(Call, GoalInfo), IGCs)
-      else invariant_goal_candidates_handle_non_recursive_call(
-                hlds_goal(Call, GoalInfo), IGCs)
-    ).
-
-invariant_goal_candidates_2(_PPId,
-        hlds_goal(Call @ generic_call(_, _, _, _), GoalInfo),  IGCs) =
-    invariant_goal_candidates_handle_non_recursive_call(
-        hlds_goal(Call, GoalInfo),
-        IGCs).
-
-invariant_goal_candidates_2(_PPId,
-        hlds_goal(Unification @ unify(_, _, _, _, _), GoalInfo), IGCs) =
-    invariant_goal_candidates_handle_non_recursive_call(
-        hlds_goal(Unification, GoalInfo),
-        IGCs).
-
-invariant_goal_candidates_2(_PPId,
-        hlds_goal(ForeignProc @ call_foreign_proc(_, _, _, _, _, _, _),
-            GoalInfo),
-        IGCs) =
-    invariant_goal_candidates_handle_non_recursive_call(
-        hlds_goal(ForeignProc, GoalInfo),
-        IGCs).
-
-invariant_goal_candidates_2(PPId,
-        hlds_goal(conj(ConjType, Conjuncts), _GoalInfo), IGCs0)
-        = IGCs :-
+invariant_goal_candidates_2(PPId, Goal, !IGCs) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     (
-        ConjType = plain_conj,
-        IGCs = list.foldl(invariant_goal_candidates_2(PPId), Conjuncts, IGCs0)
+        GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
+        ( proc(PredId, ProcId) = PPId ->
+            add_recursive_call(Goal, !IGCs)
+        ;
+            invariant_goal_candidates_handle_non_recursive_call(Goal, !IGCs)
+        )
     ;
-        ConjType = parallel_conj,
-        IGCs = list.foldl(
-            invariant_goal_candidates_keeping_path_candidates(PPId),
-            Conjuncts, IGCs0)
+        ( GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        invariant_goal_candidates_handle_non_recursive_call(Goal, !IGCs)
+    ;
+        GoalExpr = conj(ConjType, Conjuncts),
+        (
+            ConjType = plain_conj,
+            list.foldl(invariant_goal_candidates_2(PPId), Conjuncts, !IGCs)
+        ;
+            ConjType = parallel_conj,
+            list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
+                Conjuncts, !IGCs)
+        )
+    ;
+        GoalExpr = disj(Disjuncts),
+        list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
+            Disjuncts, !IGCs)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
+            case_goals(Cases), !IGCs)
+    ;
+        GoalExpr = negation(SubdGoal),
+        invariant_goal_candidates_keeping_path_candidates(PPId, SubdGoal,
+            !IGCs)
+    ;
+        GoalExpr = scope(_Reason, SubdGoal),
+        % XXX We should specialize the handling of from_ground_term_construct
+        % scopes here.
+        invariant_goal_candidates_keeping_path_candidates(PPId, SubdGoal,
+            !IGCs)
+    ;
+        GoalExpr = if_then_else(_XVs, Cond, Then, Else),
+        CoTe = hlds_goal(conj(plain_conj, [Cond, Then]), GoalInfo),
+        invariant_goal_candidates_keeping_path_candidates(PPId, CoTe, !IGCs),
+        invariant_goal_candidates_keeping_path_candidates(PPId, Else, !IGCs)
+    ;
+        GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "invariant_goal_candidates_2: shorthand")
     ).
-
-invariant_goal_candidates_2(PPId,
-        hlds_goal(disj(Disjuncts), _GoalInfo), IGCs) =
-    list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
-                Disjuncts,
-                IGCs).
-
-invariant_goal_candidates_2(PPId,
-        hlds_goal(switch(_, _, Cases), _GoalInfo), IGCs) =
-    list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
-                case_goals(Cases),
-                IGCs).
-
-invariant_goal_candidates_2(PPId,
-        hlds_goal(negation(NegatedGoal), _GoalInfo), IGCs) =
-    invariant_goal_candidates_keeping_path_candidates(PPId, NegatedGoal, IGCs).
-
-invariant_goal_candidates_2(PPId,
-        hlds_goal(scope(_, QuantifiedGoal), _GoalInfo), IGCs) =
-    invariant_goal_candidates_2(PPId, QuantifiedGoal, IGCs).
-
-invariant_goal_candidates_2(PPId,
-        hlds_goal(if_then_else(_XVs, Cond, Then, Else), GoalInfo),  IGCs0)
-        = IGCs :-
-    CondThenGoal = hlds_goal(conj(plain_conj, [Cond, Then]), GoalInfo),
-    IGCs1        = invariant_goal_candidates_keeping_path_candidates(PPId,
-                        CondThenGoal, IGCs0),
-    ElseGoal     = Else,
-    IGCs         = invariant_goal_candidates_keeping_path_candidates(PPId,
-                        ElseGoal,     IGCs1).
-
-invariant_goal_candidates_2(_PPId,
-        hlds_goal(shorthand(_), _GoalInfo), _IGCs) = _ :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "invariant_goal_candidates_2: shorthand").
 
 %-----------------------------------------------------------------------------%
 
-:- func invariant_goal_candidates_keeping_path_candidates(pred_proc_id,
-            hlds_goal, invariant_goal_candidates_acc
-        ) = invariant_goal_candidates_acc.
+:- pred invariant_goal_candidates_keeping_path_candidates(pred_proc_id::in,
+    hlds_goal::in,
+    invariant_goal_candidates_acc::in, invariant_goal_candidates_acc::out)
+    is det.
 
-invariant_goal_candidates_keeping_path_candidates(PPId, Goal, IGCs) =
-    ( invariant_goal_candidates_2(PPId, Goal, IGCs) ^ path_candidates :=
-        IGCs ^ path_candidates ).
+invariant_goal_candidates_keeping_path_candidates(PPId, Goal, !IGCs) :-
+    PathCandidates0 = !.IGCs ^ path_candidates,
+    invariant_goal_candidates_2(PPId, Goal, !IGCs),
+    !IGCs ^ path_candidates := PathCandidates0.
 
 %-----------------------------------------------------------------------------%
 
@@ -415,36 +369,37 @@ case_goals(Cases) =
 
 %-----------------------------------------------------------------------------%
 
-:- func add_recursive_call(hlds_goal, invariant_goal_candidates_acc) =
-            invariant_goal_candidates_acc.
+:- pred add_recursive_call(hlds_goal::in,
+    invariant_goal_candidates_acc::in, invariant_goal_candidates_acc::out)
+    is det.
 
-    % We have to reverse the path_candidates because they are
-    % accumulated in reverse order, whereas we need them in
-    % producer-consumer order as they appear in the procedure.
+    % We have to reverse the path_candidates because they are accumulated
+    % in reverse order, whereas we need them in producer-consumer order
+    % as they appear in the procedure.
     %
-add_recursive_call(Goal, IGCs) =
-    IGCs ^ rec_calls :=
-        [Goal - list.reverse(IGCs ^ path_candidates) | IGCs ^ rec_calls].
+add_recursive_call(Goal, !IGCs) :-
+    !IGCs ^ rec_calls :=
+        [Goal - list.reverse(!.IGCs ^ path_candidates) | !.IGCs ^ rec_calls].
 
 %-----------------------------------------------------------------------------%
 
-    % NOTE: we could hoist semipure goals that have no preceeding
-    % impure goals, but that's a very low-level optimization that
-    % is not entirely trivial to implement.
+    % NOTE: We could hoist semipure goals that have no preceeding impure goals,
+    % but that's a very low-level optimization that is not entirely trivial
+    % to implement.
     %
-:- func invariant_goal_candidates_handle_non_recursive_call(
-            hlds_goal, invariant_goal_candidates_acc
-        ) = invariant_goal_candidates_acc.
+:- pred invariant_goal_candidates_handle_non_recursive_call(hlds_goal::in,
+    invariant_goal_candidates_acc::in, invariant_goal_candidates_acc::out)
+    is det.
 
-invariant_goal_candidates_handle_non_recursive_call(
-        Goal @ hlds_goal(_GoalExpr, GoalInfo), IGCs) =
+invariant_goal_candidates_handle_non_recursive_call(Goal, !IGCs) :-
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
     (
         not model_non(GoalInfo),
         goal_info_get_purity(GoalInfo) = purity_pure
     ->
-        IGCs ^ path_candidates := [Goal | IGCs ^ path_candidates]
+        !IGCs ^ path_candidates := [Goal | !.IGCs ^ path_candidates]
     ;
-        IGCs
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -460,7 +415,6 @@ model_non(GoalInfo) :-
 :- func intersect_candidate_inv_goals(list(hlds_goals)) = hlds_goals.
 
 intersect_candidate_inv_goals([]) = [].
-
 intersect_candidate_inv_goals([Goals | Goalss]) =
     list.filter(common_goal(Goalss), Goals).
 
@@ -499,8 +453,8 @@ equivalent_goals(hlds_goal(GoalExprX, _), hlds_goal(GoalExprY, _)) :-
 
 inv_args(ModuleInfo, HeadVars, HeadVarModes, RecCalls) = InvArgs :-
     MaybeInvArgs0 =
-        list.map_corresponding(
-                arg_to_maybe_inv_arg(ModuleInfo), HeadVars, HeadVarModes),
+        list.map_corresponding(arg_to_maybe_inv_arg(ModuleInfo),
+            HeadVars, HeadVarModes),
     MaybeInvArgs  =
         list.foldl(refine_candidate_inv_args, RecCalls, MaybeInvArgs0),
     InvArgs       =
@@ -523,12 +477,12 @@ arg_to_maybe_inv_arg(ModuleInfo, Arg, Mode) =
     list(maybe(prog_var)).
 
 refine_candidate_inv_args(hlds_goal(RecCall, _RecCallInfo), MaybeInvArgs) =
-    ( if   RecCall = plain_call(_, _, CallArgs, _, _, _)
-      then list.map_corresponding(refine_candidate_inv_args_2,
-                                   MaybeInvArgs,
-                                   CallArgs)
-      else unexpected(this_file, "refine_candidate_inv_args/2: " ++
-        "non call/6 found in argument 1")
+    ( RecCall = plain_call(_, _, CallArgs, _, _, _) ->
+        list.map_corresponding(refine_candidate_inv_args_2,
+            MaybeInvArgs, CallArgs)
+    ;
+        unexpected(this_file,
+            "refine_candidate_inv_args/2: non call/6 found in argument 1")
     ).
 
 :- func refine_candidate_inv_args_2(maybe(prog_var), prog_var) =
@@ -571,15 +525,15 @@ inv_goals_vars(ModuleInfo, UniquelyUsedVars,
 :- pred inv_goals_vars_2(module_info::in, prog_vars::in, hlds_goal::in,
     hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out) is det.
 
-inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
-    ( if
+inv_goals_vars_2(ModuleInfo, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
+    (
         not invariant_goal(IGs0, Goal),
         not has_uniquely_used_arg(UUVs, Goal),
-        input_args_are_invariant(MI, Goal, IVs0)
-      then
+        input_args_are_invariant(ModuleInfo, Goal, IVs0)
+    ->
         IGs = [Goal | IGs0],
-        IVs = add_outputs(MI, UUVs, Goal, IVs0)
-      else
+        add_outputs(ModuleInfo, UUVs, Goal, IVs0, IVs)
+    ;
         IGs = IGs0,
         IVs = IVs0
     ).
@@ -627,17 +581,17 @@ dont_hoist(ModuleInfo, InvGoals, DontHoistGoals, DontHoistVars) :-
     hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out) is det.
 
 dont_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
-    ( if
+    (
         ( const_construction(Goal)
         ; deconstruction(Goal)
         ; impure_goal(Goal)
         ; cannot_succeed(Goal)
         ; call_has_inst_any(ModuleInfo, Goal)
         )
-      then
+    ->
         list.cons(Goal, !DHGs),
-        !:DHVs = add_outputs(ModuleInfo, [], Goal, !.DHVs)
-      else
+        add_outputs(ModuleInfo, [], Goal, !DHVs)
+    ;
         true
     ).
 
@@ -651,8 +605,8 @@ dont_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
 
 const_construction(hlds_goal(GoalExpr, _GoalInfo)) :-
     Construction = GoalExpr ^ unify_kind,
-    (   Construction ^ construct_args = []
-    ;   Construction ^ construct_how  = construct_statically(_)
+    ( Construction ^ construct_args = []
+    ; Construction ^ construct_how  = construct_statically(_)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -711,7 +665,7 @@ call_has_inst_any(ModuleInfo, Goal) :-
 
 arg_is_input(InstInfo, Arg) :-
     InstInfo = {_ModuleInfo, InstMap},
-    instmap.lookup_var(InstMap, Arg, Inst),
+    instmap_lookup_var(InstMap, Arg, Inst),
     inst_is_input(InstInfo, Inst).
 
 %-----------------------------------------------------------------------------%
@@ -727,19 +681,23 @@ inst_is_input({ModuleInfo, _InstMap}, Inst) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func add_outputs(module_info, prog_vars, hlds_goal, prog_vars) =
-    prog_vars.
+:- pred add_outputs(module_info::in, prog_vars::in, hlds_goal::in,
+    prog_vars::in, prog_vars::out) is det.
 
-add_outputs(ModuleInfo, UUVs, Goal, InvVars) =
-    list.foldl(add_output(UUVs), goal_outputs(ModuleInfo, Goal), InvVars).
+add_outputs(ModuleInfo, UUVs, Goal, !InvVars) :-
+    list.foldl(add_output(UUVs), goal_outputs(ModuleInfo, Goal), !InvVars).
 
-:- func add_output(prog_vars, prog_var, prog_vars) = prog_vars.
+:- pred add_output(prog_vars::in, prog_var::in,
+    prog_vars::in, prog_vars::out) is det.
 
-add_output(UniquelyUsedVars, X, InvVars) =
-    ( if   not list.member(X, InvVars),
-           not list.member(X, UniquelyUsedVars)
-      then [X | InvVars]
-      else InvVars
+add_output(UniquelyUsedVars, X, !InvVars) :-
+    (
+        not list.member(X, !.InvVars),
+        not list.member(X, UniquelyUsedVars)
+    ->
+        !:InvVars = [X | !.InvVars]
+    ;
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -850,14 +808,11 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
 gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
         AuxPredInfo, !.AuxProcInfo, !ModuleInfo) :-
-
-        % Compute the aux proc body.
-        %
+    % Compute the aux proc body.
     GapInfo = gen_aux_proc_info(!.ModuleInfo, InvGoals, PredProcId, CallAux),
-    AuxBody = gen_aux_proc_2(GapInfo, Body),
+    AuxBody = gen_aux_proc_goal(GapInfo, Body),
 
-        % Put the new proc body and instmap into the module_info.
-        %
+    % Put the new proc body and instmap into the module_info.
     AuxPredProcId = proc(AuxPredId, AuxProcId),
     hlds_pred.proc_info_set_goal(AuxBody, !AuxProcInfo),
 
@@ -870,74 +825,68 @@ gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
 
 %-----------------------------------------------------------------------------%
 
-:- func gen_aux_proc_2(gen_aux_proc_info, hlds_goal) = hlds_goal.
+:- func gen_aux_proc_goal(gen_aux_proc_info, hlds_goal) = hlds_goal.
 
-gen_aux_proc_2(Info,
-        hlds_goal(Call @ plain_call(PredId, ProcId, _,_,_,_), GoalInfo)) =
-    ( if   proc(PredId, ProcId) = Info ^ pred_proc_id
-      then gen_aux_call(Info ^ call_aux_goal, hlds_goal(Call, GoalInfo))
-      else gen_aux_proc_handle_non_recursive_call(Info,
-        hlds_goal(Call, GoalInfo))
-    ).
-
-gen_aux_proc_2(Info, hlds_goal(Call @ generic_call(_, _, _, _), GoalInfo)) =
-    gen_aux_proc_handle_non_recursive_call(Info, hlds_goal(Call, GoalInfo)).
-
-gen_aux_proc_2(Info, hlds_goal(Unification @ unify(_, _, _, _, _), GoalInfo)) =
-    gen_aux_proc_handle_non_recursive_call(Info,
-        hlds_goal(Unification, GoalInfo)).
-
-gen_aux_proc_2(Info,
-        hlds_goal(ForeignProc @ call_foreign_proc(_, _, _, _, _, _, _),
-            GoalInfo)) =
-    gen_aux_proc_handle_non_recursive_call(Info,
-        hlds_goal(ForeignProc, GoalInfo)).
-
-gen_aux_proc_2(Info, hlds_goal(conj(ConjType, Conjuncts), GoalInfo)) =
-    hlds_goal(conj(ConjType, gen_aux_proc_list(Info, Conjuncts)), GoalInfo).
-
-gen_aux_proc_2(Info, hlds_goal(disj(Disjuncts), GoalInfo)) =
-    hlds_goal(disj(gen_aux_proc_list(Info, Disjuncts)), GoalInfo).
-
-gen_aux_proc_2(Info, hlds_goal(switch(Var, CanFail, Cases), GoalInfo)) =
-    hlds_goal(switch(Var, CanFail, gen_aux_proc_switch(Info, Cases)),
-        GoalInfo).
-
-gen_aux_proc_2(Info, hlds_goal(negation(NegatedGoal), GoalInfo)) =
-    hlds_goal(negation(gen_aux_proc_2(Info, NegatedGoal)), GoalInfo).
-
-gen_aux_proc_2(Info, hlds_goal(scope(Reason, QuantifiedGoal), GoalInfo)) =
-    hlds_goal(scope(Reason, gen_aux_proc_2(Info, QuantifiedGoal)), GoalInfo).
-
-gen_aux_proc_2(Info,
-        hlds_goal(if_then_else(XVars, Cond, Then, Else), GoalInfo)) =
-    hlds_goal(
-        if_then_else(XVars,
-             gen_aux_proc_2(Info, Cond),
-             gen_aux_proc_2(Info, Then),
-             gen_aux_proc_2(Info, Else)
+gen_aux_proc_goal(Info, Goal) = AuxGoal :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    (
+        GoalExpr = plain_call(PredId, ProcId, _,_,_,_),
+        ( proc(PredId, ProcId) = Info ^ pred_proc_id ->
+            AuxGoal = gen_aux_call(Info ^ call_aux_goal, Goal)
+        ;
+            AuxGoal = gen_aux_proc_handle_non_recursive_call(Info, Goal)
+        )
+    ;
+        ( GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        GoalInfo).
-
-gen_aux_proc_2(_Info, hlds_goal(shorthand(_), _GoalInfo)) = _ :-
-    unexpected(this_file, "gen_aux_proc_2/2: shorthand/1 in hlds_goal").
-
-%-----------------------------------------------------------------------------%
-
-:- func gen_aux_proc_list(gen_aux_proc_info, hlds_goals) = hlds_goals.
-
-gen_aux_proc_list(Info, Goals) = list.map(gen_aux_proc_2(Info), Goals).
-
-%-----------------------------------------------------------------------------%
-
-:- func gen_aux_proc_switch(gen_aux_proc_info, list(case)) = list(case).
-
-gen_aux_proc_switch(Info, Cases) =
-    list.map(
-        func(case(MainCaseId, OtherConsIds, Goal)) =
-            case(MainCaseId, OtherConsIds, gen_aux_proc_2(Info, Goal)),
-        Cases
+        AuxGoal = gen_aux_proc_handle_non_recursive_call(Info, Goal)
+    ;
+        GoalExpr = conj(ConjType, Conjuncts),
+        AuxConjuncts = list.map(gen_aux_proc_goal(Info), Conjuncts),
+        AuxGoalExpr = conj(ConjType, AuxConjuncts),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = disj(Disjuncts),
+        AuxDisjuncts = list.map(gen_aux_proc_goal(Info), Disjuncts),
+        AuxGoalExpr = disj(AuxDisjuncts),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = switch(Var, CanFail, Cases),
+        AuxCases = list.map(gen_aux_proc_case(Info), Cases),
+        AuxGoalExpr = switch(Var, CanFail, AuxCases),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = negation(SubGoal),
+        AuxSubGoal = gen_aux_proc_goal(Info, SubGoal),
+        AuxGoalExpr = negation(AuxSubGoal),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        % XXX We should consider special casing the handling of
+        % from_ground_term_construct scopes.
+        AuxSubGoal = gen_aux_proc_goal(Info, SubGoal),
+        AuxGoalExpr = scope(Reason, AuxSubGoal),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        AuxCond = gen_aux_proc_goal(Info, Cond),
+        AuxThen = gen_aux_proc_goal(Info, Then),
+        AuxElse = gen_aux_proc_goal(Info, Else),
+        AuxGoalExpr = if_then_else(Vars, AuxCond, AuxThen, AuxElse),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "gen_aux_proc_goal: shorthand")
     ).
+
+:- func gen_aux_proc_case(gen_aux_proc_info, case) = case.
+
+gen_aux_proc_case(Info, Case) = AuxCase :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    AuxGoal = gen_aux_proc_goal(Info, Goal),
+    AuxCase = case(MainConsId, OtherConsIds, AuxGoal).
 
 %-----------------------------------------------------------------------------%
 
@@ -945,9 +894,10 @@ gen_aux_proc_switch(Info, Cases) =
     hlds_goal.
 
 gen_aux_proc_handle_non_recursive_call(Info, Goal0) =
-    ( if   invariant_goal(Info ^ inv_goals, Goal0)
-      then true_goal
-      else Goal0
+    ( invariant_goal(Info ^ inv_goals, Goal0) ->
+        true_goal
+    ;
+        Goal0
     ).
 
 %-----------------------------------------------------------------------------%
@@ -961,13 +911,10 @@ gen_aux_proc_handle_non_recursive_call(Info, Goal0) =
 
 gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
         ModuleInfo0, ModuleInfo) :-
+    % Compute the new procedure body.
+    Body = gen_out_proc_goal(PredProcId, CallAux, Body0),
 
-        % Compute the new procedure body.
-        %
-    Body = gen_out_proc_2(PredProcId, CallAux, Body0),
-
-        % Put the new procedure body into the module_info.
-        %
+    % Put the new procedure body into the module_info.
     PredProcId = proc(PredId, ProcId),
 
     proc_info_get_varset(ProcInfo0, VarSet),
@@ -987,81 +934,79 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
 
 %-----------------------------------------------------------------------------%
 
-    % gen_out_proc_2(PredProcId, CallAux, Goal0) = Goal:
+    % gen_out_proc_goal(PredProcId, CallAux, Goal0) = Goal:
     %
     % Goal is Goal0 with calls to PredProcId replaced with CallAux.
     %
-:- func gen_out_proc_2(pred_proc_id, hlds_goal, hlds_goal) = hlds_goal.
+:- func gen_out_proc_goal(pred_proc_id, hlds_goal, hlds_goal) = hlds_goal.
 
-gen_out_proc_2(PPId, CallAux,
-        hlds_goal(Call @ plain_call(PredId, ProcId, _, _, _, _), GoalInfo)) =
-    ( if   proc(PredId, ProcId) = PPId
-      then gen_aux_call(CallAux, hlds_goal(Call, GoalInfo))
-      else hlds_goal(Call, GoalInfo)
+gen_out_proc_goal(PPId, CallAux, Goal) = AuxGoal :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    (
+        GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
+        ( proc(PredId, ProcId) = PPId ->
+            AuxGoal = gen_aux_call(CallAux, Goal)
+        ;
+            AuxGoal = Goal
+        )
+    ;
+        ( GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        AuxGoal = Goal
+    ;
+        GoalExpr = conj(ConjType, Conjuncts),
+        AuxConjuncts = list.map(gen_out_proc_goal(PPId, CallAux), Conjuncts),
+        AuxGoalExpr = conj(ConjType, AuxConjuncts),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = disj(Disjuncts),
+        AuxDisjuncts = list.map(gen_out_proc_goal(PPId, CallAux), Disjuncts),
+        AuxGoalExpr = disj(AuxDisjuncts),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = switch(Var, CanFail, Cases),
+        AuxCases = list.map(gen_out_proc_case(PPId, CallAux), Cases),
+        AuxGoalExpr = switch(Var, CanFail, AuxCases),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = negation(SubGoal),
+        AuxSubGoal = gen_out_proc_goal(PPId, CallAux, SubGoal),
+        AuxGoalExpr = negation(AuxSubGoal),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        % XXX We should consider special casing the handling of
+        % from_ground_term_construct scopes.
+        AuxSubGoal = gen_out_proc_goal(PPId, CallAux, SubGoal),
+        AuxGoalExpr = scope(Reason, AuxSubGoal),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        AuxCond = gen_out_proc_goal(PPId, CallAux, Cond),
+        AuxThen = gen_out_proc_goal(PPId, CallAux, Then),
+        AuxElse = gen_out_proc_goal(PPId, CallAux, Else),
+        AuxGoalExpr = if_then_else(Vars, AuxCond, AuxThen, AuxElse),
+        AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "gen_out_proc_goal: shorthand")
     ).
 
-gen_out_proc_2(_PPId, _CallAux,
-        hlds_goal(Call @ generic_call(_, _, _, _), GoalInfo)) =
-    hlds_goal(Call, GoalInfo).
+:- func gen_out_proc_case(pred_proc_id, hlds_goal, case) = case.
 
-gen_out_proc_2(_PPId, _CallAux,
-        hlds_goal(Unification @ unify(_, _, _, _, _), GoalInfo)) =
-    hlds_goal(Unification, GoalInfo).
-
-gen_out_proc_2(_PPId, _CallAux,
-        hlds_goal(ForeignProc @ call_foreign_proc(_, _, _, _, _, _, _),
-            GoalInfo)) =
-    hlds_goal(ForeignProc, GoalInfo).
-
-gen_out_proc_2(PPId, CallAux,
-        hlds_goal(conj(ConjType, Conjuncts), GoalInfo)) =
-    hlds_goal(
-        conj(ConjType, list.map(gen_out_proc_2(PPId, CallAux), Conjuncts)),
-        GoalInfo).
-
-gen_out_proc_2(PPId, CallAux,
-        hlds_goal(disj(Disjuncts), GoalInfo)) =
-    hlds_goal(
-        disj(list.map(gen_out_proc_2(PPId, CallAux), Disjuncts)),
-        GoalInfo).
-
-gen_out_proc_2(PPId, CallAux,
-        hlds_goal(switch(Var, CanFail, Cases), GoalInfo)) =
-    hlds_goal(switch(Var, CanFail, list.map(GOPCase, Cases)), GoalInfo)
- :-
-    GOPCase =
-        ( func(case(MainConsId, OtherConsIds, Goal)) =
-                case(MainConsId, OtherConsIds,
-                    gen_out_proc_2(PPId, CallAux, Goal)) ).
-
-gen_out_proc_2(PPId, CallAux,
-        hlds_goal(negation(NegatedGoal), GoalInfo)) =
-    hlds_goal(negation(gen_out_proc_2(PPId, CallAux, NegatedGoal)), GoalInfo).
-
-gen_out_proc_2(PPId, CallAux,
-        hlds_goal(scope(Reason, QuantifiedGoal), GoalInfo)) =
-    hlds_goal(
-        scope(Reason, gen_out_proc_2(PPId, CallAux, QuantifiedGoal)),
-        GoalInfo).
-
-gen_out_proc_2(PPId, CallAux,
-        hlds_goal(if_then_else(XVars, Cond, Then, Else), GoalInfo)) =
-    hlds_goal(
-        if_then_else( XVars,
-            gen_out_proc_2(PPId, CallAux, Cond),
-            gen_out_proc_2(PPId, CallAux, Then),
-            gen_out_proc_2(PPId, CallAux, Else)),
-        GoalInfo).
-
-gen_out_proc_2(_PPId, _CallAux, hlds_goal(shorthand(_), _GoalInfo)) = _ :-
-    unexpected(this_file, "gen_out_proc_2/3: shorthand/1 in hlds_goal").
+gen_out_proc_case(PPId, CallAux, Case) = AuxCase :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    AuxGoal = gen_out_proc_goal(PPId, CallAux, Goal),
+    AuxCase = case(MainConsId, OtherConsIds, AuxGoal).
 
 %-----------------------------------------------------------------------------%
 
 :- func gen_aux_call(hlds_goal, hlds_goal) = hlds_goal.
 
 gen_aux_call(hlds_goal(CallAux0, _CallAuxInfo0), hlds_goal(Call, CallInfo)) =
-    ( if
+    (
         AuxArgs0      = CallAux0   ^ call_args,
         Args0         = Call       ^ call_args,
         Args          = replace_initial_args(Args0, AuxArgs0),
@@ -1072,9 +1017,9 @@ gen_aux_call(hlds_goal(CallAux0, _CallAuxInfo0), hlds_goal(Call, CallInfo)) =
         % are not changed by the recursive call and there is no need
         % to adjust the instmap_delta.  All other fields are correct for
         % CallInfo.
-      then
+    ->
         hlds_goal(CallAux, CallInfo)
-      else
+    ;
         unexpected(this_file, "gen_aux_call/2: args not both ordinary calls")
     ).
 
@@ -1083,93 +1028,97 @@ gen_aux_call(hlds_goal(CallAux0, _CallAuxInfo0), hlds_goal(Call, CallInfo)) =
 :- func replace_initial_args(list(T), list(T)) = list(T).
 
 replace_initial_args([],       Ys      ) = Ys.
-
 replace_initial_args([X | Xs], [_ | Ys]) = [X | replace_initial_args(Xs, Ys)].
-
 replace_initial_args([_ | _],  []      ) = _ :-
     unexpected(this_file,
-        "replace_initial_args/2: first arg longer than second").
+        "replace_initial_args: first arg longer than second").
 
 %-----------------------------------------------------------------------------%
 
     % This predicate computes the set of variables that are used as (partly)
-    % unique inputs to goals.  This information is needed because unique local
+    % unique inputs to goals. This information is needed because unique local
     % values for which uniqueness is important cannot be hoisted, although
     % those for which uniqueness is inferred, but not important, can be
     % hoisted.
     %
-    % TODO: get this to handle unification properly.  See the XXX below.
+    % TODO: get this to handle unification properly. See the XXX below.
     %
 :- func uniquely_used_vars(module_info, hlds_goal) = prog_vars.
 
 uniquely_used_vars(ModuleInfo, Goal) =
-    list.sort_and_remove_dups(uniquely_used_vars_2(ModuleInfo, Goal)).
+    list.sort_and_remove_dups(used_vars(ModuleInfo, Goal)).
 
 %-----------------------------------------------------------------------------%
 
-:- func uniquely_used_vars_2(module_info, hlds_goal) = prog_vars.
+:- func used_vars(module_info, hlds_goal) = prog_vars.
 
-uniquely_used_vars_2(ModuleInfo, Goal) =
-    uniquely_used_vars_3(ModuleInfo, Goal ^ hlds_goal_expr).
-
-:- func uniquely_used_vars_3(module_info, hlds_goal_expr) = prog_vars.
-
-uniquely_used_vars_3(MI, plain_call(PredId, ProcId, Args, _, _, _)) =
-    list.filter_map_corresponding(uniquely_used_args(MI), Args,
-        argmodes(MI, PredId, ProcId)).
-
-uniquely_used_vars_3(MI, generic_call(_, Args, Modes, _)) =
-    list.filter_map_corresponding(uniquely_used_args(MI), Args, Modes).
-
-uniquely_used_vars_3(MI,
-        call_foreign_proc(_, PredId, ProcId, Args, Extras, _, _)) =
-    %
-    % XXX `Extras' should be empty for pure calls.  We cannot apply LIO to
-    % non-pure goals so we shouldn't need to consider `Extras'.  However, we
-    % currently don't deal with the situation where we may be trying to apply
-    % LIO to a non-pure goal until *after* we have called this predicate, so
-    % `Extras' may not be empty.  As a work-around we just add any variables
-    % in `Extras' to the set of variables that cannot be hoisted.
-    %
-    list.filter_map_corresponding(uniquely_used_args(MI),
-        list.map(foreign_arg_var, Args),
-        argmodes(MI,PredId,ProcId)) ++ list.map(foreign_arg_var, Extras).
-
-    % XXX This is very conservative!
-    %
-uniquely_used_vars_3(_MI, unify(_LHS, _RHS, _UMode, _UKind, _)) = [].
-
-uniquely_used_vars_3(MI, conj(_, Conjuncts)) =
-    list.condense(list.map(uniquely_used_vars_2(MI), Conjuncts)).
-
-uniquely_used_vars_3(MI, disj(Disjuncts)) =
-    list.condense(list.map(uniquely_used_vars_2(MI), Disjuncts)).
-
-uniquely_used_vars_3(MI, switch(_, _, Cases)) =
-    list.condense(list.map(uniquely_used_vars_2(MI), case_goals(Cases))).
-
-uniquely_used_vars_3(MI, negation(NegatedGoal)) =
-    uniquely_used_vars_2(MI, NegatedGoal).
-
-uniquely_used_vars_3(MI, scope(_, QuantifiedGoal)) =
-    uniquely_used_vars_2(MI, QuantifiedGoal).
-
-uniquely_used_vars_3(MI, if_then_else(_, Cond, Then, Else)) =
-    uniquely_used_vars_2(MI, Cond) ++
-        uniquely_used_vars_2(MI, Then) ++
-            uniquely_used_vars_2(MI, Else).
-
-uniquely_used_vars_3(_MI, shorthand(_)) = _ :-
-    unexpected(this_file, "uniquely_used_vars_3/2: shorthand/1 in hlds_goal").
+used_vars(ModuleInfo, Goal) = UsedVars :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    (
+        GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
+        UsedVars = list.filter_map_corresponding(
+            uniquely_used_args(ModuleInfo),
+            Args, argmodes(ModuleInfo, PredId, ProcId))
+    ;
+        GoalExpr = generic_call(_, Args, Modes, _),
+        UsedVars = list.filter_map_corresponding(
+            uniquely_used_args(ModuleInfo),
+            Args, Modes)
+    ;
+        GoalExpr = call_foreign_proc(_, PredId, ProcId,
+            ForeignArgs, ExtraForeignArgs, _, _),
+        % XXX `Extras' should be empty for pure calls.  We cannot apply LIO
+        % to non-pure goals so we shouldn't need to consider `Extras'.
+        % However, we currently don't deal with the situation where we may be
+        % trying to apply LIO to a non-pure goal until *after* we have called
+        % this predicate, so `Extras' may not be empty.  As a work-around,
+        % we just add any variables in `Extras' to the set of variables
+        % that cannot be hoisted.
+        UsedArgVars = list.filter_map_corresponding(
+            uniquely_used_args(ModuleInfo),
+            list.map(foreign_arg_var, ForeignArgs),
+            argmodes(ModuleInfo, PredId, ProcId)),
+        UsedExtraArgVars = list.map(foreign_arg_var, ExtraForeignArgs),
+        UsedVars = UsedArgVars ++ UsedExtraArgVars
+    ;
+        GoalExpr = unify(_LHS, _RHS, _UMode, _UKind, _), 
+        % XXX This is very conservative!
+        UsedVars = []
+    ;
+        GoalExpr = conj(_, Conjuncts),
+        UsedVars = list.condense(list.map(used_vars(ModuleInfo), Conjuncts))
+    ;
+        GoalExpr = disj(Disjuncts),
+        UsedVars = list.condense(list.map(used_vars(ModuleInfo), Disjuncts))
+    ;
+        GoalExpr = switch(_, _, Cases),
+        UsedVars = list.condense(list.map(used_vars(ModuleInfo),
+            case_goals(Cases)))
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        UsedVars = used_vars(ModuleInfo, Cond) ++
+            used_vars(ModuleInfo, Then) ++ used_vars(ModuleInfo, Else)
+    ;
+        GoalExpr = negation(SubGoal),
+        UsedVars = used_vars(ModuleInfo, SubGoal)
+    ;
+        GoalExpr = scope(_Reason, SubGoal),
+        % XXX We should consider special casing the handling of
+        % from_ground_term_construct scopes.
+        UsedVars = used_vars(ModuleInfo, SubGoal)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "used_vars: shorthand")
+    ).
 
 %-----------------------------------------------------------------------------%
 
 :- func uniquely_used_args(module_info, prog_var, mer_mode) = prog_var
     is semidet.
 
-uniquely_used_args(MI, X, M) = X :-
-    mode_get_insts(MI, M, InInst, _OutInst),
-    not inst_is_not_partly_unique(MI, InInst).
+uniquely_used_args(ModuleInfo, X, M) = X :-
+    mode_get_insts(ModuleInfo, M, InInst, _OutInst),
+    not inst_is_not_partly_unique(ModuleInfo, InInst).
 
 %-----------------------------------------------------------------------------%
 
@@ -1186,78 +1135,68 @@ argmodes(ModuleInfo, PredId, ProcId) = ArgModes :-
     %
 :- func goal_inputs(module_info, hlds_goal) = prog_vars.
 
-goal_inputs(ModuleInfo, Goal) =
-    goal_expr_inputs(ModuleInfo, Goal ^ hlds_goal_expr).
-
-:- func goal_expr_inputs(module_info, hlds_goal_expr) = prog_vars.
-
-goal_expr_inputs(MI, plain_call(PredId, ProcId, Args, _, _, _)) =
-    list.filter_map_corresponding(input_arg(MI), Args,
-        argmodes(MI, PredId, ProcId)).
-
-goal_expr_inputs(MI, generic_call(_, Args, ArgModes, _)) =
-    list.filter_map_corresponding(input_arg(MI), Args, ArgModes).
-
-goal_expr_inputs(MI, call_foreign_proc(_, PredId, ProcId, Args, _, _, _)) =
-    list.filter_map_corresponding(input_arg(MI),
-        list.map(foreign_arg_var, Args), argmodes(MI, PredId, ProcId)).
-
-goal_expr_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _)) = Inputs :-
+goal_inputs(ModuleInfo, Goal) = Inputs :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
-        % The LHS is always an output var in constructions.
-        Kind   = construct(_, _, RHSArgs, ArgUniModes, _, _, _),
-        Inputs = list.filter_map_corresponding(
-                        input_arg(MI), RHSArgs, rhs_modes(ArgUniModes))
+        GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
+        Inputs = list.filter_map_corresponding(input_arg(ModuleInfo),
+            Args, argmodes(ModuleInfo, PredId, ProcId))
     ;
-        % The LHS is always in input var in deconstructions.
-        Kind   = deconstruct(_, _, RHSArgs, ArgUniModes, _, _),
-        Inputs = [ LHS
-                 | list.filter_map_corresponding(
-                        input_arg(MI), RHSArgs, rhs_modes(ArgUniModes)) ]
+        GoalExpr = generic_call(_, Args, ArgModes, _),
+        Inputs = list.filter_map_corresponding(input_arg(ModuleInfo),
+            Args, ArgModes)
     ;
-        % The RHS is the only input in an assignment.
-        Kind   = assign(_, RHS),
-        Inputs = [RHS]
+        GoalExpr = call_foreign_proc(_, PredId, ProcId, ForeignArgs, _, _, _),
+        Inputs = list.filter_map_corresponding(input_arg(ModuleInfo),
+            list.map(foreign_arg_var, ForeignArgs),
+            argmodes(ModuleInfo, PredId, ProcId))
     ;
-        % Both sides of a simple test are inputs.
-        Kind   = simple_test(_, RHS),
-        Inputs = [LHS, RHS]
-    ;
-        % Both sides of a complicated unification are inputs.
-        Kind   = complicated_unify(_, _, _),
+        GoalExpr = unify(LHS, UnifyRHS, _, Kind, _),
         (
-            UnifyRHS = rhs_var(RHS),
+            % The LHS is always an output var in constructions.
+            Kind   = construct(_, _, RHSArgs, ArgUniModes, _, _, _),
+            Inputs = list.filter_map_corresponding(input_arg(ModuleInfo),
+                RHSArgs, rhs_modes(ArgUniModes))
+        ;
+            % The LHS is always in input var in deconstructions.
+            Kind   = deconstruct(_, _, RHSArgs, ArgUniModes, _, _),
+            RHSInputs = list.filter_map_corresponding(input_arg(ModuleInfo),
+                RHSArgs, rhs_modes(ArgUniModes)),
+            Inputs = [LHS | RHSInputs]
+        ;
+            % The RHS is the only input in an assignment.
+            Kind   = assign(_, RHS),
+            Inputs = [RHS]
+        ;
+            % Both sides of a simple test are inputs.
+            Kind   = simple_test(_, RHS),
             Inputs = [LHS, RHS]
         ;
-            UnifyRHS = rhs_functor(_, _, _),
-            Inputs = [LHS]
-        ;
-            UnifyRHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
-            % These should have been expanded out by now.
-            unexpected(this_file, "goal_expr_inputs: lambda goal")
+            % Both sides of a complicated unification are inputs.
+            Kind   = complicated_unify(_, _, _),
+            (
+                UnifyRHS = rhs_var(RHS),
+                Inputs = [LHS, RHS]
+            ;
+                UnifyRHS = rhs_functor(_, _, _),
+                Inputs = [LHS]
+            ;
+                UnifyRHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+                % These should have been expanded out by now.
+                unexpected(this_file, "goal_expr_inputs: lambda goal")
+            )
         )
+    ;
+        ( GoalExpr = conj(_, _)
+        ; GoalExpr = disj(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = scope(_, _)
+        ; GoalExpr = shorthand(_)
+        ),
+        unexpected(this_file, "goal_expr_inputs: compound goal")
     ).
-
-goal_expr_inputs(_MI, conj(_, _)) = _ :-
-    unexpected(this_file, "goal_expr_inputs/2: conj/2 in hlds_goal").
-
-goal_expr_inputs(_MI, switch(_, _, _)) = _ :-
-    unexpected(this_file, "goal_expr_inputs/2: switch/3 in hlds_goal").
-
-goal_expr_inputs(_MI, disj(_)) = _ :-
-    unexpected(this_file, "goal_expr_inputs/2: disj/1 in hlds_goal").
-
-goal_expr_inputs(_MI, negation(_)) = _ :-
-    unexpected(this_file, "goal_expr_inputs/2: negation/1 in hlds_goal").
-
-goal_expr_inputs(_MI, scope(_, _)) = _ :-
-    unexpected(this_file, "goal_expr_inputs/2: some/3 in hlds_goal").
-
-goal_expr_inputs(_MI, if_then_else(_, _, _, _)) = _ :-
-    unexpected(this_file, "goal_expr_inputs/2: if_then_else/4 in hlds_goal").
-
-goal_expr_inputs(_MI, shorthand(_)) = _ :-
-    unexpected(this_file, "goal_expr_inputs/2: shorthand/1 in hlds_goal").
 
 %-----------------------------------------------------------------------------%
 
@@ -1265,9 +1204,9 @@ goal_expr_inputs(_MI, shorthand(_)) = _ :-
     %
 :- func input_arg(module_info, prog_var, mer_mode) = prog_var is semidet.
 
-input_arg(MI, X, M) = X :-
-    mode_get_insts(MI, M, InInst, _OutInst),
-    not inst_is_free(MI, InInst).
+input_arg(ModuleInfo, X, M) = X :-
+    mode_get_insts(ModuleInfo, M, InInst, _OutInst),
+    not inst_is_free(ModuleInfo, InInst).
 
 %-----------------------------------------------------------------------------%
 
@@ -1276,71 +1215,56 @@ input_arg(MI, X, M) = X :-
     %
 :- func goal_outputs(module_info, hlds_goal) = prog_vars.
 
-goal_outputs(ModuleInfo, Goal) =
-    goal_expr_outputs(ModuleInfo, Goal ^ hlds_goal_expr).
-
-:- func goal_expr_outputs(module_info, hlds_goal_expr) = prog_vars.
-
-goal_expr_outputs(MI, plain_call(PredId, ProcId, Args, _, _, _)) =
-    list.filter_map_corresponding(output_arg(MI), Args,
-        argmodes(MI, PredId, ProcId)).
-
-goal_expr_outputs(MI, generic_call(_, Args, ArgModes, _)) =
-    list.filter_map_corresponding(output_arg(MI), Args, ArgModes).
-
-goal_expr_outputs(MI, call_foreign_proc(_, PredId, ProcId, Args, _, _, _)) =
-    list.filter_map_corresponding(output_arg(MI),
-        list.map(foreign_arg_var, Args), argmodes(MI, PredId, ProcId)).
-
-goal_expr_outputs(MI, unify(LHS, _RHS, _, Kind, _)) = Outputs :-
+goal_outputs(ModuleInfo, Goal) = Outputs :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
+        GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
+        Outputs = list.filter_map_corresponding(output_arg(ModuleInfo),
+            Args, argmodes(ModuleInfo, PredId, ProcId))
+    ;
+        GoalExpr = generic_call(_, Args, ArgModes, _),
+        Outputs = list.filter_map_corresponding(output_arg(ModuleInfo),
+            Args, ArgModes)
+    ;
+        GoalExpr = call_foreign_proc(_, PredId, ProcId, ForeignArgs, _, _, _),
+        Outputs = list.filter_map_corresponding(output_arg(ModuleInfo),
+            list.map(foreign_arg_var, ForeignArgs),
+            argmodes(ModuleInfo, PredId, ProcId))
+    ;
+        GoalExpr = unify(LHS, _RHS, _, Kind, _),
+        (
             % The LHS is the only output in a construction.
-            %
-        Kind    = construct(_, _, _, _, _, _, _),
-        Outputs = [LHS]
-    ;
+            Kind    = construct(_, _, _, _, _, _, _),
+            Outputs = [LHS]
+        ;
             % The LHS is always in input in deconstructions.
-            %
-        Kind    = deconstruct(_, _, RHSArgs, ArgUniModes, _, _),
-        Outputs = list.filter_map_corresponding(
-                            output_arg(MI), RHSArgs, rhs_modes(ArgUniModes))
-    ;
+            Kind    = deconstruct(_, _, RHSArgs, ArgUniModes, _, _),
+            Outputs = list.filter_map_corresponding(output_arg(ModuleInfo),
+                RHSArgs, rhs_modes(ArgUniModes))
+        ;
             % The LHS is the only output in an assignment.
-            %
-        Kind    = assign(_, _),
-        Outputs = [LHS]
-    ;
+            Kind    = assign(_, _),
+            Outputs = [LHS]
+        ;
             % Both sides of a simple test are inputs.
-            %
-        Kind    = simple_test(_, _),
-        Outputs = []
-    ;
+            Kind    = simple_test(_, _),
+            Outputs = []
+        ;
             % Both sides of a complicated unification are inputs.
-            %
-        Kind    = complicated_unify(_, _, _),
-        Outputs = []
+            Kind    = complicated_unify(_, _, _),
+            Outputs = []
+        )
+    ;
+        ( GoalExpr = conj(_, _)
+        ; GoalExpr = disj(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = scope(_, _)
+        ; GoalExpr = shorthand(_)
+        ),
+        unexpected(this_file, "goal_expr_outputs: compound goal")
     ).
-
-goal_expr_outputs(_MI, conj(_, _)) = _ :-
-    unexpected(this_file, "goal_expr_outputs/2: conj/2 in hlds_goal").
-
-goal_expr_outputs(_MI, switch(_, _, _)) = _ :-
-    unexpected(this_file, "goal_expr_outputs/2: switch/3 in hlds_goal").
-
-goal_expr_outputs(_MI, disj(_)) = _ :-
-    unexpected(this_file, "goal_expr_outputs/2: disj/1 in hlds_goal").
-
-goal_expr_outputs(_MI, negation(_)) = _ :-
-    unexpected(this_file, "goal_expr_outputs/2: negation/1 in hlds_goal").
-
-goal_expr_outputs(_MI, scope(_, _)) = _ :-
-    unexpected(this_file, "goal_expr_outputs/2: some/3 in hlds_goal").
-
-goal_expr_outputs(_MI, if_then_else(_, _, _, _)) = _ :-
-    unexpected(this_file, "goal_expr_outputs/2: if_then_else/4 in hlds_goal").
-
-goal_expr_outputs(_MI, shorthand(_)) = _ :-
-    unexpected(this_file, "goal_expr_outputs/2: shorthand/1 in hlds_goal").
 
 %-----------------------------------------------------------------------------%
 
@@ -1348,9 +1272,9 @@ goal_expr_outputs(_MI, shorthand(_)) = _ :-
     %
 :- func output_arg(module_info, prog_var, mer_mode) = prog_var is semidet.
 
-output_arg(MI, X, M) = X :-
-    mode_get_insts(MI, M, InInst, _OutInst),
-    inst_is_free(MI, InInst).
+output_arg(ModuleInfo, X, M) = X :-
+    mode_get_insts(ModuleInfo, M, InInst, _OutInst),
+    inst_is_free(ModuleInfo, InInst).
 
 %-----------------------------------------------------------------------------%
 

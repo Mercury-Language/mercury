@@ -346,63 +346,64 @@ goal_reordering(PredId, VarMap, Bindings, Goal0, Goal) :-
 :- pred goal_expr_reordering(pred_id::in, mc_var_map::in, mc_bindings::in,
     hlds_goal_expr::in, hlds_goal_expr::out) is semidet.
 
-goal_expr_reordering(PredId, VarMap, Bindings, conj(ConjType, Goals0),
-        conj(ConjType, Goals)) :-
+goal_expr_reordering(PredId, VarMap, Bindings, GoalExpr0, GoalExpr) :-
     (
-        ConjType = plain_conj,
-        % Build constraints for this conjunction.
-        make_conjuncts_nonlocal_repvars(PredId, Goals0, RepVarMap),
-        conjunct_ordering_constraints(VarMap, Bindings, RepVarMap,
-            ordering_init(list.length(Goals0)), OrderingConstraintsInfo),
-
-        % Then solve the constraints and reorder.
-        minimum_reordering(OrderingConstraintsInfo, Order),
-        list.map(list.index1_det(Goals0), Order, Goals1),
-
-        % Then recurse on the reordered goals
-        list.map(goal_reordering(PredId, VarMap, Bindings), Goals1, Goals)
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        % Atomic goals cannot be reordered.
+        GoalExpr = GoalExpr0
     ;
-        ConjType = parallel_conj,
-        list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals)
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            % Build constraints for this conjunction.
+            make_conjuncts_nonlocal_repvars(PredId, Goals0, RepVarMap),
+            conjunct_ordering_constraints(VarMap, Bindings, RepVarMap,
+                ordering_init(list.length(Goals0)), OrderingConstraintsInfo),
+
+            % Then solve the constraints and reorder.
+            minimum_reordering(OrderingConstraintsInfo, Order),
+            list.map(list.index1_det(Goals0), Order, Goals1),
+
+            % Then recurse on the reordered goals
+            list.map(goal_reordering(PredId, VarMap, Bindings), Goals1, Goals)
+        ;
+            ConjType = parallel_conj,
+            list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals)
+        ),
+        GoalExpr = conj(ConjType, Goals)
+    ;
+        GoalExpr0 = disj(Goals0),
+        list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals),
+        GoalExpr = disj(Goals)
+    ;
+        GoalExpr0 = switch(_, _, _),
+        % We haven't yet even tried to turn disjunctions into switches.
+        unexpected(this_file, "goal_expr_reordering: switch")
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        goal_reordering(PredId, VarMap, Bindings, Cond0, Cond),
+        goal_reordering(PredId, VarMap, Bindings, Then0, Then),
+        goal_reordering(PredId, VarMap, Bindings, Else0, Else),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        goal_reordering(PredId, VarMap, Bindings, SubGoal0, SubGoal),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        % Is it possible to special-case the handling of
+        % from_ground_term_construct scopes?
+        goal_reordering(PredId, VarMap, Bindings, SubGoal0, SubGoal),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = shorthand(_),
+        % XXX We need to handle atomic goals.
+        unexpected(this_file, "goal_expr_reordering: NYI: shorthand")
     ).
-
-    % goal_expr_reordering for atomic goals, and ones that shouldn't
-    % exist yet.
-    %
-goal_expr_reordering(_PredId, _VarMap, _Bindings, GoalExpr, GoalExpr) :-
-    (
-        GoalExpr = plain_call(_, _, _, _, _, _)
-    ;
-        GoalExpr = generic_call(_, _, _, _)
-    ;
-        GoalExpr = unify(_, _, _, _, _)
-    ;
-        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
-    ;
-        GoalExpr = shorthand(_),
-        unexpected(this_file, "shorthand goal")
-    ;
-        GoalExpr = switch(_, _, _),
-        unexpected(this_file, "switch")
-    ).
-
-goal_expr_reordering(PredId, VarMap, Bindings, disj(Goals0), disj(Goals)) :-
-    list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals).
-
-goal_expr_reordering(PredId, VarMap, Bindings,
-        negation(Goal0), negation(Goal)) :-
-    goal_reordering(PredId, VarMap, Bindings, Goal0, Goal).
-
-goal_expr_reordering(PredId, VarMap, Bindings, scope(Reason, Goal0),
-        scope(Reason, Goal)) :-
-    goal_reordering(PredId, VarMap, Bindings, Goal0, Goal).
-
-goal_expr_reordering(PredId, VarMap, Bindings,
-        if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else)) :-
-    goal_reordering(PredId, VarMap, Bindings, Cond0, Cond),
-    goal_reordering(PredId, VarMap, Bindings, Then0, Then),
-    goal_reordering(PredId, VarMap, Bindings, Else0, Else).
 
 %-----------------------------------------------------------------------------%
 

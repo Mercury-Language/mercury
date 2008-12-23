@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2007 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2008 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -381,8 +381,8 @@ replace_stack_vars_by_parent_sv_lval(Lval0, Lval, !Acc) :-
 
 find_outputs([], _Initial, _Final, _ModuleInfo, !Outputs).
 find_outputs([Var | Vars],  Initial, Final, ModuleInfo, !Outputs) :-
-    instmap.lookup_var(Initial, Var, InitialInst),
-    instmap.lookup_var(Final, Var, FinalInst),
+    instmap_lookup_var(Initial, Var, InitialInst),
+    instmap_lookup_var(Final, Var, FinalInst),
     ( mode_is_output(ModuleInfo, (InitialInst -> FinalInst)) ->
         !:Outputs = [Var | !.Outputs]
     ;

@@ -123,8 +123,9 @@ warn_singletons(VarSet, PredCallId, ModuleInfo, Body, !Specs) :-
     prog_varset::in, simple_call_id::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_singletons_in_goal(hlds_goal(GoalExpr, GoalInfo), QuantVars, VarSet,
-        PredCallId, ModuleInfo, !Specs) :-
+warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
+        !Specs) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = conj(_ConjType, Goals),
         warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId,

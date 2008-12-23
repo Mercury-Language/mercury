@@ -116,7 +116,7 @@ propagate_conj_sub_goal(Goal0, Constraints, Goals, !Info) :-
     ),
     InstMap0 = !.Info ^ constr_instmap,
     propagate_conj_sub_goal_2(Goal0, Constraints, Goals, !Info),
-    !:Info = !.Info ^ constr_instmap := InstMap0.
+    !Info ^ constr_instmap := InstMap0.
 
 :- pred propagate_conj_sub_goal_2(hlds_goal::in, list(constraint)::in,
     list(hlds_goal)::out, constraint_info::in, constraint_info::out) is det.
@@ -164,7 +164,8 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
         GoalExpr = scope(Reason, SubGoal0),
         (
             ( Reason = exist_quant(_)
-            ; Reason = from_ground_term(_)
+            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ; Reason = from_ground_term(_, from_ground_term_other)
             ),
             propagate_goal(SubGoal0, Constraints, SubGoal, !Info),
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo)]
@@ -181,6 +182,12 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
             flatten_constraints(Constraints, ConstraintGoals),
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo) |
                 ConstraintGoals]
+        ;
+            Reason = from_ground_term(_, from_ground_term_construct),
+            % There is no point in either propagating constraints into these
+            % scopes or propagating local constraints within these scopes.
+            flatten_constraints(Constraints, ConstraintGoals),
+            FinalGoals = [hlds_goal(GoalExpr, GoalInfo) | ConstraintGoals]
         )
     ;
         GoalExpr = negation(NegGoal0),
@@ -296,41 +303,40 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
     instmap_changed_vars(InstMap0, InstMap, VarTypes,
         ModuleInfo, ChangedVars0),
 
-    instmap.vars_list(InstMap, InstMapVars),
-    %
-    % Restrict the set of changed variables down to the set for
-    % which the new inst is not an acceptable substitute for the
-    % old.  This is done to allow reordering of a goal which uses a
-    % variable with inst `ground(shared, no)' with a constraint
-    % which just adds information, changing the inst to
-    % `bound(shared, ...)'.
-    %
-    InCompatible = (pred(Var::in) is semidet :-
-            instmap.lookup_var(InstMap0, Var, InstBefore),
+    instmap_vars_list(InstMap, InstMapVars),
+
+    % Restrict the set of changed variables down to the set for which
+    % the new inst is not an acceptable substitute for the old. This is done
+    % to allow reordering of a goal which uses a variable with inst
+    % `ground(shared, no)' with a constraint which just adds information,
+    % changing the inst to `bound(shared, ...)'.
+
+    InCompatible =
+        (pred(Var::in) is semidet :-
+            instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
             \+ inst_matches_initial(InstAfter, InstBefore,
                 map.lookup(VarTypes, Var), ModuleInfo)
         ),
     IncompatibleInstVars = set.list_to_set(
         list.filter(InCompatible, InstMapVars)),
-    %
-    % This will consider variables with inst `any' to be bound by
-    % the goal, so goals which have non-locals with inst `any' will
-    % not be considered to be constraints. XXX This is too conservative.
-    %
-    Bound = (pred(Var::in) is semidet :-
-            instmap.lookup_var(InstMap0, Var, InstBefore),
+
+    % This will consider variables with inst `any' to be bound by the goal,
+    % so goals which have non-locals with inst `any' will not be considered
+    % to be constraints. XXX This is too conservative.
+
+    Bound =
+        (pred(Var::in) is semidet :-
+            instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
             \+ inst_matches_binding(InstAfter, InstBefore,
                 map.lookup(VarTypes, Var), ModuleInfo)
         ),
     BoundVars = set.list_to_set(list.filter(Bound, InstMapVars)),
 
-    %
-    % Make sure that variables with inst `any' are placed in
-    % the changed vars set. XXX This is too conservative, but
-    % avoids unexpected reorderings.
-    %
+    % Make sure that variables with inst `any' are placed in the changed vars
+    % set. XXX This is too conservative, but avoids unexpected reorderings.
+
     set.union(ChangedVars0, BoundVars, ChangedVars),
 
     AnnotatedConjunct = annotated_conjunct(Goal, ChangedVars, BoundVars,

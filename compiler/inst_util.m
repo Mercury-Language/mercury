@@ -1813,7 +1813,7 @@ inst_contains_any_2(ModuleInfo, defined_inst(InstName), Expansions0) :-
 %-----------------------------------------------------------------------------%
 
 var_inst_contains_any(ModuleInfo, Instmap, Var) :-
-    instmap.lookup_var(Instmap, Var, Inst),
+    instmap_lookup_var(Instmap, Var, Inst),
     inst_contains_any(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%

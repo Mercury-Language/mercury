@@ -1091,6 +1091,8 @@ count_load_stores_in_goal_expr(GoalExpr, _GoalInfo, CountInfo, !CountState) :-
 
 count_load_stores_in_goal_expr(scope(_Reason, Goal), _GoalInfo, CountInfo,
         !CountState) :-
+    % XXX We should special-case the handling of from_ground_term_construct
+    % scopes.
     count_load_stores_in_goal(Goal, CountInfo, !CountState).
 
 count_load_stores_in_goal_expr(conj(ConjType, Goals), _GoalInfo, CountInfo,
@@ -1191,11 +1193,13 @@ count_load_stores_in_call_to_tupled(GoalExpr, GoalInfo, CountInfo,
         % TODO: If we kept track of the aliases of field variables,
         % then they could be checked also.
         get_own_tupling_proposal(CountInfo) = tupling(_, _, _),
-        all [Var] Var `list.member` FieldVars => (
+        all [Var] (
+            Var `list.member` FieldVars
+        => (
             Var `set.member` InputArgs0,
             assoc_list.search(FieldVarArgPos, Var, Pos),
             list.nth_member_search(ArgVars, Var, Pos)
-        )
+        ))
     ->
         % In this case, the cell var is not being used to access field
         % variables, so it should not incur the cell var cost.
@@ -1234,7 +1238,7 @@ count_load_stores_in_call_to_not_tupled(GoalExpr, GoalInfo, CountInfo,
         Builtin = inline_builtin,
         cls_require_in_regs(CountInfo, Inputs, !CountState),
         cls_put_in_regs(set.to_sorted_list(Outputs), !CountState)
-    ;   
+    ;
         ( Builtin = out_of_line_builtin
         ; Builtin = not_builtin
         ),
@@ -1743,10 +1747,14 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes, !RttiVarMaps,
-            TransformMap),
-        GoalExpr = scope(Reason, SubGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Goal = Goal0
+        ;
+            fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes,
+                !RttiVarMaps, TransformMap),
+            GoalExpr = scope(Reason, SubGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -1755,9 +1763,9 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
                 TransformMap)
         ;
             ConjType = parallel_conj,
-            % XXX: I am not sure whether parallel conjunctions should be treated
-            % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
-            % this is untested.
+            % XXX: I am not sure whether parallel conjunctions should be
+            % treated with fix_calls_in_goal or fix_calls_in_goal_list.
+            % At any rate, this is untested.
             fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
                 !RttiVarMaps, TransformMap)
         ),

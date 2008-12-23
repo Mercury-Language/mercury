@@ -140,9 +140,13 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
         % XXX To check and compare with the theory. 
         GoalExpr = negation(_Goal)
     ;
-        GoalExpr = scope(_, SubGoal),
-        determine_dead_deconstructions_2(Background, SubGoal, !SharingAs, 
-            !DeadCellTable)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            true
+        ;
+            determine_dead_deconstructions_2(Background, SubGoal, !SharingAs, 
+                !DeadCellTable)
+        )
     ;
         GoalExpr = if_then_else(_, IfGoal, ThenGoal, ElseGoal),
         determine_dead_deconstructions_2(Background, IfGoal, !.SharingAs, 

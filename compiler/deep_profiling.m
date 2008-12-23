@@ -426,11 +426,15 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         figure_out_rec_call_numbers(Then, !N, !TailCallSites),
         figure_out_rec_call_numbers(Else, !N, !TailCallSites)
     ;
-        GoalExpr = scope(_, Goal1),
-        figure_out_rec_call_numbers(Goal1, !N, !TailCallSites)
+        GoalExpr = negation(SubGoal),
+        figure_out_rec_call_numbers(SubGoal, !N, !TailCallSites)
     ;
-        GoalExpr = negation(Goal1),
-        figure_out_rec_call_numbers(Goal1, !N, !TailCallSites)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            true
+        ;
+            figure_out_rec_call_numbers(SubGoal, !N, !TailCallSites)
+        )
     ;
         GoalExpr = shorthand(_),
         unexpected(this_file, "shorthand in figure_out_rec_call_numbers")
@@ -1064,8 +1068,13 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
             )
         ),
         ScopedGoalPath = goal_path_add_at_end(Path, step_scope(MaybeCut)),
-        deep_prof_transform_goal(ScopedGoalPath, SubGoal0, SubGoal,
-            AddedImpurity, !DeepInfo),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            SubGoal = SubGoal0,
+            AddedImpurity = no
+        ;
+            deep_prof_transform_goal(ScopedGoalPath, SubGoal0, SubGoal,
+                AddedImpurity, !DeepInfo)
+        ),
         add_impurity_if_needed(AddedImpurity, GoalInfo2, GoalInfo),
         (
             AddForceCommit = no,
@@ -2159,6 +2168,9 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         GoalExpr1 = negation(NegGoal)
     ;
         GoalExpr0 = scope(Reason, ScopeGoal0),
+        % We should special-case the handling of from_ground_term_construct
+        % scopes, but that would require special-casing the coverage
+        % propagation code in the deep profiler as well.
         coverage_prof_second_pass_goal(ScopeGoal0, ScopeGoal,
             CoverageBeforeKnown, CoverageAfterScopedGoalKnown, !Info,
             AddedImpurityInner),
@@ -2790,6 +2802,9 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
         GoalExpr = negation(InnerGoal)
     ;
         GoalExpr0 = scope(Reason, InnerGoal0),
+        % We should special-case the handling of from_ground_term_construct
+        % scopes, but that would require special-casing the coverage
+        % propagation code in the deep profiler as well.
         coverage_prof_first_pass(CPOptions, InnerGoal0, InnerGoal,
             PortCountsCoverageAfterBefore,
             dp_coverage_goal_info(Trivial0, PortCountsCoverageAfterDirect)),

@@ -1669,11 +1669,25 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         ; Reason = promise_purity(_, _)
         ; Reason = commit(_)
         ; Reason = barrier(_)
-        ; Reason = from_ground_term(_)
         ),
         det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets0,
             Detism, GoalFailingContexts, !DetInfo, !Specs)
+    ;
+        Reason = from_ground_term(_, FromGroundTermKind),
+        (
+            FromGroundTermKind = from_ground_term_construct,
+            Goal = Goal0,
+            Detism = detism_det,
+            GoalFailingContexts = []
+        ;
+            ( FromGroundTermKind = from_ground_term_deconstruct
+            ; FromGroundTermKind = from_ground_term_other
+            ),
+            det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
+                RightFailingContexts, MaybePromiseEqvSolutionSets0,
+                Detism, GoalFailingContexts, !DetInfo, !Specs)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

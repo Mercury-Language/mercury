@@ -297,7 +297,8 @@ then
         /bin/rm -f stage3/$dir/*.int
     done
 
-    if (cd stage3 ; mmake $mmake_opts depend_library depend_compiler)
+    if (cd stage3 ; mmake $mmake_opts depend_library depend_mdbcomp \
+        depend_compiler)
     then
         echo "building of stage 3 dependencies successful"
         if $dependency_only
@@ -309,12 +310,13 @@ then
         exit 1
     fi
 
-    MMAKE_VPATH=.
-    export MMAKE_VPATH
+    # MMAKE_VPATH=.
+    # export MMAKE_VPATH
     MMAKE_DIR=../scripts
     export MMAKE_DIR
 
-    if (cd stage3/library ; mmake -S $mmake_opts $jfactor ints ; mmake -S $mmake_opts $jfactor cs)
+    if (cd stage3/library ; mmake -S $mmake_opts $jfactor int3s ints ; \
+        mmake -S $mmake_opts $jfactor cs)
     then
         echo "building of stage 3 library successful"
         if $library_only
@@ -326,7 +328,17 @@ then
         exit 1
     fi
 
-    if (cd stage3/compiler ; mmake -S $mmake_opts $jfactor ints ; mmake -S $mmake_opts $jfactor cs)
+    if (cd stage3/mdbcomp ; mmake -S $mmake_opts $jfactor int3s ints ; \
+        mmake -S $mmake_opts $jfactor cs)
+    then
+        echo "building of stage 3 mdbcomp successful"
+    else
+        echo "building of stage 3 mdbcomp not successful"
+        exit 1
+    fi
+
+    if (cd stage3/compiler ; mmake -S $mmake_opts $jfactor int3s ints ; \
+        mmake -S $mmake_opts $jfactor cs)
     then
         echo "building of stage 3 compiler successful"
     else
@@ -338,7 +350,7 @@ then
     then
         founddiff=false
         cat /dev/null > $outfile
-        for dir in library compiler
+        for dir in library mdbcomp compiler
         do
             # `mmake cs' in the compiler directory doesn't build
             # `top_level_init.c', so we only compare the `.c'

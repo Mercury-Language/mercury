@@ -118,7 +118,7 @@ apply_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
         (
             !:ModuleInfo = ModuleInfo0,
             module_info_predids(PredIds, !ModuleInfo),
-            FeedbackData = 
+            FeedbackData =
                 feedback_data_calls_above_threshold_sorted(_, _, Calls),
             list.map(call_site_convert, Calls, CandidateCallSites),
             process_preds_for_implicit_parallelism(PredIds, CandidateCallSites,
@@ -142,18 +142,18 @@ call_site_convert(Call, CallSite) :-
     (
         CallTypeAndCallee = plain_call(Callee0),
         string_proc_label_to_string(Callee0, Callee),
-        CallSiteKind = csk_normal 
+        CallSiteKind = csk_normal
     ;
-        ( 
+        (
             CallTypeAndCallee = callback_call,
             CallSiteKind = csk_callback
         ;
             CallTypeAndCallee = higher_order_call,
             CallSiteKind = csk_higher_order
-        ; 
+        ;
             CallTypeAndCallee = method_call,
             CallSiteKind = csk_method
-        ; 
+        ;
             CallTypeAndCallee = special_call,
             CallSiteKind = csk_special
         ),
@@ -320,23 +320,29 @@ process_goal_for_implicit_parallelism(!Goal, ProcInfo, !ModuleInfo,
         !:Goal = hlds_goal(GoalExpr, GoalInfo),
         update_conj_and_index(!MaybeConj, !.Goal, !IndexInConj)
     ;
-        GoalExpr0 = negation(Goal0),
-        process_goal_for_implicit_parallelism(Goal0, Goal, ProcInfo,
+        GoalExpr0 = negation(SubGoal0),
+        process_goal_for_implicit_parallelism(SubGoal0, SubGoal, ProcInfo,
             !ModuleInfo, !MaybeConj, !IndexInConj, !CalleesToBeParallelized,
             !SiteNumCounter),
-        GoalExpr = negation(Goal),
+        GoalExpr = negation(SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo),
         update_conj_and_index(!MaybeConj, !.Goal, !IndexInConj)
     ;
         GoalExpr0 = scope(Reason, Goal0),
-        % 0 is the default value when we are not in a conjunction (in this case
-        % a scope).
-        process_goal_for_implicit_parallelism(Goal0, Goal, ProcInfo,
-            !ModuleInfo, no, _, 0, _, !CalleesToBeParallelized,
-            !SiteNumCounter),
-        GoalExpr = scope(Reason, Goal),
-        !:Goal = hlds_goal(GoalExpr, GoalInfo),
-        update_conj_and_index(!MaybeConj, !.Goal, !IndexInConj)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % Treat the scope as if it were a single unification, since
+            % that is effectively what happens at runtime.
+            increment_index_if_in_conj(!.MaybeConj, !IndexInConj)
+        ;
+            % 0 is the default value when we are not in a conjunction
+            % (in this case a scope).
+            process_goal_for_implicit_parallelism(Goal0, Goal, ProcInfo,
+                !ModuleInfo, no, _, 0, _, !CalleesToBeParallelized,
+                !SiteNumCounter),
+            GoalExpr = scope(Reason, Goal),
+            !:Goal = hlds_goal(GoalExpr, GoalInfo),
+            update_conj_and_index(!MaybeConj, !.Goal, !IndexInConj)
+        )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         process_goal_for_implicit_parallelism(Cond0, Cond, ProcInfo,

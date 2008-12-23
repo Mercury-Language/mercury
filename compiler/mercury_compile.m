@@ -4087,7 +4087,7 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     ->
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        unused_args.process_module(!HLDS, [], Specs, !IO),
+        unused_args_process_module(!HLDS, [], Specs, !IO),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
@@ -4108,7 +4108,7 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
             "% Removing unneeded code from procedure bodies...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module_io(unneeded_code.process_proc_msg), !HLDS, !IO),
+            update_module_io(unneeded_process_proc_msg), !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -4345,7 +4345,7 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
             "% Applying term size profiling transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module_io(size_prof.process_proc_msg(Transform)),
+            update_module_io(size_prof_process_proc_msg(Transform)),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -5226,9 +5226,19 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
         ->
             globals.lookup_bool_option(Globals, dump_same_hlds, DumpSameHLDS),
             (
-                DumpSameHLDS = no
+                DumpSameHLDS = no,
                 % Don't create a dump file for this stage, and keep the records
-                % about previously dumped stages as they are.
+                % about previously dumped stages as they are. We do print a
+                % message (if asked to) about *why* we don't create this file.
+                maybe_write_string(Verbose, "% HLDS dump `", !IO),
+                maybe_write_string(Verbose, DumpFileName, !IO),
+                maybe_write_string(Verbose, "' would be identical ", !IO),
+                maybe_write_string(Verbose, "to previous dump.\n", !IO),
+
+                % If a previous dump exists with this name, leaving it around
+                % would be quite misleading. However, there is nothing useful
+                % we can do if the removal fails.
+                io.remove_file(DumpFileName, _Result, !IO)
             ;
                 DumpSameHLDS = yes,
                 CurDumpFileName = PrevDumpFileName,

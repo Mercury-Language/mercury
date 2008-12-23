@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: deforest.m.
 % Main author: stayl.
-% 
+%
 % Deforestation attempts to remove multiple traversals over data structures,
 % and construction followed by immediate deconstruction of data structures.
 % It does this by combining the bodies of pairs of called procedures in a
@@ -284,81 +284,93 @@ deforest_goal(Goal0, Goal, !PDInfo, !IO) :-
     hlds_goal_info::in, hlds_goal_info::out, pd_info::in, pd_info::out,
     io::di, io::uo) is det.
 
-deforest_goal_expr(conj(ConjType, !.Goals), conj(ConjType, !:Goals), !GoalInfo,
-        !PDInfo, !IO) :-
-    (
-        ConjType = plain_conj,
-        pd_info_get_instmap(!.PDInfo, InstMap0),
-        partially_evaluate_conj_goals(!.Goals, [], !:Goals, !PDInfo, !IO),
-        pd_info_set_instmap(InstMap0, !PDInfo),
-        NonLocals = goal_info_get_nonlocals(!.GoalInfo),
-        globals.io_lookup_bool_option(deforestation, Deforestation, !IO),
-        (
-            Deforestation = yes,
-            compute_goal_infos(!Goals, !PDInfo),
-            pd_info_set_instmap(InstMap0, !PDInfo),
-            deforest_conj(!.Goals, NonLocals, [], !:Goals, !PDInfo, !IO)
-        ;
-            Deforestation = no
-        ),
-        globals.io_lookup_bool_option(constraint_propagation, Constraints,
-            !IO),
-        pd_info_set_instmap(InstMap0, !PDInfo),
-        (
-            Constraints = yes,
-            propagate_conj_constraints(!.Goals, NonLocals, [], !:Goals,
-                !PDInfo, !IO)
-        ;
-            Constraints = no
-        ),
-        pd_info_set_instmap(InstMap0, !PDInfo)
-    ;
-        ConjType = parallel_conj
-        % XXX cannot deforest across parallel_conjunctions!
-    ).
-
-deforest_goal_expr(disj(Goals0), disj(Goals), !GoalInfo, !PDInfo, !IO) :-
-    deforest_disj(Goals0, Goals, !PDInfo, !IO).
-
-deforest_goal_expr(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else), !GoalInfo, !PDInfo, !IO) :-
-    pd_info_get_instmap(!.PDInfo, InstMap0),
-    deforest_goal(Cond0, Cond, !PDInfo, !IO),
-    pd_info_update_goal(Cond, !PDInfo),
-    deforest_goal(Then0, Then, !PDInfo, !IO),
-    pd_info_set_instmap(InstMap0, !PDInfo),
-    deforest_goal(Else0, Else, !PDInfo, !IO),
-    pd_info_set_instmap(InstMap0, !PDInfo).
-
-deforest_goal_expr(switch(Var, CanFail, Cases0),
-        switch(Var, CanFail, Cases), !GoalInfo, !PDInfo, !IO) :-
-    deforest_cases(Var, Cases0, Cases, !PDInfo, !IO).
-
-deforest_goal_expr(GoalExpr, GoalExpr, !GoalInfo, !PDInfo, !IO) :-
-    GoalExpr = call_foreign_proc(_, _, _, _, _, _, _).
-
-deforest_goal_expr(GoalExpr, GoalExpr, !GoalInfo, !PDInfo, !IO) :-
-    GoalExpr = generic_call(_, _, _, _).
-
-deforest_goal_expr(negation(Goal0), negation(Goal), !GoalInfo, !PDInfo, !IO) :-
-    deforest_goal(Goal0, Goal, !PDInfo, !IO).
-
-deforest_goal_expr(scope(Reason, Goal0), scope(Reason, Goal), !GoalInfo,
-        !PDInfo, !IO) :-
-    deforest_goal(Goal0, Goal, !PDInfo, !IO).
-
 deforest_goal_expr(GoalExpr0, GoalExpr, !GoalInfo, !PDInfo, !IO) :-
-    GoalExpr0 = plain_call(PredId, ProcId, Args, BuiltinState, _, Name),
-    deforest_call(PredId, ProcId, Args, Name, BuiltinState,
-        hlds_goal(GoalExpr0, !.GoalInfo), hlds_goal(GoalExpr, !:GoalInfo),
-        !PDInfo, !IO).
-
-deforest_goal_expr(GoalExpr, GoalExpr, !GoalInfo, !PDInfo, !IO) :-
-    GoalExpr = unify(_, _, _, _, _).
-
-deforest_goal_expr(shorthand(_), _, !GoalInfo, !PDInfo, !IO) :-
-    % these should have been expanded out by now
-    unexpected(this_file, "goal: unexpected shorthand").
+    (
+        GoalExpr0 = conj(ConjType, Goals0),
+        some [!Goals] (
+            !:Goals = Goals0,
+            (
+                ConjType = plain_conj,
+                pd_info_get_instmap(!.PDInfo, InstMap0),
+                partially_evaluate_conj_goals(!.Goals, [], !:Goals,
+                    !PDInfo, !IO),
+                pd_info_set_instmap(InstMap0, !PDInfo),
+                NonLocals = goal_info_get_nonlocals(!.GoalInfo),
+                globals.io_lookup_bool_option(deforestation, Deforestation,
+                    !IO),
+                (
+                    Deforestation = yes,
+                    compute_goal_infos(!Goals, !PDInfo),
+                    pd_info_set_instmap(InstMap0, !PDInfo),
+                    deforest_conj(!.Goals, NonLocals, [], !:Goals, !PDInfo,
+                        !IO)
+                ;
+                    Deforestation = no
+                ),
+                globals.io_lookup_bool_option(constraint_propagation,
+                    Constraints, !IO),
+                pd_info_set_instmap(InstMap0, !PDInfo),
+                (
+                    Constraints = yes,
+                    propagate_conj_constraints(!.Goals, NonLocals, [], !:Goals,
+                        !PDInfo, !IO)
+                ;
+                    Constraints = no
+                ),
+                pd_info_set_instmap(InstMap0, !PDInfo)
+            ;
+                ConjType = parallel_conj
+                % XXX cannot deforest across parallel_conjunctions!
+            ),
+            Goals = !.Goals
+        ),
+        GoalExpr = conj(ConjType, Goals)
+    ;
+        GoalExpr0 = disj(Goals0),
+        deforest_disj(Goals0, Goals, !PDInfo, !IO),
+        GoalExpr = disj(Goals)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        pd_info_get_instmap(!.PDInfo, InstMap0),
+        deforest_goal(Cond0, Cond, !PDInfo, !IO),
+        pd_info_update_goal(Cond, !PDInfo),
+        deforest_goal(Then0, Then, !PDInfo, !IO),
+        pd_info_set_instmap(InstMap0, !PDInfo),
+        deforest_goal(Else0, Else, !PDInfo, !IO),
+        pd_info_set_instmap(InstMap0, !PDInfo),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        deforest_cases(Var, Cases0, Cases, !PDInfo, !IO),
+        GoalExpr = switch(Var, CanFail, Cases)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        deforest_goal(SubGoal0, SubGoal, !PDInfo, !IO),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            SubGoal = SubGoal0
+        ;
+            deforest_goal(SubGoal0, SubGoal, !PDInfo, !IO)
+        ),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = plain_call(PredId, ProcId, Args, BuiltinState, _, Name),
+        deforest_call(PredId, ProcId, Args, Name, BuiltinState,
+            hlds_goal(GoalExpr0, !.GoalInfo), hlds_goal(GoalExpr, !:GoalInfo),
+            !PDInfo, !IO)
+    ;
+        ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "goal: unexpected shorthand")
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1358,7 +1370,7 @@ do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
     pd_debug_message("goals match, trying MSG\n", [], !IO),
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     pd_info_get_instmap(!.PDInfo, InstMap0),
-    instmap.lookup_vars(VersionArgs, VersionInstMap, VersionInsts),
+    instmap_lookup_vars(VersionInstMap, VersionArgs, VersionInsts),
     pd_util.inst_list_size(ModuleInfo, VersionInsts, VersionInstSizes),
     set.to_sorted_list(ConjNonLocals, ConjNonLocalsList),
     (
@@ -1366,7 +1378,7 @@ do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
         % of the non-locals.
         try_MSG(ModuleInfo, VersionInstMap, VersionArgs, Renaming,
             InstMap0, InstMap),
-        instmap.lookup_vars(ConjNonLocalsList, InstMap, ArgInsts),
+        instmap_lookup_vars(InstMap, ConjNonLocalsList, ArgInsts),
         pd_util.inst_list_size(ModuleInfo, ArgInsts, NewInstSizes),
         NewInstSizes < VersionInstSizes
     ->
@@ -1387,13 +1399,13 @@ do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
 try_MSG(_, _, [], _, !InstMap).
 try_MSG(ModuleInfo, VersionInstMap, [VersionArg | VersionArgs], Renaming,
         !InstMap) :-
-    instmap.lookup_var(VersionInstMap, VersionArg, VersionInst),
+    instmap_lookup_var(VersionInstMap, VersionArg, VersionInst),
     (
         map.search(Renaming, VersionArg, Arg),
-        instmap.lookup_var(!.InstMap, Arg, VarInst),
+        instmap_lookup_var(!.InstMap, Arg, VarInst),
         inst_MSG(VersionInst, VarInst, ModuleInfo, Inst)
     ->
-        instmap.set(Arg, Inst, !InstMap)
+        instmap_set_var(Arg, Inst, !InstMap)
     ;
         true
     ),
@@ -1785,7 +1797,7 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
         ProcArgInfo = pd_branch_info(_, LeftArgs, _),
         set.member(LeftArg, LeftArgs),
         list.index1_det(Args, LeftArg, Arg),
-        instmap.lookup_var(InstMap, Arg, ArgInst),
+        instmap_lookup_var(InstMap, Arg, ArgInst),
         inst_is_bound_to_functors(ModuleInfo, ArgInst, [_]),
 
         % We don't attempt to deforest predicates which are

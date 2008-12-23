@@ -144,13 +144,14 @@ store_alloc_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     set.difference(Liveness0,  PreDeaths, Liveness1),
     set.union(Liveness1, PreBirths, Liveness2),
     store_alloc_in_goal_2(GoalExpr0, GoalExpr, Liveness2, Liveness3,
-        !LastLocns, ResumeVars0, StoreAllocInfo),
+        !LastLocns, ResumeVars0, BranchedGoal, StoreAllocInfo),
     set.difference(Liveness3, PostDeaths, Liveness4),
     % If any variables magically become live in the PostBirths,
     % then they have to mundanely become live in a parallel goal,
     % so we don't need to allocate anything for them here.
     set.union(Liveness4, PostBirths, Liveness),
-    ( goal_util.goal_is_branched(GoalExpr) ->
+    (
+        BranchedGoal = is_branched_goal,
         % Any variables that become magically live at the
         % end of the goal should not be included in the store map.
         % That is why we use Liveness4 instead of Liveness here.
@@ -165,20 +166,25 @@ store_alloc_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
             AdvisoryStoreMap, StoreMap),
         goal_info_set_store_map(StoreMap, GoalInfo0, GoalInfo)
     ;
+        BranchedGoal = is_not_branched_goal,
         GoalInfo = GoalInfo0
     ).
 
 %-----------------------------------------------------------------------------%
 
+:- type branched_goal
+    --->    is_branched_goal
+    ;       is_not_branched_goal.
+
     % Here we process each of the different sorts of goals.
     %
 :- pred store_alloc_in_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     liveness_info::in, liveness_info::out,
-    last_locns::in, last_locns::out, set(prog_var)::in,
+    last_locns::in, last_locns::out, set(prog_var)::in, branched_goal::out,
     store_alloc_info::in) is det.
 
 store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
-        ResumeVars0, StoreAllocInfo) :-
+        ResumeVars0, BranchedGoal, StoreAllocInfo) :-
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -190,27 +196,22 @@ store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
             store_alloc_in_par_conj(Goals0, Goals, !Liveness, !LastLocns,
                 ResumeVars0, StoreAllocInfo)
         ),
-        GoalExpr = conj(ConjType, Goals)
+        GoalExpr = conj(ConjType, Goals),
+        BranchedGoal = is_not_branched_goal
     ;
         GoalExpr0 = disj(Goals0),
         store_alloc_in_disj(Goals0, Goals, !Liveness,
             !.LastLocns, LastLocnsList, ResumeVars0, StoreAllocInfo),
         merge_last_locations(LastLocnsList, !:LastLocns),
-        GoalExpr = disj(Goals)
-    ;
-        GoalExpr0 = negation(SubGoal0),
-        SubGoal0 = hlds_goal(_, SubGoalInfo0),
-        goal_info_get_resume_point(SubGoalInfo0, ResumeNot),
-        goal_info_resume_vars_and_loc(ResumeNot, ResumeNotVars, _),
-        store_alloc_in_goal(SubGoal0, SubGoal, !Liveness, !.LastLocns, _,
-            ResumeNotVars, StoreAllocInfo),
-        GoalExpr = negation(SubGoal)
+        GoalExpr = disj(Goals),
+        BranchedGoal = is_branched_goal
     ;
         GoalExpr0 = switch(Var, Det, Cases0),
         store_alloc_in_cases(Cases0, Cases, !Liveness,
             !.LastLocns, LastLocnsList, ResumeVars0, StoreAllocInfo),
         merge_last_locations(LastLocnsList, !:LastLocns),
-        GoalExpr = switch(Var, Det, Cases)
+        GoalExpr = switch(Var, Det, Cases),
+        BranchedGoal = is_branched_goal
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         Liveness0 = !.Liveness,
@@ -229,19 +230,36 @@ store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
 
         !:Liveness = Liveness,
         !:LastLocns = LastLocns,
-        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        BranchedGoal = is_branched_goal
     ;
-        GoalExpr0 = scope(Remove, SubGoal0),
-        store_alloc_in_goal(SubGoal0, SubGoal, !Liveness, !LastLocns,
-            ResumeVars0, StoreAllocInfo),
-        GoalExpr = scope(Remove, SubGoal)
+        GoalExpr0 = negation(SubGoal0),
+        SubGoal0 = hlds_goal(_, SubGoalInfo0),
+        goal_info_get_resume_point(SubGoalInfo0, ResumeNot),
+        goal_info_resume_vars_and_loc(ResumeNot, ResumeNotVars, _),
+        store_alloc_in_goal(SubGoal0, SubGoal, !Liveness, !.LastLocns, _,
+            ResumeNotVars, StoreAllocInfo),
+        GoalExpr = negation(SubGoal),
+        BranchedGoal = is_not_branched_goal
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+            GoalExpr = GoalExpr0,
+            set.insert(!.Liveness, TermVar, !:Liveness)
+        ;
+            store_alloc_in_goal(SubGoal0, SubGoal, !Liveness, !LastLocns,
+                ResumeVars0, StoreAllocInfo),
+            GoalExpr = scope(Reason, SubGoal)
+        ),
+        BranchedGoal = is_not_branched_goal
     ;
         ( GoalExpr0 = generic_call(_, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        GoalExpr = GoalExpr0
+        GoalExpr = GoalExpr0,
+        BranchedGoal = is_not_branched_goal
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.

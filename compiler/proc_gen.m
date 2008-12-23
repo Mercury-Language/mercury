@@ -1018,7 +1018,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         ArgModes = get_arginfo(!.CI),
         HeadVars = get_headvars(!.CI),
         assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
-        ( instmap.is_unreachable(InstMap) ->
+        ( instmap_is_unreachable(InstMap) ->
             OutLvals = set.init,
             FlushCode = empty
         ;

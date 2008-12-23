@@ -147,7 +147,14 @@ saved_vars_in_goal(Goal0, Goal, !SlotInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        saved_vars_in_goal(SubGoal0, SubGoal, !SlotInfo),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % Moving unifications around inside these scopes is
+            % (a) counterproductive, and (b) incorrect, since it would
+            % invalidate the invariants required of such scopes.
+            SubGoal = SubGoal0
+        ;
+            saved_vars_in_goal(SubGoal0, SubGoal, !SlotInfo)
+        ),
         GoalExpr = scope(Reason, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -195,7 +202,7 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
         \+ slot_info_do_not_duplicate_var(!.SlotInfo, Var),
         skip_constant_constructs(Goals0, Constants, OtherGoals),
         OtherGoals = [First | _Rest],
-        can_push(Var, First)
+        can_push(Var, First) = yes
     ->
         set.is_member(Var, NonLocals, IsNonLocal),
         saved_vars_delay_goal(OtherGoals, Goals1, Goal0, Var, IsNonLocal,
@@ -261,28 +268,59 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
     % NOTE: the logic of this predicate must match the logic of
     % saved_vars_delay_goal.
     %
-:- pred can_push(prog_var::in, hlds_goal::in) is semidet.
+:- func can_push(prog_var, hlds_goal) = bool.
 
-can_push(Var, First) :-
-    First = hlds_goal(FirstExpr, FirstInfo),
-    FirstNonLocals = goal_info_get_nonlocals(FirstInfo),
-    ( set.member(Var, FirstNonLocals) ->
+can_push(Var, Goal) = CanPush :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    ( set.member(Var, NonLocals) ->
         (
-            FirstExpr = conj(plain_conj, _)
+            ( GoalExpr = if_then_else(_, _, _, _)
+            ; GoalExpr = negation(_)
+            ; GoalExpr = disj(_)
+            ; GoalExpr = conj(plain_conj, _)
+            ),
+            CanPush = yes
         ;
-            FirstExpr = scope(_, _)
+            ( GoalExpr = conj(parallel_conj, _)
+            ; GoalExpr = unify(_, _, _, _, _)
+            ; GoalExpr = plain_call(_, _, _, _, _, _)
+            ; GoalExpr = generic_call(_, _, _, _)
+            ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+            ),
+            CanPush = no
         ;
-            FirstExpr = negation(_)
+            GoalExpr = scope(Reason, _),
+            (
+                ( Reason = exist_quant(_)
+                ; Reason = from_ground_term(_, from_ground_term_deconstruct)
+                ; Reason = from_ground_term(_, from_ground_term_other)
+                ),
+                CanPush = yes
+            ;
+                ( Reason = from_ground_term(_, from_ground_term_construct)
+                ; Reason = promise_solutions(_, _)
+                ; Reason = promise_purity(_, _)
+                ; Reason = commit(_)
+                ; Reason = barrier(_)
+                ; Reason = trace_goal(_, _, _, _, _)
+                ),
+                CanPush = no
+            )
         ;
-            FirstExpr = disj(_)
+            GoalExpr = switch(SwitchVar, _, _),
+            ( Var = SwitchVar ->
+                CanPush = no
+            ;
+                CanPush = yes
+            )
         ;
-            FirstExpr = switch(SwitchVar, _, _),
-            Var \= SwitchVar
-        ;
-            FirstExpr = if_then_else(_, _, _, _)
+            GoalExpr = shorthand(_),
+            % These should have been expanded out by now.
+            unexpected(this_file, "can_push: unexpected shorthand")
         )
     ;
-        true
+        CanPush = yes
     ).
 
     % The main inputs of this predicate are a list of goals in a

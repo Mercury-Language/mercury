@@ -229,9 +229,8 @@ detect_cse_in_goal(Goal0, Goal, !CseInfo, InstMap0, Redo) :-
         InstMap0, _InstMap, Redo).
 
     % This version is the same as the above except that it returns
-    % the resulting instmap on exit from the goal, which is
-    % computed by applying the instmap delta specified in the
-    % goal's goalinfo.
+    % the resulting instmap on exit from the goal, which is computed by
+    % applying the instmap delta specified in the goal's goalinfo.
     %
 :- pred detect_cse_in_goal_update_instmap(hlds_goal::in, hlds_goal::out,
     cse_info::in, cse_info::out, instmap::in, instmap::out, bool::out) is det.
@@ -286,8 +285,14 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
-        GoalExpr = scope(Reason, SubGoal)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % There are no deconstructions at all inside these scopes.
+            GoalExpr = GoalExpr0,
+            Redo = no
+        ;
+            detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
+            GoalExpr = scope(Reason, SubGoal)
+        )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
         detect_cse_in_conj(Goals0, Goals, !CseInfo, ConjType, InstMap0, Redo),
@@ -374,7 +379,7 @@ detect_cse_in_disj([], Goals0, _, InstMap, !CseInfo, Redo, disj(Goals)) :-
 detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
         !CseInfo, Redo, GoalExpr) :-
     (
-        instmap.lookup_var(InstMap0, Var, VarInst0),
+        instmap_lookup_var(InstMap0, Var, VarInst0),
         ModuleInfo = !.CseInfo ^ csei_module_info,
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
@@ -414,7 +419,7 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
         InstMap0, !CseInfo, Redo, GoalExpr) :-
     (
         Var \= SwitchVar,
-        instmap.lookup_var(InstMap0, Var, VarInst0),
+        instmap_lookup_var(InstMap0, Var, VarInst0),
         ModuleInfo = !.CseInfo ^ csei_module_info,
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
@@ -457,7 +462,7 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
         InstMap, !CseInfo, Redo, GoalExpr) :-
     (
         ModuleInfo = !.CseInfo ^ csei_module_info,
-        instmap.lookup_var(InstMap, Var, VarInst0),
+        instmap_lookup_var(InstMap, Var, VarInst0),
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
         inst_is_ground_or_any(ModuleInfo, VarInst0),

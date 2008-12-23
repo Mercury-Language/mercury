@@ -723,8 +723,8 @@ hash_cons_inst(Inst0, Inst, !Cache) :-
     `with_type` replacer(hlds_goal, replace_info)
     `with_inst` replacer.
 
-replace_in_goal(EqvMap, Goal0 @ hlds_goal(GoalExpr0, GoalInfo0), Goal,
-        Changed, !Info) :-
+replace_in_goal(EqvMap, Goal0, Goal, Changed, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed0, !Info),
 
     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
@@ -764,170 +764,180 @@ replace_in_case(EqvMap, Case0, Case, Changed, !Info) :-
     `with_type` replacer(hlds_goal_expr, replace_info)
     `with_inst` replacer.
 
-replace_in_goal_expr(EqvMap, GoalExpr0 @ conj(ConjType, Goals0), GoalExpr,
-        Changed, !Info) :-
-    replace_in_list(replace_in_goal(EqvMap), Goals0, Goals,
-        Changed, !Info),
-    ( Changed = yes, GoalExpr = conj(ConjType, Goals)
-    ; Changed = no, GoalExpr = GoalExpr0
-    ).
-replace_in_goal_expr(EqvMap, GoalExpr0 @ disj(Goals0), GoalExpr,
-        Changed, !Info) :-
-    replace_in_list(replace_in_goal(EqvMap), Goals0, Goals,
-        Changed, !Info),
-    ( Changed = yes, GoalExpr = disj(Goals)
-    ; Changed = no, GoalExpr = GoalExpr0
-    ).
-replace_in_goal_expr(EqvMap, GoalExpr0 @ switch(A, B, Cases0), GoalExpr,
-        Changed, !Info) :-
-    replace_in_list(replace_in_case(EqvMap), Cases0, Cases, Changed, !Info),
-    ( Changed = yes, GoalExpr = switch(A, B, Cases)
-    ; Changed = no, GoalExpr = GoalExpr0
-    ).
-replace_in_goal_expr(EqvMap, GoalExpr0 @ negation(NegGoal0), GoalExpr, Changed,
-        !Info) :-
-    replace_in_goal(EqvMap, NegGoal0, NegGoal, Changed, !Info),
-    ( Changed = yes, GoalExpr = negation(NegGoal)
-    ; Changed = no, GoalExpr = GoalExpr0
-    ).
-replace_in_goal_expr(EqvMap, GoalExpr0 @ scope(Reason, SomeGoal0), GoalExpr,
-        Changed, !Info) :-
-    replace_in_goal(EqvMap, SomeGoal0, SomeGoal, Changed, !Info),
-    ( Changed = yes, GoalExpr = scope(Reason, SomeGoal)
-    ; Changed = no, GoalExpr = GoalExpr0
-    ).
-replace_in_goal_expr(EqvMap,
-        GoalExpr0 @ if_then_else(Vars, Cond0, Then0, Else0), GoalExpr,
-        Changed, !Info) :-
-    replace_in_goal(EqvMap, Cond0, Cond, Changed1, !Info),
-    replace_in_goal(EqvMap, Then0, Then, Changed2, !Info),
-    replace_in_goal(EqvMap, Else0, Else, Changed3, !Info),
-    Changed = Changed1 `or` Changed2 `or` Changed3,
-    ( Changed = yes, GoalExpr = if_then_else(Vars, Cond, Then, Else)
-    ; Changed = no, GoalExpr = GoalExpr0
-    ).
-replace_in_goal_expr(_, GoalExpr @ plain_call(_, _, _, _, _, _), GoalExpr,
-        no, !Info).
-replace_in_goal_expr(EqvMap,
-        GoalExpr0 @ call_foreign_proc(_, _, _, _, _, _, _), GoalExpr,
-        Changed, !Info) :-
-    TVarSet0 = !.Info ^ tvarset,
-    replace_in_foreign_arg_list(EqvMap, GoalExpr0 ^ foreign_args,
-        Args, ChangedArgs, TVarSet0, TVarSet1, no, _),
-    replace_in_foreign_arg_list(EqvMap, GoalExpr0 ^ foreign_extra_args,
-        ExtraArgs, ChangedExtraArgs, TVarSet1, TVarSet, no, _),
-    Changed = ChangedArgs `or` ChangedExtraArgs,
+replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
     (
-        Changed = yes,
-        !:Info = !.Info ^ tvarset := TVarSet,
-        GoalExpr = (GoalExpr0 ^ foreign_args := Args)
-            ^ foreign_extra_args := ExtraArgs
+        GoalExpr0 = conj(ConjType, Goals0),
+        replace_in_list(replace_in_goal(EqvMap), Goals0, Goals,
+            Changed, !Info),
+        ( Changed = yes, GoalExpr = conj(ConjType, Goals)
+        ; Changed = no, GoalExpr = GoalExpr0
+        )
     ;
-        Changed = no,
-        GoalExpr = GoalExpr0
-    ).
-replace_in_goal_expr(EqvMap, GoalExpr0 @ generic_call(A, B, Modes0, D),
-        GoalExpr, Changed, !Info) :-
-    TVarSet0 = !.Info ^ tvarset,
-    Cache0 = !.Info ^ inst_cache,
-    replace_in_modes(EqvMap, Modes0, Modes, Changed, TVarSet0, TVarSet,
-        Cache0, Cache),
-    (
-        Changed = yes,
-        !:Info = !.Info ^ tvarset := TVarSet,
-        !:Info = !.Info ^ inst_cache := Cache,
-        GoalExpr = generic_call(A, B, Modes, D)
+        GoalExpr0 = disj(Goals0),
+        replace_in_list(replace_in_goal(EqvMap), Goals0, Goals,
+            Changed, !Info),
+        ( Changed = yes, GoalExpr = disj(Goals)
+        ; Changed = no, GoalExpr = GoalExpr0
+        )
     ;
-        Changed = no,
-        GoalExpr = GoalExpr0
-    ).
-replace_in_goal_expr(EqvMap, GoalExpr0 @ unify(Var, _, _, _, _), GoalExpr,
-        Changed, !Info) :-
-    module_info_get_type_table(!.Info ^ module_info, Types),
-    proc_info_get_vartypes(!.Info ^ proc_info, VarTypes),
-    proc_info_get_rtti_varmaps(!.Info ^ proc_info, RttiVarMaps),
-    map.lookup(VarTypes, Var, VarType),
-    TypeCtorCat = classify_type(!.Info ^ module_info, VarType),
-    (
-        % If this goal constructs a type_info for an equivalence type,
-        % we need to expand that to make the type_info for the expanded type.
-        % It is simpler to just recreate the type_info from scratch.
-
-        GoalExpr0 ^ unify_kind = construct(_, ConsId, _, _, _, _, _),
-        ConsId = type_info_cell_constructor(TypeCtor),
-        TypeCtorCat = ctor_cat_system(cat_system_type_info),
-        map.search(Types, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_body(TypeDefn, Body),
-        Body = hlds_eqv_type(_)
-    ->
-        Changed = yes,
-        pred_info_set_typevarset(!.Info ^ tvarset, !.Info ^ pred_info,
-            PredInfo0),
-        create_poly_info(!.Info ^ module_info, PredInfo0, !.Info ^ proc_info,
-            PolyInfo0),
-        rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
-        (
-            VarInfo = type_info_var(TypeInfoType0),
-            TypeInfoType = TypeInfoType0
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        replace_in_list(replace_in_case(EqvMap), Cases0, Cases,
+            Changed, !Info),
+        ( Changed = yes, GoalExpr = switch(Var, CanFail, Cases)
+        ; Changed = no, GoalExpr = GoalExpr0
+        )
+    ;
+        GoalExpr0 = negation(NegGoal0),
+        replace_in_goal(EqvMap, NegGoal0, NegGoal, Changed, !Info),
+        ( Changed = yes, GoalExpr = negation(NegGoal)
+        ; Changed = no, GoalExpr = GoalExpr0
+        )
+    ;
+        GoalExpr0 = scope(Reason, SomeGoal0),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % The code in modes.m sets the kind to from_ground_term_construct
+            % only when SomeGoal0 does not have anything to expand.
+            GoalExpr = GoalExpr0,
+            Changed = no
         ;
-            ( VarInfo = typeclass_info_var(_)
-            ; VarInfo = non_rtti_var
-            ),
-            unexpected(this_file, "replace_in_goal_expr: info not found")
-        ),
-        polymorphism_make_type_info_var(TypeInfoType,
-            term.context_init, TypeInfoVar, Goals0, PolyInfo0, PolyInfo),
-        poly_info_extract(PolyInfo, PredInfo0, PredInfo,
-            !.Info ^ proc_info, ProcInfo, ModuleInfo),
-        pred_info_get_typevarset(PredInfo, TVarSet),
-        !:Info = !.Info ^ pred_info := PredInfo,
-        !:Info = !.Info ^ proc_info := ProcInfo,
-        !:Info = !.Info ^ module_info := ModuleInfo,
-        !:Info = !.Info ^ tvarset := TVarSet,
-
-        rename_vars_in_goals(need_not_rename,
-            map.from_assoc_list([TypeInfoVar - Var]), Goals0, Goals),
-        ( Goals = [hlds_goal(GoalExpr1, _)] ->
-            GoalExpr = GoalExpr1
-        ;
-            GoalExpr = conj(plain_conj, Goals)
-        ),
-        !:Info = !.Info ^ recompute := yes
+            replace_in_goal(EqvMap, SomeGoal0, SomeGoal, Changed, !Info),
+            ( Changed = yes, GoalExpr = scope(Reason, SomeGoal)
+            ; Changed = no, GoalExpr = GoalExpr0
+            )
+        )
     ;
-        % Check for a type_ctor_info for an equivalence type. We can just
-        % remove these because after the code above to fix up type_infos
-        % for equivalence types they can't be used.
-
-        GoalExpr0 ^ unify_kind = construct(_, ConsId, _, _, _, _, _),
-        ConsId = type_info_cell_constructor(TypeCtor),
-        TypeCtorCat = ctor_cat_system(cat_system_type_ctor_info),
-        map.search(Types, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_body(TypeDefn, Body),
-        Body = hlds_eqv_type(_)
-    ->
-        Changed = yes,
-        GoalExpr = conj(plain_conj, []),
-        !:Info = !.Info ^ recompute := yes
-    ;
-        GoalExpr0 ^ unify_mode = LMode0 - RMode0,
-        TVarSet0 = !.Info ^ tvarset,
-        Cache0 = !.Info ^ inst_cache,
-        replace_in_mode(EqvMap, LMode0, LMode, Changed1,
-            TVarSet0, TVarSet1, Cache0, Cache1),
-        replace_in_mode(EqvMap, RMode0, RMode, Changed2,
-            TVarSet1, TVarSet, Cache1, Cache),
-        !:Info = !.Info ^ tvarset := TVarSet,
-        !:Info = !.Info ^ inst_cache := Cache,
-        replace_in_unification(EqvMap, GoalExpr0 ^ unify_kind, Unification,
-            Changed3, !Info),
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        replace_in_goal(EqvMap, Cond0, Cond, Changed1, !Info),
+        replace_in_goal(EqvMap, Then0, Then, Changed2, !Info),
+        replace_in_goal(EqvMap, Else0, Else, Changed3, !Info),
         Changed = Changed1 `or` Changed2 `or` Changed3,
+        ( Changed = yes, GoalExpr = if_then_else(Vars, Cond, Then, Else)
+        ; Changed = no, GoalExpr = GoalExpr0
+        )
+    ;
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
+        GoalExpr = GoalExpr0,
+        Changed = no
+    ;
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        TVarSet0 = !.Info ^ tvarset,
+        replace_in_foreign_arg_list(EqvMap, GoalExpr0 ^ foreign_args,
+            Args, ChangedArgs, TVarSet0, TVarSet1, no, _),
+        replace_in_foreign_arg_list(EqvMap, GoalExpr0 ^ foreign_extra_args,
+            ExtraArgs, ChangedExtraArgs, TVarSet1, TVarSet, no, _),
+        Changed = ChangedArgs `or` ChangedExtraArgs,
         (
             Changed = yes,
-            GoalExpr1 = GoalExpr0 ^ unify_mode := LMode - RMode,
-            GoalExpr = GoalExpr1 ^ unify_kind := Unification
+            !:Info = !.Info ^ tvarset := TVarSet,
+            GoalExpr = (GoalExpr0 ^ foreign_args := Args)
+                ^ foreign_extra_args := ExtraArgs
         ;
             Changed = no,
             GoalExpr = GoalExpr0
+        )
+    ;
+        GoalExpr0 = generic_call(Details, Args, Modes0, Detism),
+        TVarSet0 = !.Info ^ tvarset,
+        Cache0 = !.Info ^ inst_cache,
+        replace_in_modes(EqvMap, Modes0, Modes, Changed, TVarSet0, TVarSet,
+            Cache0, Cache),
+        (
+            Changed = yes,
+            !:Info = !.Info ^ tvarset := TVarSet,
+            !:Info = !.Info ^ inst_cache := Cache,
+            GoalExpr = generic_call(Details, Args, Modes, Detism)
+        ;
+            Changed = no,
+            GoalExpr = GoalExpr0
+        )
+    ;
+        GoalExpr0 = unify(Var, _, _, _, _),
+        module_info_get_type_table(!.Info ^ module_info, Types),
+        proc_info_get_vartypes(!.Info ^ proc_info, VarTypes),
+        proc_info_get_rtti_varmaps(!.Info ^ proc_info, RttiVarMaps),
+        map.lookup(VarTypes, Var, VarType),
+        TypeCtorCat = classify_type(!.Info ^ module_info, VarType),
+        (
+            % If this goal constructs a type_info for an equivalence type,
+            % we need to expand that to make the type_info for the expanded
+            % type. It is simpler to just recreate the type_info from scratch.
+
+            GoalExpr0 ^ unify_kind = construct(_, ConsId, _, _, _, _, _),
+            ConsId = type_info_cell_constructor(TypeCtor),
+            TypeCtorCat = ctor_cat_system(cat_system_type_info),
+            map.search(Types, TypeCtor, TypeDefn),
+            hlds_data.get_type_defn_body(TypeDefn, Body),
+            Body = hlds_eqv_type(_)
+        ->
+            Changed = yes,
+            pred_info_set_typevarset(!.Info ^ tvarset, !.Info ^ pred_info,
+                PredInfo0),
+            create_poly_info(!.Info ^ module_info,
+                PredInfo0, !.Info ^ proc_info, PolyInfo0),
+            rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
+            (
+                VarInfo = type_info_var(TypeInfoType0),
+                TypeInfoType = TypeInfoType0
+            ;
+                ( VarInfo = typeclass_info_var(_)
+                ; VarInfo = non_rtti_var
+                ),
+                unexpected(this_file, "replace_in_goal_expr: info not found")
+            ),
+            polymorphism_make_type_info_var(TypeInfoType,
+                term.context_init, TypeInfoVar, Goals0, PolyInfo0, PolyInfo),
+            poly_info_extract(PolyInfo, PredInfo0, PredInfo,
+                !.Info ^ proc_info, ProcInfo, ModuleInfo),
+            pred_info_get_typevarset(PredInfo, TVarSet),
+            !:Info = !.Info ^ pred_info := PredInfo,
+            !:Info = !.Info ^ proc_info := ProcInfo,
+            !:Info = !.Info ^ module_info := ModuleInfo,
+            !:Info = !.Info ^ tvarset := TVarSet,
+
+            rename_vars_in_goals(need_not_rename,
+                map.from_assoc_list([TypeInfoVar - Var]), Goals0, Goals),
+            ( Goals = [hlds_goal(GoalExpr1, _)] ->
+                GoalExpr = GoalExpr1
+            ;
+                GoalExpr = conj(plain_conj, Goals)
+            ),
+            !:Info = !.Info ^ recompute := yes
+        ;
+            % Check for a type_ctor_info for an equivalence type. We can just
+            % remove these because after the code above to fix up type_infos
+            % for equivalence types they can't be used.
+
+            GoalExpr0 ^ unify_kind = construct(_, ConsId, _, _, _, _, _),
+            ConsId = type_info_cell_constructor(TypeCtor),
+            TypeCtorCat = ctor_cat_system(cat_system_type_ctor_info),
+            map.search(Types, TypeCtor, TypeDefn),
+            hlds_data.get_type_defn_body(TypeDefn, Body),
+            Body = hlds_eqv_type(_)
+        ->
+            Changed = yes,
+            GoalExpr = conj(plain_conj, []),
+            !:Info = !.Info ^ recompute := yes
+        ;
+            GoalExpr0 ^ unify_mode = LMode0 - RMode0,
+            TVarSet0 = !.Info ^ tvarset,
+            Cache0 = !.Info ^ inst_cache,
+            replace_in_mode(EqvMap, LMode0, LMode, Changed1,
+                TVarSet0, TVarSet1, Cache0, Cache1),
+            replace_in_mode(EqvMap, RMode0, RMode, Changed2,
+                TVarSet1, TVarSet, Cache1, Cache),
+            !:Info = !.Info ^ tvarset := TVarSet,
+            !:Info = !.Info ^ inst_cache := Cache,
+            replace_in_unification(EqvMap, GoalExpr0 ^ unify_kind, Unification,
+                Changed3, !Info),
+            Changed = Changed1 `or` Changed2 `or` Changed3,
+            (
+                Changed = yes,
+                GoalExpr1 = GoalExpr0 ^ unify_mode := LMode - RMode,
+                GoalExpr = GoalExpr1 ^ unify_kind := Unification
+            ;
+                Changed = no,
+                GoalExpr = GoalExpr0
+            )
         )
     ).
 replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-

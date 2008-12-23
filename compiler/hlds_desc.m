@@ -143,7 +143,7 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
             Reason = barrier(_),
             Desc = "scope barrier"
         ;
-            Reason = from_ground_term(_),
+            Reason = from_ground_term(_, _),
             Desc = "scope from_ground_term"
         ;
             Reason = trace_goal(_, _, _, _, _),

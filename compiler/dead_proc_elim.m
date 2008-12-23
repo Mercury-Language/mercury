@@ -478,10 +478,16 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
         GoalExpr = switch(_Var, _CanFail, Cases),
         dead_proc_examine_cases(Cases, CurrProc, !Queue, !Needed)
     ;
-        ( GoalExpr = negation(SubGoal)
-        ; GoalExpr = scope(_Reason, SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         dead_proc_examine_goal(SubGoal, CurrProc, !Queue, !Needed)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % The scope has no references to procedures at all.
+            true
+        ;
+            dead_proc_examine_goal(SubGoal, CurrProc, !Queue, !Needed)
+        )
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         dead_proc_examine_goal(Cond, CurrProc, !Queue, !Needed),
@@ -1050,10 +1056,13 @@ pre_modecheck_examine_goal_expr(switch(_, _, Cases), !DeadInfo) :-
     ),
     list.foldl(ExamineCase, Cases, !DeadInfo).
 pre_modecheck_examine_goal_expr(generic_call(_,_,_,_), !DeadInfo).
-pre_modecheck_examine_goal_expr(negation(Goal), !DeadInfo) :-
-    pre_modecheck_examine_goal(Goal, !DeadInfo).
-pre_modecheck_examine_goal_expr(scope(_, Goal), !DeadInfo) :-
-    pre_modecheck_examine_goal(Goal, !DeadInfo).
+pre_modecheck_examine_goal_expr(negation(SubGoal), !DeadInfo) :-
+    pre_modecheck_examine_goal(SubGoal, !DeadInfo).
+pre_modecheck_examine_goal_expr(scope(_, SubGoal), !DeadInfo) :-
+    % The invariants that would allow us to optimize from_ground_term_construct
+    % scopes haven't been established yet, which is why we must always scan
+    % SubGoal.
+    pre_modecheck_examine_goal(SubGoal, !DeadInfo).
 pre_modecheck_examine_goal_expr(plain_call(_, _, _, _, _, PredName),
         !DeadInfo) :-
     dead_pred_info_add_pred_name(PredName, !DeadInfo).

@@ -196,7 +196,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
 
     goal_info_get_store_map(IteGoalInfo, StoreMap),
     get_instmap(!.CI, EndCondInstMap),
-    ( instmap.is_unreachable(EndCondInstMap) ->
+    ( instmap_is_unreachable(EndCondInstMap) ->
         % If the instmap indicates we cannot reach the then part,
         % do not attempt to generate it (may cause aborts).
         ThenTraceCode = empty,

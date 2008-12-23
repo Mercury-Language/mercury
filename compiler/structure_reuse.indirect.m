@@ -520,9 +520,11 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
         % XXX To check and compare with the theory.
         GoalExpr0 = negation(_Goal)
     ;
-        GoalExpr0 = scope(A, SubGoal0),
+        GoalExpr0 = scope(Reason, SubGoal0),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         indirect_reuse_analyse_goal(BaseInfo, SubGoal0, SubGoal, !IrInfo),
-        GoalExpr = scope(A, SubGoal),
+        GoalExpr = scope(Reason, SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         % Brief sketch:

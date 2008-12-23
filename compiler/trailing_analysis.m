@@ -495,20 +495,26 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         check_goal_for_trail_mods(SCC, VarTypes, SubGoal, Result,
             MaybeAnalysisStatus, !ModuleInfo)
     ;
-        GoalExpr = scope(_, InnerGoal),
-        OuterGoalInfo = GoalInfo,
-        check_goal_for_trail_mods(SCC, VarTypes, InnerGoal, Result0,
-            MaybeAnalysisStatus, !ModuleInfo),
-        InnerGoal = hlds_goal(_, InnerGoalInfo),
-        InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
-        OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
+        GoalExpr = scope(Reason, InnerGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            % The construction of ground terms will not modify the trail.
+            Result = trail_will_not_modify,
+            MaybeAnalysisStatus = yes(optimal)
+        ;
+            OuterGoalInfo = GoalInfo,
+            check_goal_for_trail_mods(SCC, VarTypes, InnerGoal, Result0,
+                MaybeAnalysisStatus, !ModuleInfo),
+            InnerGoal = hlds_goal(_, InnerGoalInfo),
+            InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
+            OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
 
-        % `trail_conditional' scope goals (of the type that require extra
-        % trailing code) will have their status changed to `trail_may_modify'.
-        % See the comment in the code handling if-then-elses above for
-        % the reason why.
-        Result = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel,
-            Result0)
+            % `trail_conditional' scope goals (of the type that require extra
+            % trailing code) will have their status changed to
+            % `trail_may_modify'. See the comment in the code handling
+            % if-then-elses above for the reason why.
+            Result = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel,
+                Result0)
+        )
     ;
         GoalExpr = shorthand(_),
         unexpected(this_file,
@@ -980,14 +986,19 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
         !:GoalExpr = negation(SubGoal)
     ;
         !.GoalExpr = scope(Reason, InnerGoal0),
-        OuterGoalInfo = GoalInfo,
-        annotate_goal(VarTypes, InnerGoal0, InnerGoal, Status0, !ModuleInfo),
-        InnerGoal = hlds_goal(_, InnerGoalInfo),
-        InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
-        OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
-        Status = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel,
-            Status0),
-        !:GoalExpr = scope(Reason, InnerGoal)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Status = trail_will_not_modify
+        ;
+            OuterGoalInfo = GoalInfo,
+            annotate_goal(VarTypes, InnerGoal0, InnerGoal, Status0,
+                !ModuleInfo),
+            InnerGoal = hlds_goal(_, InnerGoalInfo),
+            InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
+            OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
+            Status = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel,
+                Status0),
+            !:GoalExpr = scope(Reason, InnerGoal)
+        )
     ;
         !.GoalExpr = shorthand(_),
         unexpected(this_file, "shorthand goal")

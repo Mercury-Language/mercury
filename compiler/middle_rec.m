@@ -119,83 +119,99 @@ is_recursive_call(Goal, CodeInfo) :-
     %
 :- func contains_only_builtins(hlds_goal) = bool.
 
-contains_only_builtins(hlds_goal(GoalExpr, _GoalInfo)) =
-    contains_only_builtins_expr(GoalExpr).
+contains_only_builtins(Goal) = 
+    contains_only_builtins_expr(Goal ^ hlds_goal_expr).
 
 :- func contains_only_builtins_expr(hlds_goal_expr) = bool.
 
-contains_only_builtins_expr(conj(ConjType, Goals)) = OnlyBuiltins :-
+contains_only_builtins_expr(GoalExpr) = OnlyBuiltins :-
     (
-        ConjType = plain_conj,
-        OnlyBuiltins = contains_only_builtins_list(Goals)
-    ;
-        ConjType = parallel_conj,
-        OnlyBuiltins = no
-    ).
-contains_only_builtins_expr(disj(Goals)) =
-    contains_only_builtins_list(Goals).
-contains_only_builtins_expr(switch(_Var, _Category, Cases)) =
-    contains_only_builtins_cases(Cases).
-contains_only_builtins_expr(negation(Goal)) =
-    contains_only_builtins(Goal).
-contains_only_builtins_expr(scope(_, Goal)) =
-    contains_only_builtins(Goal).
-contains_only_builtins_expr(if_then_else(_Vars, Cond, Then, Else))
-        = OnlyBuiltins :-
-    (
-        contains_only_builtins(Cond) = yes,
-        contains_only_builtins(Then) = yes,
-        contains_only_builtins(Else) = yes
-    ->
-        OnlyBuiltins = yes
-    ;
-        OnlyBuiltins = no
-    ).
-contains_only_builtins_expr(plain_call(_, _, _, BuiltinState, _, _))
-        = OnlyBuiltins :-
-    (
-        BuiltinState = inline_builtin,
-        OnlyBuiltins = yes
-    ;
-        BuiltinState = out_of_line_builtin,
-        OnlyBuiltins = no
-        ;
-        BuiltinState = not_builtin,
-        OnlyBuiltins = no
-    ).
-contains_only_builtins_expr(unify(_, _, _, Uni, _)) = OnlyBuiltins :-
-    % Complicated unifies are _non_builtin_
-    (
-        Uni = assign(_, _),
-        OnlyBuiltins = yes
-    ;
-        Uni = simple_test(_, _),
-        OnlyBuiltins = yes
-    ;
-        Uni = construct(_, _, _, _, _, _, SubInfo),
+        GoalExpr = conj(ConjType, Goals),
         (
-            SubInfo = no_construct_sub_info,
-            OnlyBuiltins = yes
+            ConjType = plain_conj,
+            OnlyBuiltins = contains_only_builtins_list(Goals)
         ;
-            SubInfo = construct_sub_info(TakeAddressFields, _),
-            (
-                TakeAddressFields = no,
-                OnlyBuiltins = yes
-            ;
-                TakeAddressFields = yes(_),
-                OnlyBuiltins = no
-            )
+            ConjType = parallel_conj,
+            OnlyBuiltins = no
         )
     ;
-        Uni = deconstruct(_, _, _, _, _, _),
-        OnlyBuiltins = yes
+        GoalExpr = disj(Goals),
+        OnlyBuiltins = contains_only_builtins_list(Goals)
     ;
-        Uni = complicated_unify(_, _, _),
+        GoalExpr = switch(_Var, _CanFail, Cases),
+        OnlyBuiltins = contains_only_builtins_cases(Cases)
+    ;
+        GoalExpr = negation(SubGoal),
+        OnlyBuiltins = contains_only_builtins(SubGoal)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            OnlyBuiltins = yes
+        ;
+            OnlyBuiltins = contains_only_builtins(SubGoal)
+        )
+    ;
+        GoalExpr = if_then_else(_Vars, Cond, Then, Else),
+        (
+            contains_only_builtins(Cond) = yes,
+            contains_only_builtins(Then) = yes,
+            contains_only_builtins(Else) = yes
+        ->
+            OnlyBuiltins = yes
+        ;
+            OnlyBuiltins = no
+        )
+    ;
+        GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
+        (
+            BuiltinState = inline_builtin,
+            OnlyBuiltins = yes
+        ;
+            ( BuiltinState = out_of_line_builtin
+            ; BuiltinState = not_builtin
+            ),
+            OnlyBuiltins = no
+        )
+    ;
+        GoalExpr = unify(_, _, _, Uni, _),
+        % Complicated unifies are _non_builtin_
+        (
+            Uni = assign(_, _),
+            OnlyBuiltins = yes
+        ;
+            Uni = simple_test(_, _),
+            OnlyBuiltins = yes
+        ;
+            Uni = construct(_, _, _, _, _, _, SubInfo),
+            (
+                SubInfo = no_construct_sub_info,
+                OnlyBuiltins = yes
+            ;
+                SubInfo = construct_sub_info(TakeAddressFields, _),
+                (
+                    TakeAddressFields = no,
+                    OnlyBuiltins = yes
+                ;
+                    TakeAddressFields = yes(_),
+                    OnlyBuiltins = no
+                )
+            )
+        ;
+            Uni = deconstruct(_, _, _, _, _, _),
+            OnlyBuiltins = yes
+        ;
+            Uni = complicated_unify(_, _, _),
+            OnlyBuiltins = no
+        )
+    ;
+        ( GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ),
         OnlyBuiltins = no
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "contains_only_builtins: shorthand")
     ).
-contains_only_builtins_expr(call_foreign_proc(_, _, _, _, _, _, _)) = no.
-contains_only_builtins_expr(generic_call(_, _, _, _)) = no.
-contains_only_builtins_expr(shorthand(_)) = no.
 
 :- func contains_only_builtins_cases(list(case)) = bool.
 

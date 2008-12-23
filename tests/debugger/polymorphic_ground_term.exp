@@ -1,0 +1,45 @@
+      E1:     C1 CALL pred polymorphic_ground_term.main/2-0 (det) polymorphic_ground_term.m:30
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> context none
+Contexts will not be printed.
+mdb> b make_maybe_ground_term
+ 0: + stop  interface pred polymorphic_ground_term.make_maybe_ground_term/2-0 (det)
+mdb> c
+      E2:     C2 CALL pred polymorphic_ground_term.make_maybe_ground_term/2-0 (det)
+mdb> f
+      E3:     C2 EXIT pred polymorphic_ground_term.make_maybe_ground_term/2-0 (det)
+mdb> p *
+       Item (arg 1)           	zero([0])
+       List (arg 2)           	[zero([1, ...]), zero([3, ...]), zero([6, ...])]
+mdb> c
+[zero([1, 2]), zero([3, 4, 5]), zero([6, 7, 8, 9])]
+      E4:     C3 CALL pred polymorphic_ground_term.make_maybe_ground_term/2-0 (det)
+mdb> f
+      E5:     C3 EXIT pred polymorphic_ground_term.make_maybe_ground_term/2-0 (det)
+mdb> p *
+       Item (arg 1)           	one(42)
+       List (arg 2)           	[one(42)]
+mdb> c
+[one(42)]
+      E6:     C4 CALL pred polymorphic_ground_term.make_maybe_ground_term/2-0 (det)
+mdb> f
+      E7:     C4 EXIT pred polymorphic_ground_term.make_maybe_ground_term/2-0 (det)
+mdb> p *
+       Item (arg 1)           	two("fortytwo")
+       List (arg 2)           	[two("fortytwo"), two("fortytwo")]
+mdb> b make_exist_ground_term
+ 1: + stop  interface pred polymorphic_ground_term.make_exist_ground_term/1-0 (det)
+mdb> c
+[two("fortytwo"), two("fortytwo")]
+      E8:     C5 CALL pred polymorphic_ground_term.make_exist_ground_term/1-0 (det)
+mdb> f
+      E9:     C5 EXIT pred polymorphic_ground_term.make_exist_ground_term/1-0 (det)
+mdb> p *
+       ExistQList (arg 1)     	[zero([1, ...]), zero([3, ...]), zero([6, ...]), one(1), two("two")]
+mdb> delete *
+ 0: E stop  interface pred polymorphic_ground_term.make_maybe_ground_term/2-0 (det)
+ 1: E stop  interface pred polymorphic_ground_term.make_exist_ground_term/1-0 (det)
+mdb> c
+[zero([1, 2]), zero([3, 4, 5]), zero([6, 7, 8, 9]), one(1), two("two")]

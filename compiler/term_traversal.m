@@ -278,7 +278,7 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
                 % XXX intermod
                 list.filter(pred_proc_id_terminates(!.ModuleInfo),
                     ClosureValues, Terminating, NonTerminating),
-                ( 
+                (
                     NonTerminating = [],
                     partition_call_args(!.ModuleInfo, ArgModes, Args,
                         _InVars, OutVars),
@@ -292,7 +292,7 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
                     add_error(Context, horder_call, Params, !Info)
                 )
             ;
-                add_error(Context, horder_call, Params, !Info)      
+                add_error(Context, horder_call, Params, !Info)
             )
         ;
             Details = class_method(_, _, _, _),
@@ -331,6 +331,8 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
         term_traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
     ;
         GoalExpr = scope(_, SubGoal),
+        % XXX We should special-case the handling of from_ground_term_construct
+        % scopes.
         term_traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
     ;
         GoalExpr = shorthand(_),
@@ -636,26 +638,26 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
 :- type term_traversal_params
     --->    term_traversal_params(
                 term_trav_functor_info      :: functor_info,
-                
+
                 % The procedure we are tracing through.
                 term_trav_ppid              :: pred_proc_id,
-                
+
                 % The context of the procedure.
                 term_trav_context           :: prog_context,
-                
+
                 term_trav_vartypes          :: vartypes,
-                
+
                 % Output suppliers of each procedure.
                 % Empty during pass 2.
                 term_trav_output_suppliers  :: map(pred_proc_id, list(bool)),
-                    
+
                 % Recursive input suppliers of each procedure.
                 % Empty during pass 1.
                 term_trav_rec_input_supplier :: map(pred_proc_id, list(bool)),
-                
+
                 % Maximum number of errors to gather.
                 term_trav_max_errors        :: int,
-                
+
                 % Maximum number of paths to analyze.
                 term_trav_max_paths         :: int
         ).

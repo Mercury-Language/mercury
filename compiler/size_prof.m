@@ -98,7 +98,8 @@
 
     % Perform the transformation on the specified predicate.
     %
-:- pred process_proc_msg(construct_transform::in, pred_id::in, proc_id::in,
+:- pred size_prof_process_proc_msg(construct_transform::in,
+    pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
@@ -213,7 +214,7 @@
                 spi_module_info             :: module_info
             ).
 
-process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
+size_prof_process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
         !ModuleInfo, !IO) :-
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
@@ -221,19 +222,20 @@ process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
         io.write_string("% Adding typeinfos in ", !IO),
         hlds_out.write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
         io.write_string(": ", !IO),
-        process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
+        size_prof_process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
             !ModuleInfo),
         io.write_string("done.\n", !IO)
     ;
         VeryVerbose = no,
-        process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
+        size_prof_process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
             !ModuleInfo)
     ).
 
-:- pred process_proc(construct_transform::in, pred_id::in, proc_id::in,
+:- pred size_prof_process_proc(construct_transform::in,
+    pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+size_prof_process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     Simplifications = list_to_simplifications([]),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
         !ModuleInfo, !ProcInfo, _Msgs),
@@ -258,7 +260,7 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     rtti_varmaps_tvars(RttiVarMaps0, TVars),
     list.foldl(record_typeinfo_in_type_info_varmap(RttiVarMaps0), TVars,
         Info0, Info1),
-    process_goal(Goal0, Goal1, Info1, Info),
+    size_prof_process_goal(Goal0, Goal1, Info1, Info),
 
         % We need to fix up goal_infos by recalculating
         % the nonlocal vars and the non-atomic instmap deltas.
@@ -274,30 +276,31 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo).
 
-:- pred process_goal(hlds_goal::in, hlds_goal::out, info::in, info::out)
-    is det.
+:- pred size_prof_process_goal(hlds_goal::in, hlds_goal::out,
+    info::in, info::out) is det.
 
-process_goal(Goal0, Goal, !Info) :-
+size_prof_process_goal(Goal0, Goal, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(LHS, RHS, UniMode, Unify0, UnifyContext),
         (
             Unify0 = construct(Var, ConsId, Args, ArgModes, How, Unique, _),
-            process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
-                Args, ArgModes, How, Unique, GoalInfo0, GoalExpr, !Info)
+            size_prof_process_construct(LHS, RHS, UniMode, UnifyContext,
+                Var, ConsId, Args, ArgModes, How, Unique, GoalInfo0, GoalExpr,
+                !Info)
         ;
             Unify0 = deconstruct(Var, ConsId, Args, ArgModes,
                 _CanFail, _CanCGC),
             (
                 % The following test is an optimization. If
                 % BindingArgModes = [], which is almost 100% likely,
-                % then process_deconstruct would return GoalExpr0 as
+                % then size_prof_process_deconstruct would return GoalExpr0 as
                 % GoalExpr anyway, but would take longer.
                 list.filter(binds_arg_in_cell(!.Info), ArgModes,
                     BindingArgModes),
                 BindingArgModes = [_ | _]
             ->
-                process_deconstruct(Var, ConsId, Args, ArgModes,
+                size_prof_process_deconstruct(Var, ConsId, Args, ArgModes,
                     Goal0, GoalExpr, !Info)
             ;
                 GoalExpr = GoalExpr0
@@ -310,7 +313,7 @@ process_goal(Goal0, Goal, !Info) :-
         ;
             Unify0 = complicated_unify(_, _, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "process_goal: complicated_unify")
+            unexpected(this_file, "size_prof_process_goal: complicated_unify")
         )
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),
@@ -335,7 +338,7 @@ process_goal(Goal0, Goal, !Info) :-
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            process_conj(Goals0, Goals, !Info)
+            size_prof_process_conj(Goals0, Goals, !Info)
         ;
             ConjType = parallel_conj,
             % This transformation produces code that is much less than
@@ -347,8 +350,8 @@ process_goal(Goal0, Goal, !Info) :-
             RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
             TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
             KnownSizeMap0 = !.Info ^ spi_known_size_map,
-            process_par_conj(Goals0, Goals, !Info, TargetTypeInfoMap0,
-                TypeInfoMap0, TypeCtorMap0, KnownSizeMap0),
+            size_prof_process_par_conj(Goals0, Goals, !Info,
+                TargetTypeInfoMap0, TypeInfoMap0, TypeCtorMap0, KnownSizeMap0),
             !:Info = !.Info ^ spi_target_type_info_map := TargetTypeInfoMap0,
             !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
             !:Info = !.Info ^ spi_rev_type_info_map := RevTypeInfoMap0,
@@ -367,7 +370,7 @@ process_goal(Goal0, Goal, !Info) :-
             TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
             RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
             KnownSizeMap0 = !.Info ^ spi_known_size_map,
-            process_switch(First0, First, Later0, Later, !Info,
+            size_prof_process_switch(First0, First, Later0, Later, !Info,
                 TargetTypeInfoMap0,
                 TypeInfoMap0, RevTypeInfoMap0,
                 TypeCtorMap0, RevTypeCtorMap0,
@@ -381,7 +384,7 @@ process_goal(Goal0, Goal, !Info) :-
             Cases = [First | Later]
         ;
             Cases0 = [],
-            unexpected(this_file, "size_prof.process_goal: empty switch")
+            unexpected(this_file, "size_prof_process_goal: empty switch")
         ),
         update_rev_maps(!Info),
         update_target_map(!Info),
@@ -396,7 +399,7 @@ process_goal(Goal0, Goal, !Info) :-
             TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
             RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
             KnownSizeMap0 = !.Info ^ spi_known_size_map,
-            process_disj(First0, First, Later0, Later, !Info,
+            size_prof_process_disj(First0, First, Later0, Later, !Info,
                 TargetTypeInfoMap0,
                 TypeInfoMap0, RevTypeInfoMap0,
                 TypeCtorMap0, RevTypeCtorMap0,
@@ -430,9 +433,9 @@ process_goal(Goal0, Goal, !Info) :-
         KnownSizeMap0 = !.Info ^ spi_known_size_map,
 
         !:Info = !.Info ^ spi_target_type_info_map := map.init,
-        process_goal(Cond0, Cond, !Info),
+        size_prof_process_goal(Cond0, Cond, !Info),
         !:Info = !.Info ^ spi_target_type_info_map := TargetTypeInfoMap0,
-        process_goal(Then0, Then, !Info),
+        size_prof_process_goal(Then0, Then, !Info),
         TargetTypeInfoMapThen = !.Info ^ spi_target_type_info_map,
         TypeInfoMapThen = !.Info ^ spi_type_info_map,
         KnownSizeMapThen = !.Info ^ spi_known_size_map,
@@ -445,7 +448,7 @@ process_goal(Goal0, Goal, !Info) :-
         !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap0,
         !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap0,
         !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
-        process_goal(Else0, Else, !Info),
+        size_prof_process_goal(Else0, Else, !Info),
         TypeInfoMapElse = !.Info ^ spi_type_info_map,
         KnownSizeMapElse = !.Info ^ spi_known_size_map,
 
@@ -465,7 +468,7 @@ process_goal(Goal0, Goal, !Info) :-
         TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
         RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
         KnownSizeMap0 = !.Info ^ spi_known_size_map,
-        process_goal(NegGoal0, NegGoal, !Info),
+        size_prof_process_goal(NegGoal0, NegGoal, !Info),
         % Variables constructed in negated goals are not available after the
         % negated goal fails and the negation succeeds. The sizes we learn
         % in NegGoal0 don't apply after NegGoal0 fails.
@@ -477,26 +480,34 @@ process_goal(Goal0, Goal, !Info) :-
         !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
         GoalExpr = negation(NegGoal)
     ;
-        GoalExpr0 = scope(Reason, SomeGoal0),
-        process_goal(SomeGoal0, SomeGoal, !Info),
-        GoalExpr = scope(Reason, SomeGoal)
+        GoalExpr0 = scope(Reason0, SubGoal0),
+        % The code inside from_ground_term_construct scopes wants to construct
+        % terms statically, but for term size profiling, we need to construct
+        % terms dynamically, 
+        ( Reason0 = from_ground_term(TermVar, from_ground_term_construct) ->
+            Reason = from_ground_term(TermVar, from_ground_term_other)
+        ;
+            Reason = Reason0
+        ),
+        size_prof_process_goal(SubGoal0, SubGoal, !Info),
+        GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "size_prof.process_goal: shorthand")
+        unexpected(this_file, "size_prof_process_goal: shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo0).
 
 %---------------------------------------------------------------------------%
 
-:- pred process_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred size_prof_process_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     info::in, info::out) is det.
 
-process_conj([], [], !Info).
-process_conj([Goal0 | Goals0], Conj, !Info) :-
-    process_goal(Goal0, Goal, !Info),
-    process_conj(Goals0, Goals, !Info),
+size_prof_process_conj([], [], !Info).
+size_prof_process_conj([Goal0 | Goals0], Conj, !Info) :-
+    size_prof_process_goal(Goal0, Goal, !Info),
+    size_prof_process_conj(Goals0, Goals, !Info),
     ( Goal = hlds_goal(conj(plain_conj, SubConj), _) ->
-        % Flatten out any conjunction introduced by process_goal.
+        % Flatten out any conjunction introduced by size_prof_process_goal.
         % We never create conjunctions more than one level deep,
         % so this single test is sufficient to ensure that we never
         % leave conjunctions nested more deeply than the input goal.
@@ -507,30 +518,30 @@ process_conj([Goal0 | Goals0], Conj, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred size_prof_process_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     info::in, info::out, type_info_map::in, type_info_map::in,
     type_ctor_map::in, known_size_map::in) is det.
 
-process_par_conj([], [], !Info, _, _, _, _).
-process_par_conj([Goal0 | Goals0], [Goal | Goals], !Info, TargetTypeInfoMap0,
-        TypeInfoMap0, TypeCtorMap0, KnownSizeMap0) :-
+size_prof_process_par_conj([], [], !Info, _, _, _, _).
+size_prof_process_par_conj([Goal0 | Goals0], [Goal | Goals], !Info,
+        TargetTypeInfoMap0, TypeInfoMap0, TypeCtorMap0, KnownSizeMap0) :-
     !:Info = !.Info ^ spi_target_type_info_map := TargetTypeInfoMap0,
     !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
     !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap0,
     !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
-    process_goal(Goal0, Goal, !Info),
-    process_par_conj(Goals0, Goals, !Info, TargetTypeInfoMap0,
-        TypeInfoMap0, TypeCtorMap0, KnownSizeMap0).
+    size_prof_process_goal(Goal0, Goal, !Info),
+    size_prof_process_par_conj(Goals0, Goals, !Info,
+        TargetTypeInfoMap0, TypeInfoMap0, TypeCtorMap0, KnownSizeMap0).
 
 %---------------------------------------------------------------------------%
 
-:- pred process_disj(hlds_goal::in, hlds_goal::out,
+:- pred size_prof_process_disj(hlds_goal::in, hlds_goal::out,
     list(hlds_goal)::in, list(hlds_goal)::out, info::in, info::out,
     type_info_map::in, type_info_map::in, rev_type_info_map::in,
     type_ctor_map::in, rev_type_ctor_map::in,
     type_info_map::out, known_size_map::in, known_size_map::out) is det.
 
-process_disj(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
+size_prof_process_disj(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
         TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
         TypeInfoMap, KnownSizeMap0, KnownSizeMap) :-
     !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
@@ -538,7 +549,7 @@ process_disj(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
     !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap0,
     !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap0,
     !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
-    process_goal(First0, First, !Info),
+    size_prof_process_goal(First0, First, !Info),
     TypeInfoMapFirst = !.Info ^ spi_type_info_map,
     KnownSizeMapFirst = !.Info ^ spi_known_size_map,
     (
@@ -546,7 +557,8 @@ process_disj(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
         map.union(select_first, TypeInfoMapFirst,
             TargetTypeInfoMap, LaterTargetTypeInfoMap),
         !:Info = !.Info ^ spi_target_type_info_map := LaterTargetTypeInfoMap,
-        process_disj(Head0, Head, Tail0, Tail, !Info, TargetTypeInfoMap,
+        size_prof_process_disj(Head0, Head, Tail0, Tail, !Info,
+            TargetTypeInfoMap,
             TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
             TypeInfoMapLater, KnownSizeMap0, KnownSizeMapLater),
         TypeInfoMap = map.common_subset(TypeInfoMapFirst, TypeInfoMapLater),
@@ -561,14 +573,15 @@ process_disj(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred process_switch(case::in, case::out,
+:- pred size_prof_process_switch(case::in, case::out,
     list(case)::in, list(case)::out, info::in, info::out,
     type_info_map::in, type_info_map::in, rev_type_info_map::in,
     type_ctor_map::in, rev_type_ctor_map::in,
     type_info_map::out, known_size_map::in, known_size_map::out) is det.
 
-process_switch(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
-        TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
+size_prof_process_switch(First0, First, Later0, Later, !Info,
+        TargetTypeInfoMap, TypeInfoMap0, RevTypeInfoMap0,
+        TypeCtorMap0, RevTypeCtorMap0,
         TypeInfoMap, KnownSizeMap0, KnownSizeMap) :-
     !:Info = !.Info ^ spi_type_info_map := TypeInfoMap0,
     !:Info = !.Info ^ spi_rev_type_info_map := RevTypeInfoMap0,
@@ -576,7 +589,7 @@ process_switch(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
     !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap0,
     !:Info = !.Info ^ spi_known_size_map := KnownSizeMap0,
     First0 = case(FirstMainConsId, FirstOtherConsIds, FirstGoal0),
-    process_goal(FirstGoal0, FirstGoal, !Info),
+    size_prof_process_goal(FirstGoal0, FirstGoal, !Info),
     TypeInfoMapFirst = !.Info ^ spi_type_info_map,
     KnownSizeMapFirst = !.Info ^ spi_known_size_map,
     First = case(FirstMainConsId, FirstOtherConsIds, FirstGoal),
@@ -585,8 +598,9 @@ process_switch(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
         map.union(select_first, TargetTypeInfoMap,
             TypeInfoMapFirst, LaterTargetTypeInfoMap),
         !:Info = !.Info ^ spi_target_type_info_map := LaterTargetTypeInfoMap,
-        process_switch(Head0, Head, Tail0, Tail, !Info, TargetTypeInfoMap,
-            TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
+        size_prof_process_switch(Head0, Head, Tail0, Tail, !Info,
+            TargetTypeInfoMap, TypeInfoMap0, RevTypeInfoMap0,
+            TypeCtorMap0, RevTypeCtorMap0,
             TypeInfoMapLater, KnownSizeMap0, KnownSizeMapLater),
         TypeInfoMap = map.common_subset(TypeInfoMapFirst, TypeInfoMapLater),
         KnownSizeMap = map.common_subset(KnownSizeMapFirst, KnownSizeMapLater),
@@ -600,13 +614,14 @@ process_switch(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred process_construct(prog_var::in, unify_rhs::in, unify_mode::in,
-    unify_context::in, prog_var::in, cons_id::in, list(prog_var)::in,
-    list(uni_mode)::in, how_to_construct::in, cell_is_unique::in,
-    hlds_goal_info::in, hlds_goal_expr::out, info::in, info::out) is det.
+:- pred size_prof_process_construct(prog_var::in, unify_rhs::in,
+    unify_mode::in, unify_context::in, prog_var::in, cons_id::in,
+    list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
+    cell_is_unique::in, hlds_goal_info::in, hlds_goal_expr::out,
+    info::in, info::out) is det.
 
-process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
-        How, Unique, GoalInfo, GoalExpr, !Info) :-
+size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
+        Args, ArgModes, How, Unique, GoalInfo, GoalExpr, !Info) :-
     map.lookup(!.Info ^ spi_vartypes, Var, VarType),
     ( type_to_ctor_and_args(VarType, VarTypeCtorPrime, _VarTypeArgs) ->
         VarTypeCtor = VarTypeCtorPrime
@@ -635,13 +650,15 @@ process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
                 % TypeInfo_for_K as type_info, not type_ctor_info.
                 record_known_type_ctor_info(Var, M, N, A, !Info)
             ;
-                unexpected(this_file, "process_construct: bad type_info")
+                unexpected(this_file,
+                    "size_prof_process_construct: bad type_info")
             )
         ; VarTypeCtorName = "type_ctor_info" ->
             ( ConsId = type_ctor_info_const(M, N, A) ->
                 record_known_type_ctor_info(Var, M, N, A, !Info)
             ;
-                unexpected(this_file, "process_construct: bad type_ctor_info")
+                unexpected(this_file,
+                    "size_prof_process_construct: bad type_ctor_info")
             )
         ;
             !:Info = !.Info
@@ -653,8 +670,9 @@ process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
         ConsId = cons(_Name, _Arity),
         Args = [_ | _]
     ->
-        process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, VarType,
-            ConsId, Args, ArgModes, How, Unique, GoalInfo, GoalExpr, !Info)
+        size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext,
+            Var, VarType, ConsId, Args, ArgModes, How, Unique,
+            GoalInfo, GoalExpr, !Info)
     ;
         % All ConsIds other than cons/2 with at least one argument
         % construct terms that we consider zero-sized.
@@ -666,17 +684,19 @@ process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(uni_mode)::in, hlds_goal::in, hlds_goal_expr::out,
+:- pred size_prof_process_deconstruct(prog_var::in, cons_id::in,
+    list(prog_var)::in, list(uni_mode)::in, hlds_goal::in, hlds_goal_expr::out,
     info::in, info::out) is det.
 
-process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr, !Info) :-
+size_prof_process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr,
+        !Info) :-
     map.lookup(!.Info ^ spi_vartypes, Var, VarType),
     ( type_to_ctor_and_args(VarType, VarTypeCtorPrime, _VarTypeArgs) ->
         VarTypeCtor = VarTypeCtorPrime
     ;
         unexpected(this_file,
-            "process_deconstruct: deconstructing term of variable type")
+            "size_prof_process_deconstruct: " ++
+            "deconstructing term of variable type")
     ),
     ModuleInfo = !.Info ^ spi_module_info,
     VarTypeCtorModule = type_ctor_module(ModuleInfo, VarTypeCtor),
@@ -689,7 +709,8 @@ process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr, !Info) :-
         ConsId = cons(_Name, _Arity),
         Args = [_ | _]
     ->
-        process_cons_deconstruct(Var, Args, ArgModes, Goal0, GoalExpr, !Info)
+        size_prof_process_cons_deconstruct(Var, Args, ArgModes, Goal0,
+            GoalExpr, !Info)
     ;
         % All ConsIds other than cons/2 deconstruct terms that we
         % consider zero-sized.
@@ -699,23 +720,23 @@ process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_cons_construct(prog_var::in, unify_rhs::in, unify_mode::in,
-    unify_context::in, prog_var::in, mer_type::in, cons_id::in,
+:- pred size_prof_process_cons_construct(prog_var::in, unify_rhs::in,
+    unify_mode::in, unify_context::in, prog_var::in, mer_type::in, cons_id::in,
     list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
     cell_is_unique::in, hlds_goal_info::in, hlds_goal_expr::out,
     info::in, info::out) is det.
 
-process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type, ConsId,
-        Args, ArgModes, How, Unique, GoalInfo0, GoalExpr, !Info) :-
+size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type,
+        ConsId, Args, ArgModes, How, Unique, GoalInfo0, GoalExpr, !Info) :-
     FunctorSize = compute_functor_size(Args, !.Info),
     find_defined_args(Args, ArgModes, DefinedArgs, NonDefinedArgs, !.Info),
     Context = goal_info_get_context(GoalInfo0),
-    process_args(DefinedArgs, FunctorSize, KnownSize,
+    size_prof_process_args(DefinedArgs, FunctorSize, KnownSize,
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),
     (
         MaybeDynamicSizeVar = no,
         expect(unify(ArgGoals, []), this_file,
-            "process_cons_construct: nonempty ArgGoals"),
+            "size_prof_process_cons_construct: nonempty ArgGoals"),
         (
             NonDefinedArgs = [],
             record_known_size(Var, KnownSize, !Info)
@@ -745,20 +766,21 @@ process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type, ConsId,
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_cons_deconstruct(prog_var::in, list(prog_var)::in,
+:- pred size_prof_process_cons_deconstruct(prog_var::in, list(prog_var)::in,
     list(uni_mode)::in, hlds_goal::in, hlds_goal_expr::out,
     info::in, info::out) is det.
 
-process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
+size_prof_process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr,
+        !Info) :-
     find_defined_args(Args, ArgModes, DefinedArgs, _NonDefArgs, !.Info),
     UnifyGoal = hlds_goal(GoalExpr0, GoalInfo0),
     Context = goal_info_get_context(GoalInfo0),
-    process_args(DefinedArgs, 0, KnownSize,
+    size_prof_process_args(DefinedArgs, 0, KnownSize,
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),
     (
         MaybeDynamicSizeVar = no,
         expect(unify(ArgGoals, []), this_file,
-            "process_cons_deconstruct: nonempty ArgGoals"),
+            "size_prof_process_cons_deconstruct: nonempty ArgGoals"),
         GoalExpr = GoalExpr0
     ;
         MaybeDynamicSizeVar = yes(SizeVar0),
@@ -787,12 +809,13 @@ process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
     % of the size only if the sum of the arguments' sizes is not static.
     % In that case, the Goals we return will be nonempty.
     %
-:- pred process_args(list(prog_var)::in, int::in, int::out,
+:- pred size_prof_process_args(list(prog_var)::in, int::in, int::out,
     maybe(prog_var)::in, maybe(prog_var)::out, prog_context::in,
     list(hlds_goal)::out, info::in, info::out) is det.
 
-process_args([], !KnownSize, !MaybeSizeVar, _, [], !Info).
-process_args([Arg | Args], !KnownSize, !MaybeSizeVar, Context, Goals, !Info) :-
+size_prof_process_args([], !KnownSize, !MaybeSizeVar, _, [], !Info).
+size_prof_process_args([Arg | Args], !KnownSize, !MaybeSizeVar, Context, Goals,
+        !Info) :-
     map.lookup(!.Info ^ spi_vartypes, Arg, Type),
     ( map.search(!.Info ^ spi_known_size_map, Arg, ArgSize) ->
         !:KnownSize = !.KnownSize + ArgSize,
@@ -805,8 +828,9 @@ process_args([Arg | Args], !KnownSize, !MaybeSizeVar, Context, Goals, !Info) :-
             !Info),
         list.append(TypeInfoGoals, [SizeGoal], ArgGoals)
     ),
-    process_args(Args, !KnownSize, !MaybeSizeVar, Context, LaterGoals, !Info),
-    list.append(ArgGoals, LaterGoals, Goals).
+    size_prof_process_args(Args, !KnownSize, !MaybeSizeVar, Context,
+        LaterGoals, !Info),
+    Goals = ArgGoals ++ LaterGoals.
 
 %-----------------------------------------------------------------------------%
 
@@ -1063,9 +1087,9 @@ get_new_var(Type, Prefix, Var, !Info) :-
     %
     % We override any old settings here, for use in the rest of the current
     % branch. Other branches will do likewise. The correct handling of the code
-    % after the branched structure is ensured by process_goal returning only
-    % the common subsets of the maps constructed by the various branches to
-    % be used when processing the following code.
+    % after the branched structure is ensured by size_prof_process_goal
+    % returning only the common subsets of the maps constructed by the
+    % various branches to be used when processing the following code.
     %
 :- pred record_known_type_ctor_info(prog_var::in, module_name::in, string::in,
     int::in, info::in, info::out) is det.
@@ -1268,11 +1292,11 @@ find_defined_args(Args, Modes, DefinedArgs, NonDefinedArgs, Info) :-
     ;
         Args = [],
         Modes = [_ | _],
-        unexpected(this_file, "size_prof.find_defined_args: length mismatch")
+        unexpected(this_file, "size_prof_find_defined_args: length mismatch")
     ;
         Args = [_ | _],
         Modes = [],
-        unexpected(this_file, "size_prof.find_defined_args: length mismatch")
+        unexpected(this_file, "size_prof_find_defined_args: length mismatch")
     ;
         Args = [FirstArg | LaterArgs],
         Modes = [FirstMode | LaterModes],
@@ -1289,8 +1313,8 @@ find_defined_args(Args, Modes, DefinedArgs, NonDefinedArgs, Info) :-
 
 :- pred binds_arg_in_cell(info::in, uni_mode::in) is semidet.
 
-binds_arg_in_cell(Info, (CellInitInst - _ArgInitInst) ->
-        (CellFinalInst - _ArgFinalInst)) :-
+binds_arg_in_cell(Info,
+        (CellInitInst - _ArgInitInst) -> (CellFinalInst - _ArgFinalInst)) :-
     ModuleInfo = Info ^ spi_module_info,
     inst_is_free(ModuleInfo, CellInitInst),
     inst_is_bound(ModuleInfo, CellFinalInst).

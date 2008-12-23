@@ -429,11 +429,17 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         type_assign_get_constraint_map(TypeAssign, ConstraintMap0),
 
         map.keys(VarTypes0, Vars),
-        expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
-        apply_rec_subst_to_constraint_proofs(TypeBindings,
-            ConstraintProofs0, ConstraintProofs),
-        apply_rec_subst_to_constraint_map(TypeBindings,
-            ConstraintMap0, ConstraintMap1),
+        ( map.is_empty(TypeBindings) ->
+            VarTypes = VarTypes0,
+            ConstraintProofs = ConstraintProofs0,
+            ConstraintMap1 = ConstraintMap0
+        ;
+            expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
+            apply_rec_subst_to_constraint_proofs(TypeBindings,
+                ConstraintProofs0, ConstraintProofs),
+            apply_rec_subst_to_constraint_map(TypeBindings,
+                ConstraintMap0, ConstraintMap1)
+        ),
 
         % When inferring the typeclass constraints, the universal constraints
         % here may be assumed (if this is the last pass) but will not have been

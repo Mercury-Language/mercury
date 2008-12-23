@@ -262,6 +262,12 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             GoalExpr =
                 conj(plain_conj, [MarkTicketStackGoal, StoreTicketGoal, Goal3])
         ;
+            Reason = from_ground_term(_, from_ground_term_construct)
+        ->
+            % The scope has no goals that either create choice points
+            % or allocate dynamic terms.
+            GoalExpr = scope(Reason, InnerGoal0)
+        ;
             goal_add_trail_ops(InnerGoal0, InnerGoal, !Info),
             GoalExpr = scope(Reason, InnerGoal)
         ),

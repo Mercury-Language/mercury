@@ -121,19 +121,23 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
         backward_use_in_cases(VarTypes, Cases0, Cases, !LBU),
         !:Expr = switch(A, B, Cases)
     ;
-        !.Expr = negation(Goal0),
-        % handled as: if(Goal0) then fail else true
+        !.Expr = negation(SubGoal0),
+        % handled as: if SubGoal0 then fail else true
         LBU0 = !.LBU,
-        backward_use_in_goal(VarTypes, Goal0, Goal, !.LBU, _),
-        % A not does not introduce any choice-points! Hence the
-        % not itself is deterministic, and no new variables in LBU
+        backward_use_in_goal(VarTypes, SubGoal0, SubGoal, !.LBU, _),
+        % A negation does not introduce any choice-points! Hence the
+        % negation itself is deterministic, and no new variables in LBU
         % are introduced into the resulting LBU-set.
         !:LBU = LBU0,
-        !:Expr = negation(Goal)
+        !:Expr = negation(SubGoal)
     ;
-        !.Expr = scope(Reason, SomeGoal0),
-        backward_use_in_goal(VarTypes, SomeGoal0, SomeGoal, !LBU),
-        !:Expr = scope(Reason, SomeGoal)
+        !.Expr = scope(Reason, SubGoal0),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            SubGoal = SubGoal0
+        ;
+            backward_use_in_goal(VarTypes, SubGoal0, SubGoal, !LBU)
+        ),
+        !:Expr = scope(Reason, SubGoal)
     ;
         % XXX The implementation for if-then-else is different from the theory
         % in the thesis.  We can obtain more precision when the Condition-goal

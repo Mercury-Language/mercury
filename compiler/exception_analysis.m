@@ -279,8 +279,11 @@ combine_individual_proc_results(ProcResults @ [_|_], SCC_Result,
         % that might have user-defined equality or comparison predicate that
         % throw exceptions.
         %
-        all [EResult] list.member(EResult, ProcResults) =>
-            EResult ^ status \= may_throw(_),
+        all [EResult] (
+            list.member(EResult, ProcResults)
+        =>
+            EResult ^ status \= may_throw(_)
+        ),
         some [CResult] (
             list.member(CResult, ProcResults),
             CResult ^ status = throw_conditional
@@ -291,9 +294,12 @@ combine_individual_proc_results(ProcResults @ [_|_], SCC_Result,
         % If none of the procedures can throw a user_exception but one or more
         % can throw a type_exception then mark the SCC as maybe throwing a
         % type_exception.
-        %
-        all [EResult] list.member(EResult, ProcResults) =>
-            EResult ^ status \= may_throw(user_exception),
+
+        all [EResult] (
+            list.member(EResult, ProcResults)
+        =>
+            EResult ^ status \= may_throw(user_exception)
+        ),
         some [TResult] (
             list.member(TResult, ProcResults),
             TResult ^ status = may_throw(type_exception)
@@ -364,21 +370,89 @@ check_goal_for_exceptions(SCC, VarTypes, hlds_goal(GoalExpr, GoalInfo),
     hlds_goal_expr::in, hlds_goal_info::in, proc_result::in, proc_result::out,
     module_info::in, module_info::out) is det.
 
-check_goal_for_exceptions_2(_, _, Goal, _, !Result, !ModuleInfo) :-
-    Goal = unify(_, _, _, Kind, _),
+check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
+        !Result, !ModuleInfo) :-
     (
-        Kind = complicated_unify(_, _, _),
-        unexpected(this_file, "complicated unify during exception analysis.")
-    ;
-        ( Kind = construct(_, _, _, _, _, _, _)
-        ; Kind = deconstruct(_, _, _, _, _, _)
-        ; Kind = assign(_, _)
-        ; Kind = simple_test(_, _)
+        GoalExpr = unify(_, _, _, Kind, _),
+        (
+            Kind = complicated_unify(_, _, _),
+            unexpected(this_file,
+                "complicated unify during exception analysis.")
+        ;
+            ( Kind = construct(_, _, _, _, _, _, _)
+            ; Kind = deconstruct(_, _, _, _, _, _)
+            ; Kind = assign(_, _)
+            ; Kind = simple_test(_, _)
+            )
         )
+    ;
+        GoalExpr = plain_call(CallPredId, CallProcId, Args, _, _, _),
+        check_goal_for_exceptions_plain_call(SCC, VarTypes,
+            CallPredId, CallProcId, Args, !Result, !ModuleInfo)
+    ;
+        GoalExpr = generic_call(Details, Args, _, _),
+        check_goal_for_exceptions_generic_call(VarTypes, Details, Args,
+            GoalInfo, !Result, !ModuleInfo)
+    ;
+        GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
+
+        % NOTE: for --intermodule-analysis the results for for foreign_procs
+        % will *always* be optimal (since we always rely on user annotation),
+        % so there's nothing to do here.
+        MayCallMercury = get_may_call_mercury(Attributes),
+        (
+            MayCallMercury = proc_may_call_mercury,
+            get_may_throw_exception(Attributes) = MayThrowException,
+            % We do not need to deal with erroneous predicates here because
+            % they will have already been processed.
+            (
+                MayThrowException = default_exception_behaviour,
+                !Result ^ status := may_throw(user_exception)
+            ;
+                MayThrowException = proc_will_not_throw_exception
+            )
+        ;
+            MayCallMercury = proc_will_not_call_mercury
+        )
+    ;
+        ( GoalExpr = disj(Goals)
+        ; GoalExpr = conj(_, Goals)
+        ),
+        check_goals_for_exceptions(SCC, VarTypes, Goals, !Result, !ModuleInfo)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        CaseGoals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases),
+        check_goals_for_exceptions(SCC, VarTypes, CaseGoals, !Result,
+            !ModuleInfo)
+    ;
+        GoalExpr = if_then_else(_, If, Then, Else),
+        check_goals_for_exceptions(SCC, VarTypes, [If, Then, Else],
+            !Result, !ModuleInfo)
+    ;
+        GoalExpr = negation(SubGoal),
+        check_goal_for_exceptions(SCC, VarTypes, SubGoal, !Result, !ModuleInfo)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            true
+        ;
+            check_goal_for_exceptions(SCC, VarTypes, SubGoal, !Result,
+                !ModuleInfo)
+        )
+    ;
+        GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file,
+            "shorthand goal encountered during exception analysis.")
     ).
-check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result,
-        !ModuleInfo) :-
-    Goal = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
+
+:- pred check_goal_for_exceptions_plain_call(scc::in, vartypes::in,
+    pred_id::in, proc_id::in, list(prog_var)::in,
+    proc_result::in, proc_result::out, module_info::in, module_info::out)
+    is det.
+
+check_goal_for_exceptions_plain_call(SCC, VarTypes, CallPredId, CallProcId,
+        CallArgs, !Result, !ModuleInfo) :-
     CallPPId = proc(CallPredId, CallProcId),
     module_info_pred_info(!.ModuleInfo, CallPredId, CallPredInfo),
     (
@@ -427,9 +501,14 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result,
         check_nonrecursive_call(VarTypes, CallPPId, CallArgs, CallPredInfo,
             !Result, !ModuleInfo)
     ).
-check_goal_for_exceptions_2(_SCC, VarTypes, Goal, GoalInfo, !Result,
-        !ModuleInfo) :-
-    Goal = generic_call(Details, Args, _ArgModes, _),
+
+:- pred check_goal_for_exceptions_generic_call(vartypes::in,
+    generic_call::in, list(prog_var)::in, hlds_goal_info::in,
+    proc_result::in, proc_result::out, module_info::in, module_info::out)
+    is det.
+
+check_goal_for_exceptions_generic_call(VarTypes, Details, Args, GoalInfo,
+        !Result, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
@@ -447,7 +526,7 @@ check_goal_for_exceptions_2(_SCC, VarTypes, Goal, GoalInfo, !Result,
                     % procedures that are known not to throw exceptions.
                 ;
                     ConditionalProcs = [_ | _],
-                    %
+
                     % For 'conditional' procedures we need to make sure that
                     % if any type variables are bound at the generic_call
                     % site, then this does not cause the closure to throw an
@@ -468,16 +547,16 @@ check_goal_for_exceptions_2(_SCC, VarTypes, Goal, GoalInfo, !Result,
                     % perform a fine-grained enough analysis of where
                     % out-of-line unifications/comparisons occur to be able to
                     % do better.
-                    %
+
                     check_vars(!.ModuleInfo, VarTypes, Args,
                         MaybeAnalysisStatus, !Result)
                 )
             ;
                 MaybeWillNotThrow = may_throw,
-                !:Result = !.Result ^ status := may_throw(user_exception)
+                !Result ^ status := may_throw(user_exception)
             )
         ;
-            !:Result = !.Result ^ status := may_throw(user_exception)
+            !Result ^ status := may_throw(user_exception)
         )
     ;
         % XXX We could do better with class methods.
@@ -488,54 +567,6 @@ check_goal_for_exceptions_2(_SCC, VarTypes, Goal, GoalInfo, !Result,
     ;
         Details = cast(_)
     ).
-check_goal_for_exceptions_2(SCC, VarTypes, negation(Goal), _,
-        !Result, !ModuleInfo) :-
-    check_goal_for_exceptions(SCC, VarTypes, Goal, !Result, !ModuleInfo).
-check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result, !ModuleInfo) :-
-    Goal = scope(_, ScopeGoal),
-    check_goal_for_exceptions(SCC, VarTypes, ScopeGoal, !Result,
-        !ModuleInfo).
-check_goal_for_exceptions_2(_, _, Goal, _, !Result, !ModuleInfo) :-
-    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
-    %
-    % NOTE: for --intermodule-analysis the results for for foreign_procs will
-    % *always* be optimal (since we always rely on user annotation), so
-    % there's nothing to do here.
-    %
-    MayCallMercury = get_may_call_mercury(Attributes),
-    (
-        MayCallMercury = proc_may_call_mercury,
-        get_may_throw_exception(Attributes) = MayThrowException,
-        %
-        % We do not need to deal with erroneous predicates here because they
-        % will have already been processed.
-        %
-        (
-            MayThrowException = default_exception_behaviour,
-            !:Result = !.Result ^ status := may_throw(user_exception)
-        ;
-            MayThrowException = proc_will_not_throw_exception
-        )
-    ;
-        MayCallMercury = proc_will_not_call_mercury
-    ).
-check_goal_for_exceptions_2(_, _, shorthand(_), _, _, _, _, _) :-
-    % These should have been expanded out by now.
-    unexpected(this_file,
-        "shorthand goal encountered during exception analysis.").
-check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result, !ModuleInfo) :-
-    Goal = switch(_, _, Cases),
-    CaseGoals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases),
-    check_goals_for_exceptions(SCC, VarTypes, CaseGoals, !Result, !ModuleInfo).
-check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result, !ModuleInfo) :-
-    Goal = if_then_else(_, If, Then, Else),
-    check_goals_for_exceptions(SCC, VarTypes, [If, Then, Else],
-        !Result, !ModuleInfo).
-check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result, !ModuleInfo) :-
-    ( Goal = disj(Goals)
-    ; Goal = conj(_, Goals)
-    ),
-    check_goals_for_exceptions(SCC, VarTypes, Goals, !Result, !ModuleInfo).
 
 :- pred check_goals_for_exceptions(scc::in, vartypes::in,
     hlds_goals::in, proc_result::in, proc_result::out,
@@ -775,8 +806,11 @@ check_vars(ModuleInfo, VarTypes, Vars, MaybeAnalysisStatus, !Result) :-
 
 handle_mixed_conditional_scc(Results) =
     (
-        all [TypeStatus] list.member(Result, Results) =>
+        all [TypeStatus] (
+            list.member(Result, Results)
+        =>
             Result ^ rec_calls \= type_may_throw
+        )
     ->
         throw_conditional
     ;
@@ -816,11 +850,11 @@ handle_mixed_conditional_scc(Results) =
             % XXX (Or it has ones that are known not to throw
             %      exceptions).
 
-    ;   type_may_throw
+    ;       type_may_throw
             % This type has a user-defined equality or comparison
             % predicate that is known to throw an exception.
 
-    ;   type_conditional.
+    ;       type_conditional.
             % This type is polymorphic.  We cannot say anything about
             % it until we know the values of the type-variables.
 
@@ -858,9 +892,8 @@ check_type(ModuleInfo, Type) = Status :-
         ( is_solver_type(ModuleInfo, Type)
         ; is_existq_type(ModuleInfo, Type))
      ->
-        % XXX At the moment we just assume that existential
-        % types and solver types result in a type exception
-        % being thrown.
+        % XXX At the moment we just assume that existential types and
+        % solver types result in a type exception being thrown.
         Status = type_may_throw
     ;
         TypeCategory = classify_type(ModuleInfo, Type),
@@ -917,9 +950,9 @@ check_type_2(ModuleInfo, Type, CtorCat) = WillThrow :-
     % type_ctor can be determined by examining the exception status of the
     % arguments, if any.
     %
-    % NOTE: this list does not need to include enumerations since they
-    %       are already handled above.  Also, this list does not need to
-    %       include non-abstract equivalence types.
+    % NOTE: This list does not need to include enumerations since they
+    % are already handled above. Also, this list does not need to include
+    % non-abstract equivalence types.
     %
 :- pred type_ctor_is_safe(type_ctor::in) is semidet.
 
@@ -1214,7 +1247,7 @@ write_pragma_exceptions(ModuleInfo, ExceptionInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_procids(PredInfo),
     list.foldl(
-        write_pragma_exceptions_2(ModuleInfo, ExceptionInfo, PredId, PredInfo), 
+        write_pragma_exceptions_2(ModuleInfo, ExceptionInfo, PredId, PredInfo),
         ProcIds, !IO).
 
 :- pred write_pragma_exceptions_2(module_info::in, exception_info::in,
@@ -1256,12 +1289,12 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
         IntermodAnalysis),
     globals.lookup_bool_option(Globals, analyse_exceptions,
         ExceptionAnalysis),
-    %
+
     % If we the procedure we are calling is imported and we are using
     % intermodule-analysis then we need to look up the exception status in the
     % analysis registry; otherwise we look it up in the the exception_info
     % table.
-    %
+
     UseAnalysisRegistry = IsImported `bool.and` IntermodAnalysis
         `bool.and` ExceptionAnalysis,
     (

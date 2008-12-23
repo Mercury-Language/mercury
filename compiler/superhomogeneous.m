@@ -119,6 +119,7 @@
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module libs.compiler_util.
+:- import_module libs.handle_options.   % for get_from_ground_term_threshold
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_io_sym_name.
@@ -139,34 +140,30 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func from_ground_term_scope_threshold = int.
-
-from_ground_term_scope_threshold = 15.
-
 insert_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     do_insert_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal,
-        yes(from_ground_term_scope_threshold), NumAdded,
+        get_from_ground_term_threshold, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
 
 insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0,
         ArgContexts, Context, !Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !Specs) :-
     do_insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0,
-        ArgContexts, Context,
-        !Goal, yes(from_ground_term_scope_threshold), NumAdded,
+        ArgContexts, Context, !Goal,
+        get_from_ground_term_threshold, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
 
 append_arg_unifications(HeadVars, Args0, Context, ArgContext,
         !Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     do_append_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal,
-        yes(from_ground_term_scope_threshold), NumAdded,
+        get_from_ground_term_threshold, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
 
 unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
         Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
-        Purity, Goal, yes(from_ground_term_scope_threshold), NumAdded,
+        Purity, Goal, get_from_ground_term_threshold, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
@@ -415,14 +412,50 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
     (
         MaybeThreshold = yes(Threshold),
         NumAdded > Threshold,
-        LHS = term.variable(X, _),
+        LHS = term.variable(LHSVar, _),
         ground_term(RHS)
     ->
-        Goal0 = hlds_goal(_, GoalInfo),
-        Goal = hlds_goal(scope(from_ground_term(X), Goal0), GoalInfo)
+        Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+        % We don't yet know whether this scope is actually be a construction;
+        % that is decided during mode analysis. However, the code inside the
+        % scope actually maintains the invariants we expect from
+        % from_ground_term_construct scopes, and quantification can
+        % exploit this knowledge.
+        Kind = from_ground_term_construct,
+        goal_info_set_nonlocals(set.make_singleton_set(LHSVar),
+            GoalInfo0, GoalInfo),
+        ( GoalExpr0 = conj(plain_conj, Conjuncts0) ->
+            mark_nonlocals_in_ground_term_construct(Conjuncts0, Conjuncts),
+            SubGoalExpr = conj(plain_conj, Conjuncts),
+            SubGoal = hlds_goal(SubGoalExpr, GoalInfo),
+            GoalExpr = scope(from_ground_term(LHSVar, Kind), SubGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo)
+        ;
+            unexpected(this_file,
+                "do_unravel_unification: from_ground_term not conj")
+        )
     ;
         Goal = Goal0
     ).
+
+:- pred mark_nonlocals_in_ground_term_construct(
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
+
+mark_nonlocals_in_ground_term_construct([], []).
+mark_nonlocals_in_ground_term_construct([Goal0 | Goals0], [Goal | Goals]) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+    (
+        GoalExpr = unify(LHSVar, RHS, _, _, _),
+        RHS = rhs_functor(_, _, RHSVars)
+    ->
+        set.list_to_set([LHSVar | RHSVars], NonLocals),
+        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        unexpected(this_file,
+            "mark_nonlocals_in_ground_term_construct: wrong shape goal")
+    ),
+    mark_nonlocals_in_ground_term_construct(Goals0, Goals).
 
 :- pred classify_unravel_unification(prog_term::in, prog_term::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,

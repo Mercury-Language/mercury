@@ -193,9 +193,12 @@ do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
         maybe_write_string(Statistics, "% Processed all items in pass 2\n",
             !IO),
         maybe_report_stats(Statistics, !IO),
+
         init_qual_info(MQInfo0, EqvMap, QualInfo0),
         add_item_list_pass_3(Items, status_local, !ModuleInfo,
             QualInfo0, QualInfo, !Specs),
+        maybe_write_string(Statistics, "% Processed all items in pass 3\n",
+            !IO),
 
         qual_info_get_mq_info(QualInfo, MQInfo),
         mq_info_get_type_error_flag(MQInfo, InvalidTypes3),

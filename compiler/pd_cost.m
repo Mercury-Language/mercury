@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2007 University of Melbourne.
+% Copyright (C) 1998-2008 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,91 +59,106 @@ goal_cost(Goal, Cost) :-
 :- pred goal_expr_cost(hlds_goal_expr::in, hlds_goal_info::in, int::out)
     is det.
 
-goal_expr_cost(conj(_, Goals), _, Cost) :-
-    goal_costs(Goals, 0, Cost).
-
-goal_expr_cost(disj(Goals), _, Cost) :-
-    goal_costs(Goals, 0, Cost0),
-    Cost = Cost0 + cost_of_stack_flush.
-
-goal_expr_cost(switch(_, _, Cases), _, Cost) :-
-    cases_cost(Cases, cost_of_simple_test, Cost).
-
-goal_expr_cost(if_then_else(_, Cond, Then, Else), _, Cost) :-
-    goal_cost(Cond, Cost1),
-    goal_cost(Then, Cost2),
-    goal_cost(Else, Cost3),
-    Cost = Cost1 + Cost2 + Cost3.
-
-goal_expr_cost(plain_call(_, _, Args, BuiltinState, _, _), _, Cost) :-
+goal_expr_cost(GoalExpr, GoalInfo, Cost) :-
     (
-        BuiltinState = inline_builtin,
-        Cost = cost_of_builtin_call
+        GoalExpr = conj(_, Goals),
+        goal_costs(Goals, 0, Cost)
     ;
-        ( BuiltinState = out_of_line_builtin
-        ; BuiltinState = not_builtin
+        GoalExpr = disj(Goals),
+        goal_costs(Goals, 0, Cost0),
+        Cost = Cost0 + cost_of_stack_flush
+    ;
+        GoalExpr = switch(_, _, Cases),
+        cases_cost(Cases, cost_of_simple_test, Cost)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        goal_cost(Cond, Cost1),
+        goal_cost(Then, Cost2),
+        goal_cost(Else, Cost3),
+        Cost = Cost1 + Cost2 + Cost3
+    ;
+        GoalExpr = plain_call(_, _, Args, BuiltinState, _, _),
+        (
+            BuiltinState = inline_builtin,
+            Cost = cost_of_builtin_call
+        ;
+            ( BuiltinState = out_of_line_builtin
+            ; BuiltinState = not_builtin
+            ),
+            list.length(Args, Arity),
+            InputArgs = Arity // 2, % rough
+            Cost = cost_of_stack_flush + cost_of_call
+                + cost_of_reg_assign * InputArgs
+        )
+    ;
+        GoalExpr = negation(Goal),
+        goal_cost(Goal, Cost)
+    ;
+        GoalExpr = scope(Reason, Goal),
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            Cost = cost_of_reg_assign
+        ;
+            goal_cost(Goal, Cost)
+        )
+    ;
+        GoalExpr = generic_call(_, Args, _, _),
+        list.length(Args, Arity),
+        Cost0 = cost_of_reg_assign * Arity // 2,
+        Cost = Cost0 + cost_of_stack_flush + cost_of_higher_order_call
+    ;
+        GoalExpr = unify(_, _, _, Unification, _),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        unify_cost(NonLocals, Unification, Cost)
+    ;
+        GoalExpr = call_foreign_proc(Attributes, _, _, Args, _, _, _),
+        ( get_may_call_mercury(Attributes) = proc_will_not_call_mercury ->
+            Cost1 = 0
+        ;
+            Cost1 = cost_of_stack_flush
         ),
+        % XXX This is *too* rough.
         list.length(Args, Arity),
         InputArgs = Arity // 2, % rough
-        Cost = cost_of_stack_flush + cost_of_call
-            + cost_of_reg_assign * InputArgs
-    ).
-
-goal_expr_cost(negation(Goal), _, Cost) :-
-    goal_cost(Goal, Cost).
-
-goal_expr_cost(scope(_, Goal), _, Cost) :-
-    goal_cost(Goal, Cost).
-
-goal_expr_cost(generic_call(_, Args, _, _), _, Cost) :-
-    list.length(Args, Arity),
-    Cost0 = cost_of_reg_assign * Arity // 2,
-    Cost = Cost0 + cost_of_stack_flush + cost_of_higher_order_call.
-
-goal_expr_cost(unify(_, _, _, Unification, _), GoalInfo, Cost) :-
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    unify_cost(NonLocals, Unification, Cost).
-
-goal_expr_cost(call_foreign_proc(Attributes, _, _, Args, _, _, _), _, Cost) :-
-    ( get_may_call_mercury(Attributes) = proc_will_not_call_mercury ->
-        Cost1 = 0
+        Cost = Cost1 + cost_of_call + cost_of_reg_assign * InputArgs
     ;
-        Cost1 = cost_of_stack_flush
-    ),
-    % XXX This is *too* rough.
-    list.length(Args, Arity),
-    InputArgs = Arity // 2, % rough
-    Cost = Cost1 + cost_of_call + cost_of_reg_assign * InputArgs.
-
-goal_expr_cost(shorthand(_), _, _) :-
-    % these should have been expanded out by now
-    unexpected(this_file, "goal_cost: unexpected shorthand").
+        GoalExpr = shorthand(_),
+        % these should have been expanded out by now
+        unexpected(this_file, "goal_cost: unexpected shorthand")
+    ).
 
 :- pred unify_cost(set(prog_var)::in, unification::in, int::out) is det.
 
-unify_cost(_, assign(_, _), 0).
-unify_cost(_, complicated_unify(_, _, _), cost_of_stack_flush).
-unify_cost(_, simple_test(_, _), cost_of_simple_test).
-unify_cost(NonLocals, construct(Var, _, Args, _, _, _, _), Cost) :-
-    ( set.member(Var, NonLocals) ->
-        list.length(Args, Arity),
-        Cost = cost_of_heap_incr + Arity * cost_of_heap_assign
-    ;
-        Cost = 0
-    ).
-unify_cost(NonLocals, deconstruct(_, _, Args, _, CanFail, _), Cost) :-
+unify_cost(NonLocals, Unification, Cost) :-
     (
-        CanFail = can_fail,
-        Cost0 = cost_of_simple_test
+        Unification = assign(_, _),
+        Cost = 0
     ;
-        CanFail = cannot_fail,
-        Cost0 = 0
-    ),
-    list.filter((pred(X::in) is semidet :-
-            set.member(X, NonLocals)
-        ), Args, NonLocalArgs),
-    list.length(NonLocalArgs, NumAssigns),
-    Cost = Cost0 + cost_of_heap_incr + NumAssigns * cost_of_heap_assign.
+        Unification = complicated_unify(_, _, _),
+        Cost = cost_of_stack_flush
+    ;
+        Unification = simple_test(_, _),
+        Cost = cost_of_simple_test
+    ;
+        Unification = construct(Var, _, Args, _, _, _, _),
+        ( set.member(Var, NonLocals) ->
+            list.length(Args, Arity),
+            Cost = cost_of_heap_incr + Arity * cost_of_heap_assign
+        ;
+            Cost = 0
+        )
+    ;
+        Unification = deconstruct(_, _, Args, _, CanFail, _),
+        (
+            CanFail = can_fail,
+            Cost0 = cost_of_simple_test
+        ;
+            CanFail = cannot_fail,
+            Cost0 = 0
+        ),
+        list.filter(set.contains(NonLocals), Args, NonLocalArgs),
+        list.length(NonLocalArgs, NumAssigns),
+        Cost = Cost0 + cost_of_heap_incr + NumAssigns * cost_of_heap_assign
+    ).
 
 :- pred goal_costs(list(hlds_goal)::in, int::in, int::out) is det.
 

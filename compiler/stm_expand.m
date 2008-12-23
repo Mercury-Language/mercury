@@ -330,18 +330,23 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = scope(Reason, InnerGoal0),
         (
+            Reason = from_ground_term(_, from_ground_term_construct),
+            % There can be no atomic goals inside this scope.
+            Goal = Goal0
+        ;
             ( Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)
-            ; Reason = from_ground_term(_)
+            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ; Reason = from_ground_term(_, from_ground_term_other)
             ; Reason = trace_goal(_, _, _, _, _)
-            )
-        ),
-        stm_process_goal(Instmap, InnerGoal0, InnerGoal, !Info),
-        GoalExpr = scope(Reason, InnerGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+            ),
+            stm_process_goal(Instmap, InnerGoal0, InnerGoal, !Info),
+            GoalExpr = scope(Reason, InnerGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         stm_process_if_then_else(Instmap, Cond0, Then0, Else0, Cond, Then,
@@ -514,8 +519,8 @@ order_vars_into_groups(ModuleInfo, Vars, InitInstmap, FinalInstmap, Local,
 order_vars_into_groups_2(_, [], _, _, !Local, !Input, !Output).
 order_vars_into_groups_2(ModuleInfo, [Var|Vars], InitInstmap, FinalInstmap,
         !LocalVars, !InputVars, !OutputVars) :-
-    lookup_var(InitInstmap, Var, InitVarInst),
-    lookup_var(FinalInstmap, Var, FinalVarInst),
+    instmap_lookup_var(InitInstmap, Var, InitVarInst),
+    instmap_lookup_var(FinalInstmap, Var, FinalVarInst),
     (
         inst_is_free(ModuleInfo, InitVarInst),
         inst_is_free(ModuleInfo, FinalVarInst)
