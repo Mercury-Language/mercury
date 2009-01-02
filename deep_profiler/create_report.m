@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
 
     % Create a proc var use dump report.
     %
-:- pred create_proc_var_use_dump_report(deep::in, proc_static_ptr::in, 
+:- pred create_proc_var_use_dump_report(deep::in, proc_static_ptr::in,
     maybe_error(proc_var_use_dump_info)::out) is det.
 
     % Create a proc report.
@@ -58,6 +58,7 @@
 
 :- import_module array.
 :- import_module assoc_list.
+:- import_module char.
 :- import_module exception.
 :- import_module float.
 :- import_module int.
@@ -69,6 +70,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
+:- import_module unit.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%
@@ -113,6 +115,11 @@ create_report(Cmd, Deep, Report) :-
         create_module_report(Deep, ModuleName, MaybeModuleReport),
         Report = report_module(MaybeModuleReport)
     ;
+        Cmd = deep_cmd_module_getter_setters(ModuleName),
+        create_module_getter_setter_report(Deep, ModuleName,
+            MaybeModuleGetterSettersReport),
+        Report = report_module_getter_setters(MaybeModuleGetterSettersReport)
+    ;
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         create_top_procs_report(Deep, Limit, CostKind, InclDesc, Scope,
             MaybeTopProcsReport),
@@ -121,7 +128,7 @@ create_report(Cmd, Deep, Report) :-
         Cmd = deep_cmd_procrep_coverage(PSPtr),
         create_procrep_coverage_report(Deep, PSPtr,
             MaybeProcrepCoverageReport),
-        Report = report_procrep_coverage_dump(MaybeProcrepCoverageReport)
+        Report = report_procrep_coverage(MaybeProcrepCoverageReport)
     ;
         Cmd = deep_cmd_proc(PSPtr),
         create_proc_report(Deep, PSPtr, MaybeProcReport),
@@ -564,6 +571,184 @@ proc_to_active_row_data(Deep, PSPtr) = ProcRowData :-
 
 %-----------------------------------------------------------------------------%
 %
+% Code to build a module_getter_setters report.
+%
+
+:- type gs_field_raw_data
+    --->    gs_field_raw_data(
+                gs_raw_proc         :: proc_desc,
+                gs_raw_own          :: own_prof_info,
+                gs_raw_desc         :: inherit_prof_info
+            ).
+
+:- type raw_gs_field_info   == gs_field_info(gs_field_raw_data, unit).
+:- type raw_gs_field_map    == gs_field_map(raw_gs_field_info).
+:- type raw_gs_ds_map       == gs_ds_map(raw_gs_field_info).
+
+    % Create a module_getter_setters report, from the given data
+    % with the specified parameters.
+    %
+:- pred create_module_getter_setter_report(deep::in, string::in,
+    maybe_error(module_getter_setters_report)::out) is det.
+
+create_module_getter_setter_report(Deep, ModuleName,
+        MaybeModuleGetterSettersReport) :-
+    ( map.search(Deep ^ module_data, ModuleName, ModuleData) ->
+        PSPtrs = ModuleData ^ module_procs,
+        list.foldl(gather_getters_setters(Deep), PSPtrs,
+            map.init, GetterSetterDataMap),
+        map.map_values(getter_setter_raw_map_to_info_map(Deep),
+            GetterSetterDataMap, GetterSetterInfoMap),
+        ModuleGetterSettersReport = module_getter_setters_report(ModuleName,
+            GetterSetterInfoMap),
+        MaybeModuleGetterSettersReport = ok(ModuleGetterSettersReport)
+    ;
+        Msg = string.format("There is no module named `%s'.\n",
+            [s(ModuleName)]),
+        MaybeModuleGetterSettersReport = error(Msg)
+    ).
+
+:- pred getter_setter_raw_map_to_info_map(deep::in, data_struct_name::in,
+    raw_gs_field_map::in, gs_field_map::out) is det.
+
+getter_setter_raw_map_to_info_map(Deep, _DataStructName, RawMap, Map) :-
+    map.map_values(getter_setter_raw_data_to_info(Deep), RawMap, Map).
+
+:- pred getter_setter_raw_data_to_info(deep::in, field_name::in,
+    raw_gs_field_info::in, gs_field_info::out) is det.
+
+getter_setter_raw_data_to_info(Deep, _FieldName, RawData, Data) :-
+    (
+        RawData = gs_field_both(RawGetter, RawSetter, _),
+        RawGetter = gs_field_raw_data(GetterProcDesc, GetterOwn, GetterDesc),
+        RawSetter = gs_field_raw_data(SetterProcDesc, SetterOwn, SetterDesc),
+        own_and_inherit_to_perf_row_data(Deep, GetterProcDesc,
+            GetterOwn, GetterDesc, GetterRowData),
+        own_and_inherit_to_perf_row_data(Deep, SetterProcDesc,
+            SetterOwn, SetterDesc, SetterRowData),
+        SumOwn = add_own_to_own(GetterOwn, SetterOwn),
+        SumDesc = add_inherit_to_inherit(GetterDesc, SetterDesc),
+        own_and_inherit_to_perf_row_data(Deep, unit, SumOwn, SumDesc,
+            SumRowData),
+        Data = gs_field_both(GetterRowData, SetterRowData, SumRowData)
+    ;
+        RawData = gs_field_getter(RawGetter),
+        RawGetter = gs_field_raw_data(GetterProcDesc, GetterOwn, GetterDesc),
+        own_and_inherit_to_perf_row_data(Deep, GetterProcDesc, GetterOwn,
+            GetterDesc, GetterRowData),
+        Data = gs_field_getter(GetterRowData)
+    ;
+        RawData = gs_field_setter(RawSetter),
+        RawSetter = gs_field_raw_data(SetterProcDesc, SetterOwn, SetterDesc),
+        own_and_inherit_to_perf_row_data(Deep, SetterProcDesc, SetterOwn,
+            SetterDesc, SetterRowData),
+        Data = gs_field_setter(SetterRowData)
+    ).
+
+:- pred gather_getters_setters(deep::in, proc_static_ptr::in,
+    raw_gs_ds_map::in, raw_gs_ds_map::out) is det.
+
+gather_getters_setters(Deep, PSPtr, !GSDSRawMap) :-
+    ( valid_proc_static_ptr(Deep, PSPtr) ->
+        deep_lookup_proc_statics(Deep, PSPtr, PS),
+        Id = PS ^ ps_id,
+        ( is_getter_or_setter(Id, GetterSetter, DataStructName, FieldName) ->
+            deep_lookup_ps_own(Deep, PSPtr, Own),
+            deep_lookup_ps_desc(Deep, PSPtr, Desc),
+            ProcDesc = describe_proc(Deep, PSPtr),
+            RawData = gs_field_raw_data(ProcDesc, Own, Desc),
+            ( map.search(!.GSDSRawMap, DataStructName, FieldMap0Prime) ->
+                FieldMap0 = FieldMap0Prime
+            ;
+                map.init(FieldMap0)
+            ),
+            ( map.search(FieldMap0, FieldName, FieldData0) ->
+                (
+                    GetterSetter = getter,
+                    (
+                        ( FieldData0 = gs_field_both(_, _, _)
+                        ; FieldData0 = gs_field_getter(_)
+                        ),
+                        error("gather_getters_setters: redundant getter")
+                    ;
+                        FieldData0 = gs_field_setter(SetterRawData),
+                        FieldData = gs_field_both(RawData, SetterRawData, unit)
+                    )
+                ;
+                    GetterSetter = setter,
+                    (
+                        ( FieldData0 = gs_field_both(_, _, _)
+                        ; FieldData0 = gs_field_setter(_)
+                        ),
+                        error("gather_getters_setters: redundant setter")
+                    ;
+                        FieldData0 = gs_field_getter(GetterRawData),
+                        FieldData = gs_field_both(GetterRawData, RawData, unit)
+                    )
+                ),
+                map.det_update(FieldMap0, FieldName, FieldData, FieldMap)
+            ;
+                (
+                    GetterSetter = getter,
+                    FieldData = gs_field_getter(RawData)
+                ;
+                    GetterSetter = setter,
+                    FieldData = gs_field_setter(RawData)
+                ),
+                map.det_insert(FieldMap0, FieldName, FieldData, FieldMap)
+            ),
+            svmap.set(DataStructName, FieldMap, !GSDSRawMap)
+        ;
+            true
+        )
+    ;
+        true
+    ).
+
+:- pred is_getter_or_setter(string_proc_label::in, getter_or_setter::out,
+    data_struct_name::out, field_name::out) is semidet.
+
+is_getter_or_setter(StringProcLabel, GetterSetter, DataStructName, FieldName) :-
+    StringProcLabel = str_ordinary_proc_label(_PorF, DeclModule, DefModule,
+        Name, Arity, _Mode),
+    DeclModule = DefModule,
+    string.to_char_list(Name, NameChars),
+    is_getter_or_setter_2(NameChars, GetterSetter, DataStructNameChars,
+        FieldNameChars),
+    (
+        GetterSetter = getter,
+        Arity = 2
+    ;
+        GetterSetter = setter,
+        Arity = 3
+    ),
+    string.from_char_list(DataStructNameChars, DataStructNameStr),
+    string.from_char_list(FieldNameChars, FieldNameStr),
+    DataStructName = data_struct_name(DataStructNameStr),
+    FieldName = field_name(FieldNameStr).
+
+:- pred is_getter_or_setter_2(list(char)::in, getter_or_setter::out,
+    list(char)::out, list(char)::out) is semidet.
+
+is_getter_or_setter_2(NameChars, GetterSetter, DataStructNameChars,
+        FieldNameChars) :-
+    ( NameChars = ['_', 'g', 'e', 't', '_' | FieldNameCharsPrime] ->
+        GetterSetter = getter,
+        DataStructNameChars = [],
+        FieldNameChars = FieldNameCharsPrime
+    ; NameChars = ['_', 's', 'e', 't', '_' | FieldNameCharsPrime] ->
+        GetterSetter = setter,
+        DataStructNameChars = [],
+        FieldNameChars = FieldNameCharsPrime
+    ;
+        NameChars = [FirstNameChar | LaterNameChars],
+        is_getter_or_setter_2(LaterNameChars, GetterSetter,
+            LaterDataStructNameChars, FieldNameChars),
+        DataStructNameChars = [FirstNameChar | LaterDataStructNameChars]
+    ).
+
+%-----------------------------------------------------------------------------%
+%
 % Code to build a top_procs report.
 %
 
@@ -893,7 +1078,7 @@ create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
 
                 % Gather call site information.
                 CallSitesArray = PS ^ ps_sites,
-                CallSitesMap = array.foldl(create_cs_summary_add_to_map(Deep), 
+                CallSitesMap = array.foldl(create_cs_summary_add_to_map(Deep),
                     CallSitesArray, map.init),
 
                 % Gather information about coverage points.
@@ -908,7 +1093,7 @@ create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
                 MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep))
             ;
                 MaybeReport =
-                    error("Program Representation doesn't contain procedure: " 
+                    error("Program Representation doesn't contain procedure: "
                         ++ string(PSPtr))
             )
         ;
@@ -921,7 +1106,7 @@ create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
 
 create_cs_summary_add_to_map(Deep, CSStatic, Map0) = Map :-
     create_call_site_summary(Deep, CSStatic) = CSSummary,
-    GoalPath = CSSummary ^ csf_summary_perf ^ perf_row_subject 
+    GoalPath = CSSummary ^ csf_summary_perf ^ perf_row_subject
         ^ csdesc_goal_path,
     map.det_insert(Map0, GoalPath, CSSummary, Map).
 
@@ -1204,22 +1389,36 @@ describe_proc(Deep, PSPtr) = ProcDesc :-
 describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
     ( valid_call_site_static_ptr(Deep, CSSPtr) ->
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
-        CSS = call_site_static(ContainingPSPtr, SlotNumber, _Kind, LineNumber,
+        CSS = call_site_static(ContainingPSPtr, SlotNumber, Kind, LineNumber,
             GoalPathString),
         deep_lookup_proc_statics(Deep, ContainingPSPtr, ContainingPS),
         FileName = ContainingPS ^ ps_file_name,
         RefinedName = ContainingPS ^ ps_refined_id,
-        goal_path_from_string_det(GoalPathString, GoalPath)
+        goal_path_from_string_det(GoalPathString, GoalPath),
+        (
+            Kind = normal_call_and_callee(CalleePSPtr, _TypeSubst),
+            CalleeDesc = describe_proc(Deep, CalleePSPtr),
+            MaybeCalleeDesc = yes(CalleeDesc)
+        ;
+            ( Kind = special_call_and_no_callee
+            ; Kind = higher_order_call_and_no_callee
+            ; Kind = method_call_and_no_callee
+            ; Kind = callback_and_no_callee
+            ),
+            MaybeCalleeDesc = no
+        )
     ;
         ContainingPSPtr = dummy_proc_static_ptr,
         FileName = "",
         LineNumber = 0,
         RefinedName = "mercury_runtime",
         SlotNumber = -1,
-        GoalPath = empty_goal_path 
+        GoalPath = empty_goal_path,
+        MaybeCalleeDesc = no
     ),
     CallSiteDesc = call_site_desc(CSSPtr, ContainingPSPtr,
-        FileName, LineNumber, RefinedName, SlotNumber, GoalPath).
+        FileName, LineNumber, RefinedName, SlotNumber, GoalPath,
+        MaybeCalleeDesc).
 
     % Create a clique_desc structure for a given clique.
     %

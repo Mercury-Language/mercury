@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003, 2005-2008 The University of Melbourne.
+% Copyright (C) 2001-2003, 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -109,6 +109,9 @@
             )
     ;       deep_cmd_procrep_coverage(
                 cmd_procrep_coverage_proc_id    :: proc_static_ptr
+            )
+    ;       deep_cmd_module_getter_setters(
+                cmd_mgs_module_name             :: string
             )
 
     % The following commands are for debugging.
@@ -417,6 +420,7 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
         )
     ;
         ( Cmd = deep_cmd_procrep_coverage(_)
+        ; Cmd = deep_cmd_module_getter_setters(_)
         ; Cmd = deep_cmd_dump_proc_var_use(_)
         ),
         new_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
@@ -575,6 +579,11 @@ cmd_to_string(Cmd) = CmdStr :-
         CmdStr = string.format("%s%c%s",
             [s(cmd_str_module), c(cmd_separator_char), s(ModuleName)])
     ;
+        Cmd = deep_cmd_module_getter_setters(ModuleName),
+        CmdStr = string.format("%s%c%s",
+            [s(cmd_str_module_getter_setters), c(cmd_separator_char),
+            s(ModuleName)])
+    ;
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         LimitStr = limit_to_string(Limit),
         CostKindStr = cost_kind_to_string(CostKind),
@@ -707,6 +716,11 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         Pieces = [cmd_str_module, ModuleName]
     ->
         Cmd = deep_cmd_module(ModuleName),
+        MaybeCmd = yes(Cmd)
+    ;
+        Pieces = [cmd_str_module_getter_setters, ModuleName]
+    ->
+        Cmd = deep_cmd_module_getter_setters(ModuleName),
         MaybeCmd = yes(Cmd)
     ;
         Pieces = [cmd_str_top_procs, LimitStr, CostKindStr, InclDescStr, 
@@ -1207,6 +1221,9 @@ cmd_str_program_modules = "program_modules".
 
 :- func cmd_str_module = string.
 cmd_str_module = "module".
+
+:- func cmd_str_module_getter_setters = string.
+cmd_str_module_getter_setters = "module_getter_setters".
 
 :- func cmd_str_top_procs = string.
 cmd_str_top_procs = "top_procs".

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,10 +50,12 @@
 :- import_module float.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 
@@ -99,6 +101,16 @@ report_to_display(Deep, Prefs, Report) = Display :-
             Display = display(no, [display_heading(Msg)])
         )
     ;
+        Report = report_module_getter_setters(MaybeModuleGetterSettersReport),
+        (
+            MaybeModuleGetterSettersReport = ok(ModuleGetterSettersReport),
+            display_report_module_getter_setters(Prefs,
+                ModuleGetterSettersReport, Display)
+        ;
+            MaybeModuleGetterSettersReport = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
+    ;
         Report = report_top_procs(MaybeTopProcsReport),
         (
             MaybeTopProcsReport = ok(TopProcsReport),
@@ -117,16 +129,7 @@ report_to_display(Deep, Prefs, Report) = Display :-
             Display = display(no, [display_heading(Msg)])
         )
     ;
-        Report = report_proc_callers(MaybeProcCallersReport),
-        (
-            MaybeProcCallersReport = ok(ProcCallersReport),
-            display_report_proc_callers(Prefs, ProcCallersReport, Display)
-        ;
-            MaybeProcCallersReport = error(Msg),
-            Display = display(no, [display_heading(Msg)])
-        )
-    ;
-        Report = report_procrep_coverage_dump(MaybeProcrepCoverageInfo),
+        Report = report_procrep_coverage(MaybeProcrepCoverageInfo),
         (
             MaybeProcrepCoverageInfo = ok(ProcrepCoverageInfo),
             display_report_procrep_coverage_info(Prefs, ProcrepCoverageInfo,
@@ -134,6 +137,15 @@ report_to_display(Deep, Prefs, Report) = Display :-
         ;
             MaybeProcrepCoverageInfo = error(Msg),
             Display = display(no, [display_text(Msg)])
+        )
+    ;
+        Report = report_proc_callers(MaybeProcCallersReport),
+        (
+            MaybeProcCallersReport = ok(ProcCallersReport),
+            display_report_proc_callers(Prefs, ProcCallersReport, Display)
+        ;
+            MaybeProcCallersReport = error(Msg),
+            Display = display(no, [display_heading(Msg)])
         )
     ;
         Report = report_proc_static_dump(MaybeProcStaticDumpInfo),
@@ -688,6 +700,10 @@ display_report_module(Prefs, ModuleReport, Display) :-
     DisplayTable = display_table(Table),
 
     % Build controls at the bottom of the page.
+    GetterSetterCmd = deep_cmd_module_getter_setters(ModuleName),
+    GetterSetterControl = display_link(deep_link(GetterSetterCmd, yes(Prefs),
+        attr_str([], "Show field getters and setters"), link_class_link)),
+
     InactiveControls = inactive_proc_controls(Prefs, Cmd),
     FieldControls = field_controls(Prefs, Cmd),
     FormatControls = format_controls(Prefs, Cmd),
@@ -695,6 +711,7 @@ display_report_module(Prefs, ModuleReport, Display) :-
 
     Display = display(yes(Title),
         [DisplayTable,
+        display_paragraph_break, GetterSetterControl,
         display_paragraph_break, InactiveControls,
         display_paragraph_break, FieldControls,
         display_paragraph_break, FormatControls,
@@ -705,6 +722,128 @@ display_report_module(Prefs, ModuleReport, Display) :-
 active_proc(ProcRowData) :-
     ProcActive = ProcRowData ^ perf_row_subject,
     ProcActive ^ pa_is_active = proc_is_active.
+
+%-----------------------------------------------------------------------------%
+%
+% Code to display a module_getter_setters report.
+%
+
+    % Create a display_report structure for a top_procedures report.
+    %
+:- pred display_report_module_getter_setters(preferences::in,
+    module_getter_setters_report::in, display::out) is det.
+
+display_report_module_getter_setters(Prefs, Report, Display) :-
+    Report = module_getter_setters_report(ModuleName, GSMap),
+    Title = string.format("The getters and setters of module %s:",
+        [s(ModuleName)]),
+    map.to_assoc_list(GSMap, GSPairs),
+    RowLists = list.map(display_data_struct_getter_setters(Prefs, ModuleName),
+        GSPairs),
+    list.condense(RowLists, Rows),
+
+    SortByNamePrefs = Prefs ^ pref_criteria := by_name,
+    FieldNameHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs),
+        attr_str([], "FieldName"), link_class_link)),
+
+    RankHeaderGroup = make_single_table_header_group(td_s("Rank"),
+        table_column_class_ordinal_rank, column_do_not_colour),
+    FieldNameHeaderGroup = make_single_table_header_group(FieldNameHeaderCell,
+        table_column_class_field_name, column_do_not_colour),
+    Cmd = deep_cmd_module_getter_setters(ModuleName),
+    MakeHeaderData = override_order_criteria_header_data(Cmd),
+    perf_table_header(total_columns_meaningful, Prefs, MakeHeaderData,
+        PerfHeaderGroups),
+    header_groups_to_header([RankHeaderGroup, FieldNameHeaderGroup
+        | PerfHeaderGroups], NumColumns, Header),
+
+    Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
+    TableItem = display_table(Table),
+
+    ModuleCmd = deep_cmd_module(ModuleName),
+    ModuleControl = display_link(deep_link(ModuleCmd, yes(Prefs),
+        attr_str([], "Show all the procedures of the module"),
+        link_class_link)),
+    MenuResetQuitControls = cmds_menu_restart_quit(yes(Prefs)),
+    Controls =
+        [display_paragraph_break, ModuleControl,
+        display_paragraph_break, MenuResetQuitControls],
+
+    Display = display(yes(Title), [TableItem] ++ Controls).
+
+:- func display_data_struct_getter_setters(preferences, string,
+    pair(data_struct_name, gs_field_map)) = list(table_row).
+
+display_data_struct_getter_setters(Prefs, ModuleName,
+        DataStructName - FieldMap) = Rows :-
+    DataStructName = data_struct_name(Name),
+    Title = string.format("The getters and setters of %s:", [s(Name)]),
+    TitleHeader = table_section_header(td_as(attr_str([attr_bold], Title))),
+    map.to_assoc_list(FieldMap, FieldPairs0),
+    sort_getter_setter_fields(Prefs, FieldPairs0, FieldPairs),
+    list.map_foldl(display_field_getter_setters(Prefs, ModuleName),
+        FieldPairs, DataRowLists, 1, _),
+    list.condense(DataRowLists, DataRows),
+    Rows = [table_separator_row, TitleHeader, table_separator_row | DataRows].
+
+:- pred display_field_getter_setters(preferences::in, string::in,
+    pair(field_name, gs_field_info)::in, list(table_row)::out,
+    int::in, int::out) is det.
+
+display_field_getter_setters(Prefs, _ModuleName, FieldName - FieldInfo, Rows,
+        !Rank):-
+    Fields = Prefs ^ pref_fields,
+    FieldName = field_name(Name),
+    RankCell = table_cell(td_i(!.Rank)),
+    (
+        FieldInfo = gs_field_getter(GetterRowData),
+        perf_table_row(total_columns_meaningful, Fields, GetterRowData,
+            GetterPerfCells),
+        GetterProcDesc = GetterRowData ^ perf_row_subject,
+        GetterFieldNameCell = proc_desc_to_proc_name_cell(Prefs,
+            GetterProcDesc),
+        GetterRow =
+            table_row([RankCell, GetterFieldNameCell | GetterPerfCells]),
+        Rows = [table_separator_row, GetterRow]
+    ;
+        FieldInfo = gs_field_setter(SetterRowData),
+        perf_table_row(total_columns_meaningful, Fields, SetterRowData,
+            SetterPerfCells),
+        SetterProcDesc = SetterRowData ^ perf_row_subject,
+        SetterFieldNameCell = proc_desc_to_proc_name_cell(Prefs,
+            SetterProcDesc),
+        SetterRow =
+            table_row([RankCell, SetterFieldNameCell | SetterPerfCells]),
+        Rows = [table_separator_row, SetterRow]
+    ;
+        FieldInfo = gs_field_both(GetterRowData, SetterRowData, SumRowData),
+        EmptyCell = table_cell(td_s("")),
+
+        perf_table_row(total_columns_meaningful, Fields, SumRowData,
+            SumPerfCells),
+        SummaryName = string.format("%s summary", [s(Name)]),
+        SumFieldNameCell = table_cell(td_s(SummaryName)),
+        SumRow = table_row([RankCell, SumFieldNameCell | SumPerfCells]),
+
+        perf_table_row(total_columns_meaningful, Fields, GetterRowData,
+            GetterPerfCells),
+        GetterProcDesc = GetterRowData ^ perf_row_subject,
+        GetterFieldNameCell = proc_desc_to_proc_name_cell(Prefs,
+            GetterProcDesc),
+        GetterRow =
+            table_row([EmptyCell, GetterFieldNameCell | GetterPerfCells]),
+
+        perf_table_row(total_columns_meaningful, Fields, SetterRowData,
+            SetterPerfCells),
+        SetterProcDesc = SetterRowData ^ perf_row_subject,
+        SetterFieldNameCell = proc_desc_to_proc_name_cell(Prefs,
+            SetterProcDesc),
+        SetterRow =
+            table_row([EmptyCell, SetterFieldNameCell | SetterPerfCells]),
+
+        Rows = [table_separator_row, SumRow, GetterRow, SetterRow]
+    ),
+    !:Rank = !.Rank + 1.
 
 %-----------------------------------------------------------------------------%
 %
@@ -805,9 +944,17 @@ display_report_proc(Prefs, ProcReport, Display) :-
     PSPtr = ProcDesc ^ pdesc_ps_ptr,
     Cmd = deep_cmd_proc(PSPtr),
 
-    SourceHeaderGroup = make_single_table_header_group(td_s("Source"),
+    SortByContextPrefs = Prefs ^ pref_criteria := by_context,
+    SourceHeaderCell = td_l(deep_link(Cmd, yes(SortByContextPrefs),
+        attr_str([], "Source"), link_class_link)),
+
+    SortByNamePrefs = Prefs ^ pref_criteria := by_name,
+    ProcHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs),
+        attr_str([], "Procedure"), link_class_link)),
+
+    SourceHeaderGroup = make_single_table_header_group(SourceHeaderCell,
         table_column_class_source_context, column_do_not_colour),
-    ProcHeaderGroup = make_single_table_header_group(td_s("Procedure"),
+    ProcHeaderGroup = make_single_table_header_group(ProcHeaderCell,
         table_column_class_proc, column_do_not_colour),
     MakeHeaderData = override_order_criteria_header_data(Cmd),
     perf_table_header(total_columns_meaningful, Prefs, MakeHeaderData,
@@ -949,17 +1096,12 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
     Prefs = Prefs0 ^ pref_contour := ContourExcl,
 
     PSPtr = ProcDesc ^ pdesc_ps_ptr,
-    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, ContourExcl),
-    MakeHeaderData = override_order_criteria_header_data(Cmd),
-    perf_table_header(total_columns_meaningful, Prefs, MakeHeaderData,
-        PerfHeaderGroups),
-
-    RankHeaderGroup = make_single_table_header_group(td_s("Rank"),
-        table_column_class_ordinal_rank, column_do_not_colour),
 
     (
         CallerRowDatas = proc_caller_call_sites(CallSiteRowDatas),
         CallerGroups = group_by_call_site,
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+            ContourExcl),
         Title = "The call sites calling " ++ RefinedName,
         sort_call_site_desc_rows_by_preferences(Prefs, CallSiteRowDatas,
             SortedCallSiteRowDatas),
@@ -968,14 +1110,24 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
             DisplayedBunchNum, MaybeFirstAndLastBunchNum),
         list.map_foldl(display_caller_call_site(Prefs),
             DisplayedCallSiteRowDatas, Rows, FirstRowNum, AfterLastRowNum),
-        SourceHeaderGroup = make_single_table_header_group(td_s("Source"),
+
+        SortByContextPrefs = Prefs ^ pref_criteria := by_context,
+        SourceHeaderCell = td_l(deep_link(Cmd, yes(SortByContextPrefs),
+            attr_str([], "Source"), link_class_link)),
+        SortByNamePrefs = Prefs ^ pref_criteria := by_context,
+        ProcHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs),
+            attr_str([], "In procedure"), link_class_link)),
+
+        SourceHeaderGroup = make_single_table_header_group(SourceHeaderCell,
             table_column_class_source_context, column_do_not_colour),
-        ProcHeaderGroup = make_single_table_header_group(td_s("In procedure"),
+        ProcHeaderGroup = make_single_table_header_group(ProcHeaderCell,
             table_column_class_proc, column_do_not_colour),
         IdHeaderGroups = [SourceHeaderGroup, ProcHeaderGroup]
     ;
         CallerRowDatas = proc_caller_procedures(ProcRowDatas),
         CallerGroups = group_by_proc,
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+            ContourExcl),
         Title = "The procedures calling " ++ RefinedName,
         sort_proc_desc_rows_by_preferences(Prefs, ProcRowDatas,
             SortedProcRowDatas),
@@ -984,14 +1136,24 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
             DisplayedBunchNum, MaybeFirstAndLastBunchNum),
         list.map_foldl(display_caller_proc(Prefs),
             DisplayedProcRowDatas, Rows, FirstRowNum, AfterLastRowNum),
-        SourceHeaderGroup = make_single_table_header_group(td_s("Source"),
+
+        SortByContextPrefs = Prefs ^ pref_criteria := by_context,
+        SourceHeaderCell = td_l(deep_link(Cmd, yes(SortByContextPrefs),
+            attr_str([], "Source"), link_class_link)),
+        SortByNamePrefs = Prefs ^ pref_criteria := by_context,
+        ProcHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs),
+            attr_str([], "Procedure"), link_class_link)),
+
+        SourceHeaderGroup = make_single_table_header_group(SourceHeaderCell,
             table_column_class_source_context, column_do_not_colour),
-        ProcHeaderGroup = make_single_table_header_group(td_s("Procedure"),
+        ProcHeaderGroup = make_single_table_header_group(ProcHeaderCell,
             table_column_class_proc, column_do_not_colour),
         IdHeaderGroups = [SourceHeaderGroup, ProcHeaderGroup]
     ;
         CallerRowDatas = proc_caller_modules(ModuleRowDatas),
         CallerGroups = group_by_module,
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+            ContourExcl),
         Title = "The modules calling " ++ RefinedName,
         sort_module_name_rows_by_preferences(Prefs, ModuleRowDatas,
             SortedModuleRowDatas),
@@ -1000,12 +1162,19 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
             DisplayedBunchNum, MaybeFirstAndLastBunchNum),
         list.map_foldl(display_caller_module(Prefs),
             DisplayedModuleRowDatas, Rows, FirstRowNum, AfterLastRowNum),
-        ModuleHeaderGroup = make_single_table_header_group(td_s("Module"),
+
+        SortByNamePrefs = Prefs ^ pref_criteria := by_name,
+        ModuleHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs),
+            attr_str([], "Module"), link_class_link)),
+
+        ModuleHeaderGroup = make_single_table_header_group(ModuleHeaderCell,
             table_column_class_source_context, column_do_not_colour),
         IdHeaderGroups = [ModuleHeaderGroup]
     ;
         CallerRowDatas = proc_caller_cliques(CliqueRowDatas),
         CallerGroups = group_by_clique,
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+            ContourExcl),
         Title = "The cliques calling " ++ RefinedName,
         sort_clique_rows_by_preferences(Prefs, CliqueRowDatas,
             SortedCliqueRowDatas),
@@ -1014,13 +1183,23 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
             DisplayedBunchNum, MaybeFirstAndLastBunchNum),
         list.map_foldl(display_caller_clique(Prefs),
             DisplayedCliqueRowDatas, Rows, FirstRowNum, AfterLastRowNum),
-        CliqueHeaderGroup = make_single_table_header_group(td_s("Clique"),
+
+        SortByNamePrefs = Prefs ^ pref_criteria := by_name,
+        CliqueHeaderCell = td_l(deep_link(Cmd, yes(SortByNamePrefs),
+            attr_str([], "Clique"), link_class_link)),
+
+        CliqueHeaderGroup = make_single_table_header_group(CliqueHeaderCell,
             table_column_class_clique, column_do_not_colour),
         MembersHeaderGroup = make_single_table_header_group(td_s("Members"),
             table_column_class_clique, column_do_not_colour),
         IdHeaderGroups = [CliqueHeaderGroup, MembersHeaderGroup]
     ),
 
+    RankHeaderGroup = make_single_table_header_group(td_s("Rank"),
+        table_column_class_ordinal_rank, column_do_not_colour),
+    MakeHeaderData = override_order_criteria_header_data(Cmd),
+    perf_table_header(total_columns_meaningful, Prefs, MakeHeaderData,
+        PerfHeaderGroups),
     AllHeaderGroups = [RankHeaderGroup] ++ IdHeaderGroups ++ PerfHeaderGroups,
     header_groups_to_header(AllHeaderGroups, NumColumns, Header),
 
@@ -1233,7 +1412,7 @@ make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum,
 
 %-----------------------------------------------------------------------------%
 %
-% Code to display procrep_coverage dumps
+% Code to display procrep_coverage information.
 %
 
 :- pred display_report_procrep_coverage_info(preferences::in,
@@ -1248,10 +1427,11 @@ display_report_procrep_coverage_info(Prefs, ProcrepCoverageReport, Display) :-
     Cmd = deep_cmd_procrep_coverage(PSPtr),
     ProcReportControls = proc_reports_controls(Prefs, PSPtr, Cmd),
     MenuResetQuitControls = cmds_menu_restart_quit(yes(Prefs)),
-    Controls = [display_paragraph_break, ProcReportControls,
-                display_paragraph_break, MenuResetQuitControls],
+    Controls =
+        [display_paragraph_break, ProcReportControls,
+        display_paragraph_break, MenuResetQuitControls],
 
-    Title = "Procrep coverage dump",
+    Title = "Procedure coverage:",
     Display = display(yes(Title), [CoverageInfoItem] ++ Controls).
 
 :- instance goal_annotation(coverage_info) where [
@@ -3288,7 +3468,8 @@ proc_desc_to_prefix_proc_name_cell(Prefs, Attrs, ProcDesc, Prefix) = Cell :-
 
 call_site_desc_to_name_path_slot_cell(Prefs, CallSiteDesc) = Cell :-
     CallSiteDesc = call_site_desc(CSSPtr, _ContainerPSPtr,
-        _FileName, _LineNumber, RefinedName, SlotNumber, GoalPath),
+        _FileName, _LineNumber, RefinedName, SlotNumber, GoalPath,
+        _MaybeCallee),
     GoalPathStr = goal_path_to_string(GoalPath),
     string.format("%s @ %s #%d", 
         [s(RefinedName), s(GoalPathStr), i(SlotNumber)], Name),
@@ -3534,7 +3715,7 @@ sort_call_sites_by_preferences(Prefs, !CallSitePerfs) :-
         list.sort(compare_call_site_perfs_by_context, !CallSitePerfs)
     ;
         OrderCriteria = by_name,
-        list.sort(compare_call_site_perfs_by_name, !CallSitePerfs)
+        list.sort(compare_call_site_perfs_by_callee_name, !CallSitePerfs)
     ;
         OrderCriteria = by_cost(CostKind, InclDesc, Scope),
         list.sort(compare_call_site_perfs_by_cost(CostKind, InclDesc, Scope),
@@ -3551,13 +3732,14 @@ compare_call_site_perfs_by_context(CallSitePerfA, CallSitePerfB, Result) :-
     CallSiteDescB = CallSitePerfB ^ csf_summary_perf ^ perf_row_subject,
     compare_call_site_descs_by_context(CallSiteDescA, CallSiteDescB, Result).
 
-:- pred compare_call_site_perfs_by_name(
+:- pred compare_call_site_perfs_by_callee_name(
     call_site_perf::in, call_site_perf::in, comparison_result::out) is det.
 
-compare_call_site_perfs_by_name(CallSitePerfA, CallSitePerfB, Result) :-
+compare_call_site_perfs_by_callee_name(CallSitePerfA, CallSitePerfB, Result) :-
     CallSiteDescA = CallSitePerfA ^ csf_summary_perf ^ perf_row_subject,
     CallSiteDescB = CallSitePerfB ^ csf_summary_perf ^ perf_row_subject,
-    compare_call_site_descs_by_name(CallSiteDescA, CallSiteDescB, Result).
+    compare_call_site_descs_by_callee_name(CallSiteDescA, CallSiteDescB,
+        Result).
 
 :- pred compare_call_site_perfs_by_cost(
     cost_kind::in, include_descendants::in, measurement_scope::in,
@@ -3701,6 +3883,81 @@ compare_proc_active_rows_by_name(ModuleRowDataA, ModuleRowDataB, Result) :-
     ProcDescA = ModuleRowDataA ^ perf_row_subject ^ pa_proc_desc,
     ProcDescB = ModuleRowDataB ^ perf_row_subject ^ pa_proc_desc,
     compare_proc_descs_by_name(ProcDescA, ProcDescB, Result).
+
+%-----------------------------------------------------------------------------%
+%
+% Sort perf_data_rows of module_getter_setters by the preferred criteria.
+%
+
+:- pred sort_getter_setter_fields(preferences::in,
+    assoc_list(field_name, gs_field_info)::in,
+    assoc_list(field_name, gs_field_info)::out) is det.
+
+sort_getter_setter_fields(Prefs, !FieldPairs) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        % In the common case, each FieldPair has two contexts, one each from
+        % the getter and the setter. Neither context is all that useful to sort
+        % by, so we sort by the field name instead.
+        ( OrderCriteria = by_context
+        ; OrderCriteria = by_name
+        ),
+        list.sort(compare_getter_setters_by_name, !FieldPairs)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        list.sort(compare_getter_setters_by_cost(CostKind, InclDesc, Scope),
+            !FieldPairs),
+        % We want the most expensive fields to appear first.
+        list.reverse(!FieldPairs)
+    ).
+
+:- pred compare_getter_setters_by_name(
+    pair(field_name, gs_field_info)::in, pair(field_name, gs_field_info)::in,
+    comparison_result::out) is det.
+
+compare_getter_setters_by_name(PairA, PairB, Result) :-
+    PairA = FieldNameA - _,
+    PairB = FieldNameB - _,
+    compare(Result, FieldNameA, FieldNameB).
+
+:- pred compare_getter_setters_by_cost(
+    cost_kind::in, include_descendants::in, measurement_scope::in,
+    pair(field_name, gs_field_info)::in, pair(field_name, gs_field_info)::in,
+    comparison_result::out) is det.
+
+compare_getter_setters_by_cost(CostKind, InclDesc, Scope, PairA, PairB,
+        Result) :-
+    PairA = FieldNameA - FieldInfoA,
+    PairB = FieldNameB - FieldInfoB,
+    PerfA = representative_field_perf_row(FieldInfoA),
+    PerfB = representative_field_perf_row(FieldInfoB),
+    compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope, PerfA, PerfB,
+        PerfResult),
+    (
+        ( PerfResult = (<)
+        ; PerfResult = (>)
+        ),
+        Result = PerfResult
+    ;
+        PerfResult = (=),
+        % We switch the field names to rank in reverse alphabetical order.
+        % We do this because our caller will reverse the final sorted list,
+        % and *this* reversal is needed to undo the effects of *that* reversal.
+        compare(Result, FieldNameB, FieldNameA)
+    ).
+
+:- func representative_field_perf_row(gs_field_info) = perf_row_data(unit).
+
+representative_field_perf_row(FieldInfo) = Perf :-
+    (
+        FieldInfo = gs_field_getter(Perf0),
+        Perf = Perf0 ^ perf_row_subject := unit
+    ;
+        FieldInfo = gs_field_setter(Perf0),
+        Perf = Perf0 ^ perf_row_subject := unit
+    ;
+        FieldInfo = gs_field_both(_, _, Perf)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3878,6 +4135,30 @@ compare_call_site_descs_by_name(CallSiteDescA, CallSiteDescB, Result) :-
     NameA = CallSiteDescA ^ csdesc_caller_refined_name,
     NameB = CallSiteDescB ^ csdesc_caller_refined_name,
     compare(Result, NameA, NameB).
+
+:- pred compare_call_site_descs_by_callee_name(
+    call_site_desc::in, call_site_desc::in, comparison_result::out) is det.
+
+compare_call_site_descs_by_callee_name(CallSiteDescA, CallSiteDescB, Result) :-
+    MaybeCalleeA = CallSiteDescA ^ csdesc_maybe_callee,
+    MaybeCalleeB = CallSiteDescB ^ csdesc_maybe_callee,
+    (
+        MaybeCalleeA = no,
+        MaybeCalleeB = no,
+        Result = (=)
+    ;
+        MaybeCalleeA = no,
+        MaybeCalleeB = yes(_),
+        Result = (<)
+    ;
+        MaybeCalleeA = yes(_),
+        MaybeCalleeB = no,
+        Result = (>)
+    ;
+        MaybeCalleeA = yes(CalleeNameA),
+        MaybeCalleeB = yes(CalleeNameB),
+        compare_proc_descs_by_name(CalleeNameA, CalleeNameB, Result)
+    ).
 
 :- pred compare_proc_descs_by_name(proc_desc::in, proc_desc::in,
     comparison_result::out) is det.

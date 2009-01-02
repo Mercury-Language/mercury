@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2008 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -588,6 +588,7 @@ table_column_class_to_string(table_column_class_no_class) = "default".
 table_column_class_to_string(table_column_class_allocations) = "allocations".
 table_column_class_to_string(table_column_class_clique) = "clique".
 table_column_class_to_string(table_column_class_callseqs) = "callseqs".
+table_column_class_to_string(table_column_class_field_name) = "field_name".
 table_column_class_to_string(table_column_class_memory) = "memory".
 table_column_class_to_string(table_column_class_module_name) = "module_name".
 table_column_class_to_string(table_column_class_number) = "number".
@@ -661,6 +662,11 @@ default_style_control_map =
         ( style_control("td.clique") -
             map.from_assoc_list([
                 style_element("text-align")     - "right"
+            ])
+        ),
+        ( style_control("td.field_name") -
+            map.from_assoc_list([
+                style_element("text-align")     - "left"
             ])
         ),
         ( style_control("td.memory") -

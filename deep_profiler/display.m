@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -66,7 +66,7 @@
             )
     ;       display_verbatim(
                 % A string to be displayed verbatim.  It should be displayed
-                % with a fixed with font and line breaks should be honoured.
+                % with a fixed width font and line breaks should be honoured.
                 string
             ).
 
@@ -161,6 +161,7 @@
     --->    table_column_class_allocations
     ;       table_column_class_callseqs
     ;       table_column_class_clique
+    ;       table_column_class_field_name
     ;       table_column_class_memory
     ;       table_column_class_module_name
     ;       table_column_class_no_class

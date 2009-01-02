@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,29 +32,62 @@
 :- import_module var_use_analysis.
 
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module string.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 
 :- type deep_report
-    --->    report_message(message_report)
-    ;       report_menu(maybe_error(menu_report))
-    ;       report_clique(maybe_error(clique_report))
-    ;       report_program_modules(maybe_error(program_modules_report))
-    ;       report_module(maybe_error(module_report))
-    ;       report_top_procs(maybe_error(top_procs_report))
-    ;       report_proc(maybe_error(proc_report))
-    ;       report_procrep_coverage_dump(maybe_error(procrep_coverage_info))
-    ;       report_proc_callers(maybe_error(proc_callers_report))
-    ;       report_proc_static_dump(maybe_error(proc_static_dump_info))
-    ;       report_proc_dynamic_dump(maybe_error(proc_dynamic_dump_info))
+    --->    report_message(
+                message_report
+            )
+    ;       report_menu(
+                maybe_error(menu_report)
+            )
+    ;       report_clique(
+                maybe_error(clique_report)
+            )
+    ;       report_program_modules(
+                maybe_error(program_modules_report)
+            )
+    ;       report_module(
+                maybe_error(module_report)
+            )
+    ;       report_module_getter_setters(
+                maybe_error(module_getter_setters_report)
+            )
+    ;       report_top_procs(
+                maybe_error(top_procs_report)
+            )
+    ;       report_proc(
+                maybe_error(proc_report)
+            )
+    ;       report_procrep_coverage(
+                maybe_error(procrep_coverage_info)
+            )
+    ;       report_proc_callers(
+                maybe_error(proc_callers_report)
+            )
+    ;       report_proc_static_dump(
+                maybe_error(proc_static_dump_info)
+            )
+    ;       report_proc_dynamic_dump(
+                maybe_error(proc_dynamic_dump_info)
+            )
     ;       report_call_site_static_dump(
-                maybe_error(call_site_static_dump_info))
+                maybe_error(call_site_static_dump_info)
+            )
     ;       report_call_site_dynamic_dump(
-                maybe_error(call_site_dynamic_dump_info))
-    ;       report_clique_dump(maybe_error(clique_dump_info))
-    ;       report_proc_var_use_dump(maybe_error(proc_var_use_dump_info)).
+                maybe_error(call_site_dynamic_dump_info)
+            )
+    ;       report_clique_dump(
+                maybe_error(clique_dump_info)
+            )
+    ;       report_proc_var_use_dump(
+                maybe_error(proc_var_use_dump_info)
+            ).
 
 :- type message_report
     --->    message_report(
@@ -150,6 +183,47 @@
                 % of the program.
                 mr_module_name              :: string,
                 mr_procs                    :: list(perf_row_data(proc_active))
+            ).
+
+:- type data_struct_name
+    --->    data_struct_name(string).
+
+:- type field_name
+    --->    field_name(string).
+
+:- type getter_or_setter
+    --->    getter
+    ;       setter.
+
+:- type gs_field_info(I, S)
+    --->    gs_field_both(
+                gsf_both_getter             :: I,
+                gsf_both_setter             :: I,
+                gsf_both_summary            :: S
+            )
+    ;       gs_field_getter(
+                gsf_getter                  :: I
+            )
+    ;       gs_field_setter(
+                gsf_setter                  :: I
+            ).
+
+:- type gs_field_map(T) == map(field_name, T).
+:- type gs_ds_map(T)    == map(data_struct_name, gs_field_map(T)).
+
+:- type gs_field_info   == gs_field_info(
+                                perf_row_data(proc_desc),
+                                perf_row_data(unit)
+                           ).
+:- type gs_field_map    == gs_field_map(gs_field_info).
+:- type gs_ds_map       == gs_ds_map(gs_field_info).
+
+:- type module_getter_setters_report
+    --->    module_getter_setters_report(
+                % Summary information about all the procedures in one module
+                % of the program.
+                mgsr_module_name            :: string,
+                mgsr_procs                  :: gs_ds_map
             ).
 
 :- type top_procs_report
@@ -413,7 +487,8 @@
                 csdesc_line_number          :: int,
                 csdesc_caller_refined_name  :: string,
                 csdesc_slot_number          :: int,
-                csdesc_goal_path            :: goal_path 
+                csdesc_goal_path            :: goal_path,
+                csdesc_maybe_callee         :: maybe(proc_desc)
             ).
 
 :- type ancestor_desc
