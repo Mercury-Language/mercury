@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2128,7 +2128,7 @@ adjust_type_status(!ModuleInfo) :-
     module_info_get_type_table(!.ModuleInfo, Types0),
     map.to_assoc_list(Types0, TypesAL0),
     list.map_foldl(adjust_type_status_2, TypesAL0, TypesAL, !ModuleInfo),
-    map.from_assoc_list(TypesAL, Types),
+    map.from_sorted_assoc_list(TypesAL, Types),
     module_info_set_type_table(Types, !ModuleInfo).
 
 :- pred adjust_type_status_2(pair(type_ctor, hlds_type_defn)::in,
@@ -2161,7 +2161,7 @@ adjust_class_status(!ModuleInfo) :-
     module_info_get_class_table(!.ModuleInfo, Classes0),
     map.to_assoc_list(Classes0, ClassAL0),
     list.map_foldl(adjust_class_status_2, ClassAL0, ClassAL, !ModuleInfo),
-    map.from_assoc_list(ClassAL, Classes),
+    map.from_sorted_assoc_list(ClassAL, Classes),
     module_info_set_class_table(Classes, !ModuleInfo).
 
 :- pred adjust_class_status_2(pair(class_id, hlds_class_defn)::in,
@@ -2196,7 +2196,7 @@ adjust_instance_status(!ModuleInfo) :-
     map.to_assoc_list(Instances0, InstanceAL0),
     list.map_foldl(adjust_instance_status_2, InstanceAL0, InstanceAL,
         !ModuleInfo),
-    map.from_assoc_list(InstanceAL, Instances),
+    map.from_sorted_assoc_list(InstanceAL, Instances),
     module_info_set_instance_table(Instances, !ModuleInfo).
 
 :- pred adjust_instance_status_2(pair(class_id, list(hlds_instance_defn))::in,

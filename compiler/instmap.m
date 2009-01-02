@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1174,14 +1174,14 @@ compute_instmap_delta(reachable(InstMapA), reachable(InstMapB), NonLocals,
 
 compute_instmap_delta_2([], _, _, []).
 compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
+    compute_instmap_delta_2(Vars, InstMapA, InstMapB, AssocListTail),
     instmapping_lookup_var(InstMapA, Var, InstA),
     instmapping_lookup_var(InstMapB, Var, InstB),
     ( InstA = InstB ->
-        AssocList1 = AssocList
+        AssocList = AssocListTail
     ;
-        AssocList = [Var - InstB | AssocList1]
-    ),
-    compute_instmap_delta_2(Vars, InstMapA, InstMapB, AssocList1).
+        AssocList = [Var - InstB | AssocListTail]
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

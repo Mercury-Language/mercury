@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2671,17 +2671,19 @@ rename_var_maps(Must, Subn, Map0, Map) :-
     assoc_list(var(V), T)::in, assoc_list(var(V), T)::out) is det.
 
 rename_var_maps_2(_Must, _Subn, [], []).
-rename_var_maps_2(Must, Subn, [V - L | Vs], [N - L | Ns]) :-
-    rename_var(Must, Subn, V, N),
-    rename_var_maps_2(Must, Subn, Vs, Ns).
+rename_var_maps_2(Must, Subn,
+        [Var - Item | VarItems], [NewVar - Item | NewVarItems]) :-
+    rename_var(Must, Subn, Var, NewVar),
+    rename_var_maps_2(Must, Subn, VarItems, NewVarItems).
 
 :- pred rename_var_pair_list(must_rename::in, prog_var_renaming::in,
     assoc_list(prog_var, T)::in, list(pair(prog_var, T))::out) is det.
 
 rename_var_pair_list(_Must, _Subn, [], []).
-rename_var_pair_list(Must, Subn, [V - D | VDs], [N - D | NDs]) :-
-    rename_var(Must, Subn, V, N),
-    rename_var_pair_list(Must, Subn, VDs, NDs).
+rename_var_pair_list(Must, Subn,
+        [Var - Item | VarItems], [NewVar - Item | NewVarItems]) :-
+    rename_var(Must, Subn, Var, NewVar),
+    rename_var_pair_list(Must, Subn, VarItems, NewVarItems).
 
 %-----------------------------------------------------------------------------%
 %

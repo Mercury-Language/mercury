@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -199,10 +199,17 @@
 :- func map.from_assoc_list(assoc_list(K, V)) = map(K, V).
 :- pred map.from_assoc_list(assoc_list(K, V)::in, map(K, V)::out) is det.
 
-    % Convert a sorted association list to a map.
+    % Convert a sorted association list with no duplicated keys to a map.
     %
 :- func map.from_sorted_assoc_list(assoc_list(K, V)) = map(K, V).
 :- pred map.from_sorted_assoc_list(assoc_list(K, V)::in, map(K, V)::out)
+    is det.
+
+    % Convert a reverse sorted association list with no duplicated keys
+    % to a map.
+    %
+:- func map.from_rev_sorted_assoc_list(assoc_list(K, V)) = map(K, V).
+:- pred map.from_rev_sorted_assoc_list(assoc_list(K, V)::in, map(K, V)::out)
     is det.
 
     % Delete a key-value pair from a map.
@@ -738,7 +745,10 @@ map.from_assoc_list(L, M) :-
     tree234.assoc_list_to_tree234(L, M).
 
 map.from_sorted_assoc_list(L, M) :-
-    tree234.assoc_list_to_tree234(L, M).
+    tree234.from_sorted_assoc_list(L, M).
+
+map.from_rev_sorted_assoc_list(L, M) :-
+    tree234.from_rev_sorted_assoc_list(L, M).
 
 map.delete(Map0, Key, Map) :-
     tree234.delete(Map0, Key, Map).
@@ -787,7 +797,8 @@ map.old_merge(M0, M1, M) :-
     map.to_assoc_list(M0, ML0),
     map.to_assoc_list(M1, ML1),
     list.merge(ML0, ML1, ML),
-    map.from_sorted_assoc_list(ML, M).
+    % ML may be sorted, but it may contain duplicates.
+    map.from_assoc_list(ML, M).
 
 %-----------------------------------------------------------------------------%
 
@@ -1102,6 +1113,9 @@ map.from_assoc_list(AL) = M :-
 
 map.from_sorted_assoc_list(AL) = M :-
     map.from_sorted_assoc_list(AL, M).
+
+map.from_rev_sorted_assoc_list(AL) = M :-
+    map.from_rev_sorted_assoc_list(AL, M).
 
 map.delete(M1, K) = M2 :-
     map.delete(M1, K, M2).

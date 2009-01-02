@@ -225,6 +225,15 @@ Changes to the Mercury standard library:
 	construct.find_functor/5
 	type_desc.same_type/2 
 
+* We have added new predicates to the tree234 and map modules for constructing
+  2-3-4 trees and maps directly (without the creation of intermediate trees)
+  from sorted lists:
+	tree234.from_sorted_assoc_list/2
+	tree234.from_rev_sorted_assoc_list/2
+	map.from_rev_sorted_assoc_list/2
+  map.from_sorted_assoc_list now also constructs the tree directly, so now
+  it requires its input list to be duplicate-free.
+
 Changes to the Mercury compiler:
 
 * We have added support for trail segments, which allow programs to grow

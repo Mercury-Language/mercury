@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1252,10 +1252,9 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
     % afterwards, since every goal following a branched control structure
     % must in any case be annotated with its own follow_var set.
     map.to_assoc_list(StoreMap, AbsVarLocs),
-    map.from_assoc_list(AbsVarLocs, FollowVarsMap),
     assoc_list.values(AbsVarLocs, AbsLocs),
     code_util.max_mentioned_abs_reg(AbsLocs, MaxMentionedReg),
-    set_follow_vars(abs_follow_vars(FollowVarsMap, MaxMentionedReg + 1), !CI),
+    set_follow_vars(abs_follow_vars(StoreMap, MaxMentionedReg + 1), !CI),
     get_instmap(!.CI, InstMap),
     ( instmap_is_reachable(InstMap) ->
         VarLocs = assoc_list.map_values(key_abs_locn_to_lval, AbsVarLocs),
@@ -2897,7 +2896,7 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
         StackList0 = assoc_list.map_values(key_stack_slot_to_lval,
             AbsStackList),
         make_singleton_sets(StackList0, StackList),
-        map.from_assoc_list(StackList, StackMap)
+        map.from_sorted_assoc_list(StackList, StackMap)
     ;
         MaybeFailVars = no,
         map.init(StackMap)
@@ -2999,15 +2998,15 @@ make_stack_resume_map(ResumeVars, StackSlots, StackMap) :-
     map.to_assoc_list(StackMap0, AbsStackList),
     StackList0 = assoc_list.map_values(key_stack_slot_to_lval, AbsStackList),
     make_singleton_sets(StackList0, StackList),
-    map.from_assoc_list(StackList, StackMap).
+    map.from_sorted_assoc_list(StackList, StackMap).
 
 :- pred make_singleton_sets(assoc_list(prog_var, lval)::in,
     assoc_list(prog_var, set(lval))::out) is det.
 
 make_singleton_sets([], []).
-make_singleton_sets([V - L | Rest0], [V - Ls | Rest]) :-
-    set.singleton_set(Ls, L),
-    make_singleton_sets(Rest0, Rest).
+make_singleton_sets([Var - Lval | Tail], [Var - Lvals | SetTail]) :-
+    set.singleton_set(Lvals, Lval),
+    make_singleton_sets(Tail, SetTail).
 
 %---------------------------------------------------------------------------%
 

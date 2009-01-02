@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002-2008 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -269,6 +269,20 @@
     %
 :- func tree234_to_doc(tree234(K, V)) = pretty_printer.doc.
 
+    % Given an assoc list of keys and values that are sorted on the keys
+    % in ascending order (with no duplicate keys), convert it directly
+    % to a tree.
+    %
+:- pred tree234.from_sorted_assoc_list(assoc_list(K, V)::in,
+    tree234(K, V)::out) is det.
+
+    % Given an assoc list of keys and values that are sorted on the keys
+    % in descending order (with no duplicate keys), convert it directly
+    % to a tree.
+    %
+:- pred tree234.from_rev_sorted_assoc_list(assoc_list(K, V)::in,
+    tree234(K, V)::out) is det.
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -295,10 +309,15 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
+:- import_module string.
 
 :- interface.
+
+:- import_module maybe.
 
     % This should be abstract, but needs to be exported for insts.
     %
@@ -333,6 +352,13 @@
 :- mode di_tree234       == uniq_tree234(ground, ground) >> dead.
 :- mode uo_tree234(K, V) == free >> uniq_tree234(K, V).
 :- mode uo_tree234       == free >> uniq_tree234(ground, ground).
+
+    % Check whether the given tree is well formed, i.e. all the empty nodes
+    % are at the same depth. If yes, return that depth. Otherwise, return `no'.
+    %
+    % This predicate is a sanity check; it should *never* return `no'.
+    %
+:- pred well_formed(tree234(K, V)::in, maybe(int)::out) is det.
 
 :- implementation.
 
@@ -2864,6 +2890,332 @@ tree234_to_lazy_list(four(K1, V1, K2, V2, K3, V3, T1, T2, T3, T4), LL) =
         lazy_cons(K1, V1,
             (func) = tree234_to_lazy_list(
                 three(K2, V2, K3, V3, T2, T3, T4), LL))).
+
+%-----------------------------------------------------------------------------%
+
+from_sorted_assoc_list(List, Tree) :-
+    list.length(List, Len),
+    ( Len = 0 ->
+        % We can handle the Len = 0 case here just once, or we can handle it
+        % lots of times in do_from_sorted_assoc_list. The former is more
+        % efficient.
+        Tree = empty
+    ;
+        find_level(Len, 0, Level, 0, AllThrees),
+        do_from_sorted_assoc_list(Len, List, LeftOver, Level, AllThrees, Tree),
+        require(unify(LeftOver, []), "from_sorted_assoc_list: leftovers")
+    ).
+
+:- pred do_from_sorted_assoc_list(int::in,
+    assoc_list(K, V)::in, assoc_list(K, V)::out,
+    int::in, int::in, tree234(K, V)::out) is det.
+
+do_from_sorted_assoc_list(Len, !List, Level0, AllThrees0, Tree) :-
+    ( Level0 = 1 ->
+        ( Len = 1 ->
+            (
+                !.List = [K1 - V1 | !:List],
+                Tree = two(K1, V1, empty, empty)
+            ;
+                !.List = [],
+                error("do_from_sorted_assoc_list: len 1 nil")
+            )
+        ; Len = 2 ->
+            require(unify(Level0, 1), "Len = 2 but Level != 1"),
+            (
+                !.List = [K1 - V1, K2 - V2 | !:List],
+                Tree = three(K1, V1, K2, V2, empty, empty, empty)
+            ;
+                !.List = [_],
+                error("do_from_sorted_assoc_list: len 2 one")
+            ;
+                !.List = [],
+                error("do_from_sorted_assoc_list: len 2 nil")
+            )
+        ;
+            error("do_from_sorted_assoc_list: level 1, but len not 1 or 2")
+        )
+    ;
+        Level = Level0 - 1,
+        AllThrees = (AllThrees0 - 2) / 3,
+        ( Len > 2 * AllThrees ->
+            BaseSubLen = (Len / 3),
+            Diff = Len - (BaseSubLen * 3),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 3:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1,
+                SubLen3 = BaseSubLen - 1
+            ; Diff = 1 ->
+                % Len = BaseSubLen * 3 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen - 1
+            ;
+                require(unify(Diff, 2),
+                    "do_from_sorted_assoc_list: Diff != 2"),
+                % Len = BaseSubLen * 3 + 2:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
+                io.format("splitting %d into three: %d, %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
+            ),
+
+            do_from_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            (
+                !.List = [K1 - V1 | !:List]
+            ;
+                !.List = [],
+                error("do_from_sorted_assoc_list: tree K1 V1 nil")
+            ),
+            do_from_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [K2 - V2 | !:List]
+            ;
+                !.List = [],
+                error("do_from_sorted_assoc_list: tree K2 V2 nil")
+            ),
+            do_from_sorted_assoc_list(SubLen3, !List, Level, AllThrees,
+                SubTree3),
+            Tree = three(K1, V1, K2, V2, SubTree1, SubTree2, SubTree3),
+            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        ;
+            BaseSubLen = (Len) / 2,
+            Diff = Len - (BaseSubLen * 2),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 2:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1
+            ;
+                require(unify(Diff, 1),
+                    "do_from_sorted_assoc_list: Diff != 1"),
+                % Len = BaseSubLen * 2 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
+                io.format("splitting %d into two: %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
+            ),
+
+            do_from_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            (
+                !.List = [K1 - V1 | !:List]
+            ;
+                !.List = [],
+                error("do_from_sorted_assoc_list: two K1 V1 nil")
+            ),
+            do_from_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            Tree = two(K1, V1, SubTree1, SubTree2),
+            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        )
+    ).
+
+from_rev_sorted_assoc_list(List, Tree) :-
+    list.length(List, Len),
+    ( Len = 0 ->
+        % We can handle the Len = 0 case here just once, or we can handle it
+        % lots of times in do_from_rev_sorted_assoc_list. The former is more
+        % efficient.
+        Tree = empty
+    ;
+        find_level(Len, 0, Level, 0, AllThrees),
+        do_from_rev_sorted_assoc_list(Len, List, LeftOver, Level, AllThrees,
+            Tree),
+        require(unify(LeftOver, []), "from_rev_sorted_assoc_list: leftovers")
+    ).
+
+:- pred do_from_rev_sorted_assoc_list(int::in,
+    assoc_list(K, V)::in, assoc_list(K, V)::out,
+    int::in, int::in, tree234(K, V)::out) is det.
+
+do_from_rev_sorted_assoc_list(Len, !List, Level0, AllThrees0, Tree) :-
+    ( Level0 = 1 ->
+        ( Len = 1 ->
+            (
+                !.List = [K1 - V1 | !:List],
+                Tree = two(K1, V1, empty, empty)
+            ;
+                !.List = [],
+                error("do_from_rev_sorted_assoc_list: len 1 nil")
+            )
+        ; Len = 2 ->
+            require(unify(Level0, 1), "Len = 2 but Level != 1"),
+            (
+                !.List = [K2 - V2, K1 - V1 | !:List],
+                Tree = three(K1, V1, K2, V2, empty, empty, empty)
+            ;
+                !.List = [_],
+                error("do_from_rev_sorted_assoc_list: len 2 one")
+            ;
+                !.List = [],
+                error("do_from_rev_sorted_assoc_list: len 2 nil")
+            )
+        ;
+            error("do_from_rev_sorted_assoc_list: level 1, but len not 1 or 2")
+        )
+    ;
+        Level = Level0 - 1,
+        AllThrees = (AllThrees0 - 2) / 3,
+        ( Len > 2 * AllThrees ->
+            BaseSubLen = (Len / 3),
+            Diff = Len - (BaseSubLen * 3),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 3:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1,
+                SubLen3 = BaseSubLen - 1
+            ; Diff = 1 ->
+                % Len = BaseSubLen * 3 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen - 1
+            ;
+                require(unify(Diff, 2),
+                    "do_from_rev_sorted_assoc_list: Diff != 2"),
+                % Len = BaseSubLen * 3 + 2:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
+                io.format("splitting %d into three: %d, %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
+            ),
+
+            do_from_rev_sorted_assoc_list(SubLen3, !List, Level, AllThrees,
+                SubTree3),
+            (
+                !.List = [K2 - V2 | !:List]
+            ;
+                !.List = [],
+                error("do_from_rev_sorted_assoc_list: tree K2 V2 nil")
+            ),
+            do_from_rev_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [K1 - V1 | !:List]
+            ;
+                !.List = [],
+                error("do_from_rev_sorted_assoc_list: tree K1 V1 nil")
+            ),
+            do_from_rev_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            Tree = three(K1, V1, K2, V2, SubTree1, SubTree2, SubTree3),
+            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        ;
+            BaseSubLen = (Len) / 2,
+            Diff = Len - (BaseSubLen * 2),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 2:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1
+            ;
+                require(unify(Diff, 1),
+                    "from_rev_sorted_assoc_list: Diff != 1"),
+                % Len = BaseSubLen * 2 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
+                io.format("splitting %d into two: %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
+            ),
+
+            do_from_rev_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [K1 - V1 | !:List]
+            ;
+                !.List = [],
+                error("do_from_rev_sorted_assoc_list: two K1 V1 nil")
+            ),
+            do_from_rev_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            Tree = two(K1, V1, SubTree1, SubTree2),
+            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        )
+    ).
+
+:- pred find_level(int::in, int::in, int::out,
+    int::in, int::out) is det.
+
+find_level(Len, !Level, !AllThrees) :-
+    ( Len =< !.AllThrees ->
+        true
+    ;
+        !:Level = !.Level + 1,
+        !:AllThrees = !.AllThrees * 3 + 2,
+        find_level(Len, !Level, !AllThrees)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+well_formed(Tree, WellFormed) :-
+    depth_levels(Tree, 0, set.init, Depths),
+    ( set.singleton_set(Depths, Depth) ->
+        WellFormed = yes(Depth)
+    ;
+        WellFormed = no
+    ).
+
+:- pred depth_levels(tree234(K, V)::in, int::in,
+    set(int)::in, set(int)::out) is det.
+
+depth_levels(empty, Depth, !Depths) :-
+    set.insert(!.Depths, Depth, !:Depths).
+depth_levels(two(_, _, T1, T2), Depth, !Depths) :-
+    NextDepth = Depth + 1,
+    depth_levels(T1, NextDepth, !Depths),
+    depth_levels(T2, NextDepth, !Depths).
+depth_levels(three(_, _, _, _, T1, T2, T3), Depth, !Depths) :-
+    NextDepth = Depth + 1,
+    depth_levels(T1, NextDepth, !Depths),
+    depth_levels(T2, NextDepth, !Depths),
+    depth_levels(T3, NextDepth, !Depths).
+depth_levels(four(_, _, _, _, _, _, T1, T2, T3, T4), Depth, !Depths) :-
+    NextDepth = Depth + 1,
+    depth_levels(T1, NextDepth, !Depths),
+    depth_levels(T2, NextDepth, !Depths),
+    depth_levels(T3, NextDepth, !Depths),
+    depth_levels(T4, NextDepth, !Depths).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

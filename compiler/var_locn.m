@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2008 The University of Melbourne.
+% Copyright (C) 2000-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -557,7 +557,7 @@ var_locn_get_var_locations(VLI, VarLocations) :-
     var_locn_get_var_state_map(VLI, VarStateMap),
     map.to_assoc_list(VarStateMap, VarLocList),
     list.filter_map(convert_live_to_lval_set, VarLocList, LiveVarLocList),
-    map.from_assoc_list(LiveVarLocList, VarLocations).
+    map.from_sorted_assoc_list(LiveVarLocList, VarLocations).
 
 :- pred convert_live_to_lval_set(pair(prog_var, var_state)::in,
     pair(prog_var, set(lval))::out) is semidet.

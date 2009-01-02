@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -151,7 +151,7 @@ expand_eqv_types(ModuleName, Items0, Items, EventSpecMap0, EventSpecMap,
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
     replace_in_event_spec_list(EventSpecList0, EventSpecList,
         EqvMap, EqvInstMap, !RecompInfo, !UsedModules, !Specs),
-    map.from_assoc_list(EventSpecList, EventSpecMap).
+    map.from_sorted_assoc_list(EventSpecList, EventSpecMap).
 
     % We need to expand equivalence insts in
     % `:- pred p `with_inst` i' declarations.
