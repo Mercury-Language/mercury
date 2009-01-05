@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -140,7 +140,7 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         NextSlotsName),
     NextSlotsType = mlds_array_type(SlotVarType),
     NextSlotsDefn = ml_gen_static_const_defn(NextSlotsName,
-        NextSlotsType, local, init_array(NextSlots), Context),
+        NextSlotsType, acc_local, init_array(NextSlots), Context),
     ml_gen_var_lval(!.Info, NextSlotsName, NextSlotsType, NextSlotsLval),
 
     ml_gen_info_new_const(StringTableSeq, !Info),
@@ -148,7 +148,7 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         StringTableName),
     StringTableType = mlds_array_type(StringVarType),
     StringTableDefn = ml_gen_static_const_defn(StringTableName,
-        StringTableType, local, init_array(Strings), Context),
+        StringTableType, acc_local, init_array(Strings), Context),
     ml_gen_var_lval(!.Info, StringTableName, StringTableType,
         StringTableLval),
 

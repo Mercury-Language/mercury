@@ -1,5 +1,7 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -372,7 +374,7 @@ mlds_output_grade_var -->
 :- func make_public(mlds_defn) = mlds_defn.
 make_public(mlds_defn(Name, Context, Flags0, Defn)) =
 	    mlds_defn(Name, Context, Flags, Defn) :-
-	Flags = mlds__set_access(Flags0, public).
+	Flags = mlds__set_access(Flags0, acc_public).
 
 %-----------------------------------------------------------------------------%
 
@@ -911,17 +913,17 @@ add_var_decl_flags(Flags, GCC_Defn) -->
 :- pred add_var_access_flag(access, gcc__var_decl, io__state, io__state).
 :- mode add_var_access_flag(in, in, di, uo) is det.
 
-add_var_access_flag(public, GCC_Defn) -->
+add_var_access_flag(acc_public, GCC_Defn) -->
 	gcc__set_var_decl_public(GCC_Defn).
-add_var_access_flag(private, _GCC_Defn) -->
+add_var_access_flag(acc_private, _GCC_Defn) -->
 	% this should only be used for global variables,
 	% where it is the default
 	[].
-add_var_access_flag(protected, _GCC_Defn) -->
+add_var_access_flag(acc_protected, _GCC_Defn) -->
 	{ sorry(this_file, "`protected' access") }.
-add_var_access_flag(default, _GCC_Defn) -->
+add_var_access_flag(acc_default, _GCC_Defn) -->
 	{ sorry(this_file, "`default' access") }.
-add_var_access_flag(local, _GCC_Defn) -->
+add_var_access_flag(acc_local, _GCC_Defn) -->
 	% this should only be used for local variables,
 	% where it is the default
 	[].
@@ -979,27 +981,27 @@ add_var_abstractness_flag(abstract, _GCC_Defn) -->
 :- mode add_field_decl_flags(in, in, di, uo) is det.
 
 add_field_decl_flags(Flags, GCC_Defn) -->
-	add_field_access_flag(		access(Flags),		GCC_Defn),
-	add_field_per_instance_flag(	per_instance(Flags),	GCC_Defn),
-	add_field_virtuality_flag(	virtuality(Flags),	GCC_Defn),
-	add_field_finality_flag(	finality(Flags),	GCC_Defn),
-	add_field_constness_flag(	constness(Flags),	GCC_Defn),
-	add_field_abstractness_flag(	abstractness(Flags),	GCC_Defn).
+	add_field_access_flag(access(Flags), GCC_Defn),
+	add_field_per_instance_flag(per_instance(Flags), GCC_Defn),
+	add_field_virtuality_flag(virtuality(Flags), GCC_Defn),
+	add_field_finality_flag(finality(Flags), GCC_Defn),
+	add_field_constness_flag(constness(Flags), GCC_Defn),
+	add_field_abstractness_flag(abstractness(Flags), GCC_Defn).
 
 :- pred add_field_access_flag(access, gcc__field_decl,
 		io__state, io__state).
 :- mode add_field_access_flag(in, in, di, uo) is det.
 
-add_field_access_flag(public, _GCC_Defn) -->
+add_field_access_flag(acc_public, _GCC_Defn) -->
 	% this is the default
 	[].
-add_field_access_flag(private, _GCC_Defn) -->
+add_field_access_flag(acc_private, _GCC_Defn) -->
 	{ sorry(this_file, "`private' field") }.
-add_field_access_flag(protected, _GCC_Defn) -->
+add_field_access_flag(acc_protected, _GCC_Defn) -->
 	{ sorry(this_file, "`protected' field") }.
-add_field_access_flag(default, _GCC_Defn) -->
+add_field_access_flag(acc_default, _GCC_Defn) -->
 	{ sorry(this_file, "`default' field") }.
-add_field_access_flag(local, _GCC_Defn) -->
+add_field_access_flag(acc_local, _GCC_Defn) -->
 	{ sorry(this_file, "`local' field") }.
 
 :- pred add_field_per_instance_flag(mlds__per_instance, gcc__field_decl,
@@ -1073,16 +1075,16 @@ add_func_decl_flags(Flags, GCC_Defn) -->
 	io__state, io__state).
 :- mode add_func_access_flag(in, in, di, uo) is det.
 
-add_func_access_flag(public, GCC_Defn) -->
+add_func_access_flag(acc_public, GCC_Defn) -->
 	gcc__set_func_decl_public(GCC_Defn).
-add_func_access_flag(private, _GCC_Defn) -->
+add_func_access_flag(acc_private, _GCC_Defn) -->
 	% this is the default
 	[].
-add_func_access_flag(protected, _GCC_Defn) -->
+add_func_access_flag(acc_protected, _GCC_Defn) -->
 	{ sorry(this_file, "`protected' access") }.
-add_func_access_flag(default, _GCC_Defn) -->
+add_func_access_flag(acc_default, _GCC_Defn) -->
 	{ sorry(this_file, "`default' access") }.
-add_func_access_flag(local, _GCC_Defn) -->
+add_func_access_flag(acc_local, _GCC_Defn) -->
 	% nested functions are not supported
 	{ sorry(this_file, "`local' access") }.
 

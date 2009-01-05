@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,7 +39,6 @@
 % HLDS->MLDS compiler take account of those flags and either generate simpler
 % MLDS code in the first place or run some extra simplification passes over
 % the MLDS code before invoking the MLDS->target compiler.
-%
 %
 %-----------------------------------------------------------------------------%
 %
@@ -853,17 +852,22 @@
     % The following used for class members (this includes globals,
     % which are actually members of the top-level package)
 
-    --->    public      % Accessible to anyone.
-    ;       protected   % Only accessible to the class and to derived classes.
-    ;       private     % Only accessible to the class.
-    ;       default     % Java "default" access or .NET assembly access:
-                        % accessible to anything defined in the same package.
+    --->    acc_public
+            % Accessible to anyone.
+    ;       acc_protected
+            % Only accessible to the class and to derived classes.
+    ;       acc_private
+            % Only accessible to the class.
+    ;       acc_default
+            % Java "default" access or .NET assembly access:
+            % accessible to anything defined in the same package.
 
     % The following is used for entities defined in a block/2 statement,
     % i.e. local variables and nested functions.
 
-    ;       local.      % Only accessible within the block in which the entity
-                        % (variable or nested function) is defined.
+    ;       acc_local.
+            % Only accessible within the block in which the entity
+            % (variable or nested function) is defined.
 
 :- type per_instance
     --->    one_copy    % I.e. "static" storage duration (but not necessarily
@@ -982,7 +986,6 @@
             % The `bool' is true iff the loop is guaranteed to iterate at
             % least once -- in that case, the compiler can generate a
             % `do...while' loop rather than a `while...' loop.
-
 
     % Selection (see also computed_goto).
 
@@ -2041,11 +2044,11 @@ flip_initial_case(S0) = S :-
 :- func access_bits(access) = int.
 :- mode access_bits(in) = out is det.
 :- mode access_bits(out) = in is semidet.
-access_bits(public)    = 0x00.
-access_bits(private)   = 0x01.
-access_bits(protected) = 0x02.
-access_bits(default)   = 0x03.
-access_bits(local)     = 0x04.
+access_bits(acc_public)    = 0x00.
+access_bits(acc_private)   = 0x01.
+access_bits(acc_protected) = 0x02.
+access_bits(acc_default)   = 0x03.
+access_bits(acc_local)     = 0x04.
 % 0x5 - 0x7 reserved
 
 :- func access_mask = int.

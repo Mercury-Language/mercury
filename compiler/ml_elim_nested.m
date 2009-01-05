@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1028,7 +1028,7 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
 :- func ml_gen_gc_trace_func_decl_flags = mlds_decl_flags.
 
 ml_gen_gc_trace_func_decl_flags = MLDS_DeclFlags :-
-    Access = private,
+    Access = acc_private,
     PerInstance = one_copy,
     Virtuality = non_virtual,
     Finality = overridable,
@@ -1066,8 +1066,8 @@ extract_gc_statements(mlds_defn(Name, Context, Flags, Body0),
 
 convert_local_to_field(mlds_defn(Name, Context, Flags0, Body)) =
         mlds_defn(Name, Context, Flags, Body) :-
-    ( access(Flags0) = local ->
-        Flags = set_access(Flags0, public)
+    ( access(Flags0) = acc_local ->
+        Flags = set_access(Flags0, acc_public)
     ;
         Flags = Flags0
     ).
@@ -1079,8 +1079,8 @@ convert_local_to_field(mlds_defn(Name, Context, Flags0, Body)) =
 
 convert_local_to_global(mlds_defn(Name, Context, Flags0, Body)) =
         mlds_defn(Name, Context, Flags, Body) :-
-    ( access(Flags0) = local ->
-        Flags = set_access(Flags0, private)
+    ( access(Flags0) = acc_local ->
+        Flags = set_access(Flags0, acc_private)
     ;
         Flags = Flags0
     ).
@@ -1210,7 +1210,7 @@ ml_conv_arg_to_var(Context, Arg, LocalVar) :-
 :- func env_type_decl_flags = mlds_decl_flags.
 
 env_type_decl_flags = MLDS_DeclFlags :-
-    Access = private,
+    Access = acc_private,
     PerInstance = one_copy,
     Virtuality = non_virtual,
     Finality = overridable,
@@ -1563,7 +1563,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
         Action = !.Info ^ action,
         (
             Action = hoist_nested_funcs,
-            Flags1 = set_access(Flags0, private),
+            Flags1 = set_access(Flags0, acc_private),
             Flags = set_per_instance(Flags1, one_copy)
         ;
             Action = chain_gc_stack_frames,

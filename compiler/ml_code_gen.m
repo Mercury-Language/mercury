@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1284,7 +1284,7 @@ tabling_name_and_init_to_defn(ProcLabel, MLDS_Context, Constness, Id,
 :- func tabling_data_decl_flags(constness) = mlds_decl_flags.
 
 tabling_data_decl_flags(Constness) = MLDS_DeclFlags :-
-    Access = private,
+    Access = acc_private,
     PerInstance = one_copy,
     Virtuality = non_virtual,
     Finality = final,
@@ -1305,9 +1305,9 @@ tabling_data_decl_flags(Constness) = MLDS_DeclFlags :-
 ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ( procedure_is_exported(ModuleInfo, PredInfo, ProcId) ->
-        Access = public
+        Access = acc_public
     ;
-        Access = private
+        Access = acc_private
     ),
     PerInstance = one_copy,
     Virtuality = non_virtual,

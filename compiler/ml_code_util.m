@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -956,7 +956,7 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
 :- func ml_gen_label_func_decl_flags = mlds_decl_flags.
 
 ml_gen_label_func_decl_flags = DeclFlags :-
-    Access = local,
+    Access = acc_local,
     PerInstance = per_instance,
     Virtuality = non_virtual,
     Finality = overridable,
@@ -1530,7 +1530,7 @@ ml_gen_static_const_defn(ConstName, ConstType, Access, Initializer, Context) =
     MLDS_Defn = mlds_defn(Name, MLDS_Context, DeclFlags, Defn).
 
 ml_gen_public_field_decl_flags = DeclFlags :-
-    Access = public,
+    Access = acc_public,
     PerInstance = per_instance,
     Virtuality = non_virtual,
     Finality = overridable,
@@ -1540,7 +1540,7 @@ ml_gen_public_field_decl_flags = DeclFlags :-
         Virtuality, Finality, Constness, Abstractness).
 
 ml_gen_local_var_decl_flags = DeclFlags :-
-    Access = local,
+    Access = acc_local,
     PerInstance = per_instance,
     Virtuality = non_virtual,
     Finality = overridable,
@@ -1552,7 +1552,7 @@ ml_gen_local_var_decl_flags = DeclFlags :-
 ml_static_const_decl_flags = DeclFlags :-
     % Note that rtti_decl_flags, in rtti_to_mlds.m,
     % must be the same as this apart from the access.
-    Access = local,
+    Access = acc_local,
     PerInstance = one_copy,
     Virtuality = non_virtual,
     Finality = final,

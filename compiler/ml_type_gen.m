@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -629,7 +629,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
                 UnqualCtorName, CtorArity),
             MLDS_ReservedObjDefn = ml_gen_static_const_defn(
                 MLDS_ReservedObjName, SecondaryTagClassId,
-                public, no_initializer, Context),
+                acc_public, no_initializer, Context),
             MLDS_Members = [MLDS_ReservedObjDefn | MLDS_Members0]
         ;
             % For reserved numeric addresses, we don't need to generate
@@ -835,7 +835,7 @@ gen_constructor_function(Globals, BaseClassId, ClassType, ClassQualifier,
     EnvVarNames = set.init,
     Ctor = mlds_function(no, mlds_func_params(Args, ReturnValues),
         body_defined_here(Stmt), Attributes, EnvVarNames),
-    CtorFlags = init_decl_flags(public, per_instance, non_virtual,
+    CtorFlags = init_decl_flags(acc_public, per_instance, non_virtual,
         overridable, modifiable, concrete),
 
     % Note that the name of constructor is determined by the backend
@@ -1014,7 +1014,7 @@ ml_gen_equality_members(_, []).
 
 ml_gen_type_decl_flags = MLDS_DeclFlags :-
     % XXX are these right?
-    Access = public,
+    Access = acc_public,
     PerInstance = one_copy,
     Virtuality = non_virtual,
     Finality = overridable,
@@ -1024,7 +1024,7 @@ ml_gen_type_decl_flags = MLDS_DeclFlags :-
         Virtuality, Finality, Constness, Abstractness).
 
 ml_gen_member_decl_flags = MLDS_DeclFlags :-
-    Access = public,
+    Access = acc_public,
     PerInstance = per_instance,
     Virtuality = non_virtual,
     Finality = overridable,
@@ -1034,7 +1034,7 @@ ml_gen_member_decl_flags = MLDS_DeclFlags :-
         Virtuality, Finality, Constness, Abstractness).
 
 ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
-    Access = public,
+    Access = acc_public,
     PerInstance = one_copy,
     Virtuality = non_virtual,
     Finality = final,
@@ -1044,7 +1044,7 @@ ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
         Virtuality, Finality, Constness, Abstractness).
 
 ml_gen_special_member_decl_flags = MLDS_DeclFlags :-
-    Access = public,
+    Access = acc_public,
     PerInstance = per_instance,
     Virtuality = non_virtual,
     Finality = final,

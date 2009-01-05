@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,7 +43,8 @@
     cons_tag::out) is det.
 
     % ml_gen_tag_test(Var, ConsId, Defns, Statements, Expression):
-    %   Generate code to perform a tag test.
+    %
+    % Generate code to perform a tag test.
     %
     % The test checks whether Var has the functor specified by ConsId.
     % The generated code may contain Defns, Statements and an Expression.
@@ -118,119 +119,122 @@
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_unification(Unification, CodeModel, Context, [], Statements, !Info) :-
-    Unification = assign(TargetVar, SourceVar),
-    expect(unify(CodeModel, model_det), this_file,
-        "ml_code_gen: assign not det"),
+ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
+        !Info) :-
     (
-        % Skip dummy argument types, since they will not have been declared.
+        Unification = assign(TargetVar, SourceVar),
+        expect(unify(CodeModel, model_det), this_file,
+            "ml_code_gen: assign not det"),
         ml_variable_type(!.Info, TargetVar, Type),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        check_dummy_type(ModuleInfo, Type) = is_dummy_type
-    ->
-        Statements = []
-    ;
-        ml_gen_var(!.Info, TargetVar, TargetLval),
-        ml_gen_var(!.Info, SourceVar, SourceLval),
-        Statement = ml_gen_assign(TargetLval, lval(SourceLval), Context),
-        Statements = [Statement]
-    ),
-    ( ml_gen_info_search_const_var_name(!.Info, SourceVar, Name) ->
-        % If the source variable is a constant, so is the target after
-        % this assignment.
-        %
-        % The mark_static_terms assumes that if SourceVar is a constant term,
-        % then after this assignment unification TargetVar is a constant term
-        % also. Therefore later constant terms may contain TargetVar among
-        % their arguments. If we didn't copy the constant info here, the
-        % construction of the later constant could cause a code generator
-        % abort.
-        ml_gen_info_set_const_var_name(TargetVar, Name, !Info)
-    ;
-        true
-    ).
-
-ml_gen_unification(Unification, CodeModel, Context, [], [Statement], !Info) :-
-    Unification = simple_test(Var1, Var2),
-    expect(unify(CodeModel, model_semi), this_file,
-        "ml_code_gen: simple_test not semidet"),
-    ml_variable_type(!.Info, Var1, Type),
-    ( Type = builtin_type(builtin_type_string) ->
-        EqualityOp = str_eq
-    ; Type = builtin_type(builtin_type_float) ->
-        EqualityOp = float_eq
-    ;
-        EqualityOp = eq
-    ),
-    ml_gen_var(!.Info, Var1, Var1Lval),
-    ml_gen_var(!.Info, Var2, Var2Lval),
-    Test = binop(EqualityOp, lval(Var1Lval), lval(Var2Lval)),
-    ml_gen_set_success(!.Info, Test, Context, Statement).
-
-ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
-        !Info) :-
-    Unification = construct(Var, ConsId, Args, ArgModes, HowToConstruct,
-        _CellIsUnique, SubInfo),
-    expect(unify(CodeModel, model_det), this_file,
-        "ml_code_gen: construct not det"),
-    (
-        SubInfo = no_construct_sub_info,
-        TakeAddr = []
-    ;
-        SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSizeProfInfo),
+        IsDummyType = check_dummy_type(ModuleInfo, Type),
         (
-            MaybeTakeAddr = no,
+            % Skip dummy argument types, since they will not have been
+            % declared.
+            IsDummyType = is_dummy_type,
+            Statements = []
+        ;
+            IsDummyType = is_not_dummy_type,
+            ml_gen_var(!.Info, TargetVar, TargetLval),
+            ml_gen_var(!.Info, SourceVar, SourceLval),
+            Statement = ml_gen_assign(TargetLval, lval(SourceLval), Context),
+            Statements = [Statement]
+        ),
+        ( ml_gen_info_search_const_var_name(!.Info, SourceVar, Name) ->
+            % If the source variable is a constant, so is the target after
+            % this assignment.
+            %
+            % The mark_static_terms assumes that if SourceVar is a constant
+            % term, then after this assignment unification TargetVar is a
+            % constant term also. Therefore later constant terms may contain
+            % TargetVar among their arguments. If we didn't copy the constant
+            % info here, the construction of the later constant could cause
+            % a code generator abort.
+            ml_gen_info_set_const_var_name(TargetVar, Name, !Info)
+        ;
+            true
+        ),
+        Decls = []
+    ;
+        Unification = simple_test(Var1, Var2),
+        expect(unify(CodeModel, model_semi), this_file,
+            "ml_code_gen: simple_test not semidet"),
+        ml_variable_type(!.Info, Var1, Type),
+        ( Type = builtin_type(builtin_type_string) ->
+            EqualityOp = str_eq
+        ; Type = builtin_type(builtin_type_float) ->
+            EqualityOp = float_eq
+        ;
+            EqualityOp = eq
+        ),
+        ml_gen_var(!.Info, Var1, Var1Lval),
+        ml_gen_var(!.Info, Var2, Var2Lval),
+        Test = binop(EqualityOp, lval(Var1Lval), lval(Var2Lval)),
+        ml_gen_set_success(!.Info, Test, Context, Statement),
+        Statements = [Statement],
+        Decls = []
+    ;
+        Unification = construct(Var, ConsId, Args, ArgModes, HowToConstruct,
+            _CellIsUnique, SubInfo),
+        expect(unify(CodeModel, model_det), this_file,
+            "ml_code_gen: construct not det"),
+        (
+            SubInfo = no_construct_sub_info,
             TakeAddr = []
         ;
-            MaybeTakeAddr = yes(TakeAddr)
+            SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSizeProfInfo),
+            (
+                MaybeTakeAddr = no,
+                TakeAddr = []
+            ;
+                MaybeTakeAddr = yes(TakeAddr)
+            ),
+            expect(unify(MaybeSizeProfInfo, no), this_file,
+                "ml_code_gen: term size profiling not yet supported")
         ),
-        expect(unify(MaybeSizeProfInfo, no), this_file,
-            "ml_code_gen: term size profiling not yet supported")
-    ),
-    ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
-        Context, Decls, Statements, !Info).
-
-ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
-        !Info) :-
-    Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail, CanCGC),
-    (
-        CanFail = can_fail,
-        ExpectedCodeModel = model_semi,
-        ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
-            Decls, Unif_Statements, !Info)
+        ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
+            Context, Decls, Statements, !Info)
     ;
-        CanFail = cannot_fail,
-        ExpectedCodeModel = model_det,
-        ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
-            Decls, Unif_Statements, !Info)
-    ),
-    (
-        % Note that we can deallocate a cell even if the unification fails,
-        % it is the responsibility of the structure reuse phase to ensure that
-        % this is safe.
-        CanCGC = can_cgc,
-        ml_gen_var(!.Info, Var, VarLval),
-        % XXX avoid strip_tag when we know what tag it will have
-        Delete = delete_object(unop(std_unop(strip_tag), lval(VarLval))),
-        Stmt = ml_stmt_atomic(Delete),
-        CGC_Statements = [statement(Stmt, mlds_make_context(Context)) ]
+        Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail,
+            CanCGC),
+        (
+            CanFail = can_fail,
+            ExpectedCodeModel = model_semi,
+            ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
+                Decls, Unif_Statements, !Info)
+        ;
+            CanFail = cannot_fail,
+            ExpectedCodeModel = model_det,
+            ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
+                Decls, Unif_Statements, !Info)
+        ),
+        (
+            % Note that we can deallocate a cell even if the unification fails,
+            % it is the responsibility of the structure reuse phase to ensure
+            % that this is safe.
+            CanCGC = can_cgc,
+            ml_gen_var(!.Info, Var, VarLval),
+            % XXX Avoid strip_tag when we know what tag it will have.
+            Delete = delete_object(unop(std_unop(strip_tag), lval(VarLval))),
+            Stmt = ml_stmt_atomic(Delete),
+            CGC_Statements = [statement(Stmt, mlds_make_context(Context))]
+        ;
+            CanCGC = cannot_cgc,
+            CGC_Statements = []
+        ),
+        Statements0 = Unif_Statements ++ CGC_Statements,
+
+        % We used to require that CodeModel = ExpectedCodeModel. But the
+        % determinism field in the goal_info is allowed to be a conservative
+        % approximation, so we need to handle the case were CodeModel is less
+        % precise than ExpectedCodeModel.
+        ml_gen_wrap_goal(CodeModel, ExpectedCodeModel, Context,
+            Statements0, Statements, !Info)
     ;
-        CanCGC = cannot_cgc,
-        CGC_Statements = []
-    ),
-    Statements0 = Unif_Statements ++ CGC_Statements,
-
-    % We used to require that CodeModel = ExpectedCodeModel. But the
-    % determinism field in the goal_info is allowed to be a conservative
-    % approximation, so we need to handle the case were CodeModel is less
-    % precise than ExpectedCodeModel.
-    %
-    ml_gen_wrap_goal(CodeModel, ExpectedCodeModel, Context,
-        Statements0, Statements, !Info).
-
-ml_gen_unification(complicated_unify(_, _, _), _, _, [], [], !Info) :-
-    % Simplify.m should have converted these into procedure calls.
-    unexpected(this_file, "ml_code_gen: complicated unify").
+        Unification = complicated_unify(_, _, _),
+        % Simplify.m should have converted these into procedure calls.
+        unexpected(this_file, "ml_code_gen: complicated unify")
+    ).
 
     % ml_gen_construct generates code for a construction unification.
     %
@@ -346,7 +350,8 @@ ml_gen_static_const_arg(Var, StaticCons, Context, Defns, Rval, !Info) :-
     static_cons::in, prog_context::in, mlds_defns::out, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Context, Defns, Rval, !Info) :-
+ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Context, Defns, Rval,
+        !Info) :-
     StaticCons = static_cons(ConsId, ArgVars, StaticArgs),
     (
         % Types for which some other constructor has a reserved_address
@@ -750,7 +755,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
             Initializer = init_struct(ConstType, ArgInits)
         ),
         ConstDefn = ml_gen_static_const_defn(ConstName, ConstType,
-            local, Initializer, Context),
+            acc_local, Initializer, Context),
 
         % Assign the address of the local static constant to the variable.
         ml_gen_static_const_addr(!.Info, Var, ConstType, ConstAddrRval),
@@ -792,7 +797,8 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         ml_gen_var(!.Info, Var, Var1Lval),
         ml_gen_var(!.Info, ReuseVar, Var2Lval),
 
-        list.filter((pred(ReuseTag::in) is semidet :-
+        list.filter(
+            (pred(ReuseTag::in) is semidet :-
                 ReuseTag \= PrimaryTag
             ), ReusePrimaryTags, DifferentTags),
         (
@@ -1167,7 +1173,7 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval, !Info) :-
             [i(PredIdNum), i(ProcIdNum), i(SequenceNum)]), no),
         Initializer = init_obj(Rval),
         ConstDefn = ml_gen_static_const_defn(ConstName, Type,
-            local, Initializer, Context),
+            acc_local, Initializer, Context),
         ConstDefns = [ConstDefn],
 
         % Return as the boxed rval the address of that constant,
@@ -1346,6 +1352,10 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
     prog_context::in, statements::out, ml_gen_info::in, ml_gen_info::out)
     is det.
 
+ml_gen_extra_arg_assign([_ | _], [], _, _, _, _, _, _, !Info) :-
+    unexpected(this_file, "ml_gen_extra_arg_assign: length mismatch").
+ml_gen_extra_arg_assign([], [_ | _], _, _, _, _, _, _, !Info) :-
+    unexpected(this_file, "ml_gen_extra_arg_assign: length mismatch").
 ml_gen_extra_arg_assign([], [], _, _, _, _, _, [], !Info).
 ml_gen_extra_arg_assign([ExtraRval | ExtraRvals], [ExtraType | ExtraTypes],
         VarType, VarLval, Offset, ConsIdTag, Context,
@@ -1369,11 +1379,6 @@ ml_gen_extra_arg_assign([ExtraRval | ExtraRvals], [ExtraType | ExtraTypes],
 
     ml_gen_extra_arg_assign(ExtraRvals, ExtraTypes, VarType, VarLval,
         Offset + 1, ConsIdTag, Context, Statements, !Info).
-
-ml_gen_extra_arg_assign([_ | _], [], _, _, _, _, _, _, !Info) :-
-    unexpected(this_file, "ml_gen_extra_arg_assign: length mismatch").
-ml_gen_extra_arg_assign([], [_ | _], _, _, _, _, _, _, !Info) :-
-    unexpected(this_file, "ml_gen_extra_arg_assign: length mismatch").
 
 %-----------------------------------------------------------------------------%
 
@@ -1745,8 +1750,8 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
 %-----------------------------------------------------------------------------%
 
     % Generate a semidet deconstruction. A semidet deconstruction unification
-    % is tag test followed by a deterministic deconstruction (which is executed
-    % only if the tag test succeeds).
+    % is a tag test, followed by a deterministic deconstruction which is
+    % executed only if the tag test succeeds.
     %
     %   semidet (can_fail) deconstruction:
     %       <succeeded = (X => f(A1, A2, ...))>
@@ -2028,7 +2033,6 @@ ml_gen_field_id(Type, Tag, ConsName, ConsArity, FieldName, Globals)
 
 this_file = "ml_unify_gen.m".
 
-:- end_module ml_unify_gen.
-
 %-----------------------------------------------------------------------------%
+:- end_module ml_unify_gen.
 %-----------------------------------------------------------------------------%

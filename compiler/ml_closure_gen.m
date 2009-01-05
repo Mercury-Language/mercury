@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -209,7 +209,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
 
     ml_gen_info_new_const(LayoutSeqNum, !Info),
     ml_format_static_const_name(!.Info, "closure_layout", LayoutSeqNum, Name),
-    Access = local,
+    Access = acc_local,
     Initializer = init_array(Inits),
     % XXX There's no way in C to properly represent this type,
     % since it is a struct that ends with a variable-length array.
@@ -424,7 +424,7 @@ arg_type_infos(var_arity_type_info(_VarArityId, ArgTIs)) = ArgTIs.
 
 convert_to_local(mlds_defn(Name, Context, Flags0, Body)) =
         mlds_defn(Name, Context, Flags, Body) :-
-    Flags = set_access(Flags0, local).
+    Flags = set_access(Flags0, acc_local).
 
 :- pred ml_stack_layout_construct_tvar_vector(module_info::in,
     mlds_var_name::in, prog_context::in, map(tvar, set(layout_locn))::in,
@@ -437,7 +437,7 @@ ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
         MLDS_Rval = const(mlconst_null(ArrayType)),
         Defns = []
     ;
-        Access = local,
+        Access = acc_local,
         ml_stack_layout_construct_tvar_rvals(TVarLocnMap, Vector,
             _VectorTypes),
         Initializer = init_array(Vector),
@@ -977,7 +977,7 @@ ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Statement, Func, !Info) :-
         Func0),
     Func0 = mlds_defn(Name, Ctxt, DeclFlags0, Defn),
     DeclFlags1 = set_per_instance(DeclFlags0, one_copy),
-    DeclFlags = set_access(DeclFlags1, private),
+    DeclFlags = set_access(DeclFlags1, acc_private),
     Func = mlds_defn(Name, Ctxt, DeclFlags, Defn).
 
 :- func ml_gen_wrapper_head_var_names(int, int) = list(mlds_var_name).

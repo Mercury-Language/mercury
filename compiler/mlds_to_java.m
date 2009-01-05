@@ -1,16 +1,16 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2008 The University of Melbourne.
+% Copyright (C) 2000-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mlds_to_java.m.
 % Main authors: juliensf, mjwybrow, fjh.
-% 
+%
 % Convert MLDS to Java code.
-% 
+%
 % DONE:
 %   det and semidet predicates
 %   multiple output arguments
@@ -78,7 +78,7 @@
 % due to the fact that the back-end generates `break' statements for cases
 % in switches as they are output, meaning that we can't remove them in
 % a pass over the MLDS.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_java.
@@ -485,7 +485,7 @@ output_java_decl(Indent, DeclCode, !IO) :-
 
 output_java_body_code(Indent, user_foreign_code(Lang, Code, Context), !IO) :-
     % Only output Java code.
-    ( 
+    (
         Lang = lang_java,
         indent_line(mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
@@ -515,14 +515,14 @@ mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
 %
 % Code for handling `pragma foreign_export' for Java
 %
-    
+
     % Exports are converted into forwarding methods that are given the
     % specified name.  These simply call the exported procedure.
     %
     % NOTE: the forwarding methods must be declared public as they might
     % be referred to within foreign_procs that are inlined across module
     % boundaries.
-    % 
+    %
 :- pred output_exports(indent::in, module_info::in, mlds_module_name::in,
     ctor_data::in, list(mlds_pragma_export)::in, io::di, io::uo) is det.
 
@@ -548,7 +548,7 @@ output_exports(Indent, ModuleInfo, MLDS_ModuleName, CtorData,
         io.write_string("java.lang.Object []", !IO)
     ),
     io.write_string(" " ++ ExportName, !IO),
-    output_params(Indent + 1, MLDS_ModuleName, MLDS_Context, Parameters, !IO), 
+    output_params(Indent + 1, MLDS_ModuleName, MLDS_Context, Parameters, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
@@ -669,7 +669,7 @@ method_ptrs_in_stmt(ml_stmt_do_commit(_Rval), !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_return(Rvals), !CodeAddrs) :-
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
 method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
-    CallStmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars, 
+    CallStmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
         _IsTailCall),
     % We don't check "_Rval" - it may be a code address but is a
     % standard call rather than a function pointer use.
@@ -2080,11 +2080,15 @@ output_decl_flags(Flags, _Name, !IO) :-
 
 :- pred output_access(access::in, io::di, io::uo) is det.
 
-output_access(public, !IO) :- io.write_string("public ", !IO).
-output_access(private, !IO) :- io.write_string("private ", !IO).
-output_access(protected, !IO) :-io.write_string("protected ", !IO).
-output_access(default, !IO) :- maybe_output_comment("default", !IO).
-output_access(local, !IO).
+output_access(acc_public, !IO) :-
+    io.write_string("public ", !IO).
+output_access(acc_private, !IO) :-
+    io.write_string("private ", !IO).
+output_access(acc_protected, !IO) :-
+    io.write_string("protected ", !IO).
+output_access(acc_default, !IO) :-
+    maybe_output_comment("default", !IO).
+output_access(acc_local, !IO).
 
 :- pred output_per_instance(per_instance::in, io::di, io::uo) is det.
 
@@ -2884,7 +2888,7 @@ output_atomic_stmt(_Indent, _, _FuncInfo, trail_op(_TrailOp), _, _, _) :-
     %
 output_atomic_stmt(Indent, ModuleInfo, FuncInfo,
         inline_target_code(TargetLang, Components), Context, !IO) :-
-    ( 
+    (
         TargetLang = ml_target_java,
         indent_line(Indent, !IO),
         ModuleName = FuncInfo ^ func_info_name ^ mod_name,
@@ -3325,7 +3329,7 @@ output_rval_const(mlconst_int(N), !IO) :-
     % XXX Should we parenthesize this?
     %
 output_rval_const(mlconst_foreign(Lang, Value, _Type), !IO) :-
-    expect(unify(Lang, lang_java), this_file, 
+    expect(unify(Lang, lang_java), this_file,
         "output_rval_const - mlconst_foreign for language other than Java."),
     io.write_string(Value, !IO).
 

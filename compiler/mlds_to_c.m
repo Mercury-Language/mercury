@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2502,15 +2502,15 @@ mlds_output_access_comment(Access, !IO) :-
 
 :- pred mlds_output_access_comment_2(access::in, io::di, io::uo) is det.
 
-mlds_output_access_comment_2(public, !IO) :-
+mlds_output_access_comment_2(acc_public, !IO) :-
     io.write_string("/* public: */ ", !IO).
-mlds_output_access_comment_2(private, !IO) :-
+mlds_output_access_comment_2(acc_private, !IO) :-
     io.write_string("/* private: */ ", !IO).
-mlds_output_access_comment_2(protected, !IO) :-
+mlds_output_access_comment_2(acc_protected, !IO) :-
     io.write_string("/* protected: */ ", !IO).
-mlds_output_access_comment_2(default, !IO) :-
+mlds_output_access_comment_2(acc_default, !IO) :-
     io.write_string("/* default access */ ", !IO).
-mlds_output_access_comment_2(local, !IO) :-
+mlds_output_access_comment_2(acc_local, !IO) :-
     io.write_string("/* local: */ ", !IO).
 
 :- pred mlds_output_per_instance_comment(per_instance::in, io::di, io::uo)
@@ -2540,9 +2540,9 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody,
         !IO) :-
     (
         (
-            Access = private
+            Access = acc_private
         ;
-            Access = local,
+            Access = acc_local,
             PerInstance = one_copy
         ),
         Name \= entity_type(_, _),
@@ -2561,7 +2561,7 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody,
         % with "auto".
         DeclOrDefn = forward_decl,
         Name = entity_function(_, _, _, _),
-        Access = local
+        Access = acc_local
     ->
         io.write_string("auto ", !IO)
     ;

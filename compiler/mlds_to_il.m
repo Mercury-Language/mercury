@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2008 The University of Melbourne.
+% Copyright (C) 2000-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -675,7 +675,7 @@ mlds_defn_to_ilasm_decl(mlds_defn(Name, Context, Flags0, Data), Decl, !Info) :-
         % is created by al.exe. This occurs for nondet environment classes
         % in the mercury std library.
         ( ClassName = structured_name(assembly("mercury"), _, _) ->
-            Flags = set_access(Flags0, public)
+            Flags = set_access(Flags0, acc_public)
         ;
             Flags = Flags0
         ),
@@ -724,7 +724,7 @@ maybe_add_empty_ctor(Ctors0, Kind, Context) = Ctors :-
         EnvVarNames = set.init,
         Ctor = mlds_function(no, mlds_func_params([], []),
             body_defined_here(Stmt), Attributes, EnvVarNames),
-        CtorFlags = init_decl_flags(public, per_instance, non_virtual,
+        CtorFlags = init_decl_flags(acc_public, per_instance, non_virtual,
             overridable, modifiable, concrete),
 
         CtorDefn = mlds_defn(entity_export(".ctor"), Context, CtorFlags, Ctor),
@@ -782,22 +782,22 @@ decl_flags_to_classattrs(Flags) =
         list.condense([Access, decl_flags_to_classattrs_2(Flags)]) :-
     AccessFlag = access(Flags),
     (
-        AccessFlag = public,
+        AccessFlag = acc_public,
         Access = [public]
     ;
-        AccessFlag = protected,
+        AccessFlag = acc_protected,
         unexpected(this_file,
             "decl_flags_to_classattrs: protected access flag")
     ;
-        AccessFlag = private,
+        AccessFlag = acc_private,
         Access = [private]
     ;
-        AccessFlag = default,
+        AccessFlag = acc_default,
         % To make members of the private class accessible to other types
         % in the assembly, set their access to be default or public.
         Access = [private]
     ;
-        AccessFlag = local,
+        AccessFlag = acc_local,
         unexpected(this_file,
             "decl_flags_to_classattrs: local access flag")
     ).
@@ -809,19 +809,19 @@ decl_flags_to_nestedclassattrs(Flags)
         = list.condense([Access, decl_flags_to_classattrs_2(Flags)]) :-
     AccessFlag = access(Flags),
     (
-        AccessFlag = public,
+        AccessFlag = acc_public,
         Access = [nestedpublic]
     ;
-        AccessFlag = protected,
+        AccessFlag = acc_protected,
         Access = [nestedfamily]
     ;
-        AccessFlag = private,
+        AccessFlag = acc_private,
         Access = [nestedprivate]
     ;
-        AccessFlag = default,
+        AccessFlag = acc_default,
         Access = [nestedassembly]
     ;
-        AccessFlag = local,
+        AccessFlag = acc_local,
         unexpected(this_file,
             "decl_flags_to_classattrs: local access flag")
     ).
@@ -853,19 +853,19 @@ decl_flags_to_methattrs(Flags)
             Finality, Abstractness]) :-
     AccessFlag = access(Flags),
     (
-        AccessFlag = public,
+        AccessFlag = acc_public,
         Access = [public]
     ;
-        AccessFlag = protected,
+        AccessFlag = acc_protected,
         Access = [family]
     ;
-        AccessFlag = private,
+        AccessFlag = acc_private,
         Access = [private]
     ;
-        AccessFlag = default,
+        AccessFlag = acc_default,
         Access = [assembly]
     ;
-        AccessFlag = local,
+        AccessFlag = acc_local,
         unexpected(this_file, 
             "decl_flags_to_methattrs: local access flag")
     ),
@@ -908,19 +908,19 @@ decl_flags_to_fieldattrs(Flags)
     = list.condense([Access, PerInstance, Constness]) :-
     AccessFlag = access(Flags),
     (
-        AccessFlag = public,
+        AccessFlag = acc_public,
         Access = [public]
     ;
-        AccessFlag = protected,
+        AccessFlag = acc_protected,
         Access = [family]
     ;
-        AccessFlag = private,
+        AccessFlag = acc_private,
         Access = [private]
     ;
-        AccessFlag = default,
+        AccessFlag = acc_default,
         Access = [assembly]
     ;
-        AccessFlag = local,
+        AccessFlag = acc_local,
         % Access = [private]
         unexpected(this_file,
             "decl_flags_to_fieldattrs: local access flag")
@@ -1461,7 +1461,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
     DefnEntity = mlds_function(no, Params, body_defined_here(Statement),
         Attributes, EnvVarNames),
 
-    Flags = init_decl_flags(public, one_copy, non_virtual, overridable,
+    Flags = init_decl_flags(acc_public, one_copy, non_virtual, overridable,
         const, concrete),
     Defn = mlds_defn(entity_export(ExportName), Context, Flags, DefnEntity).
 
