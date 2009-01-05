@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -75,23 +75,22 @@ generate_goal(ContextModel, Goal, Code, !CI) :-
     % the generic data structures before and after the actual code generation,
     % which is delegated to goal-specific predicates.
 
-    get_forward_live_vars(!.CI, ForwardLiveVarsBeforeGoal),
-
-    % This block of code should be optimized away if the trace goals
-    % are not enabled.
-    code_info.get_module_info(!.CI, ModuleInfo),
-    code_info.get_varset(!.CI, VarSet),
-    GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
-
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
-        ( should_trace_code_gen(!.CI) ->
-            io.format("\nGOAL START: %s\n", [s(GoalDesc)], !IO)
-        ;
-            true
+        some [ModuleInfo, VarSet, GoalDesc] (
+            code_info.get_module_info(!.CI, ModuleInfo),
+            code_info.get_varset(!.CI, VarSet),
+            GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
+
+            ( should_trace_code_gen(!.CI) ->
+                io.format("\nGOAL START: %s\n", [s(GoalDesc)], !IO)
+            ;
+                true
+            )
         )
     ),
 
     % Make any changes to liveness before Goal.
+    get_forward_live_vars(!.CI, ForwardLiveVarsBeforeGoal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     HasSubGoals = goal_expr_has_subgoals(GoalExpr),
     pre_goal_update(GoalInfo, HasSubGoals, !CI),
@@ -181,13 +180,19 @@ generate_goal(ContextModel, Goal, Code, !CI) :-
         Code = empty
     ),
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
-        ( should_trace_code_gen(!.CI) ->
-            io.format("\nGOAL FINISH: %s\n", [s(GoalDesc)], !IO),
-            InstrLists = tree.flatten(Code),
-            list.condense(InstrLists, Instrs),
-            write_instrs(Instrs, no, yes, !IO)
-        ;
-            true
+        some [ModuleInfo, VarSet, GoalDesc] (
+            code_info.get_module_info(!.CI, ModuleInfo),
+            code_info.get_varset(!.CI, VarSet),
+            GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
+
+            ( should_trace_code_gen(!.CI) ->
+                io.format("\nGOAL FINISH: %s\n", [s(GoalDesc)], !IO),
+                InstrLists = tree.flatten(Code),
+                list.condense(InstrLists, Instrs),
+                write_instrs(Instrs, no, yes, !IO)
+            ;
+                true
+            )
         )
     ).
 
@@ -257,9 +262,14 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         switch_gen.generate_switch(CodeModel, Var, CanFail, CaseList, GoalInfo,
             Code, !CI)
     ;
-        GoalExpr = scope(Reason, Goal),
-        commit_gen.generate_scope(Reason, CodeModel, GoalInfo,
-            ForwardLiveVarsBeforeGoal, Goal, Code, !CI)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+            unify_gen.generate_ground_term(TermVar, SubGoal, !CI),
+            Code = empty
+        ;
+            commit_gen.generate_scope(Reason, CodeModel, GoalInfo,
+                ForwardLiveVarsBeforeGoal, SubGoal, Code, !CI)
+        )
     ;
         GoalExpr = generic_call(GenericCall, Args, Modes, Det),
         call_gen.generate_generic_call(CodeModel, GenericCall, Args,

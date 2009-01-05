@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -48,6 +48,9 @@
     test_sense::in, label::out, code_tree::out, code_info::in, code_info::out)
     is det.
 
+:- pred generate_ground_term(prog_var::in, hlds_goal::in,
+    code_info::in, code_info::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -59,6 +62,7 @@
 :- import_module backend_libs.type_class_info.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
@@ -69,6 +73,7 @@
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
+:- import_module ll_backend.global_data.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.stack_layout.
 :- import_module mdbcomp.prim_data.
@@ -82,7 +87,9 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -1174,9 +1181,9 @@ generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
         LeftMode = top_in,
         RightMode = top_in
     ->
-        % This shouldn't happen, since mode analysis should
-        % avoid creating any tests in the arguments
-        % of a construction or deconstruction unification.
+        % This shouldn't happen, since mode analysis should avoid creating
+        % any tests in the arguments of a construction or deconstruction
+        % unification.
         unexpected(this_file, "test in arg of [de]construction")
     ;
         % Input - Output== assignment ->
@@ -1185,7 +1192,7 @@ generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
     ->
         generate_sub_assign(R, L, Code, !CI)
     ;
-            % Output - Input== assignment <-
+        % Output - Input== assignment <-
         LeftMode = top_out,
         RightMode = top_in
     ->
@@ -1238,6 +1245,200 @@ generate_sub_assign(Left, Right, Code, !CI) :-
             Code = empty
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+:- type active_ground_term == pair(rval, llds_type).
+:- type active_ground_term_map == map(prog_var, active_ground_term).
+
+generate_ground_term(TermVar, Goal, !CI) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    set.to_sorted_list(NonLocals, NonLocalList),
+    (
+        NonLocalList = []
+        % The term being constructed by the scope is not needed, so there is
+        % nothing to do.
+    ;
+        NonLocalList = [NonLocal],
+        ( NonLocal = TermVar ->
+            ( GoalExpr = conj(plain_conj, Conjuncts) ->
+                get_module_info(!.CI, ModuleInfo),
+                VarTypes = get_var_types(!.CI),
+                get_exprn_opts(!.CI, ExprnOpts),
+                UnboxedFloats = get_unboxed_floats(ExprnOpts),
+                get_static_cell_info(!.CI, StaticCellInfo0),
+                map.init(ActiveMap0),
+                generate_ground_term_conjuncts(ModuleInfo, VarTypes, Conjuncts,
+                    UnboxedFloats, StaticCellInfo0, StaticCellInfo,
+                    ActiveMap0, ActiveMap),
+                map.to_assoc_list(ActiveMap, ActivePairs),
+                ( ActivePairs = [TermVar - GroundTerm] ->
+                    add_forward_live_vars(NonLocals, !CI),
+                    set_static_cell_info(StaticCellInfo, !CI),
+                    GroundTerm = Rval - _,
+                    assign_const_to_var(TermVar, Rval, !CI)
+                ;
+                    unexpected(this_file,
+                        "generate_ground_term: no active pairs")
+                )
+            ;
+                unexpected(this_file, "generate_ground_term: malformed goal")
+            )
+        ;
+            unexpected(this_file, "generate_ground_term: unexpected nonlocal")
+        )
+    ;
+        NonLocalList = [_, _ | _],
+        unexpected(this_file, "generate_ground_term: unexpected nonlocals")
+    ).
+
+:- pred generate_ground_term_conjuncts(module_info::in, vartypes::in,
+    list(hlds_goal)::in, have_unboxed_floats::in,
+    static_cell_info::in, static_cell_info::out,
+    active_ground_term_map::in, active_ground_term_map::out) is det.
+
+generate_ground_term_conjuncts(_ModuleInfo, _VarTypes, [],
+        _UnboxedFloats, !StaticCellInfo, !ActiveMap).
+generate_ground_term_conjuncts(ModuleInfo, VarTypes, [Goal | Goals],
+        UnboxedFloats, !StaticCellInfo, !ActiveMap) :-
+    generate_ground_term_conjunct(ModuleInfo, VarTypes, Goal, UnboxedFloats,
+        !StaticCellInfo, !ActiveMap),
+    generate_ground_term_conjuncts(ModuleInfo, VarTypes, Goals, UnboxedFloats,
+        !StaticCellInfo, !ActiveMap).
+
+:- pred generate_ground_term_conjunct(module_info::in, vartypes::in,
+    hlds_goal::in, have_unboxed_floats::in,
+    static_cell_info::in, static_cell_info::out,
+    active_ground_term_map::in, active_ground_term_map::out) is det.
+
+generate_ground_term_conjunct(ModuleInfo, VarTypes, Goal, UnboxedFloats,
+        !StaticCellInfo, !ActiveMap) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    (
+        GoalExpr = unify(_, _, _, Unify, _),
+        Unify = construct(Var, ConsId, Args, _, _, _, SubInfo),
+        SubInfo = no_construct_sub_info
+    ->
+        map.lookup(VarTypes, Var, Type),
+        ConsTag = cons_id_to_tag(ModuleInfo, Type, ConsId),
+        generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
+            !StaticCellInfo, !ActiveMap)
+    ;
+        unexpected(this_file,
+            "generate_ground_term_conjunct: malformed goal")
+    ).
+
+:- pred generate_ground_term_conjunct_tag(prog_var::in, cons_tag::in,
+    list(prog_var)::in, have_unboxed_floats::in,
+    static_cell_info::in, static_cell_info::out,
+    active_ground_term_map::in, active_ground_term_map::out) is det.
+
+generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
+        !StaticCellInfo, !ActiveMap) :-
+    (
+        (
+            ConsTag = string_tag(String),
+            Const = llconst_string(String),
+            Type = string
+        ;
+            ConsTag = int_tag(Int),
+            Const = llconst_int(Int),
+            Type = integer
+        ;
+            ConsTag = foreign_tag(Lang, Val),
+            expect(unify(Lang, lang_c), this_file,
+                "foreign_tag for language other than C"),
+            Const = llconst_foreign(Val, integer),
+            Type = integer
+        ;
+            ConsTag = float_tag(Float),
+            Const = llconst_float(Float),
+            (
+                UnboxedFloats = have_unboxed_floats,
+                Type = float
+            ;
+                UnboxedFloats = do_not_have_unboxed_floats,
+                Type = data_ptr
+            )
+        ),
+        ActiveGroundTerm = const(Const) - Type,
+        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+    ;
+        ConsTag = shared_local_tag(Ptag, Stag),
+        Rval = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
+        ActiveGroundTerm = Rval - data_ptr,
+        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+    ;
+        ConsTag = reserved_address_tag(RA),
+        Rval = generate_reserved_address(RA),
+        rval_type(Rval, RvalType),
+        ActiveGroundTerm = Rval - RvalType,
+        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+    ;
+        ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
+        generate_ground_term_conjunct_tag(Var, ActualConsTag, Args,
+            UnboxedFloats, !StaticCellInfo, !ActiveMap)
+    ;
+        ConsTag = no_tag,
+        (
+            Args = [],
+            unexpected(this_file,
+                "generate_ground_term_conjunct_tag: no_tag arity != 1")
+        ;
+            Args = [Arg],
+            svmap.det_remove(Arg, RvalType, !ActiveMap),
+            svmap.det_insert(Var, RvalType, !ActiveMap)
+        ;
+            Args = [_, _ | _],
+            unexpected(this_file,
+                "generate_ground_term_conjunct_tag: no_tag arity != 1")
+        )
+    ;
+        (
+            ConsTag = single_functor_tag,
+            Ptag = 0
+        ;
+            ConsTag = unshared_tag(Ptag)
+        ),
+        generate_ground_term_args(Args, ArgRvalsTypes, !ActiveMap),
+        add_scalar_static_cell(ArgRvalsTypes, DataAddr, !StaticCellInfo),
+        MaybeOffset = no,
+        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
+        Rval = mkword(Ptag, CellPtrConst),
+        ActiveGroundTerm = Rval - data_ptr,
+        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+    ;
+        ConsTag = shared_remote_tag(Ptag, Stag),
+        generate_ground_term_args(Args, ArgRvalsTypes, !ActiveMap),
+        StagRvalType = const(llconst_int(Stag)) - integer,
+        AllRvalsTypes = [StagRvalType | ArgRvalsTypes],
+        add_scalar_static_cell(AllRvalsTypes, DataAddr, !StaticCellInfo),
+        MaybeOffset = no,
+        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
+        Rval = mkword(Ptag, CellPtrConst),
+        ActiveGroundTerm = Rval - data_ptr,
+        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+    ;
+        ( ConsTag = pred_closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ),
+        unexpected(this_file,
+            "generate_ground_term_conjunct_tag: unexpected tag")
+    ).
+
+:- pred generate_ground_term_args(list(prog_var)::in,
+    assoc_list(rval, llds_type)::out,
+    active_ground_term_map::in, active_ground_term_map::out) is det.
+
+generate_ground_term_args([], [], !ActiveMap).
+generate_ground_term_args([Var | Vars], [RvalType | RvalsTypes], !ActiveMap) :-
+    svmap.det_remove(Var, RvalType, !ActiveMap),
+    generate_ground_term_args(Vars, RvalsTypes, !ActiveMap).
 
 %---------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,11 +69,11 @@
 
 :- func dump_livevals(maybe(proc_label), lvalset) = string.
 
-:- func dump_livelist(maybe(proc_label), list(lval)) = string.
-
 :- func dump_reg(reg_type, int) = string.
 
 :- func dump_lval(maybe(proc_label), lval) = string.
+
+:- func dump_lvals(maybe(proc_label), list(lval)) = string.
 
 :- func dump_rval(maybe(proc_label), rval) = string.
 
@@ -259,17 +259,7 @@ dump_livemaplist(MaybeProcLabel, [Label - Lvalset | Livemaplist]) =
         dump_livemaplist(MaybeProcLabel, Livemaplist).
 
 dump_livevals(MaybeProcLabel, Lvalset) =
-    dump_livelist(MaybeProcLabel, set.to_sorted_list(Lvalset)).
-
-dump_livelist(MaybeProcLabel, Lvals) =
-    dump_livelist_2(MaybeProcLabel, Lvals, "").
-
-:- func dump_livelist_2(maybe(proc_label), list(lval), string) = string.
-
-dump_livelist_2(_, [], _) = "".
-dump_livelist_2(MaybeProcLabel, [Lval | Lvallist], Prefix) =
-    Prefix ++ dump_lval(MaybeProcLabel, Lval) ++
-        dump_livelist_2(MaybeProcLabel, Lvallist, " ").
+    dump_lvals(MaybeProcLabel, set.to_sorted_list(Lvalset)).
 
 dump_reg(reg_r, N) =
     "r" ++ int_to_string(N).
@@ -317,6 +307,16 @@ dump_lval(MaybeProcLabel, mem_ref(R)) =
     "mem_ref(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
 dump_lval(_, global_var_ref(env_var_ref(VarName))) =
     "global_var_ref(env_var_ref(" ++ VarName ++ "))".
+
+dump_lvals(MaybeProcLabel, Lvals) =
+    dump_lvals_2(MaybeProcLabel, Lvals, "").
+
+:- func dump_lvals_2(maybe(proc_label), list(lval), string) = string.
+
+dump_lvals_2(_, [], _) = "".
+dump_lvals_2(MaybeProcLabel, [Lval | Lvallist], Prefix) =
+    Prefix ++ dump_lval(MaybeProcLabel, Lval) ++
+        dump_lvals_2(MaybeProcLabel, Lvallist, " ").
 
 dump_rval(MaybeProcLabel, lval(Lval)) =
     dump_lval(MaybeProcLabel, Lval).

@@ -51,6 +51,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -76,9 +77,9 @@
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.var_locn.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.mercury_to_mercury.
 
 :- import_module int.
-:- import_module io.
 :- import_module pair.
 :- import_module set.
 :- import_module stack.
@@ -1925,7 +1926,7 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr, _, Allow),
     stack.pop_det(ResumePoints0, _, ResumePoints),
-    HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType, 
+    HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType,
         MaybeRegionInfo),
     (
         HijackType = ite_no_hijack,
@@ -3245,6 +3246,9 @@ clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
 
 :- interface.
 
+:- pred add_forward_live_vars(set(prog_var)::in,
+    code_info::in, code_info::out) is det.
+
 :- pred get_known_variables(code_info::in, list(prog_var)::out) is det.
 
 :- pred variable_is_forward_live(code_info::in, prog_var::in) is semidet.
@@ -3258,9 +3262,6 @@ clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
 %---------------------------------------------------------------------------%
 
 :- implementation.
-
-:- pred add_forward_live_vars(set(prog_var)::in,
-    code_info::in, code_info::out) is det.
 
 :- pred rem_forward_live_vars(set(prog_var)::in,
     code_info::in, code_info::out) is det.
@@ -4607,6 +4608,20 @@ max_var_slot_2([L | Ls], !Max) :-
     %
 :- pred should_trace_code_gen(code_info::in) is semidet.
 
+:- type code_info_component
+    --->    cic_forward_live_vars
+    ;       cic_zombies
+    ;       cic_temps_in_use
+    ;       cic_par_conj_depth.
+
+    % Print the selected parts of the code_info.
+    %
+    % If you need to print a part that is not currently selectable, make it
+    % selectable.
+    %
+:- pred output_code_info(list(code_info_component)::in, code_info::in,
+    io::di, io::uo) is det.
+
 :- implementation.
 
 should_trace_code_gen(CI) :-
@@ -4616,6 +4631,39 @@ should_trace_code_gen(CI) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_int_option(Globals, debug_code_gen_pred_id, DebugPredIdInt),
     PredIdInt = DebugPredIdInt.
+
+output_code_info(Components, CI, !IO) :-
+    CI = code_info(Static, LocDep, _Persistent),
+    VarSet = Static ^ cis_varset,
+    LocDep = code_info_loc_dep(ForwardLiveVars, _InstMap, Zombies,
+        _VarLocnInfo, TempsInUse, _FailInfo, ParConjDepth),
+    ( list.member(cic_forward_live_vars, Components) ->
+        io.write_string("forward live vars: ", !IO),
+        mercury_output_vars(VarSet, yes, set.to_sorted_list(ForwardLiveVars),
+            !IO),
+        io.nl(!IO)
+    ;
+        true
+    ),
+    ( list.member(cic_zombies, Components) ->
+        io.write_string("zombies: ", !IO),
+        mercury_output_vars(VarSet, yes, set.to_sorted_list(Zombies), !IO),
+        io.nl(!IO)
+    ;
+        true
+    ),
+    ( list.member(cic_temps_in_use, Components) ->
+        io.write_string("temps_in_use: ", !IO),
+        io.write_string(dump_lvals(no, set.to_sorted_list(TempsInUse)), !IO),
+        io.nl(!IO)
+    ;
+        true
+    ),
+    ( list.member(cic_par_conj_depth, Components) ->
+        io.format("par_conj_depth: %d\n", [i(ParConjDepth)], !IO)
+    ;
+        true
+    ).
 
 :- pred output_resume_map(prog_varset::in, map(prog_var, set(lval))::in,
     io::di, io::uo) is det.
