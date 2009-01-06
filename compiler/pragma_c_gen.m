@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,7 +40,7 @@
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in,
     maybe(trace_expr(trace_runtime))::in, pragma_foreign_code_impl::in,
-    hlds_goal_info::in, code_tree::out,
+    hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 :- func foreign_proc_struct_name(module_name, string, int, proc_id) = string.
@@ -69,7 +69,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.trace_gen.
@@ -77,6 +76,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
@@ -402,22 +402,22 @@ generate_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
 %---------------------------------------------------------------------------%
 
 :- pred generate_trace_runtime_cond_foreign_proc_code(
-    trace_expr(trace_runtime)::in, code_tree::out,
+    trace_expr(trace_runtime)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_trace_runtime_cond_foreign_proc_code(RuntimeExpr, Code, !CI) :-
     generate_runtime_cond_code(RuntimeExpr, CondRval, !CI),
     get_next_label(SuccessLabel, !CI),
     generate_failure(FailCode, !CI),
-    CondCode = node([
+    CondCode = singleton(
         llds_instr(if_val(CondRval, code_label(SuccessLabel)),
             "environment variable tests")
-    ]),
-    SuccessLabelCode = node([
+    ),
+    SuccessLabelCode = singleton(
         llds_instr(label(SuccessLabel),
             "environment variable tests successful")
-    ]),
-    Code = tree_list([CondCode, FailCode, SuccessLabelCode]).
+    ),
+    Code = CondCode ++ FailCode ++ SuccessLabelCode.
 
 :- pred generate_runtime_cond_code(trace_expr(trace_runtime)::in,
     rval::out, code_info::in, code_info::out) is det.
@@ -454,7 +454,7 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
 :- pred generate_ordinary_foreign_proc_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    maybe(prog_context)::in, hlds_goal_info::in, bool::in, code_tree::out,
+    maybe(prog_context)::in, hlds_goal_info::in, bool::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
@@ -660,11 +660,11 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     ;
         RefersToLLDSSTack = no
     ),
-    PragmaCCode = node([
+    PragmaCCode = singleton(
         llds_instr(foreign_proc_code(Decls, Components, MayCallMercury,
             no, no, no, MaybeFailLabel, RefersToLLDSSTack, MayDupl),
             "foreign_proc inclusion")
-    ]),
+    ),
 
     % For semidet code, we need to insert the failure handling code here:
     %
@@ -682,13 +682,17 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         MaybeFailLabel = yes(TheFailLabel),
         get_next_label(SkipLabel, !CI),
         generate_failure(FailCode, !CI),
-        GotoSkipLabelCode = node([
+        GotoSkipLabelCode = singleton(
             llds_instr(goto(code_label(SkipLabel)), "Skip past failure code")
-        ]),
-        SkipLabelCode = node([llds_instr(label(SkipLabel), "")]),
-        FailLabelCode = node([llds_instr(label(TheFailLabel), "")]),
-        FailureCode = tree_list([GotoSkipLabelCode, FailLabelCode,
-            FailCode, SkipLabelCode])
+        ),
+        SkipLabelCode = singleton(
+            llds_instr(label(SkipLabel), "")
+        ),
+        FailLabelCode = singleton(
+            llds_instr(label(TheFailLabel), "")
+        ),
+        FailureCode = GotoSkipLabelCode ++ FailLabelCode ++ FailCode ++
+            SkipLabelCode
     ;
         MaybeFailLabel = no,
         ( Detism = detism_failure ->
@@ -699,7 +703,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     ),
 
     % Join all code fragments together.
-    Code = tree_list([SaveVarsCode, InputVarsCode, PragmaCCode, FailureCode]).
+    Code = SaveVarsCode ++ InputVarsCode ++ PragmaCCode ++ FailureCode.
 
 :- pred make_proc_label_hash_define(module_info::in, pred_id::in, proc_id::in,
     foreign_proc_component::out, foreign_proc_component::out) is det.
@@ -735,7 +739,7 @@ make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
     string::in, maybe(prog_context)::in,
     string::in, maybe(prog_context)::in,
     foreign_proc_shared_code_treatment::in,
-    string::in, maybe(prog_context)::in, bool::in, code_tree::out,
+    string::in, maybe(prog_context)::in, bool::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
@@ -787,14 +791,14 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         InitSaveStruct),
 
     get_next_label(RetryLabel, !CI),
-    ModFrameCode = node([
+    ModFrameCode = singleton(
         llds_instr(assign(redoip_slot(lval(curfr)),
             const(llconst_code_addr(code_label(RetryLabel)))),
             "Set up backtracking to retry label")
-    ]),
-    RetryLabelCode = node([
+    ),
+    RetryLabelCode = singleton(
         llds_instr(label(RetryLabel), "Start of the retry block")
-    ]),
+    ),
 
     get_globals(!.CI, Globals),
 
@@ -823,10 +827,8 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     maybe_generate_foreign_proc_event_code(nondet_foreign_proc_later,
         ActualLaterContext, LaterTraceCode, !CI),
 
-    FirstDisjunctCode = tree_list([SaveHeapCode, SaveTicketCode,
-         FirstTraceCode]),
-    LaterDisjunctCode = tree_list([RestoreHeapCode, RestoreTicketCode,
-         LaterTraceCode]),
+    FirstDisjunctCode = SaveHeapCode ++ SaveTicketCode ++ FirstTraceCode,
+    LaterDisjunctCode = RestoreHeapCode ++ RestoreTicketCode ++ LaterTraceCode,
 
     % MR_save_registers(); /* see notes (1) and (2) above */
     % MR_restore_registers(); /* see notes (1) and (3) above */
@@ -944,11 +946,11 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
                 proc_does_not_affect_liveness, no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
-        CallBlockCode = node([
+        CallBlockCode = singleton(
             llds_instr(foreign_proc_code(CallDecls, CallComponents,
                 MayCallMercury, no, no, no, no, yes, MD),
                 "Call and shared foreign_proc inclusion")
-        ]),
+        ),
 
         RetryDecls = [SaveStructDecl | OutDecls],
         RetryComponents = [
@@ -995,19 +997,19 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
                 proc_does_not_affect_liveness, no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
-        RetryBlockCode = node([
+        RetryBlockCode = singleton(
             llds_instr(foreign_proc_code(RetryDecls, RetryComponents,
                 MayCallMercury, no, no, no, no, yes, MD),
                 "Retry and shared foreign_proc inclusion")
-        ]),
+        ),
 
-        Code = tree_list([ModFrameCode, FirstDisjunctCode, CallBlockCode,
-            RetryLabelCode, LaterDisjunctCode, RetryBlockCode])
+        Code = ModFrameCode ++ FirstDisjunctCode ++ CallBlockCode ++
+            RetryLabelCode ++ LaterDisjunctCode ++ RetryBlockCode
     ;
         get_next_label(SharedLabel, !CI),
-        SharedLabelCode = node([
+        SharedLabelCode = singleton(
             llds_instr(label(SharedLabel), "Start of the shared block")
-        ]),
+        ),
 
         SharedDef1 =
             "#define\tSUCCEED     \tgoto MR_shared_success_"
@@ -1074,11 +1076,11 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
                 proc_does_not_affect_liveness, no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
-        CallBlockCode = node([
+        CallBlockCode = singleton(
             llds_instr(foreign_proc_code(CallDecls, CallComponents,
                 MayCallMercury, yes(SharedLabel), no, no, no, yes, MD),
                 "Call foreign_proc inclusion")
-        ]),
+        ),
 
         RetryDecls = [SaveStructDecl | OutDecls],
         RetryComponents = [
@@ -1127,11 +1129,11 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
                 proc_does_not_affect_liveness, no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
-        RetryBlockCode = node([
+        RetryBlockCode = singleton(
             llds_instr(foreign_proc_code(RetryDecls, RetryComponents,
                 MayCallMercury, yes(SharedLabel), no, no, no, yes, MD),
                 "Retry foreign_proc inclusion")
-        ]),
+        ),
 
         SharedDecls = [SaveStructDecl | OutDecls],
         SharedComponents = [
@@ -1181,15 +1183,15 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
                 proc_does_not_affect_liveness, no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
-        SharedBlockCode = node([
+        SharedBlockCode = singleton(
             llds_instr(foreign_proc_code(SharedDecls, SharedComponents,
                 MayCallMercury, no, no, no, no, yes, MD),
                 "Shared foreign_proc inclusion")
-        ]),
+        ),
 
-        Code = tree_list([ModFrameCode, FirstDisjunctCode, CallBlockCode,
-            RetryLabelCode, LaterDisjunctCode, RetryBlockCode, SharedLabelCode,
-            SharedBlockCode])
+        Code = ModFrameCode ++ FirstDisjunctCode ++ CallBlockCode ++
+            RetryLabelCode ++ LaterDisjunctCode ++ RetryBlockCode ++
+            SharedLabelCode ++ SharedBlockCode
     ).
 
 %---------------------------------------------------------------------------%
@@ -1273,8 +1275,8 @@ get_c_arg_list_vars([Arg | Args], [Var | Vars]) :-
 
 %---------------------------------------------------------------------------%
 
-    % foreign_proc_select_out_args returns the list of variables which are outputs
-    % for a procedure.
+    % foreign_proc_select_out_args returns the list of variables which are
+    % outputs for a procedure.
     %
 :- pred foreign_proc_select_out_args(list(c_arg)::in, list(c_arg)::out) is det.
 
@@ -1403,7 +1405,7 @@ find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
     % to those (C) variables.
     %
 :- pred get_foreign_proc_input_vars(list(c_arg)::in,
-    list(foreign_proc_input)::out, bool::in, code_tree::out,
+    list(foreign_proc_input)::out, bool::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 get_foreign_proc_input_vars([], [], _, empty, !CI).
@@ -1423,7 +1425,7 @@ get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
         get_foreign_proc_input_vars(Args, Inputs1, CanOptAwayUnnamedArgs,
             RestCode, !CI),
         Inputs = [Input | Inputs1],
-        Code = tree(FirstCode, RestCode)
+        Code = FirstCode ++ RestCode
     ;
         MaybeName = no,
         % Just ignore the argument.

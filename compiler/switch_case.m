@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,7 +41,7 @@
 :- type case_label_info
     --->    case_label_info(
                 case_description    :: string,
-                case_code           :: code_tree,
+                case_code           :: llds_code,
                 case_code_included  :: case_code_included
             ).
 
@@ -65,11 +65,11 @@
 
     % generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap):
     % 
-:- pred generate_case_code_or_jump(label::in, code_tree::out,
+:- pred generate_case_code_or_jump(label::in, llds_code::out,
     case_label_map::in, case_label_map::out) is det.
 
 :- pred add_remaining_case(label::in, case_label_info::in,
-    code_tree::in, code_tree::out) is det.
+    llds_code::in, llds_code::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -79,10 +79,10 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.trace_gen.
 
+:- import_module cord.
 :- import_module list.
 :- import_module string.
 :- import_module svmap.
@@ -98,16 +98,18 @@ represent_tagged_case_for_llds(Params, TaggedCase, Label, !CaseLabelMap,
     Comment = case_comment(SwitchVarName, MainConsName, OtherConsNames),
     reset_to_position(BranchStart, !CI),
     get_next_label(Label, !CI),
-    LabelCode = node([llds_instr(label(Label), Comment)]),
+    LabelCode = singleton(
+        llds_instr(label(Label), Comment)
+    ),
     maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode, !CI),
     generate_goal(CodeModel, Goal, GoalCode, !CI),
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
     generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-    GotoEndCode = node([
+    GotoEndCode = singleton(
         llds_instr(goto(code_label(EndLabel)),
             "goto end of switch on " ++ SwitchVarName)
-    ]),
-    Code = tree_list([LabelCode, TraceCode, GoalCode, SaveCode, GotoEndCode]),
+    ),
+    Code = LabelCode ++ TraceCode ++ GoalCode ++ SaveCode ++ GotoEndCode,
     CaseInfo = case_label_info(Comment, Code, case_code_not_yet_included),
     svmap.det_insert(Label, CaseInfo, !CaseLabelMap).
 
@@ -124,16 +126,16 @@ generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap) :-
         CaseIncluded = case_code_already_included,
         % We cannot include the case's code, since it has already been included
         % somewhere else.
-        Code = node([
+        Code = singleton(
             llds_instr(goto(code_label(CaseLabel)), "goto " ++ Comment)
-        ])
+        )
     ).
 
 add_remaining_case(_Label, CaseInfo, !Code) :-
     CaseInfo = case_label_info(_Comment, CaseCode, CaseIncluded),
     (
         CaseIncluded = case_code_not_yet_included,
-        !:Code = tree(!.Code, CaseCode)
+        !:Code = !.Code ++ CaseCode
     ;
         CaseIncluded = case_code_already_included
     ).

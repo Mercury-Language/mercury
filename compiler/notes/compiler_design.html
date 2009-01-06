@@ -1372,8 +1372,7 @@ or perform LLDS-specific transformations on the HLDS:
 The result of code generation is the Low Level Data Structure (llds.m),
 which may also contains some data structures whose types are defined in rtti.m.
 The code for each procedure is generated as a tree of code fragments
-which is then flattened (tree.m).
-
+which is then flattened.
 
 <h4> 5a. Low-level optimization (LLDS). </h4>
 
@@ -1793,12 +1792,6 @@ The following modules are part of the libs.m package.
 		Graph colouring. <br>
 		This is used by the LLDS back-end for register allocation
 
-	<dt> tree.m
-		<dd>
-		A simple tree data type. <br>
-		Used by the LLDS, and IL back-ends for collecting
-		together the different fragments of the generated code.
-
 	<dt> lp.m
 		<dd>
 		Implements the linear programming algorithm for optimizing
@@ -1846,6 +1839,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2008-12-03 05:01:45 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2009-01-06 03:56:34 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

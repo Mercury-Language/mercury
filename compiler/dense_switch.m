@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,7 +42,7 @@
     %
 :- pred generate_dense_switch(list(tagged_case)::in, rval::in, string::in,
     code_model::in, hlds_goal_info::in,  dense_switch_info::in,
-    label::in, branch_end::in, branch_end::out, code_tree::out,
+    label::in, branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -58,12 +58,12 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -153,16 +153,16 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     list.map_foldl3(generate_dense_case(VarName, CodeModel, SwitchGoalInfo,
         EndLabel), TaggedCases, CasesCodes,
         map.init, IndexMap, MaybeEnd0, MaybeEnd, !CI),
-    CasesCode = tree_list(CasesCodes),
+    CasesCode = cord_list_to_cord(CasesCodes),
 
     % Generate the jump table.
     map.to_assoc_list(IndexMap, IndexPairs),
     generate_dense_jump_table(FirstVal, LastVal, IndexPairs, Targets,
         no, MaybeFailLabel, !CI),
-    JumpCode = node([
+    JumpCode = singleton(
         llds_instr(computed_goto(IndexRval, Targets),
             "switch (using dense jump table)")
-    ]),
+    ),
 
     % If there is no case for any index value in range, generate the failure
     % code we execute for such cases.
@@ -172,25 +172,24 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     ;
         MaybeFailLabel = yes(FailLabel),
         FailComment = "compiler-introduced `fail' case of dense switch",
-        FailLabelCode = node([
+        FailLabelCode = singleton(
             llds_instr(label(FailLabel), FailComment)
-        ]),
+        ),
         generate_failure(FailureCode, !CI),
-        FailCode = tree(FailLabelCode, FailureCode)
+        FailCode = FailLabelCode ++ FailureCode
     ),
 
-    EndLabelCode = node([
+    EndLabelCode = singleton(
         llds_instr(label(EndLabel), "end of dense switch")
-    ]),
+    ),
 
     % Assemble the code fragments.
-    Code = tree_list([RangeCheckCode, JumpCode, CasesCode, FailCode,
-        EndLabelCode]).
+    Code = RangeCheckCode ++ JumpCode ++ CasesCode ++ FailCode ++ EndLabelCode.
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_dense_case(string::in, code_model::in, hlds_goal_info::in,
-    label::in, tagged_case::in, code_tree::out,
+    label::in, tagged_case::in, llds_code::out,
     map(int, label)::in, map(int, label)::out,
     branch_end::in, branch_end::out,
     code_info::in, code_info::out) is det.
@@ -206,22 +205,21 @@ generate_dense_case(VarName, CodeModel, SwitchGoalInfo, EndLabel,
     record_dense_label_for_cons_tag(Label, MainConsTag, !IndexMap),
     list.foldl(record_dense_label_for_cons_tag(Label), OtherConsTags,
         !IndexMap),
-    LabelCode = node([
+    LabelCode = singleton(
         llds_instr(label(Label), LabelComment)
-    ]),
+    ),
     % We need to save the expression cache, etc.,
     % and restore them when we've finished.
     remember_position(!.CI, BranchStart),
     maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode, !CI),
     code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-    BranchToEndCode = node([
+    BranchToEndCode = singleton(
         llds_instr(goto(code_label(EndLabel)),
             "branch to end of dense switch")
-    ]),
+    ),
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
     generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-    Code = tree_list([LabelCode, TraceCode, GoalCode, SaveCode,
-        BranchToEndCode]),
+    Code = LabelCode ++ TraceCode ++ GoalCode ++ SaveCode ++ BranchToEndCode,
     reset_to_position(BranchStart, !CI).
 
 :- pred record_dense_label_for_cons_tag(label::in, cons_tag::in,

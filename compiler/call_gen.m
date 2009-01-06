@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -31,15 +31,15 @@
 %---------------------------------------------------------------------------%
 
 :- pred generate_call(code_model::in, pred_id::in, proc_id::in,
-    list(prog_var)::in, hlds_goal_info::in, code_tree::out,
+    list(prog_var)::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 :- pred generate_generic_call(code_model::in, generic_call::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
-    hlds_goal_info::in, code_tree::out, code_info::in, code_info::out) is det.
+    hlds_goal_info::in, llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_builtin(code_model::in, pred_id::in, proc_id::in,
-    list(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+    list(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
 
 :- type known_call_variant
     --->    ho_call_known_num
@@ -70,13 +70,13 @@
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_event.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -107,7 +107,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     call_gen.call_comment(!.CI, PredId, CodeModel, CallComment),
     Context = goal_info_get_context(GoalInfo),
     GoalPath = goal_info_get_goal_path(GoalInfo),
-    CallCode = node([
+    CallCode = from_list([
         llds_instr(livevals(LiveVals), ""),
         llds_instr(llcall(Address, code_label(ReturnLabel), ReturnLiveLvalues,
             Context, GoalPath, CallModel), CallComment),
@@ -134,15 +134,14 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     ->
         generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalPath, Context,
             TraceTailRecResetAndEventCode, TailRecLabel, !CI),
-        JumpCode = node([
+        JumpCode = from_list([
             llds_instr(livevals(LiveVals), ""),
             llds_instr(goto(code_label(TailRecLabel)),
                 "tail recursive jump")
         ]),
-        Code = tree_list([SetupCode, TraceTailRecResetAndEventCode, JumpCode])
+        Code = SetupCode ++ TraceTailRecResetAndEventCode ++ JumpCode
     ;
-        Code = tree_list([SetupCode, TraceResetCode, CallCode,
-            FailHandlingCode])
+        Code = SetupCode ++ TraceResetCode ++ CallCode ++ FailHandlingCode
     ).
 
 %---------------------------------------------------------------------------%
@@ -179,7 +178,7 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes, Det,
 
 :- pred generate_main_generic_call(code_model::in, generic_call::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
-    hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
+    hlds_goal_info::in, llds_code::out, code_info::in, code_info::out)
     is det.
 
 generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
@@ -240,7 +239,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     handle_return(OutArgsInfos, GoalInfo, NonLiveOutputs,
         ReturnInstMap, ReturnLiveLvalues, !CI),
 
-    CallCode = node([
+    CallCode = from_list([
         llds_instr(livevals(LiveVals), ""),
         llds_instr(llcall(CodeAddr, code_label(ReturnLabel), ReturnLiveLvalues,
             Context, GoalPath, CallModel), "Setup and call"),
@@ -250,13 +249,13 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     % If the call can fail, generate code to check for and handle the failure.
     handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
-    Code = tree_list([SetupCode, NonVarCode, TraceCode, CallCode,
-        FailHandlingCode]).
+    Code = SetupCode ++ NonVarCode ++ TraceCode ++ CallCode ++
+        FailHandlingCode.
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_event_call(string::in, list(prog_var)::in, hlds_goal_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_event_call(EventName, Args, GoalInfo, Code, !CI) :-
     get_module_info(!.CI, ModuleInfo),
@@ -270,13 +269,13 @@ generate_event_call(EventName, Args, GoalInfo, Code, !CI) :-
             AttrCodes, !CI),
         UserEventInfo = user_event_info(EventNumber, MaybeUserAttributes),
         generate_user_event_code(UserEventInfo, GoalInfo, EventCode, !CI),
-        Code = tree(tree_list(AttrCodes), EventCode)
+        Code = cord_list_to_cord(AttrCodes) ++ EventCode
     ;
         unexpected(this_file, "generate_event_call: bad event name")
     ).
 
 :- pred generate_event_attributes(list(event_attribute)::in,
-    list(prog_var)::in, list(maybe(user_attribute))::out, list(code_tree)::out,
+    list(prog_var)::in, list(maybe(user_attribute))::out, list(llds_code)::out,
     code_info::in, code_info::out) is det.
 
 generate_event_attributes([], !.Vars, [], [], !CI) :-
@@ -387,7 +386,7 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
     % constants.
     %
 :- pred generic_call_nonvar_setup(generic_call::in, known_call_variant::in,
-    list(prog_var)::in, list(prog_var)::in, code_tree::out,
+    list(prog_var)::in, list(prog_var)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
@@ -399,25 +398,25 @@ generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
         HoCallVariant = ho_call_unknown,
         clobber_regs([reg(reg_r, 2)], !CI),
         list.length(InVars, NInVars),
-        Code = node([
+        Code = singleton(
             llds_instr(assign(reg(reg_r, 2), const(llconst_int(NInVars))),
                 "Assign number of immediate input arguments")
-        ])
+        )
     ).
 generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
         InVars, _OutVars, Code, !CI) :-
     (
         HoCallVariant = ho_call_known_num,
         clobber_regs([reg(reg_r, 2)], !CI),
-        Code = node([
+        Code = singleton(
             llds_instr(assign(reg(reg_r, 2), const(llconst_int(Method))),
                 "Index of class method in typeclass info")
-        ])
+        )
     ;
         HoCallVariant = ho_call_unknown,
         clobber_regs([reg(reg_r, 2), reg(reg_r, 3)], !CI),
         list.length(InVars, NInVars),
-        Code = node([
+        Code = from_list([
             llds_instr(assign(reg(reg_r, 2), const(llconst_int(Method))),
                 "Index of class method in typeclass info"),
             llds_instr(assign(reg(reg_r, 3), const(llconst_int(NInVars))),
@@ -432,7 +431,7 @@ generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
 %---------------------------------------------------------------------------%
 
 :- pred prepare_for_call(code_model::in, call_model::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
     succip_is_used(!CI),
@@ -451,7 +450,7 @@ prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
     trace_prepare_for_call(!.CI, TraceCode).
 
 :- pred handle_call_failure(code_model::in, hlds_goal_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
     (
@@ -461,16 +460,15 @@ handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
             generate_failure(FailHandlingCode, !CI)
         ;
             get_next_label(ContLab, !CI),
-            FailTestCode = node([
+            FailTestCode = singleton(
                 llds_instr(if_val(lval(reg(reg_r, 1)), code_label(ContLab)),
                     "test for success")
-            ]),
+            ),
             generate_failure(FailCode, !CI),
-            ContLabelCode = node([
+            ContLabelCode = singleton(
                 llds_instr(label(ContLab), "")
-            ]),
-            FailHandlingCode = tree_list([FailTestCode,
-                FailCode, ContLabelCode])
+            ),
+            FailHandlingCode = FailTestCode ++ FailCode ++ ContLabelCode
         )
     ;
         ( CodeModel = model_det
@@ -622,15 +620,15 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
             produce_variable(AddrVar, AddrVarCode, AddrRval, !CI),
             produce_variable(ValueVar, ValueVarCode, ValueRval, !CI),
             StoreInstr = llds_instr(assign(mem_ref(AddrRval), ValueRval), ""),
-            StoreCode = node([StoreInstr]),
-            Code = tree_list([AddrVarCode, ValueVarCode, StoreCode])
+            StoreCode = singleton(StoreInstr),
+            Code = AddrVarCode ++ ValueVarCode ++ StoreCode
         ;
             SimpleCode = test(_),
             unexpected(this_file, "malformed model_det builtin predicate")
         ;
             SimpleCode = noop(DefinedVars),
             list.foldl(magically_put_var_in_unused_reg, DefinedVars, !CI),
-            Code = node([])
+            Code = empty
         )
     ;
         CodeModel = model_semi,
@@ -638,7 +636,7 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
             SimpleCode = test(TestExpr),
             generate_simple_test(TestExpr, Rval, ArgCode, !CI),
             fail_if_rval_is_false(Rval, TestCode, !CI),
-            Code = tree(ArgCode, TestCode)
+            Code = ArgCode ++ TestCode
         ;
             SimpleCode = assign(_, _),
             unexpected(this_file, "malformed model_semi builtin predicate")
@@ -655,7 +653,7 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
     ).
 
 :- pred generate_assign_builtin(prog_var::in, simple_expr(prog_var)::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_assign_builtin(Var, AssignExpr, Code, !CI) :-
     ( variable_is_forward_live(!.CI, Var) ->
@@ -676,7 +674,7 @@ convert_simple_expr(binary(BinOp, Expr1, Expr2)) =
     binop(BinOp, convert_simple_expr(Expr1), convert_simple_expr(Expr2)).
 
 :- pred generate_simple_test(simple_expr(prog_var)::in(simple_test_expr),
-    rval::out, code_tree::out, code_info::in, code_info::out) is det.
+    rval::out, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_simple_test(TestExpr, Rval, ArgCode, !CI) :-
     (
@@ -686,7 +684,7 @@ generate_simple_test(TestExpr, Rval, ArgCode, !CI) :-
         generate_builtin_arg(X1, X, CodeX, !CI),
         generate_builtin_arg(Y1, Y, CodeY, !CI),
         Rval = binop(BinOp, X, Y),
-        ArgCode = tree(CodeX, CodeY)
+        ArgCode = CodeX ++ CodeY
     ;
         TestExpr = unary(UnOp, X0),
         X1 = convert_simple_expr(X0),
@@ -694,7 +692,7 @@ generate_simple_test(TestExpr, Rval, ArgCode, !CI) :-
         Rval = unop(UnOp, X)
     ).
 
-:- pred generate_builtin_arg(rval::in, rval::out, code_tree::out,
+:- pred generate_builtin_arg(rval::in, rval::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_builtin_arg(Rval0, Rval, Code, !CI) :-
@@ -745,14 +743,13 @@ output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_call_vn_livevals(list(arg_loc)::in, set(prog_var)::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_call_vn_livevals(InputArgLocs, OutputArgs, Code, !CI) :-
-    generate_call_vn_livevals(!.CI, InputArgLocs, OutputArgs,
-        LiveVals),
-    Code = node([
+    generate_call_vn_livevals(!.CI, InputArgLocs, OutputArgs, LiveVals),
+    Code = singleton(
         llds_instr(livevals(LiveVals), "")
-    ]).
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -34,7 +34,7 @@
 
     % Translate a HLDS goal to LLDS.
     %
-:- pred generate_goal(code_model::in, hlds_goal::in, code_tree::out,
+:- pred generate_goal(code_model::in, hlds_goal::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -47,7 +47,6 @@
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
-:- import_module libs.tree.
 :- import_module ll_backend.call_gen.
 :- import_module ll_backend.commit_gen.
 :- import_module ll_backend.disj_gen.
@@ -60,6 +59,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module io.
 :- import_module list.
 :- import_module map.
@@ -145,7 +145,7 @@ generate_goal(ContextModel, Goal, Code, !CI) :-
             get_maybe_trace_info(!.CI, yes(_))
         ->
             save_variables_on_stack([CallTableVar], TipSaveCode, !CI),
-            CodeUptoTip = tree(GoalCode, TipSaveCode)
+            CodeUptoTip = GoalCode ++ TipSaveCode
         ;
             CodeUptoTip = GoalCode
         ),
@@ -167,7 +167,7 @@ generate_goal(ContextModel, Goal, Code, !CI) :-
         ( set.member(feature_save_deep_excp_vars, Features) ->
             DeepSaveVars = compute_deep_save_excp_vars(ProcInfo),
             save_variables_on_stack(DeepSaveVars, DeepSaveCode, !CI),
-            Code = tree(CodeUptoTip, DeepSaveCode)
+            Code = CodeUptoTip ++ DeepSaveCode
         ;
             Code = CodeUptoTip
         ),
@@ -187,8 +187,7 @@ generate_goal(ContextModel, Goal, Code, !CI) :-
 
             ( should_trace_code_gen(!.CI) ->
                 io.format("\nGOAL FINISH: %s\n", [s(GoalDesc)], !IO),
-                InstrLists = tree.flatten(Code),
-                list.condense(InstrLists, Instrs),
+                Instrs = cord.list(Code),
                 write_instrs(Instrs, no, yes, !IO)
             ;
                 true
@@ -230,7 +229,7 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-    code_model::in, set(prog_var)::in, code_tree::out,
+    code_model::in, set(prog_var)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
@@ -242,7 +241,8 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         GoalExpr = conj(ConjType, Goals),
         (
             ConjType = plain_conj,
-            generate_goals(Goals, CodeModel, Code, !CI)
+            generate_goals(Goals, CodeModel, Codes, !CI),
+            Code = cord_list_to_cord(Codes)
         ;
             ConjType = parallel_conj,
             par_conj_gen.generate_par_conj(Goals, GoalInfo, CodeModel, Code,
@@ -318,17 +318,16 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
     % to the next.
     %
 :- pred generate_goals(hlds_goals::in, code_model::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    list(llds_code)::out, code_info::in, code_info::out) is det.
 
-generate_goals([], _, empty, !CI).
-generate_goals([Goal | Goals], CodeModel, Code, !CI) :-
-    generate_goal(CodeModel, Goal, Code1, !CI),
+generate_goals([], _, [], !CI).
+generate_goals([Goal | Goals], CodeModel, [Code | Codes], !CI) :-
+    generate_goal(CodeModel, Goal, Code, !CI),
     get_instmap(!.CI, Instmap),
     ( instmap_is_unreachable(Instmap) ->
-        Code = Code1
+        Codes = []
     ;
-        generate_goals(Goals, CodeModel, Code2, !CI),
-        Code = tree(Code1, Code2)
+        generate_goals(Goals, CodeModel, Codes, !CI)
     ).
 
 %---------------------------------------------------------------------------%

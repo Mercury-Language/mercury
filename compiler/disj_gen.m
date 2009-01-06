@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2008 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,7 +26,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred generate_disj(code_model::in, list(hlds_goal)::in, hlds_goal_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -39,8 +39,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.tree.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
@@ -50,6 +48,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -108,16 +107,16 @@ generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
                 lds_cur_slot            :: lval,
 
                 lds_resume_map          :: resume_map,
-                lds_flush_code          :: code_tree,
+                lds_flush_code          :: llds_code,
 
-                lds_save_ticket_code    :: code_tree,
+                lds_save_ticket_code    :: llds_code,
                 lds_maybe_ticket_slot   :: maybe(lval),
 
-                lds_save_hp_code        :: code_tree,
+                lds_save_hp_code        :: llds_code,
                 lds_maybe_hp_slot       :: maybe(lval),
 
                 lds_hijack_info         :: disj_hijack_info,
-                lds_prepare_hijack_code :: code_tree,
+                lds_prepare_hijack_code :: llds_code,
 
                 ldi_solns               :: list(list(rval)),
                 ldi_field_types         :: list(llds_type)
@@ -192,7 +191,7 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Goals, DisjGoalInfo,
         Solns, LLDSTypes).
 
 :- pred generate_lookup_disj(set(prog_var)::in, lookup_disj_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     LookupDisjInfo = lookup_disj_info(OutVars, StoreMap, MaybeEnd, Liveness,
@@ -213,15 +212,15 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     % generate_branch_end won't want to overwrite BaseReg.
     acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
 
-    BaseRegInitCode = node([
+    BaseRegInitCode = singleton(
         llds_instr(assign(BaseReg,
             mem_addr(heap_ref(SolnVectorAddrRval, 0, const(llconst_int(0))))),
             "Compute base address for this case")
-    ]),
-    SaveSlotCode = node([
+    ),
+    SaveSlotCode = singleton(
         llds_instr(assign(CurSlot, const(llconst_int(NumOutVars))),
             "Setup current slot in the solution array")
-    ]),
+    ),
 
     remember_position(!.CI, DisjEntry),
 
@@ -243,9 +242,9 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
         FirstBranchEndCode, !CI),
     release_reg(BaseReg, !CI),
 
-    GotoEndCode = node([
+    GotoEndCode = singleton(
         llds_instr(goto(code_label(EndLabel)), "goto end of lookup disj")
-    ]),
+    ),
 
     reset_to_position(DisjEntry, !CI),
     generate_resume_point(ResumePoint, ResumePointCode, !CI),
@@ -257,7 +256,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     get_next_label(UndoLabel, !CI),
     get_next_label(AfterUndoLabel, !CI),
     MaxSlot = (NumSolns - 1) * NumOutVars,
-    TestMoreSolnsCode = node([
+    TestMoreSolnsCode = from_list([
         llds_instr(assign(LaterBaseReg, lval(CurSlot)),
             "Init later base register"),
         llds_instr(if_val(binop(int_ge, lval(LaterBaseReg),
@@ -273,7 +272,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
             "Undo hijack code")
     ]),
     undo_disj_hijack(HijackInfo, UndoHijackCode, !CI),
-    AfterUndoLabelCode = node([
+    AfterUndoLabelCode = from_list([
         llds_instr(label(AfterUndoLabel),
             "Return later answer code"),
         llds_instr(assign(LaterBaseReg,
@@ -303,37 +302,40 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
 
     after_all_branches(StoreMap, MaybeEnd, !CI),
 
-    EndLabelCode = node([llds_instr(label(EndLabel), "end of lookup disj")]),
-    Comment = node([llds_instr(comment("lookup disj"), "")]),
+    EndLabelCode = singleton(
+        llds_instr(label(EndLabel), "end of lookup disj")
+    ),
+    Comment = singleton(
+        llds_instr(comment("lookup disj"), "")
+    ),
 
-    Code = tree_list([
-        Comment,
-        FlushCode,
-        BaseRegInitCode,
-        SaveSlotCode,
-        SaveTicketCode,
-        SaveHpCode,
-        PrepareHijackCode,
-        UpdateRedoipCode,
-        FirstFlushResumeVarsCode,
-        FirstBranchEndCode,
-        GotoEndCode,
-        ResumePointCode,
-        RestoreTicketCode,
-        RestoreHpCode,
-        TestMoreSolnsCode,
-        UndoHijackCode,
-        AfterUndoLabelCode,
-        LaterFlushResumeVarsCode,
-        LaterBranchEndCode,
-        EndLabelCode
-    ]).
+    Code = 
+        Comment ++
+        FlushCode ++
+        BaseRegInitCode ++
+        SaveSlotCode ++
+        SaveTicketCode ++
+        SaveHpCode ++
+        PrepareHijackCode ++
+        UpdateRedoipCode ++
+        FirstFlushResumeVarsCode ++
+        FirstBranchEndCode ++
+        GotoEndCode ++
+        ResumePointCode ++
+        RestoreTicketCode ++
+        RestoreHpCode ++
+        TestMoreSolnsCode ++
+        UndoHijackCode ++
+        AfterUndoLabelCode ++
+        LaterFlushResumeVarsCode ++
+        LaterBranchEndCode ++
+        EndLabelCode.
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_real_disj(add_trail_ops::in, add_region_ops::in,
     code_model::in, set(prog_var)::in, list(hlds_goal)::in, hlds_goal_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
         DisjGoalInfo, Code, !CI)  :-
@@ -444,21 +446,15 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
         % The resume point is unchanged.
     ),
 
-    Code = tree_list([
-        FlushCode,
-        SaveTicketCode,
-        SaveHpCode,
-        BeforeEnterRegionCode,
-        PrepareHijackCode,
-        GoalsCode
-    ]).
+    Code = FlushCode ++ SaveTicketCode ++ SaveHpCode ++
+        BeforeEnterRegionCode ++ PrepareHijackCode ++ GoalsCode.
 
 :- pred generate_disjuncts(list(hlds_goal)::in, code_model::in,
     resume_map::in, maybe(resume_point_info)::in, disj_hijack_info::in,
     hlds_goal_info::in, commit_disj_region_cleanup::in, label::in, bool::in,
-    maybe(lval)::in, maybe(lval)::in, code_tree::in, code_tree::in,
+    maybe(lval)::in, maybe(lval)::in, llds_code::in, llds_code::in,
     position_info::in, maybe(branch_end_info)::in, maybe(branch_end_info)::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
     unexpected(this_file, "generate_disjuncts: empty disjunction!").
@@ -527,9 +523,9 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
             save_hp_in_branch(BranchSaveHpCode, BranchHpSlot,
                 BranchStart0, BranchStart, !CI),
-            tree.flatten(SaveHpCode, HpCodeList),
-            tree.flatten(BranchSaveHpCode, BranchHpCodeList),
-            expect(unify(HpCodeList, BranchHpCodeList), this_file,
+            HpCodeInstrs = cord.list(SaveHpCode),
+            BranchHpCodeInstrs = cord.list(BranchSaveHpCode),
+            expect(unify(HpCodeInstrs, BranchHpCodeInstrs), this_file,
                 "cannot use same code for saving hp"),
             expect(unify(HpSlot, BranchHpSlot), this_file,
                 "cannot allocate same slot for saved hp")
@@ -589,17 +585,17 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
         (
             RegionCommitDisjCleanup = no_commit_disj_region_cleanup,
-            BranchCode = node([
+            BranchCode = singleton(
                 llds_instr(goto(code_label(EndLabel)),
                     "skip to end of disjunction")
-            ])
+            )
         ;
             RegionCommitDisjCleanup = commit_disj_region_cleanup(CleanupLabel,
                 _CleanupCode),
-            BranchCode = node([
+            BranchCode = singleton(
                 llds_instr(goto(code_label(CleanupLabel)),
                     "skip to end of disjunction after nonlast region disjunct")
-            ])
+            )
         ),
 
         generate_disjuncts(Goals, CodeModel, FullResumeMap,
@@ -609,21 +605,20 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             LaterRegionCode, LastRegionCode, BranchStart,
             MaybeEnd1, MaybeEnd, RestCode, !CI),
 
-        Code = tree_list([
-            EntryResumePointCode,
-            RestoreHpCode,
-            RestoreTicketCode,
-            SaveHpCode,
-            ThisDisjunctRegionCode,
-            ModContCode,
-            TraceCode,
-            GoalCode,
-            ResumeVarsCode,
-            PruneTicketCode,
-            SaveCode,
-            BranchCode,
+        Code = 
+            EntryResumePointCode ++
+            RestoreHpCode ++
+            RestoreTicketCode ++
+            SaveHpCode ++
+            ThisDisjunctRegionCode ++
+            ModContCode ++
+            TraceCode ++
+            GoalCode ++
+            ResumeVarsCode ++
+            PruneTicketCode ++
+            SaveCode ++
+            BranchCode ++
             RestCode
-        ])
     ;
         Resume = no_resume_point,
 
@@ -648,32 +643,31 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         ;
             RegionCommitDisjCleanup = commit_disj_region_cleanup(CleanupLabel,
                 CleanupCode),
-            RegionCleanupStartCode = node([
+            RegionCleanupStartCode = from_list([
                 llds_instr(goto(code_label(EndLabel)),
                     "Skip over cleanup code at end of disjunction"),
                 llds_instr(label(CleanupLabel),
                     "Cleanup at end of disjunction")
             ]),
-            RegionCleanupCode = tree(RegionCleanupStartCode, CleanupCode)
+            RegionCleanupCode = RegionCleanupStartCode ++ CleanupCode
         ),
 
-        EndLabelCode = node([
+        EndLabelCode = singleton(
             llds_instr(label(EndLabel),
                 "End of disjunction")
-        ]),
+        ),
 
-        Code = tree_list([
-            EntryResumePointCode,
-            TraceCode,      % XXX Should this be after LastRegionCode?
-            RestoreHpCode,
-            RestoreTicketCode,
-            LastRegionCode,
-            UndoCode,
-            GoalCode,
-            SaveCode,
-            RegionCleanupCode,
+        Code = 
+            EntryResumePointCode ++
+            TraceCode ++      % XXX Should this be after LastRegionCode?
+            RestoreHpCode ++
+            RestoreTicketCode ++
+            LastRegionCode ++
+            UndoCode ++
+            GoalCode ++
+            SaveCode ++
+            RegionCleanupCode ++
             EndLabelCode
-        ])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -682,11 +676,11 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
     --->    no_commit_disj_region_cleanup
     ;       commit_disj_region_cleanup(
                 cleanup_label       :: label,
-                cleanup_code        :: code_tree
+                cleanup_code        :: llds_code
             ).
 
 :- pred maybe_create_disj_region_frame_nondet(add_region_ops::in,
-    hlds_goal_info::in, code_tree::out, code_tree::out, code_tree::out, 
+    hlds_goal_info::in, llds_code::out, llds_code::out, llds_code::out, 
     code_info::in, code_info::out) is det.
 
 maybe_create_disj_region_frame_nondet(DisjRegionOps, _DisjGoalInfo,
@@ -730,7 +724,7 @@ maybe_create_disj_region_frame_nondet(DisjRegionOps, _DisjGoalInfo,
             first_nonfixed_embedded_slot_addr(EmbeddedStackFrame, FixedSize),
         acquire_reg(reg_r, SnapshotNumRegLval, !CI),
         acquire_reg(reg_r, AddrRegLval, !CI),
-        PushInitCode = node([
+        PushInitCode = from_list([
             llds_instr(
                 push_region_frame(region_stack_disj, EmbeddedStackFrame),
                 "Save stack pointer of embedded region nondet stack"),
@@ -744,37 +738,33 @@ maybe_create_disj_region_frame_nondet(DisjRegionOps, _DisjGoalInfo,
         disj_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
             EmbeddedStackFrame, SnapshotRegionVarList, SnapshotRegionCode,
             !CI),
-        SetCode = node([
+        SetCode = singleton(
             llds_instr(
                 region_set_fixed_slot(region_set_disj_num_snapshots,
                     EmbeddedStackFrame, lval(SnapshotNumRegLval)),
                 "Store the number of snapshot_infos")
-        ]),
+        ),
         release_reg(SnapshotNumRegLval, !CI),
         release_reg(AddrRegLval, !CI),
 
-        BeforeEnterCode = tree_list([
-            PushInitCode,
-            SnapshotRegionCode,
-            SetCode
-        ]),
-        LaterCode = node([
+        BeforeEnterCode = PushInitCode ++ SnapshotRegionCode ++ SetCode,
+        LaterCode = singleton(
             llds_instr(
                 use_and_maybe_pop_region_frame(region_disj_later,
                     EmbeddedStackFrame),
                 "region enter later disjunct")
-        ]),
-        LastCode = node([
+        ),
+        LastCode = singleton(
             llds_instr(
                 use_and_maybe_pop_region_frame(region_disj_last,
                     EmbeddedStackFrame),
                 "region enter last disjunct")
-        ])
+        )
     ).
 
 :- pred maybe_create_disj_region_frame_semi(add_region_ops::in,
-    set(prog_var)::in, set(prog_var)::in, code_tree::out, code_tree::out,
-    code_tree::out, list(lval)::out, commit_disj_region_cleanup::out,
+    set(prog_var)::in, set(prog_var)::in, llds_code::out, llds_code::out,
+    llds_code::out, list(lval)::out, commit_disj_region_cleanup::out,
     code_info::in, code_info::out) is det.
 
 maybe_create_disj_region_frame_semi(DisjRegionOps, DisjRemovedRegionVars,
@@ -832,7 +822,7 @@ maybe_create_disj_region_frame_semi(DisjRegionOps, DisjRemovedRegionVars,
         acquire_reg(reg_r, ProtectNumRegLval, !CI),
         acquire_reg(reg_r, SnapshotNumRegLval, !CI),
         acquire_reg(reg_r, AddrRegLval, !CI),
-        PushInitCode = node([
+        PushInitCode = from_list([
             llds_instr(
                 push_region_frame(region_stack_disj, EmbeddedStackFrame),
                 "Save stack pointer of embedded region nondet stack"),
@@ -852,7 +842,7 @@ maybe_create_disj_region_frame_semi(DisjRegionOps, DisjRemovedRegionVars,
         disj_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
             EmbeddedStackFrame, SnapshotRegionVarList, SnapshotRegionCode,
             !CI),
-        SetCode = node([
+        SetCode = from_list([
             llds_instr(
                 region_set_fixed_slot(region_set_disj_num_protects,
                     EmbeddedStackFrame, lval(ProtectNumRegLval)),
@@ -866,68 +856,64 @@ maybe_create_disj_region_frame_semi(DisjRegionOps, DisjRemovedRegionVars,
         release_reg(SnapshotNumRegLval, !CI),
         release_reg(AddrRegLval, !CI),
 
-        BeforeEnterCode = tree_list([
-            PushInitCode,
-            ProtectRegionCode,
-            SnapshotRegionCode,
-            SetCode
-        ]),
-        LaterCode = node([
+        BeforeEnterCode = PushInitCode ++ ProtectRegionCode ++
+            SnapshotRegionCode ++ SetCode,
+        LaterCode = singleton(
             llds_instr(
                 use_and_maybe_pop_region_frame(region_disj_later,
                     EmbeddedStackFrame),
                 "region enter later disjunct")
-        ]),
-        LastCode = node([
+        ),
+        LastCode = singleton(
             llds_instr(
                 use_and_maybe_pop_region_frame(region_disj_last,
                     EmbeddedStackFrame),
                 "region enter last disjunct")
-        ]),
+        ),
 
         get_next_label(CleanupLabel, !CI),
-        CleanupCode = node([
+        CleanupCode = singleton(
             llds_instr(
                 use_and_maybe_pop_region_frame(
                     region_disj_nonlast_semi_commit, EmbeddedStackFrame),
                 "region cleanup commit for nonlast disjunct")
-        ]),
+        ),
         RegionCommitDisjCleanup = commit_disj_region_cleanup(CleanupLabel,
             CleanupCode)
     ).
 
 :- pred disj_protect_regions(lval::in, lval::in, embedded_stack_frame_id::in,
-    list(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+    list(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
 
 disj_protect_regions(_, _, _, [], empty, !CI).
 disj_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
-        [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
+        [RegionVar | RegionVars], Code ++ Codes, !CI) :-
     produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
-    SaveCode = node([
+    SaveCode = singleton(
         llds_instr(
             region_fill_frame(region_fill_semi_disj_protect,
                 EmbeddedStackFrame, RegionVarRval, NumLval, AddrLval),
             "disj protect the region if needed")
-    ]),
-    Code = tree(ProduceVarCode, SaveCode),
+    ),
+    Code = ProduceVarCode ++ SaveCode,
     disj_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
         RegionVars, Codes, !CI).
 
 :- pred disj_alloc_snapshot_regions(lval::in, lval::in,
-    embedded_stack_frame_id::in, list(prog_var)::in, code_tree::out,
+    embedded_stack_frame_id::in, list(prog_var)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 disj_alloc_snapshot_regions(_, _, _, [], empty, !CI).
 disj_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
-        [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
+        [RegionVar | RegionVars], Code ++ Codes, !CI) :-
     produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
-    SaveCode = node([
+    SaveCode = singleton(
         llds_instr(
             region_fill_frame(region_fill_disj_snapshot,
                 EmbeddedStackFrame, RegionVarRval, NumLval, AddrLval),
             "take alloc snapshot of the region")
-    ]),
-    Code = tree(ProduceVarCode, SaveCode),
+    ),
+    Code = ProduceVarCode ++ SaveCode,
     disj_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
         RegionVars, Codes, !CI).
 

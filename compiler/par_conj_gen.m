@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2008 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2009 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -97,7 +97,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred generate_par_conj(list(hlds_goal)::in, hlds_goal_info::in,
-    code_model::in, code_tree::out, code_info::in, code_info::out) is det.
+    code_model::in, llds_code::out, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -112,13 +112,13 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -151,16 +151,16 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     ( Depth = 0 ->
         acquire_temp_slot(slot_lval(parent_sp),
             non_persistent_temp_slot, ParentSpSlot, !CI),
-        MaybeSetParentSpCode = node([
+        MaybeSetParentSpCode = from_list([
             llds_instr(assign(ParentSpSlot, lval(parent_sp)),
                 "save the old parent stack pointer"),
             llds_instr(assign(parent_sp, lval(sp)),
                 "set the parent stack pointer")
         ]),
-        MaybeRestoreParentSpCode = node([
+        MaybeRestoreParentSpCode = singleton(
             llds_instr(assign(parent_sp, lval(ParentSpSlot)),
                 "restore old parent stack pointer")
-        ]),
+        ),
         MaybeReleaseParentSpSlot = yes(ParentSpSlot)
     ;
         MaybeSetParentSpCode = empty,
@@ -196,10 +196,10 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     ),
 
     NumGoals = list.length(Goals),
-    MakeSyncTermCode = node([
+    MakeSyncTermCode = singleton(
         llds_instr(init_sync_term(SyncTermBaseSlot, NumGoals),
             "initialize sync term")
-    ]),
+    ),
 
     set_par_conj_depth(Depth+1, !CI),
     get_next_label(EndLabel, !CI),
@@ -208,17 +208,16 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         no, GoalCode, !CI),
     set_par_conj_depth(Depth, !CI),
 
-    EndLabelCode = node([
+    EndLabelCode = singleton(
         llds_instr(label(EndLabel), "end of parallel conjunction")
-    ]),
-    Code = tree_list([
-        MaybeSetParentSpCode,
-        SaveCode,
-        MakeSyncTermCode,
-        GoalCode,
-        EndLabelCode,
-        MaybeRestoreParentSpCode
-    ]),
+    ),
+    Code =
+        MaybeSetParentSpCode ++
+        SaveCode ++
+        MakeSyncTermCode ++
+        GoalCode ++
+        EndLabelCode ++
+        MaybeRestoreParentSpCode,
 
     % We can't release the sync slot right now, in case we are in a
     % nested parallel conjunction.  Consider:
@@ -237,7 +236,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     % top level.
     %
     % XXX release sync slots of nested parallel conjunctions
-    %
+
     ( Depth = 0 ->
         release_several_temp_slots(SyncTermSlots, persistent_temp_slot, !CI)
     ;
@@ -253,7 +252,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     place_all_outputs(Outputs, !CI).
 
 :- pred generate_det_par_conj_2(list(hlds_goal)::in,
-    lval::in, label::in, instmap::in, branch_end::in, code_tree::out,
+    lval::in, label::in, instmap::in, branch_end::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_det_par_conj_2([], _ParentSyncTermBaseSlot, _EndLabel,
@@ -276,11 +275,11 @@ generate_det_par_conj_2([Goal | Goals], ParentSyncTermBaseSlot, EndLabel,
         Goals = [_ | _],
         get_next_label(NextConjunct, !CI),
         reset_to_position(StartPos, !CI),
-        ForkCode = node([
+        ForkCode = singleton(
             llds_instr(fork_new_child(ParentSyncTermBaseSlot, NextConjunct),
                 "fork off a child")
-        ]),
-        JoinCode = node([
+        ),
+        JoinCode = from_list([
             llds_instr(join_and_continue(ParentSyncTermBaseSlot, EndLabel),
                 "finish"),
             llds_instr(label(NextConjunct),
@@ -289,15 +288,15 @@ generate_det_par_conj_2([Goal | Goals], ParentSyncTermBaseSlot, EndLabel,
     ;
         Goals = [],
         ForkCode = empty,
-        JoinCode = node([
+        JoinCode = singleton(
             llds_instr(join_and_continue(ParentSyncTermBaseSlot, EndLabel),
                 "finish")
-        ])
+        )
     ),
-    ThisCode = tree_list([ForkCode, ThisGoalCode, SaveCode, JoinCode]),
+    ThisCode = ForkCode ++ ThisGoalCode ++ SaveCode ++ JoinCode,
     generate_det_par_conj_2(Goals, ParentSyncTermBaseSlot, EndLabel, Initial,
         MaybeEnd, RestCode, !CI),
-    Code = tree(ThisCode, RestCode).
+    Code = ThisCode ++ RestCode.
 
 %-----------------------------------------------------------------------------%
 
@@ -306,18 +305,17 @@ generate_det_par_conj_2([Goal | Goals], ParentSyncTermBaseSlot, EndLabel,
     % usual `sp' register, as the conjunct could be running in a different
     % context.
     %
-:- pred replace_stack_vars_by_parent_sv(code_tree::in, code_tree::out) is det.
+:- pred replace_stack_vars_by_parent_sv(llds_code::in, llds_code::out) is det.
 
 replace_stack_vars_by_parent_sv(!Code) :-
-    tree.map(replace_stack_vars_by_parent_sv_instrs, !Code).
+    cord.map_pred(replace_stack_vars_by_parent_sv_instr, !Code).
 
-:- pred replace_stack_vars_by_parent_sv_instrs(list(instruction)::in,
-    list(instruction)::out) is det.
+:- pred replace_stack_vars_by_parent_sv_instr(instruction::in,
+    instruction::out) is det.
 
-replace_stack_vars_by_parent_sv_instrs(!Instrs) :-
-    list.map_foldl(
-        transform_lval_in_instr(replace_stack_vars_by_parent_sv_lval),
-        !Instrs, unit, _).
+replace_stack_vars_by_parent_sv_instr(!Instr) :-
+    transform_lval_in_instr(replace_stack_vars_by_parent_sv_lval,
+        !Instr, unit, _).
 
 :- pred replace_stack_vars_by_parent_sv_lval(lval::in, lval::out,
     unit::in, unit::out) is det.

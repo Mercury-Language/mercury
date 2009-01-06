@@ -37,15 +37,15 @@
     ;       branch_on_failure.
 
 :- pred generate_unification(code_model::in, unification::in,
-    hlds_goal_info::in, code_tree::out, code_info::in, code_info::out) is det.
+    hlds_goal_info::in, llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_tag_test(prog_var::in, cons_id::in,
-    maybe_cheaper_tag_test::in, test_sense::in, label::out, code_tree::out,
+    maybe_cheaper_tag_test::in, test_sense::in, label::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 :- pred generate_raw_tag_test_case(rval::in, mer_type::in, string::in,
     tagged_cons_id::in, list(tagged_cons_id)::in, maybe_cheaper_tag_test::in,
-    test_sense::in, label::out, code_tree::out, code_info::in, code_info::out)
+    test_sense::in, label::out, llds_code::out, code_info::in, code_info::out)
     is det.
 
 :- pred generate_ground_term(prog_var::in, hlds_goal::in,
@@ -70,7 +70,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
@@ -83,6 +82,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -157,11 +157,11 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
                 % This seems to be fine.
                 list.foldl(release_reg, Regs, !CI),
                 % XXX avoid strip_tag when we know what tag it will have
-                FreeVar = node([
+                FreeVar = singleton(
                     llds_instr(free_heap(unop(strip_tag, VarRval)),
                         "Free " ++ VarName)
-                ]),
-                Code = tree_list([Code0, ProduceVar, SaveArgs, FreeVar])
+                ),
+                Code = Code0 ++ ProduceVar ++ SaveArgs ++ FreeVar
             ;
                 Code = Code0
             )
@@ -189,7 +189,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
     % variable as the expression that generates the free variable.
     % No immediate code is generated.
     %
-:- pred generate_assignment(prog_var::in, prog_var::in, code_tree::out,
+:- pred generate_assignment(prog_var::in, prog_var::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_assignment(VarA, VarB, empty, !CI) :-
@@ -209,7 +209,7 @@ generate_assignment(VarA, VarB, empty, !CI) :-
     % point if the two values are not the same. Simple tests are in-in
     % unifications on enumerations, integers, strings and floats.
     %
-:- pred generate_test(prog_var::in, prog_var::in, code_tree::out,
+:- pred generate_test(prog_var::in, prog_var::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_test(VarA, VarB, Code, !CI) :-
@@ -230,7 +230,7 @@ generate_test(VarA, VarB, Code, !CI) :-
             Op = eq
         ),
         fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode, !CI),
-        Code = tree_list([CodeA, CodeB, FailCode])
+        Code = CodeA ++ CodeB ++ FailCode
     ).
 
 %---------------------------------------------------------------------------%
@@ -263,9 +263,9 @@ generate_raw_tag_test_case(VarRval, VarType, VarName,
             Sense = branch_on_failure,
             code_util.neg_rval(TestRval, TheRval)
         ),
-        Code = node([
+        Code = singleton(
             llds_instr(if_val(TheRval, code_label(ElseLabel)), Comment)
-        ])
+        )
     ).
 
 :- pred disjoin_tag_tests(rval::in, list(rval)::in, rval::out) is det.
@@ -288,11 +288,11 @@ generate_tag_test(Var, ConsId, CheaperTagTest, Sense, ElseLabel, Code, !CI) :-
     VarName = variable_name(!.CI, Var),
     generate_raw_tag_test(VarRval, VarType, VarName, ConsId, no,
         CheaperTagTest, Sense, ElseLabel, TestCode, !CI),
-    Code = tree(VarCode, TestCode).
+    Code = VarCode ++ TestCode.
 
 :- pred generate_raw_tag_test(rval::in, mer_type::in, string::in,
     cons_id::in, maybe(cons_tag)::in,
-    maybe_cheaper_tag_test::in, test_sense::in, label::out, code_tree::out,
+    maybe_cheaper_tag_test::in, test_sense::in, label::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_raw_tag_test(VarRval, VarType, VarName, ConsId, MaybeConsTag,
@@ -331,9 +331,9 @@ generate_raw_tag_test(VarRval, VarType, VarName, ConsId, MaybeConsTag,
         Sense = branch_on_failure,
         code_util.neg_rval(TestRval, TheRval)
     ),
-    Code = node([
+    Code = singleton(
         llds_instr(if_val(TheRval, code_label(ElseLabel)), Comment)
-    ]).
+    ).
 
 :- func branch_sense_comment(test_sense) = string.
 
@@ -445,7 +445,7 @@ generate_reserved_address(reserved_object(_, _, _)) = _ :-
 :- pred generate_construction(prog_var::in, cons_id::in,
     list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
     list(int)::in, maybe(term_size_value)::in, hlds_goal_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_construction(Var, ConsId, Args, Modes, HowToConstruct,
         TakeAddr, MaybeSize, GoalInfo, Code, !CI) :-
@@ -456,7 +456,7 @@ generate_construction(Var, ConsId, Args, Modes, HowToConstruct,
 :- pred generate_construction_2(cons_tag::in, prog_var::in,
     list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
     list(int)::in, maybe(term_size_value)::in, hlds_goal_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         TakeAddr, MaybeSize, GoalInfo, Code, !CI) :-
@@ -607,7 +607,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
     % The structure of closures is defined in runtime/mercury_ho_call.h.
     %
 :- pred generate_closure(pred_id::in, proc_id::in, lambda_eval_method::in,
-    prog_var::in, list(prog_var)::in, hlds_goal_info::in, code_tree::out,
+    prog_var::in, list(prog_var)::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
@@ -690,7 +690,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             produce_variable(CallPred, OldClosureCode, OldClosure, !CI),
             % The new closure contains a pointer to the old closure.
             NewClosureMayUseAtomic = may_not_use_atomic_alloc,
-            NewClosureCode = node([
+            NewClosureCode = from_list([
                 llds_instr(comment("build new closure from old closure"), ""),
                 llds_instr(
                     assign(NumOldArgs, lval(field(yes(0), OldClosure, Two))),
@@ -741,8 +741,8 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             release_reg(NumOldArgs, !CI),
             release_reg(NewClosure, !CI),
             assign_lval_to_var(Var, NewClosure, AssignCode, !CI),
-            Code = tree_list([OldClosureCode, NewClosureCode, ExtraArgsCode,
-                 AssignCode])
+            Code = OldClosureCode ++ NewClosureCode ++ ExtraArgsCode ++
+                 AssignCode
         )
     ;
         CodeAddr = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, no),
@@ -789,7 +789,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
     ).
 
 :- pred generate_extra_closure_args(list(prog_var)::in, lval::in,
-    lval::in, code_tree::out, code_info::in, code_info::out) is det.
+    lval::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_extra_closure_args([], _, _, empty, !CI).
 generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
@@ -799,25 +799,25 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
     (
         IsDummy = is_dummy_type,
         ProduceCode = empty,
-        AssignCode = node([
+        AssignCode = singleton(
             llds_instr(assign(FieldLval, const(llconst_int(0))),
                 "set new argument field (dummy type)")
-        ])
+        )
     ;
         IsDummy = is_not_dummy_type,
         produce_variable(Var, ProduceCode, Value, !CI),
-        AssignCode = node([
+        AssignCode = singleton(
             llds_instr(assign(FieldLval, Value),
                 "set new argument field")
-        ])
+        )
     ),
-    IncrCode = node([
+    IncrCode = singleton(
         llds_instr(assign(LoopCounter,
             binop(int_add, lval(LoopCounter), const(llconst_int(1)))),
             "increment argument counter")
-    ]),
+    ),
     generate_extra_closure_args(Vars, LoopCounter, NewClosure, VarsCode, !CI),
-    Code = tree_list([ProduceCode, AssignCode, IncrCode, VarsCode]).
+    Code = ProduceCode ++ AssignCode ++ IncrCode ++ VarsCode.
 
 :- pred generate_pred_args(code_info::in, vartypes::in, list(prog_var)::in,
     list(arg_info)::in, list(maybe(rval))::out,
@@ -935,7 +935,7 @@ initial_may_use_atomic(ModuleInfo) = InitMayUseAtomic :-
 :- pred construct_cell(prog_var::in, tag::in, list(maybe(rval))::in,
     how_to_construct::in, maybe(term_size_value)::in,
     assoc_list(int, prog_var)::in, may_use_atomic_alloc::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 construct_cell(Var, Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs,
         MayUseAtomic, Code, !CI) :-
@@ -972,16 +972,16 @@ construct_cell(Var, Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs,
         % into static data.
         generate_field_take_address_assigns(FieldAddrs, Var, Ptag,
             FieldCode, !CI),
-        Code = tree(CellCode, FieldCode)
+        Code = CellCode ++ FieldCode
     ).
 
 :- pred generate_field_take_address_assigns(assoc_list(int, prog_var)::in,
-    prog_var::in, int::in, code_tree::out, code_info::in, code_info::out)
+    prog_var::in, int::in, llds_code::out, code_info::in, code_info::out)
     is det.
 
 generate_field_take_address_assigns([], _, _, empty, !CI).
 generate_field_take_address_assigns([FieldNum - Var | FieldAddrs],
-        CellVar, CellPtag, tree(ThisCode, RestCode), !CI) :-
+        CellVar, CellPtag, ThisCode ++ RestCode, !CI) :-
     FieldNumRval = const(llconst_int(FieldNum)),
     Addr = mem_addr(heap_ref(var(CellVar), CellPtag, FieldNumRval)),
     assign_expr_to_var(Var, Addr, ThisCode, !CI),
@@ -1025,7 +1025,7 @@ make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
     % are cached.
     %
 :- pred generate_det_deconstruction(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, code_tree::out,
+    list(prog_var)::in, list(uni_mode)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_det_deconstruction(Var, Cons, Args, Modes, Code, !CI) :-
@@ -1034,7 +1034,7 @@ generate_det_deconstruction(Var, Cons, Args, Modes, Code, !CI) :-
 
 :- pred generate_det_deconstruction_2(prog_var::in, cons_id::in,
     list(prog_var)::in, list(uni_mode)::in, cons_tag::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     % For constants, if the deconstruction is det, then we already know
@@ -1123,7 +1123,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     % followed by a deterministic deconstruction.
     %
 :- pred generate_semi_deconstruction(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, code_tree::out,
+    list(prog_var)::in, list(uni_mode)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
@@ -1135,8 +1135,8 @@ generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
     generate_failure(FailCode, !CI),
     reset_to_position(AfterUnify, !CI),
     generate_det_deconstruction(Var, Tag, Args, Modes, DeconsCode, !CI),
-    SuccessLabelCode = node([llds_instr(label(SuccLabel), "")]),
-    Code = tree_list([TagTestCode, FailCode, SuccessLabelCode, DeconsCode]).
+    SuccessLabelCode = singleton(llds_instr(label(SuccLabel), "")),
+    Code = TagTestCode ++ FailCode ++ SuccessLabelCode ++ DeconsCode.
 
 %---------------------------------------------------------------------------%
 
@@ -1144,7 +1144,7 @@ generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
     % for the arguments of a construction.
     %
 :- pred generate_unify_args(list(uni_val)::in, list(uni_val)::in,
-    list(uni_mode)::in, list(mer_type)::in, code_tree::out,
+    list(uni_mode)::in, list(mer_type)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_unify_args(Ls, Rs, Ms, Ts, Code, !CI) :-
@@ -1155,21 +1155,21 @@ generate_unify_args(Ls, Rs, Ms, Ts, Code, !CI) :-
     ).
 
 :- pred generate_unify_args_2(list(uni_val)::in, list(uni_val)::in,
-    list(uni_mode)::in, list(mer_type)::in, code_tree::out,
+    list(uni_mode)::in, list(mer_type)::in, llds_code::out,
     code_info::in, code_info::out) is semidet.
 
 generate_unify_args_2([], [], [], [], empty, !CI).
 generate_unify_args_2([L | Ls], [R | Rs], [M | Ms], [T | Ts], Code, !CI) :-
     generate_sub_unify(L, R, M, T, CodeA, !CI),
     generate_unify_args_2(Ls, Rs, Ms, Ts, CodeB, !CI),
-    Code = tree(CodeA, CodeB).
+    Code = CodeA ++ CodeB.
 
 %---------------------------------------------------------------------------%
 
     % Generate a subunification between two [field | variable].
     %
 :- pred generate_sub_unify(uni_val::in, uni_val::in, uni_mode::in,
-    mer_type::in, code_tree::out, code_info::in, code_info::out) is det.
+    mer_type::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
     Mode = ((LI - RI) -> (LF - RF)),
@@ -1210,7 +1210,7 @@ generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_sub_assign(uni_val::in, uni_val::in, code_tree::out,
+:- pred generate_sub_assign(uni_val::in, uni_val::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_sub_assign(Left, Right, Code, !CI) :-
@@ -1226,8 +1226,8 @@ generate_sub_assign(Left, Right, Code, !CI) :-
         % so generate immediately.
         produce_variable(Var, SourceCode, Source, !CI),
         materialize_vars_in_lval(Lval0, Lval, MaterializeCode, !CI),
-        CopyCode = node([llds_instr(assign(Lval, Source), "Copy value")]),
-        Code = tree_list([SourceCode, MaterializeCode, CopyCode])
+        CopyCode = singleton(llds_instr(assign(Lval, Source), "Copy value")),
+        Code = SourceCode ++ MaterializeCode ++ CopyCode
     ;
         Left = ref(Lvar),
         ( variable_is_forward_live(!.CI, Lvar) ->

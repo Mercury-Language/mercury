@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -87,7 +87,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.code_util.
@@ -105,6 +104,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module counter.
 :- import_module int.
 :- import_module map.
@@ -375,11 +375,7 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
         true
     ),
 
-    % Turn the code tree into a list.
-    tree.flatten(CodeTree, FragmentList),
-    % Now the code is a list of code fragments (== list(instr)),
-    % so we need to do a level of unwinding to get a flat list.
-    list.condense(FragmentList, Instructions0),
+    Instructions0 = cord.list(CodeTree),
     FrameInfo = frame(TotalSlots, MaybeSuccipSlot, _),
     (
         MaybeSuccipSlot = yes(SuccipSlot),
@@ -620,7 +616,7 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
     % for the failure continuation at all times.)
     %
 :- pred generate_category_code(code_model::in, prog_context::in, hlds_goal::in,
-    resume_point_info::in, trace_slot_info::in, code_tree::out,
+    resume_point_info::in, trace_slot_info::in, llds_code::out,
     maybe(label)::out, frame_info::out, code_info::in, code_info::out) is det.
 
 generate_category_code(model_det, ProcContext, Goal, ResumePoint,
@@ -644,9 +640,9 @@ generate_category_code(model_det, ProcContext, Goal, ResumePoint,
             get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
             (
                 MaybeTailRecInfo = yes(_TailRecLval - TailRecLabel),
-                TailRecLabelCode = node([
+                TailRecLabelCode = singleton(
                     llds_instr(label(TailRecLabel), "tail recursion label")
-                ])
+                )
             ;
                 MaybeTailRecInfo = no,
                 TailRecLabelCode = empty
@@ -662,14 +658,14 @@ generate_category_code(model_det, ProcContext, Goal, ResumePoint,
             EntryCode),
         generate_exit(model_det, FrameInfo, TraceSlotInfo, ProcContext,
             _, ExitCode, !CI),
-        Code = tree_list([EntryCode, TraceCallCode, TailRecLabelCode,
-            BodyCode, ExitCode])
+        Code = EntryCode ++ TraceCallCode ++ TailRecLabelCode ++
+            BodyCode ++ ExitCode
     ).
 
 generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI) :-
     set.singleton_set(FailureLiveRegs, reg(reg_r, 1)),
-    FailCode = node([
+    FailCode = from_list([
         llds_instr(assign(reg(reg_r, 1), const(llconst_false)), "Fail"),
         llds_instr(livevals(FailureLiveRegs), ""),
         llds_instr(goto(code_succip), "Return from procedure call")
@@ -682,9 +678,9 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
         (
             MaybeTailRecInfo = yes(_TailRecLval - TailRecLabel),
-            TailRecLabelCode = node([
+            TailRecLabelCode = singleton(
                 llds_instr(label(TailRecLabel), "tail recursion label")
-            ])
+            )
         ;
             MaybeTailRecInfo = no,
             TailRecLabelCode = empty
@@ -710,9 +706,9 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
             MaybeFailExternalInfo = no,
             TraceFailCode = empty
         ),
-        Code = tree_list([EntryCode, TraceCallCode, TailRecLabelCode,
-            BodyCode, ExitCode, ResumeCode, TraceFailCode,
-            RestoreDeallocCode, FailCode])
+        Code = EntryCode ++ TraceCallCode ++ TailRecLabelCode ++
+            BodyCode ++ ExitCode ++ ResumeCode ++ TraceFailCode ++
+            RestoreDeallocCode ++ FailCode
     ;
         MaybeTraceInfo = no,
         MaybeTraceCallLabel = no,
@@ -722,8 +718,8 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         generate_exit(model_semi, FrameInfo, TraceSlotInfo,
             ProcContext, RestoreDeallocCode, ExitCode, !CI),
         generate_resume_point(ResumePoint, ResumeCode, !CI),
-        Code = tree_list([EntryCode, BodyCode, ExitCode,
-            ResumeCode, RestoreDeallocCode, FailCode])
+        Code = EntryCode ++ BodyCode ++ ExitCode ++ ResumeCode ++
+            RestoreDeallocCode ++ FailCode
     ).
 
 generate_category_code(model_non, ProcContext, Goal, ResumePoint,
@@ -766,7 +762,7 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
                 FromFullSlotLval =
                     llds.stack_slot_num_to_lval(nondet_stack, FromFullSlot),
                 get_next_label(SkipLabel, !CI),
-                DiscardTraceTicketCode = node([
+                DiscardTraceTicketCode = from_list([
                     llds_instr(
                         if_val(unop(logical_not, lval(FromFullSlotLval)),
                             code_label(SkipLabel)), ""),
@@ -775,18 +771,18 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
                 ])
             ;
                 MaybeFromFull = no,
-                DiscardTraceTicketCode = node([
+                DiscardTraceTicketCode = singleton(
                     llds_instr(discard_ticket, "discard retry ticket")
-                ])
+                )
             )
         ;
             DiscardTraceTicketCode = empty
         ),
-        FailCode = node([
+        FailCode = singleton(
             llds_instr(goto(do_fail), "fail after fail trace port")
-        ]),
-        Code = tree_list([EntryCode, TraceCallCode, BodyCode, ExitCode,
-            ResumeCode, TraceFailCode, DiscardTraceTicketCode, FailCode])
+        ),
+        Code = EntryCode ++ TraceCallCode ++ BodyCode ++ ExitCode ++
+            ResumeCode ++ TraceFailCode ++ DiscardTraceTicketCode ++ FailCode
     ;
         MaybeTraceInfo = no,
         MaybeTraceCallLabel = no,
@@ -795,11 +791,11 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
             FrameInfo, EntryCode),
         generate_exit(model_non, FrameInfo, TraceSlotInfo,
             ProcContext, _, ExitCode, !CI),
-        Code = tree_list([EntryCode, BodyCode, ExitCode])
+        Code = EntryCode ++ BodyCode ++ ExitCode
     ).
 
 :- pred generate_call_event(trace_info::in, prog_context::in,
-    maybe(label)::out, code_tree::out, code_info::in, code_info::out) is det.
+    maybe(label)::out, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel, TraceCallCode,
         !CI) :-
@@ -840,14 +836,14 @@ generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel, TraceCallCode,
     % to fill in the succip slot is subsumed by the mkframe.
 
 :- pred generate_entry(code_info::in, code_model::in, hlds_goal::in,
-    resume_point_info::in, frame_info::out, code_tree::out) is det.
+    resume_point_info::in, frame_info::out, llds_code::out) is det.
 
 generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         EntryCode) :-
     get_stack_slots(CI, StackSlots),
     get_varset(CI, VarSet),
     SlotsComment = explain_stack_slots(StackSlots, VarSet),
-    StartComment = node([
+    StartComment = from_list([
         llds_instr(comment("Start of procedure prologue"), ""),
         llds_instr(comment(SlotsComment), "")
     ]),
@@ -856,9 +852,9 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     get_proc_id(CI, ProcId),
     get_module_info(CI, ModuleInfo),
     EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
-    LabelCode = node([
+    LabelCode = singleton(
         llds_instr(label(EntryLabel), "Procedure entry point")
-    ]),
+    ),
     get_succip_used(CI, Used),
     (
         % Do we need to save the succip across calls?
@@ -867,10 +863,10 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         CodeModel \= model_non
     ->
         SuccipSlot = MainSlots + 1,
-        SaveSuccipCode = node([
+        SaveSuccipCode = singleton(
             llds_instr(assign(stackvar(SuccipSlot), lval(succip)),
                 "Save the success ip")
-        ]),
+        ),
         TotalSlots = SuccipSlot,
         MaybeSuccipSlot = yes(SuccipSlot)
     ;
@@ -911,7 +907,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
                 DefineStr)],
             NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, yes(Struct)),
             MD = proc_may_not_duplicate,
-            AllocCode = node([
+            AllocCode = from_list([
                 llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
                     "Allocate stack frame"),
                 llds_instr(foreign_proc_code([], DefineComponents,
@@ -920,10 +916,10 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
             NondetPragma = yes
         ;
             NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, no),
-            AllocCode = node([
+            AllocCode = singleton(
                 llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
                     "Allocate stack frame")
-            ]),
+            ),
             NondetPragma = no
         )
     ;
@@ -939,21 +935,21 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
             StackIncrKind = stack_incr_leaf
         ),
         ( TotalSlots > 0 ->
-            AllocCode = node([
+            AllocCode = singleton(
                 llds_instr(incr_sp(TotalSlots, PushMsg, StackIncrKind),
                     "Allocate stack frame")
-            ])
+            )
         ;
             AllocCode = empty
         ),
         NondetPragma = no
     ),
     FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma),
-    EndComment = node([
+    EndComment = singleton(
         llds_instr(comment("End of procedure prologue"), "")
-    ]),
-    EntryCode = tree_list([StartComment, LabelCode, AllocCode,
-        SaveSuccipCode, TraceFillCode, EndComment]).
+    ),
+    EntryCode = StartComment ++ LabelCode ++ AllocCode ++
+        SaveSuccipCode ++ TraceFillCode ++ EndComment.
 
 %---------------------------------------------------------------------------%
 
@@ -987,17 +983,17 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     % we need only #undef a macro defined by the procedure prologue.
 
 :- pred generate_exit(code_model::in, frame_info::in,
-    trace_slot_info::in, prog_context::in, code_tree::out, code_tree::out,
+    trace_slot_info::in, prog_context::in, llds_code::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         RestoreDeallocCode, ExitCode, !CI) :-
-    StartComment = node([
+    StartComment = singleton(
         llds_instr(comment("Start of procedure epilogue"), "")
-    ]),
-    EndComment = node([
+    ),
+    EndComment = singleton(
         llds_instr(comment("End of procedure epilogue"), "")
-    ]),
+    ),
     FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma),
     (
         NondetPragma = yes,
@@ -1006,12 +1002,12 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             proc_does_not_affect_liveness, live_lvals_info(set.init),
             UndefStr)],
         MD = proc_may_not_duplicate,
-        UndefCode = node([
+        UndefCode = singleton(
             llds_instr(foreign_proc_code([], UndefComponents,
                 proc_will_not_call_mercury, no, no, no, no, no, MD), "")
-        ]),
+        ),
         RestoreDeallocCode = empty, % always empty for nondet code
-        ExitCode = tree_list([StartComment, UndefCode, EndComment])
+        ExitCode = StartComment ++ UndefCode ++ EndComment
     ;
         NondetPragma = no,
         get_instmap(!.CI, InstMap),
@@ -1026,10 +1022,10 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         ),
         (
             MaybeSuccipSlot = yes(SuccipSlot),
-            RestoreSuccipCode = node([
+            RestoreSuccipCode = singleton(
                 llds_instr(assign(succip, lval(stackvar(SuccipSlot))),
                     "restore the success ip")
-            ])
+            )
         ;
             MaybeSuccipSlot = no,
             RestoreSuccipCode = empty
@@ -1041,9 +1037,9 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         ->
             DeallocCode = empty
         ;
-            DeallocCode = node([
+            DeallocCode = singleton(
                llds_instr(decr_sp(TotalSlots), "Deallocate stack frame")
-            ])
+            )
         ),
         (
             TraceSlotInfo ^ slot_trail = yes(_),
@@ -1065,13 +1061,13 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                     llds.stack_slot_num_to_lval(StackId, FromFullSlot),
                 get_next_label(SkipLabel, !CI),
                 get_next_label(SkipLabelCopy, !CI),
-                PruneTraceTicketCode = node([
+                PruneTraceTicketCode = from_list([
                     llds_instr(if_val(unop(logical_not, lval(FromFullSlotLval)),
                         code_label(SkipLabel)), ""),
                     llds_instr(prune_ticket, "prune retry ticket"),
                     llds_instr(label(SkipLabel), "")
                 ]),
-                PruneTraceTicketCodeCopy = node([
+                PruneTraceTicketCodeCopy = from_list([
                     llds_instr(if_val(unop(logical_not, lval(FromFullSlotLval)),
                         code_label(SkipLabelCopy)), ""),
                     llds_instr(prune_ticket, "prune retry ticket"),
@@ -1079,9 +1075,9 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 ])
             ;
                 MaybeFromFull = no,
-                PruneTraceTicketCode = node([
+                PruneTraceTicketCode = singleton(
                     llds_instr(prune_ticket, "prune retry ticket")
-                ]),
+                ),
                 PruneTraceTicketCodeCopy = PruneTraceTicketCode
             )
         ;
@@ -1089,10 +1085,10 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             PruneTraceTicketCodeCopy = empty
         ),
 
-        RestoreDeallocCode = tree_list([RestoreSuccipCode,
-            PruneTraceTicketCode, DeallocCode]),
-        RestoreDeallocCodeCopy = tree_list([RestoreSuccipCode,
-            PruneTraceTicketCodeCopy, DeallocCode]),
+        RestoreDeallocCode = RestoreSuccipCode ++
+            PruneTraceTicketCode ++ DeallocCode,
+        RestoreDeallocCodeCopy = RestoreSuccipCode ++
+            PruneTraceTicketCodeCopy ++ DeallocCode,
 
         get_maybe_trace_info(!.CI, MaybeTraceInfo),
         (
@@ -1134,25 +1130,25 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             CodeModel = model_det,
             expect(unify(MaybeSpecialReturn, no), this_file,
                 "generate_exit: det special_return"),
-            SuccessCode = node([
+            SuccessCode = from_list([
                 llds_instr(livevals(LiveLvals), ""),
                 llds_instr(goto(code_succip), "Return from procedure call")
             ]),
-            AllSuccessCode = tree_list([TraceExitCode, RestoreDeallocCodeCopy,
-                SuccessCode])
+            AllSuccessCode = TraceExitCode ++ RestoreDeallocCodeCopy ++
+                SuccessCode
         ;
             CodeModel = model_semi,
             expect(unify(MaybeSpecialReturn, no), this_file,
                 "generate_exit: semi special_return"),
             set.insert(LiveLvals, reg(reg_r, 1), SuccessLiveRegs),
-            SuccessCode = node([
+            SuccessCode = from_list([
                 llds_instr(assign(reg(reg_r, 1), const(llconst_true)),
                     "Succeed"),
                 llds_instr(livevals(SuccessLiveRegs), ""),
                 llds_instr(goto(code_succip), "Return from procedure call")
             ]),
-            AllSuccessCode = tree_list([TraceExitCode, RestoreDeallocCodeCopy,
-                SuccessCode])
+            AllSuccessCode = TraceExitCode ++ RestoreDeallocCodeCopy ++
+                SuccessCode
         ;
             CodeModel = model_non,
             (
@@ -1171,24 +1167,23 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 Component = foreign_proc_user_code(no,
                     proc_does_not_affect_liveness, ReturnCodeStr),
                 MD = proc_may_not_duplicate,
-                SuccessCode = node([
+                SuccessCode = from_list([
                     llds_instr(livevals(LiveLvals), ""),
                     llds_instr(foreign_proc_code([], [Component],
                         proc_may_call_mercury, no, no, no, no, no, MD), "")
                 ])
             ;
                 MaybeSpecialReturn = no,
-                SuccessCode = node([
+                SuccessCode = from_list([
                     llds_instr(livevals(LiveLvals), ""),
                     llds_instr(goto(do_succeed(no)),
                         "Return from procedure call")
                 ])
             ),
-            AllSuccessCode = tree_list([SetupRedoCode, TraceExitCode,
-                SuccessCode])
+            AllSuccessCode = SetupRedoCode ++ TraceExitCode ++
+                SuccessCode
         ),
-        ExitCode = tree_list([StartComment, FlushCode, AllSuccessCode,
-            EndComment])
+        ExitCode = StartComment ++ FlushCode ++ AllSuccessCode ++ EndComment
     ).
 
 %---------------------------------------------------------------------------%

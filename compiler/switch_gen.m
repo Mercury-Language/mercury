@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,7 +56,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred generate_switch(code_model::in, prog_var::in, can_fail::in,
-    list(case)::in, hlds_goal_info::in, code_tree::out,
+    list(case)::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -73,7 +73,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.dense_switch.
 :- import_module ll_backend.lookup_switch.
@@ -85,6 +84,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -200,7 +200,7 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                 no, MaybeEnd, SwitchCode, !CI)
         )
     ),
-    Code = tree(VarCode, SwitchCode),
+    Code = VarCode ++ SwitchCode,
     after_all_branches(StoreMap, MaybeEnd, !CI).
 
 %-----------------------------------------------------------------------------%
@@ -246,7 +246,7 @@ determine_switch_category(CI, Var) = SwitchCategory :-
     %
 :- pred order_and_generate_cases(list(tagged_case)::in, rval::in, mer_type::in,
     string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::in, branch_end::out, code_tree::out,
+    branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
@@ -530,7 +530,7 @@ estimate_cost_of_case_test(TaggedCase) = Cost - TaggedCase :-
 :- pred generate_if_then_else_chain_cases(list(tagged_case)::in,
     rval::in, mer_type::in, string::in, maybe_cheaper_tag_test::in,
     code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::in, branch_end::out, code_tree::out,
+    branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
@@ -549,7 +549,7 @@ generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
             generate_raw_tag_test_case(VarRval, VarType, VarName,
                 MainTaggedConsId, OtherTaggedConsIds, CheaperTagTest,
                 branch_on_failure, NextLabel, TestCode, !CI),
-            ElseCode = node([
+            ElseCode = from_list([
                 llds_instr(goto(code_label(EndLabel)),
                     "skip to the end of the switch on " ++ VarName),
                 llds_instr(label(NextLabel), "next case")
@@ -562,9 +562,9 @@ generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
             list.map2(project_cons_name_and_tag, OtherTaggedConsIds,
                 OtherConsNames, _),
             Comment = case_comment(VarName, MainConsName, OtherConsNames),
-            TestCode = node([
+            TestCode = singleton(
                 llds_instr(comment(Comment), "")
-            ]),
+            ),
             ElseCode = empty
         ),
 
@@ -572,13 +572,13 @@ generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
             !CI),
         generate_goal(CodeModel, Goal, GoalCode, !CI),
         generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-        HeadCaseCode = tree_list([TestCode, TraceCode, GoalCode, SaveCode,
-            ElseCode]),
+        HeadCaseCode = TestCode ++ TraceCode ++ GoalCode ++ SaveCode ++
+            ElseCode,
         reset_to_position(BranchStart, !CI),
         generate_if_then_else_chain_cases(TailCases, VarRval, VarType, VarName,
             CheaperTagTest, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
             !MaybeEnd, TailCasesCode, !CI),
-        Code = tree(HeadCaseCode, TailCasesCode)
+        Code = HeadCaseCode ++ TailCasesCode
     ;
         Cases = [],
         (
@@ -591,9 +591,11 @@ generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
             CanFail = cannot_fail,
             FailCode = empty
         ),
-        EndCode = node([llds_instr(label(EndLabel),
-            "end of the switch on " ++ VarName)]),
-        Code = tree(FailCode, EndCode)
+        EndCode = singleton(
+            llds_instr(label(EndLabel),
+                "end of the switch on " ++ VarName)
+        ),
+        Code = FailCode ++ EndCode
     ).
 
 %-----------------------------------------------------------------------------%

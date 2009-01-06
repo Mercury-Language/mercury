@@ -141,7 +141,7 @@
     % will be returned in Code.
     %
 :- pred var_locn_assign_lval_to_var(module_info::in, prog_var::in, lval::in,
-    static_cell_info::in, code_tree::out,
+    static_cell_info::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval,
@@ -161,7 +161,7 @@
     % Expr must contain no lvals, although it may (and typically will) refer
     % to the values of other variables through rvals of the form var(_).
     %
-:- pred var_locn_assign_expr_to_var(prog_var::in, rval::in, code_tree::out,
+:- pred var_locn_assign_expr_to_var(prog_var::in, rval::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var,
@@ -183,7 +183,7 @@
 :- pred var_locn_assign_cell_to_var(module_info::in, exprn_opts::in,
     prog_var::in, bool::in, tag::in, list(maybe(rval))::in,
     how_to_construct::in, maybe(term_size_value)::in, list(int)::in,
-    string::in, may_use_atomic_alloc::in, label::in, code_tree::out,
+    string::in, may_use_atomic_alloc::in, label::in, llds_code::out,
     static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
 
@@ -194,7 +194,7 @@
     % registers so that they are available after ReuseLval is clobbered.
     %
 :- pred var_locn_save_cell_fields(module_info::in, prog_var::in, lval::in,
-    code_tree::out, list(lval)::out, var_locn_info::in, var_locn_info::out)
+    llds_code::out, list(lval)::out, var_locn_info::in, var_locn_info::out)
     is det.
 
     % var_locn_place_var(ModuleInfo, Var, Lval, Code, !VarLocnInfo):
@@ -203,7 +203,7 @@
     % to reflect this.
     %
 :- pred var_locn_place_var(module_info::in, prog_var::in, lval::in,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_place_vars(ModuleInfo, VarLocns, Code, !VarLocnInfo):
     %
@@ -211,7 +211,7 @@
     % into the corresponding location, and update !VarLocnInfo to reflect this.
     %
 :- pred var_locn_place_vars(module_info::in, assoc_list(prog_var, lval)::in,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_produce_var(ModuleInfo, Var, Rval, Code, !VarLocnInfo):
     %
@@ -226,7 +226,7 @@
     % Code will be empty.
     %
 :- pred var_locn_produce_var(module_info::in, prog_var::in, rval::out,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_produce_var_in_reg(ModuleInfo, Var, Lval, Code, !VarLocnInfo):
     %
@@ -234,7 +234,7 @@
     % and provide it as an Lval of the form reg(_).
     %
 :- pred var_locn_produce_var_in_reg(module_info::in, prog_var::in, lval::out,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_produce_var_in_reg_or_stack(ModuleInfo, Var, FollowVars, Lval,
     %   Code, !VarLocnInfo):
@@ -243,7 +243,7 @@
     % as an Lval of the form reg(_), stackvar(_), or framevar(_).
     %
 :- pred var_locn_produce_var_in_reg_or_stack(module_info::in, prog_var::in,
-    lval::out, code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    lval::out, llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_acquire_reg(Lval, !VarLocnInfo):
     %
@@ -304,7 +304,7 @@
     % Produces a code fragment Code to move whatever is in r1 to some other
     % register, if r1 is live. This is used prior to semidet pragma c_codes.
     %
-:- pred var_locn_clear_r1(module_info::in, code_tree::out,
+:- pred var_locn_clear_r1(module_info::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_materialize_vars_in_lval(ModuleInfo, Lval, FinalLval, Code,
@@ -317,7 +317,7 @@
     % in Code.
     %
 :- pred var_locn_materialize_vars_in_lval(module_info::in, lval::in, lval::out,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_get_var_locations(VarLocnInfo, Locations):
     %
@@ -373,10 +373,10 @@
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
 
+:- import_module cord.
 :- import_module getopt_io.
 :- import_module int.
 :- import_module pair.
@@ -855,7 +855,7 @@ var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
 :- pred var_locn_assign_dynamic_cell_to_var(module_info::in, prog_var::in,
     bool::in, tag::in, list(maybe(rval))::in, how_to_construct::in,
     maybe(int)::in, string::in, may_use_atomic_alloc::in, label::in,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         Vector, HowToConstruct, MaybeOffset, TypeMsg, MayUseAtomic, Label,
@@ -893,27 +893,37 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     % reused_cell case, otherwise `var_locn_save_cell_fields' won't know not to
     % use Lval as a temporary register (if Lval is a register).
     var_locn_set_magic_var_location(Var, Lval, !VLI),
+    % XXX The code at the end of the first three cases is the same.
+    % Switch detection could recognize this code as a switch on HowToConstruct
+    % before the change from tree.m to cord.m to represent code, but it cannot
+    % recognize it afterwards.
     (
-        (
-            HowToConstruct = construct_in_region(RegionVar),
-            var_locn_produce_var(ModuleInfo, RegionVar, RegionRval,
-                RegionVarCode, !VLI),
-            MaybeRegionRval = yes(RegionRval),
-            MaybeReuse = no_llds_reuse,
-            LldsComment = "Allocating region for "
-        ;
-            HowToConstruct = construct_dynamically,
-            RegionVarCode = empty,
-            MaybeRegionRval = no,
-            LldsComment = "Allocating heap for "
-        ;
-            % XXX  We should probably throw an exception if we find
-            % construct_statically here.
-            HowToConstruct = construct_statically(_),
-            RegionVarCode = empty,
-            MaybeRegionRval = no,
-            LldsComment = "Allocating heap for "
-        ),
+        HowToConstruct = construct_in_region(RegionVar),
+        var_locn_produce_var(ModuleInfo, RegionVar, RegionRval,
+            RegionVarCode, !VLI),
+        MaybeRegionRval = yes(RegionRval),
+        MaybeReuse = no_llds_reuse,
+        LldsComment = "Allocating region for ",
+        assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
+            StartOffset, ArgsCode, !VLI),
+        SetupReuseCode = empty,
+        MaybeReuse = no_llds_reuse
+    ;
+        HowToConstruct = construct_dynamically,
+        RegionVarCode = empty,
+        MaybeRegionRval = no,
+        LldsComment = "Allocating heap for ",
+        assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
+            StartOffset, ArgsCode, !VLI),
+        SetupReuseCode = empty,
+        MaybeReuse = no_llds_reuse
+    ;
+        % XXX  We should probably throw an exception if we find
+        % construct_statically here.
+        HowToConstruct = construct_statically(_),
+        RegionVarCode = empty,
+        MaybeRegionRval = no,
+        LldsComment = "Allocating heap for ",
         assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
             StartOffset, ArgsCode, !VLI),
         SetupReuseCode = empty,
@@ -942,18 +952,18 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
             MaybeReuse = no_llds_reuse
         )
     ),
-    CellCode = node([
+    CellCode = singleton(
         llds_instr(
             incr_hp(Lval, yes(Ptag), TotalOffset,
                 const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic,
                 MaybeRegionRval, MaybeReuse),
             LldsComment ++ VarName)
-    ]),
-    Code = tree_list([SetupReuseCode, CellCode, RegionVarCode, ArgsCode]).
+    ),
+    Code = SetupReuseCode ++ CellCode ++ RegionVarCode ++ ArgsCode.
 
 :- pred assign_reused_cell_to_var(module_info::in, lval::in, tag::in,
-    list(maybe(rval))::in, cell_to_reuse::in, lval::in, code_tree::in,
-    int::in, label::in, llds_reuse::out, code_tree::out, code_tree::out,
+    list(maybe(rval))::in, cell_to_reuse::in, lval::in, llds_code::in,
+    int::in, label::in, llds_reuse::out, llds_code::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
@@ -965,7 +975,7 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
     % temporary registers.
     var_locn_save_cell_fields(ModuleInfo, ReuseVar, ReuseLval, SaveArgsCode,
         TempRegs0, !VLI),
-    SetupReuseCode = tree(ReuseVarCode, SaveArgsCode),
+    SetupReuseCode = ReuseVarCode ++ SaveArgsCode,
 
     % If it's possible to avoid some field assignments, we'll need an extra
     % temporary register to record whether we actually are reusing a structure
@@ -997,18 +1007,17 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
         assign_some_cell_args(ModuleInfo, Vector, NeedsUpdates, yes(Ptag),
             lval(Lval), StartOffset, CannotSkipArgsCode, CanSkipArgsCode,
             !VLI),
-        ArgsCode = tree_list([
-            node([
+        ArgsCode =
+            singleton(
                 llds_instr(if_val(lval(FlagLval), code_label(Label)),
                     "skip some field assignments")
-            ]),
-            CanSkipArgsCode,
-            node([
+            ) ++
+            CanSkipArgsCode ++
+            singleton(
                 llds_instr(label(Label),
                     "past skipped field assignments")
-            ]),
+            ) ++
             CannotSkipArgsCode
-        ])
     ;
         MaybeFlag = no,
         assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
@@ -1018,7 +1027,7 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
     list.foldl(var_locn_release_reg, TempRegs, !VLI).
 
 :- pred assign_all_cell_args(module_info::in, list(maybe(rval))::in,
-    maybe(tag)::in, rval::in, int::in, code_tree::out,
+    maybe(tag)::in, rval::in, int::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 assign_all_cell_args(_, [], _, _, _, empty, !VLI).
@@ -1033,11 +1042,11 @@ assign_all_cell_args(ModuleInfo, [MaybeRval | MaybeRvals], Ptag, Base, Offset,
     ),
     assign_all_cell_args(ModuleInfo, MaybeRvals, Ptag, Base, Offset + 1,
         RestCode, !VLI),
-    Code = tree(ThisCode, RestCode).
+    Code = ThisCode ++ RestCode.
 
 :- pred assign_some_cell_args(module_info::in, list(maybe(rval))::in,
-    list(needs_update)::in, maybe(tag)::in, rval::in, int::in, code_tree::out,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    list(needs_update)::in, maybe(tag)::in, rval::in, int::in, llds_code::out,
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 assign_some_cell_args(_, [], [], _, _, _, empty, empty, !VLI).
 assign_some_cell_args(ModuleInfo,
@@ -1054,12 +1063,12 @@ assign_some_cell_args(ModuleInfo,
         Offset + 1, RestCannotSkipArgsCode, RestCanSkipArgsCode, !VLI),
     (
         NeedsUpdate = needs_update,
-        CannotSkipArgsCode = tree(ThisCode, RestCannotSkipArgsCode),
+        CannotSkipArgsCode = ThisCode ++ RestCannotSkipArgsCode,
         CanSkipArgsCode = RestCanSkipArgsCode
     ;
         NeedsUpdate = does_not_need_update,
         CannotSkipArgsCode = RestCannotSkipArgsCode,
-        CanSkipArgsCode = tree(ThisCode, RestCanSkipArgsCode)
+        CanSkipArgsCode = ThisCode ++ RestCanSkipArgsCode
     ).
 
 assign_some_cell_args(_, [], [_ | _], _, _, _, _, _, !VLI) :-
@@ -1068,7 +1077,7 @@ assign_some_cell_args(_, [_ | _], [], _, _, _, _, _, !VLI) :-
     unexpected(this_file, "assign_some_cell_args: mismatch lists").
 
 :- pred assign_cell_arg(module_info::in, rval::in, maybe(tag)::in, rval::in,
-    int::in, code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    int::in, llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
     Target = field(Ptag, Base, const(llconst_int(Offset))),
@@ -1094,13 +1103,13 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
             add_additional_lval_for_var(Var, Target, !VLI),
             get_var_name(!.VLI, Var, VarName),
             Comment = "assigning from " ++ VarName,
-            AssignCode = node([llds_instr(assign(Target, Rval), Comment)])
+            AssignCode = singleton(llds_instr(assign(Target, Rval), Comment))
         )
     ;
         Rval0 = const(_),
         EvalCode = empty,
         Comment = "assigning field from const",
-        AssignCode = node([llds_instr(assign(Target, Rval0), Comment)])
+        AssignCode = singleton(llds_instr(assign(Target, Rval0), Comment))
     ;
         ( Rval0 = mkword(_, _)
         ; Rval0 = binop(_, _, _)
@@ -1110,7 +1119,7 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
         ),
         unexpected(this_file, "assign_cell_args: unknown rval")
     ),
-    Code = tree(EvalCode, AssignCode).
+    Code = EvalCode ++ AssignCode.
 
 var_locn_save_cell_fields(ModuleInfo, ReuseVar, ReuseLval, Code, Regs, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap),
@@ -1119,10 +1128,10 @@ var_locn_save_cell_fields(ModuleInfo, ReuseVar, ReuseLval, Code, Regs, !VLI) :-
     DepVars = set.to_sorted_list(DepVarsSet),
     list.map_foldl2(var_locn_save_cell_fields_2(ModuleInfo, ReuseLval),
         DepVars, SaveArgsCode, [], Regs, !VLI),
-    Code = tree_list(SaveArgsCode).
+    Code = cord_list_to_cord(SaveArgsCode).
 
 :- pred var_locn_save_cell_fields_2(module_info::in, lval::in, prog_var::in,
-    code_tree::out, list(lval)::in, list(lval)::out,
+    llds_code::out, list(lval)::in, list(lval)::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
@@ -1151,16 +1160,16 @@ var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
             var_locn_acquire_reg(Target, !VLI),
             add_additional_lval_for_var(DepVar, Target, !VLI),
             get_var_name(!.VLI, DepVar, DepVarName),
-            AssignCode = node([
+            AssignCode = singleton(
                 llds_instr(assign(Target, DepVarRval),
                     "saving " ++ DepVarName)
-            ]),
+            ),
             !:Regs = [Target | !.Regs]
         ;
             AssignCode = empty
         )
     ),
-    SaveDepVarCode = tree(EvalCode, AssignCode).
+    SaveDepVarCode = EvalCode ++ AssignCode.
 
 %----------------------------------------------------------------------------%
 
@@ -1345,19 +1354,19 @@ var_locn_place_vars(ModuleInfo, VarLocns, Code, !VLI) :-
     var_locn_unlock_regs(!VLI).
 
 :- pred actually_place_vars(module_info::in, assoc_list(prog_var, lval)::in,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 actually_place_vars(_, [], empty, !VLI).
 actually_place_vars(ModuleInfo, [Var - Lval | Rest], Code, !VLI) :-
     var_locn_place_var(ModuleInfo, Var, Lval, FirstCode, !VLI),
     actually_place_vars(ModuleInfo, Rest, RestCode, !VLI),
-    Code = tree(FirstCode, RestCode).
+    Code = FirstCode ++ RestCode.
 
 var_locn_place_var(ModuleInfo, Var, Target, Code, !VLI) :-
     actually_place_var(ModuleInfo, Var, Target, [], Code, !VLI).
 
 :- pred actually_place_var(module_info::in, prog_var::in, lval::in,
-    list(lval)::in, code_tree::out, var_locn_info::in, var_locn_info::out)
+    list(lval)::in, llds_code::out, var_locn_info::in, var_locn_info::out)
     is det.
 
 actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
@@ -1420,10 +1429,10 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
                 AssignCode = empty
             ;
                 IsDummy = is_not_dummy_type,
-                AssignCode = node([llds_instr(assign(Target, Rval), Msg)])
+                AssignCode = singleton(llds_instr(assign(Target, Rval), Msg))
             )
         ),
-        Code = tree(FreeCode, tree(EvalCode, AssignCode))
+        Code = FreeCode ++ EvalCode ++ AssignCode
     ).
 
 :- pred record_clobbering(lval::in, list(prog_var)::in,
@@ -1462,7 +1471,7 @@ record_clobbering(Target, Assigns, !VLI) :-
     % generate an assignment such as Lval := field(Ptag, Lval, Offset).
     %
 :- pred free_up_lval(module_info::in, lval::in, list(prog_var)::in,
-    list(lval)::in, code_tree::out, var_locn_info::in, var_locn_info::out)
+    list(lval)::in, llds_code::out, var_locn_info::in, var_locn_info::out)
     is det.
 
 free_up_lval(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
@@ -1499,7 +1508,7 @@ free_up_lval(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
     % recursively free up Pref, and then move OccupyingVar there.
     %
 :- pred free_up_lval_with_copy(module_info::in, lval::in, list(prog_var)::in,
-    list(lval)::in, code_tree::out, var_locn_info::in, var_locn_info::out)
+    list(lval)::in, llds_code::out, var_locn_info::in, var_locn_info::out)
     is det.
 
 free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
@@ -1552,10 +1561,10 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
             % if we assigned Lval to it.
             Code = empty
         ;
-            Code = node([
+            Code = singleton(
                 llds_instr(assign(Target, lval(Lval)),
                     "Freeing up the source lval")
-            ])
+            )
         )
     ).
 
@@ -2133,7 +2142,7 @@ var_locn_materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code, !VLI) :-
         !VLI).
 
 :- pred var_locn_materialize_vars_in_lval_avoid(module_info::in, lval::in,
-    list(lval)::in, lval::out, code_tree::out,
+    list(lval)::in, lval::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, Avoid, Lval, Code,
@@ -2190,7 +2199,7 @@ var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, Avoid, Lval, Code,
         var_locn_materialize_vars_in_rval_avoid(ModuleInfo, RvalB0, no, Avoid,
             RvalB, CodeB, !VLI),
         Lval = field(Tag, RvalA, RvalB),
-        Code = tree(CodeA, CodeB)
+        Code = CodeA ++ CodeB
     ;
         Lval0 = temp(_, _),
         unexpected(this_file, "var_locn_materialize_vars_in_lval_avoid: temp")
@@ -2202,7 +2211,7 @@ var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, Avoid, Lval, Code,
     % Rval is Rval0 with all variables in Rval0 replaced by their values.
     %
 :- pred var_locn_materialize_vars_in_rval_avoid(module_info::in,
-    rval::in, maybe(lval)::in, list(lval)::in, rval::out, code_tree::out,
+    rval::in, maybe(lval)::in, list(lval)::in, rval::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
@@ -2229,7 +2238,7 @@ var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
         var_locn_materialize_vars_in_rval_avoid(ModuleInfo, SubRvalB0, no,
             Avoid, SubRvalB, CodeB, !VLI),
         Rval = binop(Binop, SubRvalA, SubRvalB),
-        Code = tree(CodeA, CodeB)
+        Code = CodeA ++ CodeB
     ;
         Rval0 = const(_),
         Rval = Rval0,
@@ -2255,7 +2264,7 @@ var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
     % MemRef is MemRef0 with all variables in MemRef replaced by their values.
     %
 :- pred var_locn_materialize_vars_in_mem_ref_avoid(module_info::in,
-    mem_ref::in, mem_ref::out, list(lval)::in, code_tree::out,
+    mem_ref::in, mem_ref::out, list(lval)::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_materialize_vars_in_mem_ref_avoid(ModuleInfo, MemRef0, MemRef, Avoid,
@@ -2274,7 +2283,7 @@ var_locn_materialize_vars_in_mem_ref_avoid(ModuleInfo, MemRef0, MemRef, Avoid,
             Avoid, PtrRval, PtrCode, !VLI),
         var_locn_materialize_vars_in_rval_avoid(ModuleInfo, FieldNumRval0, no,
             Avoid, FieldNumRval, FieldNumCode, !VLI),
-        Code = tree(PtrCode, FieldNumCode),
+        Code = PtrCode ++ FieldNumCode,
         MemRef = heap_ref(PtrRval, Ptag, FieldNumRval)
     ).
 
@@ -2305,7 +2314,7 @@ find_var_availability(VLI, Var, MaybePrefer, Avail) :-
     ).
 
 :- pred materialize_var(module_info::in, prog_var::in, maybe(lval)::in,
-    bool::in, list(lval)::in, rval::out, code_tree::out,
+    bool::in, list(lval)::in, rval::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
@@ -2330,7 +2339,7 @@ materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
         select_preferred_reg_avoid(!.VLI, Var, Avoid, Lval),
         var_locn_place_var(ModuleInfo, Var, Lval, PlaceCode, !VLI),
         Rval = lval(Lval),
-        Code = tree(ExprCode, PlaceCode)
+        Code = ExprCode ++ PlaceCode
     ;
         Rval = Rval0,
         Code = ExprCode

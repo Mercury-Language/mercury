@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -59,7 +59,6 @@
 :- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.compiler_util.
-:- import_module libs.tree.
 :- import_module ll_backend.  	% bytecode_gen uses ll_backend__call_gen.m
 :- import_module ll_backend.call_gen.  % XXX for arg passing convention
 :- import_module mdbcomp.
@@ -69,6 +68,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module counter.
 :- import_module deconstruct.
 :- import_module int.
@@ -85,8 +85,7 @@
 gen_module(!ModuleInfo, Code, !IO) :-
     module_info_predids(PredIds, !ModuleInfo),
     gen_preds(PredIds, !.ModuleInfo, CodeTree, !IO),
-    tree.flatten(CodeTree, CodeList),
-    list.condense(CodeList, Code).
+    Code = cord.list(CodeTree).
 
 :- pred gen_preds(list(pred_id)::in, module_info::in, byte_tree::out,
     io::di, io::uo) is det.
@@ -106,13 +105,13 @@ gen_preds([PredId | PredIds], ModuleInfo, Code, !IO) :-
         list.length(ProcIds, ProcsCount),
         Arity = pred_info_orig_arity(PredInfo),
         get_is_func(PredInfo, IsFunc),
-        EnterCode = node([byte_enter_pred(PredName, Arity, IsFunc,
-            ProcsCount)]),
-        EndofCode = node([byte_endof_pred]),
-        PredCode = tree_list([EnterCode, ProcsCode, EndofCode])
+        EnterCode = singleton(byte_enter_pred(PredName, Arity, IsFunc,
+            ProcsCount)),
+        EndofCode = singleton(byte_endof_pred),
+        PredCode = EnterCode ++ ProcsCode ++ EndofCode
     ),
     gen_preds(PredIds, ModuleInfo, OtherCode, !IO),
-    Code = tree(PredCode, OtherCode).
+    Code = PredCode ++ OtherCode.
 
 :- pred gen_pred(pred_id::in, list(proc_id)::in, pred_info::in,
     module_info::in, byte_tree::out, io::di, io::uo) is det.
@@ -123,7 +122,7 @@ gen_pred(PredId, [ProcId | ProcIds], PredInfo, ModuleInfo, Code, !IO) :-
         PredId, ProcId, ModuleInfo, !IO),
     gen_proc(ProcId, PredInfo, ModuleInfo, ProcCode),
     gen_pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode, !IO),
-    Code = tree(ProcCode, ProcsCode).
+    Code = ProcCode ++ ProcsCode.
 
 :- pred gen_proc(proc_id::in, pred_info::in,
     module_info::in, byte_tree::out) is det.
@@ -172,29 +171,28 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     get_next_label(EndLabel, ByteInfo3, ByteInfo),
     get_counts(ByteInfo, LabelCount, TempCount),
 
-    ZeroLabelCode = node([byte_label(ZeroLabel)]),
-    BodyTree = tree_list([PickupCode, ZeroLabelCode, GoalCode, PlaceCode]),
-    tree.flatten(BodyTree, BodyList),
-    list.condense(BodyList, BodyCode0),
-    ( list.member(byte_not_supported, BodyCode0) ->
-        BodyCode = node([byte_not_supported])
+    ZeroLabelCode = singleton(byte_label(ZeroLabel)),
+    BodyCode0 = PickupCode ++ ZeroLabelCode ++ GoalCode ++ PlaceCode,
+    BodyInstrs = cord.list(BodyCode0),
+    ( list.member(byte_not_supported, BodyInstrs) ->
+        BodyCode = singleton(byte_not_supported)
     ;
-        BodyCode = node(BodyCode0)
+        BodyCode = BodyCode0
     ),
     proc_id_to_int(ProcId, ProcInt),
-    EnterCode = node([byte_enter_proc(ProcInt, Detism, LabelCount, EndLabel,
-        TempCount, VarInfos)]),
+    EnterCode = singleton(byte_enter_proc(ProcInt, Detism, LabelCount,
+        EndLabel, TempCount, VarInfos)),
     (
         CodeModel = model_semi,
-        EndofCode = node([byte_semidet_succeed, byte_label(EndLabel),
+        EndofCode = from_list([byte_semidet_succeed, byte_label(EndLabel),
             byte_endof_proc])
     ;
         ( CodeModel = model_det
         ; CodeModel = model_non
         ),
-        EndofCode = node([byte_label(EndLabel), byte_endof_proc])
+        EndofCode = from_list([byte_label(EndLabel), byte_endof_proc])
     ),
-    Code = tree_list([EnterCode, BodyCode, EndofCode]).
+    Code = EnterCode ++ BodyCode ++ EndofCode.
 
 %---------------------------------------------------------------------------%
 
@@ -205,7 +203,7 @@ gen_goal(hlds_goal(GoalExpr, GoalInfo), !ByteInfo, Code) :-
     gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, GoalCode),
     Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
-    Code = tree(node([byte_context(Line)]), GoalCode).
+    Code = singleton(byte_context(Line)) ++ GoalCode.
 
 :- pred gen_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
     byte_info::in, byte_info::out, byte_tree::out) is det.
@@ -228,7 +226,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             % "bytecode for ", GenericCallFunctor, " calls"], Msg),
             % sorry(this_file, Msg)
             functor(GenericCallType, canonicalize, _GenericCallFunctor, _),
-            Code = node([byte_not_supported])
+            Code = singleton(byte_not_supported)
         )
     ;
         GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
@@ -250,10 +248,10 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         gen_goal(Goal, !ByteInfo, SomeCode),
         get_next_label(EndLabel, !ByteInfo),
         get_next_temp(FrameTemp, !ByteInfo),
-        EnterCode = node([byte_enter_negation(FrameTemp, EndLabel)]),
-        EndofCode = node([byte_endof_negation_goal(FrameTemp),
+        EnterCode = singleton(byte_enter_negation(FrameTemp, EndLabel)),
+        EndofCode = from_list([byte_endof_negation_goal(FrameTemp),
             byte_label(EndLabel), byte_endof_negation]),
-        Code =  tree_list([EnterCode, SomeCode, EndofCode])
+        Code =  EnterCode ++ SomeCode ++ EndofCode
     ;
         GoalExpr = scope(_, InnerGoal),
         gen_goal(InnerGoal, !ByteInfo, InnerCode),
@@ -266,9 +264,9 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             Code = InnerCode
         ;
             get_next_temp(Temp, !ByteInfo),
-            EnterCode = node([byte_enter_commit(Temp)]),
-            EndofCode = node([byte_endof_commit(Temp)]),
-            Code = tree_list([EnterCode, InnerCode, EndofCode])
+            EnterCode = singleton(byte_enter_commit(Temp)),
+            EndofCode = singleton(byte_endof_commit(Temp)),
+            Code = EnterCode ++ InnerCode ++ EndofCode
         )
     ;
         GoalExpr = conj(plain_conj, GoalList),
@@ -280,23 +278,24 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         GoalExpr = disj(GoalList),
         (
             GoalList = [],
-            Code = node([byte_fail])
+            Code = singleton(byte_fail)
         ;
             GoalList = [_ | _],
             get_next_label(EndLabel, !ByteInfo),
             gen_disj(GoalList, EndLabel, !ByteInfo, DisjCode),
-            EnterCode = node([byte_enter_disjunction(EndLabel)]),
-            EndofCode = node([byte_endof_disjunction, byte_label(EndLabel)]),
-            Code = tree_list([EnterCode, DisjCode, EndofCode])
+            EnterCode = singleton(byte_enter_disjunction(EndLabel)),
+            EndofCode = from_list([byte_endof_disjunction,
+                byte_label(EndLabel)]),
+            Code = EnterCode ++ DisjCode ++ EndofCode
         )
     ;
         GoalExpr = switch(Var, _, CasesList),
         get_next_label(EndLabel, !ByteInfo),
         gen_switch(CasesList, Var, EndLabel, !ByteInfo, SwitchCode),
         map_var(!.ByteInfo, Var, ByteVar),
-        EnterCode = node([byte_enter_switch(ByteVar, EndLabel)]),
-        EndofCode = node([byte_endof_switch, byte_label(EndLabel)]),
-        Code = tree_list([EnterCode, SwitchCode, EndofCode])
+        EnterCode = singleton(byte_enter_switch(ByteVar, EndLabel)),
+        EndofCode = from_list([byte_endof_switch, byte_label(EndLabel)]),
+        Code = EnterCode ++ SwitchCode ++ EndofCode
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
         get_next_label(EndLabel, !ByteInfo),
@@ -305,16 +304,16 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         gen_goal(Cond, !ByteInfo, CondCode),
         gen_goal(Then, !ByteInfo, ThenCode),
         gen_goal(Else, !ByteInfo, ElseCode),
-        EnterIfCode = node([byte_enter_if(ElseLabel, EndLabel, FrameTemp)]),
-        EnterThenCode = node([byte_enter_then(FrameTemp)]),
-        EndofThenCode = node([byte_endof_then(EndLabel), byte_label(ElseLabel),
-            byte_enter_else(FrameTemp)]),
-        EndofIfCode = node([byte_endof_if, byte_label(EndLabel)]),
-        Code = tree_list([EnterIfCode, CondCode, EnterThenCode, ThenCode,
-            EndofThenCode, ElseCode, EndofIfCode])
+        EnterIfCode = singleton(byte_enter_if(ElseLabel, EndLabel, FrameTemp)),
+        EnterThenCode = singleton(byte_enter_then(FrameTemp)),
+        EndofThenCode = from_list([byte_endof_then(EndLabel),
+            byte_label(ElseLabel), byte_enter_else(FrameTemp)]),
+        EndofIfCode = from_list([byte_endof_if, byte_label(EndLabel)]),
+        Code = EnterIfCode ++ CondCode ++ EnterThenCode ++ ThenCode ++
+            EndofThenCode ++ ElseCode ++ EndofIfCode
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        Code = node([byte_not_supported])
+        Code = singleton(byte_not_supported)
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
@@ -330,7 +329,7 @@ gen_places([], _, empty).
 gen_places([Var - Loc | OutputArgs], ByteInfo, Code) :-
     gen_places(OutputArgs, ByteInfo, OtherCode),
     map_var(ByteInfo, Var, ByteVar),
-    Code = tree(node([byte_place_arg(byte_reg_r, Loc, ByteVar)]), OtherCode).
+    Code = singleton(byte_place_arg(byte_reg_r, Loc, ByteVar)) ++ OtherCode.
 
 :- pred gen_pickups(list(pair(prog_var, arg_loc))::in,
     byte_info::in, byte_tree::out) is det.
@@ -339,7 +338,7 @@ gen_pickups([], _, empty).
 gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
     gen_pickups(OutputArgs, ByteInfo, OtherCode),
     map_var(ByteInfo, Var, ByteVar),
-    Code = tree(node([byte_pickup_arg(byte_reg_r, Loc, ByteVar)]), OtherCode).
+    Code = singleton(byte_pickup_arg(byte_reg_r, Loc, ByteVar)) ++ OtherCode.
 
 %---------------------------------------------------------------------------%
 
@@ -366,14 +365,14 @@ gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
     gen_pickups(OutputArgs, ByteInfo, PickupArgs),
 
     map_var(ByteInfo, PredVar, BytePredVar),
-    Call = node([byte_higher_order_call(BytePredVar, NInVars, NOutVars,
-        Detism)]),
+    Call = singleton(byte_higher_order_call(BytePredVar, NInVars, NOutVars,
+        Detism)),
     ( CodeModel = model_semi ->
-        Check = node([byte_semidet_success_check])
+        Check = singleton(byte_semidet_success_check)
     ;
         Check = empty
     ),
-    Code = tree(PlaceArgs, tree(Call, tree(Check, PickupArgs))).
+    Code = PlaceArgs ++ Call ++ Check ++ PickupArgs.
 
     % Generate bytecode for an ordinary call.
     %
@@ -397,14 +396,14 @@ gen_call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 
     predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
     proc_id_to_int(ProcId, ProcInt),
-    Call = node([byte_call(ModuleName, PredName, Arity, IsFunc, ProcInt)]),
+    Call = singleton(byte_call(ModuleName, PredName, Arity, IsFunc, ProcInt)),
     determinism_to_code_model(Detism, CodeModel),
     ( CodeModel = model_semi ->
-        Check = node([byte_semidet_success_check])
+        Check = singleton(byte_semidet_success_check)
     ;
         Check = empty
     ),
-    Code = tree(PlaceArgs, tree(Call, tree(Check, PickupArgs))).
+    Code = PlaceArgs ++ Call ++ Check ++ PickupArgs.
 
     % Generate bytecode for a call to a builtin.
     %
@@ -430,7 +429,7 @@ gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
             unexpected(this_file, "ref_assign")
         ;
             SimpleCode = noop(_DefinedVars),
-            Code = node([])
+            Code = empty
         )
     ;
         string.append("unknown builtin predicate ", PredName, Msg),
@@ -445,11 +444,11 @@ map_test(ByteInfo, TestExpr, Code) :-
         TestExpr = binary(Binop, X, Y),
         map_arg(ByteInfo, X, ByteX),
         map_arg(ByteInfo, Y, ByteY),
-        Code = node([byte_builtin_bintest(Binop, ByteX, ByteY)])
+        Code = singleton(byte_builtin_bintest(Binop, ByteX, ByteY))
     ;
         TestExpr = unary(Unop, X),
         map_arg(ByteInfo, X, ByteX),
-        Code = node([byte_builtin_untest(Unop, ByteX)])
+        Code = singleton(byte_builtin_untest(Unop, ByteX))
     ).
 
 :- pred map_assign(byte_info::in, prog_var::in,
@@ -461,17 +460,17 @@ map_assign(ByteInfo, Var, Expr, Code) :-
         map_arg(ByteInfo, X, ByteX),
         map_arg(ByteInfo, Y, ByteY),
         map_var(ByteInfo, Var, ByteVar),
-        Code = node([byte_builtin_binop(Binop, ByteX, ByteY, ByteVar)])
+        Code = singleton(byte_builtin_binop(Binop, ByteX, ByteY, ByteVar))
     ;
         Expr = unary(Unop, X),
         map_arg(ByteInfo, X, ByteX),
         map_var(ByteInfo, Var, ByteVar),
-        Code = node([byte_builtin_unop(Unop, ByteX, ByteVar)])
+        Code = singleton(byte_builtin_unop(Unop, ByteX, ByteVar))
     ;
         Expr = leaf(X),
         map_var(ByteInfo, X, ByteX),
         map_var(ByteInfo, Var, ByteVar),
-        Code = node([byte_assign(ByteVar, ByteX)])
+        Code = singleton(byte_assign(ByteVar, ByteX))
     ).
 
 :- pred map_arg(byte_info::in, simple_expr(prog_var)::in(simple_arg_expr),
@@ -503,17 +502,18 @@ gen_unify(construct(Var, ConsId, Args, UniModes, _, _, _), _, _,
     map_vars(ByteInfo, Args, ByteArgs),
     map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
     ( ByteConsId = byte_pred_const(_, _, _, _, _) ->
-        Code = node([byte_construct(ByteVar, ByteConsId, ByteArgs)])
+        Code = singleton(byte_construct(ByteVar, ByteConsId, ByteArgs))
     ;
         % Don't call map_uni_modes until after
         % the pred_const test fails, since the arg-modes on
         % unifications that create closures aren't like other arg-modes.
         map_uni_modes(UniModes, Args, ByteInfo, Dirs),
         ( all_dirs_same(Dirs, to_var) ->
-            Code = node([byte_construct(ByteVar, ByteConsId, ByteArgs)])
+            Code = singleton(byte_construct(ByteVar, ByteConsId, ByteArgs))
         ;
             assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
-            Code = node([byte_complex_construct(ByteVar, ByteConsId, Pairs)])
+            Code = singleton(byte_complex_construct(ByteVar, ByteConsId,
+                Pairs))
         )
     ).
 gen_unify(deconstruct(Var, ConsId, Args, UniModes, _, _), _, _,
@@ -523,15 +523,15 @@ gen_unify(deconstruct(Var, ConsId, Args, UniModes, _, _), _, _,
     map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
     map_uni_modes(UniModes, Args, ByteInfo, Dirs),
     ( all_dirs_same(Dirs, to_arg) ->
-        Code = node([byte_deconstruct(ByteVar, ByteConsId, ByteArgs)])
+        Code = singleton(byte_deconstruct(ByteVar, ByteConsId, ByteArgs))
     ;
         assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
-        Code = node([byte_complex_deconstruct(ByteVar, ByteConsId, Pairs)])
+        Code = singleton(byte_complex_deconstruct(ByteVar, ByteConsId, Pairs))
     ).
 gen_unify(assign(Target, Source), _, _, ByteInfo, Code) :-
     map_var(ByteInfo, Target, ByteTarget),
     map_var(ByteInfo, Source, ByteSource),
-    Code = node([byte_assign(ByteTarget, ByteSource)]).
+    Code = singleton(byte_assign(ByteTarget, ByteSource)).
 gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
     map_var(ByteInfo, Var1, ByteVar1),
     map_var(ByteInfo, Var2, ByteVar2),
@@ -591,7 +591,7 @@ gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
         TypeCategory = ctor_cat_system(_),
         unexpected(this_file, "system type in simple_test")
     ),
-    Code = node([byte_test(ByteVar1, ByteVar2, TestId)]).
+    Code = singleton(byte_test(ByteVar1, ByteVar2, TestId)).
 gen_unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-
     unexpected(this_file, "complicated unifications " ++
         "should have been handled by polymorphism.m").
@@ -649,7 +649,7 @@ gen_conj([], !ByteInfo, empty).
 gen_conj([Goal | Goals], !ByteInfo, Code) :-
     gen_goal(Goal, !ByteInfo, ThisCode),
     gen_conj(Goals, !ByteInfo, OtherCode),
-    Code = tree(ThisCode, OtherCode).
+    Code = ThisCode ++ OtherCode.
 
 %---------------------------------------------------------------------------%
 
@@ -664,17 +664,17 @@ gen_disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
     gen_goal(Disjunct, !ByteInfo, ThisCode),
     (
         Disjuncts = [],
-        EnterCode = node([byte_enter_disjunct(-1)]),
-        EndofCode = node([byte_endof_disjunct(EndLabel)]),
-        Code = tree_list([EnterCode, ThisCode, EndofCode])
+        EnterCode = singleton(byte_enter_disjunct(-1)),
+        EndofCode = singleton(byte_endof_disjunct(EndLabel)),
+        Code = EnterCode ++ ThisCode ++ EndofCode
     ;
         Disjuncts = [_ | _],
         gen_disj(Disjuncts, EndLabel, !ByteInfo, OtherCode),
         get_next_label(NextLabel, !ByteInfo),
-        EnterCode = node([byte_enter_disjunct(NextLabel)]),
-        EndofCode = node([byte_endof_disjunct(EndLabel),
+        EnterCode = singleton(byte_enter_disjunct(NextLabel)),
+        EndofCode = from_list([byte_endof_disjunct(EndLabel),
             byte_label(NextLabel)]),
-        Code = tree_list([EnterCode, ThisCode, EndofCode, OtherCode])
+        Code = EnterCode ++ ThisCode ++ EndofCode ++ OtherCode
     ).
 
 %---------------------------------------------------------------------------%
@@ -692,10 +692,11 @@ gen_switch([Case | Cases], Var, EndLabel, !ByteInfo, Code) :-
     gen_goal(Goal, !ByteInfo, GoalCode),
     gen_switch(Cases, Var, EndLabel, !ByteInfo, CasesCode),
     get_next_label(NextLabel, !ByteInfo),
-    EnterCode = node([
-        byte_enter_switch_arm(ByteMainConsId, ByteOtherConsIds, NextLabel)]),
-    EndofCode = node([byte_endof_switch_arm(EndLabel), byte_label(NextLabel)]),
-    Code = tree_list([EnterCode, GoalCode, EndofCode, CasesCode]).
+    EnterCode = singleton(byte_enter_switch_arm(ByteMainConsId,
+        ByteOtherConsIds, NextLabel)),
+    EndofCode = from_list([byte_endof_switch_arm(EndLabel),
+        byte_label(NextLabel)]),
+    Code = EnterCode ++ GoalCode ++ EndofCode ++ CasesCode.
 
 %---------------------------------------------------------------------------%
 

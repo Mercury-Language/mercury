@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,7 +27,7 @@
 
 :- pred generate_string_switch(list(tagged_case)::in, rval::in, string::in,
     code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::in, branch_end::out, code_tree::out,
+    branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -41,11 +41,11 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module libs.compiler_util.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.switch_case.
 :- import_module ll_backend.trace_gen.
 
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -108,9 +108,9 @@ generate_string_switch(Cases, VarRval, VarName, CodeModel, _CanFail,
 
     % Generate the code for the cases.
     map.foldl(add_remaining_case, CaseLabelMap, empty, CasesCode),
-    EndLabelCode = node([
+    EndLabelCode = singleton(
         llds_instr(label(EndLabel), "end of hashed string switch")
-    ]),
+    ),
 
     % Generate the code for the hash table lookup.
     % XXX We should be using one vector cell, not two scalar cells.
@@ -118,7 +118,7 @@ generate_string_switch(Cases, VarRval, VarName, CodeModel, _CanFail,
     add_scalar_static_cell_natural_types(Strings, StringTableAddr, !CI),
     NextSlotsTable = const(llconst_data_addr(NextSlotsTableAddr, no)),
     StringTable = const(llconst_data_addr(StringTableAddr, no)),
-    HashLookupCode = node([
+    HashLookupCode = from_list([
         llds_instr(comment("hashed string switch"), ""),
         llds_instr(assign(SlotReg,
             binop(bitwise_and, unop(hash_string, VarRval),
@@ -144,13 +144,13 @@ generate_string_switch(Cases, VarRval, VarName, CodeModel, _CanFail,
         llds_instr(label(FailLabel), "no match, so fail")
     ]),
 
-    JumpCode = node([
+    JumpCode = from_list([
         llds_instr(label(JumpLabel), "we found a match"),
         llds_instr(computed_goto(lval(SlotReg), Targets),
             "jump to the corresponding code")
     ]),
-    Code = tree_list([HashLookupCode, FailCode, JumpCode, CasesCode,
-        EndLabelCode]).
+    Code = HashLookupCode ++ FailCode ++ JumpCode ++ CasesCode ++
+        EndLabelCode.
 
 :- pred gen_string_hash_slots(int::in, int::in,
     map(int, string_hash_slot(label))::in, label::in,

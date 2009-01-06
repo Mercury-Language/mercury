@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -65,7 +65,7 @@
     % Generate code for the switch that the lookup_switch_info came from.
     %
 :- pred generate_lookup_switch(rval::in, abs_store_map::in, branch_end::in,
-    lookup_switch_info::in, code_tree::out, code_info::in, code_info::out)
+    lookup_switch_info::in, llds_code::out, code_info::in, code_info::out)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -81,7 +81,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.dense_switch.
 :- import_module ll_backend.global_data.
@@ -90,6 +89,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -419,7 +419,9 @@ generate_lookup_switch(VarRval, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
 
     (
         CaseConsts = all_one_soln(CaseValues),
-        Comment = node([llds_instr(comment("simple lookup switch"), "")]),
+        Comment = singleton(
+            llds_instr(comment("simple lookup switch"), "")
+        ),
         generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
             StartVal, EndVal, CaseValues, OutVars, LLDSTypes,
             NeedBitVecCheck, Liveness, RestCode, !CI)
@@ -434,19 +436,19 @@ generate_lookup_switch(VarRval, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
             GoalsMayModifyTrail = no,
             AddTrailOps = do_not_add_trail_ops
         ),
-        Comment = node([
+        Comment = singleton(
             llds_instr(comment("several soln lookup switch"), "")
-        ]),
+        ),
         generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
             StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
             LLDSTypes, NeedBitVecCheck, Liveness, RestCode, !CI)
     ),
-    Code = tree_list([Comment, RangeCheckCode, RestCode]).
+    Code = Comment ++ RangeCheckCode ++ RestCode.
 
 :- pred generate_simple_lookup_switch(rval::in, abs_store_map::in,
     branch_end::in, int::in, int::in, assoc_list(int, list(rval))::in,
     list(prog_var)::in, list(llds_type)::in, need_bit_vec_check::in,
-    set(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+    set(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0, StartVal, EndVal,
         CaseValues, OutVars, LLDSTypes, NeedBitVecCheck, Liveness, Code,
@@ -491,7 +493,7 @@ generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0, StartVal, EndVal,
         MaybeBaseReg = yes(FinalBaseReg),
         release_reg(FinalBaseReg, !CI)
     ),
-    Code = tree_list([CheckBitVecCode, BaseRegInitCode, BranchEndCode]).
+    Code = CheckBitVecCode ++ BaseRegInitCode ++ BranchEndCode.
 
     % Add an expression to the expression cache in the code_info structure
     % for each of the output variables of the lookup switch. This is done by
@@ -500,7 +502,7 @@ generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0, StartVal, EndVal,
     %
 :- pred generate_simple_terms(rval::in, list(prog_var)::in,
     list(llds_type)::in, assoc_list(int, list(rval))::in, int::in,
-    lval::in, code_tree::out, code_info::in, code_info::out) is det.
+    lval::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_simple_terms(IndexRval, OutVars, OutTypes, CaseVals, Start, BaseReg,
         Code, !CI) :-
@@ -515,11 +517,11 @@ generate_simple_terms(IndexRval, OutVars, OutTypes, CaseVals, Start, BaseReg,
     ;
         BaseRval = binop(int_mul, IndexRval, const(llconst_int(NumOutVars)))
     ),
-    Code = node([
+    Code = singleton(
         llds_instr(
             assign(BaseReg, mem_addr(heap_ref(VectorAddrRval, 0, BaseRval))),
             "Compute base address for this case")
-    ]),
+    ),
     generate_offset_assigns(OutVars, 0, BaseReg, !CI).
 
 :- pred construct_simple_vector(int::in, list(llds_type)::in,
@@ -545,7 +547,7 @@ construct_simple_vector(CurIndex, LLDSTypes, [Index - Rvals | Rest],
     branch_end::in, int::in, int::in, assoc_list(int, soln_consts)::in,
     set(prog_var)::in, add_trail_ops::in, list(prog_var)::in,
     list(llds_type)::in, need_bit_vec_check::in, set(prog_var)::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
         StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
@@ -610,12 +612,12 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
         non_persistent_temp_slot, MaxSlot, !CI),
     % IndexRval has already had Start subtracted from it.
     BaseRval = binop(int_mul, IndexRval, const(llconst_int(MainRowWidth))),
-    BaseRegInitCode = node([
+    BaseRegInitCode = singleton(
         llds_instr(
             assign(BaseReg,
                 mem_addr(heap_ref(MainVectorAddrRval, 0, BaseRval))),
             "Compute base address for this case")
-    ]),
+    ),
 
     list.sort([FailCaseCount - kind_zero_solns,
         OneSolnCaseCount - kind_one_soln,
@@ -630,10 +632,10 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
         KindsCode, !CI),
 
     set_resume_point_to_unknown(!CI),
-    EndLabelCode = node([
+    EndLabelCode = singleton(
         llds_instr(label(EndLabel), "end of several_soln lookup switch")
-    ]),
-    Code = tree_list([BaseRegInitCode, KindsCode, EndLabelCode]).
+    ),
+    Code = BaseRegInitCode ++ KindsCode ++ EndLabelCode.
 
 :- type case_kind
     --->    kind_zero_solns
@@ -649,7 +651,7 @@ case_kind_to_string(kind_several_solns) = "kind_several_solns".
 :- pred generate_code_for_each_kind(assoc_list(int, case_kind)::in,
     lval::in, lval::in, lval::in, rval::in, label::in, position_info::in,
     set(prog_var)::in, add_trail_ops::in, list(prog_var)::in,
-    abs_store_map::in, branch_end::in, set(prog_var)::in, code_tree::out,
+    abs_store_map::in, branch_end::in, set(prog_var)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_code_for_each_kind([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
@@ -671,11 +673,11 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
             BranchEndCode, !CI),
         release_reg(BaseReg, !CI),
-        GotoEndCode = node([
+        GotoEndCode = singleton(
             llds_instr(goto(code_label(EndLabel)),
                 "goto end of switch from one_soln")
-        ]),
-        KindCode = tree_list([BranchEndCode, GotoEndCode])
+        ),
+        KindCode = BranchEndCode ++ GotoEndCode
     ;
         Kind = kind_several_solns,
         TestOp = int_le,
@@ -686,7 +688,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         % specialized for the situation here.
 
         produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
-        SaveSlotsCode = node([
+        SaveSlotsCode = from_list([
             llds_instr(assign(CurSlot,
                 lval(field(yes(0), lval(BaseReg), const(llconst_int(0))))),
                 "Setup current slot in the later solution array"),
@@ -723,10 +725,10 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
             FirstBranchEndCode, !CI),
         release_reg(BaseReg, !CI),
 
-        GotoEndCode = node([
+        GotoEndCode = singleton(
             llds_instr(goto(code_label(EndLabel)),
                 "goto end of switch from several_soln")
-        ]),
+        ),
 
         reset_to_position(DisjEntry, !CI),
         generate_resume_point(ResumePoint, ResumePointCode, !CI),
@@ -739,7 +741,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         get_next_label(UndoLabel, !CI),
         get_next_label(AfterUndoLabel, !CI),
         list.length(OutVars, NumOutVars),
-        TestMoreSolnsCode = node([
+        TestMoreSolnsCode = from_list([
             llds_instr(assign(LaterBaseReg, lval(CurSlot)),
                 "Init later base register"),
             llds_instr(if_val(binop(int_ge, lval(LaterBaseReg), lval(MaxSlot)),
@@ -754,7 +756,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
                 "Undo hijack code")
         ]),
         undo_disj_hijack(HijackInfo, UndoHijackCode, !CI),
-        AfterUndoLabelCode = node([
+        AfterUndoLabelCode = from_list([
             llds_instr(label(AfterUndoLabel),
                 "Return later answer code"),
             llds_instr(assign(LaterBaseReg,
@@ -784,12 +786,13 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
             LaterBranchEndCode, !CI),
 
-        KindCode = tree_list([FlushCode, SaveSlotsCode,
-            SaveTicketCode, SaveHpCode, PrepareHijackCode,
-            UpdateRedoipCode, FirstFlushResumeVarsCode, FirstBranchEndCode,
-            GotoEndCode, ResumePointCode, RestoreTicketCode, RestoreHpCode,
-            TestMoreSolnsCode, UndoHijackCode, AfterUndoLabelCode,
-            LaterFlushResumeVarsCode, LaterBranchEndCode, GotoEndCode])
+        KindCode = FlushCode ++ SaveSlotsCode ++
+            SaveTicketCode ++ SaveHpCode ++ PrepareHijackCode ++
+            UpdateRedoipCode ++ FirstFlushResumeVarsCode ++
+            FirstBranchEndCode ++ GotoEndCode ++ ResumePointCode ++
+            RestoreTicketCode ++ RestoreHpCode ++
+            TestMoreSolnsCode ++ UndoHijackCode ++ AfterUndoLabelCode ++
+            LaterFlushResumeVarsCode ++ LaterBranchEndCode ++ GotoEndCode
     ),
     (
         Kinds = [],
@@ -800,7 +803,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         TestRval = binop(TestOp,
             lval(field(yes(0), lval(BaseReg), const(llconst_int(0)))),
             const(llconst_int(0))),
-        TestCode = node([
+        TestCode = from_list([
             llds_instr(if_val(TestRval, code_label(NextKindLabel)),
                 "skip to next kind in several_soln lookup switch"),
             llds_instr(comment("This kind is " ++ case_kind_to_string(Kind)),
@@ -810,15 +813,14 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
             LaterVectorAddrRval, EndLabel, BranchStart, ResumeVars,
             AddTrailOps, OutVars, StoreMap, MaybeEnd0, Liveness,
             LaterKindsCode, !CI),
-        NextKindLabelCode = node([
+        NextKindLabelCode = from_list([
             llds_instr(label(NextKindLabel),
                 "next kind in several_soln lookup switch"),
             llds_instr(comment("Next kind is "
                 ++ case_kind_to_string(NextKind)),
                 "")
         ]),
-        Code = tree_list([TestCode, KindCode, NextKindLabelCode,
-            LaterKindsCode])
+        Code = TestCode ++ KindCode ++ NextKindLabelCode ++ LaterKindsCode
     ).
 
     % Note that we specify --optimise-constructor-last-call for this module
@@ -903,7 +905,7 @@ construct_fail_row(LLDSTypes, MainRow, !FailCaseCount) :-
     % tag value.
     %
 :- pred generate_bitvec_test(rval::in, assoc_list(int, T)::in,
-    int::in, int::in, code_tree::out, code_info::in, code_info::out) is det.
+    int::in, int::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode, !CI) :-
     get_word_bits(!.CI, WordBits, Log2WordBits),

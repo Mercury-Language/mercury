@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
 
-:- pred match_and_generate(hlds_goal::in, code_tree::out,
+:- pred match_and_generate(hlds_goal::in, llds_code::out,
     code_info::in, code_info::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -34,7 +34,6 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
 :- import_module libs.compiler_util.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.llds_out.
@@ -45,6 +44,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
@@ -236,11 +236,11 @@ contains_only_builtins_list([Goal | Goals]) = OnlyBuiltins :-
 %---------------------------------------------------------------------------%
 
 :- pred middle_rec_generate_switch(prog_var::in, cons_id::in, hlds_goal::in,
-    hlds_goal::in, hlds_goal_info::in, code_tree::out,
+    hlds_goal::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out) is semidet.
 
 middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
-        Instrs, !CI) :-
+        Code, !CI) :-
     get_stack_slots(!.CI, StackSlots),
     get_varset(!.CI, VarSet),
     SlotsComment = explain_stack_slots(StackSlots, VarSet),
@@ -254,8 +254,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     CheaperTagTest = lookup_cheaper_tag_test(!.CI, VarType),
     generate_tag_test(Var, BaseConsId, CheaperTagTest, branch_on_success,
         BaseLabel, EntryTestCode, !CI),
-    tree.flatten(EntryTestCode, EntryTestListList),
-    list.condense(EntryTestListList, EntryTestList),
+    EntryTestInstrs = cord.list(EntryTestCode),
 
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
     remember_position(!.CI, BranchStart),
@@ -273,148 +272,146 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
     setup_return(Args, LiveArgs, EpilogCode, !CI),
 
-    BaseCode = tree_list([BaseGoalCode, BaseSaveCode, EpilogCode]),
-    RecCode = tree_list([RecGoalCode, RecSaveCode, EpilogCode]),
-    LiveValCode = [llds_instr(livevals(LiveArgs), "")],
+    BaseCode = BaseGoalCode ++ BaseSaveCode ++ EpilogCode,
+    RecCode = RecGoalCode ++ RecSaveCode ++ EpilogCode,
+    LiveValCode = singleton(
+        llds_instr(livevals(LiveArgs), "")
+    ),
 
-    tree.flatten(BaseCode, BaseListList),
-    list.condense(BaseListList, BaseList),
-    tree.flatten(RecCode, RecListList),
-    list.condense(RecListList, RecList),
+    BaseInstrs = cord.list(BaseCode),
+    RecInstrs = cord.list(RecCode),
 
     % In the code we generate, the base instruction sequence is executed
     % in situations where this procedure has no stack frame. If this
     % sequence refers to the stack frame, it will be to some other procedure's
     % variables, which is obviously incorrect.
-    opt_util.block_refers_to_stack(BaseList) = no,
+    opt_util.block_refers_to_stack(BaseInstrs) = no,
 
-    list.append(BaseList, RecList, AvoidList),
-    find_unused_register(AvoidList, AuxReg),
+    AvoidInstrs = BaseInstrs ++ RecInstrs,
+    find_unused_register(AvoidInstrs, AuxReg),
 
-    split_rec_code(RecList, BeforeList0, AfterList),
-    add_counter_to_livevals(BeforeList0, AuxReg, BeforeList),
+    split_rec_code(RecInstrs, BeforeInstrs0, AfterInstrs),
+    add_counter_to_livevals(BeforeInstrs0, AuxReg, BeforeInstrs),
 
     get_next_label(Loop1Label, !CI),
     get_next_label(Loop2Label, !CI),
     get_total_stackslot_count(!.CI, FrameSize),
 
-    generate_downloop_test(EntryTestList, Loop1Label, Loop1Test),
+    generate_downloop_test(EntryTestInstrs, Loop1Label, Loop1Test),
 
     ( FrameSize = 0 ->
-        MaybeIncrSp = [],
-        MaybeDecrSp = [],
-        InitAuxReg = [
+        MaybeIncrSp = empty,
+        MaybeDecrSp = empty,
+        InitAuxReg = singleton(
             llds_instr(assign(AuxReg, const(llconst_int(0))),
                 "initialize counter register")
-        ],
-        IncrAuxReg = [
+        ),
+        IncrAuxReg = singleton(
             llds_instr(
                 assign(AuxReg,
                     binop(int_add, lval(AuxReg), const(llconst_int(1)))),
                 "increment loop counter")
-        ],
-        DecrAuxReg = [
+        ),
+        DecrAuxReg = singleton(
             llds_instr(
                 assign(AuxReg,
                     binop(int_sub, lval(AuxReg), const(llconst_int(1)))),
                 "decrement loop counter")
-        ],
-        TestAuxReg = [
+        ),
+        TestAuxReg = singleton(
             llds_instr(
                 if_val(binop(int_gt, lval(AuxReg), const(llconst_int(0))),
                     code_label(Loop2Label)),
                 "test on upward loop")
-        ]
+        )
     ;
         PushMsg = proc_gen.push_msg(ModuleInfo, PredId, ProcId),
-        MaybeIncrSp = [
+        MaybeIncrSp = singleton(
             llds_instr(incr_sp(FrameSize, PushMsg, stack_incr_nonleaf), "")
-        ],
-        MaybeDecrSp = [llds_instr(decr_sp(FrameSize), "")],
-        InitAuxReg =  [
-            llds_instr(assign(AuxReg, lval(sp)),
-                "initialize counter register")
-        ],
-        IncrAuxReg = [],
-        DecrAuxReg = [],
-        TestAuxReg = [
+        ),
+        MaybeDecrSp = singleton(
+            llds_instr(decr_sp(FrameSize), "")
+        ),
+        InitAuxReg =  singleton(
+            llds_instr(assign(AuxReg, lval(sp)), "initialize counter register")
+        ),
+        IncrAuxReg = empty,
+        DecrAuxReg = empty,
+        TestAuxReg = singleton(
             llds_instr(if_val(binop(int_gt, lval(sp), lval(AuxReg)),
                 code_label(Loop2Label)),
                 "test on upward loop")
-        ]
+        )
     ),
 
     % Even though the recursive call is followed by some goals in the HLDS,
     % these goals may generate no LLDS code, so it is in fact possible for
-    % AfterList to be empty. There is no point in testing BeforeList for empty,
-    % since if it is, the code is an infinite loop anyway.
+    % AfterInstrs to be empty. There is no point in testing BeforeInstrs
+    % for empty, since if it is, the code is an infinite loop anyway.
 
     (
-        AfterList = [],
-        list.condense([
-            [
+        AfterInstrs = [],
+        Code =
+            from_list([
                 llds_instr(label(EntryLabel), "Procedure entry point"),
                 llds_instr(comment(SlotsComment), "")
-            ],
-            EntryTestList,
-            [
+            ]) ++
+            from_list(EntryTestInstrs) ++
+            singleton(
                 llds_instr(label(Loop1Label), "start of the down loop")
-            ],
-            BeforeList,
-            Loop1Test,
-            [
+            ) ++
+            from_list(BeforeInstrs) ++
+            from_list(Loop1Test) ++
+            singleton(
                 llds_instr(label(BaseLabel), "start of base case")
-            ],
-            BaseList,
-            LiveValCode,
-            [
+            ) ++
+            from_list(BaseInstrs) ++
+            LiveValCode ++
+            singleton(
                 llds_instr(goto(code_succip), "exit from base case")
-            ]
-        ], InstrList)
+            )
     ;
-        AfterList = [_ | _],
+        AfterInstrs = [_ | _],
         % The instruction list we are constructing has two copies of BaseList.
         % If this list of instructions defines any labels, we must either not
         % apply this version of the optimization, or we must consistently
         % substitute the labels (which will be referred to only from within the
         % BaseList instructions themselves). We choose the former course.
-        find_labels(BaseList, BaseLabels),
+        find_labels(BaseInstrs, BaseLabels),
         BaseLabels = [],
-        list.condense([
-            [
+        Code =
+            from_list([
                 llds_instr(label(EntryLabel), "Procedure entry point"),
                 llds_instr(comment(SlotsComment), "")
-            ],
-            EntryTestList,
-            InitAuxReg,
-            [
+            ]) ++
+            from_list(EntryTestInstrs) ++
+            InitAuxReg ++
+            singleton(
                 llds_instr(label(Loop1Label), "start of the down loop")
-            ],
-            MaybeIncrSp,
-            IncrAuxReg,
-            BeforeList,
-            Loop1Test,
-            BaseList,
-            [
+            ) ++
+            MaybeIncrSp ++
+            IncrAuxReg ++
+            from_list(BeforeInstrs) ++
+            from_list(Loop1Test) ++
+            from_list(BaseInstrs) ++
+            singleton(
                 llds_instr(label(Loop2Label), "")
-            ],
-            AfterList,
-            MaybeDecrSp,
-            DecrAuxReg,
-            TestAuxReg,
-            LiveValCode,
-            [
+            ) ++
+            from_list(AfterInstrs) ++
+            MaybeDecrSp ++
+            DecrAuxReg ++
+            TestAuxReg ++
+            LiveValCode ++
+            from_list([
                 llds_instr(goto(code_succip), "exit from recursive case"),
                 llds_instr(label(BaseLabel), "start of base case")
-            ],
-            BaseList,
-            LiveValCode,
-            [
+            ]) ++
+            from_list(BaseInstrs) ++
+            LiveValCode ++
+            singleton(
                 llds_instr(goto(code_succip), "exit from base case")
-            ]
-        ], InstrList)
-    ),
-    Instrs = node(InstrList).
+            )
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

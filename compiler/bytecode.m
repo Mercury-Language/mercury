@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,21 +20,20 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
-:- import_module libs.
-:- import_module libs.tree.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module char.
+:- import_module cord.
 :- import_module io.
 :- import_module list.
 :- import_module pair.
 
 %---------------------------------------------------------------------------%
 
-:- type byte_tree   ==  tree(list(byte_code)).
+:- type byte_tree   ==  cord(byte_code).
 
 :- type byte_code
     --->    byte_enter_pred(byte_pred_id, int, byte_is_func, int)
@@ -153,6 +152,7 @@
 
 :- import_module backend_libs.bytecode_data.
 :- import_module backend_libs.c_util.
+:- import_module libs.
 :- import_module libs.compiler_util.
 
 :- import_module assoc_list.

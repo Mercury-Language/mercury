@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,7 +67,7 @@
     code_info::in, code_info::out) is semidet.
 
 :- pred set_liveness_and_end_branch(abs_store_map::in, branch_end::in,
-    set(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+    set(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_offset_assigns(list(prog_var)::in, int::in, lval::in,
     code_info::in, code_info::out) is det.
@@ -81,11 +81,11 @@
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.exprn_aux.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module pair.
 :- import_module solutions.
@@ -150,7 +150,7 @@ do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     CodeModel = goal_info_get_code_model(GoalInfo),
     code_gen.generate_goal(CodeModel, Goal, Code, !CI),
-    tree.tree_of_lists_is_empty(Code),
+    cord.is_empty(Code),
     get_forward_live_vars(!.CI, Liveness),
 
     get_exprn_opts(!.CI, ExprnOpts),
@@ -190,7 +190,7 @@ generate_constants_for_disjuncts([Disjunct0 | Disjuncts], Vars, StoreMap,
 get_arm_rvals([], [], !CI, _ExprnOpts).
 get_arm_rvals([Var | Vars], [Rval | Rvals], !CI, ExprnOpts) :-
     produce_variable(Var, Code, Rval, !CI),
-    tree.tree_of_lists_is_empty(Code),
+    cord.is_empty(Code),
     rval_is_constant(Rval, ExprnOpts),
     get_arm_rvals(Vars, Rvals, !CI, ExprnOpts).
 
@@ -224,7 +224,7 @@ generate_offset_assigns([], _, _, !CI).
 generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
     LookupLval = field(yes(0), lval(BaseReg), const(llconst_int(Offset))),
     assign_lval_to_var(Var, LookupLval, Code, !CI),
-    expect(tree.is_empty(Code), this_file,
+    expect(cord.is_empty(Code), this_file,
         "generate_offset_assigns: nonempty code"),
     generate_offset_assigns(Vars, Offset + 1, BaseReg, !CI).
 

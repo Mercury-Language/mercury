@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,7 +25,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
-:- import_module libs.tree.
 :- import_module ll_backend.layout.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
@@ -33,6 +32,7 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module list.
 :- import_module assoc_list.
 :- import_module map.
@@ -204,7 +204,7 @@
 
     % We build up instructions as trees and then flatten the tree to a list.
     %
-:- type code_tree   ==  tree(list(instruction)).
+:- type llds_code == cord(instruction).
 
 :- type instruction
     --->    llds_instr(

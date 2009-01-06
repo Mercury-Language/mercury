@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -170,41 +170,41 @@
     % Generate code to fill in the reserved stack slots.
     %
 :- pred generate_slot_fill_code(code_info::in, trace_info::in,
-    code_tree::out) is det.
+    llds_code::out) is det.
 
     % If we are doing execution tracing, generate code to prepare for a call.
     %
-:- pred trace_prepare_for_call(code_info::in, code_tree::out) is det.
+:- pred trace_prepare_for_call(code_info::in, llds_code::out) is det.
 
     % If we are doing execution tracing, generate code for an internal
     % trace event. This predicate must be called just before generating code
     % for the given goal.
     %
 :- pred maybe_generate_internal_event_code(hlds_goal::in,
-    hlds_goal_info::in, code_tree::out, code_info::in, code_info::out) is det.
+    hlds_goal_info::in, llds_code::out, code_info::in, code_info::out) is det.
 
     % If we are doing execution tracing, generate code for an trace event
     % that represents leaving a negated goal (via success or failure).
     %
 :- pred maybe_generate_negated_event_code(hlds_goal::in,
-    hlds_goal_info::in, negation_end_port::in, code_tree::out,
+    hlds_goal_info::in, negation_end_port::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
     % If we are doing execution tracing, generate code for a nondet
     % foreign_proc trace event.
     %
 :- pred maybe_generate_foreign_proc_event_code(
-    nondet_foreign_proc_trace_port::in, prog_context::in, code_tree::out,
+    nondet_foreign_proc_trace_port::in, prog_context::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
     % Generate code for a user-defined trace event.
     %
 :- pred generate_user_event_code(user_event_info::in, hlds_goal_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_tailrec_event_code(trace_info::in,
     assoc_list(prog_var, arg_info)::in, goal_path::in, prog_context::in,
-    code_tree::out, label::out, code_info::in, code_info::out) is det.
+    llds_code::out, label::out, code_info::in, code_info::out) is det.
 
 :- type external_event_info
     --->    external_event_info(
@@ -217,7 +217,7 @@
                 map(tvar, set(layout_locn)),
 
                 % The code generated for the event.
-                code_tree
+                llds_code
             ).
 
     % Generate code for an external trace event.
@@ -235,7 +235,7 @@
     % address of one of the labels in the runtime that calls MR_trace
     % for a redo event. Otherwise, generate empty code.
     %
-:- pred maybe_setup_redo_event(trace_info::in, code_tree::out) is det.
+:- pred maybe_setup_redo_event(trace_info::in, llds_code::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -252,7 +252,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
-:- import_module libs.tree.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.
@@ -682,17 +681,17 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     TraceComponents1 = [foreign_proc_raw_code(cannot_branch_away,
         proc_does_not_affect_liveness, live_lvals_info(set.init), TraceStmt1)],
-    TraceCode1 = node([
+    TraceCode1 = singleton(
         llds_instr(foreign_proc_code([], TraceComponents1,
             proc_will_not_call_mercury, no, no, MaybeLayoutLabel,
             no, yes, proc_may_not_duplicate), "")
-    ]),
+    ),
     % Stage 6.
     (
         MaybeMaxfrLval = yes(MaxfrLval),
-        TraceCode2 = node([
+        TraceCode2 = singleton(
             llds_instr(assign(MaxfrLval, lval(maxfr)), "save initial maxfr")
-        ])
+        )
     ;
         MaybeMaxfrLval = no,
         TraceCode2 = empty
@@ -712,12 +711,12 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         TraceComponents3 = [foreign_proc_raw_code(cannot_branch_away,
             proc_does_not_affect_liveness, live_lvals_info(set.init),
             TraceStmt3)],
-        TraceCode3 = node([
+        TraceCode3 = singleton(
             llds_instr(foreign_proc_code([], TraceComponents3,
                 proc_will_not_call_mercury, no, no, no, no, yes,
                 proc_may_not_duplicate),
                 "initialize tail recursion count")
-        ])
+        )
     ;
         MaybeTailRecInfo = no,
         TraceCode3 = empty
@@ -730,16 +729,16 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         TraceComponents4 = [foreign_proc_raw_code(cannot_branch_away,
             proc_does_not_affect_liveness, live_lvals_info(set.init),
             TraceStmt4)],
-        TraceCode4 = node([
+        TraceCode4 = singleton(
             llds_instr(foreign_proc_code([], TraceComponents4,
                 proc_will_not_call_mercury, no, no, no, no, yes,
                 proc_may_not_duplicate), "")
-        ])
+        )
     ;
         MaybeCallTableLval = no,
         TraceCode4 = empty
     ),
-    TraceCode = tree_list([TraceCode1, TraceCode2, TraceCode3, TraceCode4]).
+    TraceCode = TraceCode1 ++ TraceCode2 ++ TraceCode3 ++ TraceCode4.
 
 trace_prepare_for_call(CI, TraceCode) :-
     get_maybe_trace_info(CI, MaybeTraceInfo),
@@ -757,10 +756,10 @@ trace_prepare_for_call(CI, TraceCode) :-
             MacroStr = "MR_trace_reset_depth_from_full"
         ),
         ResetStmt = MacroStr ++ "(" ++ CallDepthStr ++ ");\n",
-        TraceCode = node([
+        TraceCode = singleton(
             llds_instr(arbitrary_c_code(proc_does_not_affect_liveness,
                 live_lvals_info(set.init), ResetStmt), "")
-        ])
+        )
     ;
         MaybeTraceInfo = no,
         TraceCode = empty
@@ -925,7 +924,7 @@ generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalPath, Context,
     ).
 
 :- pred generate_tailrec_reset_slots_code(trace_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     % We reset all the debugging slots that need to be reset. We handle them
@@ -979,9 +978,9 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     MaybeMaxfrLval = TraceInfo ^ maxfr_lval,
     (
         MaybeMaxfrLval = yes(MaxfrLval),
-        MaxfrCode = node([
+        MaxfrCode = singleton(
             llds_instr(assign(MaxfrLval, lval(maxfr)), "save initial maxfr")
-        ])
+        )
     ;
         MaybeMaxfrLval = no,
         MaxfrCode = empty
@@ -990,11 +989,11 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     TailRecInfo = TraceInfo ^ tail_rec_info,
     (
         TailRecInfo = yes(TailRecLval - _),
-        TailRecLvalCode = node([
+        TailRecLvalCode = singleton(
             llds_instr(assign(TailRecLval,
                 binop(int_add, lval(TailRecLval), const(llconst_int(1)))),
                 "increment tail recursion counter")
-        ])
+        )
     ;
         TailRecInfo = no,
         unexpected(this_file,
@@ -1015,17 +1014,17 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     ForeignLangComponents = [foreign_proc_raw_code(cannot_branch_away,
         proc_does_not_affect_liveness, live_lvals_info(set.init),
         ForeignLangCodeStr)],
-    ForeignLangCode = node([
+    ForeignLangCode = singleton(
         llds_instr(foreign_proc_code([], ForeignLangComponents,
             proc_will_not_call_mercury, no, no, no,
             no, yes, proc_may_duplicate), "")
-    ]),
-    Code = tree_list([ForeignLangCode, MaxfrCode, TailRecLvalCode]).
+    ),
+    Code = ForeignLangCode ++ MaxfrCode ++ TailRecLvalCode.
 
 :- pred generate_event_code(trace_port::in, trace_port_info::in,
     maybe(trace_info)::in, prog_context::in, bool::in,
     maybe(user_event_info)::in, label::out,
-    map(tvar, set(layout_locn))::out, code_tree::out,
+    map(tvar, set(layout_locn))::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
@@ -1147,7 +1146,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         proc_does_not_affect_liveness, live_lvals_info(LiveLvalSet),
         TraceStmt)],
     TraceCode =
-        node([
+        from_list([
             llds_instr(label(Label),
                 "A label to hang trace liveness on"),
                 % Referring to the label from the foreign_proc_code
@@ -1159,7 +1158,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
                 proc_may_call_mercury, no, no, yes(Label), no, yes,
                 proc_may_not_duplicate), "")
         ]),
-    Code = tree_list([ProduceCode, TailRecResetCode, TraceCode]).
+    Code = ProduceCode ++ TailRecResetCode ++ TraceCode.
 
 :- pred find_output_vars(assoc_list(prog_var, arg_info)::in,
     list(prog_var)::in, list(prog_var)::out) is det.
@@ -1198,18 +1197,18 @@ maybe_setup_redo_event(TraceInfo, Code) :-
             % framevar 5; see the comment before reserved_slots.
             expect(unify(Lval, framevar(5)), this_file,
                 "from-full flag not stored in expected slot"),
-            Code = node([
+            Code = singleton(
                 llds_instr(mkframe(temp_frame(nondet_stack_proc),
                     yes(do_trace_redo_fail_shallow)),
                     "set up shallow redo event")
-            ])
+            )
         ;
             MaybeFromFullSlot = no,
-            Code = node([
+            Code = singleton(
                 llds_instr(mkframe(temp_frame(nondet_stack_proc),
                     yes(do_trace_redo_fail_deep)),
                     "set up deep redo event")
-            ])
+            )
         )
     ;
         TraceRedoLabel = no,
@@ -1219,11 +1218,11 @@ maybe_setup_redo_event(TraceInfo, Code) :-
 :- pred trace_produce_vars(list(prog_var)::in, prog_varset::in, vartypes::in,
     instmap::in, trace_port::in, set(tvar)::in, set(tvar)::out,
     list(layout_var_info)::in, list(layout_var_info)::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 trace_produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, !CI).
 trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
-        !TVars, !VarInfos, tree(VarCode, VarsCode), !CI) :-
+        !TVars, !VarInfos, VarCode ++ VarsCode, !CI) :-
     map.lookup(VarTypes, Var, Type),
     get_module_info(!.CI, ModuleInfo),
     IsDummy = check_dummy_type(ModuleInfo, Type),
@@ -1239,7 +1238,7 @@ trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
         !VarInfos, VarsCode, !CI).
 
 :- pred trace_produce_var(prog_var::in, prog_varset::in, instmap::in,
-    set(tvar)::in, set(tvar)::out, layout_var_info::out, code_tree::out,
+    set(tvar)::in, set(tvar)::out, layout_var_info::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 trace_produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-

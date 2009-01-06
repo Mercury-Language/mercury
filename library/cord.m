@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -123,6 +123,8 @@
     % list(map(F, C)) = list.map(F, list(C))
     %
 :- func map(func(T) = U, cord(T)) = cord(U).
+:- pred map_pred(pred(T, U)::in(pred(in, out) is det),
+    cord(T)::in, cord(U)::out) is det.
 
     % foldl(F, C, A) = list.foldl(F, list(C), A).
     %
@@ -273,7 +275,7 @@ split_last(branch(CA, CB0), C,   X) :-
     % on which repeatedly taking the last element of a list is an O(n)
     % operation. This ensures O(1) amortized cost for each call to
     % split_last/3 when an entire cord is traversed with that predicate.
-    % 
+    %
 :- pred split_list_last(list(T)::in, cord(T)::out, T::out) is det.
 
 split_list_last([], _, _) :-
@@ -339,6 +341,25 @@ map(_, nil           ) = nil.
 map(F, leaf(X)       ) = leaf(F(X)).
 map(F, leaves(Xs)    ) = leaves(map(F, Xs)).
 map(F, branch(CA, CB)) = branch(map(F, CA), map(F, CB)).
+
+map_pred(P, !Cord) :-
+    (
+        !.Cord = nil,
+        !:Cord = nil
+    ;
+        !.Cord = leaf(X),
+        P(X, PX),
+        !:Cord = leaf(PX)
+    ;
+        !.Cord = leaves(Xs),
+        list.map(P, Xs, PXs),
+        !:Cord = leaves(PXs)
+    ;
+        !.Cord = branch(CA, CB),
+        cord.map_pred(P, CA, PCA),
+        cord.map_pred(P, CB, PCB),
+        !:Cord = branch(PCA, PCB)
+    ).
 
 %-----------------------------------------------------------------------------%
 

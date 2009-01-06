@@ -72,13 +72,13 @@
 :- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
-:- import_module libs.tree.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.var_locn.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.mercury_to_mercury.
 
+:- import_module cord.
 :- import_module int.
 :- import_module pair.
 :- import_module set.
@@ -1200,12 +1200,12 @@ add_vector_static_cell(Types, Vector, DataAddr, !CI) :-
     code_info::in, code_info::out) is det.
 
 :- pred generate_branch_end(abs_store_map::in, branch_end::in, branch_end::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred after_all_branches(abs_store_map::in, branch_end::in,
     code_info::in, code_info::out) is det.
 
-:- pred save_hp_in_branch(code_tree::out, lval::out,
+:- pred save_hp_in_branch(llds_code::out, lval::out,
     position_info::in, position_info::out, code_info::in, code_info::out)
     is det.
 
@@ -1390,11 +1390,11 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
 :- type disj_hijack_info.
 
 :- pred prepare_for_disj_hijack(code_model::in,
-    disj_hijack_info::out, code_tree::out,
+    disj_hijack_info::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 :- pred undo_disj_hijack(disj_hijack_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
     % `prepare_for_ite_hijack' should be called before entering
     % an if-then-else. It saves the values of any nondet stack slots
@@ -1415,11 +1415,11 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
 :- type ite_hijack_info.
 
 :- pred prepare_for_ite_hijack(code_model::in,
-    maybe(embedded_stack_frame_id)::in, ite_hijack_info::out, code_tree::out,
+    maybe(embedded_stack_frame_id)::in, ite_hijack_info::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 :- pred ite_enter_then(ite_hijack_info::in, resume_point_info::in,
-    code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, llds_code::out, code_info::in, code_info::out) is det.
 
     % `enter_simple_neg' and `leave_simple_neg' should be called before
     % and after generating the code for a negated unification, in
@@ -1449,10 +1449,10 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
 
 :- pred prepare_for_det_commit(add_trail_ops::in, add_region_ops::in,
     set(prog_var)::in, hlds_goal_info::in, det_commit_info::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_det_commit(det_commit_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
     % `prepare_for_semi_commit' and `generate_semi_commit' should be
     % called before and after generating the code for the nondet goal
@@ -1466,17 +1466,17 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
 
 :- pred prepare_for_semi_commit(add_trail_ops::in, add_region_ops::in,
     set(prog_var)::in, hlds_goal_info::in, semi_commit_info::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_semi_commit(semi_commit_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
     % Put the given resume point into effect, by pushing it on to
     % the resume point stack, and if necessary generating code to
     % override the redoip of the top nondet stack frame.
     %
 :- pred effect_resume_point(resume_point_info::in, code_model::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred pop_resume_point(code_info::in, code_info::out) is det.
 
@@ -1502,13 +1502,13 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
     % Generate code for executing a failure that is appropriate for the
     % current failure environment.
     %
-:- pred generate_failure(code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_failure(llds_code::out, code_info::in, code_info::out) is det.
 
     % Generate code that checks if the given rval is false, and if yes,
     % executes a failure that is appropriate for the current failure
     % environment.
     %
-:- pred fail_if_rval_is_false(rval::in, code_tree::out,
+:- pred fail_if_rval_is_false(rval::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
     % Checks whether the appropriate code for failure in the current
@@ -1525,13 +1525,13 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
 
     % Materialize the given variables into registers or stack slots.
     %
-:- pred produce_vars(set(prog_var)::in, resume_map::out, code_tree::out,
+:- pred produce_vars(set(prog_var)::in, resume_map::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
     % Put the variables needed in enclosing failure continuations
     % into their stack slots.
     %
-:- pred flush_resume_vars_to_stack(code_tree::out,
+:- pred flush_resume_vars_to_stack(llds_code::out,
     code_info::in, code_info::out) is det.
 
     % Set up the resume_point_info structure.
@@ -1541,7 +1541,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
 
     % Generate the code for a resume point.
     %
-:- pred generate_resume_point(resume_point_info::in, code_tree::out,
+:- pred generate_resume_point(resume_point_info::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
     % List the variables that need to be preserved for the given resume point.
@@ -1640,9 +1640,9 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
         ; CodeModel = model_semi
         ),
         HijackInfo = disj_no_hijack,
-        Code = node([
+        Code = singleton(
             llds_instr(comment("disj no hijack"), "")
-        ])
+        )
     ;
         CodeModel = model_non,
         (
@@ -1661,10 +1661,10 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
                     TopResumePoint = stack_only(_, do_fail)
                 ->
                     HijackInfo = disj_quarter_hijack,
-                    Code = node([
+                    Code = singleton(
                         llds_instr(comment("disj quarter hijack of do_fail"),
-                        "")
-                    ])
+                            "")
+                    )
                 ;
                     HijackInfo = disj_temp_frame,
                     create_temp_frame(do_fail, "prepare for disjunction", Code,
@@ -1677,9 +1677,9 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
                     (
                         ResumeKnown = resume_point_known(has_been_done),
                         HijackInfo = disj_quarter_hijack,
-                        Code = node([
+                        Code = singleton(
                             llds_instr(comment("disj quarter hijack"), "")
-                        ])
+                        )
                     ;
                         ( ResumeKnown = resume_point_known(wont_be_done)
                         ; ResumeKnown = resume_point_unknown
@@ -1687,11 +1687,11 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
                         acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
                             non_persistent_temp_slot, RedoipSlot, !CI),
                         HijackInfo = disj_half_hijack(RedoipSlot),
-                        Code = node([
+                        Code = singleton(
                             llds_instr(assign(RedoipSlot,
                                 lval(redoip_slot(lval(curfr)))),
                                 "prepare for half disj hijack")
-                        ])
+                        )
                     )
                 ;
                     CurfrMaxfr = may_be_different,
@@ -1700,7 +1700,7 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
                     acquire_temp_slot(slot_lval(redofr_slot(lval(maxfr))),
                         non_persistent_temp_slot, RedofrSlot, !CI),
                     HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
-                    Code = node([
+                    Code = from_list([
                         llds_instr(
                             assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
                             "prepare for full disj hijack"),
@@ -1725,10 +1725,10 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         Code = empty
     ;
         HijackInfo = disj_temp_frame,
-        Code = node([
+        Code = singleton(
             llds_instr(assign(maxfr, lval(prevfr_slot(lval(maxfr)))),
                 "restore maxfr for temp frame disj")
-        ])
+        )
     ;
         HijackInfo = disj_quarter_hijack,
         expect(unify(CurfrMaxfr, must_be_equal), this_file,
@@ -1737,10 +1737,10 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         pick_stack_resume_point(ResumePoint, _, StackLabel),
         LabelConst = const(llconst_code_addr(StackLabel)),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
-        Code = node([
+        Code = singleton(
             llds_instr(assign(redoip_slot(lval(curfr)), LabelConst),
                 "restore redoip for quarter disj hijack (curfr==maxfr)")
-        ])
+        )
     ;
         HijackInfo = disj_half_hijack(RedoipSlot),
         expect(unify(ResumeKnown, resume_point_unknown), this_file,
@@ -1748,15 +1748,15 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         expect(unify(CurfrMaxfr, must_be_equal), this_file,
             "maxfr may differ from curfr in disj_half_hijack"),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
-        Code = node([
+        Code = singleton(
             llds_instr(assign(redoip_slot(lval(curfr)), lval(RedoipSlot)),
                 "restore redoip for half disj hijack (curfr==maxfr)")
-        ])
+        )
     ;
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
         expect(unify(CurfrMaxfr, may_be_different), this_file,
             "maxfr same as curfr in disj_full_hijack"),
-        Code = node([
+        Code = from_list([
             llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
                 "restore redoip for full disj hijack"),
             llds_instr(assign(redofr_slot(lval(maxfr)), lval(RedofrSlot)),
@@ -1830,9 +1830,9 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
         expect(unify(MaybeEmbeddedFrameId, no), this_file,
             "prepare_for_ite_hijack: MaybeEmbeddedFrameId in model_semi"),
         HijackType = ite_no_hijack,
-        Code = node([
+        Code = singleton(
             llds_instr(comment("ite no hijack"), "")
-        ]),
+        ),
         MaybeRegionInfo = no
     ;
         CondCodeModel = model_non,
@@ -1846,19 +1846,19 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
                 MaxfrSlot, !CI),
             HijackType = ite_temp_frame(MaxfrSlot),
             create_temp_frame(do_fail, "prepare for ite", TempFrameCode, !CI),
-            MaxfrCode = node([
+            MaxfrCode = singleton(
                 llds_instr(assign(MaxfrSlot, lval(maxfr)), "prepare for ite")
-            ]),
+            ),
             (
                 MaybeEmbeddedFrameId = yes(EmbeddedFrameId),
                 % Note that this slot is intentionally not released anywhere.
                 acquire_temp_slot(slot_success_record, persistent_temp_slot,
                     SuccessRecordSlot, !CI),
-                InitSuccessCode = node([
+                InitSuccessCode = singleton(
                     llds_instr(
                         assign(SuccessRecordSlot, const(llconst_false)),
                         "record no success of the condition yes")
-                ]),
+                ),
                 MaybeRegionInfo =
                     yes(ite_region_info(EmbeddedFrameId, SuccessRecordSlot))
             ;
@@ -1866,30 +1866,26 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
                 InitSuccessCode = empty,
                 MaybeRegionInfo = no
             ),
-            Code = tree_list([
-                TempFrameCode,
-                MaxfrCode,
-                InitSuccessCode
-            ])
+            Code = TempFrameCode ++ MaxfrCode ++ InitSuccessCode
         ;
             (
                 CurfrMaxfr = must_be_equal,
                 (
                     ResumeKnown = resume_point_known(_),
                     HijackType = ite_quarter_hijack,
-                    Code = node([
+                    Code = singleton(
                         llds_instr(comment("ite quarter hijack"), "")
-                    ])
+                    )
                 ;
                     ResumeKnown = resume_point_unknown,
                     acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
                         non_persistent_temp_slot, RedoipSlot, !CI),
                     HijackType = ite_half_hijack(RedoipSlot),
-                    Code = node([
+                    Code = singleton(
                         llds_instr(
                             assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
                             "prepare for half ite hijack")
-                    ])
+                    )
                 )
             ;
                 CurfrMaxfr = may_be_different,
@@ -1901,7 +1897,7 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
                     non_persistent_temp_slot, MaxfrSlot, !CI),
                 HijackType = ite_full_hijack(RedoipSlot, RedofrSlot,
                     MaxfrSlot),
-                Code = node([
+                Code = from_list([
                     llds_instr(
                         assign(MaxfrSlot, lval(maxfr)),
                         "prepare for full ite hijack"),
@@ -1938,24 +1934,24 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
         HijackType = ite_temp_frame(MaxfrSlot),
         (
             MaybeRegionInfo = no,
-            ThenCode = node([
+            ThenCode = singleton(
                 % We can't remove the frame, it may not be on top.
                 llds_instr(assign(redoip_slot(lval(MaxfrSlot)),
                     const(llconst_code_addr(do_fail))),
                     "soft cut for temp frame ite")
-            ]),
-            ElseCode = node([
+            ),
+            ElseCode = singleton(
                 % XXX search for assignments to maxfr
                 llds_instr(assign(maxfr, lval(prevfr_slot(lval(MaxfrSlot)))),
                     "restore maxfr for temp frame ite")
-            ])
+            )
         ;
             MaybeRegionInfo = yes(RegionInfo),
             RegionInfo = ite_region_info(EmbeddedStackFrameId,
                 SuccessRecordSlot),
             % XXX replace do_fail with ref to ResumePoint stack label
             resume_point_stack_addr(ITEResumePoint, ITEStackResumeCodeAddr),
-            ThenCode = node([
+            ThenCode = from_list([
                 llds_instr(assign(SuccessRecordSlot, const(llconst_true)),
                     "record success of the condition"),
                 llds_instr(assign(redoip_slot(lval(MaxfrSlot)),
@@ -1963,7 +1959,7 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
                     "redirect to cut for temp frame ite")
             ]),
             get_next_label(AfterRegionOp, !CI),
-            ElseCode = node([
+            ElseCode = from_list([
                 llds_instr(assign(maxfr, lval(prevfr_slot(lval(MaxfrSlot)))),
                     "restore maxfr for temp frame ite"),
                 llds_instr(if_val(unop(logical_not, lval(SuccessRecordSlot)),
@@ -1985,10 +1981,10 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
         stack.top_det(ResumePoints, ResumePoint),
         ( maybe_pick_stack_resume_point(ResumePoint, _, StackLabel) ->
             LabelConst = const(llconst_code_addr(StackLabel)),
-            ThenCode = node([
+            ThenCode = singleton(
                 llds_instr(assign(redoip_slot(lval(curfr)), LabelConst),
                     "restore redoip for quarter ite hijack")
-            ])
+            )
         ;
             % This can happen only if ResumePoint is unreachable from here.
             ThenCode = empty
@@ -1998,22 +1994,22 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
         HijackType = ite_half_hijack(RedoipSlot),
         expect(unify(MaybeRegionInfo, no), this_file,
             "ite_enter_then: MaybeRegionInfo ite_half_hijack"),
-        ThenCode = node([
+        ThenCode = singleton(
             llds_instr(assign(redoip_slot(lval(curfr)), lval(RedoipSlot)),
                 "restore redoip for half ite hijack")
-        ]),
+        ),
         ElseCode = ThenCode
     ;
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         expect(unify(MaybeRegionInfo, no), this_file,
             "ite_enter_then: MaybeRegionInfo ite_full_hijack"),
-        ThenCode = node([
+        ThenCode = from_list([
             llds_instr(assign(redoip_slot(lval(MaxfrSlot)), lval(RedoipSlot)),
                 "restore redoip for full ite hijack"),
             llds_instr(assign(redofr_slot(lval(MaxfrSlot)), lval(RedofrSlot)),
                 "restore redofr for full ite hijack")
         ]),
-        ElseCode = node([
+        ElseCode = from_list([
             llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
                 "restore redoip for full ite hijack"),
             llds_instr(assign(redofr_slot(lval(maxfr)), lval(RedofrSlot)),
@@ -2049,7 +2045,7 @@ enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CI) :-
     make_fake_resume_map(ResumeVarList, ResumeMap0, ResumeMap),
     ResumePoint = orig_only(ResumeMap, do_redo),
     effect_resume_point(ResumePoint, model_semi, Code, !CI),
-    expect(unify(Code, empty), this_file, "nonempty code for simple neg"),
+    expect(is_empty(Code), this_file, "nonempty code for simple neg"),
     pre_goal_update(GoalInfo, does_not_have_subgoals, !CI).
 
 leave_simple_neg(GoalInfo, FailInfo, !CI) :-
@@ -2102,9 +2098,9 @@ prepare_for_det_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
         CurfrMaxfr = may_be_different,
         acquire_temp_slot(slot_lval(maxfr), non_persistent_temp_slot,
             MaxfrSlot, !CI),
-        SaveMaxfrCode = node([
+        SaveMaxfrCode = singleton(
             llds_instr(save_maxfr(MaxfrSlot), "save the value of maxfr")
-        ]),
+        ),
         MaybeMaxfrSlot = yes(MaxfrSlot)
     ;
         CurfrMaxfr = must_be_equal,
@@ -2117,37 +2113,29 @@ prepare_for_det_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
         !CI),
     DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots,
         MaybeRegionCommitFrameInfo),
-    Code = tree_list([
-        SaveMaxfrCode,
-        SaveTrailCode,
-        SaveRegionCommitFrameCode
-    ]).
+    Code = SaveMaxfrCode ++ SaveTrailCode ++ SaveRegionCommitFrameCode.
 
 generate_det_commit(DetCommitInfo, Code, !CI) :-
     DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots,
         MaybeRegionCommitFrameInfo),
     (
         MaybeMaxfrSlot = yes(MaxfrSlot),
-        RestoreMaxfrCode = node([
+        RestoreMaxfrCode = singleton(
             llds_instr(restore_maxfr(MaxfrSlot),
                 "restore the value of maxfr - perform commit")
-        ]),
+        ),
         release_temp_slot(MaxfrSlot, non_persistent_temp_slot, !CI)
     ;
         MaybeMaxfrSlot = no,
-        RestoreMaxfrCode = node([
+        RestoreMaxfrCode = singleton(
             llds_instr(assign(maxfr, lval(curfr)),
                 "restore the value of maxfr - perform commit")
-        ])
+        )
     ),
     maybe_restore_trail_info(MaybeTrailSlots, CommitTrailCode, _, !CI),
     maybe_restore_region_commit_frame(MaybeRegionCommitFrameInfo,
         SuccessRegionCode, _FailureRegionCode, !CI),
-    Code = tree_list([
-        RestoreMaxfrCode,
-        CommitTrailCode,
-        SuccessRegionCode
-    ]).
+    Code = RestoreMaxfrCode ++ CommitTrailCode ++ SuccessRegionCode.
 
 %---------------------------------------------------------------------------%
 
@@ -2201,10 +2189,10 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
     ->
         acquire_temp_slot(slot_lval(maxfr), non_persistent_temp_slot,
             MaxfrSlot, !CI),
-        MaxfrCode = node([
+        MaxfrCode = singleton(
             llds_instr(save_maxfr(MaxfrSlot),
                 "prepare for temp frame commit")
-        ]),
+        ),
         create_temp_frame(StackLabel,
             "prepare for temp frame commit", TempFrameCode, !CI),
         get_globals(!.CI, Globals),
@@ -2233,26 +2221,26 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
                     "\t\tMR_restore_transient_registers();\n")
             ],
             MD = proc_may_duplicate,
-            MarkCode = node([
+            MarkCode = singleton(
                 llds_instr(foreign_proc_code([], Components,
                     proc_will_not_call_mercury, no, no, no, no, no, MD), "")
-            ])
+            )
         ;
             UseMinimalModelStackCopyCut = no,
             MarkCode = empty
         ),
-        HijackCode = tree(MaxfrCode, tree(TempFrameCode, MarkCode))
+        HijackCode = MaxfrCode ++ TempFrameCode ++ MarkCode
     ;
         (
             CurfrMaxfr = must_be_equal,
             (
                 ResumeKnown = resume_point_known(has_been_done),
                 HijackInfo = commit_quarter_hijack,
-                HijackCode = node([
+                HijackCode = singleton(
                     llds_instr(assign(redoip_slot(lval(curfr)),
                         StackLabelConst),
                         "hijack the redofr slot")
-                ])
+                )
             ;
                 ( ResumeKnown = resume_point_known(wont_be_done)
                 ; ResumeKnown = resume_point_unknown
@@ -2260,7 +2248,7 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
                 acquire_temp_slot(slot_lval(redoip_slot(lval(curfr))),
                     non_persistent_temp_slot, RedoipSlot, !CI),
                 HijackInfo = commit_half_hijack(RedoipSlot),
-                HijackCode = node([
+                HijackCode = from_list([
                     llds_instr(assign(RedoipSlot,
                         lval(redoip_slot(lval(curfr)))),
                         "prepare for half commit hijack"),
@@ -2278,7 +2266,7 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
             acquire_temp_slot(slot_lval(maxfr),
                 non_persistent_temp_slot, MaxfrSlot, !CI),
             HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
-            HijackCode = node([
+            HijackCode = from_list([
                 llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
                     "prepare for full commit hijack"),
                 llds_instr(assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
@@ -2298,11 +2286,7 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
         !CI),
     SemiCommitInfo = semi_commit_info(FailInfo0, NewResumePoint,
         HijackInfo, MaybeTrailSlots, MaybeRegionCommitFrameInfo),
-    Code = tree_list([
-        HijackCode,
-        SaveTrailCode,
-        SaveRegionCommitFrameCode
-    ]).
+    Code = HijackCode ++ SaveTrailCode ++ SaveRegionCommitFrameCode.
 
 generate_semi_commit(SemiCommitInfo, Code, !CI) :-
     SemiCommitInfo = semi_commit_info(FailInfo, ResumePoint,
@@ -2312,10 +2296,10 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
     % XXX Should release the temp slots in each arm of the switch.
     (
         HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModel),
-        MaxfrCode = node([
+        MaxfrCode = singleton(
             llds_instr(restore_maxfr(MaxfrSlot),
                 "restore maxfr for temp frame hijack")
-        ]),
+        ),
         (
             UseMinimalModel = yes,
             % See the comment in prepare_for_semi_commit above.
@@ -2325,48 +2309,48 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
                     "\t\tMR_commit_cut();\n")
             ],
             MD = proc_may_duplicate,
-            CutCode = node([
+            CutCode = singleton(
                 llds_instr(foreign_proc_code([], Components,
                     proc_will_not_call_mercury, no, no, no, no, no, MD),
                     "commit for temp frame hijack")
-            ])
+            )
         ;
             UseMinimalModel = no,
             CutCode = empty
         ),
-        SuccessUndoCode = tree(MaxfrCode, CutCode),
-        FailureUndoCode = tree(MaxfrCode, CutCode)
+        SuccessUndoCode = MaxfrCode ++ CutCode,
+        FailureUndoCode = MaxfrCode ++ CutCode
     ;
         HijackInfo = commit_quarter_hijack,
         FailInfo = fail_info(ResumePoints, _, _, _, _),
         stack.top_det(ResumePoints, TopResumePoint),
         pick_stack_resume_point(TopResumePoint, _, StackLabel),
         StackLabelConst = const(llconst_code_addr(StackLabel)),
-        SuccessUndoCode = node([
+        SuccessUndoCode = from_list([
             llds_instr(assign(maxfr, lval(curfr)),
                 "restore maxfr for quarter commit hijack"),
             llds_instr(assign(redoip_slot(lval(maxfr)), StackLabelConst),
                 "restore redoip for quarter commit hijack")
         ]),
-        FailureUndoCode = node([
+        FailureUndoCode = singleton(
             llds_instr(assign(redoip_slot(lval(maxfr)), StackLabelConst),
                 "restore redoip for quarter commit hijack")
-        ])
+        )
     ;
         HijackInfo = commit_half_hijack(RedoipSlot),
-        SuccessUndoCode = node([
+        SuccessUndoCode = from_list([
             llds_instr(assign(maxfr, lval(curfr)),
                 "restore maxfr for half commit hijack"),
             llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
                 "restore redoip for half commit hijack")
         ]),
-        FailureUndoCode = node([
+        FailureUndoCode = singleton(
             llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
                 "restore redoip for half commit hijack")
-        ])
+        )
     ;
         HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
-        SuccessUndoCode = node([
+        SuccessUndoCode = from_list([
             llds_instr(restore_maxfr(MaxfrSlot),
                 "restore maxfr for full commit hijack"),
             llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
@@ -2374,7 +2358,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
             llds_instr(assign(redofr_slot(lval(maxfr)), lval(RedofrSlot)),
                 "restore redofr for full commit hijack")
         ]),
-        FailureUndoCode = node([
+        FailureUndoCode = from_list([
             llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
                 "restore redoip for full commit hijack"),
             llds_instr(assign(redofr_slot(lval(maxfr)), lval(RedofrSlot)),
@@ -2393,35 +2377,21 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
         SuccessRegionCode, FailureRegionCode, !CI),
 
     get_next_label(SuccLabel, !CI),
-    GotoSuccLabel = node([
+    GotoSuccLabel = singleton(
         llds_instr(goto(code_label(SuccLabel)), "Jump to success continuation")
-    ]),
-    SuccLabelCode = node([
+    ),
+    SuccLabelCode = singleton(
         llds_instr(label(SuccLabel), "Success continuation")
-    ]),
-    SuccessCode = tree_list([
-        SuccessUndoCode,
-        CommitTrailCode,
-        SuccessRegionCode
-    ]),
-    FailureCode = tree_list([
-        ResumePointCode,
-        FailureUndoCode,
-        RestoreTrailCode,
-        FailureRegionCode,
-        FailCode
-    ]),
-    Code = tree_list([
-        SuccessCode,
-        GotoSuccLabel,
-        FailureCode,
-        SuccLabelCode
-    ]).
+    ),
+    SuccessCode = SuccessUndoCode ++ CommitTrailCode ++ SuccessRegionCode,
+    FailureCode = ResumePointCode ++ FailureUndoCode ++ RestoreTrailCode ++
+        FailureRegionCode ++ FailCode,
+    Code = SuccessCode ++ GotoSuccLabel ++ FailureCode ++ SuccLabelCode.
 
 %---------------------------------------------------------------------------%
 
 :- pred maybe_save_region_commit_frame(add_region_ops::in, set(prog_var)::in,
-    hlds_goal_info::in, maybe(region_commit_stack_frame)::out, code_tree::out,
+    hlds_goal_info::in, maybe(region_commit_stack_frame)::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 maybe_save_region_commit_frame(AddRegionOps, _ForwardLiveVarsBeforeGoal,
@@ -2460,7 +2430,7 @@ maybe_save_region_commit_frame(AddRegionOps, _ForwardLiveVarsBeforeGoal,
                 EmbeddedStackFrame, FixedSize),
             acquire_reg(reg_r, NumRegLval, !CI),
             acquire_reg(reg_r, AddrRegLval, !CI),
-            PushInitCode = node([
+            PushInitCode = from_list([
                 llds_instr(
                     push_region_frame(region_stack_commit, EmbeddedStackFrame),
                     "Save stack pointer of embedded region commit stack"),
@@ -2474,12 +2444,12 @@ maybe_save_region_commit_frame(AddRegionOps, _ForwardLiveVarsBeforeGoal,
             ]),
             save_unprotected_live_regions(NumRegLval, AddrRegLval,
                 EmbeddedStackFrame, RemovedRegionVarList, FillCode, !CI),
-            SetCode = node([
+            SetCode = singleton(
                 llds_instr(
                     region_set_fixed_slot(region_set_commit_num_entries,
                         EmbeddedStackFrame, lval(NumRegLval)),
                     "Store the number of unprotected live regions")
-            ]),
+            ),
             release_reg(NumRegLval, !CI),
             release_reg(AddrRegLval, !CI),
 
@@ -2487,34 +2457,30 @@ maybe_save_region_commit_frame(AddRegionOps, _ForwardLiveVarsBeforeGoal,
                 region_commit_stack_frame(EmbeddedStackFrame, StackVars),
             MaybeRegionCommitFrameInfo = yes(RegionCommitFrameInfo),
 
-            Code = tree_list([
-                PushInitCode,
-                FillCode,
-                SetCode
-            ])
+            Code = PushInitCode ++ FillCode ++ SetCode
         )
     ).
 
 :- pred save_unprotected_live_regions(lval::in, lval::in,
-    embedded_stack_frame_id::in, list(prog_var)::in, code_tree::out,
+    embedded_stack_frame_id::in, list(prog_var)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 save_unprotected_live_regions(_, _, _, [], empty, !CI).
 save_unprotected_live_regions(NumLval, AddrLval, EmbeddedStackFrame,
-        [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
+        [RegionVar | RegionVars], Code ++ Codes, !CI) :-
     produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
-    SaveCode = node([
+    SaveCode = singleton(
         llds_instr(
             region_fill_frame(region_fill_commit, EmbeddedStackFrame,
                 RegionVarRval, NumLval, AddrLval),
             "Save the region in the commit stack frame if it is unprotected")
-    ]),
-    Code = tree(ProduceVarCode, SaveCode),
+    ),
+    Code = ProduceVarCode ++ SaveCode,
     save_unprotected_live_regions(NumLval, AddrLval, EmbeddedStackFrame,
         RegionVars, Codes, !CI).
 
 :- pred maybe_restore_region_commit_frame(maybe(region_commit_stack_frame)::in,
-    code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, llds_code::out, code_info::in, code_info::out) is det.
 
 maybe_restore_region_commit_frame(MaybeRegionCommitFrameInfo,
         SuccessCode, FailureCode, !CI) :-
@@ -2526,18 +2492,18 @@ maybe_restore_region_commit_frame(MaybeRegionCommitFrameInfo,
         MaybeRegionCommitFrameInfo = yes(RegionCommitFrameInfo),
         RegionCommitFrameInfo = region_commit_stack_frame(EmbeddedStackFrame,
             StackVars),
-        SuccessCode = node([
+        SuccessCode = singleton(
             llds_instr(
                 use_and_maybe_pop_region_frame(region_commit_success,
                     EmbeddedStackFrame),
                 "Destroy removed regions protected by cut away disjunctions")
-        ]),
-        FailureCode = node([
+        ),
+        FailureCode = singleton(
             llds_instr(
                 use_and_maybe_pop_region_frame(region_commit_failure,
                     EmbeddedStackFrame),
                 "Undo the creation of the commit frame")
-        ]),
+        ),
         release_several_temp_slots(StackVars, non_persistent_temp_slot, !CI)
     ).
 
@@ -2552,7 +2518,7 @@ inside_non_condition(!CI) :-
         inside_non_condition, Allow),
     set_fail_info(FailInfo, !CI).
 
-:- pred create_temp_frame(code_addr::in, string::in, code_tree::out,
+:- pred create_temp_frame(code_addr::in, string::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 create_temp_frame(Redoip, Comment, Code, !CI) :-
@@ -2561,9 +2527,9 @@ create_temp_frame(Redoip, Comment, Code, !CI) :-
     ;
         Kind = det_stack_proc
     ),
-    Code = node([
+    Code = singleton(
         llds_instr(mkframe(temp_frame(Kind), yes(Redoip)), Comment)
-    ]),
+    ),
     set_created_temp_frame(yes, !CI),
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints, ResumeKnown, _, CondEnv, Allow),
@@ -2594,10 +2560,10 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
         CodeModel = model_non,
         pick_stack_resume_point(ResumePoint, _, StackLabel),
         LabelConst = const(llconst_code_addr(StackLabel)),
-        Code = node([
+        Code = singleton(
             llds_instr(assign(redoip_slot(lval(maxfr)), LabelConst),
                 "hijack redoip to effect resume point")
-        ]),
+        ),
         RedoipUpdate = has_been_done
     ;
         ( CodeModel = model_det
@@ -2658,11 +2624,11 @@ generate_failure(Code, !CI) :-
             pick_and_place_vars(AssocList, _, PlaceCode, !CI),
             reset_to_position(CurPos, !CI)
         ),
-        BranchCode = node([llds_instr(goto(FailureAddress), "fail")]),
-        Code = tree(PlaceCode, BranchCode)
+        BranchCode = singleton(llds_instr(goto(FailureAddress), "fail")),
+        Code = PlaceCode ++ BranchCode
     ;
         ResumeKnown = resume_point_unknown,
-        Code = node([llds_instr(goto(do_redo), "fail")])
+        Code = singleton(llds_instr(goto(do_redo), "fail"))
     ).
 
 fail_if_rval_is_false(Rval0, Code, !CI) :-
@@ -2674,9 +2640,9 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
         ( pick_matching_resume_addr(!.CI, TopResumePoint, FailureAddress0) ->
             % We branch away if the test *fails*
             code_util.neg_rval(Rval0, Rval),
-            Code = node([
+            Code = singleton(
                 llds_instr(if_val(Rval, FailureAddress0), "Test for failure")
-            ])
+            )
         ;
             pick_first_resume_point(TopResumePoint, Map, FailureAddress),
             map.to_assoc_list(Map, AssocList),
@@ -2689,22 +2655,22 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
             % succeeds, we branch around the code that moves variables to
             % their failure locations and branches away to the failure
             % continuation.
-            TestCode = node([
+            TestCode = singleton(
                 llds_instr(if_val(Rval0, SuccessAddress), "Test for failure")
-            ]),
-            TailCode = node([
+            ),
+            TailCode = from_list([
                 llds_instr(goto(FailureAddress), "Goto failure"),
                 llds_instr(label(SuccessLabel), "Success continuation")
             ]),
-            Code = tree(TestCode, tree(PlaceCode, TailCode))
+            Code = TestCode ++ PlaceCode ++ TailCode
         )
     ;
         ResumeKnown = resume_point_unknown,
         % We branch away if the test *fails*
         code_util.neg_rval(Rval0, Rval),
-        Code = node([
+        Code = singleton(
             llds_instr(if_val(Rval, do_redo), "Test for failure")
-        ])
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -2831,16 +2797,16 @@ produce_vars(Vars, Map, Code, !CI) :-
 
 :- pred produce_vars_2(list(prog_var)::in,
     map(prog_var, set(lval))::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 produce_vars_2([], Map, empty, !CI) :-
     map.init(Map).
-produce_vars_2([V | Vs], Map, Code, !CI) :-
-    produce_vars_2(Vs, Map0, Code0, !CI),
-    produce_variable_in_reg_or_stack(V, Code1, Lval, !CI),
+produce_vars_2([Var | Vars], Map, Code, !CI) :-
+    produce_vars_2(Vars, Map0, CodeVars, !CI),
+    produce_variable_in_reg_or_stack(Var, CodeVar, Lval, !CI),
     set.singleton_set(Lvals, Lval),
-    map.set(Map0, V, Lvals, Map),
-    Code = tree(Code0, Code1).
+    map.set(Map0, Var, Lvals, Map),
+    Code = CodeVars ++ CodeVar.
 
 flush_resume_vars_to_stack(Code, !CI) :-
     compute_resume_var_stack_locs(!.CI, VarLocs),
@@ -3043,50 +3009,50 @@ generate_resume_point(ResumePoint, Code, !CI) :-
     (
         ResumePoint = orig_only(Map1, Addr1),
         extract_label_from_code_addr(Addr1, Label1),
-        Code = node([
+        Code = singleton(
             llds_instr(label(Label1), "orig only failure continuation")
-        ]),
+        ),
         set_var_locations(Map1, !CI)
     ;
         ResumePoint = stack_only(Map1, Addr1),
         extract_label_from_code_addr(Addr1, Label1),
-        Code = node([
+        Code = singleton(
             llds_instr(label(Label1), "stack only failure continuation")
-        ]),
+        ),
         set_var_locations(Map1, !CI),
         generate_resume_layout(Label1, Map1, !CI)
     ;
         ResumePoint = stack_and_orig(Map1, Addr1, Map2, Addr2),
         extract_label_from_code_addr(Addr1, Label1),
         extract_label_from_code_addr(Addr2, Label2),
-        Label1Code = node([
+        Label1Code = singleton(
             llds_instr(label(Label1), "stack failure continuation before orig")
-        ]),
+        ),
         set_var_locations(Map1, !CI),
         generate_resume_layout(Label1, Map1, !CI),
         map.to_assoc_list(Map2, AssocList2),
         place_resume_vars(AssocList2, PlaceCode, !CI),
-        Label2Code = node([
+        Label2Code = singleton(
             llds_instr(label(Label2), "orig failure continuation after stack")
-        ]),
+        ),
         set_var_locations(Map2, !CI),
-        Code = tree_list([Label1Code, PlaceCode, Label2Code])
+        Code = Label1Code ++ PlaceCode ++ Label2Code
     ;
         ResumePoint = orig_and_stack(Map1, Addr1, Map2, Addr2),
         extract_label_from_code_addr(Addr1, Label1),
         extract_label_from_code_addr(Addr2, Label2),
-        Label1Code = node([
+        Label1Code = singleton(
             llds_instr(label(Label1), "orig failure continuation before stack")
-        ]),
+        ),
         set_var_locations(Map1, !CI),
         map.to_assoc_list(Map2, AssocList2),
         place_resume_vars(AssocList2, PlaceCode, !CI),
-        Label2Code = node([
+        Label2Code = singleton(
             llds_instr(label(Label2), "stack failure continuation after orig")
-        ]),
+        ),
         set_var_locations(Map2, !CI),
         generate_resume_layout(Label2, Map2, !CI),
-        Code = tree_list([Label1Code, PlaceCode, Label2Code])
+        Code = Label1Code ++ PlaceCode ++ Label2Code
     ).
 
 :- pred extract_label_from_code_addr(code_addr::in, label::out) is det.
@@ -3099,23 +3065,23 @@ extract_label_from_code_addr(CodeAddr, Label) :-
     ).
 
 :- pred place_resume_vars(assoc_list(prog_var, set(lval))::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 place_resume_vars([], empty, !CI).
 place_resume_vars([Var - TargetSet | Rest], Code, !CI) :-
     set.to_sorted_list(TargetSet, Targets),
     place_resume_var(Var, Targets, FirstCode, !CI),
-    Code = tree(FirstCode, RestCode),
-    place_resume_vars(Rest, RestCode, !CI).
+    place_resume_vars(Rest, RestCode, !CI),
+    Code = FirstCode ++ RestCode.
 
 :- pred place_resume_var(prog_var::in, list(lval)::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 place_resume_var(_Var, [], empty, !CI).
 place_resume_var(Var, [Target | Targets], Code, !CI) :-
     place_var(Var, Target, FirstCode, !CI),
     place_resume_var(Var, Targets, RestCode, !CI),
-    Code = tree(FirstCode, RestCode).
+    Code = FirstCode ++ RestCode.
 
     % Reset the code generator's database of what is where.
     % Remember that the variables in the map are available in their
@@ -3158,7 +3124,7 @@ resume_point_stack_addr(ResumePoint, StackAddr) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_save_trail_info(add_trail_ops::in, maybe(pair(lval))::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI) :-
     (
@@ -3168,7 +3134,7 @@ maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI) :-
         acquire_temp_slot(slot_ticket, non_persistent_temp_slot,
             TrailPtrSlot, !CI),
         MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
-        SaveTrailCode = node([
+        SaveTrailCode = from_list([
             llds_instr(mark_ticket_stack(CounterSlot),
                 "save the ticket counter"),
             llds_instr(store_ticket(TrailPtrSlot),
@@ -3181,7 +3147,7 @@ maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI) :-
     ).
 
 :- pred maybe_restore_trail_info(maybe(pair(lval))::in,
-    code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, llds_code::out, code_info::in, code_info::out) is det.
 
 maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode, !CI) :-
     (
@@ -3190,13 +3156,13 @@ maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode, !CI) :-
         RestoreCode = empty
     ;
         MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
-        CommitCode = node([
+        CommitCode = from_list([
             llds_instr(reset_ticket(lval(TrailPtrSlot), reset_reason_commit),
                 "discard trail entries and restore trail ptr"),
             llds_instr(prune_tickets_to(lval(CounterSlot)),
                 "restore ticket counter (but not high water mark)")
         ]),
-        RestoreCode = node([
+        RestoreCode = from_list([
             llds_instr(reset_ticket(lval(TrailPtrSlot), reset_reason_undo),
                 "apply trail entries and restore trail ptr"),
             llds_instr(discard_ticket,
@@ -3363,73 +3329,73 @@ pickup_zombies(Zombies, !CI) :-
 
 :- interface.
 
-:- pred save_hp(code_tree::out, lval::out,
+:- pred save_hp(llds_code::out, lval::out,
     code_info::in, code_info::out) is det.
 
-:- pred restore_hp(lval::in, code_tree::out) is det.
+:- pred restore_hp(lval::in, llds_code::out) is det.
 
 :- pred release_hp(lval::in, code_info::in, code_info::out) is det.
 
-:- pred restore_and_release_hp(lval::in, code_tree::out,
+:- pred restore_and_release_hp(lval::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-:- pred maybe_save_hp(bool::in, code_tree::out, maybe(lval)::out,
+:- pred maybe_save_hp(bool::in, llds_code::out, maybe(lval)::out,
     code_info::in, code_info::out) is det.
 
-:- pred maybe_restore_hp(maybe(lval)::in, code_tree::out) is det.
+:- pred maybe_restore_hp(maybe(lval)::in, llds_code::out) is det.
 
 :- pred maybe_release_hp(maybe(lval)::in,
     code_info::in, code_info::out) is det.
 
 :- pred maybe_restore_and_release_hp(maybe(lval)::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
-:- pred save_ticket(code_tree::out, lval::out,
+:- pred save_ticket(llds_code::out, lval::out,
     code_info::in, code_info::out) is det.
 
-:- pred reset_ticket(lval::in, reset_trail_reason::in, code_tree::out) is det.
+:- pred reset_ticket(lval::in, reset_trail_reason::in, llds_code::out) is det.
 
 :- pred release_ticket(lval::in, code_info::in, code_info::out) is det.
 
 :- pred reset_and_prune_ticket(lval::in, reset_trail_reason::in,
-    code_tree::out) is det.
+    llds_code::out) is det.
 
 :- pred reset_prune_and_release_ticket(lval::in, reset_trail_reason::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred reset_and_discard_ticket(lval::in, reset_trail_reason::in,
-    code_tree::out) is det.
+    llds_code::out) is det.
 
 :- pred reset_discard_and_release_ticket(lval::in, reset_trail_reason::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
-:- pred discard_and_release_ticket(lval::in, code_tree::out,
+:- pred discard_and_release_ticket(lval::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-:- pred maybe_save_ticket(add_trail_ops::in, code_tree::out,
+:- pred maybe_save_ticket(add_trail_ops::in, llds_code::out,
     maybe(lval)::out, code_info::in, code_info::out) is det.
 
 :- pred maybe_reset_ticket(maybe(lval)::in, reset_trail_reason::in,
-    code_tree::out) is det.
+    llds_code::out) is det.
 
 :- pred maybe_release_ticket(maybe(lval)::in,
     code_info::in, code_info::out) is det.
 
 :- pred maybe_reset_and_prune_ticket(maybe(lval)::in,
-    reset_trail_reason::in, code_tree::out) is det.
+    reset_trail_reason::in, llds_code::out) is det.
 
 :- pred maybe_reset_prune_and_release_ticket(maybe(lval)::in,
-    reset_trail_reason::in, code_tree::out, code_info::in, code_info::out)
+    reset_trail_reason::in, llds_code::out, code_info::in, code_info::out)
     is det.
 
 :- pred maybe_reset_and_discard_ticket(maybe(lval)::in,
-    reset_trail_reason::in, code_tree::out) is det.
+    reset_trail_reason::in, llds_code::out) is det.
 
 :- pred maybe_reset_discard_and_release_ticket(maybe(lval)::in,
-    reset_trail_reason::in, code_tree::out, code_info::in, code_info::out)
+    reset_trail_reason::in, llds_code::out, code_info::in, code_info::out)
     is det.
 
-:- pred maybe_discard_and_release_ticket(maybe(lval)::in, code_tree::out,
+:- pred maybe_discard_and_release_ticket(maybe(lval)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
     % Should we add trail ops to the code we generate for the goal with the
@@ -3448,14 +3414,14 @@ pickup_zombies(Zombies, !CI) :-
 
 save_hp(Code, HpSlot, !CI) :-
     acquire_temp_slot(slot_lval(hp), non_persistent_temp_slot, HpSlot, !CI),
-    Code = node([
+    Code = singleton(
         llds_instr(mark_hp(HpSlot), "Save heap pointer")
-    ]).
+    ).
 
 restore_hp(HpSlot, Code) :-
-    Code = node([
+    Code = singleton(
         llds_instr(restore_hp(lval(HpSlot)), "Restore heap pointer")
-    ]).
+    ).
 
 release_hp(HpSlot, !CI) :-
     release_temp_slot(HpSlot, non_persistent_temp_slot, !CI).
@@ -3507,48 +3473,48 @@ maybe_restore_and_release_hp(MaybeHpSlot, Code, !CI) :-
 
 save_ticket(Code, TicketSlot, !CI) :-
     acquire_temp_slot(slot_ticket, non_persistent_temp_slot, TicketSlot, !CI),
-    Code = node([
+    Code = singleton(
         llds_instr(store_ticket(TicketSlot), "Save trail state")
-    ]).
+    ).
 
 reset_ticket(TicketSlot, Reason, Code) :-
-    Code = node([
+    Code = singleton(
         llds_instr(reset_ticket(lval(TicketSlot), Reason), "Reset trail")
-    ]).
+    ).
 
 release_ticket(TicketSlot, !CI) :-
     release_temp_slot(TicketSlot, non_persistent_temp_slot, !CI).
 
 reset_and_prune_ticket(TicketSlot, Reason, Code) :-
-    Code = node([
+    Code = from_list([
         llds_instr(reset_ticket(lval(TicketSlot), Reason), "Restore trail"),
         llds_instr(prune_ticket, "Prune ticket stack")
     ]).
 
 reset_prune_and_release_ticket(TicketSlot, Reason, Code, !CI) :-
-    Code = node([
+    Code = from_list([
         llds_instr(reset_ticket(lval(TicketSlot), Reason), "Release trail"),
         llds_instr(prune_ticket, "Prune ticket stack")
     ]),
     release_temp_slot(TicketSlot, non_persistent_temp_slot, !CI).
 
 reset_and_discard_ticket(TicketSlot, Reason, Code) :-
-    Code = node([
+    Code = from_list([
         llds_instr(reset_ticket(lval(TicketSlot), Reason), "Restore trail"),
         llds_instr(discard_ticket, "Pop ticket stack")
     ]).
 
 reset_discard_and_release_ticket(TicketSlot, Reason, Code, !CI) :-
-    Code = node([
+    Code = from_list([
         llds_instr(reset_ticket(lval(TicketSlot), Reason), "Release trail"),
         llds_instr(discard_ticket, "Pop ticket stack")
     ]),
     release_temp_slot(TicketSlot, non_persistent_temp_slot, !CI).
 
 discard_and_release_ticket(TicketSlot, Code, !CI) :-
-    Code = node([
+    Code = singleton(
         llds_instr(discard_ticket, "Pop ticket stack")
-    ]),
+    ),
     release_temp_slot(TicketSlot, non_persistent_temp_slot, !CI).
 
 %---------------------------------------------------------------------------%
@@ -3659,13 +3625,13 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
 :- pred assign_var_to_var(prog_var::in, prog_var::in,
     code_info::in, code_info::out) is det.
 
-:- pred assign_lval_to_var(prog_var::in, lval::in, code_tree::out,
+:- pred assign_lval_to_var(prog_var::in, lval::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 :- pred assign_const_to_var(prog_var::in, rval::in,
     code_info::in, code_info::out) is det.
 
-:- pred assign_expr_to_var(prog_var::in, rval::in, code_tree::out,
+:- pred assign_expr_to_var(prog_var::in, rval::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
     % assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, MaybeSize,
@@ -3673,26 +3639,26 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
     %
 :- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
     list(maybe(rval))::in, how_to_construct::in, maybe(term_size_value)::in,
-    list(int)::in, string::in, may_use_atomic_alloc::in, code_tree::out,
+    list(int)::in, string::in, may_use_atomic_alloc::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-:- pred save_reused_cell_fields(prog_var::in, lval::in, code_tree::out,
+:- pred save_reused_cell_fields(prog_var::in, lval::in, llds_code::out,
     list(lval)::out, code_info::in, code_info::out) is det.
 
-:- pred place_var(prog_var::in, lval::in, code_tree::out,
+:- pred place_var(prog_var::in, lval::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-:- pred produce_variable(prog_var::in, code_tree::out, rval::out,
+:- pred produce_variable(prog_var::in, llds_code::out, rval::out,
     code_info::in, code_info::out) is det.
 
-:- pred produce_variable_in_reg(prog_var::in, code_tree::out,
+:- pred produce_variable_in_reg(prog_var::in, llds_code::out,
     lval::out, code_info::in, code_info::out) is det.
 
 :- pred produce_variable_in_reg_or_stack(prog_var::in,
-    code_tree::out, lval::out, code_info::in, code_info::out) is det.
+    llds_code::out, lval::out, code_info::in, code_info::out) is det.
 
 :- pred materialize_vars_in_lval(lval::in, lval::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred acquire_reg_for_var(prog_var::in, lval::out,
     code_info::in, code_info::out) is det.
@@ -3705,9 +3671,9 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
 
 :- pred release_reg(lval::in, code_info::in, code_info::out) is det.
 
-:- pred reserve_r1(code_tree::out, code_info::in, code_info::out) is det.
+:- pred reserve_r1(llds_code::out, code_info::in, code_info::out) is det.
 
-:- pred clear_r1(code_tree::out, code_info::in, code_info::out) is det.
+:- pred clear_r1(llds_code::out, code_info::in, code_info::out) is det.
 
 :- type call_direction
     --->    caller
@@ -3727,13 +3693,13 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
     % - The input arguments will be moved to their registers.
     %
 :- pred setup_call(hlds_goal_info::in, assoc_list(prog_var, arg_info)::in,
-    set(lval)::out, code_tree::out, code_info::in, code_info::out) is det.
+    set(lval)::out, llds_code::out, code_info::in, code_info::out) is det.
 
     % Move the output arguments of the current procedure to where
     % they need to be at return.
     %
 :- pred setup_return(assoc_list(prog_var, arg_info)::in,
-    set(lval)::out, code_tree::out, code_info::in, code_info::out) is det.
+    set(lval)::out, llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred lock_regs(int::in, assoc_list(prog_var, lval)::in,
     code_info::in, code_info::out) is det.
@@ -3749,10 +3715,10 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
 
 :- pred clobber_regs(list(lval)::in, code_info::in, code_info::out) is det.
 
-:- pred save_variables(set(prog_var)::in, set(lval)::out, code_tree::out,
+:- pred save_variables(set(prog_var)::in, set(lval)::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
-:- pred save_variables_on_stack(list(prog_var)::in, code_tree::out,
+:- pred save_variables_on_stack(list(prog_var)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 :- pred max_reg_in_use(code_info::in, int::out) is det.
@@ -3845,7 +3811,7 @@ place_var(Var, Lval, Code, !CI) :-
     set_var_locn_info(VarLocnInfo, !CI).
 
 :- pred pick_and_place_vars(assoc_list(prog_var, set(lval))::in,
-    set(lval)::out, code_tree::out, code_info::in, code_info::out) is det.
+    set(lval)::out, llds_code::out, code_info::in, code_info::out) is det.
 
 pick_and_place_vars(VarLocSets, LiveLocs, Code, !CI) :-
     pick_var_places(VarLocSets, VarLocs),
@@ -3869,7 +3835,7 @@ pick_var_places([Var - LvalSet | VarLvalSets], VarLvals) :-
     ).
 
 :- pred place_vars(assoc_list(prog_var, lval)::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 place_vars(VarLocs, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
@@ -4056,7 +4022,7 @@ valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
     ).
 
 :- pred setup_call_args(assoc_list(prog_var, arg_info)::in,
-    call_direction::in, set(lval)::out, code_tree::out,
+    call_direction::in, set(lval)::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, !CI) :-

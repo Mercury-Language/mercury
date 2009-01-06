@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2007 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,7 +27,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred generate_scope(scope_reason::in, code_model::in, hlds_goal_info::in,
-    set(prog_var)::in, hlds_goal::in, code_tree::out,
+    set(prog_var)::in, hlds_goal::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -36,9 +36,9 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 
+:- import_module cord.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -61,7 +61,7 @@ generate_scope(Reason, OuterCodeModel, OuterGoalInfo,
     ).
 
 :- pred generate_commit(code_model::in, hlds_goal_info::in, set(prog_var)::in,
-    hlds_goal::in, code_tree::out, code_info::in, code_info::out) is det.
+    hlds_goal::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
         Goal, Code, !CI) :-
@@ -86,7 +86,7 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
                 PreCommit, !CI),
             code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
             generate_det_commit(CommitInfo, Commit, !CI),
-            Code = tree_list([PreCommit, GoalCode, Commit])
+            Code = PreCommit ++ GoalCode ++ Commit
         )
     ;
         OuterCodeModel = model_semi,
@@ -103,7 +103,7 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
                 PreCommit, !CI),
             code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
             generate_semi_commit(CommitInfo, Commit, !CI),
-            Code = tree_list([PreCommit, GoalCode, Commit])
+            Code = PreCommit ++ GoalCode ++ Commit
         )
     ;
         OuterCodeModel = model_non,

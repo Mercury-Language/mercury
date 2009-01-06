@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,10 +27,10 @@
 
 :- pred generate_ite(code_model::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_negation(code_model::in, hlds_goal::in, hlds_goal_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -46,7 +46,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.opt_debug.
@@ -58,6 +57,7 @@
 :- import_module transform_hlds.rbmm.region_transformation.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module io.
 :- import_module list.
@@ -217,8 +217,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
 
     trace [compiletime(flag("codegen_goal")), io(!S)] (
         ( should_trace_code_gen(!.CI) ->
-            ResumeInstrLists = tree.flatten(ResumeCode),
-            list.condense(ResumeInstrLists, ResumeInstrs),
+            ResumeInstrs = cord.list(ResumeCode),
             io.write_string("\nRESUME INSTRS:\n", !S),
             write_instrs(ResumeInstrs, no, yes, !S)
         ;
@@ -239,8 +238,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
 
     trace [compiletime(flag("codegen_goal")), io(!S)] (
         ( should_trace_code_gen(!.CI) ->
-            ElseSaveInstrLists = tree.flatten(ElseSaveCode),
-            list.condense(ElseSaveInstrLists, ElseSaveInstrs),
+            ElseSaveInstrs = cord.list(ElseSaveCode),
             io.write_string("\nBRANCH END INSTRS:\n", !S),
             write_instrs(ElseSaveInstrs, no, yes, !S)
         ;
@@ -249,43 +247,43 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     ),
 
     get_next_label(EndLabel, !CI),
-    JumpToEndCode = node([
+    JumpToEndCode = singleton(
         llds_instr(goto(code_label(EndLabel)),
             "Jump to the end of if-then-else")
-    ]),
-    EndLabelCode = node([
+    ),
+    EndLabelCode = singleton(
         llds_instr(label(EndLabel), "end of if-then-else")
-    ]),
+    ),
     make_pneg_context_wrappers(Globals, CondInfo, PNegCondCode, PNegThenCode,
         PNegElseCode),
-    Code = tree_list([
-        FlushCode,
-        SaveHpCode,
-        SaveTicketCode,
-        RegionCondCode,
-        PrepareHijackCode,
-        EffectResumeCode,
-        CondTraceCode,
-        PNegCondCode,
-        CondCode,
-        ThenNeckCode,
-        ResetTicketCode,
-        RegionThenCode,
-        ThenTraceCode,
-        PNegThenCode,
-        ThenCode,
-        ThenSaveCode,
-        JumpToEndCode,
-        ResumeCode,
-        ElseNeckCode,
-        RestoreHpCode,
-        RestoreTicketCode,
-        RegionElseCode,
-        ElseTraceCode,
-        PNegElseCode,
-        ElseCode,
-        ElseSaveCode,
-        EndLabelCode]),
+    Code =
+        FlushCode ++
+        SaveHpCode ++
+        SaveTicketCode ++
+        RegionCondCode ++
+        PrepareHijackCode ++
+        EffectResumeCode ++
+        CondTraceCode ++
+        PNegCondCode ++
+        CondCode ++
+        ThenNeckCode ++
+        ResetTicketCode ++
+        RegionThenCode ++
+        ThenTraceCode ++
+        PNegThenCode ++
+        ThenCode ++
+        ThenSaveCode ++
+        JumpToEndCode ++
+        ResumeCode ++
+        ElseNeckCode ++
+        RestoreHpCode ++
+        RestoreTicketCode ++
+        RegionElseCode ++
+        ElseTraceCode ++
+        PNegElseCode ++
+        ElseCode ++
+        ElseSaveCode ++
+        EndLabelCode,
     after_all_branches(StoreMap, MaybeEnd, !CI).
 
 %-----------------------------------------------------------------------------%
@@ -339,16 +337,12 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
         ;
             Op = eq
         ),
-        TestCode = node([
+        TestCode = singleton(
             llds_instr(if_val(binop(Op, ValL, ValR), CodeAddr),
                 "test inequality")
-        ]),
+        ),
         leave_simple_neg(GoalInfo, SimpleNeg, !CI),
-        Code = tree_list([
-            CodeL,
-            CodeR,
-            TestCode
-        ])
+        Code = CodeL ++ CodeR ++ TestCode
     ;
         generate_negation_general(CodeModel, Goal, NotGoalInfo,
             ResumeVars, ResumeLocs, Code, !CI)
@@ -359,7 +353,7 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
     %
 :- pred generate_negation_general(code_model::in,
     hlds_goal::in, hlds_goal_info::in, set(prog_var)::in,
-    resume_locs::in, code_tree::out, code_info::in, code_info::out) is det.
+    resume_locs::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
         Code, !CI) :-
@@ -459,30 +453,29 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
 
     make_pneg_context_wrappers(Globals, NotGoalInfo, PNegCondCode,
         PNegThenCode, PNegElseCode),
-    Code = tree_list([
-        FlushCode,
-        PrepareHijackCode,
-        EffectResumeCode,
-        SaveHpCode,
-        SaveTicketCode,
-        RegionCondCode,
-        EnterTraceCode,
-        PNegCondCode,
-        GoalCode,
-        ThenNeckCode,
-        PruneTicketCode,
-        RegionThenCode,
-        FailTraceCode,
-        PNegThenCode,
-        FailCode,
-        ResumeCode,
-        ElseNeckCode,
-        RestoreTicketCode,
-        RestoreHpCode,
-        RegionElseCode,
-        SuccessTraceCode,
-        PNegElseCode
-    ]).
+    Code =
+        FlushCode ++
+        PrepareHijackCode ++
+        EffectResumeCode ++
+        SaveHpCode ++
+        SaveTicketCode ++
+        RegionCondCode ++
+        EnterTraceCode ++
+        PNegCondCode ++
+        GoalCode ++
+        ThenNeckCode ++
+        PruneTicketCode ++
+        RegionThenCode ++
+        FailTraceCode ++
+        PNegThenCode ++
+        FailCode ++
+        ResumeCode ++
+        ElseNeckCode ++
+        RestoreTicketCode ++
+        RestoreHpCode ++
+        RegionElseCode ++
+        SuccessTraceCode ++
+        PNegElseCode.
 
 %---------------------------------------------------------------------------%
 
@@ -499,7 +492,7 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
     % MR_pneg_enter_{cond,then,exit}.
     %
 :- pred make_pneg_context_wrappers(globals::in, hlds_goal_info::in,
-    code_tree::out, code_tree::out, code_tree::out) is det.
+    llds_code::out, llds_code::out, llds_code::out) is det.
 
 make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         PNegElseCode) :-
@@ -537,18 +530,18 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
                 wrap_transient("\t\tMR_pneg_enter_else(" ++ CtxtStr ++ ");\n"))
         ],
         MD = proc_may_duplicate,
-        PNegCondCode = node([
+        PNegCondCode = singleton(
             llds_instr(foreign_proc_code([], PNegCondComponents,
                 proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
-        ]),
-        PNegThenCode = node([
+        ),
+        PNegThenCode = singleton(
             llds_instr(foreign_proc_code([], PNegThenComponents,
                 proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
-        ]),
-        PNegElseCode = node([
+        ),
+        PNegElseCode = singleton(
             llds_instr(foreign_proc_code([], PNegElseComponents,
                 proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
-        ])
+        )
     ;
         PNegCondCode = empty,
         PNegThenCode = empty,
@@ -567,7 +560,7 @@ wrap_transient(Code) =
 
 :- pred maybe_create_ite_region_frame(add_region_ops::in,
     hlds_goal_info::in, list(hlds_goal)::in, list(hlds_goal)::in,
-    code_tree::out, code_tree::out, code_tree::out, list(lval)::out,
+    llds_code::out, llds_code::out, llds_code::out, list(lval)::out,
     maybe(embedded_stack_frame_id)::out, code_info::in, code_info::out) is det.
 
 maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
@@ -663,7 +656,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                 acquire_reg(reg_r, ProtectNumRegLval, !CI),
                 acquire_reg(reg_r, SnapshotNumRegLval, !CI),
                 acquire_reg(reg_r, AddrRegLval, !CI),
-                PushInitCode = node([
+                PushInitCode = from_list([
                     llds_instr(
                         push_region_frame(region_stack_ite,
                             EmbeddedStackFrameId),
@@ -685,7 +678,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                 ite_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
                     EmbeddedStackFrameId, RemovedAtStartOfElse,
                     SnapshotRegionVarList, SnapshotRegionCode, !CI),
-                SetCode = node([
+                SetCode = from_list([
                     llds_instr(
                         region_set_fixed_slot(region_set_ite_num_protects,
                             EmbeddedStackFrameId, lval(ProtectNumRegLval)),
@@ -714,26 +707,22 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                         "maybe_create_ite_region_frame: det cond")
                 ),
 
-                CondCode = tree_list([
-                    PushInitCode,
-                    ProtectRegionCode,
-                    SnapshotRegionCode,
-                    SetCode
-                ]),
-                ThenCode = node([
+                CondCode = PushInitCode ++ ProtectRegionCode ++
+                    SnapshotRegionCode ++ SetCode,
+                ThenCode = singleton(
                     llds_instr(
                         use_and_maybe_pop_region_frame(
                             region_ite_then(CondKind),
                             EmbeddedStackFrameId),
                         "region enter then")
-                ]),
-                ElseCode = node([
+                ),
+                ElseCode = singleton(
                     llds_instr(
                         use_and_maybe_pop_region_frame(
                             region_ite_else(CondKind),
                             EmbeddedStackFrameId),
                         "region enter else")
-                ])
+                )
 
                 % XXX A model_non condition can succeed more than once, so
                 % the region_ite_then(region_ite_nondet_cond) operation
@@ -769,42 +758,42 @@ find_regions_removed_at_start_of_goals([Goal | Goals], ModuleInfo, !Removed) :-
     ).
 
 :- pred ite_protect_regions(lval::in, lval::in, embedded_stack_frame_id::in,
-    list(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+    list(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
 
 ite_protect_regions(_, _, _, [], empty, !CI).
 ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrameId,
-        [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
+        [RegionVar | RegionVars], Code ++ Codes, !CI) :-
     produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
-    SaveCode = node([
+    SaveCode = singleton(
         llds_instr(
             region_fill_frame(region_fill_ite_protect,
                 EmbeddedStackFrameId, RegionVarRval, NumLval, AddrLval),
             "ite protect the region if needed")
-    ]),
-    Code = tree(ProduceVarCode, SaveCode),
+    ),
+    Code = ProduceVarCode ++ SaveCode,
     ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrameId,
         RegionVars, Codes, !CI).
 
 :- pred ite_alloc_snapshot_regions(lval::in, lval::in,
     embedded_stack_frame_id::in, set(prog_var)::in,
-    list(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+    list(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
 
 ite_alloc_snapshot_regions(_, _, _, _, [], empty, !CI).
 ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrameId,
-        RemovedVars, [RegionVar | RegionVars], tree(Code, Codes), !CI) :-
+        RemovedVars, [RegionVar | RegionVars], Code ++ Codes, !CI) :-
     produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CI),
     ( set.member(RegionVar, RemovedVars) ->
         RemovedAtStartOfElse = removed_at_start_of_else
     ;
         RemovedAtStartOfElse = not_removed_at_start_of_else
     ),
-    SaveCode = node([
+    SaveCode = singleton(
         llds_instr(
             region_fill_frame(region_fill_ite_snapshot(RemovedAtStartOfElse),
                 EmbeddedStackFrameId, RegionVarRval, NumLval, AddrLval),
             "take alloc snapshot of the region")
-    ]),
-    Code = tree(ProduceVarCode, SaveCode),
+    ),
+    Code = ProduceVarCode ++ SaveCode,
     ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrameId,
         RemovedVars, RegionVars, Codes, !CI).
 
