@@ -128,6 +128,15 @@ it contains an array of the node ids of those structures.
 The MR_ps_outermost_activation_ptr and MR_ps_activation_count fields
 are used only during runtime, and are omitted
 when the ProcDynamic node is written out to the Deep.data file.
+<li>
+MR_ps_num_coverage_points:
+the number of coverage points compiled into this procedure.
+<li>
+MR_ps_coverage_points_static:
+an array containing static data information each of the coverage points.
+<li>
+MR_ps_coverage_points:
+an array containing coverage point counts for each of the coverage points. 
 </ul>
 
 <dt> CallSiteDynamic
@@ -214,7 +223,7 @@ It is passed,
 in the environment variable QUERY_STRING which is set by the web server,
 an URL component containing the name of a profiling data file
 and a query specifying which part of that data file is to be displayed.
-Mdprof_cgi checks whether a server process already exists
+mdprof_cgi checks whether a server process already exists
 for the given profiling data file.
 If the answer is yes, it passes the query to the server,
 gets back the reply, gives it to the web server, and exits.
@@ -260,7 +269,7 @@ whose names include a mangled form of the data file name.
 The existence of these files serves as an approximation of a lock;
 the idea is that they exist if and only if a server process
 for that data file is alive and serving queries via those pipes.
-Mdprof_cgi creates a server process for the data file
+mdprof_cgi creates a server process for the data file
 if and only if these named pipes do not exist.
 They are created only by mdprof_cgi transforms itself into a server,
 and destroyed only when this server exits.
@@ -308,6 +317,44 @@ which can leave the client sending its query to a now nonexistent server.
 <hr>
 <!---------------------------------------------------------------------------->
 
+<h2>Pipeline processing of deep profiler queries</h2>
+
+As described above when the deep profiler starts it reads the deep
+profiling data.
+Processing is performed to make it easy to retrieve information from
+this data, this results in a structure called 'deep'.
+When a query arrives further processing is performed in several steps
+before HTML is produced for the user.
+
+<p>
+
+First, create_report generates a report structure from the cmd and
+deep structures.  
+This report reflects all the information that <i>may</i> be shown to
+the user.
+The report structure can also be used by other tools such as
+mdprof_feedback to gather information to drive compiler optimisations.
+The report structure can be used by the report_to_display predicate to
+produce a display structure based on the user's display preferences.
+The display structure is a format-neutral representation of the final
+output.
+Finally htmlize_display produces HTML output from the display structure.
+
+<p>
+
+To support a new report a developer should add that report to the
+report type and the command for launching it to the cmd type.
+They will need to add support to create_report, report_to_display,
+string_to_maybe_cmd and query_to_string.
+They may need to modify the display structure in order to support
+displaying information of a different type (for instance, a
+differently formatted number).
+They should modify report_to_display for some existing reports to
+create links or buttons that perform the new query.
+
+<hr>
+<!---------------------------------------------------------------------------->
+
 <h2>The modules of the deep profiler</h2>
 
 <dl>
@@ -325,6 +372,10 @@ for use in debugging.
 This is the main module of a test program for checking that
 all the web pages can be created without runtime aborts.
 Its output can be gigabytes in size.
+<dt> mdprof_procrep.m
+<dd>
+This is the main module of a test program used for reading and displaying the
+byte-code representation of the procedures of a Mercury program.
 <dt> array_util.m
 <dd>
 This module contains utility predicates for handling arrays.
@@ -349,11 +400,31 @@ find the strongly connected components of that graph.
 This module contains primitives whose parameters are decided by
 the configure script. This module picks them up from the #defines
 put into runtime/mercury_conf.h by the configure script.
+<dt> coverage.m
+<dd>
+This module contains code that produces the coverage profiling reports.  It also
+infers coverage throughout a procedure based on partial information and
+execution rules for Mercury programs.
+<dt> create_report.m
+<dd>
+This module contains the create_report predicate which takes a command
+and preprocessed deep profiling data and creates a report
+data-structure.
 <dt> dense_bitset.m
 <dd>
 This module provides an ADT for storing dense sets of small integers.
 The sets are represented as bit vectors, which are implemented as arrays
 of integers. This is used by cliques.m.
+<dt> display.m
+<dd>
+This module defines the display structure.
+This structure represents information to be displayed to the user.
+The information in a display structure is format-neutral.
+<dt> display_report.m
+<dd>
+This module contains the report_to_display predicate.
+This predicate takes a report structure and produces a display
+structure.
 <dt> dump.m
 <dd>
 This module provides a mechanism for dumping out some of the deep profiler's
@@ -365,8 +436,8 @@ which is a mechanism for propagating measurements
 from regions in the call graph below a given line (the contour) to that line.
 <dt> html_format.m
 <dd>
-This module contains code that sets the format of the HTML tables
-we generate for individual queries.
+This module contains code that creates HTML output from a display
+structure for use by mdprof_cgi.
 <dt> interface.m
 <dd>
 This module defines the type of the commands sent from clients to servers,
@@ -379,16 +450,34 @@ This module a set of I/O combinators for use by read_profile.m.
 This module defines the data structures
 that store deep profiling measurements
 and the operations on them.
+<dt> measurement_units.m
+<dd>
+This module defines data types and predicates for various units of
+measurement. Including percentages and time.
 <dt> profile.m
 <dd>
 This file defines the main data structures of the server,
 and predicates for accessing them.
+<dt> program_representation_utils.m
+<dd>
+This module provides predicates that operate on program representation
+structures, including formatting such structures as text.
 <dt> query.m
 <dd>
 This module contains the top level predicates for servicing individual queries.
 <dt> read_profile.m
 <dd>
 This module contains code for reading in a deep profiling data file.
+<dt> report.m
+<dd>
+This module contains the report structure.
+A sub-structure is defined for each type of report that may be
+generated.
+The report structure represents the information contained in a report
+in a format that is easy to generate, and easy for a computer program
+to analyse.
+This module also contains common structures that multiple reports make
+use of.
 <dt> startup.m
 <dd>
 This module contains the code
@@ -405,4 +494,8 @@ This module contains code to find the top procedures by several criteria.
 <dt> util.m
 <dd>
 This module defines utility predicates for both mdprof_cgi and mdprof_server.
+<dt> var_use_analysis.m
+<dd>
+This module contains predicates for analysing how soon or late a variable is
+used (produced or consumed) by a procedure.
 </dl>
