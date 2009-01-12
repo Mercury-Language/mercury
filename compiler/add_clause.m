@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -565,8 +565,20 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
             insert_arg_unifications(HeadVarList, Args, Context, ArgContext,
                 HeadGoal0, HeadGoal1, _, !VarSet, !ModuleInfo, !QualInfo,
                 !SInfo, !Specs),
+            % The only pass that pays attention to the from_head feature,
+            % switch_detection, only does so on kinds of hlds_goal_exprs
+            % that do not occur in from_ground_term scopes, which we have
+            % just marked as from_ground_term_construct. However, later
+            % passes may convert some of the unifications inside these scopes
+            % to calls, and switch detection *does* care about from_head
+            % on calls, and it looks inside all scopes except those of the
+            % from_ground_term_construct kind. Therefore any code that can be
+            % executed between now and switch detection that converts a
+            % from_ground_term_construct scope to another kind of scope
+            % should attach any from_head feature present on the scope
+            % to all its subgoals.
             attach_features_to_all_goals([feature_from_head],
-                HeadGoal1, HeadGoal)
+                do_not_attach_in_from_ground_term, HeadGoal1, HeadGoal)
         ),
         svar_prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
         transform_goal(ParseBody, Renaming, BodyGoal, _, !VarSet, !ModuleInfo,

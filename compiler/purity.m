@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -998,7 +998,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     %
     % ActualPurity: The inferred purity of the pred
     % DeclaredPurity: The declared purity of the pred
-    % InPragmaCCode: Is this a pragma c code?
+    % InPragmaCCode: Is this foreign language code?
     % Promised: Did we promise this pred as pure?
     %
 :- pred perform_pred_purity_checks(pred_info::in, purity::in, purity::in,
@@ -1050,9 +1050,9 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
         % or instance methods --- it just means that the predicate provided
         % as an implementation was more pure than necessary.
         %
-        % We don't warn about exaggerated impurity decls in c_code -- this is
-        % just because we assume they are pure, but you can declare them
-        % to be impure.
+        % We don't warn about exaggerated impurity decls in foreign language
+        % code -- this is just because we assume they are pure (XXX we do not
+        % do so anymore), but you can declare them to be impure.
         %
         % We don't warn about exaggerated impurity declarations for "stub"
         % procedures, i.e. procedures which originally had no clauses.

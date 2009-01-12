@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1112,7 +1112,7 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
             ->
                 poly_info_get_varset(!.Info, VarSetBefore),
                 MaxVarBefore = varset.max_var(VarSetBefore),
-                polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+                polymorphism_process_goal(SubGoal0, SubGoal1, !Info),
                 poly_info_get_varset(!.Info, VarSetAfter),
                 MaxVarAfter = varset.max_var(VarSetAfter),
 
@@ -1120,7 +1120,13 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
                     % We did introduced some variables into the scope,
                     % so we cannot guarantee that the scope still satisfies
                     % the invariants of from_ground_term_construct scopes.
-                    Reason = from_ground_term(TermVar, from_ground_term_other)
+                    Reason = from_ground_term(TermVar, from_ground_term_other),
+                    ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
+                        attach_features_to_all_goals([feature_from_head],
+                            attach_in_from_ground_term, SubGoal1, SubGoal)
+                    ;
+                        SubGoal = SubGoal1
+                    )
                 ;
                     poly_info_get_var_types(!.Info, VarTypes),
                     map.lookup(VarTypes, TermVar, TermVarType),
@@ -1131,7 +1137,15 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
                         % the scope by adding a reference to typeinfo variables
                         % representing TermVarTypeVars.
                         Reason = from_ground_term(TermVar,
-                            from_ground_term_other)
+                            from_ground_term_other),
+                        (
+                            goal_info_has_feature(GoalInfo0, feature_from_head)
+                        ->
+                            attach_features_to_all_goals([feature_from_head],
+                                attach_in_from_ground_term, SubGoal1, SubGoal)
+                        ;
+                            SubGoal = SubGoal1
+                        )
                     ;
                         TermVarTypeVars = [],
                         % TermVarTypeVars = [] says that there is no
@@ -1146,7 +1160,8 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
                         % this pass modifies a goal, at least in ways that
                         % would invalidate the from_ground_term_construct
                         % invariant.
-                        Reason = Reason0
+                        Reason = Reason0,
+                        SubGoal = SubGoal1
                     )
                 )
             ;

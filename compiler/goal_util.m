@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,10 +105,20 @@
     %
 :- pred generic_call_vars(generic_call::in, list(prog_var)::out) is det.
 
-    % Attach the given goal features to the given goal and all its subgoals.
+:- type attach_in_from_ground_term
+    --->    attach_in_from_ground_term
+    ;       do_not_attach_in_from_ground_term.
+
+    % Attach the given goal features to the given goal and all its subgoals,
+    % except possibly in from_ground_term scopes.
     %
-:- pred attach_features_to_all_goals(list(goal_feature)::in,
-    hlds_goal::in, hlds_goal::out) is det.
+:- pred attach_features_to_all_goals(list(goal_feature),
+    attach_in_from_ground_term, hlds_goal, hlds_goal) is det.
+:- mode attach_features_to_all_goals(in,
+    in(bound(attach_in_from_ground_term)),
+    in, out) is det.
+:- mode attach_features_to_all_goals(in,
+    in(bound(do_not_attach_in_from_ground_term)), in, out) is det.
 
     % extra_nonlocal_typeinfos(TypeInfoMap, TypeClassInfoMap,
     %   VarTypes, ExistQVars, NonLocals, NonLocalTypeInfos):
@@ -628,24 +638,50 @@ generic_call_vars(cast(_), []).
 
 %-----------------------------------------------------------------------------%
 
-attach_features_to_all_goals(Features, Goal0, Goal) :-
+attach_features_to_all_goals(Features, InFromGroundTerm, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    attach_features_goal_expr(Features, GoalExpr0, GoalExpr),
+    attach_features_to_goal_expr(Features, InFromGroundTerm,
+        GoalExpr0, GoalExpr),
     list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred attach_features_to_case(list(goal_feature)::in,
-    case::in, case::out) is det.
+:- pred attach_features_to_goals(list(goal_feature),
+    attach_in_from_ground_term, list(hlds_goal), list(hlds_goal)) is det.
+:- mode attach_features_to_goals(in,
+    in(bound(attach_in_from_ground_term)), in, out) is det.
+:- mode attach_features_to_goals(in,
+    in(bound(do_not_attach_in_from_ground_term)), in, out) is det.
 
-attach_features_to_case(Features, Case0, Case) :-
+attach_features_to_goals(_Features, _InFromGroundTerm, [], []).
+attach_features_to_goals(Features, InFromGroundTerm,
+        [Goal0 | Goals0], [Goal | Goals]) :-
+    attach_features_to_all_goals(Features, InFromGroundTerm, Goal0, Goal),
+    attach_features_to_goals(Features, InFromGroundTerm, Goals0, Goals).
+
+:- pred attach_features_to_cases(list(goal_feature),
+    attach_in_from_ground_term, list(case), list(case)) is det.
+:- mode attach_features_to_cases(in,
+    in(bound(attach_in_from_ground_term)), in, out) is det.
+:- mode attach_features_to_cases(in,
+    in(bound(do_not_attach_in_from_ground_term)), in, out) is det.
+
+attach_features_to_cases(_Features, _InFromGroundTerm, [], []).
+attach_features_to_cases(Features, InFromGroundTerm,
+        [Case0 | Cases0], [Case | Cases]) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    attach_features_to_all_goals(Features, Goal0, Goal),
-    Case = case(MainConsId, OtherConsIds, Goal).
+    attach_features_to_all_goals(Features, InFromGroundTerm, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    attach_features_to_cases(Features, InFromGroundTerm, Cases0, Cases).
 
-:- pred attach_features_goal_expr(list(goal_feature)::in,
-    hlds_goal_expr::in, hlds_goal_expr::out) is det.
+:- pred attach_features_to_goal_expr(list(goal_feature),
+    attach_in_from_ground_term, hlds_goal_expr, hlds_goal_expr) is det.
+:- mode attach_features_to_goal_expr(in,
+    in(bound(attach_in_from_ground_term)), in, out) is det.
+:- mode attach_features_to_goal_expr(in,
+    in(bound(do_not_attach_in_from_ground_term)), in, out) is det.
 
-attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
+attach_features_to_goal_expr(Features, InFromGroundTerm,
+        GoalExpr0, GoalExpr) :-
     (
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _)
@@ -655,47 +691,60 @@ attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        list.map(attach_features_to_all_goals(Features), Goals0, Goals),
+        attach_features_to_goals(Features, InFromGroundTerm, Goals0, Goals),
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
-        list.map(attach_features_to_all_goals(Features), Goals0, Goals),
+        attach_features_to_goals(Features, InFromGroundTerm, Goals0, Goals),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map(attach_features_to_case(Features), Cases0, Cases),
+        attach_features_to_cases(Features, InFromGroundTerm, Cases0, Cases),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        attach_features_to_all_goals(Features, Cond0, Cond),
-        attach_features_to_all_goals(Features, Then0, Then),
-        attach_features_to_all_goals(Features, Else0, Else),
+        attach_features_to_all_goals(Features, InFromGroundTerm, Cond0, Cond),
+        attach_features_to_all_goals(Features, InFromGroundTerm, Then0, Then),
+        attach_features_to_all_goals(Features, InFromGroundTerm, Else0, Else),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        GoalExpr0 = negation(Goal0),
-        attach_features_to_all_goals(Features, Goal0, Goal),
-        GoalExpr = negation(Goal)
+        GoalExpr0 = negation(SubGoal0),
+        attach_features_to_all_goals(Features, InFromGroundTerm,
+            SubGoal0, SubGoal),
+        GoalExpr = negation(SubGoal)
     ;
-        GoalExpr0 = scope(Reason, Goal0),
-        % For most features there would be no point in attaching them
-        % to the goals inside from_ground_term_construct scopes, but there
-        % may be one or two for which this may be meaningful.
-        attach_features_to_all_goals(Features, Goal0, Goal),
-        GoalExpr = scope(Reason, Goal)
+        GoalExpr0 = scope(Reason, SubGoal0),
+        ( Reason = from_ground_term(_, _) ->
+            (
+                InFromGroundTerm = do_not_attach_in_from_ground_term,
+                SubGoal = SubGoal0
+            ;
+                InFromGroundTerm = attach_in_from_ground_term,
+                attach_features_to_all_goals(Features, InFromGroundTerm,
+                    SubGoal0, SubGoal)
+            )
+        ;
+            attach_features_to_all_goals(Features, InFromGroundTerm,
+                SubGoal0, SubGoal)
+        ),
+        GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0),
-            attach_features_to_all_goals(Features, MainGoal0, MainGoal),
-            list.map(attach_features_to_all_goals(Features),
+            attach_features_to_all_goals(Features, InFromGroundTerm,
+                MainGoal0, MainGoal),
+            attach_features_to_goals(Features, InFromGroundTerm,
                 OrElseGoals0, OrElseGoals),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals)
         ;
             ShortHand0 = bi_implication(GoalA0, GoalB0),
-            attach_features_to_all_goals(Features, GoalA0, GoalA),
-            attach_features_to_all_goals(Features, GoalB0, GoalB),
+            attach_features_to_all_goals(Features, InFromGroundTerm,
+                GoalA0, GoalA),
+            attach_features_to_all_goals(Features, InFromGroundTerm,
+                GoalB0, GoalB),
             ShortHand = bi_implication(GoalA, GoalB)
         ),
         GoalExpr = shorthand(ShortHand)

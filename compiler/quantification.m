@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -633,8 +633,8 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
         % because superhomogeneous.m sets up the nonlocal sets of the
         % unifications, their conjunction, and the scope goal itself,
         % and every later compiler pass than can invalidate those nonlocal sets
-        % will either set the kind to from_ground_term_other or remove the
-        % scope altogether.
+        % will either set the kind to from_ground_term_other (or to
+        % from_ground_term_deconstruct) or remove the scope altogether.
         SubGoal = SubGoal0,
         NonLocals = make_singleton_set(TermVar),
         set_nonlocals(NonLocals, !Info),

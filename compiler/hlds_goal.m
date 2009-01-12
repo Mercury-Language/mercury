@@ -327,7 +327,12 @@
     %
     % If any compiler pass modifies a from_ground_term_construct scope in a way
     % that invalidates these invariants, it must set the kind field of the
-    % scope to from_ground_term_other.
+    % scope to from_ground_term_other (or from_ground_term_deconstruct).
+    % If the original scope had the from_head feature, the code that does this
+    % must also attach that feature to all the subgoals of the modified scope,
+    % unless we can  be sure that it is executed *after* switch detection,
+    % which is the only pass that looks for from_head features, and which looks
+    % in all scopes *except* from_ground_term_construct scopes.
     %
     % For now, we don't optimize from_ground_term_deconstruct and
     % from_ground_term_other scopes, so there are no invariants required
@@ -2250,8 +2255,13 @@ goal_info_add_feature(Feature, !GoalInfo) :-
 
 goal_info_remove_feature(Feature, !GoalInfo) :-
     Features0 = goal_info_get_features(!.GoalInfo),
-    set.delete(Features0, Feature, Features),
-    goal_info_set_features(Features, !GoalInfo).
+    ( set.remove(Features0, Feature, Features) ->
+        goal_info_set_features(Features, !GoalInfo)
+    ;
+        % !.GoalInfo did not have Feature, so there is no need to allocate
+        % memory for a new !:GoalInfo.
+        true
+    ).
 
 goal_info_has_feature(GoalInfo, Feature) :-
     Features = goal_info_get_features(GoalInfo),

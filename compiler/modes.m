@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -369,6 +369,7 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
 :- import_module check_hlds.unique_modes.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.passes_aux.
@@ -1657,8 +1658,14 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
                 ),
                 Kind = from_ground_term_other
             ),
+            ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
+                attach_features_to_all_goals([feature_from_head],
+                    attach_in_from_ground_term, SubGoal1, SubGoal2)
+            ;
+                SubGoal2 = SubGoal1
+            ),
             mode_checkpoint(enter, "scope", !ModeInfo, !IO),
-            modecheck_goal(SubGoal1, SubGoal, !ModeInfo, !IO),
+            modecheck_goal(SubGoal2, SubGoal, !ModeInfo, !IO),
             mode_checkpoint(exit, "scope", !ModeInfo, !IO),
             UpdatedReason = from_ground_term(TermVar, Kind),
             GoalExpr = scope(UpdatedReason, SubGoal)
