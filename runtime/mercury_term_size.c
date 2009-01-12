@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003-2005, 2007 The University of Melbourne.
+** Copyright (C) 2003-2005, 2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -330,6 +330,15 @@ try_again:
             }
 #endif
             return 1;
+
+        case MR_TYPECTOR_REP_DUMMY:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf("MR_term_size: dummy %p\n",
+                    (void *) term);
+            }
+#endif
+            return 0;
 
         case MR_TYPECTOR_REP_VOID:
             MR_fatal_error("MR_term_size: VOID");

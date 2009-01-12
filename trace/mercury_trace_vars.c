@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2008 The University of Melbourne.
+** Copyright (C) 1999-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -108,10 +108,10 @@ typedef enum {
 } MR_ValueKind;
 
 typedef struct {
-    MR_ValueKind    MR_value_kind;
-    MR_KindDetails  MR_value_details;
-    MR_TypeInfo     MR_value_type;
-    MR_Word         MR_value_value;
+    MR_ValueKind        MR_value_kind;
+    MR_KindDetails      MR_value_details;
+    MR_TypeInfo         MR_value_type;
+    MR_Word             MR_value_value;
 } MR_ValueDetails;
 
 #define MR_value_var    MR_value_details.MR_details_var
@@ -1524,13 +1524,15 @@ MR_trace_print_size_one(FILE *out, char *word_spec)
 
         do {
             fprintf(out, "%20s: %6u\n",
-                MR_point.MR_point_vars[var_num].MR_var_fullname,
+                MR_point.MR_point_vars[var_num].MR_value_var.MR_var_fullname,
                 MR_term_size(MR_point.MR_point_vars[var_num].MR_value_type,
                     MR_point.MR_point_vars[var_num].MR_value_value));
             var_num++;
         } while (var_num < MR_point.MR_point_var_count &&
+            MR_point.MR_point_vars[var_num].MR_value_kind
+                == MR_VALUE_PROG_VAR &&
             MR_streq(var_spec.MR_var_spec_name,
-                MR_point.MR_point_vars[var_num].MR_var_fullname));
+                MR_point.MR_point_vars[var_num].MR_value_var.MR_var_fullname));
     } else {
         fprintf(out, "%20s: %6u\n", name, type_info, value);
     }
@@ -1554,10 +1556,13 @@ MR_trace_print_size_all(FILE *out)
     }
 
     for (var_num = 0; var_num < MR_point.MR_point_var_count; var_num++) {
-        fprintf(out, "%-20s %6u\n",
-            MR_point.MR_point_vars[var_num].MR_var_fullname,
-            MR_term_size(MR_point.MR_point_vars[var_num].MR_value_type,
-                MR_point.MR_point_vars[var_num].MR_value_value));
+        if (MR_point.MR_point_vars[var_num].MR_value_kind == MR_VALUE_PROG_VAR)
+        {
+            fprintf(out, "%-20s %6u\n",
+                MR_point.MR_point_vars[var_num].MR_value_var.MR_var_fullname,
+                MR_term_size(MR_point.MR_point_vars[var_num].MR_value_type,
+                    MR_point.MR_point_vars[var_num].MR_value_value));
+        }
     }
 
     return NULL;

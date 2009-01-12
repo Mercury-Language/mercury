@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred term_size_words.main/2-0 (det) term_size_words.m:18
+      E1:     C1 CALL pred term_size_words.main/2-0 (det) term_size_words.m:23
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -27,10 +27,10 @@ mdb> finish
 mdb> print *
        IntList (arg 1)        	[1, 2, 3]
        DoubleIntList (arg 2)  	[1, 2, 3, 1, 2, 3]
-       FloatList (arg 3)      	[1.00000000000000, 2.00000000000000, 3.00000000000000]
-       PairList (arg 4)       	[-(1, 1.00000000000000), -(2, 2.00000000000000), -(3, 3.00000000000000)]
+       FloatList (arg 3)      	[1.0, 2.0, 3.0]
+       PairList (arg 4)       	[1 - 1.0, 2 - 2.0, 3 - 3.0]
        UnivList (arg 5)       	[univ_cons(1), univ_cons(2), univ_cons(3)]
-       Univ (arg 6)           	univ_cons(node(node(leaf, 2, -/2, leaf), 1, -(1.00000000000000, "one"), leaf))
+       Univ (arg 6)           	univ_cons(node(node(leaf, 2, -/2, leaf), 1, -(1.0, "one"), leaf))
 mdb> term_size *
 IntList                   6
 DoubleIntList            12
@@ -43,7 +43,7 @@ mdb> continue -n -S
 ["a", "bb", "ccc"]
 node(leaf, "one", 1, node(leaf, "two", 2, leaf))
 [1, 2, 3, 1, 2, 3]
-[1.00000000000000, 2.00000000000000, 3.00000000000000]
-[1 - 1.00000000000000, 2 - 2.00000000000000, 3 - 3.00000000000000]
+[1.0, 2.0, 3.0]
+[1 - 1.0, 2 - 2.0, 3 - 3.0]
 [univ_cons(1), univ_cons(2), univ_cons(3)]
-univ_cons(node(node(leaf, 2, 2.00000000000000 - "two", leaf), 1, 1.00000000000000 - "one", leaf))
+univ_cons(node(node(leaf, 2, 2.0 - "two", leaf), 1, 1.0 - "one", leaf))

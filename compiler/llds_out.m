@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -5339,7 +5339,6 @@ output_rval_const(llconst_data_addr(DataAddr, MaybeOffset), !IO) :-
         MaybeOffset = yes(Offset),
         io.write_string("((", !IO),
         output_llds_type_cast(data_ptr, !IO),
-        io.write_string("&", !IO),
         output_data_addr(DataAddr, !IO),
         io.write_string(") + ", !IO),
         io.write_int(Offset, !IO),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003-2004, 2006-2007 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004, 2006-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,7 +114,7 @@ new(Semaphore, !IO) :-
     MR_Word         sem_mem;
     ML_Semaphore    *sem;
 
-    MR_incr_hp(sem_mem,
+    MR_alloc_heap(sem_mem,
         MR_round_up(sizeof(ML_Semaphore), sizeof(MR_Word)));
     sem = (ML_Semaphore *) sem_mem;
     sem->count = Count;

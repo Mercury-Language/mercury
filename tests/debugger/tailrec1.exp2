@@ -1,0 +1,129 @@
+      E1:     C1 CALL pred tailrec1.main/2-0 (det) tailrec1.m:17
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> table_io allow
+mdb> table_io start
+I/O tabling started.
+mdb> context none
+Contexts will not be printed.
+mdb> break tailrec1_read_line
+ 0: + stop  interface pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> continue
+      E2:     C2 CALL pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> finish
+      E3:     C2 EXIT pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> print *
+       Stream (arg 1)         	stream(0, input, text, file("tailrec1.data"))
+       Line (arg 2)           	"This"
+mdb> stack
+   0       pred tailrec1.tailrec1_read_line/4-0 (det)
+   1       pred tailrec1.tailrec1_read_strings/5-0 (det)
+   2       pred tailrec1.main/2-0 (det)
+mdb> stack -d
+   0      E2      C2    3 pred tailrec1.tailrec1_read_line/4-0 (det) (empty)
+   1      E4      C3    2 pred tailrec1.tailrec1_read_strings/5-0 (det) c1;
+   2      E1      C1    1 pred tailrec1.main/2-0 (det) c3;s2-2;c3;
+mdb> continue
+      E5:     C4 CALL pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> finish
+      E6:     C4 EXIT pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> stack
+   0       pred tailrec1.tailrec1_read_line/4-0 (det)
+   1    2x pred tailrec1.tailrec1_read_strings/5-0 (det)
+   3       pred tailrec1.main/2-0 (det)
+mdb> stack -d
+   0      E5      C4    4 pred tailrec1.tailrec1_read_line/4-0 (det) (empty)
+   1      E7      C5    3 pred tailrec1.tailrec1_read_strings/5-0 (det) c1;
+   3      E1      C1    1 pred tailrec1.main/2-0 (det) c3;s2-2;c3;
+mdb> continue
+      E8:     C6 CALL pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> finish
+      E9:     C6 EXIT pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> continue
+     E10:     C7 CALL pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> finish
+     E11:     C7 EXIT pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> step
+     E12:     C8 COND pred tailrec1.tailrec1_read_strings/5-0 (det) c2;?;
+mdb> step
+     E13:     C8 ELSE pred tailrec1.tailrec1_read_strings/5-0 (det) c2;e;
+mdb> step
+     E14:     C9 TAIL pred tailrec1.tailrec1_read_strings/5-0 (det) c2;e;c8;
+mdb> print *
+       Stream (arg 1)         	stream(0, input, text, file("tailrec1.data"))
+       STATE_VARIABLE_Words_0 (arg 2)	["a", "is", "This"]
+       FinalSizeVar25         	8
+       KnownSize              	2
+       STATE_VARIABLE_Words_1 	["list", "a", "is", "This"]
+       SizeVar23              	6
+       Word                   	"list"
+mdb> continue
+     E15:    C10 CALL pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> finish
+     E16:    C10 EXIT pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> continue
+     E17:    C11 CALL pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> finish
+     E18:    C11 EXIT pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> print *
+       Stream (arg 1)         	stream(0, input, text, file("tailrec1.data"))
+       Line (arg 2)           	"words"
+mdb> retry -f
+     E17:    C11 CALL pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> stack
+   0       pred tailrec1.tailrec1_read_line/4-0 (det)
+   1    6x pred tailrec1.tailrec1_read_strings/5-0 (det)
+   7       pred tailrec1.main/2-0 (det)
+mdb> stack -d
+   0     E17     C11    8 pred tailrec1.tailrec1_read_line/4-0 (det) (empty)
+   1     E19     C12    7 pred tailrec1.tailrec1_read_strings/5-0 (det) c1;
+   7      E1      C1    1 pred tailrec1.main/2-0 (det) c3;s2-2;c3;
+mdb> finish
+     E18:    C11 EXIT pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> print *
+       Stream (arg 1)         	stream(0, input, text, file("tailrec1.data"))
+       Line (arg 2)           	"words"
+mdb> level 1
+Ancestor level set to 1:
+   1  pred tailrec1.tailrec1_read_strings/5-0 (det)
+mdb> print *
+       Stream (arg 1)         	stream(0, input, text, file("tailrec1.data"))
+       STATE_VARIABLE_Words_0 (arg 2)	["of", "list", "a", "is", "This"]
+mdb> level 2
+The stack frame of that call has been reused.
+mdb> retry -f 3
+cannot retry a call whose stack frame has been reused
+mdb> retry -f 1
+     E19:    C12 CALL pred tailrec1.tailrec1_read_strings/5-0 (det)
+mdb> stack
+   0    6x pred tailrec1.tailrec1_read_strings/5-0 (det)
+   6       pred tailrec1.main/2-0 (det)
+mdb> stack -d
+   0     E19     C12    7 pred tailrec1.tailrec1_read_strings/5-0 (det) (empty)
+   6      E1      C1    1 pred tailrec1.main/2-0 (det) c3;s2-2;c3;
+mdb> continue
+     E17:    C11 CALL pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> finish
+     E18:    C11 EXIT pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> continue
+     E20:    C13 CALL pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> finish
+     E21:    C13 EXIT pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> step
+     E22:    C14 COND pred tailrec1.tailrec1_read_strings/5-0 (det) c2;?;
+mdb> next
+     E23:    C14 THEN pred tailrec1.tailrec1_read_strings/5-0 (det) c2;t;
+mdb> next 3
+Due to the reuse of stack frames by tail recursive procedures,
+this command is a no-op from this port.
+mdb> delete *
+ 0: E stop  interface pred tailrec1.tailrec1_read_line/4-0 (det)
+mdb> continue
+words
+of
+list
+a
+is
+This
+6
