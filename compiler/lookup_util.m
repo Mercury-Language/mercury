@@ -36,7 +36,8 @@
 :- pred figure_out_output_vars(code_info::in, hlds_goal_info::in,
     list(prog_var)::out) is det.
 
-    % Is the input goal a conjunction of unifications?
+    % Is the input goal a conjunction of unifications? A
+    % from_ground_term_construct scope counts as a unification.
     %
 :- pred goal_is_conj_of_unify(hlds_goal::in) is semidet.
 
@@ -131,7 +132,12 @@ only_constant_goals([Goal | Goals]) :-
     % We could allow calls as well. Some procedures have an output inst
     % that fixes the value of the output variable, which is thus a constant.
     % However, calls to such procedures should have been inlined by now.
-    GoalExpr = unify(_, _, _, _, _),
+    (
+        GoalExpr = unify(_, _, _, _, _)
+    ;
+        GoalExpr = scope(Reason, _),
+        Reason = from_ground_term(_, from_ground_term_construct)
+    ),
     only_constant_goals(Goals).
 
 generate_constants_for_arm(Goal, Vars, StoreMap, !MaybeEnd, CaseRvals,
