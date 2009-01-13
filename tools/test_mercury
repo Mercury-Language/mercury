@@ -499,6 +499,7 @@ case $HOST in
             asm_fast.gc.tr.debug        \
             asm_fast.gc.profdeep        \
             asm_fast.gc.decldebug       \
+            asm_fast.gc.tsc.tr.debug    \
             hlc.gc                      \
             hlc.gc.tr                   \
             hlc.gc.trseg"
@@ -511,6 +512,7 @@ case $HOST in
             hlc.gc.trseg.prof           \
             hlc.gc.trseg.memprof        \
             hlc.gc.trseg.ll_debug       \
+            asm_fast.gc.tsw.tr.debug    \
             asm_fast.gc.trseg.debug     \
             asm_fast.gc.trseg.decldebug \
             asm_fast.gc.trseg.profdeep"
