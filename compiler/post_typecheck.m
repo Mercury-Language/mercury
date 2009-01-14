@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1103,7 +1103,8 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
     list.member(ConsDefn, ConsDefns),
 
     % Overloading resolution ignores the class constraints.
-    ConsDefn = hlds_cons_defn(ConsExistQVars, _, ConsArgs, ConsTypeCtor, _),
+    ConsDefn = hlds_cons_defn(ConsTypeCtor, _, _, _, ConsExistQVars, _,
+        ConsArgs, _),
     ConsTypeCtor = TypeCtor,
 
     module_info_get_type_table(ModuleInfo, Types),
@@ -1277,9 +1278,10 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
 get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
         TermType, ActualArgTypes, ActualExistQVars, !PredInfo) :-
     % Split the list of argument types at the named field.
-    type_util.get_type_and_cons_defn(ModuleInfo, TermType, ConsId,
-        TypeDefn, ConsDefn),
-    ConsDefn = hlds_cons_defn(ConsExistQVars, ConsConstraints, ConsArgs, _, _),
+    type_to_ctor_det(TermType, TypeCtor),
+    get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+    ConsDefn = hlds_cons_defn(_, _, TypeParams, _, ConsExistQVars,
+        ConsConstraints, ConsArgs, _),
     ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgs),
 
     (
@@ -1324,7 +1326,6 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
             unexpected(this_file, "existq_tvar bound to non-var")
         )
     ),
-    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     ( type_to_ctor_and_args(TermType, _, TypeArgs) ->
         map.from_corresponding_lists(TypeParams, TypeArgs, UnivTSubst)
     ;

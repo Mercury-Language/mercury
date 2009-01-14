@@ -1034,7 +1034,7 @@ constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
         (
             type_util.get_cons_defn(ModuleInfo, TypeCtor, CtorId, ConsDefn)
         ->
-            ConsDefn = hlds_cons_defn(_, _, ConsArgDefns, _, _),
+            ConsArgDefns = ConsDefn ^ cons_args,
             ConsArgTypes0 = list.map(func(C) = C ^ arg_type, ConsArgDefns),
 
             % There may have been additional types inserted to hold the
@@ -1532,9 +1532,9 @@ ml_field_names_and_types(Info, Type, ConsId, ArgTypes, Fields) :-
         Fields = list.map(MakeUnnamedField, FieldTypes)
     ;
         ml_gen_info_get_module_info(Info, ModuleInfo),
-        type_util.get_type_and_cons_defn(ModuleInfo, Type, ConsId,
-            _TypeDefn, ConsDefn),
-        ConsDefn = hlds_cons_defn(_, _, Fields0, _, _),
+        type_to_ctor_det(Type, TypeCtor),
+        get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+        Fields0 = ConsDefn ^ cons_args,
 
         % Add the fields for any type_infos and/or typeclass_infos inserted
         % for existentially quantified data types. For these, we just copy

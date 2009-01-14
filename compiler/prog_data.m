@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1403,14 +1403,14 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 
 :- type kvar_type
     --->    kind_var.
-:- type kvar        ==  var(kvar_type).
+:- type kvar ==  var(kvar_type).
 
     % The kinds of type variables. For efficiency, we only have entries
     % for type variables that have a kind other than `star'. Any type variable
     % not appearing in this map, which will usually be the majority of type
     % variables, can be assumed to have kind `star'.
     %
-:- type tvar_kind_map   ==  map(tvar, kind).
+:- type tvar_kind_map == map(tvar, kind).
 
 :- pred get_tvar_kind(tvar_kind_map::in, tvar::in, kind::out) is det.
 

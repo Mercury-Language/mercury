@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -361,6 +361,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
     get_type_defn_tparams(TypeDefn, Args),
+    get_type_defn_kind_map(TypeDefn, KindMap),
     get_type_defn_body(TypeDefn, Body),
     get_type_defn_status(TypeDefn, Status),
     get_type_defn_need_qualifier(TypeDefn, NeedQual),
@@ -370,7 +371,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
         module_info_get_cons_table(!.ModuleInfo, Ctors0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         module_info_get_ctor_field_table(!.ModuleInfo, CtorFields0),
-        ctors_add(ConsList, TypeCtor, TVarSet, NeedQual, PQInfo,
+        ctors_add(ConsList, TypeCtor, TVarSet, Args, KindMap, NeedQual, PQInfo,
             Context, Status, CtorFields0, CtorFields, Ctors0, Ctors,
             [], CtorAddSpecs),
         module_info_set_cons_table(Ctors, !ModuleInfo),
@@ -675,32 +676,34 @@ convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
     ).
 
 :- pred ctors_add(list(constructor)::in, type_ctor::in, tvarset::in,
-    need_qualifier::in, partial_qualifier_info::in, prog_context::in,
+    list(type_param)::in, tvar_kind_map::in, need_qualifier::in,
+    partial_qualifier_info::in, prog_context::in,
     import_status::in, ctor_field_table::in, ctor_field_table::out,
     cons_table::in, cons_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-ctors_add([], _, _, _, _, _, _, !FieldNameTable, !Ctors, !Specs).
-ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, _Context,
-        ImportStatus, !FieldNameTable, !Ctors, !Specs) :-
+ctors_add([], _, _, _, _, _, _, _, _, !FieldNameTable, !Ctors, !Specs).
+ctors_add([Ctor | Rest], TypeCtor, TVarSet, TypeParams, KindMap, NeedQual,
+        PQInfo, _Context, ImportStatus, !FieldNameTable, !Ctors, !Specs) :-
     Ctor = ctor(ExistQVars, Constraints, Name, Args, Context),
     QualifiedConsId = make_cons_id(Name, Args, TypeCtor),
-    ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, TypeCtor,
-        Context),
-    %
-    % Insert the fully-qualified version of this cons_id into the
-    % cons_table.
-    % Also check that there is at most one definition of a given
-    % cons_id in each type.
-    %
+    ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
+        ExistQVars, Constraints, Args, Context),
+
+    % Insert the fully-qualified version of this cons_id into the cons_table.
+    % Also check that there is at most one definition of a given cons_id
+    % in each type.
+
     ( map.search(!.Ctors, QualifiedConsId, QualifiedConsDefns0) ->
         QualifiedConsDefns1 = QualifiedConsDefns0
     ;
         QualifiedConsDefns1 = []
     ),
     (
-        list.member(OtherConsDefn, QualifiedConsDefns1),
-        OtherConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
+        some [OtherConsDefn] (
+            list.member(OtherConsDefn, QualifiedConsDefns1),
+            OtherConsDefn ^ cons_type_ctor = TypeCtor
+        )
     ->
         QualifiedConsIdStr = cons_id_to_string(QualifiedConsId),
         TypeCtorStr = type_ctor_to_string(TypeCtor),
@@ -741,8 +744,8 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, _Context,
     ;
         unexpected(this_file, "ctors_add: cons_id not qualified")
     ),
-    ctors_add(Rest, TypeCtor, TVarSet, NeedQual, PQInfo, Context,
-        ImportStatus, !FieldNameTable, !Ctors, !Specs).
+    ctors_add(Rest, TypeCtor, TVarSet, TypeParams, KindMap, NeedQual,
+        PQInfo, Context, ImportStatus, !FieldNameTable, !Ctors, !Specs).
 
 :- pred add_ctor(string::in, int::in, hlds_cons_defn::in, module_name::in,
     cons_id::out, cons_table::in, cons_table::out) is det.

@@ -979,12 +979,12 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
     ->
         TypeCtors1 = list.map(
             (func(ConsDefn) = TypeCtor :-
-                ConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
+                ConsDefn ^ cons_type_ctor = TypeCtor
             ), MatchingConstructors)
     ;
         TypeCtors1 = []
     ),
-    TypeCtors = list.append(TypeCtors0, TypeCtors1),
+    TypeCtors = TypeCtors0 ++ TypeCtors1,
 
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     (

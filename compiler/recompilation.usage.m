@@ -1,16 +1,16 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 University of Melbourne.
+% Copyright (C) 2001-2009 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: recompilation.usage.m.
 % Main author: stayl.
-% 
+%
 % Write the file recording which imported items were used by a compilation.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module recompilation.usage.
@@ -747,7 +747,7 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
     MatchingConstructors =
         list.map(
             (func(ConsDefn) = Ctor :-
-                ConsDefn = hlds_cons_defn(_,_,_, TypeCtor, _),
+                ConsDefn ^ cons_type_ctor = TypeCtor,
                 Ctor = resolved_functor_constructor(
                     type_ctor_to_item_name(TypeCtor))
             ),
@@ -983,7 +983,7 @@ find_items_used_by_item(function_item, ItemId, !Info) :-
 find_items_used_by_item(functor_item, _, !Info) :-
     unexpected(this_file, "find_items_used_by_item: functor").
 find_items_used_by_item(mutable_item, _MutableItemId, !Info).
-    % XXX What should be done here??? 
+    % XXX What should be done here???
 find_items_used_by_item(foreign_proc_item, _, !Info).
     %
     % Mutables are expanded into other item types which track the

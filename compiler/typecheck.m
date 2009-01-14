@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2926,14 +2926,11 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     % recording the result, or by putting the result into the HLDS_ConsDefn
     % or some related data structure.
 
-    HLDS_ConsDefn = hlds_cons_defn(ExistQVars0, ExistProgConstraints, Args,
-        TypeCtor, _),
+    HLDS_ConsDefn = hlds_cons_defn(TypeCtor, ConsTypeVarSet, ConsTypeParams,
+        ConsTypeKinds, ExistQVars0, ExistProgConstraints, Args, _),
     ArgTypes = list.map(func(C) = C ^ arg_type, Args),
     typecheck_info_get_types(Info, Types),
     map.lookup(Types, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),
-    hlds_data.get_type_defn_tparams(TypeDefn, ConsTypeParams),
-    hlds_data.get_type_defn_kind_map(TypeDefn, ConsTypeKinds),
     hlds_data.get_type_defn_body(TypeDefn, Body),
 
     % If this type has `:- pragma foreign_type' declarations, we

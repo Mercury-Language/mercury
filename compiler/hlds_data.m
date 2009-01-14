@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,25 +59,35 @@
     %
 :- type hlds_cons_defn
     --->    hlds_cons_defn(
-                % maybe add tvarset here?
-                % you can get the tvarset from the hlds.type_defn.
-                cons_exist_tvars    :: existq_tvars,
-                                    % existential type vars
-
-                cons_constraints    :: list(prog_constraint),
-                                    % existential class constraints
-
-                cons_args           :: list(constructor_arg),
-                                    % The field names and types of the
-                                    % arguments of this functor (if any)
-
+                % The result type, i.e. the type constructor to which this
+                % cons_defn belongs.
                 cons_type_ctor      :: type_ctor,
-                                    % The result type, i.e. the type to which
-                                    % this cons_defn belongs.
 
+                % These three fields are copies of the first three fields
+                % of the hlds_type_defn for cons_type_ctor. They specify
+                % the tvarset from which the type variables in the argument
+                % types come, the type constructor's type parameter list,
+                % and the kinds of the type variables.
+                %
+                % These copies are here because code that wants to process
+                % the types of the cons_id's arguments (the cons_args field)
+                % typically needs to know them. Having a copy here avoids
+                % a lookup of the type definition.
+                cons_type_tvarset   :: tvarset,
+                cons_type_params    :: list(type_param),
+                cons_type_kinds     :: tvar_kind_map,
+
+                % Existential type variables and class constraints.
+                cons_exist_tvars    :: existq_tvars,
+                cons_constraints    :: list(prog_constraint),
+
+                % The field names and types of the arguments of this functor
+                % (if any).
+                cons_args           :: list(constructor_arg),
+
+                % The location of this constructor definition in the
+                % original source code.
                 cons_context        :: prog_context
-                                    % The location of this constructor
-                                    % definition in the original source code.
             ).
 
 %-----------------------------------------------------------------------------%
@@ -477,6 +487,10 @@ get_secondary_tag(shared_with_reserved_addresses_tag(_RAs, TagValue))
 
 :- type hlds_type_defn
     --->    hlds_type_defn(
+                % Note that the first three of these fields are duplicated
+                % in the hlds_cons_defns of the data constructors of the type
+                % (if any).
+
                 % Names of the type variables, if any.
                 type_defn_tvarset           :: tvarset,
 

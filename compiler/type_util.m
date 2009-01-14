@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,21 +215,17 @@
 :- pred cons_id_arg_types(module_info::in, mer_type::in,
     cons_id::out, list(mer_type)::out) is nondet.
 
-    % Given a type and a cons_id, look up the definitions of that type
-    % and constructor. Aborts if the cons_id is not user-defined.
+    % Given a type constructor and one of its cons_ids, look up the definition
+    % of that cons_id. Aborts if the cons_id is not user-defined.
     % Note that this will NOT bind type variables in the functor's argument
     % types; they will be left unbound, so the caller can find out the
     % original types from the constructor definition. The caller must do
     % that substitution itself if required.
     %
-:- pred get_type_and_cons_defn(module_info::in, mer_type::in,
-    cons_id::in, hlds_type_defn::out, hlds_cons_defn::out) is det.
-
-    % Like get_type_and_cons_defn (above), except that it only returns
-    % the definition of the constructor, not the type.
-    %
 :- pred get_cons_defn(module_info::in, type_ctor::in, cons_id::in,
     hlds_cons_defn::out) is semidet.
+:- pred get_cons_defn_det(module_info::in, type_ctor::in, cons_id::in,
+    hlds_cons_defn::out) is det.
 
     % Given a type and a cons_id, look up the definition of that constructor;
     % if it is existentially typed, return its definition, otherwise fail.
@@ -938,13 +934,11 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
         ->
             ArgTypes = TypeArgs
         ;
-            do_get_type_and_cons_defn(ModuleInfo, TypeCtor, ConsId, TypeDefn,
-                ConsDefn),
-            ConsDefn = hlds_cons_defn(ExistQVars0, _Constraints0, Args, _, _),
+            get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+            ConsDefn = hlds_cons_defn(_, _, TypeParams, _, ExistQVars0, _,
+                Args, _),
             Args = [_ | _]
         ->
-            hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
-
             % XXX handle ExistQVars
             (
                 ExistQVars0 = []
@@ -981,42 +975,21 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     map.lookup(Ctors, ConsId, ConsDefns),
     list.member(ConsDefn, ConsDefns),
 
-    ConsDefn = hlds_cons_defn(ExistQVars0, _, Args, TypeCtor, _),
+    ConsDefn = hlds_cons_defn(TypeCtor, _, TypeParams, _, ExistQVars0, _,
+        Args, _),
 
     % XXX handle ExistQVars
     ExistQVars0 = [],
-
-    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
 
     map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
     ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
     apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes).
 
-is_existq_cons(ModuleInfo, VarType, ConsId) :-
-    is_existq_cons(ModuleInfo, VarType, ConsId, _).
-
 :- pred is_existq_cons(module_info::in, mer_type::in, cons_id::in,
     hlds_cons_defn::out) is semidet.
 
-get_type_and_cons_defn(ModuleInfo, Type, ConsId, TypeDefn, ConsDefn) :-
-    (
-        type_to_ctor_and_args(Type, TypeCtor, _),
-        do_get_type_and_cons_defn(ModuleInfo,
-            TypeCtor, ConsId, TypeDefnPrime, ConsDefnPrime)
-    ->
-        TypeDefn = TypeDefnPrime,
-        ConsDefn = ConsDefnPrime
-    ;
-        unexpected(this_file, "get_type_and_cons_defn")
-    ).
-
-:- pred do_get_type_and_cons_defn(module_info::in, type_ctor::in, cons_id::in,
-    hlds_type_defn::out, hlds_cons_defn::out) is semidet.
-
-do_get_type_and_cons_defn(ModuleInfo, TypeCtor, ConsId, TypeDefn, ConsDefn) :-
-    get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-    module_info_get_type_table(ModuleInfo, Types),
-    map.lookup(Types, TypeCtor, TypeDefn).
+is_existq_cons(ModuleInfo, VarType, ConsId) :-
+    is_existq_cons(ModuleInfo, VarType, ConsId, _).
 
 get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     module_info_get_cons_table(ModuleInfo, Ctors),
@@ -1024,22 +997,22 @@ get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     map.search(Ctors, ConsId, ConsDefns),
     MatchingCons =
         (pred(ThisConsDefn::in) is semidet :-
-            ThisConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
+            ThisConsDefn ^ cons_type_ctor = TypeCtor
         ),
     list.filter(MatchingCons, ConsDefns, [ConsDefn]).
 
-    % Given a type and a cons_id, look up the definition of that constructor;
-    % if it is existentially typed, return its definition, otherwise fail.
+get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
+    ( get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefnPrime) ->
+        ConsDefn = ConsDefnPrime
+    ;
+        unexpected(this_file, "get_cons_defn_det: get_cons_defn failed")
+    ).
+
 get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
     is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
-    ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, _, _),
+    ConsDefn = hlds_cons_defn(_TypeCtor, TypeVarSet, TypeParams, KindMap,
+        ExistQVars, Constraints, Args, _Context),
     ArgTypes = list.map(func(C) = C ^ arg_type, Args),
-    module_info_get_type_table(ModuleInfo, Types),
-    type_to_ctor_and_args(VarType, TypeCtor, _),
-    map.lookup(Types, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_tvarset(TypeDefn, TypeVarSet),
-    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
-    hlds_data.get_type_defn_kind_map(TypeDefn, KindMap),
     prog_type.var_list_to_type_list(KindMap, TypeParams, TypeCtorArgs),
     type_to_ctor_and_args(VarType, TypeCtor, _),
     construct_type(TypeCtor, TypeCtorArgs, RetType),
@@ -1049,8 +1022,7 @@ get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
 is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
     type_to_ctor_and_args(VarType, TypeCtor, _),
     get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-    ConsDefn = hlds_cons_defn(ExistQVars, _, _, _, _),
-    ExistQVars = [_ | _].
+    ConsDefn ^ cons_exist_tvars = [_ | _].
 
 %-----------------------------------------------------------------------------%
 
