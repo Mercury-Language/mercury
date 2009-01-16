@@ -325,7 +325,7 @@ mlds_output_src_file(Indent, MLDS, !IO) :-
     io.nl(!IO),
     mlds_output_src_end(Indent, ModuleName, !IO).
 
-:- func mlds_get_env_var_names(mlds_defns) = set(string).
+:- func mlds_get_env_var_names(list(mlds_defn)) = set(string).
 
 mlds_get_env_var_names(Defns) = EnvVarNameSet :-
     list.filter_map(mlds_get_env_var_names_from_defn, Defns, EnvVarNameSets),
@@ -595,9 +595,9 @@ mlds_output_init_fn_decls(ModuleName, InitPreds, FinalPreds, !IO) :-
         io.write_string(";\n", !IO)
     ).
 
-:- pred mlds_output_init_fn_defns(mlds_module_name::in, mlds_defns::in,
-    mlds_defns::in, list(string)::in, list(string)::in, io::di, io::uo)
-    is det.
+:- pred mlds_output_init_fn_defns(mlds_module_name::in,
+    list(mlds_defn)::in, list(mlds_defn)::in,
+    list(string)::in, list(string)::in, io::di, io::uo) is det.
 
 mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns, InitPreds,
         FinalPreds, !IO) :-
@@ -724,8 +724,8 @@ need_to_init_entries(Globals) :-
 
     % Generate calls to MR_init_entry() for the specified functions.
     %
-:- pred mlds_output_calls_to_init_entry(mlds_module_name::in, mlds_defns::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_calls_to_init_entry(mlds_module_name::in,
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
 mlds_output_calls_to_init_entry(_ModuleName, [], !IO).
 mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns], !IO) :-
@@ -740,7 +740,7 @@ mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns], !IO) :-
     % type_ctor_infos.
     %
 :- pred mlds_output_calls_to_register_tci(mlds_module_name::in,
-    mlds_defns::in, io::di, io::uo) is det.
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
 mlds_output_calls_to_register_tci(_ModuleName, [], !IO).
 mlds_output_calls_to_register_tci(ModuleName,
@@ -1272,14 +1272,14 @@ mlds_output_exported_enum_constant(NameAndTag, !IO) :-
 % Code to output declarations and definitions
 %
 
-:- pred mlds_output_decls(indent::in, mlds_module_name::in, mlds_defns::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_decls(indent::in, mlds_module_name::in,
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
 mlds_output_decls(Indent, ModuleName, Defns, !IO) :-
     list.foldl(mlds_output_decl_blank_line(Indent, ModuleName), Defns, !IO).
 
 :- pred mlds_output_defns(indent::in, bool::in, mlds_module_name::in,
-    mlds_defns::in, io::di, io::uo) is det.
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
 mlds_output_defns(Indent, Separate, ModuleName, Defns, !IO) :-
     OutputDefn = mlds_output_defn(Indent, Separate, ModuleName),
@@ -1315,7 +1315,7 @@ mlds_output_decl(Indent, ModuleName, Defn, !IO) :-
         % actually use the enum types.
 
         DefnBody = mlds_class(ClassDefn),
-        ClassDefn ^ kind = mlds_enum
+        ClassDefn ^ mcd_kind = mlds_enum
     ->
         true
     ;
@@ -1509,7 +1509,7 @@ mlds_output_gc_statement(Indent, Name, GCStatement, MaybeNewLine,
     mlds_class_defn::in, io::di, io::uo) is det.
 
 mlds_output_class_decl(_Indent, Name, ClassDefn, !IO) :-
-    ClassKind = ClassDefn ^ kind,
+    ClassKind = ClassDefn ^ mcd_kind,
     (
         ClassKind = mlds_enum,
         io.write_string("enum ", !IO),
@@ -1645,7 +1645,7 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
     % for an enumeration type.
     %
 :- pred mlds_output_enum_constants(indent::in, mlds_module_name::in,
-    mlds_defns::in, io::di, io::uo) is det.
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
 mlds_output_enum_constants(Indent, EnumModuleName, Members, !IO) :-
     % Select the enumeration constants from the list of members

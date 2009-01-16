@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1944,7 +1944,7 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 
 append_pseudo_decl(PseudoDecl, Module0, Module) :-
     Items0 = Module0 ^ items,
-    Items = cord.snoc(Items0, make_pseudo_decl(PseudoDecl)),
+    Items = snoc(Items0, make_pseudo_decl(PseudoDecl)),
     Module = Module0 ^ items := Items.
 
 make_pseudo_decl(PseudoDecl) = Item :-

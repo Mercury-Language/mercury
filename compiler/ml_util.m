@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_util.m.
 % Main author: fjh, trd.
-% 
+%
 % This module contains utility predicates for manipulating the MLDS.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_util.
 :- interface.
 
-:- import_module libs.globals.  % for foreign_language
+:- import_module libs.globals.          % for foreign_language
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_data.
 :- import_module ml_backend.mlds.
@@ -31,7 +31,7 @@
     % Succeeds iff the definitions contain the entry point to
     % the a main predicate.
     %
-:- pred defns_contain_main(mlds_defns::in) is semidet.
+:- pred defns_contain_main(list(mlds_defn)::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -48,9 +48,6 @@
 
     % Nondeterministically generates sub-statements from statements.
     %
-:- pred statements_contains_statement(statements::in,
-    statement::out) is nondet.
-
 :- pred statement_contains_statement(statement::in, statement::out)
     is multi.
 
@@ -117,7 +114,7 @@
     % Succeeds iff these definitions contains a reference to
     % the specified variable.
     %
-:- pred defns_contains_var(mlds_defns::in, mlds_data::in) is semidet.
+:- pred defns_contains_var(list(mlds_defn)::in, mlds_data::in) is semidet.
 
     % Succeeds iff this definition contains a reference to
     % the specified variable.
@@ -135,8 +132,9 @@
 % rval_contains_var:
 % lvals_contains_var:
 % lval_contains_var:
-%   Succeeds iff the specified construct contains a reference to
-%   the specified variable.
+%
+% Succeed iff the specified construct contains a reference to
+% the specified variable.
 
 :- pred initializer_contains_var(mlds_initializer::in, mlds_data::in)
     is semidet.
@@ -248,7 +246,11 @@ can_optimize_tailcall(Name, Call) :-
 % statement_contains_statement:
 % statements_contains_statement:
 % maybe_statement_contains_statement:
-%   nondeterministically generates sub-statements from statements.
+%
+% Nondeterministically generate sub-statements from statements.
+
+:- pred statements_contains_statement(list(statement)::in,
+    statement::out) is nondet.
 
 statements_contains_statement(Statements, SubStatement) :-
     list.member(Statement, Statements),
@@ -284,30 +286,19 @@ stmt_contains_statement(Stmt, SubStatement) :-
         ; default_contains_statement(Default, SubStatement)
         )
     ;
-        Stmt = ml_stmt_label(_Label),
-        fail
-    ;
-        Stmt = ml_stmt_goto(_),
-        fail
-    ;
-        Stmt = ml_stmt_computed_goto(_Rval, _Labels),
-        fail
-    ;
-        Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
-        fail
-    ;
-        Stmt = ml_stmt_return(_Rvals),
-        fail
-    ;
-        Stmt = ml_stmt_do_commit(_Ref),
-        fail
-    ;
         Stmt = ml_stmt_try_commit(_Ref, Statement, Handler),
         ( statement_contains_statement(Statement, SubStatement)
         ; statement_contains_statement(Handler, SubStatement)
         )
     ;
-        Stmt = ml_stmt_atomic(_AtomicStmt),
+        ( Stmt = ml_stmt_label(_Label)
+        ; Stmt = ml_stmt_goto(_)
+        ; Stmt = ml_stmt_computed_goto(_Rval, _Labels)
+        ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall)
+        ; Stmt = ml_stmt_return(_Rvals)
+        ; Stmt = ml_stmt_do_commit(_Ref)
+        ; Stmt = ml_stmt_atomic(_AtomicStmt)
+        ),
         fail
     ).
 
@@ -332,10 +323,11 @@ default_contains_statement(default_case(Statement), SubStatement) :-
 % statement_contains_var:
 % trail_op_contains_var:
 % atomic_stmt_contains_var:
-%   Succeeds iff the specified construct contains a reference to
-%   the specified variable.
+%
+% Succeed iff the specified construct contains a reference to
+% the specified variable.
 
-:- pred statements_contains_var(statements::in, mlds_data::in)
+:- pred statements_contains_var(list(statement)::in, mlds_data::in)
     is semidet.
 
 statements_contains_var(Statements, Name) :-
@@ -379,10 +371,9 @@ stmt_contains_var(Stmt, Name) :-
         ; default_contains_var(Default, Name)
         )
     ;
-        Stmt = ml_stmt_label(_Label),
-        fail
-    ;
-        Stmt = ml_stmt_goto(_),
+        ( Stmt = ml_stmt_label(_Label)
+        ; Stmt = ml_stmt_goto(_)
+        ),
         fail
     ;
         Stmt = ml_stmt_computed_goto(Rval, _Labels),
@@ -541,9 +532,10 @@ defn_is_public(Defn) :-
 % defn_contains_var:
 % defn_body_contains_var:
 % function_body_contains_var:
-%   Succeeds iff the specified construct contains a reference to
-%   the specified variable.
 %
+% Succeed iff the specified construct contains a reference to
+% the specified variable.
+
 defns_contains_var(Defns, Name) :-
     list.member(Defn, Defns),
     defn_contains_var(Defn, Name).
@@ -585,8 +577,9 @@ function_body_contains_var(body_defined_here(Statement), Name) :-
 % rval_contains_var:
 % lvals_contains_var:
 % lval_contains_var:
-%   Succeeds iff the specified construct contains a reference to
-%   the specified variable.
+%
+% Succeed iff the specified construct contains a reference to
+% the specified variable.
 
 % initializer_contains_var(no_initializer, _) :- fail.
 initializer_contains_var(init_obj(Rval), Name) :-

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -5060,7 +5060,7 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
             OptimizeInitializations),
         globals.io_set_option(optimize_initializations, bool(no), !IO),
         maybe_write_string(Verbose, "% Optimizing MLDS...\n", !IO),
-        ml_optimize.optimize(!MLDS, !IO),
+        mlds_optimize(!MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
 
         globals.io_set_option(optimize_initializations,
@@ -5115,7 +5115,7 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     (
         Optimize = yes,
         maybe_write_string(Verbose, "% Optimizing MLDS again...\n", !IO),
-        ml_optimize.optimize(!MLDS, !IO),
+        mlds_optimize(!MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         Optimize = no
@@ -5141,7 +5141,7 @@ mlds_gen_rtti_data(HLDS, !MLDS) :-
     RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
     !.MLDS = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
         FinalPreds, ExportedEnums),
-    list.append(RttiDefns, Defns0, Defns),
+    Defns = RttiDefns ++ Defns0,
     !:MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds,
         FinalPreds, ExportedEnums).
 

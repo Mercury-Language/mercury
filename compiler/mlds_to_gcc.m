@@ -449,8 +449,8 @@ mlds_output_init_fn_decls(ModuleName) -->
 	output_init_fn_name(ModuleName, "_debugger"),
 	io__write_string(";\n").
 
-:- pred mlds_output_init_fn_defns(mlds_module_name::in, mlds_defns::in,
-		mlds_defns::in, io__state::di, io__state::uo) is det.
+:- pred mlds_output_init_fn_defns(mlds_module_name::in, list(mlds_defn)::in,
+		list(mlds_defn)::in, io__state::di, io__state::uo) is det.
 
 mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns) -->
 	output_init_fn_name(ModuleName, ""),
@@ -499,15 +499,12 @@ output_init_fn_name(ModuleName, Suffix) -->
 		% Here we ensure that we only get one "mercury__" at the
 		% start of the function name.
 	{ mdbcomp__prim_data__sym_name_to_string(
-			mlds_module_name_to_sym_name(ModuleName), "__",
-			ModuleNameString0) },
-	{
-		string__prefix(ModuleNameString0, "mercury__")
-	->
+        mlds_module_name_to_sym_name(ModuleName), "__",
+        ModuleNameString0) },
+	{ string__prefix(ModuleNameString0, "mercury__") ->
 		ModuleNameString = ModuleNameString0
 	;
-		string__append("mercury__", ModuleNameString0,
-				ModuleNameString)
+		string__append("mercury__", ModuleNameString0, ModuleNameString)
 	},
 	io__write_string("void "),
 	io__write_string(ModuleNameString),
@@ -527,8 +524,8 @@ need_to_init_entries(Globals) :-
 
 	% Generate calls to MR_init_entry() for the specified functions.
 	%
-:- pred mlds_output_calls_to_init_entry(mlds_module_name::in, mlds_defns::in,
-		io__state::di, io__state::uo) is det.
+:- pred mlds_output_calls_to_init_entry(mlds_module_name::in,
+    list(mlds_defn)::in, io__state::di, io__state::uo) is det.
 
 mlds_output_calls_to_init_entry(_ModuleName, []) --> [].
 mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns]) -->
@@ -548,7 +545,7 @@ mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns]) -->
 	% type_ctor_infos.
 	%
 :- pred mlds_output_calls_to_register_tci(mlds_module_name::in,
-	mlds_defns::in, io__state::di, io__state::uo) is det.
+	list(mlds_defn)::in, io__state::di, io__state::uo) is det.
 
 mlds_output_calls_to_register_tci(_ModuleName, []) --> [].
 mlds_output_calls_to_register_tci(ModuleName,
@@ -717,7 +714,7 @@ mlds_output_name_with_cast(ModuleName, Name - Type) -->
 
 
 	% Handle MLDS definitions that occur at global scope.
-:- pred gen_defns(mlds_module_name, mlds_defns, global_info, global_info,
+:- pred gen_defns(mlds_module_name, list(mlds_defn), global_info, global_info,
 		io__state, io__state).
 :- mode gen_defns(in, in, in, out, di, uo) is det.
 
@@ -729,8 +726,8 @@ gen_defns(ModuleName, [Defn | Defns], GlobalInfo0, GlobalInfo) -->
 	% Handle MLDS definitions that are nested inside a
 	% function definition (or inside a block within a function),
 	% and which are hence local to that function.
-:- pred build_local_defns(mlds_defns, mlds_module_name, defn_info, defn_info,
-		io__state, io__state).
+:- pred build_local_defns(list(mlds_defn), mlds_module_name,
+    defn_info, defn_info, io__state, io__state).
 :- mode build_local_defns(in, in, in, out, di, uo) is det.
 
 build_local_defns([], _, DefnInfo, DefnInfo) --> [].
@@ -750,7 +747,7 @@ build_local_defns([Defn|Defns], ModuleName, DefnInfo0, DefnInfo) -->
 
 	% Handle MLDS definitions that are nested inside a type,
 	% i.e. fields of that type.
-:- pred build_field_defns(mlds_defns, mlds_module_name, global_info,
+:- pred build_field_defns(list(mlds_defn), mlds_module_name, global_info,
 		gcc__field_decls, field_table, field_table,
 		io__state, io__state).
 :- mode build_field_defns(in, in, in, out, in, out, di, uo) is det.
@@ -1431,7 +1428,7 @@ mlds_output_class_decl(_Indent, Name, ClassDefn) -->
 	% for an enumeration type.
 	%
 :- pred mlds_output_enum_constants(indent, mlds_module_name,
-		mlds_defns, io__state, io__state).
+		list(mlds_defn), io__state, io__state).
 :- mode mlds_output_enum_constants(in, in, in, di, uo) is det.
 
 mlds_output_enum_constants(Indent, EnumModuleName, Members) -->

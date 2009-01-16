@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -463,7 +463,7 @@ add_single_entry(ConsId, Goal, CasesTable0, CasesTable) :-
             State = cons_id_has_conflict,
             ConflictConsIds = ConflictConsIds0
         ),
-        Arms = cord.snoc(Arms0, Arm),
+        Arms = snoc(Arms0, Arm),
         Entry = cons_id_entry(State, Arms),
         map.det_update(CasesMap0, ConsId, Entry, CasesMap)
     ;
@@ -500,7 +500,7 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
             ConflictConsIds = ConflictConsIds0
         ),
         State = cons_id_has_conflict,
-        Arms = cord.snoc(Arms0, Arm),
+        Arms = snoc(Arms0, Arm),
         Entry = cons_id_entry(State, Arms),
         map.det_update(CasesMap0, ConsId, Entry, CasesMap)
     ;

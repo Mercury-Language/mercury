@@ -687,7 +687,7 @@ ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context, !Info) :-
     %
 :- pred ml_maybe_copy_args(mlds_arguments::in, statement::in,
     elim_info::in, mlds_type::in, mlds_type::in, mlds_context::in,
-    mlds_defns::out, statements::out) is det.
+    list(mlds_defn)::out, list(statement)::out) is det.
 
 ml_maybe_copy_args([], _, _, _, _, _, [], []).
 ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
@@ -883,10 +883,11 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     EnvDecls = [EnvVarDecl, EnvPtrVarDecl],
     InitEnv = NewObj ++ [InitEnv0] ++ LinkStackChain.
 
-:- pred ml_chain_stack_frames(mlds_defns::in, statements::in,
+:- pred ml_chain_stack_frames(list(mlds_defn)::in, list(statement)::in,
     mlds_type::in, mlds_context::in, mlds_entity_name::in,
-    mlds_module_name::in, globals::in, mlds_defns::out, mlds_initializer::out,
-    statements::out, mlds_defns::out) is det.
+    mlds_module_name::in, globals::in,
+    list(mlds_defn)::out, mlds_initializer::out,
+    list(statement)::out, list(mlds_defn)::out) is det.
 
 ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
         FuncName, ModuleName, Globals, Fields,
@@ -1038,7 +1039,7 @@ ml_gen_gc_trace_func_decl_flags = MLDS_DeclFlags :-
         Virtuality, Finality, Constness, Abstractness).
 
 :- pred extract_gc_statements(mlds_defn::in, mlds_defn::out,
-    statements::out, statements::out) is det.
+    list(statement)::out, list(statement)::out) is det.
 
 extract_gc_statements(mlds_defn(Name, Context, Flags, Body0),
         mlds_defn(Name, Context, Flags, Body), GCInitStmts, GCTraceStmts) :-
@@ -1223,7 +1224,7 @@ env_type_decl_flags = MLDS_DeclFlags :-
     % But if the block consists only of a single statement with no
     % declarations, then just return that statement.
     %
-:- func make_block_stmt(mlds_defns, statements, mlds_context)
+:- func make_block_stmt(list(mlds_defn), list(statement), mlds_context)
     = statement.
 
 make_block_stmt(VarDecls, Statements, Context) =
@@ -1367,7 +1368,7 @@ flatten_gc_statement(gc_initialiser(Statement0), gc_initialiser(Statement),
         !Info) :-
     flatten_statement(Statement0, Statement, !Info).
 
-:- pred flatten_statements(statements::in, statements::out,
+:- pred flatten_statements(list(statement)::in, list(statement)::out,
     elim_info::in, elim_info::out) is det.
 
 flatten_statements(!Statements, !Info) :-
@@ -1530,8 +1531,8 @@ save_and_restore_stack_chain(Stmt0, Stmt, ElimInfo0, ElimInfo) :-
 %   Return the remaining (non-hoisted) definitions,
 %   the list of assignment statements, and the updated elim_info.
 
-:- pred flatten_nested_defns(mlds_defns::in, statements::in,
-    mlds_defns::out, statements::out,
+:- pred flatten_nested_defns(list(mlds_defn)::in, list(statement)::in,
+    list(mlds_defn)::out, list(statement)::out,
     elim_info::in, elim_info::out) is det.
 
 flatten_nested_defns([], _, [], [], !Info).
@@ -1544,8 +1545,9 @@ flatten_nested_defns([Defn0 | Defns0], FollowingStatements, Defns,
     Defns = Defns1 ++ Defns2,
     InitStatements = InitStatements1 ++ InitStatements2.
 
-:- pred flatten_nested_defn(mlds_defn::in, mlds_defns::in,
-    statements::in, mlds_defns::out, statements::out,
+:- pred flatten_nested_defn(mlds_defn::in,
+    list(mlds_defn)::in, list(statement)::in,
+    list(mlds_defn)::out, list(statement)::out,
     elim_info::in, elim_info::out) is det.
 
 flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
@@ -1660,7 +1662,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
     % top level (if it's a static const).
     %
 :- pred ml_should_add_local_data(elim_info::in, mlds_data_name::in,
-    mlds_gc_statement::in, mlds_defns::in, statements::in)
+    mlds_gc_statement::in, list(mlds_defn)::in, list(statement)::in)
     is semidet.
 
 ml_should_add_local_data(Info, DataName, GCStatement,
@@ -1693,7 +1695,7 @@ ml_should_add_local_data(Info, DataName, GCStatement,
     % fields here?
     %
 :- pred ml_need_to_hoist(mlds_module_name::in, mlds_data_name::in,
-    mlds_defns::in, statements::in) is semidet.
+    list(mlds_defn)::in, list(statement)::in) is semidet.
 
 ml_need_to_hoist(ModuleName, DataName,
         FollowingDefns, FollowingStatements) :-
@@ -1950,7 +1952,7 @@ fixup_gc_statements(!Info) :-
     Locals = elim_info_get_local_data(!.Info),
     fixup_gc_statements_defns(Locals, !Info).
 
-:- pred fixup_gc_statements_defns(mlds_defns::in,
+:- pred fixup_gc_statements_defns(list(mlds_defn)::in,
     elim_info::in, elim_info::out) is det.
 
 fixup_gc_statements_defns([], !Info).
@@ -2113,7 +2115,7 @@ ml_env_module_name(ClassType, Globals) = EnvModuleName :-
 %   Nondeterministically return all the definitions contained
 %   in the specified construct.
 
-:- pred defns_contains_defn(mlds_defns::in, mlds_defn::out) is nondet.
+:- pred defns_contains_defn(list(mlds_defn)::in, mlds_defn::out) is nondet.
 
 defns_contains_defn(Defns, Name) :-
     list.member(Defn, Defns),
@@ -2139,7 +2141,7 @@ defn_body_contains_defn(mlds_class(ClassDefn), Name) :-
     ; defns_contains_defn(CtorDefns, Name)
     ).
 
-:- pred statements_contains_defn(statements::in, mlds_defn::out) is nondet.
+:- pred statements_contains_defn(list(statement)::in, mlds_defn::out) is nondet.
 
 statements_contains_defn(Statements, Defn) :-
     list.member(Statement, Statements),
@@ -2232,8 +2234,8 @@ add_unchain_stack_to_maybe_statement(no, no, !Info).
 add_unchain_stack_to_maybe_statement(yes(Statement0), yes(Statement), !Info) :-
     add_unchain_stack_to_statement(Statement0, Statement, !Info).
 
-:- pred add_unchain_stack_to_statements(statements::in,
-    statements::out,
+:- pred add_unchain_stack_to_statements(
+    list(statement)::in, list(statement)::out,
     elim_info::in, elim_info::out) is det.
 
 add_unchain_stack_to_statements(!Statements, !Info) :-

@@ -30,8 +30,8 @@
 
 :- pred ml_generate_string_switch(list(tagged_case)::in, prog_var::in,
     code_model::in, can_fail::in, prog_context::in,
-    mlds_defns::out, statements::out, ml_gen_info::in, ml_gen_info::out)
-    is det.
+    list(mlds_defn)::out, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -121,9 +121,8 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         ( CodeModel = model_semi
         ; CodeModel = model_non
         ),
-        FailComment =
-            statement(ml_stmt_atomic(comment("no match, so fail")),
-                MLDS_Context),
+        FailComment = statement(ml_stmt_atomic(comment("no match, so fail")),
+            MLDS_Context),
         ml_gen_failure(CodeModel, Context, FailStatements, !Info)
     ),
 
@@ -226,7 +225,9 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     % Collect all the generated variable/constant declarations
     % and code fragments together.
     Decls = [NextSlotsDefn, StringTableDefn, SlotVarDefn, StringVarDefn],
-    Statements = HashLookupStatements ++ [FailComment | FailStatements] ++
+    Statements =
+        HashLookupStatements ++
+        [FailComment | FailStatements] ++
         [EndLabelStatement, EndComment].
 
 %-----------------------------------------------------------------------------%

@@ -580,7 +580,7 @@ output_exports(Indent, ModuleInfo, MLDS_ModuleName, CtorData,
     % Returns code-address information (function label and signature)
     % for each method/function which has its address taken in the MLDS.
     %
-:- pred find_pointer_addressed_methods(mlds_defns::in,
+:- pred find_pointer_addressed_methods(list(mlds_defn)::in,
     list(mlds_code_addr)::in, list(mlds_code_addr)::out) is det.
 
 find_pointer_addressed_methods([], !CodeAddrs).
@@ -608,7 +608,7 @@ method_ptrs_in_entity_defn(mlds_class(ClassDefn), !CodeAddrs) :-
     method_ptrs_in_defns(Ctors, !CodeAddrs),
     method_ptrs_in_defns(Members, !CodeAddrs).
 
-:- pred method_ptrs_in_statements(statements::in,
+:- pred method_ptrs_in_statements(list(statement)::in,
     list(mlds_code_addr)::in, list(mlds_code_addr)::out) is det.
 
 method_ptrs_in_statements([], !CodeAddrs).
@@ -707,7 +707,7 @@ method_ptrs_in_switch_cases([Case | Cases], !CodeAddrs) :-
     method_ptrs_in_statement(Statement, !CodeAddrs),
     method_ptrs_in_switch_cases(Cases, !CodeAddrs).
 
-:- pred method_ptrs_in_defns(mlds_defns::in, list(mlds_code_addr)::in,
+:- pred method_ptrs_in_defns(list(mlds_defn)::in, list(mlds_code_addr)::in,
     list(mlds_code_addr)::out) is det.
 
 method_ptrs_in_defns([], !CodeAddrs).
@@ -804,7 +804,7 @@ method_ptrs_in_lval(global_var_ref(_), !CodeAddrs).
     % Generates the MLDS to output the required wrapper classes
     %
 :- pred generate_code_addr_wrappers(indent::in, list(mlds_code_addr)::in,
-    mlds_defns::in, mlds_defns::out) is det.
+    list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
 generate_code_addr_wrappers(_, [], !Defns).
 generate_code_addr_wrappers(Indent, [CodeAddr | CodeAddrs], !Defns) :-
@@ -1049,7 +1049,7 @@ pred_label_string(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
 %
 
 :- pred output_src_start(indent::in, mercury_module_name::in,
-    mlds_imports::in, list(foreign_decl_code)::in, mlds_defns::in,
+    mlds_imports::in, list(foreign_decl_code)::in, list(mlds_defn)::in,
     io::di, io::uo) is det.
 
 output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
@@ -1088,7 +1088,7 @@ output_package_info(qualified(Module, _), !IO) :-
     % variable `args' in the class `mercury.runtime.JavaInternal'.
     %
 :- pred maybe_write_main_driver(indent::in, java_module_name::in,
-    mlds_defns::in, io::di, io::uo) is det.
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
 maybe_write_main_driver(Indent, JavaSafeModuleName, Defns, !IO) :-
     ( defns_contain_main(Defns) ->
@@ -1169,7 +1169,7 @@ output_auto_gen_comment(ModuleName, !IO)  :-
     ;       cname(mlds_entity_name).   % Constructor class name.
 
 :- pred output_defns(indent::in, module_info::in, mlds_module_name::in,
-    ctor_data::in, mlds_defns::in, io::di, io::uo) is det.
+    ctor_data::in, list(mlds_defn)::in, io::di, io::uo) is det.
 
 output_defns(Indent, ModuleInfo, ModuleName, CtorData, Defns, !IO) :-
     OutputDefn = output_defn(Indent, ModuleInfo, ModuleName, CtorData),
@@ -1324,7 +1324,7 @@ output_interface(Interface, !IO) :-
     ).
 
 :- pred output_class_body(indent::in, module_info::in, mlds_class_kind::in,
-    mlds_qualified_entity_name::in, mlds_defns::in,
+    mlds_qualified_entity_name::in, list(mlds_defn)::in,
     mlds_module_name::in, io::di, io::uo) is det.
 
 output_class_body(Indent, ModuleInfo, mlds_class, _, AllMembers, ModuleName,
@@ -1387,7 +1387,7 @@ output_enum_ctor(Indent, UnqualName, !IO) :-
     io.write_string("}\n", !IO).
 
 :- pred output_enum_constants(indent::in, module_info::in,
-    mlds_module_name::in, mlds_defns::in, io::di, io::uo) is det.
+    mlds_module_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
 
 output_enum_constants(Indent, ModuleInfo, EnumModuleName, EnumConsts, !IO) :-
     io.write_list(EnumConsts, "\n",

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -80,7 +80,7 @@
     %
 :- pred ml_gen_switch(prog_var::in, can_fail::in, list(case)::in,
     code_model::in, prog_context::in,
-    mlds_defns::out, statements::out,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate an appropriate default for a switch.
@@ -357,7 +357,7 @@ ml_switch_lookup_tags(Info, [Case | Cases], Var,
     %
 :- pred ml_switch_generate_if_then_else_chain(list(tagged_case)::in,
     prog_var::in, code_model::in, can_fail::in, prog_context::in,
-    mlds_defns::out, statements::out,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_if_then_else_chain([], _Var, CodeModel, CanFail, Context,
@@ -402,7 +402,7 @@ ml_switch_generate_if_then_else_chain([TaggedCase | TaggedCases], Var,
     %
 :- pred ml_switch_generate_mlds_switch(list(tagged_case)::in,
     prog_var::in, code_model::in, can_fail::in, prog_context::in,
-    mlds_defns::out, statements::out,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail, Context,
@@ -492,11 +492,9 @@ ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info) :-
     (
         CanFail = can_fail,
         ml_gen_failure(CodeModel, Context, FailStatements, !Info),
-        (
-            FailStatements = [],
+        ( is_empty(FailStatements) ->
             Default = default_do_nothing
         ;
-            FailStatements = [_ | _],
             Fail = ml_gen_block([], FailStatements, Context),
             Default = default_case(Fail)
         )

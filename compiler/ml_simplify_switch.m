@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,6 +45,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -272,7 +273,7 @@ find_first_and_last_case_3(match_range(MinRval, MaxRval),
 :- pred generate_dense_switch(list(mlds_switch_case)::in,
     mlds_switch_default::in, int::in, int::in, bool::in,
     mlds_type::in, mlds_rval::in, mlds_context::in,
-    mlds_defns::out, statements::out,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
@@ -328,18 +329,19 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
             MLDS_Context),
         DoSwitch = statement(ml_stmt_if_then_else(InRange, SwitchBody, Else),
             MLDS_Context),
-        Statements = [StartComment, DoSwitch] ++
-            [EndLabelStatement, EndComment]
+        Statements = [StartComment, DoSwitch, EndLabelStatement, EndComment]
     ;
         NeedRangeCheck = no,
-        Statements = [StartComment, DoJump | CasesCode] ++
-            DefaultStatements ++ [EndLabelStatement, EndComment]
+        Statements =
+            [StartComment, DoJump | CasesCode] ++
+            DefaultStatements ++
+            [EndLabelStatement, EndComment]
     ),
     Decls = CasesDecls.
 
 :- pred generate_cases(list(mlds_switch_case)::in, mlds_label::in,
     case_labels_map::in, case_labels_map::out,
-    mlds_defns::out, statements::out,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_cases([], _EndLabel, !CaseLabelsMap, [], [], !Info).
@@ -358,7 +360,7 @@ generate_cases([Case | Cases], EndLabel, !CaseLabelsMap, Decls, Statements,
     %
 :- pred generate_case(mlds_switch_case::in, mlds_label::in,
     case_labels_map::in, case_labels_map::out,
-    mlds_defns::out, statements::out,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,

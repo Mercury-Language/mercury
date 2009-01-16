@@ -37,8 +37,8 @@
     %
 :- pred ml_gen_closure(pred_id::in, proc_id::in, prog_var::in, prog_vars::in,
     list(uni_mode)::in, how_to_construct::in, prog_context::in,
-    mlds_defns::out, statements::out, ml_gen_info::in, ml_gen_info::out)
-    is det.
+    list(mlds_defn)::out, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
     %   Context, WrapperFuncRval, WrapperFuncType):
@@ -183,7 +183,7 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     % any changes here may need to be reflected there, and vice versa.
     %
 :- pred ml_gen_closure_layout(pred_id::in, proc_id::in, prog_context::in,
-    mlds_rval::out, mlds_type::out, mlds_defns::out,
+    mlds_rval::out, mlds_type::out, list(mlds_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_closure_layout(PredId, ProcId, Context,
@@ -225,7 +225,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
         ClosureLayoutType)).
 
 :- pred ml_gen_closure_proc_id(module_info::in, prog_context::in,
-    mlds_initializer::out, mlds_type::out, mlds_defns::out) is det.
+    mlds_initializer::out, mlds_type::out, list(mlds_defn)::out) is det.
 
 ml_gen_closure_proc_id(_ModuleInfo, _Context, InitProcId, ProcIdType,
         ClosureProcIdDefns) :-
@@ -250,7 +250,7 @@ ml_gen_closure_proc_id(_ModuleInfo, _Context, InitProcId, ProcIdType,
 
 :- pred ml_stack_layout_construct_closure_args(module_info::in,
     list(closure_arg_info)::in, list(mlds_initializer)::out,
-    list(mlds_type)::out, mlds_defns::out) is det.
+    list(mlds_type)::out, list(mlds_defn)::out) is det.
 
 ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
         ClosureArgInits, ClosureArgTypes, Defns) :-
@@ -267,7 +267,7 @@ ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
 
 :- pred ml_stack_layout_construct_closure_arg_rval(module_info::in,
     closure_arg_info::in, pair(mlds_initializer, mlds_type)::out,
-    mlds_defns::in, mlds_defns::out) is det.
+    list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
 ml_stack_layout_construct_closure_arg_rval(ModuleInfo, ClosureArg,
         ArgInit - ArgType, !Defns) :-
@@ -288,26 +288,28 @@ ml_stack_layout_construct_closure_arg_rval(ModuleInfo, ClosureArg,
     ArgInit = init_obj(CastArgRval).
 
 :- pred ml_gen_maybe_pseudo_type_info_defn(module_info::in,
-    rtti_maybe_pseudo_type_info::in, mlds_defns::in, mlds_defns::out) is det.
+    rtti_maybe_pseudo_type_info::in, list(mlds_defn)::in, list(mlds_defn)::out)
+    is det.
 
 ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, MaybePTI, !Defns) :-
     ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePTI, _Rval, _Type, !Defns).
 
 :- pred ml_gen_pseudo_type_info_defn(module_info::in,
-    rtti_pseudo_type_info::in, mlds_defns::in, mlds_defns::out) is det.
+    rtti_pseudo_type_info::in, list(mlds_defn)::in, list(mlds_defn)::out)
+    is det.
 
 ml_gen_pseudo_type_info_defn(ModuleInfo, PTI, !Defns) :-
     ml_gen_pseudo_type_info(ModuleInfo, PTI, _Rval, _Type, !Defns).
 
 :- pred ml_gen_type_info_defn(module_info::in, rtti_type_info::in,
-    mlds_defns::in, mlds_defns::out) is det.
+    list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
 ml_gen_type_info_defn(ModuleInfo, TI, !Defns) :-
     ml_gen_type_info(ModuleInfo, TI, _Rval, _Type, !Defns).
 
 :- pred ml_gen_maybe_pseudo_type_info(module_info::in,
     rtti_maybe_pseudo_type_info::in, mlds_rval::out, mlds_type::out,
-    mlds_defns::in, mlds_defns::out) is det.
+    list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
 ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePseudoTypeInfo, Rval, Type,
         !Defns) :-
@@ -320,7 +322,8 @@ ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePseudoTypeInfo, Rval, Type,
     ).
 
 :- pred ml_gen_pseudo_type_info(module_info::in, rtti_pseudo_type_info::in,
-    mlds_rval::out, mlds_type::out, mlds_defns::in, mlds_defns::out) is det.
+    mlds_rval::out, mlds_type::out, list(mlds_defn)::in, list(mlds_defn)::out)
+    is det.
 
 ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
     (
@@ -369,7 +372,8 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
     ).
 
 :- pred ml_gen_type_info(module_info::in, rtti_type_info::in,
-    mlds_rval::out, mlds_type::out, mlds_defns::in, mlds_defns::out) is det.
+    mlds_rval::out, mlds_type::out, list(mlds_defn)::in, list(mlds_defn)::out)
+    is det.
 
 ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
     (
@@ -428,7 +432,7 @@ convert_to_local(mlds_defn(Name, Context, Flags0, Body)) =
 
 :- pred ml_stack_layout_construct_tvar_vector(module_info::in,
     mlds_var_name::in, prog_context::in, map(tvar, set(layout_locn))::in,
-    mlds_rval::out, mlds_type::out, mlds_defns::out) is det.
+    mlds_rval::out, mlds_type::out, list(mlds_defn)::out) is det.
 
 ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
         TVarLocnMap, MLDS_Rval, ArrayType, Defns) :-
@@ -1096,7 +1100,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
     %
 :- pred ml_gen_closure_wrapper_gc_decls(closure_kind::in, mlds_var_name::in,
     mlds_type::in, pred_id::in, proc_id::in, prog_context::in,
-    mlds_defns::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_defn)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         PredId, ProcId, Context, GC_Decls, !Info) :-

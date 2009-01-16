@@ -46,14 +46,16 @@
     % and returning the given lvals, if needed.
     %
 :- pred ml_append_return_statement(ml_gen_info::in, code_model::in,
-    list(mlds_lval)::in, prog_context::in, statements::in,
-    statements::out) is det.
+    list(mlds_lval)::in, prog_context::in, list(statement)::in,
+    list(statement)::out) is det.
 
     % Generate a block statement, i.e. `{ <Decls>; <Statements>; }'.
     % But if the block consists only of a single statement with no
     % declarations, then just return that statement.
     %
-:- func ml_gen_block(mlds_defns, statements, prog_context)
+:- func ml_gen_block(list(mlds_defn), list(statement), prog_context)
+    = statement.
+:- func ml_gen_block_mlds(list(mlds_defn), list(statement), mlds_context)
     = statement.
 
     % Join two statement lists and their corresponding declaration lists
@@ -65,11 +67,12 @@
     % in common, then we put each statement list and its declarations into
     % a block, so that the declarations remain local to each statement list.
     %
-:- pred ml_join_decls(mlds_defns::in, statements::in,
-    mlds_defns::in, statements::in, prog_context::in,
-    mlds_defns::out, statements::out) is det.
+:- pred ml_join_decls(list(mlds_defn)::in, list(statement)::in,
+    list(mlds_defn)::in, list(statement)::in, prog_context::in,
+    list(mlds_defn)::out, list(statement)::out) is det.
 
-:- type gen_pred == pred(mlds_defns, statements, ml_gen_info, ml_gen_info).
+:- type gen_pred == pred(list(mlds_defn), list(statement),
+    ml_gen_info, ml_gen_info).
 :- inst gen_pred == (pred(out, out, in, out) is det).
 
     % Given closures to generate code for two conjuncts, generate code
@@ -77,7 +80,7 @@
     %
 :- pred ml_combine_conj(code_model::in, prog_context::in,
     gen_pred::in(gen_pred), gen_pred::in(gen_pred),
-    mlds_defns::out, statements::out,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Given a function label and the statement which will comprise
@@ -349,12 +352,12 @@
 
     % Generate code to succeed in the given code_model.
     %
-:- pred ml_gen_success(code_model::in, prog_context::in, statements::out,
+:- pred ml_gen_success(code_model::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate code to fail in the given code_model.
     %
-:- pred ml_gen_failure(code_model::in, prog_context::in, statements::out,
+:- pred ml_gen_failure(code_model::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate the declaration for the built-in `succeeded' flag.
@@ -721,7 +724,8 @@
 
     % Get the list of extra definitions.
     %
-:- pred ml_gen_info_get_extra_defns(ml_gen_info::in, mlds_defns::out) is det.
+:- pred ml_gen_info_get_extra_defns(ml_gen_info::in, list(mlds_defn)::out)
+    is det.
 
     % Add the given string as the name of an environment variable used by
     % the function being generated.
@@ -801,15 +805,26 @@ ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
         CodeModel = model_non
     ).
 
-ml_gen_block(VarDecls, Statements, Context) =
+ml_gen_block(VarDecls, Statements, Context) = Block :-
     (
         VarDecls = [],
         Statements = [SingleStatement]
     ->
-        SingleStatement
+        Block = SingleStatement
     ;
-        statement(ml_stmt_block(VarDecls, Statements),
+        Block = statement(ml_stmt_block(VarDecls, Statements),
             mlds_make_context(Context))
+    ).
+
+ml_gen_block_mlds(VarDecls, Statements, Context) = Block :-
+    (
+        VarDecls = [],
+        Statements = [SingleStatement]
+    ->
+        Block = SingleStatement
+    ;
+        Block = statement(ml_stmt_block(VarDecls, Statements),
+            Context)
     ).
 
 ml_join_decls(FirstDecls, FirstStatements, RestDecls, RestStatements, Context,
@@ -1975,32 +1990,47 @@ ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo, Context,
     %
 :- func ml_type_might_contain_pointers_for_gc(mlds_type) = bool.
 
-ml_type_might_contain_pointers_for_gc(mercury_type(_Type, TypeCategory, _)) =
-    ml_type_category_might_contain_pointers(TypeCategory).
-ml_type_might_contain_pointers_for_gc(mlds_mercury_array_type(_)) = yes.
-ml_type_might_contain_pointers_for_gc(mlds_native_int_type) = no.
-ml_type_might_contain_pointers_for_gc(mlds_native_float_type) = no.
-ml_type_might_contain_pointers_for_gc(mlds_native_bool_type) = no.
-ml_type_might_contain_pointers_for_gc(mlds_native_char_type) = no.
-ml_type_might_contain_pointers_for_gc(mlds_foreign_type(_)) = no.
-    % We assume that foreign types are not allowed to contain pointers
-    % to the Mercury heap.  XXX is this requirement too strict?
-ml_type_might_contain_pointers_for_gc(mlds_class_type(_, _, Category)) =
-    (if Category = mlds_enum then no else yes).
-ml_type_might_contain_pointers_for_gc(mlds_ptr_type(_)) = yes.
-ml_type_might_contain_pointers_for_gc(mlds_array_type(_)) = yes.
-ml_type_might_contain_pointers_for_gc(mlds_func_type(_)) = no.
-ml_type_might_contain_pointers_for_gc(mlds_generic_type) = yes.
-ml_type_might_contain_pointers_for_gc(mlds_generic_env_ptr_type) = yes.
-ml_type_might_contain_pointers_for_gc(mlds_type_info_type) = yes.
-ml_type_might_contain_pointers_for_gc(mlds_pseudo_type_info_type) = yes.
-ml_type_might_contain_pointers_for_gc(mlds_cont_type(_)) = no.
-ml_type_might_contain_pointers_for_gc(mlds_commit_type) = no.
-ml_type_might_contain_pointers_for_gc(mlds_rtti_type(_)) = yes.
-    % Values of mlds_tabling_type types may contain pointers, but they won't
-    % exist if we are using accurate GC.
-ml_type_might_contain_pointers_for_gc(mlds_tabling_type(_)) = no.
-ml_type_might_contain_pointers_for_gc(mlds_unknown_type) = yes.
+ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
+    (
+        Type = mercury_type(_Type, TypeCategory, _),
+        MightContainPointers =
+            ml_type_category_might_contain_pointers(TypeCategory)
+    ;
+        Type = mlds_class_type(_, _, Category),
+        ( Category = mlds_enum ->
+            MightContainPointers = no
+        ;
+            MightContainPointers = yes
+        )
+    ;
+        ( Type = mlds_mercury_array_type(_)
+        ; Type = mlds_ptr_type(_)
+        ; Type = mlds_array_type(_)
+        ; Type = mlds_generic_type
+        ; Type = mlds_generic_env_ptr_type
+        ; Type = mlds_type_info_type
+        ; Type = mlds_pseudo_type_info_type
+        ; Type = mlds_rtti_type(_)
+        ; Type = mlds_unknown_type
+        ),
+        MightContainPointers = yes
+    ;
+        ( Type = mlds_native_int_type
+        ; Type = mlds_native_float_type
+        ; Type = mlds_native_bool_type
+        ; Type = mlds_native_char_type
+        ; Type = mlds_foreign_type(_)
+        % We assume that foreign types are not allowed to contain pointers
+        % to the Mercury heap.  XXX is this requirement too strict?
+        ; Type = mlds_func_type(_)
+        ; Type = mlds_cont_type(_)
+        ; Type = mlds_commit_type
+        ; Type = mlds_tabling_type(_)
+        % Values of mlds_tabling_type types may contain pointers, but
+        % they won't exist if we are using accurate GC.
+        ),
+        MightContainPointers = no
+    ).
 
 :- func ml_type_category_might_contain_pointers(type_ctor_category) = bool.
 
@@ -2115,7 +2145,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
 
     % Combine the MLDS code fragments together.
     GC_TraceCode = ml_gen_block(MLDS_NewobjLocals ++ MLDS_NonLocalVarDecls,
-        [MLDS_TypeInfoStatement] ++ [MLDS_TraceStatement], Context).
+        [MLDS_TypeInfoStatement, MLDS_TraceStatement], Context).
 
     % ml_gen_trace_var(VarName, DeclType, TypeInfo, Context, Code):
     % Generate a call to `private_builtin.gc_trace'
@@ -2196,7 +2226,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
                 fnoi_context        :: mlds_context,
 
                 % The local variable declarations accumulated so far.
-                fnoi_locals         :: mlds_defns,
+                fnoi_locals         :: list(mlds_defn),
 
                 % A counter used to allocate variable names.
                 fnoi_next_id        :: counter
@@ -2208,7 +2238,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     % allocation.
     %
 :- pred fixup_newobj(statement::in, mlds_module_name::in,
-     statement::out, mlds_defns::out) is det.
+     statement::out, list(mlds_defn)::out) is det.
 
 fixup_newobj(Statement0, ModuleName, Statement, Defns) :-
     Statement0 = statement(Stmt0, Context),
@@ -2333,8 +2363,10 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         Context = !.Fixup ^ fnoi_context,
         VarDecl = ml_gen_mlds_var_decl_init(var(VarName), VarType, Initializer,
             GCStatement, Context),
-        !:Fixup = !.Fixup ^ fnoi_next_id := NextId,
-        !:Fixup= !.Fixup ^ fnoi_locals := !.Fixup ^ fnoi_locals ++ [VarDecl],
+        !Fixup ^ fnoi_next_id := NextId,
+        % XXX We should keep a more structured representation of the local
+        % variables, such as a map from variable names.
+        !Fixup ^ fnoi_locals := !.Fixup ^ fnoi_locals ++ [VarDecl],
 
         % Generate code to initialize the variable.
         %
@@ -2419,6 +2451,7 @@ maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
                 mgi_cond_var            :: counter,
                 mgi_conv_var            :: counter,
                 mgi_const_num           :: counter,
+
                 mgi_const_var_name_map  :: map(prog_var, mlds_var_name),
 
                 % A partial mapping from vars to lvals, used to override
@@ -2430,7 +2463,7 @@ maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
                 % current procedure.
                 mgi_var_lvals           :: map(prog_var, mlds_lval),
 
-                mgi_extra_defns         :: mlds_defns,
+                mgi_extra_defns         :: list(mlds_defn),
                 mgi_env_var_names       :: set(string)
             ).
 

@@ -361,27 +361,27 @@
 :- type mlds
     --->    mlds(
                 % The original Mercury module name.
-                name                :: mercury_module_name,
+                mlds_name               :: mercury_module_name,
 
                 % Code defined in some other language, e.g.  for
                 % `pragma c_header_code', etc.
-                foreign_code_map    :: map(foreign_language,
-                                        mlds_foreign_code),
+                mlds_foreign_code_map   :: map(foreign_language,
+                                            mlds_foreign_code),
 
                 % The MLDS code itself.
 
                 % Packages/classes to import
-                toplevel_imports    :: mlds_imports,
+                mlds_toplevel_imports   :: mlds_imports,
 
                 % Definitions of code and data
-                defns               :: mlds_defns,
+                mlds_defns              :: list(mlds_defn),
 
                 % The names of init and final preds.
                 % XXX These only work for the C backend because initialisers
                 % and finalisers do not (yet) work for the other backends.
-                init_preds          :: list(string),
-                final_preds         :: list(string),
-                exported_enums      :: list(mlds_exported_enum)
+                mlds_init_preds         :: list(string),
+                mlds_final_preds        :: list(string),
+                mlds_exported_enums     :: list(mlds_exported_enum)
             ).
 
 :- func mlds_get_module_name(mlds) = mercury_module_name.
@@ -452,8 +452,8 @@
     % Is the current module a member of the std library,
     % and if so which module is it?
     %
-:- pred is_std_lib_module(mlds_module_name::in,
-    mercury_module_name::out) is semidet.
+:- pred is_std_lib_module(mlds_module_name::in, mercury_module_name::out)
+    is semidet.
 
     % Given an MLDS module name (e.g. `foo.bar'), append another class
     % qualifier (e.g. for a class `baz'), and return the result (e.g.
@@ -480,8 +480,6 @@
     % returns the name to use for the wrapper class.
     %
 :- func wrapper_class_name = string.
-
-:- type mlds_defns == list(mlds_defn).
 
 :- type mlds_defn
     --->    mlds_defn(
@@ -678,28 +676,29 @@
 :- type mlds_class_name == string.
 :- type mlds_class == mlds_fully_qualified_name(mlds_class_name).
 
-    % Note that standard C doesn't support empty structs,
-    % so when targetting C, it is the MLDS code generator's
-    % responsibility to ensure that each generated MLDS class
-    % has at least one base class or non-static data member.
+    % Note that standard C doesn't support empty structs, so when targetting C,
+    % it is the MLDS code generator's responsibility to ensure that each
+    % generated MLDS class has at least one base class or non-static
+    % data member.
     %
 :- type mlds_class_defn
     --->    mlds_class_defn(
-                kind        :: mlds_class_kind,
-                imports     :: mlds_imports,
-                            % Imports these classes (or modules, packages, ...).
+                mcd_kind        :: mlds_class_kind,
 
-                inherits    :: list(mlds_class_id),
-                            % Inherits these base classes.
+                % Imports these classes (or modules, packages, ...).
+                mcd_imports     :: mlds_imports,
 
-                implements  :: list(mlds_interface_id),
-                            % Implements these interfaces.
+                % Inherits these base classes.
+                mcd_inherits    :: list(mlds_class_id),
 
-                ctors       :: mlds_defns,
-                            % Has these constructors.
+                % Implements these interfaces.
+                mcd_implements  :: list(mlds_interface_id),
 
-                members     :: mlds_defns
-                            % Contains these members.
+                % Has these constructors.
+                mcd_ctors       :: list(mlds_defn),
+
+                % Contains these members.
+                mcd_members     :: list(mlds_defn)
             ).
 
 :- type mlds_type
@@ -967,8 +966,6 @@
 % Statements
 %
 
-:- type statements == list(statement).
-
 :- type statement
     --->    statement(
                 mlds_stmt,
@@ -978,7 +975,7 @@
 :- type mlds_stmt
     % Sequence.
 
-    --->    ml_stmt_block(mlds_defns, list(statement))
+    --->    ml_stmt_block(list(mlds_defn), list(statement))
 
     % Iteration.
 
@@ -1795,7 +1792,7 @@
 
 %-----------------------------------------------------------------------------%
 
-mlds_get_module_name(MLDS) = MLDS ^ name.
+mlds_get_module_name(MLDS) = MLDS ^ mlds_name.
 
 %-----------------------------------------------------------------------------%
 

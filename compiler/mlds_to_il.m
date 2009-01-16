@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mlds_to_il.m - Convert MLDS to IL.
 % Main author: trd, petdr.
-% 
+%
 % This module generates IL from MLDS.  Currently it's pretty tuned
 % towards generating assembler -- to generate code using
 % Reflection::Emit it is likely some changes will need to be made.
@@ -57,7 +57,7 @@
 %
 % XXX We should rename this module to mlds_to_ilds, since that is what
 %     it actually does.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_il.
@@ -385,25 +385,26 @@ transform_mlds(MLDS0) = MLDS :-
     AllExports = list.condense(
         list.map(
             (func(mlds_foreign_code(_, _, _, Exports)) = Exports),
-            map.values(MLDS0 ^ foreign_code_map))
+            map.values(MLDS0 ^ mlds_foreign_code_map))
         ),
 
     % Generate the exports for this file, they will be placed into
     % class methods inside the wrapper class.
     list.map(mlds_export_to_mlds_defn, AllExports, ExportDefns),
 
-    list.filter((pred(D::in) is semidet :-
+    list.filter(
+        (pred(D::in) is semidet :-
             ( D = mlds_defn(_, _, _, mlds_function(_, _, _, _, _))
             ; D = mlds_defn(_, _, _, mlds_data(_, _, _))
             )
-        ), MLDS0 ^ defns ++ ExportDefns, MercuryCodeMembers, Others),
-    WrapperClass = wrapper_class(
-        list.map(rename_defn, MercuryCodeMembers)),
+        ), MLDS0 ^ mlds_defns ++ ExportDefns, MercuryCodeMembers, Others),
+    WrapperClass = wrapper_class(list.map(rename_defn, MercuryCodeMembers)),
     % Note that ILASM requires that the type definitions in Others
     % must precede the references to those types in WrapperClass.
-    MLDS = MLDS0 ^ defns := list.map(rename_defn, Others) ++ [WrapperClass].
+    MLDS = MLDS0 ^ mlds_defns :=
+        list.map(rename_defn, Others) ++ [WrapperClass].
 
-:- func wrapper_class(mlds_defns) = mlds_defn.
+:- func wrapper_class(list(mlds_defn)) = mlds_defn.
 
 wrapper_class(Members) =
     mlds_defn(
@@ -709,8 +710,8 @@ generate_class_body(Name, Context, ClassDefn, ClassName, EntityName, Extends,
     % newobj instruction to allocate instances of the class. So if a class
     % doesn't already have one, we add an empty one.
     %
-:- func maybe_add_empty_ctor(mlds_defns, mlds_class_kind, mlds_context) =
-    mlds_defns.
+:- func maybe_add_empty_ctor(list(mlds_defn), mlds_class_kind, mlds_context) =
+    list(mlds_defn).
 
 maybe_add_empty_ctor(Ctors0, Kind, Context) = Ctors :-
     (
@@ -866,7 +867,7 @@ decl_flags_to_methattrs(Flags)
         Access = [assembly]
     ;
         AccessFlag = acc_local,
-        unexpected(this_file, 
+        unexpected(this_file,
             "decl_flags_to_methattrs: local access flag")
     ),
     PerInstanceFlag = per_instance(Flags),
@@ -905,7 +906,7 @@ decl_flags_to_methattrs(Flags)
 :- func decl_flags_to_fieldattrs(mlds_decl_flags) = list(ilasm.fieldattr).
 
 decl_flags_to_fieldattrs(Flags)
-    = list.condense([Access, PerInstance, Constness]) :-
+        = list.condense([Access, PerInstance, Constness]) :-
     AccessFlag = access(Flags),
     (
         AccessFlag = acc_public,
@@ -1527,7 +1528,6 @@ data_initializer_to_instrs(init_obj(Rval), _Type, empty, InitInstrs,
     %
 data_initializer_to_instrs(init_struct(_StructType, InitList0), Type,
         AllocInstrs, InitInstrs, !Info) :-
-
     InitList = flatten_inits(InitList0),
     data_initializer_to_instrs(init_array(InitList), Type,
         AllocInstrs, InitInstrs, !Info).
@@ -1538,7 +1538,6 @@ data_initializer_to_instrs(init_struct(_StructType, InitList0), Type,
     % allocations.
 data_initializer_to_instrs(init_array(InitList), Type,
         AllocInstrs, InitInstrs, !Info) :-
-
     % Figure out the array element type.
     DataRep = !.Info ^ il_data_rep,
     ( Type = mlds_array_type(ElemType0) ->
@@ -1756,7 +1755,7 @@ statement_to_il(statement(CallStmt, Context), Instrs, !Info) :-
         ReturnsStoredInstrs.
 
 statement_to_il(statement(IfThenElseStmt, Context), Instrs, !Info) :-
-    IfThenElseStmt = ml_stmt_if_then_else(Condition, ThenCase, ElseCase), 
+    IfThenElseStmt = ml_stmt_if_then_else(Condition, ThenCase, ElseCase),
     generate_condition(Condition, ConditionInstrs, ElseLabel, !Info),
     il_info_make_next_label(DoneLabel, !Info),
     statement_to_il(ThenCase, ThenInstrs, !Info),
@@ -1874,7 +1873,7 @@ statement_to_il(statement(DoCommitStmt, Context), Instrs, !Info) :-
 
 statement_to_il(statement(TryCommitStmt, Context), Instrs, !Info) :-
     TryCommitStmt = ml_stmt_try_commit(_Ref, GoalToTry, CommitHandlerGoal),
-    
+
     % For commits, we use exception handling.
     %
     % For try_commit instructions, we generate IL code
@@ -1973,7 +1972,7 @@ atomic_statement_to_il(outline_foreign_proc(Lang, _, ReturnLvals, _Code),
             Num::in, Num + 1::out) is det :-
                 Instr = ldarg(index(Num))),
             TypeParams, LoadArgInstrs, 0, _),
-        Instrs = 
+        Instrs =
             comment_node("outline foreign proc -- call handwritten version") ++
             LoadInstrs ++
             from_list(LoadArgInstrs) ++
@@ -2587,7 +2586,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
             )
         ;
             % Convert an unboxed type to a boxed type: box it first, then cast.
-            Instrs = 
+            Instrs =
                 convert_to_object(SrcILType) ++
                 singleton(castclass(DestILType))
         )
@@ -3279,7 +3278,7 @@ get_ilds_type_class_name(ILType) = ClassName :-
             % Names that are to be used only in IL are able to include
             % spaces, punctuation and other special characters, because they
             % are in quotes.
-    
+
     ;       mangle_for_csharp.
             % Names that are to be used in C# (typically because they are
             % foreign procedures) must be mangled in the same way as for C.
@@ -3722,7 +3721,7 @@ rval_const_to_type(mlconst_int(_)) = MLDSType :-
     MLDSType = mercury_type(IntType, ctor_cat_builtin(cat_builtin_int),
         non_foreign_type(IntType)).
 rval_const_to_type(mlconst_foreign(_, _, _))
-        = sorry(this_file, "IL backend and foreign tag."). 
+        = sorry(this_file, "IL backend and foreign tag.").
 rval_const_to_type(mlconst_float(_)) = MLDSType :-
     FloatType = builtin_type(builtin_type_float),
     MLDSType = mercury_type(FloatType, ctor_cat_builtin(cat_builtin_float),
@@ -3738,7 +3737,7 @@ rval_const_to_type(mlconst_multi_string(_)) = MLDSType :-
     MLDSType = mercury_type(StrType, ctor_cat_builtin(cat_builtin_string),
         non_foreign_type(StrType)).
 rval_const_to_type(mlconst_named_const(_))
-        = sorry(this_file, "IL backend and named const."). 
+        = sorry(this_file, "IL backend and named const.").
 rval_const_to_type(mlconst_null(MldsType)) = MldsType.
 
 %-----------------------------------------------------------------------------%
@@ -4640,7 +4639,7 @@ maybe_map_fold(P, yes(T), _, !:V, !U) :-
 :- func il_method_params_to_il_types(list(il_method_param)) = list(il_type).
 
 il_method_params_to_il_types([]) = [].
-il_method_params_to_il_types([ il_method_param(Type, _) | Params]) = 
+il_method_params_to_il_types([ il_method_param(Type, _) | Params]) =
         [ Type | Types ] :-
     Types = il_method_params_to_il_types(Params).
 

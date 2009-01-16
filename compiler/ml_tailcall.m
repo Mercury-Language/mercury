@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,8 +90,10 @@
 
 %-----------------------------------------------------------------------------%
 
-ml_mark_tailcalls(MLDS0, MLDS, !IO) :-
-    MLDS = MLDS0 ^ defns := mark_tailcalls_in_defns(MLDS0 ^ defns).
+ml_mark_tailcalls(!MLDS, !IO) :-
+    Defns0 = !.MLDS ^ mlds_defns,
+    mark_tailcalls_in_defns(Defns0, Defns),
+    !MLDS ^ mlds_defns := Defns.
 
 %-----------------------------------------------------------------------------%
 
@@ -105,8 +107,8 @@ ml_mark_tailcalls(MLDS0, MLDS, !IO) :-
     % which are in scope.
 :- type locals == list(local_defns).
 :- type local_defns
-    --->    params(mlds_arguments)
-    ;       defns(mlds_defns).
+    --->    local_params(mlds_arguments)
+    ;       local_defns(list(mlds_defn)).
 
 %-----------------------------------------------------------------------------%
 
@@ -128,20 +130,22 @@ ml_mark_tailcalls(MLDS0, MLDS, !IO) :-
 %   The `Locals' argument contains a list of the
 %   local definitions which are in scope at this point.
 
-:- func mark_tailcalls_in_defns(mlds_defns) = mlds_defns.
+:- pred mark_tailcalls_in_defns(list(mlds_defn)::in, list(mlds_defn)::out)
+    is det.
 
-mark_tailcalls_in_defns(Defns) = list.map(mark_tailcalls_in_defn, Defns).
+mark_tailcalls_in_defns(Defns0, Defns) :-
+    list.map(mark_tailcalls_in_defn, Defns0, Defns).
 
-:- func mark_tailcalls_in_defn(mlds_defn) = mlds_defn.
+:- pred mark_tailcalls_in_defn(mlds_defn::in, mlds_defn::out) is det.
 
-mark_tailcalls_in_defn(Defn0) = Defn :-
+mark_tailcalls_in_defn(Defn0, Defn) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
             EnvVarNames),
         % Compute the initial value of the `Locals' and `AtTail' arguments.
         Params = mlds_func_params(Args, RetTypes),
-        Locals = [params(Args)],
+        Locals = [local_params(Args)],
         (
             RetTypes = [],
             AtTail = yes([])
@@ -149,7 +153,7 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
             RetTypes = [_ | _],
             AtTail = no
         ),
-        FuncBody = mark_tailcalls_in_function_body(FuncBody0, AtTail, Locals),
+        mark_tailcalls_in_function_body(AtTail, Locals, FuncBody0, FuncBody),
         DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
             EnvVarNames),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
@@ -160,42 +164,54 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
         DefnBody0 = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
             CtorDefns0, MemberDefns0),
-        CtorDefns = mark_tailcalls_in_defns(CtorDefns0),
-        MemberDefns = mark_tailcalls_in_defns(MemberDefns0),
+        mark_tailcalls_in_defns(CtorDefns0, CtorDefns),
+        mark_tailcalls_in_defns(MemberDefns0, MemberDefns),
         ClassDefn = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
             CtorDefns, MemberDefns),
         DefnBody = mlds_class(ClassDefn),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ).
 
-:- func mark_tailcalls_in_function_body(mlds_function_body, at_tail, locals)
-    = mlds_function_body.
+:- pred mark_tailcalls_in_function_body(at_tail::in, locals::in,
+    mlds_function_body::in, mlds_function_body::out) is det.
 
-mark_tailcalls_in_function_body(body_external, _, _) = body_external.
-mark_tailcalls_in_function_body(body_defined_here(Statement0), AtTail, Locals)
-        = body_defined_here(Statement) :-
-    Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
+mark_tailcalls_in_function_body(AtTail, Locals, Body0, Body) :-
+    (
+        Body0 = body_external,
+        Body = body_external
+    ;
+        Body0 = body_defined_here(Statement0),
+        mark_tailcalls_in_statement(AtTail, Locals, Statement0, Statement),
+        Body = body_defined_here(Statement)
+    ).
 
-:- func mark_tailcalls_in_maybe_statement(maybe(statement), at_tail, locals)
-    = maybe(statement).
+:- pred mark_tailcalls_in_maybe_statement(at_tail::in, locals::in,
+    maybe(statement)::in, maybe(statement)::out) is det.
 
-mark_tailcalls_in_maybe_statement(no, _, _) = no.
-mark_tailcalls_in_maybe_statement(yes(Statement0), AtTail, Locals) =
-        yes(Statement) :-
-    Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
+mark_tailcalls_in_maybe_statement(AtTail, Locals,
+        MaybeStatement0, MaybeStatement) :-
+    (
+        MaybeStatement0 = no,
+        MaybeStatement = no
+    ;
+        MaybeStatement0 = yes(Statement0),
+        mark_tailcalls_in_statement(AtTail, Locals, Statement0, Statement),
+        MaybeStatement = yes(Statement)
+    ).
 
-:- func mark_tailcalls_in_statements(statements, at_tail, locals)
-    = statements.
+:- pred mark_tailcalls_in_statements(at_tail::in, locals::in,
+    list(statement)::in, list(statement)::out) is det.
 
-mark_tailcalls_in_statements([], _, _) = [].
-mark_tailcalls_in_statements([First0 | Rest0], AtTail, Locals) =
-        [First | Rest] :-
+mark_tailcalls_in_statements(_, _, [], []).
+mark_tailcalls_in_statements(AtTail, Locals,
+        [First0 | Rest0], [First | Rest]) :-
     % If there are no statements after the first, then the first statement
     % is in a tail call position iff the statement list is in a tail call
     % position. If the First statement is followed by a `return' statement,
     % then it is in a tailcall position. Otherwise, i.e. if the first statement
     % is followed by anything other than a `return' statement, then
     % the first statement is not in a tail call position.
+    mark_tailcalls_in_statements(AtTail, Locals, Rest0, Rest),
     (
         Rest = [],
         FirstAtTail = AtTail
@@ -207,19 +223,20 @@ mark_tailcalls_in_statements([First0 | Rest0], AtTail, Locals) =
             FirstAtTail = no
         )
     ),
-    First = mark_tailcalls_in_statement(First0, FirstAtTail, Locals),
-    Rest = mark_tailcalls_in_statements(Rest0, AtTail, Locals).
+    mark_tailcalls_in_statement(FirstAtTail, Locals, First0, First).
 
-:- func mark_tailcalls_in_statement(statement, at_tail, locals) = statement.
+:- pred mark_tailcalls_in_statement(at_tail::in, locals::in,
+    statement::in, statement::out) is det.
 
-mark_tailcalls_in_statement(Statement0, AtTail, Locals) = Statement :-
+mark_tailcalls_in_statement(AtTail, Locals, Statement0, Statement) :-
     Statement0 = statement(Stmt0, Context),
-    Stmt = mark_tailcalls_in_stmt(Stmt0, AtTail, Locals),
+    mark_tailcalls_in_stmt(AtTail, Locals, Stmt0, Stmt),
     Statement = statement(Stmt, Context).
 
-:- func mark_tailcalls_in_stmt(mlds_stmt, at_tail, locals) = mlds_stmt.
+:- pred mark_tailcalls_in_stmt(at_tail::in, locals::in,
+    mlds_stmt::in, mlds_stmt::out) is det.
 
-mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
+mark_tailcalls_in_stmt(AtTail, Locals, Stmt0, Stmt) :-
     (
         % Whenever we encounter a block statement, we recursively mark
         % tailcalls in any nested functions defined in that block.
@@ -228,31 +245,31 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         % statements in that block. The statement list will be in a tail
         % position iff the block is in a tail position.
         Stmt0 = ml_stmt_block(Defns0, Statements0),
-        Defns = mark_tailcalls_in_defns(Defns0),
-        NewLocals = [defns(Defns) | Locals],
-        Statements = mark_tailcalls_in_statements(Statements0,
-            AtTail, NewLocals),
+        mark_tailcalls_in_defns(Defns0, Defns),
+        NewLocals = [local_defns(Defns) | Locals],
+        mark_tailcalls_in_statements(AtTail, NewLocals,
+            Statements0, Statements),
         Stmt = ml_stmt_block(Defns, Statements)
     ;
         % The statement in the body of a while loop is never in a tail
         % position.
         Stmt0 = ml_stmt_while(Rval, Statement0, Once),
-        Statement = mark_tailcalls_in_statement(Statement0, no, Locals),
+        mark_tailcalls_in_statement(no, Locals, Statement0, Statement),
         Stmt = ml_stmt_while(Rval, Statement, Once)
     ;
         % Both the `then' and the `else' parts of an if-then-else are in a
         % tail position iff the if-then-else is in a tail position.
         Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
-        Then = mark_tailcalls_in_statement(Then0, AtTail, Locals),
-        MaybeElse = mark_tailcalls_in_maybe_statement(MaybeElse0,
-            AtTail, Locals),
+        mark_tailcalls_in_statement(AtTail, Locals, Then0, Then),
+        mark_tailcalls_in_maybe_statement(AtTail, Locals,
+            MaybeElse0, MaybeElse),
         Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
     ;
         % All of the cases of a switch (including the default) are in a
         % tail position iff the switch is in a tail position.
         Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0),
-        Cases = mark_tailcalls_in_cases(Cases0, AtTail, Locals),
-        Default = mark_tailcalls_in_default(Default0, AtTail, Locals),
+        mark_tailcalls_in_cases(AtTail, Locals, Cases0, Cases),
+        mark_tailcalls_in_default(AtTail, Locals, Default0, Default),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
         Stmt0 = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
@@ -288,8 +305,8 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         % Both the statement inside a `try_commit' and the handler are in
         % tail call position iff the `try_commit' statement is in a tail call
         % position.
-        Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals),
-        Handler = mark_tailcalls_in_statement(Handler0, AtTail, Locals),
+        mark_tailcalls_in_statement(AtTail, Locals, Statement0, Statement),
+        mark_tailcalls_in_statement(AtTail, Locals, Handler0, Handler),
         Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
         ( Stmt0 = ml_stmt_label(_)
@@ -302,26 +319,26 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         Stmt = Stmt0
     ).
 
-:- func mark_tailcalls_in_cases(list(mlds_switch_case), at_tail, locals) =
-    list(mlds_switch_case).
+:- pred mark_tailcalls_in_cases(at_tail::in, locals::in,
+    list(mlds_switch_case)::in, list(mlds_switch_case)::out) is det.
 
-mark_tailcalls_in_cases([], _, _) = [].
-mark_tailcalls_in_cases([Case0 | Cases0], AtTail, Locals) = [Case | Cases] :-
-    Case = mark_tailcalls_in_case(Case0, AtTail, Locals),
-    Cases = mark_tailcalls_in_cases(Cases0, AtTail, Locals).
+mark_tailcalls_in_cases(_, _, [], []).
+mark_tailcalls_in_cases(AtTail, Locals, [Case0 | Cases0], [Case | Cases]) :-
+    mark_tailcalls_in_case(AtTail, Locals, Case0, Case),
+    mark_tailcalls_in_cases(AtTail, Locals, Cases0, Cases).
 
-:- func mark_tailcalls_in_case(mlds_switch_case, at_tail, locals) =
-    mlds_switch_case.
+:- pred mark_tailcalls_in_case(at_tail::in, locals::in,
+    mlds_switch_case::in, mlds_switch_case::out) is det.
 
-mark_tailcalls_in_case(Case0, AtTail, Locals) = Case :-
+mark_tailcalls_in_case(AtTail, Locals, Case0, Case) :-
     Case0 = mlds_switch_case(Cond, Statement0),
-    Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals),
+    mark_tailcalls_in_statement(AtTail, Locals, Statement0, Statement),
     Case = mlds_switch_case(Cond, Statement).
 
-:- func mark_tailcalls_in_default(mlds_switch_default, at_tail, locals) =
-    mlds_switch_default.
+:- pred mark_tailcalls_in_default(at_tail::in, locals::in,
+    mlds_switch_default::in, mlds_switch_default::out) is det.
 
-mark_tailcalls_in_default(Default0, AtTail, Locals) = Default :-
+mark_tailcalls_in_default(AtTail, Locals, Default0, Default) :-
     (
         ( Default0 = default_is_unreachable
         ; Default0 = default_do_nothing
@@ -329,7 +346,7 @@ mark_tailcalls_in_default(Default0, AtTail, Locals) = Default :-
         Default = Default0
     ;
         Default0 = default_case(Statement0),
-        Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals),
+        mark_tailcalls_in_statement(AtTail, Locals, Statement0, Statement),
         Default = default_case(Statement)
     ).
 
@@ -548,11 +565,11 @@ function_is_local(CodeAddr, Locals) :-
 locals_member(Name, LocalsList) :-
     list.member(Locals, LocalsList),
     (
-        Locals = defns(Defns),
+        Locals = local_defns(Defns),
         list.member(Defn, Defns),
         Defn = mlds_defn(Name, _, _, _)
     ;
-        Locals = params(Params),
+        Locals = local_params(Params),
         list.member(Param, Params),
         Param = mlds_argument(Name, _, _)
     ).
@@ -578,7 +595,7 @@ nontailcall_in_mlds(MLDS, Warning) :-
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     nontailcall_in_defns(MLDS_ModuleName, Defns, Warning).
 
-:- pred nontailcall_in_defns(mlds_module_name::in, mlds_defns::in,
+:- pred nontailcall_in_defns(mlds_module_name::in, list(mlds_defn)::in,
     tailcall_warning::out) is nondet.
 
 nontailcall_in_defns(ModuleName, Defns, Warning) :-

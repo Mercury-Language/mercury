@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2008 The University of Melbourne.
+% Copyright (C) 2000, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,8 +31,8 @@
     %
 :- pred ml_generate_tag_switch(list(tagged_case)::in, prog_var::in,
     code_model::in, can_fail::in, prog_context::in,
-    mlds_defns::out, statements::out, ml_gen_info::in, ml_gen_info::out)
-    is det.
+    list(mlds_defn)::out, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
