@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -878,6 +878,7 @@ trace_port_to_string(port_call) =                "CALL".
 trace_port_to_string(port_exit) =                "EXIT".
 trace_port_to_string(port_redo) =                "REDO".
 trace_port_to_string(port_fail) =                "FAIL".
+trace_port_to_string(port_tailrec_call) =        "TAILREC_CALL".
 trace_port_to_string(port_exception) =           "EXCEPTION".
 trace_port_to_string(port_ite_cond) =            "COND".
 trace_port_to_string(port_ite_then) =            "THEN".
@@ -890,7 +891,6 @@ trace_port_to_string(port_disj_later) =          "DISJ_LATER".
 trace_port_to_string(port_switch) =              "SWITCH".
 trace_port_to_string(port_nondet_foreign_proc_first) = "FOREIGN_PROC_FIRST".
 trace_port_to_string(port_nondet_foreign_proc_later) = "FOREIGN_PROC_LATER".
-trace_port_to_string(port_tailrec_call) =        "TAILREC_CALL".
 trace_port_to_string(port_user) =                "USER".
 
 %-----------------------------------------------------------------------------%
