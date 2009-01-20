@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -188,7 +188,10 @@
     is det.
 
 %-----------------------------------------------------------------------------%
-   
+%
+% Stuff used for standalone interfaces
+% 
+    
     % make_standalone_interface(Basename, !IO):
     %
     % Create a standalone interface in the current directory.
@@ -199,6 +202,14 @@
     % This predicate is used to implement the `--output-cflags' option.
     %
 :- pred output_c_compiler_flags(io.output_stream::in, io::di, io::uo) is det.
+
+    % Output the list of flags required to link against the selected set
+    % of Mercury libraries (the standard libraries, plus any other specified
+    % via the --ml option) in the current grade.
+    % This predicate is used to implement the `--output-library-link-flags'
+    % option.
+    %
+:- pred output_library_link_flags(io.output_stream::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1710,16 +1721,7 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
     ),
 
     % Find the Mercury standard libraries.
-    globals.io_lookup_maybe_string_option(
-        mercury_standard_library_directory, MaybeStdLibDir, !IO),
-    (
-        MaybeStdLibDir = yes(StdLibDir),
-        get_mercury_std_libs(LinkTargetType, StdLibDir, MercuryStdLibs,
-            !IO)
-    ;
-        MaybeStdLibDir = no,
-        MercuryStdLibs = ""
-    ),
+    get_mercury_std_libs(LinkTargetType, MercuryStdLibs, !IO),
 
     % Find which system libraries are needed.
     get_system_libs(LinkTargetType, SystemLibs, !IO),
@@ -1734,34 +1736,12 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
         " ", LinkLibraryDirectories),
 
     % Set up the runtime library path.
+    get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt,
+        RpathOpts, !IO),
+
+    % Set up the install name for shared libraries.
     globals.io_lookup_bool_option(shlib_linker_use_install_name,
         UseInstallName, !IO),
-    shared_libraries_supported(SharedLibsSupported, !IO),
-    (
-        UseInstallName = no,
-        SharedLibsSupported = yes,
-        ( Linkage = "shared"
-        ; LinkTargetType = shared_library
-        )
-    ->
-        globals.io_lookup_accumulating_option(
-            runtime_link_library_directories, RpathDirs0, !IO),
-        RpathDirs = list.map(quote_arg, RpathDirs0),
-        ( 
-            RpathDirs = [],
-            RpathOpts = ""
-        ;
-            RpathDirs = [_ | _],
-            globals.io_lookup_string_option(RpathSepOpt, RpathSep, !IO),
-            globals.io_lookup_string_option(RpathFlagOpt, RpathFlag, !IO),
-            RpathOpts0 = string.join_list(RpathSep, RpathDirs),
-            RpathOpts = RpathFlag ++ RpathOpts0
-        )
-    ;
-        RpathOpts = ""
-    ),
-            
-    % Set up the install name for shared libraries.
     (
         UseInstallName = yes,
         LinkTargetType = shared_library
@@ -1787,27 +1767,11 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
         globals.io_lookup_string_option(TraceFlagsOpt, TraceOpts, !IO)
     ),
 
-    % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a',
-    % depending on whether we are linking with static or shared
-    % Mercury libraries.
-
-    globals.io_lookup_accumulating_option(
-        mercury_library_directories, MercuryLibDirs0, !IO),
-    globals.io_get_globals(Globals, !IO),
-    grade_directory_component(Globals, GradeDir),
-    MercuryLibDirs = list.map(
-        (func(LibDir) = LibDir/"lib"/GradeDir),
-        MercuryLibDirs0),
-    globals.io_lookup_accumulating_option(link_libraries,
-        LinkLibrariesList0, !IO),
-    list.map_foldl2(process_link_library(MercuryLibDirs),
-        LinkLibrariesList0, LinkLibrariesList, yes,
-        LibrariesSucceeded, !IO),
-
+    get_link_libraries(MaybeLinkLibraries, !IO),
     globals.io_lookup_string_option(linker_opt_separator,
         LinkOptSep, !IO),
     (
-        LibrariesSucceeded = yes,
+        MaybeLinkLibraries = yes(LinkLibrariesList),
         join_quoted_string_list(LinkLibrariesList, "", "", " ",
             LinkLibraries),
 
@@ -1884,147 +1848,184 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
             MaybeDeleteTmpArchive = no
         )
     ;
-        LibrariesSucceeded = no,
+        MaybeLinkLibraries = no,
         LinkSucceeded = no
     ).
-
+    
     % Find the standard Mercury libraries, and the system
     % libraries needed by them.
+    % Return the empty string if --mercury-standard-library-directory
+    % is not set.
     %
-:- pred get_mercury_std_libs(linked_target_type::in, dir_name::in, string::out,
+:- pred get_mercury_std_libs(linked_target_type::in, string::out,
     io::di, io::uo) is det.
 
-get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
-    globals.io_get_gc_method(GCMethod, !IO),
+get_mercury_std_libs(TargetType, StdLibs, !IO) :-
+    globals.io_lookup_maybe_string_option(
+        mercury_standard_library_directory, MaybeStdlibDir, !IO),
     (
-        ( TargetType = executable
-        ; TargetType = static_library
-        ; TargetType = shared_library
+        MaybeStdlibDir = yes(StdLibDir),
+        globals.io_get_gc_method(GCMethod, !IO),
+        (
+            ( TargetType = executable
+            ; TargetType = static_library
+            ; TargetType = shared_library
+            ),
+            globals.io_lookup_string_option(library_extension, LibExt, !IO)
+        ;
+            TargetType = java_archive,
+            unexpected(this_file, "get_mercury_std_libs: java_archive")
+        ;
+            TargetType = erlang_archive,
+            unexpected(this_file, "get_mercury_std_libs: erlang_archive")
         ),
-        globals.io_lookup_string_option(library_extension, LibExt, !IO)
+        globals.io_get_globals(Globals, !IO),
+        grade_directory_component(Globals, GradeDir),
+
+        % GC libraries.
+        (
+            GCMethod = gc_automatic,
+            StaticGCLibs = "",
+            SharedGCLibs = ""
+        ;
+            GCMethod = gc_none,
+            StaticGCLibs = "",
+            SharedGCLibs = ""
+        ;
+            (
+                GCMethod = gc_boehm,
+                GCGrade0 = "gc"
+            ;
+                GCMethod = gc_boehm_debug,
+                GCGrade0 = "gc_debug"
+            ),
+            globals.io_lookup_bool_option(profile_time, ProfTime, !IO),
+            globals.io_lookup_bool_option(profile_deep, ProfDeep, !IO),
+            (
+                ( ProfTime = yes
+                ; ProfDeep = yes
+                )
+            ->
+                GCGrade1 = GCGrade0 ++ "_prof"
+            ;
+                GCGrade1 = GCGrade0
+            ),
+            globals.io_lookup_bool_option(parallel, Parallel, !IO),
+            (
+                Parallel = yes,
+                GCGrade = "par_" ++ GCGrade1
+            ;
+                Parallel = no,
+                GCGrade = GCGrade1
+            ),
+            make_link_lib(TargetType, GCGrade, SharedGCLibs, !IO),
+            StaticGCLibs = quote_arg(StdLibDir/"lib"/
+                ("lib" ++ GCGrade ++ LibExt))
+        ;
+            GCMethod = gc_mps,
+            make_link_lib(TargetType, "mps", SharedGCLibs, !IO),
+            StaticGCLibs = quote_arg(StdLibDir/"lib"/
+                ("libmps" ++ LibExt) )
+        ;
+            GCMethod = gc_accurate,
+            StaticGCLibs = "",
+            SharedGCLibs = ""
+        ),
+
+        % Trace libraries.
+        globals.io_get_trace_level(TraceLevel, !IO),
+        ( given_trace_level_is_none(TraceLevel) = yes ->
+            StaticTraceLibs = "",
+            SharedTraceLibs = ""
+        ;
+            StaticTraceLibs =
+                quote_arg(StdLibDir/"lib"/GradeDir/
+                    ("libmer_trace" ++ LibExt)) ++
+                " " ++
+                quote_arg(StdLibDir/"lib"/GradeDir/
+                    ("libmer_eventspec" ++ LibExt)) ++
+                " " ++
+                quote_arg(StdLibDir/"lib"/GradeDir/
+                    ("libmer_browser" ++ LibExt)) ++
+                " " ++
+                quote_arg(StdLibDir/"lib"/GradeDir/
+                    ("libmer_mdbcomp" ++ LibExt)),
+            make_link_lib(TargetType, "mer_trace", TraceLib, !IO),
+            make_link_lib(TargetType, "mer_eventspec", EventSpecLib, !IO),
+            make_link_lib(TargetType, "mer_browser", BrowserLib, !IO),
+            make_link_lib(TargetType, "mer_mdbcomp", MdbCompLib, !IO),
+            SharedTraceLibs = string.join_list(" ",
+                [TraceLib, EventSpecLib, BrowserLib, MdbCompLib])
+        ),
+
+        % Source-to-source debugging libraries.
+        globals.io_lookup_bool_option(source_to_source_debug, SourceDebug, !IO),
+        (
+            SourceDebug = yes,
+            StaticSourceDebugLibs =
+                quote_arg(StdLibDir/"lib"/GradeDir/
+                    ("libmer_ssdb" ++ LibExt)),
+            make_link_lib(TargetType, "mer_mdbcomp", SharedSourceDebugLibs, !IO)
+        ;
+            SourceDebug = no,
+            StaticSourceDebugLibs = "",
+            SharedSourceDebugLibs = ""
+        ),
+
+        globals.io_lookup_string_option(mercury_linkage, MercuryLinkage, !IO),
+        ( MercuryLinkage = "static" ->
+            StdLibs = string.join_list(" ", [
+                StaticTraceLibs,
+                StaticSourceDebugLibs,
+                quote_arg(StdLibDir/"lib"/GradeDir/
+                    ("libmer_std" ++ LibExt)),
+                quote_arg(StdLibDir/"lib"/GradeDir/
+                    ("libmer_rt" ++ LibExt)),
+                StaticGCLibs
+            ])
+        ; MercuryLinkage = "shared" ->
+            make_link_lib(TargetType, "mer_std", StdLib, !IO),
+            make_link_lib(TargetType, "mer_rt", RuntimeLib, !IO),
+            StdLibs = string.join_list(" ", [
+                SharedTraceLibs,
+                SharedSourceDebugLibs,
+                StdLib,
+                RuntimeLib,
+                SharedGCLibs
+            ])
+        ;
+            unexpected(this_file, "unknown linkage " ++ MercuryLinkage)
+        )
     ;
-        TargetType = java_archive,
-        unexpected(this_file, "get_mercury_std_libs: java_archive")
-    ;
-        TargetType = erlang_archive,
-        unexpected(this_file, "get_mercury_std_libs: erlang_archive")
-    ),
+        MaybeStdlibDir = no,
+        StdLibs = ""
+    ).
+    
+    % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a',
+    % depending on whether we are linking with static or shared
+    % Mercury libraries.
+    %
+:- pred get_link_libraries(maybe(list(string))::out, io::di, io::uo) is det.
+
+get_link_libraries(MaybeLinkLibraries, !IO) :-
+    globals.io_lookup_accumulating_option(
+        mercury_library_directories, MercuryLibDirs0, !IO),
     globals.io_get_globals(Globals, !IO),
     grade_directory_component(Globals, GradeDir),
-
-    % GC libraries.
+    MercuryLibDirs = list.map(
+        (func(LibDir) = LibDir/"lib"/GradeDir),
+        MercuryLibDirs0),
+    globals.io_lookup_accumulating_option(link_libraries,
+        LinkLibrariesList0, !IO),
+    list.map_foldl2(process_link_library(MercuryLibDirs),
+        LinkLibrariesList0, LinkLibrariesList, yes,
+        LibrariesSucceeded, !IO),
     (
-        GCMethod = gc_automatic,
-        StaticGCLibs = "",
-        SharedGCLibs = ""
+        LibrariesSucceeded = yes,
+        MaybeLinkLibraries = yes(LinkLibrariesList)
     ;
-        GCMethod = gc_none,
-        StaticGCLibs = "",
-        SharedGCLibs = ""
-    ;
-        (
-            GCMethod = gc_boehm,
-            GCGrade0 = "gc"
-        ;
-            GCMethod = gc_boehm_debug,
-            GCGrade0 = "gc_debug"
-        ),
-        globals.io_lookup_bool_option(profile_time, ProfTime, !IO),
-        globals.io_lookup_bool_option(profile_deep, ProfDeep, !IO),
-        (
-            ( ProfTime = yes
-            ; ProfDeep = yes
-            )
-        ->
-            GCGrade1 = GCGrade0 ++ "_prof"
-        ;
-            GCGrade1 = GCGrade0
-        ),
-        globals.io_lookup_bool_option(parallel, Parallel, !IO),
-        (
-            Parallel = yes,
-            GCGrade = "par_" ++ GCGrade1
-        ;
-            Parallel = no,
-            GCGrade = GCGrade1
-        ),
-        make_link_lib(TargetType, GCGrade, SharedGCLibs, !IO),
-        StaticGCLibs = quote_arg(StdLibDir/"lib"/
-            ("lib" ++ GCGrade ++ LibExt))
-    ;
-        GCMethod = gc_mps,
-        make_link_lib(TargetType, "mps", SharedGCLibs, !IO),
-        StaticGCLibs = quote_arg(StdLibDir/"lib"/
-            ("libmps" ++ LibExt) )
-    ;
-        GCMethod = gc_accurate,
-        StaticGCLibs = "",
-        SharedGCLibs = ""
-    ),
-
-    % Trace libraries.
-    globals.io_get_trace_level(TraceLevel, !IO),
-    ( given_trace_level_is_none(TraceLevel) = yes ->
-        StaticTraceLibs = "",
-        SharedTraceLibs = ""
-    ;
-        StaticTraceLibs =
-            quote_arg(StdLibDir/"lib"/GradeDir/
-                ("libmer_trace" ++ LibExt)) ++
-            " " ++
-            quote_arg(StdLibDir/"lib"/GradeDir/
-                ("libmer_eventspec" ++ LibExt)) ++
-            " " ++
-            quote_arg(StdLibDir/"lib"/GradeDir/
-                ("libmer_browser" ++ LibExt)) ++
-            " " ++
-            quote_arg(StdLibDir/"lib"/GradeDir/
-                ("libmer_mdbcomp" ++ LibExt)),
-        make_link_lib(TargetType, "mer_trace", TraceLib, !IO),
-        make_link_lib(TargetType, "mer_eventspec", EventSpecLib, !IO),
-        make_link_lib(TargetType, "mer_browser", BrowserLib, !IO),
-        make_link_lib(TargetType, "mer_mdbcomp", MdbCompLib, !IO),
-        SharedTraceLibs = string.join_list(" ",
-            [TraceLib, EventSpecLib, BrowserLib, MdbCompLib])
-    ),
-
-    % Source-to-source debugging libraries.
-    globals.io_lookup_bool_option(source_to_source_debug, SourceDebug, !IO),
-    (
-        SourceDebug = yes,
-        StaticSourceDebugLibs =
-            quote_arg(StdLibDir/"lib"/GradeDir/
-                ("libmer_ssdb" ++ LibExt)),
-        make_link_lib(TargetType, "mer_mdbcomp", SharedSourceDebugLibs, !IO)
-    ;
-        SourceDebug = no,
-        StaticSourceDebugLibs = "",
-        SharedSourceDebugLibs = ""
-    ),
-
-    globals.io_lookup_string_option(mercury_linkage, MercuryLinkage, !IO),
-    ( MercuryLinkage = "static" ->
-        StdLibs = string.join_list(" ", [
-            StaticTraceLibs,
-            StaticSourceDebugLibs,
-            quote_arg(StdLibDir/"lib"/GradeDir/
-                ("libmer_std" ++ LibExt)),
-            quote_arg(StdLibDir/"lib"/GradeDir/
-                ("libmer_rt" ++ LibExt)),
-            StaticGCLibs
-        ])
-    ; MercuryLinkage = "shared" ->
-        make_link_lib(TargetType, "mer_std", StdLib, !IO),
-        make_link_lib(TargetType, "mer_rt", RuntimeLib, !IO),
-        StdLibs = string.join_list(" ", [
-            SharedTraceLibs,
-            SharedSourceDebugLibs,
-            StdLib,
-            RuntimeLib,
-            SharedGCLibs
-        ])
-    ;
-        unexpected(this_file, "unknown linkage " ++ MercuryLinkage)
+        LibrariesSucceeded = no,
+        MaybeLinkLibraries = no
     ).
 
 :- pred make_link_lib(linked_target_type::in, string::in, string::out,
@@ -2053,6 +2054,40 @@ make_link_lib(TargetType, LibName, LinkOpt, !IO) :-
     ;
         TargetType = static_library,
         unexpected(this_file, "make_link_lib: static_library")
+    ).
+
+:- pred get_runtime_library_path_opts(linked_target_type::in,
+    option::in(bound(shlib_linker_rpath_flag ; linker_rpath_flag)),
+    option::in(bound(shlib_linker_rpath_separator ; linker_rpath_separator)),
+    string::out, io::di, io::uo) is det.
+
+get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt, RpathOpts, !IO) :-
+    globals.io_lookup_bool_option(shlib_linker_use_install_name,
+        UseInstallName, !IO),
+    shared_libraries_supported(SharedLibsSupported, !IO),
+    globals.io_lookup_string_option(linkage, Linkage, !IO),
+    (
+        UseInstallName = no,
+        SharedLibsSupported = yes,
+        ( Linkage = "shared"
+        ; LinkTargetType = shared_library
+        )
+    ->
+        globals.io_lookup_accumulating_option(
+            runtime_link_library_directories, RpathDirs0, !IO),
+        RpathDirs = list.map(quote_arg, RpathDirs0),
+        ( 
+            RpathDirs = [],
+            RpathOpts = ""
+        ;
+            RpathDirs = [_ | _],
+            globals.io_lookup_string_option(RpathSepOpt, RpathSep, !IO),
+            globals.io_lookup_string_option(RpathFlagOpt, RpathFlag, !IO),
+            RpathOpts0 = string.join_list(RpathSep, RpathDirs),
+            RpathOpts = RpathFlag ++ RpathOpts0
+        )
+    ;
+        RpathOpts = ""
     ).
 
 :- pred get_system_libs(linked_target_type::in, string::out, io::di, io::uo)
@@ -2113,7 +2148,7 @@ use_thread_libs(UseThreadLibs, !IO) :-
     globals.io_lookup_bool_option(parallel, Parallel, !IO),
     globals.io_get_gc_method(GCMethod, !IO),
     UseThreadLibs = ( ( Parallel = yes ; GCMethod = gc_mps ) -> yes ; no ).
-
+    
 post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         Succeeded, MadeSymlinkOrCopy, !IO) :-
     globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
@@ -2451,7 +2486,7 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
     % strings to file names and then back, adding the specified Extension.
     % (This conversion ensures that we follow the usual file naming
     % conventions.)
-
+    %
 :- pred join_module_list(list(string)::in, string::in, list(string)::out,
     io::di, io::uo) is det.
 
@@ -2478,7 +2513,7 @@ make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(maybe_pic_object_file_extension/3).
+:- pragma promise_equivalent_clauses(maybe_pic_object_file_extension/3).
 
 maybe_pic_object_file_extension(Globals::in, PIC::in, Ext::out) :-
     (
@@ -2763,6 +2798,47 @@ output_c_compiler_flags(Stream, !IO) :-
     get_object_code_type(executable, PIC, !IO),
     gather_c_compiler_flags(PIC, CFlags, !IO),
     io.write_string(Stream, CFlags, !IO).    
+
+%-----------------------------------------------------------------------------%
+%
+% Library link flags
+%
+
+output_library_link_flags(Stream, !IO) :-
+    
+    % We output the library link flags as they are for when we are linking
+    % an executable.
+    LinkTargetType = executable,
+    RpathFlagOpt = linker_rpath_flag,
+    RpathSepOpt = linker_rpath_separator,
+    
+    globals.io_lookup_accumulating_option(link_library_directories,
+        LinkLibraryDirectoriesList, !IO),
+    globals.io_lookup_string_option(linker_path_flag, LinkerPathFlag,
+        !IO),
+    join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
+        " ", LinkLibraryDirectories),
+    get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt,
+        RpathOpts, !IO), 
+    get_link_libraries(MaybeLinkLibraries, !IO),
+    (   
+        MaybeLinkLibraries = yes(LinkLibrariesList),
+        join_quoted_string_list(LinkLibrariesList, "", "", " ",
+            LinkLibraries)
+    ;
+        MaybeLinkLibraries = no,
+        LinkLibraries = ""
+    ),
+    % Find the Mercury standard libraries.
+    get_mercury_std_libs(LinkTargetType, MercuryStdLibs, !IO),
+    get_system_libs(LinkTargetType, SystemLibs, !IO),
+    string.append_list([
+        LinkLibraryDirectories, " ",
+        RpathOpts, " ",
+        LinkLibraries, " ",
+        MercuryStdLibs, " ",
+        SystemLibs], LinkFlags),
+    io.write_string(Stream, LinkFlags, !IO).
 
 %-----------------------------------------------------------------------------%
 

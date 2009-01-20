@@ -41,7 +41,7 @@
 @ifnottex
 This file documents the Mercury implementation, version <VERSION>.
 
-Copyright (C) 1995-2008 The University of Melbourne.
+Copyright (C) 1995-2009 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -6664,6 +6664,14 @@ Print the name of the C compiler to the standard output.
 @findex --output-cflags
 Print the flags with which the C compiler will be invoked
 to the standard output.
+
+@sp 1
+@item --output-library-link-flags
+@findex --output-library-link-flags
+Print the flags that are passed to the linker in order to link
+against the current set of libraries.  This includes the standard
+library as well as any other libraries specified via the
+@samp{--ml} option.  The flags are printed to the standard output.
 
 @end table
 

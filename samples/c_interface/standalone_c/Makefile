@@ -32,11 +32,8 @@
 # link them all together.  Specific details concerning each step in the build
 # process are discussed below.  See c_main.c for details of how to invoke the
 # stand-alone interface from C or C++ code.
-#
-# NOTE: the following example is statically linked against the Mercury
-# libraries.  This is in order to make the example as portable as possible.
-# Shared libraries will also work with stand-alone interfaces on systems
-# that support them.
+
+MMC = mmc
 
 all: c_main
 
@@ -48,6 +45,40 @@ all: c_main
 #
 GRADEOPT=
 
+# By default we link our application statically against the Mercury libraries.
+# If you wish to use the shared versions of the Mercury libraries, comment
+# out the next two lines and uncomment the two following them.
+#
+# Note that we specify the example mercury_lib library to the linker separately
+# here.  This is because we have not installed it.
+#
+MERCURY_LINKAGE = --mercury-linkage static
+MERCURY_LIB_LDFLAGS = libmercury_lib.a
+
+# For using shared libraries.  (Remember to comment out the versions
+# above if you use these.)
+# 
+#MERCURY_LINKAGE = --mercury-linkage shared
+#MERCURY_LIB_LDFLAGS = -L. -Wl,-rpath . -lmercury_lib
+
+# Ask the Mercury compiler what C compiler we should use?
+#
+CC = $(shell $(MMC) --output-cc)
+
+# Ask the Mercury compiler what flags it passes to the C compiler?
+#
+CFLAGS=$(shell $(MMC) $(GRADEOPT) --output-cflags)
+
+# Ask the Mercury compiler what command it uses to invoke the linker when
+# creating an executable?
+#
+LD = $(shell $(MMC) --output-link-command)
+
+# Ask the Mercury compiler what flags it passes to the linker in order to link against
+# the selected set of Mercury libraries?
+#
+LIB_LDFLAGS = $(shell $(MMC) $(GRADEOPT) $(MERCURY_LINKAGE) --output-library-link-flags)
+
 # Build the example Mercury library, mercury_lib.
 # The dependency on the .init file is merely a convenience.  It's a good
 # one to choose since it will always be regenerated if one of the .m files
@@ -58,7 +89,7 @@ GRADEOPT=
 # library.
 #
 mercury_lib.init: mercury_lib.m
-	mmc $(GRADEOPT) --make libmercury_lib
+	$(MMC) $(GRADEOPT) --make libmercury_lib
 
 # The following rule creates the stand-alone interface to the mercury_lib
 # library, Mercury standard library and Mercury runtime.  Since we haven't
@@ -67,7 +98,7 @@ mercury_lib.init: mercury_lib.m
 # `--mld' option to specify its location.
 #
 mercury_lib_int.o: mercury_lib.init
-	mmc $(GRADEOPT) --mercury-linkage static --ml mercury_lib \
+	$(MMC) $(GRADEOPT) --ml mercury_lib \
 		--generate-standalone-interface mercury_lib_int
 
 # We use the mgnuc script here rather than invoking gcc directly since
@@ -78,16 +109,15 @@ mercury_lib_int.o: mercury_lib.init
 # the `-I' option.
 #
 c_main.o: c_main.c mercury_lib.init mercury_lib_int.o
-	mgnuc $(GRADEOPT) -c c_main.c
+	$(CC) $(CFLAGS) -c c_main.c
 
 # For similar reasons we use the ml script rather than invoking ld directly.
 #
 c_main: c_main.o mercury_lib_int.o mercury_lib.init
-	ml $(GRADEOPT) --mercury-libs static -o c_main \
-		c_main.o libmercury_lib.a mercury_lib_int.o	
+	$(LD) -o c_main c_main.o $(MERCURY_LIB_LDFLAGS) mercury_lib_int.o $(LIB_LDFLAGS)
 
 .PHONY: realclean
 realclean:
-	-mmc --make mercury_lib.realclean
+	-$(MMC) --make mercury_lib.realclean
 	/bin/rm -f mercury_lib_int.[cho] c_main.o c_main Deep.data
 	/bin/rm -rf Mercury

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -187,6 +187,7 @@
     ;       output_libgrades
     ;       output_cc
     ;       output_cflags
+    ;       output_library_link_flags
 
     % Auxiliary output options
     ;       smart_recompilation
@@ -1080,9 +1081,8 @@ option_defaults_2(output_option, [
     output_shared_lib_link_command      -   bool(no),
     output_libgrades                    -   bool(no),
     output_cc                           -   bool(no),
-    output_cflags                       -   bool(no)
-
-
+    output_cflags                       -   bool(no),
+    output_library_link_flags           -   bool(no)
 ]).
 option_defaults_2(aux_output_option, [
     % Auxiliary Output Options
@@ -1908,6 +1908,7 @@ long_option("output-shared-lib-link-command", output_shared_lib_link_command).
 long_option("output-libgrades", output_libgrades).
 long_option("output-cc",        output_cc).
 long_option("output-cflags",    output_cflags).
+long_option("output-library-link-flags",  output_library_link_flags).
 
 % aux output options
 long_option("smart-recompilation",  smart_recompilation).
@@ -3493,7 +3494,13 @@ options_help_output -->
         "\tPrint the name of the C compiler to the standard output.",
         "--output-cflags",
         "\tPrint the flags with which the C compiler will be invoked",
-        "\tto the standard output."
+        "\tto the standard output.",
+        "--output-library-link-flags",
+        "\tPrint the flags that are passed to linker in order to link",
+        "\tagainst the current set of libraries.  This includes the",
+        "\tstandard library as well as any other libraries specified",
+        "\tvia the --ml option.  The flags are printed to the standard",
+        "\toutput."
     ]).
 
 :- pred options_help_aux_output(io::di, io::uo) is det.
