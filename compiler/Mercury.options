@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2008 University of Melbourne.
+# Copyright (C) 2002-2009 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -69,6 +69,12 @@ MCFLAGS-mode_robdd.implications = -O0
 
 # Work around a problem in the HiPE compiler (as of Erlang R11B5).
 MCFLAGS-libs.options += --erlang-switch-on-strings-as-atoms
+
+# Work around a problem first observed in rotd-2009-01-26.  Compiling
+# revision 1.135 of the module below results in an abort in the LLDS
+# code generator at -O5 or above.  The problem occurs when 
+# --inline-compound-threshold is set to 100 (as it is at -O5). 
+MCFLAGS-backend_libs.compile_target_code = --inline-compound-threshold 20
 
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.  Note that we need to compile these with
