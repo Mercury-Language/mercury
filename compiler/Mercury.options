@@ -74,7 +74,7 @@ MCFLAGS-libs.options += --erlang-switch-on-strings-as-atoms
 # revision 1.135 of the module below results in an abort in the LLDS
 # code generator at -O5 or above.  The problem occurs when 
 # --inline-compound-threshold is set to 100 (as it is at -O5). 
-MCFLAGS-backend_libs.compile_target_code = --inline-compound-threshold 20
+MCFLAGS-backend_libs.compile_target_code = --inline-compound-threshold 20 --no-local-constraint-propagation
 
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.  Note that we need to compile these with
