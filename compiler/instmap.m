@@ -1197,21 +1197,30 @@ instmap_delta_no_output_vars(InstMap0, reachable(InstMapDelta), Vars, VT, M) :-
 instmap_delta_no_output_vars_2([], _, _, _, _).
 instmap_delta_no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes,
         ModuleInfo) :-
-    % We use `inst_matches_binding' to check that the new inst has only
-    % added information or lost uniqueness, not bound anything.
-    % If the instmap delta contains the variable, the variable may still
-    % not be output, if the change is just an increase in information
-    % rather than an increase in instantiatedness. If the instmap delta
-    % doesn't contain the variable, it may still have been (partially) output,
-    % if its inst is (or contains) `any'.
-    instmap_lookup_var(InstMap0, Var, Inst0),
-    ( map.search(InstMapDelta, Var, Inst1) ->
-        Inst = Inst1
+    instmap_lookup_var(InstMap0, Var, OldInst),
+    ( map.search(InstMapDelta, Var, NewInst) ->
+        % We use `inst_matches_binding' to check that the new inst has only
+        % added information or lost uniqueness, not bound anything.
+        % If the instmap delta contains the variable, the variable may still
+        % not be output, if the change is just an increase in information
+        % rather than an increase in instantiatedness.
+        %
+        % XXX Inlining can result in cases where OldInst (from procedure 1)
+        % can decide that Var must be bound to one set of function symbols,
+        % while NewInst (from a later unification inlined into procedure 1
+        % from procedure 2) can say that it is bound to a different,
+        % non-overlapping set of function symbols. In such cases,
+        % inst_matches_binding will fail, even though we want to succeed.
+        % The right fix for this would be to generalize inst_matches_binding,
+        % to allow the caller to specify what kinds of deviations from an exact
+        % syntactic match are ok.
+        map.lookup(VarTypes, Var, Type),
+        inst_matches_binding(NewInst, OldInst, Type, ModuleInfo)
     ;
-        Inst = Inst0
+        % If the instmap delta doesn't contain the variable, it may still
+        % have been (partially) output, if its inst is (or contains) `any'.
+        not inst_contains_any(ModuleInfo, OldInst)
     ),
-    map.lookup(VarTypes, Var, Type),
-    inst_matches_binding(Inst, Inst0, Type, ModuleInfo),
     instmap_delta_no_output_vars_2(Vars, InstMap0, InstMapDelta, VarTypes,
         ModuleInfo).
 

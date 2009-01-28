@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -208,6 +208,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -1165,7 +1166,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         (
             RecomputeAtomic = recompute_atomic_instmap_deltas,
             recompute_instmap_delta_unify(Uni, UniMode0, UniMode,
-                GoalInfo, InstMap0, InstMapDelta, !.RI)
+                GoalInfo, InstMap0, InstMapDelta, !RI)
         ;
             RecomputeAtomic = do_not_recompute_atomic_instmap_deltas,
             UniMode = UniMode0,
@@ -1378,8 +1379,7 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
             % XXX  We shouldn't ever get here, but unfortunately
             % the mode system currently has several problems (most
             % noticeably lack of alias tracking for unique modes)
-            % which mean inst_matches_initial can sometimes fail
-            % here.
+            % which mean inst_matches_initial can sometimes fail here.
             !:ModuleInfo = SaveModuleInfo,
             !:Sub = SaveSub
         )
@@ -1404,6 +1404,10 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
         instmap_lookup_var(InstMap, Arg, ArgInst0),
         mode_get_insts(!.ModuleInfo, Mode0, _, FinalInst),
         (
+            % The is_dead allows abstractly_unify_inst to succeed when
+            % some parts of ArgInst0 and the corresponding parts of FinalInst
+            % are free.
+            % XXX There should be a better way to communicate that information.
             abstractly_unify_inst(is_dead, ArgInst0, FinalInst,
                 fake_unify, UnifyInst, _, !ModuleInfo)
         ->
@@ -1420,16 +1424,16 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
 
 :- pred recompute_instmap_delta_unify(unification::in, unify_mode::in,
     unify_mode::out, hlds_goal_info::in, instmap::in, instmap_delta::out,
-    recompute_info::in) is det.
+    recompute_info::in, recompute_info::out) is det.
 
 recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
-        InstMap, InstMapDelta, RI) :-
+        InstMap, InstMapDelta, !RI) :-
     % Deconstructions are the only types of unifications that can require
     % updating of the instmap_delta after simplify.m has been run.
     % Type specialization may require constructions of type-infos, 
     % typeclass-infos or predicate constants to be added to the
     % instmap_delta.
-    ModuleInfo = RI ^ ri_module_info,
+    ModuleInfo0 = !.RI ^ ri_module_info,
     (
         Uni = deconstruct(Var, _ConsId, Vars, UniModes, _, _CanCGC),
 
@@ -1438,18 +1442,33 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
 
         OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_lookup_var(InstMap, Var, InitialInst),
-        ( instmap_delta_search_var(OldInstMapDelta, Var, FinalInst1) ->
-            % XXX we need to merge the information in InitialInst
-            % and FinalInst1. In puzzle_detism_bug, InitialInst
-            % has a var bound to one function symbol (james), while
-            % FinalInst1 has it bound to another (katherine).
-            % The correct final inst is thus `unreachable', but
-            % we don't return that.
-            FinalInst = FinalInst1
+        ( instmap_delta_search_var(OldInstMapDelta, Var, DeltaInst) ->
+            % Inlining can result in situations where the initial inst
+            % (from procedure 1) can decide that a variable must be bound
+            % to one set of function symbols, while the instmap delta from
+            % a later unification (from procedure 2) can say that it is bound
+            % to a different, non-overlapping set of function symbols.
+            %
+            % The is_dead allows abstractly_unify_inst to succeed when some
+            % parts of InitialInst and the corresponding parts of DeltaInst
+            % are free.
+            % XXX There should be a better way to communicate that information.
+            (
+                abstractly_unify_inst(is_dead, InitialInst, DeltaInst,
+                    fake_unify, FinalInstPrime, _Detism,
+                    ModuleInfo0, ModuleInfo1)
+            ->
+                FinalInst = FinalInstPrime,
+                ModuleInfo = ModuleInfo1,
+                !RI ^ ri_module_info := ModuleInfo
+            ;
+                unexpected(this_file, "recompute_instmap_delta_unify: "
+                    ++ "abstractly_unify_inst failed")
+            )
         ;
-            % It wasn't in the instmap_delta, so the inst didn't
-            % change.
-            FinalInst = InitialInst
+            % It wasn't in the instmap_delta, so the inst didn't change.
+            FinalInst = InitialInst,
+            ModuleInfo = ModuleInfo0
         ),
         UniModeToRhsMode =
             (pred(UMode::in, Mode::out) is det :-
@@ -1468,7 +1487,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
             set.member(Var, NonLocals),
             OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             \+ instmap_delta_search_var(OldInstMapDelta, Var, _),
-            MaybeInst = cons_id_to_shared_inst(ModuleInfo, ConsId,
+            MaybeInst = cons_id_to_shared_inst(ModuleInfo0, ConsId,
                 length(Args)),
             MaybeInst = yes(Inst)
         ->

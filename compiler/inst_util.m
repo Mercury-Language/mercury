@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: inst_util.m.
 % Author: fjh.
-% 
+%
 % This module defines some utility routines for manipulating insts.
 %
 % The handling of `any' insts is not complete.  (See also inst_match.m)
@@ -34,7 +34,7 @@
 % `bound', `ground', and `any' are all represented the same way.
 % That works fine for the CLP(R) interface but might not be ideal
 % in the general case.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.inst_util.
@@ -386,7 +386,6 @@ abstractly_unify_inst_3(is_live, any(Uniq, none), Inst0, Real, Inst, Det,
         !ModuleInfo) :-
     make_any_inst(Inst0, is_live, Uniq, Real, Inst, Det, !ModuleInfo).
 
-
 % abstractly_unify_inst_3(is_live, abstract_inst(_,_), free, _, _, _, _, _)
 %       :- fail.
 
@@ -669,24 +668,21 @@ abstractly_unify_inst_functor_2(is_dead, ground(Uniq, _), ConsId, ArgInsts,
 
 abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, L, Det, !ModuleInfo) :-
     ( ( Xs = [] ; Ys = [] ) ->
-        %
         % This probably shouldn't happen. If we get here, it means that
         % a previous goal had determinism `failure' or `erroneous',
         % but we should have optimized away the rest of the conjunction
         % after that goal.
-        %
+
         L = [],
         Det = detism_erroneous
     ;
         abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
             L, Det0, !ModuleInfo),
 
-        %
         % If there are multiple alternatives for either of the inputs,
         % or the constructor of the single alternative for each input
         % doesn't match, then the unification can fail, so adjust the
         % determinism.
-        %
         (
             Xs = [bound_functor(ConsIdX, _)],
             Ys = [bound_functor(ConsIdY, _)],

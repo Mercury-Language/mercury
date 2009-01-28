@@ -2923,6 +2923,7 @@ convert_dump_alias("vanessa", "ltuCIU").
 convert_dump_alias("min", "ilv").
 convert_dump_alias("paths", "cP").
 convert_dump_alias("petdr", "din").
+convert_dump_alias("detism", "divM").
 convert_dump_alias("mm", "bdgvP").      % for debugging minimal model
 convert_dump_alias("osv", "bcdglmnpruvP").  % for debugging
                                             % --optimize-saved-vars-cell

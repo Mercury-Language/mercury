@@ -180,6 +180,7 @@ ORDINARY_PROGS=	\
 	promise_equivalent_clauses \
 	promise_equivalent_solutions_test \
 	pure_mutable \
+	puzzle_detism_bug \
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \
@@ -494,8 +495,6 @@ endif
 #
 # XXX compare_rep_array doesn't work because MR_COMPARE_BY_RTTI is
 #     not yet implemented for arrays.
-#
-# XXX puzzle_detism_bug exposes a bug in mode analysis
 #
 # XXX we fail some of the commented-out tests in write_binary
 

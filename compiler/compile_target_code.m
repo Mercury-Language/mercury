@@ -2061,7 +2061,8 @@ make_link_lib(TargetType, LibName, LinkOpt, !IO) :-
     option::in(bound(shlib_linker_rpath_separator ; linker_rpath_separator)),
     string::out, io::di, io::uo) is det.
 
-get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt, RpathOpts, !IO) :-
+get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt,
+        RpathOpts, !IO) :-
     globals.io_lookup_bool_option(shlib_linker_use_install_name,
         UseInstallName, !IO),
     shared_libraries_supported(SharedLibsSupported, !IO),
@@ -2073,8 +2074,8 @@ get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt, RpathOp
         ; LinkTargetType = shared_library
         )
     ->
-        globals.io_lookup_accumulating_option(
-            runtime_link_library_directories, RpathDirs0, !IO),
+        globals.io_lookup_accumulating_option(runtime_link_library_directories,
+            RpathDirs0, !IO),
         RpathDirs = list.map(quote_arg, RpathDirs0),
         ( 
             RpathDirs = [],

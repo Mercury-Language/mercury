@@ -6844,7 +6844,7 @@ z - purity annotations on impure and semipure goals
 A - argument passing information,
 B - mode constraint information,
 C - clause information,
-D - instmap deltas of goals,
+D - instmap deltas of goals (meaningful only with i),
 E - deep profiling information,
 G - compile-time garbage collection information,
 I - imported predicates,

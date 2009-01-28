@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,7 +191,6 @@
                 any_tracing             :: bool
                                         % Is any procedure being traced
                                         % in the module?
-
             ).
 
 inlining(!ModuleInfo) :-
@@ -220,11 +219,8 @@ inlining(!ModuleInfo) :-
     Params = params(Simple, SingleUse, CallCost, CompoundThreshold,
         SimpleThreshold, VarThreshold, HighLevelCode, AnyTracing),
 
-    %
-    % Get the usage counts for predicates
-    % (but only if needed, i.e. only if --inline-single-use
-    % or --inline-compound-threshold has been specified)
-    %
+    % Get the usage counts for predicates (but only if needed, i.e. only if
+    % --inline-single-use or --inline-compound-threshold has been specified).
     (
         ( SingleUse = yes
         ; CompoundThreshold > 0
@@ -234,7 +230,7 @@ inlining(!ModuleInfo) :-
     ;
         map.init(NeededMap)
     ),
-    %
+
     % Build the call graph and extract the topological sort.
     % NOTE: the topological sort returns a list of SCCs. Clearly, we want to
     % process the SCCs bottom to top (which is the order that they are
@@ -244,7 +240,7 @@ inlining(!ModuleInfo) :-
     % sophisticated approach would be to break the cycle so that
     % the procedure(s) that are called by higher SCCs are processed last,
     % but we do not implement that yet.
-    %
+
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
@@ -261,7 +257,7 @@ inlining(!ModuleInfo) :-
 
 do_inlining([], _Needed, _Params, _Inlined, !Module).
 do_inlining([PPId | PPIds], Needed, Params, !.Inlined, !Module) :-
-    in_predproc(PPId, !.Inlined, Params, !Module),
+    inline_in_proc(PPId, !.Inlined, Params, !Module),
     mark_predproc(PPId, Needed, Params, !.Module, !Inlined),
     do_inlining(PPIds, Needed, Params, !.Inlined, !Module).
 
@@ -321,12 +317,12 @@ is_simple_clause_list(Clauses, SimpleThreshold) :-
     ;
         Clauses = [clause(_, Goal, _, _)],
         Size < SimpleThreshold * 3,
-        %
+
         % For flat goals, we are more likely to be able to optimize stuff away,
         % so we use a higher threshold.
         % XXX This should be a separate option, we shouldn't hardcode
         % the number `3' (which is just a guess).
-        %
+
         is_flat_simple_goal(Goal)
     ).
 
@@ -335,12 +331,11 @@ is_simple_goal(CalledGoal, SimpleThreshold) :-
     (
         Size < SimpleThreshold
     ;
-        %
         % For flat goals, we are more likely to be able to optimize stuff away,
         % so we use a higher threshold.
         % XXX this should be a separate option, we shouldn't hardcode
         % the number `3' (which is just a guess).
-        %
+
         Size < SimpleThreshold * 3,
         is_flat_simple_goal(CalledGoal)
     ).
@@ -454,10 +449,10 @@ mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo, !InlinedProcs) :-
                                     % any subgoal.
             ).
 
-:- pred in_predproc(pred_proc_id::in, set(pred_proc_id)::in, inline_params::in,
-    module_info::in, module_info::out) is det.
+:- pred inline_in_proc(pred_proc_id::in, set(pred_proc_id)::in,
+    inline_params::in, module_info::in, module_info::out) is det.
 
-in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
+inline_in_proc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
     VarThresh = Params ^ var_threshold,
     HighLevelCode = Params ^ highlevel_code,
     AnyTracing = Params ^ any_tracing,
@@ -538,17 +533,17 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
         ),
 
         map.det_update(PredTable0, PredId, !.PredInfo, PredTable),
-        module_info_set_preds(PredTable, !ModuleInfo)
-    ),
+        module_info_set_preds(PredTable, !ModuleInfo),
 
-    % If the determinism of some sub-goals has changed, then we re-run
-    % determinism analysis, because propagating the determinism information
-    % through the procedure may lead to more efficient code.
-    (
-        DetChanged = yes,
-        det_infer_proc(PredId, ProcId, !ModuleInfo, _, _, _)
-    ;
-        DetChanged = no
+        % If the determinism of some sub-goals has changed, then we re-run
+        % determinism analysis, because propagating the determinism information
+        % through the procedure may lead to more efficient code.
+        (
+            DetChanged = yes,
+            det_infer_proc(PredId, ProcId, !ModuleInfo, _, _, _)
+        ;
+            DetChanged = no
+        )
     ).
 
 %-----------------------------------------------------------------------------%
