@@ -1,0 +1,215 @@
+pass: next_char on ""
+	failed as expected
+pass: next_char on "123"
+	returned '1' as expected
+	[1 chars consumed]
+pass: char_in_class("123") on ""
+	failed as expected
+pass: char_in_class("123") on "abc"
+	failed as expected
+pass: char_in_class("123") on "123"
+	returned '1' as expected
+	[1 chars consumed]
+pass: punct("!") on ""
+	failed as expected
+pass: punct("!") on "abc"
+	failed as expected
+pass: punct("!") on "*"
+	failed as expected
+pass: punct("!") on "!"
+	returned unit as expected
+	[1 chars consumed]
+pass: keyword("ABC", "ABC") on ""
+	failed as expected
+pass: keyword("ABC", "ABC") on "123"
+	failed as expected
+pass: keyword("ABC", "ABC") on "ABCA"
+	failed as expected
+pass: keyword("ABC", "ABC") on "ABC 123"
+	returned unit as expected
+	[4 chars consumed]
+pass: identifier("ABC", "ABCabc_") on ""
+	failed as expected
+pass: identifier("ABC", "ABCabc_") on "abc"
+	failed as expected
+pass: identifier("ABC", "ABCabc_") on "_"
+	failed as expected
+pass: identifier("ABC", "ABCabc_") on "A"
+	returned "A" as expected
+	[1 chars consumed]
+pass: identifier("ABC", "ABCabc_") on "Ab_c"
+	returned "Ab_c" as expected
+	[4 chars consumed]
+pass: identifier("ABC", "ABCabc_") on "*"
+	failed as expected
+pass: identifier("ABC", "ABCabc_") on "Abc !"
+	returned "Abc" as expected
+	[4 chars consumed]
+pass: whitespace on ""
+	returned unit as expected
+	[0 chars consumed]
+pass: whitespace on "123"
+	returned unit as expected
+	[0 chars consumed]
+pass: whitespace on "   "
+	returned unit as expected
+	[3 chars consumed]
+pass: whitespace on "   123"
+	returned unit as expected
+	[3 chars consumed]
+pass: skip_to_eol on ""
+	failed as expected
+pass: skip_to_eol on "blah blah
+"
+	returned unit as expected
+	[10 chars consumed]
+pass: skip_to_eol on "blah blah
+123"
+	returned unit as expected
+	[10 chars consumed]
+pass: eof on "123"
+	failed as expected
+pass: eof on ""
+	returned unit as expected
+	[0 chars consumed]
+pass: float_literal_as_string on ""
+	failed as expected
+pass: float_literal_as_string on "abc"
+	failed as expected
+pass: float_literal_as_string on "123"
+	failed as expected
+pass: float_literal_as_string on "123.0   abc"
+	returned "123.0" as expected
+	[8 chars consumed]
+pass: float_literal_as_string on "123.0e1   abc"
+	returned "123.0e1" as expected
+	[10 chars consumed]
+pass: float_literal_as_string on "-123.0   abc"
+	returned "-123.0" as expected
+	[9 chars consumed]
+pass: float_literal_as_string on "-123.0e1   abc"
+	returned "-123.0e1" as expected
+	[11 chars consumed]
+pass: float_literal_as_string on "-123.0E-1   abc"
+	returned "-123.0E-1" as expected
+	[12 chars consumed]
+pass: float_literal on ""
+	failed as expected
+pass: float_literal on "abc"
+	failed as expected
+pass: float_literal on "123"
+	failed as expected
+pass: float_literal on "123.0   abc"
+	returned 123.0 as expected
+	[8 chars consumed]
+pass: float_literal on "123.0e1   abc"
+	returned 1230.0 as expected
+	[10 chars consumed]
+pass: float_literal on "-123.0   abc"
+	returned -123.0 as expected
+	[9 chars consumed]
+pass: float_literal on "-123.0e1   abc"
+	returned -1230.0 as expected
+	[11 chars consumed]
+pass: float_literal on "-123.0E-1   abc"
+	returned -12.3 as expected
+	[12 chars consumed]
+pass: int_literal_as_string on ""
+	failed as expected
+pass: int_literal_as_string on "abc"
+	failed as expected
+pass: int_literal_as_string on "123.0"
+	failed as expected
+pass: int_literal_as_string on "123   abc"
+	returned "123" as expected
+	[6 chars consumed]
+pass: int_literal_as_string on "-123   abc"
+	returned "-123" as expected
+	[7 chars consumed]
+pass: int_literal_as_string on "999999999999999999999   abc"
+	returned "999999999999999999999" as expected
+	[24 chars consumed]
+pass: int_literal on ""
+	failed as expected
+pass: int_literal on "abc"
+	failed as expected
+pass: int_literal on "123.0"
+	failed as expected
+pass: int_literal on "123   abc"
+	returned 123 as expected
+	[6 chars consumed]
+pass: int_literal on "-123   abc"
+	returned -123 as expected
+	[7 chars consumed]
+pass: int_literal on "999999999999999999999   abc"
+	failed as expected
+pass: string_literal('\"') on ""
+	failed as expected
+pass: string_literal('\"') on ""123"   abc"
+	returned "123" as expected
+	[8 chars consumed]
+pass: string_literal('\"') on ""1\"2\"3"   abc"
+	returned "1\\\"2\\\"3" as expected
+	[12 chars consumed]
+pass: string_literal('\'') on ""
+	failed as expected
+pass: string_literal('\'') on "'123'   abc"
+	returned "123" as expected
+	[8 chars consumed]
+pass: string_literal('\'') on "'1\'2\'3'   abc"
+	returned "1\\\'2\\\'3" as expected
+	[12 chars consumed]
+pass: optional(punct("!")) on ""
+	returned no as expected
+	[0 chars consumed]
+pass: optional(punct("!")) on "abc"
+	returned no as expected
+	[0 chars consumed]
+pass: optional(punct("!")) on "!   "
+	returned yes(unit) as expected
+	[4 chars consumed]
+pass: zero_or_more(punct("!")) on ""
+	returned [] as expected
+	[0 chars consumed]
+pass: zero_or_more(punct("!")) on "abc"
+	returned [] as expected
+	[0 chars consumed]
+pass: zero_or_more(punct("!")) on "!!!   abc"
+	returned [unit, unit, unit] as expected
+	[6 chars consumed]
+pass: one_or_more(punct("!")) on ""
+	failed as expected
+pass: one_or_more(punct("!")) on "abc"
+	failed as expected
+pass: one_or_more(punct("!")) on "!!!   abc"
+	returned [unit, unit, unit] as expected
+	[6 chars consumed]
+pass: brackets("(", ")", punct("!")) on ""
+	failed as expected
+pass: brackets("(", ")", punct("!")) on "abc"
+	failed as expected
+pass: brackets("(", ")", punct("!")) on "(abc)"
+	failed as expected
+pass: brackets("(", ")", punct("!")) on "(!)   abc"
+	returned unit as expected
+	[6 chars consumed]
+pass: separated_list("+", punct("!")) on ""
+	failed as expected
+pass: separated_list("+", punct("!")) on "abc"
+	failed as expected
+pass: separated_list("+", punct("!")) on "!   abc"
+	returned [unit] as expected
+	[4 chars consumed]
+pass: separated_list("+", punct("!")) on "!+ ! + !   abc"
+	returned [unit, unit, unit] as expected
+	[11 chars consumed]
+pass: comma_separated_list(punct("!")) on ""
+	failed as expected
+pass: comma_separated_list(punct("!")) on "abc"
+	failed as expected
+pass: comma_separated_list(punct("!")) on "!   abc"
+	returned [unit] as expected
+	[4 chars consumed]
+pass: comma_separated_list(punct("!")) on "!, ! , !   abc"
+	returned [unit, unit, unit] as expected
+	[11 chars consumed]

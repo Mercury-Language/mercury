@@ -30,6 +30,14 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* A new module, parsing_utils, has been added to provide support for
+  implementing recursive descent parsers.
+
+* The string.to_int family of predicates now fail (or throw an exception
+  for the det_ versions) if the number being converted is not in the range
+  [int.min_int+1, int.max_int], identifying overflow errors when
+  converting strings to ints.
+
 * We have added extra modes to many of the fold style predicates in the
   library in order to better support (mostly-)unique accumulators.
 

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -89,6 +89,7 @@
 :- import_module ops.
 :- import_module pair.
 :- import_module parser.
+:- import_module parsing_utils.
 :- import_module pprint.
 :- import_module pqueue.
 :- import_module pretty_printer.
@@ -264,6 +265,7 @@ mercury_std_library_module("ops").
 mercury_std_library_module("pair").
 mercury_std_library_module("par_builtin").
 mercury_std_library_module("parser").
+mercury_std_library_module("parsing_utils").
 mercury_std_library_module("pprint").
 mercury_std_library_module("pqueue").
 mercury_std_library_module("pretty_printer").
