@@ -96,19 +96,19 @@
 
 :- type hlds_ctor_field_defn
     --->    hlds_ctor_field_defn(
+                % Context of the field definition.
                 field_context   :: prog_context,
-                                % context of the field definition
 
                 field_status    :: import_status,
 
+                % The type containing the field.
                 field_type_ctor :: type_ctor,
-                                % type containing the field
 
+                % The constructor containing the field.
                 field_cons_id   :: cons_id,
-                                % constructor containing the field
 
+                % Argument number (counting from 1).
                 field_arg_num   :: int
-                                % argument number (counting from 1)
             ).
 
     % Field accesses are expanded into inline unifications by post_typecheck.m
@@ -595,33 +595,30 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
     %
 :- type hlds_inst_defn
     --->    hlds_inst_defn(
+                % The names of the inst parameters (if any).
                 inst_varset     :: inst_varset,
-                                % The names of the inst parameters (if any).
 
+                % The inst parameters (if any). ([I] in the above example.)
                 inst_params     :: list(inst_var),
-                                % The inst parameters (if any).
-                                % ([I] in the above example.)
 
+                % The definition of this inst.
                 inst_body       :: hlds_inst_body,
-                                % The definition of this inst.
 
+                % The location in the source code of this inst definition.
                 inst_context    :: prog_context,
-                                % The location in the source code of this inst
-                                % definition.
 
+                % So intermod.m can tell whether to output this inst.
                 inst_status     :: import_status
-                                % So intermod.m can tell whether to output
-                                % this inst.
             ).
 
 :- type hlds_inst_body
-    --->    eqv_inst(mer_inst)  % This inst is equivalent to
-                                % some other inst.
+    --->    eqv_inst(mer_inst)
+            % This inst is equivalent to some other inst.
 
-    ;       abstract_inst.      % This inst is just a forward declaration;
-                                % the real definition will be filled in later.
-                                % (XXX Abstract insts are not really
-                                % supported.)
+    ;       abstract_inst.
+            % This inst is just a forward declaration; the real definition
+            % will be filled in later.
+            % (XXX Abstract insts are not really supported.)
 
 %-----------------------------------------------------------------------------%
 
@@ -657,8 +654,6 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
 
 :- pred user_inst_table_get_inst_defns(user_inst_table::in,
     user_inst_defns::out) is det.
-:- pred user_inst_table_get_inst_ids(user_inst_table::in,
-    list(inst_id)::out) is det.
 
 :- pred user_inst_table_insert(inst_id::in, hlds_inst_defn::in,
     user_inst_table::in, user_inst_table::out) is semidet.
@@ -681,21 +676,11 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
                 inst_table_mostly_uniq  :: mostly_uniq_inst_table
             ).
 
-:- type user_inst_defns.
-
-:- type user_inst_table
-    --->    user_inst_table(
-                uinst_table_defns   :: user_inst_defns,
-                uinst_table_ids     :: list(inst_id)
-                                    % Cached for efficiency when module
-                                    % qualifying the modes of lambda
-                                    % expressions.
-            ).
+:- type user_inst_table == user_inst_defns.
 
 inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
             AnyInsts, SharedInsts, NondetLiveInsts)) :-
-    map.init(UserInstDefns),
-    UserInsts = user_inst_table(UserInstDefns, []),
+    map.init(UserInsts),
     map.init(UnifyInsts),
     map.init(MergeInsts),
     map.init(GroundInsts),
@@ -727,23 +712,13 @@ inst_table_set_shared_insts(SharedInsts, InstTable,
 inst_table_set_mostly_uniq_insts(MostlyUniqInsts, InstTable,
     InstTable ^ inst_table_mostly_uniq := MostlyUniqInsts).
 
-user_inst_table_get_inst_defns(UserInstTable,
-    UserInstTable ^ uinst_table_defns).
-user_inst_table_get_inst_ids(UserInstTable,
-    UserInstTable ^ uinst_table_ids).
+user_inst_table_get_inst_defns(UserInstDefns, UserInstDefns).
 
-user_inst_table_insert(InstId, InstDefn, UserInstTable0, UserInstTable) :-
-    UserInstTable0 = user_inst_table(InstDefns0, InstIds0),
-    InstDefns0 = UserInstTable0 ^ uinst_table_defns,
-    map.insert(InstDefns0, InstId, InstDefn, InstDefns),
-    InstIds = [InstId | InstIds0],
-    UserInstTable = user_inst_table(InstDefns, InstIds).
+user_inst_table_insert(InstId, InstDefn, UserInstDefns0, UserInstDefns) :-
+    map.insert(UserInstDefns0, InstId, InstDefn, UserInstDefns).
 
-user_inst_table_optimize(UserInstTable0, UserInstTable) :-
-    UserInstTable0 = user_inst_table(InstDefns0, InstIds0),
-    map.optimize(InstDefns0, InstDefns),
-    list.sort(InstIds0, InstIds),
-    UserInstTable = user_inst_table(InstDefns, InstIds).
+user_inst_table_optimize(UserInstDefns0, UserInstDefns) :-
+    map.optimize(UserInstDefns0, UserInstDefns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -765,23 +740,21 @@ user_inst_table_optimize(UserInstTable0, UserInstTable) :-
     %
 :- type hlds_mode_defn
     --->    hlds_mode_defn(
+                % The names of the inst parameters (if any).
                 mode_varset     :: inst_varset,
-                                % The names of the inst parameters (if any).
 
+                % The list of the inst parameters (if any).
+                % (e.g. [I] for the second example above.)
                 mode_params     :: list(inst_var),
-                                % The list of the inst parameters (if any).
-                                % (e.g. [I] for the second example above.)
 
+                % The definition of this mode.
                 mody_body       :: hlds_mode_body,
-                                % The definition of this mode.
 
+                % The location of this mode definition in the source code.
                 mode_context    :: prog_context,
-                                % The location of this mode definition in the
-                                % original source code.
 
+                % So intermod.m can tell whether to output this mode.
                 mode_status     :: import_status
-                                % So intermod.m can tell whether to output
-                                % this mode.
             ).
 
     % The only sort of mode definitions allowed are equivalence modes.
@@ -792,10 +765,6 @@ user_inst_table_optimize(UserInstTable0, UserInstTable) :-
     % Given a mode table get the mode_id - hlds_mode_defn map.
     %
 :- pred mode_table_get_mode_defns(mode_table::in, mode_defns::out) is det.
-
-    % Get the list of defined mode_ids from the mode_table.
-    %
-:- pred mode_table_get_mode_ids(mode_table::in, list(mode_id)::out) is det.
 
     % Insert a mode_id and corresponding hlds_mode_defn into the mode_table.
     % Fail if the mode_id is already present in the table.
@@ -811,32 +780,17 @@ user_inst_table_optimize(UserInstTable0, UserInstTable) :-
 
 :- implementation.
 
-:- type mode_table
-    --->    mode_table(
-                mode_table_defns    :: mode_defns,
-                mode_table_ids      :: list(mode_id)
-                                    % Cached for efficiency
-            ).
+:- type mode_table == mode_defns.
 
-mode_table_get_mode_defns(ModeTable, ModeTable ^ mode_table_defns).
-mode_table_get_mode_ids(ModeTable, ModeTable ^ mode_table_ids).
+mode_table_get_mode_defns(ModeDefns, ModeDefns).
 
-mode_table_insert(ModeId, ModeDefn, ModeTable0, ModeTable) :-
-    ModeTable0 = mode_table(ModeDefns0, ModeIds0),
-    map.insert(ModeDefns0, ModeId, ModeDefn, ModeDefns),
-    ModeIds = [ModeId | ModeIds0],
-    ModeTable = mode_table(ModeDefns, ModeIds).
+mode_table_insert(ModeId, ModeDefn, ModeDefns0, ModeDefns) :-
+    map.insert(ModeDefns0, ModeId, ModeDefn, ModeDefns).
 
-mode_table_init(mode_table(ModeDefns, [])) :-
-    map.init(ModeDefns).
+mode_table_init(map.init).
 
-mode_table_optimize(ModeTable0, ModeTable) :-
-    ModeTable0 = mode_table(ModeDefns0, ModeIds0),
-    map.optimize(ModeDefns0, ModeDefns),   % NOP
-    % Sort the list of mode_ids for quick conversion to a set by module_qual
-    % when qualifying the modes of lambda expressions.
-    list.sort(ModeIds0, ModeIds),
-    ModeTable = mode_table(ModeDefns, ModeIds).
+mode_table_optimize(ModeDefns0, ModeDefns) :-
+    map.optimize(ModeDefns0, ModeDefns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

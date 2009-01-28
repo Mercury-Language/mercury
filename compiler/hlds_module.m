@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -595,10 +595,6 @@
     pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
 
 :- pred module_info_typeids(module_info::in, list(type_ctor)::out) is det.
-
-:- pred module_info_instids(module_info::in, list(inst_id)::out) is det.
-
-:- pred module_info_modeids(module_info::in, list(mode_id)::out) is det.
 
 :- pred module_info_consids(module_info::in, list(cons_id)::out) is det.
 
@@ -1239,15 +1235,6 @@ module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
 module_info_typeids(MI, TypeCtors) :-
     module_info_get_type_table(MI, Types),
     map.keys(Types, TypeCtors).
-
-module_info_instids(MI, InstIds) :-
-    module_info_get_inst_table(MI, InstTable),
-    inst_table_get_user_insts(InstTable, UserInstTable),
-    user_inst_table_get_inst_ids(UserInstTable, InstIds).
-
-module_info_modeids(MI, ModeIds) :-
-    module_info_get_mode_table(MI, Modes),
-    mode_table_get_mode_ids(Modes, ModeIds).
 
 module_info_consids(MI, ConsIds) :-
     module_info_get_cons_table(MI, Ctors),
