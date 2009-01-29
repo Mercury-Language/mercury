@@ -306,7 +306,6 @@
 
     % As above, but fail instead of throwing an exception if the
     % list contains a null character.
-    %
 :- pred string.semidet_from_char_list(list(char)::in, string::uo) is semidet.
 
     % Same as string.from_char_list, except that it reverses the order
@@ -324,14 +323,12 @@
 
     % Converts a signed base 10 string to an int; throws an exception
     % if the string argument does not match the regexp [+-]?[0-9]+
-    % or the number is not in the range [int.min_int+1, int.max_int].
     %
 :- func string.det_to_int(string) = int.
 
     % Convert a string to an int. The string must contain only digits,
     % optionally preceded by a plus or minus sign. If the string does
-    % not match this syntax or the number is not in the range
-    % [int.min_int+1, int.max_int], string.to_int fails.
+    % not match this syntax, string.to_int fails.
     %
 :- pred string.to_int(string::in, int::out) is semidet.
 
@@ -339,15 +336,13 @@
     % must contain one or more digits in the specified base, optionally
     % preceded by a plus or minus sign. For bases > 10, digits 10 to 35
     % are represented by the letters A-Z or a-z. If the string does not match
-    % this syntax or the number is not in the range
-    % [int.min_int+1, int.max_int], the predicate fails.
+    % this syntax, the predicate fails.
     %
 :- pred string.base_string_to_int(int::in, string::in, int::out) is semidet.
 
     % Converts a signed base N string to an int; throws an exception
     % if the string argument is not precisely an optional sign followed by
-    % a non-empty string of base N digits and the number is in the range
-    % [int.min_int+1, int.max_int].
+    % a non-empty string of base N digits.
     %
 :- func string.det_base_string_to_int(int, string) = int.
 
@@ -949,11 +944,9 @@ string.base_string_to_int(Base, String, Int) :-
 
 :- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
 
-accumulate_int(Base, Char, N0, N) :-
+accumulate_int(Base, Char, N, (Base * N) + M) :-
     char.digit_to_int(Char, M),
-    M < Base,
-    N = (Base * N0) + M,
-    N0 =< N.                             % Fail on overflow.
+    M < Base.
 
 % It is important to inline string.index and string.index_det.
 % so that the compiler can do loop invariant hoisting
