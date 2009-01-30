@@ -26,6 +26,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -389,6 +390,18 @@
 %-----------------------------------------------------------------------------%
 
 :- func maybe_strip_equality_pretest(hlds_goal) = hlds_goal.
+
+%-----------------------------------------------------------------------------%
+
+    % Locate the goal described by the goal path and use its first argument to
+    % transform that goal before rebuilding the goal tree and returning.  If
+    % the goal is not found the result is no.  If the result of the higher
+    % order argument is no then the result is no.
+    %
+:- pred maybe_transform_goal_at_goal_path(pred(hlds_goal, maybe(hlds_goal)),
+    goal_path_consable, hlds_goal, maybe(hlds_goal)). 
+:- mode maybe_transform_goal_at_goal_path(pred(in, out) is det,
+    in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1840,6 +1853,165 @@ maybe_strip_equality_pretest_case(Case0) = Case :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     Goal = maybe_strip_equality_pretest(Goal0),
     Case = case(MainConsId, OtherConsIds, Goal).
+
+%-----------------------------------------------------------------------------%
+
+maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
+        MaybeGoal) :-
+    (
+        goal_path_consable_remove_first(TargetGoalPath0, Step, TargetGoalPath)
+    ->
+        GoalExpr0 = Goal0 ^ hlds_goal_expr,  
+        (
+            ( GoalExpr0 = unify(_, _, _, _, _) 
+            ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+            ; GoalExpr0 = generic_call(_, _, _, _)
+            ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+            ),
+            % This search should never reach an atomic goal.
+            MaybeGoalExpr = no
+        ;
+            GoalExpr0 = conj(ConjType, Conjs0),
+            (
+                Step = step_conj(ConjNum),
+                list.index1(Conjs0, ConjNum, Conj0)
+            ->
+                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                    Conj0, MaybeConj),
+                (
+                    MaybeConj = yes(Conj),
+                    list.replace_nth_det(Conjs0, ConjNum, Conj, Conjs),
+                    MaybeGoalExpr = yes(conj(ConjType, Conjs))
+                ;
+                    MaybeConj = no,
+                    MaybeGoalExpr = no
+                )
+            ;
+                MaybeGoalExpr = no
+            )
+        ;
+            GoalExpr0 = disj(Disjs0),
+            (
+                Step = step_disj(DisjNum),
+                list.index1(Disjs0, DisjNum, Disj0)
+            ->
+                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                    Disj0, MaybeDisj),
+                (
+                    MaybeDisj = yes(Disj),
+                    list.replace_nth_det(Disjs0, DisjNum, Disj, Disjs),
+                    MaybeGoalExpr = yes(disj(Disjs))
+                ;
+                    MaybeDisj = no,
+                    MaybeGoalExpr = no
+                )
+            ;
+                MaybeGoalExpr = no
+            )
+        ;
+            GoalExpr0 = switch(Var, CanFail, Cases0),
+            (
+                Step = step_switch(CaseNum, _MaybeNumConstructors),
+                list.index1(Cases0, CaseNum, Case0)
+            ->
+                CaseGoal0 = Case0 ^ case_goal,
+                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                    CaseGoal0, MaybeCaseGoal),
+                (
+                    MaybeCaseGoal = yes(CaseGoal),
+                    Case = Case0 ^ case_goal := CaseGoal,
+                    list.replace_nth_det(Cases0, CaseNum, Case, Cases),
+                    MaybeGoalExpr = yes(switch(Var, CanFail, Cases))
+                ;
+                    MaybeCaseGoal = no,
+                    MaybeGoalExpr = no
+                )
+            ;
+                MaybeGoalExpr = no
+            )
+        ;
+            GoalExpr0 = negation(SubGoal0),
+            ( Step = step_neg ->
+                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                    SubGoal0, MaybeSubGoal),
+                (
+                    MaybeSubGoal = yes(SubGoal),
+                    MaybeGoalExpr = yes(negation(SubGoal))
+                ;
+                    MaybeSubGoal = no,
+                    MaybeGoalExpr = no
+                )
+            ;
+                MaybeGoalExpr = no
+            )
+        ;
+            GoalExpr0 = scope(Reason, SubGoal0),
+            ( Step = step_scope(_MaybeCut) ->
+                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                    SubGoal0, MaybeSubGoal),
+                (
+                    MaybeSubGoal = yes(SubGoal),
+                    MaybeGoalExpr = yes(scope(Reason, SubGoal))
+                ;
+                    MaybeSubGoal = no,
+                    MaybeGoalExpr = no
+                )
+            ;
+                MaybeGoalExpr = no
+            )
+        ;
+            GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
+            ( Step = step_ite_cond ->
+                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                    Cond0, MaybeCond),
+                (
+                    MaybeCond = yes(Cond),
+                    MaybeGoalExpr = yes(if_then_else(ExistVars, Cond, Then0,
+                        Else0))
+                ;
+                    MaybeCond = no,
+                    MaybeGoalExpr = no
+                )
+            ; Step = step_ite_then ->
+                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                    Then0, MaybeThen),
+                (
+                    MaybeThen = yes(Then),
+                    MaybeGoalExpr = yes(if_then_else(ExistVars, Cond0, Then,
+                        Else0))
+                ;
+                    MaybeThen = no,
+                    MaybeGoalExpr = no
+                )
+            ; Step = step_ite_else ->
+                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                    Else0, MaybeElse),
+                (
+                    MaybeElse = yes(Else),
+                    MaybeGoalExpr = yes(if_then_else(ExistVars, Cond0, Then0,
+                        Else))
+                ;
+                    MaybeElse = no,
+                    MaybeGoalExpr = no
+                )
+            ;
+                MaybeGoalExpr = no
+            )
+        ;
+            GoalExpr0 = shorthand(_),
+            unexpected(this_file, 
+                "Shorthand goals should have been eliminated already")
+        ),
+        (
+            MaybeGoalExpr = yes(GoalExpr),
+            MaybeGoal = yes(Goal0 ^ hlds_goal_expr := GoalExpr)
+        ;
+            MaybeGoalExpr = no,
+            MaybeGoal = no
+        )
+    ;
+        TransformP(Goal0, MaybeGoal)
+    ).
 
 %-----------------------------------------------------------------------------%
 

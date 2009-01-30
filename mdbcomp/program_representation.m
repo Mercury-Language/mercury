@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -540,6 +540,30 @@
     %
 :- pred is_goal_path_separator(char::in) is semidet.
 
+    % A goal path stored in order for constant time access to elements at the
+    % start of the goal path.  Recall that the start of a goal path is the root
+    % of the tree of goals.
+    %
+    % XXX: Review the name of this type and related predicates.
+    %
+:- type goal_path_consable.
+
+    % Convert between a goal_path and a goal_path_consable.
+    %
+:- pred goal_path_consable(goal_path, goal_path_consable).
+:- mode goal_path_consable(in, out) is det.
+:- mode goal_path_consable(out, in) is det.
+
+    % goal_path_consable_remove_first(GP, GPHead, GPTail).
+    %
+    % GPHead is the first goal path step in the GP, GPTail is the tail (the
+    % goals other than the first).  This predicate is false if GP is empty.
+    %
+:- pred goal_path_consable_remove_first(goal_path_consable::in, 
+    goal_path_step::out, goal_path_consable::out) is semidet.
+
+%----------------------------------------------------------------------------%
+
     % User-visible head variables are represented by a number from 1..N,
     % where N is the user-visible arity.
     %
@@ -918,6 +942,18 @@ goal_path_step_to_string(step_atomic_orelse(N)) =
     "o" ++ int_to_string(N) ++ ";".
 goal_path_step_to_string(step_first) = "f;".
 goal_path_step_to_string(step_later) = "l;".
+
+:- type goal_path_consable
+    --->    goal_path_consable(
+                list(goal_path_step)
+                    % The list of goal path steps is stored in-order.
+            ).
+
+goal_path_consable(goal_path(ListRev), goal_path_consable(List)) :-
+    reverse(List, ListRev).
+
+goal_path_consable_remove_first(goal_path_consable([H | T]), H,
+    goal_path_consable(T)).
 
 %-----------------------------------------------------------------------------%
 

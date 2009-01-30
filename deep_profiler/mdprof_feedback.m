@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -101,7 +101,7 @@ main(!IO) :-
                 (
                     FeedbackReadResult = ok(Feedback0),
                     process_deep_to_feedback(RequestedFeedbackInfo,
-                        Deep, Feedback0, Feedback),
+                        Deep, Warnings, Feedback0, Feedback),
                     write_feedback_file(OutputFileName, ProfileProgName,
                         Feedback, WriteResult, !IO),
                     (
@@ -115,6 +115,16 @@ main(!IO) :-
                         io.format(Stderr, "%s: %s\n",
                             [s(OutputFileName), s(ErrorMessage)], !IO),
                         io.set_exit_status(1, !IO)
+                    ),
+                    lookup_bool_option(Options, show_warnings, ShowWarnings),
+                    (
+                        ShowWarnings = yes,
+                        cord.foldl_pred(
+                            (pred(Warning::in, IO0::di, IO::uo) is det :-
+                                io.format("W: %s\n", [s(Warning)], IO0, IO)
+                            ), Warnings, !IO)
+                    ;
+                        ShowWarnings = no
                     )
                 ;
                     FeedbackReadResult = error(FeedbackReadError),
@@ -254,6 +264,7 @@ read_deep_file(Input, Verbose, MaybeDeep, !IO) :-
     ;       program_name
     ;       verbose
     ;       version
+    ;       show_warnings
 
             % The calls above threshold sorted feedback information, this is
             % used for the old implicit parallelism implementation.
@@ -282,6 +293,7 @@ short('h',  help).
 short('p',  program_name).
 short('V',  verbose).
 short('v',  version).
+short('w',  show_warnings).
 
 :- pred long(string::in, option::out) is semidet.
 
@@ -289,6 +301,7 @@ long("help",                                help).
 long("verbose",                             verbose).
 long("version",                             version).
 long("program-name",                        program_name).
+long("show-warnings",                       show_warnings).
 
 long("calls-above-threshold-sorted",        calls_above_threshold_sorted).
 long("calls-above-threshold-sorted-measure",
@@ -312,6 +325,7 @@ defaults(help,              bool(no)).
 defaults(program_name,      string("")).
 defaults(verbose,           bool(no)).
 defaults(version,           bool(no)).
+defaults(show_warnings,     bool(no)).
 
 defaults(calls_above_threshold_sorted,                      bool(no)).
 defaults(calls_above_threshold_sorted_measure,              string("mean")).
@@ -468,15 +482,17 @@ set_option(Option, Value, !Options) :-
 
 %----------------------------------------------------------------------------%
 
-    % process_deep_to_feedback(RequestedFeedbackInfo, Deep, !Feedback)
+    % process_deep_to_feedback(RequestedFeedbackInfo, Deep, Warnings,
+    %   !Feedback)
     %
     % Process a deep profiling structure and update the feedback information
     % according to the RequestedFeedbackInfo parameter.
     %
 :- pred process_deep_to_feedback(requested_feedback_info::in, deep::in,
-    feedback_info::in, feedback_info::out) is det.
+    cord(string)::out, feedback_info::in, feedback_info::out) is det.
 
-process_deep_to_feedback(RequestedFeedbackInfo, Deep, !Feedback) :-
+process_deep_to_feedback(RequestedFeedbackInfo, Deep, WarningStrs, 
+        !Feedback) :-
     MaybeCallsAboveThresholdSortedOpts =
         RequestedFeedbackInfo ^ maybe_calls_above_threshold_sorted,
     (
@@ -494,10 +510,43 @@ process_deep_to_feedback(RequestedFeedbackInfo, Deep, !Feedback) :-
         MaybeCandidateParallelConjunctionsOpts = 
             yes(CandidateParallelConjunctionsOpts),
         candidate_parallel_conjunctions(CandidateParallelConjunctionsOpts,
-            Deep, !Feedback)
+            Deep, Warnings, !Feedback)
     ;
-        MaybeCandidateParallelConjunctionsOpts = no
+        MaybeCandidateParallelConjunctionsOpts = no,
+        Warnings = cord.empty
+    ),
+    cord.map_pred(warning_to_string, Warnings, WarningStrs).
+
+%----------------------------------------------------------------------------%
+
+:- type warning
+    --->    warning(
+                warning_proc        :: string_proc_label,
+                warning_maybe_gp    :: maybe(goal_path),
+                warning_string      :: string
+            ).
+
+:- pred warning_to_string(warning::in, string::out) is det.
+
+warning_to_string(warning(Proc, MaybeGoalPath, Warning), String) :-
+    ProcString = string(Proc), 
+    (
+        MaybeGoalPath = yes(GoalPath),
+        GoalPathString = goal_path_to_string(GoalPath),
+        string.format("In %s at %s: %s", 
+            [s(ProcString), s(GoalPathString), s(Warning)], String)
+    ;
+        MaybeGoalPath = no,
+        string.format("In %s: %s",
+            [s(ProcString), s(Warning)], String)
     ).
+
+:- pred append_warning(string_proc_label::in, maybe(goal_path)::in, string::in,
+    cord(warning)::in, cord(warning)::out) is det.
+
+append_warning(StringProcLabel, MaybeGoalPath, WarningStr, !Warnings) :-
+    Warning = warning(StringProcLabel, MaybeGoalPath, WarningStr),
+    !:Warnings = cord.snoc(!.Warnings, Warning).
 
 %----------------------------------------------------------------------------%
 %
@@ -512,10 +561,10 @@ process_deep_to_feedback(RequestedFeedbackInfo, Deep, !Feedback) :-
 %
 
 :- pred candidate_parallel_conjunctions(
-    candidate_parallel_conjunctions_opts::in, deep::in,
+    candidate_parallel_conjunctions_opts::in, deep::in, cord(warning)::out,
     feedback_info::in, feedback_info::out) is det.
 
-candidate_parallel_conjunctions(Opts, Deep, !Feedback) :-
+candidate_parallel_conjunctions(Opts, Deep, Warnings, !Feedback) :-
     Opts = candidate_parallel_conjunctions_opts(DesiredParallelism,
         SparkingCost, LockingCost, ProcThreshold, _CallSiteThreshold), 
     % First retrieve the top procedures above the configured threshold.
@@ -544,10 +593,8 @@ candidate_parallel_conjunctions(Opts, Deep, !Feedback) :-
     % Take the top procs list and look for conjunctions that can be
     % parallelised and give an estimated speedup when parallelised.  There may
     % be more than one opportunity for parallelism in any given procedure.
-    list.map(
-        candidate_parallel_conjunctions_proc(Opts, Deep), 
-        TopProcsList, Conjunctions0),
-    list.condense(Conjunctions0, Conjunctions),
+    candidate_parallel_conjunctions_procs(Opts, Deep, TopProcsList,
+        [], Conjunctions, cord.empty, Warnings),
 
     % XXX: Analysing the clique tree to reduce the amount of nested parallel
     % execution should be done here.
@@ -566,15 +613,35 @@ candidate_parallel_conjunctions(Opts, Deep, !Feedback) :-
                 ipi_var_table   :: var_table
             ).
 
+:- pred candidate_parallel_conjunctions_procs(
+    candidate_parallel_conjunctions_opts::in, deep::in,
+    list(perf_row_data(proc_desc))::in,
+    assoc_list(string_proc_label, candidate_par_conjunction)::in,
+    assoc_list(string_proc_label, candidate_par_conjunction)::out,
+    cord(warning)::in, cord(warning)::out) is det.
+
+candidate_parallel_conjunctions_procs(_, _, [], !Candidates, !Warnings).
+candidate_parallel_conjunctions_procs(Opts, Deep, [PrefRowData | PrefRowDatas],
+        !Candidates, !Warnings) :-
+    candidate_parallel_conjunctions_proc(Opts, Deep, PrefRowData, Candidates,
+        Warnings),
+    % This partially reverses the list of candidates, but order shouldn't be
+    % important.
+    !:Candidates = Candidates ++ !.Candidates,
+    !:Warnings = !.Warnings ++ Warnings,
+    candidate_parallel_conjunctions_procs(Opts, Deep, PrefRowDatas,
+        !Candidates, !Warnings).
+
     % Find candidate parallel conjunctions within the given procedure.
     %
 :- pred candidate_parallel_conjunctions_proc(
     candidate_parallel_conjunctions_opts::in, deep::in,
     perf_row_data(proc_desc)::in,
-    assoc_list(string_proc_label, candidate_par_conjunction)::out) is det.
+    assoc_list(string_proc_label, candidate_par_conjunction)::out,
+    cord(warning)::out) is det.
 
-candidate_parallel_conjunctions_proc(Opts, Deep, PrefRowData, 
-        Candidates) :-
+candidate_parallel_conjunctions_proc(Opts, Deep, PrefRowData, Candidates,
+        Warnings) :-
     % Lookup the proc static to find the ProcLabel.
     PSPtr = PrefRowData ^ perf_row_subject ^ pdesc_ps_ptr,  
     deep_lookup_proc_statics(Deep, PSPtr, PS),
@@ -612,60 +679,64 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PrefRowData,
         Info = implicit_parallelism_info(Deep, ProgRep, Opts, CallSitesMap,
             VarTable),
         goal_get_conjunctions_worth_parallelising(Goal, empty_goal_path, Info,
-            initial_inst_map(ProcDefnRep), _, Candidates0,
-            SeenDuplicateInstantiation, _),
-        (
-            SeenDuplicateInstantiation = seen_duplicate_instantiation,
-            Candidates = []
-        ;
-            SeenDuplicateInstantiation = have_not_seen_duplicate_instantiation,
-            list.map((pred(Candidate0::in, Candidate::out) is det :-
-                    Candidate = (ProcLabel - Candidate0)
-                ), Candidates0, Candidates)
-        )
+            ProcLabel, Candidates0, _, _,
+            Warnings, initial_inst_map(ProcDefnRep), _),
+        list.map((pred(Candidate0::in, Candidate::out) is det :-
+                Candidate = (ProcLabel - Candidate0)
+            ), Candidates0, Candidates)
     ;
         % Builtin procedures cannot be found in the program representation, and
         % cannot be parallelised either.
-        Candidates = []
+        Candidates = [],
+        append_warning(ProcLabel, no, 
+            warning_cannot_lookup_proc_defn,
+            cord.empty, Warnings)
     ).
     
 :- pred goal_get_conjunctions_worth_parallelising(goal_rep::in, goal_path::in,
-    implicit_parallelism_info::in, inst_map::in, inst_map::out,
+    implicit_parallelism_info::in, string_proc_label::in, 
     list(candidate_par_conjunction)::out, seen_duplicate_instantiation::out,
-    maybe_call_conjunct::out) is det.
+    maybe_call_conjunct::out, cord(warning)::out, inst_map::in, inst_map::out) 
+    is det.
 
-goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, !InstMap,
-        Candidates, SeenDuplicateInstantiation, MaybeCallConjunct) :-
+goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, ProcLabel, 
+        Candidates, SeenDuplicateInstantiation, MaybeCallConjunct,
+        Warnings, !InstMap) :-
     Goal = goal_rep(GoalExpr, Detism, _),
     (
         (
             GoalExpr = conj_rep(Conjuncts),
             conj_get_conjunctions_worth_parallelising(Conjuncts, GoalPath,
-                Info, !InstMap, Candidates, SeenDuplicateInstantiation)
+                Info, ProcLabel, Candidates, SeenDuplicateInstantiation,
+                Warnings, !InstMap) 
         ;
             GoalExpr = disj_rep(Disjuncts),
             disj_get_conjunctions_worth_parallelising(Disjuncts, GoalPath, 1,
-                Info, !InstMap, Candidates, SeenDuplicateInstantiation)
+                Info, ProcLabel, Candidates, SeenDuplicateInstantiation,
+                Warnings, !InstMap)
         ;
             GoalExpr = switch_rep(_, _, Cases),
             switch_case_get_conjunctions_worth_parallelising(Cases, GoalPath, 1,
-                Info, !InstMap, Candidates, SeenDuplicateInstantiation)
+                Info, ProcLabel, Candidates, SeenDuplicateInstantiation,
+                Warnings, !InstMap)
         ;
             GoalExpr = ite_rep(Cond, Then, Else),
             ite_get_conjunctions_worth_parallelising(Cond, Then, Else,
-                GoalPath, Info, !InstMap, Candidates,
-                SeenDuplicateInstantiation)
+                GoalPath, Info, ProcLabel, Candidates,
+                SeenDuplicateInstantiation, Warnings, !InstMap)
         ;
             GoalExpr = scope_rep(SubGoal, MaybeCut),
             ScopeGoalPath = 
                 goal_path_add_at_end(GoalPath, step_scope(MaybeCut)),
             goal_get_conjunctions_worth_parallelising(SubGoal, ScopeGoalPath,
-                Info, !InstMap, Candidates, SeenDuplicateInstantiation, _) 
+                Info, ProcLabel, Candidates, SeenDuplicateInstantiation, _,
+                Warnings, !InstMap) 
         ;
             GoalExpr = negation_rep(SubGoal),
             NegGoalPath = goal_path_add_at_end(GoalPath, step_neg),
             goal_get_conjunctions_worth_parallelising(SubGoal, NegGoalPath,
-                Info, !InstMap, Candidates, SeenDuplicateInstantiation, _) 
+                Info, ProcLabel, Candidates, SeenDuplicateInstantiation, _,
+                Warnings, !InstMap) 
         ),
         % TODO: Parallelising conjunctions like 
         %   ( call1(A, B) , not call2(C, D) )
@@ -677,9 +748,11 @@ goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, !InstMap,
         GoalExpr = atomic_goal_rep(_, _, BoundVars, AtomicGoal),
         InstMapBeforeCall = !.InstMap,
         % The binding of a variable may depend on any number of other
-        % variables, and of course the variables they depend upon.  Except that
-        % variables involved in control flow (switched on vars, vars in ITE
-        % conds) are not recorded here, but should be for completeness.
+        % variables, and recursively the variables that those depended-on
+        % variables depend upon.  
+        % Except that variables involved in control flow (switched on vars,
+        % vars in ITE conds) however this never comes up as for-now we only
+        % consider atomic goals.
         atomic_goal_get_vars(AtomicGoal, AtomicGoalVars0),
         list.foldl((pred(Var::in, Set0::in, Set::out) is det :-
                 ( set.remove(Set0, Var, SetPrime) ->
@@ -692,88 +765,115 @@ goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, !InstMap,
             SeenDuplicateInstantiation),
         maybe_call_site_conjunct(Info, GoalPath, AtomicGoal, Detism,
             InstMapBeforeCall, !.InstMap, BoundVars, MaybeCallConjunct),
-        Candidates = []
+        Candidates = [],
+        Warnings = cord.empty
     ).
 
 :- pred conj_get_conjunctions_worth_parallelising(list(goal_rep)::in,
-    goal_path::in, implicit_parallelism_info::in, inst_map::in,
-    inst_map::out, list(candidate_par_conjunction)::out,
-    seen_duplicate_instantiation::out) is det.
+    goal_path::in, implicit_parallelism_info::in, string_proc_label::in,
+    list(candidate_par_conjunction)::out, seen_duplicate_instantiation::out, 
+    cord(warning)::out, inst_map::in, inst_map::out) is det.
 
 conj_get_conjunctions_worth_parallelising(Conjs, GoalPath, Info,
-        !InstMap, Candidates, SeenDuplicateInstantiation) :-
+        ProcLabel, Candidates, SeenDuplicateInstantiation, Warnings, 
+        !InstMap) :-
     % Note: it will be better to look at each pair of conjuncts, determine if
     % they are parallelisable (perhaps by placing middle goals in either of the
     % the parallel conjuncts to create the optimum amount of parallelism.  This
     % will need to have an in-order representation of goals, and for each
     % variable seen have a tree of variables it depends upon.
     %
-    % For now consider parallelising conjuncts that seperated only by other
+    % For now consider parallelising conjuncts that separated only by other
     % atomic goals.
     conj_get_conjunctions_worth_parallelising_2(Conjs, GoalPath, 1, Info,
-        !InstMap, Candidates0, CallSiteConjuncts, 
-        SeenDuplicateInstantiation),
+        ProcLabel, Candidates0, CallSiteConjuncts, 
+        SeenDuplicateInstantiation, WarningsA, !InstMap),
+        
+    build_candidate_conjunctions(Info, !.InstMap, GoalPath, ProcLabel,
+        list(CallSiteConjuncts), WarningsB, pqueue.init, CandidatesQueue),
+    Warnings0 = WarningsA ++ WarningsB,
+    % Pick best candidate from queue.
     (
-        % Only perform analysis at this point if it's not going to be
-        % thrown away later due to unhandled use of partial instantiation.
         SeenDuplicateInstantiation = have_not_seen_duplicate_instantiation,
-        build_candidate_conjunctions(Info, !.InstMap, GoalPath,
-            list(CallSiteConjuncts), pqueue.init, CandidatesQueue),
-        % Pick best candidate from queue.
         ( pqueue.remove(CandidatesQueue, _, Candidate, _) ->
-            Candidates = [Candidate | Candidates0]
+            Candidates = [Candidate | Candidates0],
+            (
+                pqueue.length(CandidatesQueue) = Length,
+                Length > 0
+            ->
+                append_warning(ProcLabel, yes(GoalPath),
+                    warning_extra_callpairs_in_conjunction(Length), 
+                    Warnings0, Warnings)
+            ;
+                Warnings = Warnings0
+            )
         ;
-            Candidates = Candidates0
+            Candidates = Candidates0,
+            Warnings = Warnings0
         )
     ;
         SeenDuplicateInstantiation = seen_duplicate_instantiation,
-        Candidates = Candidates0
+        Candidates = Candidates0,
+        (
+            pqueue.length(CandidatesQueue) = Length,
+            Length >= 1 
+        ->
+            append_warning(ProcLabel, yes(GoalPath), 
+                warning_duplicate_instantiation(Length), 
+                Warnings0, Warnings)
+        ;
+            Warnings = Warnings0
+        )
     ). 
 
 :- pred conj_get_conjunctions_worth_parallelising_2(list(goal_rep)::in,
-    goal_path::in, int::in, implicit_parallelism_info::in, 
-    inst_map::in, inst_map::out, list(candidate_par_conjunction)::out,
-    cord(maybe_call_conjunct)::out,
-    seen_duplicate_instantiation::out) is det.
+    goal_path::in, int::in, implicit_parallelism_info::in,
+    string_proc_label::in, list(candidate_par_conjunction)::out,
+    cord(maybe_call_conjunct)::out, seen_duplicate_instantiation::out,
+    cord(warning)::out, inst_map::in, inst_map::out) is det.
 
-conj_get_conjunctions_worth_parallelising_2([], _, _, _, !InstMap, [], cord.empty, 
-        have_not_seen_duplicate_instantiation).
+conj_get_conjunctions_worth_parallelising_2([], _, _, _, _, [], cord.empty, 
+        have_not_seen_duplicate_instantiation, cord.empty, !InstMap).
 conj_get_conjunctions_worth_parallelising_2([Conj | Conjs], GoalPath,
-        ConjunctNum, Info, !InstMap, Candidates, CallSiteConjuncts,
-        SeenDuplicateInstantiation) :-
+        ConjunctNum, Info, ProcLabel, Candidates, CallSiteConjuncts,
+        SeenDuplicateInstantiation, Warnings, !InstMap) :-
     ConjGoalPath = goal_path_add_at_end(GoalPath, step_conj(ConjunctNum)),
     goal_get_conjunctions_worth_parallelising(Conj, ConjGoalPath, Info,
-        !InstMap, CandidatesHead, SeenDuplicateInstantiationHead,
-        MaybeCallSiteConjunct), 
+        ProcLabel, CandidatesHead, SeenDuplicateInstantiationHead,
+        MaybeCallSiteConjunct, WarningsHead, !InstMap), 
     
     conj_get_conjunctions_worth_parallelising_2(Conjs, GoalPath, ConjunctNum+1,
-        Info, !InstMap, CandidatesTail, CallSiteConjuncts0,
-        SeenDuplicateInstantiationTail),
+        Info, ProcLabel, CandidatesTail, CallSiteConjuncts0,
+        SeenDuplicateInstantiationTail, WarningsTail, !InstMap),
 
     Candidates = CandidatesHead ++ CandidatesTail,
+    Warnings = WarningsHead ++ WarningsTail,
     CallSiteConjuncts = cord.cons(MaybeCallSiteConjunct, CallSiteConjuncts0),
     SeenDuplicateInstantiation = merge_seen_duplicate_instantiation(
         SeenDuplicateInstantiationHead,
         SeenDuplicateInstantiationTail).
 
 :- pred disj_get_conjunctions_worth_parallelising(list(goal_rep)::in,
-    goal_path::in, int::in, implicit_parallelism_info::in, inst_map::in,
-    inst_map::out, list(candidate_par_conjunction)::out,
-    seen_duplicate_instantiation::out) is det.
+    goal_path::in, int::in, implicit_parallelism_info::in, 
+    string_proc_label::in, list(candidate_par_conjunction)::out,
+    seen_duplicate_instantiation::out, cord(warning)::out,
+    inst_map::in, inst_map::out) is det.
 
-disj_get_conjunctions_worth_parallelising([], _, _, _, !InstMap, [],
-    have_not_seen_duplicate_instantiation).
+disj_get_conjunctions_worth_parallelising([], _, _, _, _, [],
+    have_not_seen_duplicate_instantiation, cord.empty, !InstMap).
 disj_get_conjunctions_worth_parallelising([Disj | Disjs], GoalPath, DisjNum,
-        Info, InstMap0, InstMap, Candidates, SeenDuplicateInstantiation) :-
+        Info, ProcLabel, Candidates, SeenDuplicateInstantiation, 
+        Warnings, InstMap0, InstMap) :-
     DisjGoalPath = goal_path_add_at_end(GoalPath, step_disj(DisjNum)),
     HeadDetism = Disj ^ goal_detism_rep,
     goal_get_conjunctions_worth_parallelising(Disj, DisjGoalPath, Info,
-        InstMap0, HeadInstMap, HeadCandidates, HeadSeenDuplicateInstantiation, 
-        _MaybeCallConjunct),
+        ProcLabel, HeadCandidates, HeadSeenDuplicateInstantiation, 
+        _MaybeCallConjunct, HeadWarnings, InstMap0, HeadInstMap),
     disj_get_conjunctions_worth_parallelising(Disjs, GoalPath, DisjNum + 1,
-        Info, InstMap0, TailInstMap, TailCandidates,
-        TailSeenDuplicateInstantiation),
+        Info, ProcLabel, TailCandidates, TailSeenDuplicateInstantiation,
+        TailWarnings, InstMap0, TailInstMap),
     Candidates = HeadCandidates ++ TailCandidates,
+    Warnings = HeadWarnings ++ TailWarnings,
     % merge_inst_map requires the detism of goals that produce both inst maps,
     % we can create fake values that satisfy merge_inst_map easily.
     (
@@ -789,25 +889,27 @@ disj_get_conjunctions_worth_parallelising([Disj | Disjs], GoalPath, DisjNum,
         TailSeenDuplicateInstantiation).
 
 :- pred switch_case_get_conjunctions_worth_parallelising(list(case_rep)::in,
-    goal_path::in, int::in, implicit_parallelism_info::in, inst_map::in,
-    inst_map::out, list(candidate_par_conjunction)::out,
-    seen_duplicate_instantiation::out) is det.
+    goal_path::in, int::in, implicit_parallelism_info::in,
+    string_proc_label::in, list(candidate_par_conjunction)::out,
+    seen_duplicate_instantiation::out, cord(warning)::out, 
+    inst_map::in, inst_map::out) is det.
 
-switch_case_get_conjunctions_worth_parallelising([], _, _, _, !InstMap, [],
-    have_not_seen_duplicate_instantiation).
+switch_case_get_conjunctions_worth_parallelising([], _, _, _, _, [],
+    have_not_seen_duplicate_instantiation, cord.empty, !InstMap).
 switch_case_get_conjunctions_worth_parallelising([Case | Cases], GoalPath,
-        CaseNum, Info, InstMap0, InstMap, Candidates,
-        SeenDuplicateInstantiation) :-
+        CaseNum, Info, ProcLabel, Candidates, SeenDuplicateInstantiation,
+        Warnings, InstMap0, InstMap) :-
     Case = case_rep(_, _, Goal),
     HeadDetism = Goal ^ goal_detism_rep,
     CaseGoalPath = goal_path_add_at_end(GoalPath, step_switch(CaseNum, no)),
     goal_get_conjunctions_worth_parallelising(Goal, CaseGoalPath, Info,
-        InstMap0, HeadInstMap, HeadCandidates, HeadSeenDuplicateInstantiation, 
-        _MaybeCallConjs),
+        ProcLabel, HeadCandidates, HeadSeenDuplicateInstantiation, 
+        _MaybeCallConjs, HeadWarnings, InstMap0, HeadInstMap),
     switch_case_get_conjunctions_worth_parallelising(Cases, GoalPath, 
-        CaseNum + 1, Info, InstMap0, TailInstMap, TailCandidates,
-        TailSeenDuplicateInstantiation),
+        CaseNum + 1, Info, ProcLabel, TailCandidates,
+        TailSeenDuplicateInstantiation, TailWarnings, InstMap0, TailInstMap),
     Candidates = HeadCandidates ++ TailCandidates,
+    Warnings = HeadWarnings ++ TailWarnings,
     % merge_inst_map requires the detism of goals that produce both inst maps,
     % we can create fake values that satisfy merge_inst_map easily.
     (
@@ -823,24 +925,25 @@ switch_case_get_conjunctions_worth_parallelising([Case | Cases], GoalPath,
         TailSeenDuplicateInstantiation).
 
 :- pred ite_get_conjunctions_worth_parallelising(goal_rep::in, goal_rep::in,
-    goal_rep::in, goal_path::in, implicit_parallelism_info::in, inst_map::in,
-    inst_map::out, list(candidate_par_conjunction)::out,
-    seen_duplicate_instantiation::out) is det.
+    goal_rep::in, goal_path::in, implicit_parallelism_info::in,
+    string_proc_label::in, list(candidate_par_conjunction)::out,
+    seen_duplicate_instantiation::out, cord(warning)::out,
+    inst_map::in, inst_map::out) is det.
 
 ite_get_conjunctions_worth_parallelising(Cond, Then, Else, GoalPath, Info,
-        !InstMap, Candidates, SeenDuplicateInstantiation) :-
+        ProcLabel, Candidates, SeenDuplicateInstantiation, Warnings, !InstMap) :-
     CondGoalPath = goal_path_add_at_end(GoalPath, step_ite_cond),
     ThenGoalPath = goal_path_add_at_end(GoalPath, step_ite_then),
     ElseGoalPath = goal_path_add_at_end(GoalPath, step_ite_else),
     goal_get_conjunctions_worth_parallelising(Cond, CondGoalPath, Info,
-        !.InstMap, PostCondInstMap, CondCandidates,
-        CondSeenDuplicateInstantiation, _),
+        ProcLabel, CondCandidates, CondSeenDuplicateInstantiation, _,
+        CondWarnings, !.InstMap, PostCondInstMap),
     goal_get_conjunctions_worth_parallelising(Then, ThenGoalPath, Info, 
-        PostCondInstMap, PostThenInstMap, ThenCandidates,
-        ThenSeenDuplicateInstantiation, _),
+        ProcLabel, ThenCandidates, ThenSeenDuplicateInstantiation, _,
+        ThenWarnings, PostCondInstMap, PostThenInstMap),
     goal_get_conjunctions_worth_parallelising(Else, ElseGoalPath, Info, 
-        PostCondInstMap, PostElseInstMap, ElseCandidates,
-        ElseSeenDuplicateInstantiation, _),
+        ProcLabel, ElseCandidates, ElseSeenDuplicateInstantiation, _, 
+        ElseWarnings, PostCondInstMap, PostElseInstMap),
     Candidates = CondCandidates ++ ThenCandidates ++ ElseCandidates,
     (
         CondSeenDuplicateInstantiation = have_not_seen_duplicate_instantiation,
@@ -851,6 +954,7 @@ ite_get_conjunctions_worth_parallelising(Cond, Then, Else, GoalPath, Info,
     ;
         SeenDuplicateInstantiation = seen_duplicate_instantiation
     ),
+    Warnings = CondWarnings ++ ThenWarnings ++ ElseWarnings,
     ThenDetism = Then ^ goal_detism_rep,
     ElseDetism = Else ^ goal_detism_rep,
     !:InstMap = merge_inst_map(PostThenInstMap, ThenDetism, 
@@ -976,86 +1080,106 @@ var_get_mode(InstMapBefore, InstMapAfter, VarRep, VarModeRep) :-
     % Note: this runs in quadratic time.
     %
 :- pred build_candidate_conjunctions(implicit_parallelism_info::in,
-    inst_map::in, goal_path::in, list(maybe_call_conjunct)::in,
+    inst_map::in, goal_path::in, string_proc_label::in, 
+    list(maybe_call_conjunct)::in, cord(warning)::out,
     pqueue(float, candidate_par_conjunction)::in, 
     pqueue(float, candidate_par_conjunction)::out) is det.
 
-build_candidate_conjunctions(_, _, _, [], !Candidates).
-build_candidate_conjunctions(Info, InstMap, GoalPath, [MaybeCall | MaybeCalls],
-        !Candidates) :-
+build_candidate_conjunctions(_, _, _, _, [], cord.empty, !Candidates).
+build_candidate_conjunctions(Info, InstMap, GoalPath, ProcLabel,
+        [MaybeCall | MaybeCalls], Warnings, !Candidates) :-
     (
         MaybeCall = call(_, _, _, CallSitePerf),
-        Cost = CallSitePerf ^ csf_summary_perf ^ perf_row_self 
-            ^ perf_row_callseqs_percall,
+        Cost = get_call_site_cost(CallSitePerf),
         ( Cost > float(Info ^ ipi_opts ^ cpc_call_site_threshold) ->
             % This conjunction is a call and is expensive enough to
             % parallelise, find some later conjunct to parallelise against it.
-            build_candidate_conjunctions_2(Info, InstMap, GoalPath, MaybeCall,
-                cord.empty, MaybeCalls, !Candidates)
+            build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel,
+                MaybeCall, cord.empty, MaybeCalls, Warnings0, !Candidates)
             % XXX: pick the most expensive non-overlapping candidates from the
             % result.
         ;
-            true
+            Warnings0 = cord.empty
         )
     ;
-        MaybeCall = non_atomic_goal
+        MaybeCall = non_atomic_goal,
+        Warnings0 = cord.empty
     ;
-        MaybeCall = trivial_atomic_goal(_, _)
+        MaybeCall = trivial_atomic_goal(_, _),
+        Warnings0 = cord.empty
     ),
-    build_candidate_conjunctions(Info, InstMap, GoalPath, MaybeCalls,
-        !Candidates).
+    build_candidate_conjunctions(Info, InstMap, GoalPath, ProcLabel, MaybeCalls,
+        WarningsTail, !Candidates),
+    Warnings = Warnings0 ++ WarningsTail.
 
 :- pred build_candidate_conjunctions_2(implicit_parallelism_info::in,
-    inst_map::in, goal_path::in, maybe_call_conjunct::in(call),
-    cord(maybe_call_conjunct)::in, list(maybe_call_conjunct)::in,
-    pqueue(float, candidate_par_conjunction)::in, pqueue(float,
-    candidate_par_conjunction)::out) is det.
+    inst_map::in, goal_path::in, string_proc_label::in, 
+    maybe_call_conjunct::in(call), cord(maybe_call_conjunct)::in,
+    list(maybe_call_conjunct)::in, cord(warning)::out,
+    pqueue(float, candidate_par_conjunction)::in, 
+    pqueue(float, candidate_par_conjunction)::out) is det.
 
-build_candidate_conjunctions_2(_, _, _, _, _, [], !Candidates).
-build_candidate_conjunctions_2(Info, InstMap, GoalPath, CallA,
-        IntermediateGoals0, [MaybeCall | MaybeCalls], !Candidates) :-
+build_candidate_conjunctions_2(_, _, _, _, _, _, [], cord.empty, !Candidates).
+build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, CallA,
+        IntermediateGoals, [MaybeCall | MaybeCalls], Warnings, !Candidates) :-
     (
-        MaybeCall = call(_, _, _, CallSitePerf),
-        CallB = MaybeCall,
-        Cost = call_site_perf_self_callseqs_percall(CallSitePerf),
-        ( Cost > float(Info ^ ipi_opts ^ cpc_call_site_threshold) ->
-            % This conjunction is a call and is expensive enough to
-            % parallelise.
-            are_conjuncts_dependant(CallA, CallB, InstMap, Dependance),
-            (
-                Dependance = conjuncts_are_dependant(DepVars),
-                compute_optimal_dependant_parallelisation(Info, CallA, CallB,
-                    DepVars, IntermediateGoals0, InstMap, CPCA, CPCB, Speedup)
+        some [!Warnings]
+        (
+            MaybeCall = call(_, _, _, CallSitePerf),
+            !:Warnings = cord.empty,
+            CallB = MaybeCall,
+            Cost = get_call_site_cost(CallSitePerf),
+            ( Cost > float(Info ^ ipi_opts ^ cpc_call_site_threshold) ->
+                % This conjunct is a call and is expensive enough to
+                % parallelise.
+                are_conjuncts_dependant(CallA, CallB, InstMap, Dependance),
+                (
+                    Dependance = conjuncts_are_dependant(DepVars),
+                    compute_optimal_dependant_parallelisation(Info, 
+                        CallA, CallB, DepVars, IntermediateGoals, InstMap,
+                        CPCA, CPCB, Speedup)
+                ;
+                    Dependance = conjuncts_are_independent,
+                    compute_independent_parallelisation_speedup(Info, 
+                        CallA, CallB, CPCA, CPCB, Speedup)
+                ),
+                % XXX: This threshold should be configurable.
+                ( Speedup > 0.0 ->
+                    ( length(IntermediateGoals) = 0 -> 
+                        GoalPathString = goal_path_to_string(GoalPath),
+                        Candidate = candidate_par_conjunction(GoalPathString, 
+                            CPCA, CPCB, Dependance, Speedup),
+                        % So that the candidates with the greatest speedup are
+                        % removed first multiply speedup by -1.0.
+                        pqueue.insert(!.Candidates, Speedup * -1.0, Candidate,
+                            !:Candidates)
+                    ;
+                        append_warning(ProcLabel, yes(GoalPath),
+                            warning_candidate_callpairs_not_adjacent,
+                            !Warnings)
+                    )
+                ;
+                    true
+                )
             ;
-                Dependance = conjuncts_are_independent,
-                compute_independant_parallelisation_speedup(Info, CallA, CallB, 
-                    length(IntermediateGoals0), CPCA, CPCB, Speedup)
+                % Don't recurse here, we don't parallelise over call goals.
+                append_warning(ProcLabel, yes(GoalPath),
+                    warning_cannot_parallelise_over_cheap_call_goal, !Warnings)
             ),
-            % XXX: This threshold should be configurable.
-            ( Speedup > 0.0 ->
-                % XXX: I think this should be a priority queue or somesuch.
-                GoalPathString = goal_path_to_string(GoalPath),
-                Candidate = candidate_par_conjunction(GoalPathString, 
-                    CPCA, CPCB, Dependance, Speedup),
-                % So that the candidates with the greatest speedup are removed
-                % first multiply speedup by -1.0.
-                pqueue.insert(!.Candidates, Speedup * -1.0, Candidate,
-                    !:Candidates)
-            ;
-                true
-            )
-        ;
-            % Don't recurse here, we don't parallelise over call goals.
-            true
+            Warnings = !.Warnings
         )
     ;
         MaybeCall = trivial_atomic_goal(_, _),
-        build_candidate_conjunctions_2(Info, InstMap, GoalPath, CallA,
-            cord.snoc(IntermediateGoals0, MaybeCall), MaybeCalls, !Candidates)
+        build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, 
+            CallA, cord.snoc(IntermediateGoals, MaybeCall), MaybeCalls,
+            Warnings, !Candidates)
     ;
-        MaybeCall = non_atomic_goal
-        % Don't recurse in this case, we don't parallelise over non-atomic goals
-        % yet.
+        MaybeCall = non_atomic_goal,
+        % Don't recurse in this case, we don't parallelise over non-atomic
+        % goals yet.
+        append_warning(ProcLabel, yes(GoalPath),
+            warning_cannot_parallelise_over_nonatomic_goal,
+            cord.empty, Warnings)
     ).
 
 :- pred are_conjuncts_dependant(maybe_call_conjunct::in(call),
@@ -1108,45 +1232,56 @@ add_output_var_to_set(var_mode_and_use(VarRep, VarModeRep, _), !Set) :-
         true
     ).
 
-:- pred compute_independant_parallelisation_speedup(
+    % Retrieve the average cost of a call site.
+    %
+:- func get_call_site_cost(call_site_perf) = float.
+
+get_call_site_cost(CallSitePerf) = Cost :-
+    % XXX: This selects self csq, we need to include decendants.  and do we
+    % want percall?
+    CSFSummary = CallSitePerf ^ csf_summary_perf,
+    CostSelf = CSFSummary ^ perf_row_self 
+        ^ perf_row_callseqs_percall,
+    MaybePerfTotal = CSFSummary ^ perf_row_maybe_total, 
+    (
+        MaybePerfTotal = yes(PerfTotal),
+        CostTotal = PerfTotal ^ perf_row_callseqs_percall
+    ;
+        MaybePerfTotal = no,
+        CostTotal = 0.0
+    ),
+    Cost = CostSelf + CostTotal.  
+
+:- pred compute_independent_parallelisation_speedup(
     implicit_parallelism_info::in, 
     maybe_call_conjunct::in(call), maybe_call_conjunct::in(call),
-    int::in, candidate_par_conjunct::out, candidate_par_conjunct::out,
+    candidate_par_conjunct::out, candidate_par_conjunct::out,
     float::out) is det.
 
-compute_independant_parallelisation_speedup(Info, CallA, CallB, NumUnifications,
+compute_independent_parallelisation_speedup(Info, CallA, CallB, 
         CPCA, CPCB, Speedup) :-
-    CostA = call_site_perf_self_callseqs_percall(CallA ^ mccc_perf),
-    CostB = call_site_perf_self_callseqs_percall(CallB ^ mccc_perf),
+    CostA = get_call_site_cost(CallA ^ mccc_perf),
+    CostB = get_call_site_cost(CallB ^ mccc_perf),
     SequentialCost = CostA + CostB,
     ParallelCost = max(CostA, CostB) + 
         float(Info ^ ipi_opts ^ cpc_sparking_cost),
     Speedup = SequentialCost - ParallelCost,
-    ( CostA < CostB ->
-        NumUnificationsA = NumUnifications,
-        NumUnificationsB = 0
-    ;
-        NumUnificationsA = 0,
-        NumUnificationsB = NumUnifications
-    ),
-    call_site_conj_to_candidate_par_conjunct(Info, CallA, NumUnificationsA,
-        CPCA),
-    call_site_conj_to_candidate_par_conjunct(Info, CallB, NumUnificationsB,
-        CPCB).
+    call_site_conj_to_candidate_par_conjunct(Info, CallA, CPCA),
+    call_site_conj_to_candidate_par_conjunct(Info, CallB, CPCB).
 
 :- pred compute_optimal_dependant_parallelisation(
     implicit_parallelism_info::in,
     maybe_call_conjunct::in(call), maybe_call_conjunct::in(call),
     set(var_rep)::in, cord(maybe_call_conjunct)::in, inst_map::in,
-    candidate_par_conjunct::out, candidate_par_conjunct::out, float::out) 
-    is det.
+    candidate_par_conjunct::out, candidate_par_conjunct::out,
+    float::out) is det.
 
 compute_optimal_dependant_parallelisation(Info, CallA, CallB,
-        DepVars, IntermediateGoals, InstMap, CPCA, CPCB, Speedup) :-
-    CostA = call_site_perf_self_callseqs_percall(CallA ^ mccc_perf),
-    CostB = call_site_perf_self_callseqs_percall(CallB ^ mccc_perf),
+        DepVars, _IntermediateGoals, InstMap, CPCA, CPCB,
+        Speedup) :-
+    CostA = get_call_site_cost(CallA ^ mccc_perf),
+    CostB = get_call_site_cost(CallB ^ mccc_perf),
     SequentialCost = CostA + CostB,
-    NumUnifications = length(IntermediateGoals),
     ( singleton_set(DepVars, DepVar) ->
         % Only parallelise conjunctions with a single dependant variable for
         % now.
@@ -1162,16 +1297,7 @@ compute_optimal_dependant_parallelisation(Info, CallA, CallB,
                 CostBeforeConsume = 
                     cost_until_to_cost_since_start(CostUntilConsume, CostB),
                 CostAfterConsume = 
-                    cost_until_to_cost_before_end(CostUntilConsume, CostB),
-                % Unfications between the calls don't bind any variables useful
-                % for the calls, so serialise them with the cheaper call.
-                ( CostA < CostB ->
-                    NumUnificationsA = NumUnifications,
-                    NumUnificationsB = 0
-                ;
-                    NumUnificationsA = 0,
-                    NumUnificationsB = NumUnifications
-                )
+                    cost_until_to_cost_before_end(CostUntilConsume, CostB)
             ;
                 inst_map_get_var_deps(InstMap, DepVar, DepVarDeps),
                 set.fold(get_var_use_add_to_queue(CallA ^ mccc_args), 
@@ -1197,14 +1323,10 @@ compute_optimal_dependant_parallelisation(Info, CallA, CallB,
                 % lesser one should have the unifications added to it.  This
                 % maximises the amount of parallelism.
                 ( CostBeforeConsume0 > CostAfterProduction0 ->
-                    NumUnificationsA = 0,
-                    NumUnificationsB = NumUnifications,
                     CostBeforeProduction = CostBeforeProduction0,
                     CostBeforeConsume = CostA,
                     CostAfterConsume = 0.0
                 ;
-                    NumUnificationsA = NumUnifications,
-                    NumUnificationsB = 0,
                     CostBeforeProduction = 0.0,
                     CostBeforeConsume = CostA - CostAfterConsume0,
                     CostAfterConsume = CostAfterConsume0 
@@ -1221,14 +1343,10 @@ compute_optimal_dependant_parallelisation(Info, CallA, CallB,
             error("Dependant var not in consumer's arguments")
         )
     ;
-        Speedup = -1.0,
-        NumUnificationsA = NumUnifications,
-        NumUnificationsB = 0
+        Speedup = -1.0
     ),
-    call_site_conj_to_candidate_par_conjunct(Info, CallA, NumUnificationsA,
-        CPCA),
-    call_site_conj_to_candidate_par_conjunct(Info, CallB, NumUnificationsB,
-        CPCB).
+    call_site_conj_to_candidate_par_conjunct(Info, CallA, CPCA),
+    call_site_conj_to_candidate_par_conjunct(Info, CallB, CPCB).
 
 :- pred get_var_use_from_args(list(var_mode_and_use)::in, var_rep::in, 
     var_use_info::out) is semidet.
@@ -1257,21 +1375,16 @@ get_var_use_add_to_queue(VarsModeAndUse, VarRep, !Queue) :-
         true
     ).
 
-:- func call_site_perf_self_callseqs_percall(call_site_perf) = float.
-
-call_site_perf_self_callseqs_percall(CSP) = 
-    CSP ^ csf_summary_perf ^ perf_row_self ^ perf_row_callseqs_percall.
-
 :- pred call_site_conj_to_candidate_par_conjunct(
     implicit_parallelism_info::in, maybe_call_conjunct::in(call),
-    int::in, candidate_par_conjunct::out) is det.
+    candidate_par_conjunct::out) is det.
 
-call_site_conj_to_candidate_par_conjunct(Info, Call, NumUnifications, CPC) :-
+call_site_conj_to_candidate_par_conjunct(Info, Call, CPC) :-
     Call = call(MaybeCallee, _Detism, Args, Perf),
     VarTable = Info ^ ipi_var_table,
     list.map(var_mode_use_to_var_in_par_conj(VarTable), Args, Vars),
-    Cost = call_site_perf_self_callseqs_percall(Perf),
-    CPC = candidate_par_conjunct(MaybeCallee, Vars, Cost, NumUnifications).
+    Cost = get_call_site_cost(Perf),
+    CPC = candidate_par_conjunct(MaybeCallee, Vars, Cost).
 
 :- pred var_mode_use_to_var_in_par_conj(var_table::in, var_mode_and_use::in,
     maybe(string)::out) is det.
@@ -1283,6 +1396,42 @@ var_mode_use_to_var_in_par_conj(VarTable, var_mode_and_use(Var, _, _),
     ;
         MaybeName = no
     ).
+
+:- func warning_duplicate_instantiation(int) = string.
+
+warning_duplicate_instantiation(CandidateConjuncts) = 
+    string.format(
+        "%d conjunctions not parallelised: Seen duplicate instantiations",
+        [i(CandidateConjuncts)]).
+
+:- func warning_extra_callpairs_in_conjunction(int) = string.
+
+warning_extra_callpairs_in_conjunction(NumCPCs) =
+    string.format(
+        "%d potential call pairs not parallelised in this conjunction",
+        [i(NumCPCs)]).
+
+:- func warning_cannot_lookup_proc_defn = string.
+
+warning_cannot_lookup_proc_defn = 
+    "Could not look up proc defn, perhaps this procedure is built-in".
+
+:- func warning_candidate_callpairs_not_adjacent = string.
+
+warning_candidate_callpairs_not_adjacent =
+    "Two callpairs are difficult to parallelise because they are not adjacent".
+
+:- func warning_cannot_parallelise_over_cheap_call_goal = string.
+
+warning_cannot_parallelise_over_cheap_call_goal =
+    "Parallelising expensive call goals with cheap call goals between them is"
+    ++ " not supported".
+
+:- func warning_cannot_parallelise_over_nonatomic_goal = string.
+
+warning_cannot_parallelise_over_nonatomic_goal =
+    "Parallelising call goals with non-atomic goals between them is"
+    ++ " not supported".
 
 %----------------------------------------------------------------------------%
 %

@@ -103,6 +103,7 @@ Changes to the Mercury standard library:
 	list.foldl4_corresponding3/12
 	list.split_upto/4
 	list.contains/2
+	list.find_index_of_match/4
 
    We have also added versions of list.foldl/4 and list.foldr/4 that have
    determinism multi.
@@ -121,6 +122,11 @@ Changes to the Mercury standard library:
 	bag.count_unique/1
 	bag.member/2
 	bag.member/3
+
+* A unique mode has been added to cord.foldl_pred/4
+
+* The following function has been added to the pqueue module
+	pqueue.length/1
 
 * We have changed the interface of the ops module to make lookups of operators
   more efficient.

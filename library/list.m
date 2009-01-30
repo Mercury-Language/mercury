@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1308,6 +1308,14 @@
 :- pred list.find_first_map3(
     pred(X, A, B, C)::in(pred(in, out, out, out) is semidet),
     list(X)::in, A::out, B::out, C::out) is semidet.
+    
+    % find_index_of_match(Match, List, Index0, Index)
+    %
+    % Find the index of an item in the list for which Match is true where the
+    % first element in the list has the index Index0.
+    %
+:- pred list.find_index_of_match(pred(T), list(T), int, int).
+:- mode list.find_index_of_match(pred(in) is semidet, in, in, out) is semidet.
 
     % list.takewhile(Predicate, List, UptoList, AfterList) takes a
     % closure with one input argument, and calls it on successive members
@@ -2430,6 +2438,15 @@ list.find_first_map3(P, [X | Xs], A, B, C) :-
     ;
         list.find_first_map3(P, Xs, A, B, C)
     ).
+
+list.find_index_of_match(Match, [X | Xs], Index0, Index) :-
+    ( Match(X) ->
+        Index = Index0
+    ;
+        find_index_of_match(Match, Xs, Index0 + 1, Index)
+    ).
+
+%----------------------------------------------------------------------------%
 
 list.takewhile(_, [], [], []).
 list.takewhile(P, [X | Xs], Ins, Outs) :-

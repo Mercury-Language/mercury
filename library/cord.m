@@ -156,8 +156,9 @@
     % foldl(F, C, A) = list.foldl(F, list(C), A).
     %
 :- func foldl(func(T, U) = U, cord(T), U) = U.
-:- pred foldl_pred(pred(T, U, U)::in(pred(in, in, out) is det), cord(T)::in,
-    U::in, U::out) is det.
+:- pred foldl_pred(pred(T, U, U), cord(T), U, U).
+:- mode foldl_pred(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl_pred(in(pred(in, di, uo) is det), in, di, uo) is det.
 
     % foldr(F, C, A) = list.foldr(F, list(C), A).
     %

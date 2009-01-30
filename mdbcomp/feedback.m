@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -81,8 +81,8 @@
 
                 conjunctions        :: assoc_list(string_proc_label,
                                             candidate_par_conjunction)
-                    % Assoclist of module name and an assoclist of procedure
-                    % labels and candidate parallel conjunctions.
+                    % Assoclist of procedure labels and candidate parallel
+                    % conjunctions.
             ).
 
 :- inst feedback_data_query
@@ -122,11 +122,17 @@
 :- type candidate_par_conjunct
     --->    candidate_par_conjunct(
                 callee                  :: maybe(pair(string, string)),
+                    % If the name of the callee is known (it's not a HO call),
+                    % then store the module and symbol names here.
+                    % Note: arity and mode are not represented.
+                    
                 vars                    :: list(maybe(string)),
-                cost                    :: float,
-                include_unifications    :: int
-                    % The number of unifications between conjuncts that should
-                    % be executed in sequence with this call.
+                    % The names of variables (if used defined) given as
+                    % arguments to this call.
+                    
+                cost                    :: float
+                    % The cost of this call in call sequence counts.
+                   
             ).
 
 :- type conjuncts_are_dependant
@@ -241,7 +247,11 @@
 %-----------------------------------------------------------------------------%
 
 :- type feedback_info
-    ---> feedback_info(map(feedback_type, feedback_data)).
+    --->    feedback_info(
+                fi_map                          :: map(feedback_type, 
+                                                    feedback_data)
+                    % The actual feedback data as read from the feedback file.
+            ).
 
     % This type is used as a key for the data that may be fed back into the
     % compiler.
@@ -254,7 +264,7 @@
 
 get_feedback_data(Info, Data) :-
     feedback_data_type(Type, Data),
-    Info = feedback_info(Map),
+    Map = Info ^ fi_map,
     map.search(Map, Type, DataPrime),
     % This disjunction will either unify Data to DataPrime, or throw an
     % exception, the impure annotation is required so to avoid a compiler
@@ -273,9 +283,9 @@ get_feedback_data(Info, Data) :-
 put_feedback_data(Data, !Info) :-
     feedback_data_type(Type, Data),
     some [!Map] (
-        !.Info = feedback_info(!:Map),
+        !:Map = !.Info ^ fi_map,
         svmap.set(Type, Data, !Map),
-        !:Info = feedback_info(!.Map)
+        !:Info = !.Info ^ fi_map := !.Map
     ).
 
 %----------------------------------------------------------------------------%
@@ -526,7 +536,7 @@ write_feedback_file_2(Stream, ProgName, Feedback, unit, !IO) :-
     io.nl(Stream, !IO),
     io.write_string(Stream, ProgName, !IO),
     io.nl(Stream, !IO),
-    Feedback = feedback_info(Map),
+    Map = Feedback ^ fi_map,
     map.values(Map, FeedbackList),
     io.write(Stream, FeedbackList, !IO),
     io.write_string(Stream, ".\n", !IO),

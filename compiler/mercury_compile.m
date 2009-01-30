@@ -4170,12 +4170,10 @@ maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
         maybe_flush_output(Verbose, !IO),
         apply_implicit_parallelism_transformation(!.HLDS, MaybeHLDS),
         (
-            MaybeHLDS = yes(!:HLDS)
+            MaybeHLDS = ok(!:HLDS)
         ;
-            MaybeHLDS = no,
-            io.write_string(
-                "Insufficiant feedback information for implicit parallelism.",
-                !IO),
+            MaybeHLDS = error(Error),
+            io.write_string(Error ++ "\n", !IO),
             io.set_exit_status(1, !IO)
         ),
         maybe_write_string(Verbose, "% done.\n", !IO),

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999, 2003-2007 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999, 2003-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -67,6 +67,12 @@
     % A synonym for pqueue.assoc_list_to_pqueue/1.
     %
 :- func pqueue.from_assoc_list(assoc_list(K, V)) = pqueue(K, V).
+
+    % length(PQueue) = Length.
+    %
+    % Length is the number of items in PQueue
+    %
+:- func pqueue.length(pqueue(K, V)) = int.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -165,6 +171,11 @@ pqueue.assoc_list_to_pqueue([K - V | L], Q) :-
 
 pqueue.from_assoc_list(List) = PQueue :-
     pqueue.assoc_list_to_pqueue(List, PQueue).
+
+%---------------------------------------------------------------------------%
+
+pqueue.length(empty) = 0.
+pqueue.length(pqueue(D, _, _, _, _)) = D + 1.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

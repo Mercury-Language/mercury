@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,15 +13,6 @@
 % mdprof_feedback to introduce parallel conjunctions where it could be
 % worthwhile (implicit parallelism). It deals with both independent and
 % dependent parallelism.
-%
-% TODO
-%   -   Once a call which is a candidate for implicit parallelism is found,
-%       search forward AND backward for the closest goal which is also a
-%       candidate for implicit parallelism/parallel conjunction and determine
-%       which side is the best (on the basis of the number of shared variables).
-%
-% XXX Several predicates in this module repeatedly add goals to the ends of
-% lists of goals, yielding quadratic behavior. This should be fixed.
 %
 %-----------------------------------------------------------------------------%
 
@@ -40,7 +31,7 @@
     % feedback file.
     %
 :- pred apply_implicit_parallelism_transformation(
-    module_info::in, maybe(module_info)::out) is det.
+    module_info::in, maybe_error(module_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -53,9 +44,11 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
@@ -63,16 +56,372 @@
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.dep_par_conj.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module counter.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module svmap.
+:- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
+apply_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
+    module_info_get_globals(ModuleInfo0, Globals),
+    lookup_bool_option(Globals, old_implicit_parallelism,
+        UseOldImplicitParallelism), 
+    (
+        UseOldImplicitParallelism = yes,
+        apply_old_implicit_parallelism_transformation(ModuleInfo0,
+            MaybeModuleInfo)
+    ;
+        UseOldImplicitParallelism = no,
+        apply_new_implicit_parallelism_transformation(ModuleInfo0,
+            MaybeModuleInfo)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % This type is used to track whether parallelism has been introduced by a
+    % predicate.
+    %
+:- type introduced_parallelism
+    --->    have_not_introduced_parallelism
+    ;       introduced_parallelism.
+
+:- pred apply_new_implicit_parallelism_transformation(module_info::in,
+    maybe_error(module_info)::out) is det.
+
+apply_new_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
+    module_info_get_globals(ModuleInfo0, Globals0),
+    globals.get_feedback_info(Globals0, FeedbackInfo),
+    module_info_get_name(ModuleInfo0, ModuleName),
+    (
+        get_implicit_parallelism_feedback(ModuleName, FeedbackInfo,
+            ParallelismInfo)
+    ->
+        some [!ModuleInfo]
+        (
+            !:ModuleInfo = ModuleInfo0,
+            
+            % Retrieve and process predicates.
+            module_info_predids(PredIds, !ModuleInfo),
+            module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+            predicate_table_get_preds(PredTable0, PredMap0),
+            list.foldl2(maybe_parallelise_pred(!.ModuleInfo, ParallelismInfo), 
+                PredIds, PredMap0, PredMap, 
+                have_not_introduced_parallelism, IntroducedParallelism),
+            (
+                IntroducedParallelism = have_not_introduced_parallelism
+            ;
+                IntroducedParallelism = introduced_parallelism,
+                predicate_table_set_preds(PredMap, PredTable0, PredTable),
+                module_info_set_predicate_table(PredTable, !ModuleInfo),
+                module_info_set_contains_par_conj(!ModuleInfo)
+            ),
+            MaybeModuleInfo = ok(!.ModuleInfo)
+        )
+    ;
+        MaybeModuleInfo =
+            error("Insufficient feedback information for implicit parallelism") 
+    ).
+
+    % Information retrieved from the feedback system to be used for
+    % parallelising this module.
+    %
+:- type parallelism_info
+    --->    parallelism_info(
+                pi_desired_parallelism  :: float,
+                    % The number of desired busy sparks.
+
+                pi_sparking_cost        :: int,
+                    % The cost of creating a spark in call sequence counts.
+
+                pi_locking_cost         :: int,
+                    % The cost of maintaining a lock on a single dependant
+                    % variable in call sequence counts.
+
+                pi_cpc_map              :: module_candidate_par_conjs_map
+                    % A map of candidate parallel conjunctions in this module
+                    % indexed by their procedure.
+            ).
+
+:- type intra_module_proc_label
+    --->    intra_module_proc_label(
+                im_pred_name            :: string,
+                im_arity                :: int,
+                im_pred_or_func         :: pred_or_func,
+                im_mode                 :: int
+            ).
+
+    % A map of the candidate parallel conjunctions indexed by the procedure
+    % label for a given module.
+    %
+:- type module_candidate_par_conjs_map
+    == map(intra_module_proc_label, candidate_par_conjunction).
+
+:- pred get_implicit_parallelism_feedback(module_name::in, feedback_info::in,
+    parallelism_info::out) is semidet.
+
+get_implicit_parallelism_feedback(ModuleName, FeedbackInfo, ParallelismInfo) :-
+    FeedbackData = 
+        feedback_data_candidate_parallel_conjunctions(_, _, _, _),
+    get_feedback_data(FeedbackInfo, FeedbackData),
+    FeedbackData = feedback_data_candidate_parallel_conjunctions(
+        DesiredParallelism, SparkingCost, LockingCost, AssocList), 
+    make_module_candidate_par_conjs_map(ModuleName, AssocList,
+        CandidateParConjsMap),
+    ParallelismInfo = parallelism_info(DesiredParallelism, SparkingCost,
+        LockingCost, CandidateParConjsMap).
+
+:- pred make_module_candidate_par_conjs_map(module_name::in,
+    assoc_list(string_proc_label, candidate_par_conjunction)::in,
+    module_candidate_par_conjs_map::out) is det.
+
+make_module_candidate_par_conjs_map(ModuleName,
+        CandidateParConjsAssocList0, CandidateParConjsMap) :-
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    filter_map(cpc_proc_is_in_module(ModuleNameStr),
+        CandidateParConjsAssocList0, CandidateParConjsAssocList),
+    CandidateParConjsMap = map.from_assoc_list(CandidateParConjsAssocList).
+
+:- pred cpc_proc_is_in_module(string::in, 
+    pair(string_proc_label, candidate_par_conjunction)::in,
+    pair(intra_module_proc_label, candidate_par_conjunction)::out) is semidet.
+
+cpc_proc_is_in_module(ModuleName, ProcLabel - CPC, IMProcLabel - CPC) :-
+    ( 
+        ProcLabel = str_ordinary_proc_label(PredOrFunc, _, DefModule, Name,
+            Arity, Mode)
+    ; 
+        ProcLabel = str_special_proc_label(_, _, DefModule, Name, Arity, Mode),
+        PredOrFunc = pf_predicate 
+    ),
+    ModuleName = DefModule,
+    IMProcLabel = intra_module_proc_label(Name, Arity, PredOrFunc, Mode).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_parallelise_pred(module_info::in, parallelism_info::in, 
+    pred_id::in, pred_table::in, pred_table::out,
+    introduced_parallelism::in, introduced_parallelism::out) is det.
+
+maybe_parallelise_pred(ModuleInfo, ParallelismInfo, PredId, !PredTable, 
+        !IntroducedParallelism) :-
+    map.lookup(!.PredTable, PredId, PredInfo0),
+    ProcIds = pred_info_non_imported_procids(PredInfo0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
+    list.foldl2(maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId),
+        ProcIds, ProcTable0, ProcTable, have_not_introduced_parallelism,
+        ProcIntroducedParallelism),
+    (
+        ProcIntroducedParallelism = have_not_introduced_parallelism
+    ;
+        ProcIntroducedParallelism = introduced_parallelism,
+        !:IntroducedParallelism = introduced_parallelism,
+        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+        svmap.det_update(PredId, PredInfo, !PredTable)
+    ).
+
+:- pred maybe_parallelise_proc(module_info::in, parallelism_info::in, 
+    pred_id::in, proc_id::in, proc_table::in, proc_table::out, 
+    introduced_parallelism::in, introduced_parallelism::out) is det.
+
+maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId, ProcId, !ProcTable,
+        !IntroducedParallelism) :-
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, 
+        PredInfo, ProcInfo0),
+    
+    % Lookup the Candidate Parallel Conjunction (CPC) Map for this procedure.
+    Name = pred_info_name(PredInfo),
+    Arity = pred_info_orig_arity(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    Mode = proc_id_to_int(ProcId),
+    IMProcLabel = intra_module_proc_label(Name, Arity, PredOrFunc, Mode),
+    CPCMap = ParallelismInfo ^ pi_cpc_map,
+    ( map.search(CPCMap, IMProcLabel, CPC) ->
+        proc_info_get_goal(ProcInfo0, Goal0),
+        TargetGoalPathString = CPC ^ goal_path,
+        ( goal_path_from_string(TargetGoalPathString, TargetGoalPathPrime) ->
+            TargetGoalPath = TargetGoalPathPrime
+        ;
+            unexpected(this_file, 
+                "Invalid goal path in CPC Feedback Information")
+        ),
+        maybe_parallelise_goal(ProcInfo0, CPC, TargetGoalPath, 
+            Goal0, MaybeGoal),
+        (
+            MaybeGoal = yes(Goal),
+            % In the future we'll specialise the procedure for parallelism,  We
+            % don't do that now so simply replace the procedure's body.
+            proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
+            proc_info_set_has_parallel_conj(yes, ProcInfo1, ProcInfo),
+            svmap.det_update(ProcId, ProcInfo, !ProcTable),
+            !:IntroducedParallelism = introduced_parallelism
+        ;
+            MaybeGoal = no
+        )
+    ;
+        true 
+    ).
+
+    % maybe_parallelise_goal(ModuleInfo, CPC, GoalPath, Goal, MaybeGoal).
+    %
+    % Parallelise a goal addressed by GoalPath within Goal producing MaybeGoal
+    % if found.  The goal to parallelise must be a conjunction with conjuncts
+    % matching those described in CPC.
+    %
+    % As this predicate recurses deeper into the goal tree GoalPath becomes
+    % smaller as goal path steps are popped off the end and followed.
+    %
+    % Try to parallelise the given conjunction within this goal.
+    %
+:- pred maybe_parallelise_goal(proc_info::in, candidate_par_conjunction::in,
+    goal_path::in, hlds_goal::in, maybe(hlds_goal)::out) is det.
+
+maybe_parallelise_goal(ProcInfo, CPC, TargetGoalPath, 
+        Goal0, MaybeGoal) :-
+    goal_path_consable(TargetGoalPath, TargetGoalPathC),
+    maybe_transform_goal_at_goal_path(maybe_parallelise_conj(ProcInfo, CPC),
+        TargetGoalPathC, Goal0, MaybeGoal).
+
+:- pred maybe_parallelise_conj(proc_info::in, candidate_par_conjunction::in,
+    hlds_goal::in, maybe(hlds_goal)::out) is det.
+
+maybe_parallelise_conj(ProcInfo, CPC, Goal0, MaybeGoal) :-
+    GoalExpr0 = Goal0 ^ hlds_goal_expr,
+    % We've reached the point indicated by the goal path, Find the
+    % conjuncts that we wish to parallelise.
+    ( 
+        GoalExpr0 = conj(plain_conj, Conjs0),
+        index1_of_candidate_par_conjunct(ProcInfo, CPC ^ par_conjunct_a,
+            Conjs0, AIdx),
+        index1_of_candidate_par_conjunct(ProcInfo, CPC ^ par_conjunct_b,
+            Conjs0, BIdx),
+        AIdx \= BIdx,
+        % In the future there may be some goals between the two calls to
+        % parallelise.  The analysis will say how many of these goals should be
+        % run with each of the two calls, but it may be incorrect in cases
+        % where the code has changed.  Thus we need to ensure that the code is
+        % still mode-correct.
+        GoalA = list.det_index1(Conjs0, AIdx),
+        GoalB = list.det_index1(Conjs0, BIdx),
+        model_det_and_at_least_semipure(GoalA),
+        model_det_and_at_least_semipure(GoalB),
+        ( BIdx - AIdx = 1 ->
+            % The conjuncts are adjacent with GoalA occuring first.
+            FirstParGoal = GoalA,
+            SecondParGoal = GoalB,
+            MaxIdx = BIdx,
+            MinIdx = AIdx
+        ; AIdx - BIdx = 1 ->
+            FirstParGoal = GoalB,
+            SecondParGoal = GoalA,
+            MaxIdx = AIdx,
+            MinIdx = BIdx
+        ;
+            fail
+        )
+    ->
+        ParConjExprList = [FirstParGoal, SecondParGoal],
+        ParConjExpr = conj(parallel_conj, ParConjExprList),
+        goal_list_nonlocals(ParConjExprList, ParConjNonLocals),
+        goal_list_instmap_delta(ParConjExprList, ParConjInstmapDelta),
+        goal_list_determinism(ParConjExprList, ParConjDetism),
+        goal_list_purity(ParConjExprList, ParConjPurity),
+        goal_info_init(ParConjNonLocals, ParConjInstmapDelta, ParConjDetism,
+            ParConjPurity, ParConjInfo),
+        ParConj = hlds_goal(ParConjExpr, ParConjInfo),
+        (
+            take(MinIdx - 1, Conjs0, GoalsBeforeParPrime),
+            drop(MaxIdx, Conjs0, GoalsAfterParPrime)
+        ->
+            GoalsBeforePar = GoalsBeforeParPrime,
+            GoalsAfterPar = GoalsAfterParPrime
+        ;
+            unexpected(this_file, "Miscalculated conjunct list operations.")
+        ),
+        Conjs = GoalsBeforePar ++ [ ParConj | GoalsAfterPar ],
+        GoalExpr = conj(plain_conj, Conjs),
+        MaybeGoal = yes(hlds_goal(GoalExpr, Goal0 ^ hlds_goal_info))
+    ;
+        MaybeGoal = no
+    ).
+
+:- pred index1_of_candidate_par_conjunct(proc_info::in, 
+    candidate_par_conjunct::in, list(hlds_goal)::in, int::out) is semidet.
+
+index1_of_candidate_par_conjunct(ProcInfo, CPC, Goals, Index) :-
+    MaybeCallee = CPC ^ callee,
+    (
+        MaybeCallee = yes(Callee),
+        NamePt1 - NamePt2 = Callee,
+        MaybeName = yes(string_to_sym_name(NamePt1 ++ "." ++ NamePt2))
+    ;
+        MaybeCallee = no,
+        MaybeName = no
+    ),
+    CPC ^ vars = CPCArgs,
+    proc_info_get_varset(ProcInfo, VarSet),
+
+    find_index_of_match((pred(Goal::in) is semidet :-
+            Goal = hlds_goal(CallGoal, _),
+            % Some calls know the name of the callee, others dont.  match the
+            % if the name is know and what it is if known against the candidate
+            % parallel conjunct.
+            % Note: we don't (yet) allow parallelisation of foreign code,
+            (
+                CallGoal = plain_call(_, _, Args, _, _, Name),
+                MaybeName = yes(Name)
+            ; 
+                CallGoal = generic_call(_, Args, _, _),
+                MaybeName = no
+            ),
+            % Match arguments which have user defined names in the profiled
+            % program against the names in the current program.
+            list.map(args_match(VarSet), Args, CPCArgs)
+        ), Goals, 1, Index).
+
+:- pred args_match(prog_varset::in, prog_var::in, maybe(string)::in) 
+    is semidet.
+
+args_match(_, _, no).
+args_match(VarSet, Var, yes(Name)) :-
+    varset.search_name(VarSet, Var, Name).
+
+:- pred model_det_and_at_least_semipure(hlds_goal::in) is semidet.
+
+model_det_and_at_least_semipure(Goal) :-
+    GoalInfo = Goal ^ hlds_goal_info,
+    Determinism = goal_info_get_determinism(GoalInfo),
+    ( Determinism = detism_det
+    ; Determinism = detism_cc_multi
+    ),
+    Purity = goal_info_get_purity(GoalInfo),
+    ( Purity = purity_pure
+    ; Purity = purity_semipure
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% The following code is deprecated, it is the older implicit parallelisation
+% transformation developed by Jerömé.
+%
+% TODO
+%   -   Once a call which is a candidate for implicit parallelism is found,
+%       search forward AND backward for the closest goal which is also a
+%       candidate for implicit parallelism/parallel conjunction and determine
+%       which side is the best (on the basis of the number of shared variables).
+%
+% XXX Several predicates in this module repeatedly add goals to the ends of
+% lists of goals, yielding quadratic behavior. This should be fixed.
+%
 %-----------------------------------------------------------------------------%
 
     % Represent a call site static which is a candidate for introducing
@@ -107,7 +456,10 @@ construct_call_site_kind("callback",            csk_callback).
 
 %-----------------------------------------------------------------------------%
 
-apply_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
+:- pred apply_old_implicit_parallelism_transformation(
+    module_info::in, maybe_error(module_info)::out) is det.
+
+apply_old_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
     module_info_get_globals(ModuleInfo0, Globals),
     globals.get_feedback_info(Globals, FeedbackInfo),
     (
@@ -123,10 +475,11 @@ apply_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
             list.map(call_site_convert, Calls, CandidateCallSites),
             process_preds_for_implicit_parallelism(PredIds, CandidateCallSites,
                 !ModuleInfo),
-            MaybeModuleInfo = yes(!.ModuleInfo)
+            MaybeModuleInfo = ok(!.ModuleInfo)
         )
     ;
-        MaybeModuleInfo = no
+        MaybeModuleInfo =
+            error("Insufficient feedback information for implicit parallelism") 
     ).
 
     % This predicate isn't really necessary as this entire module should use
