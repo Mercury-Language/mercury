@@ -33,6 +33,12 @@ Changes to the Mercury standard library:
 * A new module, parsing_utils, has been added to provide support for
   implementing recursive descent parsers.
 
+* The string.to_int familiy of predicates now fails (or throws an exception
+  for the det_ versions) on base 10 numbers that do not fit in the range
+  [int.min_int+1, int.max_int].  Numbers outside this range lead to overflow.
+  Numbers not in base 10 are assumed to denote bit patterns and are not
+  checked for overflow.
+
 * We have added extra modes to many of the fold style predicates in the
   library in order to better support (mostly-)unique accumulators.
 

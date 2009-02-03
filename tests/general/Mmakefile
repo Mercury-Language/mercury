@@ -68,6 +68,7 @@ ORDINARY_PROGS=	\
 		string_test_2 \
 		string_to_float \
 		test_parsing_utils \
+		test_string_to_int_overflow \
 		test_univ \
 		unreachable \
 		unsafe_uniqueness
