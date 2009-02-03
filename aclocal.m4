@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2004, 2006-2008 The University of Melbourne.
+# Copyright (C) 1999,2001-2004, 2006-2009 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -428,6 +428,49 @@ fi
 
 AC_SUBST(ERLC)
 AC_SUBST(ERL)
+])
+
+#-----------------------------------------------------------------------------#
+
+# NOTE: updates to this macro may need to be reflected incompiler/globals.m.
+
+AC_DEFUN([MERCURY_GCC_VERSION], [
+AC_REQUIRE([AC_PROG_CC])
+
+cat > conftest.c << EOF
+
+#include <stdio.h>
+
+int main(int argc, char **argv)
+{
+
+#if defined(__GNUC__)
+    printf("%d_", __GNUC__);
+    #if defined(__GNUC_MINOR__)
+        printf("%d_", __GNUC_MINOR__);
+    #else
+        printf("u_");
+    #endif /* ! __GNUC_MINOR__ */
+    #if defined(__GNUC_PATCHLEVEL__)
+    	printf("%d", __GNUC_PATCHLEVEL__);
+    #else
+        printf("u");
+    #endif /* ! __GNUC_PATCHLEVEL__ */
+#endif /* __GNUC__ */
+
+	return 0;
+}
+EOF
+
+echo "$CC -o conftest contest.c" >&AC_FD_CC 2>&1
+if
+    $CC -o conftest conftest.c
+then
+    mercury_cv_gcc_version=`./conftest`
+else
+    # This shouldn't happen as we have already checked for this.
+    AC_MSG_ERROR([unexpected: $CC cannot create executable])
+fi
 ])
 
 #-----------------------------------------------------------------------------#

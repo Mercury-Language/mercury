@@ -667,7 +667,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         %
         io_get_c_compiler_type(C_CompilerType, !IO),
         (
-            C_CompilerType = cc_gcc,
+            C_CompilerType = cc_gcc(_, _, _),
             globals.io_lookup_int_option(bytes_per_word, BytesPerWord, !IO),
             C_FnAlignOpt = string.format("-falign-functions=%d ",
                 [i(BytesPerWord)])

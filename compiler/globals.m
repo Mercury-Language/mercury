@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,9 +122,19 @@
     ;       norm_size_data_elems.
 
     % For the C backends, what type of C compiler are we using?
-    %     
+    % 
 :- type c_compiler_type
-    --->    cc_gcc
+    --->    cc_gcc(
+                gcc_major_ver :: maybe(int),
+                % The major version number, if known.
+
+                gcc_minor_ver :: maybe(int),
+                % The minor version number, if known.
+                
+                gcc_patch_level :: maybe(int)
+                % The patch level, if known.
+                % This is only available since gcc 3.0.
+            )
     ;       cc_lcc
     ;       cc_cl
     ;       cc_unknown.
@@ -302,6 +312,7 @@
 
 :- import_module libs.compiler_util.
 
+:- import_module int.
 :- import_module string.
 :- import_module univ.
 
@@ -353,10 +364,89 @@ convert_termination_norm("size-data-elems", norm_size_data_elems).
 convert_maybe_thread_safe("yes", yes).
 convert_maybe_thread_safe("no",  no).
 
-convert_c_compiler_type("gcc",      cc_gcc).
-convert_c_compiler_type("lcc",      cc_lcc).
-convert_c_compiler_type("cl",       cc_cl).
-convert_c_compiler_type("unknown",  cc_unknown).
+convert_c_compiler_type(CC_Str, C_CompilerType) :-
+    ( convert_c_compiler_type_simple(CC_Str, C_CompilerType0) ->
+        C_CompilerType = C_CompilerType0
+    ;
+        convert_c_compiler_type_with_version(CC_Str, C_CompilerType)
+    ).
+
+:- pred convert_c_compiler_type_simple(string::in, c_compiler_type::out)
+    is semidet.
+
+convert_c_compiler_type_simple("gcc",      cc_gcc(no, no, no)).
+convert_c_compiler_type_simple("lcc",      cc_lcc).
+convert_c_compiler_type_simple("cl",       cc_cl).
+convert_c_compiler_type_simple("unknown",  cc_unknown).
+
+:- pred convert_c_compiler_type_with_version(string::in, c_compiler_type::out)
+    is semidet.
+
+convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
+    Tokens = string.words_separator((pred(X::in) is semidet :- X = ('_')),
+        CC_Str),
+    ( Tokens = ["gcc", Major, Minor, Patch] ->
+        convert_gcc_version(Major, Minor, Patch, C_CompilerType)
+    ; 
+         false
+    ).
+
+    % Create the value of C compiler type when we have (some) version
+    % information for gcc available.
+    % We only accept version information that has the following form:
+    % 
+    %   u_u_u
+    %   <major>_u_u
+    %   <major>_<minor>_<u>
+    %   <major>_<minor>_<patch>
+    %
+    % That is setting the minor version number when the major
+    % one is unknown won't be accepted.  (It wouldn't be useful
+    % in any case.)
+    %
+    % <major> must be >= 2 (Mercury won't work with anthing older
+    % than that and <minor> and <patch> must be non-negative.
+    %
+:- pred convert_gcc_version(string::in, string::in, string::in,
+    c_compiler_type::out) is semidet.
+
+convert_gcc_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
+    ( 
+        MajorStr = "u",
+        MinorStr = "u",
+        PatchStr = "u"
+    ->
+        C_CompilerType = cc_gcc(no, no, no)
+    ;
+        string.to_int(MajorStr, Major),
+        Major >= 2
+    ->
+        (
+            MinorStr = "u"
+        ->
+            C_CompilerType = cc_gcc(yes(Major), no, no)
+        ;
+            string.to_int(MinorStr, Minor),
+            Minor >= 0
+        ->
+            (
+                PatchStr = "u"
+            ->
+                C_CompilerType = cc_gcc(yes(Major), yes(Minor), no)
+            ;
+                string.to_int(PatchStr, Patch),
+                Patch >= 0
+            ->
+                C_CompilerType = cc_gcc(yes(Major), yes(Minor), yes(Patch))
+            ;
+                false
+            )
+        ;
+            false
+        )
+    ;
+        false
+    ).
 
 compilation_target_string(target_c)    = "C".
 compilation_target_string(target_il)   = "IL".

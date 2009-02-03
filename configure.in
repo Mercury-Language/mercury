@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------#
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2008 The University of Melbourne.
+# Copyright (C) 1995-2009 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -739,6 +739,7 @@ case "$MERCURY_CONF_RECONFIGURE" in
         CPPFLAGS="-I$PREFIX/lib/mercury/inc $CPPFLAGS"
         ;;
 esac
+
 
 #-----------------------------------------------------------------------------#
 
@@ -4050,11 +4051,13 @@ esac
 #
 # Note that changes here may require changes in scripts/mgnuc.in and
 # compiler/compile_target_code.m.
-#
 
 # AC_PROG_CC sets GCC to yes if $CC is GNU C.
-if test "$GCC" = "yes"; then
-    C_COMPILER_TYPE=gcc
+if test "$GCC" = "yes"
+then
+
+    MERCURY_GCC_VERSION
+    C_COMPILER_TYPE="gcc_${mercury_cv_gcc_version}"
     CFLAGS_FOR_ANSI="-ansi"
 
     # For a full list of the other gcc warnings that we don't
@@ -4132,7 +4135,7 @@ AC_SUBST([C_COMPILER_TYPE])
 
 LD_STATIC_FLAGS=
 case "$C_COMPILER_TYPE" in
-    gcc|lcc)
+    gcc*|lcc)
         LD_STATIC_FLAGS=-static
         ;;
 esac
@@ -4143,7 +4146,7 @@ case "$FULLARCH" in
         # to _DYNAMIC in boehm_gc/dyn_load.c. (We might eventually need
         # similar treatment for other OSs too.)
         case "$C_COMPILER_TYPE" in
-            gcc)
+            gcc*)
                 LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
                 ;;
             lcc)
