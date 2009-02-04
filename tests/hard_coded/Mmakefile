@@ -16,6 +16,7 @@ ORDINARY_PROGS=	\
 	brace \
 	builtin_inst_rename \
 	c_write_string \
+	calendar_test \
 	cc_and_non_cc_test \
 	cc_multi_bug \
 	cc_nondet_disj \
@@ -275,6 +276,7 @@ JAVA_PASS_PROGS= \
 	address_of_builtins \
 	brace \
 	c_write_string \
+	calendar_test \
 	compare_spec \
 	constant_prop_2 \
 	contains_char \

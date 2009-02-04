@@ -250,6 +250,9 @@ Changes to the Mercury standard library:
   map.from_sorted_assoc_list now also constructs the tree directly, so now
   it requires its input list to be duplicate-free.
 
+* We have added a calendar module to the standard library. This module
+  contains utilities for working with the Gregorian calendar.
+
 Changes to the Mercury compiler:
 
 * We have added support for trail segments, which allow programs to grow

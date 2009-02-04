@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,7 +102,7 @@
 :- func int.minus(int, int) = int.
 
     % flooring integer division
-    % Truncates towards minus infinity, e.g. (-10) // 3 = (-4).
+    % Truncates towards minus infinity, e.g. (-10) div 3 = (-4).
     %
     % Throws a `math.domain_error' exception if the right operand
     % is zero. See the comments at the top of math.m to find out how to

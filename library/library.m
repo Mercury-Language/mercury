@@ -59,6 +59,7 @@
 :- import_module bool.
 :- import_module bt_array.
 :- import_module builtin.
+:- import_module calendar.
 :- import_module char.
 :- import_module construct.
 :- import_module cord.
@@ -230,6 +231,7 @@ mercury_std_library_module("bit_buffer.write").
 mercury_std_library_module("bool").
 mercury_std_library_module("bt_array").
 mercury_std_library_module("builtin").
+mercury_std_library_module("calendar").
 mercury_std_library_module("char").
 mercury_std_library_module("construct").
 mercury_std_library_module("cord").
