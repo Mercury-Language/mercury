@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1069,7 +1069,11 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         ),
         ScopedGoalPath = goal_path_add_at_end(Path, step_scope(MaybeCut)),
         ( Reason = from_ground_term(_, from_ground_term_construct) ->
-            SubGoal = SubGoal0,
+            % We must annotate the scope goal and it's children with a default
+            % deep profiling information structure, this is required by the
+            % coverage profiling transformation.
+            transform_all_goals(deep_prof_mark_goal_as_not_mdprof_inst,
+                SubGoal0, SubGoal),
             AddedImpurity = no
         ;
             deep_prof_transform_goal(ScopedGoalPath, SubGoal0, SubGoal,
@@ -1091,6 +1095,14 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         unexpected(this_file,
             "deep_prof_transform_goal: shorthand should have gone by now")
     ).
+
+:- pred deep_prof_mark_goal_as_not_mdprof_inst( hlds_goal::in, hlds_goal::out)
+    is det.
+
+deep_prof_mark_goal_as_not_mdprof_inst(Goal0, Goal) :-
+    GoalInfo0 = Goal0 ^ hlds_goal_info,
+    goal_info_set_mdprof_inst(goal_is_not_mdprof_inst, GoalInfo0, GoalInfo),
+    Goal = Goal0 ^ hlds_goal_info := GoalInfo.
 
 :- pred deep_prof_transform_conj(int::in,
     conj_type::in, goal_path::in,
@@ -2069,6 +2081,11 @@ coverage_prof_second_pass_goal(Goal0, Goal,
     CPOptions = !.Info ^ ci_coverage_profiling_opts,
     GoalPath = goal_info_get_goal_path(GoalInfo0),
 
+    % Currently the first pass is unsupported, we don't make use of the
+    % information it provides in IsMDProfInst.
+    DPInfo = goal_info_get_dp_info(GoalInfo0),
+    DPInfo = dp_goal_info(IsMDProfInst, _MaybeDPCoverageInfo),
+
     (
         IsMDProfInst = goal_is_not_mdprof_inst,
         CoverageBeforeKnown = coverage_before_unknown
@@ -2081,11 +2098,6 @@ coverage_prof_second_pass_goal(Goal0, Goal,
     ;
         true
     ),
-
-    % Currently the first pass is unsupported, we don't make use of the
-    % information it provides.
-    DPInfo = goal_info_get_dp_info(GoalInfo0),
-    DPInfo = dp_goal_info(IsMDProfInst, _MaybeDPCoverageInfo),
 
     % Step 1.
     %

@@ -403,6 +403,14 @@
 :- mode maybe_transform_goal_at_goal_path(pred(in, out) is det,
     in, in, out) is det.
 
+    % Transform the given goal and all it's children according to the higher
+    % order argument.  Children are transformed before their parents, therefore
+    % the higher order argument will receive a goal with children that have
+    % already been transformed.
+    %
+:- pred transform_all_goals(pred(hlds_goal, hlds_goal), hlds_goal, hlds_goal).
+:- mode transform_all_goals(pred(in, out) is det, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -2012,6 +2020,53 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
     ;
         TransformP(Goal0, MaybeGoal)
     ).
+
+transform_all_goals(Transform, Goal0, Goal) :-
+    GoalExpr0 = Goal0 ^ hlds_goal_expr,  
+    (
+        ( GoalExpr0 = unify(_, _, _, _, _) 
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = conj(ConjType, Conjs0),
+        list.map(transform_all_goals(Transform), Conjs0, Conjs),
+        GoalExpr = conj(ConjType, Conjs)
+    ;
+        GoalExpr0 = disj(Disjs0),
+        list.map(transform_all_goals(Transform), Disjs0, Disjs),
+        GoalExpr = disj(Disjs)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        list.map((pred(Case0::in, Case::out) is det :-
+                GoalI0 = Case0 ^ case_goal,
+                transform_all_goals(Transform, GoalI0, GoalI),
+                Case = Case0 ^ case_goal := GoalI
+            ), Cases0, Cases),
+        GoalExpr = switch(Var, CanFail, Cases)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        transform_all_goals(Transform, SubGoal0, SubGoal),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        transform_all_goals(Transform, SubGoal0, SubGoal),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
+        transform_all_goals(Transform, Cond0, Cond),
+        transform_all_goals(Transform, Then0, Then),
+        transform_all_goals(Transform, Else0, Else),
+        GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, 
+            "Shorthand goals should have been eliminated already")
+    ),
+    Goal1 = Goal0 ^ hlds_goal_expr := GoalExpr, 
+    Transform(Goal1, Goal).
 
 %-----------------------------------------------------------------------------%
 
