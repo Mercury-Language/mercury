@@ -41,6 +41,19 @@
     %
 :- pred create_procrep_coverage_report(deep::in,
     proc_static_ptr::in, maybe_error(procrep_coverage_info)::out) is det.
+    
+    % Create a top procs report, from the given data with the specified
+    % parameters.
+    %
+:- pred create_top_procs_report(deep::in, display_limit::in, cost_kind::in,
+    include_descendants::in, measurement_scope::in,
+    maybe_error(top_procs_report)::out) is det.
+    
+    % Create a clique report, from the given data with the specified
+    % parameters.
+    %
+:- pred create_clique_report(deep::in, clique_ptr::in,
+    maybe_error(clique_report)::out) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -267,12 +280,6 @@ find_start_of_action_callee(Percent, RowData, !ActionCliquePtrs) :-
 % Code to build a clique report.
 %
 
-    % Create a clique report, from the given data with the specified
-    % parameters.
-    %
-:- pred create_clique_report(deep::in, clique_ptr::in,
-    maybe_error(clique_report)::out) is det.
-
 create_clique_report(Deep, CliquePtr, MaybeCliqueReport) :-
     AncestorRowDatas = find_clique_ancestors(Deep, CliquePtr),
 
@@ -432,8 +439,8 @@ create_child_call_site_report(Deep, Pair, CliqueCallSiteReport) :-
             error("create_child_call_site_report: normal_call error")
         ),
         ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
-            create_callee_clique_perf_row_data(Deep, CSDPtr,
-                Own, Desc, CalleeCliqueRowData),
+            create_callee_clique_perf_row_data(Deep, CSDPtr, Own, Desc,
+                CalleeCliqueRowData),
             CalleeCliqueRowDatas = [CalleeCliqueRowData]
         ;
             Own = zero_own_prof_info,
@@ -484,7 +491,7 @@ create_callee_clique_perf_row_data(Deep, CSDPtr, Own, Desc,
     Own = CSD ^ csd_own_prof,
     deep_lookup_csd_desc(Deep, CSDPtr, Desc),
     deep_lookup_clique_index(Deep, CalleePDPtr, CalleeCliquePtr),
-    CliqueDesc = describe_clique(Deep, CalleeCliquePtr),
+    CliqueDesc = describe_clique(Deep, CalleeCliquePtr, yes(CalleePDPtr)),
     own_and_inherit_to_perf_row_data(Deep, CliqueDesc, Own, Desc,
         CalleeCliqueRowData).
 
@@ -751,13 +758,6 @@ is_getter_or_setter_2(NameChars, GetterSetter, DataStructNameChars,
 %
 % Code to build a top_procs report.
 %
-
-    % Create a top procs report, from the given data with the specified
-    % parameters.
-    %
-:- pred create_top_procs_report(deep::in, display_limit::in, cost_kind::in,
-    include_descendants::in, measurement_scope::in,
-    maybe_error(top_procs_report)::out) is det.
 
 create_top_procs_report(Deep, Limit, CostKind, InclDesc0, Scope0,
         MaybeTopProcsReport) :-
@@ -1047,7 +1047,7 @@ create_proc_caller_modules(Deep, CalleePSPtr, ModuleName - CSDPtrs) =
 
 create_proc_caller_cliques(Deep, CalleePSPtr, CliquePtr - CSDPtrs) =
         PerfRowData :-
-    CliqueDesc = describe_clique(Deep, CliquePtr),
+    CliqueDesc = describe_clique(Deep, CliquePtr, no),
     compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
     own_and_inherit_to_perf_row_data(Deep, CliqueDesc, Own, Desc,
         PerfRowData).
@@ -1211,7 +1211,7 @@ create_call_site_dynamic_dump_report(Deep, CSDPtr,
 
 create_clique_dump_report(Deep, CliquePtr, MaybeCliqueDumpInfo) :-
     ( valid_clique_ptr(Deep, CliquePtr) ->
-        CliqueDesc = describe_clique(Deep, CliquePtr),
+        CliqueDesc = describe_clique(Deep, CliquePtr, no),
         deep_lookup_clique_parents(Deep, CliquePtr, ParentCSDPtr),
         deep_lookup_clique_members(Deep, CliquePtr, MemberPDPtrs),
         CliqueDumpInfo = clique_dump_info(CliqueDesc, ParentCSDPtr,
@@ -1420,16 +1420,27 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
         FileName, LineNumber, RefinedName, SlotNumber, GoalPath,
         MaybeCalleeDesc).
 
-    % Create a clique_desc structure for a given clique.
+    % describe_clique(Deep, CliquePtr, MaybeEntryPDPtr) = CliqueDesc
     %
-:- func describe_clique(deep, clique_ptr) = clique_desc.
+    % Create a clique_desc structure for a given clique.  The calculation for
+    % the entry procedure into the clique can be overridden by supplying a
+    % EntryPDPtr in MaybeEntryPDPtr.  This is useful when referring to a clique
+    % from itself.
+    %
+:- func describe_clique(deep, clique_ptr, maybe(proc_dynamic_ptr)) =
+    clique_desc.
 
-describe_clique(Deep, CliquePtr) = CliqueDesc :-
+describe_clique(Deep, CliquePtr, MaybeEntryPDPtr) = CliqueDesc :-
     ( valid_clique_ptr(Deep, CliquePtr) ->
         deep_lookup_clique_members(Deep, CliquePtr, MemberPDPtrs),
         deep_lookup_clique_parents(Deep, CliquePtr, ParentCSDPtr),
         deep_lookup_call_site_dynamics(Deep, ParentCSDPtr, ParentCSD),
-        EntryPDPtr = ParentCSD ^ csd_callee,
+        (
+            MaybeEntryPDPtr = yes(EntryPDPtr)
+        ;
+            MaybeEntryPDPtr = no,
+            EntryPDPtr = ParentCSD ^ csd_callee
+        ),
         ( list.delete_first(MemberPDPtrs, EntryPDPtr, OtherPDPtrs) ->
             EntryProcDesc = describe_clique_member(Deep, EntryPDPtr),
             OtherProcDescs =
