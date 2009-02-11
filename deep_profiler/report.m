@@ -137,6 +137,29 @@
                 % clique.
                 cpr_proc_summary            :: perf_row_data(proc_desc),
 
+                % A clique may contain more than one proc_dynamic for the same
+                % procedure in one rare circumstance. Consider a clique of
+                % two procedures, let's call them p and q. The entry procedure
+                % is p. When p calls q and q then calls p, the runtime
+                % discovers they are in the same clique. However, after all
+                % those mutually recursive calls unwind and we get back to the
+                % original call to p, p can call q again. If it does so through
+                % a call site through which it has not called q before, then
+                % the call port code in q will allocate a new proc_dynamic,
+                % since it will not find an existing one it can reuse;
+                % q's proc_static won't point to an active proc_dynamic, and
+                % the call site will not supply one either.
+                % 
+                % We could modify the code we invoke at call ports to keep a
+                % list of the proc_dynamics of the procedures known to be in
+                % the current clique, and to reuse the proc_dynamic of the
+                % callee in these cases, but that would significantly increase
+                % the call port overhead. Instead, we let the callee allocate a
+                % second (and maybe third etc) proc_dynamic for a procedure,
+                % and let the deep profiler sort it out.
+                %
+                % Note that the entry procedure of a clique will always have
+                % exactly one proc_dynamic.
                 cpr_first_proc_dynamic      :: clique_proc_dynamic_report,
                 cpr_other_proc_dynamics     :: list(clique_proc_dynamic_report)
             ).
