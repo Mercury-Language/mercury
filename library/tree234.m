@@ -136,6 +136,10 @@
     is semidet.
 :- mode tree234.foldl(pred(in, in, di, uo) is semidet, in, di, uo)
     is semidet.
+:- mode tree234.foldl(pred(in, in, in, out) is cc_multi, in, in, out)
+    is cc_multi.
+:- mode tree234.foldl(pred(in, in, di, uo) is cc_multi, in, di, uo)
+    is cc_multi.
 
 :- pred tree234.foldl2(pred(K, V, A, A, B, B), tree234(K, V), A, A, B, B).
 :- mode tree234.foldl2(pred(in, in, in, out, in, out) is det,
@@ -195,6 +199,10 @@
     is semidet.
 :- mode tree234.foldr(pred(in, in, di, uo) is semidet, in, di, uo)
     is semidet.
+:- mode tree234.foldr(pred(in, in, in, out) is cc_multi, in, in, out)
+    is cc_multi.
+:- mode tree234.foldr(pred(in, in, di, uo) is cc_multi, in, di, uo)
+    is cc_multi.
 
 :- pred tree234.foldr2(pred(K, V, A, A, B, B), tree234(K, V), A, A, B, B).
 :- mode tree234.foldr2(pred(in, in, in, out, in, out) is det,
