@@ -305,6 +305,8 @@
 :- mode map.foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode map.foldl(pred(in, in, in, out) is cc_multi, in, in, out) is cc_multi.
 :- mode map.foldl(pred(in, in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode map.foldl(pred(in, in, mdi, muo) is cc_multi, in, mdi, muo)
+    is cc_multi.
 
 :- func map.foldr(func(K, V, A) = A, map(K, V), A) = A.
 :- pred map.foldr(pred(K, V, A, A), map(K, V), A, A).
@@ -316,6 +318,8 @@
 :- mode map.foldr(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode map.foldr(pred(in, in, in, out) is cc_multi, in, in, out) is cc_multi.
 :- mode map.foldr(pred(in, in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode map.foldr(pred(in, in, mdi, muo) is cc_multi, in, mdi, muo)
+    is cc_multi.
 
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with two accumulators for each key-value pair.
