@@ -320,8 +320,8 @@ rename_in_goal_expr(OldVar, NewVar,
     rename_in_vars(OldVar, NewVar, Vars0, Vars),
     rename_in_goal(OldVar, NewVar, Goal0, Goal).
 rename_in_goal_expr(OldVar, NewVar,
-        promise_purity_expr(Implicit, Purity, Goal0),
-        promise_purity_expr(Implicit, Purity, Goal)) :-
+        promise_purity_expr(Purity, Goal0),
+        promise_purity_expr(Purity, Goal)) :-
     rename_in_goal(OldVar, NewVar, Goal0, Goal).
 rename_in_goal_expr(OldVar, NewVar,
         promise_equivalent_solutions_expr(Vars0, DotSVars0, ColonSVars0,

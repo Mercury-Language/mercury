@@ -447,11 +447,8 @@ ops.op_table(Op, Info, OtherInfos) :-
         OtherInfos = []
     ;
         ( Op = "promise_pure"
-        ; Op = "promise_pure_implicit"
         ; Op = "promise_semipure"
-        ; Op = "promise_semipure_implicit"
         ; Op = "promise_impure"
-        ; Op = "promise_impure_implicit"
         ),
         Info = op_info(prefix(x), 950),
         OtherInfos = []

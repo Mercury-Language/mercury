@@ -1671,7 +1671,7 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
             GoalExpr = scope(UpdatedReason, SubGoal)
         )
     ;
-        Reason = promise_purity(_Implicit, _Purity),
+        Reason = promise_purity(_Purity),
         mode_info_get_in_promise_purity_scope(!.ModeInfo, InPPScope),
         mode_info_set_in_promise_purity_scope(in_promise_purity_scope,
             !ModeInfo),
@@ -3276,7 +3276,7 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
             ; Reason = from_ground_term(_, from_ground_term_other)
             ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
-            ; Reason = promise_purity(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
@@ -3348,7 +3348,7 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
             ; Reason = from_ground_term(_, from_ground_term_other)
             ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
-            ; Reason = promise_purity(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)

@@ -1842,7 +1842,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         Goal1 = hlds_goal(GoalExpr1, _GoalInfo1),
         ( GoalExpr1 = scope(FinalReason, FinalSubGoal) ->
             (
-                ( FinalReason = promise_purity(_, _)
+                ( FinalReason = promise_purity(_)
                 ; FinalReason = from_ground_term(_, _)
                 ; FinalReason = barrier(removable)
                 ),

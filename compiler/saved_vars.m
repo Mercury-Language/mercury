@@ -300,7 +300,7 @@ can_push(Var, Goal) = CanPush :-
             ;
                 ( Reason = from_ground_term(_, from_ground_term_construct)
                 ; Reason = promise_solutions(_, _)
-                ; Reason = promise_purity(_, _)
+                ; Reason = promise_purity(_)
                 ; Reason = commit(_)
                 ; Reason = barrier(_)
                 ; Reason = trace_goal(_, _, _, _, _)

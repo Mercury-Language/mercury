@@ -288,7 +288,7 @@ add_builtin(PredId, Types, !PredInfo) :-
         ConjExpr = conj(plain_conj, [AssignGoal, CastGoal]),
         ConjGoal = hlds_goal(ConjExpr, GoalInfoWithZeroHeadVars),
 
-        Reason = promise_purity(dont_make_implicit_promises, purity_semipure),
+        Reason = promise_purity(purity_semipure),
         GoalExpr = scope(Reason, ConjGoal),
         GoalInfo = GoalInfo1,
         Stub = no
@@ -298,7 +298,7 @@ add_builtin(PredId, Types, !PredInfo) :-
     ->
         ConjExpr = conj(plain_conj, []),
         ConjGoal = hlds_goal(ConjExpr, GoalInfo),
-        Reason = promise_purity(dont_make_implicit_promises, purity_impure),
+        Reason = promise_purity(purity_impure),
         GoalExpr = scope(Reason, ConjGoal),
         GoalInfo = GoalInfo1,
         ExtraVars = [],

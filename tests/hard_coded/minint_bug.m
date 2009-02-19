@@ -1,4 +1,8 @@
 % regression test: versions 0.7.3 and earlier failed this test.
+% Since r1.279 of library/string.m we no longer pass this test
+% (on 32-bit machines at least), see the comment in the Makefile
+% for details.  (XXX This never worked as intended on 64-bit
+% machines.)
 
 :- module minint_bug.
 

@@ -2071,8 +2071,7 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs, Context,
 
     GetBody = goal_list_to_conj(Context,
         [CallLock, CallUnsafeGet, CallUnlock]),
-    StdGetBody = promise_purity_expr(dont_make_implicit_promises,
-        purity_semipure, GetBody) - Context,
+    StdGetBody = promise_purity_expr(purity_semipure, GetBody) - Context,
 
     StdGetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet0,
         pf_predicate, GetPredName, [variable(X, context_init)], StdGetBody,
@@ -2104,8 +2103,7 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs, Context,
         varset.new_named_var(ProgVarSet0, "IO", IO, ProgVarSet),
 
         % Construct the pure get predicate.
-        IOGetBody = promise_purity_expr(dont_make_implicit_promises,
-            purity_pure, GetBody) - Context,
+        IOGetBody = promise_purity_expr(purity_pure, GetBody) - Context,
 
         Ctxt = context_init,
         IOGetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet,
@@ -2379,8 +2377,8 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         % around it.
         CallSemipureGet = call_expr(GetPredName, [variable(X, Context)],
             purity_semipure) - Context,
-        IOGetBody = promise_purity_expr(dont_make_implicit_promises,
-            purity_pure, CallSemipureGet) - Context,
+        IOGetBody = promise_purity_expr(purity_pure, CallSemipureGet)
+            - Context,
 
         IOGetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet,
             pf_predicate, GetPredName,

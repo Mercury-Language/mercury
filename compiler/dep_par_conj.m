@@ -467,7 +467,7 @@ sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
         ( Purity = purity_pure
         ; Purity = purity_semipure
         ),
-        Reason = promise_purity(dont_make_implicit_promises, Purity),
+        Reason = promise_purity(Purity),
         NewGoal = hlds_goal(scope(Reason, NewGoal0), GoalInfo)
     ).
 

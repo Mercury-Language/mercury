@@ -958,7 +958,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             rename_var(need_not_rename, !.VarRename, Var0, Var),
             Reason = from_ground_term(Var, Kind)
         ;
-            ( Reason0 = promise_purity(_, _)
+            ( Reason0 = promise_purity(_)
             ; Reason0 = promise_solutions(_, _)
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)

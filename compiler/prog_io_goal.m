@@ -498,8 +498,7 @@ parse_goal_2("promise_pure", [SubTerm], Context, ContextPieces, MaybeGoal,
     parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
     (
         MaybeSubGoal = ok1(SubGoal),
-        Goal = promise_purity_expr(dont_make_implicit_promises,
-            purity_pure, SubGoal) - Context,
+        Goal = promise_purity_expr(purity_pure, SubGoal) - Context,
         MaybeGoal = ok1(Goal)
     ;
         MaybeSubGoal = error1(Specs),
@@ -510,8 +509,7 @@ parse_goal_2("promise_semipure", [SubTerm], Context, ContextPieces, MaybeGoal,
     parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
     (
         MaybeSubGoal = ok1(SubGoal),
-        Goal = promise_purity_expr(dont_make_implicit_promises,
-            purity_semipure, SubGoal) - Context,
+        Goal = promise_purity_expr(purity_semipure, SubGoal) - Context,
         MaybeGoal = ok1(Goal)
     ;
         MaybeSubGoal = error1(Specs),
@@ -522,44 +520,7 @@ parse_goal_2("promise_impure", [SubTerm], Context, ContextPieces, MaybeGoal,
     parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
     (
         MaybeSubGoal = ok1(SubGoal),
-        Goal = promise_purity_expr(dont_make_implicit_promises,
-            purity_impure, SubGoal) - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        MaybeSubGoal = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_goal_2("promise_pure_implicit", [SubTerm], Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeSubGoal = ok1(SubGoal),
-        Goal = promise_purity_expr(make_implicit_promises,
-            purity_pure, SubGoal) - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        MaybeSubGoal = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_goal_2("promise_semipure_implicit", [SubTerm], Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeSubGoal = ok1(SubGoal),
-        Goal = promise_purity_expr(make_implicit_promises,
-            purity_semipure, SubGoal) - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        MaybeSubGoal = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_goal_2("promise_impure_implicit", [SubTerm], Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeSubGoal = ok1(SubGoal),
-        Goal = promise_purity_expr(make_implicit_promises,
-            purity_impure, SubGoal) - Context,
+        Goal = promise_purity_expr(purity_impure, SubGoal) - Context,
         MaybeGoal = ok1(Goal)
     ;
         MaybeSubGoal = error1(Specs),

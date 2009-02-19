@@ -649,9 +649,9 @@ transform_goal_2(some_state_vars_expr(StateVars0, Goal0), _, Renaming,
         !QualInfo, !SInfo, !Specs),
     finish_local_state_vars(StateVars, Vars, BeforeSInfo, !SInfo),
     goal_info_init(GoalInfo).
-transform_goal_2(promise_purity_expr(Implicit, Purity, Goal0), _, Renaming,
+transform_goal_2(promise_purity_expr(Purity, Goal0), _, Renaming,
         hlds_goal(
-            scope(promise_purity(Implicit, Purity), Goal),
+            scope(promise_purity(Purity), Goal),
             GoalInfo),
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     transform_goal(Goal0, Renaming, Goal, NumAdded, !VarSet, !ModuleInfo,

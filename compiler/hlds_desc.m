@@ -134,7 +134,7 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
             Reason = promise_solutions(_, _),
             Desc = "scope promise solutions"
         ;
-            Reason = promise_purity(_, _),
+            Reason = promise_purity(_),
             Desc = "scope promise purity"
         ;
             Reason = commit(_),

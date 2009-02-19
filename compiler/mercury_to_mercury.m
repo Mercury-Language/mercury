@@ -2919,7 +2919,7 @@ mercury_output_goal_2(
     mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
         Goal, VarSet, Indent, "arbitrary", !IO).
 
-mercury_output_goal_2(promise_purity_expr(_Implicit, Purity, Goal), VarSet,
+mercury_output_goal_2(promise_purity_expr(Purity, Goal), VarSet,
         Indent, !IO) :-
     (
         Purity = purity_pure,

@@ -393,16 +393,14 @@
             % inside the scope is a subset of the variables listed here.
             % If it is not valid, the compiler must emit an error message.
 
-    ;       promise_purity(implicit_purity_promise, purity)
+    ;       promise_purity(purity)
             % The goal inside the scope implements an interface of the
             % specified purity, even if its implementation uses less pure
             % components.
             %
             % Works the same way as a promise_pure or promise_semipure
             % pragma, except that it applies to arbitrary goals and not
-            % just whole procedure bodies. The implicit_purity_promise
-            % says whether or not the compiler requires explicit purity
-            % annotations on the goals inside the scope.
+            % just whole procedure bodies.
 
     ;       commit(force_pruning)
             % This scope exists to delimit a piece of code
@@ -2343,7 +2341,7 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             rename_var_list(Must, Subn, Vars0, Vars),
             Reason = exist_quant(Vars)
         ;
-            Reason0 = promise_purity(_, _),
+            Reason0 = promise_purity(_),
             Reason = Reason0
         ;
             Reason0 = promise_solutions(Vars0, Kind),

@@ -819,7 +819,7 @@ make_switch_goal(SwitchVar, DoRetryGoal, DoNotRetryGoal, GoalInfo,
 
 wrap_with_purity_scope(Purity, GoalInfo0, GoalWithoutPurity, Goal) :-
     goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
-    ScopeReason = promise_purity(dont_make_implicit_promises, Purity),
+    ScopeReason = promise_purity(Purity),
     Goal = hlds_goal(scope(ScopeReason, GoalWithoutPurity), GoalInfo).
 
     % Update the proc_info and pred_info with the result of the

@@ -775,7 +775,7 @@
                             % some/2 and all/2 quantifiers.
 
     % other scopes
-    ;       promise_purity_expr(implicit_purity_promise, purity, goal)
+    ;       promise_purity_expr(purity, goal)
     ;       promise_equivalent_solutions_expr(
                 prog_vars,  % OrdinaryVars
                 prog_vars,  % DotStateVars

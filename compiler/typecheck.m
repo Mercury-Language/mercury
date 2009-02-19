@@ -1154,7 +1154,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             Reason = exist_quant(Vars),
             ensure_vars_have_a_type(Vars, !Info)
         ;
-            Reason = promise_purity(_, _)
+            Reason = promise_purity(_)
         ;
             Reason = promise_solutions(Vars, _),
             ensure_vars_have_a_type(Vars, !Info)

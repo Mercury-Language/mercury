@@ -568,7 +568,7 @@ goal_vars_2(Goal, !Set) :-
             Reason = exist_quant(Vars),
             svset.insert_list(Vars, !Set)
         ;
-            Reason = promise_purity(_, _)
+            Reason = promise_purity(_)
         ;
             Reason = promise_solutions(Vars, _),
             svset.insert_list(Vars, !Set)

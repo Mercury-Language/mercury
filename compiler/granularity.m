@@ -145,8 +145,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                 Else = hlds_goal(conj(plain_conj, Goals), GoalInfo),
                 IfThenElse = hlds_goal(if_then_else([], Cond, Then, Else),
                     GoalInfo),
-                Reason = promise_purity(dont_make_implicit_promises,
-                    purity_pure),
+                Reason = promise_purity(purity_pure),
                 GoalExpr = scope(Reason, IfThenElse),
                 !:Changed = yes
             )

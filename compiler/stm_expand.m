@@ -336,7 +336,7 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
         ;
             ( Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
-            ; Reason = promise_purity(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)
@@ -2302,7 +2302,7 @@ create_promise_purity_scope(HldsGoalIn, ScopePurity, HldsGoalOut) :-
     Context = goal_info_get_context(GoalInInfo),
     goal_info_init(NonLocals, InstMapDelta, Detism, GoalPurity, Context,
         GoalInfo),
-    Reason = promise_purity(dont_make_implicit_promises, ScopePurity),
+    Reason = promise_purity(ScopePurity),
     HldsGoalOutExpr = scope(Reason, HldsGoalIn),
     HldsGoalOut = hlds_goal(HldsGoalOutExpr, GoalInfo).
 

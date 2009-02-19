@@ -171,7 +171,7 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo)]
         ;
             ( Reason = promise_solutions(_, _)
-            ; Reason = promise_purity(_, _)
+            ; Reason = promise_purity(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)

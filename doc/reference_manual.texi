@@ -506,11 +506,8 @@ promise_exclusive               fy                950
 promise_exclusive_exhaustive    fy                950
 promise_exhaustive              fy                950
 promise_impure                  fx                950
-promise_impure_implicit         fx                950
 promise_pure                    fx                950
-promise_pure_implicit           fx                950
 promise_semipure                fx                950
-promise_semipure_implicit       fx                950
 some                            fxy               950
 ,                               xfy               1000
 &                               xfy               1025
@@ -772,18 +769,6 @@ A purity cast.
 @var{Goal} must be a valid goal.
 This goal instructs the compiler to treat @var{Goal} as though it were impure,
 regardless of its actual purity.
-
-@item @code{promise_pure_implicit @var{Goal}}
-Equivalent to @code{promise_pure @var{Goal}}, except that purity annotations on
-semipure and impure subgoals in @var{Goal} are optional.
-
-@item @code{promise_semipure_implicit @var{Goal}}
-Equivalent to @code{promise_semipure @var{Goal}}, except that purity
-annotations on semipure and impure subgoals in @var{Goal} are optional.
-
-@item @code{promise_impure_implicit @var{Goal}}
-Equivalent to @code{promise_impure @var{Goal}}, except that purity annotations
-on semipure and impure subgoals in @var{Goal} are optional.
 
 @item @code{promise_equivalent_solutions @var{Vars} @var{Goal}}
 A determinism cast.

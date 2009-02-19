@@ -640,7 +640,7 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
         set_nonlocals(NonLocals, !Info),
         PossiblyNonLocalGoalVars0 = NonLocals
     ;
-        ( Reason0 = promise_purity(_, _)
+        ( Reason0 = promise_purity(_)
         ; Reason0 = promise_solutions(_, _)
         ; Reason0 = commit(_)
         ; Reason0 = barrier(_)
@@ -707,7 +707,7 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
             rename_var_list(need_not_rename, RenameMap, TraceVars0, TraceVars),
             Reason = trace_goal(Comp, Run, IO, Mut, TraceVars)
         ;
-            ( Reason0 = promise_purity(_, _)
+            ( Reason0 = promise_purity(_)
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)
             ; Reason0 = from_ground_term(_, _)
@@ -1378,7 +1378,7 @@ goal_expr_vars_2(NonLocalsToRecompute, GoalExpr, !Set, !LambdaSet) :-
         Set0 = !.Set,
         LambdaSet0 = !.LambdaSet,
         (
-            ( Reason = promise_purity(_, _)
+            ( Reason = promise_purity(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)

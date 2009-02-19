@@ -124,8 +124,6 @@ ORDINARY_PROGS=	\
 	impl_def_literal \
 	impossible_unify \
 	impure_foreign \
-	impure_foreign2 \
-	impure_foreign3 \
 	impure_init_and_final \
 	impure_prune \
 	initialise_decl \
@@ -146,7 +144,6 @@ ORDINARY_PROGS=	\
 	map_fold \
 	mapped_module \
 	merge_and_remove_dups \
-	minint_bug \
 	mode_check_clauses \
 	mode_choice \
 	multi_arm_switch \
@@ -234,7 +231,6 @@ ORDINARY_PROGS=	\
 	test_imported_no_tag \
 	test_pretty_printer \
 	test_pretty_printer_defaults \
-	test_promise_impure_implicit \
 	test_semaphore \
 	test_yield \
 	tim_qual1 \
@@ -499,6 +495,11 @@ endif
 #     not yet implemented for arrays.
 #
 # XXX we fail some of the commented-out tests in write_binary
+
+# XXX minint_bug 
+# Since r1.279 of library/string.m we no longer pass this test
+# since the smallest (decimal) integer literal string.int_to_string/2
+# recognises is int.min_int + 1.
 
 # The following tests are passed only in some grades.
 

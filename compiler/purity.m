@@ -313,12 +313,11 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
         clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
         clauses_info_get_varset(!.ClausesInfo, VarSet0),
         PurityInfo0 = purity_info(ModuleInfo, run_post_typecheck,
-            !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises,
-            do_not_need_to_requantify),
+            !.PredInfo, VarTypes0, VarSet0, [], do_not_need_to_requantify),
         compute_purity_for_clauses(Clauses0, Clauses, !.PredInfo,
             purity_pure, Purity, PurityInfo0, PurityInfo),
         PurityInfo = purity_info(_, _, !:PredInfo,
-            VarTypes, VarSet, GoalSpecs, _, _),
+            VarTypes, VarSet, GoalSpecs, _),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
         clauses_info_set_varset(VarSet, !ClausesInfo),
         clauses_info_set_clauses(Clauses, !ClausesInfo),
@@ -368,10 +367,9 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
     proc_info_get_varset(ProcInfo0, VarSet0),
     PurityInfo0 = purity_info(ModuleInfo, do_not_run_post_typecheck,
-        !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises,
-        do_not_need_to_requantify),
+        !.PredInfo, VarTypes0, VarSet0, [], do_not_need_to_requantify),
     compute_goal_purity(Goal0, Goal, Bodypurity, _, PurityInfo0, PurityInfo),
-    PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _, _,
+    PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _,
         NeedToRequantify),
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
     proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
@@ -680,16 +678,8 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             Reason = exist_quant(_),
             compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
         ;
-            Reason = promise_purity(Implicit, PromisedPurity),
-            ImplicitPurity0 = !.Info ^ pi_implicit_purity,
-            (
-                Implicit = make_implicit_promises,
-                !:Info = !.Info ^ pi_implicit_purity := Implicit
-            ;
-                Implicit = dont_make_implicit_promises
-            ),
+            Reason = promise_purity(PromisedPurity),
             compute_goal_purity(Goal0, Goal, _, ContainsTrace, !Info),
-            !:Info = !.Info ^ pi_implicit_purity := ImplicitPurity0,
             Purity = PromisedPurity
         ;
             % We haven't yet classified from_ground_term scopes into
@@ -972,13 +962,13 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     % Check for a bogus purity annotation on the unification.
     DeclaredPurity = goal_info_get_purity(GoalInfo),
     (
-        DeclaredPurity \= purity_pure,
-        !.Info ^ pi_implicit_purity = dont_make_implicit_promises
-    ->
+        ( DeclaredPurity = purity_semipure
+        ; DeclaredPurity = purity_impure
+        ),
         Spec = impure_unification_expr_error(Context, DeclaredPurity),
         purity_info_add_message(Spec, !Info)
     ;
-        true
+        DeclaredPurity = purity_pure
     ).
 
     % The possible results of a purity check.
@@ -1089,51 +1079,43 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
         !Info) :-
     ModuleInfo = !.Info ^ pi_module_info,
     PredInfo = !.Info ^ pi_pred_info,
-    ImplicitPurity = !.Info ^ pi_implicit_purity,
     module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
     pred_info_get_purity(CalleePredInfo, ActualPurity),
     (
-        % If implicit_purity = make_implicit_promises then
-        % we don't report purity errors or warnings.
-        ImplicitPurity = make_implicit_promises
+        % The purity of the callee should match the
+        % purity declared at the call.
+        ActualPurity = DeclaredPurity
+    ->
+        true
     ;
-        ImplicitPurity = dont_make_implicit_promises,
-        (
-            % The purity of the callee should match the
-            % purity declared at the call.
-            ActualPurity = DeclaredPurity
-        ->
-            true
-        ;
-            % Don't require purity annotations on calls in
-            % compiler-generated code.
-            is_unify_or_compare_pred(PredInfo)
-        ->
-            true
-        ;
-            less_pure(ActualPurity, DeclaredPurity)
-        ->
-            Spec = error_missing_body_impurity_decl(ModuleInfo, PredId,
-                Context),
-            purity_info_add_message(Spec, !Info)
-        ;
-            % We don't warn about exaggerated impurity decls in class methods
-            % or instance methods --- it just means that the predicate provided
-            % as an implementation was more pure than necessary.
+        % Don't require purity annotations on calls in
+        % compiler-generated code.
+        is_unify_or_compare_pred(PredInfo)
+    ->
+        true
+    ;
+        less_pure(ActualPurity, DeclaredPurity)
+    ->
+        Spec = error_missing_body_impurity_decl(ModuleInfo, PredId,
+            Context),
+        purity_info_add_message(Spec, !Info)
+    ;
+        % We don't warn about exaggerated impurity decls in class methods
+        % or instance methods --- it just means that the predicate provided
+        % as an implementation was more pure than necessary.
 
-            pred_info_get_markers(PredInfo, Markers),
-            (
-                check_marker(Markers, marker_class_method)
-            ;
-                check_marker(Markers, marker_class_instance_method)
-            )
-        ->
-            true
+        pred_info_get_markers(PredInfo, Markers),
+        (
+            check_marker(Markers, marker_class_method)
         ;
-            Spec = warn_unnecessary_body_impurity_decl(ModuleInfo, PredId,
-                Context, DeclaredPurity),
-            purity_info_add_message(Spec, !Info)
+            check_marker(Markers, marker_class_instance_method)
         )
+    ->
+        true
+    ;
+        Spec = warn_unnecessary_body_impurity_decl(ModuleInfo, PredId,
+            Context, DeclaredPurity),
+        purity_info_add_message(Spec, !Info)
     ).
 
 :- pred compute_goal_purity(hlds_goal::in, hlds_goal::out, purity::out,
@@ -1452,12 +1434,6 @@ mismatched_outer_var_types(Context) = Spec :-
                 pi_vartypes             :: vartypes,
                 pi_varset               :: prog_varset,
                 pi_messages             :: list(error_spec),
-                pi_implicit_purity      :: implicit_purity_promise,
-                                        % If this is make_implicit_promises,
-                                        % then purity annotations are optional
-                                        % in the current scope and purity
-                                        % warnings/errors should not be
-                                        % generated.
                 pi_requant              :: need_to_requantify
             ).
 

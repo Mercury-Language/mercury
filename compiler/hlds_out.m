@@ -1650,7 +1650,7 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
         mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
         io.write_string("] (\n", !IO)
     ;
-        Reason = promise_purity(Implicit, Purity),
+        Reason = promise_purity(Purity),
         (
             Purity = purity_pure,
             io.write_string("promise_pure (", !IO)
@@ -1661,13 +1661,7 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
             Purity = purity_impure,
             io.write_string("promise_impure (", !IO)
         ),
-        (
-            Implicit = make_implicit_promises,
-            io.write_string("implicit\n", !IO)
-        ;
-            Implicit = dont_make_implicit_promises,
-            io.write_string("\n", !IO)
-        )
+        io.write_string("\n", !IO)
     ;
         Reason = promise_solutions(Vars, Kind),
         (

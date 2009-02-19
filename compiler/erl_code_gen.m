@@ -630,7 +630,7 @@ erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, Detism, InstMap,
             MaybeSuccessExpr, Statement, !Info)
     ;
         ( ScopeReason = exist_quant(_)
-        ; ScopeReason = promise_purity(_, _)
+        ; ScopeReason = promise_purity(_)
         ; ScopeReason = barrier(_)
         ; ScopeReason = from_ground_term(_, _)
         ; ScopeReason = trace_goal(_, _, _, _, _)

@@ -195,8 +195,7 @@ parse_dcg_goal_2("promise_pure", [G], Context, ContextPieces, MaybeGoal,
     parse_dcg_goal(G, ContextPieces, MaybeGoal0, !VarSet, !Counter, !Var),
     (
         MaybeGoal0 = ok1(Goal0),
-        Goal = promise_purity_expr(dont_make_implicit_promises, purity_pure,
-            Goal0) - Context,
+        Goal = promise_purity_expr(purity_pure, Goal0) - Context,
         MaybeGoal = ok1(Goal)
     ;
         MaybeGoal0 = error1(Specs),
@@ -207,8 +206,7 @@ parse_dcg_goal_2("promise_semipure", [G], Context, ContextPieces, MaybeGoal,
     parse_dcg_goal(G, ContextPieces, MaybeGoal0, !VarSet, !Counter, !Var),
     (
         MaybeGoal0 = ok1(Goal0),
-        Goal = promise_purity_expr(dont_make_implicit_promises, purity_semipure,
-            Goal0) - Context,
+        Goal = promise_purity_expr(purity_semipure, Goal0) - Context,
         MaybeGoal = ok1(Goal)
     ;
         MaybeGoal0 = error1(Specs),
@@ -219,44 +217,7 @@ parse_dcg_goal_2("promise_impure", [G], Context, ContextPieces, MaybeGoal,
     parse_dcg_goal(G, ContextPieces, MaybeGoal0, !VarSet, !Counter, !Var),
     (
         MaybeGoal0 = ok1(Goal0),
-        Goal = promise_purity_expr(dont_make_implicit_promises, purity_impure,
-            Goal0) - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        MaybeGoal0 = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_dcg_goal_2("promise_pure_implicit", [G], Context, ContextPieces, MaybeGoal,
-        !VarSet, !Counter, !Var) :-
-    parse_dcg_goal(G, ContextPieces, MaybeGoal0, !VarSet, !Counter, !Var),
-    (
-        MaybeGoal0 = ok1(Goal0),
-        Goal = promise_purity_expr(make_implicit_promises, purity_pure, Goal0)
-            - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        MaybeGoal0 = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_dcg_goal_2("promise_semipure_implicit", [G], Context, ContextPieces,
-        MaybeGoal, !VarSet, !Counter, !Var) :-
-    parse_dcg_goal(G, ContextPieces, MaybeGoal0, !VarSet, !Counter, !Var),
-    (
-        MaybeGoal0 = ok1(Goal0),
-        Goal = promise_purity_expr(make_implicit_promises, purity_semipure,
-            Goal0) - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        MaybeGoal0 = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_dcg_goal_2("promise_impure_implicit", [G], Context, ContextPieces,
-        MaybeGoal, !VarSet, !Counter, !Var) :-
-    parse_dcg_goal(G, ContextPieces, MaybeGoal0, !VarSet, !Counter, !Var),
-    (
-        MaybeGoal0 = ok1(Goal0),
-        Goal = promise_purity_expr(make_implicit_promises, purity_impure,
-            Goal0) - Context,
+        Goal = promise_purity_expr(purity_impure, Goal0) - Context,
         MaybeGoal = ok1(Goal)
     ;
         MaybeGoal0 = error1(Specs),

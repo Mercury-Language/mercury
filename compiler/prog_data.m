@@ -974,10 +974,6 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 % NOTE: the representation of goals in the parse tree is defined in
 %       prog_item.m.
 
-:- type implicit_purity_promise
-    --->    make_implicit_promises
-    ;       dont_make_implicit_promises.
-
 :- type trace_expr(Base)
     --->    trace_base(Base)
     ;       trace_not(trace_expr(Base))
