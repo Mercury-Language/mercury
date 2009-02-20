@@ -91,10 +91,14 @@ Changes to the Mercury standard library:
 * Processes no longer terminate until all threads have finished.  Previously
   a process would terminate as soon as the original thread finished.
 
+* The following predicate has been added to the set module:
+    set.filter_map/3
+
 * The following predicate has been added to the array module:
     array.foldl2/6
 
 * The following predicates have been added to the list module:
+    list.filter_map_foldl/5
 	list.map_corresponding/4
 	list.map2_foldl3/10
 	list.map_corresponding_foldl/6

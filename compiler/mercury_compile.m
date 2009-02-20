@@ -54,6 +54,7 @@
 :- import_module parse_tree.equiv_type.
 :- import_module hlds.make_hlds.
 :- import_module check_hlds.typecheck.
+:- import_module check_hlds.type_constraints.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.implementation_defined_literals.
 :- import_module check_hlds.polymorphism.
@@ -2149,6 +2150,8 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
     globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
     globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
+    globals.lookup_bool_option(Globals, type_check_constraints, 
+        TypeCheckConstraints),
     (
         ( IntermodOpt = yes
         ; IntermodAnalysis = yes
@@ -2185,7 +2188,15 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
     % Next typecheck the clauses.
     maybe_write_string(Verbose, "% Type-checking...\n", !IO),
     maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
-    typecheck_module(!HLDS, TypeCheckSpecs, ExceededTypeCheckIterationLimit),
+    (
+        TypeCheckConstraints = yes,
+        typecheck_constraints(!HLDS, TypeCheckSpecs),
+        ExceededTypeCheckIterationLimit = no
+    ;
+        TypeCheckConstraints = no,
+        typecheck_module(!HLDS, TypeCheckSpecs, 
+            ExceededTypeCheckIterationLimit)
+    ),
     write_error_specs(TypeCheckSpecs, Globals, 0, _NumTypeWarnings,
         0, NumTypeErrors, !IO),
     maybe_report_stats(Stats, !IO),

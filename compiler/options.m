@@ -515,6 +515,8 @@
 
     ;       allow_multi_arm_switches
 
+    ;       type_check_constraints
+
     % Code generation options
     ;       low_level_debug
     ;       table_debug
@@ -1296,7 +1298,8 @@ option_defaults_2(internal_use_option, [
     size_region_disj_snapshot           -   int(3),
     size_region_commit_entry            -   int(1),
     solver_type_auto_init               -   bool(no),
-    allow_multi_arm_switches            -   bool(yes)
+    allow_multi_arm_switches            -   bool(yes),
+    type_check_constraints              -   bool(no)
 ]).
 option_defaults_2(code_gen_option, [
     % Code Generation Options
@@ -2133,8 +2136,9 @@ long_option("size-region-ite-snapshot",         size_region_ite_snapshot).
 long_option("size-region-semi-disj-protect",    size_region_semi_disj_protect).
 long_option("size-region-disj-snapshot",        size_region_disj_snapshot).
 long_option("size-region-commit-entry",         size_region_commit_entry).
-long_option("solver-type-auto-init",        solver_type_auto_init).
-long_option("allow-multi-arm-switches",     allow_multi_arm_switches).
+long_option("solver-type-auto-init",    solver_type_auto_init).
+long_option("allow-multi-arm-switches", allow_multi_arm_switches).
+long_option("type-check-constraints",   type_check_constraints).
 
 % code generation options
 long_option("low-level-debug",      low_level_debug).
@@ -4368,6 +4372,11 @@ options_help_compilation_model -->
 %       "(This option is not for general use.)",
 %       Allow the compiler to generate switches in which one arm handles
 %       more than one cons_id.
+
+        % This is a developer only option.
+%       "--type-check-constraints",
+%       "(This option is not for general use.)",
+%       Use the constraint based type checker instead of the old one.
     ]).
 
 :- pred options_help_code_generation(io::di, io::uo) is det.

@@ -28,6 +28,15 @@ MCFLAGS-fz_conf                 = --solver-type-auto-init
 MCFLAGS-solver_type_bug_2       = --solver-type-auto-init
 MCFLAGS-solver_type_mutable_bug = --solver-type-auto-init
 
+
+MCFLAGS-ambig_confuse1      = --type-check-constraints
+MCFLAGS-ambig_confuse2      = --type-check-constraints
+MCFLAGS-ambig_confuse3      = --type-check-constraints
+MCFLAGS-ambig_functor       = --type-check-constraints
+MCFLAGS-ambig_high_level    = --type-check-constraints
+MCFLAGS-ambig_pred          = --type-check-constraints
+MCFLAGS-ambig_types         = --type-check-constraints
+MCFLAGS-ambig_stress_test   = --type-check-constraints
 MCFLAGS-builtin_false		= --intermodule-optimization
 MCFLAGS-bug85			= -O0 --deforestation
 MCFLAGS-compl_unify_bug		= -O3

@@ -1231,6 +1231,14 @@
     in, out, in, out, in, out, in, out, in, out, in, out, in, out)
     is nondet.
 
+    % list.filter_map_foldl(Transformer, List, TrueList, Start, End):
+    % Takes a predicate with one input argument, one output argument and an
+    % accumulator. It is called with each element of List. If a call succeeds,
+    % then the output is included in TrueList and the accumulator is updated.
+    %
+:- pred list.filter_map_foldl(pred(X, Y, A, A)::in(pred(in, out, in, out)
+    is semidet), list(X)::in, list(Y)::out, A::in, A::out) is det.
+
     % list.all_true(Pred, List) takes a closure with one input argument.
     % If Pred succeeds for every member of List, all_true succeeds.
     % If Pred fails for any member of List, all_true fails.
@@ -2350,6 +2358,15 @@ list.map_foldl6(_, [], [], !A, !B, !C, !D, !E, !F).
 list.map_foldl6(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E, !F) :-
     P(H0, H, !A, !B, !C, !D, !E, !F),
     list.map_foldl6(P, T0, T, !A, !B, !C, !D, !E, !F).
+
+list.filter_map_foldl(_, [], [], !A).
+list.filter_map_foldl(P, [X | Xs], True, !A) :-
+    ( P(X, Y, !A) ->
+        list.filter_map_foldl(P, Xs, TrueTail, !A),
+        True = [Y | TrueTail]
+    ;
+        list.filter_map_foldl(P, Xs, True, !A)
+    ).
 
 list.foldr(_, [], !A).
 list.foldr(P, [H | T], !A) :-

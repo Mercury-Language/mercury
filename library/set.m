@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2008 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -254,6 +254,8 @@
     % set.filter_map(PF, S) =
     %   list_to_set(list.filter_map(PF, to_sorted_list(S))).
     %
+:- pred set.filter_map(pred(T1, T2), set(T1), set(T2)).
+:- mode set.filter_map(in(pred(in, out) is semidet), in, out) is det.
 :- func set.filter_map(func(T1) = T2, set(T1)) = set(T2).
 :- mode set.filter_map(func(in) = out is semidet, in) = out is det.
 
@@ -513,6 +515,11 @@ set.filter(P, S1) = S2 :-
 
 set.filter_map(PF, S1) = S2 :-
     S2 = set.list_to_set(list.filter_map(PF, set.to_sorted_list(S1))).
+
+set.filter_map(P, S1, S2) :-
+    set.to_sorted_list(S1, L1),
+    list.filter_map(P, L1, L2),
+    set.list_to_set(L2, S2).
 
 set.fold(F, S, A) = B :-
     B = list.foldl(F, set.to_sorted_list(S), A).

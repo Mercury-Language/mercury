@@ -287,7 +287,19 @@ CTGC_PROGS = \
 RESERVE_TAG_PROGS = \
 	reserve_tag
 
-# XXX The type checker can't handle the following test cases yet:
+# The following programs use constraint-based typechecking
+CONSTRAINT_TYPECHECK_PROGS = \
+	ambig \
+	ambig_functor \
+	ambig_high_level \
+	ambig_pred \
+	ambig_pred2 \
+	ambig_pred_3 \
+ 	ambiguity_stress_test
+
+
+# XXX The type checker can't handle the following test cases yet,
+# unless constraint-based typechecking is used:
 #	ambiguity_stress_test
 #
 # XXX The mode system can't handle the following test cases yet:
