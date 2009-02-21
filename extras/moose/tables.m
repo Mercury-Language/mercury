@@ -49,26 +49,26 @@
 %------------------------------------------------------------------------------%
 
 shifts(_C, _Rules, First, Reaching, !:Shifts) :-
-	map__init(!:Shifts),
-	map__foldl((pred(N::in, Ts0::in, !.Shifts::in, !:Shifts::out) is det :-
-		( map__search(Reaching, N, Ns0) ->
-			set__to_sorted_list(Ns0, Ns1)
+	map.init(!:Shifts),
+	map.foldl((pred(N::in, Ts0::in, !.Shifts::in, !:Shifts::out) is det :-
+		( map.search(Reaching, N, Ns0) ->
+			set.to_sorted_list(Ns0, Ns1)
 		;
 			Ns1 = []
 		),
-		list__map(map__lookup(First), Ns1, Ts1),
-		list__foldl(set__union, Ts1, Ts0, Ts2),
+		list.map(map.lookup(First), Ns1, Ts1),
+		list.foldl(set.union, Ts1, Ts0, Ts2),
 		Ts = Ts2 - { epsilon },
-		map__set(!.Shifts, N, Ts, !:Shifts)
+		map.set(!.Shifts, N, Ts, !:Shifts)
 	), First, !Shifts).
 
 %------------------------------------------------------------------------------%
 
 actions(C, Rules, Lookaheads, Gotos, Shifts, !:States, !:Actions, Errs) :-
-	set__to_sorted_list(C, CList),
-	map__init(!:States),
+	set.to_sorted_list(C, CList),
+	map.init(!:States),
 	number_states(CList, 0, !States),
-	map__init(!:Actions),
+	map.init(!:Actions),
 	actions1(CList, Rules, Lookaheads, !.States, Gotos, Shifts, !Actions, 
 		[], Errs).
 
@@ -77,7 +77,7 @@ actions(C, Rules, Lookaheads, Gotos, Shifts, !:States, !:Actions, Errs) :-
 
 number_states([], _N, !States).
 number_states([I | Is], N, !States) :-
-	map__det_insert(!.States, I, N, !:States),
+	map.det_insert(!.States, I, N, !:States),
 	number_states(Is, N + 1, !States).
 
 :- pred actions1(list(items), rules, lookaheads, states, gotos, shifts,
@@ -86,8 +86,8 @@ number_states([I | Is], N, !States) :-
 
 actions1([], _Rules, _Lookaheads, _States, _Gotos, _Shifts, !Actions, !Errs).
 actions1([I | Is], Rules, Lookaheads, States, Gotos, Shifts, !Actions, !Errs) :-
-	map__lookup(States, I, Sn),
-	set__to_sorted_list(I, IList),
+	map.lookup(States, I, Sn),
+	set.to_sorted_list(I, IList),
 	actions2(IList, I, Sn, Rules, Lookaheads, States, Gotos, Shifts, 
 		!Actions, !Errs),
 	actions1(Is, Rules, Lookaheads, States, Gotos, Shifts, !Actions, !Errs).
@@ -99,37 +99,37 @@ actions1([I | Is], Rules, Lookaheads, States, Gotos, Shifts, !Actions, !Errs) :-
 actions2([], _I, _Sn, _Rules, _LA, _States, _Gotos, _Shifts, !Actions, !Errs).
 actions2([A | As], I, Sn, Rules, LA, States, Gotos, Shifts, !Actions, !Errs) :-
 	A = item(Ip, Id),
-	map__lookup(Rules, Ip, rule(_, _, Syms, _, _, _, _)),
-	array__max(Syms, Max),
+	map.lookup(Rules, Ip, rule(_, _, Syms, _, _, _, _)),
+	array.max(Syms, Max),
 	( Id =< Max ->
-		array__lookup(Syms, Id, X),
-		map__lookup(Gotos, I, IGs),
+		array.lookup(Syms, Id, X),
+		map.lookup(Gotos, I, IGs),
 		(
 			X = terminal(T0),
 			Ts = { T0 }
 		;
 			X = nonterminal(N),
-			( map__search(Shifts, N, Ts0) ->
+			( map.search(Shifts, N, Ts0) ->
 				Ts = Ts0
 			;
 				Ts = empty
 			)
 		),
-		set__to_sorted_list(Ts, TList),
-		list__foldl2((pred(T::in, !.Actions::in, !:Actions::out, 
+		set.to_sorted_list(Ts, TList),
+		list.foldl2((pred(T::in, !.Actions::in, !:Actions::out, 
 				!.Errs::in, !:Errs::out) is det :-
-			map__lookup(IGs, terminal(T), J),
-			map__lookup(States, J, Jn),
+			map.lookup(IGs, terminal(T), J),
+			map.lookup(States, J, Jn),
 			addaction(Sn, T, shift(Jn), !Actions, !Errs)
 		), TList, !Actions, !Errs)
 	;
 		% A -> alpha .
 		(
-			map__search(LA, I, ILAs),
-			map__search(ILAs, A, Alphas)
+			map.search(LA, I, ILAs),
+			map.search(ILAs, A, Alphas)
 		->
-			set__to_sorted_list(Alphas, AlphaList),
-			list__foldl2((pred(T::in,
+			set.to_sorted_list(Alphas, AlphaList),
+			list.foldl2((pred(T::in,
 					!.Actions::in, !:Actions::out,
 					!.Errs::in, !:Errs::out) is det :-
 				( Ip = 0, T = ($) ->
@@ -151,12 +151,12 @@ actions2([A | As], I, Sn, Rules, LA, States, Gotos, Shifts, !Actions, !Errs) :-
 :- mode addaction(in, in, in, in, out, in, out) is det.
 
 addaction(Sn, T, A0, !Actions, !Errs) :-
-	( map__search(!.Actions, Sn, State0) ->
+	( map.search(!.Actions, Sn, State0) ->
 		State1 = State0
 	;
-		map__init(State1)
+		map.init(State1)
 	),
-	( map__search(State1, T, A1) ->
+	( map.search(State1, T, A1) ->
 		( A0 = A1 ->
 			A = A1
 		;
@@ -173,7 +173,7 @@ addaction(Sn, T, A0, !Actions, !Errs) :-
 			)
 		->
 			A = A2,
-			list__append([Err], !Errs)
+			list.append([Err], !Errs)
 		;
 			A = A0,
 			(
@@ -189,32 +189,32 @@ addaction(Sn, T, A0, !Actions, !Errs) :-
 			;
 				Err = error(misc(A0, A1))
 			),
-			list__append([Err], !Errs)
+			list.append([Err], !Errs)
 		)
 	;
 		A = A0
 	),
-	map__set(State1, T, A, State),
-	map__set(!.Actions, Sn, State, !:Actions).
+	map.set(State1, T, A, State),
+	map.set(!.Actions, Sn, State, !:Actions).
 
 %------------------------------------------------------------------------------%
 
 gotos(_C, States, Gotos, !:GotoTable) :-
-	map__init(!:GotoTable),
-	map__foldl((pred(I0::in, IGs::in, !.GotoTable::in, 
+	map.init(!:GotoTable),
+	map.foldl((pred(I0::in, IGs::in, !.GotoTable::in, 
 			!:GotoTable::out) is det :-
-		map__lookup(States, I0, Sf),
-		map__foldl((pred(Sym::in, J0::in, !.GotoTable::in, 
+		map.lookup(States, I0, Sf),
+		map.foldl((pred(Sym::in, J0::in, !.GotoTable::in, 
 				!:GotoTable::out) is det :-
 			( Sym = nonterminal(N) ->
-				map__lookup(States, J0, St),
-				( map__search(!.GotoTable, Sf, X0) ->
+				map.lookup(States, J0, St),
+				( map.search(!.GotoTable, Sf, X0) ->
 					X1 = X0
 				;
-					map__init(X1)
+					map.init(X1)
 				),
-				map__set(X1, N, St, X),
-				map__set(!.GotoTable, Sf, X, !:GotoTable)
+				map.set(X1, N, St, X),
+				map.set(!.GotoTable, Sf, X, !:GotoTable)
 			;
 				true
 			)

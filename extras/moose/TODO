@@ -1,3 +1,6 @@
+
+Copyright (C) 2009 The University of Melbourne
+
 To make moose more useful:
 	- allow parsing actions to be semidet to allow the imposition
 	  of semantic conditions during parsing.
@@ -16,7 +19,7 @@ Cosmetic improvements:
 	
 Wish list:
 	- introduce new nonterminals for disjunctions in productions.
-	  This is quite difficult because it requres correct computation
+	  This is quite difficult because it requires correct computation
 	  of the nonlocal variables of goals (including all the nasty
 	  cases like pred expressions).
 

@@ -28,7 +28,7 @@
 :- type options == option_table(option).
 :- type maybe_options == maybe_option_table(option).
 
-:- pred parse_options(maybe_options, list(string), io__state, io__state).
+:- pred parse_options(maybe_options, list(string), io.state, io.state).
 :- mode parse_options(out, out, di, uo) is det.
 
 :- implementation.
@@ -36,9 +36,9 @@
 :- import_module bool, char, std_util.
 
 parse_options(MOpts, Args, !IO) :-
-	io__command_line_arguments(Args0, !IO),
+	io.command_line_arguments(Args0, !IO),
 	OptionOpts = option_ops(short, long, defaults),
-	getopt__process_options(OptionOpts, Args0, Args, MOpts).
+	getopt.process_options(OptionOpts, Args0, Args, MOpts).
 
 :- pred short(char, option).
 :- mode short(in, out) is semidet.

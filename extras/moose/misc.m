@@ -30,12 +30,12 @@
 :- implementation.
 
 empty = Empty :-
-	set__init(Empty).
+	set.init(Empty).
 
-{ Elem } = Set :- set__singleton_set(Set, Elem).
+{ Elem } = Set :- set.singleton_set(Set, Elem).
 
-A /\ B = C :- set__intersect(A, B, C).
+A /\ B = C :- set.intersect(A, B, C).
 
-A \/ B = C :- set__union(A, B, C).
+A \/ B = C :- set.union(A, B, C).
 
-A - B = C :- set__difference(A, B, C).
+A - B = C :- set.difference(A, B, C).

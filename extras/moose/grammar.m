@@ -159,7 +159,7 @@ term_to_clause(functor(Atom, Args, Context), VarSet, Id, Rule) :-
 	Atom = atom("--->"),
 	Args = [Head, Body],
 	Head = functor(atom(Name), HeadArgs, _),
-	list__length(HeadArgs, Arity),
+	list.length(HeadArgs, Arity),
 	Id = Name/Arity,
 	Rule = clause(Head, Prod, VarSet, Context),
 	term_to_prod(Body, Prod).
@@ -179,7 +179,7 @@ term_to_prod(functor(Atom, Args, Ctxt), Prod) :-
 	; Atom = atom("{}"), Args = [Goal] ->
 		Prod = action(Goal)
 	; Atom = atom("{}"), Args = [Goal | Goals] ->
-		list__foldl(
+		list.foldl(
 			(pred(G::in, Left::in, (Left, action(G))::out) is det),
 			Goals, action(Goal), Prod)
 	; Atom = atom("[]"), Args = [] ->
@@ -205,26 +205,26 @@ terminals(functor(Atom, Args, _), Prod0, Prod) :-
 %------------------------------------------------------------------------------%
 
 add_clause(Clauses0, Id, Clause, Clauses) :-
-	( map__search(Clauses0, Id, These0) ->
+	( map.search(Clauses0, Id, These0) ->
 		These = [Clause|These0]
 	;
 		These = [Clause]
 	),
-	map__set(Clauses0, Id, These, Clauses).
+	map.set(Clauses0, Id, These, Clauses).
 
 %------------------------------------------------------------------------------%
 
 construct_grammar(Start, AllClauses, XForms, Grammar) :-
-	map__to_assoc_list(AllClauses, ClauseList),
+	map.to_assoc_list(AllClauses, ClauseList),
 	Nont0 = 1,
 	start_rule(Start, StartRule),
-	map__from_assoc_list([0 - StartRule], Rules0),
-	map__init(ClauseIndex0),
-	map__init(First0),
-	map__init(Follow0),
+	map.from_assoc_list([0 - StartRule], Rules0),
+	map.init(ClauseIndex0),
+	map.init(First0),
+	map.init(Follow0),
 	Grammar0 = grammar(Rules0, AllClauses, XForms, Nont0, ClauseIndex0,
 		First0, Follow0),
-	list__foldl(transform_clause_list, ClauseList, Grammar0, Grammar1),
+	list.foldl(transform_clause_list, ClauseList, Grammar0, Grammar1),
 	compute_first0(Grammar1, Grammar2),
 	compute_follow0(Grammar2, Grammar3),
 	Grammar3 = grammar(Rules3, AllClauses3, XForms3, Nont3, ClauseIndex3,
@@ -232,9 +232,9 @@ construct_grammar(Start, AllClauses, XForms, Grammar) :-
 		
 		% Keep the nonterminals in reverse sorted order
 		% for efficient processing in lalr.m
-	map__map_values((pred(_K::in, V0::in, V::out) is det :-
-	    list__sort(V0, V1),
-	    list__reverse(V1, V)
+	map.map_values((pred(_K::in, V0::in, V::out) is det :-
+	    list.sort(V0, V1),
+	    list.reverse(V1, V)
 	), ClauseIndex3, ClauseIndex4),
 	Grammar = grammar(Rules3, AllClauses3, XForms3, Nont3, ClauseIndex4,
 		First3, Follow3).
@@ -249,16 +249,16 @@ start_rule(Id, Rule) :-
 		Id = start,
 		error("epsilon start rule")
 	),
-	varset__init(VarSet0),
-	varset__new_vars(VarSet0, Arity, Vars, VarSet1),
-	list__foldl((pred(V::in, VS0::in, VS::out) is det :-
-		term__var_to_int(V, I),
-		string__format("V%d", [i(I)], N),
-		varset__name_var(VS0, V, N, VS)
+	varset.init(VarSet0),
+	varset.new_vars(VarSet0, Arity, Vars, VarSet1),
+	list.foldl((pred(V::in, VS0::in, VS::out) is det :-
+		term.var_to_int(V, I),
+		string.format("V%d", [i(I)], N),
+		varset.name_var(VS0, V, N, VS)
 	), Vars, VarSet1, VarSet),
-	term__var_list_to_term_list(Vars, Args),
+	term.var_list_to_term_list(Vars, Args),
 	Context = context("foobie", 1),
-	string__append(Name, "'", NewName),
+	string.append(Name, "'", NewName),
 	NewId = start,
 	Head = functor(atom(NewName), Args, Context),
 	Body = array([nonterminal(Id)]), 
@@ -270,7 +270,7 @@ start_rule(Id, Rule) :-
 :- mode transform_clause_list(in, in, out) is det.
 
 transform_clause_list(Id - Clauses, !Grammar) :-
-	list__foldl(transform_clause(Id), Clauses, !Grammar).
+	list.foldl(transform_clause(Id), Clauses, !Grammar).
 
 :- pred transform_clause(nonterminal, clause, grammar, grammar).
 :- mode transform_clause(in, in, in, out) is det.
@@ -278,7 +278,7 @@ transform_clause_list(Id - Clauses, !Grammar) :-
 transform_clause(Id, Clause, !Grammar) :-
 	Clause = clause(Head, Prod, Varset, Context),
 	solutions(transform_prod(Prod), Bodies),
-	list__foldl(add_rule(Id, Head, Varset, Context), Bodies, !Grammar).
+	list.foldl(add_rule(Id, Head, Varset, Context), Bodies, !Grammar).
 
 :- pred add_rule(nonterminal, term, varset, context,
 	pair(list(bodyterm), list(term)), grammar, grammar).
@@ -286,7 +286,7 @@ transform_clause(Id, Clause, !Grammar) :-
 
 add_rule(Id, Head, Varset, Context, BodyTerms - Actions, !Grammar) :-
 	!.Grammar = grammar(Rules0, C, Xfs, Nont0, ClauseIndex0, F, L),
-	list__map((pred(BodyTerm::in, BodyId::out) is det :-
+	list.map((pred(BodyTerm::in, BodyId::out) is det :-
 		(
 			BodyTerm = terminal(Term),
 			( Term = functor(atom(Name), Args, _) ->
@@ -311,12 +311,12 @@ add_rule(Id, Head, Varset, Context, BodyTerms - Actions, !Grammar) :-
 			Varset, Context),
 	add_rule(Rules0, Nont0, Rule, Rules),
 	Nont = Nont0 + 1,
-	( map__search(ClauseIndex0, Id, Prods0) ->
+	( map.search(ClauseIndex0, Id, Prods0) ->
 		Prods = [Nont0|Prods0]
 	;
 		Prods = [Nont0]
 	),
-	map__set(ClauseIndex0, Id, Prods, ClauseIndex),
+	map.set(ClauseIndex0, Id, Prods, ClauseIndex),
 	!:Grammar = grammar(Rules, C, Xfs, Nont, ClauseIndex, F, L).
 
 :- pred transform_prod(prod, pair(list(bodyterm), list(term))).
@@ -328,8 +328,8 @@ transform_prod(action(Term), [] - [Term]).
 transform_prod((ProdA, ProdB), Body - Actions) :-
 	transform_prod(ProdA, BodyA - ActionsA),
 	transform_prod(ProdB, BodyB - ActionsB),
-	list__append(BodyA, BodyB, Body),
-	list__append(ActionsA, ActionsB, Actions).
+	list.append(BodyA, BodyB, Body),
+	list.append(ActionsA, ActionsB, Actions).
 transform_prod((ProdA ; ProdB), Result) :-
 	(
 		transform_prod(ProdA, Result)
@@ -381,12 +381,12 @@ compute_first0(Grammar0, Grammar) :-
 
 compute_first(Rules, First) :-
 	collect_nonterminals(Rules, Nonterminals),
-	map__init(First0),
+	map.init(First0),
 	Stuff0 = stuff(no, Nonterminals, Rules, First0),
 	until((pred(Stuff1::in, Stuff3::out) is det :-
 		Stuff1 = stuff(_, N1, R1, F1),
 		Stuff2 = stuff(no, N1, R1, F1),
-		map__foldl(compute_first, Rules, Stuff2, Stuff3)
+		map.foldl(compute_first, Rules, Stuff2, Stuff3)
 	),
 	(pred(StuffN::in) is semidet :-
 		StuffN = stuff(no, _, _, _)
@@ -398,13 +398,13 @@ compute_first(Rules, First) :-
 
 compute_first(_RuleNum, Rule, Stuff0, Stuff) :-
 	Rule = rule(Id, _Head, Elems, _Body, _Actions, _Varset, _Context),
-	array__max(Elems, Max),
+	array.max(Elems, Max),
 	( Max >= 0 ->
 			% If there are literals in the body of the
 			% rule, then compute the first set that derives
 			% from what we currently know...
 		Stuff0 = stuff(_, _, _, TmpFirst),
-		set__init(Emp),
+		set.init(Emp),
 		compute_first(0, Max, Elems, TmpFirst, Emp, ComputedFirst)
 	;
 			% There were no literals in the body of the rule,
@@ -446,18 +446,18 @@ compute_first(_RuleNum, Rule, Stuff0, Stuff) :-
 
 compute_first(I, IMax, Elems, First, Set0, Set) :-
 	( I =< IMax ->
-		array__lookup(Elems, I, Elem),
+		array.lookup(Elems, I, Elem),
 		(
 				% If we get to a terminal, then we add it
 				% to the first set, and remove epsilon (if
 				% it was there in the first place), since
 				% this rule is certainly not nullable.
 			Elem = terminal(Id),
-			set__insert(Set0, Id, Set1),
-			set__difference(Set1, { epsilon }, Set)
+			set.insert(Set0, Id, Set1),
+			set.difference(Set1, { epsilon }, Set)
 		;
 			Elem = nonterminal(Id),
-			( map__search(First, Id, Set1) ->
+			( map.search(First, Id, Set1) ->
 					% If we know some information about
 					% the nonterminal, then add it to
 					% what we already know. If it is
@@ -465,12 +465,12 @@ compute_first(I, IMax, Elems, First, Set0, Set) :-
 					% not nullable, and we're done. If
 					% it is nullable, then we look at
 					% the next literal in the body.
-				set__union(Set0, Set1, Set2),
-				( set__member(epsilon, Set1) ->
+				set.union(Set0, Set1, Set2),
+				( set.member(epsilon, Set1) ->
 					compute_first(I + 1, IMax, Elems, First,
 						Set2, Set)
 				;
-					set__difference(Set2, { epsilon }, Set)
+					set.difference(Set2, { epsilon }, Set)
 				)
 			;
 					% If we don't know anything about
@@ -486,9 +486,9 @@ compute_first(I, IMax, Elems, First, Set0, Set) :-
 :- mode collect_terminals(in, out) is det.
 
 collect_terminals(Rules, Terminals) :-
-	map__foldl((pred(_RN::in, Rule::in, Ts0::in, Ts::out) is det :-
+	map.foldl((pred(_RN::in, Rule::in, Ts0::in, Ts::out) is det :-
 		Rule = rule(_Id, _Head, Elems, _, _, _, _),
-		Ts = array__foldl((func(Elem, Ts1) = Ts2 :-
+		Ts = array.foldl((func(Elem, Ts1) = Ts2 :-
 			(
 				Elem = terminal(Id),
 				Ts2 = [Id|Ts1]
@@ -498,18 +498,18 @@ collect_terminals(Rules, Terminals) :-
 			)
 		), Elems, Ts0)
 	), Rules, [], TerminalsList),
-	set__list_to_set(TerminalsList, Terminals).
+	set.list_to_set(TerminalsList, Terminals).
 
 :- pred collect_nonterminals(rules, list(nonterminal)).
 :- mode collect_nonterminals(in, out) is det.
 
 collect_nonterminals(Rules, Nonterminals) :-
-	map__foldl((pred(_RN ::in, Rule::in, Ts0::in, Ts::out) is det :-
+	map.foldl((pred(_RN ::in, Rule::in, Ts0::in, Ts::out) is det :-
 		Rule = rule(Id, _Head, _Elems, _, _, _Varset, _Context),
 		Ts = [Id|Ts0]
 	), Rules, [], NonterminalsList),
-	set__list_to_set(NonterminalsList, Nonterminals0),
-	set__to_sorted_list(Nonterminals0, Nonterminals).
+	set.list_to_set(NonterminalsList, Nonterminals0),
+	set.to_sorted_list(Nonterminals0, Nonterminals).
 
 	% YYY This probably belongs in the library somewhere.
 :- pred while(pred(T), pred(T, T), T, T).
@@ -558,9 +558,9 @@ compute_follow0(Grammar0, Grammar) :-
 		).
 
 compute_follow(Rules, Start, EOF, First, Follow) :-
-	map__init(Follow0),
+	map.init(Follow0),
 		% Rule 1
-	map__set(Follow0, Start, { EOF }, Follow1),
+	map.set(Follow0, Start, { EOF }, Follow1),
 	collect_nonterminals(Rules, Ns),
 	Stuff0 = stuff(no, Ns, Rules, First, Follow1),
 	until((pred(Stuff1::in, Stuff3::out) is det :-
@@ -579,7 +579,7 @@ compute_follow(Rules, Start, EOF, First, Follow) :-
 compute_follow(_RuleNum, Rule, Stuff0, Stuff) :-
 	Rule = rule(Id, _Head, Elems, _, _, _Varset, _Context),
 	Stuff0 = stuff(_, _, _, First, _),
-	array__max(Elems, Max),
+	array.max(Elems, Max),
 		% Apply Rule 2
 	compute_follow2(0, Max, First, Elems, Stuff0, Stuff1),
 	compute_follow3(Max, First, Id, Elems, Stuff1, Stuff).
@@ -608,12 +608,12 @@ compute_follow2(I, IMax, First, Elems, Stuff0, Stuff) :-
 
 compute_follow3(I, First, MyId, Elems, Stuff0, Stuff) :-
 	( I >= 0 ->
-		array__lookup(Elems, I, Elem),
+		array.lookup(Elems, I, Elem),
 		( Elem = nonterminal(Id) ->
 			get_follow(MyId, MyFollow, Stuff0, _),
 			add_follow(Id, MyFollow, Stuff0, Stuff1),
-			map__lookup(First, Id, IdFirst),
-			( set__member(epsilon, IdFirst) ->
+			map.lookup(First, Id, IdFirst),
+			( set.member(epsilon, IdFirst) ->
 				compute_follow3(I - 1, First, MyId, Elems,
 					Stuff1, Stuff)
 			;
@@ -634,7 +634,7 @@ get_follow(Id, IdFollow, Stuff, Stuff) :-
 	( search(Follow, Id, IdFollow0) ->
 		IdFollow = IdFollow0
 	;
-		set__init(IdFollow)
+		set.init(IdFollow)
 	).
 
 :- pred add_follow(nonterminal, set(terminal), follow_stuff, follow_stuff).
@@ -661,18 +661,18 @@ add_follow(Id, IdFollow0, Stuff0, Stuff) :-
 %------------------------------------------------------------------------------%
 
 first(First, Elems, I) = FirstI :-
-	array__max(Elems, Max),
+	array.max(Elems, Max),
 	( I =< Max ->
-		array__lookup(Elems, I, Elem),
+		array.lookup(Elems, I, Elem),
 		(
 			Elem = terminal(Id),
 			FirstI = { Id }
 		;
 			Elem = nonterminal(Id),
-			map__lookup(First, Id, FirstI0),
-			( set__member(epsilon, FirstI0) ->
+			map.lookup(First, Id, FirstI0),
+			( set.member(epsilon, FirstI0) ->
 				RestFirst = first(First, Elems, I+1),
-				set__union(FirstI0, RestFirst, FirstI)
+				set.union(FirstI0, RestFirst, FirstI)
 			;
 				FirstI = FirstI0
 			)
@@ -687,6 +687,6 @@ first(First, Elems, I) = FirstI :-
 :- mode add_rule(in, in, in, out) is det.
 
 add_rule(Rules0, Num, Rule, Rules) :-
-	map__set(Rules0, Num, Rule, Rules).
+	map.set(Rules0, Num, Rule, Rules).
 
 %------------------------------------------------------------------------------%

@@ -1,4 +1,6 @@
 
+Copyright (C) 2009 The University of Melbourne
+
 Doesn't handle epsilon productions properly -- throws an exception
 when computing the action table:
 
@@ -31,4 +33,6 @@ Doesn't give good error messages for misplaced semicolons.
 	init_declarator(init_declarator(D, Init)) --->
         	  declarator(D) ; { Init = no }.
 
+If there is some error in the grammar moose will write an empty or broken .m
+file.  This may be a problem in some cases.
 
