@@ -10,7 +10,7 @@
 
 :- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -21,12 +21,17 @@
 :- import_module int.
 
 :- pred call_err is det.
-
 call_err :-
 	throw(123).
 
-main(IO0, IO) :-
-	atomic [outer(IO0, IO), inner(STM, STM)]
+:- pred trans(int::out, io::di, io::uo) is det.
+trans(X, IO0, IO) :-
+    atomic [outer(IO0, IO), inner(STM, STM)]
 	(
-		call_err
-	).
+	    call_err,
+        X = 28
+    ).
+
+main(!IO) :-
+    try_io(trans, Result, !IO),
+    print(Result, !IO), nl(!IO).

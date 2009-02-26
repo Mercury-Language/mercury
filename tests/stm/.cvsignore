@@ -1,0 +1,14 @@
+*.c *.nux *.nux.save *.out *.res .allres
+basic
+basic2
+exception_propogate
+nested
+nested_or_else
+atomic_or_else
+CLEAN
+.mgnuc_copts
+.mgnuc_opts
+*.c_date
+*.d
+*.mih
+*.mh

@@ -1,11 +1,8 @@
-% From orig/stm-compiler/test9
 %
-% Basic test of or_else: that it gets executed when the atomic scope it is
-% attached to retries, and that it is able to bind a variable that was
-% bound in the atomic scope before the retry.
+% Basic test of or_else attached to a nested transaction
 %
 
-:- module atomic_or_else.
+:- module nested_or_else.
 
 :- interface.
 
@@ -32,23 +29,18 @@ det_retry(X, Stm) :-
 
 main(IO0, IO) :-
     atomic [outer(IO0, IO1), inner(STM0, STM1)] (
-        X = 1,
-        STM0 = STM1,
-        det_retry(X, STM1)
-    or_else
-        X = 2,
-        STM0 = STM1,
+        atomic [outer(STM0, STM1), inner(INNER0, INNER1)] (
+            X = 1,
+            INNER0 = INNER1,
+            det_retry(X, INNER1)
+        or_else
+            X = 2,
+            INNER0 = INNER1,
+            det_retry(X, INNER1)
+        ),
         det_retry(X, STM1)
     or_else
         X = 3,
-        STM0 = STM1,
-        det_retry(X, STM1)
-    or_else
-        X = 4,
-        STM0 = STM1,
-        det_retry(X, STM1)
-    or_else
-        X = 5,
         STM0 = STM1
     ),
 

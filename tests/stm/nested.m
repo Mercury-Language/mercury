@@ -24,7 +24,13 @@ main(IO0, IO) :-
     atomic [outer(IO0, IO), inner(STM0, STM)] (
         atomic [outer(STM0, STM), inner(INNER_STM0, INNER_STM)] (
             INNER_STM0 = INNER_STM
-        )
+        ),
+        % There is a bug that prevents a nested transaction being used
+        % as the goal directly inside a transaction; adding the line below
+        % makes it a conjunction instead.
+        % In future I hope to remove this by optimizing the outer transaction
+        % away. -- Ben Mellor
+        X = 1
     ).
 
 %------------------------------------------------------------------------------%

@@ -10,6 +10,7 @@ VALID_PROGS = 			\
 	basic2				\
 	exception_propogate	\
 	nested				\
+	nested_or_else		\
 	atomic_or_else		\
 	#demo				\
 	par-asm_test7		\
@@ -82,7 +83,7 @@ OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
 #-----------------------------------------------------------------------------#
 
 TESTS = $(sort $(PROGS))
-SUBDIRS = bm1 bm2
+SUBDIRS = 
 TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
