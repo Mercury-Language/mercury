@@ -643,7 +643,7 @@ in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             in_interface_check(ModuleInfo, PredInfo, MainGoal, !Specs),
             in_interface_check_list(ModuleInfo, PredInfo, OrElseGoals, !Specs)
         ;

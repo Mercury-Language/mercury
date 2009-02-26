@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -480,7 +480,7 @@ traverse_conj([Goal | Goals], CurId, !FormatCallSites, !Counter,
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             traverse_disj([MainGoal | OrElseGoals], CurId,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars,
                 ModuleInfo)

@@ -558,13 +558,13 @@ intermod_traverse_goal_expr(GoalExpr0, GoalExpr, DoWrite, !Info) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             intermod_traverse_goal(MainGoal0, MainGoal, DoWrite1, !Info),
             intermod_traverse_list_of_goals(OrElseGoals0, OrElseGoals, DoWrite2,
                 !Info),
             bool.and(DoWrite1, DoWrite2, DoWrite),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals)
+                MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.

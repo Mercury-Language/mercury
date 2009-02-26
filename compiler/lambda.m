@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -266,11 +266,11 @@ lambda_process_goal(Goal0, Goal, !Info) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             lambda_process_goal(MainGoal0, MainGoal, !Info),
             lambda_process_goal_list(OrElseGoals0, OrElseGoals, !Info),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars, 
-                MainGoal, OrElseGoals),
+                MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand)
         ;
             ShortHand0 = bi_implication(_, _),

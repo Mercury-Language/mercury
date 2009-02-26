@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -190,8 +190,8 @@
     % Used to enforce the uniqueness of outer and inner variables.
     % Will be removed before stm_expansion.
     %
-:- pred stm_from_outer_to_inner_io(T::di, stm::uo) is det.
-:- pred stm_from_inner_to_outer_io(stm::di, T::uo) is det.
+:- pred stm_from_outer_to_inner(T::di, stm::uo) is det.
+:- pred stm_from_inner_to_outer(stm::di, T::uo) is det.
 
     % Changes the value of a transaction variable without going through
     % the log. USE ONLY FOR DEBUGGING PURPOSES.
@@ -351,7 +351,7 @@
 ").
 
 :- pragma foreign_proc("C",
-    stm_from_outer_to_inner_io(IO::di, STM::uo),
+    stm_from_outer_to_inner(IO::di, STM::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     STM = NULL;
@@ -359,7 +359,7 @@
 ").
 
 :- pragma foreign_proc("C",
-    stm_from_inner_to_outer_io(STM0::di, IO::uo),
+    stm_from_inner_to_outer(STM0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     STM0 = NULL;

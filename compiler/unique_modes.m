@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -314,10 +314,10 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners0),
             unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal0, OrElseGoals0, GoalInfo0, GoalExpr,
-                !ModeInfo, !IO)
+                MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners0,
+                GoalInfo0, GoalExpr, !ModeInfo, !IO)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
@@ -638,11 +638,13 @@ unique_modes_check_goal_call_foreign_proc(Attributes, PredId, ProcId0,
 :- pred unique_modes_check_goal_atomic_goal(atomic_goal_type::in,
     atomic_interface_vars::in, atomic_interface_vars::in,
     maybe(list(prog_var))::in, hlds_goal::in, list(hlds_goal)::in,
+    list(atomic_interface_vars)::in,
     hlds_goal_info::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
 unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-        MainGoal0, OrElseGoals0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
+        MainGoal0, OrElseGoals0, OrElseInners, GoalInfo0, GoalExpr, !ModeInfo,
+        !IO) :-
     mode_checkpoint(enter, "atomic_goal", !ModeInfo, !IO),
     (
         OrElseGoals0 = [],
@@ -676,7 +678,7 @@ unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
         instmap_merge(NonLocals, InstMapList, merge_disj, !ModeInfo)
     ),
     ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-        MainGoal, OrElseGoals),
+        MainGoal, OrElseGoals, OrElseInners),
     GoalExpr = shorthand(ShortHand),
     mode_checkpoint(exit, "atomic_goal", !ModeInfo, !IO).
 

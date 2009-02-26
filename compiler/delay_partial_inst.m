@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -431,7 +431,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             % XXX Is it ok to ignore the updated ConstructMaps,
             % and if yes, why? This should be documented.
             delay_partial_inst_in_goal(InstMap0, MainGoal0, MainGoal,
@@ -439,7 +439,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             delay_partial_inst_in_goals(InstMap0, OrElseGoals0, OrElseGoals,
                 !.ConstructMap, _, !DelayInfo),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals),
+                MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;

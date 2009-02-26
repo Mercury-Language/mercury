@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -800,7 +800,7 @@ dump_goal_goal_paths(Indent, Goal, !IO) :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             Goals = [MainGoal | OrElseGoals],
             list.foldl(dump_goal_goal_paths(SubGoalIndent), Goals, !IO)
         ;

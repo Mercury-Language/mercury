@@ -602,7 +602,7 @@ goal_vars_2(Goal, !Set) :-
         GoalExpr = shorthand(Shorthand),
         (
             Shorthand = atomic_goal(_, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals),
+                MainGoal, OrElseGoals, _),
             Outer = atomic_interface_vars(OuterDI, OuterUO),
             svset.insert(OuterDI, !Set),
             svset.insert(OuterUO, !Set),
@@ -753,13 +753,13 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             attach_features_to_all_goals(Features, InFromGroundTerm,
                 MainGoal0, MainGoal),
             attach_features_to_goals(Features, InFromGroundTerm,
                 OrElseGoals0, OrElseGoals),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals)
+                MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = bi_implication(GoalA0, GoalB0),
             attach_features_to_all_goals(Features, InFromGroundTerm,
@@ -868,7 +868,7 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, _, _),
+            ShortHand = atomic_goal(_, _, _, _, _, _, _),
             IsLeaf = is_not_leaf
         ;
             ShortHand = bi_implication(GoalA, GoalB),
@@ -1001,7 +1001,7 @@ goal_expr_size(GoalExpr, Size) :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             goal_size(MainGoal, Size1),
             goals_size(OrElseGoals, Size2),
             Size = Size1 + Size2 + 1
@@ -1200,7 +1200,7 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             goal_calls_proc_in_list_2(MainGoal, PredProcIds, !CalledSet),
             goal_list_calls_proc_in_list_2(OrElseGoals, PredProcIds,
                 !CalledSet)
@@ -1841,11 +1841,11 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             MainGoal = maybe_strip_equality_pretest(MainGoal0),
             OrElseGoals = list.map(maybe_strip_equality_pretest, OrElseGoals0),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals),
+                MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;

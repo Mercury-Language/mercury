@@ -2004,7 +2004,7 @@ modecheck_goal_call_foreign_proc(Attributes, PredId, ProcId0, Args0, ExtraArgs,
 modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
     (
         ShortHand0 = atomic_goal(_, Outer, Inner, MaybeOutputVars,
-            MainGoal0, OrElseGoals0),
+            MainGoal0, OrElseGoals0, OrElseInners),
 
         % The uniqueness of the Outer and Inner variables are handled by the
         % addition of calls to the fake predicates "stm_inner_to_outer_io" and
@@ -2074,7 +2074,7 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
             "modecheck_goal_shorthand atomic_goal: Invalid inner var type"),
 
         ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-            MainGoal, OrElseGoals),
+            MainGoal, OrElseGoals, OrElseInners),
         GoalExpr = shorthand(ShortHand),
         mode_checkpoint(exit, "atomic", !ModeInfo, !IO)
     ;

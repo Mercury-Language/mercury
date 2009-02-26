@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -291,11 +291,11 @@ add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
         Expr0 = shorthand(Shorthand0),
         (
             Shorthand0 = atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal0, OrElseGoals0),
+                MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
             add_vars_to_lfu_in_goal(ForceInUse, MainGoal0, MainGoal),
             add_vars_to_lfu_in_goals(ForceInUse, OrElseGoals0, OrElseGoals),
             Shorthand = atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals)
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners)
         ;
             Shorthand0 = bi_implication(LeftGoal0, RightGoal0),
             add_vars_to_lfu_in_goal(ForceInUse, LeftGoal0, LeftGoal),

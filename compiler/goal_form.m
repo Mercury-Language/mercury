@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -274,7 +274,7 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
             ShortHand = bi_implication(GoalA, GoalB),
             goals_can_throw([GoalA, GoalB], Result, !ModuleInfo)
         ;
-            ShortHand = atomic_goal(_, _, _, _, _, _),
+            ShortHand = atomic_goal(_, _, _, _, _, _, _),
             % Atomic goals currently throw an exception to signal a rollback so
             % it is pretty safe to say that any goal inside an atomic goal
             % can throw an exception.
@@ -450,7 +450,7 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             MainGoalCanLoop = goal_can_loop_func(MaybeModuleInfo, MainGoal),
             OrElseCanLoop = goal_list_can_loop(MaybeModuleInfo, OrElseGoals),
             CanLoop = MainGoalCanLoop `or` OrElseCanLoop
@@ -577,7 +577,7 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, _, _),
+            ShortHand = atomic_goal(_, _, _, _, _, _, _),
             CanThrow = yes
         ;
             ShortHand = bi_implication(_, _),
@@ -746,7 +746,7 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, _, _),
+            ShortHand = atomic_goal(_, _, _, _, _, _, _),
             May = yes
         ;
             ShortHand = bi_implication(GoalA, GoalB),
@@ -908,7 +908,7 @@ count_recursive_calls(Goal, PredId, ProcId, Min, Max) :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             count_recursive_calls_disj([MainGoal | OrElseGoals],
                 PredId, ProcId, Min, Max)
         ;

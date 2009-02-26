@@ -201,6 +201,7 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+:- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%
 %
@@ -739,19 +740,18 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             RunPostTypecheck = !.Info ^ pi_run_post_typecheck,
             (
                 RunPostTypecheck = run_post_typecheck,
                 VarSet = !.Info ^ pi_varset,
                 VarTypes = !.Info ^ pi_vartypes,
                 Outer = atomic_interface_vars(OuterDI, OuterUO),
-                Inner = atomic_interface_vars(InnerDI, InnerUO),
                 Context = goal_info_get_context(GoalInfo),
                 check_outer_var_type(Context, VarTypes, VarSet, OuterDI,
-                    OuterDIType, OuterDITypeSpecs),
+                    _OuterDIType, OuterDITypeSpecs),
                 check_outer_var_type(Context, VarTypes, VarSet, OuterUO,
-                    OuterUOType, OuterUOTypeSpecs),
+                    _OuterUOType, OuterUOTypeSpecs),
                 OuterTypeSpecs = OuterDITypeSpecs ++ OuterUOTypeSpecs,
                 (
                     OuterTypeSpecs = [_ | _],
@@ -760,49 +760,19 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                     OrElseGoals1 = OrElseGoals0
                 ;
                     OuterTypeSpecs = [],
+                    AtomicGoalsAndInners = assoc_list.from_corresponding_lists(
+                        [MainGoal0 | OrElseGoals0],
+                        [Inner | OrElseInners]),
+                    list.map_foldl(wrap_inner_outer_goals(Outer),
+                        AtomicGoalsAndInners, AllAtomicGoals1, !Info),
                     (
-                        (
-                            OuterDIType = io_state_type,
-                            OuterUOType = io_state_type
-                        ->
-                            OuterToInnerPred = "stm_from_outer_to_inner_io",
-                            InnerToOuterPred = "stm_from_inner_to_outer_io"
-                        ;
-                            OuterDIType = stm_atomic_type,
-                            OuterUOType = stm_atomic_type
-                        ->
-                            OuterToInnerPred = "stm_from_outer_to_inner_stm",
-                            InnerToOuterPred = "stm_from_inner_to_outer_stm"
-                        ;
-                            fail
-                        )
-                    ->
-                        ModuleInfo = !.Info ^ pi_module_info,
-                        generate_simple_call(mercury_stm_builtin_module,
-                            OuterToInnerPred, pf_predicate, only_mode,
-                            detism_det, purity_pure, [OuterDI, InnerDI], [],
-                            [OuterDI - ground(clobbered, none),
-                                InnerDI - ground(unique, none)],
-                            ModuleInfo, Context, OuterToInnerGoal),
-                        generate_simple_call(mercury_stm_builtin_module,
-                            InnerToOuterPred, pf_predicate, only_mode,
-                            detism_det, purity_pure, [InnerUO, OuterUO], [],
-                            [InnerUO - ground(clobbered, none),
-                                OuterUO - ground(unique, none)],
-                            ModuleInfo, Context, InnerToOuterGoal),
-                        wrap_inner_outer_goals(Outer, Inner,
-                            OuterToInnerGoal, InnerToOuterGoal,
-                            MainGoal0, MainGoal1, !Info),
-                        list.map_foldl(wrap_inner_outer_goals(Outer, Inner,
-                            OuterToInnerGoal, InnerToOuterGoal),
-                            OrElseGoals0, OrElseGoals1, !Info),
-                        !Info ^ pi_requant := need_to_requantify
+                        AllAtomicGoals1 = [MainGoal1 | OrElseGoals1]
                     ;
-                        MisMatchSpec = mismatched_outer_var_types(Context),
-                        purity_info_add_message(MisMatchSpec, !Info),
-                        MainGoal1 = MainGoal0,
-                        OrElseGoals1 = OrElseGoals0
-                    )
+                        AllAtomicGoals1 = [],
+                        unexpected(this_file,
+                            "compute_expr_purity: AllAtomicGoals1 = []")
+                    ),
+                    !Info ^ pi_requant := need_to_requantify
                 )
             ;
                 RunPostTypecheck = do_not_run_post_typecheck,
@@ -825,7 +795,7 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 ContainsTrace = contains_no_trace_goal
             ),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals),
+                MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand)
         ;
             ShortHand0 = bi_implication(_, _),
@@ -834,13 +804,11 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
         )
     ).
 
-:- pred wrap_inner_outer_goals(
-    atomic_interface_vars::in, atomic_interface_vars::in,
-    hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal::out,
+:- pred wrap_inner_outer_goals(atomic_interface_vars::in,
+    pair(hlds_goal, atomic_interface_vars)::in, hlds_goal::out,
     purity_info::in, purity_info::out) is det.
 
-wrap_inner_outer_goals(Outer, Inner, OuterToInnerGoal, InnerToOuterGoal,
-        Goal0, Goal, !Info) :-
+wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
     % Generate an error if the outer variables are in the nonlocals of the
     % original goal, since they are not supposed to be used in the goal.
     %
@@ -888,6 +856,23 @@ wrap_inner_outer_goals(Outer, Inner, OuterToInnerGoal, InnerToOuterGoal,
         Spec2 = error_spec(severity_error, phase_type_check, [Msg2]),
         purity_info_add_message(Spec2, !Info)
     ),
+
+    % generate the outer_to_inner and inner_to_outer goals
+    OuterToInnerPred = "stm_from_outer_to_inner",
+    InnerToOuterPred = "stm_from_inner_to_outer",
+    ModuleInfo = !.Info^pi_module_info,
+    generate_simple_call(mercury_stm_builtin_module,
+        OuterToInnerPred, pf_predicate, only_mode,
+        detism_det, purity_pure, [OuterDI, InnerDI], [],
+        [OuterDI - ground(clobbered, none),
+            InnerDI - ground(unique, none)],
+        ModuleInfo, Context, OuterToInnerGoal),
+    generate_simple_call(mercury_stm_builtin_module,
+        InnerToOuterPred, pf_predicate, only_mode,
+        detism_det, purity_pure, [InnerUO, OuterUO], [],
+        [InnerUO - ground(clobbered, none),
+            OuterUO - ground(unique, none)],
+        ModuleInfo, Context, InnerToOuterGoal),
 
     WrapExpr = conj(plain_conj, [OuterToInnerGoal, Goal0, InnerToOuterGoal]),
     % After the addition of OuterToInnerGoal and InnerToOuterGoal,

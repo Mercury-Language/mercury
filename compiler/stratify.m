@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -225,7 +225,7 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, Error,
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             first_order_check_goal(MainGoal, Negated, WholeScc,
                 ThisPredProcId, Error, !ModuleInfo, !IO),
             first_order_check_goals(OrElseGoals, Negated, WholeScc,
@@ -389,7 +389,7 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             higher_order_check_goal(MainGoal, Negated, WholeScc,
                 ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
             higher_order_check_goals(OrElseGoals, Negated, WholeScc,
@@ -814,7 +814,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             stratify_analyze_goal(MainGoal, !Calls, !HasAT, !CallsHO),
             stratify_analyze_goals(OrElseGoals, !Calls, !HasAT, !CallsHO)
         ;
@@ -929,7 +929,7 @@ get_called_procs(Goal, !Calls) :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             get_called_procs(MainGoal, !Calls),
             get_called_procs_goals(OrElseGoals, !Calls)
         ;

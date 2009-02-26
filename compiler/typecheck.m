@@ -1245,7 +1245,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             ShortHand = bi_implication(LHS, RHS)
         ;
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             trace [io(!IO)] (
                 type_checkpoint("atomic_goal", !.Info, !IO)
             ),
@@ -1259,10 +1259,11 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             typecheck_goal(MainGoal0, MainGoal, !Info),
             typecheck_goal_list(OrElseGoals0, OrElseGoals, !Info),
 
+            InnerVars = atomic_interface_list_to_var_list(
+                [Inner | OrElseInners]),
             Outer = atomic_interface_vars(OuterDI, OuterUO),
-            Inner = atomic_interface_vars(InnerDI, InnerUO),
-            ensure_vars_have_a_type([OuterDI, OuterUO, InnerDI, InnerUO],
-                !Info),
+            InterfaceVars = [OuterDI, OuterUO | InnerVars],
+            ensure_vars_have_a_type(InterfaceVars, !Info),
 
             % The outer variables must either be both I/O states of STM states.
             % Checking that here could double the number of type assign sets.
@@ -1270,15 +1271,22 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             % the predicate body, in post_typecheck. The code in the
             % post_typecheck pass (actually in purity.m) will do this
             % if the GoalType is unknown_atomic_goal_type.
-            typecheck_var_has_type(InnerDI, stm_atomic_type, !Info),
-            typecheck_var_has_type(InnerUO, stm_atomic_type, !Info),
+            foldl((pred(Var::in, Info0::in, Info::out) is det :-
+                    typecheck_var_has_type(Var, stm_atomic_type, Info0, Info)),
+                InnerVars, !Info),
             expect(unify(GoalType, unknown_atomic_goal_type), this_file,
                 "typecheck_goal_2: GoalType != unknown_atomic_goal_type"),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals)
+                MainGoal, OrElseGoals, OrElseInners)
         ),
         GoalExpr = shorthand(ShortHand)
     ).
+
+:- func atomic_interface_list_to_var_list(list(atomic_interface_vars)) =
+    list(prog_var).
+atomic_interface_list_to_var_list([]) = [].
+atomic_interface_list_to_var_list([atomic_interface_vars(I, O) | Interfaces]) =
+    [I, O | atomic_interface_list_to_var_list(Interfaces)].
 
 %-----------------------------------------------------------------------------%
 

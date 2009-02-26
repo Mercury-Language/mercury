@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 University of Melbourne.
+% Copyright (C) 1997-2009 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -217,12 +217,12 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, GoalExpr0, GoalExpr) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             fill_goal_slots(goal_path_add_at_end(Path0, step_atomic_main), 
                 SlotInfo, MainGoal0, MainGoal),
             fill_orelse_slots(Path0, 0, SlotInfo, OrElseGoals0, OrElseGoals),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals)
+                MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.

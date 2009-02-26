@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -912,10 +912,10 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
         !.GoalExpr = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals),
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
             simplify_goal_atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals, !:GoalExpr, !GoalInfo,
-                !Info)
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners,
+                !:GoalExpr, !GoalInfo, !Info)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
@@ -1660,7 +1660,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
     ;
         CondExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, _, _),
+            ShortHand = atomic_goal(_, _, _, _, _, _, _),
             !:CondCanSwitch = cond_cannot_switch
         ;
             ShortHand = bi_implication(_, _),
@@ -2080,11 +2080,12 @@ evaluate_compile_time_condition(trace_op(Op, ExprA, ExprB), Info) = Result :-
 :- pred simplify_goal_atomic_goal(atomic_goal_type::in,
     atomic_interface_vars::in, atomic_interface_vars::in,
     maybe(list(prog_var))::in, hlds_goal::in, list(hlds_goal)::in,
+    list(atomic_interface_vars)::in,
     hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 simplify_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-        MainGoal0, OrElseGoals0, GoalExpr, !GoalInfo, !Info) :-
+        MainGoal0, OrElseGoals0, OrElseInners, GoalExpr, !GoalInfo, !Info) :-
     % XXX STM: At the moment we do not simplify the inner goals as there is
     % a chance that the outer and inner variables will change which will
     % cause problems during expansion of STM constructs.  This will be
@@ -2094,7 +2095,7 @@ simplify_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
     % simplify_goal(MainGoal0, MainGoal, !Info),
     % simplify_or_else_goals(OrElseGoals0, OrElseGoals, !Info),
     ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-        MainGoal, OrElseGoals),
+        MainGoal, OrElseGoals, OrElseInners),
     GoalExpr = shorthand(ShortHand).
 
 :- pred simplify_or_else_goals(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -3442,12 +3443,12 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             goal_contains_trace(MainGoal0, MainGoal, MainContainsTrace),
             goal_list_contains_trace(OrElseGoals0, OrElseGoals,
                 contains_no_trace_goal, OrElseContainsTrace),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals),
+                MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand),
             ContainsTrace = worst_contains_trace(MainContainsTrace,
                 OrElseContainsTrace)
@@ -3895,7 +3896,7 @@ will_flush(negation(_), _) = yes.
 will_flush(scope(_, _), _) = no.
 will_flush(shorthand(ShortHand), _) = WillFlush :-
     (
-        ShortHand = atomic_goal(_, _, _, _, _MainGoal, _OrElseGoals),
+        ShortHand = atomic_goal(_, _, _, _, _MainGoal, _OrElseGoals, _),
         WillFlush = yes
     ;
         ShortHand = bi_implication(_, _),

@@ -1195,7 +1195,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars, 
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             Goals0 = [MainGoal0 | OrElseGoals0],
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             recompute_instmap_delta_disj(RecomputeAtomic, Goals0, Goals,
@@ -1208,7 +1208,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
                 Goals = [MainGoal | OrElseGoals]
             ),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals)
+                MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.

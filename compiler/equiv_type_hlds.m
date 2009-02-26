@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2008 The University of Melbourne.
+% Copyright (C) 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -944,7 +944,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
     GoalExpr0 = shorthand(ShortHand0),
     (
         ShortHand0 = atomic_goal(GoalType, Outer, Inner,
-            MaybeOutputVars, MainGoal0, OrElseGoals0),
+            MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
         replace_in_goal(EqvMap, MainGoal0, MainGoal, Changed1, !Info),
         replace_in_list(replace_in_goal(EqvMap), OrElseGoals0,
             OrElseGoals, Changed2, !Info),
@@ -952,7 +952,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         (
             Changed = yes,
             ShortHand = atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals),
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand)
         ;
             Changed = no,

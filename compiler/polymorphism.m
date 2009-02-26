@@ -1181,11 +1181,11 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, Vars, 
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             polymorphism_process_goal(MainGoal0, MainGoal, !Info),
             polymorphism_process_goal_list(OrElseGoals0, OrElseGoals, !Info),
             ShortHand = atomic_goal(GoalType, Outer, Inner, Vars, 
-                MainGoal, OrElseGoals),
+                MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;

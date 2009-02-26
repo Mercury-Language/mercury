@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -365,7 +365,7 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
         (
             % XXX STM: Why do we ignore _MaybeOutputVars?
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, _MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, _OrElseInners),
 
             GoalDisj0 = [MainGoal0 | OrElseGoals0],
             stm_process_disj(Instmap, GoalDisj0, GoalDisj, !Info),
@@ -2622,8 +2622,8 @@ module_exception_sym_name = unqualified("exception").
 module_univ_sym_name = unqualified("univ").
 module_io_sym_name = unqualified("io").
 
-stm_inner_outer = qualified(module_stm_sym_name, "stm_from_inner_to_outer_io").
-stm_outer_inner = qualified(module_stm_sym_name, "stm_from_outer_to_inner_io").
+stm_inner_outer = qualified(module_stm_sym_name, "stm_from_inner_to_outer").
+stm_outer_inner = qualified(module_stm_sym_name, "stm_from_outer_to_inner").
 
 stm_state_type =
     defined_type(qualified(module_stm_sym_name, "stm"), [], kind_star).

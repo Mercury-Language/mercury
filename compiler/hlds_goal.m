@@ -276,8 +276,13 @@
                 atomic_main_goal    :: hlds_goal,
 
                 % Any later or_else alternative goals.
-                orelse_alternatives :: list(hlds_goal)
+                orelse_alternatives :: list(hlds_goal),
 
+                % The same as atomic_inner, but for each corresponding goal
+                % in orelse_alternatives. Begins as an empty list, but is
+                % filled in when quantification renames the inner stm state
+                % variables apart in each of the or_else alternatives.
+                orelse_inners       :: list(atomic_interface_vars)
             ).
 
 :- type atomic_interface_vars
@@ -2390,7 +2395,7 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
         Expr0 = shorthand(Shorthand0),
         (
             Shorthand0 = atomic_goal(GoalType0, Outer0, Inner0,
-                MaybeOutputVars0, MainGoal0, OrElseGoals0),
+                MaybeOutputVars0, MainGoal0, OrElseGoals0, OrElseInners),
             GoalType = GoalType0,
             Outer0 = atomic_interface_vars(OuterDI0, OuterUO0),
             rename_var(Must, Subn, OuterDI0, OuterDI),
@@ -2411,7 +2416,7 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             rename_vars_in_goal(Must, Subn, MainGoal0, MainGoal),
             rename_vars_in_goals(Must, Subn, OrElseGoals0, OrElseGoals),
             Shorthand = atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals)
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners)
         ;
             Shorthand0 = bi_implication(LeftGoal0, RightGoal0),
             rename_vars_in_goal(Must, Subn, LeftGoal0, LeftGoal),
@@ -2835,7 +2840,7 @@ goal_has_foreign(Goal) = HasForeign :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, _, _),
+            ShortHand = atomic_goal(_, _, _, _, _, _, _),
             HasForeign = yes
         ;
             ShortHand = bi_implication(GoalA, GoalB),
@@ -2895,7 +2900,7 @@ goal_expr_has_subgoals(GoalExpr) = HasSubGoals :-
         HasSubGoals = has_subgoals
     ;
         GoalExpr = shorthand(ShortHand),
-        ( ShortHand = atomic_goal(_, _, _, _, _, _)
+        ( ShortHand = atomic_goal(_, _, _, _, _, _, _)
         ; ShortHand = bi_implication(_, _)
         ),
         HasSubGoals = has_subgoals
@@ -3002,11 +3007,11 @@ set_goal_contexts(Context, Goal0, Goal) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             set_goal_contexts(Context, MainGoal0, MainGoal),
             list.map(set_goal_contexts(Context), OrElseGoals0, OrElseGoals),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals)
+                MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = bi_implication(LHS0, RHS0),
             set_goal_contexts(Context, LHS0, LHS),

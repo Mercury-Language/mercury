@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2008 The University of Melbourne.
+% Copyright (C) 2004-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -336,7 +336,7 @@ add_mc_vars_for_goal(PredId, ProgVarset, hlds_goal(GoalExpr, GoalInfo),
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, _, _),
+            ShortHand = atomic_goal(_, _, _, _, _, _, _),
             sorry(this_file, "add_mc_vars_for_goal: NYI: atomic_goal")
         ;
             ShortHand = bi_implication(_, _),
@@ -661,7 +661,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
     ;
         GoalExpr = shorthand(Shorthand),
         (
-            Shorthand = atomic_goal(_, _, _, _, _, _),
+            Shorthand = atomic_goal(_, _, _, _, _, _, _),
             % Should record that
             % - OuterDI is definitely not produced inside this goal
             % - InnerDI is definitely produced by this goal

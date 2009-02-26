@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -213,7 +213,7 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
             % XXX STM We need to look at how we should handle Outer, Inner and
             % MaybeOutputVars.
             ShortHand = atomic_goal(_GoalType, _Outer, Inner,
-                _MaybeOutputVars, MainGoal, OrElseGoals),
+                _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
             Inner = atomic_interface_vars(InnerDI, InnerUO),
             set.insert_list(QuantVars, [InnerDI, InnerUO], InsideQuantVars),
             warn_singletons_in_goal(MainGoal, InsideQuantVars, VarSet,

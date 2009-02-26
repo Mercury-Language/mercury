@@ -1766,7 +1766,7 @@ goal_to_constraint(Env, hlds_goal(shorthand(bi_implication(GoalA, GoalB)), _),
     % of atomic goal. The transaction goals are handled by recursive
     % calls to goal_to_constraint.
 goal_to_constraint(Environment, hlds_goal(shorthand(atomic_goal(GoalType, Outer,
-        Inner, _, Main, Alternatives)), Info), !TCInfo) :-
+        Inner, _, Main, Alternatives, _)), Info), !TCInfo) :-
     Context = goal_info_get_context(Info),
     % Inner variable handling (simple assignment).
     Inner = atomic_interface_vars(InnerInitVar, InnerFinalVar),

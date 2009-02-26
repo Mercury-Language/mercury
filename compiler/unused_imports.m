@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -429,7 +429,7 @@ hlds_goal_used_modules(Goal, !UsedModules) :-
             hlds_goal_used_modules(GoalA, !UsedModules),
             hlds_goal_used_modules(GoalB, !UsedModules)
         ;
-            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals),
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             hlds_goal_used_modules(MainGoal, !UsedModules),
             list.foldl(hlds_goal_used_modules, OrElseGoals, !UsedModules)
         )

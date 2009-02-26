@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -709,11 +709,11 @@ normalise_goal_expr(GoalExpr0, GoalExpr) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, Vars, 
-                MainGoal0, OrElseAlternatives0),
+                MainGoal0, OrElseAlternatives0, OrElseInners),
             normalise_goal(MainGoal0, MainGoal),
             normalise_goals(OrElseAlternatives0, OrElseAlternatives),
             ShortHand = atomic_goal(GoalType, Outer, Inner, Vars, MainGoal,
-                OrElseAlternatives)
+                OrElseAlternatives, OrElseInners)
         ;
             ShortHand0 = bi_implication(LHS0, RHS0),
             normalise_goal(LHS0, LHS),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -630,13 +630,13 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Inner, Outer, Vars, MainGoal0,
-                OrElseGoals0),
+                OrElseGoals0, OrElseInners),
             det_infer_atomic(MainGoal0, MainGoal, OrElseGoals0, OrElseGoals,
                 InstMap0, SolnContext, RightFailingContexts,
                 MaybePromiseEqvSolutionSets, Detism, !DetInfo, !Specs),
             GoalFailingContexts = [],
             ShortHand = atomic_goal(GoalType, Inner, Outer, Vars, MainGoal,
-                OrElseGoals)
+                OrElseGoals, OrElseInners)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -326,12 +326,12 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(AtomicGoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal0, OrElseGoals0),
+                MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
             detect_cse_in_goal(MainGoal0, MainGoal, !CseInfo, InstMap0, Redo1),
             detect_cse_in_independent_goals(OrElseGoals0, OrElseGoals,
                 !CseInfo, InstMap0, Redo2),
             ShortHand = atomic_goal(AtomicGoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals),
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
             bool.or(Redo1, Redo2, Redo)
         ;
             ShortHand0 = bi_implication(_, _),

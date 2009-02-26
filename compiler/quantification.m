@@ -561,10 +561,22 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
-            Outer = atomic_interface_vars(OuterDI, OuterUO),
-            Inner = atomic_interface_vars(InnerDI, InnerUO),
-            AllAtomicGoals0 = [MainGoal0 | OrElseGoals0],
+                MainGoal0, OrElseGoals0, OrElseInners0),
+            % The call to implicitly_quantify_disj causes the inner STM
+            % interface variables to be renamed in any or_else goals, but
+            % doing it first explicitly allows the new names of these
+            % variables to be stored.
+            (
+                OrElseInners0 = [],
+                rename_or_else_inner_vars(NonLocalsToRecompute, Inner,
+                    OrElseGoals0, OrElseGoals1, OrElseInners, !Info)
+            ;
+                OrElseInners0 = [_ | _],
+                OrElseInners = OrElseInners0,
+                OrElseGoals1 = OrElseGoals0,
+                !:Info = !.Info
+            ),
+            AllAtomicGoals0 = [MainGoal0 | OrElseGoals1],
             NonLocalVarSets0 = [],
             implicitly_quantify_disj(AllAtomicGoals0, AllAtomicGoals,
                 NonLocalsToRecompute, !Info,
@@ -580,6 +592,8 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
             union_list(NonLocalVarSets, NonLocalVars0),
             (
                 GoalType = unknown_atomic_goal_type,
+                Outer = atomic_interface_vars(OuterDI, OuterUO),
+                Inner = atomic_interface_vars(InnerDI, InnerUO),
                 insert_list(NonLocalVars0, [OuterDI, OuterUO], NonLocalVars1),
                 delete_list(NonLocalVars1, [InnerDI, InnerUO], NonLocalVars)
             ;
@@ -590,7 +604,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
             ),
             set_nonlocals(NonLocalVars, !Info),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals),
+                MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand)
         ;
             ShortHand0 = bi_implication(LHS, RHS),
@@ -600,6 +614,29 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
             PossiblyNonLocalGoalVars0)
     ).
+
+:- pred rename_or_else_inner_vars(nonlocals_to_recompute,
+    atomic_interface_vars, list(hlds_goal), list(hlds_goal),
+    list(atomic_interface_vars), quant_info, quant_info).
+:- mode rename_or_else_inner_vars(in(ordinary_nonlocals), in, in, out, out,
+                                  in, out) is det.
+:- mode rename_or_else_inner_vars(in(code_gen_nonlocals), in, in, out, out,
+                                  in, out) is det.
+
+rename_or_else_inner_vars(_, _, [], [], [], !Info).
+rename_or_else_inner_vars(NonLocalsToRecompute, Inner,
+    [OrElseGoal0 | OrElseGoals0], OrElseGoals, OrElseInners, !Info) :-
+    Inner = atomic_interface_vars(InnerDI, InnerUO),
+    RenameVars = list_to_set([InnerDI, InnerUO]),
+    rename_apart(RenameVars, RenameMap, NonLocalsToRecompute, OrElseGoal0,
+                 OrElseGoal, !Info),
+    OrElseInnerDI = map.lookup(RenameMap, InnerDI),
+    OrElseInnerUO = map.lookup(RenameMap, InnerUO),
+    OrElseInner = atomic_interface_vars(OrElseInnerDI, OrElseInnerUO),
+    rename_or_else_inner_vars(NonLocalsToRecompute, Inner, OrElseGoals0,
+                              OrElseGoalsTail, OrElseInnersTail, !Info),
+    OrElseInners = [OrElseInner | OrElseInnersTail],
+    OrElseGoals = [OrElseGoal | OrElseGoalsTail].
 
 :- pred implicitly_quantify_goal_quant_info_scope(scope_reason, hlds_goal,
     hlds_goal_expr, hlds_goal_info, nonlocals_to_recompute, set_of_var,
@@ -1408,7 +1445,7 @@ goal_expr_vars_2(NonLocalsToRecompute, GoalExpr, !Set, !LambdaSet) :-
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_GoalType, Outer, Inner,
-                _MaybeOutputVars, MainGoal, OrElseGoals),
+                _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
             % XXX STM
             Outer = atomic_interface_vars(OuterDI, OuterUO),
             Inner = atomic_interface_vars(InnerDI, InnerUO),

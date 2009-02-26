@@ -311,13 +311,13 @@ detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0),
+                MainGoal0, OrElseGoals0, OrElseInners),
             detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
                 MainGoal0, MainGoal, !ModuleInfo, !Requant),
             detect_switches_in_orelse(VarTypes, AllowMulti, InstMap0,
                 OrElseGoals0, OrElseGoals, !ModuleInfo, !Requant),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals),
+                MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand)
         ;
             ShortHand0 = bi_implication(_, _),
@@ -977,7 +977,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
-            ShortHand0 = atomic_goal(_, _, _, _, _, _),
+            ShortHand0 = atomic_goal(_, _, _, _, _, _, _),
             Goal = Goal0,
             FoundDeconstruct = given_up_search
         ;
