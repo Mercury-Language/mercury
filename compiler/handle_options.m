@@ -1214,6 +1214,15 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
+        % Perform a simplification pass before the profiling passes if one of
+        % these profiling options is enabled.
+        option_implies(profile_deep, pre_prof_transforms_simplify, bool(yes),
+            !Globals),
+        option_implies(record_term_sizes_as_words, pre_prof_transforms_simplify,
+            bool(yes), !Globals),
+        option_implies(record_term_sizes_as_cells, pre_prof_transforms_simplify,
+            bool(yes), !Globals),
+
         globals.lookup_string_option(!.Globals, experimental_complexity,
             ExpComp),
         ( ExpComp = "" ->

@@ -2614,7 +2614,8 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
         check_stratification(Verbose, Stats, !HLDS, FoundStratError, !IO),
         maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
 
-        simplify(yes, frontend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
+        maybe_simplify(yes, frontend, Verbose, Stats, !HLDS, SimplifySpecs,
+            !IO),
         maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
 
         % Once the other passes have all been converted to return error_specs,
@@ -2780,11 +2781,11 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     % opportunities the other optimizations have provided for constant
     % propagation and we cannot do that once the term-size profiling or deep
     % profiling transformations have been applied.
-    simplify(no, pre_prof_transforms, Verbose, Stats, !HLDS, SimplifySpecs,
-        !IO),
+    maybe_simplify(no, pre_prof_transforms, Verbose, Stats, !HLDS,
+        SimplifySpecs, !IO),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
         "middle_pass: simplify has errors"),
-    maybe_dump_hlds(!.HLDS, 215, "pre_prof_transform_simplify", !DumpInfo,
+    maybe_dump_hlds(!.HLDS, 215, "pre_prof_transforms_simplify", !DumpInfo,
         !IO),
 
     % The term size profiling transformation should be after all
@@ -2875,7 +2876,7 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     maybe_followcode(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 320, "followcode", !DumpInfo, !IO),
 
-    simplify(no, ll_backend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
+    maybe_simplify(no, ll_backend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
         "backend_pass_by_phases: simplify has errors"),
     maybe_dump_hlds(!.HLDS, 325, "ll_backend_simplify", !DumpInfo, !IO),
@@ -3482,74 +3483,86 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
     ;       ll_backend.
             % The first stage of LLDS code generation.
 
-:- pred simplify(bool::in, simplify_pass::in, bool::in, bool::in,
+    % This predicate set up and maybe run the simplification pass.
+    %
+:- pred maybe_simplify(bool::in, simplify_pass::in, bool::in, bool::in,
     module_info::in, module_info::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
-simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
+maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, constant_propagation, ConstProp),
-    globals.lookup_bool_option(Globals, profile_deep, DeepProf),
-    globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
-    globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
-    %
-    % We run the simplify pass before the profiling transformations,
-    % only if those transformations are being applied - otherwise we
-    % just leave things to the backend simplification passes.
-    %
-    IsProfPass = bool.or_list([DeepProf, TSWProf, TSCProf]),
+    some [!SimpList] (
+        simplify.find_simplifications(Warn, Globals, Simplifications0),
+        !:SimpList = simplifications_to_list(Simplifications0),
+        (
+            SimplifyPass = frontend,
+            list.cons(simp_after_front_end, !SimpList)
+        ;
+            SimplifyPass = post_untuple,
+            list.cons(simp_do_once, !SimpList)
+        ;
+            SimplifyPass = pre_prof_transforms,
+            %
+            % We run the simplify pass before the profiling transformations,
+            % only if those transformations are being applied - otherwise we
+            % just leave things to the backend simplification passes.
+            %
+            globals.lookup_bool_option(Globals, pre_prof_transforms_simplify,
+                Simplify215),
+            (
+                Simplify215 = yes,
+                list.cons(simp_do_once, !SimpList)
+            ;
+                Simplify215 = no,
+                !:SimpList = []
+            )
+        ;
+            SimplifyPass = ml_backend,
+            list.cons(simp_do_once, !SimpList)
+        ;
+            SimplifyPass = ll_backend,
+            % Don't perform constant propagation if one of the
+            % profiling transformations has been applied.
+            %
+            % NOTE: Any changes made here may also need to be made
+            % to the relevant parts of backend_pass_by_preds_4/12.
+            globals.lookup_bool_option(Globals, constant_propagation,
+                ConstProp),
+            globals.lookup_bool_option(Globals, profile_deep, DeepProf),
+            globals.lookup_bool_option(Globals, record_term_sizes_as_words,
+                TSWProf),
+            globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
+                TSCProf),
+            (
+                ConstProp = yes,
+                DeepProf = no,
+                TSWProf = no,
+                TSCProf = no
+            ->
+                list.cons(simp_constant_prop, !SimpList)
+            ;
+                !:SimpList = list.delete_all(!.SimpList,
+                    simp_constant_prop)
+            ),
+            list.cons(simp_do_once, !SimpList),
+            list.cons(simp_elim_removable_scopes, !SimpList)
+        ),
+        SimpList = !.SimpList
+    ),
     (
-        SimplifyPass = pre_prof_transforms,
-        IsProfPass = no
-    ->
-        Specs = []
-    ;
+        SimpList = [_ | _],
+    
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-
-        some [!SimpList] (
-            simplify.find_simplifications(Warn, Globals, Simplifications0),
-            !:SimpList = simplifications_to_list(Simplifications0),
-            (
-                SimplifyPass = frontend,
-                list.cons(simp_after_front_end, !SimpList)
-            ;
-                SimplifyPass = post_untuple,
-                list.cons(simp_do_once, !SimpList)
-            ;
-                SimplifyPass = pre_prof_transforms,
-                list.cons(simp_do_once, !SimpList)
-            ;
-                SimplifyPass = ml_backend,
-                list.cons(simp_do_once, !SimpList)
-            ;
-                SimplifyPass = ll_backend,
-                % Don't perform constant propagation if one of the
-                % profiling transformations has been applied.
-                %
-                % NOTE: Any changes made here may also need to be made
-                % to the relevant parts of backend_pass_by_preds_4/12.
-
-                (
-                    ConstProp = yes,
-                    IsProfPass = no
-                ->
-                    list.cons(simp_constant_prop, !SimpList)
-                ;
-                    !:SimpList = list.delete_all(!.SimpList,
-                        simp_constant_prop)
-                ),
-                list.cons(simp_do_once, !SimpList),
-                list.cons(simp_elim_removable_scopes, !SimpList)
-            ),
-            Simplifications = list_to_simplifications(!.SimpList)
-        ),
-
+        Simplifications = list_to_simplifications(SimpList),
         process_all_nonimported_procs_errors(
             update_pred_error(simplify_pred(Simplifications)),
             !HLDS, [], Specs, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
+    ;
+        SimpList = [],
+        Specs = []
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3919,7 +3932,8 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
         maybe_flush_output(Verbose, !IO),
         untuple_arguments(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
-        simplify(no, post_untuple, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
+        maybe_simplify(no, post_untuple, Verbose, Stats, !HLDS, SimplifySpecs,
+            !IO),
         expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
             "maybe_untuple_arguments: simplify has errors"),
         maybe_report_stats(Stats, !IO)
@@ -4989,7 +5003,7 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    simplify(no, ml_backend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
+    maybe_simplify(no, ml_backend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
         "ml_backend: simplify has errors"),
     maybe_dump_hlds(!.HLDS, 405, "ml_backend_simplify", !DumpInfo, !IO),

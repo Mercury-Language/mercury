@@ -297,8 +297,15 @@
             % cycle detection should be used for deep profiling. Actually,
             % we only want to use the `yes' value, but we keep support for
             % the `no' value for benchmarks for the paper.
-    
-            % Perform coverage profiling, (enables deep profiling).
+
+    ;       pre_prof_transforms_simplify 
+            % Run the simplification pass at before profiling (stage 215) this
+            % is implied by some of the profiling settings.  Specifying this
+            % option causes this simplification pass to run even when profiling
+            % is not enabled.
+
+            % Perform coverage profiling, this affects only deep profiling
+            % grades.
     ;       coverage_profiling
     ;       coverage_profiling_via_calls
    
@@ -1179,6 +1186,7 @@ option_defaults_2(compilation_model_option, [
     profile_memory                      -   bool(no),
     profile_deep                        -   bool(no),
     use_activation_counts               -   bool(no),
+    pre_prof_transforms_simplify        -   bool(no),
     coverage_profiling                  -   bool(no),
     coverage_profiling_via_calls        -   bool(no),
     profile_deep_coverage_after_goal    -   bool(yes),
@@ -2018,6 +2026,7 @@ long_option("profile-time",         profile_time).
 long_option("profile-memory",       profile_memory).
 long_option("profile-deep",         profile_deep).
 long_option("use-activation-counts",    use_activation_counts).
+long_option("pre-prof-transforms-simplify", pre_prof_transforms_simplify).
 long_option("coverage-profiling", 
                     coverage_profiling).
 long_option("coverage-profiling-via-calls", 
@@ -3979,6 +3988,19 @@ options_help_compilation_model -->
         "\tEnable deep profiling.",
         "\tThis option is not supported for the high-level C, IL",
         "\tor Java back-ends.",
+
+% This option is not documented, it is intended for use by developers only.
+%
+%       "--pre-prof-transforms-simplify",
+%       "\tForce the pre-profiling simplification pass that is usually",
+%       "\tenabled when building a profiling version of a program.  This",
+%       "\tallows a developer to enable this pass when using a",
+%       "\tnon-profiling build.  It can be used to test that generated code",
+%       "\tintroduced in earlier passes is well-formed before it is",
+%       "\tpotentially removed by the dead procedure elimination pass later",
+%       "\ton.",
+%
+
 % XXX The following options are not documented,
 % because they are currently not useful.
 % The idea was for you to be able to use --profile-calls

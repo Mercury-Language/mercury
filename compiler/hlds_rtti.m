@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -326,6 +326,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module solutions.
+:- import_module string.
 :- import_module svmap.
 :- import_module term.
 :- import_module varset.
@@ -639,7 +640,9 @@ apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
         ( Type = ExistingType ->
             true
         ;
-            unexpected(this_file, "inconsistent type_infos")
+            unexpected(this_file, string.format("inconsistent type_infos: "
+                ++ " Type: %s ExistingType: %s",
+                [s(string(Type)), s(string(ExistingType))]))
         )
     ;
         svmap.det_insert(Var, Type, !Map)
