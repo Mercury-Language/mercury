@@ -443,6 +443,13 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             GoalExpr = shorthand(ShortHand),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            delay_partial_inst_in_goal(InstMap0, SubGoal0, SubGoal,
+                !ConstructMap, !DelayInfo),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
+            GoalExpr = shorthand(ShortHand),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file,

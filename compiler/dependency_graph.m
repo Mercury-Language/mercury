@@ -427,6 +427,9 @@ add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
             add_dependency_arcs_in_goal(Caller, MainGoal, !DepGraph),
             add_dependency_arcs_in_list(Caller, OrElseGoals, !DepGraph)
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
+        ;
             ShortHand = bi_implication(LHS, RHS),
             add_dependency_arcs_in_list(Caller, [LHS, RHS], !DepGraph)
         )

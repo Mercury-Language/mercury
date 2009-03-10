@@ -437,7 +437,8 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
     !:ImportDeps = [mercury_public_builtin_module | !.ImportDeps],
     !:UseDeps = [mercury_private_builtin_module | !.UseDeps],
     items_need_imports(Items, no, ItemsNeedTabling,
-        no, ItemsNeedTablingStatistics, no, ItemsNeedSTM),
+        no, ItemsNeedTablingStatistics, no, ItemsNeedSTM,
+        no, ItemsNeedException),
     % We should include mercury_table_builtin_module if the Items contain
     % a tabling pragma, or if one of --use-minimal-model (either kind) and
     % --trace-table-io is specified. In the former case, we may also need
@@ -478,6 +479,12 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
             mercury_univ_module | !.UseDeps]
     ;
         ItemsNeedSTM = no
+    ),
+    (
+        ItemsNeedException = yes,
+        !:UseDeps = [mercury_exception_module | !.UseDeps]
+    ;
+        ItemsNeedException = no
     ),
     globals.lookup_bool_option(Globals, profile_deep, Deep),
     (
@@ -527,12 +534,13 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
     ).
 
 :- pred items_need_imports(list(item)::in,
-    bool::in, bool::out, bool::in, bool::out, bool::in, bool::out) is det.
+    bool::in, bool::out, bool::in, bool::out, bool::in, bool::out,
+    bool::in, bool::out) is det.
 
 items_need_imports([], !ItemsNeedTabling,
-        !ItemsNeedTablingStatistics, !ItemsNeedSTM).
+        !ItemsNeedTablingStatistics, !ItemsNeedSTM, !ItemsNeedException).
 items_need_imports([Item | Items], !ItemsNeedTabling,
-        !ItemsNeedTablingStatistics, !ItemsNeedSTM) :-
+        !ItemsNeedTablingStatistics, !ItemsNeedSTM, !ItemsNeedException) :-
     (
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _, _),
@@ -541,65 +549,78 @@ items_need_imports([Item | Items], !ItemsNeedTabling,
         !:ItemsNeedTabling = yes,
         (
             MaybeAttributes = no,
-            % We cannot be done yet. If !.ItemsNeedTablingStatistics and
-            % !.ItemsNeedSTM were already both `yes', !.ItemsNeedTabling
-            % would have been too, and we would have stopped before looking
-            % at this item.
-            items_need_imports(Items, !ItemsNeedTabling,
-                !ItemsNeedTablingStatistics, !ItemsNeedSTM)
+            maybe_items_need_imports(Items, !ItemsNeedTabling,
+                !ItemsNeedTablingStatistics, !ItemsNeedSTM,
+                !ItemsNeedException)
         ;
             MaybeAttributes = yes(Attributes),
             StatsAttr = Attributes ^ table_attr_statistics,
             (
                 StatsAttr = table_gather_statistics,
                 !:ItemsNeedTablingStatistics = yes,
-                (
-                    !.ItemsNeedSTM = yes
-                    % There is nothing left to search for; stop recursing.
-                ;
-                    !.ItemsNeedSTM = no,
-                    items_need_imports(Items, !ItemsNeedTabling,
-                        !ItemsNeedTablingStatistics, !ItemsNeedSTM)
-                )
+                maybe_items_need_imports(Items, !ItemsNeedTabling,
+                    !ItemsNeedTablingStatistics, !ItemsNeedSTM,
+                    !ItemsNeedException)
             ;
                 StatsAttr = table_dont_gather_statistics
             )
         )
     ;
-        Item = item_clause(ItemClause),
-        Body = ItemClause ^ cl_body,
-        goal_contains_stm_atomic(Body) = yes
+        Item = item_clause(ItemClause)
     ->
-        !:ItemsNeedSTM = yes,
-        (
-            !.ItemsNeedTabling = yes,
-            !.ItemsNeedTablingStatistics = yes
-        ->
-            % There is nothing left to search for; stop recursing.
-            true
+        Body = ItemClause ^ cl_body,
+        goal_contains_stm_atomic_or_try(Body, ContainsAtomic, ContainsTry),
+        ( ContainsAtomic = yes ->
+            !:ItemsNeedSTM = yes,
+            !:ItemsNeedException = yes
+        ; ContainsTry = yes ->
+            !:ItemsNeedException = yes
         ;
-            items_need_imports(Items, !ItemsNeedTabling,
-                !ItemsNeedTablingStatistics, !ItemsNeedSTM)
-        )
+            true
+        ),
+        maybe_items_need_imports(Items, !ItemsNeedTabling,
+            !ItemsNeedTablingStatistics, !ItemsNeedSTM, !ItemsNeedException)
     ;
         items_need_imports(Items, !ItemsNeedTabling,
-            !ItemsNeedTablingStatistics, !ItemsNeedSTM)
+            !ItemsNeedTablingStatistics, !ItemsNeedSTM, !ItemsNeedException)
     ).
 
-:- func goal_contains_stm_atomic(goal) = bool.
+:- pred maybe_items_need_imports(list(item)::in,
+    bool::in, bool::out, bool::in, bool::out, bool::in, bool::out,
+    bool::in, bool::out) is det.
 
-goal_contains_stm_atomic(GoalExpr - _Context) = ContainsAtomic :-
+maybe_items_need_imports(Items, !ItemsNeedTabling, !ItemsNeedTablingStatistics,
+        !ItemsNeedSTM, !ItemsNeedException) :-
+    (
+        !.ItemsNeedTabling = yes,
+        !.ItemsNeedTablingStatistics = yes,
+        !.ItemsNeedSTM = yes,
+        !.ItemsNeedException = yes
+    ->
+        % There is nothing left to search for; stop recursing.
+        true
+    ;
+        items_need_imports(Items, !ItemsNeedTabling,
+            !ItemsNeedTablingStatistics, !ItemsNeedSTM, !ItemsNeedException)
+    ).
+
+:- pred goal_contains_stm_atomic_or_try(goal::in, bool::out, bool::out) is det.
+
+goal_contains_stm_atomic_or_try(GoalExpr - _Context,
+        ContainsAtomic, ContainsTry) :-
     (
         ( GoalExpr = true_expr
         ; GoalExpr = fail_expr
         ),
-        ContainsAtomic = no
+        ContainsAtomic = no,
+        ContainsTry = no
     ;
         ( GoalExpr = conj_expr(SubGoalA, SubGoalB)
         ; GoalExpr = par_conj_expr(SubGoalA, SubGoalB)
         ; GoalExpr = disj_expr(SubGoalA, SubGoalB)
         ),
-        ContainsAtomic = two_goals_contain_stm_atomic(SubGoalA, SubGoalB)
+        two_goals_contain_stm_atomic_or_try(SubGoalA, SubGoalB,
+            ContainsAtomic, ContainsTry)
     ;
         ( GoalExpr = some_expr(_, SubGoal)
         ; GoalExpr = all_expr(_, SubGoal)
@@ -612,46 +633,99 @@ goal_contains_stm_atomic(GoalExpr - _Context) = ContainsAtomic :-
             SubGoal)
         ; GoalExpr = trace_expr(_, _, _, _, SubGoal)
         ),
-        ContainsAtomic = goal_contains_stm_atomic(SubGoal)
+        goal_contains_stm_atomic_or_try(SubGoal, ContainsAtomic, ContainsTry)
+    ;
+        GoalExpr = try_expr(_, SubGoal, Then, MaybeElse, Catches, CatchAny),
+        ContainsAtomic = maybe_goals_contain_stm_atomic([
+            yes(SubGoal), yes(Then), MaybeElse,
+            maybe_catch_any_expr_goal(CatchAny) |
+            list.map(yes_catch_expr_goal, Catches)
+        ]),
+        ContainsTry = yes
     ;
         ( GoalExpr = implies_expr(SubGoalA, SubGoalB)
         ; GoalExpr = equivalent_expr(SubGoalA, SubGoalB)
         ),
-        ContainsAtomic = two_goals_contain_stm_atomic(SubGoalA, SubGoalB)
+        two_goals_contain_stm_atomic_or_try(SubGoalA, SubGoalB,
+            ContainsAtomic, ContainsTry)
     ;
         GoalExpr = not_expr(SubGoal),
-        ContainsAtomic = goal_contains_stm_atomic(SubGoal)
+        goal_contains_stm_atomic_or_try(SubGoal, ContainsAtomic, ContainsTry)
     ;
         GoalExpr = if_then_else_expr(_, _, Cond, Then, Else),
-        ContainsAtomic = three_goals_contain_stm_atomic(Cond, Then, Else)
+        three_goals_contain_stm_atomic_or_try(Cond, Then, Else,
+            ContainsAtomic, ContainsTry)
     ;
         GoalExpr = atomic_expr(_, _, _, _, _),
-        ContainsAtomic = yes
+        ContainsAtomic = yes,
+        ContainsTry = no
     ;
         ( GoalExpr = event_expr(_, _)
         ; GoalExpr = call_expr(_, _, _)
         ; GoalExpr = unify_expr(_, _, _)
         ),
-        ContainsAtomic = no
+        ContainsAtomic = no,
+        ContainsTry = no
     ).
 
-:- func two_goals_contain_stm_atomic(goal, goal) = bool.
+:- pred two_goals_contain_stm_atomic_or_try(goal::in, goal::in,
+    bool::out, bool::out) is det.
 
-two_goals_contain_stm_atomic(GoalA, GoalB) = ContainsAtomic :-
-    ( goal_contains_stm_atomic(GoalA) = yes ->
+two_goals_contain_stm_atomic_or_try(GoalA, GoalB,
+        ContainsAtomic, ContainsTry) :-
+    goal_contains_stm_atomic_or_try(GoalA, ContainsAtomicA, ContainsTryA),
+    (
+        ContainsAtomicA = yes,
+        ContainsTryA = yes
+    ->
+        ContainsAtomic = yes,
+        ContainsTry = yes
+    ;
+        goal_contains_stm_atomic_or_try(GoalB, ContainsAtomicB, ContainsTryB),
+        bool.or(ContainsAtomicA, ContainsAtomicB, ContainsAtomic),
+        bool.or(ContainsTryA, ContainsTryB, ContainsTry)
+    ).
+
+:- pred three_goals_contain_stm_atomic_or_try(goal::in, goal::in, goal::in,
+    bool::out, bool::out) is det.
+
+three_goals_contain_stm_atomic_or_try(GoalA, GoalB, GoalC,
+        ContainsAtomic, ContainsTry) :-
+    two_goals_contain_stm_atomic_or_try(GoalA, GoalB,
+        ContainsAtomicAB, ContainsTryAB),
+    (
+        ContainsAtomicAB = yes,
+        ContainsTryAB = yes
+    ->
+        ContainsAtomic = yes,
+        ContainsTry = yes
+    ;
+        goal_contains_stm_atomic_or_try(GoalC, ContainsAtomicC, ContainsTryC),
+        bool.or(ContainsAtomicAB, ContainsAtomicC, ContainsAtomic),
+        bool.or(ContainsTryAB, ContainsTryC, ContainsTry)
+    ).
+
+:- func maybe_goals_contain_stm_atomic(list(maybe(goal))) = bool.
+
+maybe_goals_contain_stm_atomic([]) = no.
+maybe_goals_contain_stm_atomic([MaybeGoal | MaybeGoals]) = ContainsAtomic :-
+    (
+        MaybeGoal = yes(Goal),
+        goal_contains_stm_atomic_or_try(Goal, yes, _)
+    ->
         ContainsAtomic = yes
     ;
-        ContainsAtomic = goal_contains_stm_atomic(GoalB)
+        ContainsAtomic = maybe_goals_contain_stm_atomic(MaybeGoals)
     ).
 
-:- func three_goals_contain_stm_atomic(goal, goal, goal) = bool.
+:- func yes_catch_expr_goal(catch_expr) = maybe(goal).
 
-three_goals_contain_stm_atomic(GoalA, GoalB, GoalC) = ContainsAtomic :-
-    ( goal_contains_stm_atomic(GoalA) = yes ->
-        ContainsAtomic = yes
-    ;
-        ContainsAtomic = two_goals_contain_stm_atomic(GoalB, GoalC)
-    ).
+yes_catch_expr_goal(Catch) = yes(Catch ^ catch_goal).
+
+:- func maybe_catch_any_expr_goal(maybe(catch_any_expr)) = maybe(goal).
+
+maybe_catch_any_expr_goal(yes(catch_any_expr(_, Goal))) = yes(Goal).
+maybe_catch_any_expr_goal(no) = no.
 
 %-----------------------------------------------------------------------------%
 

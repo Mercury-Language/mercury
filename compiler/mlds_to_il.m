@@ -1158,10 +1158,10 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         context_node(Context) ++
         from_list(CtorInstrs) ++
         context_node(Context) ++
-        singleton(start_block(scope(Locals), BlockId)) ++
+        singleton(start_block(bt_scope(Locals), BlockId)) ++
         InstrsTree1 ++
         MaybeRet ++
-        singleton(end_block(scope(Locals), BlockId)),
+        singleton(end_block(bt_scope(Locals), BlockId)),
 
     % If this is main, add the entrypoint, set a flag, wrap the code
     % in an exception handler and call the initialization instructions
@@ -1228,20 +1228,20 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
 
         CatchAnyException =
             from_list([
-                start_block(catch(ExceptionClassName), OuterCatchBlockId),
+                start_block(bt_catch(ExceptionClassName), OuterCatchBlockId),
                 ldstr("\nUncaught system exception: \n"),
                 call(WriteString),
                 call(WriteObject),
                 ldc(int32, i(1)),
                 call(il_set_exit_code),
                 leave(label_target(DoneLabel)),
-                end_block(catch(ExceptionClassName), OuterCatchBlockId)
+                end_block(bt_catch(ExceptionClassName), OuterCatchBlockId)
             ]),
 
         % Code to catch Mercury exceptions.
         CatchUserException =
             from_list([
-                start_block(catch(MercuryExceptionClassName),
+                start_block(bt_catch(MercuryExceptionClassName),
                     InnerCatchBlockId),
                 ldfld(FieldRef),
                 call(WriteUncaughtException),
@@ -1250,7 +1250,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
                 call(il_set_exit_code),
 
                 leave(label_target(DoneLabel)),
-                end_block(catch(MercuryExceptionClassName),
+                end_block(bt_catch(MercuryExceptionClassName),
                     InnerCatchBlockId)
             ]),
 
@@ -1283,21 +1283,21 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         InstrsTree =
             from_list([
                 % outer try block
-                start_block(try, OuterTryBlockId),
+                start_block(bt_try, OuterTryBlockId),
 
                 % inner try block
-                start_block(try, InnerTryBlockId)
+                start_block(bt_try, InnerTryBlockId)
             ]) ++
             cord.map(RenameRets, InstrsTree2) ++
             from_list([
                 leave(label_target(DoneLabel)),
-                end_block(try, InnerTryBlockId)
+                end_block(bt_try, InnerTryBlockId)
             ]) ++
             % inner catch block
             CatchUserException ++
             from_list([
                 leave(label_target(DoneLabel)),
-                end_block(try, OuterTryBlockId)
+                end_block(bt_try, OuterTryBlockId)
             ]) ++
             % outer catch block
             CatchAnyException ++
@@ -1649,7 +1649,7 @@ statement_to_il(statement(BlockStmt, Context), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
     list.map((pred((K - V)::in, (K - W)::out) is det :-
         W = mlds_type_to_ilds_type(DataRep, V)), Locals, ILLocals),
-    Scope = scope(ILLocals),
+    Scope = bt_scope(ILLocals),
     Instrs =
         context_node(Context) ++
         singleton(start_block(Scope, BlockId)) ++
@@ -1900,17 +1900,17 @@ statement_to_il(statement(TryCommitStmt, Context), Instrs, !Info) :-
         context_node(Context) ++
         comment_node("try_commit/3") ++
 
-        singleton(start_block(try, TryBlockId)) ++
+        singleton(start_block(bt_try, TryBlockId)) ++
         GoalInstrsTree ++
         singleton(leave(label_target(DoneLabel))) ++
-        singleton(end_block(try, TryBlockId)) ++
+        singleton(end_block(bt_try, TryBlockId)) ++
 
-        singleton(start_block(catch(ClassName), CatchBlockId)) ++
+        singleton(start_block(bt_catch(ClassName), CatchBlockId)) ++
         comment_node("discard the exception object") ++
         singleton(pop) ++
         HandlerInstrsTree ++
         singleton(leave(label_target(DoneLabel))) ++
-        singleton(end_block(catch(ClassName), CatchBlockId)) ++
+        singleton(end_block(bt_catch(ClassName), CatchBlockId)) ++
         singleton(label(DoneLabel)).
 
 statement_to_il(statement(ComputedGotoStmt, Context), Instrs, !Info) :-

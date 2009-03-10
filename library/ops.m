@@ -384,6 +384,8 @@ ops.op_table(Op, Info, OtherInfos) :-
         ; Op = "if",    Info = op_info(prefix(x), 1160)
         ; Op = "then",  Info = op_info(infix(x, x), 1150)
         ; Op = "else",  Info = op_info(infix(x, y), 1170)
+        ; Op = "catch", Info = op_info(infix(x, y), 1180)
+        ; Op = "catch_any", Info = op_info(infix(x, y), 1190)
         ; Op = "not",   Info = op_info(prefix(y), 900)
         ; Op = "pred",  Info = op_info(prefix(x), 800)
         ),
@@ -435,6 +437,7 @@ ops.op_table(Op, Info, OtherInfos) :-
         ; Op = "promise_equivalent_solution_sets"
         ; Op = "trace"
         ; Op = "atomic"
+        ; Op = "try"
         ),
         Info = op_info(binary_prefix(x, y), 950),
         OtherInfos = []

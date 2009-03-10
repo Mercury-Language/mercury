@@ -809,6 +809,34 @@ transform_goal_2(
     Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIOHLDS,
         MutableHLDSs, Vars),
     goal_info_init(GoalInfo).
+transform_goal_2(
+        try_expr(MaybeIO0, Goal0, Then0, MaybeElse0, Catches0, MaybeCatchAny0),
+        Context, Renaming, TryGoal, NumAdded,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
+    (
+        MaybeIO0 = yes(IOStateVar0),
+        (
+            MaybeElse0 = no,
+            rename_var(need_not_rename, Renaming, IOStateVar0, IOStateVar),
+            transform_try_expr_with_io(IOStateVar0, IOStateVar, Goal0, Then0,
+                Catches0, MaybeCatchAny0, Context, Renaming, TryGoal,
+                NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
+        ;
+            MaybeElse0 = yes(_),
+            Pieces = [words("Error: a `try' goal with an `io' parameter"),
+                words("cannot have an else part."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs],
+            TryGoal = true_goal,
+            NumAdded = 0
+        )
+    ;
+        MaybeIO0 = no,
+        transform_try_expr_without_io(Goal0, Then0, MaybeElse0, Catches0,
+            MaybeCatchAny0, Context, Renaming, TryGoal, NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
+    ).
 transform_goal_2(if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
         Context, Renaming,
         hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo),
@@ -1367,6 +1395,302 @@ transform_orelse_goals([Goal | Goals], Renaming, [DisjInfo | DisjInfos],
     !:NumAdded = !.NumAdded + NumAddedGoal,
     transform_orelse_goals(Goals, Renaming, DisjInfos,
         !NumAdded, !VarSet, !ModuleInfo, !QualInfo, SInfo0, !Specs).
+
+%----------------------------------------------------------------------------%
+%
+% Try goals
+%
+
+    % Transform a try_expr which needs to perform I/O.  The end result looks
+    % like:
+    %
+    %   magic_exception_result(TryResult),
+    %   (
+    %       TryResult = succeeded({}),
+    %       some [] (
+    %           !:IO = !.IO,
+    %           Goal
+    %       ),
+    %       some [] ( Then )
+    %   ;
+    %       TryResult = exception(Excp),
+    %       ExcpHandling
+    %   )
+    %
+    % Unlike in the non-I/O case, we have to transform the three pieces Goal,
+    % Then, ExcpHandling separately then stitch them together into HLDS goals.
+    % This is because we need to find out the variable for !.IO at the end of
+    % Goal, before entering Then.  The variable will be used in the later
+    % post-transformation.
+    %
+:- pred transform_try_expr_with_io(svar::in, svar::in, goal::in, goal::in,
+    list(catch_expr)::in, maybe(catch_any_expr)::in,
+    prog_context::in, prog_var_renaming::in, hlds_goal::out, int::out,
+    prog_varset::in, prog_varset::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out, svar_info::in, svar_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+transform_try_expr_with_io(IOStateVarUnrenamed, IOStateVar, Goal0, Then0,
+        Catches0, MaybeCatchAny0, Context, Renaming, TryGoal, NumAdded,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
+    varset.new_named_var(!.VarSet, "TryResult", ResultVar, !:VarSet),
+    varset.new_var(!.VarSet, ExcpVar, !:VarSet),
+
+    ResultVarTerm = variable(ResultVar, Context),
+    ExcpVarTerm = variable(ExcpVar, Context),
+    NullTupleTerm = functor(atom("{}"), [], Context),
+
+    goal_info_init(Context, GoalInfo),
+
+    % Make the call to magic_exception_result.
+    CallMagic0 = call_expr(magic_exception_result_sym_name, [ResultVarTerm],
+        purity_pure) - Context,
+    transform_goal(CallMagic0, Renaming, CallMagic, NumAddedA,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+
+    % Get the variable for !.IO before the (eventual) try_io call.
+    svar_dot(Context, IOStateVar, IOStateVarBefore, !VarSet, !SInfo, !Specs),
+
+    SInfoBeforeDisjunction = !.SInfo,
+
+    % Build "TryResult = succeeded({})".
+    ResultIsSucceededUnify0 =
+        unify_expr(
+            ResultVarTerm,
+            exception_functor("succeeded", NullTupleTerm, Context),
+            purity_pure
+        ) - Context,
+    transform_goal(ResultIsSucceededUnify0, Renaming, ResultIsSucceededUnify,
+        NumAddedB, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+
+    % Build "some [] ( !:IO = !.IO, Goal )".
+    %
+    % The explicit unification avoids a degenerate case where Goal doesn't bind
+    % the final !:IO variable, which would lead to trouble later when we move
+    % Goal into its own lambda.
+    IOUnify = unify_expr(
+        functor(atom("!:"), [variable(IOStateVarUnrenamed, Context)], Context),
+        functor(atom("!."), [variable(IOStateVarUnrenamed, Context)], Context),
+        purity_pure
+    ) - Context,
+    ScopedGoal0 = some_expr([], conj_expr(IOUnify, Goal0) - Context) - Context,
+    transform_goal(ScopedGoal0, Renaming, ScopedGoal, NumAddedC,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+
+    % Remember the variable for !.IO after the (eventual) try_io Goal.
+    svar_dot(Context, IOStateVar, IOStateVarAfter, !VarSet, !SInfo, !Specs),
+
+    % Build "some [] ( Then )".
+    ScopedThen0 = some_expr([], Then0) - Context,
+    transform_goal(ScopedThen0, Renaming, ScopedThen, NumAddedD,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+
+    % Build:
+    %
+    %   TryResult = succeeded({}),
+    %   some [] ( !:IO = !.IO, Goal ),
+    %   some [] ( Then )
+    %
+    conj_list_to_goal([ResultIsSucceededUnify, ScopedGoal, ScopedThen],
+        GoalInfo, ResultIsSucceededDisjunct),
+
+    SInfoAfterResultIsSucceededDisjunct = !.SInfo,
+    !:SInfo = SInfoBeforeDisjunction,
+
+    % Build the disjunct for "TryResult = exception(Excp), ...".
+    make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm, Catches0,
+        MaybeCatchAny0, Context, ResultIsExceptionDisjunct0),
+    transform_goal(ResultIsExceptionDisjunct0, Renaming,
+        ResultIsExceptionDisjunct, NumAddedE,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+
+    SInfoAfterResultIsExceptionDisjunct = !.SInfo,
+
+    % Get the disjuncts.
+    DisjunctSInfos = [
+        {ResultIsSucceededDisjunct, SInfoAfterResultIsSucceededDisjunct},
+        {ResultIsExceptionDisjunct, SInfoAfterResultIsExceptionDisjunct}
+    ],
+    svar_finish_disjunction(Context, !.VarSet, DisjunctSInfos,
+        Disjuncts, !:SInfo),
+    disj_list_to_goal(Disjuncts, GoalInfo, Disjunction),
+
+    % Build the call to magic_exception_result followed by the disjunction.
+    conj_list_to_goal([CallMagic, Disjunction], GoalInfo,
+        CallMagicThenDisjunction),
+
+    IOStateVars = try_io_state_vars(IOStateVarBefore, IOStateVarAfter),
+    GoalExpr = shorthand(try_goal(yes(IOStateVars), ResultVar,
+        CallMagicThenDisjunction)),
+    TryGoal = hlds_goal(GoalExpr, GoalInfo),
+
+    NumAdded = NumAddedA + NumAddedB + NumAddedC + NumAddedD + NumAddedE.
+
+    % Transform a try_expr which does not need I/O.
+    %
+    % If the try goal has an else part, the end result looks like:
+    %
+    %   magic_exception_result(TryResult),
+    %   (
+    %       TryResult = succeeded({}),
+    %       ( Goal ->
+    %           Then
+    %       ;
+    %           Else
+    %       )
+    %   ;
+    %       TryResult = exception(Excp),
+    %       ExcpHandling
+    %   )
+    %
+    % If the try goal does not have an else part, the end result looks like:
+    %
+    %   magic_exception_result(TryResult),
+    %   (
+    %       TryResult = succeeded({}),
+    %       some [] ( Goal ),
+    %       some [] ( Then )
+    %   ;
+    %       TryResult = exception(Excp),
+    %       ExcpHandling
+    %   )
+    %
+:- pred transform_try_expr_without_io(goal::in, goal::in, maybe(goal)::in,
+    list(catch_expr)::in, maybe(catch_any_expr)::in,
+    prog_context::in, prog_var_renaming::in, hlds_goal::out, int::out,
+    prog_varset::in, prog_varset::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out, svar_info::in, svar_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+transform_try_expr_without_io(Goal0, Then0, MaybeElse0, Catches0,
+        MaybeCatchAny0, Context, Renaming, TryGoal, NumAdded,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
+    varset.new_named_var(!.VarSet, "TryResult", ResultVar, !:VarSet),
+    varset.new_var(!.VarSet, ExcpVar, !:VarSet),
+
+    ResultVarTerm = variable(ResultVar, Context),
+    ExcpVarTerm = variable(ExcpVar, Context),
+    NullTupleTerm = functor(atom("{}"), [], Context),
+
+    goal_info_init(Context, GoalInfo),
+
+    % Build the call to magic_exception_result.
+    CallMagic0 = call_expr(magic_exception_result_sym_name, [ResultVarTerm],
+        purity_pure) - Context,
+
+    % Build "TryResult = succeeded({}), ..." disjunct.
+    ResultIsSucceededUnify0 =
+        unify_expr(
+            ResultVarTerm,
+            exception_functor("succeeded", NullTupleTerm, Context),
+            purity_pure
+        ) - Context,
+    (
+        MaybeElse0 = yes(Else0),
+        SucceededSubGoal =
+            if_then_else_expr([], [], Goal0, Then0, Else0) - Context
+    ;
+        MaybeElse0 = no,
+        SucceededSubGoal =
+            conj_expr(
+                some_expr([], Goal0) - Context,
+                some_expr([], Then0) - Context
+            ) - Context
+    ),
+    ResultIsSucceededDisjunct0 =
+        conj_expr(ResultIsSucceededUnify0, SucceededSubGoal) - Context,
+
+    % Build the disjunct for "TryResult = exception(Excp), ...".
+    make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm, Catches0,
+        MaybeCatchAny0, Context, ResultIsExceptionDisjunct0),
+
+    % Build the call followed by the disjunction.
+    CallMagicThenDisjunction0 =
+        conj_expr(
+            CallMagic0,
+            disj_expr(
+                ResultIsSucceededDisjunct0,
+                ResultIsExceptionDisjunct0
+            ) - Context
+        ) - Context,
+    transform_goal(CallMagicThenDisjunction0, Renaming,
+        CallMagicThenDisjunction, NumAdded,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+
+    GoalExpr = shorthand(try_goal(no, ResultVar, CallMagicThenDisjunction)),
+    TryGoal = hlds_goal(GoalExpr, GoalInfo).
+
+:- pred make_exception_handling_disjunct(prog_term::in, prog_term::in,
+    list(catch_expr)::in, maybe(catch_any_expr)::in, prog_context::in,
+    goal::out) is det.
+
+make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm, Catches,
+        MaybeCatchAny, Context, Goal) :-
+    ResultIsExceptionUnify =
+        unify_expr(
+            ResultVarTerm,
+            exception_functor("exception", ExcpVarTerm, Context),
+            purity_pure
+        ) - Context,
+    make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
+        CatchChain),
+    Goal = conj_expr(ResultIsExceptionUnify, CatchChain) - Context.
+
+:- pred make_catch_ite_chain(prog_term::in, prog_term::in,
+    list(catch_expr)::in, maybe(catch_any_expr)::in, goal::out) is det.
+
+make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
+        Goal) :-
+    (
+        Catches = [catch_expr(FirstPattern, FirstGoal) | RestCatches],
+        make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, RestCatches,
+            MaybeCatchAny, ElseGoal),
+        make_catch_pattern_unify_goal(FirstPattern, ExcpVarTerm,
+            FirstPatternGoal),
+        Goal = if_then_else_expr([], [], FirstPatternGoal, FirstGoal,
+            ElseGoal) - get_term_context(FirstPattern)
+    ;
+        Catches = [],
+        (
+            MaybeCatchAny = yes(catch_any_expr(CatchAnyVar, CatchAnyGoal)),
+            % With a catch_any part, end the if-then-else chain with:
+            %   CatchAnyVar = exc_univ_value(Excp),
+            %   CatchAnyGoal
+            CatchAnyGoal = _ - Context,
+            GetUnivValue = unify_expr(
+                variable(CatchAnyVar, Context),
+                exception_functor("exc_univ_value", ExcpVarTerm, Context),
+                purity_pure) - Context,
+            Goal = conj_expr(GetUnivValue, CatchAnyGoal) - Context
+        ;
+            MaybeCatchAny = no,
+            % Without a catch_any part, end the if-then-else chain
+            % by rethrowing the exception.
+            Rethrow = qualified(mercury_exception_module, "rethrow"),
+            Goal = call_expr(Rethrow, [ResultVarTerm], purity_pure)
+                - get_term_context(ExcpVarTerm)
+        )
+    ).
+
+:- pred make_catch_pattern_unify_goal(prog_term::in, prog_term::in,
+    goal::out) is det.
+
+make_catch_pattern_unify_goal(CatchPatternTerm, ExcpVarTerm, Goal) :-
+    GoalExpr = call_expr(
+        qualified(mercury_exception_module, "exc_univ_to_type"),
+        [ExcpVarTerm, CatchPatternTerm], purity_pure),
+    Goal = GoalExpr - get_term_context(CatchPatternTerm).
+
+:- func magic_exception_result_sym_name = sym_name.
+
+magic_exception_result_sym_name =
+    qualified(mercury_exception_module, "magic_exception_result").
+
+:- func exception_functor(string, prog_term, term.context) = prog_term.
+
+exception_functor(Atom, Arg, Context) = Term :-
+    construct_qualified_term(qualified(mercury_exception_module, Atom),
+        [Arg], Context, Term).
 
 %----------------------------------------------------------------------------%
 

@@ -1,0 +1,10 @@
+Begin non-throwing test:
+checkpoint (a)
+checkpoint (b)
+checkpoint (c)
+some output
+
+Begin throwing test:
+checkpoint (a)
+checkpoint (d)
+caught int: 90210

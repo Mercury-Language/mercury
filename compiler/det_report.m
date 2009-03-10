@@ -695,6 +695,10 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
                 SwitchContexts, !DetInfo, OrElseMsgs),
             Msgs = MainMsgs ++ OrElseMsgs
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            det_diagnose_goal(SubGoal, InstMap0, Desired, SwitchContexts,
+                !DetInfo, Msgs)
+        ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file, "det_diagnose_goal_expr: bi_implication")

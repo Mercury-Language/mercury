@@ -917,6 +917,10 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
                 MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners,
                 !:GoalExpr, !GoalInfo, !Info)
         ;
+            ShortHand0 = try_goal(_, _, _),
+            % These should have been expanded out by now.
+            unexpected(this_file, "simplify_goal_2: try_goal")
+        ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file, "simplify_goal_2: bi_implication")
@@ -1661,6 +1665,9 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
         CondExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, _, _, _),
+            !:CondCanSwitch = cond_cannot_switch
+        ;
+            ShortHand = try_goal(_, _, _),
             !:CondCanSwitch = cond_cannot_switch
         ;
             ShortHand = bi_implication(_, _),
@@ -3453,6 +3460,11 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
             ContainsTrace = worst_contains_trace(MainContainsTrace,
                 OrElseContainsTrace)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            goal_contains_trace(SubGoal0, SubGoal, ContainsTrace),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
+            GoalExpr = shorthand(ShortHand)
+        ;
             ShortHand0 = bi_implication(_, _),
             unexpected(this_file, "goal_contains_trace: bi_implication")
         )
@@ -3897,6 +3909,9 @@ will_flush(scope(_, _), _) = no.
 will_flush(shorthand(ShortHand), _) = WillFlush :-
     (
         ShortHand = atomic_goal(_, _, _, _, _MainGoal, _OrElseGoals, _),
+        WillFlush = yes
+    ;
+        ShortHand = try_goal(_, _, _),
         WillFlush = yes
     ;
         ShortHand = bi_implication(_, _),

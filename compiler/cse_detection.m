@@ -337,6 +337,12 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file, "detect_cse_in_goal_expr: bi_implication")
+        ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            % XXX not sure about this as SubGoal0 is not in its final form.
+            % Also, mightn't the try "Goal" part get hoisted out?
+            detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ),
         GoalExpr = shorthand(ShortHand)
     ).

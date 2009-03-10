@@ -65,6 +65,7 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.unique_modes.
 :- import_module check_hlds.stratify.
+:- import_module check_hlds.try_expand.
 :- import_module check_hlds.simplify.
 
     % High-level HLDS transformations.
@@ -2614,6 +2615,9 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
         check_stratification(Verbose, Stats, !HLDS, FoundStratError, !IO),
         maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
 
+        process_try_goals(Verbose, Stats, !HLDS, FoundTryError, !IO),
+        maybe_dump_hlds(!.HLDS, 62, "try", !DumpInfo, !IO),
+
         maybe_simplify(yes, frontend, Verbose, Stats, !HLDS, SimplifySpecs,
             !IO),
         maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
@@ -2630,6 +2634,7 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
             FoundModeError = no,
             FoundUniqError = no,
             FoundStratError = no,
+            FoundTryError = no,
             NumErrors1 = 0,
             NumErrors2 = 0,
             % Strictly speaking, we shouldn't need to check the exit status.
@@ -3423,6 +3428,24 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !IO) :-
     ;
         FoundError = no
     ).
+
+:- pred process_try_goals(bool::in, bool::in,
+    module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
+
+process_try_goals(Verbose, Stats, !HLDS, FoundError, !IO) :-
+    maybe_write_string(Verbose, "% Transforming try goals...\n", !IO),
+    module_info_get_num_errors(!.HLDS, NumErrors0),
+    expand_try_goals(!HLDS, !IO),
+    module_info_get_num_errors(!.HLDS, NumErrors),
+    maybe_write_string(Verbose, "% done.\n", !IO),
+    ( NumErrors \= NumErrors0 ->
+        FoundError = yes,
+        maybe_write_string(Verbose, "% Program contains error(s).\n", !IO),
+        io.set_exit_status(1, !IO)
+    ;
+        FoundError = no
+    ),
+    maybe_report_stats(Stats, !IO).
 
 :- pred maybe_warn_dead_procs(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

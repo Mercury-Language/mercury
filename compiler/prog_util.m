@@ -381,6 +381,31 @@ rename_in_goal_expr(OldVar, NewVar,
     rename_in_goal(OldVar, NewVar, MainExpr0, MainExpr),
     list.map(rename_in_goal(OldVar, NewVar), OrElseExpr0, OrElseExpr).
 rename_in_goal_expr(OldVar, NewVar,
+        try_expr(MaybeIO0, SubGoal0, Then0, MaybeElse0, Catches0,
+            MaybeCatchAny0),
+        try_expr(MaybeIO, SubGoal, Then, MaybeElse, Catches, MaybeCatchAny)) :-
+    rename_in_maybe_var(OldVar, NewVar, MaybeIO0, MaybeIO),
+    rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+    rename_in_goal(OldVar, NewVar, Then0, Then),
+    (
+        MaybeElse0 = yes(Else0),
+        rename_in_goal(OldVar, NewVar, Else0, Else),
+        MaybeElse = yes(Else)
+    ;
+        MaybeElse0 = no,
+        MaybeElse = no
+    ),
+    list.map(rename_in_catch_expr(OldVar, NewVar), Catches0, Catches),
+    (
+        MaybeCatchAny0 = yes(catch_any_expr(CatchAnyVar0, CatchAnyGoal0)),
+        rename_in_var(OldVar, NewVar, CatchAnyVar0, CatchAnyVar),
+        rename_in_goal(OldVar, NewVar, CatchAnyGoal0, CatchAnyGoal),
+        MaybeCatchAny = yes(catch_any_expr(CatchAnyVar, CatchAnyGoal))
+    ;
+        MaybeCatchAny0 = no,
+        MaybeCatchAny = no
+    ).
+rename_in_goal_expr(OldVar, NewVar,
         implies_expr(GoalA0, GoalB0),
         implies_expr(GoalA, GoalB)) :-
     rename_in_goal(OldVar, NewVar, GoalA0, GoalA),
@@ -452,6 +477,28 @@ rename_in_var(OldVar, NewVar, Var0, Var) :-
     ;
         Var = Var0
     ).
+
+:- pred rename_in_maybe_var(prog_var::in, prog_var::in,
+    maybe(prog_var)::in, maybe(prog_var)::out) is det.
+
+rename_in_maybe_var(OldVar, NewVar, MaybeVar0, MaybeVar) :-
+    (
+        MaybeVar0 = yes(Var0),
+        rename_in_var(OldVar, NewVar, Var0, Var),
+        MaybeVar = yes(Var)
+    ;
+        MaybeVar0 = no,
+        MaybeVar = no
+    ).
+
+:- pred rename_in_catch_expr(prog_var::in, prog_var::in,
+    catch_expr::in, catch_expr::out) is det.
+
+rename_in_catch_expr(OldVar, NewVar, Catch0, Catch) :-
+    Catch0 = catch_expr(Term0, Goal0),
+    term.substitute(Term0, OldVar, term.variable(NewVar, context_init), Term),
+    rename_in_goal(OldVar, NewVar, Goal0, Goal),
+    Catch = catch_expr(Term, Goal).
 
 %-----------------------------------------------------------------------------%
 

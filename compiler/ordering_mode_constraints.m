@@ -402,6 +402,7 @@ goal_expr_reordering(PredId, VarMap, Bindings, GoalExpr0, GoalExpr) :-
     ;
         GoalExpr0 = shorthand(_),
         % XXX We need to handle atomic goals.
+        % XXX We need to handle try goals.
         unexpected(this_file, "goal_expr_reordering: NYI: shorthand")
     ).
 
@@ -803,6 +804,9 @@ dump_goal_goal_paths(Indent, Goal, !IO) :-
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             Goals = [MainGoal | OrElseGoals],
             list.foldl(dump_goal_goal_paths(SubGoalIndent), Goals, !IO)
+        ;
+            ShortHand = try_goal(_, _, _),
+            unexpected(this_file, "try_goal")
         ;
             ShortHand = bi_implication(_, _),
             unexpected(this_file, "bi_implication")

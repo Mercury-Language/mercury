@@ -715,6 +715,10 @@ normalise_goal_expr(GoalExpr0, GoalExpr) :-
             ShortHand = atomic_goal(GoalType, Outer, Inner, Vars, MainGoal,
                 OrElseAlternatives, OrElseInners)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            normalise_goal(SubGoal0, SubGoal),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
+        ;
             ShortHand0 = bi_implication(LHS0, RHS0),
             normalise_goal(LHS0, LHS),
             normalise_goal(RHS0, RHS),

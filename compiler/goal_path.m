@@ -224,9 +224,13 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, GoalExpr0, GoalExpr) :-
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            fill_goal_slots(Path0, SlotInfo, SubGoal0, SubGoal),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
+        ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "fill_expr_slots: unexpected shorthand")
+            unexpected(this_file, "fill_expr_slots: unexpected bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ).

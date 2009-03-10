@@ -432,6 +432,9 @@ hlds_goal_used_modules(Goal, !UsedModules) :-
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             hlds_goal_used_modules(MainGoal, !UsedModules),
             list.foldl(hlds_goal_used_modules, OrElseGoals, !UsedModules)
+        ;
+            ShortHand = try_goal(_, _, SubGoal),
+            hlds_goal_used_modules(SubGoal, !UsedModules)
         )
     ).
 

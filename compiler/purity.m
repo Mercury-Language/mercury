@@ -798,6 +798,12 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
+                !Info),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
+            GoalExpr = shorthand(ShortHand)
+        ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file, "compute_expr_purity: bi_implication")

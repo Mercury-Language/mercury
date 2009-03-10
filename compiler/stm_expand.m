@@ -382,6 +382,9 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
             stm_create_actual_goal(GoalType, Instmap, FinalInstmap,
                 Outer, Inner, MainGoal, OrElseGoals, Goal, !Info)
         ;
+            ShortHand0 = try_goal(_, _, _),
+            unexpected(this_file, "stm_process_goal: try_goal")
+        ;
             ShortHand0 = bi_implication(_, _),
             unexpected(this_file, "stm_process_goal: bi_implication")
         )

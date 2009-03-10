@@ -231,6 +231,10 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, Error,
             first_order_check_goals(OrElseGoals, Negated, WholeScc,
                 ThisPredProcId, Error, !ModuleInfo, !IO)
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            first_order_check_goal(SubGoal, Negated, WholeScc,
+                ThisPredProcId, Error, !ModuleInfo, !IO)
+        ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file, "first_order_check_goal: bi_implication")
@@ -393,6 +397,10 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
             higher_order_check_goal(MainGoal, Negated, WholeScc,
                 ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
             higher_order_check_goals(OrElseGoals, Negated, WholeScc,
+                ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
+        ;
+            ShortHand = try_goal(_, _, SubGoal),
+            higher_order_check_goal(SubGoal, Negated, WholeScc,
                 ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
         ;
             ShortHand = bi_implication(_, _),
@@ -818,6 +826,9 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             stratify_analyze_goal(MainGoal, !Calls, !HasAT, !CallsHO),
             stratify_analyze_goals(OrElseGoals, !Calls, !HasAT, !CallsHO)
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            stratify_analyze_goal(SubGoal, !Calls, !HasAT, !CallsHO)
+        ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file, "stratify_analyze_goal: bi_implication")
@@ -932,6 +943,9 @@ get_called_procs(Goal, !Calls) :-
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             get_called_procs(MainGoal, !Calls),
             get_called_procs_goals(OrElseGoals, !Calls)
+        ;
+            ShortHand = try_goal(_, _, SubGoal),
+            get_called_procs(SubGoal, !Calls)
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.

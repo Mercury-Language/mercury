@@ -283,12 +283,36 @@
                 % filled in when quantification renames the inner stm state
                 % variables apart in each of the or_else alternatives.
                 orelse_inners       :: list(atomic_interface_vars)
+            )
+
+    ;       try_goal(
+                % A try goal.
+
+                % The variables holding the initial and final I/O states for
+                % the goal to be executed in the `try' proper, i.e. not
+                % inclusive of the I/O states that may be in the arms following
+                % the try.  Will be `no' if no `io(_)' component was specified.
+                try_maybe_io        :: maybe(try_io_state_vars),
+
+                % The variable that will hold the result of the `try' or
+                % `try_io' call.
+                try_result_var      :: prog_var,
+
+                % A "pre-transformed" version of the entire try goal.
+                % See try_expand.m for details.
+                try_goal            :: hlds_goal
             ).
 
 :- type atomic_interface_vars
     --->    atomic_interface_vars(
                 atomic_initial  :: prog_var,
                 atomic_final    :: prog_var
+            ).
+
+:- type try_io_state_vars
+    --->    try_io_state_vars(
+                try_io_initial  :: prog_var,
+                try_io_final    :: prog_var
             ).
 
     % If an atomic goal has type unknown_atomic_goal_type, then the conversion
@@ -299,6 +323,12 @@
     --->    unknown_atomic_goal_type
     ;       top_level_atomic_goal
     ;       nested_atomic_goal.
+
+:- type catch_part
+    --->    catch_part(
+                catch_expr  :: hlds_goal_expr,
+                catch_goal  :: hlds_goal
+            ).
 
     % Each scope that is created from the expansion of a ground term above
     % a certain size is classified into one of these three categories.
@@ -2418,6 +2448,20 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             Shorthand = atomic_goal(GoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners)
         ;
+            Shorthand0 = try_goal(MaybeIO0, ResultVar0, SubGoal0),
+            (
+                MaybeIO0 = yes(try_io_state_vars(IOVarInitial0, IOVarFinal0)),
+                rename_var(Must, Subn, IOVarInitial0, IOVarInitial),
+                rename_var(Must, Subn, IOVarFinal0, IOVarFinal),
+                MaybeIO = yes(try_io_state_vars(IOVarInitial, IOVarFinal))
+            ;
+                MaybeIO0 = no,
+                MaybeIO = no
+            ),
+            rename_var(Must, Subn, ResultVar0, ResultVar),
+            rename_vars_in_goal(Must, Subn, SubGoal0, SubGoal),
+            Shorthand = try_goal(MaybeIO, ResultVar, SubGoal)
+        ;
             Shorthand0 = bi_implication(LeftGoal0, RightGoal0),
             rename_vars_in_goal(Must, Subn, LeftGoal0, LeftGoal),
             rename_vars_in_goal(Must, Subn, RightGoal0, RightGoal),
@@ -2843,6 +2887,9 @@ goal_has_foreign(Goal) = HasForeign :-
             ShortHand = atomic_goal(_, _, _, _, _, _, _),
             HasForeign = yes
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            HasForeign = goal_has_foreign(SubGoal)
+        ;
             ShortHand = bi_implication(GoalA, GoalB),
             HasForeign = bool.or(goal_has_foreign(GoalA),
                 goal_has_foreign(GoalB))
@@ -2901,6 +2948,7 @@ goal_expr_has_subgoals(GoalExpr) = HasSubGoals :-
     ;
         GoalExpr = shorthand(ShortHand),
         ( ShortHand = atomic_goal(_, _, _, _, _, _, _)
+        ; ShortHand = try_goal(_, _, _)
         ; ShortHand = bi_implication(_, _)
         ),
         HasSubGoals = has_subgoals
@@ -3012,6 +3060,10 @@ set_goal_contexts(Context, Goal0, Goal) :-
             list.map(set_goal_contexts(Context), OrElseGoals0, OrElseGoals),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
+        ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            set_goal_contexts(Context, SubGoal0, SubGoal),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(LHS0, RHS0),
             set_goal_contexts(Context, LHS0, LHS),

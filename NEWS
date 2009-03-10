@@ -27,6 +27,7 @@ Changes to the Mercury language:
 * We now support currying of multi-moded predicates or functions when the
   mode to curry can be determined from the insts of the higher-order
   arguments.
+* We now support `try' goals for catching exceptions.
 
 Changes to the Mercury standard library:
 
@@ -447,6 +448,32 @@ Changes to the Mercury language:
 		),
 	...
 	Z = apply(AnyFunc, W)			% W = Z + A
+
+* Try goals provide syntactic sugar for catching exceptions. An example is:
+
+	:- pred p_carefully(io::di, io::uo) is det.
+
+	p_carefully(!IO) :-
+		(try [io(!IO)] (
+			io.write_string("Calling p\n", !IO),
+			p(Output, !IO)
+		)
+		then
+			io.write_string("p returned: ", !IO),
+			io.write(Output, !IO),
+			io.nl(!IO)
+		catch S ->
+			io.write_string("p threw a string: ", !IO),
+			io.write_string(S, !IO),
+			io.nl(!IO)
+		catch 42 ->
+			io.write_string("p threw 42\n", !IO)
+		catch_any Other ->
+			io.write_string("p threw something: ", !IO),
+			io.write(Other, !IO),
+			% Rethrow the object.
+			throw(X)
+		).
 
 Changes to the Mercury compiler:
 

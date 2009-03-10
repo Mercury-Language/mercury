@@ -647,6 +647,9 @@ in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
             in_interface_check(ModuleInfo, PredInfo, MainGoal, !Specs),
             in_interface_check_list(ModuleInfo, PredInfo, OrElseGoals, !Specs)
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            in_interface_check(ModuleInfo, PredInfo, SubGoal, !Specs)
+        ;
             ShortHand = bi_implication(LHS, RHS),
             in_interface_check(ModuleInfo, PredInfo, LHS, !Specs),
             in_interface_check(ModuleInfo, PredInfo, RHS, !Specs)

@@ -618,6 +618,10 @@ goal_vars_2(Goal, !Set) :-
             goal_vars_2(MainGoal, !Set),
             goals_goal_vars(OrElseGoals, !Set)
         ;
+            Shorthand = try_goal(_, _, SubGoal),
+            % The IO and Result variables would be in SubGoal.
+            goal_vars_2(SubGoal, !Set)
+        ;
             Shorthand = bi_implication(LeftGoal, RightGoal),
             goal_vars_2(LeftGoal, !Set),
             goal_vars_2(RightGoal, !Set)
@@ -761,6 +765,11 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            attach_features_to_all_goals(Features, InFromGroundTerm,
+                SubGoal0, SubGoal),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
+        ;
             ShortHand0 = bi_implication(GoalA0, GoalB0),
             attach_features_to_all_goals(Features, InFromGroundTerm,
                 GoalA0, GoalA),
@@ -868,7 +877,9 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, _, _, _),
+            ( ShortHand = atomic_goal(_, _, _, _, _, _, _)
+            ; ShortHand = try_goal(_, _, _)
+            ),
             IsLeaf = is_not_leaf
         ;
             ShortHand = bi_implication(GoalA, GoalB),
@@ -1005,6 +1016,11 @@ goal_expr_size(GoalExpr, Size) :-
             goal_size(MainGoal, Size1),
             goals_size(OrElseGoals, Size2),
             Size = Size1 + Size2 + 1
+        ;
+            ShortHand = try_goal(_, _, SubGoal),
+            % Hopefully this size isn't too important as the SubGoal is not yet
+            % in the final form.
+            goal_size(SubGoal, Size)
         ;
             ShortHand = bi_implication(GoalA, GoalB),
             goal_size(GoalA, Size1),
@@ -1205,8 +1221,11 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
             goal_list_calls_proc_in_list_2(OrElseGoals, PredProcIds,
                 !CalledSet)
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            goal_calls_proc_in_list_2(SubGoal, PredProcIds, !CalledSet)
+        ;
             ShortHand = bi_implication(_, _),
-            unexpected(this_file, "goal__calls_proc_in_list_2: bi_implication")
+            unexpected(this_file, "goal_calls_proc_in_list_2: bi_implication")
         )
     ).
 
@@ -1846,6 +1865,12 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
             OrElseGoals = list.map(maybe_strip_equality_pretest, OrElseGoals0),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners),
+            GoalExpr = shorthand(ShortHand),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            SubGoal = maybe_strip_equality_pretest(SubGoal0),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
             GoalExpr = shorthand(ShortHand),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;

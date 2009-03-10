@@ -221,6 +221,10 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
             warn_singletons_in_goal_list(OrElseGoals, InsideQuantVars, VarSet,
                 PredCallId, ModuleInfo, !Specs)
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            warn_singletons_in_goal(SubGoal, QuantVars, VarSet,
+                PredCallId, ModuleInfo, !Specs)
+        ;
             ShortHand = bi_implication(GoalA, GoalB),
             warn_singletons_in_goal_list([GoalA, GoalB], QuantVars, VarSet,
                 PredCallId, ModuleInfo, !Specs)

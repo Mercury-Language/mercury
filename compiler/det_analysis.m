@@ -386,10 +386,10 @@ get_exported_proc_context([Proc | Procs], PredId, ProcId, Context) :-
 
 %-----------------------------------------------------------------------------%
 
-det_infer_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
-        InstMap0, !.SolnContext, RightFailingContexts,
+det_infer_goal(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, Detism, GoalFailingContexts,
         !DetInfo, !Specs) :-
+    Goal0 = hlds_goal(_, GoalInfo0),
     NonLocalVars = goal_info_get_nonlocals(GoalInfo0),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo0),
 
@@ -410,6 +410,23 @@ det_infer_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
     ;
         AddPruning = no
     ),
+
+    det_infer_goal_1(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
+        MaybePromiseEqvSolutionSets, AddPruning, Detism, GoalFailingContexts,
+        !DetInfo, !Specs).
+
+:- pred det_infer_goal_1(hlds_goal::in, hlds_goal::out, instmap::in,
+    soln_context::in, list(failing_context)::in, maybe(pess_info)::in,
+    bool::in, determinism::out, list(failing_context)::out,
+    det_info::in, det_info::out, list(error_spec)::in, list(error_spec)::out)
+    is det.
+
+det_infer_goal_1(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
+        InstMap0, !.SolnContext, RightFailingContexts,
+        MaybePromiseEqvSolutionSets, AddPruning, Detism, GoalFailingContexts,
+        !DetInfo, !Specs) :-
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo0),
+
     (
         GoalExpr0 = scope(ScopeReason, _),
         (
@@ -637,6 +654,15 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             GoalFailingContexts = [],
             ShortHand = atomic_goal(GoalType, Inner, Outer, Vars, MainGoal,
                 OrElseGoals, OrElseInners)
+        ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, TryGoal0),
+            % Don't allow det_infer_goal_1 to insert a commit scope around the
+            % code that's standing in place for the code we'll actually create
+            % for a try goal.
+            det_infer_goal_1(TryGoal0, TryGoal, InstMap0, SolnContext,
+                RightFailingContexts, MaybePromiseEqvSolutionSets, no, Detism,
+                GoalFailingContexts, !DetInfo, !Specs),
+            ShortHand = try_goal(MaybeIO, ResultVar, TryGoal)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.

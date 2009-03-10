@@ -1210,6 +1210,11 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal,
+                VarTypes, InstMap0, InstMapDelta, !RI),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
+        ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file,

@@ -188,6 +188,8 @@ SINGLEMODULE= \
 	test_feature_set \
 	test_may_duplicate \
 	tricky_assert1 \
+	try_bad_params \
+	try_io_else \
 	type_inf_loop \
 	type_loop \
 	type_mismatch \

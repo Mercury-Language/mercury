@@ -831,8 +831,8 @@ maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
         )
     ).
 
-    :- pred write_pred(int::in, module_info::in, pred_id::in, pred_info::in,
-        io::di, io::uo) is det.
+:- pred write_pred(int::in, module_info::in, pred_id::in, pred_info::in,
+    io::di, io::uo) is det.
 
 write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     Module = pred_info_module(PredInfo),
@@ -2223,6 +2223,24 @@ write_goal_2_shorthand(ShortHand, ModuleInfo, VarSet, AppendVarNums,
             Indent + 1, "\n", TypeQual, !IO),
         write_goal_list(OrElseGoals, ModuleInfo, VarSet, AppendVarNums,
             Indent, "or_else\n", TypeQual, !IO),
+        write_indent(Indent, !IO),
+        io.write_string(")", !IO),
+        io.write_string(Follow, !IO)
+    ;
+        ShortHand = try_goal(MaybeIO, _, SubGoal),
+        write_indent(Indent, !IO),
+        io.write_string("( % try\n", !IO),
+        (
+            MaybeIO = yes(try_io_state_vars(IOVarA, IOVarB)),
+            write_indent(Indent + 1, !IO),
+            io.write_string("% io(", !IO),
+            mercury_output_vars(VarSet, AppendVarNums, [IOVarA, IOVarB], !IO),
+            io.write_string(")\n", !IO)
+        ;
+            MaybeIO = no
+        ),
+        write_goal_a(SubGoal, ModuleInfo, VarSet, AppendVarNums,
+            Indent + 1, "\n", TypeQual, !IO),
         write_indent(Indent, !IO),
         io.write_string(")", !IO),
         io.write_string(Follow, !IO)

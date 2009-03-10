@@ -1,7 +1,10 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=4 tw=0
 %-----------------------------------------------------------------------------%
-%
+% Copyright (C) 2009 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 % 
 % File: type_constraints.m
 % Main author: aebert
@@ -1804,6 +1807,24 @@ goal_to_constraint(Environment, hlds_goal(shorthand(atomic_goal(GoalType, Outer,
     ),
     % Recursively evaluate transaction goals.
     list.foldl(goal_to_constraint(Environment), [Main|Alternatives], !TCInfo).
+
+goal_to_constraint(Environment, hlds_goal(shorthand(try_goal(MaybeIO, _ResultVar,
+        SubGoal)), Info), !TCInfo) :-
+    Context = goal_info_get_context(Info),
+    (
+        MaybeIO = yes(try_io_state_vars(IOVarA, IOVarB)),
+        get_var_type(IOVarA, InitA, !TCInfo),
+        get_var_type(IOVarB, InitB, !TCInfo),
+        ConstraintA = ctconstr([stconstr(InitA, io_state_type)],
+            tconstr_active, Context, no, no),
+        ConstraintB = ctconstr([stconstr(InitB, io_state_type)],
+            tconstr_active, Context, no, no),
+        add_type_constraint([ConstraintA], [InitA], !TCInfo),
+        add_type_constraint([ConstraintB], [InitB], !TCInfo)
+    ;
+        MaybeIO = no
+    ),
+    goal_to_constraint(Environment, SubGoal, !TCInfo).
 
     % Creates a constraint from the information stored in a predicate
     % definition. This may only be called if the number of arguments given

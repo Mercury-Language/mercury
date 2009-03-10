@@ -1,0 +1,5 @@
+Should succeed: sugar-coated
+Should fail: failed
+Should throw an int: caught int: 90210
+Should throw a string: caught string: up
+Should throw a primate: caught other type: stupid_monkey

@@ -372,6 +372,12 @@ ensure_unique_arguments_in_goal(hlds_goal(!.GoalExpr, !.GoalInfo),
                 MainGoal, OrElseGoals, OrElseInners),
             !:GoalExpr = shorthand(ShortHand)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            ensure_unique_arguments_in_goal(SubGoal0, SubGoal, !SeenSoFar,
+                !Varset, !Vartypes),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
+            !:GoalExpr = shorthand(ShortHand)
+        ;
             ShortHand0 = bi_implication(_, _),
             unexpected(this_file, "bi_implication")
         )

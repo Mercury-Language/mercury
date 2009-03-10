@@ -319,6 +319,13 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
                 MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners0,
                 GoalInfo0, GoalExpr, !ModeInfo, !IO)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            mode_checkpoint(enter, "try", !ModeInfo, !IO),
+            unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
+            GoalExpr = shorthand(ShortHand),
+            mode_checkpoint(exit, "try", !ModeInfo, !IO)
+        ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file,

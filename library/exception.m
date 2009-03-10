@@ -242,6 +242,29 @@
 
 %-----------------------------------------------------------------------------%
 
+    % This is used in the implementation of `try' goals.  It should never be
+    % called.
+    %
+:- pred magic_exception_result(exception_result({})::out(cannot_fail))
+    is cc_multi.
+
+    % This is used in the implementation of `try' goals.  It should never be
+    % called.
+    %
+:- pred unreachable is erroneous.
+
+    % Forwarding predicates so we don't need to implicitly import `univ'
+    % in the implementation of `try' goals.
+    %
+:- pred exc_univ_to_type(univ, T).
+:- mode exc_univ_to_type(in, out) is semidet.
+:- mode exc_univ_to_type(out, in) is det.
+:- mode exc_univ_to_type(uo, di) is det.
+
+:- some [T] func exc_univ_value(univ) = T.
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module solutions.
@@ -779,6 +802,19 @@ handle_stm_result(Result0, Result, !STM) :-
         Result = exception(E),
         unsafe_promise_unique(!STM)
     ).
+
+%-----------------------------------------------------------------------------%
+
+magic_exception_result(succeeded({})).
+magic_exception_result(succeeded({})).  % force cc_multi
+
+unreachable :-
+    throw("unreachable code reached").
+
+exc_univ_to_type(Univ, Object) :-
+    univ.univ_to_type(Univ, Object).
+
+exc_univ_value(Univ) = univ.univ_value(Univ).
 
 %-----------------------------------------------------------------------------%
 

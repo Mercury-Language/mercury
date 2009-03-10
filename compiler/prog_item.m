@@ -818,6 +818,14 @@
                 aexpr_main_goal     :: goal,    
                 aexpr_orelse_goals  :: goals
             )
+    ;       try_expr(
+                tryexpr_maybe_io        :: maybe(prog_var),
+                tryexpr_goal            :: goal,
+                tryexpr_then            :: goal,
+                tryexpr_maybe_else      :: maybe(goal),
+                tryexpr_catches         :: list(catch_expr),
+                tryexpr_maybe_catch_any :: maybe(catch_any_expr)
+            )
 
     % implications
     ;       implies_expr(goal, goal)
@@ -834,6 +842,18 @@
     ;       event_expr(string, list(prog_term))
     ;       call_expr(sym_name, list(prog_term), purity)
     ;       unify_expr(prog_term, prog_term, purity).
+
+:- type catch_expr
+    --->    catch_expr(
+                catch_pattern   :: prog_term,
+                catch_goal      :: goal
+            ).
+
+:- type catch_any_expr
+    --->    catch_any_expr(
+                catch_any_var   :: prog_var,
+                catch_any_goal  :: goal
+            ).
 
 %-----------------------------------------------------------------------------%
 %

@@ -3013,6 +3013,50 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
+mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
+    Expr = try_expr(MaybeIO, Goal, Then, MaybeElse, Catches, MaybeCatchAny),
+    io.write_string("(try [", !IO),
+    (
+        MaybeIO = yes(IOStateVar),
+        io.write_string("io(!", !IO),
+        mercury_output_var(VarSet, no, IOStateVar, !IO),
+        io.write_string(")", !IO)
+    ;
+        MaybeIO = no
+    ),
+    io.write_string("] (", !IO),
+    Indent1 = Indent + 1,
+    mercury_output_newline(Indent1, !IO),
+    mercury_output_goal(Goal, VarSet, Indent1, !IO),
+    mercury_output_newline(Indent, !IO),
+    io.write_string(")", !IO),
+    mercury_output_newline(Indent, !IO),
+    io.write_string("then", !IO),
+    mercury_output_newline(Indent1, !IO),
+    mercury_output_goal(Then, VarSet, Indent1, !IO),
+    mercury_output_newline(Indent, !IO),
+    (
+        MaybeElse = yes(Else),
+        io.write_string("else", !IO),
+        mercury_output_newline(Indent1, !IO),
+        mercury_output_goal(Else, VarSet, Indent1, !IO)
+    ;
+        MaybeElse = no
+    ),
+    list.foldl(mercury_output_catch(VarSet, Indent), Catches, !IO),
+    (
+        MaybeCatchAny = yes(catch_any_expr(CatchAnyVar, CatchAnyGoal)),
+        io.write_string("catch_any ", !IO),
+        mercury_output_var(VarSet, no, CatchAnyVar, !IO),
+        io.write_string(" ->", !IO),
+        mercury_output_newline(Indent1, !IO),
+        mercury_output_goal(CatchAnyGoal, VarSet, Indent1, !IO)
+    ;
+        MaybeCatchAny = no
+    ),
+    mercury_output_newline(Indent, !IO),
+    io.write_string(")", !IO).
+
 mercury_output_goal_2(if_then_else_expr(Vars, StateVars, Cond, Then, Else),
         VarSet, Indent, !IO) :-
     io.write_string("(if", !IO),
@@ -3290,8 +3334,6 @@ mercury_output_some(Vars, StateVars, VarSet, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
-
 :- pred mercury_output_orelse_goals(goals::in, prog_varset::in, int::in,
     io::di, io::uo) is det.
 
@@ -3312,6 +3354,17 @@ mercury_output_orelse_goals(Goals, VarSet, Indent, !IO) :-
             mercury_output_orelse_goals(GoalTails, VarSet, Indent, !IO)
         )
     ).
+
+:- pred mercury_output_catch(prog_varset::in, int::in, catch_expr::in,
+    io::di, io::uo) is det.
+
+mercury_output_catch(VarSet, Indent, catch_expr(Pattern, Goal), !IO) :-
+    io.write_string("catch ", !IO),
+    mercury_output_term(VarSet, no, Pattern, !IO),
+    io.write_string(" ->", !IO),
+    mercury_output_newline(Indent + 1, !IO),
+    mercury_output_goal(Goal, VarSet, Indent + 1, !IO),
+    mercury_output_newline(Indent, !IO).
 
 %-----------------------------------------------------------------------------%
 

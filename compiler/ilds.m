@@ -269,10 +269,10 @@
     % handwritten code, or can introduce try or catch code.
     %
 :- type blocktype
-    --->    scope(locals)
+    --->    bt_scope(locals)
             % scope just introduces a scope for local variables
-    ;       try
-    ;       catch(class_name).
+    ;       bt_try
+    ;       bt_catch(class_name).
 
     % Each block has a unique identifier (mainly so you can tell which
     % ones match up without counting them).
@@ -511,9 +511,9 @@ calculate_max_stack_2([I | Instrs], Current, Max) =
 
 get_stack_difference(end_block(_, _))           = 0.
 get_stack_difference(comment(_))                = 0.
-get_stack_difference(start_block(scope(_), _))  = 0.
-get_stack_difference(start_block(try, _))       = 0.
-get_stack_difference(start_block(catch(_), _))  = 1.
+get_stack_difference(start_block(bt_scope(_), _)) = 0.
+get_stack_difference(start_block(bt_try, _))      = 0.
+get_stack_difference(start_block(bt_catch(_), _)) = 1.
 get_stack_difference(context(_, _))             = 0.
 get_stack_difference(label(_Label))             = 0.
 get_stack_difference(il_asm_code(_, _))         = 0.

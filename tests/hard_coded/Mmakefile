@@ -242,6 +242,13 @@ ORDINARY_PROGS=	\
 	transform_value \
 	transitive_inst_type \
 	trigraphs \
+	try_syntax_1 \
+	try_syntax_2 \
+	try_syntax_3 \
+	try_syntax_4 \
+	try_syntax_5 \
+	try_syntax_6 \
+	try_syntax_7 \
 	tuple_test \
 	type_ctor_desc \
 	type_ctor_desc_manip \
@@ -740,6 +747,17 @@ init_excp.out: init_excp
 #
 mutable_excp.out: mutable_excp
 	if MERCURY_SUPPRESS_STACK_TRACE=yes ./mutable_excp > $@.tmp 2>&1; then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
+# try_syntax_3.out is expected to fail (it calls throw/1).
+#
+try_syntax_3.out: try_syntax_3
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./try_syntax_3 > $@.tmp 2>&1; \
+	then \
 		grep  . $@.tmp; \
 		exit 1; \
 	else \

@@ -1,0 +1,923 @@
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2009 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public Licence - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+%
+% File: try_expand.m
+% Author: wangp.
+%
+% Try goals are implemented by replacing them with calls to predicates in the
+% `exception' module.  For example, goal such as:
+%
+%      (try [] p(X, Y)
+%       then q(X, Y)
+%       else r
+%       catch ...
+%      )
+%
+% is expanded to:
+%
+%      exception.try(
+%          (pred(OutputTuple::out) is semidet :-
+%              p(X, Y),
+%              OutputTuple = {X, Y}
+%          ), TryResult),
+%      (
+%          TryResult = succeeded({X, Y}),
+%          q(X, Y)
+%      ;
+%          TryResult = failed,
+%          r
+%      ;
+%          TryResult = exception(Excp),
+%          ...exception handling...
+%      )
+%
+% The transformation requires us to know which variables are bound in the
+% higher order term that is passed to `try', as well as the determinism, so we
+% can't transform them immediately when converting from the parse tree to HLDS
+% representations.  But try goals have very complex control flows and we don't
+% really want to write and maintain mode, determinism, and other analyses to
+% work on them directly either.
+%
+% Instead, we cheat a little and "pre-transform" try goals very early on (when
+% converting from a parse tree to an HLDS) into something that resembles
+% somewhat the final forms, e.g.
+%
+%      magic_exception_result(TryResult),  % out(cannot_fail)
+%      (
+%          TryResult = succeeded({}),
+%          ( p(X, Y) ->
+%              q(X, Y)
+%          ;
+%              r
+%          )
+%      ;
+%          TryResult = exception(Excp),
+%          ...exception handling...
+%      )
+%
+% We let the semantic checks work on these pre-transformed goals.  Afterwards
+% we pick out the various pieces and construct the proper, final goals.
+%
+%-----------------------------------------------------------------------------%
+%
+% PRE-TRANSFORMATION (implemented in add_clause.m)
+%
+% 1. try goal without I/O but with an else part
+%
+%      magic_exception_result(TryResult),  % out(cannot_fail)
+%      (
+%          TryResult = succeeded({}),
+%          ( <Goal> ->
+%              <Then>
+%          ;
+%              <Else>
+%          )
+%      ;
+%          TryResult = exception(Excp),
+%          <ExcpHandling>
+%      )
+%
+%   As intended, variables bound in <Goal> are only in scope within <Then>,
+%   not <Else> nor <ExcpHandling>.
+%
+% 2. try goal without I/O and without an else part, or
+% 3. try goal with I/O
+%
+%       magic_exception_result(TryResult),  % out(cannot_fail)
+%       (
+%           TryResult = succeeded({}),
+%           some [] <Goal>,
+%           some [] <Then>
+%       ;
+%           TryResult = exception(Excp),
+%           <ExcpHandling>
+%       )
+%
+%   The `some' scopes there so that we can distinguish between <Goal> and
+%   <Then> later. (They act as barrier scopes, except we can't introduce
+%   barrier scopes then.  We depend on the early analyses not to move things
+%   in and out of `some' scopes.)
+%
+%-----------------------------------------------------------------------------%
+%
+% POST-TRANSFORMATION (implemented in this module)
+%
+% 1. try goal without I/O, and can fail
+%
+%      try((pred(OutputTuple::out) is semidet :-
+%              <Goal>,
+%              OutputTuple = { <BoundVars> }
+%          ), TryResult),
+%      (
+%          TryResult = succeeded(TmpTupleVar),
+%          inst_cast(TmpTupleVar, TupleVar),
+%          TupleVar = { <BoundVars> },
+%          <Then>
+%      ;
+%          TryResult = failed,
+%          <Else>
+%      ;
+%          TryResult = exception(Excp),
+%          <ExcpHandling>
+%      )
+%
+% 2. try goal without I/O, and cannot fail
+%
+%      try((pred(OutputTuple::out) is det :-
+%              <Goal>,
+%              OutputTuple = { <BoundVars> }
+%          ), TryResult),
+%      (
+%          TryResult = succeeded(TmpTupleVar),
+%          inst_cast(TmpTupleVar, TupleVar),
+%          TupleVar = { <BoundVars> },
+%          <Then>
+%      ;
+%          TryResult = exception(Excp),
+%          <ExcpHandling>
+%      )
+%
+% 3. try goal with I/O
+%
+%      try_io((pred(OutputTuple::out, !.IO::di, !:IO::uo) is det :-
+%              <Goal>,
+%              OutputTuple = { <BoundVars> }
+%          ), TryResult, !IO),
+%      (
+%          TryResult = succeeded(TmpTupleVar),
+%          inst_cast(TmpTupleVar, TupleVar),
+%          TupleVar = { <BoundVars> },
+%          <Then>
+%      ;
+%          TryResult = exception(Excp),
+%          <ExcpHandling>
+%      )
+%
+%   We have to rename an io.state variable in ExcpHandling so that the sequence
+%   begins with the output I/O state of the `try_io' call.
+%
+% The inst casts preserve the known insts of the BoundVars, which were lost due
+% to the calls to try*.
+%
+% The <ExcpHandling> parts can be passed through from the pre-transformation.
+% If a `catch_any' is present the exception handling looks like this:
+%
+%      ( exc_univ_to_type(Excp, <CatchPattern1>) ->
+%          <CatchGoal1>
+%      ; exc_univ_to_type(Excp, <CatchPattern2>) ->
+%          <CatchGoal2>
+%      ;
+%          CatchAnyVar = exc_univ_value(Excp),
+%          <CatchAnyGoal>
+%      )
+%
+% Otherwise, if `catch_any' is not present:
+%
+%      ( exc_univ_to_type(Excp, <CatchPattern1>) ->
+%          <CatchGoal1>
+%      ; exc_univ_to_type(Excp, <CatchPattern2>) ->
+%          <CatchGoal2>
+%      ;
+%          rethrow(TryResult)
+%      )
+%
+%-----------------------------------------------------------------------------%
+
+:- module check_hlds.try_expand.
+:- interface.
+
+:- import_module hlds.
+:- import_module hlds.hlds_module.
+
+:- import_module io.
+
+%-----------------------------------------------------------------------------%
+
+:- pred expand_try_goals(module_info::in, module_info::out, io::di, io::uo)
+    is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.det_report.
+:- import_module check_hlds.inst_util.
+:- import_module check_hlds.modes.
+:- import_module check_hlds.polymorphism.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
+:- import_module hlds.pred_table.
+:- import_module hlds.quantification.
+:- import_module libs.
+:- import_module libs.compiler_util.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
+
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module maybe.
+:- import_module pair.
+:- import_module set.
+:- import_module string.
+:- import_module term.
+
+%-----------------------------------------------------------------------------%
+
+expand_try_goals(!ModuleInfo, !IO) :-
+    % The exception module is implicitly imported if any try goals were seen,
+    % so if the exception module is not imported then we know there are no try
+    % goals to be expanded.
+    module_info_get_imported_module_specifiers(!.ModuleInfo, ImportedModules),
+    ( set.contains(ImportedModules, mercury_exception_module) ->
+        some [!Globals] (
+            module_info_get_globals(!.ModuleInfo, !:Globals),
+            disable_det_warnings(OptionsToRestore, !Globals),
+            module_info_set_globals(!.Globals, !ModuleInfo),
+
+            module_info_predids(PredIds, !ModuleInfo),
+            list.foldl2(expand_try_goals_in_pred, PredIds, !ModuleInfo, !IO),
+
+            module_info_get_globals(!.ModuleInfo, !:Globals),
+            restore_det_warnings(OptionsToRestore, !Globals),
+            module_info_set_globals(!.Globals, !ModuleInfo)
+        )
+    ;
+        true
+    ).
+
+:- pred expand_try_goals_in_pred(pred_id::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+expand_try_goals_in_pred(PredId, !ModuleInfo, !IO) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_non_imported_procids(PredInfo),
+    list.foldl2(expand_try_goals_in_proc(PredId), ProcIds, !ModuleInfo, !IO).
+
+:- pred expand_try_goals_in_proc(pred_id::in, proc_id::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+expand_try_goals_in_proc(PredId, ProcId, !ModuleInfo, !IO) :-
+    some [!PredInfo, !ProcInfo] (
+        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+            !:PredInfo, !:ProcInfo),
+        proc_info_get_goal(!.ProcInfo, Goal0),
+        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstmap),
+
+        Info0 = trys_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, no),
+        expand_try_goals_in_goal(InitInstmap, Goal0, Goal, Info0, Info),
+        Info = trys_info(!:ModuleInfo, !:PredInfo, !:ProcInfo, Changed),
+
+        (
+            Changed = yes,
+            update_changed_proc(Goal, PredId, ProcId, !.PredInfo, !.ProcInfo,
+                !ModuleInfo, !IO),
+            module_info_clobber_dependency_info(!ModuleInfo)
+        ;
+            Changed = no
+        )
+    ).
+
+:- pred update_changed_proc(hlds_goal::in, pred_id::in, proc_id::in,
+    pred_info::in, proc_info::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
+        !IO) :-
+    proc_info_set_goal(Goal, !ProcInfo),
+    requantify_proc(!ProcInfo),
+    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, !.ProcInfo,
+        !ModuleInfo),
+
+    modecheck_proc(ProcId, PredId, !ModuleInfo, ErrorSpecs, _Changed, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !ModuleInfo),
+    ( NumErrors > 0 ->
+        % In some cases we may detect mode errors after expanding try goals
+        % which were missed before, so don't abort the compiler (but we'll stop
+        % compiling not long after this pass).
+        true
+    ;
+        determinism_check_proc(ProcId, PredId, !ModuleInfo, DetSpecs),
+        (
+            DetSpecs = []
+        ;
+            DetSpecs = [_ | _],
+            unexpected(this_file, "determinism check fails when repeated")
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- type trys_info
+    --->    trys_info(
+                ti_module_info  :: module_info,
+                ti_pred_info    :: pred_info,
+                ti_proc_info    :: proc_info,
+                ti_changed      :: bool
+            ).
+
+:- pred expand_try_goals_in_goal(instmap::in, hlds_goal::in, hlds_goal::out,
+    trys_info::in, trys_info::out) is det.
+
+expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
+        GoalExpr0 = unify(_, _, _, _, _),
+        Goal = Goal0
+    ;
+        GoalExpr0 = conj(ConjType, Conjuncts0),
+        expand_try_goals_in_conj(Instmap, Conjuncts0, Conjuncts, !Info),
+        GoalExpr = conj(ConjType, Conjuncts),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = disj(Disjuncts0),
+        expand_try_goals_in_disj(Instmap, Disjuncts0, Disjuncts, !Info),
+        GoalExpr = disj(Disjuncts),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        expand_try_goals_in_goal(Instmap, SubGoal0, SubGoal, !Info),
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        expand_try_goals_in_cases(Instmap, Cases0, Cases, !Info),
+        GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = scope(Reason, InnerGoal0),
+        (
+            Reason = from_ground_term(_, from_ground_term_construct),
+            % There can be no try goals inside this scope.
+            Goal = Goal0
+        ;
+            ( Reason = exist_quant(_)
+            ; Reason = promise_solutions(_, _)
+            ; Reason = promise_purity(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ; Reason = from_ground_term(_, from_ground_term_other)
+            ; Reason = trace_goal(_, _, _, _, _)
+            ),
+            expand_try_goals_in_goal(Instmap, InnerGoal0, InnerGoal, !Info),
+            GoalExpr = scope(Reason, InnerGoal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        expand_try_goals_in_if_then_else(Instmap, Cond0, Cond, Then0, Then,
+            Else0, Else, !Info),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        ( GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        Goal = Goal0
+    ;
+        % This should be expanded out at this stage
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = try_goal(_, _, _),
+            expand_try_goal(Instmap, ShortHand0, Goal, !Info)
+        ;
+            ShortHand0 = atomic_goal(_, _, _, _, _, _, _),
+            unexpected(this_file, "expand_try_goals_in_goal: atomic_goal")
+        ;
+            ShortHand0 = bi_implication(_, _),
+            unexpected(this_file, "expand_try_goals_in_goal: bi_implication")
+        )
+    ).
+
+:- pred expand_try_goals_in_conj(instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    trys_info::in, trys_info::out) is det.
+
+expand_try_goals_in_conj(_Instmap0, [], [], !Info).
+expand_try_goals_in_conj(Instmap0, [Goal0 | Goals0], [Goal | Goals], !Info) :-
+    expand_try_goals_in_goal(Instmap0, Goal0, Goal, !Info),
+    Goal0 = hlds_goal(_, GoalInfo),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
+    apply_instmap_delta(Instmap0, InstmapDelta, Instmap),
+    expand_try_goals_in_conj(Instmap, Goals0, Goals, !Info).
+
+:- pred expand_try_goals_in_disj(instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    trys_info::in, trys_info::out) is det.
+
+expand_try_goals_in_disj(Instmap0, Goals0, Goals, !Info) :-
+    list.map_foldl(expand_try_goals_in_goal(Instmap0), Goals0, Goals, !Info).
+
+:- pred expand_try_goals_in_cases(instmap::in, list(case)::in, list(case)::out,
+    trys_info::in, trys_info::out) is det.
+
+expand_try_goals_in_cases(_Instmap0, [], [], !Info).
+expand_try_goals_in_cases(Instmap0, [Case0 | Cases0], [Case | Cases], !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    expand_try_goals_in_goal(Instmap0, Goal0, Goal, !Info),
+    expand_try_goals_in_cases(Instmap0, Cases0, Cases, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal).
+
+:- pred expand_try_goals_in_if_then_else(instmap::in,
+    hlds_goal::in, hlds_goal::out, hlds_goal::in,
+    hlds_goal::out, hlds_goal::in, hlds_goal::out,
+    trys_info::in, trys_info::out) is det.
+
+expand_try_goals_in_if_then_else(Instmap0, Cond0, Cond, Then0, Then,
+        Else0, Else, !Info) :-
+    expand_try_goals_in_goal(Instmap0, Cond0, Cond, !Info),
+
+    Cond0 = hlds_goal(_, CondInfo),
+    CondInstmapDelta = goal_info_get_instmap_delta(CondInfo),
+    apply_instmap_delta(Instmap0, CondInstmapDelta, InstmapAfterCond),
+    expand_try_goals_in_goal(InstmapAfterCond, Then0, Then, !Info),
+
+    expand_try_goals_in_goal(Instmap0, Else0, Else, !Info).
+
+%-----------------------------------------------------------------------------%
+
+:- inst try_goal
+    --->    try_goal(ground, ground, ground).
+
+:- pred expand_try_goal(instmap::in, shorthand_goal_expr::in(try_goal),
+    hlds_goal::out, trys_info::in, trys_info::out) is det.
+
+expand_try_goal(Instmap, TryGoal, FinalGoal, !Info) :-
+    TryGoal = try_goal(MaybeIO, ResultVar, IntermediateGoal),
+    extract_intermediate_goal_parts(!.Info ^ ti_module_info, ResultVar,
+        IntermediateGoal, Goal0, Then0, MaybeElse0, ExcpHandling0),
+
+    % Handle nested try goals.
+    expand_try_goals_in_goal(Instmap, Goal0, Goal1, !Info),
+    update_instmap(Goal0, Instmap, InstmapAfterGoal),
+    expand_try_goals_in_goal(InstmapAfterGoal, Then0, Then1, !Info),
+    (
+        MaybeElse0 = yes(Else0),
+        expand_try_goals_in_goal(Instmap, Else0, Else1, !Info),
+        MaybeElse1 = yes(Else1)
+    ;
+        MaybeElse0 = no,
+        MaybeElse1 = no
+    ),
+    expand_try_goals_in_goal(Instmap, ExcpHandling0, ExcpHandling1, !Info),
+
+    % Find the output variables.  Note we use Goal0, not Goal1, as any nested
+    % tries would have been transformed will mess up the calculation.
+    bound_nonlocals_in_goal(!.Info ^ ti_module_info, Instmap, Goal0,
+        GoalOutputVarsSet0),
+    (
+        MaybeIO = yes(try_io_state_vars(_IOStateVarInitial, IOStateVarFinal)),
+        set.delete(GoalOutputVarsSet0, IOStateVarFinal, GoalOutputVarsSet)
+    ;
+        MaybeIO = no,
+        GoalOutputVarsSet = GoalOutputVarsSet0
+    ),
+
+    some [!ModuleInfo, !PredInfo, !ProcInfo, !VarTypes] (
+        !.Info = trys_info(!:ModuleInfo, !:PredInfo, !:ProcInfo, _),
+        expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1,
+            ExcpHandling1, InstmapAfterGoal, GoalOutputVarsSet, FinalGoal,
+            !PredInfo, !ProcInfo, !ModuleInfo),
+        !:Info = trys_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, yes)
+    ).
+
+:- pred expand_try_goal_2(maybe(try_io_state_vars)::in, prog_var::in,
+    hlds_goal::in, hlds_goal::in, maybe(hlds_goal)::in, hlds_goal::in,
+    instmap::in, set(prog_var)::in, hlds_goal::out,
+    pred_info::in, pred_info::out, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
+
+expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
+        Instmap, GoalOutputVarsSet, FinalGoal,
+        !PredInfo, !ProcInfo, !ModuleInfo) :-
+    some [!VarTypes] (
+        % Get the type of the output tuple.
+        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
+        GoalOutputVars = set.to_sorted_list(GoalOutputVarsSet),
+        map.apply_to_list(GoalOutputVars, !.VarTypes, GoalOutputVarTypes),
+        OutputTupleType = tuple_type(GoalOutputVarTypes, kind_star),
+
+        % Fix the type of the result of the try call, now that we know what it
+        % should be.
+        RealResultVarType = defined_type(
+            qualified(mercury_exception_module, "exception_result"),
+            [OutputTupleType], kind_star),
+        map.det_update(!.VarTypes, ResultVar, RealResultVarType, !:VarTypes),
+        proc_info_set_vartypes(!.VarTypes, !ProcInfo)
+    ),
+
+    make_try_lambda(Goal1, GoalOutputVarsSet, OutputTupleType, MaybeIO,
+        LambdaVar, AssignLambdaVar, !ProcInfo),
+
+    GoalPurity = goal_get_purity(Goal1),
+
+    (
+        MaybeIO = yes(try_io_state_vars(GoalInitialIOVar, GoalFinalIOVar)),
+
+        % We need to rearrange I/O state variables a bit.
+        %
+        % Let Goal take the I/O state from GoalInitialIOVar to GoalFinalIOVar.
+        % The input to try_io will be GoalInitialIOVar.
+        % Let the output of try_io to be TryIOOutputVar.
+        %
+        % Due to the pre-transformation, ExcpHandling also takes the I/O state
+        % from GoalInitialIOVar to GoalFinalIOVar.  We need to rename
+        % GoalInitialIOVar to TryIOOutputVar as the exception handling code
+        % follows the try_io call.
+        %
+        % We cannot let TryIOOutputVar be GoalFinalIOVar, as the latter may
+        % already appear somewhere in ExcpHandling.  TryIOOutputVar must be a
+        % new variable.
+        %
+        % The Then part starts the I/O state sequence from GoalFinalIOVar, so
+        % we need to unify "GoalFinalIOVar = TryIOOutputVar".  We don't use
+        % renaming in this case because GoalFinalIOVar might not even occur in
+        % the Then part; then renaming would lead to a mode error.
+
+        proc_info_create_var_from_type(io_state_type, yes("TryIOOutput"),
+            TryIOOutputVar, !ProcInfo),
+        make_try_call("try_io", LambdaVar, ResultVar,
+            [GoalInitialIOVar, TryIOOutputVar], OutputTupleType, GoalPurity,
+            CallTryGoal, !PredInfo, !ProcInfo, !ModuleInfo),
+
+        create_pure_atomic_complicated_unification(GoalFinalIOVar,
+            rhs_var(TryIOOutputVar), term.context_init,
+            umc_implicit("try_expand"), [], UnifyThenInitialIOVar),
+        conjoin_goals(UnifyThenInitialIOVar, Then1, Then),
+
+        RenamingExcp = map.from_assoc_list([GoalInitialIOVar - TryIOOutputVar]),
+        rename_some_vars_in_goal(RenamingExcp, ExcpHandling1, ExcpHandling)
+    ;
+        MaybeIO = no,
+        make_try_call("try", LambdaVar, ResultVar, [], OutputTupleType,
+            GoalPurity, CallTryGoal, !PredInfo, !ProcInfo, !ModuleInfo),
+        Then = Then1,
+        ExcpHandling = ExcpHandling1
+    ),
+
+    goal_info_init(GoalInfo),
+
+    % The `succeeded' case.
+    proc_info_create_var_from_type(OutputTupleType, yes("TmpOutputTuple"),
+        TmpTupleVar, !ProcInfo),
+    proc_info_create_var_from_type(OutputTupleType, yes("OutputTuple"),
+        TupleVar, !ProcInfo),
+    deconstruct_functor(ResultVar, succeeded_cons_id, [TmpTupleVar],
+        DeconstructSucceeded),
+    instmap_lookup_vars(Instmap, GoalOutputVars, TupleArgInsts),
+    make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
+        CastOutputTuple),
+    deconstruct_tuple(TupleVar, GoalOutputVars, DeconstructOutputs),
+    conj_list_to_goal([DeconstructSucceeded, CastOutputTuple,
+        DeconstructOutputs, Then], GoalInfo, DeconstructsThen),
+    SucceededCase = case(succeeded_cons_id, [], DeconstructsThen),
+
+    % The `exception' case.
+    ExceptionCase = case(exception_cons_id, [], ExcpHandling),
+
+    % The `failed' case.
+    (
+        MaybeElse1 = yes(Else1),
+        FailedCase = case(failed_cons_id, [], Else1),
+        MaybeFailedCase = [FailedCase]
+    ;
+        MaybeElse1 = no,
+        MaybeFailedCase = []
+    ),
+
+    Cases = [SucceededCase, ExceptionCase | MaybeFailedCase],
+    ResultSwitch = hlds_goal(switch(ResultVar, cannot_fail, Cases), GoalInfo),
+    conj_list_to_goal([AssignLambdaVar, CallTryGoal, ResultSwitch], GoalInfo,
+        FinalGoal).
+
+    % Pick out the parts of the original try goal from a pre-transformed goal.
+    %
+:- pred extract_intermediate_goal_parts(module_info::in, prog_var::in,
+    hlds_goal::in, hlds_goal::out, hlds_goal::out, maybe(hlds_goal)::out,
+    hlds_goal::out) is det.
+
+extract_intermediate_goal_parts(ModuleInfo, ResultVar, IntermediateGoal,
+        Goal, Then, MaybeElse, ExcpHandling) :-
+    (
+        extract_intermediate_goal_parts_2(ModuleInfo, ResultVar,
+            IntermediateGoal, GoalPrime, ThenPrime, MaybeElsePrime,
+            ExcpHandlingPrime)
+    ->
+        Goal = GoalPrime,
+        Then = ThenPrime,
+        MaybeElse = MaybeElsePrime,
+        ExcpHandling = ExcpHandlingPrime
+    ;
+        unexpected(this_file, "find_subparts: unexpected goal form")
+    ).
+
+:- pred extract_intermediate_goal_parts_2(module_info::in, prog_var::in,
+    hlds_goal::in, hlds_goal::out, hlds_goal::out, maybe(hlds_goal)::out,
+    hlds_goal::out) is semidet.
+
+extract_intermediate_goal_parts_2(ModuleInfo, ResultVar, IntermediateGoal,
+        Goal, Then, MaybeElse, ExcpHandling) :-
+    IntermediateGoal = hlds_goal(conj(plain_conj, Conjuncts), _),
+    Conjuncts = [
+        hlds_goal(MagicCall, _),
+        hlds_goal(Switch, _)
+    ],
+    MagicCall = plain_call(_, _, [ResultVar], _, _, _),
+    Switch = switch(ResultVar, cannot_fail, Cases),
+
+    lookup_case_goal(Cases, succeeded_cons_id, SucceededGoal),
+    extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
+        MaybeElse),
+
+    lookup_case_goal(Cases, exception_cons_id, ExcpHandling).
+
+    % There are two forms we could extract when TryResult has the
+    % functor exception.succeeded/1.
+    %
+    %      TryResult = exception.succeeded(V),
+    %      V = {},
+    %      ( Goal ->
+    %          Then
+    %      ;
+    %          Else
+    %      ),
+    %      Rest
+    %
+    % or:
+    %
+    %      TryResult = exception.succeeded(V),
+    %      V = {},
+    %      some [] Goal,
+    %      some [] Then,
+    %      Rest
+    %
+:- pred extract_from_succeeded_goal(module_info::in, hlds_goal::in,
+    hlds_goal::out, hlds_goal::out, maybe(hlds_goal)::out) is semidet.
+
+extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
+        MaybeElse) :-
+    SucceededGoal = hlds_goal(conj(plain_conj, Conjuncts0), _),
+    Conjuncts0 = [DeconstructResult, TestNullTuple | Conjuncts1],
+    DeconstructResult = hlds_goal(unify(_ResultVar, _, _, _, _), _),
+    TestNullTuple = hlds_goal(unify(_, TestRHS, _, _, _), _),
+    TestRHS = rhs_functor(cons(unqualified("{}"), 0), no, []),
+
+    (
+        Conjuncts1 = [hlds_goal(IfThenElse, _) | Rest],
+        IfThenElse = if_then_else(_, GoalPrime, Then0, Else0)
+    ->
+        Goal = GoalPrime,
+
+        % If Goal is erroneous the Then part may have been optimised away to
+        % `true'.  However, we will be separating the Goal and Then parts in
+        % the final goal, so the knowledge that Goal won't succeed will be lost
+        % to the mode checker.  In that case we replace the Then goal by a call
+        % to an `erroneous' procedure.
+        Goal = hlds_goal(_, GoalInfo),
+        GoalDetism = goal_info_get_determinism(GoalInfo),
+        determinism_components(GoalDetism, _, GoalMaxSoln),
+        (
+            GoalMaxSoln = at_most_zero,
+            make_unreachable_call(ModuleInfo, Then)
+        ;
+            ( GoalMaxSoln = at_most_one
+            ; GoalMaxSoln = at_most_many_cc
+            ; GoalMaxSoln = at_most_many
+            ),
+            conjoin_goal_and_goal_list(Then0, Rest, Then)
+        ),
+
+        conjoin_goal_and_goal_list(Else0, Rest, Else),
+        MaybeElse = yes(Else)
+    ;
+        Conjuncts1 = [SomeGoal | AfterSomeGoal],
+        SomeGoal = hlds_goal(scope(exist_quant([]), Goal), _),
+        (
+            AfterSomeGoal = [SomeThen | Rest],
+            SomeThen = hlds_goal(scope(exist_quant([]), Then0), _)
+        ->
+            conjoin_goal_and_goal_list(Then0, Rest, Then),
+            MaybeElse = no
+        ;
+            % If "some [] Then" is missing then "some [] Goal" must be
+            % `erroneous'.  Make the Then part into a call to an erroneous
+            % procedure.
+            Goal = hlds_goal(_, GoalInfo),
+            GoalDetism = goal_info_get_determinism(GoalInfo),
+            determinism_components(GoalDetism, _, GoalMaxSoln),
+            (
+                GoalMaxSoln = at_most_zero,
+                make_unreachable_call(ModuleInfo, Then),
+                MaybeElse = no
+            ;
+                ( GoalMaxSoln = at_most_one
+                ; GoalMaxSoln = at_most_many_cc
+                ; GoalMaxSoln = at_most_many
+                ),
+                unexpected(this_file, "find_subparts_2: Goal not erroneous")
+            )
+        )
+    ).
+
+:- pred lookup_case_goal(list(case)::in, cons_id::in, hlds_goal::out) is det.
+
+lookup_case_goal([], ConsId, _) :-
+    unexpected(this_file, "lookup_case_goal: couldn't find " ++ string(ConsId)).
+lookup_case_goal([H | T], ConsId, Goal) :-
+    ( H = case(ConsId, [], GoalPrime) ->
+        Goal = GoalPrime
+    ;
+        lookup_case_goal(T, ConsId, Goal)
+    ).
+
+:- pred bound_nonlocals_in_goal(module_info::in, instmap::in, hlds_goal::in,
+    set(prog_var)::out) is det.
+
+bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
+    Goal = hlds_goal(_, GoalInfo),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
+    BoundNonLocals = set.filter(var_is_bound_in_instmap_delta(ModuleInfo,
+        InstMap, InstmapDelta), NonLocals).
+
+:- pred make_try_lambda(hlds_goal::in, set(prog_var)::in, mer_type::in,
+    maybe(try_io_state_vars)::in, prog_var::out, hlds_goal::out,
+    proc_info::in, proc_info::out) is det.
+
+make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
+        LambdaVar, AssignLambdaVar, !ProcInfo) :-
+    Body0 = hlds_goal(_, BodyInfo0),
+    NonLocals0 = goal_info_get_nonlocals(BodyInfo0),
+    set.difference(NonLocals0, OutputVarsSet, NonLocals1),
+
+    proc_info_create_var_from_type(OutputTupleType, yes("OutputTuple"),
+        OutputTupleVar, !ProcInfo),
+    (
+        MaybeIO = yes(try_io_state_vars(IOVarInitial, IOVarFinal)),
+        LambdaParams = [OutputTupleVar, IOVarInitial, IOVarFinal],
+        LambdaParamTypes = [OutputTupleType, io_state_type, io_state_type],
+        LambdaParamModes = [out_mode, di_mode, uo_mode],
+        set.delete(NonLocals1, IOVarFinal, NonLocals)
+    ;
+        MaybeIO = no,
+        LambdaParams = [OutputTupleVar],
+        LambdaParamTypes = [OutputTupleType],
+        LambdaParamModes = [out_mode],
+        NonLocals = NonLocals0
+    ),
+    LambdaType = higher_order_type(LambdaParamTypes, no, purity_pure,
+        lambda_normal),
+    proc_info_create_var_from_type(LambdaType, yes("TryLambda"), LambdaVar,
+        !ProcInfo),
+
+    % Add the construction of OutputTuple to the body.
+    construct_tuple(OutputTupleVar, set.to_sorted_list(OutputVarsSet),
+        MakeOutputTuple),
+    conjoin_goals(Body0, MakeOutputTuple, LambdaBody0),
+
+    % Rename away output variables in the lambda body.
+    proc_info_get_varset(!.ProcInfo, VarSet0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    clone_variables(set.to_sorted_list(OutputVarsSet), VarSet0, VarTypes0,
+        VarSet0, VarSet, VarTypes0, VarTypes, map.init, Renaming),
+    proc_info_set_varset(VarSet, !ProcInfo),
+    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    rename_some_vars_in_goal(Renaming, LambdaBody0, LambdaBody),
+
+    % Get the determinism of the lambda.
+    LambdaBody = hlds_goal(_, BodyGoalInfo),
+    BodyDetism = goal_info_get_determinism(BodyGoalInfo),
+    detism_to_try_lambda_detism(BodyDetism, LambdaDetism),
+
+    % Make the lambda assignment.
+    RHS = rhs_lambda_goal(purity_pure, ho_ground, pf_predicate,
+        lambda_normal, set.to_sorted_list(NonLocals),
+        LambdaParams, LambdaParamModes, LambdaDetism, LambdaBody),
+    create_pure_atomic_complicated_unification(LambdaVar, RHS,
+        term.context_init, umc_implicit("try_expand"), [], AssignLambdaVar).
+
+    % try* don't cover all possible determinisms so we have generate lambdas
+    % with less restrictive determinisms.
+    %
+:- pred detism_to_try_lambda_detism(determinism::in, determinism::out) is det.
+
+detism_to_try_lambda_detism(detism_det, detism_det).
+detism_to_try_lambda_detism(detism_semi, detism_semi).
+detism_to_try_lambda_detism(detism_multi, detism_cc_multi).
+detism_to_try_lambda_detism(detism_non, detism_cc_non).
+detism_to_try_lambda_detism(detism_cc_multi, detism_cc_multi).
+detism_to_try_lambda_detism(detism_cc_non, detism_cc_non).
+detism_to_try_lambda_detism(detism_erroneous, detism_det).
+detism_to_try_lambda_detism(detism_failure, detism_semi).
+
+:- pred make_try_call(string::in, prog_var::in, prog_var::in,
+    list(prog_var)::in, mer_type::in, purity::in, hlds_goal::out,
+    pred_info::in, pred_info::out, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
+
+make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
+        GoalPurity, OverallGoal, !PredInfo, !ProcInfo, !ModuleInfo) :-
+    create_poly_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, PolyInfo0),
+    polymorphism_make_type_info_var(OutputTupleType, term.context_init,
+        TypeInfoVar, MakeTypeInfoGoals, PolyInfo0, PolyInfo),
+    poly_info_extract(PolyInfo, !PredInfo, !ProcInfo, !:ModuleInfo),
+
+    % The mode will be fixed up by a later analysis.
+    Mode = mode_no(0),
+    Args = [TypeInfoVar, LambdaVar, ResultVar] ++ ExtraArgs,
+    Features = [],
+    InstMapSrc = [],
+    generate_simple_call(mercury_exception_module, PredName,
+        pf_predicate, Mode, detism_cc_multi, purity_pure, Args, Features,
+        InstMapSrc, !.ModuleInfo, term.context_init, CallGoal0),
+
+    goal_info_init(GoalInfo),
+
+    % The try* predicates are only implemented for pure lambdas.  If the lambda
+    % is actually non-pure, retain that in the call to try* with a purity
+    % scope.
+    (
+        GoalPurity = purity_pure,
+        CallGoal = CallGoal0
+    ;
+        ( GoalPurity = purity_semipure
+        ; GoalPurity = purity_impure
+        ),
+        ScopeReason = promise_purity(GoalPurity),
+        CallGoal = hlds_goal(scope(ScopeReason, CallGoal0), GoalInfo)
+    ),
+
+    conj_list_to_goal(MakeTypeInfoGoals ++ [CallGoal], GoalInfo, OverallGoal).
+
+:- pred make_unreachable_call(module_info::in, hlds_goal::out) is det.
+
+make_unreachable_call(ModuleInfo, Goal) :-
+    generate_simple_call(mercury_exception_module, "unreachable",
+        pf_predicate, only_mode, detism_erroneous, purity_pure,
+        [], [], [], ModuleInfo, term.context_init, Goal).
+
+:- pred make_output_tuple_inst_cast(prog_var::in, prog_var::in,
+    list(mer_inst)::in, hlds_goal::out) is det.
+
+make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
+        CastOrUnify) :-
+    % If all the arguments have inst `ground' then a unification is enough.
+    (
+        list.member(ArgInst, TupleArgInsts),
+        ArgInst \= ground(_, none)
+    ->
+        TupleArity = list.length(TupleArgInsts),
+        TupleInst = bound(shared, [
+            bound_functor(cons(unqualified("{}"), TupleArity), TupleArgInsts)
+        ]),
+        generate_cast_with_insts(unsafe_type_inst_cast, TmpTupleVar, TupleVar,
+            ground_inst, TupleInst, term.context_init, CastOrUnify)
+    ;
+        create_pure_atomic_complicated_unification(TupleVar,
+            rhs_var(TmpTupleVar), term.context_init,
+            umc_implicit("try_expand"), [], CastOrUnify)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- func succeeded_cons_id = cons_id.
+
+succeeded_cons_id = cons(qualified(mercury_exception_module, "succeeded"), 1).
+
+:- func failed_cons_id = cons_id.
+
+failed_cons_id = cons(qualified(mercury_exception_module, "failed"), 0).
+
+:- func exception_cons_id = cons_id.
+
+exception_cons_id = cons(qualified(mercury_exception_module, "exception"), 1).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "try_expand.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module check_hlds.try_expand.
+%-----------------------------------------------------------------------------%

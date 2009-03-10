@@ -68,6 +68,7 @@ syn keyword mercuryCInterface   export import
 syn keyword mercuryImpure       impure semipure
 syn keyword mercuryToDo         XXX TODO NOTE         
 syn keyword mercuryLogical      some all not if then else true fail false
+syn keyword mercuryLogical      try catch catch_any
 syn keyword mercuryLogical      semidet_true semidet_false semidet_fail
 syn keyword mercuryLogical      impure_true 
 syn match   mercuryImplication  +<=>\|<=\|=>\|/\\\|\\/+

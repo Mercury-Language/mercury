@@ -1013,13 +1013,13 @@ output_debug_instruction(Instr, !Info, !IO) :-
     ; Instr = context(_, _) ->
         % Contexts are messy, let's ignore them for now.
         true
-    ; Instr = start_block(catch(ClassName), Id) ->
-        output_instr(start_block(catch(ClassName), Id), !Info, !IO),
+    ; Instr = start_block(bt_catch(ClassName), Id) ->
+        output_instr(start_block(bt_catch(ClassName), Id), !Info, !IO),
         io.write_string("\n", !IO),
         io.write_string("\t", !IO),
         output_trace_instr(Instr, !Info, !IO),
         io.write_string("\n", !IO)
-    ; Instr = start_block(scope(Locals), Id) ->
+    ; Instr = start_block(bt_scope(Locals), Id) ->
         string.format("{\t// #%d", [i(Id)], S),
         io.write_string(S, !IO),
         io.nl(!IO),
@@ -1112,7 +1112,7 @@ output_instr(comment(Comment), !Info, !IO) :-
 output_instr(label(Label), !Info, !IO) :-
     output_label(Label, !IO),
     io.write_string(":", !IO).
-output_instr(start_block(scope(Locals), Id), !Info, !IO) :-
+output_instr(start_block(bt_scope(Locals), Id), !Info, !IO) :-
     io.write_string("{", !IO),
     io.write_string("\t// #", !IO),
     io.write_int(Id, !IO),
@@ -1124,26 +1124,26 @@ output_instr(start_block(scope(Locals), Id), !Info, !IO) :-
         ilasm.write_list(Locals, ",\n\t\t", output_local, !Info, !IO),
         io.write_string("\n\t)\n", !IO)
     ).
-output_instr(start_block(try, Id), !Info, !IO) :-
+output_instr(start_block(bt_try, Id), !Info, !IO) :-
     io.write_string(".try {", !IO),
     io.write_string("\t// #", !IO),
     io.write_int(Id, !IO).
-output_instr(start_block(catch(ClassName), Id), !Info, !IO) :-
+output_instr(start_block(bt_catch(ClassName), Id), !Info, !IO) :-
     io.write_string("catch ", !IO),
     output_class_name(ClassName, !Info, !IO),
     io.write_string(" {", !IO),
     io.write_string("\t// #", !IO),
     io.write_int(Id, !IO).
-output_instr(end_block(scope(_), Id), !Info, !IO) :-
+output_instr(end_block(bt_scope(_), Id), !Info, !IO) :-
     io.write_string("}", !IO),
     io.write_string("\t// #", !IO),
     io.write_int(Id, !IO).
-output_instr(end_block(catch(_), Id), !Info, !IO) :-
+output_instr(end_block(bt_catch(_), Id), !Info, !IO) :-
     io.write_string("}", !IO),
     io.write_string("\t// #", !IO),
     io.write_int(Id, !IO),
     io.write_string(" (catch block)", !IO).
-output_instr(end_block(try, Id), !Info, !IO) :-
+output_instr(end_block(bt_try, Id), !Info, !IO) :-
     io.write_string("}", !IO),
     io.write_string("\t// #", !IO),
     io.write_int(Id, !IO),

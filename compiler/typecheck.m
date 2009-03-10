@@ -1278,6 +1278,21 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
                 "typecheck_goal_2: GoalType != unknown_atomic_goal_type"),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
+        ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            trace [io(!IO)] (
+                type_checkpoint("try_goal", !.Info, !IO)
+            ),
+            typecheck_goal(SubGoal0, SubGoal, !Info),
+            (
+                MaybeIO = yes(try_io_state_vars(InitialIO, FinalIO)),
+                ensure_vars_have_a_type([InitialIO, FinalIO], !Info),
+                typecheck_var_has_type(InitialIO, io_state_type, !Info),
+                typecheck_var_has_type(FinalIO, io_state_type, !Info)
+            ;
+                MaybeIO = no
+            ),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ),
         GoalExpr = shorthand(ShortHand)
     ).

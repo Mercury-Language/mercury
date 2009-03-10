@@ -279,6 +279,9 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
             % it is pretty safe to say that any goal inside an atomic goal
             % can throw an exception.
             Result = can_throw
+        ;
+            ShortHand = try_goal(_, _, _),
+            Result = can_throw
         )
     ).
 
@@ -455,6 +458,9 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
             OrElseCanLoop = goal_list_can_loop(MaybeModuleInfo, OrElseGoals),
             CanLoop = MainGoalCanLoop `or` OrElseCanLoop
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            CanLoop = goal_can_loop_func(MaybeModuleInfo, SubGoal)
+        ;
             ShortHand = bi_implication(_, _),
             unexpected(this_file, "goal_can_loop: bi_implication")
         )
@@ -578,6 +584,9 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, _, _, _),
+            CanThrow = yes
+        ;
+            ShortHand = try_goal(_, _, _),
             CanThrow = yes
         ;
             ShortHand = bi_implication(_, _),
@@ -746,7 +755,9 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
     ;
         GoalExpr = shorthand(ShortHand),
         (
-            ShortHand = atomic_goal(_, _, _, _, _, _, _),
+            ( ShortHand = atomic_goal(_, _, _, _, _, _, _)
+            ; ShortHand = try_goal(_, _, _)
+            ),
             May = yes
         ;
             ShortHand = bi_implication(GoalA, GoalB),
@@ -911,6 +922,9 @@ count_recursive_calls(Goal, PredId, ProcId, Min, Max) :-
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             count_recursive_calls_disj([MainGoal | OrElseGoals],
                 PredId, ProcId, Min, Max)
+        ;
+            ShortHand = try_goal(_, _, SubGoal),
+            count_recursive_calls(SubGoal, PredId, ProcId, Min, Max)
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.

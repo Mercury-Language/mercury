@@ -341,6 +341,9 @@ add_mc_vars_for_goal(PredId, ProgVarset, hlds_goal(GoalExpr, GoalInfo),
         ;
             ShortHand = bi_implication(_, _),
             unexpected(this_file, "add_mc_vars_for_goal: bi_implication")
+        ;
+            ShortHand = try_goal(_, _, _),
+            sorry(this_file, "add_mc_vars_for_goal: try_goal")
         )
     ).
 
@@ -673,6 +676,9 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             Shorthand = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file, "shorthand goal")
+        ;
+            Shorthand = try_goal(_, _, _),
+            sorry(this_file, "NYI: try_goal")
         )
     ).
 

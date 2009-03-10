@@ -301,6 +301,9 @@ add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
             add_vars_to_lfu_in_goal(ForceInUse, LeftGoal0, LeftGoal),
             add_vars_to_lfu_in_goal(ForceInUse, RightGoal0, RightGoal),
             Shorthand = bi_implication(LeftGoal, RightGoal)
+        ;
+            Shorthand0 = try_goal(_, _, _),
+            unexpected(this_file, "add_vars_to_lfu_in_goal_expr: try_goal")
         ),
         Expr = shorthand(Shorthand)
     ).

@@ -1,0 +1,15 @@
+test_1:
+caught 3 (RIGHT)
+
+test_2:
+caught 3 in outer try (RIGHT)
+
+test_3:
+caught 1 in outer try (RIGHT)
+
+test_4:
+caught 1 in inner try (RIGHT)
+caught 2 in outer try (RIGHT)
+
+test_5:
+caught 1 (RIGHT)

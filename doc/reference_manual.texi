@@ -96,6 +96,8 @@ into another language, under the above conditions for modified versions.
 * Type classes::      Constrained polymorphism.
 * Existential types:: Support for data abstraction and heterogeneous
                       collections.
+* Exception handling:: Catching exceptions to recover from exceptional
+                      situations.
 * Semantics::         Declarative and operational semantics of Mercury
                       programs.
 * Foreign language interface:: Calling code written in other programming
@@ -851,6 +853,21 @@ to not have any affect on the execution of the program itself,
 but to be confined to the provision of extra information
 for the user of the program.
 See @ref{Trace goals} for the details.
+
+@item @code{try @var{Params} @var{Goal} @dots{} catch @var{Term} -> @var{CGoal} @dots{}}
+A try goal. Exceptions thrown during the execution of @var{Goal}
+may be caught and handled. A summary of the try goal syntax is:
+
+@example
+    try @var{Params} @var{Goal}
+    then @var{ThenGoal}
+    else @var{ElseGoal}
+    catch @var{Term} -> @var{CatchGoal}
+    ...
+    catch_any @var{CatchAnyVar} -> @var{CatchAnyGoal}
+@end example
+
+See @ref{Exception handling} for the full details.
 
 @item @code{@var{Call}}
 Any goal which does not match any of the above forms
@@ -6119,6 +6136,137 @@ good_example3(Name, univ_value(Univ)) :-
 :- pragma promise_pure(good_example3_univ/2).
 good_example3_univ("foo"::in(bound("foo")), univ(42)::out).
 good_example3_univ("bar"::in(bound("bar")), univ("blah")::out).
+@end example
+
+@node Exception handling
+@chapter Exception handling
+
+Mercury procedures may throw exceptions.  Exceptions may be caught using
+the predicates defined in the @samp{exception} library module,
+or using try goals.
+
+@noindent
+A @samp{try} goal has the following form:
+
+@example
+        try @var{Params} @var{Goal}
+        then @var{ThenGoal}
+        else @var{ElseGoal}
+        catch @var{Term} -> @var{CatchGoal}
+        ...
+        catch_any @var{CatchAnyVar} -> @var{CatchAnyGoal}
+@end example
+
+@var{Goal}, @var{ThenGoal}, @var{ElseGoal}, @var{CatchGoal},
+@var{CatchAnyGoal} must be valid goals.
+
+@var{Goal} must have one of the following determinisms: @samp{det},
+@samp{semidet}, @samp{cc_multi}, or @samp{cc_nondet}.
+
+The non-local variables of @var{Goal} must not have an inst equivalent to
+@samp{unique} or @samp{mostly_unique} or @samp{any}, unless they have the
+type @samp{io.state}.
+@c or (later) the store/1.)
+
+@var{Params} must be a valid list of zero or more try parameters.
+
+The ``then'' part is mandatory.
+The ``else'' part is mandatory if @var{Goal} may fail; otherwise it
+must be omitted.
+There may be zero or more ``catch'' branches.
+The ``catch_any'' part is optional.  @var{CatchAnyVar} must be a single
+variable.
+
+The try parameter @samp{io} takes a single argument, which must be the name
+of a state variable prefixed by @samp{!}; for example, @samp{io(!IO)}.
+The state variable must have the type @samp{io.state}, and be in scope
+of the try goal.  The state variable is threaded through @samp{Goal},
+so it may perform I/O but cannot fail.
+If no @samp{io} parameter exists, @samp{Goal} may not perform I/O and may
+fail.
+
+A try goal has determinism @samp{cc_multi}.
+@c Exception: if all of the then/else/catch/catch_any parts only succeed
+@c without binding non-local variables then the determinism is det.
+@c In the implementation we may still infer cc_multi though.
+
+On entering a try goal, @var{Goal} is executed.  If it succeeds
+without throwing an exception, @var{ThenGoal} is executed.
+Any variables bound by @var{Goal} are visible in @var{ThenGoal} only.
+If @var{Goal} fails, then @var{ElseGoal} is executed.
+
+If @var{Goal} throws an exception, the exception value is unified
+with each the @var{Term}s in the ``catch'' branches in turn.
+On the first successful unification, the corresponding @var{CatchGoal} is
+executed (and other ``catch'' and ``catch_any'' branches ignored).
+Variables bound during the unification of the @var{Term} are in scope
+of the corresponding @var{CatchGoal}.
+
+If the exception value does not unify with any of the terms in ``catch''
+branches, and a ``catch_any'' branch is present, the exception is bound
+to @var{CatchAnyVar} and the @var{CatchAnyGoal} executed.
+@var{CatchAnyVar} is visible in the @var{CatchAnyGoal} only, and
+is existentially typed, i.e. it has type @samp{some [T] T}.
+
+Finally, if the thrown value did not unify with any ``catch'' term,
+and there is no ``catch_any'' branch, the exception is rethrown.
+
+@noindent
+The declarative semantics of a try goal is:
+
+@example
+        (try [] Goal
+         then Then
+         else Else
+         catch CP1 -> CG1
+         catch CG2 -> CG2
+         ...
+         catch_any CAV -> CAG
+        )  <=>
+                (
+                        Goal, Then
+                ;
+                        not Goal, Else
+                ;
+                        some [Excp]
+                        ( Excp = CP1 -> CG1
+                        ; Excp = CP2 -> CG2
+                        ; ...
+                        ; Excp = CAV, CAG
+                        )
+                ).
+@end example
+
+If no @samp{else} branch is present, let @samp{Else = fail}.
+If no @samp{catch_any} branch is present, let @samp{CAG = fail}.
+
+@noindent
+An example of a try goal that performs I/O is:
+
+@example
+:- pred p_carefully(io::di, io::uo) is det.
+
+p_carefully(!IO) :-
+        (try [io(!IO)] (
+                io.write_string("Calling p\n", !IO),
+                p(Output, !IO)
+        )
+        then
+                io.write_string("p returned: ", !IO),
+                io.write(Output, !IO),
+                io.nl(!IO)
+        catch S ->
+                io.write_string("p threw a string: ", !IO),
+                io.write_string(S, !IO),
+                io.nl(!IO)
+        catch 42 ->
+                io.write_string("p threw 42\n", !IO)
+        catch_any Other ->
+                io.write_string("p threw something: ", !IO),
+                io.write(Other, !IO),
+                % Rethrow the value.
+                throw(X)
+        ).
 @end example
 
 @node Semantics

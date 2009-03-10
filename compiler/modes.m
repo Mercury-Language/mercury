@@ -2078,6 +2078,13 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo, !IO) :-
         GoalExpr = shorthand(ShortHand),
         mode_checkpoint(exit, "atomic", !ModeInfo, !IO)
     ;
+        ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+        mode_checkpoint(enter, "try", !ModeInfo, !IO),
+        modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+        ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
+        GoalExpr = shorthand(ShortHand),
+        mode_checkpoint(exit, "try", !ModeInfo, !IO)
+    ;
         ShortHand0 = bi_implication(_, _),
         % These should have been expanded out by now.
         unexpected(this_file, "modecheck_goal_shorthand: bi_implication")

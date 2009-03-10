@@ -539,6 +539,26 @@ process_assert(promise_equivalent_solution_arbitrary_expr(_V, _D, _C, G) - _,
     process_assert(G, Symbols, Success).
 process_assert(trace_expr(_C, _R, _I, _M, G) - _, Symbols, Success) :-
     process_assert(G, Symbols, Success).
+process_assert(try_expr(_, Goal, Then, MaybeElse, Catches, MaybeCatchAny) - _,
+        Symbols, Success) :-
+    process_assert(Goal, SymbolsGoal, SuccessGoal),
+    process_assert(Then, SymbolsThen, SuccessThen),
+    maybe_process_assert(MaybeElse, SymbolsElse, SuccessElse),
+    list.map2(process_assert_catch, Catches, SymbolsCatches, SuccessCatches),
+    (
+        MaybeCatchAny = yes(catch_any_expr(_, CatchAnyGoal)),
+        process_assert(CatchAnyGoal, SymbolsCatchAny, SuccessCatchAny)
+    ;
+        MaybeCatchAny = no,
+        SymbolsCatchAny = [],
+        SuccessCatchAny = no
+    ),
+    SymbolsLists = [SymbolsGoal, SymbolsThen, SymbolsElse, SymbolsCatchAny |
+        SymbolsCatches],
+    list.condense(SymbolsLists, Symbols),
+    SuccessLists = [SuccessGoal, SuccessThen, SuccessElse, SuccessCatchAny |
+        SuccessCatches],
+    bool.and_list(SuccessLists, Success).
 process_assert(atomic_expr(_, _, _, MainGoal, OrElseGoals) - _, Symbols,
         Success) :-
     process_assert(MainGoal, SymbolsMainGoal, SuccessMainGoal),
@@ -598,6 +618,29 @@ process_assert(unify_expr(LHS0, RHS0, _Purity) - _, Symbols, Success) :-
         term_qualified_symbols(RHS, SymbolsR)
     ->
         list.append(SymbolsL, SymbolsR, Symbols),
+        Success = yes
+    ;
+        Symbols = [],
+        Success = no
+    ).
+
+:- pred maybe_process_assert(maybe(goal)::in, list(sym_name)::out, bool::out)
+    is det.
+
+maybe_process_assert(no, [], yes).
+maybe_process_assert(yes(Goal), Symbols, Success) :-
+    process_assert(Goal, Symbols, Success).
+
+:- pred process_assert_catch(catch_expr::in, list(sym_name)::out, bool::out)
+    is det.
+
+process_assert_catch(catch_expr(Pattern0, Goal), Symbols, Success) :-
+    term.coerce(Pattern0, Pattern),
+    (
+        term_qualified_symbols(Pattern, SymbolsPattern),
+        process_assert(Goal, SymbolsGoal, yes)
+    ->
+        list.append(SymbolsPattern, SymbolsGoal, Symbols),
         Success = yes
     ;
         Symbols = [],

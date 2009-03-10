@@ -959,6 +959,11 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             GoalExpr = GoalExpr0
         )
     ;
+        ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+        replace_in_goal(EqvMap, SubGoal0, SubGoal, Changed, !Info),
+        ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
+        GoalExpr = shorthand(ShortHand)
+    ;
         ShortHand0 = bi_implication(_, _),
         unexpected(this_file, "replace_in_goal_expr: bi_implication")
     ).

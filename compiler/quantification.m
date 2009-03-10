@@ -607,6 +607,12 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
                 MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand)
         ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            implicitly_quantify_goal_quant_info(SubGoal0, SubGoal,
+                NonLocalsToRecompute, !Info),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
+            GoalExpr = shorthand(ShortHand)
+        ;
             ShortHand0 = bi_implication(LHS, RHS),
             implicitly_quantify_goal_quant_info_bi_implication(LHS, RHS,
                 GoalExpr, GoalInfo0, NonLocalsToRecompute, !Info)
@@ -1452,6 +1458,12 @@ goal_expr_vars_2(NonLocalsToRecompute, GoalExpr, !Set, !LambdaSet) :-
             insert_list(!.Set, [OuterDI, OuterUO, InnerDI, InnerUO], !:Set),
             disj_vars(NonLocalsToRecompute, [MainGoal | OrElseGoals],
                 !Set, !LambdaSet)
+        ;
+            ShortHand = try_goal(_MaybeIO, _ResultVar, SubGoal),
+            % IO state variables and ResultVar are already in SubGoal.
+            SubGoal = hlds_goal(SubGoalExpr, _SubGoalInfo),
+            goal_expr_vars_2(NonLocalsToRecompute, SubGoalExpr, !Set,
+                !LambdaSet)
         ;
             ShortHand = bi_implication(LHS, RHS),
             conj_vars(NonLocalsToRecompute, [LHS, RHS], !Set, !LambdaSet)

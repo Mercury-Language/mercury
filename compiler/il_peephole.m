@@ -276,12 +276,12 @@ match(ldc(Type, Const), VerifyOnly, [stloc(Var)| Instrs0], Instrs) :-
 
     % Two patterns begin with start_scope.
 
-match(start_block(scope(Locals), Id), VerifyOnly, !Instrs) :-
+match(start_block(bt_scope(Locals), Id), VerifyOnly, !Instrs) :-
     VerifyOnly = no,
-    ( match_start_scope_1(start_block(scope(Locals), Id), !Instrs) ->
+    ( match_start_scope_1(start_block(bt_scope(Locals), Id), !Instrs) ->
         true
     ;
-        match_start_scope_2(start_block(scope(Locals), Id), !Instrs)
+        match_start_scope_2(start_block(bt_scope(Locals), Id), !Instrs)
     ).
 
     % If this is a scope with a local variable that is stored to but not
@@ -296,7 +296,7 @@ match(start_block(scope(Locals), Id), VerifyOnly, !Instrs) :-
     %
 :- pred match_start_scope_1(instr::in, instrs::in, instrs::out) is semidet.
 
-match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
+match_start_scope_1(start_block(bt_scope(Locals), Id), Instrs0, Instrs) :-
     % Is this variable a local that is unused?
     IsUnusedLocal = (pred(V::in) is semidet :-
         % Var is in the locals
@@ -357,7 +357,7 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
     Comment = string.format(
         "peephole: dup, stloc(%s) --> nothing (%s unused in scope)",
         [s(VarName), s(VarName)]),
-    Instrs = list.condense([[start_block(scope(Locals), Id)],
+    Instrs = list.condense([[start_block(bt_scope(Locals), Id)],
         PreStlocInstrs,
         Nops,
         [comment(Comment)],
@@ -369,7 +369,7 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
     %
 :- pred match_start_scope_2(instr::in, instrs::in, instrs::out) is semidet.
 
-match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
+match_start_scope_2(start_block(bt_scope(Locals), Id), Instrs0, Instrs) :-
     no_handwritten_code(Instrs0, Id),
 
     % The pattern.
@@ -391,7 +391,7 @@ match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
             [s(VarName)], CommentStr),
         Comment = comment(CommentStr)
     ), UnusedLocals, Comments),
-    Replacement = [start_block(scope(UsedLocals), Id)],
+    Replacement = [start_block(bt_scope(UsedLocals), Id)],
 
     Instrs = list.condense([Comments, Replacement, Instrs0]).
 
@@ -402,7 +402,7 @@ match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
     % is incomplete. This procedure is not yet called from anywhere.
 :- pred match4(instr::in, instrs::in, instrs::out) is semidet.
 
-match4(start_block(scope([]), _), Instrs0, Instrs) :-
+match4(start_block(bt_scope([]), _), Instrs0, Instrs) :-
     Replacement = [],
     Rest = Instrs0,
     Instrs = list.append(Replacement, Rest).
@@ -591,16 +591,16 @@ can_call(unbox(_Type))              = no.
 :- func equivalent_to_nop(instr) = bool.
 
 equivalent_to_nop(comment(_))                   = yes.
-equivalent_to_nop(start_block(scope(_), _))     = yes.
-equivalent_to_nop(end_block(scope(_), _))       = yes.
+equivalent_to_nop(start_block(bt_scope(_), _))  = yes.
+equivalent_to_nop(end_block(bt_scope(_), _))    = yes.
 equivalent_to_nop(nop)                          = yes.
 equivalent_to_nop(context(_, _))                = yes.
 
 equivalent_to_nop(il_asm_code(_, _))            = no.
-equivalent_to_nop(start_block(try, _))          = no.
-equivalent_to_nop(end_block(try, _))            = no.
-equivalent_to_nop(start_block(catch(_), _))     = no.
-equivalent_to_nop(end_block(catch(_), _))       = no.
+equivalent_to_nop(start_block(bt_try, _))       = no.
+equivalent_to_nop(end_block(bt_try, _))         = no.
+equivalent_to_nop(start_block(bt_catch(_), _))  = no.
+equivalent_to_nop(end_block(bt_catch(_), _))    = no.
 equivalent_to_nop(label(_Label))                = no.
 equivalent_to_nop(call(_MethodRef))             = no.
 equivalent_to_nop(calli(_Signature))            = no.

@@ -317,13 +317,18 @@ detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
             detect_switches_in_orelse(VarTypes, AllowMulti, InstMap0,
                 OrElseGoals0, OrElseGoals, !ModuleInfo, !Requant),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals, OrElseInners),
-            GoalExpr = shorthand(ShortHand)
+                MainGoal, OrElseGoals, OrElseInners)
+        ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
+                SubGoal0, SubGoal, !ModuleInfo, !Requant),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file, "detect_switches_in_goal_2: bi_implication")
-        )
+        ),
+        GoalExpr = shorthand(ShortHand)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -978,6 +983,10 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = atomic_goal(_, _, _, _, _, _, _),
+            Goal = Goal0,
+            FoundDeconstruct = given_up_search
+        ;
+            ShortHand0 = try_goal(_, _, _),
             Goal = Goal0,
             FoundDeconstruct = given_up_search
         ;

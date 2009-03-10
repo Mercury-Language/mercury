@@ -485,6 +485,11 @@ traverse_conj([Goal | Goals], CurId, !FormatCallSites, !Counter,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars,
                 ModuleInfo)
         ;
+            ShortHand = try_goal(_, _, SubGoal),
+            traverse_goal(SubGoal, SubGoalId, !FormatCallSites,
+                !Counter, !ConjMaps, !PredMap, !RelevantVars, ModuleInfo),
+            svmap.det_insert(SubGoalId, CurId, !PredMap)
+        ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded by now.
             unexpected(this_file, "traverse_conj: bi_implication")

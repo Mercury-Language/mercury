@@ -270,13 +270,17 @@ lambda_process_goal(Goal0, Goal, !Info) :-
             lambda_process_goal(MainGoal0, MainGoal, !Info),
             lambda_process_goal_list(OrElseGoals0, OrElseGoals, !Info),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars, 
-                MainGoal, OrElseGoals, OrElseInners),
-            GoalExpr = shorthand(ShortHand)
+                MainGoal, OrElseGoals, OrElseInners)
+        ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            lambda_process_goal(SubGoal0, SubGoal, !Info),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected(this_file, "lambda_process_goal_2: bi_implication")
-        )
+        ),
+        GoalExpr = shorthand(ShortHand)
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
