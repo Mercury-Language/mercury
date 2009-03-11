@@ -193,6 +193,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 
@@ -200,6 +201,13 @@
 
 :- pred expand_try_goals(module_info::in, module_info::out, io::di, io::uo)
     is det.
+
+    % try_expand_may_introduce_calls(PredName, Arity):
+    %
+    % Succeed if the transformation may introduce calls to a predicate
+    % or function with the given name in the exception module.
+    %
+:- pred try_expand_may_introduce_calls(string::in, arity::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -224,7 +232,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
@@ -917,6 +924,12 @@ failed_cons_id = cons(qualified(mercury_exception_module, "failed"), 0).
 :- func exception_cons_id = cons_id.
 
 exception_cons_id = cons(qualified(mercury_exception_module, "exception"), 1).
+
+%-----------------------------------------------------------------------------%
+
+try_expand_may_introduce_calls("try", 2).
+try_expand_may_introduce_calls("try_io", 4).
+try_expand_may_introduce_calls("unreachable", 0).
 
 %-----------------------------------------------------------------------------%
 

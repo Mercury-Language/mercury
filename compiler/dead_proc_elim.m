@@ -77,6 +77,7 @@
 :- implementation.
 
 :- import_module check_hlds.simplify.
+:- import_module check_hlds.try_expand.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
@@ -972,6 +973,14 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 simplify_may_introduce_calls(PredModuleName, PredName,
                     PredArity)
             ;
+                % Try-goal expansion may introduce calls to predicates in
+                % `exception'.
+                % XXX it should actually be calling predicates in a new
+                % exception_builtin module, which would obviate the need for
+                % this check
+                PredModule = mercury_exception_module,
+                try_expand_may_introduce_calls(PredName, PredArity)
+            ;
                 % Don't attempt to eliminate local preds here, since we want
                 % to do semantic checking on those even if they aren't used.
                 \+ pred_info_is_imported(PredInfo),
@@ -1070,10 +1079,21 @@ pre_modecheck_examine_goal_expr(call_foreign_proc(_, _, _, _, _, _, _),
         !DeadInfo).
 pre_modecheck_examine_goal_expr(unify(_, Rhs, _, _, _), !DeadInfo) :-
     pre_modecheck_examine_unify_rhs(Rhs, !DeadInfo).
-pre_modecheck_examine_goal_expr(shorthand(_), !DeadInfo) :-
-    % These should have been expanded out by now.
-    unexpected(this_file,
-        "pre_modecheck_examine_goal_expr: unexpected shorthand").
+pre_modecheck_examine_goal_expr(shorthand(ShortHand), !DeadInfo) :-
+    (
+        ShortHand = atomic_goal(_GoalType, _Outer, _Inner, _MaybeOutputVars,
+            MainGoal, OrElseGoals, _OrElseInners),
+        pre_modecheck_examine_goal(MainGoal, !DeadInfo),
+        list.foldl(pre_modecheck_examine_goal, OrElseGoals, !DeadInfo)
+    ;
+        ShortHand = try_goal(_MaybeIO, _ResultVar, SubGoal),
+        pre_modecheck_examine_goal(SubGoal, !DeadInfo)
+    ;
+        ShortHand = bi_implication(_, _),
+        % These should have been expanded out by now.
+        unexpected(this_file,
+            "pre_modecheck_examine_goal_expr: unexpected bi_implication")
+    ).
 
 :- pred pre_modecheck_examine_unify_rhs(unify_rhs::in,
     pred_elim_info::in, pred_elim_info::out) is det.
