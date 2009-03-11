@@ -401,8 +401,14 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
             ShortHand0 = try_goal(_, _, _),
             expand_try_goal(Instmap, ShortHand0, Goal, !Info)
         ;
-            ShortHand0 = atomic_goal(_, _, _, _, _, _, _),
-            unexpected(this_file, "expand_try_goals_in_goal: atomic_goal")
+            ShortHand0 = atomic_goal(AtomicGoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
+            expand_try_goals_in_goal(Instmap, MainGoal0, MainGoal, !Info),
+            expand_try_goals_in_disj(Instmap, OrElseGoals0, OrElseGoals,
+                !Info),
+            GoalExpr = atomic_goal(AtomicGoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
+            Goal = hlds_goal(shorthand(GoalExpr), GoalInfo0)
         ;
             ShortHand0 = bi_implication(_, _),
             unexpected(this_file, "expand_try_goals_in_goal: bi_implication")
