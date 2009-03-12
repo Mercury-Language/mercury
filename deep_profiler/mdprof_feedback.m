@@ -609,6 +609,11 @@ message_level_to_int(message_error) = 1.
                 % As above, except that the goal in between is non-atomic.
                 %
     ;       notice_cannot_parallelise_over_nonatomic_goal
+            
+                % A pair of calls that could be parallelised have many
+                % dependant variables.  We don't yet calculate the speedup in
+                % these situations.
+    ;       notice_callpair_has_more_than_one_dependant_var
                 
                 % Couldn't find the proc defn in the progrep data, maybe the
                 % procedure is built-in.
@@ -649,6 +654,8 @@ message_type_to_level(notice_cannot_parallelise_over_cheap_call_goal) =
     message_notice.
 message_type_to_level(notice_cannot_parallelise_over_nonatomic_goal) =
     message_notice.
+message_type_to_level(notice_callpair_has_more_than_one_dependant_var) =
+    message_notice.
 message_type_to_level(warning_cannot_lookup_proc_defn) = message_warning.
 message_type_to_level(error_extra_proc_dynamics_in_clique_proc) = 
     message_error.
@@ -683,6 +690,10 @@ message_type_to_string(MessageType) = String :-
         MessageType = notice_cannot_parallelise_over_nonatomic_goal, 
         String = "Parallelising call goals with non-atomic goals between them"
             ++ " is not supported"
+    ;
+        MessageType = notice_callpair_has_more_than_one_dependant_var,
+        String = "Parallelising call pairs that have more than one dependant"
+            ++ " variable is not yet supported."
     ;
         MessageType = warning_cannot_lookup_proc_defn,
         String = "Could not look up proc defn, perhaps this procedure is"
@@ -1604,7 +1615,8 @@ build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, CallA,
                     Dependance = conjuncts_are_dependant(DepVars),
                     compute_optimal_dependant_parallelisation(Info, 
                         CallA, CallB, DepVars, IntermediateGoals, InstMap,
-                        CPCA, CPCB, Speedup)
+                        CPCA, CPCB, Speedup, CODPMessages),
+                    !:Messages = !.Messages ++ CODPMessages
                 ;
                     Dependance = conjuncts_are_independent,
                     compute_independent_parallelisation_speedup(Info, 
@@ -1759,11 +1771,11 @@ compute_independent_parallelisation_speedup(Info, CallA, CallB,
     maybe_call_conjunct::in(call), maybe_call_conjunct::in(call),
     set(var_rep)::in, cord(maybe_call_conjunct)::in, inst_map::in,
     candidate_par_conjunct::out, candidate_par_conjunct::out,
-    float::out) is det.
+    float::out, cord(message)::out) is det.
 
 compute_optimal_dependant_parallelisation(Info, CallA, CallB,
         DepVars, _IntermediateGoals, InstMap, CPCA, CPCB,
-        Speedup) :-
+        Speedup, Messages) :-
     CostA = percall_cost(get_call_site_cost(Info, CallA ^ mccc_call_site)),
     CostB = percall_cost(get_call_site_cost(Info, CallB ^ mccc_call_site)),
     SequentialCost = CostA + CostB,
@@ -1827,18 +1839,19 @@ compute_optimal_dependant_parallelisation(Info, CallA, CallB,
         ;
             error("Dependant var not in consumer's arguments")
         ),
-        Messages = cord.mepty
+        Messages = cord.empty
     ;
         % Post a notice saying that we tried to parallelise this but gave up.
         CallSiteDesc = 
             CallA ^ mccc_call_site ^ ccsr_call_site_summary ^ perf_row_subject,
         PSPtr = CallSiteDesc ^ csdesc_container,
-        deep_lookup_proc_statics(Deep, PSPtr, ProcStatic),
-        ProcLabel = ProcStatic ^ ps_id.
+        deep_lookup_proc_statics(Info ^ ipi_deep, PSPtr, ProcStatic),
+        ProcLabel = ProcStatic ^ ps_id,
         GoalPath = CallSiteDesc ^ csdesc_goal_path,
         append_message(goal(ProcLabel, GoalPath), 
             notice_callpair_has_more_than_one_dependant_var,
-            cord.empty, Messages)
+            cord.empty, Messages),
+        Speedup = -1.0
     ),
     call_site_conj_to_candidate_par_conjunct(Info, CallA, CPCA),
     call_site_conj_to_candidate_par_conjunct(Info, CallB, CPCB).
