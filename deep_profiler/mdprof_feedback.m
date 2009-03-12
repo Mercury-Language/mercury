@@ -31,6 +31,7 @@
 :- implementation.
 
 :- import_module conf.
+:- import_module coverage.
 :- import_module create_report.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
@@ -55,6 +56,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module pqueue.
 :- import_module require.
@@ -72,14 +74,14 @@
 main(!IO) :-
     io.progname_base("mdprof_feedback", ProgName, !IO),
     io.command_line_arguments(Args0, !IO),
+    io.stderr_stream(Stderr, !IO),
     getopt.process_options(option_ops_multi(short, long, defaults),
         Args0, Args, MaybeOptions),
     (
         MaybeOptions = ok(Options),
         lookup_bool_option(Options, help, Help),
         lookup_bool_option(Options, version, Version),
-        lookup_string_option(Options, program_name, ProfileProgName0),
-        ProfileProgName = string.strip(ProfileProgName0),
+        lookup_bool_option(Options, debug_read_profile, DebugReadProfile),
         (
             Version = yes
         ->
@@ -90,10 +92,10 @@ main(!IO) :-
             write_help_message(ProgName, !IO)
         ;
             Args = [InputFileName, OutputFileName],
-            check_options(Options, RequestedFeedbackInfo)
+            check_options(Options, RequestedFeedbackInfo),
+            check_verbosity_option(Options, VerbosityLevel)
         ->
-            lookup_bool_option(Options, verbose, Verbose),
-            read_deep_file(InputFileName, Verbose, MaybeDeep, !IO),
+            read_deep_file(InputFileName, DebugReadProfile, MaybeDeep, !IO),
             (
                 MaybeDeep = ok(Deep),
                 feedback.read_or_create(OutputFileName, FeedbackReadResult,
@@ -101,7 +103,8 @@ main(!IO) :-
                 (
                     FeedbackReadResult = ok(Feedback0),
                     process_deep_to_feedback(RequestedFeedbackInfo,
-                        Deep, Warnings, Feedback0, Feedback),
+                        Deep, Messages, Feedback0, Feedback),
+                    ProfileProgName = Deep ^ profile_stats ^ program_name,
                     write_feedback_file(OutputFileName, ProfileProgName,
                         Feedback, WriteResult, !IO),
                     (
@@ -111,32 +114,30 @@ main(!IO) :-
                         ; WriteResult = write_error(Error)
                         ),
                         io.error_message(Error, ErrorMessage),
-                        io.stderr_stream(Stderr, !IO),
                         io.format(Stderr, "%s: %s\n",
                             [s(OutputFileName), s(ErrorMessage)], !IO),
                         io.set_exit_status(1, !IO)
                     ),
-                    lookup_bool_option(Options, show_warnings, ShowWarnings),
-                    (
-                        ShowWarnings = yes,
-                        cord.foldl_pred(
-                            (pred(Warning::in, IO0::di, IO::uo) is det :-
-                                io.format("W: %s\n", [s(Warning)], IO0, IO)
-                            ), Warnings, !IO)
-                    ;
-                        ShowWarnings = no
-                    )
+                    cord.foldl_pred(
+                        (pred(Message::in, IO0::di, IO::uo) is det :-
+                            Level = message_get_level(Message),
+                            ( message_level_to_int(Level) =< VerbosityLevel ->
+                                message_to_string(Message, MessageStr),
+                                io.write_string(Stderr, MessageStr, IO0, IO1),
+                                io.nl(IO1, IO)
+                            ;
+                                IO = IO0
+                            )
+                        ), Messages, !IO)
                 ;
                     FeedbackReadResult = error(FeedbackReadError),
                     feedback.read_error_message_string(OutputFileName,
                         FeedbackReadError, Message),
-                    io.stderr_stream(Stderr, !IO),
                     io.write_string(Stderr, Message, !IO),
                     io.set_exit_status(1, !IO)
                 )
             ;
                 MaybeDeep = error(Error),
-                io.stderr_stream(Stderr, !IO),
                 io.set_exit_status(1, !IO),
                 io.format(Stderr, "%s: error reading %s: %s\n",
                     [s(ProgName), s(InputFileName), s(Error)], !IO)
@@ -147,7 +148,6 @@ main(!IO) :-
         )
     ;
         MaybeOptions = error(Msg),
-        io.stderr_stream(Stderr, !IO),
         io.set_exit_status(1, !IO),
         io.format(Stderr, "%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO),
@@ -163,13 +163,16 @@ help_message =
 
     You may specify the following general options:
 
-    --help      Generate this help message.
-    --version   Report the program's version number.
-    --verbose   Generate progress messages.
-    --program-name <name>
-                The name of the program that generated the profiling data.
-                This is stored in the feedback file.
-
+    -h --help       Generate this help message.
+    -V --version    Report the program's version number.
+    -v --verbosity  <0-4>
+                    Generate messages.  The higher the argument the more
+                    verbose the program becomes.  2 is recommended and the
+                    default.
+    --debug-read-profile
+                    Generate debugging messages when reading the deep profile
+                    and creating the deep structure.
+    
     The following options select sets of feedback information useful
     for particular compiler optimizations:
 
@@ -187,8 +190,8 @@ help_message =
                 The cost of maintaining a lock for a single dependant variable
                 in a conjunction, measured in the profiler's call sequence
                 counts.
-    --implicit-parallelism-proc-cost-threshold <value>
-                The cost threshold for procedures to be considered for implicit
+    --implicit-parallelism-clique-cost-threshold <value>
+                The cost threshold for cliques to be considered for implicit
                 parallelism, measured on the profiler's call sequence counts.
     --implicit-parallelism-call-site-cost-threshold <value>
                 The cost of a call site to be considered for parallelism
@@ -212,7 +215,7 @@ help_message =
                 Produce a list of candidate parallel conjunctions for implicit
                 parallelism.  This option uses the implicit parallelism
                 settings above.
-".
+    ".
 
 :- pred write_help_message(string::in, io::di, io::uo) is det.
 
@@ -235,15 +238,15 @@ write_version_message(ProgName, !IO) :-
 :- pred read_deep_file(string::in, bool::in, maybe_error(deep)::out,
     io::di, io::uo) is det.
 
-read_deep_file(Input, Verbose, MaybeDeep, !IO) :-
+read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     server_name_port(Machine, !IO),
     script_name(ScriptName, !IO),
     (
-        Verbose = yes,
+        Debug = yes,
         io.stdout_stream(Stdout, !IO),
         MaybeOutput = yes(Stdout)
     ;
-        Verbose = no,
+        Debug = no,
         MaybeOutput = no
     ),
     read_and_startup_default_deep_options(Machine, ScriptName, Input, no,
@@ -261,10 +264,9 @@ read_deep_file(Input, Verbose, MaybeDeep, !IO) :-
     %
 :- type option
     --->    help
-    ;       program_name
-    ;       verbose
     ;       version
-    ;       show_warnings
+    ;       verbosity
+    ;       debug_read_profile
 
             % The calls above threshold sorted feedback information, this is
             % used for the old implicit parallelism implementation.
@@ -280,28 +282,25 @@ read_deep_file(Input, Verbose, MaybeDeep, !IO) :-
     ;       desired_parallelism
     ;       implicit_parallelism_sparking_cost
     ;       implicit_parallelism_locking_cost
-    ;       implicit_parallelism_proc_cost_threshold
+    ;       implicit_parallelism_clique_cost_threshold
     ;       implicit_parallelism_call_site_cost_threshold.
 
 % TODO: Introduce an option to disable parallelisation of dependant
-% conjunctions, or switch to the simple calculations for independant
+% conjunctions, or switch to the simple calculations for independent
 % conjunctions.
 
 :- pred short(char::in, option::out) is semidet.
 
 short('h',  help).
-short('p',  program_name).
-short('V',  verbose).
-short('v',  version).
-short('w',  show_warnings).
+short('v',  verbosity).
+short('V',  version).
 
 :- pred long(string::in, option::out) is semidet.
 
 long("help",                                help).
-long("verbose",                             verbose).
+long("verbosity",                           verbosity).
 long("version",                             version).
-long("program-name",                        program_name).
-long("show-warnings",                       show_warnings).
+long("debug-read-profile",                  debug_read_profile).
 
 long("calls-above-threshold-sorted",        calls_above_threshold_sorted).
 long("calls-above-threshold-sorted-measure",
@@ -314,18 +313,17 @@ long("implicit-parallelism",                implicit_parallelism).
 long("desired-parallelism",                 desired_parallelism).
 long("implicit-parallelism-sparking-cost",  implicit_parallelism_sparking_cost).
 long("implicit-parallelism-locking-cost",   implicit_parallelism_locking_cost).
-long("implicit-parallelism-proc-cost-threshold", 
-    implicit_parallelism_proc_cost_threshold).
+long("implicit-parallelism-clique-cost-threshold", 
+    implicit_parallelism_clique_cost_threshold).
 long("implicit-parallelism-call-site-cost-threshold",
     implicit_parallelism_call_site_cost_threshold).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
-defaults(help,              bool(no)).
-defaults(program_name,      string("")).
-defaults(verbose,           bool(no)).
-defaults(version,           bool(no)).
-defaults(show_warnings,     bool(no)).
+defaults(help,                  bool(no)).
+defaults(verbosity,             int(2)).
+defaults(version,               bool(no)).
+defaults(debug_read_profile,    bool(no)).
 
 defaults(calls_above_threshold_sorted,                      bool(no)).
 defaults(calls_above_threshold_sorted_measure,              string("mean")).
@@ -338,7 +336,7 @@ defaults(desired_parallelism,                               string("4.0")).
 % be tested for.
 defaults(implicit_parallelism_sparking_cost,                int(100)).
 defaults(implicit_parallelism_locking_cost,                 int(100)).
-defaults(implicit_parallelism_proc_cost_threshold,          int(100000)).
+defaults(implicit_parallelism_clique_cost_threshold,        int(100000)).
 defaults(implicit_parallelism_call_site_cost_threshold,     int(50000)).
 
 :- pred construct_measure(string::in, stat_measure::out) is semidet.
@@ -369,9 +367,16 @@ construct_measure("median",     stat_median).
                 cpc_desired_parallelism     :: float,
                 cpc_sparking_cost           :: int,
                 cpc_locking_cost            :: int,
-                cpc_proc_threshold          :: int,
+                cpc_clique_threshold        :: int,
                 cpc_call_site_threshold     :: int
             ).
+
+:- pred check_verbosity_option(option_table(option)::in, int::out) is semidet.
+
+check_verbosity_option(Options, VerbosityLevel) :-
+    lookup_int_option(Options, verbosity, VerbosityLevel),
+    VerbosityLevel >= 0, 
+    VerbosityLevel =< 4.
 
     % Check all the command line options and return a well-typed representation
     % of the user's request. Some command line options imply other options,
@@ -396,7 +401,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
         ),
         Options = !.Options
     ),
-
+    
     % For each feedback type, determine if it is requested and fill in the
     % field in the RequestedFeedbackInfo structure.
     lookup_bool_option(Options, calls_above_threshold_sorted,
@@ -411,7 +416,9 @@ check_options(Options0, RequestedFeedbackInfo) :-
             error("Invalid value for calls_above_threshold_sorted_measure: " ++
                 Measure)
         ),
-        lookup_int_option(Options, implicit_parallelism_proc_cost_threshold,
+        % Clique costs are used here.  They are almost equivalent to procedure
+        % costs.
+        lookup_int_option(Options, implicit_parallelism_clique_cost_threshold,
             CATSThreshold),
         CallsAboveThresholdSortedOpts =
             calls_above_threshold_sorted_opts(MeasureType, CATSThreshold),
@@ -439,7 +446,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
             SparkingCost),
         lookup_int_option(Options, implicit_parallelism_locking_cost,
             LockingCost),
-        lookup_int_option(Options, implicit_parallelism_proc_cost_threshold,
+        lookup_int_option(Options, implicit_parallelism_clique_cost_threshold,
             CPCProcThreshold),
         lookup_int_option(Options, 
             implicit_parallelism_call_site_cost_threshold,
@@ -482,17 +489,16 @@ set_option(Option, Value, !Options) :-
 
 %----------------------------------------------------------------------------%
 
-    % process_deep_to_feedback(RequestedFeedbackInfo, Deep, Warnings,
+    % process_deep_to_feedback(RequestedFeedbackInfo, Deep, Messages,
     %   !Feedback)
     %
     % Process a deep profiling structure and update the feedback information
     % according to the RequestedFeedbackInfo parameter.
     %
 :- pred process_deep_to_feedback(requested_feedback_info::in, deep::in,
-    cord(string)::out, feedback_info::in, feedback_info::out) is det.
+    cord(message)::out, feedback_info::in, feedback_info::out) is det.
 
-process_deep_to_feedback(RequestedFeedbackInfo, Deep, WarningStrs, 
-        !Feedback) :-
+process_deep_to_feedback(RequestedFeedbackInfo, Deep, Messages, !Feedback) :-
     MaybeCallsAboveThresholdSortedOpts =
         RequestedFeedbackInfo ^ maybe_calls_above_threshold_sorted,
     (
@@ -503,240 +509,686 @@ process_deep_to_feedback(RequestedFeedbackInfo, Deep, WarningStrs,
     ;
         MaybeCallsAboveThresholdSortedOpts = no
     ),
-    
+
     MaybeCandidateParallelConjunctionsOpts =
         RequestedFeedbackInfo ^ maybe_candidate_parallel_conjunctions,
     (
         MaybeCandidateParallelConjunctionsOpts = 
             yes(CandidateParallelConjunctionsOpts),
         candidate_parallel_conjunctions(CandidateParallelConjunctionsOpts,
-            Deep, Warnings, !Feedback)
+            Deep, Messages, !Feedback)
     ;
         MaybeCandidateParallelConjunctionsOpts = no,
-        Warnings = cord.empty
-    ),
-    cord.map_pred(warning_to_string, Warnings, WarningStrs).
+        Messages = cord.empty
+    ).
 
 %----------------------------------------------------------------------------%
 
-:- type warning
-    --->    warning(
-                warning_proc        :: string_proc_label,
-                warning_maybe_gp    :: maybe(goal_path),
-                warning_string      :: string
+    % A message to be displayed to the user.
+    %
+:- type message 
+    --->    message(
+                message_location    :: program_location,
+                message_type        :: message_type 
             ).
 
-:- pred warning_to_string(warning::in, string::out) is det.
+    % The 'importance' of a message,  Debug messages are not covered here since
+    % they should be implemented via trace goals. neither are critical messages
+    % since we use exceptions in that case.
+    %
+:- type message_level
+    --->    message_info
+    ;       message_notice
+    ;       message_warning
+    ;       message_error.
 
-warning_to_string(warning(Proc, MaybeGoalPath, Warning), String) :-
-    ProcString = string(Proc), 
+:- func message_get_level(message) = message_level.
+
+message_get_level(message(_, Type)) =
+    message_type_to_level(Type).
+
+:- pred message_to_string(message::in, string::out) is det.
+
+message_to_string(message(Location, MessageType), String) :-
+    LocationString = string(Location),
+    Level = message_type_to_level(MessageType),
+    LevelString = message_level_to_string(Level),
+    MessageStr = message_type_to_string(MessageType),
+    string.format("%s: In %s: %s",
+        [s(LevelString), s(LocationString), s(MessageStr)], String).
+
+:- func message_level_to_string(message_level) = string.
+
+message_level_to_string(message_info) = "Info".
+message_level_to_string(message_notice) = "Notice".
+message_level_to_string(message_warning) = "Warning".
+message_level_to_string(message_error) = "Error".
+
+:- func message_level_to_int(message_level) = int.
+
+message_level_to_int(message_info) = 4.
+message_level_to_int(message_notice) = 3.
+message_level_to_int(message_warning) = 2.
+message_level_to_int(message_error) = 1.
+
+    % A type of message, values of type 'message' are instances of values of
+    % type 'message_type'.
+    %
+:- type message_type
+
+                % A candidate parallel conjunction has been found.
+    --->    info_found_candidate_conjunction
+                
+                % This occurs when a variable is instantiated twice in a
+                % procedure body (different instantiation states are used).  We
+                % don't bother parallelising such procedures.
+                %
+    ;       notice_duplicate_instantiation(
+                int
+                    % The number of conjunctions that could have been
+                    % parallelised.
+            )
+
+                % Extra call pairs could have been parallelised but weren't in
+                % this implementation.
+                %
+    ;       notice_extra_callpairs_in_conjunction(
+                int
+                    % THe number of call pairs that were not parallelised.
+            )
+   
+                % A pair of calls that we want to parallelise are separated by
+                % some other goal.
+                %
+    ;       notice_candidate_callpairs_not_adjacent
+
+                % As above, except that the goal in between is a call goal.
+                %
+    ;       notice_cannot_parallelise_over_cheap_call_goal
+        
+                % As above, except that the goal in between is non-atomic.
+                %
+    ;       notice_cannot_parallelise_over_nonatomic_goal
+                
+                % Couldn't find the proc defn in the progrep data, maybe the
+                % procedure is built-in.
+                %
+    ;       warning_cannot_lookup_proc_defn
+
+                % We don't yet handle clique_proc_reports with multiple proc
+                % dynamics.
+                %
+    ;       error_extra_proc_dynamics_in_clique_proc
+
+                % An error in the generation of a coverage_procrep report.
+                %
+    ;       error_coverage_procrep_error(string).
+
+:- type program_location
+    --->    proc(string_proc_label)
+    ;       goal(string_proc_label, goal_path)
+    ;       clique(clique_ptr).
+
+:- pred append_message(program_location::in, message_type::in,
+    cord(message)::in, cord(message)::out) is det.
+
+append_message(Location, MessageType, !Messages) :-
+    Message = message(Location, MessageType),
+    !:Messages = cord.snoc(!.Messages, Message).
+
+:- func message_type_to_level(message_type) = message_level.
+
+message_type_to_level(info_found_candidate_conjunction) =
+    message_info.
+message_type_to_level(notice_duplicate_instantiation(_)) = message_notice.
+message_type_to_level(notice_extra_callpairs_in_conjunction(_)) =
+    message_notice.
+message_type_to_level(notice_candidate_callpairs_not_adjacent) = 
+    message_notice.
+message_type_to_level(notice_cannot_parallelise_over_cheap_call_goal) =
+    message_notice.
+message_type_to_level(notice_cannot_parallelise_over_nonatomic_goal) =
+    message_notice.
+message_type_to_level(warning_cannot_lookup_proc_defn) = message_warning.
+message_type_to_level(error_extra_proc_dynamics_in_clique_proc) = 
+    message_error.
+message_type_to_level(error_coverage_procrep_error(_)) =
+    message_error.
+
+:- func message_type_to_string(message_type) = string.
+
+message_type_to_string(MessageType) = String :-
     (
-        MaybeGoalPath = yes(GoalPath),
-        GoalPathString = goal_path_to_string(GoalPath),
-        string.format("In %s at %s: %s", 
-            [s(ProcString), s(GoalPathString), s(Warning)], String)
+        MessageType = info_found_candidate_conjunction, 
+        String = "Found candidate conjunction"
     ;
-        MaybeGoalPath = no,
-        string.format("In %s: %s",
-            [s(ProcString), s(Warning)], String)
+        MessageType = notice_duplicate_instantiation(CandidateConjuncts), 
+        string.format(
+            "%d conjunctions not parallelised: Seen duplicate instantiations",
+            [i(CandidateConjuncts)], String)
+    ;
+        MessageType = notice_extra_callpairs_in_conjunction(NumCPCs),
+        string.format(
+            "%d potential call pairs not parallelised in this conjunction",
+            [i(NumCPCs)], String)
+    ;
+        MessageType = notice_candidate_callpairs_not_adjacent,
+        String = "Two callpairs are difficult to parallelise because they are"
+            ++ " not adjacent"
+    ;
+        MessageType = notice_cannot_parallelise_over_cheap_call_goal,
+        String = "Parallelising expensive call goals with cheap call goals"
+            ++ " between them is not supported"
+    ;
+        MessageType = notice_cannot_parallelise_over_nonatomic_goal, 
+        String = "Parallelising call goals with non-atomic goals between them"
+            ++ " is not supported"
+    ;
+        MessageType = warning_cannot_lookup_proc_defn,
+        String = "Could not look up proc defn, perhaps this procedure is"
+            ++ " built-in"
+    ;
+        MessageType = error_extra_proc_dynamics_in_clique_proc, 
+        String = "extra proc dynamnics for a clique proc are not currenty"
+            ++ " handled."
+    ;
+        MessageType = error_coverage_procrep_error(ErrorStr),
+        string.format("Error generating coverage procedure report: %s",
+            [s(ErrorStr)], String)
     ).
-
-:- pred append_warning(string_proc_label::in, maybe(goal_path)::in, string::in,
-    cord(warning)::in, cord(warning)::out) is det.
-
-append_warning(StringProcLabel, MaybeGoalPath, WarningStr, !Warnings) :-
-    Warning = warning(StringProcLabel, MaybeGoalPath, WarningStr),
-    !:Warnings = cord.snoc(!.Warnings, Warning).
 
 %----------------------------------------------------------------------------%
 %
 % Build the candidate parallel conjunctions feedback information used for
 % implicit parallelism.
 %
-
+% The code in this section has some trace goals that can be enabled with:
+%	--trace-flag=debug_cpc_search
+%	  Debug the traversal through the clique tree.
 %
-% This doesn't follow higher order or method calls yet it may be possible to
-% follow all the higher order and method calls seen during profiling and
-% average their statistics based on their execution probability (weight).
+%	--trace-flag=debug_recursive_costs 
+%     Debug the calculation of the costs of recursive call sites.
 %
 
 :- pred candidate_parallel_conjunctions(
-    candidate_parallel_conjunctions_opts::in, deep::in, cord(warning)::out,
+    candidate_parallel_conjunctions_opts::in, deep::in, cord(message)::out,
     feedback_info::in, feedback_info::out) is det.
 
-candidate_parallel_conjunctions(Opts, Deep, Warnings, !Feedback) :-
+candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
     Opts = candidate_parallel_conjunctions_opts(DesiredParallelism,
-        SparkingCost, LockingCost, ProcThreshold, _CallSiteThreshold), 
-    % First retrieve the top procedures above the configured threshold.
-    % This is done 'overall' not 'per_call' because parallelising a procedure
-    % that is used a lot is more beneficial than parallelising a procedure that
-    % is used once when the more-frequently used function accounts for a higher
-    % amount of the programs runtime.  It may be disqualified later if per call
-    % it has very little benefit.
-    % TODO: don't bother using the 'create_report' interface to get this
-    % report, we should call it directly instead.
-    TopProcsCmd = deep_cmd_top_procs(threshold_value(float(ProcThreshold)),
-        cost_callseqs, self_and_desc, overall),
-    create_report(TopProcsCmd, Deep, TopProcsReport),
-    ( TopProcsReport = report_top_procs(MaybeTopProcsReport) ->
-        (
-            MaybeTopProcsReport = ok(TopProcs),
-            TopProcsList = TopProcs ^ tp_top_procs
-        ;
-            MaybeTopProcsReport = error(TopProcsReportError),
-            error(TopProcsReportError)
-        )
-    ;
-        error("create_report gave incorrect report, expected top_procs_report")
-    ),
-    
-    % Take the top procs list and look for conjunctions that can be
-    % parallelised and give an estimated speedup when parallelised.  There may
-    % be more than one opportunity for parallelism in any given procedure.
-    candidate_parallel_conjunctions_procs(Opts, Deep, TopProcsList,
-        [], Conjunctions, cord.empty, Warnings),
+        SparkingCost, LockingCost, _CliqueThreshold, _CallSiteThreshold),
 
-    % XXX: Analysing the clique tree to reduce the amount of nested parallel
-    % execution should be done here.
-    
+    % Find opertunities for parallelism by walking the clique tree.  Don't
+    % Descened into cliques cheaper than the threshold.
+    deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
+    TotalCallseqs = Deep ^ profile_stats ^ num_callseqs,
+    % The +1 here accounts for the cost of the pseudo call into the mercury
+    % runtime.
+    RootCliqueCost = cost_info(1, TotalCallseqs + 1),
+    candidate_parallel_conjunctions_clique(Opts, Deep, RootCliqueCost, 
+        RootCliquePtr, ConjunctionsMultiMap, Messages),
+
+    multi_map.to_flat_assoc_list(ConjunctionsMultiMap, ConjunctionsAssocList),
     CandidateParallelConjunctions =
         feedback_data_candidate_parallel_conjunctions(DesiredParallelism,
-        SparkingCost, LockingCost, Conjunctions),
+        SparkingCost, LockingCost, ConjunctionsAssocList),
     put_feedback_data(CandidateParallelConjunctions, !Feedback).
 
 :- type implicit_parallelism_info
     --->    implicit_parallelism_info(
-                ipi_deep        :: deep,
-                ipi_progrep     :: prog_rep,
-                ipi_opts        :: candidate_parallel_conjunctions_opts,
-                ipi_call_sites  :: map(goal_path, call_site_perf),
-                ipi_var_table   :: var_table
+                ipi_deep            :: deep,
+                ipi_progrep         :: prog_rep,
+                ipi_opts            :: candidate_parallel_conjunctions_opts,
+                ipi_call_sites      :: map(goal_path, clique_call_site_report),
+                ipi_rec_call_sites  :: map(goal_path, cost_info),
+                ipi_var_table       :: var_table
             ).
 
-:- pred candidate_parallel_conjunctions_procs(
-    candidate_parallel_conjunctions_opts::in, deep::in,
-    list(perf_row_data(proc_desc))::in,
-    assoc_list(string_proc_label, candidate_par_conjunction)::in,
-    assoc_list(string_proc_label, candidate_par_conjunction)::out,
-    cord(warning)::in, cord(warning)::out) is det.
+:- type cost_info
+    --->    cost_info(
+                cci_calls           :: int,
+                cci_callseqs_total  :: int 
+            ).
 
-candidate_parallel_conjunctions_procs(_, _, [], !Candidates, !Warnings).
-candidate_parallel_conjunctions_procs(Opts, Deep, [PrefRowData | PrefRowDatas],
-        !Candidates, !Warnings) :-
-    candidate_parallel_conjunctions_proc(Opts, Deep, PrefRowData, Candidates,
-        Warnings),
-    % This partially reverses the list of candidates, but order shouldn't be
-    % important.
-    !:Candidates = Candidates ++ !.Candidates,
-    !:Warnings = !.Warnings ++ Warnings,
-    candidate_parallel_conjunctions_procs(Opts, Deep, PrefRowDatas,
-        !Candidates, !Warnings).
+:- type candidate_par_conjunctions ==
+    multi_map(string_proc_label, candidate_par_conjunction).
+
+:- pred candidate_parallel_conjunctions_clique(
+    candidate_parallel_conjunctions_opts::in, deep::in, cost_info::in,
+    clique_ptr::in, candidate_par_conjunctions::out, cord(message)::out) 
+    is det.
+
+candidate_parallel_conjunctions_clique(Opts, Deep, ParentCostInfo, CliquePtr,
+        Candidates, Messages) :-
+    create_clique_report(Deep, CliquePtr, MaybeCliqueReport),
+    (
+        MaybeCliqueReport = ok(CliqueReport),
+        CliqueProcs = CliqueReport ^ cr_clique_procs,
+        % All cliques must contain at least one procedure.
+        ( [ FirstCliqueProcPrime ] = CliqueProcs ->
+            FirstCliqueProc = FirstCliqueProcPrime
+        ;
+            error(this_file ++ "A clique must have et least one procedure")
+        ),    
+        CliqueIsRecursive = is_clique_recursive(CliqueReport),
+        make_clique_proc_map(CliqueProcs, CliqueProcMap),
+        candidate_parallel_conjunctions_clique_proc(Opts, Deep,
+            CliqueIsRecursive, ParentCostInfo, set.init, CliqueProcMap,
+            CliquePtr, FirstCliqueProc, Candidates, Messages)
+    ;
+        MaybeCliqueReport = error(Error),
+        error(this_file ++ Error),
+        Messages = cord.empty
+    ).
+
+:- type clique_is_recursive
+    --->    clique_is_recursive
+    ;       clique_is_not_recursive.
+
+:- func is_clique_recursive(clique_report) = clique_is_recursive.
+
+is_clique_recursive(CliqueReport) = CliqueIsRecursive :-
+    CliqueProcs = CliqueReport ^ cr_clique_procs,
+    ( CliqueProcs = [_, _ | _] ->
+        % If there is more than one procedure then the clique must be mutually
+        % recursive.  This computation is trivial compared to the case below.
+        CliqueIsRecursive = clique_is_recursive
+    ; CliqueProcs = [CliqueProc] ->
+        % Look for a self recursion in the single clique procedure.
+        CliquePtr = CliqueReport ^ cr_clique_ptr,
+        ( 
+            % If at least one call site within the clique's proc makes a call
+            % to this same clique then this is a recursive clique - this also
+            % covers higher-order calls.
+            some [CliqueProcDyanmic, CallSite, CalleePerf]
+            (
+                (
+                    CliqueProcDynamic = CliqueProc ^ cpr_first_proc_dynamic
+                ;
+                    member(CliqueProcDynamic, 
+                        CliqueProc ^ cpr_other_proc_dynamics)
+                ),
+                member(CallSite, CliqueProcDynamic ^ cpdr_call_sites), 
+                member(CalleePerf, CallSite ^ ccsr_callee_perfs),
+                CliquePtr = CalleePerf ^ perf_row_subject ^ cdesc_clique_ptr
+            ) 
+        ->
+            CliqueIsRecursive = clique_is_recursive
+        ;
+            CliqueIsRecursive = clique_is_not_recursive
+        )
+    ;
+        error(this_file ++ "Clique must have at least one procedure")
+    ).
+
+    % Construct a map of clique proc reports.
+    %
+:- pred make_clique_proc_map(list(clique_proc_report)::in,
+    map(proc_desc, clique_proc_report)::out) is det.
+
+make_clique_proc_map(CliqueProcs, CliqueProcMap) :-
+    list.foldl((pred(CliqueProc::in, Map0::in, Map::out) is det :-
+            ProcDesc = CliqueProc ^ cpr_proc_summary ^ perf_row_subject,
+            map.det_insert(Map0, ProcDesc, CliqueProc, Map)
+        ), CliqueProcs, map.init, CliqueProcMap).
+
+    % candidate_parallel_conjunctions_clique_proc(Opts, Deep, 
+    %   CliqueIsRecursive, ParentCostInfo, ProcsAnalysed, CliquePtr,
+    %   CliqueProc, Candidates, Messages) :-
+    %
+    % Find candidate parallel conjunctions within a clique_proc_report.
+    %
+    % ParentCostInfo gives the cost of the call site calling this clique so
+    % that we may correctly calculate the per-call costs of recursive cliques
+    % and their call sites.
+    %
+    % ProcsAnalysed keeps a set of procs we've visited to prevent unbound
+    % recursion in this algorithm.
+    %
+    % CliqueProcMap is a map of proc_desc to clique_proc_report structures
+    % extracted from the clique_report.
+    %
+    % CliquePtr is the clique that this proc belongs to.
+    %
+:- pred candidate_parallel_conjunctions_clique_proc(
+    candidate_parallel_conjunctions_opts::in, deep::in, 
+    clique_is_recursive::in, cost_info::in, set(proc_desc)::in,
+    map(proc_desc, clique_proc_report)::in,
+    clique_ptr::in, clique_proc_report::in,
+    candidate_par_conjunctions::out, cord(message)::out) is det.
+
+candidate_parallel_conjunctions_clique_proc(Opts, Deep, 
+        CliqueIsRecursive, ParentCostInfo, ProcsAnalysed0, CliqueProcMap, 
+        CliquePtr, CliqueProc, Candidates, Messages) :-
+    some [!Messages]
+    (
+        !:Messages = cord.empty,
+        % Use the total cost the call to this procedure to decide if we should
+        % stop recursing the call graph at this point.  If the procedure does
+        % not contribute to the runtime of the program in an absolute way then
+        % do not recurse further.  This test is performed here rather than in
+        % the callees of this predicate to avoid duplication of code.
+        ParentCostInfo = cost_info(_Calls, TotalCost),
+        ( TotalCost > Opts ^ cpc_clique_threshold ->
+            % Determine the costs of the call sites in the procedure.
+            (
+                CliqueIsRecursive = clique_is_recursive,
+                build_recursive_call_site_cost_map(Deep, CliqueProc, CliquePtr,
+                    ParentCostInfo, RecursiveCallSiteCostMap, CSCMMessages),
+                !:Messages = !.Messages ++ CSCMMessages,
+                trace [compile_time(flag("debug_cpc_search")), io(!IO)]
+                  io.format(
+                    "D: In clique %s recursive call site cost map is: %s\n",
+                    [s(string(CliquePtr)), s(string(RecursiveCallSiteCostMap))],
+                    !IO)
+            ;
+                CliqueIsRecursive = clique_is_not_recursive,
+                RecursiveCallSiteCostMap = map.init
+            ),
+
+            % Analyse this procedure for parallelism opportunities.
+            candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
+                RecursiveCallSiteCostMap, ProcCandidates, ProcMessages),
+            !:Messages = !.Messages ++ ProcMessages,
+
+            ProcDesc = CliqueProc ^ cpr_proc_summary ^ perf_row_subject,
+
+            % Get a list of call sites
+            ( CliqueProc ^ cpr_other_proc_dynamics = [_ | _] ->
+                proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
+                append_message(proc(ProcLabel),
+                    error_extra_proc_dynamics_in_clique_proc,
+                    !Messages)
+            ;
+                true
+            ),
+            CallSiteReports = 
+                CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
+            % Analyse child cliques of this clique proc for parallelism
+            % opportunities.  Recursive calls point to this same clique, in
+            % these cases call candidate_parallel_conjunctions_clique_proc on
+            % the procedure within this clique that they call.
+            set.insert(ProcsAnalysed0, ProcDesc, ProcsAnalysed),
+            list.map2(candidate_parallel_conjunctions_call_site(Opts, Deep,
+                    ProcsAnalysed, CliqueIsRecursive, RecursiveCallSiteCostMap,
+                    CliqueProcMap, CliquePtr),
+                CallSiteReports, CSCandidatesList, CSMessagesList),
+          
+            list.foldl(multi_map.merge, CSCandidatesList, multi_map.init,
+                CSCandidates),
+            Candidates = multi_map.merge(ProcCandidates, CSCandidates),
+            !:Messages = !.Messages ++ cord_list_to_cord(CSMessagesList)
+        ;
+            Candidates = multi_map.init,
+            trace [compile_time(flag("debug_cpc_search")), io(!IO)]
+                io.format("D: Not entering cheap clique: %s with cost %s\n",
+                    [s(string(CliquePtr)), s(string(ParentCostInfo))], !IO)
+        ),
+        Messages = !.Messages
+    ).
+
+:- pred candidate_parallel_conjunctions_call_site(
+    candidate_parallel_conjunctions_opts::in, deep::in, set(proc_desc)::in,
+    clique_is_recursive::in, map(goal_path, cost_info)::in,
+    map(proc_desc, clique_proc_report)::in, clique_ptr::in,
+    clique_call_site_report::in, candidate_par_conjunctions::out,
+    cord(message)::out) is det.
+
+candidate_parallel_conjunctions_call_site(Opts, Deep, ProcsAnalysed,
+        CliqueIsRecursive, RecursiveCallSiteCostMap, CliqueProcMap, CliquePtr,
+        CallSiteReport, Candidates, Messages) :-
+    % XXX: This does not weight the callees by the probability that they will
+    % be called.  This is only a problem for higher order call sites.
+    CalleePerfs = CallSiteReport ^ ccsr_callee_perfs,
+    CallSiteDesc = CallSiteReport ^ ccsr_call_site_summary ^ perf_row_subject,
+    list.map2(candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed,
+            CliqueIsRecursive, RecursiveCallSiteCostMap, CliqueProcMap,
+            CliquePtr, CallSiteDesc),
+        CalleePerfs, CandidatesList, MessagesList),
+    list.foldl(multi_map.merge, CandidatesList, multi_map.init, Candidates),
+    Messages = cord_list_to_cord(MessagesList).
+
+:- pred candidate_parallel_conjunctions_callee(
+    candidate_parallel_conjunctions_opts::in, deep::in, set(proc_desc)::in,
+    clique_is_recursive::in, map(goal_path, cost_info)::in,
+    map(proc_desc, clique_proc_report)::in, clique_ptr::in, call_site_desc::in,
+    perf_row_data(clique_desc)::in, candidate_par_conjunctions::out,
+    cord(message)::out) is det.
+
+candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed0,
+        ParentCliqueIsRecursive, RecursiveCallSiteCostMap, CliqueProcReportMap,
+        ParentCliquePtr, CallSiteDesc, CliquePerf, Candidates, Messages) :-
+    CliqueDesc = CliquePerf ^ perf_row_subject,
+    CliquePtr = CliqueDesc ^ cdesc_clique_ptr,
+    CliqueEntryProc = CliqueDesc ^ cdesc_entry_member,
+    MaybePerfTotal = CliquePerf ^ perf_row_maybe_total,
+    (
+        MaybePerfTotal = yes(PerfTotal)
+    ;
+        MaybePerfTotal = no,
+        error(this_file ++ 
+            "Could not retrive total callseqs cost from clique")
+    ),
+    CliqueCost = PerfTotal ^ perf_row_callseqs,
+    Calls = CliquePerf ^ perf_row_calls,
+    CostInfo = cost_info(Calls, CliqueCost),
+    ( ParentCliquePtr = CliquePtr ->
+        % This is a recursive call within the same clique.
+        ( member(CliqueEntryProc, ProcsAnalysed0) ->
+            % If we've analysed this clique in this proc already then don't do
+            % it again.
+            Candidates = multi_map.init,
+            Messages = cord.empty
+        ;
+            map.lookup(CliqueProcReportMap, CliqueEntryProc, CliqueProcReport),
+            ProcsAnalysed = set.insert(ProcsAnalysed0, CliqueEntryProc),
+            % We determine the cost of the call site we're following within
+            % this clique to this procedure so that it can have correct cost
+            % information.
+            map.lookup(RecursiveCallSiteCostMap, 
+                CallSiteDesc ^ csdesc_goal_path, CallCostInfo),
+            candidate_parallel_conjunctions_clique_proc(Opts, Deep,
+                ParentCliqueIsRecursive, CallCostInfo, ProcsAnalysed, 
+                CliqueProcReportMap, ParentCliquePtr, CliqueProcReport, 
+                Candidates, Messages)
+        )
+    ;
+        ( CliqueCost > Opts ^ cpc_clique_threshold ->
+            candidate_parallel_conjunctions_clique(Opts, Deep, CostInfo,
+                CliquePtr, Candidates, Messages)
+        ;
+            Candidates = multi_map.init, 
+            Messages = cord.empty
+        )
+    ).
+
+%----------------------------------------------------------------------------%
+
+:- pred build_recursive_call_site_cost_map(deep::in, clique_proc_report::in,
+    clique_ptr::in, cost_info::in, map(goal_path, cost_info)::out,
+    cord(message)::out) is det.
+
+build_recursive_call_site_cost_map(Deep, CliqueProc, CliquePtr,
+        ParentCostInfo, RecursiveCallSiteCostMap, Messages) :-
+    % Lookup the proc static to find the ProcLabel.
+    PerfRowData = CliqueProc ^ cpr_proc_summary,
+    TotalProcCalls = PerfRowData ^ perf_row_calls,
+    ProcDesc = PerfRowData ^ perf_row_subject,
+    proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
+
+    ( CliqueProc ^ cpr_other_proc_dynamics = [_ | _] ->
+        append_message(proc(ProcLabel),
+            error_extra_proc_dynamics_in_clique_proc, cord.empty, Messages)
+    ;
+        Messages = cord.empty
+    ),
+
+    cost_info(ParentCSCalls, ParentCSCost) = ParentCostInfo,
+    CallSites = CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
+    % Divide ParentCalls by the number of recursive calls to determine the
+    % fraction of calls into this procedure from outside the clique compared to
+    % calls from within the clique, use this to calculate the number of calls
+    % at the top level of the recursion of the call sites.
+    ProcCallsRecFraction = float(ParentCSCalls) / float(TotalProcCalls),
+    list.foldl3(get_callsite_cost_infos(CliquePtr, ProcCallsRecFraction), 
+        CallSites, 0, NonRecCSCost, 0.0, RecursiveCSCalls, 
+        set.init, RecursiveCS),
+
+    % The negative one here represents the call from the parent into this
+    % procedure.
+    RecursiveCost = ParentCSCost - 0 - NonRecCSCost,
+    ( RecursiveCSCalls = 0.0 ->
+        RecursiveCostPerCall = 0.0
+    ;
+        RecursiveCostPerCall = 
+            float(RecursiveCost) / RecursiveCSCalls
+    ),
+    trace [compile_time(flag("debug_recursive_costs")), io(!IO)]
+        io.format(
+            "D: In clique proc: %s-%s\n\tRecursiveCostPerCall = %d/%f = %f\n",
+            [s(string(CliquePtr)), s(string(ProcLabel)), 
+             i(RecursiveCost), f(RecursiveCSCalls), f(RecursiveCostPerCall)], 
+            !IO),
+
+    set.fold(
+        build_recursive_call_site_cost_map_call_site(RecursiveCostPerCall),
+        RecursiveCS, map.init, RecursiveCallSiteCostMap). 
+
+:- pred get_callsite_cost_infos(clique_ptr::in, float::in, 
+    clique_call_site_report::in, int::in, int::out, float::in, float::out, 
+    set(clique_call_site_report)::in, set(clique_call_site_report)::out) is det.
+
+get_callsite_cost_infos(ThisClique, ParentCallsRecFraction, CallSite,
+        !NonRecCSCost, !RecursiveCalls, !RecursiveCallSites) :-
+    CSSummary = CallSite ^ ccsr_call_site_summary,
+    MaybeTotal = CSSummary ^ perf_row_maybe_total,
+    (
+        MaybeTotal = yes(Total),
+        Cost = Total ^ perf_row_callseqs
+    ;
+        MaybeTotal = no,
+        error("clique_call_site has 'no' for perf_row_maybe_total")
+    ),
+    (
+        % Note that according to this any higher order call site that is
+        % recursive in some cases and non-recursive in others is considered to
+        % be recursive.  The cost of it's non-recursive calls is not factored
+        % into the calculation of the cost of recursive call sites.
+        member(CalleePerf, CallSite ^ ccsr_callee_perfs),
+        CalleePerf ^ perf_row_subject ^ cdesc_clique_ptr = ThisClique
+    ->
+        !:RecursiveCalls = !.RecursiveCalls + 
+            (float(CSSummary ^ perf_row_calls) * ParentCallsRecFraction),
+        svset.insert(CallSite, !RecursiveCallSites)
+    ;
+        !:NonRecCSCost = !.NonRecCSCost + Cost
+    ).
+
+:- pred build_recursive_call_site_cost_map_call_site(float::in,
+    clique_call_site_report::in, map(goal_path, cost_info)::in,
+    map(goal_path, cost_info)::out) is det.
+    
+build_recursive_call_site_cost_map_call_site(RecursiveCostPerCall, CallSite,
+        !Map) :-
+    CSSummary = CallSite ^ ccsr_call_site_summary,
+    Calls = CSSummary ^ perf_row_calls,
+    Cost = RecursiveCostPerCall * float(Calls),
+    CostInfo = cost_info(Calls, round_to_int(Cost)),
+    GoalPath = CSSummary ^ perf_row_subject ^ csdesc_goal_path,
+    svmap.det_insert(GoalPath, CostInfo, !Map).
+
+%----------------------------------------------------------------------------%
 
     % Find candidate parallel conjunctions within the given procedure.
     %
 :- pred candidate_parallel_conjunctions_proc(
     candidate_parallel_conjunctions_opts::in, deep::in,
-    perf_row_data(proc_desc)::in,
-    assoc_list(string_proc_label, candidate_par_conjunction)::out,
-    cord(warning)::out) is det.
+    clique_proc_report::in, map(goal_path, cost_info)::in,
+    candidate_par_conjunctions::out,
+    cord(message)::out) is det.
 
-candidate_parallel_conjunctions_proc(Opts, Deep, PrefRowData, Candidates,
-        Warnings) :-
+candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
+        RecursiveCallSiteCostMap, Candidates, Messages) :-
     % Lookup the proc static to find the ProcLabel.
-    PSPtr = PrefRowData ^ perf_row_subject ^ pdesc_ps_ptr,  
-    deep_lookup_proc_statics(Deep, PSPtr, PS),
-    ProcLabel = PS ^ ps_id,
+    PerfRowData = CliqueProc ^ cpr_proc_summary,
+    ProcDesc = PerfRowData ^ perf_row_subject,
+    proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
     
-    % Make a proc query to retrieve cost information for the call sites within
-    % the procedure.
-    % TODO: As above: this can probably be called directly rather than going via
-    % create_report.
-    create_report(deep_cmd_proc(PSPtr), Deep, Report),
-    ( Report = report_proc(MaybeProcReport) ->
-        det_open_maybe_error(MaybeProcReport, ProcReport)
+    CallSites = CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
+    ( CliqueProc ^ cpr_other_proc_dynamics = [_ | _] ->
+        append_message(proc(ProcLabel), 
+            error_extra_proc_dynamics_in_clique_proc,
+            cord.empty, Messages0)
     ;
-        error(this_file ++ "Recieved incorrect report for proc report query")
+        Messages0 = cord.empty
     ),
-    list.foldl(add_call_site_perf_to_map,
-        ProcReport ^ proc_call_site_summaries, map.init, CallSitesMap),
-    MaybeProgRep = Deep ^ procrep_file,
-    (
-        MaybeProgRep = yes(MaybeProgRep1),
-        (
-            MaybeProgRep1 = ok(ProgRep)
-        ;
-            MaybeProgRep1 = error(Error),
-            error(this_file ++ Error)
-        )
-    ;
-        MaybeProgRep = no,
-        error(this_file ++ "Could not open Deep.procrep")
-    ),
+    list.foldl(add_call_site_report_to_map,
+        CallSites, map.init, CallSitesMap),
+    deep_get_progrep_det(Deep, ProgRep),
     ( progrep_search_proc(ProgRep, ProcLabel, ProcRep) ->
         ProcRep ^ pr_defn = ProcDefnRep,
         ProcDefnRep ^ pdr_goal = Goal,
         ProcDefnRep ^ pdr_var_table = VarTable,
-        Info = implicit_parallelism_info(Deep, ProgRep, Opts, CallSitesMap,
-            VarTable),
+        Info = implicit_parallelism_info(Deep, ProgRep, Opts,
+            CallSitesMap, RecursiveCallSiteCostMap, VarTable),
         goal_get_conjunctions_worth_parallelising(Goal, empty_goal_path, Info,
             ProcLabel, Candidates0, _, _,
-            Warnings, initial_inst_map(ProcDefnRep), _),
-        list.map((pred(Candidate0::in, Candidate::out) is det :-
-                Candidate = (ProcLabel - Candidate0)
-            ), Candidates0, Candidates)
+            Messages, initial_inst_map(ProcDefnRep), _),
+        list.foldl((pred(Candidate::in, Map0::in, Map::out) is det :-
+                multi_map.set(Map0, ProcLabel, Candidate, Map)
+            ), Candidates0, multi_map.init, Candidates)
     ;
         % Builtin procedures cannot be found in the program representation, and
         % cannot be parallelised either.
-        Candidates = [],
-        append_warning(ProcLabel, no, 
-            warning_cannot_lookup_proc_defn,
-            cord.empty, Warnings)
+        Candidates = multi_map.init,
+        append_message(proc(ProcLabel), warning_cannot_lookup_proc_defn,
+            Messages0, Messages)
     ).
     
 :- pred goal_get_conjunctions_worth_parallelising(goal_rep::in, goal_path::in,
     implicit_parallelism_info::in, string_proc_label::in, 
     list(candidate_par_conjunction)::out, seen_duplicate_instantiation::out,
-    maybe_call_conjunct::out, cord(warning)::out, inst_map::in, inst_map::out) 
+    maybe_call_conjunct::out, cord(message)::out, inst_map::in, inst_map::out) 
     is det.
 
 goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, ProcLabel, 
         Candidates, SeenDuplicateInstantiation, MaybeCallConjunct,
-        Warnings, !InstMap) :-
+        Messages, !InstMap) :-
     Goal = goal_rep(GoalExpr, Detism, _),
     (
         (
             GoalExpr = conj_rep(Conjuncts),
             conj_get_conjunctions_worth_parallelising(Conjuncts, GoalPath,
                 Info, ProcLabel, Candidates, SeenDuplicateInstantiation,
-                Warnings, !InstMap) 
+                Messages, !InstMap) 
         ;
             GoalExpr = disj_rep(Disjuncts),
             disj_get_conjunctions_worth_parallelising(Disjuncts, GoalPath, 1,
                 Info, ProcLabel, Candidates, SeenDuplicateInstantiation,
-                Warnings, !InstMap)
+                Messages, !InstMap)
         ;
             GoalExpr = switch_rep(_, _, Cases),
             switch_case_get_conjunctions_worth_parallelising(Cases, GoalPath, 1,
                 Info, ProcLabel, Candidates, SeenDuplicateInstantiation,
-                Warnings, !InstMap)
+                Messages, !InstMap)
         ;
             GoalExpr = ite_rep(Cond, Then, Else),
             ite_get_conjunctions_worth_parallelising(Cond, Then, Else,
                 GoalPath, Info, ProcLabel, Candidates,
-                SeenDuplicateInstantiation, Warnings, !InstMap)
+                SeenDuplicateInstantiation, Messages, !InstMap)
         ;
             GoalExpr = scope_rep(SubGoal, MaybeCut),
             ScopeGoalPath = 
                 goal_path_add_at_end(GoalPath, step_scope(MaybeCut)),
             goal_get_conjunctions_worth_parallelising(SubGoal, ScopeGoalPath,
                 Info, ProcLabel, Candidates, SeenDuplicateInstantiation, _,
-                Warnings, !InstMap) 
+                Messages, !InstMap) 
         ;
             GoalExpr = negation_rep(SubGoal),
             NegGoalPath = goal_path_add_at_end(GoalPath, step_neg),
             goal_get_conjunctions_worth_parallelising(SubGoal, NegGoalPath,
                 Info, ProcLabel, Candidates, SeenDuplicateInstantiation, _,
-                Warnings, !InstMap) 
+                Messages, !InstMap) 
         ),
         % TODO: Parallelising conjunctions like 
         %   ( call1(A, B) , not call2(C, D) )
@@ -765,89 +1217,96 @@ goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, ProcLabel,
             SeenDuplicateInstantiation),
         maybe_call_site_conjunct(Info, GoalPath, AtomicGoal, Detism,
             InstMapBeforeCall, !.InstMap, BoundVars, MaybeCallConjunct),
-        Candidates = [],
-        Warnings = cord.empty
+        Messages = cord.empty,
+        Candidates = []
     ).
 
 :- pred conj_get_conjunctions_worth_parallelising(list(goal_rep)::in,
     goal_path::in, implicit_parallelism_info::in, string_proc_label::in,
     list(candidate_par_conjunction)::out, seen_duplicate_instantiation::out, 
-    cord(warning)::out, inst_map::in, inst_map::out) is det.
+    cord(message)::out, inst_map::in, inst_map::out) is det.
 
 conj_get_conjunctions_worth_parallelising(Conjs, GoalPath, Info,
-        ProcLabel, Candidates, SeenDuplicateInstantiation, Warnings, 
+        ProcLabel, Candidates, SeenDuplicateInstantiation, Messages, 
         !InstMap) :-
-    % Note: it will be better to look at each pair of conjuncts, determine if
-    % they are parallelisable (perhaps by placing middle goals in either of the
-    % the parallel conjuncts to create the optimum amount of parallelism.  This
-    % will need to have an in-order representation of goals, and for each
-    % variable seen have a tree of variables it depends upon.
-    %
-    % For now consider parallelising conjuncts that separated only by other
-    % atomic goals.
-    conj_get_conjunctions_worth_parallelising_2(Conjs, GoalPath, 1, Info,
-        ProcLabel, Candidates0, CallSiteConjuncts, 
-        SeenDuplicateInstantiation, WarningsA, !InstMap),
-        
-    build_candidate_conjunctions(Info, !.InstMap, GoalPath, ProcLabel,
-        list(CallSiteConjuncts), WarningsB, pqueue.init, CandidatesQueue),
-    Warnings0 = WarningsA ++ WarningsB,
-    % Pick best candidate from queue.
+    some [!Messages] 
     (
-        SeenDuplicateInstantiation = have_not_seen_duplicate_instantiation,
-        ( pqueue.remove(CandidatesQueue, _, Candidate, _) ->
-            Candidates = [Candidate | Candidates0],
-            (
-                pqueue.length(CandidatesQueue) = Length,
-                Length > 0
-            ->
-                append_warning(ProcLabel, yes(GoalPath),
-                    warning_extra_callpairs_in_conjunction(Length), 
-                    Warnings0, Warnings)
+        % Note: it will be better to look at each pair of conjuncts, determine
+        % if they are parallelisable (perhaps by placing middle goals in either
+        % of the parallel conjuncts to create the optimum amount of
+        % parallelism.  This will need to have an in-order representation of
+        % goals, and for each variable seen have a tree of variables it depends
+        % upon.
+        %
+        % For now consider parallelising conjuncts that separated only by other
+        % atomic goals.
+        conj_get_conjunctions_worth_parallelising_2(Conjs, GoalPath, 1, Info,
+            ProcLabel, Candidates0, CallSiteConjuncts, 
+            SeenDuplicateInstantiation, !:Messages, !InstMap),
+         
+        build_candidate_conjunctions(Info, !.InstMap, GoalPath, ProcLabel,
+            list(CallSiteConjuncts), MessagesBCC, pqueue.init, CandidatesQueue),
+        !:Messages = !.Messages ++ MessagesBCC,
+        % Pick best candidate from queue.
+        (
+            SeenDuplicateInstantiation = have_not_seen_duplicate_instantiation,
+            ( pqueue.remove(CandidatesQueue, _, Candidate, CandidatesQueuePrime) ->
+                Candidates = [Candidate | Candidates0],
+                (
+                    pqueue.length(CandidatesQueuePrime) = Length,
+                    Length > 0
+                ->
+                    append_message(goal(ProcLabel, GoalPath),
+                        notice_extra_callpairs_in_conjunction(Length), 
+                        !Messages)
+                ;
+                    true
+                ),
+                append_message(goal(ProcLabel, GoalPath),
+                    info_found_candidate_conjunction,
+                    !Messages)
             ;
-                Warnings = Warnings0
+                Candidates = Candidates0
             )
         ;
+            SeenDuplicateInstantiation = seen_duplicate_instantiation,
             Candidates = Candidates0,
-            Warnings = Warnings0
-        )
-    ;
-        SeenDuplicateInstantiation = seen_duplicate_instantiation,
-        Candidates = Candidates0,
-        (
-            pqueue.length(CandidatesQueue) = Length,
-            Length >= 1 
-        ->
-            append_warning(ProcLabel, yes(GoalPath), 
-                warning_duplicate_instantiation(Length), 
-                Warnings0, Warnings)
-        ;
-            Warnings = Warnings0
-        )
-    ). 
+            (
+                pqueue.length(CandidatesQueue) = Length,
+                Length >= 1 
+            ->
+                append_message(goal(ProcLabel, GoalPath), 
+                    notice_duplicate_instantiation(Length), 
+                    !Messages)
+            ;
+                true
+            )
+        ),
+        Messages = !.Messages
+    ).
 
 :- pred conj_get_conjunctions_worth_parallelising_2(list(goal_rep)::in,
     goal_path::in, int::in, implicit_parallelism_info::in,
     string_proc_label::in, list(candidate_par_conjunction)::out,
     cord(maybe_call_conjunct)::out, seen_duplicate_instantiation::out,
-    cord(warning)::out, inst_map::in, inst_map::out) is det.
+    cord(message)::out, inst_map::in, inst_map::out) is det.
 
 conj_get_conjunctions_worth_parallelising_2([], _, _, _, _, [], cord.empty, 
         have_not_seen_duplicate_instantiation, cord.empty, !InstMap).
 conj_get_conjunctions_worth_parallelising_2([Conj | Conjs], GoalPath,
         ConjunctNum, Info, ProcLabel, Candidates, CallSiteConjuncts,
-        SeenDuplicateInstantiation, Warnings, !InstMap) :-
+        SeenDuplicateInstantiation, Messages, !InstMap) :-
     ConjGoalPath = goal_path_add_at_end(GoalPath, step_conj(ConjunctNum)),
     goal_get_conjunctions_worth_parallelising(Conj, ConjGoalPath, Info,
         ProcLabel, CandidatesHead, SeenDuplicateInstantiationHead,
-        MaybeCallSiteConjunct, WarningsHead, !InstMap), 
+        MaybeCallSiteConjunct, MessagesHead, !InstMap), 
     
     conj_get_conjunctions_worth_parallelising_2(Conjs, GoalPath, ConjunctNum+1,
         Info, ProcLabel, CandidatesTail, CallSiteConjuncts0,
-        SeenDuplicateInstantiationTail, WarningsTail, !InstMap),
+        SeenDuplicateInstantiationTail, MessagesTail, !InstMap),
 
     Candidates = CandidatesHead ++ CandidatesTail,
-    Warnings = WarningsHead ++ WarningsTail,
+    Messages = MessagesHead ++ MessagesTail,
     CallSiteConjuncts = cord.cons(MaybeCallSiteConjunct, CallSiteConjuncts0),
     SeenDuplicateInstantiation = merge_seen_duplicate_instantiation(
         SeenDuplicateInstantiationHead,
@@ -856,24 +1315,24 @@ conj_get_conjunctions_worth_parallelising_2([Conj | Conjs], GoalPath,
 :- pred disj_get_conjunctions_worth_parallelising(list(goal_rep)::in,
     goal_path::in, int::in, implicit_parallelism_info::in, 
     string_proc_label::in, list(candidate_par_conjunction)::out,
-    seen_duplicate_instantiation::out, cord(warning)::out,
+    seen_duplicate_instantiation::out, cord(message)::out,
     inst_map::in, inst_map::out) is det.
 
 disj_get_conjunctions_worth_parallelising([], _, _, _, _, [],
     have_not_seen_duplicate_instantiation, cord.empty, !InstMap).
 disj_get_conjunctions_worth_parallelising([Disj | Disjs], GoalPath, DisjNum,
         Info, ProcLabel, Candidates, SeenDuplicateInstantiation, 
-        Warnings, InstMap0, InstMap) :-
+        Messages, InstMap0, InstMap) :-
     DisjGoalPath = goal_path_add_at_end(GoalPath, step_disj(DisjNum)),
     HeadDetism = Disj ^ goal_detism_rep,
     goal_get_conjunctions_worth_parallelising(Disj, DisjGoalPath, Info,
         ProcLabel, HeadCandidates, HeadSeenDuplicateInstantiation, 
-        _MaybeCallConjunct, HeadWarnings, InstMap0, HeadInstMap),
+        _MaybeCallConjunct, HeadMessages, InstMap0, HeadInstMap),
     disj_get_conjunctions_worth_parallelising(Disjs, GoalPath, DisjNum + 1,
         Info, ProcLabel, TailCandidates, TailSeenDuplicateInstantiation,
-        TailWarnings, InstMap0, TailInstMap),
+        TailMessages, InstMap0, TailInstMap),
     Candidates = HeadCandidates ++ TailCandidates,
-    Warnings = HeadWarnings ++ TailWarnings,
+    Messages = HeadMessages ++ TailMessages,
     % merge_inst_map requires the detism of goals that produce both inst maps,
     % we can create fake values that satisfy merge_inst_map easily.
     (
@@ -891,25 +1350,25 @@ disj_get_conjunctions_worth_parallelising([Disj | Disjs], GoalPath, DisjNum,
 :- pred switch_case_get_conjunctions_worth_parallelising(list(case_rep)::in,
     goal_path::in, int::in, implicit_parallelism_info::in,
     string_proc_label::in, list(candidate_par_conjunction)::out,
-    seen_duplicate_instantiation::out, cord(warning)::out, 
+    seen_duplicate_instantiation::out, cord(message)::out, 
     inst_map::in, inst_map::out) is det.
 
 switch_case_get_conjunctions_worth_parallelising([], _, _, _, _, [],
     have_not_seen_duplicate_instantiation, cord.empty, !InstMap).
 switch_case_get_conjunctions_worth_parallelising([Case | Cases], GoalPath,
         CaseNum, Info, ProcLabel, Candidates, SeenDuplicateInstantiation,
-        Warnings, InstMap0, InstMap) :-
+        Messages, InstMap0, InstMap) :-
     Case = case_rep(_, _, Goal),
     HeadDetism = Goal ^ goal_detism_rep,
     CaseGoalPath = goal_path_add_at_end(GoalPath, step_switch(CaseNum, no)),
     goal_get_conjunctions_worth_parallelising(Goal, CaseGoalPath, Info,
         ProcLabel, HeadCandidates, HeadSeenDuplicateInstantiation, 
-        _MaybeCallConjs, HeadWarnings, InstMap0, HeadInstMap),
+        _MaybeCallConjs, HeadMessages, InstMap0, HeadInstMap),
     switch_case_get_conjunctions_worth_parallelising(Cases, GoalPath, 
         CaseNum + 1, Info, ProcLabel, TailCandidates,
-        TailSeenDuplicateInstantiation, TailWarnings, InstMap0, TailInstMap),
+        TailSeenDuplicateInstantiation, TailMessages, InstMap0, TailInstMap),
     Candidates = HeadCandidates ++ TailCandidates,
-    Warnings = HeadWarnings ++ TailWarnings,
+    Messages = HeadMessages ++ TailMessages,
     % merge_inst_map requires the detism of goals that produce both inst maps,
     % we can create fake values that satisfy merge_inst_map easily.
     (
@@ -927,23 +1386,23 @@ switch_case_get_conjunctions_worth_parallelising([Case | Cases], GoalPath,
 :- pred ite_get_conjunctions_worth_parallelising(goal_rep::in, goal_rep::in,
     goal_rep::in, goal_path::in, implicit_parallelism_info::in,
     string_proc_label::in, list(candidate_par_conjunction)::out,
-    seen_duplicate_instantiation::out, cord(warning)::out,
+    seen_duplicate_instantiation::out, cord(message)::out,
     inst_map::in, inst_map::out) is det.
 
 ite_get_conjunctions_worth_parallelising(Cond, Then, Else, GoalPath, Info,
-        ProcLabel, Candidates, SeenDuplicateInstantiation, Warnings, !InstMap) :-
+        ProcLabel, Candidates, SeenDuplicateInstantiation, Messages, !InstMap) :-
     CondGoalPath = goal_path_add_at_end(GoalPath, step_ite_cond),
     ThenGoalPath = goal_path_add_at_end(GoalPath, step_ite_then),
     ElseGoalPath = goal_path_add_at_end(GoalPath, step_ite_else),
     goal_get_conjunctions_worth_parallelising(Cond, CondGoalPath, Info,
         ProcLabel, CondCandidates, CondSeenDuplicateInstantiation, _,
-        CondWarnings, !.InstMap, PostCondInstMap),
+        CondMessages, !.InstMap, PostCondInstMap),
     goal_get_conjunctions_worth_parallelising(Then, ThenGoalPath, Info, 
         ProcLabel, ThenCandidates, ThenSeenDuplicateInstantiation, _,
-        ThenWarnings, PostCondInstMap, PostThenInstMap),
+        ThenMessages, PostCondInstMap, PostThenInstMap),
     goal_get_conjunctions_worth_parallelising(Else, ElseGoalPath, Info, 
         ProcLabel, ElseCandidates, ElseSeenDuplicateInstantiation, _, 
-        ElseWarnings, PostCondInstMap, PostElseInstMap),
+        ElseMessages, PostCondInstMap, PostElseInstMap),
     Candidates = CondCandidates ++ ThenCandidates ++ ElseCandidates,
     (
         CondSeenDuplicateInstantiation = have_not_seen_duplicate_instantiation,
@@ -954,7 +1413,7 @@ ite_get_conjunctions_worth_parallelising(Cond, Then, Else, GoalPath, Info,
     ;
         SeenDuplicateInstantiation = seen_duplicate_instantiation
     ),
-    Warnings = CondWarnings ++ ThenWarnings ++ ElseWarnings,
+    Messages = CondMessages ++ ThenMessages ++ ElseMessages,
     ThenDetism = Then ^ goal_detism_rep,
     ElseDetism = Else ^ goal_detism_rep,
     !:InstMap = merge_inst_map(PostThenInstMap, ThenDetism, 
@@ -983,7 +1442,7 @@ ite_get_conjunctions_worth_parallelising(Cond, Then, Else, GoalPath, Info,
                 mccc_callee             :: maybe(pair(string, string)),
                 mccc_detism             :: detism_rep,
                 mccc_args               :: list(var_mode_and_use),
-                mccc_perf               :: call_site_perf
+                mccc_call_site          :: clique_call_site_report
             )
     ;       trivial_atomic_goal(
                 mccag_detism            :: detism_rep,
@@ -1038,12 +1497,12 @@ maybe_call_site_conjunct(Info, GoalPath, AtomicGoal, Detism,
             AtomicGoal = plain_call_rep(ModuleName, CalleeName, _),
             MaybeCallee = yes(ModuleName - CalleeName)
         ),
-        map.lookup(Info ^ ipi_call_sites, GoalPath, CallSitePerf),
+        map.lookup(Info ^ ipi_call_sites, GoalPath, CallSite),
         % Lookup var use information.
-        CallSiteKind = CallSitePerf ^ csf_kind,
+        CallSiteKind = CallSite ^ ccsr_kind_and_callee,
         (
-            CallSiteKind = normal_call_and_info(NormalCalleeId),
-            PSPtr = NormalCalleeId ^ nci_callee_desc ^ pdesc_ps_ptr,
+            CallSiteKind = normal_call_and_callee(NormalCalleeId, _),
+            PSPtr = NormalCalleeId ^ pdesc_ps_ptr,
             Deep = Info ^ ipi_deep,
             create_proc_var_use_dump_report(Deep, PSPtr,
                 MaybeVarUseDumpInfo),
@@ -1066,7 +1525,7 @@ maybe_call_site_conjunct(Info, GoalPath, AtomicGoal, Detism,
                 ), Args, VarModeAndUses)
         ),
         MaybeCallConjunct = 
-            call(MaybeCallee, Detism, VarModeAndUses, CallSitePerf)
+            call(MaybeCallee, Detism, VarModeAndUses, CallSite)
     ).
 
 :- pred var_get_mode(inst_map::in, inst_map::in, var_rep::in, var_mode_rep::out)
@@ -1081,54 +1540,62 @@ var_get_mode(InstMapBefore, InstMapAfter, VarRep, VarModeRep) :-
     %
 :- pred build_candidate_conjunctions(implicit_parallelism_info::in,
     inst_map::in, goal_path::in, string_proc_label::in, 
-    list(maybe_call_conjunct)::in, cord(warning)::out,
+    list(maybe_call_conjunct)::in, cord(message)::out,
     pqueue(float, candidate_par_conjunction)::in, 
     pqueue(float, candidate_par_conjunction)::out) is det.
 
 build_candidate_conjunctions(_, _, _, _, [], cord.empty, !Candidates).
 build_candidate_conjunctions(Info, InstMap, GoalPath, ProcLabel,
-        [MaybeCall | MaybeCalls], Warnings, !Candidates) :-
+        [MaybeCall | MaybeCalls], Messages, !Candidates) :-
     (
-        MaybeCall = call(_, _, _, CallSitePerf),
-        Cost = get_call_site_cost(CallSitePerf),
-        ( Cost > float(Info ^ ipi_opts ^ cpc_call_site_threshold) ->
+        MaybeCall = call(_, _, _, CallSiteReport),
+        PercallCost = percall_cost(get_call_site_cost(Info, CallSiteReport)),
+        ( PercallCost > float(Info ^ ipi_opts ^ cpc_call_site_threshold) ->
             % This conjunction is a call and is expensive enough to
             % parallelise, find some later conjunct to parallelise against it.
             build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel,
-                MaybeCall, cord.empty, MaybeCalls, Warnings0, !Candidates)
+                MaybeCall, cord.empty, MaybeCalls, Messages0, !Candidates)
             % XXX: pick the most expensive non-overlapping candidates from the
             % result.
         ;
-            Warnings0 = cord.empty
+            Messages0 = cord.empty,
+            trace [compile_time(flag("debug_cpc_search")), io(!IO)]
+                io.format("D: Call too cheap: %s %s %f\n", 
+                    [s(string(ProcLabel)), 
+                     s(goal_path_to_string(CallSiteReport 
+                        ^ ccsr_call_site_summary 
+                        ^ perf_row_subject 
+                        ^ csdesc_goal_path)),
+                     f(PercallCost)], !IO)
         )
     ;
         MaybeCall = non_atomic_goal,
-        Warnings0 = cord.empty
+        Messages0 = cord.empty
     ;
         MaybeCall = trivial_atomic_goal(_, _),
-        Warnings0 = cord.empty
+        Messages0 = cord.empty
     ),
     build_candidate_conjunctions(Info, InstMap, GoalPath, ProcLabel, MaybeCalls,
-        WarningsTail, !Candidates),
-    Warnings = Warnings0 ++ WarningsTail.
+        MessagesTail, !Candidates),
+    Messages = Messages0 ++ MessagesTail.
 
 :- pred build_candidate_conjunctions_2(implicit_parallelism_info::in,
     inst_map::in, goal_path::in, string_proc_label::in, 
     maybe_call_conjunct::in(call), cord(maybe_call_conjunct)::in,
-    list(maybe_call_conjunct)::in, cord(warning)::out,
+    list(maybe_call_conjunct)::in, cord(message)::out,
     pqueue(float, candidate_par_conjunction)::in, 
     pqueue(float, candidate_par_conjunction)::out) is det.
 
 build_candidate_conjunctions_2(_, _, _, _, _, _, [], cord.empty, !Candidates).
 build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, CallA,
-        IntermediateGoals, [MaybeCall | MaybeCalls], Warnings, !Candidates) :-
+        IntermediateGoals, [MaybeCall | MaybeCalls], Messages, !Candidates) :-
     (
-        some [!Warnings]
+        some [!Messages]
         (
-            MaybeCall = call(_, _, _, CallSitePerf),
-            !:Warnings = cord.empty,
+            MaybeCall = call(_, _, _, CallSiteReport),
+            !:Messages = cord.empty,
             CallB = MaybeCall,
-            Cost = get_call_site_cost(CallSitePerf),
+            Cost = percall_cost(get_call_site_cost(Info, CallSiteReport)),
             ( Cost > float(Info ^ ipi_opts ^ cpc_call_site_threshold) ->
                 % This conjunct is a call and is expensive enough to
                 % parallelise.
@@ -1154,32 +1621,32 @@ build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, CallA,
                         pqueue.insert(!.Candidates, Speedup * -1.0, Candidate,
                             !:Candidates)
                     ;
-                        append_warning(ProcLabel, yes(GoalPath),
-                            warning_candidate_callpairs_not_adjacent,
-                            !Warnings)
+                        append_message(goal(ProcLabel, GoalPath),
+                            notice_candidate_callpairs_not_adjacent,
+                            !Messages)
                     )
                 ;
                     true
                 )
             ;
                 % Don't recurse here, we don't parallelise over call goals.
-                append_warning(ProcLabel, yes(GoalPath),
-                    warning_cannot_parallelise_over_cheap_call_goal, !Warnings)
+                append_message(goal(ProcLabel, GoalPath),
+                    notice_cannot_parallelise_over_cheap_call_goal, !Messages)
             ),
-            Warnings = !.Warnings
+            Messages = !.Messages
         )
     ;
         MaybeCall = trivial_atomic_goal(_, _),
         build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, 
             CallA, cord.snoc(IntermediateGoals, MaybeCall), MaybeCalls,
-            Warnings, !Candidates)
+            Messages, !Candidates)
     ;
         MaybeCall = non_atomic_goal,
         % Don't recurse in this case, we don't parallelise over non-atomic
         % goals yet.
-        append_warning(ProcLabel, yes(GoalPath),
-            warning_cannot_parallelise_over_nonatomic_goal,
-            cord.empty, Warnings)
+        append_message(goal(ProcLabel, GoalPath),
+            notice_cannot_parallelise_over_nonatomic_goal,
+            cord.empty, Messages)
     ).
 
 :- pred are_conjuncts_dependant(maybe_call_conjunct::in(call),
@@ -1234,23 +1701,41 @@ add_output_var_to_set(var_mode_and_use(VarRep, VarModeRep, _), !Set) :-
 
     % Retrieve the average cost of a call site.
     %
-:- func get_call_site_cost(call_site_perf) = float.
+:- func get_call_site_cost(implicit_parallelism_info, clique_call_site_report) 
+    = cost_info.
 
-get_call_site_cost(CallSitePerf) = Cost :-
-    % XXX: This selects self csq, we need to include decendants.  and do we
-    % want percall?
-    CSFSummary = CallSitePerf ^ csf_summary_perf,
-    CostSelf = CSFSummary ^ perf_row_self 
-        ^ perf_row_callseqs_percall,
-    MaybePerfTotal = CSFSummary ^ perf_row_maybe_total, 
-    (
-        MaybePerfTotal = yes(PerfTotal),
-        CostTotal = PerfTotal ^ perf_row_callseqs_percall
+get_call_site_cost(Info, CallSite) = CostInfo :-
+    CSSummary = CallSite ^ ccsr_call_site_summary,
+    GoalPath = CSSummary ^ perf_row_subject ^ csdesc_goal_path,
+    ( map.search(Info ^ ipi_rec_call_sites, GoalPath, CostInfoPrime) ->
+        CostInfo = CostInfoPrime
     ;
-        MaybePerfTotal = no,
-        CostTotal = 0.0
-    ),
-    Cost = CostSelf + CostTotal.  
+        MaybePerfTotal = CSSummary ^ perf_row_maybe_total, 
+        (
+            MaybePerfTotal = yes(PerfTotal),
+            Cost = PerfTotal ^ perf_row_callseqs,
+            Calls = CSSummary ^ perf_row_calls
+        ;
+            MaybePerfTotal = no,
+            error(this_file ++ 
+                "Could not retrive total callseqs cost from call site")
+        ),
+        CostInfo = cost_info(Calls, Cost)
+    ).
+
+    % Given a cost_info structure calculate the percall cost.
+    %
+:- func percall_cost(cost_info) = float.
+
+percall_cost(cost_info(Calls, Cost)) = PercallCost :-
+    ( Calls = 0 ->
+        % While this should be infinity or NaN if a call is never made then we
+        % don't know it's potential cost, it should probably not be
+        % parallelised and might as well be zero.
+        PercallCost = 0.0
+    ;
+        PercallCost = float(Cost) / float(Calls)
+    ).
 
 :- pred compute_independent_parallelisation_speedup(
     implicit_parallelism_info::in, 
@@ -1260,8 +1745,8 @@ get_call_site_cost(CallSitePerf) = Cost :-
 
 compute_independent_parallelisation_speedup(Info, CallA, CallB, 
         CPCA, CPCB, Speedup) :-
-    CostA = get_call_site_cost(CallA ^ mccc_perf),
-    CostB = get_call_site_cost(CallB ^ mccc_perf),
+    CostA = percall_cost(get_call_site_cost(Info, CallA ^ mccc_call_site)),
+    CostB = percall_cost(get_call_site_cost(Info, CallB ^ mccc_call_site)),
     SequentialCost = CostA + CostB,
     ParallelCost = max(CostA, CostB) + 
         float(Info ^ ipi_opts ^ cpc_sparking_cost),
@@ -1279,8 +1764,8 @@ compute_independent_parallelisation_speedup(Info, CallA, CallB,
 compute_optimal_dependant_parallelisation(Info, CallA, CallB,
         DepVars, _IntermediateGoals, InstMap, CPCA, CPCB,
         Speedup) :-
-    CostA = get_call_site_cost(CallA ^ mccc_perf),
-    CostB = get_call_site_cost(CallB ^ mccc_perf),
+    CostA = percall_cost(get_call_site_cost(Info, CallA ^ mccc_call_site)),
+    CostB = percall_cost(get_call_site_cost(Info, CallB ^ mccc_call_site)),
     SequentialCost = CostA + CostB,
     ( singleton_set(DepVars, DepVar) ->
         % Only parallelise conjunctions with a single dependant variable for
@@ -1341,9 +1826,19 @@ compute_optimal_dependant_parallelisation(Info, CallA, CallB,
             Speedup = SequentialCost - ParallelCost
         ;
             error("Dependant var not in consumer's arguments")
-        )
+        ),
+        Messages = cord.mepty
     ;
-        Speedup = -1.0
+        % Post a notice saying that we tried to parallelise this but gave up.
+        CallSiteDesc = 
+            CallA ^ mccc_call_site ^ ccsr_call_site_summary ^ perf_row_subject,
+        PSPtr = CallSiteDesc ^ csdesc_container,
+        deep_lookup_proc_statics(Deep, PSPtr, ProcStatic),
+        ProcLabel = ProcStatic ^ ps_id.
+        GoalPath = CallSiteDesc ^ csdesc_goal_path,
+        append_message(goal(ProcLabel, GoalPath), 
+            notice_callpair_has_more_than_one_dependant_var,
+            cord.empty, Messages)
     ),
     call_site_conj_to_candidate_par_conjunct(Info, CallA, CPCA),
     call_site_conj_to_candidate_par_conjunct(Info, CallB, CPCB).
@@ -1383,7 +1878,7 @@ call_site_conj_to_candidate_par_conjunct(Info, Call, CPC) :-
     Call = call(MaybeCallee, _Detism, Args, Perf),
     VarTable = Info ^ ipi_var_table,
     list.map(var_mode_use_to_var_in_par_conj(VarTable), Args, Vars),
-    Cost = get_call_site_cost(Perf),
+    Cost = percall_cost(get_call_site_cost(Info, Perf)),
     CPC = candidate_par_conjunct(MaybeCallee, Vars, Cost).
 
 :- pred var_mode_use_to_var_in_par_conj(var_table::in, var_mode_and_use::in,
@@ -1396,42 +1891,6 @@ var_mode_use_to_var_in_par_conj(VarTable, var_mode_and_use(Var, _, _),
     ;
         MaybeName = no
     ).
-
-:- func warning_duplicate_instantiation(int) = string.
-
-warning_duplicate_instantiation(CandidateConjuncts) = 
-    string.format(
-        "%d conjunctions not parallelised: Seen duplicate instantiations",
-        [i(CandidateConjuncts)]).
-
-:- func warning_extra_callpairs_in_conjunction(int) = string.
-
-warning_extra_callpairs_in_conjunction(NumCPCs) =
-    string.format(
-        "%d potential call pairs not parallelised in this conjunction",
-        [i(NumCPCs)]).
-
-:- func warning_cannot_lookup_proc_defn = string.
-
-warning_cannot_lookup_proc_defn = 
-    "Could not look up proc defn, perhaps this procedure is built-in".
-
-:- func warning_candidate_callpairs_not_adjacent = string.
-
-warning_candidate_callpairs_not_adjacent =
-    "Two callpairs are difficult to parallelise because they are not adjacent".
-
-:- func warning_cannot_parallelise_over_cheap_call_goal = string.
-
-warning_cannot_parallelise_over_cheap_call_goal =
-    "Parallelising expensive call goals with cheap call goals between them is"
-    ++ " not supported".
-
-:- func warning_cannot_parallelise_over_nonatomic_goal = string.
-
-warning_cannot_parallelise_over_nonatomic_goal =
-    "Parallelising call goals with non-atomic goals between them is"
-    ++ " not supported".
 
 %----------------------------------------------------------------------------%
 %
@@ -1558,23 +2017,32 @@ css_to_call(Deep, CSS, Call) :-
 % Useful utility predicates.
 %
 
+:- pred proc_label_from_proc_desc(deep::in, proc_desc::in,
+    string_proc_label::out) is det.
+
+proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel) :-
+    PSPtr = ProcDesc ^ pdesc_ps_ptr,
+    deep_lookup_proc_statics(Deep, PSPtr, ProcStatic),
+    ProcLabel = ProcStatic ^ ps_id.
+
     % Remove something from inside a maybe_error type and return it.  Throw an
     % exception if the MaybeError variable has value error(_).
     %
 :- pred det_open_maybe_error(maybe_error(T)::in, T::out) is det.
+:- pragma obsolete(det_open_maybe_error/2).
 
 det_open_maybe_error(ok(X), X).
 det_open_maybe_error(error(Error), _) :-
     error(Error).
 
-:- pred add_call_site_perf_to_map(call_site_perf::in, 
-    map(goal_path, call_site_perf)::in, map(goal_path, call_site_perf)::out) 
-    is det.
+:- pred add_call_site_report_to_map(clique_call_site_report::in, 
+    map(goal_path, clique_call_site_report)::in, 
+    map(goal_path, clique_call_site_report)::out) is det.
 
-add_call_site_perf_to_map(CallSitePerf, !Map) :-
-    GoalPath = CallSitePerf ^ csf_summary_perf ^ perf_row_subject 
+add_call_site_report_to_map(CallSite, !Map) :-
+    GoalPath = CallSite ^ ccsr_call_site_summary ^ perf_row_subject 
         ^ csdesc_goal_path,
-    svmap.det_insert(GoalPath, CallSitePerf, !Map).
+    svmap.det_insert(GoalPath, CallSite, !Map).
 
 :- func this_file = string.
 

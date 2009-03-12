@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2008 The University of Melbourne.
+% Copyright (C) 2001, 2004-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -482,6 +482,10 @@
 :- func root_own_info(deep) = own_prof_info.
 
 %-----------------------------------------------------------------------------%
+
+:- pred deep_get_progrep_det(deep::in, prog_rep::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -491,6 +495,7 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -989,6 +994,29 @@ root_desc_info(Deep) = RootDesc :-
 
 root_own_info(Deep) = RootOwn :-
     deep_lookup_pd_own(Deep, Deep ^ root, RootOwn).
+    
+%-----------------------------------------------------------------------------%
+
+deep_get_progrep_det(Deep, ProgRep) :-
+    MaybeProgRep = Deep ^ procrep_file,
+    (
+        MaybeProgRep = yes(MaybeProgRep1),
+        (
+            MaybeProgRep1 = ok(ProgRep)
+        ;
+            MaybeProgRep1 = error(Error),
+            error(this_file ++ Error)
+        )
+    ;
+        MaybeProgRep = no,
+        error(this_file ++ "Could not open Deep.procrep")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "profile.m: ".
 
 %-----------------------------------------------------------------------------%
 :- end_module profile.

@@ -127,7 +127,11 @@
                 cr_ancestor_call_sites      :: list(
                                                 perf_row_data(ancestor_desc)),
 
-                % Reports for every procedure in the clique.
+                % Reports for every procedure in the clique.  The first
+                % procedure in the list is the entry procedure (if the parent
+                % clique had a valid CSD.) and that CSD was found in the
+                % clique.  TODO: we might want to express this within this
+                % type.
                 cr_clique_procs             :: list(clique_proc_report)
             ).
 

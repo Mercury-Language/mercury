@@ -130,8 +130,8 @@
                     % The names of variables (if used defined) given as
                     % arguments to this call.
                     
-                cost                    :: float
-                    % The cost of this call in call sequence counts.
+                cost_percall            :: float
+                    % The per-call cost of this call in call sequence counts.
                    
             ).
 
@@ -550,7 +550,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "3".
+feedback_version = "4".
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.
