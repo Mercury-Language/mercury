@@ -242,13 +242,6 @@ ORDINARY_PROGS=	\
 	transform_value \
 	transitive_inst_type \
 	trigraphs \
-	try_syntax_1 \
-	try_syntax_2 \
-	try_syntax_3 \
-	try_syntax_4 \
-	try_syntax_5 \
-	try_syntax_6 \
-	try_syntax_7 \
 	tuple_test \
 	type_ctor_desc \
 	type_ctor_desc_manip \
@@ -541,6 +534,13 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		test_array2d \
 		test_injection \
 		tl_backjump_test \
+		try_syntax_1 \
+		try_syntax_2 \
+		try_syntax_3 \
+		try_syntax_4 \
+		try_syntax_5 \
+		try_syntax_6 \
+		try_syntax_7 \
 		user_defined_equality \
 		version_array_test \
 		version_hash_table_test \
