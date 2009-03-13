@@ -118,6 +118,10 @@ Options:
         Output extra attributes as for `--vim-extended-attributes',
         but in the format required by elvis.
 
+    --debug
+        Output the name of each source file as it is being processed
+        to standard error.
+
     -h, --help
         Display this help message and exit.
 
@@ -131,6 +135,7 @@ $emacs = 0;
 $extended_attributes = "vim";
 $keep_dups = 1;
 $search_definitions = 1;
+$debug = 0;
 
 OPTION:
 while ($#ARGV >= 0 && $ARGV[0] =~ /^-/) {
@@ -200,6 +205,11 @@ while ($#ARGV >= 0 && $ARGV[0] =~ /^-/) {
     }
     if ($ARGV[0] eq "--elvis-extended-attributes") {
         $extended_attributes = "elvis";
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--debug") {
+        $debug = 1;
         shift(@ARGV);
         next OPTION;
     }
@@ -346,6 +356,10 @@ while ($#ARGV >= 0)
         # open(OUT, "| LC_COLLATE=C sort -u +0 -1 >> TAGS") ||
         open(OUT, ">> TAGS") ||
             die "mtags: error opening pipe: $!\n";
+    }
+
+    if ($debug) {
+        print STDERR "Processing $file\n";
     }
     
     $module = $file;
@@ -500,7 +514,7 @@ while ($#ARGV >= 0)
                     }
                 }
 
-                last if $_ =~ /^[^%]*\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
+                last if $_ =~ /^[^%]*\.[ \t\r]*$/ || $_ =~ /\.[ \t]*%.*$/;
                 $_ = <SRCFILE> || last;
                 chop;
                 $body = $_;
