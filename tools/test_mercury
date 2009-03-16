@@ -257,7 +257,12 @@ case $HOST in
         ;;
 
     taura)
+        # Set --profile-for-implicit-parallelism so that the deep profiling
+        # version of the standard library is suitable for Paul's implicit
+        # parallelism work.  This is not enabled by default because it enables
+        # inlineing which is confusing for programmers using the deep profiler.
         OPTIMIZE="-O5 --intermodule-optimization"
+        INSTALL_MCFLAGS="--profile-for-implicit-parallelism"
         ;;
 
     goliath)
