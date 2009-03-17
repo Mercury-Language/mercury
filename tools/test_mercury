@@ -227,6 +227,8 @@ rm -f $TEST_ERROR_FILE $FAILED_TESTS_FILE
 #-----------------------------------------------------------------------------#
 
 use_cp_opt=""
+# EXTRA_INSTALL_MCFLAGS can be used to customise INSTALL_MCFLAGS
+EXTRA_INSTALL_MCFLAGS=""
 case $HOST in
     # test things at different optimization levels...
 
@@ -262,7 +264,7 @@ case $HOST in
         # parallelism work.  This is not enabled by default because it enables
         # inlineing which is confusing for programmers using the deep profiler.
         OPTIMIZE="-O5 --intermodule-optimization"
-        INSTALL_MCFLAGS="--profile-for-implicit-parallelism"
+        EXTRA_INSTALL_MCFLAGS="--profile-for-implicit-parallelism"
         ;;
 
     goliath)
@@ -281,7 +283,7 @@ case $HOST in
 esac
 
 # Flags for building the compiler.
-INSTALL_MCFLAGS="$OPTIMIZE --opt-space"
+INSTALL_MCFLAGS="$OPTIMIZE --opt-space $EXTRA_INSTALL_MCFLAGS"
 INSTALL_MGNUCFLAGS=""
 INSTALL_CFLAGS=""
 INSTALL_MLFLAGS=""
