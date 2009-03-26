@@ -376,8 +376,25 @@
 %:- mode array.foldl(func(in, di) = uo is det, array_ui, di) = uo is det.
 :- mode array.foldl(func(in, di) = uo is det, in, di) = uo is det.
 
+    % array.foldl(Pr, Array, !X) is equivalent to
+    %   list.foldl(Pr, array.to_list(Array), !X)
+    % but more efficient.
+    %
+:- pred array.foldl(pred(T1, T2, T2), array(T1), T2, T2).
+:- mode array.foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode array.foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode array.foldl(pred(in, di, uo) is det, in, di, uo) is det.
+
+    % array.foldl2(Pr, Array, !X, !Y) is equivalent to
+    %   list.foldl2(Pr, array.to_list(Array), !X, !Y)
+    % but more efficient.
+    %
 :- pred array.foldl2(pred(T1, T2, T2, T3, T3), array(T1), T2, T2, T3, T3).
 :- mode array.foldl2(pred(in, in, out, in, out) is det, in, in, out, in, out) 
+    is det.
+:- mode array.foldl2(pred(in, in, out, mdi, muo) is det, in, in, out, mdi, muo)
+    is det.
+:- mode array.foldl2(pred(in, in, out, di, uo) is det, in, in, out, di, uo)
     is det.
 
     % array.foldr(Fn, Array, X) is equivalent to
@@ -1476,6 +1493,24 @@ foldl_0(Fn, A, X, I, Max) =
 
 % ---------------------------------------------------------------------------- %
 
+array.foldl(P, A, !X) :-
+    array.foldl_0(P, A, array.min(A), array.max(A), !X).
+
+:- pred foldl_0(pred(T1, T2, T2), array(T1), int, int, T2, T2).
+:- mode foldl_0(pred(in, in, out) is det, in, in, in, in, out) is det.
+:- mode foldl_0(pred(in, mdi, muo) is det, in, in, in, mdi, muo) is det.
+:- mode foldl_0(pred(in, di, uo) is det, in, in, in, di, uo) is det.
+
+foldl_0(P, A, I, Max, !X) :-
+    ( Max < I ->
+        true
+    ;
+        P(A ^ elem(I), !X),
+        foldl_0(P, A, I+1, Max, !X)
+    ).
+
+% ---------------------------------------------------------------------------- %
+
 array.foldl2(P, A, X0, X, Y0, Y) :-
     array.foldl2_0(P, A, array.min(A), array.max(A), X0, X, Y0, Y).
 
@@ -1483,6 +1518,10 @@ array.foldl2(P, A, X0, X, Y0, Y) :-
     T3, T3).
 :- mode foldl2_0(pred(in, in, out, in, out) is det, in, in, in, in, out, 
     in, out) is det.
+:- mode foldl2_0(pred(in, in, out, mdi, muo) is det, in, in, in, in, out,
+    mdi, muo) is det.
+:- mode foldl2_0(pred(in, in, out, di, uo) is det, in, in, in, in, out,
+    di, uo) is det.
 
 foldl2_0(P, A, I, Max, X0, X, Y0, Y) :-
     ( Max < I ->

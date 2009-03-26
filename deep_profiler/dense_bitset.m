@@ -103,7 +103,7 @@ delete(A0, I) = A :-
     ).
 
 union(A, B) = C :-
-    foldl((pred(I::in, C0::array_di, C1::array_uo) is det :-
+    dense_bitset.foldl((pred(I::in, C0::in, C1::out) is det :-
         C1 = insert(C0, I)
     ), A, B, C).
 

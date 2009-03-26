@@ -6,7 +6,7 @@
 %-----------------------------------------------------------------------------%
 % 
 % File: version_hash_table.m.
-% Main author: rafe.
+% Main author: rafe, wangp.
 % Stability: low.
 % 
 % (See the header comments in version_types.m for an explanation of version
@@ -31,19 +31,16 @@
 
 :- type version_hash_table(K, V).
 
-:- type hash_pred(K) == ( pred(K,  int, int)        ).
-:- inst hash_pred    == ( pred(in, out, out) is det ).
+:- type hash_pred(K) == ( pred(K,  int)        ).
+:- inst hash_pred    == ( pred(in, out) is det ).
 
-    % new(HashFunc, N, MaxOccupancy)
+    % new(HashPred, N, MaxOccupancy)
     % constructs a new hash table with initial size 2 ^ N that is
     % doubled whenever MaxOccupancy is achieved; elements are
-    % indexed using HashFunc.
+    % indexed using HashPred.
     %
-    % HashFunc must compute two *independent* hashes for a given
-    % key - that is, one hash should not be a function of the other.
-    % Otherwise poor performance will result.
-    %
-    % N must be greater than 1.
+    % HashPred must compute a hash for a given key.
+    % N must be greater than 0.
     % MaxOccupancy must be in (0.0, 1.0).
     %
     % XXX Values too close to the limits may cause bad things
@@ -64,11 +61,11 @@
 
     % Default hash_preds for ints and strings and everything (buwahahaha!)
     %
-:- pred int_double_hash     `with_type` hash_pred(int)    `with_inst` hash_pred.
-:- pred string_double_hash  `with_type` hash_pred(string) `with_inst` hash_pred.
-:- pred char_double_hash    `with_type` hash_pred(char)   `with_inst` hash_pred.
-:- pred float_double_hash   `with_type` hash_pred(float)  `with_inst` hash_pred.
-:- pred generic_double_hash `with_type` hash_pred(T)      `with_inst` hash_pred.
+:- pred int_hash(int::in, int::out) is det.
+:- pred string_hash(string::in, int::out) is det.
+:- pred char_hash(char::in, int::out) is det.
+:- pred float_hash(float::in, int::out) is det.
+:- pred generic_hash(T::in, int::out) is det.
 
     % Returns the number of buckets in a hash table.
     %
@@ -105,7 +102,6 @@
     % exception is thrown if a binding for the key does not
     % already exist.  A predicate version is also provided.
     %
-    %
 :- func det_update(version_hash_table(K, V), K, V) = version_hash_table(K, V).
 :- pred det_update(K::in, V::in,
             version_hash_table(K, V)::in, version_hash_table(K, V)::out)
@@ -138,9 +134,20 @@
     %
 :- func to_assoc_list(version_hash_table(K, V)) = assoc_list(K, V).
 
+    % Convert an association list into a hash table.
+    %
+:- func from_assoc_list(hash_pred(K)::in(hash_pred), assoc_list(K, V)::in) =
+    (version_hash_table(K, V)::out) is det.
+
     % Fold a function over the key-value bindings in a hash table.
     %
 :- func fold(func(K, V, T) = T, version_hash_table(K, V), T) = T.
+
+    % Fold a predicate over the key-value bindings in a hash table.
+    %
+:- pred fold(pred(K, V, T, T), version_hash_table(K, V), T, T).
+:- mode fold(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode fold(in(pred(in, in, di, uo) is det), in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -148,6 +155,7 @@
 :- implementation.
 
 :- import_module array.
+:- import_module bool.
 :- import_module deconstruct.
 :- import_module exception.
 :- import_module float.
@@ -164,51 +172,28 @@
 
 :- type version_hash_table(K, V)
     --->    ht(
-                num_buckets             :: int,
                 num_occupants           :: int,
                 max_occupants           :: int,
                 hash_pred               :: hash_pred(K),
-                buckets                 :: buckets(K, V)
+                buckets                 :: version_array(assoc_list(K, V))
             ).
-
-:- type buckets(K, V) == version_array(bucket(K, V)).
-
-:- type bucket(K, V)
-    --->    empty
-    ;       full(K, V).
-
-%-----------------------------------------------------------------------------%
-
-    % THE HASHING SCHEME
-    %
-    % The user provided hashing function computes two independent
-    % hashes H1 and H2 for a given key K.
-    %
-    % We calculate D = 2*H2 + 1 (to ensure that D is non-zero and
-    % odd and is therefore coprime to the number of buckets) and
-    % probe the table where the Kth probe examines slot
-    %
-    %   (H1 + K * H2) `mod` num_buckets
-    %
-    % The search is guaranteed to terminate because table occupancy
-    % must be less than 1.0.
 
 %-----------------------------------------------------------------------------%
 
 new(HashPred, N, MaxOccupancy) = HT :-
-    (      if N =< 1 then
-            throw(software_error("version_hash_table.new: N =< 1"))
+    (      if N =< 0 then
+            throw(software_error("version_hash_table.new_hash_table: N =< 0"))
       else if N >= int.bits_per_int then
             throw(software_error(
                 "version_hash_table.new: N >= int.bits_per_int"))
-      else if MaxOccupancy =< 0.0 ; 1.0 =< MaxOccupancy  then
+      else if MaxOccupancy =< 0.0 then
             throw(software_error(
-                "version_hash_table.new: MaxOccupancy not in (0.0, 1.0)"))
+                "version_hash_table.new: MaxOccupancy =< 0.0"))
       else
             NumBuckets   = 1 << N,
             MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
-            VArray       = version_array.init(NumBuckets, empty),
-            HT = ht(NumBuckets, 0, MaxOccupants, HashPred, VArray)
+            Buckets      = init(NumBuckets, []),
+            HT           = ht(0, MaxOccupants, HashPred, Buckets)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -219,42 +204,23 @@ new_default(HashPred) = new(HashPred, 7, 0.9).
 
 %-----------------------------------------------------------------------------%
 
-    % find_slot(HT, K) looks up key K in hash table HT and
-    % returns the index for the entry K in H.  This is either the
-    % first free slot identified (K is not in the table, but here
-    % is where it would go) or the slot for K (K is in the table
-    % and this is its slot).
-    %
-    % Whether or not K is actually in the table can be decided
-    % by checking to see whether its bit in the vbitmap is set
-    % or clear.
-    %
+num_buckets(HT) = size(HT ^ buckets).
+
+%-----------------------------------------------------------------------------%
+
 :- func find_slot(version_hash_table(K, V), K) = int.
 
 find_slot(HT, K) = H :-
     unsafe_hash_pred_cast(HT ^ hash_pred, HashPred),
-    HashPred(K, Hash1, Hash2),
-    H0    = Hash1 mod HT ^ num_buckets,
-            % Have to ensure it's odd and non-zero.
-    Delta = Hash2 + Hash2 + 1,
-    H     = find_slot_2(HT, K, H0, Delta).
+    find_slot_2(HashPred, K, HT ^ num_buckets, H).
 
-:- func find_slot_2(version_hash_table(K, V), K, int, int) = int.
+:- pred find_slot_2(hash_pred(K)::in(hash_pred), K::in, int::in, int::out)
+    is det.
 
-find_slot_2(HT, K, H0, Delta) = H :-
-    B = HT ^ buckets ^ elem(H0),
-    (
-        B = empty,
-        H = H0
-    ;
-        B = full(Key, _Value),
-        ( if K = Key then
-            H  = H0
-          else
-            H1 = (H0 + Delta) mod HT ^ num_buckets,
-            H  = find_slot_2(HT, K, H1, Delta)
-        )
-    ).
+find_slot_2(HashPred, K, NumBuckets, H) :-
+    HashPred(K, Hash),
+    % Since NumBuckets is a power of two we can avoid mod.
+    H = Hash /\ (NumBuckets - 1).
 
 :- pred unsafe_hash_pred_cast(hash_pred(K)::in, hash_pred(K)::out(hash_pred))
     is det.
@@ -268,26 +234,22 @@ find_slot_2(HT, K, H0, Delta) = H :-
 
 %-----------------------------------------------------------------------------%
 
-set(HT0, K, V) = HT :-
-
-        % If this is the first entry in the hash table, then we use it to set
-        % up the hash table (the version_arrays are currently empty because we
-        % need values to initialise them with).
-        %
-    H = find_slot(HT0, K),
-    B = HT0 ^ buckets ^ elem(H),
+set(!.HT, K, V) = !:HT :-
+    H = find_slot(!.HT, K),
+    AL0 = !.HT ^ buckets ^ elem(H),
+    ( if assoc_list.remove(AL0, K, _, AL1) then
+        AL = [K - V | AL1],
+        MayExpand = no
+      else
+        AL = [K - V | AL0],
+        MayExpand = yes
+    ),
+    !HT ^ buckets ^ elem(H) := AL,
     (
-        B  = empty,
-        HT =
-            ( if HT0 ^ num_occupants = HT0 ^ max_occupants then
-                set(expand(HT0), K, V)
-              else
-                (( HT0 ^ num_occupants     := HT0 ^ num_occupants + 1 )
-                       ^ buckets ^ elem(H) := full(K, V)              )
-            )
+        MayExpand = no
     ;
-        B  = full(_, _),
-        HT = ( HT0 ^ buckets ^ elem(H) := full(K, V) )
+        MayExpand = yes,
+        increase_occupants(!HT)
     ).
 
 'elem :='(K, HT, V) = set(HT, K, V).
@@ -300,26 +262,22 @@ search(HT, K, search(HT, K)).
 
 search(HT, K) = V :-
     H = find_slot(HT, K),
-    HT ^ buckets ^ elem(H) = full(K, V).
+    AL = HT ^ buckets ^ elem(H),
+    assoc_list.search(AL, K, V).
 
 %-----------------------------------------------------------------------------%
 
-det_insert(HT0, K, V) = HT :-
-    H = find_slot(HT0, K),
-    B = HT0 ^ buckets ^ elem(H),
-    (
-        B  = full(_, _),
-        error("version_hash_table.det_update: key already present")
-    ;
-        B  = empty,
-        HT =
-            ( if HT0 ^ num_occupants = HT0 ^ max_occupants then
-                set(expand(HT0), K, V)
-              else
-                (( HT0 ^ num_occupants     := HT0 ^ num_occupants + 1 )
-                       ^ buckets ^ elem(H) := full(K, V)              )
-            )
-    ).
+det_insert(!.HT, K, V) = !:HT :-
+    H = find_slot(!.HT, K),
+    AL0 = !.HT ^ buckets ^ elem(H),
+    ( if assoc_list.search(AL0, K, _) then
+        throw(software_error(
+            "version_hash_table.det_insert: key already present"))
+      else
+        AL = [K - V | AL0]
+    ),
+    !HT ^ buckets ^ elem(H) := AL,
+    increase_occupants(!HT).
 
 det_insert(K, V, HT, det_insert(HT, K, V)).
 
@@ -327,14 +285,13 @@ det_insert(K, V, HT, det_insert(HT, K, V)).
 
 det_update(HT0, K, V) = HT :-
     H = find_slot(HT0, K),
-    B = HT0 ^ buckets ^ elem(H),
-    (
-        B = empty,
-        error("version_hash_table.det_update: key not found")
-    ;
-        B = full(_, _),
-        HT = ( HT0 ^ buckets ^ elem(H) := full(K, V) )
-    ).
+    AL0 = HT0 ^ buckets ^ elem(H),
+    ( if assoc_list.remove(AL0, K, _, AL1) then
+        AL = [K - V | AL1]
+      else
+        throw(software_error("version_hash_table.det_update: key not found"))
+    ),
+    HT = HT0 ^ buckets ^ elem(H) := AL.
 
 det_update(K, V, HT, det_update(HT, K, V)).
 
@@ -346,177 +303,249 @@ lookup(HT, K) =
       else func_error("version_hash_table.lookup: key not found")
     ).
 
-HT ^ elem(K) = lookup(HT, K).
+elem(K, HT) = lookup(HT, K).
 
 %-----------------------------------------------------------------------------%
 
-delete(HT, K) =
-    HT ^ buckets ^ elem(find_slot(HT, K)) := empty.
+delete(HT0, K) = HT :-
+    H = find_slot(HT0, K),
+    AL0 = HT0 ^ buckets ^ elem(H),
+    ( if assoc_list.remove(AL0, K, _, AL) then
+        HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0),
+        Buckets = Buckets0 ^ elem(H) := AL,
+        NumOccupants = NumOccupants0 - 1,
+        HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
+      else
+        HT = HT0
+    ).
 
 delete(K, HT, delete(HT, K)).
 
 %-----------------------------------------------------------------------------%
 
 to_assoc_list(HT) =
-    fold_up(cons_k_v(HT ^ buckets), 0, HT ^ num_buckets - 1, []).
+    foldl(list.append, HT ^ buckets, []).
 
-:- func cons_k_v(version_array(bucket(K, V)), int, assoc_list(K, V)) =
-            assoc_list(K, V).
 
-cons_k_v(Bs, I, KVs) =
-    ( if   Bs ^ elem(I) = full(K, V)
-      then [K - V | KVs]
-      else KVs
-    ).
+from_assoc_list(HP, AList) = from_assoc_list_2(AList, new_default(HP)).
+
+:- func from_assoc_list_2(assoc_list(K, V), version_hash_table(K, V))
+    = version_hash_table(K, V).
+
+from_assoc_list_2([], HT) = HT.
+
+from_assoc_list_2([K - V | AList], HT) =
+    from_assoc_list_2(AList, HT ^ elem(K) := V).
 
 %-----------------------------------------------------------------------------%
+
+:- pred increase_occupants(version_hash_table(K, V), version_hash_table(K, V)).
+:- mode increase_occupants(in, out) is det.
+
+increase_occupants(!HT) :-
+    NumOccupants = !.HT ^ num_occupants,
+    MaxOccupants = !.HT ^ max_occupants,
+    ( if NumOccupants = MaxOccupants then
+        expand(!HT)
+      else
+        !HT ^ num_occupants := NumOccupants + 1
+    ).
 
     % Hash tables expand by doubling in size.
     %
-:- func expand(version_hash_table(K, V)) = version_hash_table(K, V).
+:- pred expand(version_hash_table(K, V), version_hash_table(K, V)).
+:- mode expand(in, out) is det.
 
-expand(HT0) = HT :-
+expand(HT0, HT) :-
+    HT0 = ht(NumOccupants0, MaxOccupants0, HashPred0, Buckets0),
 
-    HT0 = ht(NBs0, _NOs, MOs0, HF, Bs0),
+    NumBuckets0 = size(Buckets0),
+    NumBuckets = NumBuckets0 + NumBuckets0,
+    MaxOccupants = MaxOccupants0 + MaxOccupants0,
 
-    NBs = NBs0 + NBs0,
-    MOs = MOs0 + MOs0,
-    Bs1 = version_array.init(NBs, empty),
+    unsafe_hash_pred_cast(HashPred0, HashPred),
+    Buckets1 = init(NumBuckets, []),
+    reinsert_bindings(0, Buckets0, HashPred, NumBuckets, Buckets1, Buckets),
 
-    HT1 = ht(NBs, 0, MOs, HF, Bs1),
+    HT = ht(NumOccupants0 + 1, MaxOccupants, HashPred, Buckets).
 
-    HT  = fold_up(reinsert_k_v(Bs0), 0, NBs0 - 1, HT1).
+:- pred reinsert_bindings(int, version_array(assoc_list(K, V)), hash_pred(K),
+    int, version_array(assoc_list(K, V)), version_array(assoc_list(K,V))).
+:- mode reinsert_bindings(in, in, in(hash_pred),
+    in, in, out) is det.
 
-:- func reinsert_k_v(buckets(K, V), int, version_hash_table(K, V)) =
-            version_hash_table(K, V).
-
-reinsert_k_v(Bs, I, HT) =
-    ( if   Bs ^ elem(I) = full(K, V)
-      then HT ^ elem(K) := V
-      else HT
+reinsert_bindings(I, OldBuckets, HashPred, NumBuckets, !Buckets) :-
+    ( if I >= size(OldBuckets) then
+        true
+      else
+        AL = OldBuckets ^ elem(I),
+        reinsert_assoc_list(AL, HashPred, NumBuckets, !Buckets),
+        reinsert_bindings(I + 1, OldBuckets, HashPred, NumBuckets, !Buckets)
     ).
 
+:- pred reinsert_assoc_list(assoc_list(K, V), hash_pred(K),
+    int, version_array(assoc_list(K, V)), version_array(assoc_list(K, V))).
+:- mode reinsert_assoc_list(in, in(hash_pred),
+    in, in, out) is det.
+
+reinsert_assoc_list([], _, _, !Buckets).
+reinsert_assoc_list([KV | KVs], HashPred, NumBuckets, !Buckets) :-
+    unsafe_insert(KV, HashPred, NumBuckets, !Buckets),
+    reinsert_assoc_list(KVs, HashPred, NumBuckets, !Buckets).
+
+:- pred unsafe_insert(pair(K, V), hash_pred(K),
+    int, version_array(assoc_list(K, V)), version_array(assoc_list(K, V))).
+:- mode unsafe_insert(in, in(hash_pred),
+    in, in, out) is det.
+
+unsafe_insert(KV, HashPred, NumBuckets, Buckets0, Buckets) :-
+    KV = K - _,
+    find_slot_2(HashPred, K, NumBuckets, H),
+    AL0 = Buckets0 ^ elem(H),
+    Buckets = Buckets0 ^ elem(H) := [KV | AL0].
+
 %-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
-    % NOTE that H1 \= N since neither of H1 or H2 should be a function
-    % of the other under machine integer arithmetic.
+int_hash(N, N).
+
+    % From http://www.concentric.net/~Ttwang/tech/inthash.htm
+    %   public int hash32shift(int key)
+    %   public long hash64shift(long key)
     %
-int_double_hash(N, H1, H2) :-
-    H1 = N * N,
-    H2 = N `xor` (N + N).
+:- pragma foreign_proc("C",
+    int_hash(N::in, H::out),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    const int c2 = 0x27d4eb2d; /* a prime or an odd constant */
+    MR_Unsigned key;
+
+    key = N;
+
+    if (sizeof(MR_Word) == 4) {
+        key = (key ^ 61) ^ (key >> 16);
+        key = key + (key << 3);
+        key = key ^ (key >> 4);
+        key = key * c2;
+        key = key ^ (key >> 15);
+    } else {
+        key = (~key) + (key << 21); /* key = (key << 21) - key - 1; */
+        key = key ^ (key >> 24);
+        key = (key + (key << 3)) + (key << 8); /* key * 265 */
+        key = key ^ (key >> 14);
+        key = (key + (key << 2)) + (key << 4); /* key * 21 */
+        key = key ^ (key >> 28);
+        key = key + (key << 31);
+    }
+
+    H = key;
+").
 
 %-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
-string_double_hash(S, H1, H2) :-
-    H1 = string.hash(S),
-    H2 = string.foldl(func(C, N) = char.to_int(C) + N, S, 0).
+string_hash(S, string.hash(S)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
-float_double_hash(F, H1, H2) :-
-    H1 = float.hash(F),
-    H2 = float.hash(F * F).
+float_hash(F, float.hash(F)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
-char_double_hash(C, H1, H2) :-
-    int_double_hash(char.to_int(C), H1, H2).
+char_hash(C, H) :-
+    int_hash(char.to_int(C), H).
 
 %-----------------------------------------------------------------------------%
 
     % This, again, is straight off the top of my head.
     %
-generic_double_hash(T, Ha, Hb) :-
+generic_hash(T, H) :-
     ( if      dynamic_cast(T, Int) then
 
-        int_double_hash(Int, Ha, Hb)
+        int_hash(Int, H)
 
       else if dynamic_cast(T, String) then
 
-        string_double_hash(String, Ha, Hb)
+        string_hash(String, H)
 
       else if dynamic_cast(T, Float) then
 
-        float_double_hash(Float, Ha, Hb)
+        float_hash(Float, H)
 
       else if dynamic_cast(T, Char) then
 
-        char_double_hash(Char, Ha, Hb)
+        char_hash(Char, H)
 
       else if dynamic_cast(T, Univ) then
 
-        generic_double_hash(univ_value(Univ), Ha, Hb)
+        generic_hash(univ_value(Univ), H)
 
       else if dynamic_cast_to_array(T, Array) then
 
-        {Ha, Hb} =
-            array.foldl(
-                ( func(X, {HA0, HB0}) = {HA, HB} :-
-                    generic_double_hash(X, HXA, HXB),
-                    double_munge(HXA, HA0, HA, HXB, HB0, HB)
+        H = array.foldl(
+                ( func(X, HA0) = HA :-
+                    generic_hash(X, HX),
+                    munge(HX, HA0) = HA
                 ),
                 Array,
-                {0, 0}
+                0
             )
 
       else
 
         deconstruct(T, canonicalize, FunctorName, Arity, Args),
-        string_double_hash(FunctorName, Ha0, Hb0),
-        double_munge(Arity, Ha0, Ha1, Arity, Hb0, Hb1),
-        list.foldl2(
-            ( pred(U::in, HA0::in, HA::out, HB0::in, HB::out) is det :-
-                generic_double_hash(U, HUA, HUB),
-                double_munge(HUA, HA0, HA, HUB, HB0, HB)
+        string_hash(FunctorName, H0),
+        munge(Arity, H0) = H1,
+        list.foldl(
+            ( pred(U::in, HA0::in, HA::out) is det :-
+                generic_hash(U, HUA),
+                munge(HUA, HA0) = HA
             ),
             Args,
-            Ha1, Ha,
-            Hb1, Hb
+            H1, H
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- func munge_factor_a = int.
-munge_factor_a = 5.
+:- func munge(int, int) = int.
 
-:- func munge_factor_b = int.
-munge_factor_b = 3.
-
-:- pred double_munge(int::in, int::in, int::out, int::in, int::in, int::out)
-            is det.
-
-double_munge(X, Ha0, Ha, Y, Hb0, Hb) :-
-    Ha = munge(munge_factor_a, Ha0, X),
-    Hb = munge(munge_factor_b, Hb0, Y).
-
-:- func munge(int, int, int) = int.
-
-munge(N, X, Y) =
+munge(N, X) =
     (X `unchecked_left_shift` N) `xor`
-    (X `unchecked_right_shift` (int.bits_per_int - N)) `xor`
-    Y.
+    (X `unchecked_right_shift` (int.bits_per_int - N)).
 
 %-----------------------------------------------------------------------------%
 
-fold(Fn, HT, X) =
-    fold_up(apply_k_v(Fn, HT ^ buckets), 0, HT ^ num_buckets - 1, X).
+fold(F, HT, X0) = X :-
+    foldl(fold_f(F), HT ^ buckets, X0, X).
 
-:- func apply_k_v(func(K, V, T) = T, buckets(K, V), int, T) = T.
+:- pred fold_f(func(K, V, T) = T, assoc_list(K, V), T, T).
+:- mode fold_f(func(in, in, in) = out is det, in, in, out) is det.
+:- mode fold_f(func(in, in, di) = uo is det, in, di, uo) is det.
 
-apply_k_v(Fn, Bs, I, A) =
-    ( if   Bs ^ elem(I) = full(K, V)
-      then Fn(K, V, A)
-      else A
-    ).
+fold_f(_F, [], !A).
+fold_f(F, [K - V | KVs], !A) :-
+    F(K, V, !.A) = !:A,
+    fold_f(F, KVs, !A).
+
+
+fold(P, HT, !A) :-
+    foldl(fold_p(P), HT ^ buckets, !A).
+
+:- pred fold_p(pred(K, V, T, T), assoc_list(K, V), T, T).
+:- mode fold_p(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode fold_p(pred(in, in, di, uo) is det, in, di, uo) is det.
+
+fold_p(_P, [], !A).
+fold_p(P, [K - V | KVs], !A) :-
+    P(K, V, !A),
+    fold_p(P, KVs, !A).
 
 %-----------------------------------------------------------------------------%
 

@@ -12,10 +12,9 @@
 :- import_module map, require, std_util, string.
 
 main(!IO) :-
-	HashPred = (pred(Name::in, Hash1::out, Hash2::out) is det :-
+	HashPred = (pred(Name::in, Hash::out) is det :-
 		sym_name_to_string(Name, ".", Str),
-		Hash1 = hash(Str),
-		Hash2 = hash(from_rev_char_list(to_char_list(Str)))
+		Hash = hash(Str)
 	),
 	HT0 = new(HashPred, 10, 0.8),
 	build_table(entries, HT0, HT),  

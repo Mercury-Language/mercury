@@ -307,11 +307,9 @@
 % Hash functions
 %
 
-:- pred module_name_double_hash(module_name::in, int::out, int::out)
-    is det.
+:- pred module_name_hash(module_name::in, int::out) is det.
 
-:- pred dependency_file_double_hash(dependency_file::in, int::out, int::out)
-    is det.
+:- pred dependency_file_hash(dependency_file::in, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1607,31 +1605,7 @@ make_write_module_or_linked_target(ModuleName - FileType, !IO) :-
 % Hash functions
 %
 
-module_name_double_hash(ModuleName, HashA, HashB) :-
-    HashA = module_name_hash(ModuleName),
-    HashB = concoct_second_hash(HashA).
-
-dependency_file_double_hash(DepFile, HashA, HashB) :-
-    (
-        DepFile = dep_target(TargetFile),
-        HashA = target_file_hash(TargetFile) `mix` 123
-    ;
-        DepFile = dep_file(FileName, _MaybeOption),
-        HashA = string.hash(FileName) `mix` 456
-    ),
-    HashB = concoct_second_hash(HashA).
-
-:- func target_file_hash(target_file) = int.
-
-target_file_hash(TargetFile) = Hash :-
-    TargetFile = target_file(ModuleName, Type),
-    Hash0 = module_name_hash(ModuleName),
-    Hash1 = module_target_type_to_nonce(Type),
-    Hash = mix(Hash0, Hash1).
-
-:- func module_name_hash(module_name) = int.
-
-module_name_hash(SymName) = Hash :-
+module_name_hash(SymName, Hash) :-
     (
         SymName = unqualified(String),
         Hash = string.hash(String)
@@ -1640,6 +1614,23 @@ module_name_hash(SymName) = Hash :-
         % Hashing the the module qualifier seems to be not worthwhile.
         Hash = string.hash(String)
     ).
+
+dependency_file_hash(DepFile, Hash) :-
+    (
+        DepFile = dep_target(TargetFile),
+        Hash = target_file_hash(TargetFile)
+    ;
+        DepFile = dep_file(FileName, _MaybeOption),
+        Hash = string.hash(FileName)
+    ).
+
+:- func target_file_hash(target_file) = int.
+
+target_file_hash(TargetFile) = Hash :-
+    TargetFile = target_file(ModuleName, Type),
+    module_name_hash(ModuleName, Hash0),
+    Hash1 = module_target_type_to_nonce(Type),
+    Hash = mix(Hash0, Hash1).
 
 :- func module_target_type_to_nonce(module_target_type) = int.
 

@@ -95,8 +95,10 @@ Changes to the Mercury standard library:
 * The following predicate has been added to the set module:
     set.filter_map/3
 
-* The following predicate has been added to the array module:
+* The following predicates have been added to the array modules:
+    array.fold/4
     array.foldl2/6
+    version_array.foldl/4
 
 * The following predicates have been added to the list module:
     list.filter_map_foldl/5
@@ -254,6 +256,10 @@ Changes to the Mercury standard library:
 	map.from_rev_sorted_assoc_list/2
   map.from_sorted_assoc_list now also constructs the tree directly, so now
   it requires its input list to be duplicate-free.
+
+* We have replaced the hash_table and version_hash_table implementations
+  with separate chaining schemes.  Consequently delete works, and double
+  hashing predicates are not required.
 
 * We have added a calendar module to the standard library. This module
   contains utilities for working with the Gregorian calendar.

@@ -105,9 +105,16 @@
     %
 :- func to_list(version_array(T)) = list(T).
 
-    % foldl(F, A, X) is equivalent to list.foldl(F, list(A), Xs).
+    % foldl(F, A, X) is equivalent to list.foldl(F, list(A), X).
     %
 :- func foldl(func(T1, T2) = T2, version_array(T1), T2) = T2.
+
+    % foldl(P, A, !X) is equivalent to list.foldl(P, list(A), !X).
+    %
+:- pred foldl(pred(T1, T2, T2), version_array(T1), T2, T2).
+:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
 
     % foldr(F, A, X) is equivalent to list.foldr(F, list(A), Xs).
     %
@@ -205,6 +212,24 @@ foldl(F, VA, Acc) = foldl_2(F, VA, Acc, 0, size(VA)).
 foldl_2(F, VA, Acc, Lo, Hi) =
     ( if Lo < Hi then foldl_2(F, VA, F(VA ^ elem(Lo), Acc), Lo + 1, Hi)
                  else Acc
+    ).
+
+%-----------------------------------------------------------------------------%
+
+foldl(P, VA, !Acc) :-
+    foldl_2(P, VA, 0, size(VA), !Acc).
+
+:- pred foldl_2(pred(T1, T2, T2), version_array(T1), int, int, T2, T2).
+:- mode foldl_2(pred(in, in, out) is det, in, in, in, in, out) is det.
+:- mode foldl_2(pred(in, mdi, muo) is det, in, in, in, mdi, muo) is det.
+:- mode foldl_2(pred(in, di, uo) is det, in, in, in, di, uo) is det.
+
+foldl_2(P, VA, Lo, Hi, !Acc) :-
+    ( if Lo < Hi then
+        P(VA ^ elem(Lo), !Acc),
+        foldl_2(P, VA, Lo + 1, Hi, !Acc)
+      else
+        true
     ).
 
 %-----------------------------------------------------------------------------%

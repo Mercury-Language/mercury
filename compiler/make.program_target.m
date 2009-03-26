@@ -1267,8 +1267,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Grade, Succeeded,
         % StatusMap0 = Info0 ^ dependency_status,
         % StatusMap = version_hash_table.fold(remove_grade_dependent_targets,
         %     StatusMap0, StatusMap0),
-        StatusMap = version_hash_table.new_default(
-            dependency_file_double_hash),
+        StatusMap = version_hash_table.new_default(dependency_file_hash),
 
         Info1 = (Info0 ^ dependency_status := StatusMap)
             ^ option_args := OptionArgs,

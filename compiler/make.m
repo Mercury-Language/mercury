@@ -322,13 +322,12 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
         globals.io_get_globals(Globals, !IO),
 
         ModuleIndexMap = module_index_map(
-            version_hash_table.new_default(module_name_double_hash),
+            version_hash_table.new_default(module_name_hash),
             version_array.empty, 0),
         DepIndexMap = dependency_file_index_map(
-            version_hash_table.new_default(dependency_file_double_hash),
+            version_hash_table.new_default(dependency_file_hash),
             version_array.empty, 0),
-        DepStatusMap = version_hash_table.new_default(
-            dependency_file_double_hash),
+        DepStatusMap = version_hash_table.new_default(dependency_file_hash),
 
         %
         % Accept and ignore `.depend' targets.  `mmc --make' does not

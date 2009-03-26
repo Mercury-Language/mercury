@@ -24,7 +24,7 @@
 main(!IO) :-
     % Test `fold' which had an off-by-one bug.
     some [!HT] (
-        !:HT = version_hash_table.new_default(generic_double_hash),
+        !:HT = version_hash_table.new_default(generic_hash),
         version_hash_table.set("one", 1, !HT),
         version_hash_table.set("two", 2, !HT),
         version_hash_table.set("three", 3, !HT),
