@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2006, 2008 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006, 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -81,14 +81,71 @@
 :- func compute_is_active(own_prof_info) = is_active.
 
 %-----------------------------------------------------------------------------%
+
+:- type proc_cost_csq.
+
+:- type cs_cost_csq.
+
+    % build_proc_cost_csq(NRCalls, RCalls, TotalCost) = ParentCost.
+    %
+    % NRCalls: the number of non-recursive calls into this context.
+    % RCalls: the number of recursive (inc mutually-recursive) calls into this
+    % context.
+    %
+:- func build_proc_cost_csq(int, int, int) = proc_cost_csq.
+
+    % build_cs_cost_csq(Calls, TotalCost) = CallSiteCost.
+    %
+:- func build_cs_cost_csq(int, float) = cs_cost_csq.
+    
+    % build_cs_cost_csq_percall(Calls, PercallCost) = CallSiteCost.
+    %
+:- func build_cs_cost_csq_percall(float, float) = cs_cost_csq.
+
+    % Call site cost structure that has a zero cost and zero calls.
+    %
+:- func zero_cs_cost = cs_cost_csq.
+
+    % Retrieve the total cost of this context.
+    %
+:- func proc_cost_get_total(proc_cost_csq) = float.
+
+    % Retrive the number of calls made to this procedure.
+    %
+:- func proc_cost_get_calls_total(proc_cost_csq) = int.
+:- func proc_cost_get_calls_nonrec(proc_cost_csq) = int.
+:- func proc_cost_get_calls_rec(proc_cost_csq) = int.
+
+    % Retrieve the total cost of a call site.
+    %
+:- func cs_cost_get_total(cs_cost_csq) = float.
+
+    % Retrieve the per-call cost of a call site.
+    % Note that this may throw an exception if the number of calls is zero.
+    %
+:- func cs_cost_get_percall(cs_cost_csq) = float.
+
+    % Retrive the number of calls made from this call site.
+    %
+:- func cs_cost_get_calls(cs_cost_csq) = float.
+
+    % Convert a call site cost to a proc cost.
+    %
+:- pred cs_cost_to_proc_cost(cs_cost_csq::in, int::in, 
+    proc_cost_csq::out) is det.
+
+:- func cs_cost_per_proc_call(cs_cost_csq, proc_cost_csq) = cs_cost_csq.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module float.
 :- import_module int.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- type own_prof_info
     --->    own_prof_all(
@@ -403,6 +460,113 @@ compute_is_active(Own) = IsActive :-
         IsActive = is_not_active
     ;
         IsActive = is_active
+    ).
+
+%----------------------------------------------------------------------------%
+
+:- type proc_cost_csq
+    --->    proc_cost_csq(
+                pcc_nr_calls        :: int,
+                    % The number of non-recursive calls into this context.  For
+                    % example if this is a clique this is the number of calls
+                    % made from the parent' clique to this one.
+                
+                pcc_r_calls         :: int,
+                    % The number of recursive calls into this context.  This
+                    % includes mutual recursion.
+                
+                pcc_csq             :: cost 
+                    % The number of callseq counts per call,
+            ).
+
+:- type cs_cost_csq
+    --->    cs_cost_csq(
+                cscc_calls          :: float,
+                    % The number of calls (per parent invocation) through this
+                    % call site.
+                
+                cscc_csq_cost       :: cost 
+                    % The cost of the call site per call.
+            ).
+
+%----------------------------------------------------------------------------%
+
+build_proc_cost_csq(NonRecursiveCalls, RecursiveCalls, TotalCost) = 
+    proc_cost_csq(NonRecursiveCalls, RecursiveCalls, 
+        cost_total(float(TotalCost))).
+
+proc_cost_get_total(proc_cost_csq(NRCalls, RCalls, Cost)) =
+    cost_get_total(float(NRCalls + RCalls), Cost).
+
+proc_cost_get_calls_total(proc_cost_csq(NRCalls, RCalls, _)) = 
+    NRCalls + RCalls.
+
+proc_cost_get_calls_nonrec(proc_cost_csq(NRCalls, _, _)) = NRCalls.
+
+proc_cost_get_calls_rec(proc_cost_csq(_, RCalls, _)) = RCalls.
+
+%----------------------------------------------------------------------------%
+
+build_cs_cost_csq(Calls, TotalCost) = 
+    cs_cost_csq(float(Calls), cost_total(TotalCost)).
+
+build_cs_cost_csq_percall(Calls, PercallCost) =
+    cs_cost_csq(Calls, cost_per_call(PercallCost)).
+
+zero_cs_cost =
+    % Build this using the percall structure so that if a percall cost is ever
+    % retrived we don't have to divide by zero.  This is only a partial
+    % solution.
+    build_cs_cost_csq_percall(0.0, 0.0).
+
+cs_cost_get_total(cs_cost_csq(Calls, Cost)) = 
+    cost_get_total(Calls, Cost).
+
+cs_cost_get_percall(cs_cost_csq(Calls, Cost)) =
+    cost_get_percall(Calls, Cost).
+
+cs_cost_get_calls(cs_cost_csq(Calls, _)) = Calls.
+
+%----------------------------------------------------------------------------%
+
+cs_cost_to_proc_cost(cs_cost_csq(CSCalls, CSCost), TotalCalls, 
+        proc_cost_csq(NRCalls, RCalls, PCost)) :-
+    NRCalls = round_to_int(CSCalls),
+    RCalls = TotalCalls - round_to_int(CSCalls),
+    % The negative one represents the cost of the callsite itsself.
+    PCost = cost_total(cost_get_total(CSCalls, CSCost) - 1.0 * CSCalls).
+
+cs_cost_per_proc_call(cs_cost_csq(CSCalls0, CSCost0), ParentCost) = 
+        cs_cost_csq(CSCalls, CSCost) :-
+    TotalParentCalls = proc_cost_get_calls_nonrec(ParentCost),
+    CSCalls = CSCalls0 / float(TotalParentCalls),
+    CSCost = CSCost0 / TotalParentCalls.
+
+%----------------------------------------------------------------------------%
+
+:- type cost
+    --->    cost_per_call(float)
+    ;       cost_total(float).
+
+:- func cost_get_total(float, cost) = float.
+
+cost_get_total(_, cost_total(Total)) = Total.
+cost_get_total(Calls, cost_per_call(PC)) = Calls * PC.
+
+:- func cost_get_percall(float, cost) = float.
+
+cost_get_percall(Calls, cost_total(Total)) = Total / Calls.
+cost_get_percall(_, cost_per_call(PC)) = PC.
+
+:- func (cost) / (int) = cost.
+
+Cost0 / Denom = Cost :-
+    (
+        Cost0 = cost_total(Total),
+        Cost = cost_total(Total / float(Denom))
+    ;
+        Cost0 = cost_per_call(Percall),
+        Cost = cost_per_call(Percall / float(Denom))
     ).
 
 %----------------------------------------------------------------------------%

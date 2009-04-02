@@ -483,7 +483,11 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Lookup the program representation data.
+    %
 :- pred deep_get_progrep_det(deep::in, prog_rep::out) is det.
+
+:- pred deep_get_progrep(deep::in, prog_rep::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -998,18 +1002,19 @@ root_own_info(Deep) = RootOwn :-
 %-----------------------------------------------------------------------------%
 
 deep_get_progrep_det(Deep, ProgRep) :-
-    MaybeProgRep = Deep ^ procrep_file,
-    (
-        MaybeProgRep = yes(MaybeProgRep1),
-        (
-            MaybeProgRep1 = ok(ProgRep)
-        ;
-            MaybeProgRep1 = error(Error),
-            error(this_file ++ Error)
-        )
+    ( deep_get_progrep(Deep, ProgRepPrime) ->
+        ProgRep = ProgRepPrime
     ;
-        MaybeProgRep = no,
         error(this_file ++ "Could not open Deep.procrep")
+    ).
+
+deep_get_progrep(Deep, ProgRep) :-
+    Deep ^ procrep_file = yes(MaybeProgRep1),
+    (
+        MaybeProgRep1 = ok(ProgRep)
+    ;
+        MaybeProgRep1 = error(Error),
+        error(this_file ++ Error)
     ).
 
 %-----------------------------------------------------------------------------%

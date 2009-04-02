@@ -113,6 +113,12 @@
                 %
     ;       warning_cannot_lookup_proc_defn
 
+                % Couldn't compute the coverage annotation for a procedure
+                % representation.  A fallback method will be used but whithout
+                % this information it may be less accurate.
+                %
+    ;       warning_cannot_compute_procrep_coverage_fallback(string)
+
                 % We don't yet handle clique_proc_reports with multiple proc
                 % dynamics.
                 %
@@ -184,6 +190,8 @@ message_type_to_level(notice_cannot_parallelise_over_nonatomic_goal) =
 message_type_to_level(notice_callpair_has_more_than_one_dependant_var) =
     message_notice.
 message_type_to_level(warning_cannot_lookup_proc_defn) = message_warning.
+message_type_to_level(warning_cannot_compute_procrep_coverage_fallback(_)) =
+    message_warning.
 message_type_to_level(error_extra_proc_dynamics_in_clique_proc) = 
     message_error.
 message_type_to_level(error_coverage_procrep_error(_)) =
@@ -227,6 +235,10 @@ message_type_to_string(MessageType) = String :-
         MessageType = warning_cannot_lookup_proc_defn,
         String = "Could not look up proc defn, perhaps this procedure is"
             ++ " built-in"
+    ;
+        MessageType = warning_cannot_compute_procrep_coverage_fallback(Error),
+        String = "Cannot compute procrep coverage annotation: " ++ Error 
+            ++ "\n  falling back to some other method"
     ;
         MessageType = error_extra_proc_dynamics_in_clique_proc, 
         String = "extra proc dynamnics for a clique proc are not currenty"

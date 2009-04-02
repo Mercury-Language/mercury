@@ -408,6 +408,11 @@
 
 :- func head_var_to_var(head_var_rep) = var_rep.
 
+    % Extract the goal from a case, this is implemented here so it can be used
+    % in as a higher order value.
+    %
+:- pred case_get_goal(case_rep(T)::in, goal_rep(T)::out) is det.
+
 %-----------------------------------------------------------------------------%
 
     % Describe a call site.
@@ -805,6 +810,8 @@ atomic_goal_identifiable(plain_call_rep(Module, Name, Args)) =
 atomic_goal_identifiable(event_call_rep(_, _)) = no.
 
 head_var_to_var(head_var_rep(Var, _)) = Var.
+
+case_get_goal(case_rep(_, _, Goal), Goal).
 
 :- pragma foreign_export("C", proc_defn_rep_type = out,
     "ML_proc_defn_rep_type").

@@ -63,6 +63,7 @@
 
 :- implementation.
 
+:- import_module coverage.
 :- import_module create_report.
 :- import_module mdbcomp.program_representation.
 :- import_module measurements.
@@ -103,8 +104,9 @@ candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
     deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
     TotalCallseqs = Deep ^ profile_stats ^ num_callseqs,
     % The +1 here accounts for the cost of the pseudo call into the mercury
-    % runtime.
-    RootCliqueCost = cost_info(1, TotalCallseqs + 1),
+    % runtime since it is modeled here as a call site that in reality does not
+    % exist.
+    RootCliqueCost = build_cs_cost_csq(1, float(TotalCallseqs) + 1.0),
     candidate_parallel_conjunctions_clique(Opts, Deep, RootCliqueCost, 
         RootCliquePtr, ConjunctionsMultiMap, Messages),
 
@@ -120,40 +122,35 @@ candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
                 ipi_progrep         :: prog_rep,
                 ipi_opts            :: candidate_parallel_conjunctions_opts,
                 ipi_call_sites      :: map(goal_path, clique_call_site_report),
-                ipi_rec_call_sites  :: map(goal_path, cost_info),
+                ipi_rec_call_sites  :: map(goal_path, cs_cost_csq),
                 ipi_var_table       :: var_table
-            ).
-
-:- type cost_info
-    --->    cost_info(
-                cci_calls           :: int,
-                cci_callseqs_total  :: int 
             ).
 
 :- type candidate_par_conjunctions ==
     multi_map(string_proc_label, candidate_par_conjunction).
 
 :- pred candidate_parallel_conjunctions_clique(
-    candidate_parallel_conjunctions_opts::in, deep::in, cost_info::in,
+    candidate_parallel_conjunctions_opts::in, deep::in, cs_cost_csq::in,
     clique_ptr::in, candidate_par_conjunctions::out, cord(message)::out) 
     is det.
 
-candidate_parallel_conjunctions_clique(Opts, Deep, ParentCostInfo, CliquePtr,
+candidate_parallel_conjunctions_clique(Opts, Deep, ParentCSCostInfo, CliquePtr,
         Candidates, Messages) :-
     create_clique_report(Deep, CliquePtr, MaybeCliqueReport),
     (
         MaybeCliqueReport = ok(CliqueReport),
         CliqueProcs = CliqueReport ^ cr_clique_procs,
         % All cliques must contain at least one procedure.
-        ( [ FirstCliqueProcPrime ] = CliqueProcs ->
+        ( [ FirstCliqueProcPrime | _ ] = CliqueProcs ->
             FirstCliqueProc = FirstCliqueProcPrime
         ;
-            error(this_file ++ "A clique must have et least one procedure")
+            error(this_file ++ "A clique must have et least one procedure in " 
+                ++ string(CliquePtr))
         ),    
         CliqueIsRecursive = is_clique_recursive(CliqueReport),
         make_clique_proc_map(CliqueProcs, CliqueProcMap),
         candidate_parallel_conjunctions_clique_proc(Opts, Deep,
-            CliqueIsRecursive, ParentCostInfo, set.init, CliqueProcMap,
+            CliqueIsRecursive, ParentCSCostInfo, set.init, CliqueProcMap,
             CliquePtr, FirstCliqueProc, Candidates, Messages)
     ;
         MaybeCliqueReport = error(Error),
@@ -232,13 +229,13 @@ make_clique_proc_map(CliqueProcs, CliqueProcMap) :-
     %
 :- pred candidate_parallel_conjunctions_clique_proc(
     candidate_parallel_conjunctions_opts::in, deep::in, 
-    clique_is_recursive::in, cost_info::in, set(proc_desc)::in,
+    clique_is_recursive::in, cs_cost_csq::in, set(proc_desc)::in,
     map(proc_desc, clique_proc_report)::in,
     clique_ptr::in, clique_proc_report::in,
     candidate_par_conjunctions::out, cord(message)::out) is det.
 
 candidate_parallel_conjunctions_clique_proc(Opts, Deep, 
-        CliqueIsRecursive, ParentCostInfo, ProcsAnalysed0, CliqueProcMap, 
+        CliqueIsRecursive, ParentCSCostInfo, ProcsAnalysed0, CliqueProcMap, 
         CliquePtr, CliqueProc, Candidates, Messages) :-
     some [!Messages]
     (
@@ -248,8 +245,12 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep,
         % not contribute to the runtime of the program in an absolute way then
         % do not recurse further.  This test is performed here rather than in
         % the callees of this predicate to avoid duplication of code.
-        ParentCostInfo = cost_info(_Calls, TotalCost),
-        ( TotalCost > Opts ^ cpc_clique_threshold ->
+        TotalCost = cs_cost_get_total(ParentCSCostInfo),
+        ( TotalCost > float(Opts ^ cpc_clique_threshold) ->
+            CliqueProcCalls = CliqueProc ^ cpr_proc_summary ^ perf_row_calls,
+            cs_cost_to_proc_cost(ParentCSCostInfo, CliqueProcCalls, 
+            
+            ParentCostInfo),
             % Determine the costs of the call sites in the procedure.
             (
                 CliqueIsRecursive = clique_is_recursive,
@@ -302,14 +303,14 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep,
             Candidates = multi_map.init,
             trace [compile_time(flag("debug_cpc_search")), io(!IO)]
                 io.format("D: Not entering cheap clique: %s with cost %s\n",
-                    [s(string(CliquePtr)), s(string(ParentCostInfo))], !IO)
+                    [s(string(CliquePtr)), s(string(ParentCSCostInfo))], !IO)
         ),
         Messages = !.Messages
     ).
 
 :- pred candidate_parallel_conjunctions_call_site(
     candidate_parallel_conjunctions_opts::in, deep::in, set(proc_desc)::in,
-    clique_is_recursive::in, map(goal_path, cost_info)::in,
+    clique_is_recursive::in, map(goal_path, cs_cost_csq)::in,
     map(proc_desc, clique_proc_report)::in, clique_ptr::in,
     clique_call_site_report::in, candidate_par_conjunctions::out,
     cord(message)::out) is det.
@@ -330,7 +331,7 @@ candidate_parallel_conjunctions_call_site(Opts, Deep, ProcsAnalysed,
 
 :- pred candidate_parallel_conjunctions_callee(
     candidate_parallel_conjunctions_opts::in, deep::in, set(proc_desc)::in,
-    clique_is_recursive::in, map(goal_path, cost_info)::in,
+    clique_is_recursive::in, map(goal_path, cs_cost_csq)::in,
     map(proc_desc, clique_proc_report)::in, clique_ptr::in, call_site_desc::in,
     perf_row_data(clique_desc)::in, candidate_par_conjunctions::out,
     cord(message)::out) is det.
@@ -341,17 +342,6 @@ candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed0,
     CliqueDesc = CliquePerf ^ perf_row_subject,
     CliquePtr = CliqueDesc ^ cdesc_clique_ptr,
     CliqueEntryProc = CliqueDesc ^ cdesc_entry_member,
-    MaybePerfTotal = CliquePerf ^ perf_row_maybe_total,
-    (
-        MaybePerfTotal = yes(PerfTotal)
-    ;
-        MaybePerfTotal = no,
-        error(this_file ++ 
-            "Could not retrive total callseqs cost from clique")
-    ),
-    CliqueCost = PerfTotal ^ perf_row_callseqs,
-    Calls = CliquePerf ^ perf_row_calls,
-    CostInfo = cost_info(Calls, CliqueCost),
     ( ParentCliquePtr = CliquePtr ->
         % This is a recursive call within the same clique.
         ( member(CliqueEntryProc, ProcsAnalysed0) ->
@@ -373,8 +363,9 @@ candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed0,
                 Candidates, Messages)
         )
     ;
-        ( CliqueCost > Opts ^ cpc_clique_threshold ->
-            candidate_parallel_conjunctions_clique(Opts, Deep, CostInfo,
+        CSCost = build_cs_cost_from_perf(CliquePerf),
+        ( cs_cost_get_total(CSCost) > float(Opts ^ cpc_clique_threshold) ->
+            candidate_parallel_conjunctions_clique(Opts, Deep, CSCost,
                 CliquePtr, Candidates, Messages)
         ;
             Candidates = multi_map.init, 
@@ -385,97 +376,449 @@ candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed0,
 %----------------------------------------------------------------------------%
 
 :- pred build_recursive_call_site_cost_map(deep::in, clique_proc_report::in,
-    clique_ptr::in, cost_info::in, map(goal_path, cost_info)::out,
+    clique_ptr::in, proc_cost_csq::in, map(goal_path, cs_cost_csq)::out,
     cord(message)::out) is det.
 
 build_recursive_call_site_cost_map(Deep, CliqueProc, CliquePtr,
-        ParentCostInfo, RecursiveCallSiteCostMap, Messages) :-
-    % Lookup the proc static to find the ProcLabel.
-    PerfRowData = CliqueProc ^ cpr_proc_summary,
-    TotalProcCalls = PerfRowData ^ perf_row_calls,
-    ProcDesc = PerfRowData ^ perf_row_subject,
-    proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
+        ParentCost, RecursiveCallSiteCostMap, Messages) :-
+    some [!Messages] (
+        !:Messages = cord.empty,
 
-    ( CliqueProc ^ cpr_other_proc_dynamics = [_ | _] ->
-        append_message(proc(ProcLabel),
-            error_extra_proc_dynamics_in_clique_proc, cord.empty, Messages)
-    ;
-        Messages = cord.empty
-    ),
+        % Lookup the proc static to find the ProcLabel.
+        PerfRowData = CliqueProc ^ cpr_proc_summary,
+        ProcDesc = PerfRowData ^ perf_row_subject,
+        proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
 
-    cost_info(ParentCSCalls, ParentCSCost) = ParentCostInfo,
-    CallSites = CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
-    % Divide ParentCalls by the number of recursive calls to determine the
-    % fraction of calls into this procedure from outside the clique compared to
-    % calls from within the clique, use this to calculate the number of calls
-    % at the top level of the recursion of the call sites.
-    ProcCallsRecFraction = float(ParentCSCalls) / float(TotalProcCalls),
-    list.foldl3(get_callsite_cost_infos(CliquePtr, ProcCallsRecFraction), 
-        CallSites, 0, NonRecCSCost, 0.0, RecursiveCSCalls, 
-        set.init, RecursiveCS),
+        ( CliqueProc ^ cpr_other_proc_dynamics = [_ | _] ->
+            append_message(proc(ProcLabel),
+                error_extra_proc_dynamics_in_clique_proc, !Messages)
+        ;
+            true
+        ),
+        CallSites = CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
+       
+        PSPtr = ProcDesc ^ pdesc_ps_ptr,
+        create_procrep_coverage_report(Deep, PSPtr, MaybeCoverageReport),
+        (
+            MaybeCoverageReport = ok(procrep_coverage_info(_, ProcRep)),
+            Goal = ProcRep ^ pr_defn ^ pdr_goal,
+            foldl(add_call_site_to_map, CallSites, map.init, CallSiteMap),
+            goal_get_callsite_cost_info(CliquePtr, CallSiteMap, Goal,
+                empty_goal_path, Info),
+            Info = callsite_cost_info(NonRecCSCost, RecursiveCSCalls,
+                RecursiveCS, CallSiteProbabilityMap)
+        ;
+            MaybeCoverageReport = error(Error),
+            % If we couldn't find the proc rep then use the old method, this
+            % will not give accuruate call site probabilities.
+            foldl4(get_callsite_cost_info(CliquePtr, ParentCost), 
+                CallSites, 0.0, NonRecCSCost, 0.0, RecursiveCSCalls,
+                set.init, RecursiveCS, map.init, CallSiteProbabilityMap),
+            append_message(proc(ProcLabel),
+                warning_cannot_compute_procrep_coverage_fallback(Error), 
+                !Messages)
+        ),
 
-    % The negative one here represents the call from the parent into this
-    % procedure.
-    RecursiveCost = ParentCSCost - 0 - NonRecCSCost,
-    ( RecursiveCSCalls = 0.0 ->
-        RecursiveCostPerCall = 0.0
-    ;
-        RecursiveCostPerCall = 
-            float(RecursiveCost) / RecursiveCSCalls
-    ),
-    trace [compile_time(flag("debug_recursive_costs")), io(!IO)]
-        io.format(
-            "D: In clique proc: %s-%s\n\tRecursiveCostPerCall = %d/%f = %f\n",
-            [s(string(CliquePtr)), s(string(ProcLabel)), 
-             i(RecursiveCost), f(RecursiveCSCalls), f(RecursiveCostPerCall)], 
-            !IO),
+        % The cost of the recursive calls is the total cost minus the cost of
+        % the non recursive calls.
+        TotalRecursiveCost = 
+            proc_cost_get_total(ParentCost) - NonRecCSCost,
 
-    set.fold(
-        build_recursive_call_site_cost_map_call_site(RecursiveCostPerCall),
-        RecursiveCS, map.init, RecursiveCallSiteCostMap). 
+        % This should never divide by zero since it is only called on code that
+        % is recursive at runtime, that is a recusrive call is executed.
+        RecursiveCostPerCall = TotalRecursiveCost / RecursiveCSCalls,
 
-:- pred get_callsite_cost_infos(clique_ptr::in, float::in, 
-    clique_call_site_report::in, int::in, int::out, float::in, float::out, 
-    set(clique_call_site_report)::in, set(clique_call_site_report)::out) is det.
-
-get_callsite_cost_infos(ThisClique, ParentCallsRecFraction, CallSite,
-        !NonRecCSCost, !RecursiveCalls, !RecursiveCallSites) :-
-    CSSummary = CallSite ^ ccsr_call_site_summary,
-    MaybeTotal = CSSummary ^ perf_row_maybe_total,
-    (
-        MaybeTotal = yes(Total),
-        Cost = Total ^ perf_row_callseqs
-    ;
-        MaybeTotal = no,
-        error("clique_call_site has 'no' for perf_row_maybe_total")
-    ),
-    (
-        % Note that according to this any higher order call site that is
-        % recursive in some cases and non-recursive in others is considered to
-        % be recursive.  The cost of it's non-recursive calls is not factored
-        % into the calculation of the cost of recursive call sites.
-        member(CalleePerf, CallSite ^ ccsr_callee_perfs),
-        CalleePerf ^ perf_row_subject ^ cdesc_clique_ptr = ThisClique
-    ->
-        !:RecursiveCalls = !.RecursiveCalls + 
-            (float(CSSummary ^ perf_row_calls) * ParentCallsRecFraction),
-        svset.insert(CallSite, !RecursiveCallSites)
-    ;
-        !:NonRecCSCost = !.NonRecCSCost + Cost
+        % Assign costs to call sites.
+        set.fold(
+            build_recursive_call_site_cost_map_call_site(RecursiveCostPerCall, 
+                CallSiteProbabilityMap),
+            RecursiveCS, map.init, RecursiveCallSiteCostMap),
+        Messages = !.Messages
     ).
 
-:- pred build_recursive_call_site_cost_map_call_site(float::in,
-    clique_call_site_report::in, map(goal_path, cost_info)::in,
-    map(goal_path, cost_info)::out) is det.
+:- pred add_call_site_to_map(clique_call_site_report::in, 
+    map(goal_path, clique_call_site_report)::in,
+    map(goal_path, clique_call_site_report)::out) is det.
+
+add_call_site_to_map(CallSite, !Map) :-
+    GoalPath = CallSite ^ ccsr_call_site_summary ^ perf_row_subject 
+        ^ csdesc_goal_path,
+    svmap.det_insert(GoalPath, CallSite, !Map).
+
+    % The stateful data of the goal_get_callsite_cost_info code below.
+    %
+:- type callsite_cost_info
+    --->    callsite_cost_info(
+                csci_non_rec_cs_cost    :: float,
+                csci_rec_calls          :: float,
+                csci_rec_cs             :: set(clique_call_site_report),
+                csci_cs_prob_map        :: map(goal_path, float)
+            ).
+
+:- func empty_callsite_cost_info = callsite_cost_info.
+
+empty_callsite_cost_info = callsite_cost_info(0.0, 0.0, set.init, map.init).
+
+:- pred goal_get_callsite_cost_info(clique_ptr::in,
+    map(goal_path, clique_call_site_report)::in, goal_rep(coverage_info)::in,
+    goal_path::in, callsite_cost_info::out) is det.
+
+goal_get_callsite_cost_info(CliquePtr, CallSites, Goal, GoalPath, Info) :-
+    Goal = goal_rep(GoalExpr, Detism, Coverage),
+    (
+        GoalExpr = conj_rep(Conjs),
+        conj_get_callsite_cost_info(CliquePtr, CallSites, Conjs, 1, GoalPath,
+            Info)
+    ;
+        GoalExpr = disj_rep(Disjs),
+        disj_get_callsite_cost_info(CliquePtr, CallSites, Detism, Coverage,
+            Disjs, GoalPath, Info)
+    ;
+        GoalExpr = switch_rep(_Var, _CanFail, Cases),
+        switch_get_callsite_cost_info(CliquePtr, CallSites, Coverage, Cases,
+            GoalPath, Info)
+    ;
+        GoalExpr = ite_rep(Cond, Then, Else),
+        ite_get_callsite_cost_info(CliquePtr, CallSites, Cond, Then, Else,
+            GoalPath, Info)
+    ;
+        (
+            GoalExpr = negation_rep(SubGoal),
+            SubGoalPath = goal_path_add_at_end(GoalPath, step_neg)
+        ;
+            GoalExpr = scope_rep(SubGoal, MaybeCut),
+            SubGoalPath = goal_path_add_at_end(GoalPath, step_scope(MaybeCut))
+        ),
+        goal_get_callsite_cost_info(CliquePtr, CallSites, SubGoal,
+            SubGoalPath, Info)
+    ;
+        GoalExpr = atomic_goal_rep(_, _, _, _AtomicGoal),
+        atomic_goal_get_callsite_cost_info(CliquePtr, CallSites, GoalPath,
+            Info)
+    ).
+
+:- pred atomic_goal_get_callsite_cost_info(clique_ptr::in, 
+    map(goal_path, clique_call_site_report)::in, goal_path::in,
+    callsite_cost_info::out) is det.
+
+atomic_goal_get_callsite_cost_info(CliquePtr, CallSites, GoalPath, Info) :-
+    ( map.search(CallSites, GoalPath, CallSite) ->
+        svmap.det_insert(GoalPath, 1.0, map.init, CSProbMap),
+        ( call_site_is_recursive(CallSite, CliquePtr) ->
+            RecursiveCalls = 1.0,
+            NonRecursiveCost = 0.0,
+            RecursiveCallSites = set.from_list([CallSite])
+        ;
+            CSSummary = CallSite ^ ccsr_call_site_summary,
+            MaybeTotal = CSSummary ^ perf_row_maybe_total,
+            (
+                MaybeTotal = yes(Total),
+                PercallCost = Total ^ perf_row_callseqs_percall
+            ;
+                MaybeTotal = no,
+                error("clique_call_site has 'no' for perf_row_maybe_total")
+            ),
+            RecursiveCalls = 0.0,
+            NonRecursiveCost = PercallCost,
+            RecursiveCallSites = set.init
+        ),
+        Info = callsite_cost_info(NonRecursiveCost, RecursiveCalls, 
+            RecursiveCallSites, CSProbMap)
+    ;
+        % Not a callsite, there is no information to update since atmoic
+        % non-call goals have a trivial cost. 
+        Info = empty_callsite_cost_info
+    ).
+
+:- pred conj_get_callsite_cost_info(clique_ptr::in, 
+    map(goal_path, clique_call_site_report)::in,
+    list(goal_rep(coverage_info))::in, int::in,
+    goal_path::in, callsite_cost_info::out) is det.
+
+conj_get_callsite_cost_info(_, _, [], _, _, empty_callsite_cost_info).
+conj_get_callsite_cost_info(CliquePtr, CallSites, [Conj | Conjs], ConjNum,
+        GoalPath, Info) :-
+    ConjGoalPath = goal_path_add_at_end(GoalPath, step_conj(ConjNum)),
+    goal_get_callsite_cost_info(CliquePtr, CallSites, Conj, ConjGoalPath, 
+        ConjInfo),
     
-build_recursive_call_site_cost_map_call_site(RecursiveCostPerCall, CallSite,
-        !Map) :-
+    Coverage = Conj ^ goal_annotation,
+    ( get_coverage_before_and_after(Coverage, Calls, Exits) ->
+        % ContProb is the probability that this conjunction will continue with
+        % the execution of the next goal.
+        ( Calls = 0 ->
+            % If this was never called, then we will have a probability of 0 of
+            % executing the next conjunct.
+            ContProb = 0.0
+        ;
+            ContProb = float(Exits) / float(Calls)
+        )
+    ;
+        error(this_file ++ "Expected complete coverage information")
+    ),
+    conj_get_callsite_cost_info(CliquePtr, CallSites, Conjs, ConjNum + 1, 
+        GoalPath, ConjsInfo),
+    Info = multiply_and_add(ConjsInfo, ContProb, ConjInfo).
+
+:- pred disj_get_callsite_cost_info(clique_ptr::in, 
+    map(goal_path, clique_call_site_report)::in, detism_rep::in,
+    coverage_info::in, list(goal_rep(coverage_info))::in,
+    goal_path::in, callsite_cost_info::out) is det.
+
+disj_get_callsite_cost_info(CliquePtr, CallSites, _Detism, Coverage,
+        Disjs, GoalPath, Info) :-
+    % Some disjunctions may have redos, however these are rare and are not
+    % modeled by this code.
+    list.map_foldl(
+        disj_get_callsite_cost_info2(CliquePtr, CallSites, GoalPath),
+        Disjs, DisjInfos, 1, _),
+    
+    map_corresponding_foldl2(
+        callsite_collect_branch_probabilities(Coverage),
+        Disjs, DisjInfos, Probs, 0.0, _NonRecProb, 0.0, _RecProb),
+    foldl_corresponding(
+        (pred(NewInfo::in, BranchProb::in, Info0I::in, InfoI::out) is det :-
+            % This is a special case of callsite_cost_merge_branches that is
+            % used for disjunctions.  Since disjunctions don't behave like
+            % switches or ITEs if a disjunct does not call recursive code it is
+            % still included as part of the code that would execute during a
+            % call that will recurse provided that some other disjuct recurses.
+            InfoI = multiply_and_add(NewInfo, BranchProb, Info0I)
+        ), DisjInfos, Probs, empty_callsite_cost_info, Info).
+
+:- pred disj_get_callsite_cost_info2(clique_ptr::in, 
+    map(goal_path, clique_call_site_report)::in, goal_path::in,
+    goal_rep(coverage_info)::in, callsite_cost_info::out, int::in, int::out) 
+    is det.
+
+disj_get_callsite_cost_info2(CliquePtr, CallSites, GoalPath, Goal, Info,
+        DisjNum, DisjNum+1) :-
+    DisjGoalPath = goal_path_add_at_end(GoalPath, step_disj(DisjNum)),
+    goal_get_callsite_cost_info(CliquePtr, CallSites, Goal, DisjGoalPath,
+        Info).
+
+:- pred switch_get_callsite_cost_info(clique_ptr::in, 
+    map(goal_path, clique_call_site_report)::in, coverage_info::in,
+    list(case_rep(coverage_info))::in, goal_path::in, callsite_cost_info::out)
+    is det.
+
+switch_get_callsite_cost_info(CliquePtr, CallSites, Coverage, Cases, GoalPath,
+        Info) :-
+    % Since switches are similar to disjunctions so some of this code is
+    % similar or shared.
+    list.map(case_get_goal, Cases, Goals),
+    list.map_foldl(
+        case_get_callsite_cost_info(CliquePtr, CallSites, GoalPath),
+        Goals, GoalInfos, 1, _),
+    map_corresponding_foldl2(
+        callsite_collect_branch_probabilities(Coverage),
+        Goals, GoalInfos, Probs, 0.0, NonRecProb, 0.0, RecProb),
+    foldl_corresponding(callsite_cost_merge_branches(NonRecProb, RecProb),
+        GoalInfos, Probs, empty_callsite_cost_info, Info).
+
+:- pred case_get_callsite_cost_info(clique_ptr::in, 
+    map(goal_path, clique_call_site_report)::in, goal_path::in,
+    goal_rep(coverage_info)::in, callsite_cost_info::out, int::in, int::out) 
+    is det.
+
+case_get_callsite_cost_info(CliquePtr, CallSites, GoalPath, Goal, Info,
+        CaseNum, CaseNum+1) :-
+    CaseGoalPath = goal_path_add_at_end(GoalPath, step_switch(CaseNum, no)),
+    goal_get_callsite_cost_info(CliquePtr, CallSites, Goal, CaseGoalPath,
+        Info).
+
+:- pred ite_get_callsite_cost_info(clique_ptr::in, 
+    map(goal_path, clique_call_site_report)::in, 
+    goal_rep(coverage_info)::in, goal_rep(coverage_info)::in,
+    goal_rep(coverage_info)::in, goal_path::in, callsite_cost_info::out) is det.
+
+ite_get_callsite_cost_info(CliquePtr, CallSites, Cond, Then, Else,
+        GoalPath, Info) :-
+    CondGoalPath = goal_path_add_at_end(GoalPath, step_ite_cond),
+    ThenGoalPath = goal_path_add_at_end(GoalPath, step_ite_then),
+    ElseGoalPath = goal_path_add_at_end(GoalPath, step_ite_else),
+    goal_get_callsite_cost_info(CliquePtr, CallSites, Cond, CondGoalPath,
+        CondInfo),
+    goal_get_callsite_cost_info(CliquePtr, CallSites, Then, ThenGoalPath,
+        ThenInfo),
+    goal_get_callsite_cost_info(CliquePtr, CallSites, Else, ElseGoalPath,
+        ElseInfo),
+    
+    % Find the probability of entering either branch and merge the
+    % callsite_cost_info structures.
+    CondCoverage = Cond ^ goal_annotation,
+    ( get_coverage_before_and_after(CondCoverage, CondCalls, CondExits) ->
+        ( CondCalls = 0 ->
+            % XXX: I don't like these either since their sum is 0.0
+            ThenProb = 0.0,
+            ElseProb = 0.0
+        ;
+            ThenProb = float(CondExits) / float(CondCalls),
+            ElseProb = 1.0 - ThenProb
+        )
+    ;
+        error(this_file ++ "couldn't retrieve coverage information")
+    ),
+    add_probability_to_rec_non_rec_totals(ThenInfo, ThenProb, 
+        0.0, NonRecProb0, 0.0, RecProb0),
+    add_probability_to_rec_non_rec_totals(ElseInfo, ElseProb, 
+        NonRecProb0, NonRecProb, RecProb0, RecProb),
+    callsite_cost_merge_branches(NonRecProb, RecProb, ThenInfo, ThenProb, 
+        empty_callsite_cost_info, BranchInfo0),
+    callsite_cost_merge_branches(NonRecProb, RecProb, ElseInfo, ElseProb, 
+        BranchInfo0, BranchInfo),
+   
+    % Add the info from the condition goal.
+    Info = add_callsite_cost_info(CondInfo, BranchInfo).
+
+:- pred callsite_collect_branch_probabilities(coverage_info::in, 
+    goal_rep(coverage_info)::in, callsite_cost_info::in, float::out,
+    float::in, float::out, float::in, float::out) is det.
+
+callsite_collect_branch_probabilities(TotalCoverage, Goal, Info, Prob, 
+        !NonRecProb, !RecProb) :-
+    (
+        get_coverage_before(TotalCoverage, TotalCalls),
+        get_coverage_before(Goal ^ goal_annotation, Calls)
+    ->
+        % The probability of entering this branch given that the parent goal
+        % was called.
+        ( TotalCalls = 0 ->
+            % I'm not sure I'm comfortable with this, since in this case the
+            % probability of entering each branch will be 0.0, and the sum of
+            % this will be 0.0 which is not correct.
+            Prob = 0.0
+        ;
+            Prob = float(Calls) / float(TotalCalls)
+        )
+    ;
+        error(this_file ++ "could not retrieve coverage information")
+    ),
+    add_probability_to_rec_non_rec_totals(Info, Prob, !NonRecProb, !RecProb).
+
+:- pred add_probability_to_rec_non_rec_totals(callsite_cost_info::in, float::in,
+    float::in, float::out, float::in, float::out) is det.
+
+add_probability_to_rec_non_rec_totals(Info, Prob, !NonRecProb, !RecProb) :-
+    ( empty(Info ^ csci_rec_cs) ->
+        % This branch has no recursive calls in it (ie it forms a base-case),
+        % therefore it doesn't contribute to probability that we enter this
+        % branch since we're trying to calculate the probability of a goal
+        % being executed given that we're executing a procedure that will
+        % eventually recurse.  We track the probability of entering a
+        % non-recursive branch so that this probability can be added to the
+        % recursive cases below.
+        !:NonRecProb = !.NonRecProb + Prob
+    ;   
+        !:RecProb = !.RecProb + Prob
+    ).
+
+:- pred callsite_cost_merge_branches(float::in, float::in,
+    callsite_cost_info::in, float::in,
+    callsite_cost_info::in, callsite_cost_info::out) is det.
+
+callsite_cost_merge_branches(NonRecProb, RecProb, NewInfo, BranchProb, 
+        !Info) :-
+    ( empty(NewInfo ^ csci_rec_cs) ->
+        % This branch is non-recursive, therefore we don't count it's
+        % contribution to the execution time because we're calculating the
+        % execution time for a non-recursive invocation of this procedure.
+        true
+    ;
+        % Add the probability of a non-recursive branch to this branch weighted
+        % by the probability that we execute this branch given that we execute a
+        % recursive branch.
+        !:Info = multiply_and_add(NewInfo, 
+            BranchProb + (BranchProb / RecProb * NonRecProb), !.Info)
+    ).
+
+
+:- func multiply_and_add(callsite_cost_info, float, callsite_cost_info) =
+    callsite_cost_info.
+
+multiply_and_add(Cost, Scalar, CostAddend) = Result :-
+    Cost = callsite_cost_info(NonRecCSCost0, RecCalls0, RecCSA, CSProbMap0), 
+    CostAddend = callsite_cost_info(NonRecCSCostAddend, RecCallsAddend, RecCSB,
+        CSProbMapAddend), 
+    NonRecCSCost = (NonRecCSCost0 * Scalar) + NonRecCSCostAddend,
+    RecCalls = (RecCalls0 * Scalar) + RecCallsAddend,
+    % This set is simply 'added' multiplication doesn't make sense and merge is
+    % exactly what we want here.  Sets are given in this order for efficiency,
+    % see set.union/2
+    RecCS = set.union(RecCSB, RecCSA),
+    map.foldl(multiply_probability_merge(Scalar),
+        CSProbMap0, CSProbMapAddend, CSProbMap),
+    Result = callsite_cost_info(NonRecCSCost, RecCalls, RecCS, CSProbMap).
+
+:- pred multiply_probability_merge(float::in, goal_path::in, float::in,
+    map(goal_path, float)::in, map(goal_path, float)::out) is det.
+
+multiply_probability_merge(M, Key, Value0, !Map) :-
+    Value = Value0 * M,
+    svmap.det_insert(Key, Value, !Map).
+
+:- func add_callsite_cost_info(callsite_cost_info, callsite_cost_info) =
+    callsite_cost_info.
+
+add_callsite_cost_info(CSCIA, CSCIB) = 
+    multiply_and_add(CSCIA, 1.0, CSCIB).
+
+:- pred get_callsite_cost_info(clique_ptr::in, proc_cost_csq::in, 
+    clique_call_site_report::in, float::in, float::out, float::in, float::out, 
+    set(clique_call_site_report)::in, set(clique_call_site_report)::out,
+    map(goal_path, float)::in, map(goal_path, float)::out) is det.
+
+get_callsite_cost_info(ThisClique, ParentCost, CallSite, 
+        !NonRecCSCost, !RecursiveCalls, !RecursiveCallSites, !CallSiteProbMap)
+    :-
     CSSummary = CallSite ^ ccsr_call_site_summary,
-    Calls = CSSummary ^ perf_row_calls,
-    Cost = RecursiveCostPerCall * float(Calls),
-    CostInfo = cost_info(Calls, round_to_int(Cost)),
     GoalPath = CSSummary ^ perf_row_subject ^ csdesc_goal_path,
-    svmap.det_insert(GoalPath, CostInfo, !Map).
+    CSCalls = float(CSSummary ^ perf_row_calls),
+    % Note that Prob represents the probability of this call occurring on any
+    % invocation of the clique proc, not on the top-level invocation of the
+    % clique proc which is what we take it to mean here.  This is why this
+    % method is not used with the procedure representation is available.
+    Prob = CSCalls / float(proc_cost_get_calls_total(ParentCost)),
+    svmap.det_insert(GoalPath, Prob, !CallSiteProbMap),
+    ( call_site_is_recursive(CallSite, ThisClique) ->
+        !:RecursiveCalls = !.RecursiveCalls + Prob, 
+        svset.insert(CallSite, !RecursiveCallSites)
+    ;
+        MaybeTotal = CSSummary ^ perf_row_maybe_total,
+        (
+            MaybeTotal = yes(Total),
+            PercallCost = Total ^ perf_row_callseqs_percall
+        ;
+            MaybeTotal = no,
+            error("clique_call_site has 'no' for perf_row_maybe_total")
+        ),
+        !:NonRecCSCost = !.NonRecCSCost + PercallCost
+    ).
+
+:- pred call_site_is_recursive(clique_call_site_report::in, clique_ptr::in) 
+    is semidet.
+
+call_site_is_recursive(CallSite, ThisClique) :-
+    % Note that according to this any higher order call site that
+    % is recursive in some cases and non-recursive in others is
+    % considered to be recursive.  The cost of it's non-recursive
+    % calls is not factored into the calculation of the cost of
+    % recursive call sites.
+    member(CalleePerf, CallSite ^ ccsr_callee_perfs),
+    CalleePerf ^ perf_row_subject ^ cdesc_clique_ptr = ThisClique.
+
+:- pred build_recursive_call_site_cost_map_call_site(float::in,
+    map(goal_path, float)::in, clique_call_site_report::in, 
+    map(goal_path, cs_cost_csq)::in, map(goal_path, cs_cost_csq)::out) is det.
+    
+build_recursive_call_site_cost_map_call_site(RecursiveCostPerCall,
+        CallSiteProbabilityMap, CallSite, !Map) :-
+    CSSummary = CallSite ^ ccsr_call_site_summary,
+    GoalPath = CSSummary ^ perf_row_subject ^ csdesc_goal_path,
+    
+    map.lookup(CallSiteProbabilityMap, GoalPath, Calls),
+    Cost = build_cs_cost_csq_percall(Calls, RecursiveCostPerCall),
+    svmap.det_insert(GoalPath, Cost, !Map).
 
 %----------------------------------------------------------------------------%
 
@@ -483,7 +826,7 @@ build_recursive_call_site_cost_map_call_site(RecursiveCostPerCall, CallSite,
     %
 :- pred candidate_parallel_conjunctions_proc(
     candidate_parallel_conjunctions_opts::in, deep::in,
-    clique_proc_report::in, map(goal_path, cost_info)::in,
+    clique_proc_report::in, map(goal_path, cs_cost_csq)::in,
     candidate_par_conjunctions::out,
     cord(message)::out) is det.
 
@@ -929,8 +1272,15 @@ build_candidate_conjunctions(Info, InstMap, GoalPath, ProcLabel,
         [MaybeCall | MaybeCalls], Messages, !Candidates) :-
     (
         MaybeCall = call(_, _, _, CallSiteReport),
-        PercallCost = percall_cost(get_call_site_cost(Info, CallSiteReport)),
-        ( PercallCost > float(Info ^ ipi_opts ^ cpc_call_site_threshold) ->
+        CallSiteCost = get_call_site_cost(Info, CallSiteReport),
+        (
+            ( cs_cost_get_calls(CallSiteCost) > 0.0 ->
+                PercallCost = cs_cost_get_percall(CallSiteCost),
+                PercallCost > float(Info ^ ipi_opts ^ cpc_call_site_threshold)
+            ;
+                fail 
+            )
+        ->
             % This conjunction is a call and is expensive enough to
             % parallelise, find some later conjunct to parallelise against it.
             build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel,
@@ -940,13 +1290,13 @@ build_candidate_conjunctions(Info, InstMap, GoalPath, ProcLabel,
         ;
             Messages0 = cord.empty,
             trace [compile_time(flag("debug_cpc_search")), io(!IO)]
-                io.format("D: Call too cheap: %s %s %f\n", 
+                io.format("D: Call too cheap: %s %s %s\n", 
                     [s(string(ProcLabel)), 
                      s(goal_path_to_string(CallSiteReport 
                         ^ ccsr_call_site_summary 
                         ^ perf_row_subject 
                         ^ csdesc_goal_path)),
-                     f(PercallCost)], !IO)
+                     s(string(CallSiteCost))], !IO)
         )
     ;
         MaybeCall = non_atomic_goal,
@@ -975,7 +1325,7 @@ build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, CallA,
             MaybeCall = call(_, _, _, CallSiteReport),
             !:Messages = cord.empty,
             CallB = MaybeCall,
-            Cost = percall_cost(get_call_site_cost(Info, CallSiteReport)),
+            Cost = cs_cost_get_percall(get_call_site_cost(Info, CallSiteReport)),
             ( Cost > float(Info ^ ipi_opts ^ cpc_call_site_threshold) ->
                 % This conjunct is a call and is expensive enough to
                 % parallelise.
@@ -1083,39 +1433,25 @@ add_output_var_to_set(var_mode_and_use(VarRep, VarModeRep, _), !Set) :-
     % Retrieve the average cost of a call site.
     %
 :- func get_call_site_cost(implicit_parallelism_info, clique_call_site_report) 
-    = cost_info.
+    = cs_cost_csq.
 
-get_call_site_cost(Info, CallSite) = CostInfo :-
+get_call_site_cost(Info, CallSite) = Cost :-
     CSSummary = CallSite ^ ccsr_call_site_summary,
     GoalPath = CSSummary ^ perf_row_subject ^ csdesc_goal_path,
-    ( map.search(Info ^ ipi_rec_call_sites, GoalPath, CostInfoPrime) ->
-        CostInfo = CostInfoPrime
+    ( map.search(Info ^ ipi_rec_call_sites, GoalPath, CostPrime) ->
+        Cost = CostPrime
     ;
         MaybePerfTotal = CSSummary ^ perf_row_maybe_total, 
         (
             MaybePerfTotal = yes(PerfTotal),
-            Cost = PerfTotal ^ perf_row_callseqs,
-            Calls = CSSummary ^ perf_row_calls
+            TotalCost = PerfTotal ^ perf_row_callseqs
         ;
             MaybePerfTotal = no,
             error(this_file ++ 
-                "Could not retrive total callseqs cost from call site")
+                "Could not retrieve total callseqs cost from call site")
         ),
-        CostInfo = cost_info(Calls, Cost)
-    ).
-
-    % Given a cost_info structure calculate the percall cost.
-    %
-:- func percall_cost(cost_info) = float.
-
-percall_cost(cost_info(Calls, Cost)) = PercallCost :-
-    ( Calls = 0 ->
-        % While this should be infinity or NaN if a call is never made then we
-        % don't know it's potential cost, it should probably not be
-        % parallelised and might as well be zero.
-        PercallCost = 0.0
-    ;
-        PercallCost = float(Cost) / float(Calls)
+        Calls = CSSummary ^ perf_row_calls,
+        Cost = build_cs_cost_csq(Calls, float(TotalCost))
     ).
 
 :- pred compute_independent_parallelisation_speedup(
@@ -1126,8 +1462,8 @@ percall_cost(cost_info(Calls, Cost)) = PercallCost :-
 
 compute_independent_parallelisation_speedup(Info, CallA, CallB, 
         CPCA, CPCB, Speedup) :-
-    CostA = percall_cost(get_call_site_cost(Info, CallA ^ mccc_call_site)),
-    CostB = percall_cost(get_call_site_cost(Info, CallB ^ mccc_call_site)),
+    CostA = cs_cost_get_percall(get_call_site_cost(Info, CallA ^ mccc_call_site)),
+    CostB = cs_cost_get_percall(get_call_site_cost(Info, CallB ^ mccc_call_site)),
     SequentialCost = CostA + CostB,
     ParallelCost = max(CostA, CostB) + 
         float(Info ^ ipi_opts ^ cpc_sparking_cost),
@@ -1145,8 +1481,8 @@ compute_independent_parallelisation_speedup(Info, CallA, CallB,
 compute_optimal_dependant_parallelisation(Info, CallA, CallB,
         DepVars, _IntermediateGoals, InstMap, CPCA, CPCB,
         Speedup, Messages) :-
-    CostA = percall_cost(get_call_site_cost(Info, CallA ^ mccc_call_site)),
-    CostB = percall_cost(get_call_site_cost(Info, CallB ^ mccc_call_site)),
+    CostA = cs_cost_get_percall(get_call_site_cost(Info, CallA ^ mccc_call_site)),
+    CostB = cs_cost_get_percall(get_call_site_cost(Info, CallB ^ mccc_call_site)),
     SequentialCost = CostA + CostB,
     ( singleton_set(DepVars, DepVar) ->
         % Only parallelise conjunctions with a single dependant variable for
@@ -1260,7 +1596,7 @@ call_site_conj_to_candidate_par_conjunct(Info, Call, CPC) :-
     Call = call(MaybeCallee, _Detism, Args, Perf),
     VarTable = Info ^ ipi_var_table,
     list.map(var_mode_use_to_var_in_par_conj(VarTable), Args, Vars),
-    Cost = percall_cost(get_call_site_cost(Info, Perf)),
+    Cost = cs_cost_get_percall(get_call_site_cost(Info, Perf)),
     CPC = candidate_par_conjunct(MaybeCallee, Vars, Cost).
 
 :- pred var_mode_use_to_var_in_par_conj(var_table::in, var_mode_and_use::in,
@@ -1414,6 +1750,21 @@ add_call_site_report_to_map(CallSite, !Map) :-
 :- func this_file = string.
 
 this_file = "mdprof_fb.automatic_parallelism.m: ".
+
+:- func build_cs_cost_from_perf(perf_row_data(T)) = cs_cost_csq.
+
+build_cs_cost_from_perf(Perf) = CSCost :-
+    MaybePerfTotal = Perf ^ perf_row_maybe_total,
+    (
+        MaybePerfTotal = yes(PerfTotal)
+    ;
+        MaybePerfTotal = no,
+        error(this_file ++ 
+            "Could not retrieve total cost from perf data")
+    ),
+    TotalCSQ = PerfTotal ^ perf_row_callseqs,
+    Calls = Perf ^ perf_row_calls,
+    CSCost = build_cs_cost_csq(Calls, float(TotalCSQ)).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdprof_fb.automatic_parallelism.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,10 +111,11 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
     some [!ProcDefn, !GoalRep] (
         !:ProcDefn = !.ProcRep ^ pr_defn,
         !:GoalRep = !.ProcDefn ^ pdr_goal,
+        ProcLabel = !.ProcRep ^ pr_id,
         Calls = calls(OwnProf),
         Exits = exits(OwnProf),
         Before = before_known(Calls),
-        CoverageReference = coverage_reference_info(CallSites,
+        CoverageReference = coverage_reference_info(ProcLabel, CallSites,
             SolnsCoveragePoints, BranchCoveragePoints),
         goal_annotate_coverage(CoverageReference, empty_goal_path,
             Before, After, !GoalRep),
@@ -132,6 +133,7 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
     %
 :- type coverage_reference_info
     --->    coverage_reference_info(
+                cri_proc                    :: string_proc_label,
                 cri_call_sites              :: map(goal_path, call_site_perf),
                 cri_solns_coverage_points   :: map(goal_path, coverage_point),
                 cri_branch_coverage_points  :: map(goal_path, coverage_point)
@@ -241,8 +243,10 @@ goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
     trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
         require(check_coverage_complete(GoalCoverage, GoalExpr),
             string.format("check_coverage_complete failed\n" ++
-                "\tCoverage: %s\n\tGoalPath: %s\n",
-                [s(string(GoalCoverage)), s(goal_path_to_string(GoalPath))])),
+                "\tCoverage: %s\n\tGoalPath: %s\n\tProc: %s\n",
+                [s(string(GoalCoverage)), 
+                 s(goal_path_to_string(GoalPath)),
+                 s(string(Info ^ cri_proc))])),
         require(check_coverage_regarding_detism(GoalCoverage, Detism),
             string.format("check_coverage_regarding_detism failed: %s %s",
                     [s(string(GoalCoverage)), s(string(Detism))]))
