@@ -35,6 +35,10 @@ MCFLAGS-foreign_type_2 =	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-foreign_type_visibility = --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+MCFLAGS-ii_parent = 		--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-ii_parent.ii_child =	--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-illtyped_compare =	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization \
 				--verbose-error-messages

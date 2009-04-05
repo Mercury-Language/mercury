@@ -13,6 +13,7 @@ MULTIMODULE_PROGS= \
 	duplicate_instance_2 \
 	exported_unify \
 	exported_unify3 \
+	ii_parent.ii_child \
 	ho_default_func_2.sub \
 	import_in_parent \
 	imported_mode \

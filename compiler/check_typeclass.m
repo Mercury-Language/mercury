@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -70,12 +70,7 @@
 % dependencies.  This doesn't necessarily catch all cases of inconsistent
 % instances, however, since in general that cannot be done until link time.
 % We try to catch as many cases as possible here, though, since we can give
-% better error messages.  Note that we only check concrete instance definitions
-% for mutual consistency, since otherwise the abstract instance definitions
-% would conflict with their corresponding concrete definitions.  If in
-% future we allow stub instances, where the concrete definition is compiler
-% generated, we should add the concrete definitions before this pass to
-% ensure that they get checked.
+% better error messages.  
 %
 % (6) in check_typeclass_constraints/4, we check typeclass constraints on
 % predicate and function declarations and on existentially typed data
@@ -1142,10 +1137,24 @@ check_fundeps_class(ClassId, !ModuleInfo, !Specs) :-
     map.lookup(InstanceTable, ClassId, InstanceDefns),
     FunDeps = ClassDefn ^ class_fundeps,
     check_coverage(ClassId, InstanceDefns, FunDeps, !ModuleInfo, !Specs),
-    % Concrete definitions will always overlap with abstract ones; we only
-    % need to check the former.
-    list.filter(is_concrete_instance_defn, InstanceDefns,
-        ConcreteInstanceDefns),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    % Abstract definitions will always overlap with concrete definitions,
+    % so we filter out the abstract definitions for this module.  If
+    % --intermodule-optimization is enabled then we strip out the imported
+    % abstract definitions for all modules since we will have the concrete
+    % definitions for imported instances from the .opt files.  If it is not
+    % enabled then we keep the abstract definitions for imported instances
+    % since doing so may allow us to detect errors.
+    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
+    (
+        IntermodOpt = yes,
+        list.filter(is_concrete_instance_defn, InstanceDefns,
+            ConcreteInstanceDefns)
+    ;
+        IntermodOpt = no,
+        list.filter(is_concrete_or_imported_instance_defn, InstanceDefns,
+            ConcreteInstanceDefns)
+    ),
     check_consistency(ClassId, ClassDefn, ConcreteInstanceDefns, FunDeps,
         !ModuleInfo, !Specs).
 
@@ -1153,6 +1162,16 @@ check_fundeps_class(ClassId, !ModuleInfo, !Specs) :-
 
 is_concrete_instance_defn(InstanceDefn) :-
     InstanceDefn ^ instance_body = instance_body_concrete(_).
+
+:- pred is_concrete_or_imported_instance_defn(hlds_instance_defn::in)
+    is semidet.
+
+is_concrete_or_imported_instance_defn(InstanceDefn) :-
+    (
+        is_concrete_instance_defn(InstanceDefn)
+    ;
+        status_is_imported(InstanceDefn ^ instance_status) = yes
+    ).
 
 :- pred check_coverage(class_id::in, list(hlds_instance_defn)::in,
     hlds_class_fundeps::in, module_info::in, module_info::out,
