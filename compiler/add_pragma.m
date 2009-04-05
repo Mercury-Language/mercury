@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,9 +142,10 @@
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_args.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_rtti.
@@ -394,107 +395,37 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
     list.length(Modes, Arity),
     (
         predicate_table_search_pf_sym_arity(PredTable,
-            may_be_partially_qualified, PredOrFunc, Name, Arity, [PredId])
+            may_be_partially_qualified, PredOrFunc, Name, Arity, PredIds),
+        ( PredIds = [_]
+        ; PredIds = [_, _ | _]
+        )
     ->
-        predicate_table_get_preds(PredTable, Preds),
-        map.lookup(Preds, PredId, PredInfo),
-        pred_info_get_procedures(PredInfo, Procs),
-        map.to_assoc_list(Procs, ExistingProcs),
         (
-            get_procedure_matching_declmodes_with_renaming(ExistingProcs,
-                Modes, !.ModuleInfo, ProcId)
-        ->
-            map.lookup(Procs, ProcId, ProcInfo),
-            proc_info_get_declared_determinism(ProcInfo, MaybeDet),
-            % We cannot catch those multi or nondet procedures that don't have
-            % a determinism declaration until after determinism analysis.
-            (
-                MaybeDet = yes(Det),
-                ( Det = detism_non
-                ; Det = detism_multi
-                )
-            ->
-                Pieces = [words("Error: "),
-                    fixed("`:- pragma foreign_export' declaration"),
-                    words("for a procedure that has"),
-                    words("a declared determinism of"),
-                    fixed(hlds_out.determinism_to_string(Det) ++ ".")
-                ],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
-                !:Specs = [Spec | !.Specs]
-            ;
-                % Emit a warning about using pragma foreign_export with
-                % a foreign language that is not supported.
-                % XXX That's currently all of them except C, IL and Erlang.
-                (
-                    ( Lang = lang_java
-                    ; Lang = lang_csharp
-                    ),
-                    Pieces = [words("Warning:"),
-                        fixed("`:- pragma foreign_export' declarations"),
-                        words("are not yet implemented for language"),
-                        words(foreign_language_string(Lang)), suffix("."), nl],
-                    Msg = simple_msg(Context, [always(Pieces)]),
-                    Spec = error_spec(severity_warning,
-                        phase_parse_tree_to_hlds, [Msg]),
-                    !:Specs = [Spec | !.Specs]
-                ;
-                    ( Lang = lang_c
-                    ; Lang = lang_il
-                    ; Lang = lang_erlang
-                    )
-                ),
-
-                % Only add the foreign export if the specified language matches
-                % one of the foreign languages available for this backend.
-                module_info_get_globals(!.ModuleInfo, Globals),
-                globals.get_backend_foreign_languages(Globals,
-                    ForeignLanguages),
-                (
-                    % XXX C# exports currently cause an
-                    % assertion failure in the MLDS->IL code generator.
-
-                    Lang \= lang_csharp,
-                    list.member(Lang, ForeignLanguages)
-                ->
-                    module_info_get_pragma_exported_procs(!.ModuleInfo,
-                        PragmaExportedProcs0),
-                    NewExportedProc = pragma_exported_proc(Lang,
-                        PredId, ProcId, ExportedName, Context),
-                    PragmaExportedProcs =
-                        [NewExportedProc | PragmaExportedProcs0],
-                    module_info_set_pragma_exported_procs(PragmaExportedProcs,
-                        !ModuleInfo)
-                ;
-                    true
-                )
-            )
+            PredIds = [PredId],
+            add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name,
+                PredId, Modes, ExportedName, Context, !ModuleInfo, !Specs)
         ;
-            % We do not warn about errors in export pragmas created by the
-            % compiler as part of a source-to-source transformation.
-            (
-                Origin = user,
-                undefined_mode_error(Name, Arity, Context,
-                    "`:- pragma foreign_export' declaration", !Specs)
-            ;
-                Origin = compiler(Details),
-                (
-                    Details = initialise_decl
-                ;
-                    Details = mutable_decl
-                ;
-                    Details = finalise_decl
-                ;
-                    ( Details = solver_type
-                    ; Details = foreign_imports
-                    ; Details = pragma_memo_attribute
-                    ),
-                    unexpected(this_file,
-                        "Bad introduced foreign_export pragma.")
-                )
-            )
+            PredIds = [_, _ | _],
+            StartPieces = [
+                words("error: ambiguous"), p_or_f(PredOrFunc),
+                words("name in"), quote("pragma foreign_export"),
+                words("declaration."), nl,
+                words("The possible matches are:"), nl_indent_delta(1)
+            ],
+            PredIdPiecesList = list.map(
+                describe_one_pred_name(!.ModuleInfo, should_module_qualify),
+                PredIds),
+            PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
+                [suffix(".")]),
+            MainPieces = StartPieces ++ PredIdPieces,
+            VerbosePieces = [
+                words("An explicit module qualifier may"),
+                words("be necessary.")
+            ],
+            Msg = simple_msg(Context,
+                [always(MainPieces), verbose_only(VerbosePieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ;
         (
@@ -515,6 +446,115 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
                 ; Details = pragma_memo_attribute
                 ),
                 unexpected(this_file, "Bad introduced foreign_export pragma.")
+            )
+        )
+    ).
+
+:- pred add_pragma_foreign_export_2(arity::in, predicate_table::in,
+    item_origin::in, foreign_language::in,
+    sym_name::in, pred_id::in, list(mer_mode)::in, string::in,
+    prog_context::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId, Modes,
+        ExportedName, Context, !ModuleInfo, !Specs) :-
+    predicate_table_get_preds(PredTable, Preds),
+    map.lookup(Preds, PredId, PredInfo),
+    pred_info_get_procedures(PredInfo, Procs),
+    map.to_assoc_list(Procs, ExistingProcs),
+    (
+        get_procedure_matching_declmodes_with_renaming(ExistingProcs,
+            Modes, !.ModuleInfo, ProcId)
+    ->
+        map.lookup(Procs, ProcId, ProcInfo),
+        proc_info_get_declared_determinism(ProcInfo, MaybeDet),
+        % We cannot catch those multi or nondet procedures that don't have
+        % a determinism declaration until after determinism analysis.
+        (
+            MaybeDet = yes(Det),
+            ( Det = detism_non
+            ; Det = detism_multi
+            )
+        ->
+            Pieces = [words("Error: "),
+                fixed("`:- pragma foreign_export' declaration"),
+                words("for a procedure that has"),
+                words("a declared determinism of"),
+                fixed(hlds_out.determinism_to_string(Det) ++ ".")
+            ],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            % Emit a warning about using pragma foreign_export with
+            % a foreign language that is not supported.
+            % XXX That's currently all of them except C, IL and Erlang.
+            (
+                ( Lang = lang_java
+                ; Lang = lang_csharp
+                ),
+                Pieces = [words("Warning:"),
+                    fixed("`:- pragma foreign_export' declarations"),
+                    words("are not yet implemented for language"),
+                    words(foreign_language_string(Lang)), suffix("."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_warning,
+                    phase_parse_tree_to_hlds, [Msg]),
+                !:Specs = [Spec | !.Specs]
+            ;
+                ( Lang = lang_c
+                ; Lang = lang_il
+                ; Lang = lang_erlang
+                )
+            ),
+
+            % Only add the foreign export if the specified language matches
+            % one of the foreign languages available for this backend.
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.get_backend_foreign_languages(Globals,
+                ForeignLanguages),
+            (
+                % XXX C# exports currently cause an
+                % assertion failure in the MLDS->IL code generator.
+
+                Lang \= lang_csharp,
+                list.member(Lang, ForeignLanguages)
+            ->
+                module_info_get_pragma_exported_procs(!.ModuleInfo,
+                    PragmaExportedProcs0),
+                NewExportedProc = pragma_exported_proc(Lang,
+                    PredId, ProcId, ExportedName, Context),
+                PragmaExportedProcs =
+                    [NewExportedProc | PragmaExportedProcs0],
+                module_info_set_pragma_exported_procs(PragmaExportedProcs,
+                    !ModuleInfo)
+            ;
+                true
+            )
+        )
+    ;
+        % We do not warn about errors in export pragmas created by the
+        % compiler as part of a source-to-source transformation.
+        (
+            Origin = user,
+            undefined_mode_error(Name, Arity, Context,
+                "`:- pragma foreign_export' declaration", !Specs)
+        ;
+            Origin = compiler(Details),
+            (
+                Details = initialise_decl
+            ;
+                Details = mutable_decl
+            ;
+                Details = finalise_decl
+            ;
+                ( Details = solver_type
+                ; Details = foreign_imports
+                ; Details = pragma_memo_attribute
+                ),
+                unexpected(this_file,
+                    "Bad introduced foreign_export pragma.")
             )
         )
     ).

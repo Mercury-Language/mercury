@@ -117,6 +117,7 @@ MCFLAGS-ambiguous_method 		= --verbose-error-messages
 MCFLAGS-anys_in_negated_contexts	= --verbose-error-messages
 MCFLAGS-bigtest				= --verbose-error-messages
 MCFLAGS-bind_in_negated			= --verbose-error-messages
+MCFLAGS-bug83				= --verbose-error-messages
 MCFLAGS-complex_constraint_err		= --verbose-error-messages
 MCFLAGS-errors2				= --verbose-error-messages
 MCFLAGS-ext_type			= --verbose-error-messages

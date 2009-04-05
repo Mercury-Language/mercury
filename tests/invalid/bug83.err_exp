@@ -1,0 +1,6 @@
+bug83.m:022: error: ambiguous function name in `pragma foreign_export'
+bug83.m:022:   declaration.
+bug83.m:022:   The possible matches are:
+bug83.m:022:     function `io.make_io_error'/1,
+bug83.m:022:     function `bug83.make_io_error'/1.
+bug83.m:022:   An explicit module qualifier may be necessary.
