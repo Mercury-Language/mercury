@@ -104,16 +104,13 @@ case "$BRANCH" in
 		#esac
 		BRANCH=latest
 		;;
-	   jupiter)
+	   aral)
 		BRANCH=latest
 		#case $DAY in
 		#	*[13579]) BRANCH=$release_branch ;;
 		#	*) BRANCH=latest ;;
 		#esac
 	   	;;
-	   swordfish)
-		BRANCH=latest
-		;;
 	   saturn|neptune|goofy|eris)
  	       	BRANCH=latest
 		#case $DAY in

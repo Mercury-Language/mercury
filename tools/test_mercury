@@ -106,7 +106,7 @@ export CLASSPATH
 
 # Host to use to build the release of the day source distribution
 # for the mercury-compiler, mercury-tests, and mercury-extras distributions.
-ROTD_HOST=jupiter
+ROTD_HOST=aral
 
 # Host to use to build the release of the day mercury-gcc source distribution.
 # We don't currently test the gcc backend.
@@ -232,7 +232,7 @@ EXTRA_INSTALL_MCFLAGS=""
 case $HOST in
     # test things at different optimization levels...
 
-    $ROTD_HOST|jupiter)
+    $ROTD_HOST|aral)
         OPTIMIZE="-O2 --intermodule-optimization"
         ;;
     
@@ -248,10 +248,6 @@ case $HOST in
         OPTIMIZE="-O2 --intermodule-optimization"
         ;;
     
-    swordfish)
-        OPTIMIZE="-O4 --constraint-propagation" 
-        ;;
-
     mundula)
         OPTIMIZE=-O2; use_cp_opt="--use-cp"
         # On mundroo, "mkdir -p scripts" aborts
@@ -313,7 +309,7 @@ esac
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-    jupiter|swordfish|saturn|neptune|goofy|taura|bob|goliath)
+    aral|saturn|neptune|goofy|taura|bob|goliath)
         INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH
         ;;
 
@@ -463,24 +459,9 @@ case $HOST in
             asm_fast.gc.stseg               \
             reg.gc.tr"                      
         ;;
-                    
-    jupiter)
-        # Ensure that the nogc grades get installed and tested
-        # on at least one host
+    aral)
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         ;;
-    swordfish)
-        # swordfish is being used by the G12 group at the moment, so
-        # it requires trailing versions of most of the grades.
-        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-java-grade"
-        INSTALL_LIBGRADES="asm_fast.gc      \
-            hlc.gc.trseg                    \
-            hlc.gc.trseg.prof               \
-            asm_fast.gc.tr                  \
-            asm_fast.gc.tr.profdeep         \
-            asm_fast.gc.tr.decldebug        \
-            hlc.gc"
-        ;; 
     eris)
         # The asm_fast grades don't work on Darwin.
         # The reg grades don't work with the default gcc compiler
@@ -999,11 +980,8 @@ echo "test_mercury starting to create binary distribution at `date`" 1>&2
 # Also we distinguish them based on what optimization level
 # they were compiled with.
 case $HOST in
-    jupiter)        
-        fullname=i686-pc-linux-libc2.3-gnu-O5-intermod
-        ;;
-    swordfish)
-        fullname=i686-pc-linux-libc2.3-gnu-O4-intermod
+    aral)        
+        fullname=i686-pc-linux-libc2.7-gnu-O2-intermod
         ;;
     saturn)
         fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O5-intermod
