@@ -875,9 +875,10 @@ report_error_var(Info, Var, Type, TypeAssignSet0) = Spec :-
             argument_name_to_pieces(VarSet, Var) ++
             [words("does not match its expected type;"), nl] ++
             argument_name_to_pieces(VarSet, Var) ++
-            [words("has overloaded actual/expected types {"), nl] ++
+            [words("has overloaded actual/expected types {")] ++
+            [nl_indent_delta(1)] ++
             actual_expected_types_list_to_pieces(ActualExpectedList) ++
-            [nl, fixed("}."), nl]
+            [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
@@ -927,11 +928,12 @@ report_error_var_either_type(Info, Var, TypeA, TypeB, TypeAssignSet0) = Spec :-
             argument_name_to_pieces(VarSet, Var) ++
             [words("does not match its expected type;"), nl] ++
             argument_name_to_pieces(VarSet, Var) ++
-            [words("has overloaded actual/expected types {"), nl] ++
+            [words("has overloaded actual/expected types {")] ++
+            [nl_indent_delta(1)] ++
             actual_expected_types_list_to_pieces(ActualExpectedListA) ++
-            [nl, fixed("} or {."), nl] ++
+            [nl_indent_delta(-1), fixed("} or {"), nl_indent_delta(1)] ++
             actual_expected_types_list_to_pieces(ActualExpectedListB) ++
-            [nl, fixed("}."), nl]
+            [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
@@ -973,9 +975,10 @@ report_error_arg_var(Info, Var, ArgTypeAssignSet0) = Spec :-
             argument_name_to_pieces(VarSet, Var) ++
             [words("does not match its expected type;"), nl] ++
             argument_name_to_pieces(VarSet, Var) ++
-            [words("has overloaded actual/expected types {"), nl] ++
+            [words("has overloaded actual/expected types {")] ++
+            [nl_indent_delta(1)] ++
             actual_expected_types_list_to_pieces(ActualExpectedList) ++
-            [nl, fixed("}."), nl]
+            [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
     VerbosePieces = args_type_assign_set_msg_to_pieces(ArgTypeAssignSet0,
@@ -1442,9 +1445,8 @@ type_of_functor_to_pieces(Functor, Arity, ConsDefnList) = Pieces :-
     ;
         ConsTypeListPieces =
             cons_type_list_to_pieces(ConsDefnList, Functor, Arity),
-        Pieces = [words("has overloaded type"), nl_indent_delta(1)] ++
-            [fixed("{")] ++ ConsTypeListPieces ++
-            [nl_indent_delta(-1), fixed("}")]
+        Pieces = [words("has overloaded type {"), nl_indent_delta(1)] ++
+            ConsTypeListPieces ++ [nl_indent_delta(-1), fixed("}")]
     ).
 
     % Return a description of the given data constructor's argument types.
@@ -1600,17 +1602,29 @@ arg_type_stuff_to_actual_expected(ArgTypeStuff) = ActualExpected :-
 :- func actual_expected_types_list_to_pieces(list(actual_expected_types))
     = list(format_component).
 
-actual_expected_types_list_to_pieces(ActualExpectedList) =
-    component_list_to_line_pieces(
-        list.map(actual_expected_types_to_pieces, ActualExpectedList), []).
+actual_expected_types_list_to_pieces(ActualExpectedList) = Pieces :-
+    ExpectedPieces = list.foldl(expected_types_to_pieces, ActualExpectedList,
+        []),
+    ActualPieces = list.map(actual_types_to_pieces, ActualExpectedList),
+    Pieces = component_list_to_line_pieces(ExpectedPieces ++ ActualPieces, []).
 
-:- func actual_expected_types_to_pieces(actual_expected_types)
-    = list(format_component).
+:- func expected_types_to_pieces(actual_expected_types,
+    list(list(format_component))) = list(list(format_component)).
 
-actual_expected_types_to_pieces(ActualExpected) = Pieces :-
-    ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
-    Pieces = [words("(inferred)")] ++ ActualPieces ++ [suffix(","), nl] ++
-        [words("(expected)")] ++ ExpectedPieces.
+expected_types_to_pieces(ActualExpected, Pieces0) = Pieces :-
+    ActualExpected = actual_expected_types(_ActualPieces, ExpectedPieces),
+    TaggedPieces = [words("(expected)") | ExpectedPieces],
+    ( list.member(TaggedPieces, Pieces0) ->
+        Pieces = Pieces0
+    ;
+        Pieces = Pieces0 ++ [TaggedPieces]
+    ).
+
+:- func actual_types_to_pieces(actual_expected_types) = list(format_component).
+
+actual_types_to_pieces(ActualExpected) = Pieces :-
+    ActualExpected = actual_expected_types(ActualPieces, _ExpectedPieces),
+    Pieces = [words("(inferred)") | ActualPieces].
 
 :- func bound_type_to_pieces(mer_type, tvarset, tsubst, head_type_params)
     = list(format_component).

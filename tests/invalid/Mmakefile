@@ -192,6 +192,7 @@ SINGLEMODULE= \
 	tricky_assert1 \
 	try_bad_params \
 	try_io_else \
+	type_error_ambiguous \
 	type_inf_loop \
 	type_loop \
 	type_mismatch \
