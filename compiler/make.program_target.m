@@ -1844,7 +1844,8 @@ make_module_realclean(ModuleName, !Info, !IO) :-
             module_target_intermodule_interface,
             module_target_analysis_registry,
             module_target_c_header(header_mh),
-            module_target_erlang_header
+            module_target_erlang_header,
+            module_target_track_flags
         ],
         !Info, !IO),
     make_remove_file(very_verbose, ModuleName, make_module_dep_file_extension,

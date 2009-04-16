@@ -378,6 +378,7 @@ target_dependencies(_, module_target_short_interface) =
         interface_file_dependencies.
 target_dependencies(_, module_target_unqualified_short_interface) =
         module_target_source `of` self.
+target_dependencies(_, module_target_track_flags) = no_deps.
 target_dependencies(Globals, module_target_c_header(_)) =
         target_dependencies(Globals, module_target_c_code).
 target_dependencies(Globals, module_target_c_code) =
@@ -514,6 +515,7 @@ compiled_code_dependencies(Globals) = Deps :-
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
+    globals.lookup_bool_option(Globals, track_flags, TrackFlags),
     AnyIntermod = bool.or(IntermodOpt, IntermodAnalysis),
     (
         AnyIntermod = yes,
@@ -522,11 +524,11 @@ compiled_code_dependencies(Globals) = Deps :-
             module_target_intermodule_interface `of` intermod_imports,
             map_find_module_deps(imports,
                 map_find_module_deps(parents, intermod_imports)),
-            base_compiled_code_dependencies
+            base_compiled_code_dependencies(TrackFlags)
         ])
     ;
         AnyIntermod = no,
-        Deps0 = base_compiled_code_dependencies
+        Deps0 = base_compiled_code_dependencies(TrackFlags)
     ),
     (
         IntermodAnalysis = yes,
@@ -540,14 +542,22 @@ compiled_code_dependencies(Globals) = Deps :-
         Deps = Deps0
     ).
 
-:- func base_compiled_code_dependencies =
+:- func base_compiled_code_dependencies(bool::in) =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
 
-base_compiled_code_dependencies =
-    combine_deps_list([
+base_compiled_code_dependencies(TrackFlags) = Deps :-
+    (
+        TrackFlags = yes,
+        Deps0 = module_target_track_flags `of` self
+    ;
+        TrackFlags = no,
+        Deps0 = no_deps
+    ),
+    Deps = combine_deps_list([
         module_target_source `of` self,
         fact_table_files `files_of` self,
-        map_find_module_deps(imports, self)
+        map_find_module_deps(imports, self),
+        Deps0
     ]).
 
 :- func imports =
@@ -1425,8 +1435,14 @@ dependency_status(dep_file(FileName, _) @ Dep, Status, !Info, !IO) :-
     ).
 dependency_status(dep_target(Target) @ Dep, Status, !Info, !IO) :-
     Target = target_file(ModuleName, FileType),
-    ( FileType = module_target_source ->
+    (
+        ( FileType = module_target_source
+        ; FileType = module_target_track_flags
+        )
+    ->
         % Source files are always up-to-date.
+        % .track_flags should already have been made, if required,
+        % so are also up-to-date.
         ModuleTarget = module_target(module_target_source),
         maybe_warn_up_to_date_target(ModuleName - ModuleTarget, !Info, !IO),
         Status = deps_status_up_to_date

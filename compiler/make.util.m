@@ -1218,6 +1218,7 @@ target_extension(_, module_target_short_interface) = yes(".int2").
 target_extension(_, module_target_unqualified_short_interface) = yes(".int3").
 target_extension(_, module_target_intermodule_interface) = yes(".opt").
 target_extension(_, module_target_analysis_registry) = yes(".analysis").
+target_extension(_, module_target_track_flags) = yes(".track_flags").
 target_extension(_, module_target_c_header(header_mih)) = yes(".mih").
 target_extension(_, module_target_c_header(header_mh)) = yes(".mh").
 target_extension(_, module_target_c_code) = yes(".c").
@@ -1341,6 +1342,7 @@ module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, Search,
             ; TargetType = module_target_source
             ; TargetType = module_target_unqualified_short_interface
             ; TargetType = module_target_xml_doc
+            ; TargetType = module_target_track_flags
             ),
             unexpected(this_file, "module_target_to_file_name_2")
         )
@@ -1405,6 +1407,7 @@ search_for_file_type(module_target_intermodule_interface) =
         yes(intermod_directories).
 search_for_file_type(module_target_analysis_registry) =
         yes(intermod_directories).
+search_for_file_type(module_target_track_flags) = no.
 search_for_file_type(module_target_c_header(_)) = yes(c_include_directory).
 search_for_file_type(module_target_c_code) = no.
 search_for_file_type(module_target_il_code) = no.
@@ -1441,6 +1444,7 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
     ;
         ( Target = module_target_intermodule_interface
         ; Target = module_target_analysis_registry
+        ; Target = module_target_track_flags
         ; Target = module_target_c_header(header_mih)
         ; Target = module_target_c_code
         ; Target = module_target_il_code
@@ -1704,6 +1708,9 @@ module_target_type_to_nonce(Type) = X :-
     ;
         Type = module_target_xml_doc,
         X = 23
+    ;
+        Type = module_target_track_flags,
+        X = 24
     ).
 
 :- func pic_to_nonce(pic) = int.

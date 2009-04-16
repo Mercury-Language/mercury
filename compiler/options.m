@@ -24,6 +24,7 @@
 :- import_module char.
 :- import_module getopt_io.
 :- import_module io.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -46,6 +47,12 @@
     %
 :- pred special_handler(option::in, special_data::in, option_table::in,
     maybe_option_table::out) is semidet.
+
+    % Return the set of options which are inconsequential as far as the
+    % `--track-flags' option is concerned.  That is, adding or removing such
+    % an option to a module should not force the module to be recompiled.
+    %
+:- pred inconsequential_options(set(option)::out) is det.
 
 :- pred options_help(io::di, io::uo) is det.
 
@@ -879,6 +886,7 @@
     ;       keep_going
     ;       rebuild
     ;       jobs
+    ;       track_flags
     ;       invoked_by_mmc_make
     ;       extra_init_command
     ;       pre_link_command
@@ -944,6 +952,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
@@ -1714,6 +1723,7 @@ option_defaults_2(build_system_option, [
     keep_going                          -   bool(no),
     rebuild                             -   bool(no),
     jobs                                -   int(1),
+    track_flags                         -   bool(no),
     invoked_by_mmc_make                 -   bool(no),
     pre_link_command                    -   maybe_string(no),
     extra_init_command                  -   maybe_string(no),
@@ -2603,6 +2613,8 @@ long_option("make",                 make).
 long_option("keep-going",           keep_going).
 long_option("rebuild",              rebuild).
 long_option("jobs",                 jobs).
+long_option("track-flags",          track_flags).
+long_option("track-options",        track_flags).
 long_option("invoked-by-mmc-make",  invoked_by_mmc_make).
 long_option("pre-link-command",     pre_link_command).
 long_option("extra-init-command",   extra_init_command).
@@ -3168,6 +3180,18 @@ quote_char_unix('\\').
 quote_char_unix('"').
 quote_char_unix('`').
 quote_char_unix('$').
+
+%-----------------------------------------------------------------------------%
+
+inconsequential_options(InconsequentialOptions) :-
+    option_defaults_2(warning_option, WarningOptions),
+    option_defaults_2(verbosity_option, VerbosityOptions),
+    option_defaults_2(internal_use_option, InternalUseOptions),
+    assoc_list.keys(WarningOptions, WarningKeys),
+    assoc_list.keys(VerbosityOptions, VerbosityKeys),
+    assoc_list.keys(InternalUseOptions, InternalUseKeys),
+    Keys = WarningKeys ++ VerbosityKeys ++ InternalUseKeys,
+    InconsequentialOptions = set.from_list(Keys).
 
 %-----------------------------------------------------------------------------%
 
@@ -5283,6 +5307,14 @@ options_help_build_system -->
         "-j <n>, --jobs <n>",
         "\tWith `--make', attempt to perform up to <n> jobs",
         "\tconcurrently for some tasks.",
+
+        "--track-flags",
+        "\tWith `--make', keep track of the options used when compiling",
+        "\teach module.  If an option for a module is added or removed,",
+        "\t`mmc --make' will then know to recompile the module even if the",
+        "\ttimestamp on the file itself has not changed.  Warning and",
+        "\tverbosity options are not tracked.",
+
         "--pre-link-command <command>",
         "\tSpecify a command to run before linking with `mmc --make'.",
         "\tThis can be used to compile C source files which rely on",

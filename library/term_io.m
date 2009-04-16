@@ -621,9 +621,9 @@ should_atom_be_quoted(S, NextToGraphicToken) = ShouldQuote :-
         % I didn't make these rules up: see ISO Prolog 6.3.1.3 and 6.4.2. -fjh
         (
             % Letter digit token (6.4.2)
-            string.first_char(S, FirstChar, Rest),
+            string.index(S, 0, FirstChar),
             char.is_lower(FirstChar),
-            string.is_all_alnum_or_underscore(Rest)
+            string.is_all_alnum_or_underscore(S)
         ;
             % Semicolon token (6.4.2)
             S = ";"
@@ -632,17 +632,12 @@ should_atom_be_quoted(S, NextToGraphicToken) = ShouldQuote :-
             S = "!"
         ;
             % Graphic token (6.4.2)
-            string.to_char_list(S, Chars),
-            (
-                list.member(Char, Chars)
-            =>
-                lexer.graphic_token_char(Char)
-            ),
-            Chars = [_ | _],
+            string.all_match(lexer.graphic_token_char, S),
+            string.length(S) > 0,
 
             % We need to quote tokens starting with '#', because Mercury uses
             % '#' to start source line number indicators.
-            Chars \= ['#' | _],
+            not string.index(S, 0, '#'),
 
             % If the token could be the last token in a term, and the term
             % could be followed with ".\n", then we need to quote the token,

@@ -63,7 +63,10 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module hlds.
 :- import_module libs.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
+:- import_module libs.handle_options.
+:- import_module libs.md4.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module make.dependencies.
@@ -76,9 +79,11 @@
 :- import_module top_level.                 % XXX unwanted dependency
 :- import_module top_level.mercury_compile. % XXX unwanted dependency
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module getopt_io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -211,6 +216,7 @@
     ;       module_target_unqualified_short_interface
     ;       module_target_intermodule_interface
     ;       module_target_analysis_registry
+    ;       module_target_track_flags
     ;       module_target_c_header(c_header_type)
     ;       module_target_c_code
     ;       module_target_il_code
@@ -381,18 +387,32 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
 
 make_target(Target, Success, !Info, !IO) :-
     Target = ModuleName - TargetType,
+    globals.io_lookup_bool_option(track_flags, TrackFlags, !IO),
     (
-        TargetType = module_target(ModuleTargetType),
-        TargetFile = target_file(ModuleName, ModuleTargetType),
-        make_module_target(dep_target(TargetFile), Success,
-            !Info, !IO)
+        TrackFlags = no,
+        TrackFlagsSuccess = yes
     ;
-        TargetType = linked_target(ProgramTargetType),
-        LinkedTargetFile = linked_target_file(ModuleName, ProgramTargetType),
-        make_linked_target(LinkedTargetFile, Success, !Info, !IO)
+        TrackFlags = yes,
+        make_track_flags_files(ModuleName, TrackFlagsSuccess, !Info, !IO)
+    ),
+    (
+        TrackFlagsSuccess = yes,
+        (
+            TargetType = module_target(ModuleTargetType),
+            TargetFile = target_file(ModuleName, ModuleTargetType),
+            make_module_target(dep_target(TargetFile), Success, !Info, !IO)
+        ;
+            TargetType = linked_target(ProgramTargetType),
+            LinkedTargetFile = linked_target_file(ModuleName,
+                ProgramTargetType),
+            make_linked_target(LinkedTargetFile, Success, !Info, !IO)
+        ;
+            TargetType = misc_target(MiscTargetType),
+            make_misc_target(ModuleName - MiscTargetType, Success, !Info, !IO)
+        )
     ;
-        TargetType = misc_target(MiscTargetType),
-        make_misc_target(ModuleName - MiscTargetType, Success, !Info, !IO)
+        TrackFlagsSuccess = no,
+        Success = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -512,6 +532,167 @@ search_backwards_for_dot(String, Index, DotIndex) :-
         DotIndex = Index
     ;
         search_backwards_for_dot(String, Index - 1, DotIndex)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- type last_hash
+    --->    last_hash(
+                lh_options  :: list(string),
+                lh_hash     :: string
+            ).
+
+    % Generate the .track_flags files for local modules reachable from the
+    % target module.  The files contain hashes of the options which are set for
+    % that particular module (deliberately ignoring some options), and are only
+    % updated if they have changed since the last --make run.  We use hashes as
+    % the full option tables are quite large.
+    %
+:- pred make_track_flags_files(module_name::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+make_track_flags_files(ModuleName, Success, !Info, !IO) :-
+    find_reachable_local_modules(ModuleName, Success0, Modules, !Info, !IO),
+    (
+        Success0 = yes,
+        KeepGoing = no,
+        DummyLashHash = last_hash([], ""),
+        foldl3_maybe_stop_at_error(KeepGoing, make_track_flags_files_2,
+            set.to_sorted_list(Modules), Success, DummyLashHash, _LastHash,
+            !Info, !IO)
+    ;
+        Success0 = no,
+        Success = no
+    ).
+
+:- pred make_track_flags_files_2(module_name::in, bool::out,
+    last_hash::in, last_hash::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+make_track_flags_files_2(ModuleName, Success, !LastHash, !Info, !IO) :-
+    lookup_mmc_module_options(!.Info ^ options_variables, ModuleName,
+        OptionsResult, !IO),
+    (
+        OptionsResult = yes(ModuleOptionArgs),
+        OptionArgs = !.Info ^ option_args,
+        AllOptionArgs = list.condense([ModuleOptionArgs, OptionArgs]),
+
+        % The set of options from one module to the next is usually identical,
+        % so we can easily avoid running handle_options and stringifying and
+        % hashing the option table, all of which can contribute to an annoying
+        % delay when mmc --make starts.
+        ( !.LastHash = last_hash(AllOptionArgs, HashPrime) ->
+            Hash = HashPrime
+        ;
+            option_table_hash(AllOptionArgs, Hash, !IO),
+            !:LastHash = last_hash(AllOptionArgs, Hash)
+        ),
+
+        module_name_to_file_name(ModuleName, ".track_flags", do_create_dirs,
+            HashFileName, !IO),
+        compare_hash_file(HashFileName, Hash, Same, !IO),
+        (
+            Same = yes,
+            Success = yes
+        ;
+            Same = no,
+            write_hash_file(HashFileName, Hash, Success, !IO)
+        )
+    ;
+        OptionsResult = no,
+        Success = no
+    ).
+
+:- pred option_table_hash(list(string)::in, string::out,
+    io::di, io::uo) is det.
+
+option_table_hash(AllOptionArgs, Hash, !IO) :-
+    globals.io_get_globals(Globals, !IO),
+    handle_options(AllOptionArgs, OptionsErrors, _, _, _, !IO),
+    (
+        OptionsErrors = []
+    ;
+        OptionsErrors = [_ | _],
+        unexpected($file, $pred ++ ": " ++
+            "handle_options returned with errors")
+    ),
+    globals.io_get_globals(UpdatedGlobals, !IO),
+    globals.get_options(UpdatedGlobals, OptionTable),
+    map.to_sorted_assoc_list(OptionTable, OptionList),
+    inconsequential_options(InconsequentialOptions),
+    list.filter(is_consequential_option(InconsequentialOptions),
+        OptionList, ConsequentialOptionList),
+    Hash = md4sum(string(ConsequentialOptionList)),
+    globals.io_set_globals(Globals, !IO).
+
+:- pred is_consequential_option(set(option)::in,
+    pair(option, option_data)::in) is semidet.
+
+is_consequential_option(InconsequentialOptions, Option - _) :-
+    not set.contains(InconsequentialOptions, Option).
+
+:- pred compare_hash_file(string::in, string::in, bool::out,
+    io::di, io::uo) is det.
+
+compare_hash_file(FileName, Hash, Same, !IO) :-
+    io.open_input(FileName, OpenResult, !IO),
+    (
+        OpenResult = ok(Stream),
+        io.read_line_as_string(Stream, ReadResult, !IO),
+        (
+            ReadResult = ok(Line),
+            ( Line = Hash ->
+                Same = yes
+            ;
+                Same = no
+            )
+        ;
+            ReadResult = eof,
+            Same = no
+        ;
+            ReadResult = error(_),
+            Same = no
+        ),
+        io.close_input(Stream, !IO)
+    ;
+        OpenResult = error(_),
+        % Probably missing file.
+        Same = no
+    ),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    (
+        Verbose = yes,
+        io.write_string("% ", !IO),
+        io.write_string(FileName, !IO),
+        (
+            Same = yes,
+            io.write_string(" does not need updating.\n", !IO)
+        ;
+            Same = no,
+            io.write_string(" will be UPDATED.\n", !IO)
+        )
+    ;
+        Verbose = no
+    ).
+
+:- pred write_hash_file(string::in, string::in, bool::out, io::di, io::uo)
+    is det.
+
+write_hash_file(FileName, Hash, Success, !IO) :-
+    io.open_output(FileName, OpenResult, !IO),
+    (
+        OpenResult = ok(Stream),
+        io.write_string(Stream, Hash, !IO),
+        io.close_output(Stream, !IO),
+        Success = yes
+    ;
+        OpenResult = error(Error),
+        io.write_string("Error creating `", !IO),
+        io.write_string(FileName, !IO),
+        io.write_string("': ", !IO),
+        io.write_string(io.error_message(Error), !IO),
+        io.nl(!IO),
+        Success = no
     ).
 
 %-----------------------------------------------------------------------------%

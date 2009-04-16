@@ -22,10 +22,11 @@
 :- include_module compiler_util.
 
 % Generic algorithms and data structures that are not quite useful enough
-% to go in the standard library.
+% or otherwise aren't in the standard library.
 :- include_module atsort.
 :- include_module file_util.
 :- include_module graph_colour.
+:- include_module md4.
 :- include_module pickle.
 
 % OS interfaces not provided by the standard library.

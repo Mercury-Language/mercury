@@ -784,6 +784,8 @@ delete_timestamp(TouchedFile, !Timestamps) :-
 
 compilation_task(_, module_target_source) = _ :-
     unexpected(this_file, "compilation_task").
+compilation_task(_, module_target_track_flags) = _ :-
+    unexpected(this_file, "compilation_task").
 compilation_task(_, module_target_errors) =
     process_module(task_errorcheck) - ["--errorcheck-only"].
 compilation_task(_, module_target_unqualified_short_interface) =
@@ -1112,6 +1114,7 @@ target_type_to_pic(TargetType) = Result :-
         ; TargetType = module_target_unqualified_short_interface
         ; TargetType = module_target_intermodule_interface
         ; TargetType = module_target_analysis_registry
+        ; TargetType = module_target_track_flags
         ; TargetType = module_target_c_header(_)
         ; TargetType = module_target_c_code
         ; TargetType = module_target_il_code
