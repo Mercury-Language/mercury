@@ -87,7 +87,7 @@
                 %
     ;       notice_extra_callpairs_in_conjunction(
                 int
-                    % THe number of call pairs that were not parallelised.
+                    % The number of call pairs that were not parallelised.
             )
    
                 % A pair of calls that we want to parallelise are separated by

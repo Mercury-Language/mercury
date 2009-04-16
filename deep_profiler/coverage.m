@@ -241,15 +241,21 @@ goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
              s(string(GoalCoverage))], !IO)
     ),
     trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
-        require(check_coverage_complete(GoalCoverage, GoalExpr),
-            string.format("check_coverage_complete failed\n" ++
+        ( check_coverage_complete(GoalCoverage, GoalExpr) ->
+            true
+        ;
+            error(string.format("check_coverage_complete failed\n" ++
                 "\tCoverage: %s\n\tGoalPath: %s\n\tProc: %s\n",
                 [s(string(GoalCoverage)), 
                  s(goal_path_to_string(GoalPath)),
-                 s(string(Info ^ cri_proc))])),
-        require(check_coverage_regarding_detism(GoalCoverage, Detism),
-            string.format("check_coverage_regarding_detism failed: %s %s",
+                 s(string(Info ^ cri_proc))]))
+        ),
+        ( check_coverage_regarding_detism(GoalCoverage, Detism) ->
+            true
+        ;
+            error(string.format("check_coverage_regarding_detism failed: %s %s",
                     [s(string(GoalCoverage)), s(string(Detism))]))
+        )
     ).
 
 :- func construct_before_after_coverage(coverage_before, coverage_after)
@@ -388,11 +394,14 @@ switch_annotate_coverage(Info, CanFail, GoalPath, Before, After,
     %),
 
     trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
-        require(check_switch_coverage(CanFail, Cases, Before),
-            string.format("check_switch_coverage failed\n\t" ++
+        ( check_switch_coverage(CanFail, Cases, Before) ->
+            true
+        ;
+            error(string.format("check_switch_coverage failed\n\t" ++
                 "CanFail: %s\n\tCases: %s\n\tBefore: %s, After: %s\n",
                 [s(string(CanFail)), s(string(Cases)),
                 s(string(Before)), s(string(After))]))
+        )
     ).
 
     % switch_annotate_coverage_2(Info, Detism, GoalPath, CaseNum,
@@ -518,10 +527,13 @@ ite_annotate_coverage(Info, GoalPath, Before, After,
     ),
 
     trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
-        require(
+        (
             check_ite_coverage(Before, After, Before, AfterCond,
-                BeforeThen, AfterThen, BeforeElse, AfterElse, CondDetism),
-            string.format("check_ite_coverage/4 failed\n" ++
+                BeforeThen, AfterThen, BeforeElse, AfterElse, CondDetism)
+        ->
+            true
+        ;
+            error(string.format("check_ite_coverage/4 failed\n" ++
                 "\tWhole: %s %s\n" ++
                 "\tCond: %s %s\n\tThen: %s %s\n\tElse: %s %s\n" ++
                 "\tGoalPath: %s\n",
@@ -530,6 +542,7 @@ ite_annotate_coverage(Info, GoalPath, Before, After,
                 s(string(BeforeThen)), s(string(AfterThen)),
                 s(string(BeforeElse)), s(string(AfterElse)),
                 s(goal_path_to_string(GoalPath))]))
+        )
     ).
 
 :- pred not_unify(T::in, T::in) is semidet.
