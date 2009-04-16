@@ -6,9 +6,9 @@ nullary_ho_func_error.m:022:   and constant `pi'.
 nullary_ho_func_error.m:022:   argument has type `((func) = T)',
 nullary_ho_func_error.m:022:   constant `pi' has type `float'.
 nullary_ho_func_error.m:022:   The partial type assignment was:
-nullary_ho_func_error.m:022:     DCG_0_3: (io.state)
-nullary_ho_func_error.m:022:     DCG_1_4: (io.state)
-nullary_ho_func_error.m:022:     DCG_3_6: (io.state)
+nullary_ho_func_error.m:022:     DCG_0_3: io.state
+nullary_ho_func_error.m:022:     DCG_1_4: io.state
+nullary_ho_func_error.m:022:     DCG_3_6: io.state
 nullary_ho_func_error.m:022:     V_7: string
 nullary_ho_func_error.m:022:     V_8: T
 nullary_ho_func_error.m:022:     V_9: ((func) = T)

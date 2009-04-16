@@ -6,7 +6,7 @@ impure_func_t5.m:018:   argument has type `((func int) = int)',
 impure_func_t5.m:018:   constant `get_counter' has type `(impure ((func int) =
 impure_func_t5.m:018:   int))'.
 impure_func_t5.m:018:   The partial type assignment was:
-impure_func_t5.m:018:     Y_3: (impure_func_t5.foo)
-impure_func_t5.m:018:     DCG_0_5: (io.state)
-impure_func_t5.m:018:     DCG_3_8: (io.state)
+impure_func_t5.m:018:     Y_3: impure_func_t5.foo
+impure_func_t5.m:018:     DCG_0_5: io.state
+impure_func_t5.m:018:     DCG_3_8: io.state
 impure_func_t5.m:018:     V_9: ((func int) = int)

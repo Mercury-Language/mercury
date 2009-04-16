@@ -23,8 +23,8 @@ record_syntax_errors.m:057:   field update, give the field of the constructor a
 record_syntax_errors.m:057:   different name.
 record_syntax_errors.m:014: Error: no clauses for predicate `dcg_syntax'/2.
 record_syntax_errors.m:016: Error: no clauses for predicate `dcg_syntax_2'/2.
-record_syntax_errors.m:023: Inferred :- func
-record_syntax_errors.m:023:   field8((record_syntax_errors.cons2)) = int.
+record_syntax_errors.m:023: Inferred :- func field8(record_syntax_errors.cons2)
+record_syntax_errors.m:023:   = int.
 record_syntax_errors.m:042: In clause for predicate `construct_exist_cons'/1:
 record_syntax_errors.m:042:   error: undefined symbol `field2 :=/2'.
 record_syntax_errors.m:006:   Field `field2' cannot be updated because the
@@ -46,6 +46,5 @@ record_syntax_errors.m:050:   in unification of argument
 record_syntax_errors.m:050:   and term `'field4 :='(V_10, V_9)':
 record_syntax_errors.m:050:   type error in argument(s) of functor
 record_syntax_errors.m:050:   `field4 :=/2'.
-record_syntax_errors.m:050:   Argument 1 has type
-record_syntax_errors.m:050:   `(record_syntax_errors.cons2)',
-record_syntax_errors.m:050:   expected type was `(record_syntax_errors.cons)'.
+record_syntax_errors.m:050:   Argument 1 has type `record_syntax_errors.cons2',
+record_syntax_errors.m:050:   expected type was `record_syntax_errors.cons'.

@@ -10,13 +10,13 @@ try_bad_params.m:040:   in argument 2 of call to predicate
 try_bad_params.m:040:   `exception.rethrow'/1:
 try_bad_params.m:040:   type error: variable `STATE_VARIABLE_Int_0' has type
 try_bad_params.m:040:   `int',
-try_bad_params.m:040:   expected type was `(io.state)'.
+try_bad_params.m:040:   expected type was `io.state'.
 try_bad_params.m:040: In clause for predicate `main_3'/2:
 try_bad_params.m:040:   in argument 2 of call to predicate
 try_bad_params.m:040:   `exception.rethrow'/1:
 try_bad_params.m:040:   type error: variable `STATE_VARIABLE_Int_1' has type
 try_bad_params.m:040:   `int',
-try_bad_params.m:040:   expected type was `(io.state)'.
+try_bad_params.m:040:   expected type was `io.state'.
 try_bad_params.m:044: Error: no clauses for predicate `main_4'/1.
 try_bad_params.m:053: Error: no clauses for predicate `main_5'/2.
 For more information, recompile with `-E'.

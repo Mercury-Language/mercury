@@ -4465,7 +4465,6 @@ mercury_format_term_nq(VarSet, AppendVarnums, NextToGraphicToken,
         Functor = term.atom(FunctorName),
         mercury_infix_op(FunctorName)
     ->
-        add_string("(", !U),
         (
             ( FunctorName = ":"
             ; FunctorName = "."
@@ -4477,15 +4476,16 @@ mercury_format_term_nq(VarSet, AppendVarnums, NextToGraphicToken,
             mercury_format_term_nq(VarSet, AppendVarnums,
                 next_to_graphic_token, Arg2, !U)
         ;
+            add_string("(", !U),
             mercury_format_term_nq(VarSet, AppendVarnums,
                 not_next_to_graphic_token, Arg1, !U),
             add_string(" ", !U),
             add_string(FunctorName, !U),
             add_string(" ", !U),
             mercury_format_term_nq(VarSet, AppendVarnums,
-                not_next_to_graphic_token, Arg2, !U)
-        ),
-        add_string(")", !U)
+                not_next_to_graphic_token, Arg2, !U),
+            add_string(")", !U)
+        )
     ;
         (
             Args = [Y | Ys],

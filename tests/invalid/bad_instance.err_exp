@@ -3,9 +3,9 @@ bad_instance.m:005:   `bad_instance.foo'/2 contains the type
 bad_instance.m:005:   `bad_instance.bar'/1 but that type is not visible in the
 bad_instance.m:005:   module interface.
 bad_instance.m:005: In instance declaration for
-bad_instance.m:005:   `bad_instance.foo((bad_instance.bar(T)), U)':
+bad_instance.m:005:   `bad_instance.foo(bad_instance.bar(T), U)':
 bad_instance.m:005:   the second arg is a type variable
 bad_instance.m:011: In instance declaration for
-bad_instance.m:011:   `bad_instance.foo((bad_instance.bar(T)), T)':
+bad_instance.m:011:   `bad_instance.foo(bad_instance.bar(T), T)':
 bad_instance.m:011:   the second arg is a type variable
 For more information, recompile with `-E'.
