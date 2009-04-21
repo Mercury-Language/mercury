@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -433,7 +433,7 @@ collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
         )
     ;
         Unification = deconstruct(DeconsCellVar, _, _, _, _, _),
-        get_node_by_variable(Graph, DeconsCellVar, Node), 
+        rptg_get_node_by_variable(Graph, DeconsCellVar, Node), 
         NodeType = rptg_lookup_node_type(Graph, Node),
         ( if    type_not_stored_in_region(NodeType, ModuleInfo)
           then

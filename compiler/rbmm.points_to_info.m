@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -66,6 +66,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module set.
@@ -102,8 +103,8 @@ add_node_from_var(VarTypes, Var, Reg0, Reg, !Graph) :-
     set.insert(Varset0, Var, Varset),
     Reg = Reg0 + 1,
     string.append("R", string.int_to_string(Reg0), RegName),
-    NodeInfo = rptg_node_content(Varset, RegName, set.init, NodeType),
-    rptg_set_node(NodeInfo, _Node, !Graph).
+    NodeInfo = rptg_node_content(Varset, RegName, set.init, NodeType, bool.no),
+    rptg_add_node(NodeInfo, _Node, !Graph).
 
 rpta_info_equal(RptaInfoA, RptaInfoB):-
     RptaInfoA = rpta_info(GraphA, AlphaA),

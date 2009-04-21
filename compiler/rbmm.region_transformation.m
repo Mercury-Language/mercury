@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -547,9 +547,18 @@ region_transform_compound_goal(ModuleInfo, Graph,
             !NameToVar, !VarSet, !VarTypes),
         !:GoalExpr = negation(Goal)
     ;
-        !.GoalExpr = scope(Reason, Goal0),
+        !.GoalExpr = scope(Reason0, Goal0),
         % XXX We should special-case the handling of from_ground_term_construct
         % scopes.
+        % qph: A safe but potentially inefficient way is to turn these scopes
+        % into from_ground_term_other, i.e., we expect that some region
+        % instructions are added in these scopes. This expectation seems
+        % reasonable because a region is often created before a heap
+        % allocation.
+        ( Reason0 = from_ground_term(Var, _Kind) ->
+            Reason = from_ground_term(Var, from_ground_term_other)
+        ;   Reason = Reason0
+        ),
         region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
             IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc, Goal0, Goal,
@@ -598,7 +607,7 @@ annotate_constructions_unification(ModuleInfo, Graph, ResurRenaming,
         IteRenaming, !Unification, !NameToVar, !VarSet, !VarTypes) :-
     !.Unification = construct(Var, ConsId, Args, ArgModes, _HowToConstruct0,
         IsUnique, SubInfo),
-    get_node_by_variable(Graph, Var, Node),
+    rptg_get_node_by_variable(Graph, Var, Node),
     NodeType = rptg_lookup_node_type(Graph, Node),
     ( type_not_stored_in_region(NodeType, ModuleInfo) ->
         true

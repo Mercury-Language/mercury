@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -179,9 +179,10 @@ intra_analyse_case(Case, !RptaInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-    % For construction and deconstruction unifications, add an edge from the
-    % variable on the LHS to each variable on the RHS.
-    %
+    % For construction and deconstruction unifications, add an edge from
+    % the node of the variable on the LHS to that of each variable on the RHS.
+    % For construction, also mark the node of lhs variable allocated.
+    % 
     % For assignment unifications we merge the nodes corresponding to
     % the variables on either side.
     %
@@ -190,25 +191,32 @@ intra_analyse_case(Case, !RptaInfo) :-
 :- pred intra_analyse_unification(unification::in,
     rpta_info::in, rpta_info::out) is det.
 
-    % For construction and deconstruction, add edges from LVar to
-    % each of RVars.
-intra_analyse_unification(Unification, !RptaInfo) :-
-    ( Unification = construct(LVar, ConsId, RVars, _, _, _, _)
-    ; Unification = deconstruct(LVar, ConsId, RVars, _, _, _)
-    ),
-    list.foldl2(process_cons_and_decons(LVar, ConsId), RVars, 1, _, !RptaInfo).
-intra_analyse_unification(assign(ToVar, FromVar), !RptaInfo) :-
-    !.RptaInfo = rpta_info(Graph0, AlphaMapping),
-    get_node_by_variable(Graph0, ToVar, ToNode),
-    get_node_by_variable(Graph0, FromVar, FromNode),
+intra_analyse_unification(construct(LVar, ConsId, RVars, _, _, _, _),
+        rpta_info(!.Graph, AlphaMapping), rpta_info(!:Graph, AlphaMapping)) :-
+    % Mark allocated.
+    rptg_get_node_by_variable(!.Graph, LVar, LNode),
+    LNodeContent0 = rptg_get_node_content(!.Graph, LNode),
+    LNodeContent0 = rptg_node_content(A, B, C, D, _IsAlloc),
+    LNodeContent = rptg_node_content(A, B, C, D, bool.yes),
+    rptg_set_node_content(LNode, LNodeContent, !Graph),
+
+    % Add edges.
+    list.foldl2(process_cons_and_decons(LVar, ConsId), RVars, 1, _, !Graph).
+
+intra_analyse_unification(deconstruct(LVar, ConsId, RVars, _, _, _),
+        rpta_info(!.Graph, AlphaMapping), rpta_info(!:Graph, AlphaMapping)) :-
+    list.foldl2(process_cons_and_decons(LVar, ConsId), RVars, 1, _, !Graph).
+intra_analyse_unification(assign(ToVar, FromVar),
+    rpta_info(!.Graph, AlphaMapping), rpta_info(!:Graph, AlphaMapping)) :-
+    rptg_get_node_by_variable(!.Graph, ToVar, ToNode),
+    rptg_get_node_by_variable(!.Graph, FromVar, FromNode),
     ( ToNode = FromNode ->
         true
     ;
-        unify_operator(ToNode, FromNode, Graph0, Graph),
-        !:RptaInfo = rpta_info(Graph, AlphaMapping),
+        unify_operator(ToNode, FromNode, !Graph),
         % After merging the two nodes, apply rule P1 to restore the
         % RPTG's invariants.
-        apply_rule_1(ToNode, !RptaInfo)
+        rule_1(ToNode, !Graph)
     ).
 intra_analyse_unification(simple_test(_, _), !RptaInfo).
 intra_analyse_unification(complicated_unify(_, _, _), _, _) :-
@@ -216,33 +224,32 @@ intra_analyse_unification(complicated_unify(_, _, _), _, _) :-
         "complicated_unify in region points-to analysis.").
 
 :- pred process_cons_and_decons(prog_var::in, cons_id::in, prog_var::in,
-    int::in, int::out, rpta_info::in, rpta_info::out) is det.
+    int::in, int::out, rpt_graph::in, rpt_graph::out) is det.
 
-process_cons_and_decons(LVar, ConsId, RVar, !Component, !RptaInfo) :-
-    !.RptaInfo = rpta_info(Graph0, AlphaMapping),
-    get_node_by_variable(Graph0, LVar, L_Node),
-    get_node_by_variable(Graph0, RVar, R_Node),
+process_cons_and_decons(LVar, ConsId, RVar, !Component, !Graph) :-
+    rptg_get_node_by_variable(!.Graph, LVar, LNode),
+    rptg_get_node_by_variable(!.Graph, RVar, RNode),
     Sel = [termsel(ConsId, !.Component)],
-    EdgeLabel = rptg_arc_content(Sel),
+    EdgeLabel = rptg_edge_content(Sel),
 
-    % Only add the edge if it is not in the graph
+    % Only add the edge if it is not in the graph.
     % It is more suitable to the edge_operator's semantics if we check
     % this inside the edge_operator. But we also want to know if the edge
     % is actually added or not so it is convenient to check the edge's
     % existence outside edge_operator. Otherwise we can extend edge_operator
     % with one more argument to indicate that.
-    ( edge_in_graph(L_Node, EdgeLabel, R_Node, Graph0) ->
+    ( rptg_edge_in_graph(LNode, EdgeLabel, RNode, !.Graph) ->
         true
     ;
-        edge_operator(L_Node, R_Node, EdgeLabel, Graph0, Graph1),
-        !:RptaInfo = rpta_info(Graph1, AlphaMapping),
+        edge_operator(LNode, RNode, EdgeLabel, !Graph),
 
         % After an edge is added, rules P2 and P3 are applied to ensure
         % the invariants of the graph.
-        apply_rule_2(L_Node, R_Node, ConsId, !.Component, !RptaInfo),
-        !.RptaInfo = rpta_info(Graph2, _),
-        get_node_by_variable(Graph2, RVar, RVarNode),
-        apply_rule_3(RVarNode, !RptaInfo)
+        rule_2(LNode, RNode, ConsId, !.Component, !Graph),
+
+        % In case the node containing RVar might have changed.
+        rptg_get_node_by_variable(!.Graph, RVar, RVarNode),
+        rule_3(RVarNode, !Graph)
     ),
     !:Component = !.Component + 1.
 
@@ -340,7 +347,7 @@ inter_analyse_proc(ModuleInfo, InfoTable, PPId, !FPTable) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for interprocedural analysis of goals
+% Code for interprocedural analysis of goals.
 %
 
     % Analyse a given goal, with module_info and fixpoint table
@@ -529,54 +536,35 @@ update_rpta_info_in_rpta_info_table(FPTable, PPId, !InfoTable) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
-% Invariants for RPTGs
+% Invariants for RPTGs.
 %
 
-%-----------------------------------------------------------------------------%
-%
-% Rule P1
-%
-
-:- pred apply_rule_1(rptg_node::in, rpta_info::in, rpta_info::out) is det.
-
-apply_rule_1(Node, !RptaInfo) :-
-    some [!Graph] (
-        !.RptaInfo = rpta_info(!:Graph, AlphaMapping),
-        Content = rptg_node_contents(!.Graph, Node),
-        Vars = Content ^ rptg_nc_vars,
-        rule_1(Vars, !Graph),
-        !:RptaInfo = rpta_info(!.Graph, AlphaMapping)
-    ).
-
-    % Rule 1:
+    % Rule P1:
     % After two nodes are unified, it can happen that the unified node has
     % two edges with the same label pointing to 2 different nodes. This rule
-    % ensures that it happens the 2 nodes will also be unified.
-    %
-    % After a node is unified, the node itself was probably removed from
-    % the graph so we need to trace "it" by the variables assigned to it.
-    % That is why the first argument is the set of variables associated
-    % with the unified node.
+    % ensures that if it happens the 2 nodes will also be unified.
     %
     % The algorithm is as follows.
-    % 1. If the node has no or one out-arc we have to do nothing and the
-    % predicate quits.
-    % 2. The node has > 1 out-arc, take one of them, find in the rest
-    % another arc that has a same label, unify the end nodes of the two arcs.
-    % Because of this unification of the end nodes, more unifications are
-    % probably triggered.
-    % 3. Start all over again with the same node and the *updated* graph.
+    % 1. If the node has no or one outedge we have to do nothing and the
+    %    predicate quits.
+    % 2. The node has > 1 outedges, take one of them,
+    %    find in the rest another edge that has the same label,
+    %    unify the end nodes of the two edges.
+    %    Because of this unification of the end nodes,
+    %    more unifications are probably triggered.
+    % 3. If a unification happens, start all over again with the same node
+    %    and the *updated* graph that has one less outedge from the node.
     %
-:- pred rule_1(set(prog_var)::in, rpt_graph::in, rpt_graph::out) is det.
+:- pred rule_1(rptg_node::in, rpt_graph::in, rpt_graph::out) is det.
 
-rule_1(Vars, !Graph) :-
-    get_node_by_vars(!.Graph, Vars, UnifiedNode),
-    EdgeMap = rptg_get_edgemap(!.Graph),
-    map.lookup(EdgeMap, UnifiedNode, OutEdgesOfUnifiedNode),
-    map.keys(OutEdgesOfUnifiedNode, OutArcsUnifiedNode),
+rule_1(Node, !Graph) :-
+    % XXX This might not be needed because we have just unified into Node.
+    rptg_get_node_by_node(!.Graph, Node, UnifiedNode),
+
+    OutEdgesOfUnifiedNode = rptg_lookup_list_outedges(!.Graph, UnifiedNode),
     (
-        OutArcsUnifiedNode = [A | As],
-        merge_nodes_reached_by_same_labelled_arcs(A, As, As, !Graph,
+        OutEdgesOfUnifiedNode = [E | Es],
+        merge_nodes_reached_by_same_labelled_edges(E, Es, Es, !Graph,
             Happened),
         (
             Happened = bool.no
@@ -585,89 +573,65 @@ rule_1(Vars, !Graph) :-
             % smaller than that of !.Graph and at some point this predicate
             % will end up in the then-branch.
             Happened = bool.yes,
-            rule_1(Vars, !Graph)
+            rule_1(UnifiedNode, !Graph)
         )
     ;
-        OutArcsUnifiedNode = []
+        OutEdgesOfUnifiedNode = []
     ).
 
-    % This predicate unifies the end nodes of the input arc and of an arc
-    % in the list which has the same label as the input arc. When one such
-    % an arc found, the predicate will not look further in the list.
-    % The unification of nodes, if happends, will be propagated by calling
-    % rule_1 predicate mutually recursively.
-    %
-:- pred merge_nodes_reached_by_same_labelled_arcs(rptg_arc::in,
-    list(rptg_arc)::in, list(rptg_arc)::in, rpt_graph::in, rpt_graph::out,
-    bool::out) is det.
-
+    % merge_nodes_reached_by_same_labelled_edges(Edge, EdgeList, Rest,
+    % !Graph, Happened) unifies the end nodes of Edge and of an edge
+    % in EdgeList that has the same label as the input edge.
+    % When one such an edge found,
+    % the predicate will not look further in the list.
+    % The unification of nodes, if happends (Happened = yes),
+    % will be propagated by calling rule_1 predicate mutually recursively.
+    % 
     % The loop in this predicate is similar to
     % for i = ... to N - 1
     %    for j = i+1 to N ...
     % ...
-    % this clause is reached at the end of the inner loop. No unification
-    % has happened so far therefore the list of arcs (Rest = [A | As])
-    % are still safe to use.
     %
+:- pred merge_nodes_reached_by_same_labelled_edges(rptg_edge::in,
+    list(rptg_edge)::in, list(rptg_edge)::in, rpt_graph::in, rpt_graph::out,
+    bool::out) is det.
 
-    % reach this clause means that no unification of nodes happened and
-    % all the out-arcs have been processed (Rest = []).
+    % This clause is reached when no unification of nodes happened and
+    % all the out-edges have been considered (Rest = []).
     %
-merge_nodes_reached_by_same_labelled_arcs(_, [], [], !Graph, bool.no).
+merge_nodes_reached_by_same_labelled_edges(_, [], [], !Graph, bool.no).
 
-    % Some out-arcs still need to be processed
+    % This clause is reached when some out-edges still need to be processed.
     %
-merge_nodes_reached_by_same_labelled_arcs(_, [], [A | As], !Graph,
+merge_nodes_reached_by_same_labelled_edges(_, [], [E | Es], !Graph,
         Happened) :-
-    merge_nodes_reached_by_same_labelled_arcs(A, As, As, !Graph, Happened).
+    merge_nodes_reached_by_same_labelled_edges(E, Es, Es, !Graph, Happened).
 
-merge_nodes_reached_by_same_labelled_arcs(Arc, [A | As], Rest, !Graph,
+merge_nodes_reached_by_same_labelled_edges(Edge, [Ed | Eds], Rest, !Graph,
         Happened) :-
-    % For a node, we do not allow two arcs with the same label to another node.
+    % We do not allow two edges with the same label from one node to another.
     % So End and E below must be definitely different nodes and we only need
     % to compare labels.
-    rptg_arc_contents(!.Graph, Arc, _Start, End, ArcContent),
-    rptg_arc_contents(!.Graph, A, _S, E, AC),
+    rptg_get_edge_contents(!.Graph, Edge, _Start, End, EdgeContent),
+    rptg_get_edge_contents(!.Graph, Ed, _S, E, EdC),
     ( if
-        ArcContent = AC
+        EdgeContent = EdC
       then
         % Unify the two end nodes.
         unify_operator(End, E, !.Graph, Graph1),
 
         % Apply rule 1 after the above unification.
-        Content = rptg_node_contents(Graph1, End),
-        rule_1(Content ^ rptg_nc_vars, Graph1, !:Graph),
+        rule_1(End, Graph1, !:Graph),
         Happened = bool.yes
       else
-        % Still not found an arc with the same label, continue the
+        % Still not found an edge with the same label, continue the
         % inner loop.
-        merge_nodes_reached_by_same_labelled_arcs(Arc, As, Rest, !Graph,
+        merge_nodes_reached_by_same_labelled_edges(Edge, Eds, Rest, !Graph,
             Happened)
     ).
 
-%-----------------------------------------------------------------------------%
-%
-% Rule P2
-%
-
-    % This predicate wraps rule_2 to work with rpta_info type.
-    %
-:- pred apply_rule_2(rptg_node::in, rptg_node::in, cons_id::in, int::in,
-    rpta_info::in, rpta_info::out) is det.
-
-apply_rule_2(Start, End, ConsId, Component, !RptaInfo) :-
-    some [!Graph] (
-        !.RptaInfo = rpta_info(!:Graph, AlphaMapping),
-        StartContent = rptg_node_contents(!.Graph, Start),
-        EndContent = rptg_node_contents(!.Graph, End),
-        StartVars = StartContent ^ rptg_nc_vars,
-        EndVars = EndContent ^ rptg_nc_vars,
-        rule_2(StartVars, EndVars, ConsId, Component, !Graph),
-        !:RptaInfo = rpta_info(!.Graph, AlphaMapping)
-    ).
-
-    % Rule 2:
-    % After an edge <N, Label, M) is added to a graph, it may happen
+    % Rule P2:
+    % After an edge (N, Label, M) is added to a graph, it may happen
     % that there exists another edge from N with the same label but
     % pointing to a node different from M. This rule ensures that if that
     % the case the node will be unified with M.
@@ -677,47 +641,38 @@ apply_rule_2(Start, End, ConsId, Component, !RptaInfo) :-
     % the same label to a different node. Because of that the predicate
     % need not be recursive.
     %
-:- pred rule_2(set(prog_var)::in, set(prog_var)::in, cons_id::in, int::in,
+:- pred rule_2(rptg_node::in, rptg_node::in, cons_id::in, int::in,
     rpt_graph::in, rpt_graph::out) is det.
 
-rule_2(SVars, EVars, ConsId, Component, !Graph) :-
-    get_node_by_vars(!.Graph, SVars, N),
-    get_node_by_vars(!.Graph, EVars, M),
+rule_2(Node1, Node2, ConsId, Component, !Graph) :-
+    rptg_get_node_by_node(!.Graph, Node1, N),
+    rptg_get_node_by_node(!.Graph, Node2, M),
     Sel = [termsel(ConsId, Component)],
-    EdgeMap = rptg_get_edgemap(!.Graph),
-    map.lookup(EdgeMap, N, OutEdgesN),
-    map.keys(OutEdgesN, OutArcsN),
-    merge_nodes_reached_by_same_labelled_arc(Sel, M, OutArcsN, !Graph).
+    OutEdgeList = rptg_lookup_list_outedges(!.Graph, N),
+    merge_nodes_reached_by_same_labelled_edge(Sel, M, OutEdgeList, !Graph).
 
-    % If an A(rc) in OutArcsN has the same label Sel then merge M
-    % with the node (MPrime) that the A(rc) points to.
+    % If an edge (E) in OutEdgeList has the same label Sel then merge M
+    % with the node (MPrime) that E points to.
     %
-:- pred merge_nodes_reached_by_same_labelled_arc(selector::in,
-    rptg_node::in, list(rptg_arc)::in, rpt_graph::in, rpt_graph::out) is det.
+:- pred merge_nodes_reached_by_same_labelled_edge(selector::in,
+    rptg_node::in, list(rptg_edge)::in, rpt_graph::in, rpt_graph::out) is det.
 
-merge_nodes_reached_by_same_labelled_arc(_, _, [], !Graph).
-merge_nodes_reached_by_same_labelled_arc(Sel, M, [A | As], !Graph) :-
-    rptg_arc_contents(!.Graph, A, _, MPrime, ArcContent),
+merge_nodes_reached_by_same_labelled_edge(_, _, [], !Graph).
+merge_nodes_reached_by_same_labelled_edge(Sel, M, [Ed | Eds], !Graph) :-
+    rptg_get_edge_contents(!.Graph, Ed, _, MPrime, EdgeContent),
     ( if
-        ArcContent = rptg_arc_content(Selector),
+        EdgeContent = rptg_edge_content(Selector),
         Selector = Sel,
         MPrime \= M
       then
         unify_operator(M, MPrime, !Graph),
-        Content = rptg_node_contents(!.Graph, M),
-        Vars = rptg_node_content_get_vars(Content),
-        rule_1(Vars, !Graph)
+        rule_1(M, !Graph)
       else
-        % still not found an arc with the same label, continue the loop
-        merge_nodes_reached_by_same_labelled_arc(Sel, M, As, !Graph)
+        % Still not found an edge with the same label, continue the loop.
+        merge_nodes_reached_by_same_labelled_edge(Sel, M, Eds, !Graph)
     ).
 
-%-----------------------------------------------------------------------------%
-%
-% Rule P3
-%
-
-    % Rule 3:
+    % Rule P3:
     % This rule is applied after an edge is added TO the Node to enforce
     % the invariant that a subterm of the same type as the compounding
     % term is stored in the same region as the compounding term. In
@@ -737,14 +692,14 @@ merge_nodes_reached_by_same_labelled_arc(Sel, M, [A | As], !Graph) :-
 :- pred rule_3(rptg_node::in, rpt_graph::in, rpt_graph::out) is det.
 
 rule_3(Node, !Graph) :-
-    NodeMap = rptg_get_nodemap(!.Graph),
+    NodeMap = rptg_get_nodes(!.Graph),
     map.keys(NodeMap, Nodes),
     (
         Nodes = [_N | _NS],
         % The graph has some node(s), so check each node to see if it
         % satisfies the condition of rule 3 or not, if yes unify it
-        % with NY (NY is the node that Node may be merged into.)
-        get_node_by_node(!.Graph, Node, NY),
+        % with NY. (NY is the node that Node may be merged into.)
+        rptg_get_node_by_node(!.Graph, Node, NY),
         rule_3_2(Nodes, NY, !Graph, Happened),
 
         % This predicate will quit when Happened = no, i.e. no more
@@ -759,13 +714,13 @@ rule_3(Node, !Graph) :-
             % of !:Graph).
             rule_3(Node, !Graph)
           ;
-            % no node in Nodes has been unified with NY, which means that
+            % No node in Nodes has been unified with NY, which means that
             % no more nodes need to be unified, so just quit.
             Happened = bool.no
         )
     ;
         Nodes = [],
-        % no node in the graph, impossible
+        % No node in the graph, impossible.
         unexpected(this_file, "rule_3: impossible having no node in graph")
     ).
 
@@ -785,15 +740,13 @@ rule_3_2([NZ | NZs], NY, !Graph, Happened) :-
     ( if
         rule_3_condition(NZ, NY, !.Graph, NZ1)
       then
-        unify_operator(NZ, NZ1, !.Graph, Graph1),
+        unify_operator(NZ, NZ1, !Graph),
 
-        % apply rule 1
-        Content = rptg_node_contents(Graph1, NZ),
-        Vars = rptg_node_content_get_vars(Content),
-        rule_1(Vars, Graph1, !:Graph),
+        % Apply rule 1.
+        rule_1(NZ, !Graph),
         Happened = bool.yes
       else
-        % try with the rest, namely NS
+        % Try with the rest, namely NS.
         rule_3_2(NZs, NY, !Graph, Happened)
     ).
 
@@ -804,23 +757,13 @@ rule_3_condition(NZ, NY, Graph, NZ1) :-
     rptg_path(Graph, NZ, NY, _),
     rptg_lookup_node_type(Graph, NZ) = NZType,
     % A node reachable from NY, with the same type as NZ, the node can
-    % be exactly NY
-    reachable_and_having_type(Graph, NY, NZType, NZ1),
+    % be exactly NY.
+    rptg_reachable_and_having_type(Graph, NY, NZType, NZ1),
     NZ \= NZ1.
-
-    % This predicate is just to wrap the call to rule_3 so that the
-    % changed graph is put into rpta_info structure.
-    %
-:- pred apply_rule_3(rptg_node::in, rpta_info::in, rpta_info::out) is det.
-
-apply_rule_3(Node, !RptaInfo) :-
-    !.RptaInfo = rpta_info(Graph0, AlphaMapping),
-    rule_3(Node, Graph0, Graph),
-    !:RptaInfo = rpta_info(Graph, AlphaMapping).
 
 %-----------------------------------------------------------------------------%
 %
-% Rule P4 and alpha mapping
+% Rule P4 and alpha mapping.
 %
 
     % Build up the alpha mapping (node -> node) and apply rule P4
@@ -841,8 +784,8 @@ alpha_mapping_at_call_site([_ | _], [], _, _, _, _, _) :-
     %
 alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
         !CallerGraph, !AlphaMap) :-
-    get_node_by_variable(CalleeGraph, Xi, N_Xi),
-    get_node_by_variable(!.CallerGraph, Yi, N_Yi),
+    rptg_get_node_by_variable(CalleeGraph, Xi, N_Xi),
+    rptg_get_node_by_variable(!.CallerGraph, Yi, N_Yi),
     ( map.search(!.AlphaMap, N_Xi, N_Y) ->
         % alpha(N_Xi) = N_Y, alpha(N_Xi) = N_Yi, N_Y != N_Yi.
         %
@@ -851,14 +794,16 @@ alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
             unify_operator(N_Y, N_Yi, !CallerGraph),
 
             % Apply rule P1 after some nodes are unified.
-            Content = rptg_node_contents(!.CallerGraph, N_Y),
-            N_Y_Vars = rptg_node_content_get_vars(Content),
-            rule_1(N_Y_Vars, !CallerGraph)
+            rule_1(N_Y, !CallerGraph)
         ;
             true
         )
     ;
-        svmap.set(N_Xi, N_Yi, !AlphaMap)
+        svmap.set(N_Xi, N_Yi, !AlphaMap),
+
+        % N_Yi inherits N_Xi's is_allocated.
+        IsAlloc = rptg_lookup_node_is_allocated(CalleeGraph, N_Xi),
+        rptg_set_node_is_allocated(N_Yi, IsAlloc, !CallerGraph)
     ),
     alpha_mapping_at_call_site(Xs, Ys, CalleeGraph, !CallerGraph, !AlphaMap).
 
@@ -909,99 +854,103 @@ apply_rules_node(CallSite, CalleeNode, CalleeRptaInfo, CallerNode,
     CalleeRptaInfo = rpta_info(CalleeGraph, _),
 
     % Apply rules P5-P8 for each out-edge of CalleeNode.
-    EdgeMap = rptg_get_edgemap(CalleeGraph),
-    map.lookup(EdgeMap, CalleeNode, CalleeNodeOutEdges),
-    map.keys(CalleeNodeOutEdges, CalleeNodeOutArcs),
-    apply_rules_arcs(CalleeNodeOutArcs, CallerNode, CallSite,
+    CalleeNodeOutEdges = rptg_lookup_list_outedges(CalleeGraph, CalleeNode),
+    apply_rules_outedges(CalleeNodeOutEdges, CallerNode, CallSite,
         CalleeRptaInfo, !CallerRptaInfo).
 
-:- pred apply_rules_arcs(list(rptg_arc)::in, rptg_node::in,
+:- pred apply_rules_outedges(list(rptg_edge)::in, rptg_node::in,
     program_point::in, rpta_info::in, rpta_info::in, rpta_info::out) is det.
 
-apply_rules_arcs([], _, _, _, !RptaInfoR).
-apply_rules_arcs([Arc | Arcs], CallerNode, CallSite, CalleeRptaInfo,
+apply_rules_outedges([], _, _, _, !RptaInfoR).
+apply_rules_outedges([Edge | Edges], CallerNode, CallSite, CalleeRptaInfo,
         !CallerRptaInfo) :-
-    rule_5(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
-    rule_6(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
-    rule_7(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
-    rule_8(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
-    apply_rules_arcs(Arcs, CallerNode, CallSite, CalleeRptaInfo,
+    rule_5(Edge, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
+    rule_6(Edge, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
+    rule_7(Edge, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
+    rule_8(Edge, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo),
+    apply_rules_outedges(Edges, CallerNode, CallSite, CalleeRptaInfo,
         !CallerRptaInfo).
 
-:- pred rule_5(rptg_arc::in, program_point::in, rpta_info::in,
+:- pred rule_5(rptg_edge::in, program_point::in, rpta_info::in,
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
-rule_5(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
-    % Find an out-arc in the caller's graph that has a same label
-    % the label of the out-arc in callee's graph
+rule_5(Edge, CallSite, CalleeRptaInfo, CallerNode, 
+        rpta_info(!.CallerGraph, CallerAlphaMapping),
+        rpta_info(!:CallerGraph, CallerAlphaMapping)) :-
+    % Find an out-edge in the caller's graph that has a same label
+    % the label of the out-edge in callee's graph.
     CalleeRptaInfo = rpta_info(CalleeGraph, _),
-    rptg_arc_contents(CalleeGraph, Arc, _CalleeNode, CalleeM, Label),
-    !.CallerRptaInfo = rpta_info(CallerGraph0, CallerAlphaMapping0),
-    get_node_by_node(CallerGraph0, CallerNode, RealCallerNode),
+    rptg_get_edge_contents(CalleeGraph, Edge, _CalleeNode, CalleeM, Label),
+    %!.CallerRptaInfo = rpta_info(CallerGraph0, CallerAlphaMapping),
+    rptg_get_node_by_node(!.CallerGraph, CallerNode, RealCallerNode),
     ( if
-        find_arc_from_node_with_same_label(RealCallerNode, Label,
-            CallerGraph0, CallerMPrime),
-        map.search(CallerAlphaMapping0, CallSite, AlphaAtCallSite),
+        rptg_find_edge_from_node_with_same_content(RealCallerNode, Label,
+            !.CallerGraph, CallerMPrime),
+        map.search(CallerAlphaMapping, CallSite, AlphaAtCallSite),
         map.search(AlphaAtCallSite, CalleeM, CallerM),
-        get_node_by_node(CallerGraph0, CallerM, RealCallerM),
+        rptg_get_node_by_node(!.CallerGraph, CallerM, RealCallerM),
         CallerMPrime \= RealCallerM
       then
-        % When the premises of rule P5 are satisfied, nodes are unified and
+        % When the conditions of rule P5 are satisfied, nodes are unified and
         % rule P1 applied to ensure invariants.
-        unify_operator(RealCallerM, CallerMPrime,
-            CallerGraph0, CallerGraph1),
-        CallerRptaInfo1 = rpta_info(CallerGraph1, CallerAlphaMapping0),
-        apply_rule_1(RealCallerM, CallerRptaInfo1, !:CallerRptaInfo)
+        unify_operator(RealCallerM, CallerMPrime, !CallerGraph),
+
+        % Apply rule P1 after the unification.
+        rule_1(RealCallerM, !CallerGraph)
       else
         true
     ).
 
-:- pred rule_6(rptg_arc::in, program_point::in, rpta_info::in,
+:- pred rule_6(rptg_edge::in, program_point::in, rpta_info::in,
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
-rule_6(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
-    % Find an out-arc in the caller's graph that has a same label
-    % the label of the out-arc in callee's graph.
+rule_6(Edge, CallSite, CalleeRptaInfo, CallerNode, 
+        rpta_info(!.CallerGraph, !.CallerAlphaMapping),
+        rpta_info(!:CallerGraph, !:CallerAlphaMapping)) :-
+    % Find an out-edge in the caller's graph that has a same label
+    % the label of the out-edge in callee's graph.
     CalleeRptaInfo = rpta_info(CalleeGraph, _),
-    rptg_arc_contents(CalleeGraph, Arc, _CalleeNode, CalleeM, Label),
-    !.CallerRptaInfo = rpta_info(CallerGraph, CallerAlphaMapping0),
-    get_node_by_node(CallerGraph, CallerNode, RealCallerNode),
+    rptg_get_edge_contents(CalleeGraph, Edge, _CalleeNode, CalleeM, Label),
+    rptg_get_node_by_node(!.CallerGraph, CallerNode, RealCallerNode),
     ( if
-        find_arc_from_node_with_same_label(RealCallerNode, Label,
-            CallerGraph, CallerM)
+        rptg_find_edge_from_node_with_same_content(RealCallerNode, Label,
+            !.CallerGraph, CallerM)
       then
         % (CallerNode, sel, CallerM) in the graph.
-        map.lookup(CallerAlphaMapping0, CallSite, AlphaAtCallSite0),
+        map.lookup(!.CallerAlphaMapping, CallSite, AlphaAtCallSite0),
         ( if
             map.search(AlphaAtCallSite0, CalleeM, _)
           then
             % alpha(CalleeM) = CallerM so ignore.
             true
           else
-            % Apply rule P6 when its premises are satisfied
+            % Apply rule P6: when its conditions are satisfied
             % record alpha(CalleeM) = CallerM.
             svmap.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite1),
-            svmap.set(CallSite, AlphaAtCallSite1, CallerAlphaMapping0,
-                CallerAlphaMapping),
-            !:CallerRptaInfo = rpta_info(CallerGraph, CallerAlphaMapping)
+            svmap.set(CallSite, AlphaAtCallSite1, !CallerAlphaMapping),
+
+            % CallerM inherits CalleeM's is_allocated.
+            IsAlloc = rptg_lookup_node_is_allocated(CalleeGraph, CalleeM),
+            rptg_set_node_is_allocated(CallerM, IsAlloc, !CallerGraph)
         )
       else
         true
     ).
 
-:- pred rule_7(rptg_arc::in, program_point::in, rpta_info::in,
+:- pred rule_7(rptg_edge::in, program_point::in, rpta_info::in,
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
-rule_7(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
-    % Find an out-arc in the caller's graph that has a same label
-    % the label of the out-arc in callee's graph.
+rule_7(Edge, CallSite, CalleeRptaInfo, CallerNode,
+        rpta_info(!.CallerGraph, CallerAlphaMapping),
+        rpta_info(!:CallerGraph, CallerAlphaMapping)) :-
+    % Find an out-edge in the caller's graph that has a same label
+    % the label of the out-edge in callee's graph.
     CalleeRptaInfo = rpta_info(CalleeGraph, _),
-    rptg_arc_contents(CalleeGraph, Arc, _CalleeNode, CalleeM, Label),
-    !.CallerRptaInfo = rpta_info(CallerGraph0, CallerAlphaMapping),
-    get_node_by_node(CallerGraph0, CallerNode, RealCallerNode),
+    rptg_get_edge_contents(CalleeGraph, Edge, _CalleeNode, CalleeM, Label),
+    rptg_get_node_by_node(!.CallerGraph, CallerNode, RealCallerNode),
     ( if
-        find_arc_from_node_with_same_label(RealCallerNode, Label,
-            CallerGraph0, _)
+        rptg_find_edge_from_node_with_same_content(RealCallerNode, Label,
+            !.CallerGraph, _)
       then
         true
       else
@@ -1010,39 +959,38 @@ rule_7(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
             map.lookup(CallerAlphaMapping, CallSite, AlphaAtCallSite),
             map.search(AlphaAtCallSite, CalleeM, CallerM)
           then
-            % Reach here means all the premises of rule P7 are satisfied,
+            % Reach here means all the conditions of rule P7 are satisfied,
             % add (CallerNode, sel, CallerM).
-            get_node_by_node(CallerGraph0, CallerM, RealCallerM),
-            edge_operator(RealCallerNode, RealCallerM, Label,
-                CallerGraph0, CallerGraph1),
+            rptg_get_node_by_node(!.CallerGraph, CallerM, RealCallerM),
+            edge_operator(RealCallerNode, RealCallerM, Label, !CallerGraph),
 
             % Need to apply rule 3.
-            rule_3(RealCallerM, CallerGraph1, CallerGraph2),
-            !:CallerRptaInfo = rpta_info(CallerGraph2, CallerAlphaMapping)
+            rule_3(RealCallerM, !CallerGraph)
           else
             true
         )
     ).
 
-:- pred rule_8(rptg_arc::in, program_point::in, rpta_info::in,
+:- pred rule_8(rptg_edge::in, program_point::in, rpta_info::in,
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
-rule_8(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
-    % Find an out-arc in the caller's graph that has a same label
-    % the label of the out-arc in callee's graph
+rule_8(Edge, CallSite, CalleeRptaInfo, CallerNode,
+        rpta_info(!.CallerGraph, !.CallerAlphaMapping),
+        rpta_info(!:CallerGraph, !:CallerAlphaMapping)) :-
+    % Find an out-edge in the caller's graph that has a same label
+    % the label of the out-edge in callee's graph.
     CalleeRptaInfo = rpta_info(CalleeGraph, _),
-    rptg_arc_contents(CalleeGraph, Arc, _CalleeNode, CalleeM, Label),
-    !.CallerRptaInfo = rpta_info(CallerGraph0, CallerAlphaMapping0),
-    get_node_by_node(CallerGraph0, CallerNode, RealCallerNode),
+    rptg_get_edge_contents(CalleeGraph, Edge, _CalleeNode, CalleeM, Label),
+    rptg_get_node_by_node(!.CallerGraph, CallerNode, RealCallerNode),
     ( if
-        find_arc_from_node_with_same_label(RealCallerNode, Label,
-            CallerGraph0, _)
+        rptg_find_edge_from_node_with_same_content(RealCallerNode, Label,
+            !.CallerGraph, _)
       then
         true
       else
         % No edge from CallerNode with the label exists.
         ( if
-            map.lookup(CallerAlphaMapping0, CallSite, AlphaAtCallSite0),
+            map.lookup(!.CallerAlphaMapping, CallSite, AlphaAtCallSite0),
             map.search(AlphaAtCallSite0, CalleeM, _)
           then
             true
@@ -1050,29 +998,26 @@ rule_8(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
             % rule 8: add node CallerM, alpha(CalleeM) = CallerM,
             % edge(CallerNode, sel, CallerM)
             %
-            CallerNextNodeNumber = rptg_get_next_node_number(CallerGraph0),
-            string.append("R", string.int_to_string(CallerNextNodeNumber),
+            CallerNextNodeId = rptg_get_next_node_id(!.CallerGraph),
+            string.append("R", string.int_to_string(CallerNextNodeId),
                 RegName),
             CallerMContent = rptg_node_content(set.init, RegName, set.init,
-                rptg_lookup_node_type(CalleeGraph, CalleeM)),
-            rptg_set_node(CallerMContent, CallerM,
-                CallerGraph0, CallerGraph1),
-            edge_operator(RealCallerNode, CallerM, Label,
-                CallerGraph1, CallerGraph2),
+                rptg_lookup_node_type(CalleeGraph, CalleeM),
+                rptg_lookup_node_is_allocated(CalleeGraph, CalleeM)),
+            rptg_add_node(CallerMContent, CallerM, !CallerGraph),
+            edge_operator(RealCallerNode, CallerM, Label, !CallerGraph),
 
-            map.lookup(CallerAlphaMapping0, CallSite, AlphaAtCallSite0),
+            map.lookup(!.CallerAlphaMapping, CallSite, AlphaAtCallSite0),
             svmap.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite),
-            svmap.set(CallSite, AlphaAtCallSite,
-                CallerAlphaMapping0, CallerAlphaMapping),
+            svmap.set(CallSite, AlphaAtCallSite, !CallerAlphaMapping),
 
-            rule_3(CallerM, CallerGraph2, CallerGraph),
-            !:CallerRptaInfo = rpta_info(CallerGraph, CallerAlphaMapping)
+            rule_3(CallerM, !CallerGraph)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Fixpoint table used in region points-to analysis
+% Fixpoint table used in region points-to analysis.
 %
 
     % The fixpoint table used by the region points-to analysis.

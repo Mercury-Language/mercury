@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,7 +178,7 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
             set.difference(InputR, OutputR, DeadR),
             svmap.set(PPId, DeadR, !DeadRTable),
             % localR
-            Nodes = rptg_get_nodes(Graph),
+            Nodes = rptg_get_nodes_as_list(Graph),
             set.difference(
                 set.difference(set.from_list(Nodes), InputR),
                 OutputR, LocalR),
@@ -242,7 +242,7 @@ lv_to_lr(LVSet, Graph, ModuleInfo, ProcInfo, LRSet) :-
     ;
         % Collect reachable regions at this program point.
         set.init(LRSet0),
-        set.fold(reach_from_a_variable(Graph, ModuleInfo, ProcInfo),
+        set.fold(rptg_reach_from_a_variable(Graph, ModuleInfo, ProcInfo),
             LVSet, LRSet0, LRSet)
     ).
 
