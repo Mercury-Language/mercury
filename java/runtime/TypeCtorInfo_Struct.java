@@ -23,7 +23,7 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 	public mercury.runtime.TypeLayout       type_layout;
 	public int 			        type_ctor_num_functors;
 	public /* short */ int 			type_ctor_flags;
-	public java.lang.Integer[]		type_functor_number_map;
+	public int[]              		type_functor_number_map;
 
 	public TypeCtorInfo_Struct(
 			int type_arity, int version, int num_ptags, int rep,
@@ -34,7 +34,7 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 			// mercury.runtime.TypeLayout
 			java.lang.Object value_ordered_functor_descs,
 			int num_functors, int flags,
-			java.lang.Integer[] functor_number_map)
+			int[] functor_number_map)
 	{
 		arity = type_arity;
 		type_ctor_version = version;

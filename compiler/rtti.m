@@ -1867,6 +1867,10 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
     ->
         JavaTypeName = "java.lang.String"
     ;
+        GenTypeName0 = "Integer"
+    ->
+        JavaTypeName = "int"
+    ;
         % In Java, every non-builtin type is a pointer,
         % so there's no need for the "Ptr" suffixes.
         string.remove_suffix(GenTypeName0, "Ptr", GenTypeName1)
