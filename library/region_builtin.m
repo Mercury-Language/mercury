@@ -52,6 +52,8 @@
 :- pragma foreign_type("C", region, "MR_RegionHeader *",
     [can_pass_as_mercury_type]).
 
+:- pragma foreign_type("Java", region, "java.lang.Object"). % dummy
+
 :- pragma foreign_proc("C",
     create_region(Region::out),
     [will_not_call_mercury],

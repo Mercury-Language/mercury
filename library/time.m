@@ -911,8 +911,8 @@ getDSTSavings(java.util.TimeZone tz) {
         // using reflection.
 
         return ((java.lang.Integer) (tz.getClass().
-            getMethod(""getDSTSavings"", null).
-            invoke(tz, null))).intValue();
+            getMethod(""getDSTSavings"").
+            invoke(tz))).intValue();
     }
     catch (java.lang.Exception e) {
         throw new java.lang.RuntimeException(

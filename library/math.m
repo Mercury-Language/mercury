@@ -446,12 +446,6 @@ math.e = 2.7182818284590452353602874713526625.
 "
     Rounded = java.lang.Math.round(Num);
 ").
-:- pragma foreign_proc("Java",
-    math.round(Num::in) = (Rounded::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Rounded = java.lang.Math.round(Num);
-").
 :- pragma foreign_proc("Erlang",
     math.round(Num::in) = (Rounded::out),
     [will_not_call_mercury, promise_pure, thread_safe],

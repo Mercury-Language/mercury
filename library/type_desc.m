@@ -400,6 +400,29 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
         error("ground_pseudo_type_desc_to_type_desc_det: not ground")
     ).
 
+:- pragma foreign_proc("Java",
+    ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc::in) = (TypeDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    /* PseudoTypeDesc, TypeDesc */
+    if (true) {
+        throw new java.lang.Error(
+            ""ground_pseudo_type_desc_to_type_desc/2 not implemented"");
+    }
+").
+
+:- pragma foreign_proc("Java",
+    ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc::in)
+        = (TypeDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    /* PseudoTypeDesc, TypeDesc */
+    if (true) {
+        throw new java.lang.Error(
+            ""ground_pseudo_type_desc_to_type_desc_det/2 not implemented"");
+    }
+").
+
 :- pragma foreign_proc("C",
     type_of(_Value::unused) = (TypeInfo::out),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,

@@ -23,6 +23,7 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 	public mercury.runtime.TypeLayout       type_layout;
 	public int 			        type_ctor_num_functors;
 	public /* short */ int 			type_ctor_flags;
+	public java.lang.Integer[]		type_functor_number_map;
 
 	public TypeCtorInfo_Struct(
 			int type_arity, int version, int num_ptags, int rep,
@@ -32,7 +33,8 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 			java.lang.Object name_ordered_functor_descs,
 			// mercury.runtime.TypeLayout
 			java.lang.Object value_ordered_functor_descs,
-			int num_functors, int flags)
+			int num_functors, int flags,
+			java.lang.Integer[] functor_number_map)
 	{
 		arity = type_arity;
 		type_ctor_version = version;
@@ -47,6 +49,7 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 		type_layout = (mercury.runtime.TypeLayout)
 			value_ordered_functor_descs;
 		type_ctor_flags = flags;
+		type_functor_number_map = functor_number_map;
 	}
 
 		// XXX this should be renamed `equals'

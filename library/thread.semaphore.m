@@ -96,6 +96,7 @@ public class ML_Semaphore {
 :- pragma foreign_type("IL", semaphore,
     "class [mercury]mercury.thread.semaphore__csharp_code.mercury_code.ML_Semaphore").
 :- pragma foreign_type("Erlang", semaphore, "").
+:- pragma foreign_type("Java", semaphore, "java.util.concurrent.Semaphore").
 
 :- pragma foreign_decl("C", "
 extern void

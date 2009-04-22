@@ -22,7 +22,7 @@ public class TypeFunctors {
 	public mercury.runtime.EnumFunctorDesc[] functors_enum() {
 		return (mercury.runtime.EnumFunctorDesc[]) functors_init;
 	}
-	public mercury.runtime.ForeignFunctorDesc[] functors_foreign_enum() {
+	public mercury.runtime.ForeignEnumFunctorDesc[] functors_foreign_enum() {
 		return (mercury.runtime.ForeignEnumFunctorDesc[]) functors_init;
 	}
 	public mercury.runtime.NotagFunctorDesc functors_notag() {

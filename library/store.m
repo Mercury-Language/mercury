@@ -291,7 +291,7 @@ store.new(S) :-
     store.do_init(_S0::uo),
     [will_not_call_mercury, promise_pure],
 "
-    // TypeInfo_for_S
+    TypeInfo_for_S = null;
 ").
 :- pragma foreign_proc("Erlang",
     store.do_init(_S0::uo),
@@ -416,7 +416,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
     unsafe_new_uninitialized_mutvar(Mutvar::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
 "
-    Mutvar = new mercury.mutvar.Mutvar(null);
+    Mutvar = new mercury.mutvar.Mutvar();
 ").
 
 store.new_cyclic_mutvar(Func, MutVar, !Store) :-

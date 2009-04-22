@@ -5651,7 +5651,7 @@ namespace mercury {
         public  int                         line_number = 1;
 
         // pushback is non-null only for input streams
-        private java.util.Stack             pushback    = null;
+        private java.util.Stack<Integer>    pushback    = null;
 
         // input is non-null only for text input streams
         private java.io.InputStreamReader   input       = null;
@@ -5704,7 +5704,7 @@ namespace mercury {
             if (mode == 'r') {
                 openstring = ""r"";
                 this.mode = INPUT;
-                pushback = new java.util.Stack();
+                pushback = new java.util.Stack<Integer>();
             } else if (mode == 'w' || mode == 'a') {
                 openstring = ""rw"";
                 this.mode = OUTPUT;
@@ -5730,7 +5730,7 @@ namespace mercury {
         {
             id          = ML_next_stream_id++;
             mode        = INPUT;
-            pushback    = new java.util.Stack();
+            pushback    = new java.util.Stack<Integer>();
 
             if (!openAsBinary) {
                 input = new java.io.InputStreamReader(stream);
@@ -5776,8 +5776,8 @@ namespace mercury {
 
             try {
                 java.lang.reflect.Method size_mth =
-                    channel.getClass().getMethod(""size"", null);
-                return ((Long) size_mth.invoke(channel, null)).intValue();
+                    channel.getClass().getMethod(""size"");
+                return ((Long) size_mth.invoke(channel)).intValue();
             } catch (java.lang.Exception e) {
                 if (binary_output != null) {
                     return position;
@@ -5828,7 +5828,7 @@ namespace mercury {
                     ""from the current position"");
             }
 
-            pushback = new java.util.Stack();
+            pushback = new java.util.Stack<Integer>();
 
             try {
                 switch (flag) {
@@ -5866,7 +5866,7 @@ namespace mercury {
         ** will still compile for Java versions < 1.4.
         */
         private void channelSeek(int flag, int offset) {
-            pushback = new java.util.Stack();
+            pushback = new java.util.Stack<Integer>();
 
             try {
                 switch (flag) {
@@ -5914,8 +5914,8 @@ namespace mercury {
 
             try {
                 java.lang.reflect.Method posn_mth =
-                    channel.getClass().getMethod(""position"", null);
-                return ((Long) posn_mth.invoke(channel, null)).intValue();
+                    channel.getClass().getMethod(""position"");
+                return ((Long) posn_mth.invoke(channel)).intValue();
             } catch (java.lang.Exception e) {
                 if (binary_input != null || binary_output != null) {
                     return position;
@@ -5945,7 +5945,7 @@ namespace mercury {
                     throw new java.lang.RuntimeException(e.getMessage());
                 }
             } else {
-                c = ((java.lang.Integer)pushback.pop()).intValue();
+                c = pushback.pop();
             }
 
             if (c == '\\n') {
@@ -5982,7 +5982,7 @@ namespace mercury {
                     throw new java.lang.RuntimeException(e.getMessage());
                 }
             } else {
-                c = ((java.lang.Integer)pushback.pop()).intValue();
+                c = pushback.pop();
             }
             position++;
 
@@ -6005,7 +6005,7 @@ namespace mercury {
                 line_number--;
             }
 
-            pushback.push(new Integer(c));
+            pushback.push(c);
             position--;
         }
 
@@ -6174,9 +6174,9 @@ namespace mercury {
             //  return o.getChannel();
             // using reflection.
             java.lang.reflect.Method getChannel_mth =
-                o.getClass().getMethod(""getChannel"", null);
+                o.getClass().getMethod(""getChannel"");
 
-            return getChannel_mth.invoke(o, null);
+            return getChannel_mth.invoke(o);
         }
         catch (java.lang.Exception e) {
             return null;
@@ -7398,28 +7398,28 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 }").
 
 :- pragma foreign_proc("Java",
-    io.read_char_code(File::in, CharCode::out, _IO0::di, _IO::uo),
+    io.read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     CharCode = File.read_char();
 ").
 
 :- pragma foreign_proc("Java",
-    io.read_byte_val(File::in, ByteVal::out, _IO0::di, _IO::uo),
+    io.read_byte_val_2(File::in, ByteVal::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     ByteVal = File.read_byte();
 ").
 
 :- pragma foreign_proc("Java",
-    io.putback_char(File::in, Character::in, _IO0::di, _IO::uo),
+    io.putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, terminates],
 "
     File.ungetc(Character);
 ").
 
 :- pragma foreign_proc("Java",
-    io.putback_byte(File::in, Byte::in, _IO0::di, _IO::uo),
+    io.putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, terminates],
 "
     File.ungetc(Byte);
@@ -8119,14 +8119,14 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_byte(Stream::in, Byte::in, _IO0::di, _IO::uo),
+    io.write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     Stream.put(Byte);
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_bytes(Stream::in, Message::in, _IO0::di, _IO::uo),
+    io.write_bytes_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     Stream.write(Message);
@@ -8140,7 +8140,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.flush_binary_output(Stream::in, _IO0::di, _IO::uo),
+    io.flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     Stream.flush();
@@ -8820,7 +8820,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_line_number(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    io.get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     LineNum = Stream.line_number;
@@ -8834,7 +8834,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_line_number(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    io.set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     Stream.line_number = LineNum;
@@ -8848,7 +8848,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_output_line_number(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    io.get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     LineNum = Stream.line_number;
@@ -8862,7 +8862,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_output_line_number(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    io.set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     Stream.line_number = LineNum;
@@ -8873,7 +8873,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     % Returns the previous stream.
 
 :- pragma foreign_proc("Java",
-    io.set_input_stream(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    io.set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = mercury_current_text_input;
@@ -8881,7 +8881,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_output_stream(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
+    io.set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     OutStream = mercury_current_text_output;
@@ -8889,7 +8889,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_binary_input_stream(NewStream::in, OutStream::out,
+    io.set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -8898,7 +8898,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_binary_output_stream(NewStream::in, OutStream::out,
+    io.set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "

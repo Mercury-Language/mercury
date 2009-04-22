@@ -1057,14 +1057,14 @@ namespace mercury.builtin {
     //
 
     public static boolean
-    __Unify____tuple_0_0(mercury.builtin.Tuple_0 x, mercury.builtin.Tuple_0 y)
+    __Unify____tuple_0_0(java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
         throw new java.lang.Error (""unify/2 for tuple types not implemented"");
     }
 
     public static boolean
-    __Unify____func_0_0(mercury.builtin.Func_0 x, mercury.builtin.Func_0 y)
+    __Unify____func_0_0(java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
         throw new java.lang.Error (""unify/2 for tuple types not implemented"");
@@ -1099,7 +1099,7 @@ namespace mercury.builtin {
     }
 
     public static Comparison_result_0
-    __Compare____func_0_0(mercury.builtin.Func_0 x, mercury.builtin.Func_0 y)
+    __Compare____func_0_0(java.lang.Object[] x, java.lang.Object[] y)
     {
         // comparing values of higher-order types is a run-time error
         throw new java.lang.Error (""compare/3 called for func type"");

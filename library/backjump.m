@@ -425,6 +425,25 @@ mercury_sys_init_backjumps_write_out_proc_statics(FILE *deep_fp,
 
 %-----------------------------------------------------------------------------%
 
+:- pragma foreign_code("Java", "
+
+    public static void
+    builtin_choice_id_1_p_0(mercury.runtime.MethodPtr cont,
+        /* env_ptr */ java.lang.Object cont_env_ptr)
+    {
+        throw new java.lang.Error(""builtin_choice_id/1 not implemented"");
+    }
+
+    public static void
+    builtin_backjump_1_p_0(int Id_2)
+    {
+        throw new java.lang.Error(""builtin_backjump/1 not implemented"");
+    }
+
+").
+
+%-----------------------------------------------------------------------------%
+
 :- pragma foreign_export("C", report_invalid_backjump(in, di, uo),
     "ML_report_invalid_backjump").
 

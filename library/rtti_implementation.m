@@ -2575,7 +2575,7 @@ foreign_enum_functor_desc(_, Num, TypeFunctors) = ForeignEnumFunctorDesc :-
         TypeFunctors::in) = (ForeignEnumFunctorDesc::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    ForeignEnumFunctorDesc = (TypeFunctors.functors_enum())[X];
+    ForeignEnumFunctorDesc = (TypeFunctors.functors_foreign_enum())[X];
 "). 
 
 :- func foreign_enum_functor_name(foreign_enum_functor_desc) = string.
@@ -2587,7 +2587,7 @@ foreign_enum_functor_name(ForeignEnumFunctorDesc) =
     foreign_enum_functor_name(ForeignEnumFunctorDesc::in) = (Name::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Name = ForeignEnumFunctorDesc.enum_functor_name;
+    Name = ForeignEnumFunctorDesc.foreign_enum_functor_name;
 ").
  
  %--------------------------%

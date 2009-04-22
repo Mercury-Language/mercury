@@ -1692,6 +1692,16 @@ no_clauses(PredName) :-
     }
 
     public static boolean
+    __Unify____type_ctor_info_0_0(
+        mercury.runtime.TypeCtorInfo_Struct x,
+        mercury.runtime.TypeCtorInfo_Struct y)
+    {
+        // stub only
+        throw new java.lang.Error
+            (""unify/2 for type type_ctor_info/1"");
+    }
+
+    public static boolean
     __Unify____type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeCtorInfo_Struct x,
         mercury.runtime.TypeCtorInfo_Struct y)
@@ -1699,6 +1709,16 @@ no_clauses(PredName) :-
         // stub only
         throw new java.lang.Error
             (""unify/2 for type type_ctor_info/1"");
+    }
+
+    public static boolean
+    __Unify____type_info_0_0(
+        mercury.runtime.TypeInfo_Struct x,
+        mercury.runtime.TypeInfo_Struct y)
+    {
+        // stub only
+        throw new java.lang.Error
+            (""unify/2 for type type_info/0"");
     }
 
     public static boolean
@@ -1712,11 +1732,27 @@ no_clauses(PredName) :-
     }
 
     public static boolean
+    __Unify____base_typeclass_info_0_0(
+        java.lang.Object[] x, java.lang.Object[] y)
+    {
+        // stub only
+        throw new java.lang.Error(""unify/2 for type typeclass_info/0"");
+    }
+
+    public static boolean
     __Unify____base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
         throw new java.lang.Error(""unify/2 for type typeclass_info/0"");
+    }
+
+    public static boolean
+    __Unify____typeclass_info_0_0(java.lang.Object[] x, java.lang.Object[] y)
+    {
+        // stub only
+        throw new java.lang.Error
+            (""unify/2 for type typeclass_info/1"");
     }
 
     public static boolean
@@ -1747,6 +1783,16 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
+    __Compare____type_ctor_info_0_0(
+        mercury.runtime.TypeCtorInfo_Struct x,
+        mercury.runtime.TypeCtorInfo_Struct y)
+    {
+        // stub only
+        throw new java.lang.Error
+            (""compare/2 for type type_ctor_info/1"");
+    }
+
+    public static mercury.builtin.Comparison_result_0
     __Compare____type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeCtorInfo_Struct x,
         mercury.runtime.TypeCtorInfo_Struct y)
@@ -1754,6 +1800,16 @@ no_clauses(PredName) :-
         // stub only
         throw new java.lang.Error
             (""compare/2 for type type_ctor_info/1"");
+    }
+
+    public static mercury.builtin.Comparison_result_0
+    __Compare____type_info_0_0(
+        mercury.runtime.TypeInfo_Struct x,
+        mercury.runtime.TypeInfo_Struct y)
+    {
+        // stub only
+        throw new java.lang.Error
+            (""compare/2 for type type_info/0"");
     }
 
     public static mercury.builtin.Comparison_result_0
@@ -1767,11 +1823,27 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
+    __Compare____base_typeclass_info_0_0(
+        java.lang.Object[] x, java.lang.Object[] y)
+    {
+        // stub only
+        throw new java.lang.Error(""compare/2 for type typeclass_info/1"");
+    }
+
+    public static mercury.builtin.Comparison_result_0
     __Compare____base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
         throw new java.lang.Error(""compare/2 for type typeclass_info/1"");
+    }
+
+    public static mercury.builtin.Comparison_result_0
+    __Compare____typeclass_info_0_0(java.lang.Object[] x, java.lang.Object[] y)
+    {
+        // stub only
+        throw new java.lang.Error
+            (""compare/2 for type typeclass_info/0"");
     }
 
     public static mercury.builtin.Comparison_result_0
@@ -1833,6 +1905,18 @@ no_clauses(PredName) :-
     % All uses of this predicate should override the body.
     throw(""trace_evaluate_runtime_condition called""),
     SUCCESS_INDICATOR = false
+").
+
+:- pragma foreign_proc("Java",
+    trace_evaluate_runtime_condition,
+    [will_not_call_mercury, thread_safe, promise_semipure,
+        does_not_affect_liveness],
+"
+    if (true) {
+        /* All uses of this predicate should override the body. */
+        throw new java.lang.RuntimeException(
+            ""trace_evaluate_runtime_condition called"");
+    }
 ").
 
 %-----------------------------------------------------------------------------%

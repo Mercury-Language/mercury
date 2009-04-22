@@ -93,8 +93,8 @@
 
     % Placeholder only.
 :- pragma foreign_type(il, future(T), "class [mscorlib]System.Object").
-
 :- pragma foreign_type("Erlang", future(T), "").
+:- pragma foreign_type("Java", future(T), "java.lang.Object").
 
 :- pragma foreign_proc("C",
     new_future(Future::uo),

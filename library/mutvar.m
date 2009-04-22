@@ -142,6 +142,13 @@ new_mutvar(X, Ref) :-
 "
     public static class Mutvar {
         public Object object;
+
+        public Mutvar() {
+        }
+
+        public Mutvar(Object o) {
+            object = o;
+        }
     }
 ").
 
