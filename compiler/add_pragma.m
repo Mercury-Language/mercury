@@ -489,11 +489,9 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId, Modes,
         ;
             % Emit a warning about using pragma foreign_export with
             % a foreign language that is not supported.
-            % XXX That's currently all of them except C, IL and Erlang.
+            % XXX That's currently C#.
             (
-                ( Lang = lang_java
-                ; Lang = lang_csharp
-                ),
+                Lang = lang_csharp,
                 Pieces = [words("Warning:"),
                     fixed("`:- pragma foreign_export' declarations"),
                     words("are not yet implemented for language"),
@@ -505,6 +503,7 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId, Modes,
             ;
                 ( Lang = lang_c
                 ; Lang = lang_il
+                ; Lang = lang_java
                 ; Lang = lang_erlang
                 )
             ),
