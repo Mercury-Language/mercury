@@ -36,7 +36,9 @@
 % - Support nested modules
 %   (The problem with current code generation scheme for nested
 %   modules is that Java does not allow the name of a class to
-%   be the same as the name of its enclosing package.)
+%   be the same as the name of its enclosing package.
+%   That should work now, but javac doesn't like the filenames
+%   we give for submodules.)
 %
 % - Support for Java in Mmake and mmc --make, for Mercury code using
 %   nested modules.
@@ -300,11 +302,24 @@ reverse_string(String0, String) :-
     string.to_char_list(String0, String1),
     string.from_rev_char_list(String1, String).
 
+    % Java doesn't allow a fully-qualified class to have the same name as a
+    % package.  Our workaround is to name package components with trailing
+    % underscores, e.g. `mammal_.primate_.chimp' where `chimp' is a class.
+    % This is enabled with `package_name_mangling'.
+    %
+    % The packages `mercury' and `mercury.runtime' are named without
+    % underscores simply because there is existing handwritten code already
+    % using those names.
+    %
+:- type package_name_mangling
+    --->    package_name_mangling
+    ;       no_package_name_mangling.
+
 :- pred mangle_mlds_sym_name_for_java(sym_name::in, mlds_qual_kind::in,
-    string::in, string::out) is det.
+    string::in, package_name_mangling::in, string::out) is det.
 
 mangle_mlds_sym_name_for_java(unqualified(Name), QualKind, _QualifierOp,
-        JavaSafeName) :-
+        _PackageNameMangling, JavaSafeName) :-
     (
         QualKind = module_qual,
         FlippedName = Name
@@ -315,9 +330,23 @@ mangle_mlds_sym_name_for_java(unqualified(Name), QualKind, _QualifierOp,
     MangledName = name_mangle(FlippedName),
     JavaSafeName = valid_symbol_name(MangledName).
 mangle_mlds_sym_name_for_java(qualified(ModuleName0, PlainName), QualKind,
-        QualifierOp, JavaSafeName) :-
+        QualifierOp, PackageNameMangling, JavaSafeName) :-
     mangle_mlds_sym_name_for_java(ModuleName0, module_qual, QualifierOp,
-        MangledModuleName),
+        PackageNameMangling, MangledModuleName0),
+    (
+        PackageNameMangling = package_name_mangling,
+        MaybeUnderscore = should_append_underscore_for_package(ModuleName0),
+        (
+            MaybeUnderscore = yes,
+            MangledModuleName = MangledModuleName0 ++ "_"
+        ;
+            MaybeUnderscore = no,
+            MangledModuleName = MangledModuleName0
+        )
+    ;
+        PackageNameMangling = no_package_name_mangling,
+        MangledModuleName = MangledModuleName0
+    ),
     (
         QualKind = module_qual,
         FlippedPlainName = PlainName
@@ -329,6 +358,17 @@ mangle_mlds_sym_name_for_java(qualified(ModuleName0, PlainName), QualKind,
     JavaSafePlainName = valid_symbol_name(MangledPlainName),
     string.append_list([MangledModuleName, QualifierOp, JavaSafePlainName],
         JavaSafeName).
+
+:- func should_append_underscore_for_package(sym_name) = bool.
+
+should_append_underscore_for_package(ModuleName) = Append :-
+    ( ModuleName = mercury_std_library_package_name ->
+        Append = no
+    ; ModuleName = mercury_runtime_package_name ->
+        Append = no
+    ;
+        Append = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -813,7 +853,7 @@ generate_code_addr_wrappers(Indent, [CodeAddr | CodeAddrs], !Defns) :-
     % "method_ptrs_*" predicates above.
     Context = mlds_make_context(term.context_init),
     InterfaceModuleName = mercury_module_name_to_mlds(
-        qualified(unqualified("mercury"), "runtime")),
+        mercury_runtime_package_name),
     Interface = qual(InterfaceModuleName, module_qual, "MethodPtr"),
     generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn),
     !:Defns = [ ClassDefn | !.Defns ],
@@ -825,33 +865,18 @@ generate_code_addr_wrappers(Indent, [CodeAddr | CodeAddrs], !Defns) :-
     mlds_context::in, mlds_code_addr::in, mlds_defn::out) is det.
 
 generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
-    (
-        CodeAddr = code_addr_proc(ProcLabel, _FuncSig),
-        MaybeSeqNum = no
-    ;
-        CodeAddr = code_addr_internal(ProcLabel, SeqNum, _FuncSig),
-        MaybeSeqNum = yes(SeqNum)
-    ),
-    ProcLabel = qual(ModuleQualifier, QualKind,
-        mlds_proc_label(PredLabel, ProcID)),
-    PredName = make_pred_name_string(PredLabel, ProcID, MaybeSeqNum),
-
     % Create class components.
     ClassImports = [],
     ClassExtends = [],
     InterfaceDefn = mlds_class_type(Interface, 0, mlds_interface),
     ClassImplements = [InterfaceDefn],
 
-    % Create a method that calls the original predicate.
-    generate_call_method(CodeAddr, MethodDefn),
-
     % Create a name for this wrapper class based on the fully qualified method
     % (predicate) name.
-    ModuleQualifierSym = mlds_module_name_to_sym_name(ModuleQualifier),
-    mangle_mlds_sym_name_for_java(ModuleQualifierSym, QualKind, "__",
-        ModuleNameStr),
-    ClassEntityName = "addrOf__" ++ ModuleNameStr ++ "__" ++ PredName,
-    MangledClassEntityName = name_mangle(ClassEntityName),
+    create_addr_wrapper_name(CodeAddr, MangledClassEntityName),
+
+    % Create a method that calls the original predicate.
+    generate_call_method(CodeAddr, MethodDefn),
 
     % Put it all together.
     ClassMembers  = [MethodDefn],
@@ -863,6 +888,28 @@ generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
         ClassExtends, ClassImplements, ClassCtors, ClassMembers),
     ClassBody     = mlds_class(ClassBodyDefn),
     ClassDefn = mlds_defn(ClassName, ClassContext, ClassFlags, ClassBody).
+
+:- pred create_addr_wrapper_name(mlds_code_addr::in, string::out) is det.
+
+create_addr_wrapper_name(CodeAddr, MangledClassEntityName) :-
+    (
+        CodeAddr = code_addr_proc(ProcLabel, _FuncSig),
+        MaybeSeqNum = no
+    ;
+        CodeAddr = code_addr_internal(ProcLabel, SeqNum, _FuncSig),
+        MaybeSeqNum = yes(SeqNum)
+    ),
+    ProcLabel = qual(ModuleQualifier, QualKind,
+        mlds_proc_label(PredLabel, ProcID)),
+    PredName = make_pred_name_string(PredLabel, ProcID, MaybeSeqNum),
+
+    % Create a name for this wrapper class based on the fully qualified method
+    % (predicate) name.
+    ModuleQualifierSym = mlds_module_name_to_sym_name(ModuleQualifier),
+    mangle_mlds_sym_name_for_java(ModuleQualifierSym, QualKind, "__",
+        no_package_name_mangling, ModuleNameStr),
+    ClassEntityName = "addrOf__" ++ ModuleNameStr ++ "__" ++ PredName,
+    MangledClassEntityName = name_mangle_maybe_shorten(ClassEntityName).
 
     % Generates a call methods which calls the original method we have
     % created the wrapper for.
@@ -1079,8 +1126,17 @@ output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
 output_package_info(unqualified(_), !IO).
 output_package_info(qualified(Module, _), !IO) :-
     io.write_string("package ", !IO),
-    io.write_string(sym_name_to_string(Module), !IO),
-    io.write_string(";\n", !IO).
+    mangle_mlds_sym_name_for_java(Module, module_qual, ".",
+        package_name_mangling, PackageName),
+    io.write_string(PackageName, !IO),
+    MaybeUnderscore = should_append_underscore_for_package(Module),
+    (
+        MaybeUnderscore = yes,
+        io.write_string("_;\n", !IO)
+    ;
+        MaybeUnderscore = no,
+        io.write_string(";\n", !IO)
+    ).
 
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting Java class that calls the
@@ -1308,7 +1364,8 @@ output_interface(Interface, !IO) :-
             Arity, _)
     ->
         SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-        mangle_mlds_sym_name_for_java(SymName, QualKind, ".", ModuleName),
+        mangle_mlds_sym_name_for_java(SymName, QualKind, ".",
+            package_name_mangling, ModuleName),
         io.format("%s.%s", [s(ModuleName), s(Name)], !IO),
         %
         % Check if the interface is one of the ones in the runtime
@@ -1703,34 +1760,67 @@ output_maybe_qualified_name(QualifiedName, CurrentModuleName, !IO) :-
     ( ModuleName = CurrentModuleName ->
         output_name(Name, !IO)
     ;
-        output_fully_qualified(QualifiedName, output_name, ".", !IO)
+        output_fully_qualified_thing(QualifiedName, output_name, ".", !IO)
     ).
 
 :- pred output_fully_qualified_name(mlds_qualified_entity_name::in,
     io::di, io::uo) is det.
 
 output_fully_qualified_name(QualifiedName, !IO) :-
-    output_fully_qualified(QualifiedName, output_name, ".", !IO).
+    output_fully_qualified_thing(QualifiedName, output_name, ".", !IO).
 
 :- pred output_fully_qualified_proc_label(mlds_qualified_proc_label::in,
-    string::in, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
-output_fully_qualified_proc_label(QualifiedName, Qualifier, !IO) :-
-    output_fully_qualified(QualifiedName, mlds_output_proc_label,
-        Qualifier, !IO).
+output_fully_qualified_proc_label(QualifiedName, !IO) :-
+    output_fully_qualified_thing(QualifiedName, mlds_output_proc_label, ".",
+        !IO).
 
-:- pred output_fully_qualified(mlds_fully_qualified_name(T)::in,
+:- pred output_fully_qualified_thing(mlds_fully_qualified_name(T)::in,
     pred(T, io, io)::pred(in, di, uo) is det, string::in, io::di, io::uo)
     is det.
 
-output_fully_qualified(qual(ModuleName, QualKind, Name), OutputFunc,
+output_fully_qualified_thing(qual(ModuleName, QualKind, Name), OutputFunc,
         Qualifier, !IO) :-
-    SymName = mlds_module_name_to_sym_name(ModuleName),
-    mangle_mlds_sym_name_for_java(SymName, QualKind, Qualifier,
-        MangledModuleName),
-    io.write_string(MangledModuleName, !IO),
+    mlds_module_name_to_package_name(ModuleName) = PackageName,
+    mlds_module_name_to_sym_name(ModuleName) = WholeModuleName,
+
+    % Write the package name components.
+    mangle_mlds_sym_name_for_java(PackageName, module_qual, Qualifier,
+        package_name_mangling, MangledPackageName),
+    io.write_string(MangledPackageName, !IO),
+
+    % Any module components following the package name will correspond to
+    % class names, so should *not* be suffixed with underscores.
+    ( PackageName = WholeModuleName ->
+        true
+    ;
+        remove_sym_name_prefixes(WholeModuleName, PackageName, NonPackageName),
+        mangle_mlds_sym_name_for_java(NonPackageName, QualKind, Qualifier,
+            no_package_name_mangling, MangledNonPackageName),
+        io.write_string(Qualifier, !IO),
+        io.write_string(MangledNonPackageName, !IO)
+    ),
+
     io.write_string(Qualifier, !IO),
     OutputFunc(Name, !IO).
+
+:- pred remove_sym_name_prefixes(sym_name::in, sym_name::in, sym_name::out)
+    is det.
+
+remove_sym_name_prefixes(SymName0, Prefix, SymName) :-
+    (
+        SymName0 = qualified(Qual, Name),
+        ( Qual = Prefix ->
+            SymName = unqualified(Name)
+        ;
+            remove_sym_name_prefixes(Qual, Prefix, SymName1),
+            SymName = qualified(SymName1, Name)
+        )
+    ;
+        SymName0 = unqualified(_),
+        unexpected(this_file, "remove_sym_name_prefixes: prefix not found")
+    ).
 
 :- pred output_module_name(mercury_module_name::in, io::di, io::uo) is det.
 
@@ -1837,6 +1927,31 @@ output_mlds_var_name(mlds_var_name(Name, no), !IO) :-
 output_mlds_var_name(mlds_var_name(Name, yes(Num)), !IO) :-
     output_mangled_name(string.format("%s_%d", [s(Name), i(Num)]), !IO).
 
+    % Long class names can cause problems as Java uses separate `.class' files
+    % for nested classes, with file names derived from the class name.  For
+    % some reason javac considers file names greater than about 256 characters
+    % to be too long and aborts.
+    %
+    % This workaround forces mangled names which are too long (by an arbitrary
+    % limit) to be shortened (by an arbitrary method).
+    %
+    % Currently we only apply this workaround on the wrapper classes generated
+    % for taking the address of a predicate, in order to build the standard
+    % library, but it will probably be needed consistently.
+    %
+:- func name_mangle_maybe_shorten(string) = string.
+
+name_mangle_maybe_shorten(Name) = MangledName :-
+    MangledName0 = name_mangle(Name),
+    ( string.length(MangledName0) < 100 ->
+        MangledName = MangledName0
+    ;
+        Left = string.left(MangledName0, 50),
+        Right = string.right(MangledName0, 25),
+        Hash = string.hash(MangledName0),
+        MangledName = string.format("%s_%x_%s", [s(Left), i(Hash), s(Right)])
+    ).
+
 %-----------------------------------------------------------------------------%
 %
 % Code to output types
@@ -1882,6 +1997,7 @@ output_type(mlds_native_char_type, !IO)  :-
 output_type(mlds_foreign_type(ForeignType), !IO) :-
     (
         ForeignType = java(java_type(Name)),
+        maybe_output_comment("foreign_type", !IO),
         io.write_string(Name, !IO)
     ;
         ForeignType = c(_),
@@ -1896,7 +2012,7 @@ output_type(mlds_foreign_type(ForeignType), !IO) :-
 output_type(mlds_class_type(Name, Arity, _ClassKind), !IO) :-
     % We used to treat enumerations specially here, outputting
     % them as "int", but now we do the same for all classes.
-    output_fully_qualified(Name, output_class_name, ".", !IO),
+    output_fully_qualified_thing(Name, output_class_name, ".", !IO),
     io.format("_%d", [i(Arity)], !IO).
 output_type(mlds_ptr_type(Type), !IO) :-
     % XXX should we report an error here, if the type pointed to
@@ -3364,31 +3480,33 @@ output_rval_const(mlconst_null(_), !IO) :-
 :- pred mlds_output_code_addr(mlds_code_addr::in, bool::in, io::di,
     io::uo) is det.
 
-mlds_output_code_addr(code_addr_proc(Label, _Sig), IsCall, !IO) :-
+mlds_output_code_addr(CodeAddr, IsCall, !IO) :-
+    CodeAddr = code_addr_proc(Label, _Sig),
     (
         IsCall = no,
         % Not a function call, so we are taking the address of the
         % wrapper for that function (method).
-        io.write_string("new AddrOf__", !IO),
-        output_fully_qualified_proc_label(Label, "__", !IO),
+        io.write_string("new ", !IO),
+        create_addr_wrapper_name(CodeAddr, MangledClassEntityName),
+        io.write_string(flip_initial_case(MangledClassEntityName), !IO),
         io.write_string("_0()", !IO)
     ;
         IsCall = yes,
-        output_fully_qualified_proc_label(Label, ".", !IO)
+        output_fully_qualified_proc_label(Label, !IO)
     ).
-mlds_output_code_addr(code_addr_internal(Label, SeqNum, _Sig), IsCall, !IO) :-
+mlds_output_code_addr(CodeAddr, IsCall, !IO) :-
+    CodeAddr = code_addr_internal(Label, SeqNum, _Sig),
     (
         IsCall = no,
         % Not a function call, so we are taking the address of the
         % wrapper for that function (method).
-        io.write_string("new AddrOf__", !IO),
-        output_fully_qualified_proc_label(Label, "__", !IO),
-        io.write_string("_", !IO),
-        io.write_int(SeqNum, !IO),
+        io.write_string("new ", !IO),
+        create_addr_wrapper_name(CodeAddr, MangledClassEntityName),
+        io.write_string(flip_initial_case(MangledClassEntityName), !IO),
         io.write_string("_0()", !IO)
     ;
         IsCall = yes,
-        output_fully_qualified_proc_label(Label, ".", !IO),
+        output_fully_qualified_proc_label(Label, !IO),
         io.write_string("_", !IO),
         io.write_int(SeqNum, !IO)
     ).
@@ -3404,7 +3522,8 @@ mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
 
 mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
     SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-    mangle_mlds_sym_name_for_java(SymName, module_qual, ".", ModuleName),
+    mangle_mlds_sym_name_for_java(SymName, module_qual, ".",
+        package_name_mangling, ModuleName),
     io.write_string(ModuleName, !IO),
     io.write_string(".", !IO),
     output_data_name(DataName, !IO).

@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module mdbcomp.prim_data.
 
 %-----------------------------------------------------------------------------%
 
@@ -58,6 +59,16 @@
     % and the result will be an integer or a boolean.
     %
 :- pred java_binary_infix_op(binary_op::in, string::out) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+    % The package containing the Mercury standard library.
+    %
+:- func mercury_std_library_package_name = sym_name.
+
+    % The package containing the Mercury Java runtime classes.
+    %
+:- func mercury_runtime_package_name = sym_name.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -172,6 +183,12 @@ java_is_keyword("try").
 java_is_keyword("void").
 java_is_keyword("volatile").
 java_is_keyword("while").
+
+%-----------------------------------------------------------------------------%
+
+mercury_std_library_package_name = unqualified("mercury").
+
+mercury_runtime_package_name = qualified(unqualified("mercury"), "runtime").
 
 %-----------------------------------------------------------------------------%
 
