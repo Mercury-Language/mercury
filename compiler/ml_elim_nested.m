@@ -1949,7 +1949,11 @@ fixup_lval(Lval0, Lval, !Info) :-
 :- pred fixup_gc_statements(elim_info::in, elim_info::out) is det.
 
 fixup_gc_statements(!Info) :-
-    Locals = elim_info_get_local_data(!.Info),
+    RevLocals = elim_info_get_local_data(!.Info),
+    % We must preserve the order for the Java backend, otherwise the generated
+    % code may contain closure_layout vectors that reference typevar vectors
+    % which are defined later.
+    Locals = list.reverse(RevLocals),
     fixup_gc_statements_defns(Locals, !Info).
 
 :- pred fixup_gc_statements_defns(list(mlds_defn)::in,
