@@ -1090,8 +1090,7 @@ namespace mercury.builtin {
     //
 
     public static Comparison_result_0
-    __Compare____tuple_0_0
-        (mercury.builtin.Tuple_0 x, mercury.builtin.Tuple_0 y)
+    __Compare____tuple_0_0(java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
         throw new java.lang.Error
