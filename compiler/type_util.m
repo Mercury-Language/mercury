@@ -713,6 +713,25 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
         TypeCategory = TypeCategoryPrime
     ;
         TypeSymName = qualified(ModuleSymName, TypeName),
+        ModuleSymName = mercury_public_builtin_module,
+        Arity = 0,
+        (
+            TypeName = "pred",
+            TypeCategoryPrime = ctor_cat_higher_order
+        ;
+            TypeName = "func",
+            TypeCategoryPrime = ctor_cat_higher_order
+        ;
+            TypeName = "tuple",
+            TypeCategoryPrime = ctor_cat_tuple
+        ;
+            TypeName = "void",
+            TypeCategoryPrime = ctor_cat_void
+        )
+    ->
+        TypeCategory = TypeCategoryPrime
+    ;
+        TypeSymName = qualified(ModuleSymName, TypeName),
         ModuleSymName = mercury_private_builtin_module,
         Arity = 0,
         (
