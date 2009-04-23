@@ -1662,10 +1662,7 @@ no_clauses(PredName) :-
     // parameters that are not really passed around.  Occasionally a dummy
     // variable will be used by the code generator as an lval, so we use
     // private_builtin:dummy_var as that lval.
-    public static class Dummy {
-        public java.lang.Object F1;
-    };
-    public static Dummy dummy_var = new Dummy();
+    public static java.lang.Object dummy_var;
 ").
 
 :- pragma foreign_code("Java", "
