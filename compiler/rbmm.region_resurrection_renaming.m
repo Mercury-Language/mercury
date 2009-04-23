@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -66,21 +66,19 @@
 :- type join_point_region_name_table ==
     map(pred_proc_id, map(program_point, string)).
 
-    % This predicate traveses execution paths and computes two pieces of
-    % information:
-    % 1. The set of regions that become live before a program point
-    % (for each program point in a procedure).
-    % 2. For each procedure, compute the execution paths in which
-    % resurrections of regions happen. For such an execution path
-    % it also calculates the regions which resurrect. Only procedures
-    % which contain resurrection are kept in the results. And for such
-    % procedures only execution paths that contain resurrection are
-    % kept.
+    % This predicate traveses execution paths and detects ones in which
+    % resurrections of regions happen.
+    % For such an execution path it also calculates the regions which
+    % resurrect. Only procedures which contain resurrection are kept in the
+    % results. And for such procedures only execution paths that contain
+    % resurrection are kept.
     %
 :- pred compute_resurrection_paths(execution_path_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
-    proc_pp_region_set_table::out, proc_resurrection_path_table::out) is det.
+    proc_region_set_table::in,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::in,
+    proc_pp_region_set_table::in, proc_resurrection_path_table::out) is det.
 
     % Collect join points in procedures.
     % The purpose of finding join points in a procedure is because if a region
@@ -169,43 +167,45 @@
 
 %-----------------------------------------------------------------------------%
 
-    % This predicate traveses execution paths and computes 2 pieces of
-    % information:
-    % 1. The set of regions that become live before a program point
-    % (for each program point in a procedure).
-    % 2. For each procedure, compute the execution paths in which
-    % resurrections of regions happen. For such an execution path
-    % it also calculates the regions which resurrect. Only procedures
-    % which contain resurrection are kept in the results. And for such
-    % procedures only execution paths that contain resurrection are
-    % kept.
+    % This predicate traveses execution paths and detects ones in which
+    % resurrections of regions happen.
+    % For such an execution path it also calculates the regions which
+    % resurrect. Only procedures which contain resurrection are kept in the
+    % results. And for such procedures only execution paths that contain
+    % resurrection are kept.
     %
 compute_resurrection_paths(ExecPathTable, LRBeforeTable, LRAfterTable,
-        BornRTable, LocalRTable, CreatedBeforeTable,
+        BornRTable, DeadRTable, LocalRTable,
+        BecomeLiveTable, BecomeDeadBeforeTable, BecomeDeadAfterTable,
         PathContainsResurrectionTable) :-
-    map.foldl2(compute_resurrection_paths_proc(LRBeforeTable, LRAfterTable,
-        BornRTable, LocalRTable), ExecPathTable,
-        map.init, CreatedBeforeTable,
-        map.init, PathContainsResurrectionTable).
+    map.foldl(compute_resurrection_paths_proc(LRBeforeTable, LRAfterTable,
+        BornRTable, DeadRTable, LocalRTable,
+        BecomeLiveTable, BecomeDeadBeforeTable, BecomeDeadAfterTable),
+        ExecPathTable, map.init, PathContainsResurrectionTable).
 
 :- pred compute_resurrection_paths_proc(proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
-    proc_region_set_table::in, pred_proc_id::in, list(execution_path)::in,
-    proc_pp_region_set_table::in, proc_pp_region_set_table::out,
+    proc_region_set_table::in, proc_region_set_table::in,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::in, 
+    proc_pp_region_set_table::in, pred_proc_id::in, list(execution_path)::in,
     proc_resurrection_path_table::in, proc_resurrection_path_table::out)
     is det.
 
-compute_resurrection_paths_proc(LRBeforeTable, LRAfterTable, BornRTable,
-        LocalRTable, PPId, ExecPaths, !CreatedBeforeTable,
-        !PathContainsResurrectionTable) :-
+compute_resurrection_paths_proc(LRBeforeTable, LRAfterTable,
+        BornRTable, DeadRTable, LocalRTable,
+        BecomeLiveTable, BecomeDeadBeforeTable, BecomeDeadAfterTable,
+        PPId, ExecPaths, !PathContainsResurrectionTable) :-
     map.lookup(LRBeforeTable, PPId, LRBeforeProc),
     map.lookup(LRAfterTable, PPId, LRAfterProc),
-    map.lookup(BornRTable, PPId, BornRProc),
-    map.lookup(LocalRTable, PPId, LocalRProc),
-    list.foldl2(compute_resurrection_paths_exec_path(LRBeforeProc,
-        LRAfterProc, set.union(BornRProc, LocalRProc)), ExecPaths,
-        map.init, CreatedBeforeProc, map.init, PathContainsResurrectionProc),
-    svmap.set(PPId, CreatedBeforeProc, !CreatedBeforeTable),
+    map.lookup(BornRTable, PPId, _BornR),
+    map.lookup(DeadRTable, PPId, _DeadR),
+    map.lookup(LocalRTable, PPId, _LocalR),
+    map.lookup(BecomeLiveTable, PPId, BecomeLiveProc),
+    map.lookup(BecomeDeadBeforeTable, PPId, BecomeDeadBeforeProc),
+    map.lookup(BecomeDeadAfterTable, PPId, BecomeDeadAfterProc),
+    list.foldl(compute_resurrection_paths_exec_path(LRBeforeProc, LRAfterProc,
+        BecomeLiveProc, BecomeDeadBeforeProc, BecomeDeadAfterProc), ExecPaths,
+        map.init, PathContainsResurrectionProc),
     % We only want to include procedures in which resurrection happens in this
     % map.
     ( map.count(PathContainsResurrectionProc) = 0 ->
@@ -216,16 +216,17 @@ compute_resurrection_paths_proc(LRBeforeTable, LRAfterTable, BornRTable,
     ).
 
 :- pred compute_resurrection_paths_exec_path(pp_region_set_table::in,
-    pp_region_set_table::in, region_set::in, execution_path::in,
-    pp_region_set_table::in, pp_region_set_table::out,
+    pp_region_set_table::in, pp_region_set_table::in,
+    pp_region_set_table::in, pp_region_set_table::in, execution_path::in,
     exec_path_region_set_table::in, exec_path_region_set_table::out) is det.
 
-compute_resurrection_paths_exec_path(LRBeforeProc, LRAfterProc, Born_Local,
-        ExecPath, !CreatedBeforeProc, !ResurrectedRegionProc) :-
+compute_resurrection_paths_exec_path(LRBeforeProc, LRAfterProc,
+        BecomeLiveProc, BecomeDeadBeforeProc, BecomeDeadAfterProc,
+        ExecPath, !ResurrectedRegionProc) :-
     list.foldl3(compute_resurrection_paths_prog_point(LRBeforeProc,
-        LRAfterProc, Born_Local), ExecPath,
-        set.init, _, !CreatedBeforeProc,
-        set.init, ResurrectedRegionsInExecPath),
+        LRAfterProc, BecomeLiveProc, BecomeDeadBeforeProc,
+        BecomeDeadAfterProc), ExecPath,
+        set.init, _, set.init, _, set.init, ResurrectedRegionsInExecPath),
     % We want to record only execution paths in which resurrections happen.
     ( set.empty(ResurrectedRegionsInExecPath) ->
         true
@@ -235,32 +236,41 @@ compute_resurrection_paths_exec_path(LRBeforeProc, LRAfterProc, Born_Local,
     ).
 
 :- pred compute_resurrection_paths_prog_point(pp_region_set_table::in,
-    pp_region_set_table::in, region_set::in,
+    pp_region_set_table::in, pp_region_set_table::in,
+    pp_region_set_table::in, pp_region_set_table::in,
     pair(program_point, hlds_goal)::in, region_set::in, region_set::out,
-    pp_region_set_table::in, pp_region_set_table::out,
-    region_set::in, region_set::out) is det.
+    region_set::in, region_set::out, region_set::in, region_set::out) is det.
 
-compute_resurrection_paths_prog_point(LRBeforeProc, LRAfterProc, Born_Local,
-        ProgPoint - _, !Candidates, !CreatedBeforeProc,
+compute_resurrection_paths_prog_point(LRBeforeProc, LRAfterProc,
+        BecomeLiveProc, BecomeDeadBeforeProc, BecomeDeadAfterProc,
+        ProgPoint - _, !CreatedCandidates, !RemovedCandidates, 
         !ResurrectedRegionsInExecPath) :-
-    map.lookup(LRBeforeProc, ProgPoint, LRBeforeProgPoint),
-    map.lookup(LRAfterProc, ProgPoint, LRAfterProgPoint),
+    map.lookup(LRBeforeProc, ProgPoint, _LRBeforeProgPoint),
+    map.lookup(LRAfterProc, ProgPoint, _LRAfterProgPoint),
+    map.lookup(BecomeLiveProc, ProgPoint, BecomeLiveProgPoint),
+    map.lookup(BecomeDeadBeforeProc, ProgPoint, BecomeDeadBeforeProgPoint),
+    map.lookup(BecomeDeadAfterProc, ProgPoint, BecomeDeadAfterProgPoint),
+    set.union(BecomeDeadAfterProgPoint, BecomeDeadBeforeProgPoint,
+        BecomeDeadAtProgPoint),
 
-    % Regions which are created before this program point.
-    set.intersect(Born_Local,
-        set.difference(LRAfterProgPoint, LRBeforeProgPoint),
-        CreatedBeforeProgPoint),
-    svmap.set(ProgPoint, CreatedBeforeProgPoint, !CreatedBeforeProc),
+    % Resurrected regions:
+    % either become live at more than one program point
+    % or become dead at more than one program point in an execution path.
+    set.intersect(!.CreatedCandidates, BecomeLiveProgPoint,
+        CreatedResurrectedRegions),
+    set.union(CreatedResurrectedRegions, !ResurrectedRegionsInExecPath),
 
-    % Resurrected regions become live at more than one program point in an
-    % execution path.
-    set.intersect(!.Candidates, CreatedBeforeProgPoint, ResurrectedRegions),
-    set.union(ResurrectedRegions, !ResurrectedRegionsInExecPath),
+    set.intersect(!.RemovedCandidates, BecomeDeadAtProgPoint,
+        RemovedResurrectedRegions),
+    set.union(RemovedResurrectedRegions, !ResurrectedRegionsInExecPath),
 
-    % When a region is known to become live at one program point, it is
-    % considered a candidate for resurrection.
-    set.difference(set.union(!.Candidates, CreatedBeforeProgPoint),
-        !.ResurrectedRegionsInExecPath, !:Candidates).
+    % When a region is known to become live or become dead
+    % at one program point, it is considered a candidate for resurrection.
+    set.difference(set.union(!.CreatedCandidates, BecomeLiveProgPoint),
+        !.ResurrectedRegionsInExecPath, !:CreatedCandidates),
+
+    set.difference(set.union(!.RemovedCandidates, BecomeDeadAtProgPoint),
+        !.ResurrectedRegionsInExecPath, !:RemovedCandidates).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -424,10 +434,10 @@ find_join_points_in_path(ProgPointsInPath, JoinPoint, _, !JoinPoints) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-collect_region_resurrection_renaming(CreatedBeforeTable, LocalRTable,
+collect_region_resurrection_renaming(BecomeLiveTable, LocalRTable,
         RptaInfoTable, PathContainsResurrectionTable,
         ResurrectionRenameTable) :-
-    map.foldl(collect_region_resurrection_renaming_proc(CreatedBeforeTable,
+    map.foldl(collect_region_resurrection_renaming_proc(BecomeLiveTable,
         LocalRTable, RptaInfoTable), PathContainsResurrectionTable,
         map.init, ResurrectionRenameTable).
 
@@ -437,15 +447,15 @@ collect_region_resurrection_renaming(CreatedBeforeTable, LocalRTable,
     map(execution_path, region_set)::in, renaming_table::in,
     renaming_table::out) is det.
 
-collect_region_resurrection_renaming_proc(CreatedBeforeTable, _LocalRTable,
+collect_region_resurrection_renaming_proc(BecomeLiveTable, _LocalRTable,
         RptaInfoTable, PPId, PathsContainResurrection,
         !ResurrectionRenameTable) :-
-    map.lookup(CreatedBeforeTable, PPId, CreatedBeforeProc),
+    map.lookup(BecomeLiveTable, PPId, BecomeLiveProc),
     map.lookup(RptaInfoTable, PPId, RptaInfo),
     RptaInfo = rpta_info(Graph, _),
     map.foldl(
         collect_region_resurrection_renaming_exec_path(Graph,
-            CreatedBeforeProc),
+            BecomeLiveProc),
         PathsContainResurrection, map.init, ResurrectionRenameProc),
     svmap.set(PPId, ResurrectionRenameProc, !ResurrectionRenameTable).
 
@@ -454,11 +464,11 @@ collect_region_resurrection_renaming_proc(CreatedBeforeTable, _LocalRTable,
     region_set::in, renaming_proc::in,
     renaming_proc::out) is det.
 
-collect_region_resurrection_renaming_exec_path(Graph, CreatedBeforeProc,
+collect_region_resurrection_renaming_exec_path(Graph, BecomeLiveProc,
         ExecPath, ResurrectedRegions, !ResurrectionRenameProc) :-
     list.foldl2(
         collect_region_resurrection_renaming_prog_point(Graph,
-            CreatedBeforeProc, ResurrectedRegions),
+            BecomeLiveProc, ResurrectedRegions),
         ExecPath, counter.init(0), _, !ResurrectionRenameProc).
 
 :- pred collect_region_resurrection_renaming_prog_point(rpt_graph::in,
@@ -466,11 +476,11 @@ collect_region_resurrection_renaming_exec_path(Graph, CreatedBeforeProc,
     pair(program_point, hlds_goal)::in, counter::in, counter::out,
     renaming_proc::in, renaming_proc::out) is det.
 
-collect_region_resurrection_renaming_prog_point(Graph, CreatedBeforeProc,
+collect_region_resurrection_renaming_prog_point(Graph, BecomeLiveProc,
         ResurrectedRegions, ProgPoint - _, !RenamingCounter,
         !ResurrectionRenameProc) :-
-    map.lookup(CreatedBeforeProc, ProgPoint, CreatedBeforeProgPoint),
-    set.intersect(ResurrectedRegions, CreatedBeforeProgPoint,
+    map.lookup(BecomeLiveProc, ProgPoint, BecomeLiveProgPoint),
+    set.intersect(ResurrectedRegions, BecomeLiveProgPoint,
         ToBeRenamedRegions),
     % We only record the program points where resurrection renaming exists.
     ( set.empty(ToBeRenamedRegions) ->
@@ -506,7 +516,7 @@ record_renaming_prog_point(Graph, ProgPoint, RenamingCounter, Region,
 % Collect renaming at each program point.
 %
 % A renaming at a program point will be applied to annotations attached
-% to before and after it. If the associated (atomic) goal is procedure call
+% to before and after it. If the associated (atomic) goal is a procedure call
 % then the renaming is also applied to its actual region arguments. If the
 % goal is a construction the renaming is applied to the regions of the left
 % variable.

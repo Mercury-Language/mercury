@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -80,7 +80,9 @@ do_region_analysis(!ModuleInfo, !IO) :-
         VoidVarRegionTable0, VoidVarRegionTable),
     introduce_region_instructions(!.ModuleInfo, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable, VoidVarRegionTable,
-        BornRTable, DeadRTable, LocalRTable, RegionInstructionTable),
+        BornRTable, DeadRTable, LocalRTable,
+        BecomeLiveTable, BecomeDeadBeforeTable, BecomeDeadAfterTable,
+        RegionInstructionTable),
 
     record_actual_region_arguments(!.ModuleInfo, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable,
@@ -93,13 +95,14 @@ do_region_analysis(!ModuleInfo, !IO) :-
     % Mercury variables. 
     % The calls below derive the necessary mapping to resolve the problem.
     compute_resurrection_paths(ExecPathTable, LRBeforeTable, LRAfterTable, 
-        BornRTable, LocalRTable, CreatedBeforeTable,
+        BornRTable, DeadRTable, LocalRTable,
+        BecomeLiveTable, BecomeDeadBeforeTable, BecomeDeadAfterTable,
         ResurrectionPathTable0),
     collect_join_points(ResurrectionPathTable0, ExecPathTable,
         JoinPointTable),
     collect_paths_containing_join_points(ExecPathTable, JoinPointTable,
         ResurrectionPathTable0, ResurrectionPathTable),
-    collect_region_resurrection_renaming(CreatedBeforeTable, LocalRTable,
+    collect_region_resurrection_renaming(BecomeLiveTable, LocalRTable,
         RptaInfoTable, ResurrectionPathTable, ResurrectionRenameTable),
     collect_renaming_and_annotation(ResurrectionRenameTable, JoinPointTable,
         LRBeforeTable, LRAfterTable, BornRTable, RptaInfoTable,

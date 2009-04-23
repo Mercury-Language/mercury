@@ -70,11 +70,38 @@
     ;       remove_region_instr
     ;       renaming_region_instr.
 
+    % This predicate decides on where create and remove instructions need to
+    % be inserted. The decision is based on region points-to graphs and
+    % the region liveness information (both local and global).
+    %
+    % It also computes for each program point in a procedure
+    % the sets of regions that become live (always before), become dead before,
+    % become dead after the point.
+    %
+    % A region 'becomes live' before a program point means that
+    % *locally* it is not live before the point and live after the point and
+    % *globally* the procedure is allowed to give life to it.
+    %
+    % A region 'becomes dead before' a program point means that
+    % *locally* it is live after the previous program point and not live before
+    % the point and *globally* the procedure is allowed to terminate its life.
+    %
+    % A region 'becomes dead after' a program point means that
+    % *locally* it is live before the program point and not live after the
+    % point and *globally* the procedure is allowed to terminate its life.
+    %
+    % A procedure is 'allowed' to manipulate the regions belongs to either
+    % bornR or deadR or localR.
+    % 
+    % These sets are needed for computing resurrection of regions later on.
+    %
 :- pred introduce_region_instructions(module_info::in, rpta_info_table::in,
     execution_path_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
-    proc_region_set_table::in, region_instr_table::out) is det.
+    proc_region_set_table::in,
+    proc_pp_region_set_table::out, proc_pp_region_set_table::out,
+    proc_pp_region_set_table::out, region_instr_table::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -100,41 +127,55 @@
 
 introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
-        DeadRTable, LocalRTable, RegionInstructionTable) :-
+        DeadRTable, LocalRTable,
+        BecomeLiveTable, BecomeDeadBeforeTable, BecomeDeadAfterTable,
+        RegionInstructionTable) :-
     module_info_predids(PredIds, ModuleInfo, _),
-    map.init(RegionInstructionTable0),
-    list.foldl(introduce_region_instructions_pred(ModuleInfo,
+    list.foldl4(introduce_region_instructions_pred(ModuleInfo,
         RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
         VoidVarRegionTable, BornRTable, DeadRTable, LocalRTable), PredIds,
-        RegionInstructionTable0, RegionInstructionTable).
+        map.init, BecomeLiveTable, 
+        map.init, BecomeDeadBeforeTable, 
+        map.init, BecomeDeadAfterTable, 
+        map.init, RegionInstructionTable).
 
 :- pred introduce_region_instructions_pred(module_info::in,
     rpta_info_table::in, execution_path_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in, pred_id::in,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::out,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::out,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::out,
     region_instr_table::in, region_instr_table::out) is det.
 
 introduce_region_instructions_pred(ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
-        DeadRTable, LocalRTable, PredId, !RegionInstructionTable) :-
+        DeadRTable, LocalRTable, PredId,
+        !BecomeLiveTable, !BecomeDeadBeforeTable, !BecomeDeadAfterTable,
+        !RegionInstructionTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_non_imported_procids(PredInfo) = ProcIds,
-    list.foldl(introduce_region_instructions_proc(ModuleInfo, PredId,
+    list.foldl4(introduce_region_instructions_proc(ModuleInfo, PredId,
         RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
         VoidVarRegionTable, BornRTable, DeadRTable, LocalRTable),
-        ProcIds, !RegionInstructionTable).
+        ProcIds, !BecomeLiveTable, !BecomeDeadBeforeTable,
+        !BecomeDeadAfterTable, !RegionInstructionTable).
 
 :- pred introduce_region_instructions_proc(module_info::in, pred_id::in,
     rpta_info_table::in, execution_path_table::in,
     proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in, proc_id::in,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::out,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::out,
+    proc_pp_region_set_table::in, proc_pp_region_set_table::out,
     region_instr_table::in, region_instr_table::out) is det.
 
 introduce_region_instructions_proc(ModuleInfo, PredId, RptaInfoTable,
         ExecPathTable, LRBeforeTable, LRAfterTable, VoidVarRegionTable,
         BornRTable, DeadRTable, LocalRTable, ProcId,
+        !BecomeLiveTable, !BecomeDeadBeforeTable, !BecomeDeadAfterTable,
         !RegionInstructionTable) :-
     PPId = proc(PredId, ProcId),
     ( some_are_special_preds([PPId], ModuleInfo) ->
@@ -152,8 +193,14 @@ introduce_region_instructions_proc(ModuleInfo, PredId, RptaInfoTable,
         introduce_region_instructions_exec_paths(ExecPaths, RptaInfo,
             BornR, DeadR, LocalR, ProcLRBefore, ProcLRAfter,
             ProcVoidVarRegion, BornRTable, DeadRTable, ModuleInfo, ProcInfo,
+            map.init, BecomeLiveProc,
+            map.init, BecomeDeadBeforeProc,
+            map.init, BecomeDeadAfterProc,
             map.init, RegionInstructionProc),
-        svmap.set(PPId, RegionInstructionProc, !RegionInstructionTable)
+        svmap.set(PPId, RegionInstructionProc, !RegionInstructionTable),
+        svmap.set(PPId, BecomeLiveProc, !BecomeLiveTable),
+        svmap.set(PPId, BecomeDeadBeforeProc, !BecomeDeadBeforeTable),
+        svmap.set(PPId, BecomeDeadAfterProc, !BecomeDeadAfterTable)
     ).
 
     % Follow each execution path of a procedure and introduce
@@ -164,37 +211,54 @@ introduce_region_instructions_proc(ModuleInfo, PredId, RptaInfoTable,
     pp_region_set_table::in, pp_region_set_table::in,
     pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, module_info::in, proc_info::in,
+    pp_region_set_table::in, pp_region_set_table::out, 
+    pp_region_set_table::in, pp_region_set_table::out, 
+    pp_region_set_table::in, pp_region_set_table::out, 
     region_instr_proc::in, region_instr_proc::out) is det.
 
 introduce_region_instructions_exec_paths([], _, _, _, _, _, _, _, _, _, _, _,
+        !BecomeLiveProc, !BecomeDeadBeforeProc, !BecomeDeadAfterProc,
         !RegionInstructionProc).
 introduce_region_instructions_exec_paths([ExecPath|ExecPaths], RptaInfo,
         BornR, DeadR, LocalR, ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
         BornRTable, DeadRTable, ModuleInfo, ProcInfo,
+        !BecomeLiveProc, !BecomeDeadBeforeProc, !BecomeDeadAfterProc,
         !RegionInstructionProc) :-
     introduce_region_instructions_exec_path(ExecPath, RptaInfo, BornR,
         DeadR, LocalR, ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
-        BornRTable, DeadRTable, ModuleInfo, ProcInfo, !RegionInstructionProc),
+        BornRTable, DeadRTable, ModuleInfo, ProcInfo, set.init,
+        !BecomeLiveProc, !BecomeDeadBeforeProc, !BecomeDeadAfterProc,
+        !RegionInstructionProc),
     introduce_region_instructions_exec_paths(ExecPaths, RptaInfo, BornR,
         DeadR, LocalR, ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
-        BornRTable, DeadRTable, ModuleInfo, ProcInfo, !RegionInstructionProc).
+        BornRTable, DeadRTable, ModuleInfo, ProcInfo,
+        !BecomeLiveProc, !BecomeDeadBeforeProc, !BecomeDeadAfterProc,
+        !RegionInstructionProc).
 
 :- pred introduce_region_instructions_exec_path(execution_path::in,
-    rpta_info::in, set(rptg_node)::in, set(rptg_node)::in, set(rptg_node)::in,
+    rpta_info::in, region_set::in, region_set::in, region_set::in,
     pp_region_set_table::in, pp_region_set_table::in,
     pp_region_set_table::in, proc_region_set_table::in,
-    proc_region_set_table::in, module_info::in, proc_info::in,
+    proc_region_set_table::in, module_info::in, proc_info::in, region_set::in,
+    pp_region_set_table::in, pp_region_set_table::out, 
+    pp_region_set_table::in, pp_region_set_table::out, 
+    pp_region_set_table::in, pp_region_set_table::out, 
     region_instr_proc::in, region_instr_proc::out) is det.
 
-introduce_region_instructions_exec_path([], _, _, _, _, _, _, _, _, _, _, _,
+introduce_region_instructions_exec_path([], _, _, _, _, _, _, _, _, _, _, _, _,
+        !BecomeLiveProc, !BecomeDeadBeforeProc, !BecomeDeadAfterProc,
         !RegionInstructionProc).
 introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
         RptaInfo, BornR, DeadR, LocalR, ProcLRBefore, ProcLRAfter,
         ProcVoidVarRegion, BornRTable, DeadRTable, ModuleInfo, ProcInfo,
+        BecomeDeadBeforeProgPoint,
+        !BecomeLiveProc, !BecomeDeadBeforeProc, !BecomeDeadAfterProc,
         !RegionInstructionProc) :-
     map.lookup(ProcLRBefore, ProgPoint, LRBefore),
     map.lookup(ProcLRAfter, ProgPoint, LRAfter),
     map.lookup(ProcVoidVarRegion, ProgPoint, VoidVarRegions),
+
+    set.union(set.union(LocalR, BornR), DeadR, Allowed),
 
     % Because void variables at this program point are considered dead
     % right after they get bound, the regions that are reached from them
@@ -202,34 +266,34 @@ introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
     % program point if they are not live after the program point and they
     % are either in DeadR or LocalR or BornR.
     set.difference(VoidVarRegions, LRAfter, DeadVoidVarRegions0),
-    set.union(LocalR, BornR, Local_Born),
-    set.union(Local_Born, DeadR, Local_Born_Dead),
-    set.intersect(Local_Born_Dead, DeadVoidVarRegions0, DeadVoidVarRegions),
-    RptaInfo = rpta_info(CallerGraph, _),
-    set.fold(
-        record_instruction_after_prog_point(remove_region_instr,
-            ProgPoint, CallerGraph),
-        DeadVoidVarRegions, !RegionInstructionProc),
+    set.intersect(Allowed, DeadVoidVarRegions0, DeadVoidVarRegions),
 
-    set.difference(LRBefore, LRAfter, ToBeRemoved),
-    set.intersect(ToBeRemoved, Local_Born_Dead, ToBeRemovedAndAllowed),
-    ( Goal = hlds_goal(switch(_, _, _), _) ->
-        % This is a switch, i.e. unification, only rule 4 applied.
-        transformation_rule_4_2(ProgPoint, ToBeRemovedAndAllowed,
-            RptaInfo, !RegionInstructionProc)
-    ;
-        Goal = hlds_goal(Expr, _),
-        set.difference(LRAfter, LRBefore, ToBeCreated),
-        set.intersect(ToBeCreated, Local_Born, ToBeCreatedAndAllowed),
-        transformation_rule_1(Expr, ProgPoint, ToBeCreatedAndAllowed,
-            RptaInfo, BornRTable, !RegionInstructionProc),
-        transformation_rule_2(Expr, ProgPoint, ToBeCreatedAndAllowed,
-            RptaInfo, ModuleInfo, ProcInfo, !RegionInstructionProc),
-        transformation_rule_3(Expr, ProgPoint, ToBeRemovedAndAllowed,
-            RptaInfo, DeadRTable, !RegionInstructionProc),
-        transformation_rule_4(Expr, ProgPoint, ToBeRemovedAndAllowed,
-            RptaInfo, !RegionInstructionProc)
-    ),
+    RptaInfo = rpta_info(CallerGraph, _),
+
+    set.intersect(Allowed, set.difference(LRBefore, LRAfter), BecomeDead),
+    set.intersect(Allowed, set.difference(LRAfter, LRBefore), BecomeLive),
+
+    Goal = hlds_goal(Expr, _),
+    svmap.set(ProgPoint, BecomeLive, !BecomeLiveProc),
+
+    annotate_expr(Expr, ProgPoint, BecomeLive,
+        BecomeDead, RptaInfo, BornRTable, DeadRTable, ModuleInfo, ProcInfo,
+        CreatedBeforeProgPoint, RemovedAfterProgPoint),
+
+    set.fold(record_instruction_before_prog_point(create_region_instr,
+            ProgPoint, CallerGraph),
+        CreatedBeforeProgPoint, !RegionInstructionProc),
+    set.fold(record_instruction_before_prog_point(remove_region_instr,
+            ProgPoint, CallerGraph),
+        BecomeDeadBeforeProgPoint, !RegionInstructionProc),
+    set.fold(record_instruction_after_prog_point(remove_region_instr,
+            ProgPoint, CallerGraph),
+        RemovedAfterProgPoint, !RegionInstructionProc),
+
+    svmap.set(ProgPoint, set.union(BecomeDead, DeadVoidVarRegions),
+        !BecomeDeadAfterProc),
+    svmap.set(ProgPoint, BecomeLive, !BecomeLiveProc),
+    svmap.set(ProgPoint, BecomeDeadBeforeProgPoint, !BecomeDeadBeforeProc),
 
     (
         ProgPoint_Goals = [NextProgPoint - _ | _],
@@ -239,47 +303,35 @@ introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
         % before the next program point if the current procedure is allowed
         % to remove it.
         map.lookup(ProcLRBefore, NextProgPoint, LRBeforeNext),
-        set.difference(LRAfter, LRBeforeNext, ToBeRemovedBeforeNext),
-        set.intersect(Local_Born_Dead, ToBeRemovedBeforeNext,
-            ToBeRemovedBeforeNextAndAllowed),
-        set.fold(record_instruction_before_prog_point(
-                remove_region_instr, NextProgPoint, CallerGraph),
-            ToBeRemovedBeforeNextAndAllowed,
-            !RegionInstructionProc),
+        
+        set.intersect(Allowed, set.difference(LRAfter, LRBeforeNext),
+            BecomeDeadBeforeNextProgPoint),
 
         introduce_region_instructions_exec_path(ProgPoint_Goals, RptaInfo,
             BornR, DeadR, LocalR,
             ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
             BornRTable, DeadRTable, ModuleInfo, ProcInfo,
+            BecomeDeadBeforeNextProgPoint, 
+            !BecomeLiveProc, !BecomeDeadBeforeProc, !BecomeDeadAfterProc,
             !RegionInstructionProc)
     ;
         % This is the last program point, we finish.
         ProgPoint_Goals = []
     ).
 
-    % Rule 1: if an output region of q is not live, not created by q,
-    % and p is allowed to create it, it is created before the call to q.
-    %
-    % There are two cases: either q is defined in this module or q is
-    % imported.
-    % The former is dealt with as per the rule.
-    % The latter: for now, with the assumption that all source code is in
-    % only one module, imported preds will only be ones from
-    % Mercury's library. We do not intent to deal with the library's code
-    % now therefore we have to assume here that the caller will always
-    % *CREATE* the OUTPUT REGION for those procedures.
-    %
-:- pred transformation_rule_1(hlds_goal_expr::in, program_point::in,
-    region_set::in, rpta_info::in, proc_region_set_table::in,
-    region_instr_proc::in, region_instr_proc::out) is det.
+:- pred annotate_expr(hlds_goal_expr::in, program_point::in,
+    region_set::in, region_set::in, rpta_info::in, proc_region_set_table::in,
+    proc_region_set_table::in, module_info::in, proc_info::in,
+    region_set::out, region_set::out) is det.
 
-transformation_rule_1(Expr, ProgPoint, ToBeCreatedAndAllowed, CallerRptaInfo,
-        BornRTable, !RegionInstructionProc) :-
+annotate_expr(Expr, ProgPoint, BecomeLive, BecomeDead,
+        RptaInfo, BornRTable, DeadRTable, ModuleInfo, ProcInfo,
+        CreatedBeforeProgPoint, RemovedAfterProgPoint) :-
     (
         Expr = plain_call(CalleePredId, CalleeProcId, _, _, _, _)
     ->
         CalleePPId = proc(CalleePredId, CalleeProcId),
-        CallerRptaInfo = rpta_info(CallerGraph, AlphaMapping),
+        RptaInfo = rpta_info(_CallerGraph, AlphaMapping),
         (
             % Currently we do not collect BornR for non-defined-in-module
             % procedure, so if we cannot find one here then q is an
@@ -287,202 +339,115 @@ transformation_rule_1(Expr, ProgPoint, ToBeCreatedAndAllowed, CallerRptaInfo,
             map.search(BornRTable, CalleePPId, _)
         ->
             map.lookup(AlphaMapping, ProgPoint, AlphaAtProgPoint),
+
+            % Rule 1: if an output region of q is not live, not created by q,
+            % and p is allowed to create it, it is created before the call to
+            % q.
             map.lookup(BornRTable, CalleePPId, CalleeBornR),
             map.foldl(
-                process_mapping_rule_1(ProgPoint, ToBeCreatedAndAllowed,
-                    CalleeBornR, CallerGraph),
-                AlphaAtProgPoint, !RegionInstructionProc)
+                process_mapping_rule_1(BecomeLive, CalleeBornR),
+                AlphaAtProgPoint, set.init, CreatedBeforeProgPoint),
+
+            % Rule 3: add remove(R) after the call.
+            % Transformation rule 3: if a region is live before q but it is not
+            % live after q and it is not removed by q, the caller will remove
+            % it after calling q.
+            map.lookup(DeadRTable, CalleePPId, CalleeDeadR),
+            map.foldl(process_mapping_rule_3(BecomeDead, CalleeDeadR),
+                AlphaAtProgPoint, set.init, RemovedAfterProgPoint)
         ;
-            % q is from an imported module, therefore we consider BornR of
-            % q empty, so just create whatever regions becoming live
-            % provided that they are in BornR or LocalR, i.e., p is allowed
-            % to create them.
-            set.fold(
-                record_instruction_before_prog_point(create_region_instr,
-                    ProgPoint, CallerGraph),
-                ToBeCreatedAndAllowed, !RegionInstructionProc)
+            % XXX q is from an imported module. We do not support module
+            % system yet.
+            % For now we consider BornR and DeadR of q empty,
+            % therefore just create and remove whatever regions becoming live
+            % and dead.
+            CreatedBeforeProgPoint = BecomeLive,
+            RemovedAfterProgPoint = BecomeDead
         )
+    ;
+        Expr = unify(X, _, _, Kind, _)
+    ->
+        RptaInfo = rpta_info(Graph, _AlphaMapping),
+        (
+            Kind = construct(_, _, _, _, _, _, _),
+            % Rule 2: if a region reachable from the left variable of a
+            % construction is not live before the construction but it is live
+            % after and p is allowed to create it, then the region is
+            % created before the unification.
+
+            % Regions reachable from X.
+            rptg_reach_from_a_variable(Graph, ModuleInfo, ProcInfo, X,
+                set.init, Reach_X),
+
+            set.intersect(Reach_X, BecomeLive, CreatedBeforeProgPoint)
+        ;
+            ( Kind = deconstruct(_, _, _, _, _, _)
+            ; Kind = assign(_, _)
+            ; Kind = simple_test(_, _)
+            ; Kind = complicated_unify(_, _, _)
+            ),
+            CreatedBeforeProgPoint = set.init
+        ),
+        % Rule 4: if a region is live before a unification but
+        % it is not live after and p is allowed to remove it,
+        % then it is removed after the unification.
+        %
+        RemovedAfterProgPoint = BecomeDead
+    ;
+        Expr = switch(_, _, _)
+    ->
+        % Special treatment for an atomic switch, i.e. a deconstruction
+        % unification that has been removed by MMC. We record the remove
+        % annotations after the program point.
+        % 
+        CreatedBeforeProgPoint = set.init,
+        RemovedAfterProgPoint = BecomeDead
     ;
         ( Expr = conj(_, [])
         ; Expr = disj([])
-        ; Expr = unify(_, _, _, _, _)
         )
     ->
-        true
+        CreatedBeforeProgPoint = set.init,
+        RemovedAfterProgPoint = set.init
     ;
-        unexpected(this_file, "transformation_rule_1: found non-atomic goal")
+        unexpected(this_file, "annotate_expr: non-atomic goal found")
     ).
 
-:- pred process_mapping_rule_1(program_point::in, region_set::in,
-    region_set::in, rpt_graph::in, rptg_node::in, rptg_node::in,
-    region_instr_proc::in, region_instr_proc::out) is det.
+    % This predicate ensures that, out of the regions that become live at
+    % the call, we only explicitly create ones that are not created by the
+    % call.
+    %
+:- pred process_mapping_rule_1(region_set::in, region_set::in, rptg_node::in,
+    rptg_node::in, region_set::in, region_set::out) is det.
 
-process_mapping_rule_1(ProgPoint, ToBeCreatedAndAllowed, CalleeBornR,
-        CallerGraph, SourceRegion, TargetRegion, !RegionInstructionProc) :-
+process_mapping_rule_1(BecomeLive, CalleeBornR,
+        SourceRegion, TargetRegion, !CreatedBeforeProgPoint) :-
     (
-        set.contains(ToBeCreatedAndAllowed, TargetRegion),
+        set.contains(BecomeLive, TargetRegion),
         not set.contains(CalleeBornR, SourceRegion)
     ->
-        record_instruction_before_prog_point(create_region_instr,
-            ProgPoint, CallerGraph, TargetRegion, !RegionInstructionProc)
+        svset.insert(TargetRegion, !CreatedBeforeProgPoint)
     ;
         true
     ).
 
-    % Transformation rule 2: if a region reachable from the left variable
-    % of a construction is not live before the construction but it is live
-    % after and is a local region or in a BornR set, then the region is
-    % created before the unification.
+    % This predicate ensures that, out of the regions that become dead at
+    % the call, we only explicitly remove ones that are not removed by the
+    % call.
     %
-:- pred transformation_rule_2(hlds_goal_expr::in, program_point::in,
-    region_set::in, rpta_info::in, module_info::in, proc_info::in,
-    region_instr_proc::in, region_instr_proc::out) is det.
+:- pred process_mapping_rule_3(region_set::in, region_set::in,
+    rptg_node::in, rptg_node::in, region_set::in, region_set::out) is det.
 
-transformation_rule_2(Expr, ProgPoint, ToBeCreatedAndAllowed, RptaInfo,
-        ModuleInfo, ProcInfo, !RegionInstructionProc) :-
+process_mapping_rule_3(BecomeDead, CalleeDeadR, SourceRegion,
+        TargetRegion, !RemovedAfterProgPoint) :-
     (
-        Expr = unify(X, _, _, construct(_, _, _, _, _, _, _), _)
-    ->
-        RptaInfo = rpta_info(Graph, _AlphaMapping),
-        % Need to be regions reachable from X.
-        rptg_reach_from_a_variable(Graph, ModuleInfo, ProcInfo, X,
-            set.init, Reach_X),
-
-        set.intersect(Reach_X, ToBeCreatedAndAllowed,
-            ToBeCreatedAllowedAndReached),
-        set.fold(
-            record_instruction_before_prog_point(create_region_instr,
-                ProgPoint, Graph),
-            ToBeCreatedAllowedAndReached, !RegionInstructionProc)
-    ;
-        ( Expr = unify(_, _, _, deconstruct(_, _, _, _, _, _), _)
-        ; Expr = unify(_, _, _, assign(_, _), _)
-        ; Expr = unify(_, _, _, simple_test(_, _), _)
-        ; Expr = unify(_, _, _, complicated_unify(_, _, _), _)
-        ; Expr = plain_call(_, _, _, _, _, _)
-        ; Expr = conj(_, [])
-        ; Expr = disj([])
-        )
-    ->
-        true
-    ;
-        unexpected(this_file, "transformation_rule_2: non-atomic goal found")
-    ).
-
-    % Transformation rule 3: if a region is live before q but it is not
-    % live after q and it is not removed by q, the caller will remove it
-    % after calling q.
-    %
-    % There are two cases: either q is defined in this module or q is
-    % imported.
-    % The former is straightforward because we have the analysis information
-    % for q.
-    % The latter for now, with the assumption that all source code is in
-    % only one module, imported preds will only be ones from
-    % Mercury's library. We do not intent to deal with the library's code
-    % now therefore we have to assume here that the caller will always
-    % REMOVE the REGIONs for those procedures.
-    %
-:- pred transformation_rule_3(hlds_goal_expr::in, program_point::in,
-    region_set::in, rpta_info::in, proc_region_set_table::in,
-    region_instr_proc::in, region_instr_proc::out) is det.
-
-transformation_rule_3(Expr, ProgPoint, ToBeRemovedAndAllowed, CallerRptaInfo,
-        DeadRTable, !RegionInstructionProc) :-
-    (
-        Expr =  plain_call(CalleePredId, CalleeProcId, _, _, _, _)
-    ->
-        CalleePPId = proc(CalleePredId, CalleeProcId),
-        CallerRptaInfo = rpta_info(CallerGraph, AlphaMapping),
-        ( map.search(DeadRTable, CalleePPId, _) ->
-            map.lookup(AlphaMapping, ProgPoint, AlphaAtProgPoint),
-
-            map.lookup(DeadRTable, CalleePPId, CalleeDeadR),
-            map.foldl(
-                process_mapping_rule_3(ProgPoint, ToBeRemovedAndAllowed,
-                    CalleeDeadR, CallerGraph),
-                AlphaAtProgPoint, !RegionInstructionProc)
-        ;
-            % q is from an imported module. So just remove whatever regions
-            % become dead provided that p is allowed to remove those
-            % regions.
-            set.fold(
-                record_instruction_after_prog_point(remove_region_instr,
-                    ProgPoint, CallerGraph),
-                ToBeRemovedAndAllowed, !RegionInstructionProc)
-        )
-    ;
-        ( Expr = unify(_, _, _, _, _)
-        ; Expr = conj(_, [])
-        ; Expr = disj([])
-        )
-    ->
-        true
-    ;
-        unexpected(this_file, "transformation_rule_3: non-atomic goal found")
-    ).
-
-:- pred process_mapping_rule_3(program_point::in, region_set::in,
-    region_set::in, rpt_graph::in, rptg_node::in, rptg_node::in,
-    region_instr_proc::in, region_instr_proc::out) is det.
-
-process_mapping_rule_3(ProgPoint, ToBeRemovedAndAllowed, CalleeDeadR,
-        CallerGraph, SourceRegion, TargetRegion, !RegionInstructionProc) :-
-    (
-        set.contains(ToBeRemovedAndAllowed, TargetRegion),
+        set.contains(BecomeDead, TargetRegion),
         not set.contains(CalleeDeadR, SourceRegion)
     ->
-        record_instruction_after_prog_point(remove_region_instr,
-            ProgPoint, CallerGraph, TargetRegion, !RegionInstructionProc)
+        svset.insert(TargetRegion, !RemovedAfterProgPoint)
     ;
         true
     ).
-
-    % Transformation rule 4: if a region is live before a unification but
-    % it is not live after and it is in the dead region set or is a local
-    % region, then it is removed after the unification if the current
-    % procedure is allowed to remove it.
-    %
-:- pred transformation_rule_4(hlds_goal_expr::in, program_point::in,
-    region_set::in, rpta_info::in, region_instr_proc::in,
-    region_instr_proc::out) is det.
-
-transformation_rule_4(Expr, ProgPoint, ToBeRemovedAndAllowed, RptaInfo,
-        !RegionInstructionProc) :-
-    (
-        Expr = unify(_, _, _, _, _)
-    ->
-        RptaInfo = rpta_info(Graph, _),
-        set.fold(
-            record_instruction_after_prog_point(remove_region_instr,
-                ProgPoint, Graph),
-            ToBeRemovedAndAllowed, !RegionInstructionProc)
-    ;
-        ( Expr = plain_call(_, _, _, _, _, _)
-        ; Expr = conj(_, [])
-        ; Expr = disj([])
-        )
-    ->
-        true
-    ;
-        unexpected(this_file, "transformation_rule_4: non-atomic goal found")
-    ).
-
-    % This is for the case rule 4 applied for a unification in a switch,
-    % the unification has been removed by MMC.
-    % We will record the annotations after the program point.
-    %
-:- pred transformation_rule_4_2(program_point::in, region_set::in,
-    rpta_info::in, region_instr_proc::in, region_instr_proc::out)
-    is det.
-
-transformation_rule_4_2(ProgPoint, ToBeRemovedAndAllowed, RptaInfo,
-        !RegionInstructionProc) :-
-    RptaInfo = rpta_info(Graph, _),
-    set.fold(
-        record_instruction_after_prog_point(remove_region_instr,
-            ProgPoint, Graph),
-        ToBeRemovedAndAllowed, !RegionInstructionProc).
 
 :- pred record_instruction_after_prog_point(region_instr_type::in,
     program_point::in, rpt_graph::in, rptg_node::in,
