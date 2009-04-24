@@ -661,6 +661,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         intermodule optimization pulls in a lot of code which isn't
         %         needed, so ensure that this dead code is removed.
         %   - no library grade installation check with `mmc --make'. 
+        %   - no pretest equality check
+        %     Because it assumes pointers can be cast to integers.
 
         ( 
             Target = target_java,
@@ -680,6 +682,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(static_ground_cells, bool(no), !Globals),
             globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
             globals.set_option(libgrade_install_check, bool(no), !Globals),
+            globals.set_option(should_pretest_equality, bool(no), !Globals),
     
             (
                 AutoIntermodOptimization = yes,
