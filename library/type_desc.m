@@ -923,6 +923,30 @@ get_type_info_for_type_info = TypeDesc :-
             (""compare/3 for type_ctor_desc type implemented"");
     }
 
+    public static class Pseudo_type_desc_0 {
+        // not filled in yet
+    }
+
+    public static boolean
+    __Unify____pseudo_type_desc_0_0(
+        mercury.type_desc.Pseudo_type_desc_0 x,
+        mercury.type_desc.Pseudo_type_desc_0 y)
+    {
+        // stub only
+        throw new java.lang.Error(
+            ""__Unify____type_ctor_desc_0_0 not implemented"");
+    }
+
+    public static mercury.builtin.Comparison_result_0
+    __Compare____pseudo_type_desc_0_0(
+        mercury.type_desc.Pseudo_type_desc_0 x,
+        mercury.type_desc.Pseudo_type_desc_0 y)
+    {
+        // stub only
+        throw new java.lang.Error(
+            ""__Compare____pseudo_type_desc_0_0 not implemented"");
+    }
+
 ").
 
 :- pragma foreign_code("Erlang", "

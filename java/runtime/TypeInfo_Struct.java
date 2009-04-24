@@ -10,9 +10,14 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 
 	public TypeCtorInfo_Struct type_ctor;
 	public PseudoTypeInfo args[];
-    
+
+	public TypeInfo_Struct(TypeCtorInfo_Struct tc)
+	{
+		type_ctor = tc;
+	}
+
     	// raw constructor
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, PseudoTypeInfo[] as)
+	public TypeInfo_Struct(TypeCtorInfo_Struct tc, PseudoTypeInfo... as)
 	{
 		type_ctor = tc;
 		args = as;
@@ -28,34 +33,24 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 		args = ti.args;
 	}
 
-	//
-	// constructors for fixed-arity type_infos
-	//
-
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc)
+	// XXX "as" should have type PseudoTypeInfo[],
+	//     but mlds_to_java.m uses Object[]
+	//     because init_array/1 does not store the type.
+	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity, Object[] as)
 	{
+		assert arity == as.length;
+
 		type_ctor = tc;
-		args = null;
+		args = new PseudoTypeInfo[as.length];
+		for (int i = 0; i < as.length; i++) {
+			args[i] = (PseudoTypeInfo) as[i];
+		}
 	}
 
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, PseudoTypeInfo a1)
-	{
-		type_ctor = tc;
-		args = new PseudoTypeInfo[] { a1 };
-	}
-
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, PseudoTypeInfo a1,
-				PseudoTypeInfo a2)
-	{
-		type_ctor = tc;
-		args = new PseudoTypeInfo[] { a1, a2 };
-	}
-
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc,
-			// XXX "as" should have type PseudoTypeInfo[],
-			//     but mlds_to_java.m uses Object[]
-			//     because init_array/1 does not store the type.
-			Object[] as)
+	// XXX "as" should have type PseudoTypeInfo[],
+	//     but mlds_to_java.m uses Object[]
+	//     because init_array/1 does not store the type.
+	public TypeInfo_Struct(TypeCtorInfo_Struct tc, Object[] as)
 	{
 		type_ctor = tc;
 		args = new PseudoTypeInfo[as.length];
@@ -64,65 +59,27 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 		}
 	}
 
-	//
-	// constructors for variable-arity type_infos (tuple, pred, func)
-	//
-
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity)
+	// XXX untested guess
+	public TypeInfo_Struct(TypeInfo_Struct ti, int arity, Object... as)
 	{
-		// assert arity == 0;
-		type_ctor = tc;
-		args = new PseudoTypeInfo[] { };
+		this(ti.type_ctor, arity, as);
 	}
 
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity,
-			PseudoTypeInfo a1)
+	// XXX untested guess
+	public TypeInfo_Struct(TypeInfo_Struct ti, Object... as)
 	{
-		// assert arity == 1;
-		type_ctor = tc;
-		args = new PseudoTypeInfo[] { a1 };
+		this(ti.type_ctor, as);
 	}
-
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity,
-			PseudoTypeInfo a1, PseudoTypeInfo a2)
-	{
-		// assert arity == 2;
-		type_ctor = tc;
-		args = new PseudoTypeInfo[] { a1, a2 };
-	}
-
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity,
-			// XXX "as" should have type PseudoTypeInfo[],
-			//     but mlds_to_java.m uses Object[]
-			//     because init_array/1 does not store the type.
-			Object[] as)
-	{
-		// assert arity == as.length;
-		type_ctor = tc;
-		args = new PseudoTypeInfo[as.length];
-		for (int i = 0; i < as.length; i++) {
-			args[i] = (PseudoTypeInfo) as[i];
-		}
-	}
-
 
 	// XXX a temp hack just to get things to run
 	public TypeInfo_Struct(java.lang.Object obj)
 	{
-		try {
+		if (obj instanceof TypeInfo_Struct) {
 			TypeInfo_Struct ti = (TypeInfo_Struct) obj;
 			type_ctor = ti.type_ctor;
 			args = ti.args;
-		} catch (java.lang.Exception e) {
-			try {
-				TypeCtorInfo_Struct tci =
-					(TypeCtorInfo_Struct) obj;
-				type_ctor = tci;
-				args = null;
-			} catch (java.lang.Exception e2) {
-				throw new java.lang.Error(
-					"TypeInfo_Struct(Object)");
-			}
+		} else {
+			throw new java.lang.Error("TypeInfo_Struct(Object)");
 		}
 	}
 

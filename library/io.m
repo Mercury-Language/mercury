@@ -8757,56 +8757,56 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdout_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stdout;
 ").
 
 :- pragma foreign_proc("Java",
-    io.stderr_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stderr;
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdin_binary_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stdin_binary;
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdout_binary_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stdout_binary;
 ").
 
 :- pragma foreign_proc("Java",
-    io.input_stream(Stream::out, _IO0::di, _IO::uo),
+    io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury_current_text_input;
 ").
 
 :- pragma foreign_proc("Java",
-    io.output_stream(Stream::out, _IO0::di, _IO::uo),
+    io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury_current_text_output;
 ").
 
 :- pragma foreign_proc("Java",
-    io.binary_input_stream(Stream::out, _IO0::di, _IO::uo),
+    io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury_current_binary_input;
 ").
 
 :- pragma foreign_proc("Java",
-    io.binary_output_stream(Stream::out, _IO0::di, _IO::uo),
+    io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury_current_binary_output;
