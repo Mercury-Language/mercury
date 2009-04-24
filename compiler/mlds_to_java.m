@@ -2075,8 +2075,7 @@ output_mercury_type(Type, CtorCat, !IO) :-
         io.write_string("double", !IO)
     ;
         CtorCat = ctor_cat_void,
-        % Shouldn't matter what we put here.
-        io.write_string("int", !IO)
+        io.write_string("mercury.builtin.Void_0", !IO)
     ;
         CtorCat = ctor_cat_variable,
         io.write_string("java.lang.Object", !IO)
@@ -2512,7 +2511,7 @@ output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
             RetTypes = []
         ;
             RetTypes = [RetType],
-            ( java_builtin_type(ModuleInfo, RetType, _, JavaBoxedName, _) ->
+            ( java_builtin_type(RetType, _, JavaBoxedName, _) ->
                 io.write_string("((", !IO),
                 io.write_string(JavaBoxedName, !IO),
                 io.write_string(") ", !IO)
@@ -2545,7 +2544,7 @@ output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
             RetTypes = []
         ;
             RetTypes = [RetType2],
-            ( java_builtin_type(ModuleInfo, RetType2, _, _, UnboxMethod) ->
+            ( java_builtin_type(RetType2, _, _, UnboxMethod) ->
                 io.write_string(").", !IO),
                 io.write_string(UnboxMethod, !IO),
                 io.write_string("()", !IO)
@@ -2778,7 +2777,7 @@ output_assign_results(ModuleInfo, [Lval | Lvals], [Type | Types], ResultIndex,
     indent_line(Context, Indent, !IO),
     output_lval(ModuleInfo, Lval, ModuleName, !IO),
     io.write_string(" = ", !IO),
-    output_unboxed_result(ModuleInfo, Type, ResultIndex, !IO),
+    output_unboxed_result(Type, ResultIndex, !IO),
     io.write_string(";\n", !IO),
     output_assign_results(ModuleInfo, Lvals, Types, ResultIndex + 1,
         ModuleName, Indent, Context, !IO).
@@ -2787,11 +2786,10 @@ output_assign_results(_, [_ | _], [], _, _, _, _, _, _) :-
 output_assign_results(_, [], [_ | _], _, _, _, _, _, _) :-
     unexpected(this_file, "output_assign_results: list lenght mismatch.").
 
-:- pred output_unboxed_result(module_info::in, mlds_type::in, int::in,
-    io::di, io::uo) is det.
+:- pred output_unboxed_result(mlds_type::in, int::in, io::di, io::uo) is det.
 
-output_unboxed_result(ModuleInfo, Type, ResultIndex, !IO) :-
-    ( java_builtin_type(ModuleInfo, Type, _, JavaBoxedName, UnboxMethod) ->
+output_unboxed_result(Type, ResultIndex, !IO) :-
+    ( java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) ->
         io.write_string("((", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string(") ", !IO),
@@ -3259,7 +3257,7 @@ output_cast_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
     io.write_string("(", !IO),
     output_type(Type, !IO),
     io.write_string(") ", !IO),
-    ( java_builtin_type(ModuleInfo, Type, "int", _, _) ->
+    ( java_builtin_type(Type, "int", _, _) ->
         output_rval_maybe_with_enum(ModuleInfo, Exprn, ModuleName, !IO)
     ;
         output_rval(ModuleInfo, Exprn, ModuleName, !IO)
@@ -3269,7 +3267,7 @@ output_cast_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
      mlds_module_name::in, io::di, io::uo) is det.
 
 output_boxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
-    ( java_builtin_type(ModuleInfo, Type, _JavaName, JavaBoxedName, _) ->
+    ( java_builtin_type(Type, _JavaName, JavaBoxedName, _) ->
         io.write_string("new ", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string("(", !IO),
@@ -3285,7 +3283,7 @@ output_boxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
     mlds_module_name::in, io::di, io::uo) is det.
 
 output_unboxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
-    ( java_builtin_type(ModuleInfo, Type, _, JavaBoxedName, UnboxMethod) ->
+    ( java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) ->
         io.write_string("((", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string(") ", !IO),
@@ -3301,42 +3299,41 @@ output_unboxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
         io.write_string(")", !IO)
     ).
 
-    % java_builtin_type(ModuleInfo, MLDS_Type, JavaUnboxedType, JavaBoxedType,
-    %   UnboxMethod):
+    % java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod):
     %
     % For a given Mercury type, check if this corresponds to a Java type
     % which has both unboxed (builtin) and boxed (class) versions, and if so,
     % return their names, and the name of the method to get the unboxed value
     % from the boxed type.
     %
-:- pred java_builtin_type(module_info::in, mlds_type::in, string::out,
-    string::out, string::out) is semidet.
+:- pred java_builtin_type(mlds_type::in, string::out, string::out, string::out)
+    is semidet.
 
-java_builtin_type(_, Type, "int", "java.lang.Integer", "intValue") :-
+java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     Type = mlds_native_int_type.
-java_builtin_type(_, Type, "int", "java.lang.Integer", "intValue") :-
+java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     Type = mercury_type(builtin_type(builtin_type_int), _, _).
-java_builtin_type(_, Type, "double", "java.lang.Double", "doubleValue") :-
+java_builtin_type(Type, "double", "java.lang.Double", "doubleValue") :-
     Type = mlds_native_float_type.
-java_builtin_type(_, Type, "double", "java.lang.Double", "doubleValue") :-
+java_builtin_type(Type, "double", "java.lang.Double", "doubleValue") :-
     Type = mercury_type(builtin_type(builtin_type_float), _, _).
-java_builtin_type(_, Type, "char", "java.lang.Character", "charValue") :-
+java_builtin_type(Type, "char", "java.lang.Character", "charValue") :-
     Type = mlds_native_char_type.
-java_builtin_type(_, Type, "char", "java.lang.Character", "charValue") :-
+java_builtin_type(Type, "char", "java.lang.Character", "charValue") :-
     Type = mercury_type(builtin_type(builtin_type_character), _, _).
-java_builtin_type(_, Type, "boolean", "java.lang.Boolean", "booleanValue") :-
+java_builtin_type(Type, "boolean", "java.lang.Boolean", "booleanValue") :-
     Type = mlds_native_bool_type.
 
     % io.state and store.store(S) are dummy variables
     % for which we pass an arbitrary integer. For this
     % reason they should have the Java type `int'.
     %
-java_builtin_type(ModuleInfo, Type, "int", "java.lang.Integer", "intValue") :-
+java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     % The test for defined/3 is logically redundant since all dummy
     % types are defined types, but enables the compiler to infer that
     % this disjunction is a switch.
-    Type = mercury_type(MercuryType @ defined_type(_, _, _), _, _),
-    check_dummy_type(ModuleInfo, MercuryType) = is_dummy_type.
+    Type = mercury_type(defined_type(_, _, _), TypeCtorCat, _),
+    TypeCtorCat = ctor_cat_builtin_dummy.
 
 :- pred output_std_unop(module_info::in, builtin_ops.unary_op::in,
     mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
