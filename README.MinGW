@@ -17,30 +17,38 @@ To build the source distribution under MSYS follow these steps:
 
 1.  Download and install MinGW and MSYS
     (available from <http://www.mingw.org>).
-    
-    You will need to install the following MinGW packages:
-      * gcc-core-3.4.2-20040916-1.tar.gz
-      * mingw-runtime-3.9.tar.gz
-      * w32api-3.5.tar.gz
-      * binutils-2.15.91-20040904-1.tar.gz
-    and the following MSYS packages:
-      * MSYS-1.0.10.exe
-      * msysDTK-1.0.1.exe
-      * msys-autoconf-2.59.tar.bz2
-    Later versions of the above packages may also work, but earlier versions
-    should be avoided.
-    
-    You also need to download and install the flex and bison packages
-    from GnuWin32 <http://sourceforge.net/projects/gnuwin32/>.
+
+    To get MinGW just download the Automated MinGW Installer and run it.
+
+    To get a version of MSYS which is capable of installing Mercury is more
+    difficult.  The following process works as of 2009-04-25 and note the
+    special handling under Vista
+
+    - Run MSYS-1.0.10.exe
+    - If you are running VISTA then press N in the postinstall script,
+      otherwise press Y.
+    - Run msysDTK-1.0.1.exe
+    - In a cygwin prompt cd /cygdrive/c/msys/1.0 
+      VISTA and later start cygwin using "Run as Administrator"
+    - tar xzf msysCORE-1.0.11-20080826.tar.gz
+    - tar xzf MSYS-1.0.11-20090120-dll.tar.gz
+    - VISTA or later create the file etc/fstab with the line "c:/mingw /mingw"
+    - Start msys
+    - cd /
+    - tar xjf autoconf-4-1-bin.tar.bz2
+    - tar xjf autoconf2.1-2.13-3-bin.tar.bz2
+    - tar xjf bison-2.3-MSYS-1.0.11-1.tar.bz2
+    - tar xjf flex-2.5.33-MSYS-1.0.11-1.tar.bz2
+    - tar xjf regex-0.12-MSYS-1.0.11-1.tar.bz2
 
 2.  Open an MSYS session and unpack the source distribution with a command 
     like:
     
-    	tar -xvzf mercury-compiler-<VERSION>.tar.gz
+        tar -xvzf mercury-compiler-<VERSION>.tar.gz
 
 3.  cd into the new directory and run configure:
 
-    	./configure --prefix=c:/mercury
+        ./configure --prefix=c:/mercury
 
     It is important to specify the installation prefix as a full windows
     path with a drive letter (except use `/' instead of `\').  
