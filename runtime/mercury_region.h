@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007-2008 The University of Melbourne.
+** Copyright (C) 2007-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -25,11 +25,6 @@
 */
 
 /*
-** XXX: Many of these macros would be more efficient if they updated the
-** pointer processed in each loop iteration using pointer increment operations
-** instead of recomputing it each time from the pointer to the first element,
-** and the loop variable  i.
-**
 ** XXX Many of these macros would be more readable if they used array notation.
 ** For example, stack_pointer[offset] instead *(stack_pointer + offset),
 ** and &stack_pointer[offset] instead (stack_pointer + offset).
@@ -52,6 +47,9 @@
 #define     MR_REGION_SEMI_DISJ_PROT_SIZE                   1
 #define     MR_REGION_DISJ_SNAPSHOT_SIZE                    3
 #define     MR_REGION_COMMIT_SAVE_SIZE                      1
+
+#define     MR_REGION_DISJ_FRAME_TYPE       0
+#define     MR_REGION_ITE_FRAME_TYPE        1
 
 /*
 ** A region page contains an array (of MR_Word) to store program data and
@@ -128,7 +126,7 @@ struct MR_RegionHeader_Struct {
     ** the region. It means that it will be reset at backtracking if the region
     ** is restored from its snapshot.
     */
-    int                 MR_region_allocated_size;
+    int                                 MR_region_allocated_size;
 #endif
 };
 
@@ -258,7 +256,9 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
 ** push_region_frame
 */
 
-#define     MR_push_region_ite_frame(new_ite_sp)                            \
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_push_region_ite_frame(new_ite_sp)                            \
             do {                                                            \
                 MR_RegionIteFixedFrame      *new_ite_frame;                 \
                                                                             \
@@ -272,7 +272,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_push_ite_frame(new_ite_frame);              \
             } while (0)
 
-#define     MR_push_region_disj_frame(new_disj_sp)                          \
+  #define   MR_push_region_disj_frame(new_disj_sp)                          \
             do {                                                            \
                 MR_RegionDisjFixedFrame     *new_disj_frame;                \
                                                                             \
@@ -287,7 +287,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_push_disj_frame(new_disj_frame);            \
             } while (0)
 
-#define     MR_push_region_commit_frame(new_commit_sp)                      \
+  #define   MR_push_region_commit_frame(new_commit_sp)                      \
             do {                                                            \
                 MR_RegionCommitFixedFrame   *new_commit_frame;              \
                                                                             \
@@ -303,6 +303,37 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_push_commit_frame(new_commit_frame);        \
             } while (0)
 
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_push_region_ite_frame(new_ite_sp)                            \
+            do {                                                            \
+                MR_push_region_ite_frame_proc(                              \
+                        (MR_RegionIteFixedFrame *) (new_ite_sp) );          \
+            } while (0)
+
+  #define   MR_push_region_disj_frame(new_disj_sp)                          \
+            do {                                                            \
+                MR_push_region_disj_frame_proc(                             \
+                        (MR_RegionDisjFixedFrame *) (new_disj_sp) );        \
+            } while (0)
+
+  #define   MR_push_region_commit_frame(new_commit_sp)                      \
+            do {                                                            \
+                MR_push_region_commit_frame_proc(                           \
+                    (MR_RegionCommitFixedFrame *) (new_commit_sp) );        \
+            } while (0)
+
+    extern  void    MR_push_region_ite_frame_proc(
+                        MR_RegionIteFixedFrame *new_ite_frame);
+
+    extern  void    MR_push_region_disj_frame_proc(
+                        MR_RegionDisjFixedFrame *new_disj_frame);
+
+    extern  void    MR_push_region_commit_frame_proc(
+                        MR_RegionCommitFixedFrame *new_commit_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
 /*---------------------------------------------------------------------------*/
 /*
 ** region_fill_frame
@@ -314,7 +345,10 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
 ** If save the region, then set the ite_protected field in these regions
 ** to point to the frame.
 */
-#define     MR_region_fill_ite_protect(ite_sp, region_ptr,                  \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_fill_ite_protect(ite_sp, region_ptr,                  \
                 num_protected_regions, region_slot_reg)                     \
             do {                                                            \
                 MR_RegionHeader         *region;                            \
@@ -328,7 +362,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                     ite_prot = (MR_RegionIteProtect *) (region_slot_reg);   \
                     ite_prot->MR_ite_prot_region = region;                  \
                     (num_protected_regions)++;                              \
-                    (region_slot_reg) = (MR_Word)(ite_prot + 1);            \
+                    (region_slot_reg) = (MR_Word) (ite_prot + 1);           \
                     region->MR_region_ite_protected =                       \
                         (MR_RegionIteFixedFrame *) (ite_sp);                \
                     MR_region_profile_fill_ite_protect;                     \
@@ -338,6 +372,31 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 }                                                           \
                 MR_region_debug_end("fill_ite_protect");                    \
             } while (0)
+
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_fill_ite_protect(ite_sp, region_ptr,                  \
+                num_protected_regions, region_slot_reg)                     \
+            do {                                                            \
+                int                     incr;                               \
+                MR_RegionIteProtect     *ite_prot;                          \
+                                                                            \
+                ite_prot = (MR_RegionIteProtect *) (region_slot_reg);       \
+                incr = MR_region_fill_ite_protect_func(                     \
+                    (MR_RegionIteFixedFrame *) (ite_sp),                    \
+                    (MR_RegionHeader *) (region_ptr),                       \
+                    ite_prot);                                              \
+                (num_protected_regions) += incr;                            \
+                ite_prot += incr;                                           \
+                (region_slot_reg) = ( (MR_Word) ite_prot );                 \
+            } while (0)
+
+  extern    int     MR_region_fill_ite_protect_func(
+                        MR_RegionIteFixedFrame *ite_sp,
+                        MR_RegionHeader *region,
+                        MR_RegionIteProtect *ite_prot);
+
+#endif      /* MR_RBMM_USE_MACROS */
 
 /*
 ** This is to prepare for instant reclaiming at the start of else. For instant
@@ -355,14 +414,16 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
 /*
 ** XXX ite_sp is not used here.
 */
-#define     MR_region_fill_ite_snapshot_removed(ite_sp, region_ptr,         \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_fill_ite_snapshot_removed(ite_sp, region_ptr,         \
                 num_snapshots, snapshot_block)                              \
             do {                                                            \
                 MR_RegionHeader         *region;                            \
                 MR_RegionSnapshot       *snapshot;                          \
                                                                             \
-                MR_region_debug_start(                                      \
-                    "fill_ite_snapshot_removed");                           \
+                MR_region_debug_start("fill_ite_snapshot_removed");         \
                 region = (MR_RegionHeader *) (region_ptr);                  \
                 snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
                 if ((region->MR_region_ite_protected != NULL &&             \
@@ -382,15 +443,40 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("fill_ite_snapshot_removed");           \
             } while (0)
 
-/* XXX: This can be made more efficient because we will save them all */
-#define     MR_region_fill_ite_snapshot_not_removed(ite_sp, region_ptr,     \
+#else   /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_fill_ite_snapshot_removed(ite_sp, region_ptr,         \
+                num_snapshots, snapshot_block)                              \
+            do {                                                            \
+                int                     incr;                               \
+                MR_RegionSnapshot       *snapshot;                          \
+                                                                            \
+                snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
+                incr = MR_region_fill_ite_snapshot_removed_func(            \
+                        (MR_RegionHeader *) (region_ptr),                   \
+                        snapshot);                                          \
+                (num_snapshots) += incr;                                    \
+                snapshot += incr;                                           \
+                (snapshot_block) = ( (MR_Word) snapshot );                  \
+            } while (0)
+
+    extern  int     MR_region_fill_ite_snapshot_removed_func(
+                        MR_RegionHeader         *region,
+                        MR_RegionSnapshot       *snapshot);
+
+#endif  /* MR_RBMM_USE_MACROS */
+
+/* XXX: This can be made more efficient because we will save them all. */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_fill_ite_snapshot_not_removed(ite_sp, region_ptr,     \
                 num_snapshots, snapshot_block)                              \
             do {                                                            \
                 MR_RegionHeader         *region;                            \
                 MR_RegionSnapshot       *snapshot;                          \
                                                                             \
-                MR_region_debug_start(                                      \
-                    "fill_ite_snapshot_not_removed");                       \
+                MR_region_debug_start("fill_ite_snapshot_not_removed");     \
                 region = (MR_RegionHeader *) (region_ptr);                  \
                 snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
                 MR_save_snapshot(region, snapshot);                         \
@@ -399,11 +485,37 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 (num_snapshots)++;                                          \
                 MR_region_debug_fill_ite_snapshot_not_removed(snapshot,     \
                     region);                                                \
-                MR_region_debug_end(                                        \
-                    "fill_ite_snapshot_not_removed");                       \
+                MR_region_debug_end("fill_ite_snapshot_not_removed");       \
             } while (0)
 
-#define     MR_region_fill_semi_disj_protect(disj_sp, region_ptr,           \
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_fill_ite_snapshot_not_removed(ite_sp, region_ptr,     \
+                num_snapshots, snapshot_block)                              \
+            do {                                                            \
+                MR_RegionSnapshot       *snapshot;                          \
+                                                                            \
+                snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
+                MR_region_fill_ite_snapshot_not_removed_proc(               \
+                        (MR_RegionHeader *) (region_ptr),                   \
+                        snapshot);                                          \
+                (snapshot_block) = (MR_Word) (snapshot + 1);                \
+                (num_snapshots)++;                                          \
+            } while (0)
+            
+    extern  void    MR_region_fill_ite_snapshot_not_removed_proc(
+                        MR_RegionHeader *region,
+                        MR_RegionSnapshot *snapshot);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
+/*
+** XXX disj_sp is actually not needed here.
+*/
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_fill_semi_disj_protect(disj_sp, region_ptr,           \
                 num_protected_regions, protection_block)                    \
             do {                                                            \
                 MR_RegionHeader             *region;                        \
@@ -428,8 +540,36 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("fill_ite_protect");                    \
             } while (0)
 
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_fill_semi_disj_protect(disj_sp, region_ptr,           \
+                num_protected_regions, protection_block)                    \
+            do {                                                            \
+                MR_RegionHeader             *region;                        \
+                MR_RegionSemiDisjProtect    *semi_disj_prot;                \
+                                                                            \
+                semi_disj_prot =                                            \
+                    (MR_RegionSemiDisjProtect *) (protection_block);        \
+                incr = MR_region_fill_semi_disj_protect_func(               \
+                        (MR_RegionHeader *) (region_ptr),                   \
+                        semi_disj_prot);                                    \
+                (num_protected_regions) += incr;                            \
+                semi_disj_prot += incr;                                     \
+                (protection_block) = ( (MR_Word)semi_disj_prot );           \
+            } while (0)
+
+    extern  int     MR_region_fill_semi_disj_protect_func(
+                        MR_RegionHeader *region,
+                        MR_RegionSemiDisjProtect *semi_disj_prot);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
 /* XXX: This can be made more efficient because we will save them all */
-#define     MR_region_fill_disj_snapshot(disj_sp, region_ptr,               \
+/* XXX: disj_sp is actually not needed. */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_fill_disj_snapshot(disj_sp, region_ptr,               \
                 num_snapshots, snapshot_block)                              \
             do {                                                            \
                 MR_RegionHeader         *region;                            \
@@ -446,12 +586,36 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("fill_disj_snapshot");                  \
             } while (0)
 
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_fill_disj_snapshot(disj_sp, region_ptr,               \
+                num_snapshots, snapshot_block)                              \
+            do {                                                            \
+                MR_RegionSnapshot       *snapshot;                          \
+                                                                            \
+                snapshot = (MR_RegionSnapshot *) (snapshot_block);          \
+                MR_region_fill_disj_snapshot_proc(                          \
+                        (MR_RegionHeader *) (region_ptr),                   \
+                        snapshot);                                          \
+                (snapshot_block) = (MR_Word) (snapshot + 1);                \
+                (num_snapshots)++;                                          \
+            } while (0)
+
+    extern  void    MR_region_fill_disj_snapshot_proc(
+                        MR_RegionHeader *region,
+                        MR_RegionSnapshot *snapshot);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
 /*
 ** Save the live and unprotected regions which are input to the commit goal
 ** into the top commit stack frame.
 ** Set the commit_frame field in these regions to point to the frame.
 */
-#define     MR_region_fill_commit(commit_sp, region_ptr,                    \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_fill_commit(commit_sp, region_ptr,                    \
                 num_saved_region_reg, region_slot_reg)                      \
             do {                                                            \
                 MR_RegionHeader         *region;                            \
@@ -464,7 +628,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 {                                                           \
                     commit_save = (MR_RegionCommitSave *) (region_slot_reg);\
                     commit_save->MR_commit_save_region = region;            \
-                    num_saved_region_reg++;                                 \
+                    (num_saved_region_reg)++;                               \
                     (region_slot_reg) = (MR_Word) (commit_save + 1);        \
                     region->MR_region_commit_frame =                        \
                         (MR_RegionCommitFixedFrame *) (commit_sp);          \
@@ -475,6 +639,31 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 }                                                           \
                 MR_region_debug_end("fill_commit");                         \
             } while (0)
+
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_fill_commit(commit_sp, region_ptr,                    \
+                num_saved_region_reg, region_slot_reg)                      \
+            do {                                                            \
+                int                     incr;                               \
+                MR_RegionCommitSave     *commit_save;                       \
+                                                                            \
+                commit_save = (MR_RegionCommitSave *) (region_slot_reg);    \
+                incr = MR_region_fill_commit_func(                          \
+                        (MR_RegionCommitFixedFrame *) (commit_sp),          \
+                        (MR_RegionHeader *) (region_ptr),                   \
+                        commit_save);                                       \
+                (num_saved_region_reg) += incr;                             \
+                commit_save += incr;                                        \
+                (region_slot_reg) = ( (MR_Word) commit_save );              \
+            } while (0)
+
+    extern  int     MR_region_fill_commit_func(
+                            MR_RegionCommitFixedFrame *commit_sp,
+                            MR_RegionHeader *region,
+                            MR_RegionCommitSave *commit_save);
+
+#endif      /* MR_RBMM_USE_MACROS */
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -535,7 +724,10 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
 **  + 2. if we destroy a protected region, we have to nullify its
 **  corresponding entry in the ite frame.
 */
-#define     MR_use_region_ite_then_semidet(ite_sp)                          \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_use_region_ite_then_semidet(ite_sp)                          \
             do {                                                            \
                 MR_RegionIteFixedFrame      *top_ite_frame;                 \
                 MR_RegionIteProtect         *ite_prot;                      \
@@ -554,7 +746,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("use_region_ite_then_semidet");         \
             } while (0)
 
-#define     MR_use_region_ite_then_nondet(ite_sp)                           \
+  #define   MR_use_region_ite_then_nondet(ite_sp)                           \
             do {                                                            \
                 MR_RegionIteFixedFrame      *top_ite_frame;                 \
                 MR_RegionIteProtect         *ite_prot;                      \
@@ -574,7 +766,32 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("use_region_ite_then_nondet");          \
             } while (0)
 
-#define     MR_use_region_ite_else_semidet(ite_sp)                          \
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_use_region_ite_then_semidet(ite_sp)                          \
+            do {                                                            \
+                MR_use_region_ite_then_semidet_proc(                        \
+                        (MR_RegionIteFixedFrame *) (ite_sp));               \
+            } while (0)
+
+    extern  void    MR_use_region_ite_then_semidet_proc(
+                        MR_RegionIteFixedFrame *top_ite_frame);
+
+  #define   MR_use_region_ite_then_nondet(ite_sp)                           \
+            do {                                                            \
+                top_ite_frame = (MR_RegionIteFixedFrame *) (ite_sp);        \
+                MR_use_region_ite_then_nondet_proc(                         \
+                        (MR_RegionIteFixedFrame *) (ite_sp));               \
+            } while (0)
+
+    extern  void    MR_use_region_ite_then_nondet_proc(
+                        MR_RegionIteFixedFrame *top_ite_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_use_region_ite_else_semidet(ite_sp)                          \
             do {                                                            \
                 MR_RegionIteFixedFrame      *top_ite_frame;                 \
                                                                             \
@@ -584,7 +801,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("use_region_ite_else_semidet");         \
             } while (0)
 
-#define     MR_use_region_ite_else_nondet(ite_sp)                           \
+  #define   MR_use_region_ite_else_nondet(ite_sp)                           \
             do {                                                            \
                 MR_RegionIteFixedFrame      *top_ite_frame;                 \
                                                                             \
@@ -593,6 +810,28 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_process_at_ite_else(top_ite_frame);               \
                 MR_region_debug_end("use_region_ite_else_nondet");          \
             } while (0)
+
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_use_region_ite_else_semidet(ite_sp)                          \
+            do {                                                            \
+                MR_use_region_ite_else_semidet_proc(                        \
+                        (MR_RegionIteFixedFrame *) (ite_sp));               \
+            } while (0)
+    
+    extern  void    MR_use_region_ite_else_semidet_proc(
+                        MR_RegionIteFixedFrame *top_ite_frame);
+
+  #define   MR_use_region_ite_else_nondet(ite_sp)                           \
+            do {                                                            \
+                MR_use_region_ite_else_nondet_proc(                         \
+                        (MR_RegionIteFixedFrame *) (ite_sp));               \
+            } while (0)
+
+    extern  void    MR_use_region_ite_else_nondet_proc(
+                        MR_RegionIteFixedFrame *top_ite_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
 
 /*
 ** This is to handle the post-success failure of the condition in an
@@ -615,7 +854,10 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
 ** suboptimal but the cost seems negligible.
 ** After that the frame is discarded.
 */
-#define     MR_use_region_ite_nondet_cond_fail(ite_sp)                      \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_use_region_ite_nondet_cond_fail(ite_sp)                      \
             do {                                                            \
                 MR_RegionIteFixedFrame      *top_ite_frame;                 \
                                                                             \
@@ -626,7 +868,22 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("use_region_ite_nondet_cond_fail");     \
             } while (0)
 
-#define     MR_use_region_disj_later(disj_sp)                               \
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_use_region_ite_nondet_cond_fail(ite_sp)                      \
+            do {                                                            \
+                MR_use_region_ite_nondet_cond_fail(                         \
+                        (MR_RegionIteFixedFrame *) (ite_sp));               \
+            } while (0)
+
+    extern  void    MR_use_region_ite_nondet_cond_fail_proc(
+                        MR_RegionIteFixedFrame *top_ite_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_use_region_disj_later(disj_sp)                               \
             do {                                                            \
                 MR_RegionDisjFixedFrame     *top_disj_frame;                \
                                                                             \
@@ -637,7 +894,22 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("use_region_disj_later");               \
             } while (0)
 
-#define     MR_use_region_disj_nonlast_semi_commit(disj_sp)                 \
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_use_region_disj_later(disj_sp)                               \
+            do {                                                            \
+                MR_use_region_disj_later_proc(                              \
+                        (MR_RegionDisjFixedFrame *) (disj_sp));             \
+            } while (0)
+
+    extern  void    MR_use_region_disj_later_proc(
+                        MR_RegionDisjFixedFrame *top_disj_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_use_region_disj_nonlast_semi_commit(disj_sp)                 \
             do {                                                            \
                 MR_RegionDisjFixedFrame     *top_disj_frame;                \
                 MR_RegionSemiDisjProtect    *semi_disj_prot;                \
@@ -646,7 +918,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_start(                                      \
                     "use_region_disj_nonlast_semi_commit");                 \
                 top_disj_frame = (MR_RegionDisjFixedFrame *) (disj_sp);     \
-                /* XXX destroy any regions protected by the disj frame */   \
+                /* Destroy any regions protected by the disj frame */       \
                 semi_disj_prot = (MR_RegionSemiDisjProtect *) ( (disj_sp) + \
                     MR_REGION_DISJ_FRAME_FIXED_SIZE);                       \
                 for (i = 0; i < top_disj_frame->MR_rdff_num_prot_regions;   \
@@ -658,7 +930,26 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("use_region_disj_nonlast_semi_commit"); \
             } while (0)
 
-#define     MR_use_region_disj_last(disj_sp)                                \
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_use_region_disj_nonlast_semi_commit(disj_sp)                 \
+            do {                                                            \
+                MR_RegionDisjFixedFrame     *top_disj_frame;                \
+                MR_RegionSemiDisjProtect    *semi_disj_prot;                \
+                int                         i;                              \
+                                                                            \
+                MR_use_region_disj_nonlast_semi_commit_proc(                \
+                        (MR_RegionDisjFixedFrame *) (disj_sp));             \
+            } while (0)
+
+    extern  void    MR_use_region_disj_nonlast_semi_commit_proc(
+                        MR_RegionDisjFixedFrame *top_disj_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_use_region_disj_last(disj_sp)                                \
             do {                                                            \
                 MR_RegionDisjFixedFrame     *top_disj_frame;                \
                                                                             \
@@ -670,7 +961,22 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("use_region_disj_last");                \
             } while (0)
 
-#define     MR_use_region_commit_success(commit_sp)                         \
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_use_region_disj_last(disj_sp)                                \
+            do {                                                            \
+                MR_use_region_disj_last_proc(                               \
+                        (MR_RegionDisjFixedFrame *) (disj_sp) );            \
+            } while (0)
+
+    extern  void    MR_use_region_disj_last_proc(
+                        MR_RegionDisjFixedFrame *top_disj_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_use_region_commit_success(commit_sp)                         \
             do {                                                            \
                 MR_RegionCommitFixedFrame       *top_commit_frame;          \
                 MR_RegionCommitSave             *first_commit_save;         \
@@ -692,12 +998,28 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_debug_end("use_region_commit_success");           \
             } while (0)
 
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_use_region_commit_success(commit_sp)                         \
+            do {                                                            \
+                MR_use_region_commit_success_proc(                          \
+                    (MR_RegionCommitFixedFrame *) (commit_sp) );            \
+            } while (0)
+
+    extern  void    MR_use_region_commit_success_proc(
+                        MR_RegionCommitFixedFrame *top_commit_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
 /*
 ** Commit failure means that the goal in the commit operation has failed.
 ** We reset the commit_frame field of the saved regions at the commit frame to
 ** NULL. Then the top commit frame is popped.
 */
-#define     MR_use_region_commit_failure(commit_sp)                         \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_use_region_commit_failure(commit_sp)                         \
             do {                                                            \
                 MR_RegionCommitFixedFrame       *top_commit_frame;          \
                 MR_RegionCommitSave             *commit_save;               \
@@ -719,6 +1041,19 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_pop_region_commit_frame(top_commit_frame);               \
                 MR_region_debug_end("use_region_commit_failure");           \
             } while (0)
+
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_use_region_commit_failure(commit_sp)                         \
+            do {                                                            \
+                MR_use_region_commit_failure_proc(                          \
+                        (MR_RegionCommitFixedFrame *) (commit_sp) );        \
+            } while (0)
+
+    extern  void    MR_use_region_commit_failure_proc(
+                        MR_RegionCommitFixedFrame *top_commit_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
 
 extern  void    MR_commit_success_destroy_marked_saved_regions(
                     MR_Word number_of_saved_regions,
@@ -761,7 +1096,10 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 ** 3. instant reclaiming by destroying new regions created in the condition,
 ** 4. pop the current ite frame.
 */
-#define     MR_region_process_at_ite_else(top_ite_frame)                    \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_process_at_ite_else(top_ite_frame)                    \
             do {                                                            \
                 MR_region_ite_unprotect(top_ite_frame);                     \
                 MR_region_ite_restore_from_snapshots(top_ite_frame);        \
@@ -769,10 +1107,25 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                 MR_pop_region_ite_frame(top_ite_frame);                     \
             } while (0)
 
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_process_at_ite_else(top_ite_frame)                    \
+            do {                                                            \
+                MR_region_process_at_ite_else_proc(top_ite_frame);          \
+            } while (0)
+
+    extern  void    MR_region_process_at_ite_else_proc(
+                        MR_RegionIteFixedFrame *top_ite_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
 /*
 ** Unprotect the protected regions at the beginning of the else part.
 */
-#define     MR_region_ite_unprotect(top_ite_frame)                          \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_ite_unprotect(top_ite_frame)                          \
             do {                                                            \
                 MR_RegionIteProtect     *ite_prot;                          \
                 MR_RegionHeader         *protected_region;                  \
@@ -792,13 +1145,26 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                 MR_region_debug_end("ite_unprotect");                       \
             } while (0)
 
-#define     MR_region_ite_restore_from_snapshots(top_ite_frame)             \
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_ite_unprotect(top_ite_frame)                          \
+            do {                                                            \
+                MR_region_ite_unprotect_proc(top_ite_frame);                \
+            } while (0)
+
+    extern  void    MR_region_ite_unprotect_proc(
+                        MR_RegionIteFixedFrame *top_ite_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_ite_restore_from_snapshots(top_ite_frame)             \
             do {                                                            \
                 MR_RegionSnapshot       *first_snapshot;                    \
                 MR_Word                 protection_size;                    \
                                                                             \
-                MR_region_debug_start(                                      \
-                    "ite_restore_from_snapshot");                           \
+                MR_region_debug_start("ite_restore_from_snapshot");         \
                 protection_size = top_ite_frame->MR_riff_num_prot_regions * \
                     MR_REGION_ITE_PROT_SIZE;                                \
                 first_snapshot = (MR_RegionSnapshot *) (                    \
@@ -806,20 +1172,43 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                     MR_REGION_ITE_FRAME_FIXED_SIZE + protection_size);      \
                 MR_restore_snapshots(top_ite_frame->MR_riff_num_snapshots,  \
                     first_snapshot);                                        \
-                MR_region_debug_end(                                        \
-                    "ite_restore_from_snapshot");                           \
+                MR_region_debug_end("ite_restore_from_snapshot");           \
             } while (0)
 
-#define     MR_region_ite_destroy_new_regions(top_ite_frame)                \
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_ite_restore_from_snapshots(top_ite_frame)             \
             do {                                                            \
-                MR_region_debug_start(                                      \
-                    "ite_destroy_new_regions");                             \
+                MR_region_ite_restore_from_snapshots_proc(top_ite_frame);   \
+            } while (0)
+ 
+    extern  void    MR_region_ite_restore_from_snapshots_proc(
+                        MR_RegionIteFixedFrame *top_ite_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_ite_destroy_new_regions(top_ite_frame)                \
+            do {                                                            \
+                MR_region_debug_start("ite_destroy_new_regions");           \
                 MR_region_frame_destroy_new_regions(                        \
                     top_ite_frame->MR_riff_saved_sequence_number,           \
                     MR_REGION_ITE_FRAME_TYPE);                              \
-                MR_region_debug_end(                                        \
-                    "ite_destroy_new_regions");                             \
+                MR_region_debug_end("ite_destroy_new_regions");             \
             } while (0)
+
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_ite_destroy_new_regions(top_ite_frame)                \
+            do {                                                            \
+                MR_region_ite_destroy_new_regions_proc(top_ite_frame);      \
+            } while (0)
+
+    extern  void    MR_region_ite_destroy_new_regions_proc(
+                        MR_RegionIteFixedFrame *top_ite_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
 
 /*---------------------------------------------------------------------------*/
 /* Helpers for nondet disjunction support. */
@@ -827,12 +1216,14 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 /*
 ** At any non-first disjunct, try instant reclaiming from snapshots.
 */
-#define     MR_region_disj_restore_from_snapshots(top_disj_frame)           \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_disj_restore_from_snapshots(top_disj_frame)           \
             do {                                                            \
                 MR_RegionSnapshot       *first_snapshot;                    \
                                                                             \
-                MR_region_debug_start(                                      \
-                    "disj_restore_from_snapshots");                         \
+                MR_region_debug_start("disj_restore_from_snapshots");       \
                 first_snapshot = (MR_RegionSnapshot *) (                    \
                     (MR_Word *) (top_disj_frame) +                          \
                     MR_REGION_DISJ_FRAME_FIXED_SIZE +                       \
@@ -840,37 +1231,74 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                         top_disj_frame->MR_rdff_num_prot_regions);          \
                 MR_restore_snapshots(top_disj_frame->MR_rdff_num_snapshots, \
                     first_snapshot);                                        \
-                MR_region_debug_end(                                        \
-                    "disj_restore_from_snapshots");                         \
+                MR_region_debug_end("disj_restore_from_snapshots");         \
             } while (0)
+
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_disj_restore_from_snapshots(top_disj_frame)           \
+            do {                                                            \
+                MR_region_disj_restore_from_snapshots_proc(top_disj_frame); \
+            } while (0)
+
+    extern  void    MR_region_disj_restore_from_snapshots_proc(
+                        MR_RegionDisjFixedFrame *top_disj_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
 
 /*
 ** At any non-first disjunct, try instant reclaiming by destroying new
 ** regions.
 */
-#define     MR_region_disj_destroy_new_regions(top_disj_frame)              \
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_disj_destroy_new_regions(top_disj_frame)              \
             do {                                                            \
-                MR_region_debug_start(                                      \
-                    "disj_destroy_new_regions");                            \
+                MR_region_debug_start("disj_destroy_new_regions");          \
                 MR_region_frame_destroy_new_regions(                        \
                     top_disj_frame->MR_rdff_saved_sequence_number,          \
                     MR_REGION_DISJ_FRAME_TYPE);                             \
-                MR_region_debug_end(                                        \
-                    "disj_destroy_new_regions");                            \
+                MR_region_debug_end("disj_destroy_new_regions");            \
             } while (0)
+
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_disj_destroy_new_regions(top_disj_frame)              \
+            do {                                                            \
+                MR_region_disj_destroy_new_regions_proc(top_disj_frame);    \
+            } while (0)
+
+    extern  void    MR_region_disj_destroy_new_regions_proc(
+                        MR_RegionDisjFixedFrame *top_disj_frame);
+
+#endif      /* MR_RBMM_USE_MACROS */
 
 /*---------------------------------------------------------------------------*/
 
-#define     MR_save_snapshot(region, snapshot)                              \
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_save_snapshot(region, snapshot)                              \
             do {                                                            \
-                snapshot->MR_snapshot_region = (region);                    \
-                snapshot->MR_snapshot_saved_last_page =                     \
+                (snapshot)->MR_snapshot_region = (region);                  \
+                (snapshot)->MR_snapshot_saved_last_page =                   \
                     (region)->MR_region_last_page;                          \
-                snapshot->MR_snapshot_saved_next_available_word =           \
+                (snapshot)->MR_snapshot_saved_next_available_word =         \
                     (region)->MR_region_next_available_word;                \
             } while (0)
 
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_save_snapshot(region, snapshot)                              \
+            do {                                                            \
+                MR_save_snapshot_proc(region,snapshot);                     \
+            } while (0)
+
+    extern  void    MR_save_snapshot_proc(MR_RegionHeader *region,
+                        MR_RegionSnapshot *snapshot);
                 
+#endif      /* MR_RBMM_USE_MACROS */
+
 /*
 ** XXX For profiling:
 ** One correct way to reset the allocated_size is to save it in the snapshot
@@ -881,7 +1309,9 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 ** allocated_size sometimes is not realiable.
 */
 
-#define     MR_restore_snapshots(num_snapshots, first_snapshot)             \
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_restore_snapshots(num_snapshots, first_snapshot)             \
             do {                                                            \
                 MR_RegionSnapshot   *snapshot;                              \
                 MR_RegionHeader     *restoring_region;                      \
@@ -909,7 +1339,21 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                 }                                                           \
             } while(0)
 
-#define     MR_region_frame_destroy_new_regions(saved_sequence_number,      \
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_restore_snapshots(num_snapshots, first_snapshot)             \
+            do {                                                            \
+                MR_restore_snapshots_proc(num_snapshots, first_snapshot);   \
+            } while(0)
+
+    extern  void    MR_restore_snapshots_proc(int num_snapshots,
+                        MR_RegionSnapshot *first_snapshot);
+
+#endif      /* MR_RBMM_USE_MACROS */
+
+#ifdef      MR_RBMM_USE_MACROS
+
+  #define   MR_region_frame_destroy_new_regions(saved_sequence_number,      \
                 frame_type)                                                 \
             do {                                                            \
                 MR_RegionHeader *region;                                    \
@@ -927,6 +1371,20 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                 }                                                           \
                 MR_live_region_list = region;                               \
             } while (0)
+
+#else       /* MR_RBMM_USE_MACROS */
+
+  #define   MR_region_frame_destroy_new_regions(saved_sequence_number,      \
+                frame_type)                                                 \
+            do {                                                            \
+                MR_region_frame_destroy_new_regions_proc(                   \
+                        saved_sequence_number, frame_type);                 \
+            } while (0)
+
+    extern  void    MR_region_frame_destroy_new_regions_proc(
+                        int saved_sequence_number, int frame_type);
+
+#endif     /* MR_RBMM_USE_MACROS */
 
 /* from_page must not be NULL. */
 #define     MR_region_return_page_list(from_page, to_page)                  \
@@ -1142,6 +1600,8 @@ extern  void    MR_region_fill_ite_snapshot_not_removed_msg(
                     MR_RegionSnapshot *, MR_RegionHeader *);
 extern  void    MR_region_fill_ite_snapshot_removed_msg(MR_RegionSnapshot *,
                     MR_RegionHeader *);
+extern  void    MR_region_fill_semi_disj_protect_msg(
+                    MR_RegionSemiDisjProtect *, MR_RegionHeader *); 
 extern  void    MR_region_fill_disj_snapshot_msg(MR_RegionSnapshot *,
                     MR_RegionHeader *);
 extern  void    MR_region_fill_commit_msg(MR_RegionCommitSave *,
@@ -1218,9 +1678,6 @@ extern unsigned int         MR_rbmmp_regions_saved_at_commit;
 extern  int     MR_region_get_ite_frame_size(MR_RegionIteFixedFrame *);
 extern  int     MR_region_get_disj_frame_size(MR_RegionDisjFixedFrame *);
 extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
-
-#define     MR_REGION_DISJ_FRAME_TYPE       0
-#define     MR_REGION_ITE_FRAME_TYPE        1
 
 #define     MR_region_profile_push_ite_frame                                \
             do {                                                            \

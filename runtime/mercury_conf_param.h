@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2007 The University of Melbourne.
+** Copyright (C) 1997-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -485,6 +485,15 @@
 ** MR_UNCONDITIONAL_STRUCTURE_REUSE
 ** Enable this to bypass the check that a cell was allocated by Boehm GC
 ** before reusing it.
+**
+** MR_RBMM_USE_MACROS
+** By default, all RBMM operations are implemented by functions, but if
+** this macro is enabled, we implement this with macros. Macros avoid the
+** overhead of function calls, but in large programs, having lots of copies
+** of the macro body will have a negative impact on locality, because we can
+** expect many copies to not be in the instruction cache, while function
+** bodies called from all over the place definitely should stay in the
+** instruction cache.
 */
 
 #if defined(MR_THREAD_SAFE) && defined(MR_TRACE_HISTOGRAM)

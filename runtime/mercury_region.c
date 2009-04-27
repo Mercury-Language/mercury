@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2007 The University of Melbourne.
+** Copyright (C) 2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -499,6 +499,459 @@ MR_region_is_disj_protected(MR_RegionHeader *region)
     }
     return MR_FALSE;
 }
+
+#if !defined(MR_RBMM_USE_MACROS)
+
+/*---------------------------------------------------------------------------*/
+/*
+** push_region_frame
+*/
+
+void
+MR_push_region_ite_frame_proc(MR_RegionIteFixedFrame *new_ite_frame)
+{
+    new_ite_frame->MR_riff_previous_ite_frame = MR_region_ite_sp;
+    new_ite_frame->MR_riff_saved_sequence_number = MR_region_sequence_number;
+    MR_region_ite_sp = new_ite_frame;
+    MR_region_profile_push_ite_frame;
+    MR_region_debug_push_ite_frame(new_ite_frame);
+}
+
+void
+MR_push_region_disj_frame_proc(MR_RegionDisjFixedFrame *new_disj_frame)
+{
+    new_disj_frame->MR_rdff_previous_disj_frame = MR_region_disj_sp;
+    new_disj_frame->MR_rdff_saved_sequence_number = MR_region_sequence_number;
+    new_disj_frame->MR_rdff_num_prot_regions = 0;
+    MR_region_disj_sp = new_disj_frame;
+    MR_region_profile_push_disj_frame;
+    MR_region_debug_push_disj_frame(new_disj_frame);
+}
+
+void
+MR_push_region_commit_frame_proc(MR_RegionCommitFixedFrame *new_commit_frame)
+{
+    new_commit_frame->MR_rcff_previous_commit_frame = MR_region_commit_sp;
+    new_commit_frame->MR_rcff_saved_sequence_number =
+        MR_region_sequence_number;
+    new_commit_frame->MR_rcff_saved_disj_sp = MR_region_disj_sp;
+    MR_region_commit_sp = new_commit_frame;
+    MR_region_profile_push_commit_frame;
+    MR_region_debug_push_commit_frame(new_commit_frame);
+}
+
+/*---------------------------------------------------------------------------*/
+
+int
+MR_region_fill_ite_protect_func(MR_RegionIteFixedFrame *ite_sp,
+    MR_RegionHeader *region, MR_RegionIteProtect *ite_prot)
+{
+    int incr;
+
+    MR_region_debug_start("fill_ite_protect");
+    if (!MR_region_is_disj_protected(region) &&
+        region->MR_region_ite_protected == NULL)
+    {
+        ite_prot->MR_ite_prot_region = region;
+        region->MR_region_ite_protected = ite_sp;
+        MR_region_profile_fill_ite_protect;
+        MR_region_debug_fill_ite_protect(ite_prot, region);
+        incr = 1;
+    } else {
+        MR_region_debug_fill_ite_protect(NULL, region);
+        incr = 0;
+    }
+    MR_region_debug_end("fill_ite_protect");
+
+    return incr;
+}
+
+int
+MR_region_fill_ite_snapshot_removed_func(MR_RegionHeader *region,
+    MR_RegionSnapshot *snapshot)
+{
+    int incr;
+
+    MR_region_debug_start("fill_ite_snapshot_removed");
+    if ((region->MR_region_ite_protected != NULL && 
+        region->MR_region_ite_protected != MR_region_ite_sp) ||
+        MR_region_is_disj_protected(region))
+    {
+        MR_save_snapshot(region, snapshot);
+        MR_region_profile_fill_ite_snapshot;
+        MR_region_debug_fill_ite_snapshot_removed(snapshot, region);
+        incr = 1;
+    } else {
+        /* Else the region is not protected. */
+        MR_region_debug_fill_ite_snapshot_removed(NULL, region);
+        incr = 0;
+    }
+    MR_region_debug_end("fill_ite_snapshot_removed");    
+
+    return incr;
+}
+
+void
+MR_region_fill_ite_snapshot_not_removed_proc(MR_RegionHeader *region,
+    MR_RegionSnapshot *snapshot)
+{
+    MR_region_debug_start("fill_ite_snapshot_not_removed");
+    MR_save_snapshot(region, snapshot);
+    MR_region_profile_fill_ite_snapshot;
+    MR_region_debug_fill_ite_snapshot_not_removed(snapshot, region);
+    MR_region_debug_end("fill_ite_snapshot_not_removed");
+}
+
+int
+MR_region_fill_semi_disj_protect_func(MR_RegionHeader *region,
+    MR_RegionSemiDisjProtect *semi_disj_prot)
+{
+    int incr;
+
+    MR_region_debug_start("fill_semi_disj_protect");
+    if (!MR_region_is_disj_protected(region) &&
+        region->MR_region_ite_protected == NULL)
+    {
+        semi_disj_prot->MR_semi_disj_prot_region = region;
+        MR_region_profile_fill_semi_disj_protect;
+        MR_region_debug_fill_semi_disj_protect(semi_disj_prot, region);
+        incr = 1;
+    } else {
+        MR_region_debug_fill_semi_disj_protect(NULL, region);
+        incr = 0;
+    }
+    MR_region_debug_end("fill_ite_protect");
+
+    return incr;
+}
+
+void
+MR_region_fill_disj_snapshot_proc(MR_RegionHeader *region,
+    MR_RegionSnapshot *snapshot)
+{
+    MR_region_debug_start("fill_disj_snapshot");
+    MR_save_snapshot(region, snapshot);
+    MR_region_profile_fill_disj_snapshot;
+    MR_region_debug_fill_disj_snapshot(snapshot, region);
+    MR_region_debug_end("fill_disj_snapshot");
+}
+
+int
+MR_region_fill_commit_func(MR_RegionCommitFixedFrame *top_commit_frame,
+    MR_RegionHeader *region, MR_RegionCommitSave *commit_save)
+{
+    int incr;
+
+    MR_region_debug_start("fill_commit");
+    if (!MR_region_is_disj_protected(region) &&
+        region->MR_region_ite_protected == NULL)
+    {
+        commit_save->MR_commit_save_region = region;
+        region->MR_region_commit_frame = top_commit_frame;
+        MR_region_profile_fill_commit;
+        MR_region_debug_fill_commit(commit_save, region);
+        incr = 1;
+    } else {
+        MR_region_debug_fill_commit(NULL, region);
+        incr = 0;
+    }
+    MR_region_debug_end("fill_commit");
+
+    return incr;
+}
+
+void
+MR_use_region_ite_then_semidet_proc(MR_RegionIteFixedFrame *top_ite_frame)
+{
+    int                         i;
+    MR_RegionIteProtect         *ite_prot;
+
+    MR_region_debug_start("use_region_ite_then_semidet");
+    ite_prot = (MR_RegionIteProtect *) ( ( (MR_Word *) top_ite_frame ) +
+        MR_REGION_ITE_FRAME_FIXED_SIZE);
+    for (i = 0; i < top_ite_frame->MR_riff_num_prot_regions;
+            i++, ite_prot++) {
+        MR_remove_undisjprotected_region_ite_then_semidet(
+            ite_prot->MR_ite_prot_region);
+    }
+    MR_pop_region_ite_frame(top_ite_frame);
+    MR_region_debug_end("use_region_ite_then_semidet");
+}
+
+void
+MR_use_region_ite_then_nondet_proc(MR_RegionIteFixedFrame *top_ite_frame)
+{
+    int                         i;
+    MR_RegionIteProtect         *ite_prot;
+
+    MR_region_debug_start("use_region_ite_then_nondet");
+    ite_prot = (MR_RegionIteProtect *) ( ( (MR_Word *) top_ite_frame ) +
+        MR_REGION_ITE_FRAME_FIXED_SIZE);
+    for (i = 0; i < top_ite_frame->MR_riff_num_prot_regions;
+            i++, ite_prot++) {
+        if (ite_prot->MR_ite_prot_region != NULL) {
+            MR_remove_undisjprotected_region_ite_then_nondet(
+                ite_prot->MR_ite_prot_region);
+        }
+    }
+    MR_region_debug_end("use_region_ite_then_nondet");
+}
+
+void
+MR_use_region_ite_else_semidet_proc(MR_RegionIteFixedFrame *top_ite_frame)
+{
+    MR_region_debug_start("use_region_ite_else_semidet");
+    MR_region_process_at_ite_else_proc(top_ite_frame);
+    MR_region_debug_end("use_region_ite_else_semidet");
+}
+
+void
+MR_use_region_ite_else_nondet_proc(MR_RegionIteFixedFrame *top_ite_frame)
+{
+    MR_region_debug_start("use_region_ite_else_nondet");
+    MR_region_process_at_ite_else(top_ite_frame);
+    MR_region_debug_end("use_region_ite_else_nondet");
+}
+
+void
+MR_use_region_ite_nondet_cond_fail_proc(MR_RegionIteFixedFrame *top_ite_frame)
+{
+    MR_region_debug_start("use_region_ite_nondet_cond_fail");
+    MR_region_ite_restore_from_snapshots(top_ite_frame);
+    MR_pop_region_ite_frame(top_ite_frame);
+    MR_region_debug_end("use_region_ite_nondet_cond_fail");
+}
+
+void
+MR_use_region_disj_later_proc(MR_RegionDisjFixedFrame *top_disj_frame)
+{
+    MR_region_debug_start("use_region_disj_later");
+    MR_region_disj_restore_from_snapshots(top_disj_frame);
+    MR_region_disj_destroy_new_regions(top_disj_frame);
+    MR_region_debug_end("use_region_disj_later");
+}
+
+void
+MR_use_region_disj_nonlast_semi_commit_proc(
+    MR_RegionDisjFixedFrame *top_disj_frame)
+{
+    int                         i;
+    MR_RegionSemiDisjProtect    *semi_disj_prot;
+
+    MR_region_debug_start("use_region_disj_nonlast_semi_commit");
+    /* Destroy any regions protected by the disj frame */
+    semi_disj_prot = (MR_RegionSemiDisjProtect *) (
+        ( (MR_Word *) top_disj_frame ) + MR_REGION_DISJ_FRAME_FIXED_SIZE);
+    for (i = 0; i < top_disj_frame->MR_rdff_num_prot_regions;
+            i++, semi_disj_prot++) {
+            MR_region_destroy_region(
+                semi_disj_prot->MR_semi_disj_prot_region);
+    }
+    MR_pop_region_disj_frame(top_disj_frame);
+    MR_region_debug_end("use_region_disj_nonlast_semi_commit");
+}
+
+void
+MR_use_region_disj_last_proc(MR_RegionDisjFixedFrame *top_disj_frame)
+{
+    MR_region_debug_start("use_region_disj_last");
+    MR_region_disj_restore_from_snapshots(top_disj_frame);
+    MR_region_disj_destroy_new_regions(top_disj_frame);
+    MR_pop_region_disj_frame(top_disj_frame);
+    MR_region_debug_end("use_region_disj_last");
+}
+
+void
+MR_use_region_commit_success_proc(
+    MR_RegionCommitFixedFrame *top_commit_frame)
+{
+    MR_RegionCommitSave             *first_commit_save;
+
+    MR_region_debug_start("use_region_commit_success");
+    first_commit_save = (MR_RegionCommitSave *) (
+        ( (MR_Word *) top_commit_frame ) + MR_REGION_COMMIT_FRAME_FIXED_SIZE);
+    MR_commit_success_destroy_marked_new_regions(
+        top_commit_frame->MR_rcff_saved_sequence_number);
+    MR_commit_success_destroy_marked_saved_regions(
+        top_commit_frame->MR_rcff_num_saved_regions, first_commit_save);
+    MR_region_profile_pop_disj_frame(MR_region_disj_sp,
+        top_commit_frame->MR_rcff_saved_disj_sp);
+    MR_region_disj_sp = top_commit_frame->MR_rcff_saved_disj_sp;
+    MR_pop_region_commit_frame(top_commit_frame);
+    MR_region_debug_end("use_region_commit_success");
+}
+
+void
+MR_use_region_commit_failure_proc(MR_RegionCommitFixedFrame *top_commit_frame)
+{
+    int                             i;
+    MR_RegionCommitSave             *commit_save;
+    MR_RegionHeader                 *region;
+
+    MR_region_debug_start("use_region_commit_failure");
+    commit_save = (MR_RegionCommitSave *) (
+        ( (MR_Word *) top_commit_frame ) + MR_REGION_COMMIT_FRAME_FIXED_SIZE);
+    for (i = 0; i < top_commit_frame->MR_rcff_num_saved_regions;
+            i++, commit_save++) {
+        region = commit_save->MR_commit_save_region;
+        if (region != NULL) {
+            region->MR_region_commit_frame = NULL;
+        }
+    }
+    MR_pop_region_commit_frame(top_commit_frame);
+    MR_region_debug_end("use_region_commit_failure");
+}
+
+/*---------------------------------------------------------------------------*/
+/* Helper procedures for ite support. */
+
+void
+MR_region_process_at_ite_else_proc(MR_RegionIteFixedFrame *top_ite_frame)
+{
+    MR_region_ite_unprotect(top_ite_frame);
+    MR_region_ite_restore_from_snapshots(top_ite_frame);
+    MR_region_ite_destroy_new_regions(top_ite_frame);
+    MR_pop_region_ite_frame(top_ite_frame);
+}
+
+void
+MR_region_ite_unprotect_proc(MR_RegionIteFixedFrame *top_ite_frame)
+{
+    MR_RegionIteProtect     *ite_prot;
+    MR_RegionHeader         *protected_region;
+    int                     i;
+
+    MR_region_debug_start("ite_unprotect");
+    ite_prot = (MR_RegionIteProtect *) (
+        ( (MR_Word *) top_ite_frame ) + MR_REGION_ITE_FRAME_FIXED_SIZE);
+    for (i = 0; i < top_ite_frame->MR_riff_num_prot_regions;
+            i++, ite_prot++) {
+        protected_region = ite_prot->MR_ite_prot_region;
+        MR_region_debug_ite_unprotect(protected_region);
+        /* Try to protect the region by an outer condition. */
+        protected_region->MR_region_ite_protected = NULL;
+    }
+    MR_region_debug_end("ite_unprotect");
+}
+
+void
+MR_region_ite_restore_from_snapshots_proc(
+    MR_RegionIteFixedFrame *top_ite_frame)
+{
+    MR_RegionSnapshot       *first_snapshot;
+    MR_Word                 protection_size;
+
+    MR_region_debug_start("ite_restore_from_snapshot");
+    protection_size = top_ite_frame->MR_riff_num_prot_regions *
+        MR_REGION_ITE_PROT_SIZE;
+    first_snapshot = (MR_RegionSnapshot *) (
+        ( (MR_Word *) top_ite_frame ) +
+        MR_REGION_ITE_FRAME_FIXED_SIZE + protection_size);
+    MR_restore_snapshots(top_ite_frame->MR_riff_num_snapshots,
+        first_snapshot);
+    MR_region_debug_end("ite_restore_from_snapshot");
+}
+
+void
+MR_region_ite_destroy_new_regions_proc(MR_RegionIteFixedFrame *top_ite_frame)
+{
+    MR_region_debug_start("ite_destroy_new_regions");
+    MR_region_frame_destroy_new_regions(
+        top_ite_frame->MR_riff_saved_sequence_number,
+        MR_REGION_ITE_FRAME_TYPE);
+    MR_region_debug_end("ite_destroy_new_regions");
+}
+
+/*---------------------------------------------------------------------------*/
+/* Helpers for nondet disjunction support. */
+
+void
+MR_region_disj_restore_from_snapshots_proc(
+    MR_RegionDisjFixedFrame *top_disj_frame)
+{
+    MR_RegionSnapshot       *first_snapshot;
+
+    MR_region_debug_start("disj_restore_from_snapshots");
+    first_snapshot = (MR_RegionSnapshot *) (
+        (MR_Word *) top_disj_frame + MR_REGION_DISJ_FRAME_FIXED_SIZE +
+        MR_REGION_SEMI_DISJ_PROT_SIZE *
+            top_disj_frame->MR_rdff_num_prot_regions);
+    MR_restore_snapshots(top_disj_frame->MR_rdff_num_snapshots,
+        first_snapshot);
+    MR_region_debug_end("disj_restore_from_snapshots");
+}
+
+void
+MR_region_disj_destroy_new_regions_proc(
+    MR_RegionDisjFixedFrame *top_disj_frame)
+{
+    MR_region_debug_start("disj_destroy_new_regions");
+    MR_region_frame_destroy_new_regions(
+        top_disj_frame->MR_rdff_saved_sequence_number,
+        MR_REGION_DISJ_FRAME_TYPE);
+    MR_region_debug_end("disj_destroy_new_regions");
+}
+
+/*---------------------------------------------------------------------------*/
+
+void
+MR_save_snapshot_proc(MR_RegionHeader *region, MR_RegionSnapshot *snapshot)
+{
+    snapshot->MR_snapshot_region = region;
+    snapshot->MR_snapshot_saved_last_page = region->MR_region_last_page;
+    snapshot->MR_snapshot_saved_next_available_word =
+        region->MR_region_next_available_word;
+}
+
+void
+MR_restore_snapshots_proc(int num_snapshots,
+    MR_RegionSnapshot *first_snapshot)
+{
+    MR_RegionSnapshot   *snapshot;
+    MR_RegionHeader     *restoring_region;
+    MR_RegionPage       *saved_last_page;
+    MR_RegionPage       *first_new_page;
+    int                 i;
+
+    snapshot = first_snapshot;
+    for (i = 0; i < (num_snapshots); i++, snapshot++) {
+        restoring_region = snapshot->MR_snapshot_region;
+        saved_last_page = snapshot->MR_snapshot_saved_last_page;
+        first_new_page = saved_last_page->MR_regionpage_next;
+        /* Collect profiling information. */
+        MR_region_profile_restore_from_snapshot(snapshot);
+        MR_region_debug_restore_from_snapshot(snapshot);
+
+        if (first_new_page != NULL) {
+            MR_region_return_page_list(first_new_page,
+                restoring_region->MR_region_last_page);
+            restoring_region->MR_region_last_page = saved_last_page;
+        } /* else no new page added. */
+        restoring_region->MR_region_next_available_word =
+            snapshot->MR_snapshot_saved_next_available_word;
+    }
+}
+
+void
+MR_region_frame_destroy_new_regions_proc(int saved_sequence_number,
+    int frame_type)
+{
+    MR_RegionHeader *region;
+
+    region = MR_live_region_list;
+    while (region != NULL &&
+           region->MR_region_sequence_number >= saved_sequence_number)
+    {
+        MR_region_destroy_region(region);
+        MR_region_debug_destroy_region(region);
+        MR_region_profile_frame_destroy_region(region, frame_type);
+        region = region->MR_region_next_region;
+    }
+    MR_live_region_list = region;
+}
+
+#endif  /* not defined MR_RBMM_USE_MACROS */
+
 /*---------------------------------------------------------------------------*/
 /* Debugging messages for RBMM. */
 
@@ -793,6 +1246,14 @@ MR_region_fill_ite_protect_msg(MR_RegionIteProtect *ite_prot,
 }
 
 void
+MR_region_fill_ite_snapshot_not_removed_msg(MR_RegionSnapshot *snapshot,
+    MR_RegionHeader *region)
+{
+    printf("\tAt slot: %d, save snapshot of region #%d.\n", snapshot,
+        region->MR_region_sequence_number);
+}
+
+void
 MR_region_fill_ite_snapshot_removed_msg(MR_RegionSnapshot *snapshot,
     MR_RegionHeader *region)
 {
@@ -803,14 +1264,6 @@ MR_region_fill_ite_snapshot_removed_msg(MR_RegionSnapshot *snapshot,
         printf("\tAt slot: %d, save snapshot of region #%d.\n", snapshot,
             region->MR_region_sequence_number);
     }
-}
-
-void
-MR_region_fill_ite_snapshot_not_removed_msg(MR_RegionSnapshot *snapshot,
-    MR_RegionHeader *region)
-{
-    printf("\tAt slot: %d, save snapshot of region #%d.\n", snapshot,
-        region->MR_region_sequence_number);
 }
 
 void
