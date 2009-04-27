@@ -521,12 +521,13 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
             WantPreInitDecl = yes,
             WantUnsafeAccessAndLockDecls = yes
         ;
-            CompilationTarget = target_erlang,
+            ( CompilationTarget = target_erlang
+            ; CompilationTarget = target_java
+            ),
             WantPreInitDecl = no,
             WantUnsafeAccessAndLockDecls = no
         ;
             ( CompilationTarget = target_il
-            ; CompilationTarget = target_java
             ; CompilationTarget = target_asm
             ; CompilationTarget = target_x86_64
             ),
@@ -849,6 +850,9 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
                 CompilationTarget = target_c,
                 ForeignLanguage = lang_c
             ;
+                CompilationTarget = target_java,
+                ForeignLanguage = lang_java
+            ;
                 CompilationTarget = target_erlang,
                 ForeignLanguage = lang_erlang
             ),
@@ -887,7 +891,6 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
             )
         ;
             ( CompilationTarget = target_il
-            ; CompilationTarget = target_java
             ; CompilationTarget = target_asm
             ; CompilationTarget = target_x86_64
             ),
@@ -1421,15 +1424,38 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
 
     (
         Details = mutable_decl,
-        module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
-        ExportLang = lang_c,    % XXX Implement for other backends.
-        ExportPragma = pragma_foreign_export(ExportLang, SymName, pf_predicate,
-            [], CName),
-        ExportItemPragma = item_pragma_info(compiler(mutable_decl),
-            ExportPragma, Context, -1),
-        ExportItem = item_pragma(ExportItemPragma),
-        add_item_pass_3(ExportItem, Status, _,
-            !ModuleInfo, !QualInfo, !Specs)
+        module_info_get_globals(!.ModuleInfo, Globals),
+        globals.get_target(Globals, CompilationTarget),
+        (
+            CompilationTarget = target_c,
+            MaybeExportLang = yes(lang_c)
+        ;
+            CompilationTarget = target_java,
+            MaybeExportLang = yes(lang_java)
+        ;
+            CompilationTarget = target_erlang,
+            MaybeExportLang = yes(lang_erlang)
+        ;
+            % Untested.
+            ( CompilationTarget = target_asm
+            ; CompilationTarget = target_il
+            ; CompilationTarget = target_x86_64
+            ),
+            MaybeExportLang = no
+        ),
+        (
+            MaybeExportLang = yes(ExportLang),
+            module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
+            ExportPragma = pragma_foreign_export(ExportLang, SymName,
+                pf_predicate, [], CName),
+            ExportItemPragma = item_pragma_info(compiler(mutable_decl),
+                ExportPragma, Context, -1),
+            ExportItem = item_pragma(ExportItemPragma),
+            add_item_pass_3(ExportItem, Status, _,
+                !ModuleInfo, !QualInfo, !Specs)
+        ;
+            MaybeExportLang = no
+        )
     ;
         ( Details = initialise_decl
         ; Details = finalise_decl
@@ -1600,6 +1626,22 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
             add_c_mutable_preds(ItemMutable, TargetMutableName,
                 Status, _, !ModuleInfo, !QualInfo, !Specs)
         ;
+            CompilationTarget = target_java,
+
+            % Work out what name to give the global in the target language.
+            decide_mutable_target_var_name(!.ModuleInfo, MutAttrs,
+                ModuleName, MercuryMutableName, lang_java, Context,
+                TargetMutableName, !Specs),
+
+            % Add foreign_code item that defines the global variable used to
+            % implement the mutable.
+            add_java_mutable_defn(TargetMutableName, Type,
+                Context, !ModuleInfo, !QualInfo, !Specs),
+
+            % Add all the predicates related to mutables.
+            add_java_mutable_preds(ItemMutable, TargetMutableName,
+                Status, _, !ModuleInfo, !QualInfo, !Specs)
+        ;
             CompilationTarget = target_erlang,
 
             % Work out what name to give the global in the target language.
@@ -1612,7 +1654,6 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
                 Status, _, !ModuleInfo, !QualInfo, !Specs)
         ;
             ( CompilationTarget = target_il
-            ; CompilationTarget = target_java
             ; CompilationTarget = target_asm
             ; CompilationTarget = target_x86_64
             )
@@ -1826,7 +1867,7 @@ add_c_mutable_preds(ItemMutableInfo, TargetMutableName, !Status, !ModuleInfo,
         IsConstant = yes,
         InitSetPredName = mutable_secret_set_pred_sym_name(ModuleName,
             MercuryMutableName),
-        add_c_constant_mutable_access_preds(TargetMutableName,
+        add_c_java_constant_mutable_access_preds(TargetMutableName,
             ModuleName, MercuryMutableName, Attrs, Inst, BoxPolicy,
             Context, !Status, !ModuleInfo, !QualInfo, !Specs)
     ;
@@ -1838,8 +1879,8 @@ add_c_mutable_preds(ItemMutableInfo, TargetMutableName, !Status, !ModuleInfo,
         add_c_mutable_primitive_preds(TargetMutableName, ModuleName,
             MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy, TypeName,
             Context, !Status, !ModuleInfo, !QualInfo, !Specs),
-        add_c_mutable_user_access_preds(ModuleName, MercuryMutableName,
-            MutAttrs, Context, !Status, !ModuleInfo, !QualInfo, !Specs)
+        add_c_java_mutable_user_access_preds(ModuleName, MercuryMutableName,
+            MutAttrs, for_c, Context, !Status, !ModuleInfo, !QualInfo, !Specs)
     ),
     add_c_mutable_initialisation(IsConstant, IsThreadLocal,
         TargetMutableName, ModuleName, MercuryMutableName, MutVarset,
@@ -1847,14 +1888,15 @@ add_c_mutable_preds(ItemMutableInfo, TargetMutableName, !Status, !ModuleInfo,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs).
 
     % Add the access predicates for constant mutables.
+    % Shared between C and Java.
     %
-:- pred add_c_constant_mutable_access_preds(string::in, module_name::in,
+:- pred add_c_java_constant_mutable_access_preds(string::in, module_name::in,
     string::in, pragma_foreign_proc_attributes::in, mer_inst::in,
     box_policy::in, prog_context::in, import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_c_constant_mutable_access_preds(TargetMutableName,
+add_c_java_constant_mutable_access_preds(TargetMutableName,
         ModuleName, MutableName, Attrs, Inst, BoxPolicy, Context,
         !Status, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
@@ -2042,35 +2084,50 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
     UnsafeSetItem = item_pragma(UnsafeSetItemPragma),
     add_item_pass_3(UnsafeSetItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 
+:- type for_c_or_java
+    --->    for_c
+    ;       for_java.
+
     % Add the access predicates for a non-constant mutable.
     % If the mutable has the `attach_to_io_state' attribute then add the
     % versions of the access preds that take the I/O state as well.
+    % Shared between C and Java.
     %
-:- pred add_c_mutable_user_access_preds(module_name::in, string::in,
-    mutable_var_attributes::in, prog_context::in,
+:- pred add_c_java_mutable_user_access_preds(module_name::in, string::in,
+    mutable_var_attributes::in, for_c_or_java::in, prog_context::in,
     import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs, Context,
-        !Status, !ModuleInfo, !QualInfo, !Specs) :-
+add_c_java_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
+        ForLang, Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var(varset.init, "X", X, ProgVarSet0),
     LockPredName   = mutable_lock_pred_sym_name(ModuleName, MutableName),
     UnlockPredName = mutable_unlock_pred_sym_name(ModuleName, MutableName),
     SetPredName = mutable_set_pred_sym_name(ModuleName, MutableName),
     GetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
-    CallLock   = call_expr(LockPredName, [], purity_impure) - Context,
-    CallUnlock = call_expr(UnlockPredName, [], purity_impure) - Context,
+
+    (
+        ForLang = for_c,
+        CallLock   = call_expr(LockPredName, [], purity_impure) - Context,
+        CallUnlock = call_expr(UnlockPredName, [], purity_impure) - Context,
+        GetterPredName = mutable_unsafe_get_pred_sym_name(ModuleName,
+            MutableName),
+        SetterPredName = mutable_unsafe_set_pred_sym_name(ModuleName,
+            MutableName)
+    ;
+        ForLang = for_java,
+        CallLock   = true_expr - Context,
+        CallUnlock = true_expr - Context,
+        GetterPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
+        SetterPredName = mutable_set_pred_sym_name(ModuleName, MutableName)
+    ),
 
     % Construct the semipure get predicate.
-    UnsafeGetPredName = mutable_unsafe_get_pred_sym_name(ModuleName,
-        MutableName),
-    UnsafeGetCallArgs = [variable(X, Context)],
-    CallUnsafeGet = call_expr(UnsafeGetPredName, UnsafeGetCallArgs,
+    CallGetter = call_expr(GetterPredName, [variable(X, Context)],
         purity_semipure) - Context,
 
-    GetBody = goal_list_to_conj(Context,
-        [CallLock, CallUnsafeGet, CallUnlock]),
+    GetBody = goal_list_to_conj(Context, [CallLock, CallGetter, CallUnlock]),
     StdGetBody = promise_purity_expr(purity_semipure, GetBody) - Context,
 
     StdGetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet0,
@@ -2081,14 +2138,11 @@ add_c_mutable_user_access_preds(ModuleName, MutableName, MutAttrs, Context,
     add_item_pass_3(StdGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     % Construct the impure set predicate.
-    UnsafeSetPredName = mutable_unsafe_set_pred_sym_name(ModuleName,
-        MutableName),
-    UnsafeSetCallArgs = [variable(X, context_init)],
-    StdSetCallUnsafeSet = call_expr(UnsafeSetPredName, UnsafeSetCallArgs,
+    CallSetter = call_expr(SetterPredName, [variable(X, context_init)],
         purity_impure) - Context,
 
     StdSetBody = goal_list_to_conj(Context,
-        [CallLock, StdSetCallUnsafeSet, CallUnlock]),
+        [CallLock, CallSetter, CallUnlock]),
 
     StdSetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet0,
         pf_predicate, SetPredName, [variable(X, context_init)], StdSetBody,
@@ -2203,6 +2257,188 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
         InitClauseExpr = conj_expr(CallPreInitExpr, CallSetPredExpr)
             - Context
     ),
+
+    % See the comments for prog_io.parse_mutable_decl for the reason
+    % why we _must_ use MutVarset here.
+    PredItemClause = item_clause_info(compiler(mutable_decl), MutVarset,
+        pf_predicate, InitPredName, [], InitClauseExpr, Context, -1),
+    PredItem = item_clause(PredItemClause),
+    add_item_pass_3(PredItem, !Status, !ModuleInfo, !QualInfo, !Specs).
+
+%-----------------------------------------------------------------------------%
+%
+% Java mutables
+%
+
+    % Add foreign_code item that defines the global variable used to hold the
+    % mutable.
+    %
+:- pred add_java_mutable_defn(string::in, mer_type::in, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_java_mutable_defn(TargetMutableName, Type,
+        Context, !ModuleInfo, !QualInfo, !Specs) :-
+    get_java_mutable_global_foreign_defn(!.ModuleInfo, Type,
+        TargetMutableName, Context, ForeignDefn),
+    ItemStatus0 = item_status(status_local, may_be_unqualified),
+    add_item_decl_pass_2(ForeignDefn, ItemStatus0, _, !ModuleInfo, !Specs).
+
+:- pred get_java_mutable_global_foreign_defn(module_info::in, mer_type::in,
+    string::in, prog_context::in, item::out) is det.
+
+get_java_mutable_global_foreign_defn(ModuleInfo, Type, TargetMutableName,
+        Context, DefnItem) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
+    TypeName = global_foreign_type_name(AlwaysBoxed, lang_java, ModuleInfo,
+        Type),
+    MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
+
+    DefnBody = string.append_list([
+        "static ", TypeName, " ", TargetMutableName, ";\n",
+        "static final java.lang.Object ", MutableMutexVarName,
+        " = new Object();\n"
+    ]),
+    DefnPragma = pragma_foreign_code(lang_java, DefnBody),
+    DefnItemPragma = item_pragma_info(compiler(mutable_decl), DefnPragma,
+        Context, -1),
+    DefnItem = item_pragma(DefnItemPragma).
+
+:- pred add_java_mutable_preds(item_mutable_info::in, string::in,
+    import_status::in, import_status::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_java_mutable_preds(ItemMutable, TargetMutableName,
+        !Status, !ModuleInfo, !QualInfo, !Specs) :-
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    ItemMutable = item_mutable_info(MercuryMutableName, _Type, InitTerm, Inst,
+        MutAttrs, MutVarset, Context, _SeqNum),
+    IsConstant = mutable_var_constant(MutAttrs),
+    Attrs = default_attributes(lang_java),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
+    (
+        AlwaysBoxed = yes,
+        BoxPolicy = always_boxed
+    ;
+        AlwaysBoxed = no,
+        BoxPolicy = native_if_possible
+    ),
+    (
+        IsConstant = yes,
+        InitSetPredName = mutable_secret_set_pred_sym_name(ModuleName,
+            MercuryMutableName),
+        add_c_java_constant_mutable_access_preds(TargetMutableName,
+            ModuleName, MercuryMutableName, Attrs, Inst, BoxPolicy,
+            Context, !Status, !ModuleInfo, !QualInfo, !Specs)
+    ;
+        IsConstant = no,
+        InitSetPredName = mutable_set_pred_sym_name(ModuleName,
+            MercuryMutableName),
+        add_java_mutable_primitive_preds(TargetMutableName, ModuleName,
+            MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy,
+            Context, !Status, !ModuleInfo, !QualInfo, !Specs),
+        add_c_java_mutable_user_access_preds(ModuleName, MercuryMutableName,
+            MutAttrs, for_java,
+            Context, !Status, !ModuleInfo, !QualInfo, !Specs)
+    ),
+    add_java_mutable_initialisation(ModuleName, MercuryMutableName, MutVarset,
+        InitSetPredName, InitTerm,
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs).
+
+    % Add the foreign clauses for the mutable's primitive access and
+    % locking predicates.
+    %
+:- pred add_java_mutable_primitive_preds(string::in, module_name::in, string::in,
+    mutable_var_attributes::in, pragma_foreign_proc_attributes::in,
+    mer_inst::in, box_policy::in,
+    prog_context::in, import_status::in, import_status::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_java_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
+        MutAttrs, Attrs, Inst, BoxPolicy,
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
+    % Construct the semipure get predicate.
+
+    set_purity(purity_semipure, Attrs, GetAttrs0),
+    set_thread_safe(proc_thread_safe, GetAttrs0, GetAttrs),
+    varset.new_named_var(varset.init, "X", X, ProgVarSet),
+    MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
+    GetCode =
+        "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
+        "\t\tX = " ++ TargetMutableName ++ ";\n\t}\n",
+    GetForeignProc = pragma_foreign_proc(GetAttrs,
+        mutable_get_pred_sym_name(ModuleName, MutableName),
+        pf_predicate,
+        [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
+        ProgVarSet,
+        varset.init, % Inst varset.
+        fc_impl_ordinary(GetCode, yes(Context))
+    ),
+    GetItemPragma = item_pragma_info(compiler(mutable_decl),
+        GetForeignProc, Context, -1),
+    GetItem = item_pragma(GetItemPragma),
+    add_item_pass_3(GetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
+
+    % Construct the impure set predicate.
+
+    set_thread_safe(proc_thread_safe, Attrs, SetAttrs),
+    TrailMutableUpdates = mutable_var_trailed(MutAttrs),
+    (
+        TrailMutableUpdates = mutable_untrailed,
+        TrailCode = ""
+    ;
+        TrailMutableUpdates = mutable_trailed,
+        Pieces = [words("Error: trailed mutable in Java grade."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs],
+        % This is just a dummy value.
+        TrailCode = ""
+    ),
+    SetCode = "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
+        "\t\t" ++ TargetMutableName ++ "= X;\n\t}\n",
+    SetForeignProc = pragma_foreign_proc(SetAttrs,
+        mutable_set_pred_sym_name(ModuleName, MutableName),
+        pf_predicate,
+        [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
+        ProgVarSet,
+        varset.init, % Inst varset.
+        fc_impl_ordinary(TrailCode ++ SetCode, yes(Context))
+    ),
+    SetItemPragma = item_pragma_info(compiler(mutable_decl),
+        SetForeignProc, Context, -1),
+    SetItem = item_pragma(SetItemPragma),
+    add_item_pass_3(SetItem, !Status, !ModuleInfo, !QualInfo, !Specs).
+
+    % Add the code required to initialise a mutable.
+    %
+:- pred add_java_mutable_initialisation(module_name::in, string::in,
+    prog_varset::in, sym_name::in, prog_term::in,
+    prog_context::in, import_status::in, import_status::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_java_mutable_initialisation(ModuleName, MutableName, MutVarset,
+        InitSetPredName, InitTerm,
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
+    % Add the `:- initialise' declaration for the mutable initialisation
+    % predicate.
+    InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
+    InitPredArity = 0,
+
+    InitItemInitialise = item_initialise_info(compiler(mutable_decl),
+        InitPredName, InitPredArity, Context, -1),
+    InitItem = item_initialise(InitItemInitialise),
+    add_item_pass_3(InitItem, !Status, !ModuleInfo, !QualInfo, !Specs),
+
+    % Add the clause for the mutable initialisation predicate.
+    InitClauseExpr =
+        call_expr(InitSetPredName, [InitTerm], purity_impure)
+            - Context,
 
     % See the comments for prog_io.parse_mutable_decl for the reason
     % why we _must_ use MutVarset here.

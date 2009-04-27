@@ -153,6 +153,7 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     ;
         AddMainWrapper = no
     ),
+    % XXX there are also user_init_preds generated which aren't used.
     maybe_output_required_init_or_final(ModuleInfo, "mercury__required_init",
         InitPreds, !IO),
     maybe_output_required_init_or_final(ModuleInfo, "mercury__required_final",

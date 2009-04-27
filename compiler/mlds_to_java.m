@@ -456,7 +456,7 @@ output_import(Import, !IO) :-
 output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0,
-        _InitPreds, _FinalPreds, _ExportedEnums),
+        InitPreds, _FinalPreds, _ExportedEnums),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 
     % Find and build list of all methods which would have their addresses
@@ -494,6 +494,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         NonRttiDefns, !IO),
     output_exports(Indent + 1, ModuleInfo, MLDS_ModuleName, CtorData,
         ExportDefns, !IO),
+    output_inits(Indent + 1, ModuleInfo, InitPreds, !IO),
     output_src_end(Indent, ModuleName, !IO).
     % XXX Need to handle non-Java foreign code at this point.
 
@@ -1089,6 +1090,35 @@ pred_label_string(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
     ),
     PredLabelStr = PredLabelStr1 ++ MangledTypeName ++ "_" ++
         string.int_to_string(TypeArity).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to output calls to module initialisers.
+%
+
+:- pred output_inits(int::in, module_info::in, list(string)::in,
+    io::di, io::uo) is det.
+
+output_inits(Indent, _ModuleInfo, InitPreds, !IO) :-
+    (
+        InitPreds = []
+    ;
+        InitPreds = [_ | _],
+        % We call the initialisation predicates from a static initialisation
+        % block.
+        indent_line(Indent, !IO),
+        io.write_string("static {\n", !IO),
+        list.foldl(output_init_2(Indent + 1), InitPreds, !IO),
+        indent_line(Indent, !IO),
+        io.write_string("}\n", !IO)
+    ).
+
+:- pred output_init_2(int::in, string::in, io::di, io::uo) is det.
+
+output_init_2(Indent, InitPred, !IO) :-
+    indent_line(Indent, !IO),
+    io.write_string(InitPred, !IO),
+    io.write_string("();\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %
