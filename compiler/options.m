@@ -1437,7 +1437,10 @@ option_defaults_2(optimization_option, [
     intermod_inline_simple_threshold    -   int(5),
                                         % Has no effect until
                                         % --intermodule-optimization.
-    from_ground_term_threshold          -   int(5),
+    from_ground_term_threshold          -   int(1000000),
+                                        % This limit has been increased
+                                        % until bugs 93 and 94 have
+                                        % been fixed.
     common_struct                       -   bool(no),
     common_struct_preds                 -   string(""),
     common_goal                         -   bool(yes),
