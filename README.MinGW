@@ -36,7 +36,7 @@ To build the source distribution under MSYS follow these steps:
     - Start msys
     - cd /
     - tar xjf autoconf-4-1-bin.tar.bz2
-    - tar xjf autoconf2.1-2.13-3-bin.tar.bz2
+    - tar xjf autoconf2.5-2.61-1-bin.tar.bz2
     - tar xjf bison-2.3-MSYS-1.0.11-1.tar.bz2
     - tar xjf flex-2.5.33-MSYS-1.0.11-1.tar.bz2
     - tar xjf regex-0.12-MSYS-1.0.11-1.tar.bz2
