@@ -1594,6 +1594,7 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
 add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ItemMutable = item_mutable_info(MercuryMutableName, Type, _InitTerm, _Inst,
         MutAttrs, _MutVarset, Context, _SeqNum),
+    IsConstant = mutable_var_constant(MutAttrs),
 
     % The transformation here is documented in the comments at the
     % beginning of prog_mutable.m.
@@ -1617,7 +1618,6 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
             % global variable used to implement the mutable.  If the mutable is
             % not constant then add a mutex to synchronize access to it as
             % well.
-            IsConstant = mutable_var_constant(MutAttrs),
             IsThreadLocal = mutable_var_thread_local(MutAttrs),
             add_c_mutable_defn_and_decl(TargetMutableName, Type, IsConstant,
                 IsThreadLocal, Context, !ModuleInfo, !QualInfo, !Specs),
@@ -1635,7 +1635,7 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
             % Add foreign_code item that defines the global variable used to
             % implement the mutable.
-            add_java_mutable_defn(TargetMutableName, Type,
+            add_java_mutable_defn(TargetMutableName, Type, IsConstant,
                 Context, !ModuleInfo, !QualInfo, !Specs),
 
             % Add all the predicates related to mutables.
@@ -2273,33 +2273,42 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
     % Add foreign_code item that defines the global variable used to hold the
     % mutable.
     %
-:- pred add_java_mutable_defn(string::in, mer_type::in, prog_context::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred add_java_mutable_defn(string::in, mer_type::in, bool::in,
+    prog_context::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out, list(error_spec)::in, list(error_spec)::out)
+    is det.
 
-add_java_mutable_defn(TargetMutableName, Type,
+add_java_mutable_defn(TargetMutableName, Type, IsConstant,
         Context, !ModuleInfo, !QualInfo, !Specs) :-
     get_java_mutable_global_foreign_defn(!.ModuleInfo, Type,
-        TargetMutableName, Context, ForeignDefn),
+        TargetMutableName, IsConstant, Context, ForeignDefn),
     ItemStatus0 = item_status(status_local, may_be_unqualified),
     add_item_decl_pass_2(ForeignDefn, ItemStatus0, _, !ModuleInfo, !Specs).
 
 :- pred get_java_mutable_global_foreign_defn(module_info::in, mer_type::in,
-    string::in, prog_context::in, item::out) is det.
+    string::in, bool::in, prog_context::in, item::out) is det.
 
 get_java_mutable_global_foreign_defn(ModuleInfo, Type, TargetMutableName,
-        Context, DefnItem) :-
+        IsConstant, Context, DefnItem) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
     TypeName = global_foreign_type_name(AlwaysBoxed, lang_java, ModuleInfo,
         Type),
     MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
 
+    % Constant mutables do not require mutexes as their values are never
+    % updated.
+    (
+        IsConstant = yes,
+        LockDefn = []
+    ;
+        IsConstant = no,
+        LockDefn = ["static final java.lang.Object ", MutableMutexVarName,
+            " = new Object();\n"]
+    ),
+
     DefnBody = string.append_list([
-        "static ", TypeName, " ", TargetMutableName, ";\n",
-        "static final java.lang.Object ", MutableMutexVarName,
-        " = new Object();\n"
-    ]),
+        "static ", TypeName, " ", TargetMutableName, ";\n" | LockDefn]),
     DefnPragma = pragma_foreign_code(lang_java, DefnBody),
     DefnItemPragma = item_pragma_info(compiler(mutable_decl), DefnPragma,
         Context, -1),

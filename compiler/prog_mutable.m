@@ -213,6 +213,87 @@
 %
 %-----------------------------------------------------------------------------%
 %
+% JAVA BACKEND
+%
+% For non-constant mutables the transformation is as follows:
+%
+%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
+%
+% ===>
+%
+%   :- pragma foreign_code("Java", "
+%       static <JavaType> mutable_<varname>;
+%       static final java.lang.Object mutable_<varname>_lock = new Object();
+%   ").
+%
+%   :- initialise initialise_mutable_<varname>/0.
+%
+%   :- impure pred initialise_mutable_<varname> is det.
+%
+%   initialise_mutable_<varname> :-
+%       impure set_<varname>(<initval>).
+%
+% Operations on mutables are defined in terms of the following two predicates.
+%
+%   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
+%   :- pragma foreign_proc("Java",
+%       set_<varname>(X::in(<varinst>)),
+%       [will_not_call_mercury, thread_safe],
+%   "
+%       synchronized (mutable_<varname>_lock) {
+%           mutable_<varname> = X;
+%       }
+%   ").
+%
+%   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
+%   :- pragma foreign_proc("Java",
+%       get_varname(X::out(<varinst>)),
+%       [promise_semipure, will_not_call_mercury, thread_safe],
+%   "
+%       synchronized (mutable_<varname>_lock) {
+%           X = mutable_<varname>;
+%       }
+%   ").
+%
+% For constant mutables the transformation is:
+%
+%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [constant]).
+%
+% ===>
+%
+%   :- pragma foreign_code("Java", "
+%       static <JavaType> mutable_<varname>;
+%   ").
+%
+%   :- pred get_<varname>(<vartype>::out(<varinst>)) is det.
+%   :- pragma foreign_proc("Java",
+%       get_<varname>(X::out(<varinst>)),
+%       [will_not_call_mercury, promise_pure, thread_safe],
+%   "
+%       X = mutable_<varname>;
+%   ").
+%
+% In order to initialise constant mutables we generate the following:
+%
+%   :- impure pred secret_initialization_only_set_<varname>(
+%       <vartype>::in(<varinst>)) is det.
+%
+%   :- pragma foreign_proc("Java",
+%       secret_initialization_only_set_<varname>(X::in(<varinst>)),
+%       [will_not_call_mercury],
+%   "
+%       mutable_<varname> = X;
+%   ").
+%
+%   :- initialise initialise_mutable_<varname>/0.
+%
+%   :- impure pred initialise_mutable_<varname> is det.
+%
+%   initialise_mutable_<varname> :-
+%       impure secret_initialization_only_set_<varname>(<initval>).
+%
+%-----------------------------------------------------------------------------%
+%
 % ERLANG BACKEND
 %
 % Every Erlang "process" has an associated process dictionary, which we can use
