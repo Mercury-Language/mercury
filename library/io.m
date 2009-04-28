@@ -3336,11 +3336,11 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 "
     java.lang.String permissions = null;
 
-    if (access_types_includes_read_1_p_0((mercury.list.List_1) AccessTypes)) {
+    if (ML_access_types_includes_read((mercury.list.List_1) AccessTypes)) {
         permissions = ""read"";
     }
 
-    if (access_types_includes_write_1_p_0((mercury.list.List_1) AccessTypes)) {
+    if (ML_access_types_includes_write((mercury.list.List_1) AccessTypes)) {
         if (permissions == null) {
             permissions = ""write"";
         } else {
@@ -3348,7 +3348,7 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
         }
     }
 
-    if (access_types_includes_execute_1_p_0((mercury.list.List_1) AccessTypes))
+    if (ML_access_types_includes_execute((mercury.list.List_1) AccessTypes))
     {
         if (permissions == null) {
             permissions = ""execute"";
@@ -3362,10 +3362,10 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
             java.lang.System.getSecurityManager().checkPermission(
                 new java.io.FilePermission(FileName, permissions));
         }
-        Result = make_io_res_0_ok_0_f_0();
+        Result = ML_make_io_res_0_ok();
     }
     catch (java.lang.Exception e) {
-        Result = make_io_res_0_error_msg_1_f_0(e.getMessage());
+        Result = ML_make_io_res_0_error_msg(e.getMessage());
     }
 ").
 
@@ -3572,6 +3572,8 @@ check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
     "ML_access_types_includes_read").
 :- pragma foreign_export("IL", access_types_includes_read(in),
     "ML_access_types_includes_read").
+:- pragma foreign_export("Java", access_types_includes_read(in),
+    "ML_access_types_includes_read").
 :- pragma foreign_export("Erlang", access_types_includes_read(in),
     "ML_access_types_includes_read").
 
@@ -3582,6 +3584,8 @@ access_types_includes_read(Access) :-
 :- pragma foreign_export("C", access_types_includes_write(in),
     "ML_access_types_includes_write").
 :- pragma foreign_export("IL", access_types_includes_write(in),
+    "ML_access_types_includes_write").
+:- pragma foreign_export("Java", access_types_includes_write(in),
     "ML_access_types_includes_write").
 :- pragma foreign_export("Erlang", access_types_includes_write(in),
     "ML_access_types_includes_write").
@@ -3594,6 +3598,8 @@ access_types_includes_write(Access) :-
     "ML_access_types_includes_execute").
 :- pragma foreign_export("IL", access_types_includes_execute(in),
     "ML_access_types_includes_execute").
+:- pragma foreign_export("Java", access_types_includes_execute(in),
+    "ML_access_types_includes_execute").
 :- pragma foreign_export("Erlang", access_types_includes_execute(in),
     "ML_access_types_includes_execute").
 
@@ -3604,6 +3610,8 @@ access_types_includes_execute(Access) :-
 :- pragma foreign_export("C", (make_io_res_0_ok = out),
     "ML_make_io_res_0_ok").
 :- pragma foreign_export("IL", (make_io_res_0_ok = out),
+    "ML_make_io_res_0_ok").
+:- pragma foreign_export("Java", (make_io_res_0_ok = out),
     "ML_make_io_res_0_ok").
 :- pragma foreign_export("Erlang", (make_io_res_0_ok = out),
     "ML_make_io_res_0_ok").
@@ -3616,6 +3624,8 @@ make_io_res_0_ok = ok.
     "ML_make_io_res_0_error").
 :- pragma foreign_export("IL", make_io_res_0_error(in, in, out, di, uo),
     "ML_make_io_res_0_error").
+:- pragma foreign_export("Java", make_io_res_0_error(in, in, out, di, uo),
+    "ML_make_io_res_0_error").
 :- pragma foreign_export("Erlang", make_io_res_0_error(in, in, out, di, uo),
     "ML_make_io_res_0_error").
 
@@ -3627,6 +3637,8 @@ make_io_res_0_error(Error, Msg0, error(make_io_error(Msg)), !IO) :-
     "ML_make_io_res_0_error_msg").
 :- pragma foreign_export("IL", (make_io_res_0_error_msg(in) = out),
     "ML_make_io_res_0_error_msg").
+:- pragma foreign_export("Java", (make_io_res_0_error_msg(in) = out),
+    "ML_make_io_res_0_error_msg").
 
 make_io_res_0_error_msg(Msg) = error(make_io_error(Msg)).
 
@@ -3634,6 +3646,8 @@ make_io_res_0_error_msg(Msg) = error(make_io_error(Msg)).
 :- pragma foreign_export("C", (make_io_res_1_ok_file_type(in) = out),
     "ML_make_io_res_1_ok_file_type").
 :- pragma foreign_export("IL", (make_io_res_1_ok_file_type(in) = out),
+    "ML_make_io_res_1_ok_file_type").
+:- pragma foreign_export("Java", (make_io_res_1_ok_file_type(in) = out),
     "ML_make_io_res_1_ok_file_type").
 :- pragma foreign_export("Erlang", (make_io_res_1_ok_file_type(in) = out),
     "ML_make_io_res_1_ok_file_type").
@@ -3648,6 +3662,9 @@ make_io_res_1_ok_file_type(FileType) = ok(FileType).
 :- pragma foreign_export("IL",
     make_io_res_1_error_file_type(in, in, out, di, uo),
     "ML_make_io_res_1_error_file_type").
+:- pragma foreign_export("Java",
+    make_io_res_1_error_file_type(in, in, out, di, uo),
+    "ML_make_io_res_1_error_file_type").
 :- pragma foreign_export("Erlang",
     make_io_res_1_error_file_type(in, in, out, di, uo),
     "ML_make_io_res_1_error_file_type").
@@ -3658,6 +3675,8 @@ make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg)), !IO) :-
 :- func make_io_res_1_ok_string(string) = io.res(string).
 :- pragma foreign_export("C", (make_io_res_1_ok_string(in) = out),
     "ML_make_io_res_1_ok_string").
+:- pragma foreign_export("Java", (make_io_res_1_ok_string(in) = out),
+    "ML_make_io_res_1_ok_string").
 :- pragma foreign_export("Erlang", (make_io_res_1_ok_string(in) = out),
     "ML_make_io_res_1_ok_string").
 
@@ -3666,6 +3685,9 @@ make_io_res_1_ok_string(String) = ok(String).
 :- pred make_io_res_1_error_string(io.system_error::in,
     string::in, io.res(string)::out, io::di, io::uo) is det.
 :- pragma foreign_export("C",
+    make_io_res_1_error_string(in, in, out, di, uo),
+    "ML_make_io_res_1_error_string").
+:- pragma foreign_export("Java",
     make_io_res_1_error_string(in, in, out, di, uo),
     "ML_make_io_res_1_error_string").
 :- pragma foreign_export("Erlang",
@@ -4512,6 +4534,8 @@ io.write_many(Stream, [f(F) | Rest], !IO) :-
     "ML_io_print_to_cur_stream").
 :- pragma foreign_export("IL", io.print(in, di, uo),
     "ML_io_print_to_cur_stream").
+:- pragma foreign_export("Java", io.print(in, di, uo),
+    "ML_io_print_to_cur_stream").
 
 io.print(Term, !IO) :-
     io.output_stream(Stream, !IO),
@@ -4532,6 +4556,8 @@ io.print_cc(Term, !IO) :-
 :- pragma foreign_export("C", io.print_to_stream(in, in, di, uo),
     "ML_io_print_to_stream").
 :- pragma foreign_export("IL", io.print_to_stream(in, in, di, uo),
+    "ML_io_print_to_stream").
+:- pragma foreign_export("Java", io.print_to_stream(in, in, di, uo),
     "ML_io_print_to_stream").
 
 io.print_to_stream(Stream, Term, !IO) :-

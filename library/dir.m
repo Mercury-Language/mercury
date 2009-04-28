@@ -960,7 +960,7 @@ dir.make_directory(PathName, Result, !IO) :-
                 ""a file with that name already exists"");
         }
         if (dir.isDirectory()) {
-            Res = check_dir_accessibility_4_p_0(DirName);
+            Res = ML_check_dir_accessibility(DirName);
         } else {
             if (!dir.mkdirs()) {
                 throw new java.lang.RuntimeException(
@@ -969,7 +969,7 @@ dir.make_directory(PathName, Result, !IO) :-
             Res = make_mkdir_res_ok_0_f_0();
         }
     } catch (java.lang.Exception e) {
-        Res = make_mkdir_res_error_4_p_0(e);
+        Res = ML_make_mkdir_res_error(e);
     }
 ").
 
@@ -1123,23 +1123,23 @@ dir.make_single_directory(DirName, Result, !IO) :-
         java.io.File parent = newDir.getParentFile();
 
         if (parent == null) {
-            Result = make_mkdir_res_error_4_p_0(
+            Result = ML_make_mkdir_res_error(
                 new java.io.IOException(""can't create root directory""));
         } else if (!parent.exists()) {
-            Result = make_mkdir_res_error_4_p_0(
+            Result = ML_make_mkdir_res_error(
                 new java.io.IOException(""parent directory does not exist""));
         } else if (ErrorIfExists == 1 && newDir.exists()) {
-            Result = make_mkdir_res_error_4_p_0(
+            Result = ML_make_mkdir_res_error(
                 new java.io.IOException(""directory already exists""));
         } else {
             if (!newDir.mkdir()) {
                 throw new java.lang.RuntimeException(
                     ""make_single_directory failed"");
             }
-            Result = make_mkdir_res_ok_0_f_0();
+            Result = ML_make_mkdir_res_ok();
         }
     } catch (java.lang.Exception e) {
-        Result = make_mkdir_res_error_4_p_0(e);
+        Result = ML_make_mkdir_res_error(e);
     }
 ").
 
@@ -1165,6 +1165,8 @@ dir.make_single_directory(DirName, Result, !IO) :-
     "ML_make_mkdir_res_ok").
 :- pragma foreign_export("IL", (dir.make_mkdir_res_ok = out),
     "ML_make_mkdir_res_ok").
+:- pragma foreign_export("Java", (dir.make_mkdir_res_ok = out),
+    "ML_make_mkdir_res_ok").
 :- pragma foreign_export("Erlang", (dir.make_mkdir_res_ok = out),
     "ML_make_mkdir_res_ok").
 
@@ -1175,6 +1177,8 @@ dir.make_mkdir_res_ok = ok.
 :- pragma foreign_export("C", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
 :- pragma foreign_export("IL", dir.make_mkdir_res_error(in, out, di, uo),
+    "ML_make_mkdir_res_error").
+:- pragma foreign_export("Java", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
 :- pragma foreign_export("Erlang", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
@@ -1188,6 +1192,8 @@ dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
 :- pragma foreign_export("C", dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
 :- pragma foreign_export("IL", dir.make_mkdir_res_exists(in, in, out, di, uo),
+    "ML_make_mkdir_res_exists").
+:- pragma foreign_export("Java", dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
 :- pragma foreign_export("Erlang", dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
@@ -1205,6 +1211,8 @@ dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
 :- pragma foreign_export("C", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
 :- pragma foreign_export("IL", dir.check_dir_accessibility(in, out, di, uo),
+    "ML_check_dir_accessibility").
+:- pragma foreign_export("Java", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
 :- pragma foreign_export("Erlang", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
@@ -1596,9 +1604,9 @@ dir.open(DirName, Res, !IO) :-
         java.lang.String[] fileList = (new java.io.File(DirName)).list();
         java.util.List list = java.util.Arrays.asList(fileList);
 
-        Result = read_first_entry_4_p_0(list.iterator());
+        Result = ML_dir_read_first_entry(list.iterator());
     } catch (java.lang.Exception e) {
-        Result = make_dir_open_result_error_4_p_0(e);
+        Result = ML_make_dir_open_result_error(e);
     }
 ").
 
@@ -1667,6 +1675,8 @@ dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
     "ML_dir_read_first_entry").
 :- pragma foreign_export("IL", dir.read_first_entry(in, out, di, uo),
     "ML_dir_read_first_entry").
+:- pragma foreign_export("Java", dir.read_first_entry(in, out, di, uo),
+    "ML_dir_read_first_entry").
 :- pragma foreign_export("Erlang", dir.read_first_entry(in, out, di, uo),
     "ML_dir_read_first_entry").
 
@@ -1675,9 +1685,14 @@ dir.read_first_entry(Dir, Result, !IO) :-
 
 :- pred make_win32_dir_open_result_ok(dir.stream::in, c_pointer::in,
     io.result({dir.stream, string})::out, io::di, io::uo) is det.
-:- pragma foreign_export("C", make_win32_dir_open_result_ok(in, in, out, di, uo),
+:- pragma foreign_export("C",
+    make_win32_dir_open_result_ok(in, in, out, di, uo),
     "ML_make_win32_dir_open_result_ok").
-:- pragma foreign_export("IL", make_win32_dir_open_result_ok(in, in, out, di, uo),
+:- pragma foreign_export("IL",
+    make_win32_dir_open_result_ok(in, in, out, di, uo),
+    "ML_make_win32_dir_open_result_ok").
+:- pragma foreign_export("Java",
+    make_win32_dir_open_result_ok(in, in, out, di, uo),
     "ML_make_win32_dir_open_result_ok").
 
 make_win32_dir_open_result_ok(Dir, FirstFilePtr, Result, !IO) :-
@@ -1732,6 +1747,8 @@ copy_c_string(_) = _ :-
     "ML_make_dir_open_result_eof").
 :- pragma foreign_export("IL", (make_dir_open_result_eof = out),
     "ML_make_dir_open_result_eof").
+:- pragma foreign_export("Java", (make_dir_open_result_eof = out),
+    "ML_make_dir_open_result_eof").
 
 make_dir_open_result_eof = eof.
 
@@ -1740,6 +1757,8 @@ make_dir_open_result_eof = eof.
 :- pragma foreign_export("C", make_dir_open_result_error(in, out, di, uo),
     "ML_make_dir_open_result_error").
 :- pragma foreign_export("IL", make_dir_open_result_error(in, out, di, uo),
+    "ML_make_dir_open_result_error").
+:- pragma foreign_export("Java", make_dir_open_result_error(in, out, di, uo),
     "ML_make_dir_open_result_error").
 :- pragma foreign_export("Erlang", make_dir_open_result_error(in, out, di, uo),
     "ML_make_dir_open_result_error").

@@ -30,6 +30,10 @@ MCFLAGS-std_util += --no-halt-at-warn
 MCFLAGS-dir += --no-halt-at-warn
 MCFLAGS-exception += --no-halt-at-warn
 
+# Older versions of the compiler warn about `:- pragma foreign_export'
+# not being implemented for Java, which is a lie.
+MCFLAGS-io += --no-halt-at-warn
+
 # Ignore warnings about obsolete procedures from this module since
 # the entire module is obsolete.
 #
