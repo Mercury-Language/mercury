@@ -1974,6 +1974,7 @@ filter_marker(Marker) :-
 :- func keep_marker(marker) = bool.
 
 keep_marker(marker_stub) = no.
+keep_marker(marker_builtin_stub) = no.
 keep_marker(marker_infer_type) = no.
 keep_marker(marker_infer_modes) = no.
 keep_marker(marker_obsolete) = no.

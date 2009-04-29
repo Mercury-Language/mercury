@@ -1041,6 +1041,7 @@ write_marker_list(Markers, !IO) :-
     io.write_list(Markers, ", ", write_marker, !IO).
 
 marker_name(marker_stub, "stub").
+marker_name(marker_builtin_stub, "builtin_stub").
 marker_name(marker_infer_type, "infer_type").
 marker_name(marker_infer_modes, "infer_modes").
 marker_name(marker_user_marked_inline, "inline").

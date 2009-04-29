@@ -333,7 +333,9 @@ typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
         Specs, Changed) :-
     (
         % Compiler-generated predicates are created already type-correct,
-        % so there's no need to typecheck them. The same is true for builtins.
+        % so there's no need to typecheck them. The same is true for builtins,
+        % except for builtins marked with marker_builtin_stub which need to
+        % have their stub clauses generated.
         % But, compiler-generated unify predicates are not guaranteed to be
         % type-correct if they call a user-defined equality or comparison
         % predicate or if it is a special pred for an existentially typed
@@ -342,7 +344,9 @@ typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
             is_unify_or_compare_pred(!.PredInfo),
             \+ special_pred_needs_typecheck(!.PredInfo, !.ModuleInfo)
         ;
-            pred_info_is_builtin(!.PredInfo)
+            pred_info_is_builtin(!.PredInfo),
+            pred_info_get_markers(!.PredInfo, Markers),
+            \+ check_marker(Markers, marker_builtin_stub)
         )
     ->
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
@@ -381,37 +385,41 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
     ),
     pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
         ArgTypes0),
-    some [!ClausesInfo, !Info, !HeadTypeParams] (
-        pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
-        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0),
-        clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
-        clauses_info_get_varset(!.ClausesInfo, VarSet0),
-        clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes0),
-        pred_info_get_markers(!.PredInfo, Markers0),
-        % Handle the --allow-stubs and --warn-stubs options. If --allow-stubs
-        % is set, and there are no clauses, issue a warning (if --warn-stubs
-        % is set), and then generate a "stub" clause that just throws an
-        % exception.
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
+    pred_info_get_markers(!.PredInfo, Markers0),
+    % Handle the --allow-stubs and --warn-stubs options. If --allow-stubs
+    % is set, and there are no clauses, issue a warning (if --warn-stubs
+    % is set), and then generate a "stub" clause that just throws an
+    % exception.
+    clause_list_is_empty(ClausesRep0) = ClausesRep0IsEmpty,
+    (
+        ClausesRep0IsEmpty = yes,
         (
-            clause_list_is_empty(ClausesRep0) = yes,
             globals.lookup_bool_option(Globals, allow_stubs, yes),
             \+ check_marker(Markers0, marker_class_method)
         ->
             StartingSpecs = [report_no_clauses_stub(!.ModuleInfo, PredId,
                 !.PredInfo)],
-            PredPieces = describe_one_pred_name(!.ModuleInfo,
-                should_module_qualify, PredId),
-            PredName = error_pieces_to_string(PredPieces),
-            generate_stub_clause(PredName, !PredInfo, !.ModuleInfo, StubClause,
-                VarSet0, VarSet),
-            set_clause_list([StubClause], ClausesRep1),
-            clauses_info_set_clauses([StubClause], !ClausesInfo),
-            clauses_info_set_varset(VarSet, !ClausesInfo)
+            generate_stub_clause(PredId, !PredInfo, !.ModuleInfo)
         ;
+            check_marker(Markers0, marker_builtin_stub)
+        ->
             StartingSpecs = [],
-            VarSet = VarSet0,
-            ClausesRep1 = ClausesRep0
-        ),
+            generate_stub_clause(PredId, !PredInfo, !.ModuleInfo)
+        ;
+            StartingSpecs = []
+        )
+    ;
+        ClausesRep0IsEmpty = no,
+        StartingSpecs = []
+    ),
+    some [!ClausesInfo, !Info, !HeadTypeParams] (
+        pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
+        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep1),
+        clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
+        clauses_info_get_varset(!.ClausesInfo, VarSet),
+        clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes0),
         clause_list_is_empty(ClausesRep1) = ClausesRep1IsEmpty,
         (
             ClausesRep1IsEmpty = yes,
@@ -658,10 +666,28 @@ check_mention_existq_var(TypeVarSet, Impl, TVar, !Info) :-
     %       private_builtin.sorry(PredName).
     % depending on whether the predicate is part of
     % the Mercury standard library or not.
-:- pred generate_stub_clause(string::in, pred_info::in, pred_info::out,
+    %
+:- pred generate_stub_clause(pred_id::in, pred_info::in, pred_info::out,
+    module_info::in) is det.
+
+generate_stub_clause(PredId, !PredInfo, ModuleInfo) :-
+    some [!ClausesInfo] (
+        pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
+        clauses_info_get_varset(!.ClausesInfo, VarSet0),
+        PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
+            PredId),
+        PredName = error_pieces_to_string(PredPieces),
+        generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause,
+            VarSet0, VarSet),
+        clauses_info_set_clauses([StubClause], !ClausesInfo),
+        clauses_info_set_varset(VarSet, !ClausesInfo),
+        pred_info_set_clauses_info(!.ClausesInfo, !PredInfo)
+    ).
+
+:- pred generate_stub_clause_2(string::in, pred_info::in, pred_info::out,
     module_info::in, clause::out, prog_varset::in, prog_varset::out) is det.
 
-generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
+generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     % Mark the predicate as a stub
     % (i.e. record that it originally had no clauses)
     pred_info_get_markers(!.PredInfo, Markers0),

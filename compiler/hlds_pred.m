@@ -310,6 +310,11 @@
             % is used to tell purity analysis and determinism analysis
             % not to issue warnings for these predicates.
 
+    ;       marker_builtin_stub
+            % This predicate is a builtin but has no clauses for whatever
+            % reason. typecheck.m should generate a stub clause for it but no
+            % warn about it.
+
     ;       marker_infer_type
             % Requests type inference for the predicate. These markers are
             % inserted by make_hlds for undeclared predicates.

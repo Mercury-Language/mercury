@@ -1919,6 +1919,7 @@ write_type_spec_pragma(Pragma, !IO) :-
 :- pred should_output_marker(marker::in, bool::out) is det.
 
 should_output_marker(marker_stub, no).
+should_output_marker(marker_builtin_stub, no).
     % Since the inferred declarations are output, these
     % don't need to be done in the importing module.
 should_output_marker(marker_infer_type, no).

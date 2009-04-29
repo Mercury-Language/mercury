@@ -80,6 +80,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -200,7 +201,10 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
             predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
                 PredTable0, PredTable1),
             ( pred_info_is_builtin(PredInfo0) ->
-                add_builtin(PredId, Types, PredInfo0, PredInfo),
+                module_info_get_globals(!.ModuleInfo, Globals),
+                globals.get_target(Globals, CompilationTarget),
+                add_builtin(PredId, Types, CompilationTarget,
+                    PredInfo0, PredInfo),
                 predicate_table_get_preds(PredTable1, Preds1),
                 map.det_update(Preds1, PredId, PredInfo, Preds),
                 predicate_table_set_preds(Preds, PredTable1, PredTable)
@@ -213,7 +217,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_builtin(pred_id::in, list(mer_type)::in,
+:- pred add_builtin(pred_id::in, list(mer_type)::in, compilation_target::in,
     pred_info::in, pred_info::out) is det.
 
     % For most builtin predicates, say foo/2, we add a clause
@@ -227,7 +231,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     %
     % A few builtins are treated specially.
     %
-add_builtin(PredId, Types, !PredInfo) :-
+add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
     Module = pred_info_module(!.PredInfo),
     Name = pred_info_name(!.PredInfo),
     pred_info_get_context(!.PredInfo, Context),
@@ -246,8 +250,15 @@ add_builtin(PredId, Types, !PredInfo) :-
         (
             ( Name = "builtin_compound_eq"
             ; Name = "builtin_compound_lt"
+            )
+        ;
+            % These predicates are incompatible with Java and Erlang.
+            ( Name = "store_at_ref_impure"
+            ; Name = "store_at_ref"
             ),
-            StubPrime = yes
+            ( CompilationTarget = target_java
+            ; CompilationTarget = target_erlang
+            )
         )
     ->
         GoalExpr = conj(plain_conj, []),
@@ -255,7 +266,7 @@ add_builtin(PredId, Types, !PredInfo) :-
         ExtraVars = [],
         ExtraTypes = [],
         VarSet = VarSet0,
-        Stub = StubPrime
+        Stub = yes
     ;
         Module = mercury_private_builtin_module,
         Name = "trace_get_io_state"
@@ -322,18 +333,24 @@ add_builtin(PredId, Types, !PredInfo) :-
         Stub = no
     ),
 
-    % Construct a clause containing that pseudo-recursive call.
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-    Clause = clause([], Goal, impl_lang_mercury, Context),
+    (
+        Stub = no,
+        % Construct a clause containing that pseudo-recursive call.
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        Clause = clause([], Goal, impl_lang_mercury, Context),
+        set_clause_list([Clause], ClausesRep)
+    ;
+        Stub = yes,
+        set_clause_list([], ClausesRep)
+    ),
 
-    % Put the clause we just built into the pred_info,
+    % Put the clause we just built (if any) into the pred_info,
     % annotated with the appropriate types.
     map.from_corresponding_lists(ExtraVars ++ HeadVarList, ExtraTypes ++ Types,
         VarTypes),
     map.init(TVarNameMap),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
-    set_clause_list([Clause], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
         HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
@@ -347,7 +364,8 @@ add_builtin(PredId, Types, !PredInfo) :-
     add_marker(marker_user_marked_no_inline, Markers0, Markers1),
     (
         Stub = yes,
-        add_marker(marker_stub, Markers1, Markers)
+        add_marker(marker_stub, Markers1, Markers2),
+        add_marker(marker_builtin_stub, Markers2, Markers)
     ;
         Stub = no,
         Markers = Markers1
