@@ -547,6 +547,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
             do {                                                            \
                 MR_RegionHeader             *region;                        \
                 MR_RegionSemiDisjProtect    *semi_disj_prot;                \
+                int                         incr;                           \
                                                                             \
                 semi_disj_prot =                                            \
                     (MR_RegionSemiDisjProtect *) (protection_block);        \
