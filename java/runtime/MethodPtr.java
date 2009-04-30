@@ -10,6 +10,6 @@
 package mercury.runtime;
 
 public interface MethodPtr {
-	public abstract java.lang.Object call___0_0(java.lang.Object[] args); 
+	public abstract java.lang.Object call___0_0(java.lang.Object... args);
 }
 

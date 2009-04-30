@@ -13,20 +13,11 @@ public class TypeClassConstraint {
 	public TypeClassDeclStruct	tc_constr_type_class;
 	public PseudoTypeInfo		tc_constr_arg_ptis[];
 
-	public TypeClassConstraint(TypeClassDeclStruct type_class)
+	public TypeClassConstraint()
 	{
-		tc_constr_type_class = type_class;
-		tc_constr_arg_ptis = new PseudoTypeInfo[] {};
 	}
 
-	public TypeClassConstraint(TypeClassDeclStruct type_class,
-		PseudoTypeInfo[] ptis)
-	{
-		tc_constr_type_class = type_class;
-		tc_constr_arg_ptis = ptis;
-	}
-
-	public TypeClassConstraint(TypeClassDeclStruct type_class,
+	public void init(TypeClassDeclStruct type_class,
 		// XXX Object[] should be mercury.runtime.PseudoTypeInfo[],
 		//     but mlds_to_java.m generates Object[] since
 		//     init_array/1 doesn't give type info
@@ -38,47 +29,4 @@ public class TypeClassConstraint {
 			tc_constr_arg_ptis[i] = (PseudoTypeInfo) ptis[i];
 		}
 	}
-
-	public TypeClassConstraint(TypeClassDeclStruct type_class,
-		PseudoTypeInfo pti1)
-	{
-		tc_constr_type_class = type_class;
-		tc_constr_arg_ptis = new PseudoTypeInfo[] { pti1 };
-	}
-
-	public TypeClassConstraint(TypeClassDeclStruct type_class,
-		PseudoTypeInfo pti1, PseudoTypeInfo pti2)
-	{
-		tc_constr_type_class = type_class;
-		tc_constr_arg_ptis = new PseudoTypeInfo[] { pti1, pti2 };
-	}
-
-	public TypeClassConstraint(TypeClassDeclStruct type_class,
-		PseudoTypeInfo pti1, PseudoTypeInfo pti2,
-		PseudoTypeInfo pti3)
-	{
-		tc_constr_type_class = type_class;
-		tc_constr_arg_ptis = new PseudoTypeInfo[] { pti1, pti2, pti3 };
-	}
-
-	public TypeClassConstraint(TypeClassDeclStruct type_class,
-		PseudoTypeInfo pti1, PseudoTypeInfo pti2,
-		PseudoTypeInfo pti3, PseudoTypeInfo pti4)
-	{
-		tc_constr_type_class = type_class;
-		tc_constr_arg_ptis = new PseudoTypeInfo[]
-			{ pti1, pti2, pti3, pti4 };
-	}
-
-	public TypeClassConstraint(TypeClassDeclStruct type_class,
-		PseudoTypeInfo pti1, PseudoTypeInfo pti2,
-		PseudoTypeInfo pti3, PseudoTypeInfo pti4,
-		PseudoTypeInfo pti5)
-	{
-		tc_constr_type_class = type_class;
-		tc_constr_arg_ptis = new PseudoTypeInfo[] {
-			pti1, pti2, pti3, pti4, pti5 };
-	}
-
-	// XXX type classes with arity > 5 not supported
 }

@@ -1010,16 +1010,14 @@ namespace mercury.builtin {
     unify_2_p_0 (mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object x, java.lang.Object y)
     {
-        // stub only
-        throw new java.lang.Error (""unify/3 not implemented"");
+        return mercury.rtti_implementation.generic_unify_2_p_0(ti, x, y);
     }
 
     public static Comparison_result_0
     compare_3_p_0 (mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object x, java.lang.Object y)
     {
-        // stub only
-        throw new java.lang.Error (""compare/3 not implemented"");
+        return mercury.rtti_implementation.generic_compare_3_p_0(ti, x, y);
     }
 
     public static Comparison_result_0

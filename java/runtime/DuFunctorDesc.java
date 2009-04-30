@@ -21,7 +21,11 @@ public class DuFunctorDesc {
 	public /*final*/ java.lang.String[] du_functor_arg_names;
 	public /*final*/ mercury.runtime.DuExistInfo du_functor_exist_info;
 
-	public DuFunctorDesc(java.lang.String functor_name, int orig_arity,
+	public DuFunctorDesc()
+	{
+	}
+
+	public void init(java.lang.String functor_name, int orig_arity,
 		int arg_type_contains_var, int sectag_locn, int primary,
 		int secondary, int ordinal,
 		// XXX why do we need to use Object here?

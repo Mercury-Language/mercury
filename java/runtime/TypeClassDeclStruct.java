@@ -16,7 +16,11 @@ public class TypeClassDeclStruct {
 	public int			tc_decl_num_supers; // redundant
 	public TypeClassConstraint	tc_decl_supers;
 
-	public TypeClassDeclStruct(TypeClassId id, int version_number,
+	public TypeClassDeclStruct()
+	{
+	}
+
+	public void init(TypeClassId id, int version_number,
 		int num_supers, TypeClassConstraint supers)
 	{
 		tc_decl_id = id;

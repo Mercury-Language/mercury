@@ -10,8 +10,7 @@ Java bytecode suitable for running in the J2SE runtime system.
 The port is mostly complete, but some parts of the Mercury standard
 library are not yet implemented (for a full list see the FAQ below).
 
-The port is currently targeted at J2SE version 1.2 or higher, but we recommend
-version 1.4 for optimal performance and access to features.
+The port is currently targeted at J2SE version 1.5 or higher.
 
 PREREQUISITES
 
@@ -108,15 +107,7 @@ A. The main advantages are easy access to the wide range of libraries available
 
 Q. What version of Java should I be using?
 
-A. Java 2 Platform Standard Edition, version 1.2 or greater.  Note that some
-   features require version 1.4 or greater, however.
-
-
-Q. Which features?
-
-A. When using a Java version earlier than 1.4, there are limitations on treating
-   stdin and stdout as binary files with respect to seeking.  See the
-   documentation for io.m in the standard library for more details.
+A. Java 2 Platform Standard Edition, version 1.5 or greater.
 
 
 Q. What features are not yet implemented for the Java back-end?

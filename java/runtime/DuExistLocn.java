@@ -11,6 +11,7 @@ package mercury.runtime;
 public class DuExistLocn {
 	public int exist_arg_num;
 	public int exist_offset_in_tci;
+
 	public DuExistLocn(int arg_num, int offset_in_tci) {
 		exist_arg_num = arg_num;
 		exist_offset_in_tci = offset_in_tci;

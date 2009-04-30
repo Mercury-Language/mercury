@@ -12,7 +12,10 @@ public class ForeignEnumFunctorDesc {
 	public int			foreign_enum_functor_ordinal;
 	public int			foreign_enum_functor_value;
 
-	public ForeignEnumFunctorDesc(String name, int ordinal, int value) {
+	public ForeignEnumFunctorDesc() {
+	}
+
+	public void init(String name, int ordinal, int value) {
 		foreign_enum_functor_name = name;
 		foreign_enum_functor_ordinal = ordinal;
 		foreign_enum_functor_value = value;

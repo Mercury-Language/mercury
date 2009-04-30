@@ -540,7 +540,9 @@ public static int MR_TYPECTOR_REP_STABLE_FOREIGN        =40;
 public static int MR_TYPECTOR_REP_PSEUDOTYPEDESC        =41;
 public static int MR_TYPECTOR_REP_DUMMY                 =42;
 public static int MR_TYPECTOR_REP_BITMAP                =43;
-public static int MR_TYPECTOR_REP_UNKNOWN               =44;
+public static int MR_TYPECTOR_REP_FOREIGN_ENUM          =44;
+public static int MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ   =45;
+public static int MR_TYPECTOR_REP_UNKNOWN               =46;
 
 public static int MR_SECTAG_NONE                        = 0;
 public static int MR_SECTAG_LOCAL                       = 1;
@@ -1648,7 +1650,9 @@ no_clauses(PredName) :-
     public static final int MR_TYPECTOR_REP_PSEUDOTYPEDESC          = 41;
     public static final int MR_TYPECTOR_REP_DUMMY                   = 42;
     public static final int MR_TYPECTOR_REP_BITMAP                  = 43;
-    public static final int MR_TYPECTOR_REP_UNKNOWN                 = 44;
+    public static final int MR_TYPECTOR_REP_FOREIGN_ENUM            = 44;
+    public static final int MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ     = 45;
+    public static final int MR_TYPECTOR_REP_UNKNOWN                 = 46;
     
     public static final int MR_SECTAG_NONE      = 0;
     public static final int MR_SECTAG_LOCAL     = 1;

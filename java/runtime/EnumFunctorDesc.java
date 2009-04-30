@@ -11,7 +11,10 @@ public class EnumFunctorDesc {
 	public java.lang.String enum_functor_name;
 	public int              enum_functor_ordinal;
 
-	public EnumFunctorDesc(String name, int ordinal) {
+	public EnumFunctorDesc() {
+	}
+
+	public void init(String name, int ordinal) {
 		enum_functor_name = name;
 		enum_functor_ordinal = ordinal;
 	}

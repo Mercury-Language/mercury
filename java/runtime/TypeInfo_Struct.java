@@ -11,16 +11,13 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 	public TypeCtorInfo_Struct type_ctor;
 	public PseudoTypeInfo args[];
 
+	public TypeInfo_Struct()
+	{
+	}
+
 	public TypeInfo_Struct(TypeCtorInfo_Struct tc)
 	{
 		type_ctor = tc;
-	}
-
-    	// raw constructor
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, PseudoTypeInfo... as)
-	{
-		type_ctor = tc;
-		args = as;
 	}
 
 	// copy constructor
@@ -33,42 +30,44 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 		args = ti.args;
 	}
 
-	// XXX "as" should have type PseudoTypeInfo[],
-	//     but mlds_to_java.m uses Object[]
-	//     because init_array/1 does not store the type.
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity, Object[] as)
+	public void init(TypeCtorInfo_Struct tc, PseudoTypeInfo[] as)
 	{
-		assert arity == as.length;
-
-		type_ctor = tc;
-		args = new PseudoTypeInfo[as.length];
-		for (int i = 0; i < as.length; i++) {
-			args[i] = (PseudoTypeInfo) as[i];
-		}
+	    type_ctor = tc;
+	    args = as;
 	}
 
 	// XXX "as" should have type PseudoTypeInfo[],
 	//     but mlds_to_java.m uses Object[]
 	//     because init_array/1 does not store the type.
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, Object[] as)
+	public void init(TypeCtorInfo_Struct tc, int arity, Object[] as)
 	{
-		type_ctor = tc;
-		args = new PseudoTypeInfo[as.length];
+		assert arity == as.length;
+
+		init(tc, as);
+	}
+
+	// XXX "as" should have type PseudoTypeInfo[],
+	//     but mlds_to_java.m uses Object[]
+	//     because init_array/1 does not store the type.
+	public void init(TypeCtorInfo_Struct tc, Object[] as)
+	{
+		PseudoTypeInfo[] ptis = new PseudoTypeInfo[as.length];
 		for (int i = 0; i < as.length; i++) {
-			args[i] = (PseudoTypeInfo) as[i];
+			ptis[i] = (PseudoTypeInfo) as[i];
 		}
+                init(tc, ptis);
 	}
 
 	// XXX untested guess
 	public TypeInfo_Struct(TypeInfo_Struct ti, int arity, Object... as)
 	{
-		this(ti.type_ctor, arity, as);
+		init(ti.type_ctor, arity, as);
 	}
 
 	// XXX untested guess
 	public TypeInfo_Struct(TypeInfo_Struct ti, Object... as)
 	{
-		this(ti.type_ctor, as);
+		init(ti.type_ctor, as);
 	}
 
 	// XXX a temp hack just to get things to run

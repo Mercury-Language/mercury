@@ -15,7 +15,11 @@ public class DuExistInfo {
 	public /* final */ mercury.runtime.TypeClassConstraint[]
 		exist_constraints;
 
-	public DuExistInfo(int typeinfos_plain, int typeinfos_in_tci, int tcis,
+	public DuExistInfo()
+	{
+	}
+
+	public void init(int typeinfos_plain, int typeinfos_in_tci, int tcis,
 		mercury.runtime.DuExistLocn[] typeinfo_locns,
 		mercury.runtime.TypeClassConstraint constraints[])
 	{

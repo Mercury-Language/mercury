@@ -18,7 +18,11 @@ public class TypeClassId {
 	public String[]			tc_id_var_names;
 	public TypeClassMethod[]	tc_id_methods;
 
-	public TypeClassId(String module_name, String name, int arity,
+	public TypeClassId()
+	{
+	}
+
+	public void init(String module_name, String name, int arity,
 		int num_type_vars, int num_methods,
 		String[] var_names, TypeClassMethod[] methods)
 	{

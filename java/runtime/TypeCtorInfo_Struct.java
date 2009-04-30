@@ -25,7 +25,11 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 	public /* short */ int 			type_ctor_flags;
 	public int[]              		type_functor_number_map;
 
-	public TypeCtorInfo_Struct(
+	public TypeCtorInfo_Struct()
+	{
+	}
+
+	public void init(
 			int type_arity, int version, int num_ptags, int rep,
 			Object unify_proc, Object compare_proc, 
 			String module, String name,

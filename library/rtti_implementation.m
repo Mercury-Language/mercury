@@ -34,6 +34,8 @@
 %
 % XXX Also, the existing Java code needs to be reviewed.
 %
+% XXX Also there are too many unsafe_casts.
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -172,13 +174,12 @@
 :- pragma foreign_type("Java", type_info,
     "mercury.runtime.TypeInfo_Struct").
 
-:- type compare_pred ---> compare_pred(c_pointer).
-
 :- type type_layout ---> type_layout(c_pointer).
 :- pragma foreign_type("Java", type_layout, "mercury.runtime.TypeLayout").
 
-:- type pred_type ---> pred_type(c_pointer).
-:- type pseudo_type_info ---> pred_type(c_pointer).
+:- type pseudo_type_info ---> pseudo_type_info.
+:- pragma foreign_type("Java", pseudo_type_info,
+    "mercury.runtime.PseudoTypeInfo").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -189,7 +190,7 @@
     % See MR_get_num_functors in runtime/mercury_construct.c
 num_functors(TypeDesc) = NumFunctors :-
     TypeCtorInfo = get_type_ctor_info(unsafe_cast(TypeDesc)),
-    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     (
         ( TypeCtorRep = tcr_du
         ; TypeCtorRep = tcr_du_usereq
@@ -271,7 +272,7 @@ get_functor_impl(TypeDesc, FunctorNumber,
     FunctorNumber < TypeDesc ^ num_functors,
     TypeInfo = unsafe_cast(TypeDesc),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     (
         ( TypeCtorRep = tcr_du
         ; TypeCtorRep = tcr_du_usereq
@@ -354,7 +355,7 @@ get_functor_impl(TypeDesc, FunctorNumber,
 
 get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
         FunctorName, Arity, TypeDescList, Names) :-
-    TypeFunctors = TypeCtorInfo ^ type_ctor_functors,
+    TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
     DuFunctorDesc = TypeFunctors ^ du_functor_desc(TypeCtorRep, FunctorNumber),
 
     % XXX We don't handle functors with existentially quantified arguments.
@@ -387,9 +388,9 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
 
 get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
         TypeDescList, Names) :-
-    TypeFunctors = TypeCtorInfo ^ type_ctor_functors,
-    EnumFunctorDesc = TypeFunctors ^
-        enum_functor_desc(TypeCtorRep, FunctorNumber),
+    TypeLayout = get_type_layout(TypeCtorInfo),
+    EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, FunctorNumber,
+        TypeLayout),
 
     FunctorName = EnumFunctorDesc ^ enum_functor_name,
     Arity = 0,
@@ -402,7 +403,7 @@ get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
 
 get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
         TypeDescList, Names) :-
-    TypeFunctors = TypeCtorInfo ^ type_ctor_functors,
+    TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
     NoTagFunctorDesc = TypeFunctors ^
         notag_functor_desc(TypeCtorRep, FunctorNumber),
 
@@ -451,7 +452,7 @@ get_type_info(_) = _ :-
     get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Arity = ((TypeInfo_Struct) TypeInfo).args.length;
+    Arity = TypeInfo.args.length;
 ").
 
 :- pragma foreign_proc("C#",
@@ -470,7 +471,7 @@ get_var_arity_typeinfo_arity(_) = _ :-
 generic_compare(Res, X, Y) :-
     TypeInfo = get_type_info(X),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     (
         TypeCtorRep = tcr_tuple
     ->
@@ -521,7 +522,7 @@ generic_compare(Res, X, Y) :-
 generic_unify(X, Y) :-
     TypeInfo = get_type_info(X),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     (
         TypeCtorRep = tcr_tuple
     ->
@@ -632,6 +633,12 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
     %
     % We first give "unimplemented" definitions in Mercury, which will be
     % used by default.
+
+:- type unify_or_compare_pred
+    --->    unify_or_compare_pred.
+
+:- pragma foreign_type("Java", unify_or_compare_pred,
+    "mercury.runtime.MethodPtr").
 
 :- pred semidet_call_3(P::in, T::in, U::in) is semidet.
 semidet_call_3(_::in, _::in, _::in) :-
@@ -782,6 +789,105 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+    % We override the above definitions in the Java backend.
+
+:- pragma foreign_proc("Java",
+    semidet_call_3(Pred::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Object res = P.call___0_0(X, Y);
+    succeeded = ((Boolean) res).booleanValue();
+").
+:- pragma foreign_proc("Java",
+    semidet_call_4(Pred::in, A::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Object res = P.call___0_0(A, X, Y);
+    succeeded = ((Boolean) res).booleanValue();
+").
+:- pragma foreign_proc("Java",
+    semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Object res = P.call___0_0(A, B, X, Y);
+    succeeded = ((Boolean) res).booleanValue();
+").
+:- pragma foreign_proc("Java",
+    semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Object res = P.call___0_0(A, B, C, X, Y);
+    succeeded = ((Boolean) res).booleanValue();
+").
+:- pragma foreign_proc("Java",
+    semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Object res = P.call___0_0(A, B, C, D, X, Y);
+    succeeded = ((Boolean) res).booleanValue();
+").
+:- pragma foreign_proc("Java",
+    semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Object res = P.call___0_0(A, B, C, D, E, X, Y);
+    succeeded = ((Boolean) res).booleanValue();
+").
+
+:- pragma foreign_proc("Java",
+    result_call_4(Pred::in, Res::out, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Res = P.call___0_0(X, Y);
+").
+
+:- pragma foreign_proc("Java",
+    result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Res = P.call___0_0(A, X, Y);
+").
+:- pragma foreign_proc("Java",
+    result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Res = P.call___0_0(A, B, X, Y);
+").
+:- pragma foreign_proc("Java",
+    result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Res = P.call___0_0(A, B, C, X, Y);
+").
+:- pragma foreign_proc("Java",
+    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Res = P.call___0_0(A, B, C, D, X, Y);
+").
+:- pragma foreign_proc("Java",
+    result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
+        X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MethodPtr P = (MethodPtr) Pred;
+    Res = P.call___0_0(A, B, C, D, E, X, Y);
+").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 compare_type_infos(Res, TypeInfo1, TypeInfo2) :-
     ( same_pointer_value(TypeInfo1, TypeInfo2) ->
         Res = (=)
@@ -869,9 +975,10 @@ compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
 :- pred type_ctor_is_variable_arity(type_ctor_info::in) is semidet.
 
 type_ctor_is_variable_arity(TypeCtorInfo) :-
-    ( TypeCtorInfo ^ type_ctor_rep = tcr_pred
-    ; TypeCtorInfo ^ type_ctor_rep = tcr_func
-    ; TypeCtorInfo ^ type_ctor_rep = tcr_tuple
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    ( TypeCtorRep = tcr_pred
+    ; TypeCtorRep = tcr_func
+    ; TypeCtorRep = tcr_tuple
     ).
 
 %-----------------------------------------------------------------------------%
@@ -887,11 +994,12 @@ type_ctor_is_variable_arity(TypeCtorInfo) :-
 
 collapse_equivalences(TypeInfo) = NewTypeInfo :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     (
         (
-            TypeCtorInfo ^ type_ctor_rep = tcr_equiv_ground
+            TypeCtorRep = tcr_equiv_ground
         ;
-            TypeCtorInfo ^ type_ctor_rep = tcr_equiv
+            TypeCtorRep = tcr_equiv
         )
     ->
         error("rtti_implementation.m: unimplemented: " ++
@@ -953,7 +1061,7 @@ iterate_foldl(Start, Max, Pred, !Acc) :-
 deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     TypeInfo = get_type_info(Term),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    TypeCtorRep = type_ctor_rep(TypeCtorInfo),
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Functor, Arity, Arguments).
 
@@ -979,15 +1087,15 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             NonCanon, Functor, Arity, Arguments)
     ;
         TypeCtorRep = tcr_enum,
-        TypeFunctors = type_ctor_functors(TypeCtorInfo),
-        EnumFunctorDesc = enum_functor_desc(TypeCtorRep,
-            unsafe_get_enum_value(Term), TypeFunctors),
+        TypeLayout = get_type_layout(TypeCtorInfo),
+        EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep,
+            unsafe_get_enum_value(Term), TypeLayout),
         Functor = enum_functor_name(EnumFunctorDesc),
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_foreign_enum,
-        TypeFunctors = type_ctor_functors(TypeCtorInfo),
+        TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
         ForeignEnumFunctorDesc = foreign_enum_functor_desc(TypeCtorRep,
             unsafe_get_foreign_enum_value(Term), TypeFunctors),
         Functor = foreign_enum_functor_name(ForeignEnumFunctorDesc),
@@ -999,8 +1107,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             NonCanon, Functor, Arity, Arguments)
     ;
         TypeCtorRep = tcr_dummy,
-        TypeFunctors = type_ctor_functors(TypeCtorInfo),
-        EnumFunctorDesc = enum_functor_desc(TypeCtorRep, 0, TypeFunctors),
+        TypeLayout = get_type_layout(TypeCtorInfo),
+        EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, 0, TypeLayout),
         Functor = enum_functor_name(EnumFunctorDesc),
         Arity = 0,
         Arguments = []
@@ -1011,7 +1119,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_du,
 
-        LayoutInfo = type_layout(TypeCtorInfo),
+        LayoutInfo = get_type_layout(TypeCtorInfo),
         PTag = get_primary_tag(Term),
         PTagEntry = LayoutInfo ^ ptag_index(PTag),
         SecTagLocn = PTagEntry ^ sectag_locn,
@@ -1371,10 +1479,10 @@ expand_type_name(TypeCtorInfo, Wrap) = Name :-
     %
 :- some [T] func get_arg(U, int, sectag_locn, du_functor_desc, type_info) = T.
 
-get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
+get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = Arg :-
     ( ExistInfo = FunctorDesc ^ du_functor_exist_info ->
-        ExtraArgs = (ExistInfo ^ exist_info_typeinfos_plain) +
-            (ExistInfo ^ exist_info_tcis)
+        ExtraArgs = exist_info_typeinfos_plain(ExistInfo) +
+            exist_info_tcis(ExistInfo)
     ;
         ExtraArgs = 0
     ),
@@ -1395,13 +1503,13 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
 :- pragma promise_pure(high_level_data/0).
 :- pragma foreign_proc("Java",
     high_level_data,
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     succeeded = true;
 ").
 :- pragma foreign_proc("C#",
     high_level_data,
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
 #if MR_HIGHLEVEL_DATA
     SUCCESS_INDICATOR = true;
@@ -1416,21 +1524,16 @@ high_level_data :-
         semidet_succeed
     ).
 
-:- pred get_arg_type_info(type_info::in, P::in, T::in,
+:- pred get_arg_type_info(type_info::in, pseudo_type_info::in, T::in,
     du_functor_desc::in, type_info::out) is det.
 
 get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
         ArgTypeInfo) :-
-    ( typeinfo_is_variable(PseudoTypeInfo, VarNum) ->
+    ( pseudo_type_info_is_variable(PseudoTypeInfo, VarNum) ->
         get_type_info_for_var(TypeInfoParams, VarNum, Term, FunctorDesc,
-            ExpandedTypeInfo),
-        ( typeinfo_is_variable(ExpandedTypeInfo, _) ->
-            error("get_arg_type_info: unbound type variable")
-        ;
-            ArgTypeInfo = ExpandedTypeInfo
-        )
+            ArgTypeInfo)
     ;
-        CastTypeInfo = type_info_cast(PseudoTypeInfo),
+        CastTypeInfo = type_info_from_pseudo_type_info(PseudoTypeInfo),
         TypeCtorInfo = get_type_ctor_info(CastTypeInfo),
         ( type_ctor_is_variable_arity(TypeCtorInfo) ->
             Arity = pseudotypeinfo_get_higher_order_arity(CastTypeInfo),
@@ -1453,16 +1556,13 @@ get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
                     (
                         TI0 = yes(TypeInfo0),
                         unsafe_promise_unique(TypeInfo0, TypeInfo1),
-                        update_type_info_index(I, ETypeInfo,
-                            TypeInfo1, TypeInfo),
-                        TI = yes(TypeInfo)
+                        set_type_info_index(I, ETypeInfo, TypeInfo1, TypeInfo)
                     ;
                         TI0 = no,
-                        NewTypeInfo0 = new_type_info(CastTypeInfo, UpperBound),
-                        update_type_info_index(I, ETypeInfo,
-                            NewTypeInfo0, NewTypeInfo),
-                        TI = yes(NewTypeInfo)
-                    )
+                        TypeInfo0 = new_type_info(CastTypeInfo, UpperBound),
+                        set_type_info_index(I, ETypeInfo, TypeInfo0, TypeInfo)
+                    ),
+                    TI = yes(TypeInfo)
                 )
             ),
         iterate_foldl(StartRegionSize, UpperBound, ProcessArgTypeInfos,
@@ -1488,60 +1588,69 @@ pseudotypeinfo_get_higher_order_arity(_) = 1 :-
     %
 :- func new_type_info(type_info::in, int::in) = (type_info::uo) is det.
 
-new_type_info(TypeInfo::in, _::in) = (NewTypeInfo::uo) :-
+new_type_info(TypeInfo, _) = NewTypeInfo :-
     unsafe_promise_unique(TypeInfo, NewTypeInfo),
     det_unimplemented("new_type_info").
 
 :- pragma foreign_proc("C#",
     new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::uo),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     NewTypeInfo = new object[Arity + 1];
     System.Array.Copy(OldTypeInfo, NewTypeInfo, OldTypeInfo.Length);
 ").
 
+:- pragma foreign_proc("Java",
+    new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    NewTypeInfo = new TypeInfo_Struct();
+    PseudoTypeInfo[] args = new PseudoTypeInfo[Arity];
+    NewTypeInfo.init(OldTypeInfo.type_ctor, args);
+").
+
     % Get the pseudo-typeinfo at the given index from the argument types.
     %
-:- some [T] func get_pti_from_arg_types(arg_types, int) = T.
+:- func get_pti_from_arg_types(arg_types, int) = pseudo_type_info.
 
-get_pti_from_arg_types(_::in, _::in) = (42::out) :-
+get_pti_from_arg_types(_, _) = pseudo_type_info :-
     det_unimplemented("get_pti_from_arg_types").
 
 :- pragma foreign_proc("Java",
     get_pti_from_arg_types(ArgTypes::in, Index::in) = (ArgTypeInfo::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX This should be something else.
-    TypeInfo_for_T = null;
-
     ArgTypeInfo = ArgTypes[Index];
 ").
 
 :- pragma foreign_proc("C#",
     get_pti_from_arg_types(ArgTypes::in, Index::in) = (ArgTypeInfo::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX This should be something else.
-    // TypeInfo_for_T
-
     ArgTypeInfo = ArgTypes[Index];
 ").
 
     % Get the pseudo-typeinfo at the given index from a type-info.
     %
-:- some [T] func get_pti_from_type_info(type_info, int) = T.
+:- func get_pti_from_type_info(type_info, int) = pseudo_type_info.
 
-get_pti_from_type_info(_::in, _::in) = (42::out) :-
-    det_unimplemented("get_pti_from_type_info").
+get_pti_from_type_info(_, _) = _ :-
+    % det_unimplemented("get_pti_from_type_info").
+    private_builtin.sorry("get_pti_from_type_info").
 
 :- pragma foreign_proc("C#",
     get_pti_from_type_info(TypeInfo::in, Index::in) = (PTI::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX This should be something else.
-    TypeInfo_for_T = null;
-
     PTI = TypeInfo[Index];
+").
+
+:- pragma foreign_proc("Java",
+    get_pti_from_type_info(TypeInfo::in, Index::in) = (PTI::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    /* XXX I think the code assumes index 0 is the type_ctor? */
+    PTI = TypeInfo.args[Index - 1];
 ").
 
     % Get the type info for a particular type variable number
@@ -1577,21 +1686,32 @@ get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
 
     % An unchecked cast to type_info (for pseudo-typeinfos).
     %
-:- func type_info_cast(T) = type_info.
+:- func type_info_from_pseudo_type_info(pseudo_type_info) = type_info.
 
-type_info_cast(X) = unsafe_cast(X).
+type_info_from_pseudo_type_info(X) = unsafe_cast(X).
 
-    % Get a subterm term, given its type_info, the original term, its index
+:- pragma foreign_proc("Java",
+    type_info_from_pseudo_type_info(PseudoTypeInfo::in) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (PseudoTypeInfo instanceof TypeCtorInfo_Struct) {
+        TypeInfo = new TypeInfo_Struct((TypeCtorInfo_Struct) PseudoTypeInfo);
+    } else {
+        TypeInfo = (TypeInfo_Struct) PseudoTypeInfo;
+    }
+").
+
+    % Get a subterm T, given its type_info, the original term U, its index
     % and the start region size.
     %
 :- some [T] func get_subterm(type_info, U, int, int) = T.
 
-get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
+get_subterm(_, _, _, _) = 42 :-
     det_unimplemented("get_subterm").
 
 :- pragma foreign_proc("C#",
     get_subterm(TypeInfo::in, Term::in, Index::in, ExtraArgs::in) = (Arg::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     // Mention TypeInfo_for_U to avoid a warning.
 
@@ -1606,16 +1726,56 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
     TypeInfo_for_T = TypeInfo;
 ").
 
-    % Test whether a type info is variable.
-    %
-:- pred typeinfo_is_variable(T::in, int::out) is semidet.
+:- pragma foreign_decl("Java", local,
+"
+    import java.lang.reflect.Field;
+").
 
-typeinfo_is_variable(_::in, 42::out) :-
-    semidet_unimplemented("typeinfo_is_variable").
+:- pragma foreign_proc("Java",
+    get_subterm(TypeInfo::in, Term::in, Index::in, ExtraArgs::in) = (Arg::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // Mention TypeInfo_for_U to avoid a warning.
+
+    // Currently we use reflection to extract the field.
+    // It probably would be more efficient to generate
+    // a method for each class to return its n'th field.
+
+    if (Term instanceof Object[]) {
+        int i = Index + ExtraArgs;
+        Arg = ((Object[]) Term)[i];
+    } else {
+        try {
+            // The F<i> field variables are numbered from 1.
+            int i = 1 + Index + ExtraArgs;
+            Field f = Term.getClass().getDeclaredField(""F"" + i);
+            Arg = f.get(Term);
+        } catch (IllegalAccessException e) {
+            throw new Error(e);
+        } catch (NoSuchFieldException e) {
+            throw new Error(e);
+        }
+    }
+
+    assert Arg != null;
+
+    TypeInfo_for_T = TypeInfo;
+").
+
+    % Test whether a (pseudo-) type info is variable.
+    % The argument type is pseudo_type_info because when we call this we have a
+    % pseudo_type_info but aren't sure if it's actually a variable or a
+    % type_info.
+    %
+:- pred pseudo_type_info_is_variable(pseudo_type_info::in, int::out)
+    is semidet.
+
+pseudo_type_info_is_variable(_, 42) :-
+    semidet_unimplemented("pseudo_type_info_is_variable").
 
 :- pragma foreign_proc("C#",
-    typeinfo_is_variable(TypeInfo::in, VarNum::out),
-    [promise_pure],
+    pseudo_type_info_is_variable(TypeInfo::in, VarNum::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         VarNum = System.Convert.ToInt32(TypeInfo);
@@ -1627,8 +1787,8 @@ typeinfo_is_variable(_::in, 42::out) :-
 ").
 
 :- pragma foreign_proc("Java",
-    typeinfo_is_variable(TypeInfo::in, VarNum::out),
-    [will_not_call_mercury, promise_pure],
+    pseudo_type_info_is_variable(TypeInfo::in, VarNum::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     succeeded = (TypeInfo.getClass() == mercury.runtime.PseudoTypeInfo.class);
     if (succeeded) {
@@ -1741,7 +1901,7 @@ pseudotypeinfo_max_var = 1024.
     get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeCtorInfo = ((mercury.runtime.TypeInfo_Struct) TypeInfo).type_ctor;
+    TypeCtorInfo = TypeInfo.type_ctor;
 ").
 
 :- pragma foreign_proc("C",
@@ -1776,6 +1936,13 @@ same_pointer_value(X, Y) :- same_pointer_value_untyped(X, Y).
     SUCCESS_INDICATOR = (T1 == T2);
 ").
 
+:- pragma foreign_proc("Java",
+    same_pointer_value_untyped(T1::in, T2::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    succeeded = (T1 == T2);
+").
+
 same_pointer_value_untyped(_, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -1795,7 +1962,7 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 
 :- pragma foreign_proc("C#",
     get_primary_tag(X::in) = (Tag::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     // We don't look at X to find the tag, for .NET low-level data
     // there is no primary tag, so we always return zero.
@@ -1804,7 +1971,7 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 
 :- pragma foreign_proc("C#",
     get_remote_secondary_tag(X::in) = (Tag::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         // try the low-level data representation
@@ -1818,7 +1985,7 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 
 :- pragma foreign_proc("Java",
     get_primary_tag(_X::in) = (Tag::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     // For the Java back-end, there is no primary tag, so always return 0.
     Tag = 0;
@@ -1826,7 +1993,7 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 
 :- pragma foreign_proc("Java",
     get_remote_secondary_tag(X::in) = (Tag::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     // If there is a secondary tag, it will be in a member called
     // `data_tag', which we obtain by reflection.
@@ -1878,14 +2045,14 @@ ptag_index(_::in, TypeLayout::in) = (unsafe_cast(TypeLayout)::out) :-
 
 :- pragma foreign_proc("C#",
     ptag_index(X::in, TypeLayout::in) = (PtagEntry::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     PtagEntry = (object[]) TypeLayout[X];
 ").
 
 :- pragma foreign_proc("Java",
     ptag_index(X::in, TypeLayout::in) = (PtagEntry::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     PtagEntry = TypeLayout.layout_du()[X];
 ").
@@ -1897,7 +2064,7 @@ sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 
 :- pragma foreign_proc("C#",
     sectag_locn(PTagEntry::in) = (SectagLocn::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     SectagLocn = mercury.runtime.LowLevelData.make_enum((int)
         PTagEntry[(int) ptag_layout_field_nums.sectag_locn]);
@@ -1905,7 +2072,7 @@ sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 
 :- pragma foreign_proc("Java",
     sectag_locn(PTagEntry::in) = (SectagLocn::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     mercury.runtime.Sectag_Locn SL_struct = PTagEntry.sectag_locn;
 
@@ -1920,7 +2087,7 @@ du_sectag_alternatives(_::in, PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 
 :- pragma foreign_proc("C#",
     du_sectag_alternatives(X::in, PTagEntry::in) = (FunctorDescriptor::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     object[] sectag_alternatives;
     sectag_alternatives = (object [])
@@ -1930,7 +2097,7 @@ du_sectag_alternatives(_::in, PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 
 :- pragma foreign_proc("Java",
     du_sectag_alternatives(X::in, PTagEntry::in) = (FunctorDescriptor::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     FunctorDescriptor = PTagEntry.sectag_alternatives[X];
 ").
@@ -1942,7 +2109,7 @@ typeinfo_locns_index(X::in, _::in) = (unsafe_cast(X)::out) :-
 
 :- pragma foreign_proc("C#",
     typeinfo_locns_index(X::in, ExistInfo::in) = (TypeInfoLocn::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     TypeInfoLocn = (object[]) ((object[]) ExistInfo[(int)
         exist_info_field_nums.typeinfo_locns])[X];
@@ -1955,10 +2122,17 @@ exist_info_typeinfos_plain(X::in) = (unsafe_cast(X)::out) :-
 
 :- pragma foreign_proc("C#",
     exist_info_typeinfos_plain(ExistInfo::in) = (TypeInfosPlain::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     TypeInfosPlain = (int)
         ExistInfo[(int) exist_info_field_nums.typeinfos_plain];
+").
+
+:- pragma foreign_proc("Java",
+    exist_info_typeinfos_plain(ExistInfo::in) = (TypeInfosPlain::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeInfosPlain = ExistInfo.exist_typeinfos_plain;
 ").
 
 :- func exist_info_tcis(exist_info) = int.
@@ -1968,9 +2142,16 @@ exist_info_tcis(X::in) = (unsafe_cast(X)::out) :-
 
 :- pragma foreign_proc("C#",
     exist_info_tcis(ExistInfo::in) = (TCIs::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     TCIs = (int) ExistInfo[(int) exist_info_field_nums.tcis];
+").
+
+:- pragma foreign_proc("Java",
+    exist_info_tcis(ExistInfo::in) = (TCIs::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TCIs = ExistInfo.exist_tcis;
 ").
 
 :- func exist_arg_num(typeinfo_locn) = int.
@@ -1980,10 +2161,9 @@ exist_arg_num(X::in) = (unsafe_cast(X)::out) :-
 
 :- pragma foreign_proc("C#",
     exist_arg_num(TypeInfoLocn::in) = (ArgNum::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     ArgNum = (int) TypeInfoLocn[(int) exist_locn_field_nums.exist_arg_num];
-
 ").
 
 :- func exist_offset_in_tci(typeinfo_locn) = int.
@@ -1993,10 +2173,17 @@ exist_offset_in_tci(X::in) = (unsafe_cast(X)::out) :-
 
 :- pragma foreign_proc("C#",
     exist_offset_in_tci(TypeInfoLocn::in) = (ArgNum::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     ArgNum = (int)
         TypeInfoLocn[(int) exist_locn_field_nums.exist_offset_in_tci];
+").
+
+:- pragma foreign_proc("Java",
+    exist_offset_in_tci(TypeInfoLocn::in) = (ArgNum::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ArgNum = TypeInfoLocn.exist_offset_in_tci;
 ").
 
 :- func get_typeinfo_from_term(U, int) = type_info.
@@ -2006,7 +2193,7 @@ get_typeinfo_from_term(_::in, X::in) = (unsafe_cast(X)::out) :-
 
 :- pragma foreign_proc("C#",
     get_typeinfo_from_term(Term::in, Index::in) = (TypeInfo::out),
-    [promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         TypeInfo = (object[]) ((object[]) Term)[Index];
@@ -2029,7 +2216,19 @@ typeclass_info_type_info(TypeClassInfo, Index) = unsafe_cast(TypeInfo) :-
 :- func var_arity_type_info_index(int, type_info) = type_info.
 
 var_arity_type_info_index(Index, TypeInfo) =
-    TypeInfo ^ type_info_index(Index + 1).
+    type_info_index(Index + 1, TypeInfo).
+
+:- pragma foreign_proc("Java",
+    var_arity_type_info_index(Index::in, TypeInfo::in)
+        = (TypeInfoAtIndex::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    /* The generic definition of var_arity_type_info_index assumes that
+     * variable arity type_infos store the arity in the first word but that's
+     * not true for the TypeInfo_Struct in Java.
+     */
+    TypeInfoAtIndex = (TypeInfo_Struct) TypeInfo.args[Index];
+").
 
 :- func type_info_index(int, type_info) = type_info.
 
@@ -2038,33 +2237,41 @@ type_info_index(_::in, TypeInfo::in) = (TypeInfo::out) :-
     % used by default.
     det_unimplemented("type_info_index").
 
-:- pragma foreign_proc("Java",
-    type_info_index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out),
-    [will_not_call_mercury, promise_pure],
-"
-    TypeInfoAtIndex = (TypeInfo_Struct) ((TypeInfo_Struct) TypeInfo).args[X];
-").
-
 :- pragma foreign_proc("C#",
-    type_info_index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out),
-    [will_not_call_mercury, promise_pure],
+    type_info_index(Index::in, TypeInfo::in) = (TypeInfoAtIndex::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfoAtIndex = (object[]) TypeInfo[X];
+    TypeInfoAtIndex = (object[]) TypeInfo[Index];
 ").
 
-:- pred update_type_info_index(int::in, type_info::in, type_info::di,
-    type_info::uo) is det.
+:- pragma foreign_proc("Java",
+    type_info_index(Index::in, TypeInfo::in) = (TypeInfoAtIndex::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    assert TypeInfo.args != null;
+    TypeInfoAtIndex = (TypeInfo_Struct) TypeInfo.args[Index];
+").
 
-update_type_info_index(_::in, _::in, X::di, X::uo) :-
+:- pred set_type_info_index(int::in, type_info::in,
+    type_info::di, type_info::uo) is det.
+
+set_type_info_index(_, _, !TypeInfo) :-
     det_unimplemented("type_info_index").
 
 :- pragma foreign_proc("C#",
-    update_type_info_index(X::in, NewValue::in,
-        OldTypeInfo::di, NewTypeInfo::uo),
-    [will_not_call_mercury, promise_pure],
+    set_type_info_index(Index::in, Value::in, TypeInfo0::di, TypeInfo::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-    OldTypeInfo[X] = NewValue;
-    NewTypeInfo = OldTypeInfo;
+    TypeInfo0[Index] = Value;
+    TypeInfo = TypeInfo0;
+").
+
+:- pragma foreign_proc("Java",
+    set_type_info_index(Index::in, Value::in, TypeInfo0::di, TypeInfo::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeInfo0.args[Index - 1] = Value;
+    TypeInfo = TypeInfo0;
 ").
 
 :- pred semidet_unimplemented(string::in) is semidet.
@@ -2100,7 +2307,7 @@ det_unimplemented(S) :-
     type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Arity = ((TypeCtorInfo_Struct) TypeCtorInfo).arity;
+    Arity = TypeCtorInfo.arity;
 ").
 :- pragma foreign_proc("C",
     type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
@@ -2114,14 +2321,11 @@ type_ctor_arity(_) = _ :-
     % matching foreign_proc version.
     private_builtin.sorry("type_ctor_arity").
 
-:- some [P] func type_ctor_unify_pred(type_ctor_info) = P.
+:- func type_ctor_unify_pred(type_ctor_info) = unify_or_compare_pred.
 :- pragma foreign_proc("C#",
     type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX This should be something else.
-    // TypeInfo_for_P
-
     UnifyPred = TypeCtorInfo[
         (int) type_ctor_info_field_nums.type_ctor_unify_pred];
 ").
@@ -2131,50 +2335,54 @@ type_ctor_arity(_) = _ :-
 "
     MR_TypeCtorInfo tci;
 
-    /* XXX This should be something else. */
-    TypeInfo_for_P = 0;
-
     tci = (MR_TypeCtorInfo) TypeCtorInfo;
     UnifyPred = (MR_Integer) tci->MR_type_ctor_unify_pred;
 ").
-type_ctor_unify_pred(_) = "dummy value" :-
+:- pragma foreign_proc("Java",
+    type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    UnifyPred = TypeCtorInfo.unify_pred;
+").
+type_ctor_unify_pred(_) = unify_or_compare_pred :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
     private_builtin.sorry("type_ctor_unify_pred").
 
-:- some [P] func type_ctor_compare_pred(type_ctor_info) = P.
+:- func type_ctor_compare_pred(type_ctor_info) = unify_or_compare_pred.
 :- pragma foreign_proc("C#",
-    type_ctor_compare_pred(TypeCtorInfo::in) = (UnifyPred::out),
+    type_ctor_compare_pred(TypeCtorInfo::in) = (ComparePred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX This should be something else.
-    TypeInfo_for_P = null;
-
-    UnifyPred = TypeCtorInfo[
+    ComparePred = TypeCtorInfo[
         (int) type_ctor_info_field_nums.type_ctor_compare_pred];
 ").
 
 :- pragma foreign_proc("C",
-    type_ctor_compare_pred(TypeCtorInfo::in) = (UnifyPred::out),
+    type_ctor_compare_pred(TypeCtorInfo::in) = (ComparePred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MR_TypeCtorInfo tci;
 
-    /* XXX This should be something else. */
-    TypeInfo_for_P = 0;
-
     tci = (MR_TypeCtorInfo) TypeCtorInfo;
-    UnifyPred = (MR_Integer) tci->MR_type_ctor_compare_pred;
+    ComparePred = (MR_Integer) tci->MR_type_ctor_compare_pred;
 ").
 
-type_ctor_compare_pred(_) = "dummy value" :-
+:- pragma foreign_proc("Java",
+    type_ctor_compare_pred(TypeCtorInfo::in) = (ComparePred::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ComparePred = TypeCtorInfo.compare_pred;
+").
+
+type_ctor_compare_pred(_) = unify_or_compare_pred :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
     private_builtin.sorry("type_ctor_compare_pred").
 
-:- func type_ctor_rep(type_ctor_info) = type_ctor_rep.
+:- func get_type_ctor_rep(type_ctor_info) = type_ctor_rep.
 :- pragma foreign_proc("C#",
-    type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
+    get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int rep;
@@ -2182,21 +2390,19 @@ type_ctor_compare_pred(_) = "dummy value" :-
     TypeCtorRep = mercury.runtime.LowLevelData.make_enum(rep);
 ").
 :- pragma foreign_proc("Java",
-    type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
+    get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeCtorRep = new Type_ctor_rep_0(
-        ((mercury.runtime.TypeCtorInfo_Struct) TypeCtorInfo).
-        type_ctor_rep.value);
+    TypeCtorRep = new Type_ctor_rep_0(TypeCtorInfo.type_ctor_rep.value);
 ").
 :- pragma foreign_proc("C",
-    type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
+    get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
     TypeCtorRep = MR_type_ctor_rep(tci);
 ").
-type_ctor_rep(_) = _ :-
+get_type_ctor_rep(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
     private_builtin.sorry("type_ctor_rep").
@@ -2259,10 +2465,10 @@ type_ctor_name(_) = _ :-
     % matching foreign_proc version.
     private_builtin.sorry("type_ctor_name").
 
-:- func type_ctor_functors(type_ctor_info) = type_functors.
+:- func get_type_ctor_functors(type_ctor_info) = type_functors.
 
 :- pragma foreign_proc("C#",
-    type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
+    get_type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Functors = (object[])
@@ -2270,44 +2476,44 @@ type_ctor_name(_) = _ :-
 ").
 
 :- pragma foreign_proc("Java",
-    type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
+    get_type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Functors = TypeCtorInfo.type_functors;
 ").
 
-type_ctor_functors(_) = _ :-
+get_type_ctor_functors(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin.sorry("type_ctor_functors").
+    private_builtin.sorry("get_type_ctor_functors").
 
-:- func type_layout(type_ctor_info) = type_layout.
+:- func get_type_layout(type_ctor_info) = type_layout.
 
 :- pragma foreign_proc("C#",
-    type_layout(TypeCtorInfo::in) = (TypeLayout::out),
+    get_type_layout(TypeCtorInfo::in) = (TypeLayout::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     TypeLayout = (object[])
         TypeCtorInfo[(int) type_ctor_info_field_nums.type_layout];
 ").
 :- pragma foreign_proc("Java",
-    type_layout(TypeCtorInfo::in) = (TypeLayout::out),
+    get_type_layout(TypeCtorInfo::in) = (TypeLayout::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     TypeLayout = TypeCtorInfo.type_layout;
 ").
 :- pragma foreign_proc("C",
-    type_layout(TypeCtorInfo::in) = (TypeLayout::out),
+    get_type_layout(TypeCtorInfo::in) = (TypeLayout::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
     TypeLayout = (MR_Word) &(MR_type_ctor_layout(tci));
 ").
 
-type_layout(_) = _ :-
+get_type_layout(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin.sorry("type_layout").
+    private_builtin.sorry("get_type_layout").
 
 :- func type_ctor_num_functors(type_ctor_info) = int.
 
@@ -2359,6 +2565,7 @@ unsafe_cast(_) = _ :-
 %
 % TypeFunctors
 %
+
 :- type type_functors ---> type_functors(c_pointer).
 :- pragma foreign_type("Java", type_functors,
     "mercury.runtime.TypeFunctors").
@@ -2522,21 +2729,21 @@ du_functor_exist_info(DuFunctorDesc) = ExistInfo :-
     succeeded = (ExistInfo != null);
 ").
 
-%--------------------------%
+%-----------------------------------------------------------------------------%
 
-:- func enum_functor_desc(type_ctor_rep, int, type_functors)
+:- func get_enum_functor_desc(type_ctor_rep, int, type_layout)
     = enum_functor_desc.
-:- mode enum_functor_desc(in(enum), in, in) = out is det.
+:- mode get_enum_functor_desc(in(enum), in, in) = out is det.
 
-enum_functor_desc(_, Num, TypeFunctors) = EnumFunctorDesc :-
-    EnumFunctorDesc = TypeFunctors ^ unsafe_index(Num).
+get_enum_functor_desc(_, Num, TypeLayout) = EnumFunctorDesc :-
+    EnumFunctorDesc = TypeLayout ^ unsafe_index(Num).
 
 :- pragma foreign_proc("Java",
-    enum_functor_desc(_TypeCtorRep::in(enum), X::in, TypeFunctors::in) =
+    get_enum_functor_desc(_TypeCtorRep::in(enum), X::in, TypeLayout::in) =
         (EnumFunctorDesc::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    EnumFunctorDesc = (TypeFunctors.functors_enum())[X];
+    EnumFunctorDesc = (TypeLayout.layout_enum())[X];
 ").
 
 :- func enum_functor_name(enum_functor_desc) = string.
@@ -2561,7 +2768,7 @@ enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
     Ordinal = EnumFunctorDesc.enum_functor_ordinal;
 ").
 
- %--------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func foreign_enum_functor_desc(type_ctor_rep, int, type_functors)
     = foreign_enum_functor_desc.
@@ -2590,7 +2797,7 @@ foreign_enum_functor_name(ForeignEnumFunctorDesc) =
     Name = ForeignEnumFunctorDesc.foreign_enum_functor_name;
 ").
  
- %--------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func notag_functor_desc(type_ctor_rep, int, type_functors)
     = notag_functor_desc.
@@ -2657,7 +2864,7 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
 unsafe_index(_, _) = _ :-
     private_builtin.sorry("rtti_implementation.unsafe_index").
 
- %--------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func unsafe_make_enum(int) = T.
 :- pragma foreign_proc("C#",
@@ -2669,7 +2876,7 @@ unsafe_index(_, _) = _ :-
 unsafe_make_enum(_) = _ :-
     private_builtin.sorry("rtti_implementation.unsafe_make_enum").
 
- %--------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred null(T::in) is semidet.
 :- pragma foreign_proc("C",
@@ -2695,7 +2902,7 @@ null(_) :-
     % matching foreign_proc version.
     private_builtin.sorry("rtti_implementation.null/1").
 
- %--------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func null_string = string.
 :- pragma foreign_proc("C",
@@ -2721,7 +2928,7 @@ null_string = _ :-
     % matching foreign_proc version.
     private_builtin.sorry("rtti_implementation.null_string/0").
 
- %--------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func unsafe_get_enum_value(T) = int.
 
