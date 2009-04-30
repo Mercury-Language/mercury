@@ -1227,6 +1227,7 @@ target_extension(_, module_target_il_code) = yes(".il").
     % XXX ".exe" if the module contains main.
 target_extension(_, module_target_il_asm) = yes(".dll").
 target_extension(_, module_target_java_code) = yes(".java").
+target_extension(_, module_target_java_class_code) = yes(".class").
 target_extension(_, module_target_erlang_header) = yes(".hrl").
 target_extension(_, module_target_erlang_code) = yes(".erl").
 target_extension(_, module_target_erlang_beam_code) = yes(".beam").
@@ -1335,6 +1336,7 @@ module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, Search,
             ; TargetType = module_target_il_code
             ; TargetType = module_target_intermodule_interface
             ; TargetType = module_target_java_code
+            ; TargetType = module_target_java_class_code
             ; TargetType = module_target_long_interface
             ; TargetType = module_target_object_code(_)
             ; TargetType = module_target_private_interface
@@ -1413,6 +1415,7 @@ search_for_file_type(module_target_c_code) = no.
 search_for_file_type(module_target_il_code) = no.
 search_for_file_type(module_target_il_asm) = no.
 search_for_file_type(module_target_java_code) = no.
+search_for_file_type(module_target_java_class_code) = no.
 search_for_file_type(module_target_erlang_header) =
         yes(erlang_include_directory).
 search_for_file_type(module_target_erlang_code) = no.
@@ -1450,6 +1453,7 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_il_code
         ; Target = module_target_il_asm
         ; Target = module_target_java_code
+        ; Target = module_target_java_class_code
         ; Target = module_target_erlang_code
         ; Target = module_target_erlang_beam_code
         ; Target = module_target_erlang_header
@@ -1711,6 +1715,9 @@ module_target_type_to_nonce(Type) = X :-
     ;
         Type = module_target_track_flags,
         X = 24
+    ;
+        Type = module_target_java_class_code,
+        X = 25
     ).
 
 :- func pic_to_nonce(pic) = int.

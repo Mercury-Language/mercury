@@ -170,8 +170,7 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
         ;
             CompilationTarget = target_java,
             IntermediateTargetType = module_target_java_code,
-            % XXX Whoever finishes the Java backend can fill this in.
-            ObjectTargetType = module_target_object_code(non_pic)
+            ObjectTargetType = module_target_java_class_code
         ;
             CompilationTarget = target_x86_64,
             sorry(this_file, "mmc --make and target x86_64")

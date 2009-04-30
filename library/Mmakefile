@@ -259,7 +259,7 @@ JAVAS = ` echo $($(STD_LIB_NAME).javas) | sed \
 # otherwise javac doesn't handle cyclic dependencies between different
 # modules.
 classes: javas java_symlinks
-	$(JAVAC) $(JAVACFLAGS) $(JAVAS)
+	$(JAVAC) $(ALL_JAVACFLAGS) $(JAVAS)
 
 # javac expects to find the sources for symbols named mercury.* in
 # files mercury/*, and likewise for symbols named mercury.runtime.*

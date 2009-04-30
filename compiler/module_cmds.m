@@ -679,9 +679,10 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
         OpenResult = ok(ShellScript),
         % XXX On Windows we should output a .bat file instead
         io.write_string(ShellScript, "#!/bin/sh\n", !IO),
-        io.write_string(ShellScript, "CLASSPATH=" ++ ClassPath ++ " ", !IO),
-        io.write_string(ShellScript, Java ++ " ", !IO),
-        io.write_string(ShellScript, Name_No_Extn ++ "\n", !IO),
+        io.write_string(ShellScript, "CLASSPATH=" ++ ClassPath ++ "\n", !IO),
+        io.write_string(ShellScript, "export CLASSPATH\n", !IO),
+        io.write_string(ShellScript, "exec " ++ Java ++ " ", !IO),
+        io.write_string(ShellScript, Name_No_Extn ++ " \"$@\"\n", !IO),
         io.close_output(ShellScript, !IO),
         io.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
         (

@@ -908,24 +908,29 @@ compile_java_file(ErrorStream, JavaFile, Succeeded, !IO) :-
         (
             UseGradeSubdirs = yes,
             grade_directory_component(Globals, Grade),
-            DirName = "Mercury"/Grade/FullArch/"Mercury"/"classs"
+            SourceDirName = "Mercury"/Grade/FullArch/"Mercury"/"javas",
+            DestDirName = "Mercury"/Grade/FullArch/"Mercury"/"classs"
         ;
             UseGradeSubdirs = no,
-            DirName = "Mercury"/"classs"
+            SourceDirName = "Mercury"/"javas",
+            DestDirName = "Mercury"/"classs"
         ),
         % Javac won't create the destination directory for class files,
         % so we need to do it.
-        dir.make_directory(DirName, _, !IO),
-        % Set destination directory for class files.
-        DestDir = "-d " ++ DirName ++ " "
+        dir.make_directory(DestDirName, _, !IO),
+        % Set directories for source and class files.
+        DirOpts = string.append_list([
+            "-sourcepath ", SourceDirName, " ",
+            "-d ", DestDirName, " "
+        ])
     ;
         UseSubdirs = no,
-        DestDir = ""
+        DirOpts = ""
     ),
 
     % Be careful with the order here!  Some options may override others.
     % Also be careful that each option is separated by spaces.
-    string.append_list([JavaCompiler, " ", InclOpt, DestDir,
+    string.append_list([JavaCompiler, " ", InclOpt, DirOpts,
         Target_DebugOpt, JAVAFLAGS, " ", JavaFile], Command),
     invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
