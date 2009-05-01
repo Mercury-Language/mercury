@@ -585,8 +585,8 @@ unify_tuple_pos(Loc, TupleArity, TypeInfo, TermA, TermB) :-
     ;
         ArgTypeInfo = TypeInfo ^ var_arity_type_info_index(Loc),
 
-        SubTermA = get_subterm(ArgTypeInfo, TermA, Loc - 1, 0),
-        SubTermB = get_subterm(ArgTypeInfo, TermB, Loc - 1, 0),
+        SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
+        SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
 
         generic_unify(SubTermA, unsafe_cast(SubTermB)),
 
@@ -609,8 +609,8 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
     ;
         ArgTypeInfo = TypeInfo ^ var_arity_type_info_index(Loc),
 
-        SubTermA = get_subterm(ArgTypeInfo, TermA, Loc - 1, 0),
-        SubTermB = get_subterm(ArgTypeInfo, TermB, Loc - 1, 0),
+        SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
+        SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
 
         generic_compare(SubResult, SubTermA, unsafe_cast(SubTermB)),
         (
@@ -1231,7 +1231,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
         list.map_foldl(
             (pred(TI::in, U::out, Index::in, Next::out) is det :-
-                SubTerm = get_subterm(TI, Term, Index, 0),
+                SubTerm = get_tuple_subterm(TI, Term, Index),
                 U = univ(SubTerm),
                 Next = Index + 1
             ), TypeArgs, Arguments, 0, _)
@@ -1497,7 +1497,7 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = Arg :-
         TagOffset = 1
     ),
     RealArgsOffset = TagOffset + ExtraArgs,
-    Arg = get_subterm(ArgTypeInfo, Term, Index, RealArgsOffset).
+    Arg = get_subterm(FunctorDesc, ArgTypeInfo, Term, Index, RealArgsOffset).
 
 :- pred high_level_data is semidet.
 :- pragma promise_pure(high_level_data/0).
@@ -1704,13 +1704,14 @@ type_info_from_pseudo_type_info(X) = unsafe_cast(X).
     % Get a subterm T, given its type_info, the original term U, its index
     % and the start region size.
     %
-:- some [T] func get_subterm(type_info, U, int, int) = T.
+:- some [T] func get_subterm(du_functor_desc, type_info, U, int, int) = T.
 
-get_subterm(_, _, _, _) = 42 :-
+get_subterm(_, _, _, _, _) = 42 :-
     det_unimplemented("get_subterm").
 
 :- pragma foreign_proc("C#",
-    get_subterm(TypeInfo::in, Term::in, Index::in, ExtraArgs::in) = (Arg::out),
+    get_subterm(_FunctorDesc::in, SubTermTypeInfo::in, Term::in,
+        Index::in, ExtraArgs::in) = (Arg::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // Mention TypeInfo_for_U to avoid a warning.
@@ -1723,7 +1724,7 @@ get_subterm(_, _, _, _) = 42 :-
         // try high level data
         Arg = Term.GetType().GetFields()[i].GetValue(Term);
     }
-    TypeInfo_for_T = TypeInfo;
+    TypeInfo_for_T = SubTermTypeInfo;
 ").
 
 :- pragma foreign_decl("Java", local,
@@ -1732,7 +1733,8 @@ get_subterm(_, _, _, _) = 42 :-
 ").
 
 :- pragma foreign_proc("Java",
-    get_subterm(TypeInfo::in, Term::in, Index::in, ExtraArgs::in) = (Arg::out),
+    get_subterm(FunctorDesc::in, SubTermTypeInfo::in, Term::in,
+        Index::in, ExtraArgs::in) = (Arg::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // Mention TypeInfo_for_U to avoid a warning.
@@ -1745,10 +1747,20 @@ get_subterm(_, _, _, _) = 42 :-
         int i = Index + ExtraArgs;
         Arg = ((Object[]) Term)[i];
     } else {
-        try {
+        // Look up the field name if it exists, otherwise recreate the field
+        // name that would have been used.
+        String fieldName = null;
+        if (FunctorDesc.du_functor_arg_names != null) {
+            fieldName = FunctorDesc.du_functor_arg_names[Index];
+        }
+        if (fieldName == null) {
             // The F<i> field variables are numbered from 1.
             int i = 1 + Index + ExtraArgs;
-            Field f = Term.getClass().getDeclaredField(""F"" + i);
+            fieldName = ""F"" + i;
+        }
+
+        try {
+            Field f = Term.getClass().getDeclaredField(fieldName);
             Arg = f.get(Term);
         } catch (IllegalAccessException e) {
             throw new Error(e);
@@ -1759,7 +1771,35 @@ get_subterm(_, _, _, _) = 42 :-
 
     assert Arg != null;
 
-    TypeInfo_for_T = TypeInfo;
+    TypeInfo_for_T = SubTermTypeInfo;
+").
+
+    % Same as above, but for tuples instead of du types.
+    %
+:- some [T] func get_tuple_subterm(type_info, U, int) = T.
+
+get_tuple_subterm(TypeInfo, Term, Index) = SubTerm :-
+    % Reuse the code in get_subterm.
+    SubTerm = get_subterm(null_functor_desc, TypeInfo, Term, Index, 0).
+
+:- func null_functor_desc = du_functor_desc.
+:- pragma foreign_proc("C#",
+    null_functor_desc = (NullFunctorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    NullFunctorDesc = null;
+").
+:- pragma foreign_proc("Java",
+    null_functor_desc = (NullFunctorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    NullFunctorDesc = null;
+").
+:- pragma foreign_proc("C",
+    null_functor_desc = (NullFunctorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    NullFunctorDesc = NULL;
 ").
 
     % Test whether a (pseudo-) type info is variable.
