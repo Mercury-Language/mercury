@@ -23,10 +23,11 @@ VALID_PROGS = 			\
 
 
 INVALID_PROGS = 		\
-	outer_types			\
 
 
-MULTI_PROGS =	\
+# these tests require parallel execution with multiple engines
+MULTI_PROGS =			\
+	conflict			\
 
 
 # These tests require debugging, which hasn't been implemented for
@@ -41,22 +42,16 @@ else
 endif
 
 ifneq "$(findstring par,$(GRADE))" ""
-	# These tests are to do with explicit threads rather than parallel
-	# conjunction, but the tests require multiple engines to be enabled,
-	# which was already set up in this directory.
-	#
-	THREAD_PROGS = $(MULTI_PROGS)
-else
-	THREAD_PROGS =
+	VALID_PROGS := $(VALID_PROGS) $(MULTI_PROGS)
 endif
 
-ifneq "$(findstring decldebug,$(GRADE))" ""
-	OBJ_PROGS =
-	PROGS =
-else
+#ifneq "$(findstring decldebug,$(GRADE))" ""
+#	OBJ_PROGS =
+#	PROGS =
+#else
 	OBJ_PROGS =
 	PROGS = $(VALID_PROGS) $(INVALID_PROGS)
-endif
+#endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
@@ -120,7 +115,7 @@ endif
 # Exercise multiple Mercury engines in lowlevel grades.
 ENGINES :=
 ifeq "$(filter hl% java% il% erlang%,$(GRADE))" ""
-	ENGINES := MERCURY_OPTIONS=-P2
+	ENGINES := MERCURY_OPTIONS=-P8
 endif
 
 %.out: %

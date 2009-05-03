@@ -1,0 +1,8 @@
+entering read transaction
+value read was: 0
+entering write transaction
+wrote value: 28
+write transaction committed
+entering read transaction
+value read was: 28
+read transaction committed: X=28
