@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2001, 2003, 2005-2007 The University of Melbourne.
+** Copyright (C) 1997-2001, 2003, 2005-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -195,7 +195,7 @@ MR_destroy_thread(void *eng0)
 
 #if defined(MR_THREAD_SAFE)
 
-void
+int
 MR_mutex_lock(MercuryLock *lock, const char *from)
 {
     int err;
@@ -204,9 +204,10 @@ MR_mutex_lock(MercuryLock *lock, const char *from)
         (long) pthread_self(), lock, from);
     err = pthread_mutex_lock(lock);
     assert(err == 0);
+    return err;
 }
 
-void
+int
 MR_mutex_unlock(MercuryLock *lock, const char *from)
 {
     int err;
@@ -215,19 +216,32 @@ MR_mutex_unlock(MercuryLock *lock, const char *from)
         (long) pthread_self(), lock, from);
     err = pthread_mutex_unlock(lock);
     assert(err == 0);
+    return err;
 }
 
-void
+int
 MR_cond_signal(MercuryCond *cond)
+{
+    int err;
+
+    fprintf(stderr, "%ld signaling %p\n", (long) pthread_self(), cond);
+    err = pthread_cond_signal(cond);
+    assert(err == 0);
+    return err;
+}
+
+int
+MR_cond_broadcast(MercuryCond *cond)
 {
     int err;
 
     fprintf(stderr, "%ld signaling %p\n", (long) pthread_self(), cond);
     err = pthread_cond_broadcast(cond);
     assert(err == 0);
+    return err;
 }
 
-void
+int
 MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
 {
     int err;
@@ -236,6 +250,7 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
         cond, lock);
     err = pthread_cond_wait(cond, lock);
     assert(err == 0);
+    return err;
 }
 
 #endif  /* MR_THREAD_SAFE */

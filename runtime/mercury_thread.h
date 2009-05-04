@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-1998, 2000, 2003, 2005-2007 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000, 2003, 2005-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -31,10 +31,11 @@
   typedef pthread_mutex_t   MercuryLock;
   typedef pthread_cond_t    MercuryCond;
 
-  void MR_mutex_lock(MercuryLock *lock, const char *from);
-  void MR_mutex_unlock(MercuryLock *lock, const char *from);
-  void MR_cond_signal(MercuryCond *cond);
-  void MR_cond_wait(MercuryCond *cond, MercuryLock *lock);
+  int MR_mutex_lock(MercuryLock *lock, const char *from);
+  int MR_mutex_unlock(MercuryLock *lock, const char *from);
+  int MR_cond_signal(MercuryCond *cond);
+  int MR_cond_broadcast(MercuryCond *cond);
+  int MR_cond_wait(MercuryCond *cond, MercuryLock *lock);
 
   extern MR_bool MR_debug_threads;
 
