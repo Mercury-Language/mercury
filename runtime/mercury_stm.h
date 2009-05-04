@@ -2,15 +2,13 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007-2008 The University of Melbourne.
+** Copyright (C) 2007-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
 ** mercury_stm.h - runtime support for software transactional memory.
-**
-** TODO: Currently, only the High Level C Grades have been fully implemented.
 */
 
 #ifndef MERCURY_STM_H
@@ -78,6 +76,7 @@ typedef struct MR_STM_TransLog_Struct       MR_STM_TransLog;
     #if defined(MR_THREAD_SAFE)
         typedef MercuryCond  MR_STM_ConditionVar;
 
+        #define MR_STM_condvar_init(x)        pthread_cond_init(x, MR_COND_ATTR)
         #define MR_STM_condvar_wait(x, y)     MR_cond_wait(x, y)
         #define MR_STM_condvar_signal(x)      MR_cond_signal(x)
     #else
@@ -86,20 +85,22 @@ typedef struct MR_STM_TransLog_Struct       MR_STM_TransLog;
         ** Since these grades don't support concurrency, there is no
         ** need to block the thread.
         */
+        #define MR_STM_condvar_init(x)
         #define MR_STM_condvar_wait(x, y)
         #define MR_STM_condvar_signal(x)
     #endif
 
 #else /* !MR_HIGHLEVEL_CODE */
 
-    typedef MR_Context  *MR_STM_ConditionVar;
+    typedef MR_STM_TransLog  MR_STM_ConditionVar;
 
     /*
-    ** These are dummy definitions; STM is not yet implemented for low level C
-    ** grades.
+    ** NOTE: The global STM lock (MR_STM_lock) must be held when calling this
+    ** function, as it manipulates the STM variable waiter lists.
     */
-    #define MR_STM_condvar_wait(x, y)
-    #define MR_STM_condvar_signal(x)
+    void MR_STM_condvar_signal(MR_STM_ConditionVar *cvar);
+
+    #define MR_STM_context_from_condvar(x)      (x->MR_STM_tl_thread)
 
 #endif /* !MR_HIGHLEVEL_CODE */
 

@@ -368,12 +368,99 @@
 
 %-----------------------------------------------------------------------------%
 
+
+% In high level C grades, stm_block calls a C procedure in the runtime that
+% blocks the POSIX thread until signalled, as there is one POSIX thread for
+% every Mercury thread.
+% In the low level C grades, this approach cannot be taken, as when the context
+% blocks the engine running in the POSIX thread needs to be able to look for
+% other work (there might only be a single engine/POSIX thread).
+
 :- pragma foreign_proc("C",
     stm_block(STM::ui),
     [will_not_call_mercury, thread_safe],
 "
+#if defined(MR_HIGHLEVEL_CODE)
     MR_STM_block_thread(STM);
+#else
+
+    MR_STM_wait(STM, STM);
+
+#if defined(MR_STM_DEBUG)
+        fprintf(stderr, ""STM BLOCKING: log <0x%.8lx>\\n"", STM);
+#endif
+
+    MR_save_context(MR_ENGINE(MR_eng_this_context));
+
+    MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
+        MR_ENTRY(mercury__stm_builtin__block_thread_resume);
+
+    MR_ENGINE(MR_eng_this_context) = NULL;
+    MR_UNLOCK(&MR_STM_lock, ""MR_STM_block_thread"");
+    MR_runnext();
+
+#endif
 ").
+
+
+% block_thread_resume is the piece of code we jump to when a thread suspended
+% after a failed STM transaction resumes
+:- pragma foreign_decl("C",
+"
+/*
+INIT mercury_sys_init_stm_builtin_modules
+*/
+
+#if (!defined MR_HIGHLEVEL_CODE)
+    MR_define_extern_entry(mercury__stm_builtin__block_thread_resume);
+#endif
+").
+
+:- pragma foreign_code("C",
+"
+#if (!defined MR_HIGHLEVEL_CODE)
+
+    MR_BEGIN_MODULE(hand_written_stm_builtin_module)
+        MR_init_entry_ai(mercury__stm_builtin__block_thread_resume);
+    MR_BEGIN_CODE
+
+    MR_define_entry(mercury__stm_builtin__block_thread_resume);
+    {
+        MR_proceed();
+    }
+    MR_END_MODULE
+
+#endif
+
+    /* forward decls to suppress gcc warnings */
+    void mercury_sys_init_stm_builtin_modules_init(void);
+    void mercury_sys_init_stm_builtin_modules_init_type_tables(void);
+    #ifdef  MR_DEEP_PROFILING
+    void mercury_sys_init_stm_builtin_modules_write_out_proc_statics(
+        FILE *deep_fp, FILE *procrep_fp);
+    #endif
+
+    void mercury_sys_init_stm_builtin_modules_init(void)
+    {
+    #if (!defined MR_HIGHLEVEL_CODE)
+        hand_written_stm_builtin_module();
+    #endif
+    }
+
+    void mercury_sys_init_stm_builtin_modules_init_type_tables(void)
+    {
+        /* no types to register */
+    }
+
+    #ifdef  MR_DEEP_PROFILING
+    void mercury_sys_init_stm_builtin_modules_write_out_proc_statics(
+        FILE *deep_fp, FILE *procrep_fp)
+    {
+        /* no proc_statics to write out */
+    }
+    #endif
+").
+
 
 %-----------------------------------------------------------------------------%
 %

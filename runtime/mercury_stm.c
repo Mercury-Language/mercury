@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007-2008 The University of Melbourne.
+** Copyright (C) 2007-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -347,14 +347,22 @@ MR_STM_merge_transactions(MR_STM_TransLog *tlog)
 #endif
 }
 
+
+#if defined(MR_HIGHLEVEL_CODE)
+/*
+** MR_STM_block_thread is called to block the thread in high level C grades,
+** using POSIX thread facilities, as there is a POSIX thread for every engine
+** in these grades. The low level C grade equivalent of this code is defined
+** in the stm_builtin library module.
+*/
 void
 MR_STM_block_thread(MR_STM_TransLog *tlog)
 {
 #if defined(MR_THREAD_SAFE)
-  #if defined(MR_HIGHLEVEL_CODE)
         MR_STM_ConditionVar     *thread_condvar;
 
         thread_condvar = MR_GC_NEW(MR_STM_ConditionVar);
+        MR_STM_condvar_init(thread_condvar);
 
         MR_STM_wait(tlog, thread_condvar);
 
@@ -370,11 +378,37 @@ MR_STM_block_thread(MR_STM_TransLog *tlog)
         MR_STM_unwait(tlog, thread_condvar);
 
         MR_GC_free(thread_condvar);
-  #else
-        MR_fatal_error("Low-Level backend: Not implemented");
-  #endif
 #else
     MR_fatal_error("Blocking thread in non-parallel grade");
 #endif
-
 }
+#endif
+
+
+#if !defined(MR_HIGHLEVEL_CODE)
+/*
+** In the low level C grades, the "condition variable" created when an STM
+** transaction blocks is actually a pointer to the transaction log.
+** "Signalling" it consists of going through the STM variables listed in the
+** log and removing ** the waiters attached to them for the context listed
+** in the log. After this, the context can be safely rescheduled.
+*/
+void
+MR_STM_condvar_signal(MR_STM_ConditionVar *cvar)
+{
+    /*
+    ** Calling MR_STM_unwait here should be safe, as this signalling is called
+    ** in response to a commit, while the committing thread holds the global
+    ** STM lock. Note that a MR_STM_ConditionVar IS a MR_STM_TransLog if
+    ** MR_HIGHLEVEL_CODE is not defined, which is why cvar is passed twice.
+    */
+    MR_STM_unwait(cvar, cvar);
+
+#if defined(MR_STM_DEBUG)
+        fprintf(stderr, "STM RESCHEDULING: log <0x%.8lx>\n", (MR_Word)cvar);
+#endif
+
+    MR_schedule_context(MR_STM_context_from_condvar(cvar));
+}
+
+#endif
