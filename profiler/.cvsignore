@@ -10,9 +10,11 @@
 *.prof
 *.err
 *.int
+*.int0
 *.int2
 *.int3
 *.date
+*.date0
 *.date3
 *.opt
 *.optdate
