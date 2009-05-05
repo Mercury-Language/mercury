@@ -56,6 +56,7 @@
 :- import_module digraph.
 :- import_module dir.
 :- import_module getopt_io.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -204,20 +205,29 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
                 BuildDepsSucceeded0, !Info, !IO),
             (
                 BuildDepsSucceeded0 = yes,
-                foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
-                    make_module_target, ObjTargets,
-                    BuildDepsSucceeded1, !Info, !IO)
+                maybe_make_java_files(MainModuleName,
+                    ObjectTargetType, ObjModules, BuildDepsSucceeded1,
+                    !Info, !IO)
             ;
                 BuildDepsSucceeded0 = no,
                 BuildDepsSucceeded1 = no
             ),
             (
                 BuildDepsSucceeded1 = yes,
+                foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                    make_module_target, ObjTargets, BuildDepsSucceeded2,
+                    !Info, !IO)
+            ;
+                BuildDepsSucceeded1 = no,
+                BuildDepsSucceeded2 = no
+            ),
+            (
+                BuildDepsSucceeded2 = yes,
                 foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
                     ForeignObjTargets,
                     BuildDepsSucceeded, !Info, !IO)
             ;
-                BuildDepsSucceeded1 = no,
+                BuildDepsSucceeded2 = no,
                 BuildDepsSucceeded = no
             )
         ),
@@ -622,6 +632,99 @@ linked_target_cleanup(MainModuleName, FileType, OutputFileName,
         remove_init_files(verbose_make, MainModuleName, !Info, !IO)
     ;
         true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % When compiling to Java we want to invoke `javac' just once, passing it a
+    % list of all out-of-date `.java' files.  This is a lot quicker than
+    % compiling each Java file individually.
+    %
+:- pred maybe_make_java_files(module_name::in, module_target_type::in,
+    list(module_name)::in, bool::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+maybe_make_java_files(MainModuleName, ObjectTargetType, ObjModules, Succeeded,
+        !Info, !IO) :-
+    ( ObjectTargetType = module_target_java_class_code ->
+        out_of_date_java_modules(ObjModules, OutOfDateModules, !Info, !IO),
+        (
+            OutOfDateModules = [],
+            Succeeded = yes
+        ;
+            OutOfDateModules = [_ | _],
+            build_java_files(MainModuleName, OutOfDateModules, Succeeded,
+                !Info, !IO),
+            % javac might write more `.class' files than we anticipated (though
+            % it probably won't) so clear out all the timestamps which might be
+            % affected.
+            Timestamps0 = !.Info ^ file_timestamps,
+            map.foldl(delete_java_class_timestamps, Timestamps0,
+                map.init, Timestamps),
+            !Info ^ file_timestamps := Timestamps
+        )
+    ;
+        Succeeded = yes
+    ).
+
+:- pred out_of_date_java_modules(list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+out_of_date_java_modules(ObjModules, OutOfDateModules, !Info, !IO) :-
+    (
+        ObjModules = [],
+        OutOfDateModules = []
+    ;
+        ObjModules = [ModuleName | Rest],
+        out_of_date_java_modules(Rest, OutOfDateModules0, !Info, !IO),
+        JavaTarget = target_file(ModuleName, module_target_java_code),
+        ClassTarget = target_file(ModuleName, module_target_java_class_code),
+        get_target_timestamp(do_not_search, JavaTarget, MaybeJavaTimestamp,
+            !Info, !IO),
+        get_target_timestamp(do_not_search, ClassTarget, MaybeClassTimestamp,
+            !Info, !IO),
+        (
+            MaybeJavaTimestamp = ok(JavaTimestamp),
+            MaybeClassTimestamp = ok(ClassTimestamp),
+            ClassTimestamp @>= JavaTimestamp
+        ->
+            OutOfDateModules = OutOfDateModules0
+        ;
+            OutOfDateModules = [ModuleName | OutOfDateModules0]
+        )
+    ).
+
+:- pred build_java_files(module_name::in, list(module_name)::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+build_java_files(MainModuleName, ModuleNames, Succeeded, !Info, !IO) :-
+    verbose_msg(io.write_string("Making Java class files\n"), !IO),
+    ToJavaFile =
+        (pred(ModuleName::in, JavaFile::out, !.IO::di, !:IO::uo) is det :-
+            module_name_to_file_name(ModuleName, ".java", do_create_dirs,
+                JavaFile, !IO)
+        ),
+    list.map_foldl(ToJavaFile, ModuleNames, JavaFiles, !IO),
+    % We redirect errors to a file named after the main module.
+    build_with_output_redirect(MainModuleName,
+        build_java_files_2(JavaFiles), Succeeded, !Info, !IO).
+
+:- pred build_java_files_2(list(string)::in, io.output_stream::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+build_java_files_2(JavaFiles, ErrorStream, Succeeded, !Info, !IO) :-
+    call_in_forked_process(
+        compile_target_code.compile_java_files(ErrorStream, JavaFiles),
+        Succeeded, !IO).
+
+:- pred delete_java_class_timestamps(string::in, maybe_error(timestamp)::in,
+    file_timestamps::in, file_timestamps::out) is det.
+
+delete_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
+    ( string.suffix(FileName, ".class") ->
+        true
+    ;
+        svmap.det_insert(FileName, MaybeTimestamp, !Timestamps)
     ).
 
 %-----------------------------------------------------------------------------%

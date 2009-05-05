@@ -56,9 +56,9 @@
 :- pred assemble(io.output_stream::in, pic::in, module_name::in,
     bool::out, io::di, io::uo) is det.
 
-    % compile_java_file(ErrorStream, JavaFile, Succeeded)
+    % compile_java_files(ErrorStream, JavaFiles, Succeeded)
     %
-:- pred compile_java_file(io.output_stream::in, string::in, bool::out,
+:- pred compile_java_files(io.output_stream::in, list(string)::in, bool::out,
     io::di, io::uo) is det.
 
     % il_assemble(ErrorStream, ModuleName, HasMain, Succeeded)
@@ -865,11 +865,29 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-compile_java_file(ErrorStream, JavaFile, Succeeded, !IO) :-
+compile_java_files(ErrorStream, JavaFiles, Succeeded, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose, "% Compiling `", !IO),
-    maybe_write_string(Verbose, JavaFile, !IO),
-    maybe_write_string(Verbose, "':\n", !IO),
+    (
+        JavaFiles = [JavaFile | MoreFiles],
+        (
+            Verbose = yes,
+            io.write_string("% Compiling `", !IO),
+            io.write_string(JavaFile, !IO),
+            (
+                MoreFiles = [],
+                io.write_string("':\n", !IO)
+            ;
+                MoreFiles = [_ | _],
+                io.write_string("', etc.:\n", !IO)
+            )
+        ;
+            Verbose = no
+        )
+    ;
+        JavaFiles = [],
+        unexpected(this_file, "compile_java_files: empty list")
+    ),
+
     globals.io_lookup_string_option(java_compiler, JavaCompiler, !IO),
     globals.io_lookup_accumulating_option(java_flags, JavaFlagsList, !IO),
     join_string_list(JavaFlagsList, "", "", " ", JAVAFLAGS),
@@ -930,8 +948,9 @@ compile_java_file(ErrorStream, JavaFile, Succeeded, !IO) :-
 
     % Be careful with the order here!  Some options may override others.
     % Also be careful that each option is separated by spaces.
+    JoinedJavaFiles = string.join_list(" ", JavaFiles),
     string.append_list([JavaCompiler, " ", InclOpt, DirOpts,
-        Target_DebugOpt, JAVAFLAGS, " ", JavaFile], Command),
+        Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], Command),
     invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 

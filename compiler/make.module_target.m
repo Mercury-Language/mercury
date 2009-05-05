@@ -509,7 +509,7 @@ build_object_code(ModuleName, target_java, _, ErrorStream, _Imports, Succeeded,
         !IO) :-
     module_name_to_file_name(ModuleName, ".java", do_create_dirs, JavaFile,
         !IO),
-    compile_target_code.compile_java_file(ErrorStream, JavaFile,
+    compile_target_code.compile_java_files(ErrorStream, [JavaFile],
         Succeeded, !IO).
 build_object_code(ModuleName, target_il, _, ErrorStream, Imports, Succeeded,
         !IO) :-
@@ -539,7 +539,7 @@ compile_foreign_code_file(ErrorStream, _, _Imports,
         no_main, Succeeded, !IO).
 compile_foreign_code_file(ErrorStream, _, _Imports,
         foreign_code_file(lang_java, JavaFile, _ClassFile), Succeeded, !IO) :-
-    compile_target_code.compile_java_file(ErrorStream, JavaFile,
+    compile_target_code.compile_java_files(ErrorStream, [JavaFile],
         Succeeded, !IO).
 compile_foreign_code_file(ErrorStream, _, Imports,
         foreign_code_file(lang_csharp, CSharpFile, DLLFile),

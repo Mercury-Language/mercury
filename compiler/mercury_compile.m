@@ -1687,7 +1687,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 io.output_stream(OutputStream, !IO),
                 module_name_to_file_name(ModuleName, ".java",
                     do_not_create_dirs, JavaFile, !IO),
-                compile_target_code.compile_java_file(OutputStream, JavaFile,
+                compile_target_code.compile_java_files(OutputStream, [JavaFile],
                     Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
             ),
