@@ -2312,8 +2312,9 @@ long_usage(!IO) :-
     % copies of the long usage message. We can print both a short and along
     % usage message, but there is no simple way to avoid that.
     library.version(Version),
-    io.write_strings(["Mercury Compiler, version ", Version, "\n"], !IO),
-    io.write_string("Copyright (C) 1993-2009 " ++
+    io.write_strings(["Name: mmc -- Melbourne Mercury Compiler, version ", 
+        Version, "\n"], !IO),
+    io.write_string("Copyright: Copyright (C) 1993-2009 " ++
         "The University of Melbourne\n", !IO),
     io.write_string("Usage: mmc [<options>] <arguments>\n", !IO),
     io.write_string("Arguments:\n", !IO),
