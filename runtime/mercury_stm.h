@@ -100,7 +100,7 @@ typedef struct MR_STM_TransLog_Struct       MR_STM_TransLog;
     */
     void MR_STM_condvar_signal(MR_STM_ConditionVar *cvar);
 
-    #define MR_STM_context_from_condvar(x)      (x->MR_STM_tl_thread)
+    #define MR_STM_context_from_condvar(x)      ((x)->MR_STM_tl_thread)
 
 #endif /* !MR_HIGHLEVEL_CODE */
 

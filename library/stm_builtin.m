@@ -411,14 +411,14 @@
 INIT mercury_sys_init_stm_builtin_modules
 */
 
-#if (!defined MR_HIGHLEVEL_CODE)
+#if !defined(MR_HIGHLEVEL_CODE)
     MR_define_extern_entry(mercury__stm_builtin__block_thread_resume);
 #endif
 ").
 
 :- pragma foreign_code("C",
 "
-#if (!defined MR_HIGHLEVEL_CODE)
+#if !defined(MR_HIGHLEVEL_CODE)
 
     MR_BEGIN_MODULE(hand_written_stm_builtin_module)
         MR_init_entry_ai(mercury__stm_builtin__block_thread_resume);
@@ -442,7 +442,7 @@ INIT mercury_sys_init_stm_builtin_modules
 
     void mercury_sys_init_stm_builtin_modules_init(void)
     {
-    #if (!defined MR_HIGHLEVEL_CODE)
+    #if !defined(MR_HIGHLEVEL_CODE)
         hand_written_stm_builtin_module();
     #endif
     }

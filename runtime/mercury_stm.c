@@ -351,9 +351,9 @@ MR_STM_merge_transactions(MR_STM_TransLog *tlog)
 #if defined(MR_HIGHLEVEL_CODE)
 /*
 ** MR_STM_block_thread is called to block the thread in high level C grades,
-** using POSIX thread facilities, as there is a POSIX thread for every engine
-** in these grades. The low level C grade equivalent of this code is defined
-** in the stm_builtin library module.
+** using POSIX thread facilities, as there is a POSIX thread for every 
+** Mercury thread in these grades. The low level C grade equivalent of this
+** code is defined in the stm_builtin library module.
 */
 void
 MR_STM_block_thread(MR_STM_TransLog *tlog)
