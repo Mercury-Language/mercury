@@ -3637,12 +3637,12 @@ output_rval_const(mlconst_float(FloatVal), !IO) :-
 
 output_rval_const(mlconst_string(String), !IO) :-
     io.write_string("""", !IO),
-    c_util.output_quoted_string(String, !IO),
+    c_util.output_quoted_string_lang(literal_java, String, !IO),
     io.write_string("""", !IO).
 
 output_rval_const(mlconst_multi_string(String), !IO) :-
     io.write_string("""", !IO),
-    c_util.output_quoted_multi_string(String, !IO),
+    c_util.output_quoted_multi_string_lang(literal_java, String, !IO),
     io.write_string("""", !IO).
 
 output_rval_const(mlconst_named_const(NamedConst), !IO) :-

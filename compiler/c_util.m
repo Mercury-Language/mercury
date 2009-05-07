@@ -49,11 +49,22 @@
 % String and character handling
 %
 
+    % Chooses between C and Java literal syntax.
+    %
+:- type literal_language
+    --->    literal_c
+    ;       literal_java.
+
     % Print out a string suitably escaped for use as a C string literal.
     % This doesn't actually print out the enclosing double quotes --
     % that is the caller's responsibility.
     %
 :- pred output_quoted_string(string::in, io::di, io::uo) is det.
+
+    % As above, but for the specified language.
+    %
+:- pred output_quoted_string_lang(literal_language::in, string::in,
+    io::di, io::uo) is det.
 
     % output_quoted_multi_string is like list.foldl(output_quoted_string)
     % except that a null character will be written between each string
@@ -61,6 +72,11 @@
     %
 :- type multi_string == list(string).
 :- pred output_quoted_multi_string(multi_string::in, io::di, io::uo) is det.
+
+    % As above, but for the specified language.
+    %
+:- pred output_quoted_multi_string_lang(literal_language::in,
+    multi_string::in, io::di, io::uo) is det.
 
     % Print out a char suitably escaped for use as a C char literal.
     % This doesn't actually print out the enclosing single quotes --
@@ -206,24 +222,31 @@ reset_line_num(!IO) :-
 %
 
 output_quoted_string(S, !IO) :-
-    output_quoted_string(0, length(S), S, !IO).
+    output_quoted_string_lang(literal_c, S, !IO).
 
-output_quoted_multi_string([], !IO).
-output_quoted_multi_string([S | Ss], !IO) :-
-    output_quoted_string(S, !IO),
-    output_quoted_char(char.det_from_int(0), !IO),
-    output_quoted_multi_string(Ss, !IO).
+output_quoted_string_lang(Lang, S, !IO) :-
+    do_output_quoted_string(Lang, 0, length(S), S, !IO).
 
-:- pred output_quoted_string(int::in, int::in, string::in,
-    io::di, io::uo) is det.
+output_quoted_multi_string(Ss, !IO) :-
+    output_quoted_multi_string_lang(literal_c, Ss, !IO).
 
-output_quoted_string(Cur, Len, S, !IO) :-
+output_quoted_multi_string_lang(_Lang, [], !IO).
+output_quoted_multi_string_lang(Lang, [S | Ss], !IO) :-
+    output_quoted_string_lang(Lang, S, !IO),
+    output_quoted_char_lang(Lang, char.det_from_int(0), !IO),
+    output_quoted_multi_string_lang(Lang, Ss, !IO).
+
+:- pred do_output_quoted_string(literal_language::in, int::in, int::in,
+    string::in, io::di, io::uo) is det.
+
+do_output_quoted_string(Lang, Cur, Len, S, !IO) :-
     ( Cur < Len ->
         % Avoid a limitation in the MSVC compiler where string literals
-        % can be no longer then 2048 chars. However if you output the string
+        % can be no longer than 2048 chars. However if you output the string
         % in chunks, eg "part a" "part b" it will accept a string longer than
         % 2048 chars, go figure!
         (
+            Lang = literal_c,
             Cur \= 0,
             Cur mod 512 = 0
         ->
@@ -233,12 +256,13 @@ output_quoted_string(Cur, Len, S, !IO) :-
         ),
 
         string.unsafe_index(S, Cur, Char),
-        output_quoted_char(Char, !IO),
+        output_quoted_char_lang(Lang, Char, !IO),
         
         % Check for trigraph sequences in string literals. We break the
         % trigraph by breaking the string into multiple chunks. For example,
         % "??-" gets converted to "?" "?-".
         (
+            Lang = literal_c,
             Char = '?',
             Cur + 2 < Len
         ->
@@ -255,27 +279,44 @@ output_quoted_string(Cur, Len, S, !IO) :-
             true
         ),
 
-        output_quoted_string(Cur + 1, Len, S, !IO)
+        do_output_quoted_string(Lang, Cur + 1, Len, S, !IO)
     ;
         true
     ).
 
 output_quoted_char(Char, !IO) :-
-    EscapedCharStr = quote_char(Char),
+    output_quoted_char_lang(literal_c, Char, !IO).
+
+:- pred output_quoted_char_lang(literal_language::in, char::in, io::di, io::uo)
+    is det.
+
+output_quoted_char_lang(Lang, Char, !IO) :-
+    EscapedCharStr = quote_char_lang(Lang, Char),
     io.write_string(EscapedCharStr, !IO).
 
-quote_char(Char) = QuotedCharStr :-
-    quote_one_char(Char, [], RevQuotedCharStr),
+quote_char(Char) = quote_char_lang(literal_c, Char).
+
+:- func quote_char_lang(literal_language, char) = string.
+
+quote_char_lang(Lang, Char) = QuotedCharStr :-
+    quote_one_char(Lang, Char, [], RevQuotedCharStr),
     string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
 
 quote_string(String) = QuotedString :-
-    string.foldl(quote_one_char, String, [], RevQuotedChars),
+    Lang = literal_c,
+    string.foldl(quote_one_char(Lang), String, [], RevQuotedChars),
     string.from_rev_char_list(RevQuotedChars, QuotedString).
 
-:- pred quote_one_char(char::in, list(char)::in, list(char)::out) is det.
+:- pred quote_one_char(literal_language::in, char::in,
+    list(char)::in, list(char)::out) is det.
 
-quote_one_char(Char, RevChars0, RevChars) :-
-    ( escape_special_char(Char, EscapeChar) ->
+quote_one_char(Lang, Char, RevChars0, RevChars) :-
+    (
+        Lang = literal_java,
+        java_escape_special_char(Char, RevEscapeChars)
+    ->
+        list.append(RevEscapeChars, RevChars0, RevChars)
+    ; escape_special_char(Char, EscapeChar) ->
         RevChars = [EscapeChar, '\\' | RevChars0]
     ; is_c_source_char(Char) ->
         RevChars = [Char | RevChars0]
@@ -286,6 +327,11 @@ quote_one_char(Char, RevChars0, RevChars) :-
         reverse_append(EscapeChars, RevChars0, RevChars)
     ).
 
+:- pred java_escape_special_char(char::in, list(char)::out) is semidet.
+
+java_escape_special_char('\a', ['7', '0', '0', '\\']).
+java_escape_special_char('\v', ['3', '1', '0', '\\']).
+
 :- pred escape_special_char(char::in, char::out) is semidet.
 
 escape_special_char('"', '"').
@@ -294,8 +340,8 @@ escape_special_char('\\', '\\').
 escape_special_char('\n', 'n').
 escape_special_char('\t', 't').
 escape_special_char('\b', 'b').
-escape_special_char('\a', 'a').
-escape_special_char('\v', 'v').
+escape_special_char('\a', 'a'). % not in Java
+escape_special_char('\v', 'v'). % not in Java
 escape_special_char('\r', 'r').
 escape_special_char('\f', 'f').
 
