@@ -29,12 +29,12 @@ main -->
 		[]
 	).
 
-:- pragma(foreign_decl, "Java", "
+:- pragma foreign_decl("Java", "
 	// some Java top-level declarations
 	class Foo {}
 ").
 
-:- pragma(foreign_code, "Java", "
+:- pragma foreign_code("Java", "
 	// some Java in-class declarations
 	static void bar() {
 /*
@@ -49,7 +49,7 @@ XXX `pragma export' not yet supported for Java
 
 :- pred java_write_string(string::in, io__state::di, io__state::uo) is det.
 
-:- pragma(foreign_proc, "Java",
+:- pragma foreign_proc("Java",
 	java_write_string(Message::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
@@ -63,7 +63,7 @@ XXX `pragma export' not yet supported for Java
 
 :- pred java_semidet_succeed is semidet.
 :- pred java_semidet_fail is semidet.
-:- pragma(foreign_proc, "Java", java_semidet_succeed,
+:- pragma foreign_proc("Java", java_semidet_succeed,
 	[will_not_call_mercury, promise_pure], "succeeded = true;").
-:- pragma(foreign_proc, "Java", java_semidet_fail,
+:- pragma foreign_proc("Java", java_semidet_fail,
 	[will_not_call_mercury, promise_pure], "succeeded = false;").

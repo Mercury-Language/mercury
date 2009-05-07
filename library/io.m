@@ -6056,6 +6056,9 @@ namespace mercury {
             try {
                 if (output != null) {
                     output.write(c);
+                    if (c == '\\n') {
+                        output.flush();
+                    }
                 } else if (randomaccess != null) {
                     randomaccess.write(c);
                 } else {
@@ -6082,12 +6085,17 @@ namespace mercury {
 
             try {
                 if (output != null) {
+                    int old_line_number = line_number;
                     for (int i = 0; i < s.length(); i++) {
                         if (s.charAt(i) == '\\n') {
                             line_number++;
                         }
                     }
                     output.write(s);
+                    /* Flush if we saw a newline. */
+                    if (old_line_number != line_number) {
+                        output.flush();
+                    }
                 } else {
                     for (int i = 0; i < s.length(); i++) {
                         // lower 8 bits of each
@@ -7667,25 +7675,25 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     io.write_string(Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    System.out.print(Message);
+    mercury_current_text_output.write(Message);
 ").
 :- pragma foreign_proc("Java",
-    io.write_char(Character::in, _IO0::di, _IO::uo),
+    io.write_char(Chr::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    System.out.print(Character);
+    mercury_current_text_output.write(java.lang.Character.toString(Chr));
 ").
 :- pragma foreign_proc("Java",
     io.write_int(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    System.out.print(Val);
+    mercury_current_text_output.write(java.lang.Integer.toString(Val));
 ").
 :- pragma foreign_proc("Java",
     io.write_float(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    System.out.print(Val);
+    mercury_current_text_output.write(java.lang.Double.toString(Val));
 ").
 
 :- pragma foreign_proc("Java",
@@ -8776,7 +8784,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 ").
 
 :- pragma foreign_proc("Java",
-    io.stdin_stream(Stream::out, _IO0::di, _IO::uo),
+    io.stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury_stdin;
