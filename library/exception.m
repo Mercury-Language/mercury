@@ -1614,9 +1614,13 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     "ML_call_goal_det").
 :- pragma foreign_export("IL", call_goal(pred(out) is det, out),
     "ML_call_goal_det").
+:- pragma foreign_export("Java", call_goal(pred(out) is det, out),
+    "ML_call_goal_det").
 :- pragma foreign_export("C", call_goal(pred(out) is semidet, out),
     "ML_call_goal_semidet").
 :- pragma foreign_export("IL", call_goal(pred(out) is semidet, out),
+    "ML_call_goal_semidet").
+:- pragma foreign_export("Java", call_goal(pred(out) is semidet, out),
     "ML_call_goal_semidet").
 
 % This causes problems because the LLDS back-end
@@ -1634,72 +1638,107 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     "ML_call_handler_det").
 :- pragma foreign_export("IL", call_handler(pred(in, out) is det, in, out),
     "ML_call_handler_det").
+:- pragma foreign_export("Java", call_handler(pred(in, out) is det, in, out),
+    "ML_call_handler_det").
 
 :- pragma foreign_proc("Java",
-    throw_impl(_T::in),
+    throw_impl(T::in),
     [will_not_call_mercury, promise_pure],
 "
-    throw new java.lang.Error(""throw_impl not yet implemented"");
+    throw new mercury.runtime.Exception(T);
 ").
 
 :- pragma foreign_proc("Java",
-    catch_impl(_Pred::pred(out) is det, _Handler::in(handler), _T::out),
+    catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
-"{
-    // the shenanigans with `if (always)' are to avoid errors from
-    // the Java compiler about unreachable code.
-    boolean always = true;
-    if (always) {
-        throw new java.lang.Error(""catch_impl not yet implemented"");
+"
+    try {
+        T = mercury.exception.ML_call_goal_det(
+            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Pred);
     }
-}").
+    catch (mercury.runtime.Exception ex) {
+        T = mercury.exception.ML_call_handler_det(
+            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Handler,
+            (mercury.univ.Univ_0) ex.exception);
+    }
+").
 :- pragma foreign_proc("Java",
-    catch_impl(_Pred::pred(out) is semidet, _Handler::in(handler), T::out),
+    catch_impl(Pred::pred(out) is semidet, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
-"{
-    // the shenanigans with `if (always)' are to avoid errors from
-    // the Java compiler about unreachable code.
-    boolean always = true;
-    if (always) {
-        throw new java.lang.Error(""catch_impl not yet implemented"");
+"
+    try {
+        T = mercury.exception.ML_call_goal_semidet(
+            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Pred);
     }
-    T = null;
-}").
+    catch (mercury.runtime.Exception ex) {
+        T = mercury.exception.ML_call_handler_det(
+            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Handler,
+            (mercury.univ.Univ_0) ex.exception);
+    }
+").
 :- pragma foreign_proc("Java",
-    catch_impl(_Pred::pred(out) is cc_multi, _Handler::in(handler), T::out),
+    catch_impl(Pred::pred(out) is cc_multi, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
-"{
-    // the shenanigans with `if (always)' are to avoid errors from
-    // the Java compiler about unreachable code.
-    boolean always = true;
-    if (always) {
-        throw new java.lang.Error(""catch_impl not yet implemented"");
+"
+    try {
+        T = mercury.exception.ML_call_goal_det(
+            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Pred);
     }
-    T = null;
-}").
+    catch (mercury.runtime.Exception ex) {
+        T = mercury.exception.ML_call_handler_det(
+            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Handler,
+            (mercury.univ.Univ_0) ex.exception);
+    }
+").
 :- pragma foreign_proc("Java",
     catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
-"{
-    // the shenanigans with `if (always)' are to avoid errors from
+"
+    // This predicate isn't called anywhere.
+    // The shenanigans with `if (always)' are to avoid errors from
     // the Java compiler about unreachable code.
     boolean always = true;
     if (always) {
-        throw new java.lang.Error(""catch_impl not yet implemented"");
+        throw new java.lang.Error(
+            ""catch_impl (cc_nondet) not yet implemented"");
     }
     T = null;
-}").
-:- pragma foreign_proc("Java",
-    catch_impl(_Pred::pred(out) is multi, _Handler::in(handler), _T::out),
-    [will_not_call_mercury, promise_pure, ordinary_despite_detism],
-"
-    throw new java.lang.Error(""catch_impl not yet implemented"");
 ").
 :- pragma foreign_proc("Java",
-    catch_impl(_Pred::pred(out) is nondet, _Handler::in(handler), _T::out),
+    catch_impl(Pred0::pred(out) is multi, Handler0::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
-    throw new java.lang.Error(""catch_impl not yet implemented"");
+    Object[] Pred = (Object[]) Pred0;
+    Object[] Handler = (Object[]) Handler0;
+
+    try {
+        mercury.runtime.MethodPtr pred = (mercury.runtime.MethodPtr) Pred[1];
+        pred.call___0_0(new java.lang.Object[] { Pred, cont, cont_env_ptr });
+    }
+    catch (mercury.runtime.Exception ex) {
+        Object T = mercury.exception.ML_call_handler_det(
+            (TypeInfo_Struct) TypeInfo_for_T, Handler,
+            (mercury.univ.Univ_0) ex.exception);
+        cont.call___0_0(new java.lang.Object[] { T, cont_env_ptr });
+    }
+").
+:- pragma foreign_proc("Java",
+    catch_impl(Pred0::pred(out) is nondet, Handler0::in(handler), _T::out),
+    [will_not_call_mercury, promise_pure, ordinary_despite_detism],
+"
+    Object[] Pred = (Object[]) Pred0;
+    Object[] Handler = (Object[]) Handler0;
+
+    try {
+        mercury.runtime.MethodPtr pred = (mercury.runtime.MethodPtr) Pred[1];
+        pred.call___0_0(new java.lang.Object[] { Pred, cont, cont_env_ptr });
+    }
+    catch (mercury.runtime.Exception ex) {
+        Object T = mercury.exception.ML_call_handler_det(
+            (TypeInfo_Struct) TypeInfo_for_T, Handler,
+            (mercury.univ.Univ_0) ex.exception);
+        cont.call___0_0(new java.lang.Object[] { T, cont_env_ptr });
+    }
 ").
 
 %-----------------------------------------------------------------------------%
