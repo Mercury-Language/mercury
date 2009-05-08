@@ -63,7 +63,7 @@ then
     :
 else
     case "$HOST" in
-        neptune|goofy|eris|bob)
+        goofy|eris|bob)
         CVSROOT=":ext:mercury@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
         ;;
         *)
@@ -431,16 +431,15 @@ case $HOST in
     neptune)
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         INSTALL_LIBGRADES="asm_fast.gc      \
-            asm_fast.gc.tr                  \
+            asm_fast.gc.trseg               \
             asm_fast.gc.tr.ll_debug         \
-            asm_fast.gc.tr.debug            \
+            asm_fast.gc.trseg.debug         \
             hlc.gc                          \
-            hlc.gc.tr                       \
-            hlc.gc.tr.ll_debug              \
+            hlc.gc.trseg.ll_debug           \
             hlc.gc.trseg                    \
-            asm_fast.gc.tr.prof             \
-            asm_fast.gc.tr.memprof          \
-            asm_fast.gc.tr.profdeep"        
+            asm_fast.gc.trseg.prof          \
+            asm_fast.gc.trseg.memprof       \
+            asm_fast.gc.trseg.profdeep"        
         ;;
     goofy)
         DEFAULT_GRADE="hlc.gc"
