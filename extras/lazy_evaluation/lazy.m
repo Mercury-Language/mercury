@@ -1,5 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999, 2006 The University of Melbourne.
+% Copyright (C) 1999, 2006, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,35 +29,35 @@
 :- module lazy.
 :- interface.
 
-% A lazy(T) is a value of type T which will only be evaluated on demand.
+    % A lazy(T) is a value of type T which will only be evaluated on
+    % demand.
+    %
 :- type lazy(T).
 
-% :- inst lazy(I).  % abstract
-:- inst lazy == lazy(ground).
-
-% Convert a value from type T to lazy(T)
+    % Convert a value from type T to lazy(T)
+    %
 :- func val(T) = lazy(T).
-:- mode val(in) = out(lazy) is det.
 
-% Construct a lazily-evaluated lazy(T) from a closure
+    % Construct a lazily-evaluated lazy(T) from a closure
+    %
 :- func delay((func) = T) = lazy(T).
-:- mode delay((func) = out is det) = out(lazy) is det.
 
-% Force the evaluation of a lazy(T), and return the result as type T.
-% Note that if the type T may itself contains subterms of type lazy(T),
-% as is the case when T is a recursive type like the lazy_list(T) type
-% defined in lazy_list.m, those subterms will not be evaluated --
-% force/1 only forces evaluation of the lazy/1 term at the top level.
+    % Force the evaluation of a lazy(T), and return the result as type T.
+    % Note that if the type T may itself contains subterms of type lazy(T),
+    % as is the case when T is a recursive type like the lazy_list(T) type
+    % defined in lazy_list.m, those subterms will not be evaluated --
+    % force/1 only forces evaluation of the lazy/1 term at the top level.
+    %
 :- func force(lazy(T)) = T.
-:- mode force(in(lazy)) = out is det.
 
+%-----------------------------------------------------------------------------%
 %
 % The declarative semantics of the above constructs are given by the
 % following equations:
 %
-%	val(X) = delay((func) = X).
+%   val(X) = delay((func) = X).
 %
-%	force(delay(F)) = apply(F).
+%   force(delay(F)) = apply(F).
 %
 % The operational semantics satisfy the following:
 %
@@ -75,90 +77,74 @@
 %   is O(the time to evaluate (X1 = force(X)) + the time to evaluate
 %   (Y1 = force(Y)) + the time to unify X1 and Y1).
 %
-% -----------------------------------------------------------------------------%
-
-% The following may be needed occaisionally, in case
-% the compiler can't infer the right higher-order inst...
-% It just returns its argument, cast to the correct inst.
-:- func inst_cast(lazy(T)) = lazy(T).
-:- mode inst_cast(in) = out(lazy) is det.
+%-----------------------------------------------------------------------------%
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- interface.
 
-% implementation details
-:- inst lazy(I) ---> value(I) ; closure((func) = out(I) is det).
-
 :- implementation.
 
-% Note that we use a user-defined equality predicate to ensure
-% that unifying two lazy(T) values will do the right thing.
+    % Note that we use a user-defined equality predicate to ensure
+    % that unifying two lazy(T) values will do the right thing.
+    %
 :- type lazy(T) ---> value(T) ; closure((func) = T)
-	where equality is equal_values.
+    where equality is equal_values.
 
-:- pred equal_values(lazy(T), lazy(T)).
-:- mode equal_values(in, in) is semidet.
+:- pred equal_values(lazy(T)::in, lazy(T)::in) is semidet.
+
 equal_values(X, Y) :-
-	force(inst_cast(X)) = force(inst_cast(Y)).
-
-:- pragma c_code(inst_cast(F::in) = (F2::out(lazy)),
-	[will_not_call_mercury, thread_safe], "F2 = F;").
+    force(X) = force(Y).
 
 %-----------------------------------------------------------------------------%
 
 val(X) = value(X).
 delay(F) = closure(F).
 
-% If the compiler were to evaluate calls to delay/1 at compile time,
-% it could put the resulting closure/1 term in read-only memory,
-% which would make destructively updating it rather dangerous.
-% So we'd better not let the compiler inline delay/1.
+    % If the compiler were to evaluate calls to delay/1 at compile time,
+    % it could put the resulting closure/1 term in read-only memory,
+    % which would make destructively updating it rather dangerous.
+    % So we'd better not let the compiler inline delay/1.
+    %
 :- pragma no_inline(delay/1).
 
 %-----------------------------------------------------------------------------%
 
-% The call to promise_only_solution is needed to tell the
-% compiler that force will return equal answers given
-% arguments that are equal but that have different representations.
-force(Lazy) = promise_only_solution(do_force(Lazy)).
+    % The promise_equivalent_solutions scope is needed to tell the compiler
+    % that force will return equal answers given arguments that are equal
+    % but that have different representations.
+    %
+force(Lazy) = Value :-
+    promise_pure (
+        promise_equivalent_solutions [Value]
+        (
+            Lazy = value(Value)
+        ;
+            Lazy = closure(Func),
+            Value = apply(Func),
 
-:- pred do_force(lazy(T), T).
-:- mode do_force(in(lazy), out) is cc_multi.
+                % Destructively update the Lazy cell with the value
+                % to avoid having to recompute the same result
+                % next time.
+                %
+            impure update_in_place(Lazy, value(Value))
+        )
+    ).
 
-% The pragma promise_pure is needed to tell the compiler that
-% do_force is pure, even though it calls impure code.
-:- pragma promise_pure(do_force/2).
+    % Note that the implementation of this impure predicate relies on
+    % some details of the Mercury implementation.
+    %
+:- impure pred update_in_place(lazy(T)::in, lazy(T)::in) is det.
 
-do_force(Lazy, Value) :-
-	(	
-		Lazy = value(Value)
-	;
-		Lazy = closure(Func),
-		Value = apply(Func),
-
-		% Destructively update the closure with a new
-		% closure that immediately returns the same value,
-		% to avoid having to recompute the same result
-		% next time.
-		NewFunc = ((func) = Result :- Result = Value),
-		impure update_closure(Lazy, NewFunc)
-	).
-
-:- impure pred update_closure(T1, T2).
-:-        mode update_closure(in, in) is det.
-
-% Note that the implementation of this impure predicate relies on
-% some details of the Mercury implementation.
 :- pragma foreign_proc("C", 
-	update_closure(MercuryTerm::in, NewValue::in),
-	[will_not_call_mercury],
+    update_in_place(HeapCell::in, NewValue::in),
+    [will_not_call_mercury],
 "
-	/* strip off tag bits */
-	Word *ptr = (Word *) MR_strip_tag(MercuryTerm);
-	/* destructively update value */
-	*ptr = NewValue;
+    /* strip off tag bits */
+    Word *ptr = (Word *) MR_strip_tag(HeapCell);
+    /* destructively update value */
+    *ptr = NewValue;
 ").
 
 %-----------------------------------------------------------------------------%
