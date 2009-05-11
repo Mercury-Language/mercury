@@ -1869,9 +1869,13 @@ make_module_clean(ModuleName, !Info, !IO) :-
         ), !IO),
 
     list.foldl2(make_remove_target_file(very_verbose, ModuleName),
-        [module_target_errors, module_target_c_code,
-        module_target_c_header(header_mih), module_target_il_code,
-        module_target_java_code, module_target_erlang_code,
+        [module_target_errors,
+        module_target_c_code,
+        module_target_c_header(header_mih),
+        module_target_il_code,
+        module_target_java_code,
+        module_target_java_class_code,
+        module_target_erlang_code,
         module_target_erlang_header,
         module_target_erlang_beam_code], !Info, !IO),
 

@@ -1744,18 +1744,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Invert the case of the first letter of the string.
-    % This is used for the Java back-end.
-    %
-:- func flip_initial_case(string) = string.
-
-    % Invert the case of the first letter of the last component of
-    % a (possibly) qualified name.  This is used for the Java back-end.
-    %
-:- func flip_initial_case_of_final_part(sym_name) = sym_name.
-
-%-----------------------------------------------------------------------------%
-
 :- type mlds_exported_enums == list(mlds_exported_enum).
 
 :- type mlds_exported_enum
@@ -1784,6 +1772,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.java_names.
 
 :- import_module char.
 :- import_module int.
@@ -1992,26 +1981,6 @@ mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
             "mlds_std_tabling_proc_label: mlds_special_pred_label")
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId).
-
-flip_initial_case_of_final_part(unqualified(Name)) =
-    unqualified(flip_initial_case(Name)).
-flip_initial_case_of_final_part(qualified(Qual, Name)) =
-    qualified(Qual, flip_initial_case(Name)).
-
-    % Invert the case of the first letter of the string.
-flip_initial_case(S0) = S :-
-    ( string.first_char(S0, First0, Rest) ->
-        ( char.is_upper(First0) ->
-            First = char.to_lower(First0)
-        ; char.is_lower(First0) ->
-            First = char.to_upper(First0)
-        ;
-            First = First0
-        ),
-        string.first_char(S, First, Rest)
-    ;
-        S = S0
-    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -19,13 +19,6 @@
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module mdbcomp.prim_data.
-
-%-----------------------------------------------------------------------------%
-
-    % Succeeds iff the given string matches a reserved word in Java.
-    %
-:- pred java_is_keyword(string::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -59,16 +52,6 @@
     % and the result will be an integer or a boolean.
     %
 :- pred java_binary_infix_op(binary_op::in, string::out) is semidet.
-
-%-----------------------------------------------------------------------------%
-
-    % The package containing the Mercury standard library.
-    %
-:- func mercury_std_library_package_name = sym_name.
-
-    % The package containing the Mercury Java runtime classes.
-    %
-:- func mercury_runtime_package_name = sym_name.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -128,67 +111,6 @@ java_binary_infix_op(int_lt, "<").
 java_binary_infix_op(int_gt, ">").
 java_binary_infix_op(int_le, "<=").
 java_binary_infix_op(int_ge, ">=").
-
-%-----------------------------------------------------------------------------%
-
-java_is_keyword("abstract").
-java_is_keyword("boolean").
-java_is_keyword("break").
-java_is_keyword("byte").
-java_is_keyword("case").
-java_is_keyword("catch").
-java_is_keyword("char").
-java_is_keyword("class").
-java_is_keyword("const").
-java_is_keyword("continue").
-java_is_keyword("default").
-java_is_keyword("do").
-java_is_keyword("double").
-java_is_keyword("else").
-java_is_keyword("enum").
-java_is_keyword("extends").
-java_is_keyword("false").
-java_is_keyword("final").
-java_is_keyword("finally").
-java_is_keyword("float").
-java_is_keyword("for").
-java_is_keyword("goto").
-java_is_keyword("if").
-java_is_keyword("implements").
-java_is_keyword("import").
-java_is_keyword("instanceof").
-java_is_keyword("int").
-java_is_keyword("interface").
-java_is_keyword("long").
-java_is_keyword("native").
-java_is_keyword("new").
-java_is_keyword("null").
-java_is_keyword("package").
-java_is_keyword("private").
-java_is_keyword("protected").
-java_is_keyword("public").
-java_is_keyword("return").
-java_is_keyword("short").
-java_is_keyword("static").
-java_is_keyword("strictfp").
-java_is_keyword("super").
-java_is_keyword("switch").
-java_is_keyword("synchronized").
-java_is_keyword("this").
-java_is_keyword("throw").
-java_is_keyword("throws").
-java_is_keyword("transient").
-java_is_keyword("true").
-java_is_keyword("try").
-java_is_keyword("void").
-java_is_keyword("volatile").
-java_is_keyword("while").
-
-%-----------------------------------------------------------------------------%
-
-mercury_std_library_package_name = unqualified("mercury").
-
-mercury_runtime_package_name = qualified(unqualified("mercury"), "runtime").
 
 %-----------------------------------------------------------------------------%
 

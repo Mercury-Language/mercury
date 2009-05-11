@@ -1364,7 +1364,7 @@ make_erlang_program_init_file(ErrorStream, ModuleName, ModuleNames, Result,
     StdTraceInitFileNames = [],
 
     % We need to pass the module name to mkinit_erl.
-    ErlangModuleName = erlang_module_name(ModuleName),
+    ErlangModuleName = qualify_mercury_std_library_module_name(ModuleName),
     ModuleNameStr = sym_name_to_string_sep(ErlangModuleName, "__") ++ "_init",
     ModuleNameOption = " -m " ++ quote_arg(ModuleNameStr),
 

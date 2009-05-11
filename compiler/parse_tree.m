@@ -68,6 +68,9 @@
 :- include_module source_file_map.
 :- include_module write_deps_file.
 
+% Java-related utilities.
+:- include_module java_names.
+
 % (Note that intermod and trans_opt also contain routines that
 % act on the parse tree, but those modules are considered part
 % of the HLDS transformations package.)

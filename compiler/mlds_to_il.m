@@ -771,12 +771,6 @@ generate_parent_and_extends(DataRep, Kind, Inherits) = Parent - Extends :-
 class_name(Module, Name)
     = append_toplevel_class_name(mlds_module_name_to_class_name(Module), Name).
 
-:- func sym_name_to_list(sym_name) = list(string).
-
-sym_name_to_list(unqualified(Name)) = [Name].
-sym_name_to_list(qualified(Module, Name))
-    = sym_name_to_list(Module) ++ [Name].
-
 :- func decl_flags_to_classattrs(mlds_decl_flags) = list(ilasm.classattr).
 
 decl_flags_to_classattrs(Flags) =

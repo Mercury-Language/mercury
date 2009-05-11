@@ -1067,8 +1067,9 @@ erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPred - TypeCtor,
 
 :- func erlang_module_name_to_str(module_name) = string.
 
-erlang_module_name_to_str(ModuleName) =
-    sym_name_to_string_sep(erlang_module_name(ModuleName), "__").
+erlang_module_name_to_str(ModuleName) = String :-
+    ErlangModuleName = qualify_mercury_std_library_module_name(ModuleName),
+    String = sym_name_to_string_sep(ErlangModuleName, "__").
 
 %-----------------------------------------------------------------------------%
 

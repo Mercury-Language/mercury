@@ -103,6 +103,7 @@
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.file_names.    % for mercury_std_library_name.
+:- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
@@ -128,8 +129,7 @@ output_mlds(ModuleInfo, MLDS, !IO) :-
     % Mercury standard library do not include a "mercury." prefix;
     % that's why we don't call mercury_module_name_to_mlds here.
     ModuleName = mlds_get_module_name(MLDS),
-    JavaSafeModuleName = valid_module_name(ModuleName),
-    module_name_to_file_name(JavaSafeModuleName, ".java", do_create_dirs,
+    module_name_to_file_name(ModuleName, ".java", do_create_dirs,
         JavaSourceFile, !IO),
     Indent = 0,
     output_to_file(JavaSourceFile,
@@ -139,19 +139,6 @@ output_mlds(ModuleInfo, MLDS, !IO) :-
 %
 % Utility predicates for various purposes.
 %
-
-    % Succeeds iff the given qualified name is part of the standard
-    % library (as listed in compiler/modules.m).
-    %
-:- pred qualified_name_is_stdlib(mercury_module_name::in) is semidet.
-
-qualified_name_is_stdlib(unqualified(_)) :- fail.
-qualified_name_is_stdlib(qualified(Module, Name)) :-
-    (
-        mercury_std_library_module_name(qualified(Module, Name))
-    ;
-        qualified_name_is_stdlib(Module)
-    ).
 
     % Succeeds iff this definition is a data definition which
     % defines RTTI.
@@ -287,110 +274,6 @@ reverse_string(String0, String) :-
     string.to_char_list(String0, String1),
     string.from_rev_char_list(String1, String).
 
-    % Java doesn't allow a fully-qualified class to have the same name as a
-    % package.  Our workaround is to name package components with trailing
-    % underscores, e.g. `mammal_.primate_.chimp' where `chimp' is a class.
-    % This is enabled with `package_name_mangling'.
-    %
-    % The packages `mercury' and `mercury.runtime' are named without
-    % underscores simply because there is existing handwritten code already
-    % using those names.
-    %
-:- type package_name_mangling
-    --->    package_name_mangling
-    ;       no_package_name_mangling.
-
-:- pred mangle_mlds_sym_name_for_java(sym_name::in, mlds_qual_kind::in,
-    string::in, package_name_mangling::in, string::out) is det.
-
-mangle_mlds_sym_name_for_java(unqualified(Name), QualKind, _QualifierOp,
-        _PackageNameMangling, JavaSafeName) :-
-    (
-        QualKind = module_qual,
-        FlippedName = Name
-    ;
-        QualKind = type_qual,
-        FlippedName = flip_initial_case(Name)
-    ),
-    MangledName = name_mangle(FlippedName),
-    JavaSafeName = valid_symbol_name(MangledName).
-mangle_mlds_sym_name_for_java(qualified(ModuleName0, PlainName), QualKind,
-        QualifierOp, PackageNameMangling, JavaSafeName) :-
-    mangle_mlds_sym_name_for_java(ModuleName0, module_qual, QualifierOp,
-        PackageNameMangling, MangledModuleName0),
-    (
-        PackageNameMangling = package_name_mangling,
-        MaybeUnderscore = should_append_underscore_for_package(ModuleName0),
-        (
-            MaybeUnderscore = yes,
-            MangledModuleName = MangledModuleName0 ++ "_"
-        ;
-            MaybeUnderscore = no,
-            MangledModuleName = MangledModuleName0
-        )
-    ;
-        PackageNameMangling = no_package_name_mangling,
-        MangledModuleName = MangledModuleName0
-    ),
-    (
-        QualKind = module_qual,
-        FlippedPlainName = PlainName
-    ;
-        QualKind = type_qual,
-        FlippedPlainName = flip_initial_case(PlainName)
-    ),
-    MangledPlainName = name_mangle(FlippedPlainName),
-    JavaSafePlainName = valid_symbol_name(MangledPlainName),
-    string.append_list([MangledModuleName, QualifierOp, JavaSafePlainName],
-        JavaSafeName).
-
-:- func should_append_underscore_for_package(sym_name) = bool.
-
-should_append_underscore_for_package(ModuleName) = Append :-
-    ( ModuleName = mercury_std_library_package_name ->
-        Append = no
-    ; ModuleName = mercury_runtime_package_name ->
-        Append = no
-    ;
-        Append = yes
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Name mangling code to fix problem of mercury modules having the same name
-% as reserved Java words such as `char' and `int'.
-%
-
-    % If the given name conficts with a reserved Java word we must add a
-    % prefix to it to avoid compilation errors.
-:- func valid_symbol_name(string) = string.
-
-valid_symbol_name(SymName) = ValidSymName :-
-    Prefix = "mr_",
-    ( java_is_keyword(SymName) ->
-        % This is a reserved Java word, add the above prefix.
-        ValidSymName = Prefix ++ SymName
-    ; string.append(Prefix, Suffix, SymName) ->
-        % This name already contains the prefix we are adding to
-        % variables to avoid conficts, so add an additional '_'.
-        ValidSymName = Prefix ++ "_" ++ Suffix
-    ;
-        % Normal name; do nothing.
-        ValidSymName = SymName
-    ).
-
-:- type java_module_name == sym_name.
-
-:- func valid_module_name(java_module_name) = java_module_name.
-
-valid_module_name(unqualified(String)) =  ValidModuleName :-
-    ValidString = valid_symbol_name(String),
-    ValidModuleName = unqualified(ValidString).
-valid_module_name(qualified(ModuleSpecifier, String)) =  ValidModuleName :-
-    ValidModuleSpecifier = valid_module_name(ModuleSpecifier),
-    ValidString = valid_symbol_name(String),
-    ValidModuleName = qualified(ValidModuleSpecifier, ValidString).
-
 %-----------------------------------------------------------------------------%
 %
 % Code to output imports.
@@ -420,11 +303,8 @@ output_import(Import, !IO) :-
         unexpected(this_file, "foreign import in Java backend")
     ),
     SymName = mlds_module_name_to_sym_name(ImportName),
-    JavaSafeSymName = valid_module_name(SymName),
-    File = sym_name_to_string(JavaSafeSymName),
-    % XXX Name mangling code should be put here when we start enforcing
-    % Java's naming conventions.
-    ClassFile = File,
+    mangle_sym_name_for_java(SymName, module_qual, ".", package_name_mangling,
+        ClassFile),
     % There are issues related to using import statements and Java's naming
     % conventions. To avoid these problems, we output dependencies as comments
     % only. This is ok, since we always use fully qualified names anyway.
@@ -896,8 +776,8 @@ create_addr_wrapper_name(CodeAddr, MangledClassEntityName) :-
     % Create a name for this wrapper class based on the fully qualified method
     % (predicate) name.
     ModuleQualifierSym = mlds_module_name_to_sym_name(ModuleQualifier),
-    mangle_mlds_sym_name_for_java(ModuleQualifierSym, QualKind, "__",
-        no_package_name_mangling, ModuleNameStr),
+    mangle_sym_name_for_java(ModuleQualifierSym, convert_qual_kind(QualKind),
+        "__", no_package_name_mangling, ModuleNameStr),
     ClassEntityName = "addrOf__" ++ ModuleNameStr ++ "__" ++ PredName,
     MangledClassEntityName = name_mangle_maybe_shorten(ClassEntityName).
 
@@ -1010,21 +890,6 @@ generate_call_method_args([Type | Types], Variable, Counter, Args0, Args) :-
     Args1 = Args0 ++ [UnBoxedRval],
     generate_call_method_args(Types, Variable, Counter + 1, Args1, Args).
 
-:- func mlds_module_name_to_string(mlds_module_name) = string.
-
-mlds_module_name_to_string(MldsModuleName) = ModuleNameStr :-
-    ModuleName = mlds_module_name_to_sym_name(MldsModuleName),
-    ModuleNameStr = symbol_name_to_string(ModuleName, "").
-
-:- func symbol_name_to_string(sym_name, string) = string.
-
-symbol_name_to_string(unqualified(SymName), SymNameStr0) = SymNameStr :-
-    SymNameStr = SymNameStr0 ++ SymName.
-symbol_name_to_string(qualified(Qualifier, SymName), SymNameStr0)
-        = SymNameStr :-
-    SymNameStr1 = symbol_name_to_string(Qualifier, SymNameStr0),
-    SymNameStr = SymNameStr1 ++ "__" ++ SymName.
-
 :- func make_pred_name_string(mlds_pred_label, proc_id,
     maybe(mlds_func_sequence_num)) = string.
 
@@ -1120,9 +985,7 @@ output_init_2(Indent, InitPred, !IO) :-
 
 output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
         !IO) :-
-    MLDSModuleName = mercury_module_name_to_mlds(MercuryModuleName),
-    ModuleSymName = mlds_module_name_to_sym_name(MLDSModuleName),
-    JavaSafeModuleName = valid_module_name(ModuleSymName),
+    JavaSafeModuleName = java_module_name(MercuryModuleName),
     output_auto_gen_comment(MercuryModuleName, !IO),
     indent_line(Indent, !IO),
     io.write_string("/* :- module ", !IO),
@@ -1143,26 +1006,18 @@ output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
 :- pred output_package_info(sym_name::in, io::di, io::uo) is det.
 
 output_package_info(unqualified(_), !IO).
-output_package_info(qualified(Module, _), !IO) :-
+output_package_info(qualified(JavaSafeModule, _), !IO) :-
     io.write_string("package ", !IO),
-    mangle_mlds_sym_name_for_java(Module, module_qual, ".",
-        package_name_mangling, PackageName),
+    PackageName = sym_name_to_string(JavaSafeModule),
     io.write_string(PackageName, !IO),
-    MaybeUnderscore = should_append_underscore_for_package(Module),
-    (
-        MaybeUnderscore = yes,
-        io.write_string("_;\n", !IO)
-    ;
-        MaybeUnderscore = no,
-        io.write_string(";\n", !IO)
-    ).
+    io.write_string(";\n", !IO).
 
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting Java class that calls the
     % `main' predicate. Save the command line arguments in the class
     % variable `args' in the class `mercury.runtime.JavaInternal'.
     %
-:- pred maybe_write_main_driver(indent::in, java_module_name::in,
+:- pred maybe_write_main_driver(indent::in, sym_name::in,
     list(mlds_defn)::in, io::di, io::uo) is det.
 
 maybe_write_main_driver(Indent, JavaSafeModuleName, Defns, !IO) :-
@@ -1391,7 +1246,7 @@ output_interface(Interface, !IO) :-
             Arity, _)
     ->
         SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-        mangle_mlds_sym_name_for_java(SymName, QualKind, ".",
+        mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind), ".",
             package_name_mangling, ModuleName),
         io.format("%s.%s", [s(ModuleName), s(Name)], !IO),
         %
@@ -1953,7 +1808,7 @@ output_fully_qualified_thing(qual(ModuleName, QualKind, Name), OutputFunc,
     mlds_module_name_to_sym_name(ModuleName) = WholeModuleName,
 
     % Write the package name components.
-    mangle_mlds_sym_name_for_java(PackageName, module_qual, Qualifier,
+    mangle_sym_name_for_java(PackageName, module_qual, Qualifier,
         package_name_mangling, MangledPackageName),
     io.write_string(MangledPackageName, !IO),
 
@@ -1963,8 +1818,8 @@ output_fully_qualified_thing(qual(ModuleName, QualKind, Name), OutputFunc,
         true
     ;
         remove_sym_name_prefixes(WholeModuleName, PackageName, NonPackageName),
-        mangle_mlds_sym_name_for_java(NonPackageName, QualKind, Qualifier,
-            no_package_name_mangling, MangledNonPackageName),
+        mangle_sym_name_for_java(NonPackageName, convert_qual_kind(QualKind),
+            Qualifier, no_package_name_mangling, MangledNonPackageName),
         io.write_string(Qualifier, !IO),
         io.write_string(MangledNonPackageName, !IO)
     ),
@@ -1988,6 +1843,11 @@ remove_sym_name_prefixes(SymName0, Prefix, SymName) :-
         SymName0 = unqualified(_),
         unexpected(this_file, "remove_sym_name_prefixes: prefix not found")
     ).
+
+:- func convert_qual_kind(mlds_qual_kind) = java_qual_kind.
+
+convert_qual_kind(module_qual) = module_qual.
+convert_qual_kind(type_qual) = type_qual.
 
 :- pred output_module_name(mercury_module_name::in, io::di, io::uo) is det.
 
@@ -3343,7 +3203,7 @@ output_mangled_name(Name, !IO) :-
 
 output_valid_mangled_name(Name, !IO) :-
     MangledName = name_mangle(Name),
-    JavaSafeName = valid_symbol_name(MangledName),
+    JavaSafeName = valid_java_symbol_name(MangledName),
     io.write_string(JavaSafeName, !IO).
 
 :- pred output_call_rval(module_info::in, mlds_rval::in, mlds_module_name::in,
@@ -3705,7 +3565,7 @@ mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
 
 mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
     SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-    mangle_mlds_sym_name_for_java(SymName, module_qual, ".",
+    mangle_sym_name_for_java(SymName, module_qual, ".",
         package_name_mangling, ModuleName),
     io.write_string(ModuleName, !IO),
     io.write_string(".", !IO),

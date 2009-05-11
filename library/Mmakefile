@@ -266,7 +266,7 @@ JAVAS = ` echo $($(STD_LIB_NAME).javas) | sed \
 # rather than compiling them separately.  This is needed because
 # otherwise javac doesn't handle cyclic dependencies between different
 # modules.
-classes: javas java_symlinks java_subdir_copies
+classes: javas java_symlinks
 	$(JAVAC) $(ALL_JAVACFLAGS) $(JAVAS)
 
 # javac expects to find the sources for symbols named mercury.* in
@@ -279,22 +279,6 @@ classes: javas java_symlinks java_subdir_copies
 java_symlinks:
 	[ -d mercury ] || ln -s . mercury
 	[ -d runtime ] || ln -s $(MERCURY_DIR)/java/runtime .
-
-# Mercury doesn't yet put .java files in the directory hierarchies that Java
-# expects.  For now we copy a few files manually.
-.PHONY: java_subdir_copies
-java_subdir_copies:
-	[ -d bit_buffer_ ] || mkdir bit_buffer_
-	[ -d stream_ ] || mkdir stream_
-	[ -d string_ ] || mkdir string_
-	[ -d thread_ ] || mkdir thread_
-	cp bit_buffer.read.java bit_buffer_/read.java
-	cp bit_buffer.write.java bit_buffer_/write.java
-	cp stream.string_writer.java stream_/string_writer.java
-	cp string.builder.java string_/builder.java
-	cp thread.channel.java thread_/channel.java
-	cp thread.mvar.java thread_/mvar.java
-	cp thread.semaphore.java thread_/semaphore.java
 
 # Once all of the library classes have been compiled, we put them in a single
 # jar file.  At this point we also add the runtime classes to a jar file.

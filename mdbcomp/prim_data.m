@@ -172,6 +172,12 @@
     %
 :- func sym_name_to_string(sym_name) = string.
 
+    % sym_name_to_list(SymName) = List:
+    %
+    % Convert a symbol name to a list of strings,
+    %
+:- func sym_name_to_list(sym_name) = list(string).
+
     % is_submodule(SymName1, SymName2):
     %
     % True iff SymName1 is a submodule of SymName2.
@@ -407,6 +413,10 @@ sym_name_to_string_sep(qualified(ModuleSym, Name), Separator) = QualName :-
     string.append_list([ModuleName, Separator, Name], QualName).
 
 sym_name_to_string(SymName) = sym_name_to_string_sep(SymName, ".").
+
+sym_name_to_list(unqualified(Name)) = [Name].
+sym_name_to_list(qualified(Module, Name))
+    = sym_name_to_list(Module) ++ [Name].
 
 unqualify_name(unqualified(Name)) = Name.
 unqualify_name(qualified(_ModuleName, Name)) = Name.

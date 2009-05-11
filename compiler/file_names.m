@@ -27,13 +27,12 @@
     %
 :- pred mercury_std_library_module_name(module_name::in) is semidet.
 
-    % To avoid namespace collisions between Mercury standard modules and
-    % Erlang standard modules, we pretend the Mercury standard modules are in
-    % a "mercury" supermodule.  This function returns ModuleName with the
-    % extra qualifier if it is a standard library module.  Otherwise it
-    % returns it unchanged.
+    % qualify_mercury_std_library_module_name(ModuleName) = QualModuleName:
     %
-:- func erlang_module_name(module_name) = module_name.
+    % If ModuleName is a standard library module then return the module with an
+    % extra `mercury' prefix.  Otherwise, return the module name unchanged.
+    %
+:- func qualify_mercury_std_library_module_name(module_name) = module_name.
 
 %-----------------------------------------------------------------------------%
 
@@ -126,11 +125,12 @@
 
 :- implementation.
 
-:- import_module libs.globals.
-
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.options.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.source_file_map.
 
@@ -152,11 +152,11 @@ mercury_std_library_module_name(qualified(Module, Name)) :-
     module_name_to_file_name(ModuleName, ModuleNameStr),
     mercury_std_library_module(ModuleNameStr).
 
-erlang_module_name(ModuleName) = ErlangModuleName :-
+qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
     ( mercury_std_library_module_name(ModuleName) ->
-        ErlangModuleName= add_outermost_qualifier("mercury", ModuleName)
+        QualModuleName = add_outermost_qualifier("mercury", ModuleName)
     ;
-        ErlangModuleName= ModuleName
+        QualModuleName = ModuleName
     ).
 
 %-----------------------------------------------------------------------------%
@@ -173,36 +173,50 @@ module_name_to_search_file_name(ModuleName, Ext, FileName, !IO) :-
     maybe_search::in, maybe_create_dirs::in, file_name::out, io::di, io::uo)
     is det.
 
-module_name_to_file_name_general(ModuleName0, Ext, Search, MkDir, FileName,
+module_name_to_file_name_general(ModuleName, Ext, Search, MkDir, FileName,
         !IO) :-
     ( Ext = ".m" ->
         % Look up the module in the module->file mapping.
-        source_file_map.lookup_module_source_file(ModuleName0, FileName, !IO)
+        source_file_map.lookup_module_source_file(ModuleName, FileName, !IO)
     ;
-        (
-            ( string.suffix(Ext, ".erl")
-            ; string.suffix(Ext, ".hrl")
-            ; string.suffix(Ext, ".beam")
-            )
-        ->
-            % Erlang uses `.' as a package separator and expects a module
-            % `a.b.c' to be in a file `a/b/c.erl'.  Rather than that, we use
-            % a flat namespace with `__' as module separators.
-            Sep = "__",
-            ModuleName = erlang_module_name(ModuleName0)
+        % Java files need to be placed in package subdirectories, e.g. the
+        % source file for `a.b.c' goes in `a_/b_/c.java'.
+        ( string.suffix(Ext, ".java")
+        ; string.suffix(Ext, ".class")
+        )
+    ->
+        JavaModuleName = java_module_name(ModuleName),
+        ( sym_name_get_module_name(JavaModuleName, ParentModules) ->
+            BaseParentDirs = sym_name_to_list(ParentModules)
         ;
-            Sep = ".",
-            ModuleName = ModuleName0
+            BaseParentDirs = []
         ),
-        BaseName = sym_name_to_string_sep(ModuleName, Sep) ++ Ext,
-        choose_file_name(ModuleName, BaseName, Ext, Search, MkDir, FileName,
-            !IO)
+        BaseName = unqualify_name(JavaModuleName) ++ Ext,
+        choose_file_name(ModuleName, BaseParentDirs, BaseName, Ext, Search,
+            do_create_dirs, FileName, !IO)
+    ;
+        % Erlang uses `.' as a package separator and expects a module
+        % `a.b.c' to be in a file `a/b/c.erl'.  Rather than that, we use
+        % a flat namespace with `__' as module separators.
+        ( string.suffix(Ext, ".erl")
+        ; string.suffix(Ext, ".hrl")
+        ; string.suffix(Ext, ".beam")
+        )
+    ->
+        ErlangModuleName = qualify_mercury_std_library_module_name(ModuleName),
+        BaseName = sym_name_to_string_sep(ErlangModuleName, "__") ++ Ext,
+        choose_file_name(ErlangModuleName, [], BaseName, Ext, Search, MkDir,
+            FileName, !IO)
+    ;
+        BaseName = sym_name_to_string_sep(ModuleName, ".") ++ Ext,
+        choose_file_name(ModuleName, [], BaseName, Ext, Search, MkDir,
+            FileName, !IO)
     ).
 
 module_name_to_lib_file_name(Prefix, ModuleName, Ext, MkDir, FileName, !IO) :-
     BaseFileName = sym_name_to_string(ModuleName),
     string.append_list([Prefix, BaseFileName, Ext], BaseName),
-    choose_file_name(ModuleName, BaseName, Ext, do_not_search, MkDir,
+    choose_file_name(ModuleName, [], BaseName, Ext, do_not_search, MkDir,
         FileName, !IO).
 
 fact_table_file_name(ModuleName, FactTableFileName, Ext, MkDir, FileName,
@@ -213,14 +227,21 @@ fact_table_file_name(ModuleName, FactTableFileName, Ext, MkDir, FileName,
 extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, MkDir, FileName,
         !IO) :-
     BaseName = ExtraLinkObjName ++ Ext,
-    choose_file_name(ModuleName, BaseName, Ext, do_not_search, MkDir,
+    choose_file_name(ModuleName, [], BaseName, Ext, do_not_search, MkDir,
         FileName, !IO).
 
-:- pred choose_file_name(module_name::in, string::in, string::in,
-    maybe_search::in, maybe_create_dirs::in, file_name::out, io::di, io::uo)
-    is det.
+    % choose_file_name(ModuleName, BaseParentDirs, BaseName, Ext, Search,
+    %   MkDir, FileName, !IO)
+    %
+    % BaseParentDirs is usually empty.  For Java files, BaseParentDirs are the
+    % package directories that the file needs to be placed in.
+    %
+:- pred choose_file_name(module_name::in, list(string)::in, string::in,
+    string::in, maybe_search::in, maybe_create_dirs::in, file_name::out,
+    io::di, io::uo) is det.
 
-choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
+choose_file_name(_ModuleName, BaseParentDirs, BaseName, Ext, Search, MkDir,
+        FileName, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
@@ -247,7 +268,8 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             )
         )
     ->
-        FileName = BaseName
+        make_file_name(BaseParentDirs, do_not_search, do_create_dirs, BaseName,
+            Ext, FileName, !IO)
     ;
         % The source files, the final executables, library files (including
         % .init files) output files intended for use by the user, and phony
@@ -385,7 +407,9 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             string.append_list(["unknown extension `", Ext, "'"], ErrorMsg),
             unexpected(this_file, ErrorMsg)
         ),
-        make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO)
+
+        make_file_name([SubDirName | BaseParentDirs], Search, MkDir, BaseName,
+            Ext, FileName, !IO)
     ).
 
 file_name_to_module_name(FileName, ModuleName) :-
@@ -397,13 +421,14 @@ module_name_to_file_name(ModuleName, FileName) :-
 module_name_to_make_var_name(ModuleName, MakeVarName) :-
     MakeVarName = sym_name_to_string(ModuleName).
 
-:- pred make_file_name(dir_name::in, maybe_search::in, maybe_create_dirs::in,
-    file_name::in, string::in, file_name::out, io::di, io::uo) is det.
+:- pred make_file_name(list(dir_name)::in, maybe_search::in,
+    maybe_create_dirs::in, file_name::in, string::in, file_name::out,
+    io::di, io::uo) is det.
 
-make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO) :-
+make_file_name(SubDirNames, Search, MkDir, BaseName, Ext, FileName, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_string_option(Globals, fullarch, FullArch),
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     (
         UseGradeSubdirs = yes,
         file_is_arch_or_grade_dependent(Globals, Ext),
@@ -423,25 +448,36 @@ make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO) :-
         )
     ->
         grade_directory_component(Globals, Grade),
+        globals.lookup_string_option(Globals, fullarch, FullArch),
 
         % The extra "Mercury" is needed so we can use `--intermod-directory
         % Mercury/<grade>/<fullarch>' and `--c-include
         % Mercury/<grade>/<fullarch>' to find the local `.opt' and `.mih'
         % files without messing up the search for the files for installed
         % libraries.
-        DirComponents = ["Mercury", Grade, FullArch, "Mercury", SubDirName]
+        DirComponents = ["Mercury", Grade, FullArch, "Mercury" | SubDirNames]
     ;
-        DirComponents = ["Mercury", SubDirName]
+        UseSubdirs = yes
+    ->
+        DirComponents = ["Mercury" | SubDirNames]
+    ;
+        DirComponents = SubDirNames
     ),
     (
-        MkDir = do_create_dirs,
-        DirName = dir.relative_path_name_from_components(DirComponents),
-        make_directory(DirName, _, !IO)
+        DirComponents = [],
+        FileName = BaseName
     ;
-        MkDir = do_not_create_dirs
-    ),
-    Components = DirComponents ++ [BaseName],
-    FileName = dir.relative_path_name_from_components(Components).
+        DirComponents = [_ | _],
+        (
+            MkDir = do_create_dirs,
+            DirName = dir.relative_path_name_from_components(DirComponents),
+            make_directory(DirName, _, !IO)
+        ;
+            MkDir = do_not_create_dirs
+        ),
+        Components = DirComponents ++ [BaseName],
+        FileName = dir.relative_path_name_from_components(Components)
+    ).
 
 :- pred file_is_arch_or_grade_dependent(globals::in, string::in) is semidet.
 
