@@ -432,7 +432,7 @@ case $HOST in
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         INSTALL_LIBGRADES="asm_fast.gc      \
             asm_fast.gc.trseg               \
-            asm_fast.gc.tr.ll_debug         \
+            asm_fast.gc.trseg.ll_debug      \
             asm_fast.gc.trseg.debug         \
             hlc.gc                          \
             hlc.gc.trseg.ll_debug           \
