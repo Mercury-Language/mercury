@@ -1610,9 +1610,11 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
             Target = target_erlang,
             create_erlang_shell_script(ModuleName, LinkSucceeded, !IO)
         ;
+            Target = target_java,
+            create_java_shell_script(ModuleName, LinkSucceeded, !IO)
+        ;
             ( Target = target_c
             ; Target = target_il
-            ; Target = target_java
             ; Target = target_asm
             ; Target = target_x86_64
             ),
@@ -2333,8 +2335,7 @@ create_java_archive(ErrorStream, ModuleName, JarFileName, ObjectList,
     Jar = "jar",
     JarCreateFlags = "cf",
 
-    join_quoted_string_list(ObjectList, "", "", " ", Objects),
-    list_class_files_for_jar(ModuleName, Objects, ListClassFiles, !IO),
+    list_class_files_for_jar(ModuleName, ObjectList, ListClassFiles, !IO),
     Cmd = string.append_list([
         Jar, " ", JarCreateFlags, " ", JarFileName, " ", ListClassFiles ]),
 

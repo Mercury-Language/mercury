@@ -1917,7 +1917,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     ], !IO),
 
     ClassFiles = "$(" ++ MakeVarName ++ ".classes)",
-    list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles, !IO),
+    list_class_files_for_jar_mmake(ModuleName, ClassFiles, ListClassFiles,
+        !IO),
     io.write_strings(DepStream, [
         JarFileName, " : ", "$(", MakeVarName, ".classes)\n",
         "\t$(JAR) $(JAR_CREATE_FLAGS) ", JarFileName, " ",

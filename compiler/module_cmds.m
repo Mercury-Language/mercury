@@ -20,6 +20,7 @@
 :- import_module libs.file_util.
 
 :- import_module bool.
+:- import_module list.
 :- import_module io.
 :- import_module maybe.
 
@@ -138,10 +139,18 @@
 :- pred create_java_shell_script(module_name::in, bool::out,
     io::di, io::uo) is det.
 
-    % Strip away the path prefix for a list of .class files.
+    % Given a list .class files, return the string that should be passed
+    % to `jar' to reference those class files.
     %
-:- pred list_class_files_for_jar(module_name::in, string::in, string::out,
-    io::di, io::uo) is det.
+:- pred list_class_files_for_jar(module_name::in, list(string)::in,
+    string::out, io::di, io::uo) is det.
+
+    % Given a `mmake' variable reference to a list of .class files, return an
+    % expression that generates the list of arguments for `jar' to reference
+    % those class files.
+    %
+:- pred list_class_files_for_jar_mmake(module_name::in, string::in,
+    string::out, io::di, io::uo) is det.
 
     % Get the value of the Java class path from the environment. (Normally
     % it will be obtained from the CLASSPATH environment variable, but if
@@ -177,7 +186,6 @@
 :- import_module parse_tree.file_names.
 
 :- import_module dir.
-:- import_module list.
 :- import_module getopt_io.
 :- import_module string.
 
@@ -706,6 +714,30 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
     ).
 
 list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles, !IO) :-
+    globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
+    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
+    AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
+    (
+        AnySubdirs = yes,
+        module_name_to_file_name(ModuleName, ".class", do_not_create_dirs,
+            ClassFile, !IO),
+        ClassSubdir = dir.dirname(ClassFile),
+        % Here we use the `-C' option of jar to change directory during
+        % execution and strip away the Mercury/classs/
+        % prefixes on class file names.
+        % Otherwise, the class files would be stored as
+        %   Mercury/classs/*.class
+        % within the jar file, which is not what we want.
+        UnprefixedClassFiles = list.map(
+            string.remove_prefix_if_present(ClassSubdir ++ "/"), ClassFiles),
+        Arguments = ["-C", ClassSubdir | UnprefixedClassFiles]
+    ;
+        AnySubdirs = no,
+        Arguments = ClassFiles
+    ),
+    ListClassFiles = string.join_list(" ", Arguments).
+
+list_class_files_for_jar_mmake(ModuleName, ClassFiles, ListClassFiles, !IO) :-
     globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
     globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
     AnySubdirs = UseSubdirs `or` UseGradeSubdirs,

@@ -564,6 +564,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
             ( CompilationTarget = target_c
             ; CompilationTarget = target_asm
             ; CompilationTarget = target_erlang
+            ; CompilationTarget = target_java
             ),
             % Run the link in a separate process so it can be killed
             % if an interrupt is received.
@@ -577,9 +578,6 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         ;
             CompilationTarget = target_il,
             Succeeded = yes
-        ;
-            CompilationTarget = target_java,
-            create_java_shell_script(MainModuleName, Succeeded, !IO)
         ),
         !:Info = !.Info ^ command_line_targets :=
             set.delete(!.Info ^ command_line_targets,

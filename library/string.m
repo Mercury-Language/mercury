@@ -116,6 +116,11 @@
     %
 :- pred string.remove_prefix(string::in, string::in, string::out) is semidet.
 
+    % string.remove_prefix_if_present(Prefix, String) = Suffix returns `String'
+    % minus `Prefix' if `String' begins with `Prefix', `String' otherwise.
+    %
+:- func string.remove_prefix_if_present(string, string) = string.
+
     % string.prefix(String, Prefix) is true iff Prefix is a prefix of String.
     % Same as string.append(Prefix, _, String).
     %
@@ -1094,9 +1099,16 @@ string.remove_suffix_if_present(Suffix, String) = Out :-
     ;
         Out = String
     ).
-    
+
 string.remove_prefix(Prefix, String, Suffix) :-
     string.append(Prefix, Suffix, String).
+
+string.remove_prefix_if_present(Prefix, String) = Out :-
+    ( string.remove_prefix(Prefix, String, Suffix) ->
+        Out = Suffix
+    ;
+        Out = String
+    ).
 
 :- pragma promise_equivalent_clauses(string.prefix/2).
 
