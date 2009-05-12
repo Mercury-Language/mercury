@@ -268,8 +268,11 @@ choose_file_name(_ModuleName, BaseParentDirs, BaseName, Ext, Search, MkDir,
             )
         )
     ->
-        make_file_name(BaseParentDirs, do_not_search, do_create_dirs, BaseName,
-            Ext, FileName, !IO)
+        % XXX this was part of a change to support submodules in Java
+        % but broke the high level C backend
+        % make_file_name(BaseParentDirs, do_not_search, do_create_dirs,
+        %   BaseName, Ext, FileName, !IO)
+        FileName = BaseName
     ;
         % The source files, the final executables, library files (including
         % .init files) output files intended for use by the user, and phony
