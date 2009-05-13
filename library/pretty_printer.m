@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne
+% Copyright (C) 2007, 2009 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -712,7 +712,8 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
             str("{"), indent([format_list(Args, str(", "))]), str("}")
         ])
       else
-        Doc0 = docs([
+        Doc0 = group([
+            nl,
             str(term_io.quoted_atom(Name)),
             str("("), indent([format_list(Args, str(", "))]), str(")")
         ])

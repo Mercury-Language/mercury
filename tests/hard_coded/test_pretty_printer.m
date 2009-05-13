@@ -52,6 +52,10 @@
     ;       op_tree * op_tree
     ;       op_tree / op_tree.
 
+:- type church
+    --->    zero
+    ;       succ(church).
+
 :- type non_canonical_bool
     --->    non_canonical_bool(int)
     where equality is non_canonical_bool_eq.
@@ -209,6 +213,7 @@ test_case(test_case(LineWidth, MaxLines, Limit, Doc)) :-
         func(X, M) = M ^ elem(X) := float(X),
         List, map.init : map(int, float)),
     OpTree = mk_op_tree(200),
+    Church = list.foldl(func(_, X) = succ(X), 1..10, zero),
     Tuple = {1, 2.0, "three", '4', {5}},
     Square = list.duplicate(10, 1..10) : list(list(int)),
     IndentTest = docs([
@@ -243,6 +248,7 @@ test_case(test_case(LineWidth, MaxLines, Limit, Doc)) :-
     ;   Doc = format(MapFloat)
     ;   Doc = format(MapStr)
     ;   Doc = format(OpTree)
+    ;   Doc = format(Church)
     ;   Doc = fmt_susp_seq(100)
     ;   Doc = format(Tuple)
     ;   Doc = format(Square)
