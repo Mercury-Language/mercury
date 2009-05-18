@@ -60,8 +60,12 @@
             % etc. will lead to strange output.
 
     ;       nl
-            % Output a newline if the enclosing group does not fit on the
-            % current line.
+            % Output a newline, followed by indentation, iff the enclosing
+            % group does not fit on the current line and starting a new line
+            % adds more space.
+
+    ;       hard_nl
+            % Always outputs a newline, followed by indentation.
 
     ;       docs(docs)
             % An embedded sequence of docs.
@@ -113,8 +117,8 @@
 
     % group(Docs)
     %   If Docs can be output on the remainder of the current line
-    %   by ignoring any newlines in Docs, then do so.  Otherwise
-    %   newlines in Docs are printed (followed by any indentation).
+    %   by ignoring any nls in Docs, then do so.  Otherwise
+    %   nls in Docs are printed (followed by any indentation).
     %   The formatting test is applied recursively for any subgroups in Docs.
     %
 :- func group(docs) = doc.
@@ -377,18 +381,22 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             !:RemainingWidth = !.RemainingWidth - string.length(String),
             Docs = Docs0
         ;
-            % Output soft newlines if what follows up to the next newline
-            % fits on the rest of the current line.  Don't bother outputting
-            % a newline if we're already at the start of a new line and we
-            % don't have any indentation.
-            %
             Doc = nl,
-            ( if LineWidth = !.RemainingWidth, !.Indents = [] then
-                true
-              else
+            ( if
+                F = ( func(S, W) = string.length(S) + W ),
+                IndentWidth = list.foldl(F, !.Indents, 0),
+                !.RemainingWidth < LineWidth - IndentWidth
+              then
                 format_nl(Stream, LineWidth, !.Indents, !:RemainingWidth,
                     !RemainingLines, !IO)
+              else
+                true
             ),
+            Docs = Docs0
+        ;
+            Doc = hard_nl,
+            format_nl(Stream, LineWidth, !.Indents, !:RemainingWidth,
+                !RemainingLines, !IO),
             Docs = Docs0
         ;
             Doc = docs(Docs1),
@@ -433,8 +441,8 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                 !Limit, !Pri, CurrentRemainingWidth, RemainingWidthAfterGroup),
             ( if RemainingWidthAfterGroup >= 0 then
-                output_current_group(Stream, OpenGroups,
-                    Docs1, Docs, !RemainingWidth, !IO)
+                output_current_group(Stream, LineWidth, !.Indents, OpenGroups,
+                    Docs1, Docs, !RemainingWidth, !RemainingLines, !IO)
               else
                 Docs = Docs1
             )
@@ -458,41 +466,54 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_current_group(Stream::in, int::in, docs::in, docs::out,
-        int::in, int::out, State::di, State::uo)
+:- pred output_current_group(Stream::in, int::in, indents::in, int::in,
+        docs::in, docs::out, int::in, int::out, int::in, int::out,
+        State::di, State::uo)
         is det
         <= stream.writer(Stream, string, State).
 
-output_current_group(_Stream, _OpenGroups, [], [], !RemainingWidth, !IO).
+output_current_group(_Stream, _LineWidth, _Indents, _OpenGroups,
+        [], [], !RemainingWidth, !RemainingLines, !IO).
 
-output_current_group(Stream, OpenGroups, [Doc | Docs0], Docs, !RemainingWidth,
-        !IO) :-
+output_current_group(Stream, LineWidth, Indents, OpenGroups,
+        [Doc | Docs0], Docs, !RemainingWidth, !RemainingLines, !IO) :-
 
     ( if Doc = str(String) then
 
         stream.put(Stream, String, !IO),
         !:RemainingWidth = !.RemainingWidth - string.length(String),
-        output_current_group(Stream, OpenGroups, Docs0, Docs,
-            !RemainingWidth, !IO)
+        output_current_group(Stream, LineWidth, Indents, OpenGroups,
+            Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
+
+      else if Doc = hard_nl then
+
+        format_nl(Stream, LineWidth, Indents, !:RemainingWidth,
+            !RemainingLines, !IO),
+        ( if !.RemainingLines =< 0 then
+            Docs = Docs0
+          else
+            output_current_group(Stream, LineWidth, Indents, OpenGroups,
+                Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
+        )
 
       else if Doc = pp_internal(open_group) then
 
-        output_current_group(Stream, OpenGroups + 1, Docs0, Docs,
-            !RemainingWidth, !IO)
+        output_current_group(Stream, LineWidth, Indents, OpenGroups + 1,
+            Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
 
       else if Doc = pp_internal(close_group) then
 
         ( if OpenGroups = 1 then
             Docs = Docs0
           else
-            output_current_group(Stream, OpenGroups - 1, Docs0, Docs,
-                !RemainingWidth, !IO)
+            output_current_group(Stream, LineWidth, Indents, OpenGroups - 1,
+                Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
         )
 
       else
 
-        output_current_group(Stream, OpenGroups, Docs0, Docs, !RemainingWidth,
-            !IO)
+        output_current_group(Stream, LineWidth, Indents, OpenGroups,
+            Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
 
     ).
 
@@ -516,13 +537,14 @@ output_current_group(Stream, OpenGroups, [Doc | Docs0], Docs, !RemainingWidth,
 :- mode expand_docs(in(include_details_cc), in, in, out, in, in, out,
         in, out, in, out) is cc_multi.
 
-expand_docs(_Canonicalize, _FMap, [], [], _OpenGroups, !Limit, !Pri, !N).
+expand_docs(_Canonicalize, _FMap, [], [], _OpenGroups,
+        !Limit, !Pri, !RemainingWidth).
 
 expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
         !Limit, !Pri, !RemainingWidth) :-
     ( if
         (
-            OpenGroups = 0, Doc = nl
+            OpenGroups =< 0, ( Doc = nl ; Doc = hard_nl )
             % We have found the first nl after the close of the current
             % open group.
         ;
@@ -540,7 +562,7 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
             expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
-            Doc = nl,
+            ( Doc = nl ; Doc = hard_nl ),
             ( if OpenGroups =< 0 then
                 Docs = [Doc | Docs0]
               else
@@ -609,6 +631,8 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
 
 %-----------------------------------------------------------------------------%
 
+    % Output a newline followed by indentation.
+    %
 :- pred format_nl(Stream::in, int::in, indents::in, int::out,
         int::in, int::out, State::di, State::uo)
         is det

@@ -218,11 +218,11 @@ test_case(test_case(LineWidth, MaxLines, Limit, Doc)) :-
     Square = list.duplicate(10, 1..10) : list(list(int)),
     IndentTest = docs([
         str("indentation test:"),
-        indent("_1_", [nl, str("one"),
-            indent("_2_", [nl, str("two"),
-                indent("_3_", [nl, str("three"),
-                    indent("_4_", [nl, str("four"),
-                        indent("_5_", [nl, str("five")])])])])])
+        indent("_1_", [nl, str(" one "),
+            indent("_2_", [nl, str(" two "),
+                indent("_3_", [nl, str(" three "),
+                    indent("_4_", [nl, str(" four "),
+                        indent("_5_", [nl, str(" five ")])])])])])
     ]),
     NonCanonTest = docs([
         format(non_canonical_bool(0)), nl,

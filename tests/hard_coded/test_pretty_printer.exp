@@ -2,8 +2,8 @@
 limit = triangular(1), max lines = 3, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |------------------------------------|
 
@@ -63,8 +63,8 @@ limit = triangular(1), max lines = 3, line width = 38
 limit = triangular(1), max lines = 3, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |----------------------------------------------------------------------------|
 
@@ -124,11 +124,11 @@ limit = triangular(1), max lines = 3, line width = 78
 limit = triangular(1), max lines = 10, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |------------------------------------|
 
 limit = triangular(1), max lines = 10, line width = 38
@@ -188,11 +188,11 @@ limit = triangular(1), max lines = 10, line width = 38
 limit = triangular(1), max lines = 10, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |----------------------------------------------------------------------------|
 
 limit = triangular(1), max lines = 10, line width = 78
@@ -252,8 +252,8 @@ limit = triangular(1), max lines = 10, line width = 78
 limit = linear(1), max lines = 3, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |------------------------------------|
 
@@ -313,8 +313,8 @@ limit = linear(1), max lines = 3, line width = 38
 limit = linear(1), max lines = 3, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |----------------------------------------------------------------------------|
 
@@ -374,11 +374,11 @@ limit = linear(1), max lines = 3, line width = 78
 limit = linear(1), max lines = 10, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |------------------------------------|
 
 limit = linear(1), max lines = 10, line width = 38
@@ -438,11 +438,11 @@ limit = linear(1), max lines = 10, line width = 38
 limit = linear(1), max lines = 10, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |----------------------------------------------------------------------------|
 
 limit = linear(1), max lines = 10, line width = 78
@@ -502,8 +502,8 @@ limit = linear(1), max lines = 10, line width = 78
 limit = triangular(10), max lines = 3, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |------------------------------------|
 
@@ -578,8 +578,8 @@ limit = triangular(10), max lines = 3, line width = 38
 limit = triangular(10), max lines = 3, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |----------------------------------------------------------------------------|
 
@@ -646,11 +646,11 @@ limit = triangular(10), max lines = 3, line width = 78
 limit = triangular(10), max lines = 10, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |------------------------------------|
 
 limit = triangular(10), max lines = 10, line width = 38
@@ -740,11 +740,11 @@ limit = triangular(10), max lines = 10, line width = 38
 limit = triangular(10), max lines = 10, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |----------------------------------------------------------------------------|
 
 limit = triangular(10), max lines = 10, line width = 78
@@ -811,8 +811,8 @@ limit = triangular(10), max lines = 10, line width = 78
 limit = triangular(100), max lines = 3, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |------------------------------------|
 
@@ -896,8 +896,8 @@ limit = triangular(100), max lines = 3, line width = 38
 limit = triangular(100), max lines = 3, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |----------------------------------------------------------------------------|
 
@@ -977,11 +977,11 @@ limit = triangular(100), max lines = 3, line width = 78
 limit = triangular(100), max lines = 10, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |------------------------------------|
 
 limit = triangular(100), max lines = 10, line width = 38
@@ -1111,11 +1111,11 @@ limit = triangular(100), max lines = 10, line width = 38
 limit = triangular(100), max lines = 10, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |----------------------------------------------------------------------------|
 
 limit = triangular(100), max lines = 10, line width = 78
@@ -1215,8 +1215,8 @@ limit = triangular(100), max lines = 10, line width = 78
 limit = linear(10), max lines = 3, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |------------------------------------|
 
@@ -1284,8 +1284,8 @@ limit = linear(10), max lines = 3, line width = 38
 limit = linear(10), max lines = 3, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |----------------------------------------------------------------------------|
 
@@ -1345,11 +1345,11 @@ limit = linear(10), max lines = 3, line width = 78
 limit = linear(10), max lines = 10, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |------------------------------------|
 
 limit = linear(10), max lines = 10, line width = 38
@@ -1423,11 +1423,11 @@ limit = linear(10), max lines = 10, line width = 38
 limit = linear(10), max lines = 10, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |----------------------------------------------------------------------------|
 
 limit = linear(10), max lines = 10, line width = 78
@@ -1487,8 +1487,8 @@ limit = linear(10), max lines = 10, line width = 78
 limit = linear(100), max lines = 3, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |------------------------------------|
 
@@ -1572,8 +1572,8 @@ limit = linear(100), max lines = 3, line width = 38
 limit = linear(100), max lines = 3, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
+_1_ one 
+_1__2_ two 
 _1__2__3_...
 |----------------------------------------------------------------------------|
 
@@ -1653,11 +1653,11 @@ limit = linear(100), max lines = 3, line width = 78
 limit = linear(100), max lines = 10, line width = 38
 |------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |------------------------------------|
 
 limit = linear(100), max lines = 10, line width = 38
@@ -1787,11 +1787,11 @@ limit = linear(100), max lines = 10, line width = 38
 limit = linear(100), max lines = 10, line width = 78
 |----------------------------------------------------------------------------|
 indentation test:
-_1_one
-_1__2_two
-_1__2__3_three
-_1__2__3__4_four
-_1__2__3__4__5_five
+_1_ one 
+_1__2_ two 
+_1__2__3_ three 
+_1__2__3__4_ four 
+_1__2__3__4__5_ five 
 |----------------------------------------------------------------------------|
 
 limit = linear(100), max lines = 10, line width = 78
