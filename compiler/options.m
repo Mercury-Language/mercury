@@ -3190,10 +3190,12 @@ inconsequential_options(InconsequentialOptions) :-
     option_defaults_2(warning_option, WarningOptions),
     option_defaults_2(verbosity_option, VerbosityOptions),
     option_defaults_2(internal_use_option, InternalUseOptions),
+    option_defaults_2(build_system_option, BuildSystemOptions),
     assoc_list.keys(WarningOptions, WarningKeys),
     assoc_list.keys(VerbosityOptions, VerbosityKeys),
     assoc_list.keys(InternalUseOptions, InternalUseKeys),
-    Keys = WarningKeys ++ VerbosityKeys ++ InternalUseKeys,
+    assoc_list.keys(BuildSystemOptions, BuildSystemKeys),
+    Keys = WarningKeys ++ VerbosityKeys ++ InternalUseKeys ++ BuildSystemKeys,
     InconsequentialOptions = set.from_list(Keys).
 
 %-----------------------------------------------------------------------------%
@@ -5314,8 +5316,8 @@ options_help_build_system -->
         "\tWith `--make', keep track of the options used when compiling",
         "\teach module.  If an option for a module is added or removed,",
         "\t`mmc --make' will then know to recompile the module even if the",
-        "\ttimestamp on the file itself has not changed.  Warning and",
-        "\tverbosity options are not tracked.",
+        "\ttimestamp on the file itself has not changed.  Warning,",
+        "\tverbosity and build system options are not tracked.",
 
         "--pre-link-command <command>",
         "\tSpecify a command to run before linking with `mmc --make'.",

@@ -8826,8 +8826,8 @@ the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment variable
 With @samp{--make}, keep track of the options used when compiling
 each module.  If an option for a module is added or removed,
 @samp{mmc --make} will then know to recompile the module even if the
-timestamp on the file itself has not changed.  Warning and
-verbosity options are not tracked.
+timestamp on the file itself has not changed.  Warning,
+verbosity and build system options are not tracked.
 
 @sp 1
 @item --pre-link-command @var{command}
