@@ -3511,8 +3511,9 @@ output_rval_const(mlconst_code_addr(CodeAddr), !IO) :-
 output_rval_const(mlconst_data_addr(DataAddr), !IO) :-
     mlds_output_data_addr(DataAddr, !IO).
 
-output_rval_const(mlconst_null(_), !IO) :-
-   io.write_string("null", !IO).
+output_rval_const(mlconst_null(Type), !IO) :-
+    Initializer = get_java_type_initializer(Type),
+    io.write_string(Initializer, !IO).
 
 %-----------------------------------------------------------------------------%
 
