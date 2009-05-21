@@ -297,7 +297,8 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         ; Tag = unshared_tag(_TagVal)
         ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag)
         ),
-        ml_gen_compound(Tag, ConsId, Var, Args, ArgModes, TakeAddr,
+        type_to_ctor_and_args_det(Type, TypeCtor, _),
+        ml_gen_compound(Tag, TypeCtor, ConsId, Var, Args, ArgModes, TakeAddr,
             HowToConstruct, Context, Decls, Statements, !Info)
     ;
         % Constants.
@@ -577,13 +578,13 @@ ml_cons_id_to_tag(Info, ConsId, Type, Tag) :-
 
     % Generate code to construct a new object.
     %
-:- pred ml_gen_compound(cons_tag::in, cons_id::in, prog_var::in, prog_vars::in,
-    list(uni_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+:- pred ml_gen_compound(cons_tag::in, type_ctor::in, cons_id::in, prog_var::in,
+    prog_vars::in, list(uni_mode)::in, list(int)::in, how_to_construct::in,
+    prog_context::in, list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, TakeAddr, HowToConstruct,
-        Context, Decls, Statements, !Info) :-
+ml_gen_compound(Tag, TypeCtor, ConsId, Var, ArgVars, ArgModes, TakeAddr,
+        HowToConstruct, Context, Decls, Statements, !Info) :-
     % Get the primary and secondary tags.
     ( get_primary_tag(Tag) = yes(PrimaryTag0) ->
         PrimaryTag = PrimaryTag0
@@ -592,11 +593,15 @@ ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, TakeAddr, HowToConstruct,
     ),
     MaybeSecondaryTag = get_secondary_tag(Tag),
 
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+
     % Figure out which class name to construct.
     ( ml_tag_uses_base_class(Tag) ->
         MaybeCtorName = no
     ;
-        ml_cons_name(ConsId, CtorName),
+        globals.get_target(Globals, CompilationTarget),
+        ml_cons_name(CompilationTarget, TypeCtor, ConsId, CtorName),
         MaybeCtorName = yes(CtorName)
     ),
 
@@ -610,8 +615,6 @@ ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         % With the low-level data representation, all fields -- even the
         % secondary tag -- are boxed, and so we need box it here.
 
-        ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
         (
             HighLevelData = no,
@@ -923,7 +926,10 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             % If so, append the name of the derived class to the name of the
             % base class for this type (since the derived class will also be
             % nested inside the base class).
-            CtorName = unqualify_name(CtorSymName),
+            globals.get_target(Globals, CompilationTarget),
+            QualTypeName = qual(_, _, UnqualTypeName),
+            CtorName = ml_gen_du_ctor_name_unqual_type(CompilationTarget,
+                UnqualTypeName, TypeArity, CtorSymName, CtorArity),
             QualTypeName = qual(MLDS_Module, _QualKind, TypeName),
             ClassQualifier = mlds_append_class_qualifier(MLDS_Module,
                 module_qual, Globals, TypeName, TypeArity),
@@ -1235,14 +1241,17 @@ ml_gen_static_const_addr(Info, Var, Type, ConstAddrRval) :-
     ml_gen_var_lval(Info, ConstName, Type, ConstLval),
     ConstAddrRval = mem_addr(ConstLval).
 
-:- pred ml_cons_name(cons_id::in, ctor_name::out) is det.
+:- pred ml_cons_name(compilation_target::in, type_ctor::in,
+    cons_id::in, ctor_name::out) is det.
 
-ml_cons_name(HLDS_ConsId, QualifiedConsId) :-
+ml_cons_name(CompilationTarget, TypeCtor, HLDS_ConsId, QualifiedConsId) :-
     (
-        HLDS_ConsId = cons(SymName, Arity),
-        SymName = qualified(SymModuleName, ConsName)
+        HLDS_ConsId = cons(ConsSymName, ConsArity),
+        ConsSymName = qualified(SymModuleName, _)
     ->
-        ConsId = ctor_id(ConsName, Arity),
+        ConsName = ml_gen_du_ctor_name(CompilationTarget, TypeCtor,
+            ConsSymName, ConsArity),
+        ConsId = ctor_id(ConsName, ConsArity),
         ModuleName = mercury_module_name_to_mlds(SymModuleName)
     ;
         ConsName = hlds_out.cons_id_to_string(HLDS_ConsId),
@@ -1668,7 +1677,10 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
         ;
             FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
             ( ConsId = cons(ConsName, ConsArity) ->
-                UnqualConsName = unqualify_name(ConsName),
+                globals.get_target(Globals, CompilationTarget),
+                type_to_ctor_and_args_det(VarType, TypeCtor, _),
+                UnqualConsName = ml_gen_du_ctor_name(CompilationTarget,
+                    TypeCtor, ConsName, ConsArity),
                 FieldId = ml_gen_field_id(VarType, Tag, UnqualConsName,
                     ConsArity, FieldName, Globals)
             ;

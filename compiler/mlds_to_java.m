@@ -29,10 +29,6 @@
 %   Support for Java in Mmake and mmc --make (except for nested modules)
 %
 % TODO:
-% - Fix problem with type names and constructor names that are the same
-%   (Java does not allow the name of a nested class to be the same as its
-%   enclosing class)
-%
 % - Support nested modules
 %   (The problem with current code generation scheme for nested
 %   modules is that Java does not allow the name of a class to

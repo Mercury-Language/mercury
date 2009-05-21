@@ -28,6 +28,8 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module libs.globals.
+:- import_module mdbcomp.prim_data.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
@@ -45,6 +47,16 @@
     % for the corresponding MLDS type.
     %
 :- pred ml_gen_type_name(type_ctor::in, mlds_class::out, arity::out) is det.
+
+    % Generate a data constructor name given the type constructor.
+    %
+:- func ml_gen_du_ctor_name(compilation_target, type_ctor, sym_name, int)
+    = string.
+
+    % As above but pass the unqualified type name directly.
+    %
+:- func ml_gen_du_ctor_name_unqual_type(compilation_target, string, int,
+    sym_name, int) = string.
 
     % Return the declaration flags appropriate for a type.
     %
@@ -92,9 +104,7 @@
 :- import_module check_hlds.polymorphism.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
-:- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_data.
@@ -109,6 +119,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -450,7 +461,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
     % reserved_object representations, or fields and a constructor method
     % for the single_functor case.
     list.foldl2(ml_gen_du_ctor_member(ModuleInfo, BaseClassId,
-        BaseClassQualifier, TagClassId, TypeDefn, TagValues),
+        BaseClassQualifier, TagClassId, TypeCtor, TypeDefn, TagValues),
         Ctors, [], CtorMembers, [], BaseClassCtorMethods),
 
     % The base class doesn't import or inherit anything.
@@ -600,13 +611,13 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId,
     %   a constructor method.
     %
 :- pred ml_gen_du_ctor_member(module_info::in, mlds_class_id::in,
-    mlds_module_name::in, mlds_class_id::in, hlds_type_defn::in,
+    mlds_module_name::in, mlds_class_id::in, type_ctor::in, hlds_type_defn::in,
     cons_tag_values::in, constructor::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
     list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
 ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
-        SecondaryTagClassId, TypeDefn, ConsTagValues, Ctor,
+        SecondaryTagClassId, TypeCtor, TypeDefn, ConsTagValues, Ctor,
         MLDS_Members0, MLDS_Members, MLDS_CtorMethods0, MLDS_CtorMethods) :-
     Ctor = ctor(ExistQTVars, Constraints, CtorName, Args, _Ctxt),
 
@@ -616,8 +627,11 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
     MLDS_Context = mlds_make_context(Context),
 
     % Generate the class name for this constructor.
-    UnqualCtorName = unqualify_name(CtorName),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
     list.length(Args, CtorArity),
+    UnqualCtorName = ml_gen_du_ctor_name(Target, TypeCtor,
+        CtorName, CtorArity),
 
     TagVal = get_tagval(ConsTagValues, Ctor),
     ( tagval_is_reserved_addr(TagVal, ReservedAddr) ->
@@ -681,8 +695,6 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
         % Generate a constructor function to initialize the fields, if needed
         % (not all back-ends use constructor functions).
         MaybeSecTagVal = get_secondary_tag(TagVal),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.get_target(Globals, Target),
         UsesConstructors = target_uses_constructors(Target),
         (
             UsesConstructors = yes,
@@ -1003,6 +1015,29 @@ ml_gen_type_name(type_ctor(Name, Arity), QualifiedTypeName, Arity) :-
     ),
     MLDS_Module = mercury_module_name_to_mlds(ModuleName),
     QualifiedTypeName = qual(MLDS_Module, module_qual, TypeName).
+
+ml_gen_du_ctor_name(CompilationTarget, TypeCtor, Name, Arity) = CtorName :-
+    TypeCtor = type_ctor(TypeName, TypeArity),
+    UnqualTypeName = unqualify_name(TypeName),
+    CtorName = ml_gen_du_ctor_name_unqual_type(CompilationTarget,
+        UnqualTypeName, TypeArity, Name, Arity).
+
+ml_gen_du_ctor_name_unqual_type(CompilationTarget, UnqualTypeName, TypeArity,
+        Name, Arity) = CtorName :-
+    UnqualName = unqualify_name(Name),
+    (
+        CompilationTarget = target_java,
+        UnqualName = UnqualTypeName,
+        Arity = TypeArity
+    ->
+        % In Java we must not generate a class with the same name as its
+        % enclosing class.  We add the prefix to avoid that situation arising.
+        % (A user may name another functor of the same type with "mr_" to
+        % trigger the problem.)
+        CtorName = "mr_" ++ UnqualName
+    ;
+        CtorName = UnqualName
+    ).
 
     % For interoperability, we ought to generate an `==' member for types
     % which have a user-defined equality, if the target language supports it
