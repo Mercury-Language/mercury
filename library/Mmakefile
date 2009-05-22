@@ -242,25 +242,11 @@ ils: $(STD_LIB_NAME).ils
 javas: $(STD_LIB_NAME).javas
 endif
 
-# The names `int', `float', and `char' can't be used as class names,
-# because they are Java keywords.  So we use `mr_int', `mr_float', and
-# `mr_char' instead.  `enum' is also a keyword in Java 1.5, so we
-# likewise use `mr_enum'.  Since Java implementations often assume that
-# a class foo is located in a file foo.java, we similarly mangle the
-# Java file names for these standard library modules.
-# We also need to fix up the file names for nested modules.
-JAVAS = ` echo $($(STD_LIB_NAME).javas) | sed \
-		-e 's/ int.java/ mr_int.java/' \
-		-e 's/ float.java/ mr_float.java/' \
-		-e 's/ char.java/ mr_char.java/' \
-		-e 's/ enum.java/ mr_enum.java/' \
-		-e 's: bit_buffer.read.java: bit_buffer_/read.java:' \
-		-e 's: bit_buffer.write.java: bit_buffer_/write.java:' \
-		-e 's: stream.string_writer.java: stream_/string_writer.java:' \
-		-e 's: string.builder.java: string_/builder.java:' \
-		-e 's: thread.channel.java: thread_/channel.java:' \
-		-e 's: thread.mvar.java: thread_/mvar.java:' \
-		-e 's: thread.semaphore.java: thread_/semaphore.java:' `
+# The compiler names Java files differently to the original source files to
+# avoid keywords, and will place them in subdirectories to reflect package
+# names.  Instead of replicating that logic here we just use a wildcard to
+# find the file names.
+JAVAS = $(wildcard mercury/*.java mercury/*_/*.java)
 
 # We need to invoke javac on all of the classes at the same time,
 # rather than compiling them separately.  This is needed because
@@ -269,16 +255,14 @@ JAVAS = ` echo $($(STD_LIB_NAME).javas) | sed \
 classes: javas java_symlinks
 	$(JAVAC) $(ALL_JAVACFLAGS) $(JAVAS)
 
-# javac expects to find the sources for symbols named mercury.* in
-# files mercury/*, and likewise for symbols named mercury.runtime.*
-# in mercury/runtime/*.  But in our sources, those symbols actually
-# come from this directory (library/*) and from java/runtime/*,
-# respectively.  So we set up some symbolic links to help
-# javac find the way to the sources.
+# javac expects to find the sources for symbols named mercury.runtime.* in
+# mercury/runtime/*, but in our sources those symbols actually come from
+# java/runtime/*.  So we set up a symbolic link to help javac find the way to
+# the sources.
 .PHONY: java_symlinks
 java_symlinks:
-	[ -d mercury ] || ln -s . mercury
-	[ -d runtime ] || ln -s $(MERCURY_DIR)/java/runtime .
+	[ -d mercury ] || mkdir mercury
+	[ -d mercury/runtime ] || ln -s ../../java/runtime mercury/runtime
 
 # Once all of the library classes have been compiled, we put them in a single
 # jar file.  At this point we also add the runtime classes to a jar file.

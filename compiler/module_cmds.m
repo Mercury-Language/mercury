@@ -139,18 +139,20 @@
 :- pred create_java_shell_script(module_name::in, bool::out,
     io::di, io::uo) is det.
 
-    % Given a list .class files, return the string that should be passed
-    % to `jar' to reference those class files.
+    % Given a list .class files, return the list of .class files that should be
+    % passed to `jar'.  This is required because nested classes are in separate
+    % files which we don't know about, so we have to scan the directory to
+    % figure out which files were produced by `javac'.
     %
-:- pred list_class_files_for_jar(module_name::in, list(string)::in,
-    string::out, io::di, io::uo) is det.
+:- pred list_class_files_for_jar(list(string)::in, string::out,
+    list(string)::out, io::di, io::uo) is det.
 
     % Given a `mmake' variable reference to a list of .class files, return an
     % expression that generates the list of arguments for `jar' to reference
     % those class files.
     %
-:- pred list_class_files_for_jar_mmake(module_name::in, string::in,
-    string::out, io::di, io::uo) is det.
+:- pred list_class_files_for_jar_mmake(string::in, string::out, io::di, io::uo)
+    is det.
 
     % Get the value of the Java class path from the environment. (Normally
     % it will be obtained from the CLASSPATH environment variable, but if
@@ -184,9 +186,13 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.java_names.
 
+:- import_module char.
 :- import_module dir.
 :- import_module getopt_io.
+:- import_module int.
+:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -666,31 +672,33 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
     maybe_write_string(Verbose, "% Generating shell script `" ++
         FileName ++ "'...\n", !IO),
 
-    module_name_to_file_name(MainModuleName, ".class", do_not_create_dirs,
-        ClassFileName, !IO),
-    DirName = dir.dirname(ClassFileName),
+    get_class_dir_name(ClassDirName, !IO),
 
     % XXX PathSeparator should be ";" on Windows
     PathSeparator = ":",
     globals.io_lookup_accumulating_option(java_classpath, Java_Incl_Dirs0,
         !IO),
     % We prepend the .class files' directory and the current CLASSPATH.
-    Java_Incl_Dirs = [DirName, "$CLASSPATH" | Java_Incl_Dirs0],
+    Java_Incl_Dirs = ["$DIR/" ++ ClassDirName, "$CLASSPATH" | Java_Incl_Dirs0],
     ClassPath = string.join_list(PathSeparator, Java_Incl_Dirs),
 
     globals.io_lookup_string_option(java_interpreter, Java, !IO),
-    module_name_to_file_name(MainModuleName, "", do_not_create_dirs,
-        Name_No_Extn, !IO),
+    ClassName = sym_name_to_string(java_module_name(MainModuleName)),
 
+    % Remove symlink in the way, if any.
+    io.remove_file(FileName, _, !IO),
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(ShellScript),
         % XXX On Windows we should output a .bat file instead
-        io.write_string(ShellScript, "#!/bin/sh\n", !IO),
-        io.write_string(ShellScript, "CLASSPATH=" ++ ClassPath ++ "\n", !IO),
-        io.write_string(ShellScript, "export CLASSPATH\n", !IO),
-        io.write_string(ShellScript, "exec " ++ Java ++ " ", !IO),
-        io.write_string(ShellScript, Name_No_Extn ++ " \"$@\"\n", !IO),
+        list.foldl(io.write_string(ShellScript), [
+            "#!/bin/sh\n",
+            "DIR=${0%/*}\n",
+            "CLASSPATH=", ClassPath, "\n",
+            "export CLASSPATH\n",
+            "JAVA=${JAVA:-", Java, "}\n",
+            "exec $JAVA ", ClassName, " \"$@\"\n"
+        ], !IO),
         io.close_output(ShellScript, !IO),
         io.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
         (
@@ -713,39 +721,75 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
         Succeeded = no
     ).
 
-list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles, !IO) :-
+list_class_files_for_jar(MainClassFiles, ClassSubDir, ListClassFiles, !IO) :-
     globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
     globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
     AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
     (
         AnySubdirs = yes,
-        module_name_to_file_name(ModuleName, ".class", do_not_create_dirs,
-            ClassFile, !IO),
-        ClassSubdir = dir.dirname(ClassFile),
-        % Here we use the `-C' option of jar to change directory during
-        % execution and strip away the Mercury/classs/
-        % prefixes on class file names.
-        % Otherwise, the class files would be stored as
-        %   Mercury/classs/*.class
-        % within the jar file, which is not what we want.
-        UnprefixedClassFiles = list.map(
-            string.remove_prefix_if_present(ClassSubdir ++ "/"), ClassFiles),
-        Arguments = ["-C", ClassSubdir | UnprefixedClassFiles]
+        get_class_dir_name(ClassSubDir, !IO)
     ;
         AnySubdirs = no,
-        Arguments = ClassFiles
+        ClassSubDir = dir.this_directory
     ),
-    ListClassFiles = string.join_list(" ", Arguments).
 
-list_class_files_for_jar_mmake(ModuleName, ClassFiles, ListClassFiles, !IO) :-
+    list.filter_map(make_nested_class_prefix, MainClassFiles,
+        NestedClassPrefixes),
+    NestedClassPrefixesSet = set.from_list(NestedClassPrefixes),
+
+    SearchDir = ClassSubDir / "mercury",
+    FollowSymLinks = yes,
+    dir.recursive_foldl2(
+        accumulate_nested_class_files(NestedClassPrefixesSet),
+        SearchDir, FollowSymLinks, [], Result, !IO),
+    (
+        Result = ok(NestedClassFiles),
+        AllClassFiles0 = MainClassFiles ++ NestedClassFiles,
+        % Remove the `Mercury/classs' prefix if present.
+        ( ClassSubDir = dir.this_directory ->
+            AllClassFiles = AllClassFiles0
+        ;
+            AllClassFiles = list.map(
+                string.remove_prefix_if_present(ClassSubDir ++ "/"),
+                AllClassFiles0)
+        ),
+        list.sort(AllClassFiles, ListClassFiles)
+    ;
+        Result = error(_, Error),
+        unexpected(this_file, io.error_message(Error))
+    ).
+
+:- pred make_nested_class_prefix(string::in, string::out) is semidet.
+
+make_nested_class_prefix(ClassFileName, ClassPrefix) :-
+    % Nested class files are named "Class$Nested_1$Nested_2.class".
+    string.remove_suffix(ClassFileName, ".class", BaseName),
+    ClassPrefix = BaseName ++ "$".
+
+:- pred accumulate_nested_class_files(set(string)::in, string::in, string::in,
+    io.file_type::in, bool::out, list(string)::in, list(string)::out,
+    io::di, io::uo) is det.
+
+accumulate_nested_class_files(NestedClassPrefixes, DirName, BaseName,
+        _FileType, Continue, !Acc, !IO) :-
+    (
+        string.sub_string_search(BaseName, "$", Dollar),
+        BaseNameToDollar = string.left(BaseName, Dollar + 1),
+        set.contains(NestedClassPrefixes, DirName / BaseNameToDollar)
+    ->
+        !:Acc = [DirName / BaseName | !.Acc]
+    ;
+        true
+    ),
+    Continue = yes.
+
+list_class_files_for_jar_mmake(ClassFiles, ListClassFiles, !IO) :-
     globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
     globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
     AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
     (
         AnySubdirs = yes,
-        module_name_to_file_name(ModuleName, ".class", do_not_create_dirs,
-            ClassFile, !IO),
-        ClassSubdir = dir.dirname(ClassFile),
+        get_class_dir_name(ClassSubdir, !IO),
         % Here we use the `-C' option of jar to change directory during
         % execution, then use sed to strip away the Mercury/classs/
         % prefix to the class files.

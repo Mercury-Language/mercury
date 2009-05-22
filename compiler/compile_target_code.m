@@ -1598,8 +1598,8 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
             LinkSucceeded, !IO)
     ;
         LinkTargetType = java_archive,
-        create_java_archive(ErrorStream, ModuleName, OutputFileName,
-            ObjectsList, LinkSucceeded, !IO)
+        create_java_archive(ErrorStream, OutputFileName, ObjectsList,
+            LinkSucceeded, !IO)
     ;
         LinkTargetType = erlang_archive,
         create_erlang_archive(ErrorStream, ModuleName, OutputFileName,
@@ -2326,21 +2326,71 @@ create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
             Succeeded, !IO)
     ).
 
-:- pred create_java_archive(io.output_stream::in, module_name::in,
-    file_name::in, list(file_name)::in, bool::out, io::di, io::uo) is det.
+:- pred create_java_archive(io.output_stream::in, file_name::in,
+    list(file_name)::in, bool::out, io::di, io::uo) is det.
 
-create_java_archive(ErrorStream, ModuleName, JarFileName, ObjectList,
-        Succeeded, !IO) :-
+create_java_archive(ErrorStream, JarFileName, ObjectList, Succeeded, !IO) :-
     % XXX Maybe these should be set up as options:
     Jar = "jar",
-    JarCreateFlags = "cf",
 
-    list_class_files_for_jar(ModuleName, ObjectList, ListClassFiles, !IO),
-    Cmd = string.append_list([
-        Jar, " ", JarCreateFlags, " ", JarFileName, " ", ListClassFiles ]),
+    list_class_files_for_jar(ObjectList, ClassSubDir, ListClassFiles, !IO),
+    (
+        ListClassFiles = [],
+        unexpected(this_file, "empty list of .class files")
+    ;
+        ListClassFiles = [_ | _]
+    ),
 
-    invoke_system_command(ErrorStream, cmd_verbose_commands, Cmd, Succeeded,
-        !IO).
+    % Write the list of class files to a temporary file and pass the name of
+    % the temporary file to jar using @syntax.  The list of class files can be
+    % extremely long.
+    io.make_temp(TempFileName, !IO),
+    io.open_output(TempFileName, OpenResult, !IO),
+    (
+        OpenResult = ok(Stream),
+        list.foldl(write_jar_class_argument(Stream, ClassSubDir),
+            ListClassFiles, !IO),
+        io.close_output(Stream, !IO),
+
+        Cmd = string.append_list(
+            [Jar, " cf ", JarFileName, " @", TempFileName]),
+        invoke_system_command(ErrorStream, cmd_verbose_commands, Cmd,
+            Succeeded, !IO),
+        io.remove_file(TempFileName, _, !IO),
+
+        (
+            Succeeded = yes,
+            % Add an index, which is supposed to speed up class loading.
+            IndexCmd = string.append_list([Jar, " i ", JarFileName]),
+            invoke_system_command(ErrorStream, cmd_verbose_commands, IndexCmd,
+                _, !IO)
+        ;
+            Succeeded = no,
+            io.remove_file(JarFileName, _, !IO)
+        )
+    ;
+        OpenResult = error(Error),
+        io.write_string(ErrorStream, "Error creating `", !IO),
+        io.write_string(ErrorStream, TempFileName, !IO),
+        io.write_string(ErrorStream, "': ", !IO),
+        io.write_string(ErrorStream, io.error_message(Error), !IO),
+        io.nl(ErrorStream, !IO),
+        Succeeded = no
+    ).
+
+:- pred write_jar_class_argument(io.output_stream::in, string::in, string::in,
+    io::di, io::uo) is det.
+
+write_jar_class_argument(Stream, ClassSubDir, ClassFileName, !IO) :-
+    ( dir.path_name_is_absolute(ClassFileName) ->
+        true
+    ;
+        io.write_string(Stream, "-C ", !IO),
+        io.write_string(Stream, ClassSubDir, !IO),
+        io.write_string(Stream, " ", !IO)
+    ),
+    io.write_string(Stream, ClassFileName, !IO),
+    io.nl(Stream, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -249,17 +249,15 @@
     %
 :- func transform_sym_base_name(func(string) = string, sym_name) = sym_name.
 
-    % insert_module_qualifier(ModuleName, SymName0) = SymName:
-    %
-    % Prepend the specified ModuleName onto the module qualifiers in SymName0,
-    % giving SymName.
-    %
-:- func insert_module_qualifier(string, sym_name) = sym_name.
-
     % Given a sym_name return the top level qualifier of that name.
     %
 :- func outermost_qualifier(sym_name) = string.
 
+    % add_outermost_qualifier(ModuleName, SymName0) = SymName:
+    %
+    % Prepend the specified ModuleName onto the module qualifiers in SymName0,
+    % giving SymName.
+    %
 :- func add_outermost_qualifier(string, sym_name) = sym_name.
 
     % Remove and return the top level qualifier of a sym_name.
@@ -389,7 +387,7 @@ string_to_sym_name_sep(String, ModuleSeparator) = Result :-
     % This would be simpler if we had a string.rev_sub_string_search/3 pred.
     % With that, we could search for underscores right-to-left, and construct
     % the resulting symbol directly. Instead, we search for them left-to-right,
-    % and then call insert_module_qualifier to fix things up.
+    % and then call add_outermost_qualifier to fix things up.
     (
         string.sub_string_search(String, ModuleSeparator, LeftLength),
         LeftLength > 0
@@ -400,7 +398,7 @@ string_to_sym_name_sep(String, ModuleSeparator) = Result :-
         RightLength = StringLength - LeftLength - SeparatorLength,
         string.right(String, RightLength, Name),
         NameSym = string_to_sym_name_sep(Name, ModuleSeparator),
-        Result = insert_module_qualifier(ModuleName, NameSym)
+        Result = add_outermost_qualifier(ModuleName, NameSym)
     ;
         Result = unqualified(String)
     ).
@@ -482,16 +480,6 @@ transform_sym_base_name(TransformFunc, SymName0) = SymName :-
     ;
         SymName0 = qualified(Module, Name0),
         SymName = qualified(Module, TransformFunc(Name0))
-    ).
-
-insert_module_qualifier(ModuleName, SymName0) = SymName :-
-    (
-        SymName0 = unqualified(Name),
-        SymName = qualified(unqualified(ModuleName), Name)
-    ;
-        SymName0 = qualified(ModuleSymName0, Name),
-        ModuleSymName = insert_module_qualifier(ModuleName, ModuleSymName0),
-        SymName = qualified(ModuleSymName, Name)
     ).
 
 outermost_qualifier(SymName) = Name :-

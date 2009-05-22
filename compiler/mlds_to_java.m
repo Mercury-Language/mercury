@@ -299,8 +299,9 @@ output_import(Import, !IO) :-
         unexpected(this_file, "foreign import in Java backend")
     ),
     SymName = mlds_module_name_to_sym_name(ImportName),
-    mangle_sym_name_for_java(SymName, module_qual, ".", package_name_mangling,
-        ClassFile),
+    PackageSymName = enforce_outermost_mercury_qualifier(SymName),
+    mangle_sym_name_for_java(PackageSymName, module_qual, ".",
+        package_name_mangling, ClassFile),
     % There are issues related to using import statements and Java's naming
     % conventions. To avoid these problems, we output dependencies as comments
     % only. This is ok, since we always use fully qualified names anyway.
@@ -318,6 +319,10 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0,
         InitPreds, _FinalPreds, _ExportedEnums),
+
+    % Do NOT enforce the outermost "mercury" qualifier here.  This module
+    % name is compared with other module names in the MLDS, to avoid
+    % unnecessary module qualification.
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 
     % Find and build list of all methods which would have their addresses
@@ -1242,8 +1247,9 @@ output_interface(Interface, !IO) :-
             Arity, _)
     ->
         SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-        mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind), ".",
-            package_name_mangling, ModuleName),
+        PackageSymName = enforce_outermost_mercury_qualifier(SymName),
+        mangle_sym_name_for_java(PackageSymName, convert_qual_kind(QualKind),
+            ".", package_name_mangling, ModuleName),
         io.format("%s.%s", [s(ModuleName), s(Name)], !IO),
         %
         % Check if the interface is one of the ones in the runtime
@@ -1804,7 +1810,8 @@ output_fully_qualified_thing(qual(ModuleName, QualKind, Name), OutputFunc,
     mlds_module_name_to_sym_name(ModuleName) = WholeModuleName,
 
     % Write the package name components.
-    mangle_sym_name_for_java(PackageName, module_qual, Qualifier,
+    QualPackageName = enforce_outermost_mercury_qualifier(PackageName),
+    mangle_sym_name_for_java(QualPackageName, module_qual, Qualifier,
         package_name_mangling, MangledPackageName),
     io.write_string(MangledPackageName, !IO),
 
@@ -3562,7 +3569,8 @@ mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
 
 mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
     SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-    mangle_sym_name_for_java(SymName, module_qual, ".",
+    PackageSymName = enforce_outermost_mercury_qualifier(SymName),
+    mangle_sym_name_for_java(PackageSymName, module_qual, ".",
         package_name_mangling, ModuleName),
     io.write_string(ModuleName, !IO),
     io.write_string(".", !IO),

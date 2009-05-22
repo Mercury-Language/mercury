@@ -120,6 +120,10 @@
     %
 :- pred module_name_to_make_var_name(module_name::in, string::out) is det.
 
+    % Return the name of the directory containing Java `.class' files.
+    %
+:- pred get_class_dir_name(string::out, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -249,30 +253,30 @@ choose_file_name(_ModuleName, BaseParentDirs, BaseName, Ext, Search, MkDir,
     globals.lookup_string_option(Globals, shared_library_extension,
         SharedLibExt),
     (
-        (
-            UseSubdirs = no
-        ;
-            % If we're searching for (rather than writing) a `.mih' file,
-            % use the plain file name.  This is so that searches for files
-            % in installed libraries will work.  `--c-include-directory' is
-            % set so that searches for files in the current directory will
-            % work.
-            % Similarly for `.hrl' files.  We set `--erlang-include-directory'
-            % for those.
+        % If we're searching for (rather than writing) a `.mih' file,
+        % use the plain file name.  This is so that searches for files
+        % in installed libraries will work.  `--c-include-directory' is
+        % set so that searches for files in the current directory will
+        % work.
+        % Similarly for `.hrl' files.  We set `--erlang-include-directory'
+        % for those.
 
-            Search = do_search,
-            ( Ext = ".mih"
-            ; Ext = ".mih.tmp"
-            ; Ext = ".hrl"
-            ; Ext = ".hrl.tmp"
-            )
+        Search = do_search,
+        ( Ext = ".mih"
+        ; Ext = ".mih.tmp"
+        ; Ext = ".hrl"
+        ; Ext = ".hrl.tmp"
         )
     ->
-        % XXX this was part of a change to support submodules in Java
-        % but broke the high level C backend
-        % make_file_name(BaseParentDirs, do_not_search, do_create_dirs,
-        %   BaseName, Ext, FileName, !IO)
         FileName = BaseName
+    ;
+        UseSubdirs = no
+    ->
+        % Even if not putting files in a `Mercury' directory, Java files will
+        % have non-empty BaseParentDirs (the package) which may need to be
+        % created.
+        make_file_name(BaseParentDirs, Search, MkDir, BaseName, Ext, FileName,
+            !IO)
     ;
         % The source files, the final executables, library files (including
         % .init files) output files intended for use by the user, and phony
@@ -480,6 +484,24 @@ make_file_name(SubDirNames, Search, MkDir, BaseName, Ext, FileName, !IO) :-
         ),
         Components = DirComponents ++ [BaseName],
         FileName = dir.relative_path_name_from_components(Components)
+    ).
+
+get_class_dir_name(ClassDirName, !IO) :-
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    (
+        UseGradeSubdirs = yes
+    ->
+        grade_directory_component(Globals, Grade),
+        globals.lookup_string_option(Globals, fullarch, FullArch),
+        ClassDirName = "Mercury" / Grade / FullArch / "Mercury" / "classs"
+    ;
+        UseSubdirs = yes
+    ->
+        ClassDirName = "Mercury" / "classs"
+    ;
+        ClassDirName = "."
     ).
 
 :- pred file_is_arch_or_grade_dependent(globals::in, string::in) is semidet.

@@ -62,6 +62,11 @@
     %
 :- func java_module_name(module_name) = module_name.
 
+    % Return the given module name with an outermost "mercury" qualifier,
+    % if it is not already present.
+    %
+:- func enforce_outermost_mercury_qualifier(module_name) = module_name.
+
     % If the given name conficts with a reserved Java word we must add a
     % prefix to it to avoid compilation errors.
     %
@@ -175,9 +180,21 @@ append_underscore_sym_name(SymName0) = SymName :-
 %-----------------------------------------------------------------------------%
 
 java_module_name(ModuleName) = JavaModuleName :-
-    QualModuleName = qualify_mercury_std_library_module_name(ModuleName),
+    % Put a "mercury" prefix on the module name if it doesn't already have one,
+    % so that even unqualified module names to end up in a Java package.
+    % Java doesn't allow packaged classes to import types from the default
+    % unnamed package.  We don't do this earlier so as not to disturb other
+    % MLDS backends.
+    QualModuleName = enforce_outermost_mercury_qualifier(ModuleName),
     mangle_sym_name_for_java_2(QualModuleName, module_qual,
         package_name_mangling, JavaModuleName).
+
+enforce_outermost_mercury_qualifier(ModuleName) = QualModuleName :-
+    ( outermost_qualifier(ModuleName) = "mercury" ->
+        QualModuleName = ModuleName
+    ;
+        QualModuleName = add_outermost_qualifier("mercury", ModuleName)
+    ).
 
 %-----------------------------------------------------------------------------%
 

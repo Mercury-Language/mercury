@@ -531,10 +531,10 @@ type_to_ctor_and_args(Type, TypeCtor, Args) :-
             SymName = SymName0
         ;
             Purity = purity_semipure,
-            SymName = insert_module_qualifier("semipure", SymName0)
+            SymName = add_outermost_qualifier("semipure", SymName0)
         ;
             Purity = purity_impure,
-            SymName = insert_module_qualifier("impure", SymName0)
+            SymName = add_outermost_qualifier("impure", SymName0)
         ),
         TypeCtor = type_ctor(SymName, Arity)
     ;

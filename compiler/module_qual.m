@@ -2138,7 +2138,7 @@ get_partial_qualifiers_2(ImplicitPart, ExplicitPart, ModuleIdSet,
     (
         ImplicitPart = qualified(Parent, Child),
         NextImplicitPart = Parent,
-        NextExplicitPart = insert_module_qualifier(Child, ExplicitPart),
+        NextExplicitPart = add_outermost_qualifier(Child, ExplicitPart),
         get_partial_qualifiers_2(NextImplicitPart, NextExplicitPart,
             ModuleIdSet, !Qualifiers)
     ;
