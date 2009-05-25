@@ -1030,14 +1030,14 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
         (
-            ArgMode = top_in,
+            ( ArgMode = top_in
+            ; ArgMode = top_unused
+            ),
             Lval = VarLval,
             CopyOutLvals = CopyOutLvalsTail,
             Defns = DefnsTail
         ;
-            ( ArgMode = top_out
-            ; ArgMode = top_unused
-            ),
+            ArgMode = top_out,
             % Handle output variables.
             ml_gen_info_get_globals(!.Info, Globals),
             CopyOut = get_copy_out_option(Globals, CodeModel),

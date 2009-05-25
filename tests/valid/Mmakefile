@@ -239,6 +239,7 @@ OTHER_PROGS= \
 	unreachable_code \
 	unused_args_test2 \
 	vn_float \
+	wrapper_arg_lvals \
 	zero_arity
 
 C_INTERFACE_PROGS = \
