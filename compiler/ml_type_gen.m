@@ -211,7 +211,7 @@ ml_gen_type_2(TypeBody, ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     %       static final const int <ctor1> = 0;
     %       static final const int <ctor2> = 1;
     %       ...
-    %       int value;
+    %       int MR_value;
     %   };
     %
     % It is marked as an mlds_enum so that the MLDS -> target code
@@ -256,7 +256,7 @@ ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
 :- func ml_gen_enum_value_member(prog_context) = mlds_defn.
 
 ml_gen_enum_value_member(Context) =
-    mlds_defn(entity_data(var(mlds_var_name("value", no))),
+    mlds_defn(entity_data(var(mlds_var_name("MR_value", no))),
         mlds_make_context(Context),
         ml_gen_member_decl_flags,
         mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)).

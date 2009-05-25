@@ -1287,7 +1287,7 @@ output_class_body(Indent, ModuleInfo, mlds_enum, Name, AllMembers, _, !IO) :-
     Name = qual(ModuleName, _QualKind, UnqualName),
     output_enum_constants(Indent + 1, ModuleInfo, ModuleName, EnumConsts, !IO),
     indent_line(Indent + 1, !IO),
-    io.write_string("public int value;\n\n", !IO),
+    io.write_string("public int MR_value;\n\n", !IO),
     output_enum_ctor(Indent + 1, UnqualName, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1317,9 +1317,9 @@ output_enum_ctor(Indent, UnqualName, !IO) :-
     io.write_string("(int val) {\n", !IO),
     indent_line(Indent + 1, !IO),
 
-    % The use of `value' is hardcoded into ml_type_gen.m. Any changes there
+    % The use of `MR_value' is hardcoded into ml_type_gen.m. Any changes there
     % should probably be reflected here.
-    io.write_string("this.value = val;\n", !IO),
+    io.write_string("this.MR_value = val;\n", !IO),
     indent_line(Indent + 1, !IO),
     io.write_string("return;\n", !IO),
     indent_line(Indent, !IO),
@@ -3446,12 +3446,12 @@ output_binop(ModuleInfo, Op, X, Y, ModuleName, !IO) :-
     ).
 
     % Output an Rval and if the Rval is an enumeration object append the string
-    % ".value", so we can access its value field.
+    % ".MR_value", so we can access its value field.
     %
     % XXX Note that this is necessary in some places, but not in others.
     % For example, it is important to do so for switch statements, as the
     % argument of a switch _must_ be an integer in Java. However, adding
-    % the .value to assignments breaks some casting... At some point, we
+    % the .MR_value to assignments breaks some casting... At some point, we
     % need to go through all the places where output_rval and
     % output_rval_maybe_with_enum are called and make sure the correct one
     % is being used.
@@ -3462,7 +3462,7 @@ output_binop(ModuleInfo, Op, X, Y, ModuleName, !IO) :-
 output_rval_maybe_with_enum(ModuleInfo, Rval, ModuleName, !IO) :-
     output_rval(ModuleInfo, Rval, ModuleName, !IO),
     ( rval_is_enum_object(Rval) ->
-        io.write_string(".value", !IO)
+        io.write_string(".MR_value", !IO)
     ;
         true
     ).

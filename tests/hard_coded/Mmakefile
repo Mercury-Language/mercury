@@ -262,6 +262,7 @@ ORDINARY_PROGS=	\
 	unusual_name_mutable \
 	user_compare \
 	user_defined_equality2 \
+	value_enum \
 	write \
 	write_reg1 \
 	write_reg2 \
@@ -313,7 +314,8 @@ JAVA_PASS_PROGS= \
 	string_suffix_bug \
 	system_sort \
 	target_mlobjs \
-	time_test
+	time_test \
+	value_enum
 
 # Solver types only work in C grades
 ifeq "$(filter il% java% erlang%,$(GRADE))" ""
