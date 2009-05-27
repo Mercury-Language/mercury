@@ -1221,14 +1221,14 @@ mlds_output_export_enums(ExportedEnums, Indent, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_export_enum(_Indent, ExportedEnum, !IO) :-
-    ExportedEnum = mlds_exported_enum(Lang, Context, _Type,
-        NamesAndTags0),
+    ExportedEnum = mlds_exported_enum(Lang, Context, _TypeCtor,
+        ExportConstants0),
     (
         Lang = lang_c,
         output_context(mlds_make_context(Context), !IO),
         % We reverse the list so the constants are printed out in order.
-        list.reverse(NamesAndTags0, NamesAndTags),
-        list.foldl(mlds_output_exported_enum_constant, NamesAndTags, !IO)
+        list.reverse(ExportConstants0, ExportConstants),
+        list.foldl(mlds_output_exported_enum_constant, ExportConstants, !IO)
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java
@@ -1237,33 +1237,28 @@ mlds_output_export_enum(_Indent, ExportedEnum, !IO) :-
         )
     ).
 
-:- pred mlds_output_exported_enum_constant(pair(string, mlds_entity_defn)::in,
+:- pred mlds_output_exported_enum_constant(mlds_exported_enum_constant::in,
     io::di, io::uo) is det.
 
-mlds_output_exported_enum_constant(NameAndTag, !IO) :-
-    NameAndTag = Name - Tag,
+mlds_output_exported_enum_constant(ExportedConstant, !IO) :-
+    ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
     io.write_string("#define ", !IO),
     io.write_string(Name, !IO),
     io.write_string(" ", !IO),
-    ( Tag = mlds_data(mlds_native_int_type, Initializer, gc_no_stmt) ->
-        (
-            Initializer = init_obj(const(mlconst_int(Value)))
-        ->
-            io.write_int(Value, !IO)
-        ;
-            Initializer = init_obj(const(mlconst_foreign(Lang, Value,
-                mlds_native_int_type)))
-        ->
-            expect(unify(Lang, lang_c), this_file,
-                "mlconst_foreign for language other than C."),
-            io.write_string(Value, !IO)
-        ;
-            unexpected(this_file,
-                "tag for export enumeration is not integer or foreign")
-        )
+    (
+        Initializer = init_obj(const(mlconst_int(Value)))
+    ->
+        io.write_int(Value, !IO)
+    ;
+        Initializer = init_obj(const(mlconst_foreign(Lang, Value,
+            mlds_native_int_type)))
+    ->
+        expect(unify(Lang, lang_c), this_file,
+            "mlconst_foreign for language other than C."),
+        io.write_string(Value, !IO)
     ;
         unexpected(this_file,
-            "exported enumeration constant is not mlds_data")
+            "tag for export enumeration is not integer or foreign")
     ),
     io.nl(!IO).
 

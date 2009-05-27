@@ -801,6 +801,22 @@ output_foreign_decl(MaybeDesiredIsLocal, DeclCode, !IO) :-
     io::di, io::uo) is det.
 
 output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
+    ExportedEnumInfo = exported_enum_info(Lang, _, _, _),
+    (
+        Lang = lang_c,
+        output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO)
+    ;
+        ( Lang = lang_csharp
+        ; Lang = lang_java
+        ; Lang = lang_il
+        ; Lang = lang_erlang
+        )
+    ).
+
+:- pred output_exported_enum_2(module_info::in, exported_enum_info::in,
+    io::di, io::uo) is det.
+
+output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
     ExportedEnumInfo = exported_enum_info(_Lang, Context, TypeCtor,
         NameMapping),
     module_info_get_type_table(ModuleInfo, TypeTable),
@@ -835,7 +851,7 @@ output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
             term.context_line(Context, Line),
             c_util.set_line_num(File, Line, !IO),
             io.write_list(ForeignNamesAndTags, "\n",
-                output_exported_enum_2(ModuleInfo), !IO),
+                output_exported_enum_3(ModuleInfo), !IO),
             io.nl(!IO),
             c_util.reset_line_num(!IO)
         )
@@ -848,10 +864,10 @@ output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
     --->    ee_tag_rep_int(int)
     ;       ee_tag_rep_string(string).
 
-:- pred output_exported_enum_2(module_info::in,
+:- pred output_exported_enum_3(module_info::in,
     pair(string, exported_enum_tag_rep)::in, io::di, io::uo) is det.
 
-output_exported_enum_2(_, ConstName - Tag, !IO) :-
+output_exported_enum_3(_, ConstName - Tag, !IO) :-
     (
         Tag = ee_tag_rep_int(RawIntTag),
         io.format("#define %s %d", [s(ConstName), i(RawIntTag)], !IO)

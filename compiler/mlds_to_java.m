@@ -318,7 +318,7 @@ output_import(Import, !IO) :-
 output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0,
-        InitPreds, _FinalPreds, _ExportedEnums),
+        InitPreds, _FinalPreds, ExportedEnums),
 
     % Do NOT enforce the outermost "mercury" qualifier here.  This module
     % name is compared with other module names in the MLDS, to avoid
@@ -363,6 +363,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io.write_string("\n// ExportDefns\n", !IO),
     output_exports(Indent + 1, ModuleInfo, MLDS_ModuleName, none,
         ExportDefns, !IO),
+    io.write_string("\n// ExportedEnums\n", !IO),
+    output_exported_enums(Indent + 1, ModuleInfo, ExportedEnums, !IO),
     io.write_string("\n// InitPreds\n", !IO),
     output_inits(Indent + 1, ModuleInfo, InitPreds, !IO),
     output_src_end(Indent, ModuleName, !IO).
@@ -378,7 +380,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
 output_java_decl(Indent, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, Code, Context),
-    (   Lang = lang_java,
+    (
+        Lang = lang_java,
         indent_line(mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
         io.nl(!IO)
@@ -482,6 +485,60 @@ output_exports(Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
     io.write_string("}\n", !IO),
     output_exports(Indent, ModuleInfo, MLDS_ModuleName, OutputAux, Exports,
         !IO).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for handling `pragma foreign_export_enum' for Java
+%
+
+:- pred output_exported_enums(indent::in, module_info::in,
+    list(mlds_exported_enum)::in, io::di, io::uo) is det.
+
+output_exported_enums(Indent, ModuleInfo, ExportedEnums, !IO) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    list.foldl(output_exported_enum(Indent, ModuleInfo, MLDS_ModuleName),
+        ExportedEnums, !IO).
+
+:- pred output_exported_enum(indent::in, module_info::in, mlds_module_name::in,
+    mlds_exported_enum::in, io::di, io::uo) is det.
+
+output_exported_enum(Indent, ModuleInfo, MLDS_ModuleName, ExportedEnum, !IO) :-
+    ExportedEnum = mlds_exported_enum(Lang, _, TypeCtor, ExportedConstants0),
+    (
+        Lang = lang_java,
+        ml_gen_type_name(TypeCtor, ClassName, ClassArity),
+        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum),
+        % We reverse the list so the constants are printed out in order.
+        list.reverse(ExportedConstants0, ExportedConstants),
+        list.foldl(output_exported_enum_constant(Indent, ModuleInfo,
+            MLDS_ModuleName, MLDS_Type), ExportedConstants, !IO)
+    ;
+        ( Lang = lang_c
+        ; Lang = lang_csharp
+        ; Lang = lang_il
+        ; Lang = lang_erlang
+        )
+    ).
+
+:- pred output_exported_enum_constant(indent::in, module_info::in,
+    mlds_module_name::in, mlds_type::in, mlds_exported_enum_constant::in,
+    io::di, io::uo) is det.
+
+output_exported_enum_constant(Indent, ModuleInfo, MLDS_ModuleName, MLDS_Type,
+        ExportedConstant, !IO) :-
+    ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
+    indent_line(Indent, !IO),
+    io.write_string("public static final ", !IO),
+    output_type(normal_style, MLDS_Type, !IO),
+    io.write_string(" ", !IO),
+    io.write_string(Name, !IO),
+    io.write_string(" = ", !IO),
+    output_type(normal_style, MLDS_Type, !IO),
+    io.write_string(".K", !IO),
+    % XXX this will break with `:- pragma foreign_enum'
+    output_initializer_body(ModuleInfo, Initializer, no, MLDS_ModuleName, !IO),
+    io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1285,9 +1342,10 @@ output_class_body(_Indent, _, mlds_struct, _, _AllMembers, _, _, _) :-
 output_class_body(Indent, ModuleInfo, mlds_enum, Name, AllMembers, _, !IO) :-
     list.filter(defn_is_const, AllMembers, EnumConsts),
     Name = qual(ModuleName, _QualKind, UnqualName),
-    output_enum_constants(Indent + 1, ModuleInfo, ModuleName, EnumConsts, !IO),
+    output_enum_constants(Indent + 1, ModuleInfo, ModuleName, UnqualName,
+        EnumConsts, !IO),
     indent_line(Indent + 1, !IO),
-    io.write_string("public int MR_value;\n\n", !IO),
+    io.write_string("public final int MR_value;\n\n", !IO),
     output_enum_ctor(Indent + 1, UnqualName, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1312,7 +1370,7 @@ defn_is_const(Defn) :-
 
 output_enum_ctor(Indent, UnqualName, !IO) :-
     indent_line(Indent, !IO),
-    io.write_string("public ", !IO),
+    io.write_string("private ", !IO),
     output_name(UnqualName, !IO),
     io.write_string("(int val) {\n", !IO),
     indent_line(Indent + 1, !IO),
@@ -1326,27 +1384,46 @@ output_enum_ctor(Indent, UnqualName, !IO) :-
     io.write_string("}\n", !IO).
 
 :- pred output_enum_constants(indent::in, module_info::in,
-    mlds_module_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
+    mlds_module_name::in, mlds_entity_name::in, list(mlds_defn)::in,
+    io::di, io::uo) is det.
 
-output_enum_constants(Indent, ModuleInfo, EnumModuleName, EnumConsts, !IO) :-
+output_enum_constants(Indent, ModuleInfo, EnumModuleName, EnumName,
+        EnumConsts, !IO) :-
     io.write_list(EnumConsts, "\n",
-        output_enum_constant(Indent, ModuleInfo, EnumModuleName), !IO),
+        output_enum_constant(Indent, ModuleInfo, EnumModuleName, EnumName),
+        !IO),
     io.nl(!IO).
 
 :- pred output_enum_constant(indent::in, module_info::in,
-    mlds_module_name::in, mlds_defn::in, io::di, io::uo) is det.
+    mlds_module_name::in, mlds_entity_name::in, mlds_defn::in,
+    io::di, io::uo) is det.
 
-output_enum_constant(Indent, ModuleInfo, EnumModuleName, Defn, !IO) :-
+output_enum_constant(Indent, ModuleInfo, EnumModuleName, EnumName, Defn,
+        !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
-        DefnBody = mlds_data(Type, Initializer, _GCStatement)
+        DefnBody = mlds_data(_Type, Initializer, _GCStatement)
     ->
+        % Make a static instance of the constant.  The MLDS doesn't retain enum
+        % constructor names so it's easier to derive the name of the constant
+        % later by naming them after the integer values.
+        % XXX this will break with `:- pragma foreign_enum'
         indent_line(Indent, !IO),
-        io.write_string("public static final int ", !IO),
+        io.write_string("public static final ", !IO),
+        output_name(EnumName, !IO),
+        io.write_string(" K", !IO),
+        output_initializer_body(ModuleInfo, Initializer, no, EnumModuleName,
+            !IO),
+        io.write_string(" = new ", !IO),
+        output_name(EnumName, !IO),
+        io.write_string("(", !IO),
+        output_initializer_body(ModuleInfo, Initializer, no, EnumModuleName,
+            !IO),
+        io.write_string(");", !IO),
+
+        io.write_string(" /* ", !IO),
         output_name(Name, !IO),
-        output_initializer(ModuleInfo, EnumModuleName, none, Type,
-            Initializer, !IO),
-        io.write_char(';', !IO)
+        io.write_string(" */", !IO)
     ;
         unexpected(this_file,
             "output_enum_constant: definition body was not data.")
@@ -1529,12 +1606,10 @@ output_initializer_body(ModuleInfo, init_obj(Rval), MaybeType, ModuleName,
         type_is_object(Type),
         rval_is_int_const(Rval)
     ->
-        % If it is a enumeration object create new object.
-        io.write_string("new ", !IO),
+        % If it is a enumeration object make a reference to a static instance.
         output_type(normal_style, Type, !IO),
-        io.write_char('(', !IO),
-        output_rval_maybe_with_enum(ModuleInfo, Rval, ModuleName, !IO),
-        io.write_char(')', !IO)
+        io.write_string(".K", !IO),
+        output_rval_maybe_with_enum(ModuleInfo, Rval, ModuleName, !IO)
     ;
         MaybeType = yes(Type)
     ->
@@ -2963,13 +3038,12 @@ output_atomic_stmt(Indent, ModuleInfo, FuncInfo, assign(Lval, Rval), _, !IO) :-
         LvalType = mlds_lval_type(Lval),
         type_is_object(LvalType)
     ->
-        % If the Lval is an object.
         ( rval_is_int_const(Rval) ->
-            io.write_string("new ", !IO),
+            % If it is a enumeration object make a reference to a static
+            % instance.
             output_type(normal_style, LvalType, !IO),
-            io.write_string("(", !IO),
-            output_rval(ModuleInfo, Rval, ModuleName, !IO),
-            io.write_string(")", !IO)
+            io.write_string(".K", !IO),
+            output_rval(ModuleInfo, Rval, ModuleName, !IO)
         ;
             output_rval(ModuleInfo, Rval, ModuleName, !IO)
         )

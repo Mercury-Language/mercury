@@ -343,7 +343,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_foreign.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module map.
@@ -379,6 +378,7 @@
                 % The names of init and final preds.
                 % XXX These only work for the C backend because initialisers
                 % and finalisers do not (yet) work for the other backends.
+                % (These should possibly be moved into mlds_foreign_code_map.)
                 mlds_init_preds         :: list(string),
                 mlds_final_preds        :: list(string),
                 mlds_exported_enums     :: list(mlds_exported_enum)
@@ -1748,15 +1748,17 @@
 
 :- type mlds_exported_enum
     --->    mlds_exported_enum(
-                foreign_language,       % For sanity checking only.
-                prog_context,
-                mlds_type,              % Type of the constants (hard coded as
-                                        % mlds_native_int_type in
-                                        % ml_type_gen.m.)
+                exported_enum_lang      :: foreign_language,
+                exported_enum_context   :: prog_context,
+                exported_enum_type_ctor :: type_ctor,
+                exported_enum_constants :: list(mlds_exported_enum_constant)
+                % The name of each constant plus a value to initialize it to.
+            ).
 
-                assoc_list(string, mlds_entity_defn)
-                % The name of each constant
-                % plus a value to initialize it to.
+:- type mlds_exported_enum_constant
+    --->    mlds_exported_enum_constant(
+                exported_enum_constant_name     :: string,
+                exported_enum_constant_value    :: mlds_initializer
             ).
 
 %-----------------------------------------------------------------------------%

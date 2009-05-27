@@ -879,7 +879,7 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
         list.cons(InvalidRenamingSpec, !Specs),
         MaybeMapping = no
         % NOTE: in the presence of this error we do not report if
-        % contructors could not be converted to names in the foreign
+        % constructors could not be converted to names in the foreign
         % language.
     ;
         (
@@ -892,8 +892,10 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
                 Lang = lang_c,
                 What = "C identifiers."
             ;
+                Lang = lang_java,
+                What = "Java identifiers."
+            ;
                 ( Lang = lang_csharp
-                ; Lang = lang_java
                 ; Lang = lang_il
                 ; Lang = lang_erlang
                 ),
@@ -994,11 +996,13 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
     ),
     ForeignName = Prefix ++ ForeignNameTail,
     (
-        Lang  = lang_c,
+        Lang = lang_c,
+        IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
+    ;
+        Lang = lang_java,
         IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
     ;
         ( Lang = lang_csharp
-        ; Lang = lang_java
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),

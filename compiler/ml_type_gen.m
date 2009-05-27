@@ -1123,17 +1123,17 @@ ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
             _IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
             _IsForeignType),
         list.foldl(generate_foreign_enum_constant(Mapping, TagValues),
-            Ctors, [], NamesAndTags),
-        MLDS_ExportedEnum = mlds_exported_enum(Lang, Context,
-            mlds_native_int_type, NamesAndTags)
+            Ctors, [], ExportConstants),
+        MLDS_ExportedEnum = mlds_exported_enum(Lang, Context, TypeCtor,
+            ExportConstants)
     ).
 
 :- pred generate_foreign_enum_constant(map(sym_name, string)::in,
     cons_tag_values::in, constructor::in,
-    assoc_list(string, mlds_entity_defn)::in,
-    assoc_list(string, mlds_entity_defn)::out) is det.
+    list(mlds_exported_enum_constant)::in,
+    list(mlds_exported_enum_constant)::out) is det.
 
-generate_foreign_enum_constant(Mapping, TagValues, Ctor, !NamesAndTags) :-
+generate_foreign_enum_constant(Mapping, TagValues, Ctor, !ExportConstants) :-
     Ctor = ctor(_, _, QualName, Args, _),
     list.length(Args, Arity),
     map.lookup(TagValues, cons(QualName, Arity), TagVal),
@@ -1164,12 +1164,12 @@ generate_foreign_enum_constant(Mapping, TagValues, Ctor, !NamesAndTags) :-
     ),
     % Sanity check.
     expect(unify(Arity, 0), this_file, "enum constant arity != 0"),
-    EntityDefn = mlds_data(mlds_native_int_type, init_obj(ConstValue),
-        gc_no_stmt),
     UnqualName = unqualify_name(QualName),
     UnqualSymName = unqualified(UnqualName),
     map.lookup(Mapping, UnqualSymName, ForeignName),
-    !:NamesAndTags = [ForeignName - EntityDefn | !.NamesAndTags].
+    ExportConstant = mlds_exported_enum_constant(ForeignName,
+        init_obj(ConstValue)),
+    !:ExportConstants = [ExportConstant | !.ExportConstants].
 
 %-----------------------------------------------------------------------------%
 

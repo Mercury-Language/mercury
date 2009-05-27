@@ -3135,14 +3135,11 @@ file_type_implemented :-
     // directories, and for everything else it just returns unknown.
 
     if (file.isFile()) {
-        Result = new mercury.io.Res_1.Ok_1(new mercury.io.File_type_0(
-            mercury.io.File_type_0.regular_file));
+        Result = new mercury.io.Res_1.Ok_1(ML_file_type_regular());
     } else if (file.isDirectory()) {
-        Result = new mercury.io.Res_1.Ok_1(new mercury.io.File_type_0(
-            mercury.io.File_type_0.directory));
+        Result = new mercury.io.Res_1.Ok_1(ML_file_type_directory());
     } else {
-        Result = new mercury.io.Res_1.Ok_1(new mercury.io.File_type_0(
-            mercury.io.File_type_0.unknown));
+        Result = new mercury.io.Res_1.Ok_1(ML_file_type_unknown());
     }
 ").
 
@@ -3230,6 +3227,8 @@ file_type_unknown = unknown.
     "ML_file_type_directory").
 :- pragma foreign_export("IL", file_type_directory = out,
     "ML_file_type_directory").
+:- pragma foreign_export("Java", file_type_directory = out,
+    "ML_file_type_directory").
 :- pragma foreign_export("Erlang", file_type_directory = out,
     "ML_file_type_directory").
 :- pragma foreign_export("C", file_type_socket = out,
@@ -3245,6 +3244,8 @@ file_type_unknown = unknown.
 :- pragma foreign_export("C", file_type_regular = out,
     "ML_file_type_regular").
 :- pragma foreign_export("IL", file_type_regular = out,
+    "ML_file_type_regular").
+:- pragma foreign_export("Java", file_type_regular = out,
     "ML_file_type_regular").
 :- pragma foreign_export("Erlang", file_type_regular = out,
     "ML_file_type_regular").
@@ -3263,6 +3264,8 @@ file_type_unknown = unknown.
 :- pragma foreign_export("C", file_type_unknown = out,
     "ML_file_type_unknown").
 :- pragma foreign_export("IL", file_type_unknown = out,
+    "ML_file_type_unknown").
+:- pragma foreign_export("Java", file_type_unknown = out,
     "ML_file_type_unknown").
 :- pragma foreign_export("Erlang", file_type_unknown = out,
     "ML_file_type_unknown").
