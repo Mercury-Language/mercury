@@ -6,7 +6,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2008 The University of Melbourne.
+** Copyright (C) 1994-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -2910,7 +2910,11 @@ mercury_runtime_terminate(void)
 
             snprintf(cmd_buf, MAX_MEM_USAGE_REPORT_CMD_SIZE,
                 "cp /proc/%d/status %s", getpid(), filename_buf);
-            system(cmd_buf);
+            if (system(cmd_buf) != 0) {
+                fprintf(stderr, "%s: cannot write memory usage report\n",
+                    MR_progname);
+                /* There is no point in aborting. */
+            };
             break;
         }
 

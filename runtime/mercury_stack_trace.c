@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2008 The University of Melbourne.
+** Copyright (C) 1998-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1164,9 +1164,11 @@ MR_dump_stack_record_print(FILE *fp, MR_bool include_trace_data,
     if (! include_trace_data) {
         if (num_levels > 1) {
             if (num_levels != dump_info.MR_sdi_num_frames) {
-                fprintf(fp, " %3dx ", num_levels);
+                fprintf(fp, " %3" MR_INTEGER_LENGTH_MODIFIER "ux ",
+                    num_levels);
             } else {
-                fprintf(fp, " %3d* ", num_levels);
+                fprintf(fp, " %3" MR_INTEGER_LENGTH_MODIFIER "u* ",
+                    num_levels);
             }
         } else {
             fprintf(fp, "%5s ", "");
