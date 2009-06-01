@@ -796,7 +796,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Object res = P.call___0_0(X, Y);
+    Object res = P.call___0_0(new Object[] { X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
 :- pragma foreign_proc("Java",
@@ -804,7 +804,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Object res = P.call___0_0(A, X, Y);
+    Object res = P.call___0_0(new Object[] { A, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
 :- pragma foreign_proc("Java",
@@ -812,7 +812,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Object res = P.call___0_0(A, B, X, Y);
+    Object res = P.call___0_0(new Object[] { A, B, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
 :- pragma foreign_proc("Java",
@@ -820,7 +820,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Object res = P.call___0_0(A, B, C, X, Y);
+    Object res = P.call___0_0(new Object[] { A, B, C, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
 :- pragma foreign_proc("Java",
@@ -828,7 +828,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Object res = P.call___0_0(A, B, C, D, X, Y);
+    Object res = P.call___0_0(new Object[] { A, B, C, D, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
 :- pragma foreign_proc("Java",
@@ -836,7 +836,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Object res = P.call___0_0(A, B, C, D, E, X, Y);
+    Object res = P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
 
@@ -845,7 +845,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Res = P.call___0_0(X, Y);
+    Res = P.call___0_0(new Object[] { X, Y });
 ").
 
 :- pragma foreign_proc("Java",
@@ -853,28 +853,28 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Res = P.call___0_0(A, X, Y);
+    Res = P.call___0_0(new Object[] { A, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Res = P.call___0_0(A, B, X, Y);
+    Res = P.call___0_0(new Object[] { A, B, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Res = P.call___0_0(A, B, C, X, Y);
+    Res = P.call___0_0(new Object[] { A, B, C, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Res = P.call___0_0(A, B, C, D, X, Y);
+    Res = P.call___0_0(new Object[] { A, B, C, D, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
@@ -882,7 +882,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MethodPtr P = (MethodPtr) Pred;
-    Res = P.call___0_0(A, B, C, D, E, X, Y);
+    Res = P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
 ").
 
 %-----------------------------------------------------------------------------%
