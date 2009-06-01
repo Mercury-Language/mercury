@@ -96,4 +96,7 @@ cp ssdb/Mercury.* ${installdir}/ssdb
 cp ssdb/.mgnuc* ${installdir}/ssdb
 cp ssdb/*FLAGS* ${installdir}/ssdb
 cp ssdb/*.m ${installdir}/ssdb
+mkdir ${installdir}/java
+mkdir ${installdir}/java/runtime
+cp java/runtime/*.java ${installdir}/java/runtime
 exit 0

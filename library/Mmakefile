@@ -272,18 +272,23 @@ java_symlinks:
 
 JARS = $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar
 
+# We list the classes in a temporary file to avoid overlong command lines.
 # We ignore the exit status of the last two commands because NATIVE_SO is not
 # an essential part of the Mercury standard library for the Java
 # implementation.  Users should be able to run programs in grade Java without
 # any architecture-specific objects.
 .PHONY:	jars
 jars:	classes
-	$(JAR) $(JAR_CREATE_FLAGS) $(STD_LIB_NAME).jar mercury/*.class \
-		mercury/bit_buffer_/*.class \
-		mercury/stream_/*.class \
-		mercury/string_/*.class \
-		mercury/thread_/*.class
+	echo mercury/*.class > $(STD_LIB_NAME).classes
+	echo mercury/bit_buffer_/*.class >> $(STD_LIB_NAME).classes
+	echo mercury/stream_/*.class >> $(STD_LIB_NAME).classes
+	echo mercury/string_/*.class >> $(STD_LIB_NAME).classes
+	echo mercury/thread_/*.class >> $(STD_LIB_NAME).classes
+	$(JAR) $(JAR_CREATE_FLAGS) $(STD_LIB_NAME).jar @$(STD_LIB_NAME).classes
+	$(JAR) i $(STD_LIB_NAME).jar
+	$(RM) $(STD_LIB_NAME).classes
 	$(JAR) $(JAR_CREATE_FLAGS) $(RT_LIB_NAME).jar mercury/runtime/*.class
+	$(JAR) i $(RT_LIB_NAME).jar
 	-+cd mercury/runtime && mmake $(NATIVE_SO)
 	-cp mercury/runtime/$(NATIVE_SO) .
 
