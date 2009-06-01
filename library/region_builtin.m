@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -53,6 +53,8 @@
     [can_pass_as_mercury_type]).
 
 :- pragma foreign_type("Java", region, "java.lang.Object"). % dummy
+
+:- pragma foreign_type("Erlang", region, ""). % dummy
 
 :- pragma foreign_proc("C",
     create_region(Region::out),
