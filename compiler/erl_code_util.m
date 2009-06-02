@@ -525,7 +525,7 @@ non_variable_term(Term) :-
 erl_var_or_dummy_replacement(ModuleInfo, VarTypes, DummyVarReplacement, Var) =
     (if
         map.search(VarTypes, Var, Type),
-        check_dummy_type(ModuleInfo, Type) = is_not_dummy_type
+        check_dummy_type(ModuleInfo, Type) = is_dummy_type
     then
         elds_term(DummyVarReplacement)
     else
