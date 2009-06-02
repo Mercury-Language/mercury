@@ -177,7 +177,7 @@
 :- type type_layout ---> type_layout(c_pointer).
 :- pragma foreign_type("Java", type_layout, "mercury.runtime.TypeLayout").
 
-:- type pseudo_type_info ---> pseudo_type_info.
+:- type pseudo_type_info ---> pseudo_type_info(int).    % dummy
 :- pragma foreign_type("Java", pseudo_type_info,
     "mercury.runtime.PseudoTypeInfo").
 
@@ -1613,7 +1613,7 @@ new_type_info(TypeInfo, _) = NewTypeInfo :-
     %
 :- func get_pti_from_arg_types(arg_types, int) = pseudo_type_info.
 
-get_pti_from_arg_types(_, _) = pseudo_type_info :-
+get_pti_from_arg_types(_, _) = pseudo_type_info(0) :-
     det_unimplemented("get_pti_from_arg_types").
 
 :- pragma foreign_proc("Java",
