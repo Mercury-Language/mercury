@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -440,6 +440,17 @@ mercury_sys_init_backjumps_write_out_proc_statics(FILE *deep_fp,
         throw new java.lang.Error(""builtin_backjump/1 not implemented"");
     }
 
+").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_code("Erlang", "
+
+    builtin_choice_id_1_p_0(_) ->
+        throw(""builtin_choice_id/1 NYI for Erlang backend"").
+    
+    builtin_backjump_1_p_0(_) ->
+        throw(""builtin_backjump/1 NYI for Erlang backend"").
 ").
 
 %-----------------------------------------------------------------------------%
