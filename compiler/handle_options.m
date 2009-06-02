@@ -2023,7 +2023,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ;
             Target = target_erlang,
             BackendForeignLanguages = ["erlang"],
-            set_option(optimize_constructor_last_call, bool(no), !Globals)
+            set_option(optimize_constructor_last_call, bool(no), !Globals),
+            set_option(allow_multi_arm_switches, bool(no), !Globals)
         ),
 
         % Only set the backend foreign languages if they are unset.
