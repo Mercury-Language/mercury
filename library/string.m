@@ -1343,16 +1343,18 @@ string.to_char_list(Str::uo, CharList::in) :-
 ").
 
 string.to_char_list_2(Str, CharList) :-
-    string.to_char_list_3(Str, 0, CharList).
+    string.to_char_list_3(Str, string.length(Str) - 1, [], CharList).
 
-:- pred string.to_char_list_3(string::in, int::in, list(char)::uo) is det.
+:- pred string.to_char_list_3(string::in, int::in,
+    list(char)::di, list(char)::uo) is det.
 
-string.to_char_list_3(Str, Index, CharList) :-
-    ( string.index(Str, Index, Char) ->
-        string.to_char_list_3(Str, Index + 1, CharList0),
-        CharList = [Char | CharList0]
+string.to_char_list_3(Str, Index, CharList0, CharList) :-
+    ( Index >= 0 ->
+        string.unsafe_index(Str, Index, Char),
+        CharList1 = [Char | CharList0],
+        string.to_char_list_3(Str, Index - 1, CharList1, CharList)
     ;
-        CharList = []
+        CharList = CharList0
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1416,6 +1418,23 @@ string.from_char_list(Chars::in, Str::uo) :-
 
     Str[size] = '\\0';
 }").
+
+:- pragma foreign_proc("Java",
+    string.semidet_from_char_list(CharList::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    java.lang.StringBuilder sb = new StringBuilder();
+    while (CharList instanceof mercury.list.List_1.F_cons_2) {
+        mercury.list.List_1.F_cons_2 cons =
+            (mercury.list.List_1.F_cons_2) CharList;
+        char c = ((java.lang.Character) cons.F1).charValue();
+        sb.append(c);
+        CharList = cons.F2;
+    }
+    Str = sb.toString();
+    succeeded = true;
+").
 
 :- pragma foreign_proc("Erlang",
     string.semidet_from_char_list(CharList::in, Str::uo),
@@ -1630,6 +1649,22 @@ string.append_list(Lists, string.append_list(Lists)).
     Str[len] = '\\0';
 }").
 
+:- pragma foreign_proc("Java",
+    string.append_list(Strs::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    java.lang.StringBuilder sb = new java.lang.StringBuilder();
+    while (Strs instanceof mercury.list.List_1.F_cons_2) {
+        mercury.list.List_1.F_cons_2 cons =
+            (mercury.list.List_1.F_cons_2) Strs;
+        java.lang.String s = (java.lang.String) cons.F1;
+        sb.append(s);
+        Strs = cons.F2;
+    }
+    Str = sb.toString();
+").
+
 :- pragma foreign_proc("Erlang",
     string.append_list(Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1637,6 +1672,15 @@ string.append_list(Lists, string.append_list(Lists)).
 "
     Str = list_to_binary(Strs)
 ").
+
+string.append_list(Strs::in) = (Str::uo) :-
+    (
+        Strs = [X | Xs],
+        Str = X ++ append_list(Xs)
+    ;
+        Strs = [],
+        Str = ""
+    ).
 
     % We implement string.join_list in C as this minimises the amount of
     % garbage created.
@@ -1688,15 +1732,6 @@ string.append_list(Lists, string.append_list(Lists)).
 
     Str[len] = '\\0';
 }").
-
-string.append_list(Strs::in) = (Str::uo) :-
-    (
-        Strs = [X | Xs],
-        Str = X ++ append_list(Xs)
-    ;
-        Strs = [],
-        Str = ""
-    ).
 
 string.join_list(_, []) = "".
 string.join_list(Sep, [H | T]) = H ++ string.join_list_2(Sep, T).

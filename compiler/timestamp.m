@@ -122,6 +122,19 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
     Result = t.ToString(format_str);
 }").
 
+:- pragma foreign_proc("Java",
+    gmtime_to_timestamp_2(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in,
+        Sec::in, _YD::in, _WD::in, _N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure],
+"
+    java.util.GregorianCalendar cal =
+        new java.util.GregorianCalendar(Yr + 1900, Mnt - 1, MD, Hrs, Min, Sec);
+    java.text.SimpleDateFormat sdf =
+        new java.text.SimpleDateFormat(""yyyy-MM-dd HH:mm:ss"");
+    java.util.Date date = new java.util.Date(cal.getTimeInMillis());
+    Result = sdf.format(date);
+").
+
 :- func maybe_dst_to_int(maybe(dst)) = int.
 
 maybe_dst_to_int(M) = N :-

@@ -2883,7 +2883,7 @@ io.file_modification_time(File, Result, !IO) :-
         Msg = ""lastModified() failed: "" + e.getMessage();
         Status = 0;
     }
-    Time = date;
+    Time = mercury.time.ML_construct_time_t(date);
 ").
 
 :- pragma foreign_proc("Erlang",
