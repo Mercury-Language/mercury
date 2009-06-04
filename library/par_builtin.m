@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sw=4 sts=4 et wm=0 tw=0
+% vim: ft=mercury ts=8 sw=4 sts=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -55,13 +55,13 @@
     %
 :- impure pred signal(future(T)::in, T::in) is det.
 
-    % These predicates are intended to be used as conditions to decide if
-    % something should be done in parallel or sequence.  They are true when
-    % they beleive parallel execution is optimisitc and false otherwise.
-    %
-    % They can either be used by compiler transformations or directly in user
-    % code - which is useful for testing.
-    %
+% The following predicates are intended to be used as conditions to decide if
+% something should be done in parallel or sequence. Success should indicate
+% a preference for parallel execution, failure a preference for sequential
+% execution.
+%
+% They can be used both by compiler transformations and directly in user code.
+% The latter is is useful for testing.
 
     % A hook for the compiler's granularity transformation to hang
     % an arbitrary test on.  This predicate does not have a definition, it is
@@ -373,9 +373,9 @@ INIT mercury_sys_init_par_builtin_modules
 "
 #ifdef MR_LL_PARALLEL_CONJ
     SUCCESS_INDICATOR = MR_choose_parallel_over_sequential_cond(NumCPUs);
- #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
+  #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     MR_record_conditional_parallelism_descision(SUCCESS_INDICATOR);
- #endif
+  #endif
 #else
     MR_fatal_error(
       ""par_cond_outstanding_jobs_vs_num_cpus is unavailable in this grade"");
@@ -385,20 +385,18 @@ INIT mercury_sys_init_par_builtin_modules
 :- pragma foreign_proc("C",
     par_cond_close_stats_file(IO0::di, IO::uo),
     [will_not_call_mercury, thread_safe, may_not_duplicate, promise_pure],
-    "
+"
 #ifdef MR_LL_PARALLEL_CONJ
- #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
+  #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     MR_write_out_conditional_parallelism_log();
- #else
-    MR_fatal_error(
-      ""par_cond_close_stats_file is unavailable in this build"");
- #endif
+  #else
+    MR_fatal_error(""par_cond_close_stats_file is unavailable in this build"");
+  #endif
 #else
-    MR_fatal_error(
-      ""par_cond_close_stats_file is unavailable in this grade"");
+    MR_fatal_error(""par_cond_close_stats_file is unavailable in this grade"");
 #endif
     IO = IO0; 
-    ").
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
