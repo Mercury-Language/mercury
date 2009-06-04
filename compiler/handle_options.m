@@ -1250,34 +1250,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(profile_deep, should_pretest_equality, bool(yes),
             !Globals),
 
-        % The `.debug' grade implies --use-trail in most cases. The reason
-        % for the implication is to avoid unnecessary proliferation in
-        % the number of different grades.  If you're using --debug,
-        % you've already taken a major performance hit, so you should
-        % be able to afford the minor performance hit caused by --use-trail.
-        %
-        % There are two exceptions. First, --use-minimal-model doesn't work
-        % with trails. Second, the only difference between debug and decldebug
-        % is the latter's support for declarative debugging, which inherently
-        % requires retries in the debugger. These retries don't reset the
-        % trail unless the code that creates the trail entries has prepared for
-        % retries, which usually isn't the case. In any case, the space
-        % overhead of decldebug grades is high enough that we don't want the
-        % space overhead of trailing (mostly for extra code) as well unless the
-        % user has explicitly requested it.
-
-        globals.lookup_bool_option(!.Globals, exec_trace, ExecTrace),
-        globals.lookup_bool_option(!.Globals, decl_debug, DeclDebug),
-        (
-            ExecTrace = yes,
-            DeclDebug = no,
-            UseMinimalModel = no
-        ->
-            globals.set_option(use_trail, bool(yes), !Globals)
-        ;
-            true
-        ),
-
         % In debugging grades, we want to generate executables in which
         % one can do retries across I/O safely.
         option_implies(exec_trace, trace_table_io_all, bool(yes), !Globals),

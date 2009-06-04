@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1998-2002, 2004-2007 The University of Melbourne.
+# Copyright (C) 1998-2002, 2004-2007, 2009 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -47,14 +47,6 @@ esac
 case $extend_stacks,$stack_segments in true,true)
 	echo "--extend-stacks-when-needed and --stack-segments are not compatible" 1>&2
 	exit 1 ;;
-esac
-
-#
-# .debug grade (but not .decldebug) implies --use-trail in the absence of .*mm*
-#	(see comment in compiler/handle_options.m for rationale)
-#
-case $debug,$decl_debug,$use_minimal_model in true,false,false)
-	use_trail=true ;;
 esac
 
 #
