@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -177,7 +177,10 @@
 :- type type_layout ---> type_layout(c_pointer).
 :- pragma foreign_type("Java", type_layout, "mercury.runtime.TypeLayout").
 
-:- type pseudo_type_info ---> pseudo_type_info(int).    % dummy
+:- type pseudo_type_info ---> pseudo_type_info(int).
+    % This should be a dummy type. The non-dummy definition is a workaround
+    % for a bug in the Erlang backend that generates invalid code for the
+    % dummy type.
 :- pragma foreign_type("Java", pseudo_type_info,
     "mercury.runtime.PseudoTypeInfo").
 
