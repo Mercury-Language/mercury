@@ -699,43 +699,44 @@ static FILE * volatile MR_par_cond_stats_file = NULL;
 static volatile MR_Unsigned MR_par_cond_stats_last;
 static volatile MR_Unsigned MR_par_cond_stats_last_count;
 
-void MR_record_conditional_parallelism_descision(MR_Unsigned descision)
+void MR_record_conditional_parallelism_decision(MR_Unsigned decision)
 {
-    MR_LOCK(&MR_par_cond_stats_lock, "record_conditional_parallelism_decision");
-    if (MR_par_cond_stats_file == NULL)
-    {
+    MR_LOCK(&MR_par_cond_stats_lock,
+        "record_conditional_parallelism_decision");
+
+    if (MR_par_cond_stats_file == NULL) {
         MR_par_cond_stats_file = fopen(MR_PAR_COND_STATS_FILENAME, "w");
-        MR_par_cond_stats_last = descision;
+        MR_par_cond_stats_last = decision;
         MR_par_cond_stats_last_count = 1;
-    }
-    else
-    {
-        if (descision == MR_par_cond_stats_last)
-        {
+    } else {
+        if (decision == MR_par_cond_stats_last) {
             MR_par_cond_stats_last_count++;
-        }
-        else
-        {
+        } else {
             fprintf(MR_par_cond_stats_file, "%d %d\n", MR_par_cond_stats_last,
                 MR_par_cond_stats_last_count);
-            MR_par_cond_stats_last = descision;
+            MR_par_cond_stats_last = decision;
             MR_par_cond_stats_last_count = 1;
         }
     }
-    MR_UNLOCK(&MR_par_cond_stats_lock, "record_conditional_parallelism_decision i");
+
+    MR_UNLOCK(&MR_par_cond_stats_lock,
+        "record_conditional_parallelism_decision");
 }
 
 void MR_write_out_conditional_parallelism_log(void)
 {
-    MR_LOCK(&MR_par_cond_stats_lock, "write_out_conditional_parallelism_log");
-    if (MR_par_cond_stats_file != NULL)
-    {
-        fprintf(MR_par_cond_stats_file, "%d %d\n", MR_par_cond_stats_last,
-            MR_par_cond_stats_last_count);
+    MR_LOCK(&MR_par_cond_stats_lock,
+        "write_out_conditional_parallelism_log");
+
+    if (MR_par_cond_stats_file != NULL) {
+        fprintf(MR_par_cond_stats_file, "%d %d\n",
+            MR_par_cond_stats_last, MR_par_cond_stats_last_count);
         fclose(MR_par_cond_stats_file);
         MR_par_cond_stats_file = NULL;
     }
-    MR_UNLOCK(&MR_par_cond_stats_lock, "write_out_conditional_parallelism_log i");
+
+    MR_UNLOCK(&MR_par_cond_stats_lock,
+        "write_out_conditional_parallelism_log");
 }
 
 #endif /* MR_DEBUG_RUNTIME_GRANULARITY_CONTROL */

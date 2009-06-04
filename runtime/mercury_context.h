@@ -886,7 +886,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   ** be run sequentially.
   ** This is not (yet) thread safe.
   */
-  void MR_record_conditional_parallelism_descision(MR_Unsigned descision);
+  void MR_record_conditional_parallelism_decision(MR_Unsigned decision);
 
   /*
   ** flush and close the log of conditional parallelism decisions 

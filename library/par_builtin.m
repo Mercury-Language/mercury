@@ -374,7 +374,7 @@ INIT mercury_sys_init_par_builtin_modules
 #ifdef MR_LL_PARALLEL_CONJ
     SUCCESS_INDICATOR = MR_choose_parallel_over_sequential_cond(NumCPUs);
   #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
-    MR_record_conditional_parallelism_descision(SUCCESS_INDICATOR);
+    MR_record_conditional_parallelism_decision(SUCCESS_INDICATOR);
   #endif
 #else
     MR_fatal_error(
