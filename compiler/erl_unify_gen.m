@@ -115,16 +115,25 @@ erl_gen_unification(Unification, CodeModel, _Context, MaybeSuccessExpr,
     Unification = simple_test(Var1, Var2),
     expect(unify(CodeModel, model_semi), this_file,
         "erl_code_gen: simple_test not semidet"),
-    %
-    % case Var1 =:= Var2 of
-    %   true  -> MaybeSuccessExpr ;
-    %   false -> fail
-    % end
-    %
-    Statement = elds_case_expr(Test, [TrueCase, FalseCase]),
-    Test      = elds_binop((=:=), expr_from_var(Var1), expr_from_var(Var2)),
-    TrueCase  = elds_case(elds_true, expr_or_void(MaybeSuccessExpr)),
-    FalseCase = elds_case(elds_false, elds_term(elds_fail)).
+    erl_gen_info_get_module_info(!.Info, ModuleInfo),
+    erl_variable_type(!.Info, Var1, VarType),
+    IsDummy = check_dummy_type(ModuleInfo, VarType),
+    (
+        IsDummy = is_dummy_type,
+        Statement = expr_or_void(MaybeSuccessExpr)
+    ;
+        IsDummy = is_not_dummy_type,
+        %
+        % case Var1 =:= Var2 of
+        %   true  -> MaybeSuccessExpr ;
+        %   false -> fail
+        % end
+        %
+        Statement = elds_case_expr(Test, [TrueCase, FalseCase]),
+        Test      = elds_binop((=:=), expr_from_var(Var1), expr_from_var(Var2)),
+        TrueCase  = elds_case(elds_true, expr_or_void(MaybeSuccessExpr)),
+        FalseCase = elds_case(elds_false, elds_term(elds_fail))
+    ).
 
 erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
         Statement, !Info) :-
