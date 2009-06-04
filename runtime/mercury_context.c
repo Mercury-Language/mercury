@@ -6,7 +6,7 @@ INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2007 The University of Melbourne.
+** Copyright (C) 1995-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -79,8 +79,10 @@ static MR_Context       *free_small_context_list = NULL;
 #endif
 
 #ifdef  MR_LL_PARALLEL_CONJ
-int MR_num_idle_engines = 0;
-int MR_num_outstanding_contexts_and_sparks = 0;
+int volatile MR_num_idle_engines = 0;
+int volatile MR_num_outstanding_contexts_and_sparks = 0;
+
+static MercuryLock MR_par_cond_stats_lock;
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -98,6 +100,9 @@ MR_init_thread_stuff(void)
   #ifdef MR_LL_PARALLEL_CONJ
     MR_init_wsdeque(&MR_spark_queue, MR_INITIAL_GLOBAL_SPARK_QUEUE_SIZE);
     pthread_mutex_init(&MR_sync_term_lock, MR_MUTEX_ATTR);
+  #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
+    pthread_mutex_init(&MR_par_cond_stats_lock, MR_MUTEX_ATTR);
+  #endif
   #endif
     pthread_mutex_init(&MR_STM_lock, MR_MUTEX_ATTR);
   #ifndef MR_THREAD_LOCAL_STORAGE
@@ -680,6 +685,61 @@ MR_define_entry(MR_do_runnext);
 MR_END_MODULE
 
 #endif /* !MR_HIGHLEVEL_CODE */
+
+#ifdef MR_LL_PARALLEL_CONJ
+
+/*
+ * Debugging functions for runtime granularity control.
+ */
+
+#ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
+
+#define MR_PAR_COND_STATS_FILENAME "par_cond_stats.log"
+static FILE * volatile MR_par_cond_stats_file = NULL;
+static volatile MR_Unsigned MR_par_cond_stats_last;
+static volatile MR_Unsigned MR_par_cond_stats_last_count;
+
+void MR_record_conditional_parallelism_descision(MR_Unsigned descision)
+{
+    MR_LOCK(&MR_par_cond_stats_lock, "record_conditional_parallelism_decision");
+    if (MR_par_cond_stats_file == NULL)
+    {
+        MR_par_cond_stats_file = fopen(MR_PAR_COND_STATS_FILENAME, "w");
+        MR_par_cond_stats_last = descision;
+        MR_par_cond_stats_last_count = 1;
+    }
+    else
+    {
+        if (descision == MR_par_cond_stats_last)
+        {
+            MR_par_cond_stats_last_count++;
+        }
+        else
+        {
+            fprintf(MR_par_cond_stats_file, "%d %d\n", MR_par_cond_stats_last,
+                MR_par_cond_stats_last_count);
+            MR_par_cond_stats_last = descision;
+            MR_par_cond_stats_last_count = 1;
+        }
+    }
+    MR_UNLOCK(&MR_par_cond_stats_lock, "record_conditional_parallelism_decision i");
+}
+
+void MR_write_out_conditional_parallelism_log(void)
+{
+    MR_LOCK(&MR_par_cond_stats_lock, "write_out_conditional_parallelism_log");
+    if (MR_par_cond_stats_file != NULL)
+    {
+        fprintf(MR_par_cond_stats_file, "%d %d\n", MR_par_cond_stats_last,
+            MR_par_cond_stats_last_count);
+        fclose(MR_par_cond_stats_file);
+        MR_par_cond_stats_file = NULL;
+    }
+    MR_UNLOCK(&MR_par_cond_stats_lock, "write_out_conditional_parallelism_log i");
+}
+
+#endif /* MR_DEBUG_RUNTIME_GRANULARITY_CONTROL */
+#endif /* MR_LL_PARALLEL_CONJ */
 
 /* forward decls to suppress gcc warnings */
 void mercury_sys_init_scheduler_wrapper_init(void);

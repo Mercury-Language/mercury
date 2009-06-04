@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sw=4 sts=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -24,6 +24,8 @@
 
 :- module par_builtin.
 :- interface.
+
+:- import_module io.
 
 :- type future(T).
 
@@ -53,10 +55,31 @@
     %
 :- impure pred signal(future(T)::in, T::in) is det.
 
+    % These predicates are intended to be used as conditions to decide if
+    % something should be done in parallel or sequence.  They are true when
+    % they beleive parallel execution is optimisitc and false otherwise.
+    %
+    % They can either be used by compiler transformations or directly in user
+    % code - which is useful for testing.
+    %
+
     % A hook for the compiler's granularity transformation to hang
-    % an arbitrary test on.
+    % an arbitrary test on.  This predicate does not have a definition, it is
+    % simply used as a hook by the compiler.
     %
 :- impure pred evaluate_parallelism_condition is semidet.
+
+    % par_cond_outstanding_jobs_vs_num_cpus(NumCPUs)
+    %
+    % True iff NumCPUs > executable contexts + global sparks.
+    %
+    % Consider passing MR_num_threads as the argument.
+    %
+:- impure pred par_cond_outstanding_jobs_vs_num_cpus(int::in) is semidet.
+
+    % Close the file that was used to log the parallel condition decisions.
+    %
+:- pred par_cond_close_stats_file(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -343,6 +366,39 @@ INIT mercury_sys_init_par_builtin_modules
     /* All uses of this predicate should override the body. */
     MR_fatal_error(""evaluate_parallelism_condition called"");
 ").
+
+:- pragma foreign_proc("C",
+    par_cond_outstanding_jobs_vs_num_cpus(NumCPUs::in),
+    [will_not_call_mercury, thread_safe, may_not_duplicate],
+"
+#ifdef MR_LL_PARALLEL_CONJ
+    SUCCESS_INDICATOR = MR_choose_parallel_over_sequential_cond(NumCPUs);
+ #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
+    MR_record_conditional_parallelism_descision(SUCCESS_INDICATOR);
+ #endif
+#else
+    MR_fatal_error(
+      ""par_cond_outstanding_jobs_vs_num_cpus is unavailable in this grade"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+    par_cond_close_stats_file(IO0::di, IO::uo),
+    [will_not_call_mercury, thread_safe, may_not_duplicate, promise_pure],
+    "
+#ifdef MR_LL_PARALLEL_CONJ
+ #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
+    MR_write_out_conditional_parallelism_log();
+ #else
+    MR_fatal_error(
+      ""par_cond_close_stats_file is unavailable in this build"");
+ #endif
+#else
+    MR_fatal_error(
+      ""par_cond_close_stats_file is unavailable in this grade"");
+#endif
+    IO = IO0; 
+    ").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

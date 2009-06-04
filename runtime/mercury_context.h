@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2007 The University of Melbourne.
+** Copyright (C) 1997-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -388,7 +388,7 @@ extern  MR_PendingContext   *MR_pending_contexts;
   ** XXX We may need to use atomic instructions or memory fences on some
   ** architectures.
   */
-  extern    int     MR_num_idle_engines;
+  extern volatile int   MR_num_idle_engines;
 
   /*
   ** The number of contexts that are not in the free list (i.e. are executing
@@ -406,7 +406,7 @@ extern  MR_PendingContext   *MR_pending_contexts;
   ** scanned.  (Getting the garbage collector not to scan contexts on the free
   ** list should be possible though.)
   */
-  extern    int     MR_num_outstanding_contexts_and_sparks;
+  extern volatile int   MR_num_outstanding_contexts_and_sparks;
 #endif  /* !MR_LL_PARALLEL_CONJ */
 
 /*---------------------------------------------------------------------------*/
@@ -874,6 +874,29 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   /* This needs to come after the definition of MR_SparkDeque_Struct. */
   #include "mercury_wsdeque.h"
 
-#endif /* not MR_LL_PARALLEL_CONJ */
+#ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
+
+  /*
+  ** These functions can be used to debug the runtime granularity control
+  ** methods implemented above.
+  */
+
+  /*
+  ** decision is 1 if we choose to parallelise something and 0 if code should
+  ** be run sequentially.
+  ** This is not (yet) thread safe.
+  */
+  void MR_record_conditional_parallelism_descision(MR_Unsigned descision);
+
+  /*
+  ** flush and close the log of conditional parallelism decisions 
+  ** This is not thread safe.
+  ** This is a no-op if no parallelism decisions have been recorded.
+  */
+  void MR_write_out_conditional_parallelism_log(void);
+
+#endif /* MR_DEBUG_RUNTIME_GRANULARITY_CONTROL */
+
+#endif /* MR_LL_PARALLEL_CONJ */
 
 #endif /* not MERCURY_CONTEXT_H */
