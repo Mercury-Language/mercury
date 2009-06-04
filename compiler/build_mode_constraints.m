@@ -158,9 +158,8 @@
     % satisfied. Predicates with mode inference requested should
     % not be handled by this.
     %
-:- pred mode_decls_constraints(module_info::in, mc_var_map::in,
-    pred_id::in, list(list(mer_mode))::in, list(args)::in,
-    constraint_formulae::out) is det.
+:- pred mode_decls_constraints(module_info::in, mc_var_map::in, pred_id::in,
+    list(list(mer_mode))::in, list(args)::in, list(mc_constraint)::out) is det.
 
     % add_mode_decl_constraints(ModuleInfo, PredId, ProcId,
     %   Decl, Args, !VarInfo, !Constraints)
@@ -201,11 +200,13 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_desc.
 :- import_module libs.
 :- import_module libs.compiler_util.
 
 :- import_module bool.
 :- import_module cord.
+:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -397,13 +398,18 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
     hlds_goal::in, mc_var_info::in, mc_var_info::out, mode_constraints::in,
     mode_constraints::out) is det.
 
-add_goal_constraints(ModuleInfo, ProgVarset, PredId,
-        hlds_goal(GoalExpr, GoalInfo), !VarInfo, !Constraints) :-
+add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal,
+        !VarInfo, !Constraints) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo), 
     Nonlocals = goal_info_get_nonlocals(GoalInfo),
     GoalPath = goal_info_get_goal_path(GoalInfo),
     Context = goal_info_get_context(GoalInfo),
-    add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr, Context,
-        GoalPath, Nonlocals, !VarInfo, !Constraints).
+    trace [compile_time(flag("goal_mode_constraints")), io(!IO)] (
+        GoalDesc = describe_goal(ModuleInfo, ProgVarset, Goal),
+        io.format("constraints for %s:\n", [s(GoalDesc)], !IO)
+    ),
+    add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
+        Context, GoalPath, Nonlocals, !VarInfo, !Constraints).
 
     % add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
     %   Context, GoalPath, Nonlocals, !VarInfo, !Constraints)
@@ -420,8 +426,8 @@ add_goal_constraints(ModuleInfo, ProgVarset, PredId,
     %
 :- pred add_goal_expr_constraints(module_info::in, prog_varset::in,
     pred_id::in, hlds_goal_expr::in, prog_context::in, goal_path::in,
-    nonlocals::in, mc_var_info::in, mc_var_info::out, mode_constraints::in,
-    mode_constraints::out) is det.
+    nonlocals::in, mc_var_info::in, mc_var_info::out,
+    mode_constraints::in, mode_constraints::out) is det.
 
 add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         Context, GoalPath, Nonlocals, !VarInfo, !Constraints) :-
@@ -436,7 +442,8 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             VarMap = rep_var_map(!.VarInfo),
             list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
                 Goals, !VarInfo, !Constraints),
-            map.foldl(add_local_var_conj_constraints(Context),
+            map.foldl(
+                add_local_var_conj_constraints(!.VarInfo ^ mc_varset, Context),
                 locals_positions(ConjConstraintsInfo), !Constraints),
             map.foldl2(add_nonlocal_var_conj_constraints(ProgVarset, PredId,
                 Context, GoalPath), nonlocals_positions(ConjConstraintsInfo),
@@ -503,8 +510,8 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             % is produced at the unification.
             prog_var_at_path(ProgVarset, PredId, RHSvar, GoalPath,
                 RHSvarProducedHere, !VarInfo),
-            not_both(Context, LHSvarProducedHere, RHSvarProducedHere,
-                !Constraints)
+            not_both(!.VarInfo ^ mc_varset, Context,
+                LHSvarProducedHere, RHSvarProducedHere, !Constraints)
         ;
             RHS = rhs_functor(_Functor, _IsExistConstr, Args),
             prog_vars_at_path(ProgVarset, PredId, Args, GoalPath,
@@ -514,15 +521,16 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
                 % Goal: LHSvar = functor(Args)
                 % (a): If one arg is produced here, then they all are.
                 % (b): At most one side of the unification is produced.
-                equivalent(Context, ArgsProducedHere, !Constraints),
-                not_both(Context, LHSvarProducedHere, OneArgProducedHere,
-                    !Constraints)
+                equivalent(!.VarInfo ^ mc_varset ,Context, ArgsProducedHere,
+                    !Constraints),
+                not_both(!.VarInfo ^ mc_varset, Context,
+                    LHSvarProducedHere, OneArgProducedHere, !Constraints)
             ;
                 ArgsProducedHere = [OneArgProducedHere],
                 % Goal: LHSvar = functor(Arg)
                 % At most one side of the unification is produced.
-                not_both(Context, LHSvarProducedHere, OneArgProducedHere,
-                    !Constraints)
+                not_both(!.VarInfo ^ mc_varset, Context,
+                    LHSvarProducedHere, OneArgProducedHere, !Constraints)
             ;
                 ArgsProducedHere = []
                 % Goal: LHSvar = functor
@@ -549,7 +557,8 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         % it must be able to be bound at any.
         EquivVarss = list.map_corresponding(list.cons, NonlocalsHere,
             NonlocalsAtDisjuncts),
-        list.foldl(equivalent(Context), EquivVarss, !Constraints)
+        list.foldl(equivalent(!.VarInfo ^ mc_varset, Context), EquivVarss,
+            !Constraints)
     ;
         GoalExpr = negation(Goal),
         Goal = hlds_goal(_, NegatedGoalInfo),
@@ -568,7 +577,8 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         % The variables non-local to the negation are not to be produced
         % at the negation or any deeper, so we constrain their mode constraint
         % variables for these positions to `no'.
-        list.foldl(equiv_no(Context), NonlocalsConstraintVars, !Constraints)
+        list.foldl(equiv_no(!.VarInfo ^ mc_varset, Context),
+            NonlocalsConstraintVars, !Constraints)
     ;
         GoalExpr = scope(_Reason, Goal),
         Goal = hlds_goal(_, SomeGoalInfo),
@@ -586,7 +596,8 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         EquivVarss = list.map_corresponding(
             func(NlAtPath, NlAtSubPath) = [NlAtPath, NlAtSubPath],
             NonlocalsHere, NonlocalsAtSubGoal),
-        list.foldl(equivalent(Context), EquivVarss, !Constraints),
+        list.foldl(equivalent(!.VarInfo ^ mc_varset, Context), EquivVarss,
+            !Constraints),
 
         add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal, !VarInfo,
             !Constraints)
@@ -635,22 +646,25 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         % constrained equivalent to reflect this.
         EquivVarss = list.map_corresponding3(func(A, B, C) = [A, B, C],
             NonlocalsHere, NonlocalsAtThen, NonlocalsAtElse),
-        list.foldl(equivalent(Context), EquivVarss, !Constraints),
+        list.foldl(equivalent(!.VarInfo ^ mc_varset, Context), EquivVarss,
+            !Constraints),
 
         % No nonlocal is produced in the condition.
-        list.foldl(equiv_no(Context), NonlocalsAtCond, !Constraints),
+        list.foldl(equiv_no(!.VarInfo ^ mc_varset, Context), NonlocalsAtCond,
+            !Constraints),
 
         % In case the program variable appears in the nonlocal set
         % of the condition, but its value is not used, we do not
         % simply constrain LocalAtCond = yes and LocalAtThen = no.
         % Instead we constrain exactly one of them to be yes.
-        list.foldl_corresponding(xor(Context), LocalAndSharedAtCond,
-            LocalAndSharedAtThen, !Constraints)
+        list.foldl_corresponding(xor(!.VarInfo ^ mc_varset, Context),
+            LocalAndSharedAtCond, LocalAndSharedAtThen, !Constraints)
     ;
         GoalExpr = call_foreign_proc(_, CalledPred, ProcId, ForeignArgs,
             _, _, _),
         CallArgs = list.map(foreign_arg_var, ForeignArgs),
-        module_info_pred_proc_info(ModuleInfo, CalledPred, ProcId, _, ProcInfo),
+        module_info_pred_proc_info(ModuleInfo, CalledPred, ProcId, _,
+            ProcInfo),
         ( proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl)) ->
             proc_info_get_argmodes(ProcInfo, Decl),
 
@@ -699,10 +713,10 @@ mode_decls_constraints(ModuleInfo, VarMap, PredId, Decls, HeadVarsList,
         mode_decl_constraints(ModuleInfo), HeadVarsMCVars, Decls),
 
     Constraints0 = list.condense(ConstraintsList),
-    ( Constraints0 = [conj(OneModeOnlyConstraints)] ->
+    ( Constraints0 = [mc_conj(OneModeOnlyConstraints)] ->
         Constraints = OneModeOnlyConstraints
     ;
-        Constraints = [disj(Constraints0)]
+        Constraints = [mc_disj(Constraints0)]
     ).
 
 add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
@@ -716,8 +730,9 @@ add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
 
     DeclConstraints = mode_decl_constraints(ModuleInfo, ArgsAtHead, Decl),
 
-    list.foldl(add_proc_specific_constraint(Context, ProcId), DeclConstraints,
-        !Constraints).
+    list.foldl(
+        add_proc_specific_constraint(!.VarInfo ^ mc_varset, Context, ProcId),
+        DeclConstraints, !Constraints).
 
     % add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
     %   CallingPred, Decls, GoalPath, CallArgs, !VarInfo, !Constraints)
@@ -755,18 +770,19 @@ add_call_mode_decls_constraints(ModuleInfo, ProgVarset, CallContext,
         CallingPred, Decls, GoalPath, CallArgs, !VarInfo, !Constraints) :-
     prog_vars_at_path(ProgVarset, CallingPred, CallArgs, GoalPath,
         CallArgsHere, !VarInfo),
-    ConstraintFormulae = list.condense(list.map(
+    ModeSpecificConstraints = list.condense(list.map(
         mode_decl_constraints(ModuleInfo, CallArgsHere),
         Decls)),
-    ( ConstraintFormulae = [conj(OneModeOnlyConstraints)] ->
-        list.foldl(add_constraint(CallContext), OneModeOnlyConstraints,
-            !Constraints)
+    ( ModeSpecificConstraints = [mc_conj(OneModeOnlyConstraints)] ->
+        list.foldl(add_constraint(!.VarInfo ^ mc_varset, CallContext),
+            OneModeOnlyConstraints, !Constraints)
     ;
-        add_constraint(CallContext, disj(ConstraintFormulae), !Constraints)
+        add_constraint(!.VarInfo ^ mc_varset, CallContext,
+            mc_disj(ModeSpecificConstraints), !Constraints)
     ).
 
     % add_call_headvar_constraints(ProgVarset, Context, GoalPath, Caller,
-    %   CallArgs, Callee, HeadVars, CallArgs, !VarInfo, !Constraints)
+    %   CallArgs, Callee, HeadVars, CallArgs, !VarInfo, !Constraints):
     %
     % Forms constraints that, when satisfied, mean any call arg will be
     % produced if the corresponding headvar is produced by the main goal
@@ -795,7 +811,8 @@ add_call_headvar_constraints(ProgVarset, Context, GoalPath, CallerPredId,
     % of the call.
     EquivVarss = list.map_corresponding(func(A, B) = [A, B],
         HeadVarsAtHead, CallArgsHere),
-    list.foldl(equivalent(Context), EquivVarss, !Constraints).
+    list.foldl(equivalent(!.VarInfo ^ mc_varset, Context), EquivVarss,
+        !Constraints).
 
     % mode_decl_constraints(ModuleInfo, ConstraintVars, ArgModes)
     % looks at each mode in ArgModes to see if its variable is produced,
@@ -803,10 +820,10 @@ add_call_headvar_constraints(ProgVarset, Context, GoalPath, CallerPredId,
     % in ConstraintVars accordingly.
     %
 :- func mode_decl_constraints(module_info, list(mc_var), list(mer_mode)) =
-    constraint_formulae.
+    list(mc_constraint).
 
 mode_decl_constraints(ModuleInfo, ConstraintVars, ArgModes) =
-    [conj(list.map_corresponding(
+    [mc_conj(list.map_corresponding(
         single_mode_constraints(ModuleInfo), ConstraintVars, ArgModes))].
 
     % single_mode_constraints(ModuleInfo, MCVar, Mode) returns a
@@ -815,10 +832,9 @@ mode_decl_constraints(ModuleInfo, ConstraintVars, ArgModes) =
     % at the goal path it refers to.
     %
 :- func single_mode_constraints(module_info, mc_var, mer_mode) =
-    constraint_formula.
+    mc_constraint.
 
-single_mode_constraints(ModuleInfo, MCVar, Mode) =
-        atomic_constraint(equiv_bool(MCVar, IsProduced)) :-
+single_mode_constraints(ModuleInfo, MCVar, Mode) = Constraint :-
     mode_util.mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     (
         % Already produced?
@@ -833,7 +849,8 @@ single_mode_constraints(ModuleInfo, MCVar, Mode) =
     ;
         % free -> free
         IsProduced = no     % Not produced here.
-    ).
+    ),
+    Constraint = mc_atomic(equiv_bool(MCVar, IsProduced)).
 
 %-----------------------------------------------------------------------------%
 
@@ -921,13 +938,16 @@ add_variable_to_conjunct_production_map(VarMap, PredId, GoalPath, ProgVar,
 add_nonlocal_var_conj_constraints(ProgVarset, PredId, Context, GoalPath,
     ProgVar, ProgVarAtConjuncts, !VarInfo, !Constraints) :-
 
-    equiv_disj(Context, ProgVarAtGoalPath, ProgVarAtConjuncts, !Constraints),
-    at_most_one(Context, ProgVarAtConjuncts, !Constraints),
+    equiv_disj(!.VarInfo ^ mc_varset, Context,
+        ProgVarAtGoalPath, ProgVarAtConjuncts, !Constraints),
+    at_most_one(!.VarInfo ^ mc_varset, Context,
+        ProgVarAtConjuncts, !Constraints),
 
     prog_var_at_path(ProgVarset, PredId, ProgVar, GoalPath, ProgVarAtGoalPath,
         !VarInfo).
 
-    % add_local_var_conj_constraints(Context, ProgVar, MCVars, !Constraints)
+    % add_local_var_conj_constraints(MCVarSet, Context, ProgVar, MCVars,
+    %   !Constraints)
     %
     % Adds conjunct constraints relating to ProgVar, to Constraints.
     % ProgVar should be local to the conjunction, and MCVars should
@@ -939,12 +959,13 @@ add_nonlocal_var_conj_constraints(ProgVarset, PredId, Context, GoalPath,
     % The constraints are: the program variable must be produced at
     % exactly one conjunct.
     %
-:- pred add_local_var_conj_constraints(prog_context::in, prog_var::in,
-    list(mc_var)::in, mode_constraints::in, mode_constraints::out) is det.
+:- pred add_local_var_conj_constraints(mc_varset::in, prog_context::in,
+    prog_var::in, list(mc_var)::in,
+    mode_constraints::in, mode_constraints::out) is det.
 
-add_local_var_conj_constraints(Context, _ProgVar, ProgVarAtConjuncts,
+add_local_var_conj_constraints(MCVarSet, Context, _ProgVar, ProgVarAtConjuncts,
         !Constraints) :-
-    exactly_one(Context, ProgVarAtConjuncts, !Constraints).
+    exactly_one(MCVarSet, Context, ProgVarAtConjuncts, !Constraints).
 
     % Initialises the conj_constraints_info_structure.
     %

@@ -260,11 +260,10 @@ proc_reordering(PredConstraints, VarMap, PredId, ProcId, !Errors, !PredInfo) :-
     pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
 
-    ConstraintFormulae =
-        pred_constraints_for_proc_to_formulae(ProcId, PredConstraints),
+    ConstraintsForProc = all_constraints_for_proc(ProcId, PredConstraints),
 
     PrepConstraints0 = new_prep_cstrts,
-    prepare_abstract_constraints(ConstraintFormulae, PrepConstraints0,
+    prepare_abstract_constraints(ConstraintsForProc, PrepConstraints0,
         PrepConstraints1),
     SolverConstraints = make_solver_cstrts(PrepConstraints1),
 

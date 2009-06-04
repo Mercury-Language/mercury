@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -48,7 +48,7 @@
     % Prepares the constraints described in abstract_mode_constraints.m
     % appropriately.
     %
-:- pred prepare_abstract_constraints(constraint_formulae::in,
+:- pred prepare_abstract_constraints(list(mc_constraint)::in,
     prep_cstrts::in, prep_cstrts::out) is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
@@ -167,9 +167,10 @@
 
     % A propagation graph is an optimised representation of a set of
     % binary implication constraints. It consists of a pair of mappings
-    % from vars to consequent assignments, where the LHS of the pair
-    % is the mapping when the var in question is bound to `yes'
-    % and the RHS is the mapping when the var in question is bound to `no'.
+    % from vars to consequent assignments, where prop_graph_yes field
+    % is the mapping when the var in question is bound to `yes', and the
+    % prop_graph_no field is the mapping when the var in question
+    % is bound to `no'.
     %
 :- type prop_graph
     --->    prop_graph(
@@ -239,30 +240,33 @@ prepare_abstract_constraints(Constraints, !PCs) :-
     % Prepares a constraint (as described in abstract_mode_constraints.m)
     % appropriately.
     %
-:- pred prepare_abstract_constraint(constraint_formula::in, prep_cstrts::in,
-    prep_cstrts::out) is det.
+:- pred prepare_abstract_constraint(mc_constraint::in,
+    prep_cstrts::in, prep_cstrts::out) is det.
 
-prepare_abstract_constraint(atomic_constraint(VarConstraint), PCs0, PCs) :-
-    prepare_var_constraint(VarConstraint, PCs0, PCs).
-
-prepare_abstract_constraint(conj(Formulae), !PCs) :-
-    prepare_abstract_constraints(Formulae, !PCs).
-
-prepare_abstract_constraint(disj(Formulae), !PCs) :-
+prepare_abstract_constraint(Constraint, !PCs) :-
     (
-        % Build var - bool pairs assuming structure
-        % disj(conj(assgts), conj(assgts, ...), otherwise fail.
-        list.map(
-            ( pred(conj(Fls)::in, VarValPairs::out) is semidet :-
-                list.map((pred(atomic_constraint(equiv_bool(Var, Val))::in,
-                    (Var - Val)::out) is semidet), Fls, VarValPairs)
-            ),
-            Formulae, DisjOfAssgts)
-    ->
-        disjunction_of_assignments(DisjOfAssgts, !PCs)
+        Constraint = mc_atomic(VarConstraint),
+        prepare_var_constraint(VarConstraint, !PCs)
     ;
-        compiler_util.sorry(this_file,
-            "Disjuction of constraints - general case.")
+        Constraint = mc_conj(Constraints),
+        prepare_abstract_constraints(Constraints, !PCs)
+    ;
+        Constraint = mc_disj(Constraints),
+        (
+            % Build var - bool pairs assuming structure
+            % mc_disj(mc_conj(assgts), mc_conj(assgts), ...), otherwise fail.
+            list.map(
+                ( pred(mc_conj(Fls)::in, VarValPairs::out) is semidet :-
+                    list.map((pred(mc_atomic(equiv_bool(Var, Val))::in,
+                        (Var - Val)::out) is semidet), Fls, VarValPairs)
+                ),
+                Constraints, DisjOfAssgts)
+        ->
+            disjunction_of_assignments(DisjOfAssgts, !PCs)
+        ;
+            compiler_util.sorry(this_file,
+                "Disjuction of constraints - general case.")
+        )
     ).
 
     % Prepares an atomic constraint (as described in
@@ -291,99 +295,96 @@ prepare_var_constraint(exactly_one(Vars), !PCs) :-
 
 %-----------------------------------------------------------------------------%
 
-equivalent(X, Y, PCs0, PCs) :-
-    PCs = PCs0 ^ prep_eqv_vars :=
-        ensure_equivalence(PCs0 ^ prep_eqv_vars, X, Y).
+equivalent(X, Y, !PCs) :-
+    !PCs ^ prep_eqv_vars := ensure_equivalence(!.PCs ^ prep_eqv_vars, X, Y).
 
 %-----------------------------------------------------------------------------%
 
-equivalent([], PCs, PCs).
-equivalent([X | Xs], PCs0, PCs) :-
-    list.foldl(equivalent(X), Xs, PCs0, PCs).
+equivalent([], !PCs).
+equivalent([X | Xs], !PCs) :-
+    list.foldl(equivalent(X), Xs, !PCs).
 
 %-----------------------------------------------------------------------------%
 
-implies(X, Y, PCs0, PCs) :-
-    PCs = PCs0 ^ prep_impls := [ (X == yes) `implies` (Y == yes),
+implies(X, Y, !PCs) :-
+    !PCs ^ prep_impls := [ (X == yes) `implies` (Y == yes),
                                  (Y == no)  `implies` (X == no)
-                               | PCs0 ^ prep_impls ].
+                         | !.PCs ^ prep_impls ].
 
 %-----------------------------------------------------------------------------%
 
-not_both(X, Y, PCs0, PCs) :-
-    PCs = PCs0 ^ prep_impls := [ (X == yes) `implies` (Y == no),
+not_both(X, Y, !PCs) :-
+    !PCs ^ prep_impls := [ (X == yes) `implies` (Y == no),
                                  (Y == yes) `implies` (X == no)
-                               | PCs0 ^ prep_impls ].
+                         | !.PCs ^ prep_impls ].
 
 %-----------------------------------------------------------------------------%
 
-different(X, Y, PCs0, PCs) :-
-    PCs = PCs0 ^ prep_impls := [ (X == yes) `implies` (Y == no),
+different(X, Y, !PCs) :-
+    !PCs ^ prep_impls := [ (X == yes) `implies` (Y == no),
                                  (X == no)  `implies` (Y == yes),
                                  (Y == yes) `implies` (X == no),
                                  (Y == no)  `implies` (X == yes)
-                               | PCs0 ^ prep_impls ].
+                         | !.PCs ^ prep_impls ].
 
 %-----------------------------------------------------------------------------%
 
-assign(X, V, PCs0, PCs) :-
-    PCs = PCs0 ^ prep_assgts := [(X == V) | PCs0 ^ prep_assgts].
+assign(X, V, !PCs) :-
+    !PCs ^ prep_assgts := [(X == V) | !.PCs ^ prep_assgts].
 
 %-----------------------------------------------------------------------------%
 
-equivalent_to_disjunction(X, Ys, PCs0, PCs) :-
+equivalent_to_disjunction(X, Ys, !PCs) :-
     (
         Ys = [],
-        assign(X, no, PCs0, PCs)
+        assign(X, no, !PCs)
     ;
         Ys = [Y],
-        equivalent(X, Y, PCs0, PCs)
+        equivalent(X, Y, !PCs)
     ;
         Ys = [_, _ | _],
-        PCs = PCs0 ^ prep_complex_cstrts :=
-            [eqv_disj(X, Ys) | PCs0 ^ prep_complex_cstrts]
+        !PCs ^ prep_complex_cstrts :=
+            [eqv_disj(X, Ys) | !.PCs ^ prep_complex_cstrts]
     ).
 
 %-----------------------------------------------------------------------------%
 
-at_most_one(Xs, PCs0, PCs) :-
+at_most_one(Xs, !PCs) :-
     (
-        Xs = [],
-        PCs = PCs0
+        Xs = []
     ;
-        Xs = [_],
-        PCs = PCs0
+        Xs = [_]
     ;
         Xs = [X, Y],
-        not_both(X, Y, PCs0, PCs)
+        not_both(X, Y, !PCs)
     ;
         Xs = [_, _, _ | _],
-        PCs = PCs0 ^ prep_complex_cstrts :=
-            [at_most_one(Xs) | PCs0 ^ prep_complex_cstrts]
+        !PCs ^ prep_complex_cstrts :=
+            [at_most_one(Xs) | !.PCs ^ prep_complex_cstrts]
     ).
 
 %-----------------------------------------------------------------------------%
 
-exactly_one(Xs, PCs0, PCs) :-
+exactly_one(Xs, !PCs) :-
     (
         Xs = [],
-        PCs = PCs0
+        unexpected(this_file, "exactly_one of zero variables")
     ;
         Xs = [X],
-        assign(X, yes, PCs0, PCs)
+        assign(X, yes, !PCs)
     ;
         Xs = [_, _ | _],
-        PCs = PCs0 ^ prep_complex_cstrts :=
-            [exactly_one(Xs) | PCs0 ^ prep_complex_cstrts]
+        !PCs ^ prep_complex_cstrts :=
+            [exactly_one(Xs) | !.PCs ^ prep_complex_cstrts]
     ).
 
 %-----------------------------------------------------------------------------%
 
-disjunction_of_assignments(DisjOfAssgts, PCs0, PCs) :-
+disjunction_of_assignments(DisjOfAssgts, !PCs) :-
     Assgtss =
         list.map(list.map(func((Var - Value)) = (Var == Value)), DisjOfAssgts),
-    PCs = PCs0 ^ prep_complex_cstrts :=
-        [disj_of_assgts(Assgtss) | PCs0 ^ prep_complex_cstrts].
+    !PCs ^ prep_complex_cstrts :=
+        [disj_of_assgts(Assgtss) | !.PCs ^ prep_complex_cstrts].
 
 %-----------------------------------------------------------------------------%
 
@@ -574,6 +575,7 @@ solve_assgts(SCs, Assgts, Bs0, Bs) :-
     mc_bindings::in, mc_bindings::out) is semidet.
 
 solve_assgt(SCs, (X == V), Bs0, Bs) :-
+    % XXX
     ( Bs0 ^ elem(X) = V0 ->
         ( V = V0 ->
             true
@@ -588,6 +590,7 @@ solve_assgt(SCs, (X == V), Bs0, Bs) :-
         trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
             io.write_string(".", !IO)
         ),
+        % XXX
         Bs1 = Bs0 ^ elem(X) := V,
 
         Assgts = var_consequents(SCs ^ prop_graph, X, V),
@@ -754,7 +757,7 @@ solve_vars(SCs, Vars, Bs0, Bs) :-
     mc_bindings::in, mc_bindings::out) is nondet.
 
 solve_var(SCs, X, Bs0, Bs) :-
-    ( contains(Bs0, X) ->
+    ( map.contains(Bs0, X) ->
         Bs = Bs0
     ;
         ( V = yes ; V = no ),
@@ -773,6 +776,7 @@ solve_var(SCs, X, Bs0, Bs) :-
 
 all_yes(_,  []).
 all_yes(Bs, [X | Xs]) :-
+    % XXX
     Bs ^ elem(X) = yes,
     all_yes(Bs, Xs).
 
@@ -782,6 +786,7 @@ all_yes(Bs, [X | Xs]) :-
 
 all_no(_,  []).
 all_no(Bs, [X | Xs]) :-
+    % XXX
     Bs ^ elem(X) = no,
     all_no(Bs, Xs).
 
