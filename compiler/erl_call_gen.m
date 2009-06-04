@@ -265,31 +265,6 @@ make_nondet_call(CallTarget, InputExprs, OutputVars, SuccessCont0,
     Statement = elds_call(CallTarget, InputExprs ++ [SuccessCont]).
 
 %-----------------------------------------------------------------------------%
-
-    % materialise_dummies_before_expr(Info, Vars, Expr0, Expr)
-    %
-    % Materialise any variables in Vars which are of dummy types (hence proably
-    % don't exist) before evaluating Expr0.  We arbitrarily assign dummy
-    % variables to `false', hence variables in Vars must either not exist or
-    % already be bound to `false'.
-    %
-:- pred materialise_dummies_before_expr(erl_gen_info::in, prog_vars::in,
-    elds_expr::in, elds_expr::out) is det.
-
-materialise_dummies_before_expr(Info, Vars, Expr0, Expr) :-
-    list.filter_map(assign_false_if_dummy(Info), Vars, AssignDummyVars),
-    Expr = join_exprs(elds_block(AssignDummyVars), Expr0).
-
-:- pred assign_false_if_dummy(erl_gen_info::in, prog_var::in, elds_expr::out)
-    is semidet.
-
-assign_false_if_dummy(Info, Var, AssignFalse) :-
-    erl_gen_info_get_module_info(Info, ModuleInfo),
-    erl_variable_type(Info, Var, VarType),
-    check_dummy_type(ModuleInfo, VarType) = is_dummy_type,
-    AssignFalse = var_eq_false(Var).
-
-%-----------------------------------------------------------------------------%
 %
 % Code for generic calls
 %
@@ -311,11 +286,7 @@ erl_gen_higher_order_call(GenericCall, ArgVars, Modes, Detism,
     determinism_to_code_model(Detism, CallCodeModel),
     CallTarget = elds_call_ho(expr_from_var(ClosureVar)),
     erl_make_call_replace_dummies(!.Info, CallCodeModel, CallTarget, InputVars,
-        OutputVars, MaybeSuccessExpr, DoCall),
-
-    % The callee function is responsible for materialising dummy output
-    % variables.
-    materialise_dummies_before_expr(!.Info, InputVars, DoCall, Statement).
+        OutputVars, MaybeSuccessExpr, Statement).
 
 %-----------------------------------------------------------------------------%
 

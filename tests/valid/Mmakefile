@@ -240,7 +240,8 @@ OTHER_PROGS= \
 	unused_args_test2 \
 	vn_float \
 	wrapper_arg_lvals \
-	zero_arity
+	zero_arity \
+	zf_erlang_bug
 
 C_INTERFACE_PROGS = \
 	intermod_pragma_import
