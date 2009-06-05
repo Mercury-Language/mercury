@@ -625,6 +625,43 @@ ML_init_array(MR_ArrayPtr array, MR_Integer size, MR_Word item)
 }
 ").
 
+:- pragma foreign_code("Java", "
+static Object
+ML_new_array(int Size, Object Item)
+{
+    if (Item instanceof Integer) {
+        return new int[Size];
+    }
+    if (Item instanceof Double) {
+        return new double[Size];
+    }
+    if (Item instanceof Character) {
+        return new char[Size];
+    }
+    if (Item instanceof Boolean) {
+        return new boolean[Size];
+    }
+
+    // We must find the class corresponding to the Mercury type.
+    // For enumerations this is the class of the Item.
+    // For general d.u. types the class of the Item corresponds
+    // to a functor, so we want the enclosing class.
+
+    java.lang.Class itemClass = Item.getClass();
+    boolean found = false;
+    for (java.lang.Class iface : itemClass.getInterfaces()) {
+        if (iface == mercury.runtime.MercuryType.class) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        itemClass = itemClass.getEnclosingClass();
+    }
+    return java.lang.reflect.Array.newInstance(itemClass, Size);
+}
+").
+
 array.init(Size, Item, Array) :-
     ( Size < 0 ->
         error("array.init: negative size")
@@ -696,9 +733,7 @@ array.init(Size, Item, Array) :-
     array.init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    java.lang.Class itemClass = Item.getClass();
-
-    Array = java.lang.reflect.Array.newInstance(itemClass, Size);
+    Array = ML_new_array(Size, Item);
     for (int i = 0; i < Size; i++) {
         java.lang.reflect.Array.set(Array, i, Item);
     }
@@ -1057,19 +1092,17 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
     array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    java.lang.Class itemClass = Item.getClass();
-
     if (Size == 0) {
         Array = null;
     } else if (Array0 == null) {
-        Array = java.lang.reflect.Array.newInstance(itemClass, Size);
+        Array = ML_new_array(Size, Item);
         for (int i = 0; i < Size; i++) {
             java.lang.reflect.Array.set(Array, i, Item);
         }
     } else if (java.lang.reflect.Array.getLength(Array0) == Size) {
         Array = Array0;
     } else {
-        Array = java.lang.reflect.Array.newInstance(itemClass, Size);
+        Array = ML_new_array(Size, Item);
 
         int i;
         for (i = 0; i < java.lang.reflect.Array.getLength(Array0) &&

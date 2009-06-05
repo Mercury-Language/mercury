@@ -107,6 +107,7 @@
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -414,6 +415,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         BaseClassModuleName, QualKind, Globals,
         BaseClassName, BaseClassArity),
 
+    globals.get_target(Globals, Target),
     (
         % If none of the constructors for this type need a secondary tag,
         % then we don't need the members for the secondary tag.
@@ -449,7 +451,6 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
             TagMembers = TagMembers0,
             TagClassId = BaseClassId
         ;
-            globals.get_target(Globals, Target),
             ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier,
                 BaseClassId, TagMembers0, Target, TagTypeDefn, TagClassId),
             TagMembers = [TagTypeDefn]
@@ -467,7 +468,19 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
     % The base class doesn't import or inherit anything.
     Imports = [],
     Inherits = [],
-    Implements = [],
+
+    % For the implementation of arrays in Java, we need to be able to find out
+    % whether a class corresponds to a Mercury type or functor.  We make
+    % classes corresponding to types implement the MercuryType interface.
+    ( Target = target_java ->
+        InterfaceModuleName = mercury_module_name_to_mlds(
+            java_names.mercury_runtime_package_name),
+        Interface = qual(InterfaceModuleName, module_qual, "MercuryType"),
+        InterfaceDefn = mlds_class_type(Interface, 0, mlds_interface),
+        Implements = [InterfaceDefn]
+    ;
+        Implements = []
+    ),
 
     % Put it all together.
     Members = MaybeEqualityMembers ++ TagMembers ++ CtorMembers,
