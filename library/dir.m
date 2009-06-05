@@ -1224,11 +1224,29 @@ dir.check_dir_accessibility(DirName, Res, !IO) :-
 %-----------------------------------------------------------------------------%
 
 dir.foldl2(P, DirName, T, Res, !IO) :-
-    dir.foldl2_process_dir(no, P, DirName, [], no, no, _, T, Res, !IO).
+    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], no, no, _, T, Res, !IO).
 
 dir.recursive_foldl2(P, DirName, FollowLinks, T, Res, !IO) :-
-    dir.foldl2_process_dir(no, P, DirName, [], yes, FollowLinks, _,
+    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], yes, FollowLinks, _,
         T, Res, !IO).
+
+    %
+    % Under windows you cannot list the files of a directory if the directory
+    % name contains a trailing slash, except when the trailing slash indicates
+    % the root directory.
+    %
+    % This function removes the trailing slash, except when we are in the
+    % root directory.
+    %
+:- func fixup_dirname(string) = string.
+
+fixup_dirname(Dir0) = Dir :-
+    DirChars = canonicalize_path_chars(string.to_char_list(Dir0)),
+    ( is_root_directory(DirChars) ->
+        Dir = Dir0
+    ;
+        Dir = string.from_char_list(remove_trailing_dir_separator(DirChars))
+    ).
 
 :- pred dir.foldl2_process_dir(bool::in,
     dir.foldl_pred(T)::in(dir.foldl_pred), string::in,
