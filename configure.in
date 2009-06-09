@@ -3364,7 +3364,7 @@ fi
 
 # Add `.debug' (--debug) and `.decldebug' (--decl-debug) grades.
 if test "$enable_debug_grades" = yes; then
-    LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.debug"
+    LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.debug"
     if test "$enable_decl_debug_grades" = yes; then
         LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.decldebug"
     fi
@@ -3405,7 +3405,7 @@ then
     
     if test "$enable_debug_grades" = "yes"
     then
-        LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.debug.stseg"
+        LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.debug.stseg"
         if test "$enable_decl_debug_grades" = "yes"
         then
             LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.decldebug.stseg"
