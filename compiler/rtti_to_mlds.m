@@ -1210,8 +1210,8 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
     ->
         % rtti_data_to_id/3 does not handle this case
         SrcType = mlds_native_int_type,
-        Initializer = init_obj(unop(gen_cast(SrcType, DestType),
-            const(mlconst_int(VarNum))))
+        Initializer = init_obj(ml_unop(gen_cast(SrcType, DestType),
+            ml_const(mlconst_int(VarNum))))
     ;
         RttiData = rtti_data_base_typeclass_info(TCName, InstanceModuleName,
             InstanceString, _)
@@ -1224,8 +1224,8 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
             type_class_base_typeclass_info(
                 InstanceModuleName, InstanceString))),
         DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
-        Rval = const(mlconst_data_addr(DataAddr)),
-        Initializer = init_obj(unop(gen_cast(SrcType, DestType), Rval))
+        Rval = ml_const(mlconst_data_addr(DataAddr)),
+        Initializer = init_obj(ml_unop(gen_cast(SrcType, DestType), Rval))
     ;
         rtti_data_to_id(RttiData, RttiId),
         Initializer = gen_init_cast_rtti_id(DestType, ModuleName, RttiId)
@@ -1282,7 +1282,7 @@ gen_init_tc_rtti_name(ModuleName, TCName, TCRttiName) =
 
 gen_init_cast_rtti_id(DestType, ModuleName, RttiId) = Initializer :-
     SrcType = mlds_rtti_type(item_type(RttiId)),
-    Initializer = init_obj(unop(gen_cast(SrcType, DestType),
+    Initializer = init_obj(ml_unop(gen_cast(SrcType, DestType),
         gen_rtti_id(ModuleName, RttiId))).
 
     % Generate the MLDS rval for an rtti_id.
@@ -1336,7 +1336,7 @@ gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     MLDS_DataName = mlds_rtti(ctor_rtti_id(RttiTypeCtor, RttiName)),
     DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
-    Rval = const(mlconst_data_addr(DataAddr)).
+    Rval = ml_const(mlconst_data_addr(DataAddr)).
 
 :- func gen_tc_rtti_name(module_name, tc_name, tc_rtti_name) = mlds_rval.
 
@@ -1380,7 +1380,7 @@ gen_tc_rtti_name(_ThisModuleName, TCName, TCRttiName) = Rval :-
     ),
     MLDS_DataName = mlds_rtti(tc_rtti_id(TCName, TCRttiName)),
     DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
-    Rval = const(mlconst_data_addr(DataAddr)).
+    Rval = ml_const(mlconst_data_addr(DataAddr)).
 
 :- func mlds_module_name_from_tc_name(tc_name) = mlds_module_name.
 
@@ -1498,7 +1498,7 @@ gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
 
     % The initializer for the wrapper is just the wrapper function's address,
     % converted to mlds_generic_type (by boxing).
-    Init = init_obj(unop(box(WrapperFuncType), WrapperFuncRval)).
+    Init = init_obj(ml_unop(box(WrapperFuncType), WrapperFuncRval)).
 
 :- func gen_init_proc_id(module_info, rtti_proc_label) = mlds_initializer.
 
@@ -1511,14 +1511,14 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Init :-
         mlds_proc_label(PredLabel, ProcId)),
     Params = ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId),
     Signature = mlds_get_func_signature(Params),
-    ProcAddrRval = const(mlconst_code_addr(
+    ProcAddrRval = ml_const(mlconst_code_addr(
         code_addr_proc(QualifiedProcLabel, Signature))),
 
     % Convert the procedure address to a generic type. We need to use a
     % generic type because since the actual type for the procedure will
     % depend on how many type_info parameters it takes, which will depend
     % on the type's arity.
-    ProcAddrArg = unop(box(mlds_func_type(Params)), ProcAddrRval),
+    ProcAddrArg = ml_unop(box(mlds_func_type(Params)), ProcAddrRval),
     Init = init_obj(ProcAddrArg).
 
 :- func gen_init_proc_id_from_univ(module_info, univ) =

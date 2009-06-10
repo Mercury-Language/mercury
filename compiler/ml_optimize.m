@@ -270,7 +270,7 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
         % the C code doesn't help with the --target asm back-end, whereas
         % generating the appropriate MLDS instructions does.
 
-        FuncRval = const(mlconst_code_addr(
+        FuncRval = ml_const(mlconst_code_addr(
             code_addr_proc(qual(ModName, module_qual, ProcLabel),
                 _FuncSignature))),
         ProcLabel = mlds_proc_label(PredLabel, _ProcId),
@@ -278,7 +278,7 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
             _Arity, _CodeModel, _NonOutputFunc),
         (
             PredName = "mark_hp",
-            CallArgs = [mem_addr(Lval)],
+            CallArgs = [ml_mem_addr(Lval)],
             AtomicStmt = mark_hp(Lval)
         ;
             PredName = "restore_hp",
@@ -304,11 +304,11 @@ tailcall_loop_top(Globals) = Target :-
         % `while (true) { ... break; }', and so to branch to the top of the
         % function, we just do a `continue' which will continue the next
         % iteration of the loop.
-        Target = continue
+        Target = goto_continue
     ;
         % A label has been inserted at the start of the function, and so to
         % branch to the top of the function, we just branch to that label.
-        Target = label(tailcall_loop_label_name)
+        Target = goto_label(tailcall_loop_label_name)
     ).
 
     % The label name we use for the top of the loop introduced by
@@ -336,13 +336,13 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
     Arg = mlds_argument(Name, Type, _ArgGCStatement),
     (
         % Extract the variable name.
-        Name = entity_data(var(VarName))
+        Name = entity_data(mlds_data_var(VarName))
     ->
         ModuleName = OptInfo ^ oi_module_name,
         QualVarName = qual(ModuleName, module_qual, VarName),
         (
             % Don't bother assigning a variable to itself.
-            ArgRval = lval(var(QualVarName, _VarType))
+            ArgRval = ml_lval(ml_var(QualVarName, _VarType))
         ->
             generate_assign_args(OptInfo, Args, ArgRvals,
                 Statements, TempDefns)
@@ -374,15 +374,15 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
             % are not live across a call or a heap allocation.
             GCStatement = gc_no_stmt,
             Context = OptInfo ^ oi_context,
-            TempDefn = ml_gen_mlds_var_decl_init(var(TempName), Type,
+            TempDefn = ml_gen_mlds_var_decl_init(mlds_data_var(TempName), Type,
                 Initializer, GCStatement, Context),
             TempInitStatement = statement(
-                ml_stmt_atomic(assign(var(QualTempName, Type), ArgRval)),
+                ml_stmt_atomic(assign(ml_var(QualTempName, Type), ArgRval)),
                 Context),
             AssignStatement = statement(
                 ml_stmt_atomic(assign(
-                    var(QualVarName, Type),
-                    lval(var(QualTempName, Type)))),
+                    ml_var(QualVarName, Type),
+                    ml_lval(ml_var(QualTempName, Type)))),
                 Context),
             generate_assign_args(OptInfo, Args, ArgRvals,
                 Statements0, TempDefns0),
@@ -443,11 +443,11 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
             %   }
             % Any tail calls in the function body will have
             % been replaced with `continue' statements.
-            Stmt = ml_stmt_while(const(mlconst_true),
+            Stmt = ml_stmt_while(ml_const(mlconst_true),
                 statement(ml_stmt_block([],
                     [CommentStmt,
                     statement(Stmt0, Context),
-                    statement(ml_stmt_goto(break), Context)]),
+                    statement(ml_stmt_goto(goto_break), Context)]),
                 Context), no)
         ;
             % Add a loop_top label at the start of the function
@@ -617,9 +617,9 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
         % of the variables declared in the block.
         !.Statements = [AssignStatement | !:Statements],
         AssignStatement = statement(ml_stmt_atomic(assign(LHS, RHS)), _),
-        LHS = var(ThisVar, _ThisType),
+        LHS = ml_var(ThisVar, _ThisType),
         ThisVar = qual(Qualifier, QualKind, VarName),
-        ThisData = qual(Qualifier, QualKind, var(VarName)),
+        ThisData = qual(Qualifier, QualKind, mlds_data_var(VarName)),
         Qualifier = OptInfo ^ oi_module_name,
         list.takewhile(isnt(var_defn(VarName)), !.Defns,
             _PrecedingDefns, [_VarDefn | FollowingDefns]),
@@ -654,7 +654,7 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
 :- pred var_defn(mlds_var_name::in, mlds_defn::in) is semidet.
 
 var_defn(VarName, Defn) :-
-    Defn = mlds_defn(entity_data(var(VarName)), _, _, _).
+    Defn = mlds_defn(entity_data(mlds_data_var(VarName)), _, _, _).
 
     % set_initializer(VarName, Rval, Defns0, Defns):
     %
@@ -669,7 +669,7 @@ set_initializer(_, _, [], _) :-
 set_initializer(VarName, Rval, [Defn0 | Defns0], [Defn | Defns]) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        Name = entity_data(var(VarName)),
+        Name = entity_data(mlds_data_var(VarName)),
         DefnBody0 = mlds_data(Type, _OldInitializer, GCStatement)
     ->
         DefnBody = mlds_data(Type, init_obj(Rval), GCStatement),
@@ -755,7 +755,7 @@ try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Statements) :-
     Defn0 = mlds_defn(Name, _Context, Flags, DefnBody),
 
     % Check if this definition is a local variable definition...
-    Name = entity_data(var(VarName)),
+    Name = entity_data(mlds_data_var(VarName)),
     Flags = ml_gen_local_var_decl_flags,
     DefnBody = mlds_data(_Type, Initializer, _GCStatement),
 
@@ -805,28 +805,28 @@ try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Statements) :-
 :- pred rval_is_cheap_enough_to_duplicate(mlds_rval::in) is semidet.
 
 rval_is_cheap_enough_to_duplicate(Rval) :-
-    ( Rval = const(_)
-    ; Rval = lval(var(_, _))
-    ; Rval = mem_addr(_)
-    ; Rval = self(_)
+    ( Rval = ml_const(_)
+    ; Rval = ml_lval(ml_var(_, _))
+    ; Rval = ml_mem_addr(_)
+    ; Rval = ml_self(_)
     ).
 
     % Succeed only if the specified rval definitely won't change in value.
     %
 :- pred rval_will_not_change(mlds_rval::in) is semidet.
 
-rval_will_not_change(const(_)).
-rval_will_not_change(mkword(_Tag, Rval)) :-
+rval_will_not_change(ml_const(_)).
+rval_will_not_change(ml_mkword(_Tag, Rval)) :-
     rval_will_not_change(Rval).
-rval_will_not_change(unop(_Op, Rval)) :-
+rval_will_not_change(ml_unop(_Op, Rval)) :-
     rval_will_not_change(Rval).
-rval_will_not_change(binop(_Op, Rval1, Rval2)) :-
+rval_will_not_change(ml_binop(_Op, Rval1, Rval2)) :-
     rval_will_not_change(Rval1),
     rval_will_not_change(Rval2).
-rval_will_not_change(mem_addr(var(_, _))).
-rval_will_not_change(mem_addr(mem_ref(Address, _Type))) :-
+rval_will_not_change(ml_mem_addr(ml_var(_, _))).
+rval_will_not_change(ml_mem_addr(ml_mem_ref(Address, _Type))) :-
     rval_will_not_change(Address).
-rval_will_not_change(mem_addr(field(_, Address, _, _, _))) :-
+rval_will_not_change(ml_mem_addr(ml_field(_, Address, _, _, _))) :-
     rval_will_not_change(Address).
 
     % Succeed only if the given rval definitely can't loop,
@@ -835,11 +835,11 @@ rval_will_not_change(mem_addr(field(_, Address, _, _, _))) :-
     %
 :- pred rval_cannot_throw(mlds_rval::in) is semidet.
 
-rval_cannot_throw(const(_)).
-rval_cannot_throw(mkword(_Tag, Rval)) :-
+rval_cannot_throw(ml_const(_)).
+rval_cannot_throw(ml_mkword(_Tag, Rval)) :-
     rval_cannot_throw(Rval).
-rval_cannot_throw(mem_addr(_)).
-rval_cannot_throw(self(_)).
+rval_cannot_throw(ml_mem_addr(_)).
+rval_cannot_throw(ml_self(_)).
 
     % Search through a list of statements, trying to find the first assignment
     % to the specified variable. Return the initial value, and a modified list
@@ -865,7 +865,7 @@ find_initial_val_in_statements(VarName, Rval, [Statement0 | Statements0],
         % that Statement0 can't modify the variable's value is it safe to go
         % on and look for the initial value in Statements0.
         VarName = qual(Mod, QualKind, UnqualVarName),
-        DataName = qual(Mod, QualKind, var(UnqualVarName)),
+        DataName = qual(Mod, QualKind, mlds_data_var(UnqualVarName)),
         \+ statement_contains_var(Statement0, DataName),
         \+ (
             statement_contains_statement(Statement0, Label),
@@ -882,13 +882,13 @@ find_initial_val_in_statements(VarName, Rval, [Statement0 | Statements0],
 find_initial_val_in_statement(Var, Rval, Statement0, Statement) :-
     Statement0 = statement(Stmt0, Context),
     Statement = statement(Stmt, Context),
-    ( Stmt0 = ml_stmt_atomic(assign(var(Var, _Type), Rval0)) ->
+    ( Stmt0 = ml_stmt_atomic(assign(ml_var(Var, _Type), Rval0)) ->
         Rval = Rval0,
         % Delete the assignment, by replacing it with an empty block.
         Stmt = ml_stmt_block([], [])
     ; Stmt0 = ml_stmt_block(Defns0, SubStatements0) ->
         Var = qual(Mod, QualKind, UnqualVarName),
-        Data = qual(Mod, QualKind, var(UnqualVarName)),
+        Data = qual(Mod, QualKind, mlds_data_var(UnqualVarName)),
         \+ defns_contains_var(Defns0, Data),
         find_initial_val_in_statements(Var, Rval,
             SubStatements0, SubStatements),
@@ -1003,9 +1003,9 @@ eliminate_var_in_maybe_rval(yes(Rval0), yes(Rval), !VarElimInfo) :-
 
 eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
     (
-        Rval0 = lval(Lval0),
+        Rval0 = ml_lval(Lval0),
         VarName = !.VarElimInfo ^ var_name,
-        ( Lval0 = var(VarName, _) ->
+        ( Lval0 = ml_var(VarName, _) ->
             % We found an rvalue occurrence of the variable -- replace it
             % with the rval for the variable's value, and increment the counter
             % for the number of occurrences that we have replaced.
@@ -1014,30 +1014,30 @@ eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
             !:VarElimInfo = !.VarElimInfo ^ replace_count := Count0 + 1
         ;
             eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
-            Rval = lval(Lval)
+            Rval = ml_lval(Lval)
         )
     ;
-        Rval0 = mkword(Tag, ArgRval0),
+        Rval0 = ml_mkword(Tag, ArgRval0),
         eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
-        Rval = mkword(Tag, ArgRval)
+        Rval = ml_mkword(Tag, ArgRval)
     ;
-        Rval0 = const(_),
+        Rval0 = ml_const(_),
         Rval = Rval0
     ;
-        Rval0 = unop(Op, ArgRval0),
+        Rval0 = ml_unop(Op, ArgRval0),
         eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
-        Rval = unop(Op, ArgRval)
+        Rval = ml_unop(Op, ArgRval)
     ;
-        Rval0 = binop(Op, Arg1Rval0, Arg2Rval0),
+        Rval0 = ml_binop(Op, Arg1Rval0, Arg2Rval0),
         eliminate_var_in_rval(Arg1Rval0, Arg1Rval, !VarElimInfo),
         eliminate_var_in_rval(Arg2Rval0, Arg2Rval, !VarElimInfo),
-        Rval = binop(Op, Arg1Rval, Arg2Rval)
+        Rval = ml_binop(Op, Arg1Rval, Arg2Rval)
     ;
-        Rval0 = mem_addr(Lval0),
+        Rval0 = ml_mem_addr(Lval0),
         eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
-        Rval = mem_addr(Lval)
+        Rval = ml_mem_addr(Lval)
     ;
-        Rval0 = self(_Type),
+        Rval0 = ml_self(_Type),
         Rval = Rval0
     ).
 
@@ -1052,24 +1052,24 @@ eliminate_var_in_lvals(!Lvals, !VarElimInfo) :-
 
 eliminate_var_in_lval(Lval0, Lval, !VarElimInfo) :-
     (
-        Lval0 = field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
+        Lval0 = ml_field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
-        Lval = field(MaybeTag, Rval, FieldId, FieldType, PtrType)
+        Lval = ml_field(MaybeTag, Rval, FieldId, FieldType, PtrType)
     ;
-        Lval0 = mem_ref(Rval0, Type),
+        Lval0 = ml_mem_ref(Rval0, Type),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
-        Lval = mem_ref(Rval, Type)
+        Lval = ml_mem_ref(Rval, Type)
     ;
-        Lval0 = global_var_ref(_Ref),
+        Lval0 = ml_global_var_ref(_Ref),
         Lval = Lval0
     ;
-        Lval0 = var(VarName, _Type),
+        Lval0 = ml_var(VarName, _Type),
         ( VarName = !.VarElimInfo ^ var_name ->
             % We found an lvalue occurrence of the variable -- if the variable
             % that we are trying to eliminate has its address is taken,
             % or is assigned to, or in general if it is used as an lvalue,
             % then it's not safe to eliminate it
-            !:VarElimInfo = !.VarElimInfo ^ invalidated := yes
+            !VarElimInfo ^ invalidated := yes
         ;
             true
         ),
@@ -1266,7 +1266,7 @@ eliminate_var_in_target_code_component(Component0, Component, !VarElimInfo) :-
     (
         ( Component0 = raw_target_code(_Code, _Attrs)
         ; Component0 = user_target_code(_Code, _Context, _Attrs)
-        ; Component0 = name(_Name)
+        ; Component0 = target_code_name(_Name)
         ),
         Component = Component0
     ;

@@ -759,7 +759,7 @@ build_field_defns([Defn|Defns], ModuleName, GlobalInfo, FieldList,
 	build_field_defn(Defn, ModuleName, GlobalInfo, GCC_FieldDefn),
 	% Insert the field definition into our field symbol table.
 	{ Defn = mlds_defn(Name, _, _, _) },
-	( { Name = entity_data(var(FieldName)) } ->
+	( { Name = entity_data(mlds_data_var(FieldName)) } ->
 		{ GCC_FieldName = ml_var_name_to_string(FieldName) },
 		{ FieldTable1 = map__det_insert(FieldTable0,
 			qual(ModuleName, type_qual, GCC_FieldName),
@@ -1153,7 +1153,7 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 	build_type(Type, initializer_array_size(Initializer),
 		DefnInfo ^ global_info, GCC_Type),
 	{ Name = qual(_ModuleName, _QualKind, UnqualName) },
-	( { UnqualName = entity_data(var(VarName0)) } ->
+	( { UnqualName = entity_data(mlds_data_var(VarName0)) } ->
 		{ VarName = VarName0 }
 	;
 		% var/1 should be the only kind of mlds_data_name for which
@@ -1201,7 +1201,7 @@ build_field_data_defn(Name, Type, Initializer, GlobalInfo, GCC_Defn) -->
 	build_type(Type, initializer_array_size(Initializer),
 		GlobalInfo, GCC_Type),
 	{ Name = qual(_ModuleName, _QualKind, UnqualName) },
-	( { UnqualName = entity_data(var(VarName)) } ->
+	( { UnqualName = entity_data(mlds_data_var(VarName)) } ->
 		{ GCC_VarName = ml_var_name_to_string(VarName) },
 		gcc__build_field_decl(GCC_VarName, GCC_Type, GCC_Defn)
 	;
@@ -1399,7 +1399,7 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
 	% not for base classes.
 	GCStatement = gc_no_stmt,
 	MLDS_Defn = mlds_defn(
-		entity_data(var(mlds_var_name(BaseName, no))), Context,
+		entity_data(mlds_data_var(mlds_var_name(BaseName, no))), Context,
 		ml_gen_public_field_decl_flags,
 		mlds_data(Type, no_initializer, GCStatement)),
 	BaseNum = BaseNum0 + 1.
@@ -1706,7 +1706,7 @@ build_param_types_and_decls([Arg|Args], ModuleName, GlobalInfo,
 		ParamTypes0, ParamDecls0, SymbolTable0),
 	{ Arg = mlds_argument(ArgName, Type, _Statement) },
 	build_type(Type, GlobalInfo, GCC_Type),
-	( { ArgName = entity_data(var(ArgVarName)) } ->
+	( { ArgName = entity_data(mlds_data_var(ArgVarName)) } ->
 		{ GCC_ArgVarName = ml_var_name_to_string(ArgVarName) },
 		gcc__build_param_decl(GCC_ArgVarName, GCC_Type, ParamDecl),
 		{ SymbolTable = map__det_insert(SymbolTable0,
@@ -2604,7 +2604,8 @@ build_name(entity_export(Name)) = Name.
 
 :- func build_data_name(mlds_data_name) = string.
 
-build_data_name(var(Name)) = name_mangle(ml_var_name_to_string(Name)).
+build_data_name(mlds_data_var(Name)) =
+    name_mangle(ml_var_name_to_string(Name)).
 build_data_name(mlds_common(Num)) =
 	string__format("common_%d", [i(Num)]).
 build_data_name(mlds_rtti(RttiId0)) = RttiAddrName :-
@@ -2789,7 +2790,7 @@ gen_stmt(DefnInfo, ml_stmt_if_then_else(Cond, Then, MaybeElse), _Context) -->
 	gcc__gen_end_cond.
 gen_stmt(DefnInfo, ml_stmt_switch(Type, Val, Range, Cases, Default), _) -->
 	build_type(Type, DefnInfo ^ global_info, GCC_Type),
-	( { Range = range(Min, Max) } ->
+	( { Range = mlds_switch_range(Min, Max) } ->
 		gcc__build_range_type(GCC_Type, Min, Max, GCC_RangeType)
 	;
 		{ GCC_RangeType = GCC_Type }
@@ -2809,13 +2810,13 @@ gen_stmt(DefnInfo, ml_stmt_label(LabelName), _) -->
 	{ LabelTable = DefnInfo ^ label_table },
 	{ GCC_Label = map__lookup(LabelTable, LabelName) },
 	gcc__gen_label(GCC_Label).
-gen_stmt(DefnInfo, ml_stmt_goto(label(LabelName)), _) -->
+gen_stmt(DefnInfo, ml_stmt_goto(goto_label(LabelName)), _) -->
 	{ LabelTable = DefnInfo ^ label_table },
 	{ GCC_Label = map__lookup(LabelTable, LabelName) },
 	gcc__gen_goto(GCC_Label).
-gen_stmt(_DefnInfo, ml_stmt_goto(break), _) -->
+gen_stmt(_DefnInfo, ml_stmt_goto(goto_break), _) -->
 	gcc__gen_break.
-gen_stmt(_DefnInfo, ml_stmt_goto(continue), _) -->
+gen_stmt(_DefnInfo, ml_stmt_goto(goto_continue), _) -->
 	% XXX not yet implemented
 	% but we set target_supports_break_and_continue to no
 	% for this target, so we shouldn't get any
@@ -2888,13 +2889,13 @@ gen_stmt(DefnInfo, ml_stmt_return(Results), _) -->
 	%
 gen_stmt(DefnInfo, ml_stmt_do_commit(Ref), _Context) -->
 	% generate `__builtin_longjmp(&<Ref>, 1);'
-	{ Ref = lval(RefLval0) ->
+	{ Ref = ml_lval(RefLval0) ->
 		RefLval = RefLval0
 	;
 		unexpected(this_file, "non-lval argument to do_commit")
 	},
 	build_call(gcc__longjmp_func_decl,
-		[mem_addr(RefLval), const(mlconst_int(1))],
+		[ml_mem_addr(RefLval), ml_const(mlconst_int(1))],
 		DefnInfo, GCC_CallLongjmp),
 	gcc__gen_expr_stmt(GCC_CallLongjmp).
 gen_stmt(DefnInfo, ml_stmt_try_commit(Ref, Stmt, Handler), _) -->
@@ -2906,7 +2907,7 @@ gen_stmt(DefnInfo, ml_stmt_try_commit(Ref, Stmt, Handler), _) -->
 	%       else
 	%               <Handler>
 	%
-	build_call(gcc__setjmp_func_decl, [mem_addr(Ref)], DefnInfo,
+	build_call(gcc__setjmp_func_decl, [ml_mem_addr(Ref)], DefnInfo,
 		GCC_CallSetjmp),
 	gcc__build_int(0, GCC_Zero),
 	gcc__build_binop(gcc__eq_expr, gcc__boolean_type_node,
@@ -3115,8 +3116,8 @@ gen_atomic_stmt(DefnInfo, NewObject, Context) -->
 	%
 	( { MaybeSize = yes(SizeInWords) } ->
 		globals__io_lookup_int_option(bytes_per_word, BytesPerWord),
-		{ SizeOfWord = const(mlconst_int(BytesPerWord)) },
-		{ SizeInBytes = binop(int_mul, SizeInWords, SizeOfWord) }
+		{ SizeOfWord = ml_const(mlconst_int(BytesPerWord)) },
+		{ SizeInBytes = ml_binop(int_mul, SizeInWords, SizeOfWord) }
 	;
 		{ sorry(this_file, "new_object with unknown size") }
 	),
@@ -3212,9 +3213,10 @@ gen_init_args([Arg | Args], [ArgType | ArgTypes], Context,
 	% Currently all fields of new_object instructions are
 	% represented as MR_Box, so we need to box them if necessary.
 	%
-	{ Lval = field(yes(Tag), lval(Target),
-		offset(const(mlconst_int(ArgNum))), mlds_generic_type, Type) },
-	{ Rval = unop(box(ArgType), Arg) },
+	{ Lval = ml_field(yes(Tag), ml_lval(Target),
+		ml_field_offset(ml_const(mlconst_int(ArgNum))), mlds_generic_type,
+            Type) },
+	{ Rval = ml_unop(box(ArgType), Arg) },
 	build_lval(Lval, DefnInfo, GCC_Lval),
 	build_rval(Rval, DefnInfo, GCC_Rval),
 	gcc__gen_assign(GCC_Lval, GCC_Rval),
@@ -3229,7 +3231,7 @@ gen_init_args([Arg | Args], [ArgType | ArgTypes], Context,
 :- pred build_lval(mlds_lval, defn_info, gcc__expr, io__state, io__state).
 :- mode build_lval(in, in, out, di, uo) is det.
 
-build_lval(field(MaybeTag, Rval, offset(OffsetRval),
+build_lval(ml_field(MaybeTag, Rval, ml_field_offset(OffsetRval),
 		FieldType, _ClassType), DefnInfo, GCC_FieldRef) -->
 	% sanity check (copied from mlds_to_c.m)
 	(
@@ -3277,7 +3279,7 @@ build_lval(field(MaybeTag, Rval, offset(OffsetRval),
 	% deference it
 	gcc__build_pointer_deref(GCC_FieldPointer, GCC_FieldRef).
 
-build_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
+build_lval(ml_field(MaybeTag, PtrRval, ml_field_named(FieldName, CtorType),
 		_FieldType, _PtrType), DefnInfo, GCC_Expr) -->
 	% generate the tagged pointer whose field we want to extract
 	build_rval(PtrRval, DefnInfo, GCC_TaggedPointer),
@@ -3311,14 +3313,14 @@ build_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
 	gcc__build_component_ref(GCC_ObjectRef, GCC_FieldDecl,
 		GCC_Expr).
 
-build_lval(mem_ref(PointerRval, _Type), DefnInfo, Expr) -->
+build_lval(ml_mem_ref(PointerRval, _Type), DefnInfo, Expr) -->
 	build_rval(PointerRval, DefnInfo, PointerExpr),
 	gcc__build_pointer_deref(PointerExpr, Expr).
 
-build_lval(global_var_ref(_), _DefnInfo, _Expr) -->
+build_lval(ml_global_var_ref(_), _DefnInfo, _Expr) -->
 	{ sorry(this_file, "build_lval: global_var_ref NYI") }.
 
-build_lval(var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
+build_lval(ml_var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
 		Expr) -->
 	%
 	% Look up the variable in the symbol table.
@@ -3327,7 +3329,8 @@ build_lval(var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
 	% symbol table.  If it's not in either of those,
 	% we check if its an RTTI enumeration constant.
 	%
-	{ Name = qual(ModuleName, QualKind, entity_data(var(VarName))) },
+	{ Name = qual(ModuleName, QualKind,
+        entity_data(mlds_data_var(VarName))) },
 	(
 		{ map__search(DefnInfo ^ local_vars, Name, LocalVarDecl) }
 	->
@@ -3353,7 +3356,8 @@ build_lval(var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
 		{ VarName = mlds_var_name("dummy_var", _) }
 	->
 		% if so, generate an extern declaration for it, and use that.
-		{ GCC_VarName = build_data_var_name(ModuleName, var(VarName)) },
+		{ GCC_VarName = build_data_var_name(ModuleName,
+            mlds_data_var(VarName)) },
 		{ Type = 'MR_Word' },
 		gcc__build_extern_var_decl(GCC_VarName, Type, Decl),
 		{ Expr = gcc__var_expr(Decl) }
@@ -3382,29 +3386,29 @@ get_class_type_name(Type) = Name :-
 :- pred build_rval(mlds_rval, defn_info, gcc__expr, io__state, io__state).
 :- mode build_rval(in, in, out, di, uo) is det.
 
-build_rval(lval(Lval), DefnInfo, Expr) -->
+build_rval(ml_lval(Lval), DefnInfo, Expr) -->
 	build_lval(Lval, DefnInfo, Expr).
 
-build_rval(mkword(Tag, Arg), DefnInfo, Expr) -->
+build_rval(ml_mkword(Tag, Arg), DefnInfo, Expr) -->
 	gcc__build_int(Tag, GCC_Tag),
 	build_rval(Arg, DefnInfo, GCC_Arg),
 	gcc__build_binop(gcc__plus_expr, gcc__ptr_type_node,
 		GCC_Arg, GCC_Tag, Expr).
 
-build_rval(const(Const), DefnInfo, Expr) -->
+build_rval(ml_const(Const), DefnInfo, Expr) -->
 	build_rval_const(Const, DefnInfo ^ global_info, Expr).
 
-build_rval(unop(Op, Rval), DefnInfo, Expr) -->
+build_rval(ml_unop(Op, Rval), DefnInfo, Expr) -->
 	build_unop(Op, Rval, DefnInfo, Expr).
 
-build_rval(binop(Op, Rval1, Rval2), DefnInfo, Expr) -->
+build_rval(ml_binop(Op, Rval1, Rval2), DefnInfo, Expr) -->
 	build_std_binop(Op, Rval1, Rval2, DefnInfo, Expr).
 
-build_rval(mem_addr(Lval), DefnInfo, AddrExpr) -->
+build_rval(ml_mem_addr(Lval), DefnInfo, AddrExpr) -->
 	build_lval(Lval, DefnInfo, Expr),
 	gcc__build_addr_expr(Expr, AddrExpr).
 
-build_rval(self(_), _DefnInfo, _Expr) -->
+build_rval(ml_self(_), _DefnInfo, _Expr) -->
 	{ unexpected(this_file, "self rval") }.
 
 :- pred build_unop(mlds_unary_op, mlds_rval, defn_info, gcc__expr,
@@ -3426,11 +3430,11 @@ build_unop(box(Type), Rval, DefnInfo, GCC_Expr) -->
 		% This implies that the array must be an lval.
 		% But we also allow null arrays as a special case;
 		% boxing a null array results in a null pointer.
-		( { Rval = const(mlconst_null(_)) } ->
-			{ PtrRval = const(mlconst_null(mlds_generic_type)) },
+		( { Rval = ml_const(mlconst_null(_)) } ->
+			{ PtrRval = ml_const(mlconst_null(mlds_generic_type)) },
 			build_rval(PtrRval, DefnInfo, GCC_Expr)
-		; { Rval = lval(ArrayLval) } ->
-			{ PtrRval = mem_addr(ArrayLval) },
+		; { Rval = ml_lval(ArrayLval) } ->
+			{ PtrRval = ml_mem_addr(ArrayLval) },
 			build_cast_rval(mlds_generic_type, PtrRval, DefnInfo,
 				GCC_Expr)
 		;

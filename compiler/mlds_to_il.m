@@ -548,14 +548,14 @@ rename_atomic(outline_foreign_proc(F, Vs, Ls, S))
 
 :- func rename_rval(mlds_rval) = mlds_rval.
 
-rename_rval(lval(Lval)) = lval(rename_lval(Lval)).
-rename_rval(mkword(Tag, Rval)) = mkword(Tag, rename_rval(Rval)).
-rename_rval(const(Const)) = const(rename_const(Const)).
-rename_rval(unop(Op, Rval)) = unop(Op, rename_rval(Rval)).
-rename_rval(binop(Op, RvalA, RvalB))
-    = binop(Op, rename_rval(RvalA), rename_rval(RvalB)).
-rename_rval(mem_addr(Lval)) = mem_addr(rename_lval(Lval)).
-rename_rval(self(Type)) = self(Type).
+rename_rval(ml_lval(Lval)) = ml_lval(rename_lval(Lval)).
+rename_rval(ml_mkword(Tag, Rval)) = ml_mkword(Tag, rename_rval(Rval)).
+rename_rval(ml_const(Const)) = ml_const(rename_const(Const)).
+rename_rval(ml_unop(Op, Rval)) = ml_unop(Op, rename_rval(Rval)).
+rename_rval(ml_binop(Op, RvalA, RvalB))
+    = ml_binop(Op, rename_rval(RvalA), rename_rval(RvalB)).
+rename_rval(ml_mem_addr(Lval)) = ml_mem_addr(rename_lval(Lval)).
+rename_rval(ml_self(Type)) = ml_self(Type).
 
 :- func rename_const(mlds_rval_const) = mlds_rval_const.
 
@@ -583,17 +583,17 @@ rename_proc_label(qual(Module, _QualKind, Name))
 
 :- func rename_lval(mlds_lval) = mlds_lval.
 
-rename_lval(field(Tag, Address, FieldName, FieldType, PtrType))
-    = field(Tag, rename_rval(Address),
+rename_lval(ml_field(Tag, Address, FieldName, FieldType, PtrType))
+    = ml_field(Tag, rename_rval(Address),
         rename_field_id(FieldName), FieldType, PtrType).
-rename_lval(mem_ref(Rval, Type)) = mem_ref(rename_rval(Rval), Type).
-rename_lval(global_var_ref(Ref)) = global_var_ref(Ref).
-rename_lval(var(Var, Type)) = var(rename_var(Var, Type), Type).
+rename_lval(ml_mem_ref(Rval, Type)) = ml_mem_ref(rename_rval(Rval), Type).
+rename_lval(ml_global_var_ref(Ref)) = ml_global_var_ref(Ref).
+rename_lval(ml_var(Var, Type)) = ml_var(rename_var(Var, Type), Type).
 
 :- func rename_field_id(mlds_field_id) = mlds_field_id.
 
-rename_field_id(offset(Rval)) = offset(rename_rval(Rval)).
-rename_field_id(named_field(Name, Type)) = named_field(Name, Type).
+rename_field_id(ml_field_offset(Rval)) = ml_field_offset(rename_rval(Rval)).
+rename_field_id(ml_field_named(Name, Type)) = ml_field_named(Name, Type).
 
 :- func rename_initializer(mlds_initializer) = mlds_initializer.
 
@@ -1346,7 +1346,7 @@ attribute_to_custom_attribute(DataRep, custom(MLDSType))
 
 :- func mangle_dataname(mlds_data_name) = string.
 
-mangle_dataname(var(MLDSVarName))
+mangle_dataname(mlds_data_var(MLDSVarName))
     = mangle_mlds_var_name(MLDSVarName).
 mangle_dataname(mlds_common(Int))
     = string.format("common_%d", [i(Int)]).
@@ -1393,13 +1393,13 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
             % accurate GC in the IL back-end -- the .NET runtime
             % system itself provides accurate GC.
             GCStatement = gc_no_stmt,
-            RV = ml_gen_mlds_var_decl_init(var(VN), RT, no_initializer,
-                GCStatement, Context),
-            Lval = var(qual(ModuleName, module_qual, VN), RT)
+            RV = ml_gen_mlds_var_decl_init(mlds_data_var(VN), RT,
+                no_initializer, GCStatement, Context),
+            Lval = ml_var(qual(ModuleName, module_qual, VN), RT)
         ), RetTypes, ReturnVars, 0, _),
 
     EntNameToVarName = (func(EntName) = VarName :-
-        ( EntName = entity_data(var(VarName0)) ->
+        ( EntName = entity_data(mlds_data_var(VarName0)) ->
             VarName = qual(ModuleName, module_qual, VarName0)
         ;
             unexpected(this_file,
@@ -1409,17 +1409,17 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
     ArgTypes = mlds_get_arg_types(Inputs),
     ArgRvals = list.map(
         (func(mlds_argument(EntName, Type, _GCStatement)) =
-                lval(var(VarName, Type)) :-
+                ml_lval(ml_var(VarName, Type)) :-
             VarName = EntNameToVarName(EntName)
         ), Inputs),
     ReturnVarDecls = assoc_list.keys(ReturnVars),
     ReturnLvals = assoc_list.values(ReturnVars),
-    ReturnRvals = list.map((func(X) = lval(X)), ReturnLvals),
+    ReturnRvals = list.map((func(X) = ml_lval(X)), ReturnLvals),
 
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     (
         UnqualName = entity_function(PredLabel, ProcId, _MaybeSeq, _PredId),
-        CodeRval = const(mlconst_code_addr(code_addr_proc(
+        CodeRval = ml_const(mlconst_code_addr(code_addr_proc(
             qual(ModuleName, module_qual, mlds_proc_label(PredLabel, ProcId)),
             Signature)))
     ;
@@ -1474,9 +1474,10 @@ generate_defn_initializer(mlds_defn(Name, Context, _DeclFlags, Entity),
         ( Initializer = no_initializer ->
             true
         ;
-            ( DataName = var(VarName) ->
+            ( DataName = mlds_data_var(VarName) ->
                 il_info_get_module_name(!.Info, ModuleName),
-                Lval = var(qual(ModuleName, module_qual, VarName), MLDSType),
+                Lval = ml_var(qual(ModuleName, module_qual, VarName),
+                    MLDSType),
                 get_load_store_lval_instrs(Lval,
                     LoadMemRefInstrs, StoreLvalInstrs, !Info),
                 NameString = mangle_mlds_var_name(VarName)
@@ -1596,7 +1597,7 @@ maybe_box_initializer(init_struct(Type, X), init_struct(Type, X)).
     % single items need to be boxed
 maybe_box_initializer(init_obj(Rval), init_obj(NewRval)) :-
     rval_to_type(Rval, BoxType),
-    NewRval = unop(box(BoxType), Rval).
+    NewRval = ml_unop(box(BoxType), Rval).
 
     % Code to flatten nested intializers.
     %
@@ -1702,7 +1703,7 @@ statement_to_il(statement(CallStmt, Context), Instrs, !Info) :-
         % calls (tail.call), not indirect calls (calli).
         \+ (
             RotorCLR = yes,
-            Function \= const(_)
+            Function \= ml_const(_)
         )
     ->
         TailCallInstrs = [tailcall],
@@ -1723,7 +1724,7 @@ statement_to_il(statement(CallStmt, Context), Instrs, !Info) :-
     ),
     list.map_foldl(load, Args, ArgsLoadInstrsTrees, !Info),
     ArgsLoadInstrs = cord_list_to_cord(ArgsLoadInstrsTrees),
-    ( Function = const(Const) ->
+    ( Function = ml_const(Const) ->
         FunctionLoadInstrs = empty,
         const_rval_to_function(Const, MemberName),
         Instrs0 = [call(methoddef(call_conv(no, default),
@@ -1828,7 +1829,7 @@ statement_to_il(statement(ml_stmt_label(Label), Context), Instrs, !Info) :-
     ]).
 
 statement_to_il(statement(GotoLabelStmt, Context), Instrs, !Info) :-
-    GotoLabelStmt = ml_stmt_goto(label(Label)),
+    GotoLabelStmt = ml_stmt_goto(goto_label(Label)),
     string.format("goto %s", [s(Label)], Comment),
     Instrs = from_list([
         comment(Comment),
@@ -1836,10 +1837,12 @@ statement_to_il(statement(GotoLabelStmt, Context), Instrs, !Info) :-
         br(label_target(Label))
     ]).
 
-statement_to_il(statement(ml_stmt_goto(break), _Context), _Instrs, !Info) :-
+statement_to_il(statement(ml_stmt_goto(goto_break), _Context), _Instrs,
+        !Info) :-
     sorry(this_file, "break").
 
-statement_to_il(statement(ml_stmt_goto(continue), _Context), _Instrs, !Info) :-
+statement_to_il(statement(ml_stmt_goto(goto_continue), _Context), _Instrs,
+        !Info) :-
     sorry(this_file, "continue").
 
 statement_to_il(statement(DoCommitStmt, Context), Instrs, !Info) :-
@@ -2092,14 +2095,14 @@ atomic_statement_to_il(new_object(Target0, _MaybeTag, HasSecTag, Type, Size,
         % If the new object is being assigned to private_builtin.dummy_var
         % then we need to cast it to il_generic_type.
         (
-            Target0 = var(qual(MLDS_Module, QualKind, VarName), _),
+            Target0 = ml_var(qual(MLDS_Module, QualKind, VarName), _),
             VarName = mlds_var_name("dummy_var", _),
             PrivateBuiltin = mercury_private_builtin_module,
             MLDS_PrivateBuiltin = mercury_module_name_to_mlds(PrivateBuiltin),
             mlds_append_wrapper_class(MLDS_PrivateBuiltin) = MLDS_Module
         ->
             MaybeCastInstrs = singleton(castclass(il_generic_type)),
-            Target = var(qual(MLDS_Module, QualKind, VarName),
+            Target = ml_var(qual(MLDS_Module, QualKind, VarName),
                 mlds_generic_type)
         ;
             MaybeCastInstrs = empty,
@@ -2145,7 +2148,7 @@ atomic_statement_to_il(new_object(Target0, _MaybeTag, HasSecTag, Type, Size,
             (pred(Rval::in, I::out, Arg0::in, Arg::out) is det :-
                 Arg0 = Index - S0,
                 I0 = singleton(dup),
-                load(const(mlconst_int(Index)), I1, S0, S1),
+                load(ml_const(mlconst_int(Index)), I1, S0, S1),
 
                 % XXX the MLDS code generator is meant to be responsible for
                 % boxing the args, but when compiled with the highlevel_data
@@ -2156,7 +2159,7 @@ atomic_statement_to_il(new_object(Target0, _MaybeTag, HasSecTag, Type, Size,
                 ( already_boxed(ILRvalType) ->
                     NewRval = Rval
                 ;
-                    NewRval = unop(box(RvalType), Rval)
+                    NewRval = ml_unop(box(RvalType), Rval)
                 ),
 
                 load(NewRval, I2, S1, S),
@@ -2226,7 +2229,7 @@ inline_code_to_il_asm([T | Ts]) = Instrs ++ Rest :-
         T = target_code_output(_),
         Instrs = empty
     ;
-        T = name(_),
+        T = target_code_name(_),
         Instrs = empty
     ),
     Rest = inline_code_to_il_asm(Ts).
@@ -2261,15 +2264,15 @@ get_all_load_store_lval_instrs([Lval | Lvals],
 
 get_load_store_lval_instrs(Lval, LoadMemRefInstrs, StoreLvalInstrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
-    ( Lval = mem_ref(Rval0, MLDS_Type) ->
+    ( Lval = ml_mem_ref(Rval0, MLDS_Type) ->
         load(Rval0, LoadMemRefInstrs, !Info),
         SimpleType = mlds_type_to_ilds_simple_type(DataRep, MLDS_Type),
         StoreLvalInstrs = singleton(stind(SimpleType))
-    ; Lval = field(_MaybeTag, FieldRval, FieldNum, FieldType, ClassType) ->
+    ; Lval = ml_field(_MaybeTag, FieldRval, FieldNum, FieldType, ClassType) ->
         ClassILType = mlds_type_to_ilds_type(DataRep, ClassType),
         ( ClassILType = il_type(_, '[]'(_, _)) ->
             (
-                FieldNum = offset(OffsetRval),
+                FieldNum = ml_field_offset(OffsetRval),
                 FieldILType = mlds_type_to_ilds_simple_type(DataRep,
                     FieldType),
                 load(FieldRval, LoadArrayRval, !Info),
@@ -2277,9 +2280,9 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs, StoreLvalInstrs, !Info) :-
                 LoadMemRefInstrs = LoadArrayRval ++ LoadIndexRval,
                 StoreLvalInstrs = singleton(stelem(FieldILType))
             ;
-                FieldNum = named_field(_, _),
+                FieldNum = ml_field_named(_, _),
                 unexpected(this_file,
-                    "named_field for a type with an array representation.")
+                    "ml_field_named for a type with an array representation.")
             )
         ;
             get_fieldref(DataRep, FieldNum, FieldType, ClassType, FieldRef,
@@ -2305,10 +2308,10 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs, StoreLvalInstrs, !Info) :-
 
 :- pred load(mlds_rval::in, instr_tree::out, il_info::in, il_info::out) is det.
 
-load(lval(Lval), Instrs, !Info) :-
+load(ml_lval(Lval), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
     (
-        Lval = var(Var, VarType),
+        Lval = ml_var(Var, VarType),
         mangle_mlds_var(Var, MangledVarStr),
         ( is_local(MangledVarStr, !.Info) ->
             Instrs = singleton(ldloc(name(MangledVarStr)))
@@ -2321,9 +2324,9 @@ load(lval(Lval), Instrs, !Info) :-
             Instrs = singleton(ldsfld(FieldRef))
         )
     ;
-        Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
+        Lval = ml_field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
         load(Rval, RvalLoadInstrs, !Info),
-        ( FieldNum = offset(OffSet) ->
+        ( FieldNum = ml_field_offset(OffSet) ->
             SimpleFieldType = mlds_type_to_ilds_simple_type(DataRep,
                 FieldType),
             load(OffSet, OffSetLoadInstrs, !Info),
@@ -2341,21 +2344,21 @@ load(lval(Lval), Instrs, !Info) :-
             OffSetLoadInstrs ++
             singleton(LoadInstruction)
     ;
-        Lval = mem_ref(Rval, MLDS_Type),
+        Lval = ml_mem_ref(Rval, MLDS_Type),
         SimpleType = mlds_type_to_ilds_simple_type(DataRep, MLDS_Type),
         load(Rval, RvalLoadInstrs, !Info),
         Instrs = RvalLoadInstrs ++ singleton(ldind(SimpleType))
     ;
-        Lval = global_var_ref(_),
+        Lval = ml_global_var_ref(_),
         Instrs = throw_unimplemented("load lval mem_ref")
     ).
 
-load(mkword(_Tag, _Rval), Instrs, !Info) :-
+load(ml_mkword(_Tag, _Rval), Instrs, !Info) :-
     Instrs = comment_node("unimplemented load rval mkword").
 
     % XXX check these, what should we do about multi strings,
     % characters, etc.
-load(const(Const), Instrs, !Info) :-
+load(ml_const(Const), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
     % True and false are just the integers 1 and 0.
     (
@@ -2396,21 +2399,21 @@ load(const(Const), Instrs, !Info) :-
         Instrs = singleton(ldnull)
     ).
 
-load(unop(Unop, Rval), Instrs, !Info) :-
+load(ml_unop(Unop, Rval), Instrs, !Info) :-
     load(Rval, RvalLoadInstrs, !Info),
     unaryop_to_il(Unop, Rval, UnOpInstrs, !Info),
     Instrs = RvalLoadInstrs ++ UnOpInstrs.
 
-load(binop(BinOp, R1, R2), Instrs, !Info) :-
+load(ml_binop(BinOp, R1, R2), Instrs, !Info) :-
     load(R1, R1LoadInstrs, !Info),
     load(R2, R2LoadInstrs, !Info),
     binaryop_to_il(BinOp, BinaryOpInstrs, !Info),
     Instrs = R1LoadInstrs ++ R2LoadInstrs ++ BinaryOpInstrs.
 
-load(mem_addr(Lval), Instrs, !Info) :-
+load(ml_mem_addr(Lval), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
     (
-        Lval = var(Var, VarType),
+        Lval = ml_var(Var, VarType),
         mangle_mlds_var(Var, MangledVarStr),
         ( is_local(MangledVarStr, !.Info) ->
             Instrs = singleton(ldloca(name(MangledVarStr)))
@@ -2423,7 +2426,7 @@ load(mem_addr(Lval), Instrs, !Info) :-
             Instrs = singleton(ldsfld(FieldRef))
         )
     ;
-        Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
+        Lval = ml_field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
         get_fieldref(DataRep, FieldNum, FieldType, ClassType,
             FieldRef, CastClassInstrs),
         load(Rval, RvalLoadInstrs, !Info),
@@ -2432,20 +2435,21 @@ load(mem_addr(Lval), Instrs, !Info) :-
             CastClassInstrs ++
             singleton(ldflda(FieldRef))
     ;
-        Lval = mem_ref(_, _),
+        Lval = ml_mem_ref(_, _),
         % XXX Implement this.
         Instrs = throw_unimplemented("load mem_addr lval mem_ref")
     ;
-        Lval = global_var_ref(_),
+        Lval = ml_global_var_ref(_),
         Instrs = throw_unimplemented("load mem_addr lval global_var_ref")
     ).
 
-load(self(_), singleton(ldarg(index(0))), !Info).
+load(ml_self(_), singleton(ldarg(index(0))), !Info).
 
 :- pred store(mlds_lval::in, instr_tree::out, il_info::in, il_info::out)
     is det.
 
-store(field(_MaybeTag, Rval, FieldNum, FieldType, ClassType), Instrs, !Info) :-
+store(ml_field(_MaybeTag, Rval, FieldNum, FieldType, ClassType), Instrs,
+        !Info) :-
     DataRep = !.Info ^ il_data_rep,
     get_fieldref(DataRep, FieldNum, FieldType, ClassType,
         FieldRef, CastClassInstrs),
@@ -2455,15 +2459,15 @@ store(field(_MaybeTag, Rval, FieldNum, FieldType, ClassType), Instrs, !Info) :-
         RvalLoadInstrs ++
         singleton(stfld(FieldRef)).
 
-store(mem_ref(_Rval, _Type), _Instrs, !Info) :-
+store(ml_mem_ref(_Rval, _Type), _Instrs, !Info) :-
     % You always need load the reference first, then the value, then stind it.
     % There's no swap instruction. Annoying, eh?
     unexpected(this_file, "store into mem_ref").
 
-store(global_var_ref(_), _Instrs, !Info) :-
+store(ml_global_var_ref(_), _Instrs, !Info) :-
     unexpected(this_file, "store into global_var_ref").
 
-store(var(Var, VarType), Instrs, !Info) :-
+store(ml_var(Var, VarType), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
     mangle_mlds_var(Var, MangledVarStr),
     ( is_local(MangledVarStr, !.Info) ->
@@ -2492,7 +2496,7 @@ store(var(Var, VarType), Instrs, !Info) :-
 
 unaryop_to_il(std_unop(mktag), _, comment_node("mktag (a no-op)"), !Info).
 unaryop_to_il(std_unop(tag), _, Instrs, !Info) :-
-    load(const(mlconst_int(0)), Instrs, !Info).
+    load(ml_const(mlconst_int(0)), Instrs, !Info).
 unaryop_to_il(std_unop(unmktag), _, comment_node("unmktag (a no-op)"), !Info).
 unaryop_to_il(std_unop(strip_tag),_,comment_node("strip_tag (a no-op)"),
         !Info).
@@ -2538,7 +2542,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
         )
     ;
         % Is it a cast from refany?
-        SrcRval = lval(_),
+        SrcRval = ml_lval(_),
         rval_to_type(SrcRval, SrcType),
         SrcILType = mlds_type_to_ilds_type(DataRep, SrcType),
         SrcILType = il_type(_, refany)
@@ -2817,14 +2821,14 @@ binaryop_to_il(compound_lt, _, !Info) :-
 generate_condition(Rval, Instrs, ElseLabel, !Info) :-
     il_info_make_next_label(ElseLabel, !Info),
     (
-        Rval = binop(eq, Operand1, Operand2)
+        Rval = ml_binop(eq, Operand1, Operand2)
     ->
         load(Operand1, Op1Instr, !Info),
         load(Operand2, Op2Instr, !Info),
         OpInstr = singleton(bne(unsigned, label_target(ElseLabel))),
         Instrs = Op1Instr ++ Op2Instr ++ OpInstr
     ;
-        Rval = binop(ne, Operand1, Operand2)
+        Rval = ml_binop(ne, Operand1, Operand2)
     ->
         load(Operand1, Op1Instr, !Info),
         load(Operand2, Op2Instr, !Info),
@@ -3435,7 +3439,8 @@ mangle_pred_name(PredName, mangle_for_csharp) = MangledName :-
 make_static_fieldref(DataRep, Var, VarType) = FieldRef :-
     Var = qual(ModuleName, _QualKind, VarName),
     mangle_mlds_var(Var, MangledVarStr),
-    mangle_dataname_module(yes(var(VarName)), ModuleName, NewModuleName),
+    mangle_dataname_module(yes(mlds_data_var(VarName)),
+        ModuleName, NewModuleName),
     ClassName = mlds_module_name_to_class_name(NewModuleName),
     FieldRef = make_fieldref(mlds_type_to_ilds_type(DataRep, VarType),
         ClassName, MangledVarStr).
@@ -3497,7 +3502,7 @@ mangle_dataname_module(yes(DataName), !ModuleName) :-
         SymName = mlds_module_name_to_sym_name(!.ModuleName),
         SymName = qualified(qualified(unqualified("mercury"),
             LibModuleName0), wrapper_class_name),
-        DataName = var(_),
+        DataName = mlds_data_var(_),
         LibModuleName0 = "private_builtin",
         CodeString = "__csharp_code"
     ->
@@ -3511,7 +3516,7 @@ mangle_dataname_module(yes(DataName), !ModuleName) :-
 
 :- pred mangle_dataname(mlds_data_name::in, string::out) is det.
 
-mangle_dataname(var(MLDSVarName), Name) :-
+mangle_dataname(mlds_data_var(MLDSVarName), Name) :-
     Name = mangle_mlds_var_name(MLDSVarName).
 mangle_dataname(mlds_common(Int), MangledName) :-
     string.format("common_%d", [i(Int)], MangledName).
@@ -3675,14 +3680,14 @@ is_local_field(Var, VarType, Info, FieldRef) :-
     %
 :- pred rval_to_type(mlds_rval::in, mlds_type::out) is det.
 
-rval_to_type(lval(var(_, Type)), Type).
-rval_to_type(lval(field(_, _, _, Type, _)), Type).
-rval_to_type(lval(mem_ref(_, Type)), Type).
-rval_to_type(lval(global_var_ref(_)), _) :-
+rval_to_type(ml_lval(ml_var(_, Type)), Type).
+rval_to_type(ml_lval(ml_field(_, _, _, Type, _)), Type).
+rval_to_type(ml_lval(ml_mem_ref(_, Type)), Type).
+rval_to_type(ml_lval(ml_global_var_ref(_)), _) :-
     sorry(this_file, "rval_to_type: global_var_ref").
-rval_to_type(mkword(_, _), _) :-
+rval_to_type(ml_mkword(_, _), _) :-
     unexpected(this_file, "rval_to_type: mkword").
-rval_to_type(unop(Unop, _), Type) :-
+rval_to_type(ml_unop(Unop, _), Type) :-
     (
         Unop = box(_),
         Type = mlds_generic_type
@@ -3697,12 +3702,12 @@ rval_to_type(unop(Unop, _), Type) :-
         functor(StdUnop, canonicalize, StdUnopStr, _Arity),
         sorry(this_file, "rval_to_type: unop: " ++ StdUnopStr)
     ).
-rval_to_type(binop(_, _, _), _) :-
+rval_to_type(ml_binop(_, _, _), _) :-
     sorry(this_file, "rval_to_type: binop").
-rval_to_type(mem_addr(_), _) :-
+rval_to_type(ml_mem_addr(_), _) :-
     sorry(this_file, "rval_to_type: mem_addr").
-rval_to_type(self(Type), Type).
-rval_to_type(const(Const), Type) :-
+rval_to_type(ml_self(Type), Type).
+rval_to_type(ml_const(Const), Type) :-
     Type = rval_const_to_type(Const).
 
 :- func rval_const_to_type(mlds_rval_const) = mlds_type.
@@ -3796,16 +3801,16 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType0, FieldRef,
         FieldILType = FieldILType0
     ),
     (
-        FieldNum = offset(OffsetRval),
+        FieldNum = ml_field_offset(OffsetRval),
         ClassName = mlds_type_to_ilds_class_name(DataRep, ClassType),
-        ( OffsetRval = const(mlconst_int(Num)) ->
+        ( OffsetRval = ml_const(mlconst_int(Num)) ->
             string.format("f%d", [i(Num)], FieldId)
         ;
             sorry(this_file, "offsets for non-mlconst_int rvals")
         ),
         CastClassInstrs = empty
     ;
-        FieldNum = named_field(qual(ModuleName, _, FieldId), _CtorType),
+        FieldNum = ml_field_named(qual(ModuleName, _, FieldId), _CtorType),
         % The MLDS doesn't record which qualifiers are class qualifiers
         % and which are namespace qualifiers... we first generate
         % a name for the CtorClass as if it wasn't nested, and then

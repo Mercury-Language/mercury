@@ -61,7 +61,7 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     % Compute the value we're going to switch on.
 
     ml_gen_var(!.Info, Var, VarLval),
-    VarRval = lval(VarLval),
+    VarRval = ml_lval(VarLval),
 
     % Generate the following local variable declarations:
     %   int slot;
@@ -72,7 +72,7 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         string.format("slot_%d", [i(SlotVarSeq)]), no),
     SlotVarType = mlds_native_int_type,
     SlotVarGCStatement = gc_no_stmt, % never need to trace ints
-    SlotVarDefn = ml_gen_mlds_var_decl(var(SlotVarName), SlotVarType,
+    SlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(SlotVarName), SlotVarType,
         SlotVarGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, SlotVarName, SlotVarType, SlotVarLval),
 
@@ -84,13 +84,14 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     % which are all static constants; it can never point into the heap.
     % So the GC never needs to trace it
     StringVarGCStatement = gc_no_stmt,
-    StringVarDefn = ml_gen_mlds_var_decl(var(StringVarName),
+    StringVarDefn = ml_gen_mlds_var_decl(mlds_data_var(StringVarName),
         StringVarType, StringVarGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, StringVarName, StringVarType, StringVarLval),
 
     % Generate new labels.
     ml_gen_new_label(EndLabel, !Info),
-    GotoEndStatement = statement(ml_stmt_goto(label(EndLabel)), MLDS_Context),
+    GotoEndStatement =
+        statement(ml_stmt_goto(goto_label(EndLabel)), MLDS_Context),
 
     % Determine how big to make the hash table. Currently we round the number
     % of cases up to the nearest power of two, and then double it. This should
@@ -152,17 +153,18 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         StringTableLval),
 
     % Generate code which does the hash table lookup.
-    SwitchStmt0 = ml_stmt_switch(SlotVarType, lval(SlotVarLval),
-        range(0, TableSize - 1), SlotsCases, default_is_unreachable),
+    SwitchStmt0 = ml_stmt_switch(SlotVarType, ml_lval(SlotVarLval),
+        mlds_switch_range(0, TableSize - 1), SlotsCases,
+        default_is_unreachable),
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
 
     FoundMatchCond =
-        binop(logical_and,
-            binop(ne,
-                lval(StringVarLval),
-                const(mlconst_null(StringVarType))),
-            binop(str_eq,
-                lval(StringVarLval),
+        ml_binop(logical_and,
+            ml_binop(ne,
+                ml_lval(StringVarLval),
+                ml_const(mlconst_null(StringVarType))),
+            ml_binop(str_eq,
+                ml_lval(StringVarLval),
                 VarRval)
         ),
     FoundMatchCode = statement(
@@ -181,9 +183,9 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
             "lookup the string for this hash slot")), MLDS_Context),
         statement(
             ml_stmt_atomic(assign(StringVarLval,
-                binop(array_index(elem_type_string),
-                    lval(StringTableLval),
-                    lval(SlotVarLval)))),
+                ml_binop(array_index(elem_type_string),
+                    ml_lval(StringTableLval),
+                    ml_lval(SlotVarLval)))),
             MLDS_Context),
         statement(ml_stmt_atomic(comment("did we find a match?")),
             MLDS_Context),
@@ -193,9 +195,9 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
             "no match yet, so get next slot in hash chain")), MLDS_Context),
         statement(
             ml_stmt_atomic(assign(SlotVarLval,
-                binop(array_index(elem_type_int),
-                    lval(NextSlotsLval),
-                    lval(SlotVarLval)))),
+                ml_binop(array_index(elem_type_int),
+                    ml_lval(NextSlotsLval),
+                    ml_lval(SlotVarLval)))),
             MLDS_Context)
         ],
         Context),
@@ -205,14 +207,17 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         statement(ml_stmt_atomic(comment(
             "compute the hash value of the input string")), MLDS_Context),
         statement(
-            ml_stmt_atomic(assign(SlotVarLval, binop(bitwise_and,
-                unop(std_unop(hash_string), VarRval),
-                const(mlconst_int(HashMask))))),
+            ml_stmt_atomic(assign(SlotVarLval,
+                ml_binop(bitwise_and,
+                    ml_unop(std_unop(hash_string), VarRval),
+                    ml_const(mlconst_int(HashMask))))),
             MLDS_Context),
         statement(ml_stmt_atomic(comment("hash chain loop")), MLDS_Context),
         statement(
             ml_stmt_while(
-                binop(int_ge, lval(SlotVarLval), const(mlconst_int(0))),
+                ml_binop(int_ge,
+                    ml_lval(SlotVarLval),
+                    ml_const(mlconst_int(0))),
                 LoopBody,
                 yes), % This is a do...while loop.
             MLDS_Context)
@@ -263,7 +268,7 @@ ml_gen_string_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, Context,
 ml_gen_string_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
         init_obj(StringRval), init_obj(NextSlotRval), MLDS_Cases, !Info) :-
     ( map.search(HashSlotMap, Slot, string_hash_slot(Next, String, Case)) ->
-        NextSlotRval = const(mlconst_int(Next)),
+        NextSlotRval = ml_const(mlconst_int(Next)),
         Case = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
         expect(unify(TaggedOtherConsIds, []), this_file,
             "ml_gen_string_hash_slot: other cons_ids"),
@@ -274,7 +279,7 @@ ml_gen_string_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
         ;
             unexpected(this_file, "ml_gen_string_hash_slot: string expected")
         ),
-        StringRval = const(mlconst_string(String)),
+        StringRval = ml_const(mlconst_string(String)),
         ml_gen_goal_as_block(CodeModel, Goal, GoalStatement, !Info),
 
         CommentString = "case """ ++ String ++ """",
@@ -282,11 +287,11 @@ ml_gen_string_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
             MLDS_Context),
         CaseStatement = statement(ml_stmt_block([], [Comment, GoalStatement]),
             MLDS_Context),
-        MLDS_Cases = [mlds_switch_case([match_value(const(mlconst_int(Slot)))],
-            CaseStatement)]
+        MLDS_Cases = [mlds_switch_case(
+            [match_value(ml_const(mlconst_int(Slot)))], CaseStatement)]
     ;
-        StringRval = const(mlconst_null(ml_string_type)),
-        NextSlotRval = const(mlconst_int(-2)),
+        StringRval = ml_const(mlconst_null(ml_string_type)),
+        NextSlotRval = ml_const(mlconst_int(-2)),
         MLDS_Cases = []
     ).
 

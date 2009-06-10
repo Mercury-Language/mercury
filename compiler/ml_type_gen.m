@@ -257,7 +257,7 @@ ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
 :- func ml_gen_enum_value_member(prog_context) = mlds_defn.
 
 ml_gen_enum_value_member(Context) =
-    mlds_defn(entity_data(var(mlds_var_name("MR_value", no))),
+    mlds_defn(entity_data(mlds_data_var(mlds_var_name("MR_value", no))),
         mlds_make_context(Context),
         ml_gen_member_decl_flags,
         mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)).
@@ -272,10 +272,10 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
     map.lookup(ConsTagValues, cons(Name, Arity), TagVal),
     (
         TagVal = int_tag(Int),
-        ConstValue = const(mlconst_int(Int))
+        ConstValue = ml_const(mlconst_int(Int))
     ;
         TagVal = foreign_tag(ForeignLang, ForeignTagValue),
-        ConstValue = const(mlconst_foreign(ForeignLang, ForeignTagValue,
+        ConstValue = ml_const(mlconst_foreign(ForeignLang, ForeignTagValue,
             mlds_native_int_type))
     ;
         ( TagVal = string_tag(_)
@@ -303,7 +303,8 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 
     % Generate an MLDS definition for this enumeration constant.
     UnqualifiedName = unqualify_name(Name),
-    MLDS_Defn = mlds_defn(entity_data(var(mlds_var_name(UnqualifiedName, no))),
+    MLDS_Defn = mlds_defn(
+        entity_data(mlds_data_var(mlds_var_name(UnqualifiedName, no))),
         mlds_make_context(Context),
         ml_gen_enum_constant_decl_flags,
         mlds_data(mlds_native_int_type, init_obj(ConstValue), gc_no_stmt)).
@@ -498,7 +499,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
 :- func ml_gen_tag_member(string, prog_context) = mlds_defn.
 
 ml_gen_tag_member(Name, Context) =
-    mlds_defn(entity_data(var(mlds_var_name(Name, no))),
+    mlds_defn(entity_data(mlds_data_var(mlds_var_name(Name, no))),
         mlds_make_context(Context),
         ml_gen_member_decl_flags,
         mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)).
@@ -516,9 +517,9 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
 
         Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, _Ctxt),
         UnqualifiedName = unqualify_name(Name),
-        ConstValue = const(mlconst_int(SecondaryTag)),
+        ConstValue = ml_const(mlconst_int(SecondaryTag)),
         MLDS_Defn = mlds_defn(
-            entity_data(var(mlds_var_name(UnqualifiedName, no))),
+            entity_data(mlds_data_var(mlds_var_name(UnqualifiedName, no))),
             mlds_make_context(Context),
             ml_gen_enum_constant_decl_flags,
             mlds_data(mlds_native_int_type, init_obj(ConstValue), gc_no_stmt)),
@@ -905,7 +906,7 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         unexpected(this_file, "gen_init_field: non-data member")
     ),
     (
-        EntityName = entity_data(var(VarName0)),
+        EntityName = entity_data(mlds_data_var(VarName0)),
         VarName0 = mlds_var_name(Name0, no)
     ->
         Name = Name0,
@@ -926,9 +927,9 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         RequiresQualifiedParams = no,
         QualVarName = qual(ClassQualifier, type_qual, VarName)
     ),
-    Param = lval(var(QualVarName, Type)),
-    Field = field(yes(0), self(ClassType),
-        named_field(qual(ClassQualifier, type_qual, Name),
+    Param = ml_lval(ml_var(QualVarName, Type)),
+    Field = ml_field(yes(0), ml_self(ClassType),
+        ml_field_named(qual(ClassQualifier, type_qual, Name),
             mlds_ptr_type(ClassType)),
             % XXX we should use ClassType rather than BaseClassId here.
             % But doing so breaks the IL back-end, because then the hack in
@@ -952,9 +953,9 @@ gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context, Globals)
     ),
     Name = "data_tag",
     Type = mlds_native_int_type,
-    Val = const(mlconst_int(TagVal)),
-    Field = field(yes(0), self(ClassType),
-        named_field(qual(TagClassQualifier, type_qual, Name),
+    Val = ml_const(mlconst_int(TagVal)),
+    Field = ml_field(yes(0), ml_self(ClassType),
+        ml_field_named(qual(TagClassQualifier, type_qual, Name),
             mlds_ptr_type(SecondaryTagClassId)),
         Type, ClassType),
     Statement = statement(ml_stmt_atomic(assign(Field, Val)), Context).
@@ -998,8 +999,9 @@ ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)
     ),
     FieldName = ml_gen_field_name(MaybeFieldName, ArgNum0),
-    MLDS_Defn = ml_gen_mlds_field_decl(var(mlds_var_name(FieldName, no)),
-        MLDS_Type, mlds_make_context(Context)),
+    MLDS_Defn = ml_gen_mlds_field_decl(
+        mlds_data_var(mlds_var_name(FieldName, no)),
+            MLDS_Type, mlds_make_context(Context)),
     ArgNum = ArgNum0 + 1.
 
 :- func ml_gen_mlds_field_decl(mlds_data_name, mlds_type, mlds_context)
@@ -1152,10 +1154,11 @@ generate_foreign_enum_constant(Mapping, TagValues, Ctor, !ExportConstants) :-
     map.lookup(TagValues, cons(QualName, Arity), TagVal),
     (
         TagVal = int_tag(Int),
-        ConstValue = const(mlconst_int(Int))
+        ConstValue = ml_const(mlconst_int(Int))
     ;
         TagVal = foreign_tag(Lang, String),
-        ConstValue = const(mlconst_foreign(Lang, String, mlds_native_int_type))
+        ConstValue = ml_const(mlconst_foreign(Lang, String,
+            mlds_native_int_type))
     ;
         ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)

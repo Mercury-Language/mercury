@@ -61,8 +61,8 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
         Decls, Statements, !Info) :-
     % Generate the rval for the primary tag.
     ml_gen_var(!.Info, Var, VarLval),
-    VarRval = lval(VarLval),
-    PTagRval = unop(std_unop(tag), VarRval),
+    VarRval = ml_lval(VarLval),
+    PTagRval = ml_unop(std_unop(tag), VarRval),
 
     % Group the cases based on primary tag value, find out how many
     % constructors share each primary tag value, and sort the cases so that
@@ -85,7 +85,7 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
 
     % Package up the results into a switch statement.
-    Range = range(0, MaxPrimary),
+    Range = mlds_switch_range(0, MaxPrimary),
     SwitchStmt0 = ml_stmt_switch(mlds_native_int_type, PTagRval, Range,
         MLDS_Cases, Default),
     MLDS_Context = mlds_make_context(Context),
@@ -167,7 +167,7 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
                 Var, CodeModel, CaseCanFail, Context, Statement, !Info)
         )
     ),
-    PrimaryTagRval = const(mlconst_int(PrimaryTag)),
+    PrimaryTagRval = ml_const(mlconst_int(PrimaryTag)),
     MLDS_Case = mlds_switch_case([match_value(PrimaryTagRval)], Statement).
 
 :- pred gen_stag_switch(stag_goal_list(tagged_case)::in, int::in,
@@ -181,10 +181,10 @@ gen_stag_switch(Cases, PrimaryTag, StagLocn, Var, CodeModel, CanFail, Context,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
-    VarRval = lval(VarLval),
+    VarRval = ml_lval(VarLval),
     (
         StagLocn = sectag_local,
-        STagRval = unop(std_unop(unmkbody), VarRval)
+        STagRval = ml_unop(std_unop(unmkbody), VarRval)
     ;
         StagLocn = sectag_remote,
         STagRval = ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo,
@@ -199,7 +199,7 @@ gen_stag_switch(Cases, PrimaryTag, StagLocn, Var, CodeModel, CanFail, Context,
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
 
     % Package up the results into a switch statement.
-    Range = range_unknown, % XXX could do better
+    Range = mlds_switch_range_unknown, % XXX could do better
     SwitchStmt = ml_stmt_switch(mlds_native_int_type, STagRval, Range,
         MLDS_Cases, Default),
     MLDS_Context = mlds_make_context(Context),
@@ -219,7 +219,7 @@ gen_stag_cases([Case | Cases], CodeModel, [MLDS_Case | MLDS_Cases], !Info) :-
 
 gen_stag_case(Case, CodeModel, MLDS_Case, !Info) :-
     Case = Stag - tagged_case(_MainTaggedConsId, _OtherTaggedConsIds, Goal),
-    StagRval = const(mlconst_int(Stag)),
+    StagRval = ml_const(mlconst_int(Stag)),
     ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info),
     MLDS_Case = mlds_switch_case([match_value(StagRval)], Statement).
 

@@ -671,8 +671,9 @@ strip_gc_statement(Argument0) = Argument :-
 ml_maybe_add_args([], _, _, _, !Info).
 ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context, !Info) :-
     (
-        Arg = mlds_argument(entity_data(var(VarName)), _Type, GCStatement),
-        ml_should_add_local_data(!.Info, var(VarName), GCStatement,
+        Arg = mlds_argument(entity_data(mlds_data_var(VarName)), _Type,
+            GCStatement),
+        ml_should_add_local_data(!.Info, mlds_data_var(VarName), GCStatement,
             [], [FuncBody])
     ->
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
@@ -696,8 +697,9 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
         EnvPtrTypeName, Context, ArgsToCopy0, CodeToCopyArgs0),
     ModuleName = elim_info_get_module_name(ElimInfo),
     (
-        Arg = mlds_argument(entity_data(var(VarName)), FieldType, GCStatement),
-        ml_should_add_local_data(ElimInfo, var(VarName), GCStatement,
+        Arg = mlds_argument(entity_data(mlds_data_var(VarName)), FieldType,
+            GCStatement),
+        ml_should_add_local_data(ElimInfo, mlds_data_var(VarName), GCStatement,
             [], [FuncBody])
     ->
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
@@ -709,14 +711,15 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
         EnvModuleName = ml_env_module_name(ClassType,
             ElimInfo ^ elim_info_globals),
         FieldNameString = ml_var_name_to_string(VarName),
-        FieldName = named_field(qual(EnvModuleName, type_qual,
+        FieldName = ml_field_named(qual(EnvModuleName, type_qual,
             FieldNameString), EnvPtrTypeName),
         Tag = yes(0),
         EnvPtrName = env_name_base(ElimInfo ^ action) ++ "_ptr",
-        EnvPtr = lval(var(qual(ModuleName, module_qual,
+        EnvPtr = ml_lval(ml_var(qual(ModuleName, module_qual,
             mlds_var_name(EnvPtrName, no)), EnvPtrTypeName)),
-        EnvArgLval = field(Tag, EnvPtr, FieldName, FieldType, EnvPtrTypeName),
-        ArgRval = lval(var(QualVarName, FieldType)),
+        EnvArgLval = ml_field(Tag, EnvPtr, FieldName, FieldType,
+            EnvPtrTypeName),
+        ArgRval = ml_lval(ml_var(QualVarName, FieldType)),
         AssignToEnv = assign(EnvArgLval, ArgRval),
         CodeToCopyArg = statement(ml_stmt_atomic(AssignToEnv), Context),
 
@@ -849,7 +852,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     %   struct <EnvClassName> env; // = { ... }
     %
     EnvVarName = mlds_var_name(env_name_base(Action), no),
-    EnvVarEntityName = entity_data(var(EnvVarName)),
+    EnvVarEntityName = entity_data(mlds_data_var(EnvVarName)),
     EnvVarFlags = ml_gen_local_var_decl_flags,
     EnvVarDefnBody = mlds_data(EnvTypeName, EnvInitializer, GCStatementEnv),
     EnvVarDecl = mlds_defn(EnvVarEntityName, Context, EnvVarFlags,
@@ -865,17 +868,17 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     %
     (
         OnHeap = yes,
-        EnvVarAddr = lval(var(EnvVar, EnvTypeName)),
+        EnvVarAddr = ml_lval(ml_var(EnvVar, EnvTypeName)),
         % OnHeap should be "yes" only on for the IL backend, for which
         % the value of MayUseAtomic is immaterial.
         MayUseAtomic = may_not_use_atomic_alloc,
         NewObj = [statement(
-            ml_stmt_atomic(new_object(var(EnvVar, EnvTypeName),
+            ml_stmt_atomic(new_object(ml_var(EnvVar, EnvTypeName),
                 no, no, EnvTypeName, no, no, [], [], MayUseAtomic)),
             Context)]
     ;
         OnHeap = no,
-        EnvVarAddr = mem_addr(var(EnvVar, EnvTypeName)),
+        EnvVarAddr = ml_mem_addr(ml_var(EnvVar, EnvTypeName)),
         NewObj = []
     ),
     ml_init_env(Action, EnvTypeName, EnvVarAddr, Context, ModuleName,
@@ -900,8 +903,9 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     %
     ThisFrameName = qual(ModuleName, module_qual,
         mlds_var_name("this_frame", no)),
-    ThisFrameRval = lval(var(ThisFrameName, mlds_generic_type)),
-    CastThisFrameRval = unop(cast(mlds_ptr_type(EnvTypeName)), ThisFrameRval),
+    ThisFrameRval = ml_lval(ml_var(ThisFrameName, mlds_generic_type)),
+    CastThisFrameRval = ml_unop(cast(mlds_ptr_type(EnvTypeName)),
+        ThisFrameRval),
     ml_init_env(chain_gc_stack_frames, EnvTypeName, CastThisFrameRval,
         Context, ModuleName, Globals, FramePtrDecl, InitFramePtr),
 
@@ -922,14 +926,14 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     %
     %   void *prev;
     %   void (*trace)(...);
-    PrevFieldName = entity_data(var(mlds_var_name("prev", no))),
+    PrevFieldName = entity_data(mlds_data_var(mlds_var_name("prev", no))),
     PrevFieldFlags = ml_gen_public_field_decl_flags,
     PrevFieldType = ml_stack_chain_type,
     PrevFieldDefnBody = mlds_data(PrevFieldType, no_initializer, gc_no_stmt),
     PrevFieldDecl = mlds_defn(PrevFieldName, Context, PrevFieldFlags,
         PrevFieldDefnBody),
 
-    TraceFieldName = entity_data(var(mlds_var_name("trace", no))),
+    TraceFieldName = entity_data(mlds_data_var(mlds_var_name("trace", no))),
     TraceFieldFlags = ml_gen_public_field_decl_flags,
     TraceFieldType = mlds_func_type(GCTraceFuncParams),
     TraceFieldDefnBody = mlds_data(TraceFieldType, no_initializer, gc_no_stmt),
@@ -955,8 +959,8 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     %
     StackChain = ml_stack_chain_var,
     EnvInitializer = init_struct(EnvTypeName, [
-        init_obj(lval(StackChain)),
-        init_obj(const(mlconst_code_addr(GCTraceFuncAddr)))
+        init_obj(ml_lval(StackChain)),
+        init_obj(ml_const(mlconst_code_addr(GCTraceFuncAddr)))
     ]),
 
     % Generate code to set the global stack chain
@@ -964,7 +968,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     %
     %    stack_chain = frame_ptr;
     EnvPtrTypeName = ml_make_env_ptr_type(Globals, EnvTypeName),
-    EnvPtr = lval(var(qual(ModuleName, module_qual,
+    EnvPtr = ml_lval(ml_var(qual(ModuleName, module_qual,
         mlds_var_name("frame_ptr", no)), EnvPtrTypeName)),
     AssignToStackChain = assign(StackChain, EnvPtr),
     LinkStackChain = [statement(ml_stmt_atomic(AssignToStackChain), Context)].
@@ -976,7 +980,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
 gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
         Context, GCTraceFuncAddr, FuncParams, GCTraceFuncDefn) :-
     % Compute the signature of the GC tracing function
-    ArgName = entity_data(var(mlds_var_name("this_frame", no))),
+    ArgName = entity_data(mlds_data_var(mlds_var_name("this_frame", no))),
     ArgType = mlds_generic_type,
     Argument = mlds_argument(ArgName, ArgType, gc_no_stmt),
     FuncParams = mlds_func_params([Argument], []),
@@ -1117,16 +1121,16 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
         DefnBody0 = mlds_function(PredProcId, Params,
             body_defined_here(FuncBody0), Attributes, EnvVarNames),
         statement_contains_var(FuncBody0, qual(ModuleName, module_qual,
-            var(mlds_var_name("env_ptr", no))))
+            mlds_data_var(mlds_var_name("env_ptr", no))))
     ->
-        EnvPtrVal = lval(var(qual(ModuleName, module_qual,
+        EnvPtrVal = ml_lval(ml_var(qual(ModuleName, module_qual,
             mlds_var_name("env_ptr_arg", no)),
             mlds_generic_env_ptr_type)),
         EnvPtrVarType = ml_make_env_ptr_type(Globals, TypeName),
 
         % Insert a cast, to downcast from mlds_generic_env_ptr_type to the
         % specific environment type for this procedure.
-        CastEnvPtrVal = unop(cast(EnvPtrVarType), EnvPtrVal),
+        CastEnvPtrVal = ml_unop(cast(EnvPtrVarType), EnvPtrVal),
 
         ml_init_env(Action, TypeName, CastEnvPtrVal, Context,
             ModuleName, Globals, EnvPtrDecl, InitEnvPtr),
@@ -1169,7 +1173,7 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     %   <EnvTypeName> *env_ptr;
     %
     EnvPtrVarName = mlds_var_name(env_name_base(Action) ++ "_ptr", no),
-    EnvPtrVarEntityName = entity_data(var(EnvPtrVarName)),
+    EnvPtrVarEntityName = entity_data(mlds_data_var(EnvPtrVarName)),
     EnvPtrVarFlags = ml_gen_local_var_decl_flags,
     EnvPtrVarType = ml_make_env_ptr_type(Globals, EnvTypeName),
     % The env_ptr never needs to be traced by the GC, since the environment
@@ -1188,7 +1192,7 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     % for inserting a cast in <EnvPtrVal> if needed).
     %
     EnvPtrVar = qual(ModuleName, module_qual, EnvPtrVarName),
-    AssignEnvPtr = assign(var(EnvPtrVar, EnvPtrVarType), EnvPtrVal),
+    AssignEnvPtr = assign(ml_var(EnvPtrVar, EnvPtrVarType), EnvPtrVal),
     InitEnvPtr = statement(ml_stmt_atomic(AssignEnvPtr), Context).
 
     % Given the declaration for a function parameter, produce a declaration
@@ -1242,7 +1246,7 @@ make_block_stmt(VarDecls, Statements, Context) =
 ml_stack_chain_var = StackChain :-
     PrivateBuiltin = mercury_private_builtin_module,
     MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
-    StackChain = var(qual(MLDS_Module, module_qual,
+    StackChain = ml_var(qual(MLDS_Module, module_qual,
         mlds_var_name("stack_chain", no)), ml_stack_chain_type).
 
     % The type of the `stack_chain' pointer, i.e. `void *'.
@@ -1612,7 +1616,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
         ;
             % Hoist ordinary local variables.
             Name = entity_data(DataName),
-            DataName = var(VarName),
+            DataName = mlds_data_var(VarName),
             ml_should_add_local_data(!.Info,
                 DataName, GCStatement0,
                 FollowingDefns, FollowingStatements)
@@ -1627,8 +1631,8 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
                 Init1 = no_initializer,
                 DefnBody1 = mlds_data(Type, Init1, GCStatement0),
                 Defn1 = mlds_defn(Name, Context, Flags0, DefnBody1),
-                VarLval = var(qual(!.Info ^ module_name, module_qual, VarName),
-                    Type),
+                VarLval = ml_var(qual(!.Info ^ module_name, module_qual,
+                    VarName), Type),
                 InitStatements = [statement(
                     ml_stmt_atomic(assign(VarLval, Rval)), Context)]
             ;
@@ -1824,7 +1828,7 @@ fixup_target_code_component(Component0, Component, !Info) :-
     (
         ( Component0 = raw_target_code(_Code, _Attrs)
         ; Component0 = user_target_code(_Code, _Context, _Attrs)
-        ; Component0 = name(_Name)
+        ; Component0 = target_code_name(_Name)
         ),
         Component = Component0
     ;
@@ -1884,29 +1888,29 @@ fixup_maybe_rval(yes(Rval0), yes(Rval), !Info) :-
 
 fixup_rval(Rval0, Rval, !Info) :-
     (
-        Rval0 = lval(Lval0),
+        Rval0 = ml_lval(Lval0),
         fixup_lval(Lval0, Lval, !Info),
-        Rval = lval(Lval)
+        Rval = ml_lval(Lval)
     ;
-        Rval0 = mem_addr(Lval0),
+        Rval0 = ml_mem_addr(Lval0),
         fixup_lval(Lval0, Lval, !Info),
-        Rval = mem_addr(Lval)
+        Rval = ml_mem_addr(Lval)
     ;
-        Rval0 = mkword(Tag, BaseRval0),
+        Rval0 = ml_mkword(Tag, BaseRval0),
         fixup_rval(BaseRval0, BaseRval, !Info),
-        Rval = mkword(Tag, BaseRval)
+        Rval = ml_mkword(Tag, BaseRval)
     ;
-        Rval0 = unop(UnOp, XRval0),
+        Rval0 = ml_unop(UnOp, XRval0),
         fixup_rval(XRval0, XRval, !Info),
-        Rval = unop(UnOp, XRval)
+        Rval = ml_unop(UnOp, XRval)
     ;
-        Rval0 = binop(BinOp, XRval0, YRval0),
+        Rval0 = ml_binop(BinOp, XRval0, YRval0),
         fixup_rval(XRval0, XRval, !Info),
         fixup_rval(YRval0, YRval, !Info),
-        Rval = binop(BinOp, XRval, YRval)
+        Rval = ml_binop(BinOp, XRval, YRval)
     ;
-        ( Rval0 = const(_)
-        ; Rval0 = self(_)
+        ( Rval0 = ml_const(_)
+        ; Rval0 = ml_self(_)
         ),
         Rval = Rval0
     ).
@@ -1924,18 +1928,18 @@ fixup_lvals([X0 | Xs0], [X | Xs], !Info) :-
 
 fixup_lval(Lval0, Lval, !Info) :-
     (
-        Lval0 = field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
+        Lval0 = ml_field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
         fixup_rval(Rval0, Rval, !Info),
-        Lval = field(MaybeTag, Rval, FieldId, FieldType, PtrType)
+        Lval = ml_field(MaybeTag, Rval, FieldId, FieldType, PtrType)
     ;
-        Lval0 = mem_ref(Rval0, Type),
+        Lval0 = ml_mem_ref(Rval0, Type),
         fixup_rval(Rval0, Rval, !Info),
-        Lval = mem_ref(Rval, Type)
+        Lval = ml_mem_ref(Rval, Type)
     ;
-        Lval0 = global_var_ref(_Ref),
+        Lval0 = ml_global_var_ref(_Ref),
         Lval = Lval0
     ;
-        Lval0 = var(Var0, VarType),
+        Lval0 = ml_var(Var0, VarType),
         fixup_var(Var0, VarType, Lval, !Info)
     ).
 
@@ -1997,22 +2001,22 @@ fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
         ThisVarModuleName = ModuleName,
         IsLocalVar = (pred(VarType::out) is nondet :-
             list.member(Var, Locals),
-            Var = mlds_defn(entity_data(var(ThisVarName)), _, _,
+            Var = mlds_defn(entity_data(mlds_data_var(ThisVarName)), _, _,
                 mlds_data(VarType, _, _)),
             \+ ml_decl_is_static_const(Var)
         ),
         solutions.solutions(IsLocalVar, [FieldType])
     ->
-        EnvPtr = lval(var(qual(ModuleName, QualKind,
+        EnvPtr = ml_lval(ml_var(qual(ModuleName, QualKind,
             mlds_var_name(env_name_base(Action) ++ "_ptr", no)),
             EnvPtrVarType)),
         EnvModuleName = ml_env_module_name(ClassType, Globals),
         ThisVarFieldName = ml_var_name_to_string(ThisVarName),
-        FieldName = named_field(
+        FieldName = ml_field_named(
             qual(EnvModuleName, type_qual, ThisVarFieldName),
             EnvPtrVarType),
         Tag = yes(0),
-        Lval = field(Tag, EnvPtr, FieldName, FieldType, EnvPtrVarType)
+        Lval = ml_field(Tag, EnvPtr, FieldName, FieldType, EnvPtrVarType)
     ;
         % Check for references to the env_ptr itself.
         % For those, the code generator will have left the type as
@@ -2021,10 +2025,10 @@ fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
         ThisVarName = mlds_var_name("env_ptr", no),
         ThisVarType = mlds_unknown_type
     ->
-        Lval = var(ThisVar, EnvPtrVarType)
+        Lval = ml_var(ThisVar, EnvPtrVarType)
     ;
         % Leave everything else unchanged.
-        Lval = var(ThisVar, ThisVarType)
+        Lval = ml_var(ThisVar, ThisVarType)
     ).
 
 % The following code is what we would have to use if we couldn't
@@ -2317,7 +2321,7 @@ add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
         % the already-unchained stack frame.
         UnchainFrame = ml_gen_unchain_frame(Context, !.Info),
         Statement0 = statement(Stmt0, Context),
-        RetRvals = list.map(func(Rval) = lval(Rval), RetLvals),
+        RetRvals = list.map(func(Rval) = ml_lval(Rval), RetLvals),
         RetStmt = ml_stmt_return(RetRvals),
         RetStatement = statement(RetStmt, Context),
         Stmt = ml_stmt_block([], [UnchainFrame, Statement0, RetStatement])
@@ -2383,9 +2387,9 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 
     StackChain = ml_stack_chain_var,
     Tag = yes(0),
-    PrevFieldId = offset(const(mlconst_int(0))),
+    PrevFieldId = ml_field_offset(ml_const(mlconst_int(0))),
     PrevFieldType = mlds_generic_type,
-    PrevFieldRval = lval(field(Tag, lval(StackChain), PrevFieldId,
+    PrevFieldRval = ml_lval(ml_field(Tag, ml_lval(StackChain), PrevFieldId,
         PrevFieldType, EnvPtrTypeName)),
     Assignment = assign(StackChain, PrevFieldRval),
     UnchainFrame = statement(ml_stmt_atomic(Assignment), Context).
@@ -2398,7 +2402,7 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 :- func gen_saved_stack_chain_var(int, mlds_context) = mlds_defn.
 
 gen_saved_stack_chain_var(Id, Context) = Defn :-
-    Name = entity_data(var(ml_saved_stack_chain_name(Id))),
+    Name = entity_data(mlds_data_var(ml_saved_stack_chain_name(Id))),
     Flags = ml_gen_local_var_decl_flags,
     Type = ml_stack_chain_type,
     Initializer = no_initializer,
@@ -2416,9 +2420,9 @@ gen_saved_stack_chain_var(Id, Context) = Defn :-
     statement.
 
 gen_save_stack_chain_var(MLDS_Module, Id, Context) = SaveStatement :-
-    SavedStackChain = var(qual(MLDS_Module, module_qual,
+    SavedStackChain = ml_var(qual(MLDS_Module, module_qual,
         ml_saved_stack_chain_name(Id)), ml_stack_chain_type),
-    Assignment = assign(SavedStackChain, lval(ml_stack_chain_var)),
+    Assignment = assign(SavedStackChain, ml_lval(ml_stack_chain_var)),
     SaveStatement = statement(ml_stmt_atomic(Assignment), Context).
 
     % Generate a statement to restore the stack chain pointer:
@@ -2429,9 +2433,9 @@ gen_save_stack_chain_var(MLDS_Module, Id, Context) = SaveStatement :-
     statement.
 
 gen_restore_stack_chain_var(MLDS_Module, Id, Context) = RestoreStatement :-
-    SavedStackChain = var(qual(MLDS_Module, module_qual,
+    SavedStackChain = ml_var(qual(MLDS_Module, module_qual,
         ml_saved_stack_chain_name(Id)), ml_stack_chain_type),
-    Assignment = assign(ml_stack_chain_var, lval(SavedStackChain)),
+    Assignment = assign(ml_stack_chain_var, ml_lval(SavedStackChain)),
     RestoreStatement = statement(ml_stmt_atomic(Assignment), Context).
 
 :- func ml_saved_stack_chain_name(int) = mlds_var_name.

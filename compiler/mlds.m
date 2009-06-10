@@ -1113,12 +1113,12 @@
 %
 % Extra info for switches
 %
-    % The range of possible values which the
-    % switch variable might take (if known)
+    % The range of possible values which the switch variable might take
+    % (if known).
 :- type mlds_switch_range
-    --->    range_unknown
-    ;       range(range_min::int, range_max::int).
-            % From range_min to range_max, inclusive.
+    --->    mlds_switch_range_unknown
+    ;       mlds_switch_range(range_min::int, range_max::int).
+            % From range_min to range_max, both inclusive.
 
     % Each switch case consists of the conditions to match against,
     % and the statement to execute if the match succeeds.
@@ -1140,7 +1140,7 @@
 
     ;       match_range(mlds_rval, mlds_rval).
             % match_range(Min, Max) matches if the switch value is between
-            % Min and Max, inclusive. Note that this should only be used
+            % Min and Max, both inclusive. Note that this should only be used
             % if the target supports it; currently the C back-end supports
             % this only if you're using the GNU C compiler.
 
@@ -1160,27 +1160,28 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Extra info for labels
+% Extra info for labels.
 %
 
 :- type mlds_label == string.
 
 :- type mlds_goto_target
-    --->    label(mlds_label)   % Branch to the specified label.
+    --->    goto_label(mlds_label)
+            % Branch to the specified label.
 
-    ;       break               % Branch to just after the end of the
-                                % immediately enclosing loop or switch,
-                                % just like a C/C++/Java `break' statement.
-                                % Not supported by all target languages.
+    ;       goto_break
+            % Branch to just after the end of the immediately enclosing loop
+            % or switch, just like a C/C++/Java `break' statement.
+            % Not supported by all target languages.
 
-    ;       continue.           % Branch to the end of the loop body for the
-                                % immediately enclosing loop, just like a
-                                % C/C++/Java/C# `continue' statement.
-                                % Not supported by all target languages.
+    ;       goto_continue.
+            % Branch to the end of the loop body for the immediately enclosing
+            % loop, just like a C/C++/Java/C# `continue' statement.
+            % Not supported by all target languages.
 
 %-----------------------------------------------------------------------------%
 %
-% Extra info for calls
+% Extra info for calls.
 %
 
     % The `ml_call_kind' type indicates whether a call is a tail call
@@ -1204,7 +1205,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Extra info for exception handling
+% Extra info for exception handling.
 %
 
     % XXX This is tentative -- the current definition may be
@@ -1381,12 +1382,12 @@
 :- type mlds_target_lang
     --->    ml_target_c
     ;       ml_target_gnu_c
-%     ;       ml_target_c_minus_minus
+%   ;       ml_target_c_minus_minus
     ;       ml_target_asm
     ;       ml_target_il
     ;       ml_target_java.
-%     ;       ml_target_java_asm
-%     ;       ml_target_java_bytecode.
+%   ;       ml_target_java_asm
+%   ;       ml_target_java_bytecode.
 
 :- type target_code_component
     --->    user_target_code(
@@ -1411,7 +1412,7 @@
 
     ;       target_code_input(mlds_rval)
     ;       target_code_output(mlds_lval)
-    ;       name(mlds_qualified_entity_name).
+    ;       target_code_name(mlds_qualified_entity_name).
 
 :- type target_code_attributes == list(target_code_attribute).
 
@@ -1448,10 +1449,11 @@
     % An mlds_field_id represents some data within an object.
     %
 :- type mlds_field_id
-    --->    offset(mlds_rval)
+    --->    ml_field_offset(mlds_rval)
             % offset(N) represents the field at offset N Words.
 
-    ;       named_field(mlds_fully_qualified_name(mlds_field_name), mlds_type).
+    ;       ml_field_named(mlds_fully_qualified_name(mlds_field_name),
+                mlds_type).
             % named_field(Name, CtorType) represents the field with the
             % specified name. The CtorType gives the MLDS type for this
             % particular constructor. The type of the object is given by
@@ -1467,8 +1469,8 @@
     %
 :- type mlds_var == mlds_fully_qualified_name(mlds_var_name).
 :- type mlds_var_name
-    --->    mlds_var_name(string, maybe(int)).
-            % Var name and perhaps a unique number to be added as a
+            --->    mlds_var_name(string, maybe(int)).
+                    % Var name and perhaps a unique number to be added as a
             % suffix where necessary.
 
     % An lval represents a data location or variable that can be used
@@ -1478,7 +1480,7 @@
 
     % Values on the heap or fields of a structure.
 
-    --->    field(
+    --->    ml_field(
                 % field(Tag, Address, FieldId, FieldType, PtrType):
                 % Selects a field of a compound term.
 
@@ -1511,7 +1513,7 @@
     % Values somewhere in memory.
     % This is the deference operator (e.g. unary `*' in C).
 
-    ;       mem_ref(
+    ;       ml_mem_ref(
                 % The rval should have originally come from a mem_addr rval.
                 % The type is the type of the value being dereferenced.
 
@@ -1519,7 +1521,7 @@
                 mlds_type
             )
 
-    ;       global_var_ref(
+    ;       ml_global_var_ref(
                 % A reference to the value of the global variable in the target
                 % language with the given name. At least for now, the global
                 % variable's type must be mlds_generic_type.
@@ -1534,7 +1536,7 @@
     % These may be local or they may come from some enclosing scope
     % the variable name should be fully qualified.
 
-    ;       var(
+    ;       ml_var(
                 mlds_var,
                 mlds_type
             ).
@@ -1550,27 +1552,27 @@
     % An rval is an expression that represents a value.
     %
 :- type mlds_rval
-    --->    lval(mlds_lval)
+    --->    ml_lval(mlds_lval)
             % The value of an `lval' rval is just the value stored in
             % the specified lval.
 
-    ;       mkword(mlds_tag, mlds_rval)
+    ;       ml_mkword(mlds_tag, mlds_rval)
             % Given a pointer and a tag, mkword returns a tagged pointer.
             %
             % (XXX It might be more consistent to make this a binary_op,
             % with the tag argument just being an rval, rather than
             % having `mkword' be a separate kind of rval.)
 
-    ;       const(mlds_rval_const)
+    ;       ml_const(mlds_rval_const)
 
-    ;       unop(mlds_unary_op, mlds_rval)
+    ;       ml_unop(mlds_unary_op, mlds_rval)
 
-    ;       binop(binary_op, mlds_rval, mlds_rval)
+    ;       ml_binop(binary_op, mlds_rval, mlds_rval)
 
-    ;       mem_addr(mlds_lval)
+    ;       ml_mem_addr(mlds_lval)
             % The address of a variable, etc.
 
-    ;       self(mlds_type).
+    ;       ml_self(mlds_type).
             % The equivalent of the `this' pointer in C++ with the type of the
             % object. Note that this rval is valid iff we are targeting an
             % object oriented backend and we are in an instance method
@@ -1642,7 +1644,7 @@
 :- type mlds_data == mlds_fully_qualified_name(mlds_data_name).
 
 :- type mlds_data_name
-    --->    var(mlds_var_name)
+    --->    mlds_data_var(mlds_var_name)
             % Ordinary variables.
 
     ;       mlds_common(int)

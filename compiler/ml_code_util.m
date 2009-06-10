@@ -782,7 +782,7 @@ ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
     (
         CodeModel = model_semi,
         ml_gen_test_success(Info, Succeeded),
-        CopiedOutputVarRvals = list.map(func(Lval) = lval(Lval),
+        CopiedOutputVarRvals = list.map(func(Lval) = ml_lval(Lval),
             CopiedOutputVarLvals),
         ReturnStmt = ml_stmt_return([Succeeded | CopiedOutputVarRvals]),
         ReturnStatement = statement(ReturnStmt,
@@ -792,7 +792,7 @@ ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
         CodeModel = model_det,
         (
             CopiedOutputVarLvals = [_ | _],
-            CopiedOutputVarRvals = list.map(func(Lval) = lval(Lval),
+            CopiedOutputVarRvals = list.map(func(Lval) = ml_lval(Lval),
                 CopiedOutputVarLvals),
             ReturnStmt = ml_stmt_return(CopiedOutputVarRvals),
             ReturnStatement = statement(ReturnStmt,
@@ -986,15 +986,15 @@ ml_gen_label_func_decl_flags = DeclFlags :-
 %
 
 ml_gen_and(X, Y) =
-    ( X = const(mlconst_true) ->
+    ( X = ml_const(mlconst_true) ->
         Y
-    ; Y = const(mlconst_true) ->
+    ; Y = ml_const(mlconst_true) ->
         X
     ;
-        binop(logical_and, X, Y)
+        ml_binop(logical_and, X, Y)
     ).
 
-ml_gen_not(X) = unop(std_unop(logical_not), X).
+ml_gen_not(X) = ml_unop(std_unop(logical_not), X).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1148,13 +1148,14 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
             ContType = mlds_cont_type([]),
             RetTypes = RetTypes0
         ),
-        ContName = entity_data(var(mlds_var_name("cont", no))),
+        ContName = entity_data(mlds_data_var(mlds_var_name("cont", no))),
         % The cont variable always points to code, not to the heap,
         % so the GC never needs to trace it.
         ContGCStatement = gc_no_stmt,
         ContArg = mlds_argument(ContName, ContType, ContGCStatement),
         ContEnvType = mlds_generic_env_ptr_type,
-        ContEnvName = entity_data(var(mlds_var_name("cont_env_ptr", no))),
+        ContEnvName = entity_data(
+            mlds_data_var(mlds_var_name("cont_env_ptr", no))),
         % The cont_env_ptr always points to the stack, since continuation
         % environments are always allocated on the stack (unless
         % put_nondet_env_on_heap is true, which won't be the case when doing
@@ -1245,7 +1246,7 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg, !MaybeInfo) :-
         ),
         MLDS_ArgType = mlds_ptr_type(MLDS_Type)
     ),
-    Name = entity_data(var(Var)),
+    Name = entity_data(mlds_data_var(Var)),
     (
         !.MaybeInfo = yes(Info0),
         % XXX We should fill in this Context properly.
@@ -1333,8 +1334,9 @@ ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval, !Info) :-
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     QualProcLabel = qual(PredModule, module_qual, ProcLabel),
-    FuncLabelRval = const(mlconst_code_addr(code_addr_internal(QualProcLabel,
-        FuncLabel, Signature))).
+    FuncLabelRval = ml_const(
+        mlconst_code_addr(code_addr_internal(QualProcLabel,
+            FuncLabel, Signature))).
 
     % Generate the mlds_pred_label and module name for a given procedure.
     %
@@ -1456,7 +1458,7 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
         PrivateBuiltin = mercury_private_builtin_module,
         MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
         ml_gen_type(Info, Type, MLDS_Type),
-        Lval = var(qual(MLDS_Module, module_qual,
+        Lval = ml_var(qual(MLDS_Module, module_qual,
             mlds_var_name("dummy_var", no)), MLDS_Type)
     ;
         IsDummy = is_not_dummy_type,
@@ -1468,7 +1470,7 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
         % Output variables may be passed by reference...
         ml_gen_info_get_byref_output_vars(Info, OutputVars),
         ( list.member(Var, OutputVars) ->
-            Lval = mem_ref(lval(VarLval), MLDS_Type)
+            Lval = ml_mem_ref(ml_lval(VarLval), MLDS_Type)
         ;
             Lval = VarLval
         )
@@ -1512,12 +1514,13 @@ ml_format_static_const_name(Info, BaseName, SequenceNum, ConstName) :-
 ml_gen_var_lval(Info, VarName, VarType, QualifiedVarLval) :-
     ml_gen_info_get_module_name(Info, ModuleName),
     MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-    QualifiedVarLval = var(qual(MLDS_Module, module_qual, VarName), VarType).
+    QualifiedVarLval = ml_var(qual(MLDS_Module, module_qual, VarName),
+        VarType).
 
 ml_gen_var_decl(VarName, Type, Context, Defn, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_gc_statement(VarName, Type, Context, GCStatement, !Info),
-    Defn = ml_gen_mlds_var_decl(var(VarName),
+    Defn = ml_gen_mlds_var_decl(mlds_data_var(VarName),
         mercury_type_to_mlds_type(ModuleInfo, Type),
         GCStatement, mlds_make_context(Context)).
 
@@ -1534,7 +1537,7 @@ ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
 
 ml_gen_static_const_defn(ConstName, ConstType, Access, Initializer, Context) =
         MLDS_Defn :-
-    Name = entity_data(var(ConstName)),
+    Name = entity_data(mlds_data_var(ConstName)),
     % The GC never needs to trace static constants,
     % because they can never point into the heap
     % (only to other static constants).
@@ -1654,7 +1657,8 @@ ml_gen_success(model_semi, Context, [SetSuccessTrue], !Info) :-
     % ===>
     %   succeeded = MR_TRUE;
     %
-    ml_gen_set_success(!.Info, const(mlconst_true), Context, SetSuccessTrue).
+    ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
+        SetSuccessTrue).
 ml_gen_success(model_non, Context, [CallCont], !Info) :-
     %
     % nondet succeed:
@@ -1673,7 +1677,8 @@ ml_gen_failure(model_semi, Context, [SetSuccessFalse], !Info) :-
     % ===>
     %   succeeded = MR_FALSE;
     %
-    ml_gen_set_success(!.Info, const(mlconst_false), Context, SetSuccessFalse).
+    ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
+        SetSuccessFalse).
 ml_gen_failure(model_non, _, Statements, !Info) :-
     %
     % nondet fail:
@@ -1686,7 +1691,7 @@ ml_gen_failure(model_non, _, Statements, !Info) :-
 %-----------------------------------------------------------------------------%
 
 ml_gen_succeeded_var_decl(Context) =
-    ml_gen_mlds_var_decl(var(mlds_var_name("succeeded", no)),
+    ml_gen_mlds_var_decl(mlds_data_var(mlds_var_name("succeeded", no)),
         mlds_native_bool_type, gc_no_stmt, Context).
 
 ml_success_lval(Info, SucceededLval) :-
@@ -1695,7 +1700,7 @@ ml_success_lval(Info, SucceededLval) :-
 
 ml_gen_test_success(Info, SucceededRval) :-
     ml_success_lval(Info, SucceededLval),
-    SucceededRval = lval(SucceededLval).
+    SucceededRval = ml_lval(SucceededLval).
 
 ml_gen_set_success(Info, Value, Context, Statement) :-
     ml_success_lval(Info, Succeeded),
@@ -1711,7 +1716,7 @@ ml_gen_cond_var_name(CondVar) =
     mlds_var_name(string.append("cond_", string.int_to_string(CondVar)), no).
 
 ml_gen_cond_var_decl(CondVar, Context) =
-    ml_gen_mlds_var_decl(var(ml_gen_cond_var_name(CondVar)),
+    ml_gen_mlds_var_decl(mlds_data_var(ml_gen_cond_var_name(CondVar)),
         mlds_native_bool_type, gc_no_stmt, Context).
 
 ml_cond_var_lval(Info, CondVar, CondVarLval) :-
@@ -1720,7 +1725,7 @@ ml_cond_var_lval(Info, CondVar, CondVarLval) :-
 
 ml_gen_test_cond_var(Info, CondVar, CondVarRval) :-
     ml_cond_var_lval(Info, CondVar, CondVarLval),
-    CondVarRval = lval(CondVarLval).
+    CondVarRval = ml_lval(CondVarLval).
 
 ml_gen_set_cond_var(Info, CondVar, Value, Context, Statement) :-
     ml_cond_var_lval(Info, CondVar, CondVarLval),
@@ -1741,7 +1746,7 @@ ml_initial_cont(Info, OutputVarLvals0, OutputVarTypes0, Cont) :-
         mlds_cont_type(MLDS_OutputVarTypes), ContLval),
     ml_gen_var_lval(Info, mlds_var_name("cont_env_ptr", no),
         mlds_generic_env_ptr_type, ContEnvLval),
-    Cont = success_cont(lval(ContLval), lval(ContEnvLval),
+    Cont = success_cont(ml_lval(ContLval), ml_lval(ContEnvLval),
         MLDS_OutputVarTypes, OutputVarLvals).
 
 :- pred ml_skip_dummy_argument_types(list(mer_type)::in, list(T)::in,
@@ -1769,7 +1774,7 @@ ml_skip_dummy_argument_types([], [_ | _], _, _, _) :-
 ml_gen_call_current_success_cont(Context, Statement, !Info) :-
     ml_gen_info_current_success_cont(!.Info, SuccCont),
     SuccCont = success_cont(FuncRval, EnvPtrRval, ArgTypes0, ArgLvals0),
-    ArgRvals0 = list.map(func(Lval) = lval(Lval), ArgLvals0),
+    ArgRvals0 = list.map(func(Lval) = ml_lval(Lval), ArgLvals0),
     ml_gen_info_use_gcc_nested_functions(!.Info, UseNestedFuncs),
     (
         UseNestedFuncs = yes,
@@ -1798,7 +1803,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     ml_gen_info_current_success_cont(!.Info, SuccCont),
     SuccCont = success_cont(ContinuationFuncRval, EnvPtrRval,
         ArgTypes0, ArgLvals0),
-    ArgRvals0 = list.map(func(Lval) = lval(Lval), ArgLvals0),
+    ArgRvals0 = list.map(func(Lval) = ml_lval(Lval), ArgLvals0),
     ml_gen_info_use_gcc_nested_functions(!.Info, UseNestedFuncs),
     (
         UseNestedFuncs = yes,
@@ -1833,10 +1838,10 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     ml_gen_cont_params(ArgTypes0, InnerFuncParams0, !Info),
     InnerFuncParams0 = mlds_func_params(InnerArgs0, Rets),
     InnerArgRvals = list.map(
-        (func(mlds_argument(Data, Type, _GC) )
-                = lval(var(qual(MLDS_Module, module_qual, VarName), Type)) :-
-            ( Data = entity_data(var(VarName0)) ->
-                VarName = VarName0
+        (func(mlds_argument(Data, Type, _GC) ) = Lval :-
+            ( Data = entity_data(mlds_data_var(VarName)) ->
+                Lval = ml_lval(ml_var(qual(MLDS_Module, module_qual, VarName),
+                    Type))
             ;
                 unexpected(this_file,
                     "expected variable name in continuation parameters")
@@ -1847,9 +1852,10 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     % The passed_cont variable always points to code, not to heap,
     % so the GC never needs to trace it.
     PassedContGCStatement = gc_no_stmt,
-    PassedContArg = mlds_argument(entity_data(var(PassedContVarName)),
+    PassedContArg = mlds_argument(
+        entity_data(mlds_data_var(PassedContVarName)),
         InnerFuncArgType, PassedContGCStatement),
-    InnerFuncRval = lval(var(qual(MLDS_Module, module_qual,
+    InnerFuncRval = ml_lval(ml_var(qual(MLDS_Module, module_qual,
         PassedContVarName), InnerFuncArgType)),
     InnerFuncParams = mlds_func_params([PassedContArg | InnerArgs0], Rets),
 
@@ -1871,7 +1877,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
         % We call the proxy function.
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
         QualProcLabel = qual(MLDS_Module, module_qual, ProcLabel),
-        ProxyFuncRval = const(mlconst_code_addr(
+        ProxyFuncRval = ml_const(mlconst_code_addr(
             code_addr_internal(QualProcLabel, SeqNum, ProxySignature))),
 
         % Put it inside a block where we call it.
@@ -1890,12 +1896,12 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
 % used for nested functions.
 %
 
-ml_get_env_ptr(Info, lval(EnvPtrLval)) :-
+ml_get_env_ptr(Info, ml_lval(EnvPtrLval)) :-
     ml_gen_var_lval(Info, mlds_var_name("env_ptr", no),
         mlds_unknown_type, EnvPtrLval).
 
 ml_declare_env_ptr_arg(mlds_argument(Name, Type, GCStatement)) :-
-    Name = entity_data(var(mlds_var_name("env_ptr_arg", no))),
+    Name = entity_data(mlds_data_var(mlds_var_name("env_ptr_arg", no))),
     Type = mlds_generic_env_ptr_type,
     % The env_ptr_arg always points to the stack, since continuation
     % environments are always allocated on the stack (unless
@@ -2118,7 +2124,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
 
     % Build MLDS code to trace the variable.
     ml_gen_var(!.Info, TypeInfoVar, TypeInfoLval),
-    ml_gen_trace_var(!.Info, VarName, DeclType, lval(TypeInfoLval), Context,
+    ml_gen_trace_var(!.Info, VarName, DeclType, ml_lval(TypeInfoLval), Context,
         MLDS_TraceStatement),
 
     % Generate declarations for any type_info variables used.
@@ -2136,7 +2142,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
         (func(Var) = MLDS_Defn :-
             LocalVarName = ml_gen_var_name(VarSet, Var),
             map.lookup(VarTypes, Var, LocalVarType),
-            MLDS_Defn = ml_gen_mlds_var_decl(var(LocalVarName),
+            MLDS_Defn = ml_gen_mlds_var_decl(mlds_data_var(LocalVarName),
                 mercury_type_to_mlds_type(ModuleInfo, LocalVarType),
                 gc_no_stmt, MLDS_Context)
         ),
@@ -2175,12 +2181,12 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
         ctor_cat_user(cat_user_general), non_foreign_type(c_pointer_type)),
     ArgTypes = [mlds_pseudo_type_info_type, CPointerType],
     Signature = mlds_func_signature(ArgTypes, []),
-    FuncAddr = const(mlconst_code_addr(
+    FuncAddr = ml_const(mlconst_code_addr(
         code_addr_proc(QualProcLabel, Signature))),
 
     % Generate the call
     % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
-    CastVarAddr = unop(cast(CPointerType), mem_addr(VarLval)),
+    CastVarAddr = ml_unop(cast(CPointerType), ml_mem_addr(VarLval)),
     TraceStatement = statement(
         ml_stmt_call(Signature, FuncAddr, no,
             [TypeInfoRval, CastVarAddr], [], ordinary_call
@@ -2355,14 +2361,14 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         VarName = mlds_var_name("new_obj", yes(Id)),
         VarType = mlds_array_type(mlds_generic_type),
         NullPointers = list.duplicate(list.length(ArgRvals),
-            init_obj(const(mlconst_null(mlds_generic_type)))),
+            init_obj(ml_const(mlconst_null(mlds_generic_type)))),
         Initializer = init_array(NullPointers),
         % This is used for the type_infos allocated during tracing,
         % and we don't need to trace them.
         GCStatement = gc_no_stmt,
         Context = !.Fixup ^ fnoi_context,
-        VarDecl = ml_gen_mlds_var_decl_init(var(VarName), VarType, Initializer,
-            GCStatement, Context),
+        VarDecl = ml_gen_mlds_var_decl_init(mlds_data_var(VarName), VarType,
+            Initializer, GCStatement, Context),
         !Fixup ^ fnoi_next_id := NextId,
         % XXX We should keep a more structured representation of the local
         % variables, such as a map from variable names.
@@ -2376,9 +2382,10 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         % atomic_statement occurs, rather than at the local variable
         % declaration.
 
-        VarLval = var(qual(!.Fixup ^ fnoi_module_name, module_qual, VarName),
+        VarLval = ml_var(
+            qual(!.Fixup ^ fnoi_module_name, module_qual, VarName),
             VarType),
-        PtrRval = unop(cast(PointerType), mem_addr(VarLval)),
+        PtrRval = ml_unop(cast(PointerType), ml_mem_addr(VarLval)),
         list.map_foldl(init_field_n(PointerType, PtrRval, Context),
             ArgRvals, ArgInitStatements, 0, _NumFields),
 
@@ -2397,18 +2404,19 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
 
 init_field_n(PointerType, PointerRval, Context, ArgRval, Statement,
         FieldNum, FieldNum + 1) :-
-    FieldId = offset(const(mlconst_int(FieldNum))),
+    FieldId = ml_field_offset(ml_const(mlconst_int(FieldNum))),
     % XXX FieldType is wrong for --high-level-data
     FieldType = mlds_generic_type,
     MaybeTag = yes(0),
-    Field = field(MaybeTag, PointerRval, FieldId, FieldType, PointerType),
+    Field = ml_field(MaybeTag, PointerRval, FieldId, FieldType, PointerType),
     AssignStmt = ml_stmt_atomic(assign(Field, ArgRval)),
     Statement = statement(AssignStmt, Context).
 
 :- func maybe_tag_rval(maybe(mlds_tag), mlds_type, mlds_rval) = mlds_rval.
 
 maybe_tag_rval(no, _Type, Rval) = Rval.
-maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
+maybe_tag_rval(yes(Tag), Type, Rval) = TaggedRval :-
+    TaggedRval = ml_unop(cast(Type), ml_mkword(Tag, Rval)).
 
 %-----------------------------------------------------------------------------%
 %

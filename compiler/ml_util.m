@@ -216,7 +216,7 @@ can_optimize_tailcall(Name, Call) :-
     ( CallKind = tail_call ; CallKind = no_return_call ),
 
     % Check if the callee address is the same as the caller.
-    FuncRval = const(mlconst_code_addr(CodeAddr)),
+    FuncRval = ml_const(mlconst_code_addr(CodeAddr)),
     (
         CodeAddr = code_addr_proc(QualifiedProcLabel, _Sig),
         MaybeSeqNum = no
@@ -466,7 +466,7 @@ target_code_component_contains_var(target_code_input(Rval), Name) :-
     rval_contains_var(Rval, Name).
 target_code_component_contains_var(target_code_output(Lval), Name) :-
     lval_contains_var(Lval, Name).
-target_code_component_contains_var(name(EntityName), DataName) :-
+target_code_component_contains_var(target_code_name(EntityName), DataName) :-
     EntityName = qual(ModuleName, QualKind, entity_data(UnqualDataName)),
     DataName = qual(ModuleName, QualKind, UnqualDataName),
     % This is a place where we can succeed.
@@ -599,35 +599,35 @@ rvals_contains_var(Rvals, Name) :-
 maybe_rval_contains_var(yes(Rval), Name) :-
     rval_contains_var(Rval, Name).
 
-rval_contains_var(lval(Lval), Name) :-
+rval_contains_var(ml_lval(Lval), Name) :-
     lval_contains_var(Lval, Name).
-rval_contains_var(mkword(_Tag, Rval), Name) :-
+rval_contains_var(ml_mkword(_Tag, Rval), Name) :-
     rval_contains_var(Rval, Name).
-rval_contains_var(const(Const), QualDataName) :-
+rval_contains_var(ml_const(Const), QualDataName) :-
     Const = mlconst_data_addr(DataAddr),
     DataAddr = data_addr(ModuleName, DataName),
     QualDataName = qual(ModuleName, _QualKind, DataName),
     % this is a place where we can succeed
     true.
-rval_contains_var(unop(_Op, Rval), Name) :-
+rval_contains_var(ml_unop(_Op, Rval), Name) :-
     rval_contains_var(Rval, Name).
-rval_contains_var(binop(_Op, X, Y), Name) :-
+rval_contains_var(ml_binop(_Op, X, Y), Name) :-
     ( rval_contains_var(X, Name)
     ; rval_contains_var(Y, Name)
     ).
-rval_contains_var(mem_addr(Lval), Name) :-
+rval_contains_var(ml_mem_addr(Lval), Name) :-
     lval_contains_var(Lval, Name).
 
 lvals_contains_var(Lvals, Name) :-
     list.member(Lval, Lvals),
     lval_contains_var(Lval, Name).
 
-lval_contains_var(field(_MaybeTag, Rval, _FieldId, _, _), Name) :-
+lval_contains_var(ml_field(_MaybeTag, Rval, _FieldId, _, _), Name) :-
     rval_contains_var(Rval, Name).
-lval_contains_var(mem_ref(Rval, _Type), Name) :-
+lval_contains_var(ml_mem_ref(Rval, _Type), Name) :-
     rval_contains_var(Rval, Name).
-lval_contains_var(var(qual(ModuleName, QualKind, Name), _Type),
-        qual(ModuleName, QualKind, var(Name))) :-
+lval_contains_var(ml_var(qual(ModuleName, QualKind, Name), _Type),
+        qual(ModuleName, QualKind, mlds_data_var(Name))) :-
     % This is another place where we can succeed.
     true.
 
@@ -681,28 +681,28 @@ gen_init_builtin_const(Name) = init_obj(Rval) :-
     % Perhaps we should be using an enumeration type here,
     % rather than `mlds_native_int_type'.
     Type = mlds_native_int_type,
-    Rval = lval(var(qual(MLDS_Module, module_qual, mlds_var_name(Name, no)),
-        Type)).
+    Rval = ml_lval(ml_var(qual(MLDS_Module, module_qual,
+        mlds_var_name(Name, no)), Type)).
 
 gen_init_array(Conv, List) = init_array(list.map(Conv, List)).
 
 gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
 gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
 
-gen_init_null_pointer(Type) = init_obj(const(mlconst_null(Type))).
+gen_init_null_pointer(Type) = init_obj(ml_const(mlconst_null(Type))).
 
-gen_init_string(String) = init_obj(const(mlconst_string(String))).
+gen_init_string(String) = init_obj(ml_const(mlconst_string(String))).
 
-gen_init_int(Int) = init_obj(const(mlconst_int(Int))).
+gen_init_int(Int) = init_obj(ml_const(mlconst_int(Int))).
 
 gen_init_foreign(Lang, String) =
-    init_obj(const(mlconst_foreign(Lang, String, mlds_native_int_type))).
+    init_obj(ml_const(mlconst_foreign(Lang, String, mlds_native_int_type))).
 
-gen_init_bool(no) = init_obj(const(mlconst_false)).
-gen_init_bool(yes) = init_obj(const(mlconst_true)).
+gen_init_bool(no) = init_obj(ml_const(mlconst_false)).
+gen_init_bool(yes) = init_obj(ml_const(mlconst_true)).
 
 gen_init_boxed_int(Int) =
-    init_obj(unop(box(mlds_native_int_type), const(mlconst_int(Int)))).
+    init_obj(ml_unop(box(mlds_native_int_type), ml_const(mlconst_int(Int)))).
 
 gen_init_reserved_address(ModuleInfo, ReservedAddress) =
     % XXX using `mlds_generic_type' here is probably wrong

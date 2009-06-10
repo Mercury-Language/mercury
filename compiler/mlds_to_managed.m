@@ -1,16 +1,16 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Module: mlds_to_managed.m.
 % Main author: trd, petdr.
-% 
+%
 % Generate code for the foreign language interface to C#.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_managed.
@@ -345,7 +345,7 @@ write_outline_arg_final(unused, !IO).
     io::di, io::uo) is det.
 
 write_declare_and_assign_local(mlds_argument(Name, Type, _GcCode), !IO) :-
-    ( Name = entity_data(var(VarName0)) ->
+    ( Name = entity_data(mlds_data_var(VarName0)) ->
         VarName = VarName0
     ;
         unexpected(this_file, "not a variable name")
@@ -377,7 +377,7 @@ write_declare_and_assign_local(mlds_argument(Name, Type, _GcCode), !IO) :-
 :- pred write_assign_local_to_output(mlds_argument::in, io::di, io::uo) is det.
 
 write_assign_local_to_output(mlds_argument(Name, Type, _GcCode), !IO) :-
-    ( Name = entity_data(var(VarName0)) ->
+    ( Name = entity_data(mlds_data_var(VarName0)) ->
         VarName = VarName0
     ;
         unexpected(this_file, "not a variable name")
@@ -417,13 +417,13 @@ output_reset_context(!IO) :-
 
 :- pred write_rval(mlds_rval::in, io::di, io::uo) is det.
 
-write_rval(lval(Lval), !IO) :-
+write_rval(ml_lval(Lval), !IO) :-
     write_lval(Lval, !IO).
-write_rval(mkword(_Tag, _Rval), !IO) :-
+write_rval(ml_mkword(_Tag, _Rval), !IO) :-
     sorry(this_file, "mkword rval").
-write_rval(const(RvalConst), !IO) :-
+write_rval(ml_const(RvalConst), !IO) :-
     write_rval_const(RvalConst, !IO).
-write_rval(unop(Unop, Rval), !IO) :-
+write_rval(ml_unop(Unop, Rval), !IO) :-
     (
         Unop = std_unop(StdUnop),
         c_util.unary_prefix_op(StdUnop, UnopStr)
@@ -442,7 +442,7 @@ write_rval(unop(Unop, Rval), !IO) :-
     ;
         sorry(this_file, "box or unbox unop")
     ).
-write_rval(binop(Binop, Rval1, Rval2), !IO) :-
+write_rval(ml_binop(Binop, Rval1, Rval2), !IO) :-
     c_util.binop_category_string(Binop, Category, BinopStr),
     ( Category = int_or_bool_binary_infix_binop ->
         io.write_string("(", !IO),
@@ -455,9 +455,9 @@ write_rval(binop(Binop, Rval1, Rval2), !IO) :-
     ;
         sorry(this_file, "binop rval")
     ).
-write_rval(mem_addr(_), !IO) :-
+write_rval(ml_mem_addr(_), !IO) :-
     sorry(this_file, "mem_addr rval").
-write_rval(self(_), !IO) :-
+write_rval(ml_self(_), !IO) :-
     sorry(this_file, "self rval").
 
 :- pred write_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
@@ -504,27 +504,37 @@ write_rval_const(mlconst_null(_), !IO) :-
 
 :- pred write_lval(mlds_lval::in, io::di, io::uo) is det.
 
-write_lval(field(_, Rval, named_field(FieldId, _Type), _, _), !IO) :-
-    io.write_string("(", !IO),
-    write_rval(Rval, !IO),
-    io.write_string(")", !IO),
-    io.write_string(".", !IO),
-    FieldId = qual(_, _, FieldName),
-    io.write_string(FieldName, !IO).
-write_lval(field(_, Rval, offset(OffSet), _, _), !IO) :-
-    io.write_string("(", !IO),
-    write_rval(Rval, !IO),
-    io.write_string(")", !IO),
-    io.write_string("[", !IO),
-    write_rval(OffSet, !IO),
-    io.write_string("]", !IO).
-write_lval(mem_ref(Rval, _), !IO) :-
-    write_rval(Rval, !IO).
-write_lval(global_var_ref(_), !IO) :-
-    sorry(this_file, "write_lval: global_var_ref NYI").
-write_lval(var(Var, _VarType), !IO) :-
-    Var = qual(_, _, VarName),
-    write_mlds_var_name_for_parameter(VarName, !IO).
+write_lval(Lval, !IO) :-
+    (
+        Lval = ml_field(_, Rval, FieldId, _, _),
+        (
+            FieldId = ml_field_offset(OffSet),
+            io.write_string("(", !IO),
+            write_rval(Rval, !IO),
+            io.write_string(")", !IO),
+            io.write_string("[", !IO),
+            write_rval(OffSet, !IO),
+            io.write_string("]", !IO)
+        ;
+            FieldId = ml_field_named(FQFieldName, _Type),
+            io.write_string("(", !IO),
+            write_rval(Rval, !IO),
+            io.write_string(")", !IO),
+            io.write_string(".", !IO),
+            FQFieldName = qual(_, _, FieldName),
+            io.write_string(FieldName, !IO)
+        )
+    ;
+        Lval = ml_mem_ref(Rval, _),
+        write_rval(Rval, !IO)
+    ;
+        Lval = ml_global_var_ref(_),
+        sorry(this_file, "write_lval: global_var_ref NYI")
+    ;
+        Lval = ml_var(Var, _VarType),
+        Var = qual(_, _, VarName),
+        write_mlds_var_name_for_parameter(VarName, !IO)
+    ).
 
 :- pred write_defn_decl(mlds_defn::in, io::di, io::uo) is det.
 
@@ -532,7 +542,7 @@ write_defn_decl(Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
         DefnBody = mlds_data(Type, _Initializer, _GCStatement),
-        Name = entity_data(var(VarName))
+        Name = entity_data(mlds_data_var(VarName))
     ->
         write_parameter_type(Type, !IO),
         io.write_string(" ", !IO),
@@ -559,7 +569,7 @@ write_input_arg_as_foreign_type(Arg, !IO) :-
     write_il_type_as_foreign_type(mlds_type_to_ilds_type(DataRep, Type),
         !IO),
     io.write_string(" ", !IO),
-    ( EntityName = entity_data(var(VarName)) ->
+    ( EntityName = entity_data(mlds_data_var(VarName)) ->
         write_mlds_var_name_for_parameter(VarName, !IO)
     ;
         unexpected(this_file, "found a variable in a list")

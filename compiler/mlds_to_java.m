@@ -187,15 +187,15 @@ type_category_is_object(CtorCat) = IsObject :-
     %
 :- func mlds_lval_type(mlds_lval) = mlds_type.
 
-mlds_lval_type(var(_, VarType)) = VarType.
-mlds_lval_type(field(_, _, _, FieldType, _)) = FieldType.
-mlds_lval_type(mem_ref(_, PtrType)) =
+mlds_lval_type(ml_var(_, VarType)) = VarType.
+mlds_lval_type(ml_field(_, _, _, FieldType, _)) = FieldType.
+mlds_lval_type(ml_mem_ref(_, PtrType)) =
     ( PtrType = mlds_ptr_type(Type) ->
         Type
     ;
         unexpected(this_file, "mlds_lval_type: mem_ref of non-pointer")
     ).
-mlds_lval_type(global_var_ref(_)) = _ :-
+mlds_lval_type(ml_global_var_ref(_)) = _ :-
     sorry(this_file, "mlds_lval_type: global_var_ref NYI").
 
     % Succeeds iff the Rval represents an integer constant.
@@ -203,7 +203,7 @@ mlds_lval_type(global_var_ref(_)) = _ :-
 :- pred rval_is_int_const(mlds_rval::in) is semidet.
 
 rval_is_int_const(Rval) :-
-    Rval = const(mlconst_int(_)).
+    Rval = ml_const(mlconst_int(_)).
 
     % Succeeds iff the Rval represents an enumeration object in the Java
     % backend. We need to check both Rvals that are variables and Rvals
@@ -213,12 +213,12 @@ rval_is_int_const(Rval) :-
 :- pred rval_is_enum_object(mlds_rval::in) is semidet.
 
 rval_is_enum_object(Rval) :-
-    Rval = lval(Lval),
+    Rval = ml_lval(Lval),
     (
-        Lval = var(_, VarType),
+        Lval = ml_var(_, VarType),
         type_is_enum(VarType)
     ;
-        Lval = field(_, _, _, FieldType, _),
+        Lval = ml_field(_, _, _, FieldType, _),
         type_is_enum(FieldType)
     ).
 
@@ -618,9 +618,9 @@ method_ptrs_in_stmt(ml_stmt_switch(_Type, Rval, _Range, Cases, Default),
 method_ptrs_in_stmt(ml_stmt_label(_), _, _) :-
     unexpected(this_file,
         "method_ptrs_in_stmt: labels not supported in Java.").
-method_ptrs_in_stmt(ml_stmt_goto(break), !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_goto(continue), !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_goto(label(_)), _, _) :-
+method_ptrs_in_stmt(ml_stmt_goto(goto_break), !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_goto(goto_continue), !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_goto(goto_label(_)), _, _) :-
     unexpected(this_file,
         "method_ptrs_in_stmt: goto label not supported in Java.").
 method_ptrs_in_stmt(ml_stmt_computed_goto(_, _), _, _) :-
@@ -721,35 +721,35 @@ method_ptrs_in_rvals([Rval | Rvals], !CodeAddrs) :-
 :- pred method_ptrs_in_rval(mlds_rval::in, list(mlds_code_addr)::in,
     list(mlds_code_addr)::out) is det.
 
-method_ptrs_in_rval(lval(Lval), !CodeAddrs) :-
+method_ptrs_in_rval(ml_lval(Lval), !CodeAddrs) :-
     method_ptrs_in_lval(Lval, !CodeAddrs).
-method_ptrs_in_rval(mkword(_Tag, Rval), !CodeAddrs) :-
+method_ptrs_in_rval(ml_mkword(_Tag, Rval), !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs).
-method_ptrs_in_rval(const(RvalConst), !CodeAddrs) :-
+method_ptrs_in_rval(ml_const(RvalConst), !CodeAddrs) :-
     ( RvalConst = mlconst_code_addr(CodeAddr) ->
         !:CodeAddrs = !.CodeAddrs ++ [CodeAddr]
     ;
         true
     ).
-method_ptrs_in_rval(unop(_UnaryOp, Rval), !CodeAddrs) :-
+method_ptrs_in_rval(ml_unop(_UnaryOp, Rval), !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs).
-method_ptrs_in_rval(binop(_BinaryOp, Rval1, Rval2), !CodeAddrs) :-
+method_ptrs_in_rval(ml_binop(_BinaryOp, Rval1, Rval2), !CodeAddrs) :-
     method_ptrs_in_rval(Rval1, !CodeAddrs),
     method_ptrs_in_rval(Rval2, !CodeAddrs).
-method_ptrs_in_rval(mem_addr(_Address), !CodeAddrs).
-method_ptrs_in_rval(self(_Type), !CodeAddrs).
+method_ptrs_in_rval(ml_mem_addr(_Address), !CodeAddrs).
+method_ptrs_in_rval(ml_self(_Type), !CodeAddrs).
 
 :- pred method_ptrs_in_lval(mlds_lval::in, list(mlds_code_addr)::in,
     list(mlds_code_addr)::out) is det.
 
     % Here, "_Rval" is the address of a variable so we don't check it.
-method_ptrs_in_lval(mem_ref(_Rval, _Type), !CodeAddrs).
+method_ptrs_in_lval(ml_mem_ref(_Rval, _Type), !CodeAddrs).
     % Here, "_Rval" is a pointer to a cell on the heap, and doesn't need
     % to be considered.
-method_ptrs_in_lval(field(_MaybeTag, _Rval, _FieldId, _FieldType,
-        _PtrType), !CodeAddrs).
-method_ptrs_in_lval(var(_Variable, _Type), !CodeAddrs).
-method_ptrs_in_lval(global_var_ref(_), !CodeAddrs).
+method_ptrs_in_lval(ml_field(_MaybeTag, _Rval, _FieldId, _FieldType, _PtrType),
+        !CodeAddrs).
+method_ptrs_in_lval(ml_var(_Variable, _Type), !CodeAddrs).
+method_ptrs_in_lval(ml_global_var_ref(_), !CodeAddrs).
 
 %-----------------------------------------------------------------------------%
 %
@@ -866,7 +866,8 @@ generate_call_method(CodeAddr, MethodDefn) :-
     % It will have the argument type java.lang.Object[]
     % It will have the return type java.lang.Object
     MethodArgVariable = mlds_var_name("args", no),
-    MethodArgType = mlds_argument(entity_data(var(MethodArgVariable)),
+    MethodArgType = mlds_argument(
+        entity_data(mlds_data_var(MethodArgVariable)),
         mlds_array_type(mlds_generic_type), gc_no_stmt),
     MethodRetType = mlds_generic_type,
     MethodArgs = [MethodArgType],
@@ -888,8 +889,8 @@ generate_call_method(CodeAddr, MethodDefn) :-
         OrigRetTypes = [_, _ | _],
         ReturnVarType = mlds_array_type(mlds_generic_type)
     ),
-    ReturnLval = var(ReturnVar, ReturnVarType),
-    ReturnEntityName = entity_data(var(ReturnVarName)),
+    ReturnLval = ml_var(ReturnVar, ReturnVarType),
+    ReturnEntityName = entity_data(mlds_data_var(ReturnVarName)),
 
     ReturnDecFlags = ml_gen_local_var_decl_flags,
     GCStatement = gc_no_stmt,  % The Java back-end does its own GC.
@@ -901,7 +902,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
     % Create the call to the original method.
     CallArgLabel = qual(ModuleName, module_qual, MethodArgVariable),
     generate_call_method_args(OrigArgTypes, CallArgLabel, 0, [], CallArgs),
-    CallRval = const(mlconst_code_addr(CodeAddr)),
+    CallRval = ml_const(mlconst_code_addr(CodeAddr)),
 
     % If the original method has a return type of void, then we obviously
     % cannot assign its return value to "return_value". Thus, in this
@@ -920,7 +921,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
 
     % Create a return statement that returns the result of the call to the
     % original method, boxed as a java.lang.Object.
-    ReturnRval = unop(box(ReturnVarType), lval(ReturnLval)),
+    ReturnRval = ml_unop(box(ReturnVarType), ml_lval(ReturnLval)),
     Return = ml_stmt_return([ReturnRval]),
     ReturnStatement = statement(Return, Context),
 
@@ -942,10 +943,10 @@ generate_call_method(CodeAddr, MethodDefn) :-
 
 generate_call_method_args([], _, _, Args, Args).
 generate_call_method_args([Type | Types], Variable, Counter, Args0, Args) :-
-    ArrayRval = lval(var(Variable, mlds_native_int_type)),
-    IndexRval = const(mlconst_int(Counter)),
-    Rval = binop(array_index(elem_type_generic), ArrayRval, IndexRval),
-    UnBoxedRval = unop(unbox(Type), Rval),
+    ArrayRval = ml_lval(ml_var(Variable, mlds_native_int_type)),
+    IndexRval = ml_const(mlconst_int(Counter)),
+    Rval = ml_binop(array_index(elem_type_generic), ArrayRval, IndexRval),
+    UnBoxedRval = ml_unop(unbox(Type), Rval),
     Args1 = Args0 ++ [UnBoxedRval],
     generate_call_method_args(Types, Variable, Counter + 1, Args1, Args).
 
@@ -2007,7 +2008,7 @@ output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
 
 :- pred output_data_name(mlds_data_name::in, io::di, io::uo) is det.
 
-output_data_name(var(VarName), !IO) :-
+output_data_name(mlds_data_var(VarName), !IO) :-
     output_mlds_var_name(VarName, !IO).
 output_data_name(mlds_common(Num), !IO) :-
     io.write_string("common_", !IO),
@@ -2469,7 +2470,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_while(Cond, Statement, no),
     % The contained statement is reachable iff the while statement is
     % reachable and the condition expression is not a constant expression
     % whose value is false.
-    ( Cond = const(mlconst_false) ->
+    ( Cond = ml_const(mlconst_false) ->
         indent_line(Indent, !IO),
         io.write_string("{  /* Unreachable code */  }\n", !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
@@ -2560,14 +2561,14 @@ output_stmt(Indent, ModuleInfo, FuncInfo,
     %
 output_stmt(_, _, _, ml_stmt_label(_), _, _, _, _)  :-
     unexpected(this_file, "output_stmt: labels not supported in Java.").
-output_stmt(_, _, _, ml_stmt_goto(label(_)), _, _, _, _) :-
+output_stmt(_, _, _, ml_stmt_goto(goto_label(_)), _, _, _, _) :-
     unexpected(this_file, "output_stmt: gotos not supported in Java.").
-output_stmt(Indent, _, _FuncInfo, ml_stmt_goto(break), _Context,
+output_stmt(Indent, _, _FuncInfo, ml_stmt_goto(goto_break), _Context,
         ExitMethods, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("break;\n", !IO),
     ExitMethods = set.make_singleton_set(can_break).
-output_stmt(Indent, _, _FuncInfo, ml_stmt_goto(continue), _Context,
+output_stmt(Indent, _, _FuncInfo, ml_stmt_goto(goto_continue), _Context,
         ExitMethods, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("continue;\n", !IO),
@@ -2605,7 +2606,7 @@ output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
         %
         io.write_string("java.lang.Object [] result = ", !IO)
     ),
-    ( FuncRval = const(mlconst_code_addr(_)) ->
+    ( FuncRval = ml_const(mlconst_code_addr(_)) ->
         % This is a standard method call.
         (
             MaybeObject = yes(Object),
@@ -2817,7 +2818,7 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
         % XXX This is not a sufficient way of testing for a Java
         % "constant expression", though determining these accurately
         % is a little difficult to do here.
-        Cond = const(mlconst_true),
+        Cond = ml_const(mlconst_true),
         not set.member(can_break, BlockExitMethods)
     ->
         % Cannot complete normally
@@ -2866,8 +2867,8 @@ remove_dummy_vars(_, []) = [].
 remove_dummy_vars(ModuleInfo, [Var | Vars0]) = VarList :-
     Vars = remove_dummy_vars(ModuleInfo, Vars0),
     (
-        Var = lval(Lval),
-        Lval = var(_VarName, VarType),
+        Var = ml_lval(Lval),
+        Lval = ml_var(_VarName, VarType),
         VarType = mercury_type(ProgDataType, _, _),
         check_dummy_type(ModuleInfo, ProgDataType) = is_dummy_type
     ->
@@ -3152,22 +3153,26 @@ output_atomic_stmt(_Indent, _, _FuncInfo,
 :- pred output_target_code_component(module_info::in, mlds_module_name::in,
     mlds_context::in, target_code_component::in, io::di, io::uo) is det.
 
-output_target_code_component(_, _ModuleName, _Context,
-        user_target_code(CodeString, _MaybeUserContext, _Attrs), !IO) :-
-    % XXX Java does not have an equivalent of the C #line preprocessor
-    % directive.  If it did, we should use it here.
-    io.write_string(CodeString, !IO).
-output_target_code_component(_, _ModuleName, _Context,
-        raw_target_code(CodeString, _Attrs), !IO) :-
-    io.write_string(CodeString, !IO).
-output_target_code_component(ModuleInfo, ModuleName, _Context,
-        target_code_input(Rval), !IO) :-
-    output_rval(ModuleInfo, Rval, ModuleName, !IO).
-output_target_code_component(ModuleInfo, ModuleName, _Context,
-        target_code_output(Lval), !IO) :-
-    output_lval(ModuleInfo, Lval, ModuleName, !IO).
-output_target_code_component(_, ModuleName, _Context, name(Name), !IO) :-
-    output_maybe_qualified_name(Name, ModuleName, !IO).
+output_target_code_component(ModuleInfo, ModuleName, _Context, TargetCode,
+        !IO) :-
+    (
+        TargetCode = user_target_code(CodeString, _MaybeUserContext, _Attrs),
+        % XXX Java does not have an equivalent of the C #line preprocessor
+        % directive. If it did, we should use it here.
+        io.write_string(CodeString, !IO)
+    ;
+        TargetCode = raw_target_code(CodeString, _Attrs),
+        io.write_string(CodeString, !IO)
+    ;
+        TargetCode = target_code_input(Rval),
+        output_rval(ModuleInfo, Rval, ModuleName, !IO)
+    ;
+        TargetCode = target_code_output(Lval),
+        output_lval(ModuleInfo, Lval, ModuleName, !IO)
+    ;
+        TargetCode = target_code_name(Name),
+        output_maybe_qualified_name(Name, ModuleName, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -3212,64 +3217,67 @@ output_init_args(ModuleInfo, [Arg | Args], [_ArgType | ArgTypes], ArgNum,
 :- pred output_lval(module_info::in, mlds_lval::in, mlds_module_name::in,
     io::di, io::uo) is det.
 
-output_lval(ModuleInfo,
-        field(_MaybeTag, Rval, offset(OffsetRval), FieldType, _),
-        ModuleName, !IO) :-
+output_lval(ModuleInfo, Lval, ModuleName, !IO) :-
     (
-        ( FieldType = mlds_generic_type
-        ; FieldType = mercury_type(type_variable(_, _), _, _))
-    ->
-        true
+        Lval = ml_field(_MaybeTag, PtrRval, FieldId, FieldType, _),
+        (
+            FieldId = ml_field_offset(OffsetRval),
+            (
+                ( FieldType = mlds_generic_type
+                ; FieldType = mercury_type(type_variable(_, _), _, _)
+                )
+            ->
+                true
+            ;
+                % The field type for field(_, _, offset(_), _, _) lvals
+                % must be something that maps to MR_Box.
+                unexpected(this_file, "unexpected field type.")
+            ),
+            % XXX We shouldn't need this cast here, but there are cases where
+            % it is needed and the MLDS doesn't seem to generate it.
+            io.write_string("((java.lang.Object[]) ", !IO),
+            output_rval(ModuleInfo, PtrRval, ModuleName, !IO),
+            io.write_string(")[", !IO),
+            output_rval(ModuleInfo, OffsetRval, ModuleName, !IO),
+            io.write_string("]", !IO)
+        ;
+            FieldId = ml_field_named(FieldName, CtorType),
+            (
+                FieldName = qual(_, _, UnqualFieldName),
+                MangledFieldName = name_mangle(UnqualFieldName),
+                MangledFieldName = "data_tag"
+            ->
+                % If the field we are trying to access is just a `data_tag'
+                % then it is a member of the base class.
+                output_bracketed_rval(ModuleInfo, PtrRval, ModuleName, !IO),
+                io.write_string(".", !IO)
+            ;
+                % Otherwise the field we are trying to access may be
+                % in a derived class. Objects are manipulated as instances
+                % of their base class, so we need to downcast to the derived
+                % class to access some fields.
+
+                io.write_string("((", !IO),
+                output_type(normal_style, CtorType, !IO),
+                io.write_string(") ", !IO),
+                output_bracketed_rval(ModuleInfo, PtrRval, ModuleName, !IO),
+                % The actual variable.
+                io.write_string(").", !IO)
+            ),
+            FieldName = qual(_, _, UnqualFieldName),
+            output_valid_mangled_name(UnqualFieldName, !IO)
+        )
     ;
-        % The field type for field(_, _, offset(_), _, _) lvals
-        % must be something that maps to MR_Box.
-        unexpected(this_file, "unexpected field type.")
-    ),
-    % XXX We shouldn't need this cast here, but there are cases where
-    %     it is needed and the MLDS doesn't seem to generate it.
-    io.write_string("((java.lang.Object[]) ", !IO),
-    output_rval(ModuleInfo, Rval, ModuleName, !IO),
-    io.write_string(")[", !IO),
-    output_rval(ModuleInfo, OffsetRval, ModuleName, !IO),
-    io.write_string("]", !IO).
-
-output_lval(ModuleInfo,
-        field(_, PtrRval, named_field(FieldName, CtorType), _, _),
-        ModuleName, !IO) :-
-    (
-        FieldName = qual(_, _, UnqualFieldName),
-        MangledFieldName = name_mangle(UnqualFieldName),
-        MangledFieldName = "data_tag"
-    ->
-        % If the field we are trying to access is just a `data_tag'
-        % then it is a member of the base class.
-        output_bracketed_rval(ModuleInfo, PtrRval, ModuleName, !IO),
-        io.write_string(".", !IO)
+        Lval = ml_mem_ref(Rval, _Type),
+        output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO)
     ;
-        % Otherwise the field we are trying to access may be in a derived
-        % class. Objects are manipulated as instances of their base class,
-        % so we need to downcast to the derived class to access some fields.
-        %
-        io.write_string("((", !IO),
-        output_type(normal_style, CtorType, !IO),
-        io.write_string(") ", !IO),
-        output_bracketed_rval(ModuleInfo, PtrRval, ModuleName, !IO),
-        % The actual variable.
-        io.write_string(").", !IO)
-    ),
-    FieldName = qual(_, _, UnqualFieldName),
-    output_valid_mangled_name(UnqualFieldName, !IO).    % the field name
-
-output_lval(ModuleInfo, mem_ref(Rval, _Type), ModuleName, !IO) :-
-    output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO).
-
-output_lval(_ModuleInfo, global_var_ref(_), _ModuleName, !IO) :-
-    sorry(this_file, "output_lval: global_var_ref NYI").
-
-output_lval(_, var(qual(ModName, QualKind, Name), _), CurrentModuleName,
-        !IO) :-
-    QualName = qual(ModName, QualKind, entity_data(var(Name))),
-    output_maybe_qualified_name(QualName, CurrentModuleName, !IO).
+        Lval = ml_global_var_ref(_),
+        sorry(this_file, "output_lval: global_var_ref NYI")
+    ;
+        Lval = ml_var(qual(ModName, QualKind, Name), _),
+        QualName = qual(ModName, QualKind, entity_data(mlds_data_var(Name))),
+        output_maybe_qualified_name(QualName, ModuleName, !IO)
+    ).
 
 :- pred output_mangled_name(string::in, io::di, io::uo) is det.
 
@@ -3289,7 +3297,7 @@ output_valid_mangled_name(Name, !IO) :-
 
 output_call_rval(ModuleInfo, Rval, ModuleName, !IO) :-
     (
-        Rval = const(Const),
+        Rval = ml_const(Const),
         Const = mlconst_code_addr(CodeAddr)
     ->
         IsCall = yes,
@@ -3304,8 +3312,8 @@ output_call_rval(ModuleInfo, Rval, ModuleName, !IO) :-
 output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO) :-
     (
         % If it's just a variable name, then we don't need parentheses.
-        ( Rval = lval(var(_,_))
-        ; Rval = const(mlconst_code_addr(_))
+        ( Rval = ml_lval(ml_var(_,_))
+        ; Rval = ml_const(mlconst_code_addr(_))
         )
     ->
         output_rval(ModuleInfo, Rval, ModuleName, !IO)
@@ -3318,100 +3326,109 @@ output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO) :-
 :- pred output_rval(module_info::in, mlds_rval::in, mlds_module_name::in,
     io::di, io::uo) is det.
 
-output_rval(ModuleInfo, lval(Lval), ModuleName, !IO) :-
-    output_lval(ModuleInfo, Lval, ModuleName, !IO).
-
-output_rval(_, mkword(_, _), _, _, _) :-
-    unexpected(this_file, "output_rval: tags not supported in Java").
-
-output_rval(_, const(Const), _, !IO) :-
-    output_rval_const(Const, !IO).
-
-output_rval(ModuleInfo, unop(Op, Rval), ModuleName, !IO) :-
-    output_unop(ModuleInfo, Op, Rval, ModuleName, !IO).
-
-output_rval(ModuleInfo, binop(Op, Rval1, Rval2), ModuleName, !IO) :-
-    output_binop(ModuleInfo, Op, Rval1, Rval2, ModuleName, !IO).
-
-output_rval(_, mem_addr(_Lval), _, !IO) :-
-    unexpected(this_file, "output_rval: mem_addr(_) not supported").
-
-output_rval(_, self(_), _, !IO) :-
-    io.write_string("this", !IO).
+output_rval(ModuleInfo, Rval, ModuleName, !IO) :-
+    (
+        Rval = ml_lval(Lval),
+        output_lval(ModuleInfo, Lval, ModuleName, !IO)
+    ;
+        Rval = ml_mkword(_, _),
+        unexpected(this_file, "output_rval: tags not supported in Java")
+    ;
+        Rval = ml_const(Const),
+        output_rval_const(Const, !IO)
+    ;
+        Rval = ml_unop(Op, RvalA),
+        output_unop(ModuleInfo, Op, RvalA, ModuleName, !IO)
+    ;
+        Rval = ml_binop(Op, RvalA, RvalB),
+        output_binop(ModuleInfo, Op, RvalA, RvalB, ModuleName, !IO)
+    ;
+        Rval = ml_mem_addr(_Lval),
+        unexpected(this_file, "output_rval: mem_addr(_) not supported")
+    ;
+        Rval = ml_self(_),
+        io.write_string("this", !IO)
+    ).
 
 :- pred output_unop(module_info::in, mlds_unary_op::in, mlds_rval::in,
     mlds_module_name::in, io::di, io::uo) is det.
 
-output_unop(ModuleInfo, cast(Type), Exprn, ModuleName, !IO) :-
-    % rtti_to_mlds.m generates casts from int to
-    % mercury.runtime.PseudoTypeInfo, but for Java
-    % we need to treat these as constructions, not casts.
-    % Similarly for conversions from TypeCtorInfo to TypeInfo.
+output_unop(ModuleInfo, Unop, Expr, ModuleName, !IO) :-
     (
-        Type = mlds_pseudo_type_info_type,
-        Exprn = const(mlconst_int(_))
-    ->
-        maybe_output_comment("cast", !IO),
-        io.write_string("new mercury.runtime.PseudoTypeInfo(", !IO),
-        output_rval(ModuleInfo, Exprn, ModuleName, !IO),
-        io.write_string(")", !IO)
-    ;
-        ( Type = mercury_type(_, ctor_cat_system(cat_system_type_info), _)
-        ; Type = mlds_type_info_type
+        Unop = cast(Type),
+        % rtti_to_mlds.m generates casts from int to
+        % mercury.runtime.PseudoTypeInfo, but for Java
+        % we need to treat these as constructions, not casts.
+        % Similarly for conversions from TypeCtorInfo to TypeInfo.
+        (
+            Type = mlds_pseudo_type_info_type,
+            Expr = ml_const(mlconst_int(_))
+        ->
+            maybe_output_comment("cast", !IO),
+            io.write_string("new mercury.runtime.PseudoTypeInfo(", !IO),
+            output_rval(ModuleInfo, Expr, ModuleName, !IO),
+            io.write_string(")", !IO)
+        ;
+            ( Type = mercury_type(_, ctor_cat_system(cat_system_type_info), _)
+            ; Type = mlds_type_info_type
+            )
+        ->
+            maybe_output_comment("cast", !IO),
+            io.write_string("new mercury.runtime.TypeInfo_Struct(", !IO),
+            output_rval(ModuleInfo, Expr, ModuleName, !IO),
+            io.write_string(")", !IO)
+        ;
+            output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO)
         )
-    ->
-        maybe_output_comment("cast", !IO),
-        io.write_string("new mercury.runtime.TypeInfo_Struct(", !IO),
-        output_rval(ModuleInfo, Exprn, ModuleName, !IO),
-        io.write_string(")", !IO)
     ;
-        output_cast_rval(ModuleInfo, Type, Exprn, ModuleName, !IO)
+        Unop = box(Type),
+        output_boxed_rval(ModuleInfo, Type, Expr, ModuleName, !IO)
+    ;
+        Unop = unbox(Type),
+        output_unboxed_rval(ModuleInfo, Type, Expr, ModuleName, !IO)
+    ;
+        Unop = std_unop(StdUnop),
+        output_std_unop(ModuleInfo, StdUnop, Expr, ModuleName, !IO)
     ).
-output_unop(ModuleInfo, box(Type), Exprn, ModuleName, !IO) :-
-    output_boxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO).
-output_unop(ModuleInfo, unbox(Type), Exprn, ModuleName, !IO) :-
-    output_unboxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO).
-output_unop(ModuleInfo, std_unop(Unop), Exprn, ModuleName, !IO) :-
-    output_std_unop(ModuleInfo, Unop, Exprn, ModuleName, !IO).
 
 :- pred output_cast_rval(module_info::in, mlds_type::in, mlds_rval::in,
     mlds_module_name::in, io::di, io::uo) is det.
 
-output_cast_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
+output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
     io.write_string("(", !IO),
     output_type(normal_style, Type, !IO),
     io.write_string(") ", !IO),
     ( java_builtin_type(Type, "int", _, _) ->
-        output_rval_maybe_with_enum(ModuleInfo, Exprn, ModuleName, !IO)
+        output_rval_maybe_with_enum(ModuleInfo, Expr, ModuleName, !IO)
     ;
-        output_rval(ModuleInfo, Exprn, ModuleName, !IO)
+        output_rval(ModuleInfo, Expr, ModuleName, !IO)
     ).
 
 :- pred output_boxed_rval(module_info::in, mlds_type::in, mlds_rval::in,
      mlds_module_name::in, io::di, io::uo) is det.
 
-output_boxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
+output_boxed_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
     ( java_builtin_type(Type, _JavaName, JavaBoxedName, _) ->
         io.write_string("new ", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string("(", !IO),
-        output_rval(ModuleInfo, Exprn, ModuleName, !IO),
+        output_rval(ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(")", !IO)
     ;
         io.write_string("((java.lang.Object) (", !IO),
-        output_rval(ModuleInfo, Exprn, ModuleName, !IO),
+        output_rval(ModuleInfo, Expr, ModuleName, !IO),
         io.write_string("))", !IO)
     ).
 
 :- pred output_unboxed_rval(module_info::in, mlds_type::in, mlds_rval::in,
     mlds_module_name::in, io::di, io::uo) is det.
 
-output_unboxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
+output_unboxed_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
     ( java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) ->
         io.write_string("((", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string(") ", !IO),
-        output_bracketed_rval(ModuleInfo, Exprn, ModuleName, !IO),
+        output_bracketed_rval(ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(").", !IO),
         io.write_string(UnboxMethod, !IO),
         io.write_string("()", !IO)
@@ -3419,7 +3436,7 @@ output_unboxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
         io.write_string("((", !IO),
         output_type(normal_style, Type, !IO),
         io.write_string(") ", !IO),
-        output_rval(ModuleInfo, Exprn, ModuleName, !IO),
+        output_rval(ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(")", !IO)
     ).
 
@@ -3466,14 +3483,14 @@ java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     % are no-ops, except for `tag', which always returns zero (a tag of zero
     % means there's no tag).
     %
-output_std_unop(ModuleInfo, UnaryOp, Exprn, ModuleName, !IO) :-
+output_std_unop(ModuleInfo, UnaryOp, Expr, ModuleName, !IO) :-
     ( UnaryOp = tag ->
         io.write_string("/* tag */  0", !IO)
     ;
         java_unary_prefix_op(UnaryOp, UnaryOpString),
         io.write_string(UnaryOpString, !IO),
         io.write_string("(", !IO),
-        output_rval(ModuleInfo, Exprn, ModuleName, !IO),
+        output_rval(ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(")", !IO)
     ).
 
@@ -3554,48 +3571,50 @@ output_binary_op(Op, !IO) :-
 
 :- pred output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
 
-output_rval_const(mlconst_true, !IO) :-
-    io.write_string("true", !IO).
-
-output_rval_const(mlconst_false, !IO) :-
-    io.write_string("false", !IO).
-
-output_rval_const(mlconst_int(N), !IO) :-
-    io.write_int(N, !IO).
-
-    % XXX Should we parenthesize this?
-    %
-output_rval_const(mlconst_foreign(Lang, Value, _Type), !IO) :-
-    expect(unify(Lang, lang_java), this_file,
-        "output_rval_const - mlconst_foreign for language other than Java."),
-    io.write_string(Value, !IO).
-
-output_rval_const(mlconst_float(FloatVal), !IO) :-
-    c_util.output_float_literal(FloatVal, !IO).
-
-output_rval_const(mlconst_string(String), !IO) :-
-    io.write_string("""", !IO),
-    c_util.output_quoted_string_lang(literal_java, String, !IO),
-    io.write_string("""", !IO).
-
-output_rval_const(mlconst_multi_string(String), !IO) :-
-    io.write_string("""", !IO),
-    c_util.output_quoted_multi_string_lang(literal_java, String, !IO),
-    io.write_string("""", !IO).
-
-output_rval_const(mlconst_named_const(NamedConst), !IO) :-
-    io.write_string(NamedConst, !IO).
-
-output_rval_const(mlconst_code_addr(CodeAddr), !IO) :-
-    IsCall = no,
-    mlds_output_code_addr(CodeAddr, IsCall, !IO).
-
-output_rval_const(mlconst_data_addr(DataAddr), !IO) :-
-    mlds_output_data_addr(DataAddr, !IO).
-
-output_rval_const(mlconst_null(Type), !IO) :-
-    Initializer = get_java_type_initializer(Type),
-    io.write_string(Initializer, !IO).
+output_rval_const(Const, !IO) :-
+    (
+        Const = mlconst_true,
+        io.write_string("true", !IO)
+    ;
+        Const = mlconst_false,
+        io.write_string("false", !IO)
+    ;
+        Const = mlconst_int(N),
+        io.write_int(N, !IO)
+    ;
+        Const = mlconst_foreign(Lang, Value, _Type),
+        expect(unify(Lang, lang_java), this_file,
+            "output_rval_const: language other than Java."),
+        % XXX Should we parenthesize this?
+        io.write_string(Value, !IO)
+    ;
+        Const = mlconst_float(FloatVal),
+        c_util.output_float_literal(FloatVal, !IO)
+    ;
+        Const = mlconst_string(String),
+        io.write_string("""", !IO),
+        c_util.output_quoted_string_lang(literal_java, String, !IO),
+        io.write_string("""", !IO)
+    ;
+        Const = mlconst_multi_string(String),
+        io.write_string("""", !IO),
+        c_util.output_quoted_multi_string_lang(literal_java, String, !IO),
+        io.write_string("""", !IO)
+    ;
+        Const = mlconst_named_const(NamedConst),
+        io.write_string(NamedConst, !IO)
+    ;
+        Const = mlconst_code_addr(CodeAddr),
+        IsCall = no,
+        mlds_output_code_addr(CodeAddr, IsCall, !IO)
+    ;
+        Const = mlconst_data_addr(DataAddr),
+        mlds_output_data_addr(DataAddr, !IO)
+    ;
+        Const = mlconst_null(Type),
+        Initializer = get_java_type_initializer(Type),
+        io.write_string(Initializer, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 

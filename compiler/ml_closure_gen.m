@@ -145,16 +145,16 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
         NumArgs, Context, WrapperFuncRval0, WrapperFuncType0, !Info),
 
     % Compute the rval which holds the number of arguments
-    NumArgsRval0 = const(mlconst_int(NumArgs)),
+    NumArgsRval0 = ml_const(mlconst_int(NumArgs)),
     NumArgsType0 = mlds_native_int_type,
 
     % Put all the extra arguments of the closure together
     % Note that we need to box these arguments.
-    NumArgsRval = unop(box(NumArgsType0), NumArgsRval0),
+    NumArgsRval = ml_unop(box(NumArgsType0), NumArgsRval0),
     NumArgsType = mlds_generic_type,
-    WrapperFuncRval = unop(box(WrapperFuncType0), WrapperFuncRval0),
+    WrapperFuncRval = ml_unop(box(WrapperFuncType0), WrapperFuncRval0),
     WrapperFuncType = mlds_generic_type,
-    ClosureLayoutRval = unop(box(ClosureLayoutType0), ClosureLayoutRval0),
+    ClosureLayoutRval = ml_unop(box(ClosureLayoutType0), ClosureLayoutRval0),
     ClosureLayoutType = mlds_generic_type,
     ExtraArgRvals = [ClosureLayoutRval, WrapperFuncRval, NumArgsRval],
     ExtraArgTypes = [ClosureLayoutType, WrapperFuncType, NumArgsType],
@@ -203,7 +203,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
         TvarVectorName),
     ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName,
         Context, TVarLocnMap, TVarVectorRval, TVarVectorType, TVarDefns),
-    InitTVarVector = init_obj(unop(box(TVarVectorType), TVarVectorRval)),
+    InitTVarVector = init_obj(ml_unop(box(TVarVectorType), TVarVectorRval)),
     Inits = [InitProcId, InitTVarVector | InitClosureArgs],
     _ArgTypes = [ProcIdType, TVarVectorType | ClosureArgTypes],
 
@@ -221,8 +221,8 @@ ml_gen_closure_layout(PredId, ProcId, Context,
         ClosureArgDefns ++ [ClosureLayoutDefn],
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ClosureLayoutRval = lval(var(qual(MLDS_ModuleName, module_qual, Name),
-        ClosureLayoutType)).
+    ClosureLayoutRval = ml_lval(
+        ml_var(qual(MLDS_ModuleName, module_qual, Name), ClosureLayoutType)).
 
 :- pred ml_gen_closure_proc_id(module_info::in, prog_context::in,
     mlds_initializer::out, mlds_type::out, list(mlds_defn)::out) is det.
@@ -230,7 +230,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
 ml_gen_closure_proc_id(_ModuleInfo, _Context, InitProcId, ProcIdType,
         ClosureProcIdDefns) :-
     % XXX currently we don't fill in the ProcId field!
-    InitProcId = init_obj(const(mlconst_null(ProcIdType))),
+    InitProcId = init_obj(ml_const(mlconst_null(ProcIdType))),
     ProcIdType = mlds_generic_type,
     ClosureProcIdDefns = [].
 %   module_info_get_name(ModuleInfo, ModuleName),
@@ -259,9 +259,9 @@ ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
     assoc_list.keys(ArgInitsAndTypes, ArgInits),
     assoc_list.values(ArgInitsAndTypes, ArgTypes),
     Length = list.length(ArgInits),
-    LengthRval = const(mlconst_int(Length)),
+    LengthRval = ml_const(mlconst_int(Length)),
     LengthType = mlds_native_int_type,
-    CastLengthRval = unop(box(LengthType), LengthRval),
+    CastLengthRval = ml_unop(box(LengthType), LengthRval),
     ClosureArgInits = [init_obj(CastLengthRval) | ArgInits],
     ClosureArgTypes = [LengthType | ArgTypes].
 
@@ -284,7 +284,7 @@ ml_stack_layout_construct_closure_arg_rval(ModuleInfo, ClosureArg,
         ExistQTvars, PseudoTypeInfo),
     ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, ArgRval, ArgType,
         !Defns),
-    CastArgRval = unop(box(ArgType), ArgRval),
+    CastArgRval = ml_unop(box(ArgType), ArgRval),
     ArgInit = init_obj(CastArgRval).
 
 :- pred ml_gen_maybe_pseudo_type_info_defn(module_info::in,
@@ -329,7 +329,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
     (
         PseudoTypeInfo = type_var(N),
         % Type variables are represented just as integers.
-        Rval = const(mlconst_int(N)),
+        Rval = ml_const(mlconst_int(N)),
         Type = mlds_native_int_type
     ;
         ( PseudoTypeInfo = plain_arity_zero_pseudo_type_info(_)
@@ -366,7 +366,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
                 arg_maybe_pseudo_type_infos(PseudoTypeInfo), !Defns)
         ),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        Rval = const(mlconst_data_addr(data_addr(MLDS_ModuleName,
+        Rval = ml_const(mlconst_data_addr(data_addr(MLDS_ModuleName,
             mlds_rtti(RttiId)))),
         Type = mlds_rtti_type(item_type(RttiId))
     ).
@@ -404,7 +404,7 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
             arg_type_infos(TypeInfo), !Defns)
     ),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    Rval = const(mlconst_data_addr(data_addr(MLDS_ModuleName,
+    Rval = ml_const(mlconst_data_addr(data_addr(MLDS_ModuleName,
         mlds_rtti(RttiId)))),
     Type = mlds_rtti_type(item_type(RttiId)).
 
@@ -438,7 +438,7 @@ ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
         TVarLocnMap, MLDS_Rval, ArrayType, Defns) :-
     ArrayType = mlds_array_type(mlds_native_int_type),
     ( map.is_empty(TVarLocnMap) ->
-        MLDS_Rval = const(mlconst_null(ArrayType)),
+        MLDS_Rval = ml_const(mlconst_null(ArrayType)),
         Defns = []
     ;
         Access = acc_local,
@@ -450,7 +450,7 @@ ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
         Defns = [Defn],
         module_info_get_name(ModuleInfo, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        MLDS_Rval = lval(var(
+        MLDS_Rval = ml_lval(ml_var(
             qual(MLDS_ModuleName, module_qual, TvarVectorName),
             ArrayType))
     ).
@@ -463,7 +463,7 @@ ml_stack_layout_construct_tvar_rvals(TVarLocnMap, Vector, VectorTypes) :-
     ml_stack_layout_construct_type_param_locn_vector(TVarLocns, 1,
         TypeParamLocs),
     list.length(TypeParamLocs, TypeParamsLength),
-    LengthRval = const(mlconst_int(TypeParamsLength)),
+    LengthRval = ml_const(mlconst_int(TypeParamsLength)),
     Vector = [init_obj(LengthRval) | TypeParamLocs],
     VectorTypes = list.duplicate(TypeParamsLength + 1, mlds_native_int_type).
 
@@ -488,7 +488,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
             unexpected(this_file, "tvar has empty set of locations")
         ),
         stack_layout.represent_locn_as_int(Locn, LocnAsInt),
-        Rval = const(mlconst_int(LocnAsInt)),
+        Rval = ml_const(mlconst_int(LocnAsInt)),
         ml_stack_layout_construct_type_param_locn_vector(TVarLocns,
             NextSlot, VectorTail),
         Vector = [init_obj(Rval) | VectorTail]
@@ -496,7 +496,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
         % This slot will never be referred to.
         ml_stack_layout_construct_type_param_locn_vector(
             [TVar - Locns | TVarLocns], NextSlot, VectorTail),
-        Vector = [init_obj(const(mlconst_int(0))) | VectorTail]
+        Vector = [init_obj(ml_const(mlconst_int(0))) | VectorTail]
     ;
         unexpected(this_file,
             "unsorted tvars in construct_type_param_locn_vector")
@@ -746,7 +746,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         gen_closure_gc_statement(ClosureArgName, ClosureArgDeclType,
             ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
             Context, ClosureArgGCStatement, !Info),
-        ClosureArg = mlds_argument(entity_data(var(ClosureArgName)),
+        ClosureArg = mlds_argument(entity_data(mlds_data_var(ClosureArgName)),
             ClosureArgType, ClosureArgGCStatement),
         MaybeClosureA = yes({ClosureArgType, ClosureArgName}),
         WrapperArgs = [ClosureArg | WrapperArgs1]
@@ -787,12 +787,12 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         % (unlike the closure_arg parameter) it isn't referenced from
         % the GC tracing for other variables.
         ClosureGCStatement = gc_no_stmt,
-        ClosureDecl = ml_gen_mlds_var_decl(var(ClosureName),
+        ClosureDecl = ml_gen_mlds_var_decl(mlds_data_var(ClosureName),
             ClosureType, ClosureGCStatement, MLDS_Context),
         ml_gen_var_lval(!.Info, ClosureName, ClosureType, ClosureLval),
         ml_gen_var_lval(!.Info, ClosureArgName1, ClosureArgType1,
             ClosureArgLval),
-        InitClosure = ml_gen_assign(ClosureLval, lval(ClosureArgLval),
+        InitClosure = ml_gen_assign(ClosureLval, ml_lval(ClosureArgLval),
             Context),
         MaybeClosureB = yes({ClosureDecl, InitClosure}),
         MaybeClosureC = yes(ClosureLval)
@@ -1072,7 +1072,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
             ;
                 % Output arguments are passed by reference, so we need to
                 % dereference them.
-                Lval = mem_ref(lval(VarLval), MLDS_Type),
+                Lval = ml_mem_ref(ml_lval(VarLval), MLDS_Type),
                 CopyOutLvals = CopyOutLvalsTail,
                 Defns = DefnsTail
             )
@@ -1115,9 +1115,9 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
     % We use 'gc_initialiser' for the garbage collection code as it is code to
     % initialise local variables used during garbage collection and must
     % run before variables are traced.
-    ClosureLayoutPtrDecl = ml_gen_mlds_var_decl(var(ClosureLayoutPtrName),
-        ClosureLayoutPtrType, gc_initialiser(ClosureLayoutPtrGCInit),
-        MLDS_Context),
+    ClosureLayoutPtrDecl = ml_gen_mlds_var_decl(
+        mlds_data_var(ClosureLayoutPtrName), ClosureLayoutPtrType,
+        gc_initialiser(ClosureLayoutPtrGCInit), MLDS_Context),
     ml_gen_var_lval(!.Info, ClosureLayoutPtrName, ClosureLayoutPtrType,
         ClosureLayoutPtrLval),
 
@@ -1128,7 +1128,7 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
     % We use 'gc_initialiser' for the garbage collection code as it is code to
     % initialise local variables used during garbage collection and must
     % run before variables are traced.
-    TypeParamsDecl = ml_gen_mlds_var_decl(var(TypeParamsName),
+    TypeParamsDecl = ml_gen_mlds_var_decl(mlds_data_var(TypeParamsName),
         TypeParamsType, gc_initialiser(TypeParamsGCInit), MLDS_Context),
     ml_gen_var_lval(!.Info, TypeParamsName, TypeParamsType, TypeParamsLval),
     (
@@ -1136,7 +1136,7 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         ClosureLayoutPtrGCInitFragments = [
             target_code_output(ClosureLayoutPtrLval),
             raw_target_code(" = (MR_Box) ((MR_Closure *)\n", []),
-            target_code_input(lval(ClosureArgLval)),
+            target_code_input(ml_lval(ClosureArgLval)),
             raw_target_code(")->MR_closure_layout;\n", [])
         ],
         ClosureLayoutPtrGCInit = statement(ml_stmt_atomic(
@@ -1146,7 +1146,7 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
             target_code_output(TypeParamsLval),
             raw_target_code(" = (MR_Box) " ++
               "MR_materialize_closure_type_params(\n", []),
-            target_code_input(lval(ClosureArgLval)),
+            target_code_input(ml_lval(ClosureArgLval)),
             raw_target_code(");\n", [])
         ]
     ;
@@ -1159,17 +1159,17 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
                 ClosureLayoutDefns,
                 [statement(ml_stmt_atomic(
                     assign(ClosureLayoutPtrLval,
-                    unop(box(ClosureLayoutType), ClosureLayoutRval)
-                )), MLDS_Context)]
+                        ml_unop(box(ClosureLayoutType), ClosureLayoutRval)
+                    )), MLDS_Context)]
             ), MLDS_Context),
         TypeParamsGCInitFragments = [
             target_code_output(TypeParamsLval),
             raw_target_code(" = (MR_Box) " ++
                 "MR_materialize_typeclass_info_type_params(\n"
                 ++ "(MR_Word) ", []),
-            target_code_input(lval(ClosureArgLval)),
+            target_code_input(ml_lval(ClosureArgLval)),
             raw_target_code(", (MR_Closure_Layout *) ", []),
-            target_code_input(lval(ClosureLayoutPtrLval)),
+            target_code_input(ml_lval(ClosureLayoutPtrLval)),
             raw_target_code(");\n", [])
         ]
     ;
@@ -1222,11 +1222,11 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
     TypeInfoMercuryType = c_pointer_type,
     TypeInfoType = mercury_type_to_mlds_type(ModuleInfo, TypeInfoMercuryType),
     ml_gen_var_lval(!.Info, TypeInfoName, TypeInfoType, TypeInfoLval),
-    TypeInfoDecl = ml_gen_mlds_var_decl(var(TypeInfoName), TypeInfoType,
-        gc_no_stmt, MLDS_Context),
+    TypeInfoDecl = ml_gen_mlds_var_decl(mlds_data_var(TypeInfoName),
+        TypeInfoType, gc_no_stmt, MLDS_Context),
 
     ml_gen_gc_statement_with_typeinfo(VarName, Type,
-        lval(TypeInfoLval), Context, GCStatement0, !Info),
+        ml_lval(TypeInfoLval), Context, GCStatement0, !Info),
 
     (
         (
@@ -1240,9 +1240,9 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
             target_code_output(TypeInfoLval),
             raw_target_code(" = (MR_C_Pointer) " ++
                 "MR_make_type_info_maybe_existq(\n\t", []),
-            target_code_input(lval(TypeParamsLval)),
+            target_code_input(ml_lval(TypeParamsLval)),
             raw_target_code(", ((MR_Closure_Layout *)\n\t", []),
-            target_code_input(lval(ClosureLayoutPtrLval)),
+            target_code_input(ml_lval(ClosureLayoutPtrLval)),
             raw_target_code(string.format(")->" ++
                 "MR_closure_arg_pseudo_type_info[%d - 1],\n\t" ++
                 "NULL, NULL, &allocated_mem);\n",
@@ -1262,7 +1262,7 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
         GCStatement0 = gc_no_stmt,
         GCStatement = GCStatement0
     ),
-    LocalVarDefn = ml_gen_mlds_var_decl(var(VarName),
+    LocalVarDefn = ml_gen_mlds_var_decl(mlds_data_var(VarName),
         mercury_type_to_mlds_type(ModuleInfo, Type),
         GCStatement, MLDS_Context).
 
@@ -1275,9 +1275,9 @@ ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
         ClosureArgLvals = []
     ;
         % Generate `MR_field(MR_mktag(0), closure, <N>)'.
-        FieldId = offset(const(mlconst_int(ArgNum + Offset))),
+        FieldId = ml_field_offset(ml_const(mlconst_int(ArgNum + Offset))),
         % XXX These types might not be right.
-        FieldLval = field(yes(0), lval(ClosureLval), FieldId,
+        FieldLval = ml_field(yes(0), ml_lval(ClosureLval), FieldId,
             mlds_generic_type, mlds_generic_type),
         % Recursively handle the remaining fields.
         ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum + 1,

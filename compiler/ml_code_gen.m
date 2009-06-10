@@ -1263,14 +1263,14 @@ init_stats_step(StepId, StepDesc, Init) :-
 :- func encode_enum_init(string) = mlds_initializer.
 
 encode_enum_init(EnumConstName) =
-    init_obj(const(mlconst_named_const(EnumConstName))).
+    init_obj(ml_const(mlconst_named_const(EnumConstName))).
 
 :- func gen_init_tabling_name(mlds_module_name, mlds_proc_label,
     proc_tabling_struct_id) = mlds_initializer.
 
 gen_init_tabling_name(ModuleName, ProcLabel, TablingId) = Rval :-
     DataAddr = data_addr(ModuleName, mlds_tabling_ref(ProcLabel, TablingId)),
-    Rval = init_obj(const(mlconst_data_addr(DataAddr))).
+    Rval = init_obj(ml_const(mlconst_data_addr(DataAddr))).
 
 :- func tabling_name_and_init_to_defn(mlds_proc_label, mlds_context, constness,
     proc_tabling_struct_id, mlds_initializer) = mlds_defn.
@@ -1779,7 +1779,8 @@ ml_gen_wrap_goal(model_semi, model_det, Context, !Statements, !Info) :-
     %   <do Goal>
     %   succeeded = MR_TRUE
     %
-    ml_gen_set_success(!.Info, const(mlconst_true), Context, SetSuccessTrue),
+    ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
+        SetSuccessTrue),
     !:Statements = !.Statements ++ [SetSuccessTrue].
 
 ml_gen_wrap_goal(model_non, model_det, Context, !Statements, !Info) :-
@@ -1888,7 +1889,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             [i(CommitLabelNum)]), no),
         ml_gen_var_lval(!.Info, CommitRef, mlds_commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
-        DoCommitStmt = ml_stmt_do_commit(lval(CommitRefLval)),
+        DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval)),
         DoCommitStatement = statement(DoCommitStmt, MLDS_Context),
         % Pop nesting level.
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
@@ -1904,9 +1905,9 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
         GoalStatement = ml_gen_block(GoalOtherDecls, GoalStatements,
             GoalContext),
         ml_gen_info_pop_success_cont(!Info),
-        ml_gen_set_success(!.Info, const(mlconst_false), Context,
+        ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
             SetSuccessFalse),
-        ml_gen_set_success(!.Info, const(mlconst_true), Context,
+        ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
             SetSuccessTrue),
         TryCommitStmt = ml_stmt_try_commit(CommitRefLval,
             ml_gen_block([], [GoalStatement, SetSuccessFalse], Context),
@@ -1968,7 +1969,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             string.format("commit_%d", [i(CommitLabelNum)]), no),
         ml_gen_var_lval(!.Info, CommitRef, mlds_commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
-        DoCommitStmt = ml_stmt_do_commit(lval(CommitRefLval)),
+        DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval)),
         DoCommitStatement = statement(DoCommitStmt, MLDS_Context),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
@@ -2150,13 +2151,13 @@ ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
     ml_gen_type(!.Info, Type, MLDS_Type),
     ml_gen_gc_statement(LocalVarName, Type, Context, GCStatement,
         !Info),
-    LocalVarDefn = ml_gen_mlds_var_decl(var(LocalVarName), MLDS_Type,
+    LocalVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LocalVarName), MLDS_Type,
         GCStatement, mlds_make_context(Context)),
 
     % Generate code to assign from the local var to the output var.
     ml_gen_var(!.Info, OutputVar, OutputVarLval),
     ml_gen_var_lval(!.Info, LocalVarName, MLDS_Type, LocalVarLval),
-    Assign = ml_gen_assign(OutputVarLval, lval(LocalVarLval), Context),
+    Assign = ml_gen_assign(OutputVarLval, ml_lval(LocalVarLval), Context),
 
     % Update the lval for this variable so that any references to it inside
     % the commit refer to the local variable rather than to the output
@@ -2169,7 +2170,8 @@ ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
 :- func ml_gen_commit_var_decl(mlds_context, mlds_var_name) = mlds_defn.
 
 ml_gen_commit_var_decl(Context, VarName) =
-    ml_gen_mlds_var_decl(var(VarName), mlds_commit_type, gc_no_stmt, Context).
+    ml_gen_mlds_var_decl(mlds_data_var(VarName), mlds_commit_type, gc_no_stmt,
+        Context).
 
     % Generate MLDS code for the different kinds of HLDS goals.
     %
@@ -2500,13 +2502,13 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
     (
         Expr = trace_base(trace_envvar(EnvVar)),
         ml_gen_info_add_env_var_name(EnvVar, !Info),
-        EnvVarRval = lval(global_var_ref(env_var_ref(EnvVar))),
-        ZeroRval = const(mlconst_int(0)),
-        CondRval = binop(ne, EnvVarRval, ZeroRval)
+        EnvVarRval = ml_lval(ml_global_var_ref(env_var_ref(EnvVar))),
+        ZeroRval = ml_const(mlconst_int(0)),
+        CondRval = ml_binop(ne, EnvVarRval, ZeroRval)
     ;
         Expr = trace_not(ExprA),
         ml_generate_runtime_cond_code(ExprA, RvalA, !Info),
-        CondRval = unop(std_unop(logical_not), RvalA)
+        CondRval = ml_unop(std_unop(logical_not), RvalA)
     ;
         Expr = trace_op(TraceOp, ExprA, ExprB),
         ml_generate_runtime_cond_code(ExprA, RvalA, !Info),
@@ -2518,7 +2520,7 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
             TraceOp = trace_and,
             Op = logical_and
         ),
-        CondRval = binop(Op, RvalA, RvalB)
+        CondRval = ml_binop(Op, RvalA, RvalB)
     ).
 
 :- pred ml_gen_ordinary_pragma_foreign_proc(code_model::in,
@@ -2671,13 +2673,13 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
         % out into "success".
         SuccessIndicatorVarName = mlds_var_name("SUCCESS_INDICATOR", no),
         SuccessIndicatorDecl = ml_gen_mlds_var_decl(
-            var(SuccessIndicatorVarName),
+            mlds_data_var(SuccessIndicatorVarName),
             mlds_native_bool_type,
             gc_no_stmt, MLDSContext),
-        SuccessIndicatorLval = var(qual(MLDSModuleName, module_qual,
+        SuccessIndicatorLval = ml_var(qual(MLDSModuleName, module_qual,
             SuccessIndicatorVarName), mlds_native_bool_type),
         SuccessIndicatorStatement = ml_gen_assign(SucceededLval,
-            lval(SuccessIndicatorLval), Context),
+            ml_lval(SuccessIndicatorLval), Context),
         SuccessVarLocals = [SuccessIndicatorDecl],
         SuccessIndicatorStatements = [SuccessIndicatorStatement]
     ;
@@ -2715,7 +2717,7 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, ArgMode),
         (
             ArgMode = top_in,
-            OutlineArg = in(MldsType, ArgName, lval(VarLval))
+            OutlineArg = in(MldsType, ArgName, ml_lval(VarLval))
         ;
             ArgMode = top_out,
             OutlineArg = out(MldsType, ArgName, VarLval)
@@ -2830,18 +2832,19 @@ ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, ArgMap,
     QualVarName = qual(MLDSModuleName, module_qual, VarName),
     (
         IsByRef = yes,
-        OutputVarLval = mem_ref(lval(var(QualVarName, MLDSType)), MLDSType)
+        OutputVarLval = ml_mem_ref(ml_lval(ml_var(QualVarName, MLDSType)),
+            MLDSType)
     ;
         IsByRef = no,
-        OutputVarLval = var(QualVarName, MLDSType)
+        OutputVarLval = ml_var(QualVarName, MLDSType)
     ),
 
     MaybeNameMode = yes(UserVarNameString - _),
     NonMangledVarName = mlds_var_name(UserVarNameString, no),
     QualLocalVarName= qual(MLDSModuleName, module_qual, NonMangledVarName),
-    LocalVarLval = var(QualLocalVarName, MLDSType),
+    LocalVarLval = ml_var(QualLocalVarName, MLDSType),
 
-    Statement = ml_gen_assign(OutputVarLval, lval(LocalVarLval), Context).
+    Statement = ml_gen_assign(OutputVarLval, ml_lval(LocalVarLval), Context).
 
 :- pred ml_gen_pragma_il_proc_var_decl_defn(module_info::in,
     mlds_module_name::in, map(prog_var, foreign_arg)::in, prog_varset::in,
@@ -2882,14 +2885,14 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
     ;
         MLDSType = MLDSType0,
         QualVarName = qual(MLDSModuleName, module_qual, VarName),
-        Initializer = init_obj(lval(var(QualVarName, MLDSType)))
+        Initializer = init_obj(ml_lval(ml_var(QualVarName, MLDSType)))
     ),
     % XXX Accurate GC is not supported for IL foreign code;
     % this would only be useful if interfacing to
     % IL when compiling to C, which is not yet supported.
     GCStatement = gc_no_stmt,
-    Defn = ml_gen_mlds_var_decl_init(var(NonMangledVarName), MLDSType,
-        Initializer, GCStatement, MLDSContext).
+    Defn = ml_gen_mlds_var_decl_init(mlds_data_var(NonMangledVarName),
+        MLDSType, Initializer, GCStatement, MLDSContext).
 
     % For ordinary (not model_non) pragma c_proc,
     % we generate code of the following form:
@@ -3098,7 +3101,8 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
     ml_gen_info_get_proc_id(Info, ProcId),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, Module),
     HashDefine = [raw_target_code("#define MR_PROC_LABEL ", []),
-        name(qual(Module, module_qual, Name)), raw_target_code("\n", [])].
+        target_code_name(qual(Module, module_qual, Name)),
+        raw_target_code("\n", [])].
 
 :- func get_target_code_attributes(foreign_language,
     pragma_foreign_proc_extra_attributes) = target_code_attributes.
@@ -3229,11 +3233,11 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         % a dummy value for it. Using `0' here is more efficient than using
         % private_builtin.dummy_var, which is what ml_gen_var will have
         % generated for this variable.
-        ArgRval = const(mlconst_int(0))
+        ArgRval = ml_const(mlconst_int(0))
     ;
         IsDummy = is_not_dummy_type,
         ml_gen_box_or_unbox_rval(VarType, OrigType, BoxPolicy,
-            lval(VarLval), ArgRval, !Info)
+            ml_lval(VarLval), ArgRval, !Info)
     ),
     % At this point we have an rval with the right type for *internal* use
     % in the code generated by the Mercury compiler's MLDS back-end. We need
@@ -3356,10 +3360,10 @@ ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
         % It should have the Java foreign language representation
         % of that type. Unfortunately this is not easily expressed
         % as an mlds_type.
-        LocalVarLval = var(QualLocalVarName, MLDSType),
+        LocalVarLval = ml_var(QualLocalVarName, MLDSType),
         % We cast this variable back to the corresponding
         % MLDS type before assigning it to the lval.
-        Rval = unop(cast(MLDSType), lval(LocalVarLval)),
+        Rval = ml_unop(cast(MLDSType), ml_lval(LocalVarLval)),
         AssignOutput = [ml_gen_assign(ArgLval, Rval, Context)]
     ;
         % If the variable doesn't occur in the ArgNames list,
@@ -3578,7 +3582,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         ml_gen_info_new_cond_var(CondVar, !Info),
         MLDS_Context = mlds_make_context(Context),
         CondVarDecl = ml_gen_cond_var_decl(CondVar, MLDS_Context),
-        ml_gen_set_cond_var(!.Info, CondVar, const(mlconst_false), Context,
+        ml_gen_set_cond_var(!.Info, CondVar, ml_const(mlconst_false), Context,
             SetCondFalse),
 
         % Allocate a name for the `then_func'.
@@ -3595,8 +3599,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         % push nesting level
         Then = hlds_goal(_, ThenGoalInfo),
         ThenContext = goal_info_get_context(ThenGoalInfo),
-        ml_gen_set_cond_var(!.Info, CondVar, const(mlconst_true), ThenContext,
-            SetCondTrue),
+        ml_gen_set_cond_var(!.Info, CondVar, ml_const(mlconst_true),
+            ThenContext, SetCondTrue),
         ml_gen_goal_as_block(CodeModel, Then, ThenStatement, !Info),
         ThenFuncBody = ml_gen_block([], [SetCondTrue, ThenStatement],
             ThenContext),
@@ -3608,7 +3612,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         ml_gen_test_cond_var(!.Info, CondVar, CondSucceeded),
         ml_gen_goal_as_block(CodeModel, Else, ElseStatement, !Info),
         IfStmt = ml_stmt_if_then_else(
-            unop(std_unop(logical_not), CondSucceeded),
+            ml_unop(std_unop(logical_not), CondSucceeded),
             ElseStatement, no),
         IfStatement = statement(IfStmt, MLDS_Context),
 
@@ -3651,7 +3655,7 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
 
         CodeModel = model_semi, CondCodeModel = model_det,
         ml_gen_goal(model_det, Cond, CondDecls, CondStatements, !Info),
-        ml_gen_set_success(!.Info, const(mlconst_false), Context,
+        ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
             SetSuccessFalse),
         Decls = CondDecls,
         Statements = CondStatements ++ [SetSuccessFalse]
@@ -3665,7 +3669,7 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
         CodeModel = model_semi, CondCodeModel = model_semi,
         ml_gen_goal(model_semi, Cond, CondDecls, CondStatements, !Info),
         ml_gen_test_success(!.Info, Succeeded),
-        ml_gen_set_success(!.Info, unop(std_unop(logical_not), Succeeded),
+        ml_gen_set_success(!.Info, ml_unop(std_unop(logical_not), Succeeded),
             Context, InvertSuccess),
         Decls = CondDecls,
         Statements = CondStatements ++ [InvertSuccess]
@@ -3803,7 +3807,8 @@ ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info) :-
                 RestStatement = ml_gen_block(RestDecls, RestStatements,
                     Context),
                 IfStmt = ml_stmt_if_then_else(
-                    unop(std_unop(logical_not), Succeeded), RestStatement, no),
+                    ml_unop(std_unop(logical_not), Succeeded),
+                    RestStatement, no),
                 IfStatement = statement(IfStmt, mlds_make_context(Context)),
                 Decls = FirstDecls,
                 Statements = FirstStatements ++ [IfStatement]

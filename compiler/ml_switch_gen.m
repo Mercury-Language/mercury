@@ -410,7 +410,7 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail, Context,
     ml_variable_type(!.Info, Var, Type),
     ml_gen_type(!.Info, Type, MLDS_Type),
     ml_gen_var(!.Info, Var, Lval),
-    Rval = lval(Lval),
+    Rval = ml_lval(Lval),
     ml_switch_gen_range(!.Info, MLDS_Type, Range),
     ml_switch_generate_mlds_cases(Cases, CodeModel, MLDS_Cases, !Info),
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
@@ -431,9 +431,9 @@ ml_switch_gen_range(Info, MLDS_Type, Range) :-
         switch_util.type_range(ModuleInfo, TypeCategory, Type,
             MinRange, MaxRange, _NumValuesInRange)
     ->
-        Range = range(MinRange, MaxRange)
+        Range = mlds_switch_range(MinRange, MaxRange)
     ;
-        Range = range_unknown
+        Range = mlds_switch_range_unknown
     ).
 
 :- pred ml_switch_generate_mlds_cases(list(tagged_case)::in,
@@ -457,13 +457,13 @@ ml_switch_generate_mlds_case(TaggedCase, CodeModel, MLDS_Case, !Info) :-
     TaggedMainConsId = tagged_cons_id(_ConsId, Tag),
     (
         Tag = int_tag(Int),
-        Rval = const(mlconst_int(Int))
+        Rval = ml_const(mlconst_int(Int))
     ;
         Tag = string_tag(String),
-        Rval = const(mlconst_string(String))
+        Rval = ml_const(mlconst_string(String))
     ;
         Tag = foreign_tag(ForeignLang, ForeignTag),
-        Rval = const(mlconst_foreign(ForeignLang, ForeignTag,
+        Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
             mlds_native_int_type))
     ;
         ( Tag = float_tag(_)

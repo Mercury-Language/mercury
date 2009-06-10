@@ -199,9 +199,9 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % `closure_arg'.
     GCStatement = gc_no_stmt,
     ClosureArgType = mlds_generic_type,
-    ClosureArg =
-        mlds_argument(entity_data(var(mlds_var_name("closure_arg", no))),
-            ClosureArgType, GCStatement),
+    ClosureArg = mlds_argument(
+        entity_data(mlds_data_var(mlds_var_name("closure_arg", no))),
+        ClosureArgType, GCStatement),
     Params0 = mlds_func_params(ArgParams0, RetParam),
     Params = mlds_func_params([ClosureArg | ArgParams0], RetParam),
     Signature = mlds_get_func_signature(Params),
@@ -210,12 +210,12 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     (
         GenericCall = higher_order(ClosureVar, _Purity, _PredOrFunc, _Arity),
         ml_gen_var(!.Info, ClosureVar, ClosureLval),
-        FieldId = offset(const(mlconst_int(1))),
+        FieldId = ml_field_offset(ml_const(mlconst_int(1))),
         % XXX are these types right?
-        FuncLval = field(yes(0), lval(ClosureLval), FieldId,
+        FuncLval = ml_field(yes(0), ml_lval(ClosureLval), FieldId,
             mlds_generic_type, ClosureArgType),
         FuncType = mlds_func_type(Params),
-        FuncRval = unop(unbox(FuncType), lval(FuncLval))
+        FuncRval = ml_unop(unbox(FuncType), ml_lval(FuncLval))
     ;
         GenericCall = class_method(TypeClassInfoVar, MethodNum,
             _ClassId, _PredName),
@@ -226,19 +226,19 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         ClosureLval = TypeClassInfoLval,
 
         % Extract the base_typeclass_info from the typeclass_info.
-        BaseTypeclassInfoFieldId = offset(const(mlconst_int(0))),
-        BaseTypeclassInfoLval = field(yes(0),
-            lval(TypeClassInfoLval), BaseTypeclassInfoFieldId,
+        BaseTypeclassInfoFieldId = ml_field_offset(ml_const(mlconst_int(0))),
+        BaseTypeclassInfoLval = ml_field(yes(0),
+            ml_lval(TypeClassInfoLval), BaseTypeclassInfoFieldId,
             mlds_generic_type, ClosureArgType),
 
         % Extract the method address from the base_typeclass_info.
         Offset = ml_base_typeclass_info_method_offset,
         MethodFieldNum = MethodNum + Offset,
-        MethodFieldId = offset(const(mlconst_int(MethodFieldNum))),
-        FuncLval = field(yes(0), lval(BaseTypeclassInfoLval),
+        MethodFieldId = ml_field_offset(ml_const(mlconst_int(MethodFieldNum))),
+        FuncLval = ml_field(yes(0), ml_lval(BaseTypeclassInfoLval),
             MethodFieldId, mlds_generic_type, mlds_generic_type),
         FuncType = mlds_func_type(Params),
-        FuncRval = unop(unbox(FuncType), lval(FuncLval))
+        FuncRval = ml_unop(unbox(FuncType), ml_lval(FuncLval))
     ),
 
     % Assign the function address rval to a new local variable. This makes
@@ -252,11 +252,11 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % The function address is always a pointer to code,
     % not to the heap, so the GC doesn't need to trace it.
     GCStatement = gc_no_stmt,
-    FuncVarDecl = ml_gen_mlds_var_decl(var(FuncVarName),
+    FuncVarDecl = ml_gen_mlds_var_decl(mlds_data_var(FuncVarName),
         FuncType, GCStatement, mlds_make_context(Context)),
     ml_gen_var_lval(!.Info, FuncVarName, FuncType, FuncVarLval),
     AssignFuncVar = ml_gen_assign(FuncVarLval, FuncRval, Context),
-    FuncVarRval = lval(FuncVarLval),
+    FuncVarRval = ml_lval(FuncVarLval),
 
     % Generate code to box/unbox the arguments and compute the list of properly
     % converted rvals/lvals to pass as the function call's arguments and
@@ -267,7 +267,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         ArgModes, PredOrFunc, CodeModel, Context, no, 1,
         InputRvals, OutputLvals, OutputTypes,
         ConvArgDecls, ConvOutputStatements, !Info),
-    ClosureRval = unop(unbox(ClosureArgType), lval(ClosureLval)),
+    ClosureRval = ml_unop(unbox(ClosureArgType), ml_lval(ClosureLval)),
 
     % Prepare to generate the call, passing the closure as the first argument.
     % (We can't actually generate the call yet, since it might be nondet,
@@ -323,7 +323,7 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
         ;
             IsDummy = is_not_dummy_type,
             ml_gen_box_or_unbox_rval(SrcType, DestType, native_if_possible,
-                lval(SrcLval), CastRval, !Info),
+                ml_lval(SrcLval), CastRval, !Info),
             Assign = ml_gen_assign(DestLval, CastRval, Context),
             Statements = [Assign]
         ),
@@ -568,7 +568,7 @@ ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) :-
     % reponsibility of fillling this in properly if needed.
     GCStatement = gc_no_stmt,
     Argument =
-        mlds_argument(entity_data(var(ArgName)), Type, GCStatement),
+        mlds_argument(entity_data(mlds_data_var(ArgName)), Type, GCStatement),
     ml_gen_cont_params_2(Types, ArgNum + 1, Arguments).
 
 :- pred ml_gen_copy_args_to_locals(ml_gen_info::in, list(mlds_lval)::in,
@@ -590,7 +590,7 @@ ml_gen_copy_args_to_locals_2(Info, [LocalLval | LocalLvals], [Type | Types],
         ArgNum, Context, [Statement | Statements]) :-
     ArgName = ml_gen_arg_name(ArgNum),
     ml_gen_var_lval(Info, ArgName, Type, ArgLval),
-    Statement = ml_gen_assign(LocalLval, lval(ArgLval), Context),
+    Statement = ml_gen_assign(LocalLval, ml_lval(ArgLval), Context),
     ml_gen_copy_args_to_locals_2(Info, LocalLvals, Types, ArgNum + 1,
         Context, Statements).
 ml_gen_copy_args_to_locals_2(_Info, [], [_ | _], _, _, _) :-
@@ -610,7 +610,7 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
     Signature = mlds_get_func_signature(Params),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     QualifiedProcLabel = qual(PredModule, module_qual, ProcLabel),
-    CodeAddrRval = const(mlconst_code_addr(
+    CodeAddrRval = ml_const(mlconst_code_addr(
         code_addr_proc(QualifiedProcLabel, Signature))).
 
     % Generate rvals and lvals for the arguments of a procedure call
@@ -670,10 +670,10 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
                     % generate a dummy value for it. Using `0' here is more
                     % efficient than using private_builtin.dummy_var, which is
                     % what ml_gen_var will have generated for this variable.
-                    VarRval = const(mlconst_int(0))
+                    VarRval = ml_const(mlconst_int(0))
                 ;
                     CallerIsDummy = is_not_dummy_type,
-                    VarRval = lval(VarLval)
+                    VarRval = ml_lval(VarLval)
                 ),
                 ml_gen_box_or_unbox_rval(CallerType, CalleeType,
                     native_if_possible, VarRval, ArgRval, !Info),
@@ -727,7 +727,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 :- func ml_gen_mem_addr(mlds_lval) = mlds_rval.
 
 ml_gen_mem_addr(Lval) =
-    (if Lval = mem_ref(Rval, _) then Rval else mem_addr(Lval)).
+    (if Lval = ml_mem_ref(Rval, _) then Rval else ml_mem_addr(Lval)).
 
 ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
         !Info) :-
@@ -743,22 +743,22 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
             DestType \= type_variable(_, _)
         ->
             ml_gen_type(!.Info, DestType, MLDS_DestType),
-            ArgRval = unop(unbox(MLDS_DestType), VarRval)
+            ArgRval = ml_unop(unbox(MLDS_DestType), VarRval)
         ;
             % If converting from concrete type to polymorphic type, then box.
             SourceType \= type_variable(_, _),
             DestType = type_variable(_, _)
         ->
             ml_gen_type(!.Info, SourceType, MLDS_SourceType),
-            ArgRval = unop(box(MLDS_SourceType), VarRval)
+            ArgRval = ml_unop(box(MLDS_SourceType), VarRval)
         ;
             % If converting to float, cast to mlds_generic_type and then unbox.
             DestType = builtin_type(builtin_type_float),
             SourceType \= builtin_type(builtin_type_float)
         ->
             ml_gen_type(!.Info, DestType, MLDS_DestType),
-            ArgRval = unop(unbox(MLDS_DestType),
-                unop(cast(mlds_generic_type), VarRval))
+            ArgRval = ml_unop(unbox(MLDS_DestType),
+                ml_unop(cast(mlds_generic_type), VarRval))
         ;
             % If converting from float, box and then cast the result.
             SourceType = builtin_type(builtin_type_float),
@@ -766,8 +766,8 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
         ->
             ml_gen_type(!.Info, SourceType, MLDS_SourceType),
             ml_gen_type(!.Info, DestType, MLDS_DestType),
-            ArgRval = unop(cast(MLDS_DestType),
-                unop(box(MLDS_SourceType), VarRval))
+            ArgRval = ml_unop(cast(MLDS_DestType),
+                ml_unop(box(MLDS_SourceType), VarRval))
         ;
             % If converting from an array(T) to array(X) where X is a concrete
             % instance, we should insert a cast to the concrete instance.
@@ -788,7 +788,7 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
             SourceType \= DestType
         ->
             ml_gen_type(!.Info, DestType, MLDS_DestType),
-            ArgRval = unop(cast(MLDS_DestType), VarRval)
+            ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
         ;
             % If converting from one concrete type to a different one, then
             % cast. This is needed to handle construction/deconstruction
@@ -797,7 +797,7 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
             \+ type_unify(SourceType, DestType, [], map.init, _)
         ->
             ml_gen_type(!.Info, DestType, MLDS_DestType),
-            ArgRval = unop(cast(MLDS_DestType), VarRval)
+            ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
         ;
             % Otherwise leave unchanged.
             ArgRval = VarRval
@@ -811,8 +811,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
     % if no boxing/unboxing is required, then ml_box_or_unbox_rval
     % will return its argument unchanged, and so we're done.
     ml_gen_box_or_unbox_rval(CalleeType, CallerType, BoxPolicy,
-        lval(VarLval), BoxedRval, !Info),
-    ( BoxedRval = lval(VarLval) ->
+        ml_lval(VarLval), BoxedRval, !Info),
+    ( BoxedRval = ml_lval(VarLval) ->
         ArgLval = VarLval,
         ConvDecls = [],
         ConvInputStatements = [],
@@ -856,8 +856,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             ForClosureWrapper = no,
             ml_gen_gc_statement(ArgVarName, CalleeType, CallerType,
                 Context, GC_Statements, !Info),
-            ArgVarDecl = ml_gen_mlds_var_decl(var(ArgVarName), MLDS_CalleeType,
-                GC_Statements, mlds_make_context(Context))
+            ArgVarDecl = ml_gen_mlds_var_decl(mlds_data_var(ArgVarName),
+                MLDS_CalleeType, GC_Statements, mlds_make_context(Context))
         ),
         ConvDecls = [ArgVarDecl],
 
@@ -879,14 +879,14 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
 
             % Assign to the freshly generated arg variable.
             ml_gen_box_or_unbox_rval(CallerType, CalleeType, BoxPolicy,
-                lval(VarLval), ConvertedVarRval, !Info),
+                ml_lval(VarLval), ConvertedVarRval, !Info),
             AssignInputStatement = ml_gen_assign(ArgLval, ConvertedVarRval,
                 Context),
             ConvInputStatements = [AssignInputStatement],
 
             % Assign from the freshly generated arg variable.
             ml_gen_box_or_unbox_rval(CalleeType, CallerType, BoxPolicy,
-                lval(ArgLval), ConvertedArgRval, !Info),
+                ml_lval(ArgLval), ConvertedArgRval, !Info),
             AssignOutputStatement = ml_gen_assign(VarLval, ConvertedArgRval,
                 Context),
             ConvOutputStatements = [AssignOutputStatement]
@@ -922,7 +922,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
             (
                 % We need to avoid generating assignments to dummy variables
                 % introduced for types such as io.state.
-                Lval = var(_VarName, VarType),
+                Lval = ml_var(_VarName, VarType),
                 VarType = mercury_type(ProgDataType, _, _),
                 check_dummy_type(ModuleInfo, ProgDataType) = is_dummy_type
             ->
@@ -934,9 +934,10 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
             )
         ;
             SimpleCode = ref_assign(AddrLval, ValueLval),
-            ( ValueLval = var(_ValueVarName, ValueType) ->
-                Statement = ml_gen_assign(mem_ref(lval(AddrLval), ValueType),
-                    lval(ValueLval), Context),
+            ( ValueLval = ml_var(_ValueVarName, ValueType) ->
+                Statement = ml_gen_assign(
+                    ml_mem_ref(ml_lval(AddrLval), ValueType),
+                    ml_lval(ValueLval), Context),
                 Statements = [Statement]
             ;
                 unexpected(this_file, "malformed ref_assign")
@@ -973,13 +974,13 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
 
 :- func ml_gen_simple_expr(simple_expr(mlds_lval)) = mlds_rval.
 
-ml_gen_simple_expr(leaf(Lval)) = lval(Lval).
-ml_gen_simple_expr(int_const(Int)) = const(mlconst_int(Int)).
-ml_gen_simple_expr(float_const(Float)) = const(mlconst_float(Float)).
+ml_gen_simple_expr(leaf(Lval)) = ml_lval(Lval).
+ml_gen_simple_expr(int_const(Int)) = ml_const(mlconst_int(Int)).
+ml_gen_simple_expr(float_const(Float)) = ml_const(mlconst_float(Float)).
 ml_gen_simple_expr(unary(Op, Expr)) =
-    unop(std_unop(Op), ml_gen_simple_expr(Expr)).
+    ml_unop(std_unop(Op), ml_gen_simple_expr(Expr)).
 ml_gen_simple_expr(binary(Op, ExprA, ExprB)) =
-    binop(Op, ml_gen_simple_expr(ExprA), ml_gen_simple_expr(ExprB)).
+    ml_binop(Op, ml_gen_simple_expr(ExprA), ml_gen_simple_expr(ExprB)).
 
 %-----------------------------------------------------------------------------%
 
