@@ -159,17 +159,17 @@ det_num_functors(TypeInfo) =
     SUCCESS_INDICATOR = (Functors >= 0);
 }").
 
-num_functors(TypeDesc) = 
+num_functors(TypeDesc) = NumFunctors :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        erlang_rtti_implementation.num_functors(TypeDesc)
+        NumFunctors = erlang_rtti_implementation.num_functors(TypeDesc)
     ;
-        rtti_implementation.num_functors(TypeDesc)
+        type_desc_to_type_info(TypeDesc, TypeInfo),
+        rtti_implementation.type_info_num_functors(TypeInfo, NumFunctors)
     ).
 
-get_functor(TypeInfo, FunctorNumber, FunctorName, Arity,
-            PseudoTypeInfoList) :-
-    get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
-            PseudoTypeInfoList).
+get_functor(TypeDesc, FunctorNumber, FunctorName, Arity, PseudoTypeInfoList) :-
+    get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
+        PseudoTypeInfoList).
 
 get_functor_with_names(TypeDesc, I, Functor, Arity,
         PseudoTypeInfoList, ArgNameList) :-
@@ -180,20 +180,22 @@ get_functor_with_names(TypeDesc, I, Functor, Arity,
 :- pred get_functor_internal(type_desc::in, int::in, string::out,
     int::out, list(pseudo_type_desc)::out) is semidet.
 
-get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
-        MaybeTypeInfoList) :-
+get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
+        MaybeTypeDescList) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        erlang_rtti_implementation.get_functor(TypeInfo, FunctorNumber,
-            FunctorName, Arity, TypeInfoList)
+        erlang_rtti_implementation.get_functor(TypeDesc, FunctorNumber,
+            FunctorName, Arity, TypeDescList)
     ;
-        rtti_implementation.get_functor(TypeInfo, FunctorNumber,
-            FunctorName, Arity, TypeInfoList)
+        type_desc_to_type_info(TypeDesc, TypeInfo),
+        rtti_implementation.type_info_get_functor(TypeInfo, FunctorNumber,
+            FunctorName, Arity, TypeInfoList),
+        type_info_list_to_type_desc_list(TypeInfoList, TypeDescList)
     ),
 
     % The backends in which we use this definition of this predicate
     % don't yet support function symbols with existential types, which is
     % the only kind of function symbol in which we may want to return unbound.
-    MaybeTypeInfoList = list.map(type_desc_to_pseudo_type_desc, TypeInfoList).
+    MaybeTypeDescList = list.map(type_desc_to_pseudo_type_desc, TypeDescList).
 
 :- pragma foreign_proc("C",
     get_functor_internal(TypeDesc::in, FunctorNumber::in, FunctorName::out,
@@ -258,19 +260,21 @@ get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
     is semidet.
 
 get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
-        MaybeTypeInfoList, Names) :-
+        MaybeTypeDescList, Names) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.get_functor_with_names(TypeDesc,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
+            FunctorNumber, FunctorName, Arity, TypeDescList, Names)
     ;
-        rtti_implementation.get_functor_with_names(TypeDesc, FunctorNumber,
-            FunctorName, Arity, TypeInfoList, Names)
+        type_desc_to_type_info(TypeDesc, TypeInfo),
+        rtti_implementation.type_info_get_functor_with_names(TypeInfo,
+            FunctorNumber, FunctorName, Arity, TypeInfoList, Names),
+        type_info_list_to_type_desc_list(TypeInfoList, TypeDescList)
     ),
 
     % The backends in which we use this definition of this predicate
     % don't yet support function symbols with existential types, which is
     % the only kind of function symbol in which we may want to return unbound.
-    MaybeTypeInfoList = list.map(type_desc_to_pseudo_type_desc, TypeInfoList).
+    MaybeTypeDescList = list.map(type_desc_to_pseudo_type_desc, TypeDescList).
 
 :- pragma foreign_proc("C",
     get_functor_with_names_internal(TypeDesc::in, FunctorNumber::in,
@@ -967,8 +971,12 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
     SUCCESS_INDICATOR = success;
 }").
 
-construct(TypeDesc, Index, Args) =
-    erlang_rtti_implementation.construct(TypeDesc, Index, Args).
+construct(TypeDesc, Index, Args) = Term :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        Term = erlang_rtti_implementation.construct(TypeDesc, Index, Args)
+    ;
+        private_builtin.sorry("construct/3")
+    ).
 
 construct_tuple(Args) =
     construct_tuple_2(Args, list.map(univ_type, Args), list.length(Args)).
@@ -1024,5 +1032,12 @@ construct_tuple(Args) =
     MR_new_univ_on_hp(Term, type_info, new_data);
 }").
 
-construct_tuple_2(Args, ArgTypes, Arity) =
-    erlang_rtti_implementation.construct_tuple_2(Args, ArgTypes, Arity).
+construct_tuple_2(Args, ArgTypes, Arity) = Term :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        Term = erlang_rtti_implementation.construct_tuple_2(Args, ArgTypes,
+            Arity)
+    ;
+        private_builtin.sorry("construct_tuple_2/3")
+    ).
+
+%-----------------------------------------------------------------------------%

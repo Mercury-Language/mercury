@@ -5193,7 +5193,8 @@ type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
     private_builtin.type_info::in, revstrings::in, revstrings::out) is det.
 
 private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs) :-
-    TypeDesc = rtti_implementation.unsafe_cast(PrivateBuiltinTypeInfo),
+    private_builtin.unsafe_type_cast(PrivateBuiltinTypeInfo, TypeInfo),
+    type_desc.type_info_to_type_desc(TypeInfo, TypeDesc),
     type_desc_to_revstrings(TypeDesc, !Rs).
 
 :- pred det_dynamic_cast(T1::in, T2::out) is det.

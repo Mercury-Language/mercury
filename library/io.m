@@ -8334,6 +8334,14 @@ io.stdout_stream = output_stream(io.stdout_stream_2).
     Stream = mercury_stdout;
 ").
 
+:- pragma foreign_proc("Java",
+    io.stdout_stream_2 = (Stream::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
+"
+    Stream = mercury_stdout;
+").
+
 io.stdout_stream(output_stream(Stream), !IO) :-
     io.stdout_stream_2(Stream, !IO).
 

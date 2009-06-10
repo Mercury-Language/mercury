@@ -771,7 +771,8 @@ write_array(Stream, Array, !State) :-
     <= stream.writer(Stream, string, State).
 
 write_private_builtin_type_info(Stream, PrivateBuiltinTypeInfo, !State) :-
-    TypeInfo = rtti_implementation.unsafe_cast(PrivateBuiltinTypeInfo),
-    write_type_desc(Stream, TypeInfo, !State).
+    private_builtin.unsafe_type_cast(PrivateBuiltinTypeInfo, TypeInfo),
+    type_info_to_type_desc(TypeInfo, TypeDesc),
+    write_type_desc(Stream, TypeDesc, !State).
 
 %-----------------------------------------------------------------------------%

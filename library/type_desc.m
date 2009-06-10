@@ -209,12 +209,40 @@
 
 :- implementation.
 
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- use_module rtti_implementation.
+
+% The following predicates are exported for construct.m.
+
+:- pred type_desc_to_type_info(type_desc::in,
+    rtti_implementation.type_info::out) is det.
+
+:- pred type_info_to_type_desc(rtti_implementation.type_info::in,
+    type_desc::out) is det.
+
+:- pred type_info_list_to_type_desc_list(
+    list(rtti_implementation.type_info)::in, list(type_desc)::out) is det.
+
+:- pred type_ctor_desc_to_type_ctor_info(type_ctor_desc::in,
+    rtti_implementation.type_ctor_info::out) is det.
+
+:- pred type_ctor_info_to_type_ctor_desc(
+    rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
 :- import_module bool.
 :- import_module require.
 :- import_module string.
 
 :- use_module    erlang_rtti_implementation. 
-:- use_module    rtti_implementation.
 
 :- pragma foreign_decl("C", "
 #include ""mercury_heap.h"" /* for MR_incr_hp_msg() etc. */
@@ -222,6 +250,85 @@
 #include ""mercury_string.h""   /* for MR_make_aligned_string() */
 #include ""mercury_type_desc.h""
 ").
+
+%-----------------------------------------------------------------------------%
+
+type_desc_to_type_info(TypeDesc, TypeInfo) :-
+    ( type_info_desc_same_representation ->
+        private_builtin.unsafe_type_cast(TypeDesc, TypeInfo)
+    ;
+        error("type_desc_to_type_info/2")
+    ).
+
+:- pragma foreign_proc("Java",
+    type_desc_to_type_info(TypeDesc::in, TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeInfo = ((mercury.type_desc.Type_desc_0) TypeDesc).struct;
+").
+
+type_info_to_type_desc(TypeInfo, TypeDesc) :-
+    ( type_info_desc_same_representation ->
+        private_builtin.unsafe_type_cast(TypeInfo, TypeDesc)
+    ;
+        error("type_info_to_type_desc/2")
+    ).
+
+:- pragma foreign_proc("Java",
+    type_info_to_type_desc(TypeInfo::in, TypeDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeDesc = new mercury.type_desc.Type_desc_0(TypeInfo);
+").
+
+type_info_list_to_type_desc_list(TypeInfoList, TypeDescList) :-
+    ( type_info_desc_same_representation ->
+        private_builtin.unsafe_type_cast(TypeInfoList, TypeDescList)
+    ;
+        list.map(type_info_to_type_desc, TypeInfoList, TypeDescList)
+    ).
+
+type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
+    ( type_info_desc_same_representation ->
+        private_builtin.unsafe_type_cast(TypeCtorDesc, TypeCtorInfo)
+    ;
+        error("type_ctor_desc_to_type_ctor_info/2")
+    ).
+
+:- pragma foreign_proc("Java",
+    type_ctor_desc_to_type_ctor_info(TypeCtorDesc::in, TypeCtorInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeCtorInfo = ((mercury.type_desc.Type_ctor_desc_0) TypeCtorDesc).struct;
+").
+
+type_ctor_info_to_type_ctor_desc(TypeCtorInfo, TypeCtorDesc) :-
+    ( type_info_desc_same_representation ->
+        private_builtin.unsafe_type_cast(TypeCtorInfo, TypeCtorDesc)
+    ;
+        error("type_ctor_info_to_type_ctor_desc/2")
+    ).
+
+:- pragma foreign_proc("Java",
+    type_ctor_info_to_type_ctor_desc(TypeCtorInfo::in, TypeCtorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeCtorDesc = new mercury.type_desc.Type_ctor_desc_0(TypeCtorInfo);
+").
+
+:- pred type_info_desc_same_representation is semidet.
+
+type_info_desc_same_representation :-
+    semidet_true.
+
+:- pragma foreign_proc("Java",
+    type_info_desc_same_representation,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    succeeded = false;
+").
+
+%-----------------------------------------------------------------------------%
 
     % We need to call the rtti_implementation module -- so that we get the
     % dependencies right it's easiest to do it from Mercury.
@@ -342,7 +449,11 @@ pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
 ").
 
 is_univ_pseudo_type_desc(PTD, N) :-
-    erlang_rtti_implementation.is_univ_pseudo_type_desc(PTD, N).
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.is_univ_pseudo_type_desc(PTD, N)
+    ;
+        private_builtin.sorry("is_univ_pseudo_type_desc")
+    ).
 
 :- pred is_exist_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
 
@@ -365,7 +476,11 @@ is_univ_pseudo_type_desc(PTD, N) :-
 ").
 
 is_exist_pseudo_type_desc(PTD, N) :-
-    erlang_rtti_implementation.is_exist_pseudo_type_desc(PTD, N).
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.is_exist_pseudo_type_desc(PTD, N)
+    ;
+        private_builtin.sorry("is_exist_pseudo_type_desc")
+    ).
 
 :- pragma foreign_proc("C",
     type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),
@@ -683,16 +798,16 @@ type_ctor(TypeDesc) = TypeCtorDesc :-
     }
 ").
 
-type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
+type_ctor_and_args(TypeDesc, TypeCtorDesc, ArgTypeDescs) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.type_ctor_desc_and_args(TypeDesc,
-            TypeCtorDesc, ArgTypes)
+            TypeCtorDesc, ArgTypeDescs)
     ;
-        rtti_implementation.type_ctor_and_args(
-            rtti_implementation.unsafe_cast(TypeDesc),
-            TypeCtorDesc0, ArgTypes0),
-        TypeCtorDesc = rtti_implementation.unsafe_cast(TypeCtorDesc0),
-        ArgTypes = rtti_implementation.unsafe_cast(ArgTypes0)
+        type_desc_to_type_info(TypeDesc, TypeInfo),
+        rtti_implementation.type_ctor_and_args(TypeInfo, TypeCtorInfo,
+            ArgTypeInfos),
+        type_ctor_info_to_type_ctor_desc(TypeCtorInfo, TypeCtorDesc),
+        type_info_list_to_type_desc_list(ArgTypeInfos, ArgTypeDescs)
     ).
 
 :- pragma foreign_proc("C",
@@ -714,7 +829,11 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 }").
 
 pseudo_type_ctor_and_args(PTD, TC, Args) :-
-    erlang_rtti_implementation.pseudo_type_ctor_and_args(PTD, TC, Args).
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.pseudo_type_ctor_and_args(PTD, TC, Args)
+    ;
+        private_builtin.sorry("pseudo_type_ctor_and_args")
+    ).
 
 % This is the forwards mode of make_type/2: given a type constructor and
 % a list of argument types, check that the length of the argument types
@@ -844,8 +963,8 @@ type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
         erlang_rtti_implementation.type_ctor_desc_name_and_arity(TypeCtorDesc,
             ModuleName, TypeCtorName, TypeCtorArity)
     ;
-        rtti_implementation.type_ctor_name_and_arity(
-            rtti_implementation.unsafe_cast(TypeCtorDesc),
+        type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo),
+        rtti_implementation.type_ctor_name_and_arity(TypeCtorInfo,
             ModuleName, TypeCtorName, TypeCtorArity)
     ).
 

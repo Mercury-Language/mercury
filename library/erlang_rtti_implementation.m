@@ -1891,17 +1891,8 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
 
 :- func unsafe_cast(T) = U.
 
-:- pragma foreign_proc("Erlang",
-    unsafe_cast(VarIn::in) = (VarOut::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    VarOut = VarIn
-").
-
-unsafe_cast(_) = _ :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    private_builtin.sorry("unsafe_cast").
+unsafe_cast(T) = U :-
+    private_builtin.unsafe_type_cast(T, U).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

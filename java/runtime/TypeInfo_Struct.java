@@ -36,6 +36,16 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 	    args = as;
 	}
 
+	public TypeInfo_Struct copy()
+	{
+		TypeInfo_Struct ti = new TypeInfo_Struct();
+		ti.type_ctor = type_ctor;
+		if (args != null) {
+			ti.args = args.clone();
+		}
+		return ti;
+	}
+
 	// XXX "as" should have type PseudoTypeInfo[],
 	//     but mlds_to_java.m uses Object[]
 	//     because init_array/1 does not store the type.

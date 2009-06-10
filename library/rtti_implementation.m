@@ -46,8 +46,6 @@
 :- import_module list.
 :- import_module univ.
 
-:- use_module type_desc.
-
 %-----------------------------------------------------------------------------%
 
     % Our type_info and type_ctor_info implementations are both
@@ -76,23 +74,17 @@
 :- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
 :- mode deconstruct(in, in, out, out, out) is cc_multi.
 
-    % This is useful in a few places, so we'd like to share the code, but
-    % it's better to put it into an implementation module such as this one.
-    %
-:- func unsafe_cast(T1::in) = (T2::out) is det.
-
 %-----------------------------------------------------------------------------%
 %
 % Implementations for use from construct.
 
-:- func num_functors(type_desc.type_desc) = int is semidet.
+:- pred type_info_num_functors(type_info::in, int::out) is semidet.
 
-:- pred get_functor(type_desc.type_desc::in, int::in, string::out, int::out,
-    list(type_desc.type_desc)::out) is semidet.
+:- pred type_info_get_functor(type_info::in, int::in, string::out, int::out,
+    list(type_info)::out) is semidet.
 
-:- pred get_functor_with_names(type_desc.type_desc::in, int::in, string::out,
-    int::out, list(type_desc.type_desc)::out, list(string)::out)
-    is semidet.
+:- pred type_info_get_functor_with_names(type_info::in, int::in, string::out,
+    int::out, list(type_info)::out, list(string)::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -109,8 +101,10 @@
 :- import_module term_io.
 :- import_module type_desc.
 
+%-----------------------------------------------------------------------------%
+
     % It is convenient to represent the type_ctor_rep as a Mercury
-    % enumeration, so
+    % enumeration, so we can switch on the values.
     %
     % The type_ctor_rep needs to be kept up to date with the real
     % definition in runtime/mercury_type_info.h.
@@ -184,6 +178,9 @@
 :- pragma foreign_type("Java", pseudo_type_info,
     "mercury.runtime.PseudoTypeInfo").
 
+:- type typeclass_info ---> typeclass_info(c_pointer).
+:- pragma foreign_type("Java", typeclass_info, "java.lang.Object[]").
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
@@ -191,8 +188,9 @@
 %
 
     % See MR_get_num_functors in runtime/mercury_construct.c
-num_functors(TypeDesc) = NumFunctors :-
-    TypeCtorInfo = get_type_ctor_info(unsafe_cast(TypeDesc)),
+    %
+type_info_num_functors(TypeInfo, NumFunctors) :-
+    TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     (
         ( TypeCtorRep = tcr_du
@@ -256,24 +254,24 @@ num_functors(TypeDesc) = NumFunctors :-
         error("num_functors: unknown type_ctor_rep")
     ).
 
-get_functor(TypeDesc, FunctorNumber, FunctorName, Arity, TypeInfoList) :-
-    get_functor_impl(TypeDesc, FunctorNumber, FunctorName, Arity,
+type_info_get_functor(TypeInfo, FunctorNumber, FunctorName, Arity,
+        TypeInfoList) :-
+    get_functor_impl(TypeInfo, FunctorNumber, FunctorName, Arity,
         TypeInfoList, _Names).
 
-get_functor_with_names(TypeDesc, FunctorNumber, FunctorName, Arity,
+type_info_get_functor_with_names(TypeInfo, FunctorNumber, FunctorName, Arity,
         TypeInfoList, Names) :-
-    get_functor_impl(TypeDesc, FunctorNumber, FunctorName, Arity,
+    get_functor_impl(TypeInfo, FunctorNumber, FunctorName, Arity,
         TypeInfoList, Names).
 
-:- pred get_functor_impl(type_desc.type_desc::in, int::in,
-    string::out, int::out, list(type_desc.type_desc)::out,
-    list(string)::out) is semidet.
+:- pred get_functor_impl(type_info::in, int::in, string::out, int::out,
+    list(type_info)::out, list(string)::out) is semidet.
 
-get_functor_impl(TypeDesc, FunctorNumber,
+get_functor_impl(TypeInfo, FunctorNumber,
         FunctorName, Arity, TypeInfoList, Names) :-
+    type_info_num_functors(TypeInfo, NumFunctors),
     FunctorNumber >= 0,
-    FunctorNumber < TypeDesc ^ num_functors,
-    TypeInfo = unsafe_cast(TypeDesc),
+    FunctorNumber < NumFunctors,
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     (
@@ -304,15 +302,13 @@ get_functor_impl(TypeDesc, FunctorNumber,
         ; TypeCtorRep = tcr_equiv
         ),
         NewTypeInfo = collapse_equivalences(TypeInfo),
-        get_functor_impl(unsafe_cast(NewTypeInfo), FunctorNumber,
+        get_functor_impl(NewTypeInfo, FunctorNumber,
             FunctorName, Arity, TypeInfoList, Names)
     ;
         TypeCtorRep = tcr_tuple,
         FunctorName = "{}",
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
-        TypeInfoList = iterate(1, Arity, (func(I) =
-            unsafe_cast(TypeInfo ^ var_arity_type_info_index(I)))
-        ),
+        TypeInfoList = iterate(1, Arity, var_arity_type_info_index(TypeInfo)),
         Names = list.duplicate(Arity, null_string)
     ;
         ( TypeCtorRep = tcr_subgoal
@@ -354,7 +350,7 @@ get_functor_impl(TypeDesc, FunctorNumber,
 
 :- pred get_functor_du(type_ctor_rep::in(du), type_info::in,
     type_ctor_info::in, int::in, string::out, int::out,
-    list(type_desc.type_desc)::out, list(string)::out) is semidet.
+    list(type_info)::out, list(string)::out) is semidet.
 
 get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
         FunctorName, Arity, TypeDescList, Names) :-
@@ -362,32 +358,30 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
     DuFunctorDesc = TypeFunctors ^ du_functor_desc(TypeCtorRep, FunctorNumber),
 
     % XXX We don't handle functors with existentially quantified arguments.
-    not (_ = DuFunctorDesc ^ du_functor_exist_info),
+    not get_du_functor_exist_info(DuFunctorDesc, _),
 
     FunctorName = DuFunctorDesc ^ du_functor_name,
     Arity = DuFunctorDesc ^ du_functor_arity,
 
     ArgTypes = DuFunctorDesc ^ du_functor_arg_types,
-    F = (func(I) = ArgTypeDesc :-
+    F = (func(I) = ArgTypeInfo :-
         PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, I),
             % XXX we can pass 0 instead of an instance of the functor because
             % that is only needed for functors with existentially quantified
             % arguments.
         get_arg_type_info(TypeInfo, PseudoTypeInfo, 0, DuFunctorDesc,
-            ArgTypeInfo),
-        ArgTypeDesc = unsafe_cast(ArgTypeInfo)
+            ArgTypeInfo)
     ),
     TypeDescList = iterate(0, Arity - 1, F),
 
-    ( ArgNames = DuFunctorDesc ^ du_functor_arg_names ->
+    ( get_du_functor_arg_names(DuFunctorDesc, ArgNames) ->
         Names = iterate(0, Arity - 1, (func(I) = ArgNames ^ unsafe_index(I)))
     ;
         Names = list.duplicate(Arity, null_string)
     ).
 
 :- pred get_functor_enum(type_ctor_rep::in(enum), type_ctor_info::in, int::in,
-    string::out, int::out, list(type_desc.type_desc)::out, list(string)::out)
-    is det.
+    string::out, int::out, list(type_info)::out, list(string)::out) is det.
 
 get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
         TypeDescList, Names) :-
@@ -401,11 +395,11 @@ get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
     Names = [].
 
 :- pred get_functor_notag(type_ctor_rep::in(notag), type_ctor_info::in,
-    int::in, string::out, int::out, list(type_desc.type_desc)::out,
-    list(string)::out) is det.
+    int::in, string::out, int::out, list(type_info)::out, list(string)::out)
+    is det.
 
 get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
-        TypeDescList, Names) :-
+        TypeInfoList, Names) :-
     TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
     NoTagFunctorDesc = TypeFunctors ^
         notag_functor_desc(TypeCtorRep, FunctorNumber),
@@ -416,7 +410,7 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
     ArgType = NoTagFunctorDesc ^ notag_functor_arg_type,
     ArgName = NoTagFunctorDesc ^ notag_functor_arg_name,
 
-    TypeDescList = [unsafe_cast(ArgType)],
+    TypeInfoList = [ArgType],
     Names = [ArgName].
 
 %-----------------------------------------------------------------------------%
@@ -490,32 +484,32 @@ generic_compare(Res, X, Y) :-
             result_call_4(ComparePred, Res, X, Y)
         ; Arity = 1 ->
             result_call_5(ComparePred, Res,
-                TypeInfo ^ type_info_index(1), X, Y)
+                type_info_index(TypeInfo, 1), X, Y)
         ; Arity = 2 ->
             result_call_6(ComparePred, Res,
-                TypeInfo ^ type_info_index(1),
-                TypeInfo ^ type_info_index(2),
+                type_info_index(TypeInfo, 1),
+                type_info_index(TypeInfo, 2),
                 X, Y)
         ; Arity = 3 ->
             result_call_7(ComparePred, Res,
-                TypeInfo ^ type_info_index(1),
-                TypeInfo ^ type_info_index(2),
-                TypeInfo ^ type_info_index(3),
+                type_info_index(TypeInfo, 1),
+                type_info_index(TypeInfo, 2),
+                type_info_index(TypeInfo, 3),
                 X, Y)
         ; Arity = 4 ->
             result_call_8(ComparePred, Res,
-                TypeInfo ^ type_info_index(1),
-                TypeInfo ^ type_info_index(2),
-                TypeInfo ^ type_info_index(3),
-                TypeInfo ^ type_info_index(4),
+                type_info_index(TypeInfo, 1),
+                type_info_index(TypeInfo, 2),
+                type_info_index(TypeInfo, 3),
+                type_info_index(TypeInfo, 4),
                 X, Y)
         ; Arity = 5 ->
             result_call_9(ComparePred, Res,
-                TypeInfo ^ type_info_index(1),
-                TypeInfo ^ type_info_index(2),
-                TypeInfo ^ type_info_index(3),
-                TypeInfo ^ type_info_index(4),
-                TypeInfo ^ type_info_index(5),
+                type_info_index(TypeInfo, 1),
+                type_info_index(TypeInfo, 2),
+                type_info_index(TypeInfo, 3),
+                type_info_index(TypeInfo, 4),
+                type_info_index(TypeInfo, 5),
                 X, Y)
         ;
             error("compare/3: type arity > 5 not supported")
@@ -541,32 +535,33 @@ generic_unify(X, Y) :-
             semidet_call_3(UnifyPred, X, Y)
         ; Arity = 1 ->
             semidet_call_4(UnifyPred,
-                TypeInfo ^ type_info_index(1), X, Y)
+                type_info_index(TypeInfo, 1),
+                X, Y)
         ; Arity = 2 ->
             semidet_call_5(UnifyPred,
-                TypeInfo ^ type_info_index(1),
-                TypeInfo ^ type_info_index(2),
+                type_info_index(TypeInfo, 1),
+                type_info_index(TypeInfo, 2),
                 X, Y)
         ; Arity = 3 ->
             semidet_call_6(UnifyPred,
-                TypeInfo ^ type_info_index(1),
-                TypeInfo ^ type_info_index(2),
-                TypeInfo ^ type_info_index(3),
+                type_info_index(TypeInfo, 1),
+                type_info_index(TypeInfo, 2),
+                type_info_index(TypeInfo, 3),
                 X, Y)
         ; Arity = 4 ->
             semidet_call_7(UnifyPred,
-                TypeInfo ^ type_info_index(1),
-                TypeInfo ^ type_info_index(2),
-                TypeInfo ^ type_info_index(3),
-                TypeInfo ^ type_info_index(4),
+                type_info_index(TypeInfo, 1),
+                type_info_index(TypeInfo, 2),
+                type_info_index(TypeInfo, 3),
+                type_info_index(TypeInfo, 4),
                 X, Y)
         ; Arity = 5 ->
             semidet_call_8(UnifyPred,
-                TypeInfo ^ type_info_index(1),
-                TypeInfo ^ type_info_index(2),
-                TypeInfo ^ type_info_index(3),
-                TypeInfo ^ type_info_index(4),
-                TypeInfo ^ type_info_index(5),
+                type_info_index(TypeInfo, 1),
+                type_info_index(TypeInfo, 2),
+                type_info_index(TypeInfo, 3),
+                type_info_index(TypeInfo, 4),
+                type_info_index(TypeInfo, 5),
                 X, Y)
         ;
             error("unify/2: type arity > 5 not supported")
@@ -586,12 +581,13 @@ unify_tuple_pos(Loc, TupleArity, TypeInfo, TermA, TermB) :-
     ( Loc > TupleArity ->
         true
     ;
-        ArgTypeInfo = TypeInfo ^ var_arity_type_info_index(Loc),
+        ArgTypeInfo = var_arity_type_info_index(TypeInfo, Loc),
 
         SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
         SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
 
-        generic_unify(SubTermA, unsafe_cast(SubTermB)),
+        private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
+        generic_unify(SubTermA, CastSubTermB),
 
         unify_tuple_pos(Loc + 1, TupleArity, TypeInfo, TermA, TermB)
     ).
@@ -610,12 +606,13 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
     ( Loc > TupleArity ->
         Result = (=)
     ;
-        ArgTypeInfo = TypeInfo ^ var_arity_type_info_index(Loc),
+        ArgTypeInfo = var_arity_type_info_index(TypeInfo, Loc),
 
         SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
         SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
 
-        generic_compare(SubResult, SubTermA, unsafe_cast(SubTermB)),
+        private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
+        generic_compare(SubResult, SubTermA, CastSubTermB),
         (
             SubResult = (=),
             compare_tuple_pos(Loc + 1, TupleArity, TypeInfo, Result,
@@ -959,8 +956,8 @@ compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
     ( Loc > Arity ->
         Result = (=)
     ;
-        SubTypeInfoA = TypeInfoA ^ var_arity_type_info_index(Loc),
-        SubTypeInfoB = TypeInfoB ^ var_arity_type_info_index(Loc),
+        SubTypeInfoA = var_arity_type_info_index(TypeInfoA, Loc),
+        SubTypeInfoB = var_arity_type_info_index(TypeInfoB, Loc),
 
         compare_collapsed_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
         (
@@ -1026,15 +1023,10 @@ type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
         type_ctor_is_variable_arity(TypeCtorInfo)
     ->
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
-        % XXX Do indexes start at 0?
-        TypeArgs = iterate(0, Arity - 1,
-            (func(X) = TypeInfo ^ var_arity_type_info_index(X))
-        )
+        TypeArgs = iterate(1, Arity, var_arity_type_info_index(TypeInfo))
     ;
         Arity = type_ctor_arity(TypeCtorInfo),
-        TypeArgs = iterate(0, Arity - 1,
-            (func(X) = TypeInfo ^ type_info_index(X))
-        )
+        TypeArgs = iterate(1, Arity, type_info_index(TypeInfo))
     ).
 
 :- func iterate(int, int, (func(int) = T)) = list(T).
@@ -1045,17 +1037,6 @@ iterate(Start, Max, Func) = Results :-
         Results = [Res | iterate(Start + 1, Max, Func)]
     ;
         Results = []
-    ).
-
-:- pred iterate_foldl(int::in, int::in,
-    pred(int, T, T)::in(pred(in, in, out) is det), T::in, T::out) is det.
-
-iterate_foldl(Start, Max, Pred, !Acc) :-
-    ( Start =< Max ->
-        Pred(Start, !Acc),
-        iterate_foldl(Start + 1, Max, Pred, !Acc)
-    ;
-        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1483,7 +1464,7 @@ expand_type_name(TypeCtorInfo, Wrap) = Name :-
 :- some [T] func get_arg(U, int, sectag_locn, du_functor_desc, type_info) = T.
 
 get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = Arg :-
-    ( ExistInfo = FunctorDesc ^ du_functor_exist_info ->
+    ( get_du_functor_exist_info(FunctorDesc, ExistInfo) ->
         ExtraArgs = exist_info_typeinfos_plain(ExistInfo) +
             exist_info_tcis(ExistInfo)
     ;
@@ -1539,44 +1520,32 @@ get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
         CastTypeInfo = type_info_from_pseudo_type_info(PseudoTypeInfo),
         TypeCtorInfo = get_type_ctor_info(CastTypeInfo),
         ( type_ctor_is_variable_arity(TypeCtorInfo) ->
+            % XXX This branch seems to be unreachable.
             Arity = pseudotypeinfo_get_higher_order_arity(CastTypeInfo),
             StartRegionSize = 2
         ;
             Arity = TypeCtorInfo ^ type_ctor_arity,
             StartRegionSize = 1
         ),
-        ArgTypeInfo0 = maybe.no,
-        UpperBound = Arity + StartRegionSize - 1,
+        ArgTypeInfo0 = new_type_info(CastTypeInfo, Arity),
+        get_arg_type_info_2(TypeInfoParams, CastTypeInfo, Term, FunctorDesc,
+            StartRegionSize, 0, Arity, ArgTypeInfo0, ArgTypeInfo)
+    ).
 
-        ProcessArgTypeInfos =
-            (pred(I::in, TI0::in, TI::out) is det :-
-                PTI = get_pti_from_type_info(CastTypeInfo, I),
-                get_arg_type_info(TypeInfoParams, PTI, Term, FunctorDesc,
-                    ETypeInfo),
-                ( same_pointer_value_untyped(ETypeInfo, PTI) ->
-                    TI = TI0
-                ;
-                    (
-                        TI0 = yes(TypeInfo0),
-                        unsafe_promise_unique(TypeInfo0, TypeInfo1),
-                        set_type_info_index(I, ETypeInfo, TypeInfo1, TypeInfo)
-                    ;
-                        TI0 = no,
-                        TypeInfo0 = new_type_info(CastTypeInfo, UpperBound),
-                        set_type_info_index(I, ETypeInfo, TypeInfo0, TypeInfo)
-                    ),
-                    TI = yes(TypeInfo)
-                )
-            ),
-        iterate_foldl(StartRegionSize, UpperBound, ProcessArgTypeInfos,
-            ArgTypeInfo0, MaybeArgTypeInfo),
-        (
-            MaybeArgTypeInfo = maybe.yes(ArgTypeInfo1),
-            ArgTypeInfo = ArgTypeInfo1
-        ;
-            MaybeArgTypeInfo = maybe.no,
-            ArgTypeInfo = CastTypeInfo
-        )
+:- pred get_arg_type_info_2(type_info::in, type_info::in, T::in,
+    du_functor_desc::in, int::in, int::in, int::in,
+    type_info::di, type_info::uo) is det.
+
+get_arg_type_info_2(TypeInfoParams, TypeInfo, Term, FunctorDesc,
+        Offset, I, Max, !ArgTypeInfo) :-
+    ( I < Max ->
+        get_pti_from_type_info_index(TypeInfo, Offset, I, PTI),
+        get_arg_type_info(TypeInfoParams, PTI, Term, FunctorDesc, ETypeInfo),
+        set_type_info_index(Offset, I, ETypeInfo, !ArgTypeInfo),
+        get_arg_type_info_2(TypeInfoParams, TypeInfo, Term, FunctorDesc,
+            Offset, I + 1, Max, !ArgTypeInfo)
+    ;
+        true
     ).
 
     % XXX This is completely unimplemented.
@@ -1604,12 +1573,10 @@ new_type_info(TypeInfo, _) = NewTypeInfo :-
 ").
 
 :- pragma foreign_proc("Java",
-    new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::uo),
+    new_type_info(OldTypeInfo::in, _Arity::in) = (NewTypeInfo::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    NewTypeInfo = new TypeInfo_Struct();
-    PseudoTypeInfo[] args = new PseudoTypeInfo[Arity];
-    NewTypeInfo.init(OldTypeInfo.type_ctor, args);
+    NewTypeInfo = OldTypeInfo.copy();
 ").
 
     % Get the pseudo-typeinfo at the given index from the argument types.
@@ -1635,55 +1602,55 @@ get_pti_from_arg_types(_, _) = pseudo_type_info(0) :-
 
     % Get the pseudo-typeinfo at the given index from a type-info.
     %
-:- func get_pti_from_type_info(type_info, int) = pseudo_type_info.
+:- pred get_pti_from_type_info_index(type_info::in, int::in, int::in,
+    pseudo_type_info::out) is det.
 
-get_pti_from_type_info(_, _) = _ :-
-    % det_unimplemented("get_pti_from_type_info").
-    private_builtin.sorry("get_pti_from_type_info").
+get_pti_from_type_info_index(_, _, _, _) :-
+    private_builtin.sorry("get_pti_from_type_info_index").
 
 :- pragma foreign_proc("C#",
-    get_pti_from_type_info(TypeInfo::in, Index::in) = (PTI::out),
+    get_pti_from_type_info_index(TypeInfo::in, Offset::in, Index::in,
+        PTI::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    PTI = TypeInfo[Index];
+    PTI = TypeInfo[Offset + Index];
 ").
 
 :- pragma foreign_proc("Java",
-    get_pti_from_type_info(TypeInfo::in, Index::in) = (PTI::out),
+    get_pti_from_type_info_index(TypeInfo::in, _Offset::in, Index::in,
+        PTI::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /* XXX I think the code assumes index 0 is the type_ctor? */
-    PTI = TypeInfo.args[Index - 1];
+    PTI = TypeInfo.args[Index];
 ").
 
     % Get the type info for a particular type variable number
     % (it might be in the type_info or in the term itself).
     %
-    % XXX Existentially quantified vars are not yet handled.
-    %
-:- pred get_type_info_for_var( type_info::in, int::in, T::in,
+:- pred get_type_info_for_var(type_info::in, int::in, T::in,
     du_functor_desc::in, type_info::out) is det.
 
 get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
     ( type_variable_is_univ_quant(VarNum) ->
-        ArgTypeInfo = TypeInfo ^ type_info_index(VarNum)
+        ArgTypeInfo = type_info_index(TypeInfo, VarNum)
     ;
-        ( ExistInfo0 = FunctorDesc ^ du_functor_exist_info ->
+        ( get_du_functor_exist_info(FunctorDesc, ExistInfo0) ->
             ExistInfo = ExistInfo0
         ;
             error("get_type_info_for_var no exist_info")
         ),
 
-        ExistVarNum = VarNum - pseudotypeinfo_exist_var_base - 1,
-        ExistLocn = ExistInfo ^ typeinfo_locns_index(ExistVarNum),
+        % We count variables from one so we need to add 1.
+        ExistVarNum = VarNum - first_exist_quant_varnum + 1,
+        ExistLocn = typeinfo_locns_index(ExistVarNum, ExistInfo),
         Slot = ExistLocn ^ exist_arg_num,
         Offset = ExistLocn ^ exist_offset_in_tci,
 
-        SlotMaybeTypeInfo = get_typeinfo_from_term(Term, Slot),
         ( Offset < 0 ->
-            ArgTypeInfo = SlotMaybeTypeInfo
+            ArgTypeInfo = get_type_info_from_term(Term, Slot)
         ;
-            ArgTypeInfo = typeclass_info_type_info(SlotMaybeTypeInfo, Offset)
+            TypeClassInfo = get_typeclass_info_from_term(Term, Slot),
+            ArgTypeInfo = typeclass_info_type_info(TypeClassInfo, Offset)
         )
     ).
 
@@ -1691,7 +1658,8 @@ get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
     %
 :- func type_info_from_pseudo_type_info(pseudo_type_info) = type_info.
 
-type_info_from_pseudo_type_info(X) = unsafe_cast(X).
+type_info_from_pseudo_type_info(PseudoTypeInfo) = TypeInfo :-
+    private_builtin.unsafe_type_cast(PseudoTypeInfo, TypeInfo).
 
 :- pragma foreign_proc("Java",
     type_info_from_pseudo_type_info(PseudoTypeInfo::in) = (TypeInfo::out),
@@ -1709,7 +1677,7 @@ type_info_from_pseudo_type_info(X) = unsafe_cast(X).
     %
 :- some [T] func get_subterm(du_functor_desc, type_info, U, int, int) = T.
 
-get_subterm(_, _, _, _, _) = 42 :-
+get_subterm(_, _, _, _, _) = -1 :-
     det_unimplemented("get_subterm").
 
 :- pragma foreign_proc("C#",
@@ -1783,6 +1751,9 @@ get_subterm(_, _, _, _, _) = 42 :-
 
 get_tuple_subterm(TypeInfo, Term, Index) = SubTerm :-
     % Reuse the code in get_subterm.
+    % Passing null for FunctorDesc is okay because the C# implementation
+    % doesn't use it, and the Java implementation doesn't use it if
+    % the Term is an array (true of tuples).
     SubTerm = get_subterm(null_functor_desc, TypeInfo, Term, Index, 0).
 
 :- func null_functor_desc = du_functor_desc.
@@ -1813,7 +1784,7 @@ get_tuple_subterm(TypeInfo, Term, Index) = SubTerm :-
 :- pred pseudo_type_info_is_variable(pseudo_type_info::in, int::out)
     is semidet.
 
-pseudo_type_info_is_variable(_, 42) :-
+pseudo_type_info_is_variable(_, -1) :-
     semidet_unimplemented("pseudo_type_info_is_variable").
 
 :- pragma foreign_proc("C#",
@@ -1833,14 +1804,12 @@ pseudo_type_info_is_variable(_, 42) :-
     pseudo_type_info_is_variable(TypeInfo::in, VarNum::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = (TypeInfo.getClass() == mercury.runtime.PseudoTypeInfo.class);
-    if (succeeded) {
-        // This number is used to index into an array, hence the -1
-        VarNum = ((mercury.runtime.PseudoTypeInfo)TypeInfo).variable_number
-            - 1;
-    } else {
-        VarNum = -1; // just to keep the compiler happy
-    }
+    VarNum = TypeInfo.variable_number;
+    succeeded = (VarNum != -1);
+
+    // Variables number from one, not zero.
+    // This is in keeping with mercury_type_info.h.
+    assert VarNum != 0;
 ").
 
     % Tests for universal and existentially quantified variables.
@@ -1848,14 +1817,17 @@ pseudo_type_info_is_variable(_, 42) :-
 :- pred type_variable_is_univ_quant(int::in) is semidet.
 :- pred type_variable_is_exist_quant(int::in) is semidet.
 
-type_variable_is_exist_quant(X) :- X > pseudotypeinfo_exist_var_base.
-type_variable_is_univ_quant(X) :- X =< pseudotypeinfo_exist_var_base.
+    % In keeping with mercury_type_info.h.
+type_variable_is_univ_quant(X) :- X =< last_univ_quant_varnum.
+type_variable_is_exist_quant(X) :- X >= first_exist_quant_varnum.
 
-:- func pseudotypeinfo_exist_var_base = int.
-:- func pseudotypeinfo_max_var = int.
+:- func last_univ_quant_varnum = int.
 
-pseudotypeinfo_exist_var_base = 512.
-pseudotypeinfo_max_var = 1024.
+last_univ_quant_varnum = 512.
+
+:- func first_exist_quant_varnum = int.
+
+first_exist_quant_varnum = 513.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2083,8 +2055,8 @@ get_remote_secondary_tag(_::in) = (0::out) :-
     % This is an "unimplemented" definition in Mercury, which will be
     % used by default.
 
-ptag_index(_::in, TypeLayout::in) = (unsafe_cast(TypeLayout)::out) :-
-    det_unimplemented("ptag_index").
+ptag_index(_, _) = _ :-
+    private_builtin.sorry("ptag_index").
 
 :- pragma foreign_proc("C#",
     ptag_index(X::in, TypeLayout::in) = (PtagEntry::out),
@@ -2102,8 +2074,8 @@ ptag_index(_::in, TypeLayout::in) = (unsafe_cast(TypeLayout)::out) :-
 
 :- func sectag_locn(ptag_entry) = sectag_locn.
 
-sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
-    det_unimplemented("sectag_locn").
+sectag_locn(_) = _ :-
+    private_builtin.sorry("sectag_locn").
 
 :- pragma foreign_proc("C#",
     sectag_locn(PTagEntry::in) = (SectagLocn::out),
@@ -2125,8 +2097,8 @@ sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 
 :- func du_sectag_alternatives(int, ptag_entry) = du_functor_desc.
 
-du_sectag_alternatives(_::in, PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
-    det_unimplemented("sectag_alternatives").
+du_sectag_alternatives(_, _) = _ :-
+    private_builtin.sorry("sectag_alternatives").
 
 :- pragma foreign_proc("C#",
     du_sectag_alternatives(X::in, PTagEntry::in) = (FunctorDescriptor::out),
@@ -2147,8 +2119,8 @@ du_sectag_alternatives(_::in, PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 
 :- func typeinfo_locns_index(int, exist_info) = typeinfo_locn.
 
-typeinfo_locns_index(X::in, _::in) = (unsafe_cast(X)::out) :-
-    det_unimplemented("typeinfo_locns_index").
+typeinfo_locns_index(_, _) = _ :-
+    private_builtin.sorry("typeinfo_locns_index").
 
 :- pragma foreign_proc("C#",
     typeinfo_locns_index(X::in, ExistInfo::in) = (TypeInfoLocn::out),
@@ -2158,9 +2130,17 @@ typeinfo_locns_index(X::in, _::in) = (unsafe_cast(X)::out) :-
         exist_info_field_nums.typeinfo_locns])[X];
 ").
 
+:- pragma foreign_proc("Java",
+    typeinfo_locns_index(VarNum::in, ExistInfo::in) = (TypeInfoLocn::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // Variables count from one.
+    TypeInfoLocn = ExistInfo.exist_typeinfo_locns[VarNum - 1];
+").
+
 :- func exist_info_typeinfos_plain(exist_info) = int.
 
-exist_info_typeinfos_plain(X::in) = (unsafe_cast(X)::out) :-
+exist_info_typeinfos_plain(_) = -1 :-
     det_unimplemented("exist_info_typeinfos_plain").
 
 :- pragma foreign_proc("C#",
@@ -2180,7 +2160,7 @@ exist_info_typeinfos_plain(X::in) = (unsafe_cast(X)::out) :-
 
 :- func exist_info_tcis(exist_info) = int.
 
-exist_info_tcis(X::in) = (unsafe_cast(X)::out) :-
+exist_info_tcis(_) = -1 :-
     det_unimplemented("exist_info_tcis").
 
 :- pragma foreign_proc("C#",
@@ -2199,7 +2179,7 @@ exist_info_tcis(X::in) = (unsafe_cast(X)::out) :-
 
 :- func exist_arg_num(typeinfo_locn) = int.
 
-exist_arg_num(X::in) = (unsafe_cast(X)::out) :-
+exist_arg_num(_) = -1 :-
     det_unimplemented("exist_arg_num").
 
 :- pragma foreign_proc("C#",
@@ -2209,10 +2189,17 @@ exist_arg_num(X::in) = (unsafe_cast(X)::out) :-
     ArgNum = (int) TypeInfoLocn[(int) exist_locn_field_nums.exist_arg_num];
 ").
 
+:- pragma foreign_proc("Java",
+    exist_arg_num(TypeInfoLocn::in) = (ArgNum::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ArgNum = TypeInfoLocn.exist_arg_num;
+").
+
 :- func exist_offset_in_tci(typeinfo_locn) = int.
 
-exist_offset_in_tci(X::in) = (unsafe_cast(X)::out) :-
-    det_unimplemented("exist_arg_num").
+exist_offset_in_tci(_) = -1 :-
+    det_unimplemented("exist_offset_in_tci").
 
 :- pragma foreign_proc("C#",
     exist_offset_in_tci(TypeInfoLocn::in) = (ArgNum::out),
@@ -2229,13 +2216,13 @@ exist_offset_in_tci(X::in) = (unsafe_cast(X)::out) :-
     ArgNum = TypeInfoLocn.exist_offset_in_tci;
 ").
 
-:- func get_typeinfo_from_term(U, int) = type_info.
+:- func get_type_info_from_term(U, int) = type_info.
 
-get_typeinfo_from_term(_::in, X::in) = (unsafe_cast(X)::out) :-
-    det_unimplemented("get_typeinfo_from_term").
+get_type_info_from_term(_, _) = _ :-
+    private_builtin.sorry("get_type_info_from_term").
 
 :- pragma foreign_proc("C#",
-    get_typeinfo_from_term(Term::in, Index::in) = (TypeInfo::out),
+    get_type_info_from_term(Term::in, Index::in) = (TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
@@ -2246,74 +2233,133 @@ get_typeinfo_from_term(_::in, X::in) = (unsafe_cast(X)::out) :-
     }
 ").
 
-:- func typeclass_info_type_info(type_info, int) = type_info.
+:- pragma foreign_proc("Java",
+    get_type_info_from_term(Term::in, Index::in) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Term instanceof Object[]) {
+        TypeInfo = (TypeInfo_Struct) ((Object[]) Term)[Index];
+    } else {
+        try {
+            // The F<i> field variables are numbered from 1.
+            int i = 1 + Index;
+            Field f = Term.getClass().getDeclaredField(""F"" + i);
+            TypeInfo = (TypeInfo_Struct) f.get(Term);
+        } catch (IllegalAccessException e) {
+            throw new Error(e);
+        } catch (NoSuchFieldException e) {
+            throw new Error(e);
+        }
+    }
+").
 
-typeclass_info_type_info(TypeClassInfo, Index) = unsafe_cast(TypeInfo) :-
-    private_builtin.type_info_from_typeclass_info(
-        unsafe_cast(TypeClassInfo) `with_type` private_builtin.typeclass_info,
-        Index, TypeInfo `with_type` private_builtin.type_info).
+:- func get_typeclass_info_from_term(U, int) = typeclass_info.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- func var_arity_type_info_index(int, type_info) = type_info.
-
-var_arity_type_info_index(Index, TypeInfo) =
-    type_info_index(Index + 1, TypeInfo).
+get_typeclass_info_from_term(_, _) = _ :-
+    private_builtin.sorry("get_type_info_from_term").
 
 :- pragma foreign_proc("Java",
-    var_arity_type_info_index(Index::in, TypeInfo::in)
+    get_typeclass_info_from_term(Term::in, Index::in) = (TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Term instanceof Object[]) {
+        TypeClassInfo = /*typeclass_info*/ (Object[]) ((Object[]) Term)[Index];
+    } else {
+        try {
+            // The F<i> field variables are numbered from 1.
+            int i = 1 + Index;
+            Field f = Term.getClass().getDeclaredField(""F"" + i);
+            TypeClassInfo = /*typeclass_info*/ (Object[]) f.get(Term);
+        } catch (IllegalAccessException e) {
+            throw new Error(e);
+        } catch (NoSuchFieldException e) {
+            throw new Error(e);
+        }
+    }
+").
+
+:- func typeclass_info_type_info(typeclass_info, int) = type_info.
+
+typeclass_info_type_info(TypeClassInfo, Index) = TypeInfo :-
+    private_builtin.unsafe_type_cast(TypeClassInfo, PrivateTypeClassInfo),
+    private_builtin.type_info_from_typeclass_info(PrivateTypeClassInfo, Index,
+        PrivateTypeInfo),
+    private_builtin.unsafe_type_cast(PrivateTypeInfo, TypeInfo).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- func var_arity_type_info_index(type_info, int) = type_info.
+
+var_arity_type_info_index(TypeInfo, Index) =
+    type_info_index(TypeInfo, Index + 1).
+
+    % The generic definition of var_arity_type_info_index assumes that
+    % variable arity type_infos store the arity in the first word but that's
+    % not true for the TypeInfo_Struct in Java.
+    %
+    % Keep this in sync with the Java version of type_info_index.
+    %
+:- pragma foreign_proc("Java",
+    var_arity_type_info_index(TypeInfo::in, VarNum::in)
         = (TypeInfoAtIndex::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /* The generic definition of var_arity_type_info_index assumes that
-     * variable arity type_infos store the arity in the first word but that's
-     * not true for the TypeInfo_Struct in Java.
-     */
-    TypeInfoAtIndex = (TypeInfo_Struct) TypeInfo.args[Index];
+    assert TypeInfo.args != null;
+    // Variable numbers count from one.
+    assert VarNum != 0;
+
+    TypeInfoAtIndex = (TypeInfo_Struct) TypeInfo.args[VarNum - 1];
 ").
 
-:- func type_info_index(int, type_info) = type_info.
+:- func type_info_index(type_info, int) = type_info.
 
-type_info_index(_::in, TypeInfo::in) = (TypeInfo::out) :-
+type_info_index(TypeInfo, _) = TypeInfo :-
     % This is an "unimplemented" definition in Mercury, which will be
     % used by default.
     det_unimplemented("type_info_index").
 
 :- pragma foreign_proc("C#",
-    type_info_index(Index::in, TypeInfo::in) = (TypeInfoAtIndex::out),
+    type_info_index(TypeInfo::in, Index::in) = (TypeInfoAtIndex::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     TypeInfoAtIndex = (object[]) TypeInfo[Index];
 ").
 
+    % Keep this in sync with the Java version of var_arity_type_info_index.
+    %
 :- pragma foreign_proc("Java",
-    type_info_index(Index::in, TypeInfo::in) = (TypeInfoAtIndex::out),
+    type_info_index(TypeInfo::in, VarNum::in) = (TypeInfoAtIndex::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     assert TypeInfo.args != null;
-    TypeInfoAtIndex = (TypeInfo_Struct) TypeInfo.args[Index];
+    // Variable numbers count from one.
+    assert VarNum != 0;
+
+    TypeInfoAtIndex = (TypeInfo_Struct) TypeInfo.args[VarNum - 1];
 ").
 
-:- pred set_type_info_index(int::in, type_info::in,
+:- pred set_type_info_index(int::in, int::in, type_info::in,
     type_info::di, type_info::uo) is det.
 
-set_type_info_index(_, _, !TypeInfo) :-
-    det_unimplemented("type_info_index").
+set_type_info_index(_, _, _, !TypeInfo) :-
+    det_unimplemented("set_type_info_index").
 
 :- pragma foreign_proc("C#",
-    set_type_info_index(Index::in, Value::in, TypeInfo0::di, TypeInfo::uo),
+    set_type_info_index(Offset::in, Index::in, Value::in,
+        TypeInfo0::di, TypeInfo::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo0[Index] = Value;
+    TypeInfo0[Offset + Index] = Value;
     TypeInfo = TypeInfo0;
 ").
 
 :- pragma foreign_proc("Java",
-    set_type_info_index(Index::in, Value::in, TypeInfo0::di, TypeInfo::uo),
+    set_type_info_index(_Offset::in, Index::in, Value::in,
+        TypeInfo0::di, TypeInfo::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo0.args[Index - 1] = Value;
+    TypeInfo0.args[Index] = Value;
     TypeInfo = TypeInfo0;
 ").
 
@@ -2436,6 +2482,7 @@ type_ctor_compare_pred(_) = unify_or_compare_pred :-
     get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
+    // XXX this is called quite a lot so this might be inefficient
     TypeCtorRep = new Type_ctor_rep_0(TypeCtorInfo.type_ctor_rep.value);
 ").
 :- pragma foreign_proc("C",
@@ -2561,48 +2608,24 @@ get_type_layout(_) = _ :-
 :- func type_ctor_num_functors(type_ctor_info) = int.
 
 :- pragma foreign_proc("C#",
-    type_ctor_num_functors(TypeCtorInfo::in) = (TypeLayout::out),
+    type_ctor_num_functors(TypeCtorInfo::in) = (NumFunctors::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeLayout = (int) TypeCtorInfo[(int)
+    NumFunctors = (int) TypeCtorInfo[(int)
         type_ctor_info_field_nums.type_ctor_num_functors];
+").
+
+:- pragma foreign_proc("Java",
+    type_ctor_num_functors(TypeCtorInfo::in) = (NumFunctors::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    NumFunctors = TypeCtorInfo.type_ctor_num_functors;
 ").
 
 type_ctor_num_functors(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
     private_builtin.sorry("type_ctor_num_functors").
-
-:- pragma foreign_proc("C",
-    unsafe_cast(VarIn::in) = (VarOut::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    VarOut = VarIn;
-").
-:- pragma foreign_proc("C#",
-    unsafe_cast(VarIn::in) = (VarOut::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    VarOut = VarIn;
-").
-:- pragma foreign_proc("Java",
-    unsafe_cast(VarIn::in) = (VarOut::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    VarOut = VarIn;
-").
-
-:- pragma foreign_proc("Erlang",
-    unsafe_cast(VarIn::in) = (VarOut::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    VarOut = VarIn
-").
-
-unsafe_cast(_) = _ :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    private_builtin.sorry("unsafe_cast").
 
 %-----------------------------------------------------------------------------%
 %
@@ -2740,15 +2763,15 @@ du_functor_arg_types(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(7).
     ArgTypes = DuFunctorDesc.du_functor_arg_types;
 ").
 
-:- func du_functor_arg_names(du_functor_desc::in) = (arg_names::out)
+:- pred get_du_functor_arg_names(du_functor_desc::in, arg_names::out)
     is semidet.
 
-du_functor_arg_names(DuFunctorDesc) = ArgNames :-
+get_du_functor_arg_names(DuFunctorDesc, ArgNames) :-
     ArgNames = DuFunctorDesc ^ unsafe_index(8),
     not null(ArgNames).
 
 :- pragma foreign_proc("Java",
-    du_functor_arg_names(DuFunctorDesc::in) = (ArgNames::out),
+    get_du_functor_arg_names(DuFunctorDesc::in, ArgNames::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     ArgNames = DuFunctorDesc.du_functor_arg_names;
@@ -2756,15 +2779,15 @@ du_functor_arg_names(DuFunctorDesc) = ArgNames :-
     succeeded = (ArgNames != null);
 ").
 
-:- func du_functor_exist_info(du_functor_desc::in) = (exist_info::out)
+:- pred get_du_functor_exist_info(du_functor_desc::in, exist_info::out)
     is semidet.
 
-du_functor_exist_info(DuFunctorDesc) = ExistInfo :-
+get_du_functor_exist_info(DuFunctorDesc, ExistInfo) :-
     ExistInfo = DuFunctorDesc ^ unsafe_index(9),
     not null(ExistInfo).
 
 :- pragma foreign_proc("Java",
-    du_functor_exist_info(DuFunctorDesc::in) = (ExistInfo::out),
+    get_du_functor_exist_info(DuFunctorDesc::in, ExistInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     ExistInfo = DuFunctorDesc.du_functor_exist_info;
@@ -2980,7 +3003,7 @@ null_string = _ :-
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     try {
-        Value = Enum.getClass().getField(""value"").getInt(Enum);
+        Value = Enum.getClass().getField(""MR_value"").getInt(Enum);
     }
     catch (java.lang.Exception e) {
         throw new java.lang.RuntimeException(
