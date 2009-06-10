@@ -232,22 +232,23 @@
 real_main(!IO) :-
     gc_init(!IO),
 
-        % All messages go to stderr
+    % All messages go to stderr
     io.stderr_stream(StdErr, !IO),
     io.set_output_stream(StdErr, _, !IO),
     io.command_line_arguments(Args0, !IO),
 
-        % Replace all @file arguments with the contents of the file
+    % Replace all @file arguments with the contents of the file
     expand_at_file_arguments(Args0, Res, !IO),
-    ( Res = ok(Args),
+    (
+        Res = ok(Args),
         real_main_2(Args, !IO)
-    ; Res = error(E),
+    ;
+        Res = error(E),
         io.set_exit_status(1, !IO),
 
         io.write_string(io.error_message(E), !IO),
         io.nl(!IO)
     ).
-
 
 :- pred real_main_2(list(string)::in, io::di, io::uo) is det.
 
@@ -5451,9 +5452,8 @@ dump_mlds(DumpFile, MLDS, !IO) :-
     ;
         Res = error(IOError),
         maybe_write_string(Verbose, "\n", !IO),
-        string.append_list(["can't open file `", DumpFile, "' for output: ",
-                io.error_message(IOError)],
-            ErrorMessage),
+        ErrorMessage = "can't open file `" ++ DumpFile ++ "' for output: " ++
+            io.error_message(IOError),
         report_error(ErrorMessage, !IO)
     ).
 
@@ -5514,7 +5514,6 @@ elds_to_erlang(ModuleInfo, ELDS, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    %
     % Expand @File arguments.
     % Each argument in the above form is replaced with a list of arguments
     % where each arg is each line in the file File which is not just whitespace.
@@ -5526,32 +5525,36 @@ expand_at_file_arguments([], ok([]), !IO).
 expand_at_file_arguments([Arg | Args], Result, !IO) :-
     ( string.remove_prefix("@", Arg, File) ->
         io.open_input(File, OpenRes, !IO),
-        ( OpenRes = ok(S),
+        (
+            OpenRes = ok(S),
             expand_file_into_arg_list(S, ReadRes, !IO),
             ( ReadRes = ok(FileArgs),
                 expand_at_file_arguments(FileArgs ++ Args, Result, !IO)
             ; ReadRes = error(E),
                 Result = error(at_file_error(File, E))
             )
-        ; OpenRes = error(_E),
+        ;
+            OpenRes = error(_E),
             Msg = "mercury_compile: cannot open '" ++ File ++ "'",
             Result = error(io.make_io_error(Msg))
         )
     ;
         expand_at_file_arguments(Args, Result0, !IO),
-        ( Result0 = ok(ExpandedArgs),
+        (
+            Result0 = ok(ExpandedArgs),
             Result = ok([Arg | ExpandedArgs])
-        ; Result0 = error(E),
+        ;
+            Result0 = error(E),
             Result = error(E)
         )
     ).
 
 :- func at_file_error(string, io.error) = io.error.
 
-at_file_error(File, E) = 
+at_file_error(File, E) =
     io.make_io_error("While attempting to process '" ++ File ++
-            "' the following error occurred: " ++ io.error_message(E)).
-  
+        "' the following error occurred: " ++ io.error_message(E)).
+
     %
     % Read each of the command line arguments from the given input file.
     % Note lines which consist purely of whitespace are ignored.
