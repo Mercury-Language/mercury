@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995,1997,1999-2000,2002-2008 The University of Melbourne.
+% Copyright (C) 1994-1995,1997,1999-2000,2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1189,13 +1189,17 @@ dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
 
 :- pred dir.make_mkdir_res_exists(io.system_error::in,
     string::in, io.res::out, io::di, io::uo) is det.
-:- pragma foreign_export("C", dir.make_mkdir_res_exists(in, in, out, di, uo),
+:- pragma foreign_export("C",
+    dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
-:- pragma foreign_export("IL", dir.make_mkdir_res_exists(in, in, out, di, uo),
+:- pragma foreign_export("IL",
+    dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
-:- pragma foreign_export("Java", dir.make_mkdir_res_exists(in, in, out, di, uo),
+:- pragma foreign_export("Java",
+    dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
-:- pragma foreign_export("Erlang", dir.make_mkdir_res_exists(in, in, out, di, uo),
+:- pragma foreign_export("Erlang",
+    dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
 
 dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
@@ -1224,11 +1228,12 @@ dir.check_dir_accessibility(DirName, Res, !IO) :-
 %-----------------------------------------------------------------------------%
 
 dir.foldl2(P, DirName, T, Res, !IO) :-
-    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], no, no, _, T, Res, !IO).
+    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], no,
+        no, _, T, Res, !IO).
 
 dir.recursive_foldl2(P, DirName, FollowLinks, T, Res, !IO) :-
-    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], yes, FollowLinks, _,
-        T, Res, !IO).
+    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], yes,
+        FollowLinks, _, T, Res, !IO).
 
     %
     % Under windows you cannot list the files of a directory if the directory
@@ -1875,8 +1880,8 @@ dir.read_entry(Dir0, Res, !IO) :-
     io.system_error::out, string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    dir.read_entry_2(Dir0::in, Dir::out, Status::out, Error::out, FileName::out,
-        IO0::di, IO::uo),
+    dir.read_entry_2(Dir0::in, Dir::out, Status::out, Error::out,
+        FileName::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         will_not_modify_trail, does_not_affect_liveness],
 "{
