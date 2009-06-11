@@ -428,9 +428,16 @@
     ;       chain_gc_stack_frames.  % Add shadow stack for supporting
                                     % accurate GC.
 
+:- inst hoist
+    --->    hoist_nested_funcs.
+:- inst chain
+    --->    chain_gc_stack_frames.
+
     % Process the whole MLDS, performing the indicated action.
     %
-:- pred ml_elim_nested(action::in, mlds::in, mlds::out, io::di, io::uo) is det.
+:- pred ml_elim_nested(action, mlds, mlds, io, io).
+:- mode ml_elim_nested(in(hoist), in, out, di, uo) is det.
+:- mode ml_elim_nested(in(chain), in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -465,10 +472,8 @@ ml_elim_nested(Action, MLDS0, MLDS, !IO) :-
         FinalPreds, ExportedEnums),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     OuterVars = [],
-    DefnsList = list.map(
-        ml_elim_nested_defns(Action, MLDS_ModuleName, Globals, OuterVars),
-        Defns0),
-    Defns1 = list.condense(DefnsList),
+    ml_elim_nested_defns_list(Action, MLDS_ModuleName, Globals, OuterVars,
+        Defns0, Defns1),
     % The MLDS code generator sometimes generates two definitions of the
     % same RTTI constant as local constants in two different functions.
     % When we hoist them out, that leads to duplicate definitions here.
@@ -477,6 +482,20 @@ ml_elim_nested(Action, MLDS0, MLDS, !IO) :-
     Defns = list.remove_dups(Defns1),
     MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds,
         FinalPreds, ExportedEnums).
+
+:- pred ml_elim_nested_defns_list(action, mlds_module_name, globals, outervars,
+    list(mlds_defn), list(mlds_defn)).
+:- mode ml_elim_nested_defns_list(in(hoist), in, in, in, in, out) is det.
+:- mode ml_elim_nested_defns_list(in(chain), in, in, in, in, out) is det.
+
+ml_elim_nested_defns_list(_, _, _, _, [], []).
+ml_elim_nested_defns_list(Action, ModuleName, Globals, OuterVars,
+        [Defn0 | Defns0], Defns) :-
+    ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0,
+        HeadDefns),
+    ml_elim_nested_defns_list(Action, ModuleName, Globals, OuterVars, Defns0,
+        TailDefns),
+    Defns = HeadDefns ++ TailDefns.
 
     % Either eliminated nested functions:
     % Hoist out any nested function occurring in a single mlds_defn.
@@ -487,10 +506,12 @@ ml_elim_nested(Action, MLDS0, MLDS, !IO) :-
     % Extract out the code to trace these variables, putting it in a function
     % whose address is stored in the shadow stack frame.
     %
-:- func ml_elim_nested_defns(action, mlds_module_name, globals, outervars,
-    mlds_defn) = list(mlds_defn).
+:- pred ml_elim_nested_defns(action, mlds_module_name, globals, outervars,
+    mlds_defn, list(mlds_defn)).
+:- mode ml_elim_nested_defns(in(hoist), in, in, in, in, out) is det.
+:- mode ml_elim_nested_defns(in(chain), in, in, in, in, out) is det.
 
-ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
+ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params0,
@@ -516,14 +537,14 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
         %
         % Also, for accurate GC, add code to save and restore the stack chain
         % pointer at any `try_commit' statements.
-        %
-        ElimInfo0 = elim_info_init(Action, ModuleName, OuterVars,
+
+        ElimInfo0 = elim_info_init(ModuleName, OuterVars,
             EnvTypeName, EnvPtrTypeName, Globals),
         Params0 = mlds_func_params(Arguments0, RetValues),
-        ml_maybe_add_args(Arguments0, FuncBody0, ModuleName,
+        ml_maybe_add_args(Action, Arguments0, FuncBody0, ModuleName,
             Context, ElimInfo0, ElimInfo1),
-        flatten_statement(FuncBody0, FuncBody1, ElimInfo1, ElimInfo2),
-        fixup_gc_statements(ElimInfo2, ElimInfo),
+        flatten_statement(Action, FuncBody0, FuncBody1, ElimInfo1, ElimInfo2),
+        fixup_gc_statements(Action, ElimInfo2, ElimInfo),
         elim_info_finish(ElimInfo, NestedFuncs0, Locals),
 
         % Split the locals that we need to process into local variables
@@ -566,7 +587,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
             % Hoist out the local statics and the nested functions.
             HoistedDefns0 = HoistedStatics ++ GCTraceFuncDefns ++ NestedFuncs,
 
-            % When hoisting nested functions, it's possible that none of the
+            % When hoisting nested functions, it is possible that none of the
             % nested functions reference the arguments or locals of the parent
             % function. In that case, there's no need to create an environment,
             % we just need to flatten the functions.
@@ -588,7 +609,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
                 % functions, or (for accurate GC) may contain pointers,
                 % then we need to copy them to local variables in the
                 % environment structure.
-                ml_maybe_copy_args(Arguments0, FuncBody0, ElimInfo,
+                ml_maybe_copy_args(Action, ElimInfo, Arguments0, FuncBody0,
                     EnvTypeName, EnvPtrTypeName, Context,
                     _ArgsToCopy, CodeToCopyArgs),
 
@@ -603,8 +624,8 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
                     FuncBody2 = FuncBody1
                 ;
                     Action = chain_gc_stack_frames,
-                    add_unchain_stack_to_statement(FuncBody1, FuncBody2,
-                        ElimInfo, _ElimInfo)
+                    add_unchain_stack_to_statement(Action,
+                        FuncBody1, FuncBody2, ElimInfo, _ElimInfo)
                 ),
                 % Add a final unlink statement at the end of the function,
                 % if needed. This is only needed if the function has no
@@ -664,43 +685,46 @@ strip_gc_statement(Argument0) = Argument :-
     % Add any arguments which are used in nested functions
     % to the local_data field in the elim_info.
     %
-:- pred ml_maybe_add_args(mlds_arguments::in, statement::in,
-    mlds_module_name::in, mlds_context::in,
-    elim_info::in, elim_info::out) is det.
+:- pred ml_maybe_add_args(action, mlds_arguments, statement,
+    mlds_module_name, mlds_context, elim_info, elim_info).
+:- mode ml_maybe_add_args(in(hoist), in, in, in, in, in, out) is det.
+:- mode ml_maybe_add_args(in(chain), in, in, in, in, in, out) is det.
 
-ml_maybe_add_args([], _, _, _, !Info).
-ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context, !Info) :-
+ml_maybe_add_args(_, [], _, _, _, !Info).
+ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
+        !Info) :-
     (
         Arg = mlds_argument(entity_data(mlds_data_var(VarName)), _Type,
             GCStatement),
-        ml_should_add_local_data(!.Info, mlds_data_var(VarName), GCStatement,
-            [], [FuncBody])
+        ml_should_add_local_data(Action, !.Info, mlds_data_var(VarName),
+            GCStatement, [], [FuncBody])
     ->
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
         elim_info_add_local_data(ArgToCopy, !Info)
     ;
         true
     ),
-    ml_maybe_add_args(Args, FuncBody, ModuleName, Context, !Info).
+    ml_maybe_add_args(Action, Args, FuncBody, ModuleName, Context, !Info).
 
     % Generate code to copy any arguments which are used in nested functions
     % to the environment struct.
     %
-:- pred ml_maybe_copy_args(mlds_arguments::in, statement::in,
-    elim_info::in, mlds_type::in, mlds_type::in, mlds_context::in,
-    list(mlds_defn)::out, list(statement)::out) is det.
+:- pred ml_maybe_copy_args(action, elim_info, mlds_arguments, statement,
+    mlds_type, mlds_type, mlds_context, list(mlds_defn), list(statement)).
+:- mode ml_maybe_copy_args(in(hoist), in, in, in, in, in, in, out, out) is det.
+:- mode ml_maybe_copy_args(in(chain), in, in, in, in, in, in, out, out) is det.
 
-ml_maybe_copy_args([], _, _, _, _, _, [], []).
-ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
-        Context, ArgsToCopy, CodeToCopyArgs) :-
-    ml_maybe_copy_args(Args, FuncBody, ElimInfo, ClassType,
-        EnvPtrTypeName, Context, ArgsToCopy0, CodeToCopyArgs0),
-    ModuleName = elim_info_get_module_name(ElimInfo),
+ml_maybe_copy_args(_, _, [], _, _, _, _, [], []).
+ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassType,
+        EnvPtrTypeName, Context, ArgsToCopy, CodeToCopyArgs) :-
+    ml_maybe_copy_args(Action, Info, Args, FuncBody, ClassType,
+        EnvPtrTypeName, Context, ArgsToCopyTail, CodeToCopyArgsTail),
+    ModuleName = elim_info_get_module_name(Info),
     (
         Arg = mlds_argument(entity_data(mlds_data_var(VarName)), FieldType,
             GCStatement),
-        ml_should_add_local_data(ElimInfo, mlds_data_var(VarName), GCStatement,
-            [], [FuncBody])
+        ml_should_add_local_data(Action, Info, mlds_data_var(VarName),
+            GCStatement, [], [FuncBody])
     ->
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
 
@@ -708,13 +732,13 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
         %   env_ptr->foo = foo;
         %
         QualVarName = qual(ModuleName, module_qual, VarName),
-        EnvModuleName = ml_env_module_name(ClassType,
-            ElimInfo ^ elim_info_globals),
+        Globals = elim_info_get_globals(Info),
+        EnvModuleName = ml_env_module_name(ClassType, Globals),
         FieldNameString = ml_var_name_to_string(VarName),
         FieldName = ml_field_named(qual(EnvModuleName, type_qual,
             FieldNameString), EnvPtrTypeName),
         Tag = yes(0),
-        EnvPtrName = env_name_base(ElimInfo ^ action) ++ "_ptr",
+        EnvPtrName = env_name_base(Action) ++ "_ptr",
         EnvPtr = ml_lval(ml_var(qual(ModuleName, module_qual,
             mlds_var_name(EnvPtrName, no)), EnvPtrTypeName)),
         EnvArgLval = ml_field(Tag, EnvPtr, FieldName, FieldType,
@@ -723,11 +747,11 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
         AssignToEnv = assign(EnvArgLval, ArgRval),
         CodeToCopyArg = statement(ml_stmt_atomic(AssignToEnv), Context),
 
-        ArgsToCopy = [ArgToCopy | ArgsToCopy0],
-        CodeToCopyArgs = [CodeToCopyArg | CodeToCopyArgs0]
+        ArgsToCopy = [ArgToCopy | ArgsToCopyTail],
+        CodeToCopyArgs = [CodeToCopyArg | CodeToCopyArgsTail]
     ;
-        ArgsToCopy = ArgsToCopy0,
-        CodeToCopyArgs = CodeToCopyArgs0
+        ArgsToCopy = ArgsToCopyTail,
+        CodeToCopyArgs = CodeToCopyArgsTail
     ).
 
     % Create the environment struct type.
@@ -865,7 +889,6 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     % Generate code to initialize the environment pointer, either by
     % allocating an object on the heap, or by taking the address of
     % the struct we put on the stack.
-    %
     (
         OnHeap = yes,
         EnvVarAddr = ml_lval(ml_var(EnvVar, EnvTypeName)),
@@ -917,6 +940,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     %       frame = (struct foo_frame *) this_frame;
     %       <GCTraceStatements>
     %   }
+    %
     gen_gc_trace_func(FuncName, ModuleName, FramePtrDecl,
         [InitFramePtr | GCTraceStatements], Context, GCTraceFuncAddr,
         GCTraceFuncParams, GCTraceFuncDefn),
@@ -926,6 +950,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     %
     %   void *prev;
     %   void (*trace)(...);
+    %
     PrevFieldName = entity_data(mlds_data_var(mlds_var_name("prev", no))),
     PrevFieldFlags = ml_gen_public_field_decl_flags,
     PrevFieldType = ml_stack_chain_type,
@@ -967,6 +992,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     % to point to the current environment:
     %
     %    stack_chain = frame_ptr;
+    %
     EnvPtrTypeName = ml_make_env_ptr_type(Globals, EnvTypeName),
     EnvPtr = ml_lval(ml_var(qual(ModuleName, module_qual,
         mlds_var_name("frame_ptr", no)), EnvPtrTypeName)),
@@ -992,7 +1018,6 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
     % and add 100000 to the original function's sequence number.
     % XXX This is a bit of a hack; maybe we should add
     % another field to the `function' ctor for mlds_entity_name.
-    %
     (
         FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, PredId),
         (
@@ -1045,18 +1070,20 @@ ml_gen_gc_trace_func_decl_flags = MLDS_DeclFlags :-
 :- pred extract_gc_statements(mlds_defn::in, mlds_defn::out,
     list(statement)::out, list(statement)::out) is det.
 
-extract_gc_statements(mlds_defn(Name, Context, Flags, Body0),
-        mlds_defn(Name, Context, Flags, Body), GCInitStmts, GCTraceStmts) :-
+extract_gc_statements(Defn0, Defn, GCInitStmts, GCTraceStmts) :-
+    Defn0 = mlds_defn(Name, Context, Flags, Body0),
     ( Body0 = mlds_data(Type, Init, gc_trace_code(GCTraceStmt)) ->
         Body = mlds_data(Type, Init, gc_no_stmt),
         GCInitStmts = [],
-        GCTraceStmts = [GCTraceStmt]
+        GCTraceStmts = [GCTraceStmt],
+        Defn = mlds_defn(Name, Context, Flags, Body)
     ; Body0 = mlds_data(Type, Init, gc_initialiser(GCInitStmt)) ->
         Body = mlds_data(Type, Init, gc_no_stmt),
         GCInitStmts = [GCInitStmt],
-        GCTraceStmts = []
+        GCTraceStmts = [],
+        Defn = mlds_defn(Name, Context, Flags, Body)
     ;
-        Body = Body0,
+        Defn = Defn0,
         GCInitStmts = [],
         GCTraceStmts = []
     ).
@@ -1069,12 +1096,13 @@ extract_gc_statements(mlds_defn(Name, Context, Flags, Body0),
     %
 :- func convert_local_to_field(mlds_defn) = mlds_defn.
 
-convert_local_to_field(mlds_defn(Name, Context, Flags0, Body)) =
-        mlds_defn(Name, Context, Flags, Body) :-
+convert_local_to_field(Defn0) = Defn :-
+    Defn0 = mlds_defn(Name, Context, Flags0, Body),
     ( access(Flags0) = acc_local ->
-        Flags = set_access(Flags0, acc_public)
+        Flags = set_access(Flags0, acc_public),
+        Defn = mlds_defn(Name, Context, Flags, Body)
     ;
-        Flags = Flags0
+        Defn = Defn0
     ).
 
     % Similarly, when converting local statics into global statics, we need to
@@ -1082,17 +1110,18 @@ convert_local_to_field(mlds_defn(Name, Context, Flags0, Body)) =
     %
 :- func convert_local_to_global(mlds_defn) = mlds_defn.
 
-convert_local_to_global(mlds_defn(Name, Context, Flags0, Body)) =
-        mlds_defn(Name, Context, Flags, Body) :-
+convert_local_to_global(Defn0) = Defn :-
+    Defn0 = mlds_defn(Name, Context, Flags0, Body),
     ( access(Flags0) = acc_local ->
-        Flags = set_access(Flags0, acc_private)
+        Flags = set_access(Flags0, acc_private),
+        Defn = mlds_defn(Name, Context, Flags, Body)
     ;
-        Flags = Flags0
+        Defn = Defn0
     ).
 
     % ml_insert_init_env:
     %
-    % If the definition is a nested function definition, and it's body makes
+    % If the definition is a nested function definition, and its body makes
     % use of the environment pointer (`env_ptr'), then insert code to declare
     % and initialize the environment pointer.
     %
@@ -1337,81 +1366,101 @@ ml_module_name_string(ModuleName) = sym_name_to_string_sep(ModuleName, "__").
 % flatten_gc_statement:
 % flatten_statements:
 % flatten_statement:
-%   Recursively process the statement(s), calling fixup_var on every
-%   use of a variable inside them, and calling flatten_nested_defns
-%   for every definition they contain (e.g. definitions of local
-%   variables and nested functions).
 %
-%   Also, for Action = chain_gc_stack_frames, add code to save and
-%   restore the stack chain pointer at any `try_commit' statements.
+% Recursively process the statement(s), calling fixup_var on every use
+% of a variable inside them, and calling flatten_nested_defns for every
+% definition they contain (e.g. definitions of local variables and nested
+% functions).
+%
+% Also, for Action = chain_gc_stack_frames, add code to save and restore
+% the stack chain pointer at any `try_commit' statements.
 
-:- pred flatten_function_body(mlds_function_body::in, mlds_function_body::out,
-    elim_info::in, elim_info::out) is det.
+:- pred flatten_function_body(action, mlds_function_body, mlds_function_body,
+    elim_info, elim_info).
+:- mode flatten_function_body(in(hoist), in, out, in, out) is det.
+:- mode flatten_function_body(in(chain), in, out, in, out) is det.
 
-flatten_function_body(body_external, body_external, !Info).
-flatten_function_body(body_defined_here(Statement0),
+flatten_function_body(_, body_external, body_external, !Info).
+flatten_function_body(Action, body_defined_here(Statement0),
         body_defined_here(Statement), !Info) :-
-    flatten_statement(Statement0, Statement, !Info).
+    flatten_statement(Action, Statement0, Statement, !Info).
 
-:- pred flatten_maybe_statement(maybe(statement)::in,
-    maybe(statement)::out,
-    elim_info::in, elim_info::out) is det.
+:- pred flatten_maybe_statement(action, maybe(statement), maybe(statement),
+    elim_info, elim_info).
+:- mode flatten_maybe_statement(in(hoist), in, out, in, out) is det.
+:- mode flatten_maybe_statement(in(chain), in, out, in, out) is det.
 
-flatten_maybe_statement(no, no, !Info).
-flatten_maybe_statement(yes(Statement0), yes(Statement), !Info) :-
-    flatten_statement(Statement0, Statement, !Info).
+flatten_maybe_statement(_, no, no, !Info).
+flatten_maybe_statement(Action, yes(Statement0), yes(Statement), !Info) :-
+    flatten_statement(Action, Statement0, Statement, !Info).
 
-:- pred flatten_gc_statement(mlds_gc_statement::in,
-    mlds_gc_statement::out, elim_info::in, elim_info::out) is det.
+:- pred flatten_gc_statement(action, mlds_gc_statement, mlds_gc_statement,
+    elim_info, elim_info).
+:- mode flatten_gc_statement(in(hoist), in, out, in, out) is det.
+:- mode flatten_gc_statement(in(chain), in, out, in, out) is det.
 
-flatten_gc_statement(gc_no_stmt, gc_no_stmt, !Info).
-flatten_gc_statement(gc_trace_code(Statement0), gc_trace_code(Statement),
-        !Info) :-
-    flatten_statement(Statement0, Statement, !Info).
-flatten_gc_statement(gc_initialiser(Statement0), gc_initialiser(Statement),
-        !Info) :-
-    flatten_statement(Statement0, Statement, !Info).
+flatten_gc_statement(Action, GCStmt0, GCStmt, !Info) :-
+    (
+        GCStmt0 = gc_no_stmt,
+        GCStmt = gc_no_stmt
+    ;
+        GCStmt0 = gc_trace_code(Statement0),
+        flatten_statement(Action, Statement0, Statement, !Info),
+        GCStmt = gc_trace_code(Statement)
+    ;
+        GCStmt0 = gc_initialiser(Statement0),
+        flatten_statement(Action, Statement0, Statement, !Info),
+        GCStmt = gc_initialiser(Statement)
+    ).
 
-:- pred flatten_statements(list(statement)::in, list(statement)::out,
-    elim_info::in, elim_info::out) is det.
+:- pred flatten_statements(action, list(statement), list(statement),
+    elim_info, elim_info).
+:- mode flatten_statements(in(hoist), in, out, in, out) is det.
+:- mode flatten_statements(in(chain), in, out, in, out) is det.
 
-flatten_statements(!Statements, !Info) :-
-    list.map_foldl(flatten_statement, !Statements, !Info).
+flatten_statements(_, [], [], !Info).
+flatten_statements(Action, [Statement0 | Statements0],
+        [Statement | Statements], !Info) :-
+    flatten_statement(Action, Statement0, Statement, !Info),
+    flatten_statements(Action, Statements0, Statements, !Info).
 
-:- pred flatten_statement(statement::in, statement::out,
-    elim_info::in, elim_info::out) is det.
+:- pred flatten_statement(action, statement, statement, elim_info, elim_info).
+:- mode flatten_statement(in(hoist), in, out, in, out) is det.
+:- mode flatten_statement(in(chain), in, out, in, out) is det.
 
-flatten_statement(Statement0, Statement, !Info) :-
+flatten_statement(Action, Statement0, Statement, !Info) :-
     Statement0 = statement(Stmt0, Context),
-    flatten_stmt(Stmt0, Stmt, !Info),
+    flatten_stmt(Action, Stmt0, Stmt, !Info),
     Statement = statement(Stmt, Context).
 
-:- pred flatten_stmt(mlds_stmt::in, mlds_stmt::out,
-    elim_info::in, elim_info::out) is det.
+:- pred flatten_stmt(action, mlds_stmt, mlds_stmt, elim_info, elim_info).
+:- mode flatten_stmt(in(hoist), in, out, in, out) is det.
+:- mode flatten_stmt(in(chain), in, out, in, out) is det.
 
-flatten_stmt(Stmt0, Stmt, !Info) :-
+flatten_stmt(Action, Stmt0, Stmt, !Info) :-
     (
         Stmt0 = ml_stmt_block(Defns0, Statements0),
-        flatten_nested_defns(Defns0, Statements0, Defns, InitStatements,
+        flatten_nested_defns(Action, Defns0, Statements0, Defns,
+            InitStatements, !Info),
+        flatten_statements(Action, InitStatements ++ Statements0, Statements,
             !Info),
-        flatten_statements(InitStatements ++ Statements0, Statements, !Info),
         Stmt = ml_stmt_block(Defns, Statements)
     ;
         Stmt0 = ml_stmt_while(Rval0, Statement0, Once),
-        fixup_rval(Rval0, Rval, !Info),
-        flatten_statement(Statement0, Statement, !Info),
+        fixup_rval(Action, !.Info, Rval0, Rval),
+        flatten_statement(Action, Statement0, Statement, !Info),
         Stmt = ml_stmt_while(Rval, Statement, Once)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0),
-        fixup_rval(Cond0, Cond, !Info),
-        flatten_statement(Then0, Then, !Info),
-        flatten_maybe_statement(MaybeElse0, MaybeElse, !Info),
+        fixup_rval(Action, !.Info, Cond0, Cond),
+        flatten_statement(Action, Then0, Then, !Info),
+        flatten_maybe_statement(Action, MaybeElse0, MaybeElse, !Info),
         Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
     ;
         Stmt0 = ml_stmt_switch(Type, Val0, Range, Cases0, Default0),
-        fixup_rval(Val0, Val, !Info),
-        list.map_foldl(flatten_case, Cases0, Cases, !Info),
-        flatten_default(Default0, Default, !Info),
+        fixup_rval(Action, !.Info, Val0, Val),
+        flatten_cases(Action, Cases0, Cases, !Info),
+        flatten_default(Action, Default0, Default, !Info),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
         Stmt0 = ml_stmt_label(_),
@@ -1421,30 +1470,29 @@ flatten_stmt(Stmt0, Stmt, !Info) :-
         Stmt = Stmt0
     ;
         Stmt0 = ml_stmt_computed_goto(Rval0, Labels),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, !.Info, Rval0, Rval),
         Stmt = ml_stmt_computed_goto(Rval, Labels)
     ;
         Stmt0 = ml_stmt_call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
-        fixup_rval(Func0, Func, !Info),
-        fixup_maybe_rval(Obj0, Obj, !Info),
-        fixup_rvals(Args0, Args, !Info),
-        fixup_lvals(RetLvals0, RetLvals, !Info),
+        fixup_rval(Action, !.Info, Func0, Func),
+        fixup_maybe_rval(Action, !.Info, Obj0, Obj),
+        fixup_rvals(Action, !.Info, Args0, Args),
+        fixup_lvals(Action, !.Info, RetLvals0, RetLvals),
         Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall)
     ;
         Stmt0 = ml_stmt_return(Rvals0),
-        fixup_rvals(Rvals0, Rvals, !Info),
+        fixup_rvals(Action, !.Info, Rvals0, Rvals),
         Stmt = ml_stmt_return(Rvals)
     ;
         Stmt0 = ml_stmt_do_commit(Ref0),
-        fixup_rval(Ref0, Ref, !Info),
+        fixup_rval(Action, !.Info, Ref0, Ref),
         Stmt = ml_stmt_do_commit(Ref)
     ;
         Stmt0 = ml_stmt_try_commit(Ref0, Statement0, Handler0),
-        fixup_lval(Ref0, Ref, !Info),
-        flatten_statement(Statement0, Statement1, !Info),
-        flatten_statement(Handler0, Handler1, !Info),
+        fixup_lval(Action, !.Info, Ref0, Ref),
+        flatten_statement(Action, Statement0, Statement1, !Info),
+        flatten_statement(Action, Handler0, Handler1, !Info),
         Stmt1 = ml_stmt_try_commit(Ref, Statement1, Handler1),
-        Action = !.Info ^ action,
         (
             Action = chain_gc_stack_frames,
             save_and_restore_stack_chain(Stmt1, Stmt, !Info)
@@ -1454,26 +1502,48 @@ flatten_stmt(Stmt0, Stmt, !Info) :-
         )
     ;
         Stmt0 = ml_stmt_atomic(AtomicStmt0),
-        fixup_atomic_stmt(AtomicStmt0, AtomicStmt, !Info),
+        fixup_atomic_stmt(Action, !.Info, AtomicStmt0, AtomicStmt),
         Stmt = ml_stmt_atomic(AtomicStmt)
     ).
 
-:- pred flatten_case(mlds_switch_case::in, mlds_switch_case::out,
-    elim_info::in, elim_info::out) is det.
+:- pred flatten_cases(action, list(mlds_switch_case), list(mlds_switch_case),
+    elim_info, elim_info).
+:- mode flatten_cases(in(hoist), in, out, in, out) is det.
+:- mode flatten_cases(in(chain), in, out, in, out) is det.
 
-flatten_case(Case0, Case, !Info) :-
+flatten_cases(_, [], [], !Info).
+flatten_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
+    flatten_case(Action, Case0, Case, !Info),
+    flatten_cases(Action, Cases0, Cases, !Info).
+
+:- pred flatten_case(action, mlds_switch_case, mlds_switch_case,
+    elim_info, elim_info).
+:- mode flatten_case(in(hoist), in, out, in, out) is det.
+:- mode flatten_case(in(chain), in, out, in, out) is det.
+
+flatten_case(Action, Case0, Case, !Info) :-
     Case0 = mlds_switch_case(Conds0, Statement0),
-    list.map_foldl(fixup_case_cond, Conds0, Conds, !Info),
-    flatten_statement(Statement0, Statement, !Info),
+    fixup_case_conds(Action, !.Info, Conds0, Conds),
+    flatten_statement(Action, Statement0, Statement, !Info),
     Case = mlds_switch_case(Conds, Statement).
 
-:- pred flatten_default(mlds_switch_default::in, mlds_switch_default::out,
-    elim_info::in, elim_info::out) is det.
+:- pred flatten_default(action, mlds_switch_default, mlds_switch_default,
+    elim_info, elim_info).
+:- mode flatten_default(in(hoist), in, out, in, out) is det.
+:- mode flatten_default(in(chain), in, out, in, out) is det.
 
-flatten_default(default_is_unreachable, default_is_unreachable, !Info).
-flatten_default(default_do_nothing, default_do_nothing, !Info).
-flatten_default(default_case(Statement0), default_case(Statement), !Info) :-
-    flatten_statement(Statement0, Statement, !Info).
+flatten_default(Action, Default0, Default, !Info) :-
+    (
+        Default0 = default_is_unreachable,
+        Default = default_is_unreachable
+    ;
+        Default0 = default_do_nothing,
+        Default = default_do_nothing
+    ;
+        Default0 = default_case(Statement0),
+        flatten_statement(Action, Statement0, Statement, !Info),
+        Default = default_case(Statement)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1502,10 +1572,10 @@ flatten_default(default_case(Statement0), default_case(Statement), !Info) :-
 :- pred save_and_restore_stack_chain(mlds_stmt::in(try_commit),
     mlds_stmt::out, elim_info::in, elim_info::out) is det.
 
-save_and_restore_stack_chain(Stmt0, Stmt, ElimInfo0, ElimInfo) :-
-    ModuleName = ElimInfo0 ^ module_name,
-    counter.allocate(Id, ElimInfo0 ^ saved_stack_chain_counter, NextId),
-    ElimInfo = (ElimInfo0 ^ saved_stack_chain_counter := NextId),
+save_and_restore_stack_chain(Stmt0, Stmt, !ElimInfo) :-
+    ModuleName = elim_info_get_module_name(!.ElimInfo),
+    elim_info_allocate_saved_stack_chain_id(Id, !ElimInfo),
+
     Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
     Statement0 = statement(_, StatementContext),
     Handler0 = statement(_, HandlerContext),
@@ -1527,46 +1597,47 @@ save_and_restore_stack_chain(Stmt0, Stmt, ElimInfo0, ElimInfo) :-
 
 % flatten_nested_defns:
 % flatten_nested_defn:
-%   Hoist out nested function definitions, and any local variables
-%   that need to go in the environment struct (e.g. because they are
-%   referenced by nested functions), storing them both in the elim_info.
-%   Convert initializers for local variables that need to go in the
-%   environment struct into assignment statements.
-%   Return the remaining (non-hoisted) definitions,
-%   the list of assignment statements, and the updated elim_info.
+%
+% Hoist out nested function definitions, and any local variables that need
+% to go in the environment struct (e.g. because they are referenced by
+% nested functions), storing them both in the elim_info. Convert initializers
+% for local variables that need to go in the environment struct into assignment
+% statements. Return the remaining (non-hoisted) definitions, the list of
+% assignment statements, and the updated elim_info.
 
-:- pred flatten_nested_defns(list(mlds_defn)::in, list(statement)::in,
-    list(mlds_defn)::out, list(statement)::out,
-    elim_info::in, elim_info::out) is det.
+:- pred flatten_nested_defns(action, list(mlds_defn), list(statement),
+    list(mlds_defn), list(statement), elim_info, elim_info).
+:- mode flatten_nested_defns(in(hoist), in, in, out, out, in, out) is det.
+:- mode flatten_nested_defns(in(chain), in, in, out, out, in, out) is det.
 
-flatten_nested_defns([], _, [], [], !Info).
-flatten_nested_defns([Defn0 | Defns0], FollowingStatements, Defns,
+flatten_nested_defns(_, [], _, [], [], !Info).
+flatten_nested_defns(Action, [Defn0 | Defns0], FollowingStatements, Defns,
         InitStatements, !Info) :-
-    flatten_nested_defn(Defn0, Defns0, FollowingStatements,
+    flatten_nested_defn(Action, Defn0, Defns0, FollowingStatements,
         Defns1, InitStatements1, !Info),
-    flatten_nested_defns(Defns0, FollowingStatements,
+    flatten_nested_defns(Action, Defns0, FollowingStatements,
         Defns2, InitStatements2, !Info),
     Defns = Defns1 ++ Defns2,
     InitStatements = InitStatements1 ++ InitStatements2.
 
-:- pred flatten_nested_defn(mlds_defn::in,
-    list(mlds_defn)::in, list(statement)::in,
-    list(mlds_defn)::out, list(statement)::out,
-    elim_info::in, elim_info::out) is det.
+:- pred flatten_nested_defn(action, mlds_defn, list(mlds_defn),
+    list(statement), list(mlds_defn), list(statement),
+    elim_info, elim_info).
+:- mode flatten_nested_defn(in(hoist), in, in, in, out, out, in, out) is det.
+:- mode flatten_nested_defn(in(chain), in, in, in, out, out, in, out) is det.
 
-flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
+flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
         Defns, InitStatements, !Info) :-
     Defn0 = mlds_defn(Name, Context, Flags0, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
             EnvVarNames),
         % Recursively flatten the nested function.
-        flatten_function_body(FuncBody0, FuncBody, !Info),
+        flatten_function_body(Action, FuncBody0, FuncBody, !Info),
 
         % Mark the function as private / one_copy,
         % rather than as local / per_instance,
         % if we're about to hoist it out to the top level.
-        Action = !.Info ^ action,
         (
             Action = hoist_nested_funcs,
             Flags1 = set_access(Flags0, acc_private),
@@ -1617,7 +1688,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
             % Hoist ordinary local variables.
             Name = entity_data(DataName),
             DataName = mlds_data_var(VarName),
-            ml_should_add_local_data(!.Info,
+            ml_should_add_local_data(Action, !.Info,
                 DataName, GCStatement0,
                 FollowingDefns, FollowingStatements)
         ->
@@ -1631,8 +1702,8 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
                 Init1 = no_initializer,
                 DefnBody1 = mlds_data(Type, Init1, GCStatement0),
                 Defn1 = mlds_defn(Name, Context, Flags0, DefnBody1),
-                VarLval = ml_var(qual(!.Info ^ module_name, module_qual,
-                    VarName), Type),
+                ModuleName = elim_info_get_module_name(!.Info),
+                VarLval = ml_var(qual(ModuleName, module_qual, VarName), Type),
                 InitStatements = [statement(
                     ml_stmt_atomic(assign(VarLval, Rval)), Context)]
             ;
@@ -1642,7 +1713,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
             elim_info_add_local_data(Defn1, !Info),
             Defns = []
         ;
-            fixup_initializer(Init0, Init, !Info),
+            fixup_initializer(Action, !.Info, Init0, Init),
             DefnBody = mlds_data(Type, Init, GCStatement0),
             Defn = mlds_defn(Name, Context, Flags0, DefnBody),
             Defns = [Defn],
@@ -1655,7 +1726,6 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
         % XXX That might not be the right thing to do, but currently
         % ml_code_gen.m doesn't generate any of these, so it doesn't matter
         % what we do.
-        %
         Defns = [Defn0],
         InitStatements = []
     ).
@@ -1665,13 +1735,13 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
     % to the environment struct (if it's a variable) or hoisted out to the
     % top level (if it's a static const).
     %
-:- pred ml_should_add_local_data(elim_info::in, mlds_data_name::in,
-    mlds_gc_statement::in, list(mlds_defn)::in, list(statement)::in)
-    is semidet.
+:- pred ml_should_add_local_data(action, elim_info, mlds_data_name,
+    mlds_gc_statement, list(mlds_defn), list(statement)).
+:- mode ml_should_add_local_data(in(hoist), in, in, in, in, in) is semidet.
+:- mode ml_should_add_local_data(in(chain), in, in, in, in, in) is semidet.
 
-ml_should_add_local_data(Info, DataName, GCStatement,
+ml_should_add_local_data(Action, Info, DataName, GCStatement,
         FollowingDefns, FollowingStatements) :-
-    Action = Info ^ action,
     (
         Action = chain_gc_stack_frames,
         (
@@ -1681,7 +1751,8 @@ ml_should_add_local_data(Info, DataName, GCStatement,
         )
     ;
         Action = hoist_nested_funcs,
-        ml_need_to_hoist(Info ^ module_name, DataName,
+        ModuleName = elim_info_get_module_name(Info),
+        ml_need_to_hoist(ModuleName, DataName,
             FollowingDefns, FollowingStatements)
     ).
 
@@ -1720,43 +1791,63 @@ ml_need_to_hoist(ModuleName, DataName,
 
 %-----------------------------------------------------------------------------%
 
+% fixup_initializers:
 % fixup_initializer:
 % fixup_atomic_stmt:
+% fixup_case_conds:
 % fixup_case_cond:
+% fixup_target_code_components:
+% fixup_target_code_component:
 % fixup_trail_op:
 % fixup_rvals:
 % fixup_maybe_rval:
 % fixup_rval:
 % fixup_lvals:
 % fixup_lval:
-%   Recursively process the specified construct, calling fixup_var on
-%   every variable inside it.
+%
+% Recursively process the specified construct, calling fixup_var on
+% every variable inside it.
 
-:- pred fixup_initializer(mlds_initializer::in, mlds_initializer::out,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_initializers(action, elim_info,
+    list(mlds_initializer), list(mlds_initializer)).
+:- mode fixup_initializers(in(hoist), in, in, out) is det.
+:- mode fixup_initializers(in(chain), in, in, out) is det.
 
-fixup_initializer(Initializer0, Initializer, !Info) :-
+fixup_initializers(_, _, [], []).
+fixup_initializers(Action, Info,
+        [Initializer0 | Initializers0], [Initializer | Initializers]) :-
+    fixup_initializer(Action, Info, Initializer0, Initializer),
+    fixup_initializers(Action, Info, Initializers0, Initializers).
+
+:- pred fixup_initializer(action, elim_info,
+    mlds_initializer, mlds_initializer).
+:- mode fixup_initializer(in(hoist), in, in, out) is det.
+:- mode fixup_initializer(in(chain), in, in, out) is det.
+
+fixup_initializer(Action, Info, Initializer0, Initializer) :-
     (
         Initializer0 = no_initializer,
         Initializer = Initializer0
     ;
         Initializer0 = init_obj(Rval0),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, Info, Rval0, Rval),
         Initializer = init_obj(Rval)
     ;
         Initializer0 = init_struct(Type, Members0),
-        list.map_foldl(fixup_initializer, Members0, Members, !Info),
+        fixup_initializers(Action, Info, Members0, Members),
         Initializer = init_struct(Type, Members)
     ;
         Initializer0 = init_array(Elements0),
-        list.map_foldl(fixup_initializer, Elements0, Elements, !Info),
+        fixup_initializers(Action, Info, Elements0, Elements),
         Initializer = init_array(Elements)
     ).
 
-:- pred fixup_atomic_stmt(mlds_atomic_statement::in,
-    mlds_atomic_statement::out, elim_info::in, elim_info::out) is det.
+:- pred fixup_atomic_stmt(action, elim_info,
+    mlds_atomic_statement, mlds_atomic_statement).
+:- mode fixup_atomic_stmt(in(hoist), in, in, out) is det.
+:- mode fixup_atomic_stmt(in(chain), in, in, out) is det.
 
-fixup_atomic_stmt(Atomic0, Atomic, !Info) :-
+fixup_atomic_stmt(Action, Info, Atomic0, Atomic) :-
     (
         ( Atomic0 = comment(_)
         ; Atomic0 = gc_check
@@ -1764,67 +1855,91 @@ fixup_atomic_stmt(Atomic0, Atomic, !Info) :-
         Atomic = Atomic0
     ;
         Atomic0 = assign(Lval0, Rval0),
-        fixup_lval(Lval0, Lval, !Info),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_lval(Action, Info, Lval0, Lval),
+        fixup_rval(Action, Info, Rval0, Rval),
         Atomic = assign(Lval, Rval)
     ;
         Atomic0 = assign_if_in_heap(Lval0, Rval0),
-        fixup_lval(Lval0, Lval, !Info),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_lval(Action, Info, Lval0, Lval),
+        fixup_rval(Action, Info, Rval0, Rval),
         Atomic = assign_if_in_heap(Lval, Rval)
     ;
         Atomic0 = delete_object(Rval0),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, Info, Rval0, Rval),
         Atomic = delete_object(Rval)
     ;
         Atomic0 = new_object(Target0, MaybeTag, HasSecTag, Type, MaybeSize,
             MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
-        fixup_lval(Target0, Target, !Info),
-        fixup_rvals(Args0, Args, !Info),
+        fixup_lval(Action, Info, Target0, Target),
+        fixup_rvals(Action, Info, Args0, Args),
         Atomic = new_object(Target, MaybeTag, HasSecTag, Type, MaybeSize,
             MaybeCtorName, Args, ArgTypes, MayUseAtomic)
     ;
         Atomic0 = mark_hp(Lval0),
-        fixup_lval(Lval0, Lval, !Info),
+        fixup_lval(Action, Info, Lval0, Lval),
         Atomic = mark_hp(Lval)
     ;
         Atomic0 = restore_hp(Rval0),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, Info, Rval0, Rval),
         Atomic = restore_hp(Rval)
     ;
         Atomic0 = trail_op(TrailOp0),
-        fixup_trail_op(TrailOp0, TrailOp, !Info),
+        fixup_trail_op(Action, Info, TrailOp0, TrailOp),
         Atomic = trail_op(TrailOp)
     ;
         Atomic0 = inline_target_code(Lang, Components0),
-        list.map_foldl(fixup_target_code_component,
-            Components0, Components, !Info),
+        fixup_target_code_components(Action, Info, Components0, Components),
         Atomic = inline_target_code(Lang, Components)
     ;
         Atomic0 = outline_foreign_proc(Lang, Vs, Lvals0, Code),
-        list.map_foldl(fixup_lval, Lvals0, Lvals, !Info),
+        fixup_lvals(Action, Info, Lvals0, Lvals),
         Atomic = outline_foreign_proc(Lang, Vs, Lvals, Code)
     ).
 
-:- pred fixup_case_cond(mlds_case_match_cond::in, mlds_case_match_cond::out,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_case_conds(action, elim_info,
+    list(mlds_case_match_cond), list(mlds_case_match_cond)).
+:- mode fixup_case_conds(in(hoist), in, in, out) is det.
+:- mode fixup_case_conds(in(chain), in, in, out) is det.
 
-fixup_case_cond(Cond0, Cond, !Info) :-
+fixup_case_conds(_, _, [], []).
+fixup_case_conds(Action, Info, [Cond0 | Conds0], [Cond | Conds]) :-
+    fixup_case_cond(Action, Info, Cond0, Cond),
+    fixup_case_conds(Action, Info, Conds0, Conds).
+
+:- pred fixup_case_cond(action, elim_info,
+    mlds_case_match_cond, mlds_case_match_cond).
+:- mode fixup_case_cond(in(hoist), in, in, out) is det.
+:- mode fixup_case_cond(in(chain), in, in, out) is det.
+
+fixup_case_cond(Action, Info, Cond0, Cond) :-
     (
         Cond0 = match_value(Rval0),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, Info, Rval0, Rval),
         Cond = match_value(Rval)
     ;
         Cond0 = match_range(Low0, High0),
-        fixup_rval(Low0, Low, !Info),
-        fixup_rval(High0, High, !Info),
+        fixup_rval(Action, Info, Low0, Low),
+        fixup_rval(Action, Info, High0, High),
         Cond = match_range(Low, High)
     ).
 
-:- pred fixup_target_code_component(target_code_component::in,
-    target_code_component::out, elim_info::in, elim_info::out) is det.
+:- pred fixup_target_code_components(action, elim_info,
+    list(target_code_component), list(target_code_component)).
+:- mode fixup_target_code_components(in(hoist), in, in, out) is det.
+:- mode fixup_target_code_components(in(chain), in, in, out) is det.
 
-fixup_target_code_component(Component0, Component, !Info) :-
+fixup_target_code_components(_, _, [], []).
+fixup_target_code_components(Action, Info,
+        [Component0 | Components0], [Component | Components]) :-
+    fixup_target_code_component(Action, Info, Component0, Component),
+    fixup_target_code_components(Action, Info, Components0, Components).
+
+:- pred fixup_target_code_component(action, elim_info,
+    target_code_component, target_code_component).
+:- mode fixup_target_code_component(in(hoist), in, in, out) is det.
+:- mode fixup_target_code_component(in(chain), in, in, out) is det.
+
+fixup_target_code_component(Action, Info, Component0, Component) :-
     (
         ( Component0 = raw_target_code(_Code, _Attrs)
         ; Component0 = user_target_code(_Code, _Context, _Attrs)
@@ -1833,25 +1948,26 @@ fixup_target_code_component(Component0, Component, !Info) :-
         Component = Component0
     ;
         Component0 = target_code_input(Rval0),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, Info, Rval0, Rval),
         Component = target_code_input(Rval)
     ;
         Component0 = target_code_output(Lval0),
-        fixup_lval(Lval0, Lval, !Info),
+        fixup_lval(Action, Info, Lval0, Lval),
         Component = target_code_output(Lval)
     ).
 
-:- pred fixup_trail_op(trail_op::in, trail_op::out,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_trail_op(action, elim_info, trail_op, trail_op).
+:- mode fixup_trail_op(in(hoist), in, in, out) is det.
+:- mode fixup_trail_op(in(chain), in, in, out) is det.
 
-fixup_trail_op(Op0, Op, !Info) :-
+fixup_trail_op(Action, Info, Op0, Op) :-
     (
         Op0 = store_ticket(Lval0),
-        fixup_lval(Lval0, Lval, !Info),
+        fixup_lval(Action, Info, Lval0, Lval),
         Op = store_ticket(Lval)
     ;
         Op0 = reset_ticket(Rval0, Reason),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, Info, Rval0, Rval),
         Op = reset_ticket(Rval, Reason)
     ;
         ( Op0 = discard_ticket
@@ -1860,53 +1976,57 @@ fixup_trail_op(Op0, Op, !Info) :-
         Op = Op0
     ;
         Op0 = mark_ticket_stack(Lval0),
-        fixup_lval(Lval0, Lval, !Info),
+        fixup_lval(Action, Info, Lval0, Lval),
         Op = mark_ticket_stack(Lval)
     ;
         Op0 = prune_tickets_to(Rval0),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, Info, Rval0, Rval),
         Op = prune_tickets_to(Rval)
     ).
 
-:- pred fixup_rvals(list(mlds_rval)::in, list(mlds_rval)::out,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_rvals(action, elim_info, list(mlds_rval), list(mlds_rval)).
+:- mode fixup_rvals(in(hoist), in, in, out) is det.
+:- mode fixup_rvals(in(chain), in, in, out) is det.
 
-fixup_rvals([], [], !Info).
-fixup_rvals([Rval0 | Rvals0], [Rval | Rvals], !Info) :-
-    fixup_rval(Rval0, Rval, !Info),
-    fixup_rvals(Rvals0, Rvals, !Info).
+fixup_rvals(_, _, [], []).
+fixup_rvals(Action, Info, [Rval0 | Rvals0], [Rval | Rvals]) :-
+    fixup_rval(Action, Info, Rval0, Rval),
+    fixup_rvals(Action, Info, Rvals0, Rvals).
 
-:- pred fixup_maybe_rval(maybe(mlds_rval)::in, maybe(mlds_rval)::out,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_maybe_rval(action, elim_info,
+    maybe(mlds_rval), maybe(mlds_rval)).
+:- mode fixup_maybe_rval(in(hoist), in, in, out) is det.
+:- mode fixup_maybe_rval(in(chain), in, in, out) is det.
 
-fixup_maybe_rval(no, no, !Info).
-fixup_maybe_rval(yes(Rval0), yes(Rval), !Info) :-
-    fixup_rval(Rval0, Rval, !Info).
+fixup_maybe_rval(_, _, no, no).
+fixup_maybe_rval(Action, Info, yes(Rval0), yes(Rval)) :-
+    fixup_rval(Action, Info, Rval0, Rval).
 
-:- pred fixup_rval(mlds_rval::in, mlds_rval::out,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_rval(action, elim_info, mlds_rval, mlds_rval).
+:- mode fixup_rval(in(hoist), in, in, out) is det.
+:- mode fixup_rval(in(chain), in, in, out) is det.
 
-fixup_rval(Rval0, Rval, !Info) :-
+fixup_rval(Action, Info, Rval0, Rval) :-
     (
         Rval0 = ml_lval(Lval0),
-        fixup_lval(Lval0, Lval, !Info),
+        fixup_lval(Action, Info, Lval0, Lval),
         Rval = ml_lval(Lval)
     ;
         Rval0 = ml_mem_addr(Lval0),
-        fixup_lval(Lval0, Lval, !Info),
+        fixup_lval(Action, Info, Lval0, Lval),
         Rval = ml_mem_addr(Lval)
     ;
         Rval0 = ml_mkword(Tag, BaseRval0),
-        fixup_rval(BaseRval0, BaseRval, !Info),
+        fixup_rval(Action, Info, BaseRval0, BaseRval),
         Rval = ml_mkword(Tag, BaseRval)
     ;
         Rval0 = ml_unop(UnOp, XRval0),
-        fixup_rval(XRval0, XRval, !Info),
+        fixup_rval(Action, Info, XRval0, XRval),
         Rval = ml_unop(UnOp, XRval)
     ;
         Rval0 = ml_binop(BinOp, XRval0, YRval0),
-        fixup_rval(XRval0, XRval, !Info),
-        fixup_rval(YRval0, YRval, !Info),
+        fixup_rval(Action, Info, XRval0, XRval),
+        fixup_rval(Action, Info, YRval0, YRval),
         Rval = ml_binop(BinOp, XRval, YRval)
     ;
         ( Rval0 = ml_const(_)
@@ -1915,61 +2035,67 @@ fixup_rval(Rval0, Rval, !Info) :-
         Rval = Rval0
     ).
 
-:- pred fixup_lvals(list(mlds_lval)::in, list(mlds_lval)::out,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_lvals(action, elim_info, list(mlds_lval), list(mlds_lval)).
+:- mode fixup_lvals(in(hoist), in, in, out) is det.
+:- mode fixup_lvals(in(chain), in, in, out) is det.
 
-fixup_lvals([], [], !Info).
-fixup_lvals([X0 | Xs0], [X | Xs], !Info) :-
-    fixup_lval(X0, X, !Info),
-    fixup_lvals(Xs0, Xs, !Info).
+fixup_lvals(_, _, [], []).
+fixup_lvals(Action, Info, [X0 | Xs0], [X | Xs]) :-
+    fixup_lval(Action, Info, X0, X),
+    fixup_lvals(Action, Info, Xs0, Xs).
 
-:- pred fixup_lval(mlds_lval::in, mlds_lval::out,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_lval(action, elim_info, mlds_lval, mlds_lval).
+:- mode fixup_lval(in(hoist), in, in, out) is det.
+:- mode fixup_lval(in(chain), in, in, out) is det.
 
-fixup_lval(Lval0, Lval, !Info) :-
+fixup_lval(Action, Info, Lval0, Lval) :-
     (
         Lval0 = ml_field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, Info, Rval0, Rval),
         Lval = ml_field(MaybeTag, Rval, FieldId, FieldType, PtrType)
     ;
         Lval0 = ml_mem_ref(Rval0, Type),
-        fixup_rval(Rval0, Rval, !Info),
+        fixup_rval(Action, Info, Rval0, Rval),
         Lval = ml_mem_ref(Rval, Type)
     ;
         Lval0 = ml_global_var_ref(_Ref),
         Lval = Lval0
     ;
         Lval0 = ml_var(Var0, VarType),
-        fixup_var(Var0, VarType, Lval, !Info)
+        fixup_var(Action, Info, Var0, VarType, Lval)
     ).
 
 % fixup_gc_statements:
-%   Process the trace code in the locals that have been hoisted
-%   to the stack frame structure so that the code correctly refers to any
-%   variables that have been pulled out.
-%   It assumes the locals don't actually change during the process.
-%   I think this should be safe. (schmidt)
+%
+% Process the trace code in the locals that have been hoisted to the stack
+% frame structure so that the code correctly refers to any variables that
+% have been pulled out. It assumes the locals don't actually change during
+% the process. I think this should be safe. (schmidt)
 
-:- pred fixup_gc_statements(elim_info::in, elim_info::out) is det.
+:- pred fixup_gc_statements(action, elim_info, elim_info).
+:- mode fixup_gc_statements(in(hoist), in, out) is det.
+:- mode fixup_gc_statements(in(chain), in, out) is det.
 
-fixup_gc_statements(!Info) :-
+fixup_gc_statements(Action, !Info) :-
     RevLocals = elim_info_get_local_data(!.Info),
     % We must preserve the order for the Java backend, otherwise the generated
     % code may contain closure_layout vectors that reference typevar vectors
     % which are defined later.
     Locals = list.reverse(RevLocals),
-    fixup_gc_statements_defns(Locals, !Info).
+    fixup_gc_statements_defns(Action, Locals, !Info).
 
-:- pred fixup_gc_statements_defns(list(mlds_defn)::in,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_gc_statements_defns(action, list(mlds_defn),
+    elim_info, elim_info).
+:- mode fixup_gc_statements_defns(in(hoist), in, in, out) is det.
+:- mode fixup_gc_statements_defns(in(chain), in, in, out) is det.
 
-fixup_gc_statements_defns([], !Info).
-fixup_gc_statements_defns([Defn0 | Defns], !Info) :-
+fixup_gc_statements_defns(_, [], !Info).
+fixup_gc_statements_defns(Action, [Defn0 | Defns], !Info) :-
     (
         Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
         DefnBody0 = mlds_data(Type, Init, GCStatement0)
     ->
-        flatten_gc_statement(GCStatement0, GCStatement, !Info),
+        flatten_gc_statement(Action, GCStatement0, GCStatement, !Info),
         DefnBody = mlds_data(Type, Init, GCStatement),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         elim_info_remove_local_data(Defn0, !Info),
@@ -1977,24 +2103,24 @@ fixup_gc_statements_defns([Defn0 | Defns], !Info) :-
     ;
         true
     ),
-    fixup_gc_statements_defns(Defns, !Info).
+    fixup_gc_statements_defns(Action, Defns, !Info).
 
 %-----------------------------------------------------------------------------%
 
     % Change up any references to local vars in the containing function
     % to go via the environment pointer.
     %
-:- pred fixup_var(mlds_var::in, mlds_type::in, mlds_lval::out,
-    elim_info::in, elim_info::out) is det.
+:- pred fixup_var(action, elim_info, mlds_var, mlds_type, mlds_lval).
+:- mode fixup_var(in(hoist), in, in, in, out) is det.
+:- mode fixup_var(in(chain), in, in, in, out) is det.
 
-fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
+fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
     ThisVar = qual(ThisVarModuleName, QualKind, ThisVarName),
-    ModuleName = elim_info_get_module_name(!.Info),
-    Locals = elim_info_get_local_data(!.Info),
-    ClassType = elim_info_get_env_type_name(!.Info),
-    EnvPtrVarType = elim_info_get_env_ptr_type_name(!.Info),
-    Action = !.Info ^ action,
-    Globals = !.Info ^ elim_info_globals,
+    ModuleName = elim_info_get_module_name(Info),
+    Locals = elim_info_get_local_data(Info),
+    ClassType = elim_info_get_env_type_name(Info),
+    EnvPtrVarType = elim_info_get_env_ptr_type_name(Info),
+    Globals = elim_info_get_globals(Info),
     (
         % Check for references to local variables that are used by
         % nested functions, and replace them with `env_ptr->foo'.
@@ -2120,8 +2246,9 @@ ml_env_module_name(ClassType, Globals) = EnvModuleName :-
 % function_body_contains_defn:
 % statements_contains_defn:
 % statement_contains_defn:
-%   Nondeterministically return all the definitions contained
-%   in the specified construct.
+%
+% Nondeterministically return all the definitions contained
+% in the specified construct.
 
 :- pred defns_contains_defn(list(mlds_defn)::in, mlds_defn::out) is nondet.
 
@@ -2234,51 +2361,64 @@ default_contains_defn(default_case(Statement), Defn) :-
     % Add code to unlink the stack chain before any explicit returns or
     % tail calls.
     %
-:- pred add_unchain_stack_to_maybe_statement(maybe(statement)::in,
-    maybe(statement)::out,
-    elim_info::in, elim_info::out) is det.
+:- pred add_unchain_stack_to_maybe_statement(action,
+    maybe(statement), maybe(statement), elim_info, elim_info).
+:- mode add_unchain_stack_to_maybe_statement(in(hoist), in, out, in, out)
+    is det.
+:- mode add_unchain_stack_to_maybe_statement(in(chain), in, out, in, out)
+    is det.
 
-add_unchain_stack_to_maybe_statement(no, no, !Info).
-add_unchain_stack_to_maybe_statement(yes(Statement0), yes(Statement), !Info) :-
-    add_unchain_stack_to_statement(Statement0, Statement, !Info).
+add_unchain_stack_to_maybe_statement(_, no, no, !Info).
+add_unchain_stack_to_maybe_statement(Action, yes(Statement0), yes(Statement),
+        !Info) :-
+    add_unchain_stack_to_statement(Action, Statement0, Statement, !Info).
 
-:- pred add_unchain_stack_to_statements(
-    list(statement)::in, list(statement)::out,
-    elim_info::in, elim_info::out) is det.
+:- pred add_unchain_stack_to_statements(action,
+    list(statement), list(statement), elim_info, elim_info).
+:- mode add_unchain_stack_to_statements(in(hoist), in, out, in, out) is det.
+:- mode add_unchain_stack_to_statements(in(chain), in, out, in, out) is det.
 
-add_unchain_stack_to_statements(!Statements, !Info) :-
-    list.map_foldl(add_unchain_stack_to_statement, !Statements, !Info).
+add_unchain_stack_to_statements(_, [], [], !Info).
+add_unchain_stack_to_statements(Action, [Statement0 | Statements0],
+        [Statement | Statements], !Info) :-
+    add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
+    add_unchain_stack_to_statements(Action, Statements0, Statements, !Info).
 
-:- pred add_unchain_stack_to_statement(statement::in,
-    statement::out,
-    elim_info::in, elim_info::out) is det.
+:- pred add_unchain_stack_to_statement(action, statement, statement,
+    elim_info, elim_info).
+:- mode add_unchain_stack_to_statement(in(hoist), in, out, in, out) is det.
+:- mode add_unchain_stack_to_statement(in(chain), in, out, in, out) is det.
 
-add_unchain_stack_to_statement(Statement0, Statement, !Info) :-
+add_unchain_stack_to_statement(Action, Statement0, Statement, !Info) :-
     Statement0 = statement(Stmt0, Context),
-    add_unchain_stack_to_stmt(Stmt0, Context, Stmt, !Info),
+    add_unchain_stack_to_stmt(Action, Context, Stmt0, Stmt, !Info),
     Statement = statement(Stmt, Context).
 
-:- pred add_unchain_stack_to_stmt(mlds_stmt::in, mlds_context::in,
-    mlds_stmt::out, elim_info::in, elim_info::out) is det.
+:- pred add_unchain_stack_to_stmt(action, mlds_context,
+    mlds_stmt, mlds_stmt, elim_info, elim_info).
+:- mode add_unchain_stack_to_stmt(in(hoist), in, in, out, in, out) is det.
+:- mode add_unchain_stack_to_stmt(in(chain), in, in, out, in, out) is det.
 
-add_unchain_stack_to_stmt(Stmt0, Context, Stmt, !Info) :-
+add_unchain_stack_to_stmt(Action, Context, Stmt0, Stmt, !Info) :-
     (
         Stmt0 = ml_stmt_block(Defns, Statements0),
-        add_unchain_stack_to_statements(Statements0, Statements, !Info),
+        add_unchain_stack_to_statements(Action, Statements0, Statements,
+            !Info),
         Stmt = ml_stmt_block(Defns, Statements)
     ;
         Stmt0 = ml_stmt_while(Rval, Statement0, Once),
-        add_unchain_stack_to_statement(Statement0, Statement, !Info),
+        add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
         Stmt = ml_stmt_while(Rval, Statement, Once)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
-        add_unchain_stack_to_statement(Then0, Then, !Info),
-        add_unchain_stack_to_maybe_statement(MaybeElse0, MaybeElse, !Info),
+        add_unchain_stack_to_statement(Action, Then0, Then, !Info),
+        add_unchain_stack_to_maybe_statement(Action, MaybeElse0, MaybeElse,
+            !Info),
         Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
     ;
         Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0),
-        list.map_foldl(add_unchain_stack_to_case, Cases0, Cases, !Info),
-        add_unchain_stack_to_default(Default0, Default, !Info),
+        add_unchain_stack_to_cases(Action, Cases0, Cases, !Info),
+        add_unchain_stack_to_default(Action, Default0, Default, !Info),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
         Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, RetLvals, CallKind),
@@ -2289,8 +2429,8 @@ add_unchain_stack_to_stmt(Stmt0, Context, Stmt, !Info) :-
         Stmt = prepend_unchain_frame(Stmt0, Context, !.Info)
     ;
         Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
-        add_unchain_stack_to_statement(Statement0, Statement, !Info),
-        add_unchain_stack_to_statement(Handler0, Handler, !Info),
+        add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
+        add_unchain_stack_to_statement(Action, Handler0, Handler, !Info),
         Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
         ( Stmt0 = ml_stmt_label(_)
@@ -2330,24 +2470,44 @@ add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
         Stmt = Stmt0
     ).
 
-:- pred add_unchain_stack_to_case(mlds_switch_case::in,
-    mlds_switch_case::out, elim_info::in, elim_info::out) is det.
+:- pred add_unchain_stack_to_cases(action,
+    list(mlds_switch_case), list(mlds_switch_case), elim_info, elim_info).
+:- mode add_unchain_stack_to_cases(in(hoist), in, out, in, out) is det.
+:- mode add_unchain_stack_to_cases(in(chain), in, out, in, out) is det.
 
-add_unchain_stack_to_case(Case0, Case, !Info) :-
+add_unchain_stack_to_cases(_, [], [], !Info).
+add_unchain_stack_to_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
+    add_unchain_stack_to_case(Action, Case0, Case, !Info),
+    add_unchain_stack_to_cases(Action, Cases0, Cases, !Info).
+
+:- pred add_unchain_stack_to_case(action,
+    mlds_switch_case, mlds_switch_case, elim_info, elim_info).
+:- mode add_unchain_stack_to_case(in(hoist), in, out, in, out) is det.
+:- mode add_unchain_stack_to_case(in(chain), in, out, in, out) is det.
+
+add_unchain_stack_to_case(Action, Case0, Case, !Info) :-
     Case0 = mlds_switch_case(Conds0, Statement0),
-    list.map_foldl(fixup_case_cond, Conds0, Conds, !Info),
-    add_unchain_stack_to_statement(Statement0, Statement, !Info),
+    fixup_case_conds(Action, !.Info, Conds0, Conds),
+    add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
     Case = mlds_switch_case(Conds, Statement).
 
-:- pred add_unchain_stack_to_default(mlds_switch_default::in,
-    mlds_switch_default::out, elim_info::in, elim_info::out) is det.
+:- pred add_unchain_stack_to_default(action,
+    mlds_switch_default, mlds_switch_default, elim_info, elim_info).
+:- mode add_unchain_stack_to_default(in(hoist), in, out, in, out) is det.
+:- mode add_unchain_stack_to_default(in(chain), in, out, in, out) is det.
 
-add_unchain_stack_to_default(default_is_unreachable, default_is_unreachable,
-        !Info).
-add_unchain_stack_to_default(default_do_nothing, default_do_nothing, !Info).
-add_unchain_stack_to_default(default_case(Statement0), default_case(Statement),
-        !Info) :-
-    add_unchain_stack_to_statement(Statement0, Statement, !Info).
+add_unchain_stack_to_default(Action, Default0, Default, !Info) :-
+    (
+        Default0 = default_is_unreachable,
+        Default = default_is_unreachable
+    ;
+        Default0 = default_do_nothing,
+        Default = default_do_nothing
+    ;
+        Default0 = default_case(Statement0),
+        add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
+        Default = default_case(Statement)
+    ).
 
 :- func prepend_unchain_frame(mlds_stmt, mlds_context, elim_info) =
     mlds_stmt.
@@ -2368,13 +2528,13 @@ append_unchain_frame(Stmt0, Context, ElimInfo) = Stmt :-
 :- func ml_gen_unchain_frame(mlds_context, elim_info) = statement.
 
 ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
-    EnvPtrTypeName = ElimInfo ^ env_ptr_type_name,
+    EnvPtrTypeName = elim_info_get_env_ptr_type_name(ElimInfo),
 
     % Generate code to remove this frame from the stack chain:
     %
     %   stack_chain = stack_chain->prev;
     %
-    % Actually, it's not quite as simple as that.  The global
+    % Actually, it is not quite as simple as that.  The global
     % `stack_chain' has type `void *', rather than `MR_StackChain *', and
     % the MLDS has no way of representing the `struct MR_StackChain' type
     % (which we'd need to cast it to) or of accessing an unqualified
@@ -2449,14 +2609,14 @@ ml_saved_stack_chain_name(Id) = mlds_var_name("saved_stack_chain", yes(Id)).
 % as we traverse through the function body.
 %
 
+    % The lists of local variables for each of the containing functions,
+    % innermost first.
+:- type outervars == list(list(mlds_defn)).
+
 :- type elim_info
     --->    elim_info(
-                % Specify whether we're eliminating nested functions, or doing
-                % the transformation needed for accurate GC.
-                action              :: action,
-
                 % The name of the current module.
-                module_name         :: mlds_module_name,
+                ei_module_name                  :: mlds_module_name,
 
                 % The lists of local variables for each of the containing
                 % functions, innermost first.
@@ -2464,83 +2624,88 @@ ml_saved_stack_chain_name(Id) = mlds_var_name("saved_stack_chain", yes(Id)).
                 % It would be needed if we want to handle arbitrary nesting.
                 % Currently we assume that any variables can safely be hoisted
                 % to the outermost function, so this field is not needed.
-                outer_vars          :: outervars,
+                % outer_vars                    :: outervars,
 
                 % The list of nested function definitions that we must hoist
                 % out. This list is stored in reverse order.
-                nested_funcs        :: list(mlds_defn),
+                ei_nested_funcs                 :: list(mlds_defn),
 
                 % The list of local variables that we must put in the
-                % environment structure This list is stored in reverse order.
-                local_data          :: list(mlds_defn),
+                % environment structure. This list is stored in reverse order.
+                ei_local_data                   :: list(mlds_defn),
 
                 % Type of the introduced environment struct.
-                env_type_name       :: mlds_type,
+                ei_env_type_name                :: mlds_type,
 
                 % Type of the introduced environment struct pointer.
                 % This might not just be just a pointer to the env_type_name
                 % (in the IL backend we don't necessarily use a pointer).
-                env_ptr_type_name   :: mlds_type,
+                ei_env_ptr_type_name            :: mlds_type,
 
                 % A counter used to number the local variables
                 % used to save the stack chain
-                saved_stack_chain_counter :: counter,
+                ei_saved_stack_chain_counter    :: counter,
 
-                elim_info_globals   :: globals
+                ei_globals                      :: globals
             ).
 
-    % The lists of local variables for each of the containing functions,
-    % innermost first.
-:- type outervars == list(list(mlds_defn)).
+:- func elim_info_init(mlds_module_name, outervars, mlds_type, mlds_type,
+    globals) = elim_info.
 
-:- func elim_info_init(action, mlds_module_name, outervars,
-    mlds_type, mlds_type, globals) = elim_info.
-
-elim_info_init(Action, ModuleName, OuterVars, EnvTypeName, EnvPtrTypeName,
-        Globals) =
-    elim_info(Action, ModuleName, OuterVars, [], [],
-        EnvTypeName, EnvPtrTypeName, counter.init(0), Globals).
+elim_info_init(ModuleName, _OuterVars, EnvTypeName, EnvPtrTypeName, Globals) =
+    elim_info(ModuleName, [], [], EnvTypeName, EnvPtrTypeName,
+        counter.init(0), Globals).
 
 :- func elim_info_get_module_name(elim_info) = mlds_module_name.
-:- func elim_info_get_outer_vars(elim_info) = outervars.
+% :- func elim_info_get_outer_vars(elim_info) = outervars.
 :- func elim_info_get_local_data(elim_info) = list(mlds_defn).
 :- func elim_info_get_env_type_name(elim_info) = mlds_type.
 :- func elim_info_get_env_ptr_type_name(elim_info) = mlds_type.
+:- func elim_info_get_globals(elim_info) = globals.
 
-elim_info_get_module_name(ElimInfo) = ElimInfo ^ module_name.
-elim_info_get_outer_vars(ElimInfo) = ElimInfo ^ outer_vars.
-elim_info_get_local_data(ElimInfo) = ElimInfo ^ local_data.
-elim_info_get_env_type_name(ElimInfo) = ElimInfo ^ env_type_name.
-elim_info_get_env_ptr_type_name(ElimInfo) = ElimInfo ^ env_ptr_type_name.
+elim_info_get_module_name(ElimInfo) = ElimInfo ^ ei_module_name.
+% elim_info_get_outer_vars(ElimInfo) = ElimInfo ^ ei_outer_vars.
+elim_info_get_local_data(ElimInfo) = ElimInfo ^ ei_local_data.
+elim_info_get_env_type_name(ElimInfo) = ElimInfo ^ ei_env_type_name.
+elim_info_get_env_ptr_type_name(ElimInfo) = ElimInfo ^ ei_env_ptr_type_name.
+elim_info_get_globals(ElimInfo) = ElimInfo ^ ei_globals.
 
 :- pred elim_info_add_nested_func(mlds_defn::in,
     elim_info::in, elim_info::out) is det.
 
-elim_info_add_nested_func(NestedFunc, ElimInfo,
-    ElimInfo ^ nested_funcs := [NestedFunc | ElimInfo ^ nested_funcs]).
+elim_info_add_nested_func(NestedFunc, !ElimInfo) :-
+    !ElimInfo ^ ei_nested_funcs := [NestedFunc | !.ElimInfo ^ ei_nested_funcs].
 
 :- pred elim_info_add_local_data(mlds_defn::in,
     elim_info::in, elim_info::out) is det.
 
-elim_info_add_local_data(LocalVar, ElimInfo,
-    ElimInfo ^ local_data := [LocalVar | ElimInfo ^ local_data]).
+elim_info_add_local_data(LocalVar, !ElimInfo) :-
+    !ElimInfo ^ ei_local_data := [LocalVar | !.ElimInfo ^ ei_local_data].
 
 :- pred elim_info_remove_local_data(mlds_defn::in,
     elim_info::in, elim_info::out) is det.
 
-elim_info_remove_local_data(LocalVar, ElimInfo0, ElimInfo) :-
-    ( list.delete_first(ElimInfo0 ^ local_data, LocalVar, LocalData) ->
-        ElimInfo = ElimInfo0 ^ local_data := LocalData
+elim_info_remove_local_data(LocalVar, !ElimInfo) :-
+    ( list.delete_first(!.ElimInfo ^ ei_local_data, LocalVar, LocalData) ->
+        !ElimInfo ^ ei_local_data := LocalData
     ;
         unexpected(this_file, "elim_info_remove_local_data: not found")
     ).
+
+:- pred elim_info_allocate_saved_stack_chain_id(int::out,
+    elim_info::in, elim_info::out) is det.
+
+elim_info_allocate_saved_stack_chain_id(Id, !ElimInfo) :-
+    Counter0 = !.ElimInfo ^ ei_saved_stack_chain_counter,
+    counter.allocate(Id, Counter0, Counter),
+    !ElimInfo ^ ei_saved_stack_chain_counter := Counter.
 
 :- pred elim_info_finish(elim_info::in,
     list(mlds_defn)::out, list(mlds_defn)::out) is det.
 
 elim_info_finish(ElimInfo, Funcs, Locals) :-
-    Funcs = list.reverse(ElimInfo ^ nested_funcs),
-    Locals = list.reverse(ElimInfo ^ local_data).
+    Funcs = list.reverse(ElimInfo ^ ei_nested_funcs),
+    Locals = list.reverse(ElimInfo ^ ei_local_data).
 
 %-----------------------------------------------------------------------------%
 
