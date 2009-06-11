@@ -3108,16 +3108,28 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
 :- func get_target_code_attributes(foreign_language,
     pragma_foreign_proc_extra_attributes) = target_code_attributes.
 
-get_target_code_attributes(_, []) = [].
-get_target_code_attributes(Lang, [refers_to_llds_stack | Attrs]) =
-        get_target_code_attributes(Lang, Attrs).
-get_target_code_attributes(Lang, [backend(_Backend) | Attrs]) =
-        get_target_code_attributes(Lang, Attrs).
-get_target_code_attributes(Lang, [max_stack_size(N) | Attrs]) =
-    ( Lang = lang_il ->
-        [max_stack_size(N) | get_target_code_attributes(Lang, Attrs)]
+get_target_code_attributes(_Lang, []) = [].
+get_target_code_attributes(Lang, [ProcAttr | ProcAttrs]) = TargetAttrs :-
+    TargetAttrs1 = get_target_code_attributes(Lang, ProcAttrs),
+    (
+        ProcAttr = max_stack_size(N),
+        (
+            Lang = lang_il,
+            TargetAttrs = [max_stack_size(N) | TargetAttrs1]
+        ;
+            ( Lang = lang_c
+            ; Lang = lang_csharp
+            ; Lang = lang_java
+            ; Lang = lang_erlang
+            ),
+            TargetAttrs = TargetAttrs1
+        )
     ;
-        []
+        ( ProcAttr = refers_to_llds_stack
+        ; ProcAttr = backend(_)
+        ; ProcAttr = needs_call_standard_output_registers
+        ),
+        TargetAttrs = TargetAttrs1
     ).
 
 %---------------------------------------------------------------------------%

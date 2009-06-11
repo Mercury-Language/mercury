@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998,2000,2003-2007 The University of Melbourne.
+** Copyright (C) 1993-1998,2000,2003-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -89,6 +89,7 @@
 #ifdef MR_USE_MINIMAL_MODEL_OWN_STACKS
 #include	"mercury_mm_own_stacks.h"
 #endif
+#include	"mercury_par_builtin.h"
 
 #include	"mercury_univ.h"
 #include	"mercury_complexity.h"

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -152,6 +152,8 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
@@ -776,7 +778,7 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
 insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
     map.lookup(FutureMap, ConsumedVar, FutureVar),
-    make_wait_goal(ModuleInfo, FutureVar, ConsumedVar, WaitGoal),
+    make_wait_goal(ModuleInfo, !.VarTypes, FutureVar, ConsumedVar, WaitGoal),
     conjoin_goals_update_goal_infos(Goal0 ^ hlds_goal_info, WaitGoal, Goal0,
         Goal).
 
@@ -787,7 +789,7 @@ insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
 insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
     map.lookup(FutureMap, ConsumedVar, FutureVar),
-    make_wait_goal(ModuleInfo, FutureVar, ConsumedVar, WaitGoal),
+    make_wait_goal(ModuleInfo, !.VarTypes, FutureVar, ConsumedVar, WaitGoal),
     conjoin_goals_update_goal_infos(Goal0 ^ hlds_goal_info, Goal0, WaitGoal,
         Goal).
 
@@ -1061,7 +1063,8 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
 
 insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
-    make_signal_goal(ModuleInfo, FutureMap, ProducedVar, SignalGoal),
+    make_signal_goal(ModuleInfo, FutureMap, ProducedVar, !.VarTypes,
+        SignalGoal),
     conjoin_goals_update_goal_infos(Goal0 ^ hlds_goal_info, Goal0, SignalGoal,
         Goal).
 
@@ -1171,6 +1174,10 @@ insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
                 % updated.
                 spec_initial_module         :: module_info,
 
+                % The variable types of the procedure we are scanning.
+                % This field is constant; it should never be updated.
+                spec_vartypes               :: vartypes,
+
                 % The current module. Updated when requesting a new
                 % specialization, since to get the pred_id for the specialized
                 % predicate we need to update the module_info.
@@ -1252,11 +1259,12 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
     some [!PredInfo, !ProcInfo, !Goal, !SpecInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             !:PredInfo, !:ProcInfo),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes),
         proc_info_get_goal(!.ProcInfo, !:Goal),
-        !:SpecInfo = spec_info(DoneProcs, InitialModuleInfo,
+        !:SpecInfo = spec_info(DoneProcs, InitialModuleInfo, VarTypes,
             !.ModuleInfo, !.PendingParProcs, !.Pushability),
         specialize_sequences_in_goal(!Goal, !SpecInfo),
-        !.SpecInfo = spec_info(_, _,
+        !.SpecInfo = spec_info(_, _, _,
             !:ModuleInfo, !:PendingParProcs, !:Pushability),
         proc_info_set_goal(!.Goal, !ProcInfo),
         % Optimization opportunity: we should not fix up the same procedure
@@ -1369,7 +1377,8 @@ add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
 map_arg_to_new_future(HeadVars, FutureArg, !FutureMap, !VarSet, !VarTypes) :-
     HeadVar = list.det_index1(HeadVars, FutureArg),
     map.lookup(!.VarTypes, HeadVar, VarType),
-    make_future_var(HeadVar, VarType, !VarSet, !VarTypes, FutureVar),
+    make_future_var(HeadVar, VarType, !VarSet, !VarTypes, FutureVar,
+        _FutureVarType),
     svmap.det_insert(HeadVar, FutureVar, !FutureMap).
 
 :- pred replace_head_vars(module_info::in, future_map::in,
@@ -1472,7 +1481,7 @@ specialize_sequences_in_goal(Goal0, Goal, !SpecInfo) :-
         Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "shorthand")
+        unexpected(this_file, "specialize_sequences_in_goal: shorthand")
     ).
 
 :- pred specialize_sequences_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1595,7 +1604,8 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
             % XXX The simplify pass that comes later doesn't always remove
             % these calls, even if they're unnecessary.
 
-            list.map(make_get_goal(!.SpecInfo ^ spec_module_info),
+            VarTypes = !.SpecInfo ^ spec_vartypes,
+            list.map(make_get_goal(!.SpecInfo ^ spec_module_info, VarTypes),
                 PushedSignalPairs ++ PushedWaitPairs, GetGoals),
 
             RevGoals = GetGoals ++ [Goal] ++ UnPushedWaitGoals ++ RevGoals1,
@@ -1625,7 +1635,7 @@ find_relevant_pushable_wait_goals([Goal | Goals], PredProcId, CallVars,
     Goal = hlds_goal(GoalExpr, _),
     (
         GoalExpr = plain_call(_, _, WaitArgs, _, _, SymName),
-        SymName = qualified(mercury_par_builtin_module, "wait"),
+        SymName = qualified(mercury_par_builtin_module, wait_future_pred_name),
         WaitArgs = [FutureVar, ConsumedVar]
     ->
         % This is a wait goal.
@@ -1676,7 +1686,8 @@ find_relevant_pushable_signal_goals([Goal | Goals], PredProcId, CallVars,
     Goal = hlds_goal(GoalExpr, _),
     (
         GoalExpr = plain_call(_, _, SignalArgs, _, _, SymName),
-        SymName = qualified(mercury_par_builtin_module, "signal"),
+        SymName = qualified(mercury_par_builtin_module,
+            signal_future_pred_name),
         SignalArgs = [FutureVar, ProducedVar]
     ->
         % This is a signal goal.
@@ -1882,16 +1893,16 @@ make_new_spec_parallel_pred_info(FutureArgs, Status, PPId, !PredInfo) :-
     list(mer_type)::out) is det.
 
 futurise_argtypes(_, [], ArgTypes, ArgTypes).
-futurise_argtypes(ArgNo, [FutureArg | FutureArgs], [ArgType0 | ArgTypes0],
-        [ArgType | ArgTypes]) :-
+futurise_argtypes(ArgNo, [FutureArg | FutureArgs], [ArgType | ArgTypes],
+        [FuturisedArgType | FuturisedArgTypes]) :-
     ( ArgNo = FutureArg ->
-        construct_future_type(ArgType0, ArgType),
-        futurise_argtypes(ArgNo+1, FutureArgs,
-            ArgTypes0, ArgTypes)
+        FuturisedArgType = future_type(ArgType),
+        futurise_argtypes(ArgNo + 1, FutureArgs,
+            ArgTypes, FuturisedArgTypes)
     ;
-        ArgType = ArgType0,
-        futurise_argtypes(ArgNo+1, [FutureArg | FutureArgs],
-            ArgTypes0, ArgTypes)
+        FuturisedArgType = ArgType,
+        futurise_argtypes(ArgNo + 1, [FutureArg | FutureArgs],
+            ArgTypes, FuturisedArgTypes)
     ).
 futurise_argtypes(_, [_ | _], [], _) :-
     unexpected(this_file,
@@ -2560,90 +2571,193 @@ seen_more_signal_2(seen_signal_non_negligible_cost_after,
 allocate_future(ModuleInfo, SharedVar, AllocGoal, !VarSet, !VarTypes,
         !FutureMap) :-
     map.lookup(!.VarTypes, SharedVar, SharedVarType),
-    make_future_var(SharedVar, SharedVarType, !VarSet, !VarTypes, FutureVar),
+    make_future_var(SharedVar, SharedVarType, !VarSet, !VarTypes,
+        FutureVar, FutureVarType),
     svmap.det_insert(SharedVar, FutureVar, !FutureMap),
 
     ModuleName = mercury_par_builtin_module,
-    PredName = "new_future",
-    Args = [FutureVar],
+    PredName = new_future_pred_name,
     Features = [],
     InstMapSrc = [FutureVar - ground(shared, none)],
     Context = term.context_init,
-    goal_util.generate_simple_call(ModuleName, PredName, pf_predicate,
-        only_mode, detism_det, purity_pure, Args, Features, InstMapSrc,
-        ModuleInfo, Context, AllocGoal).
+    ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
+    (
+        ShouldInline = no,
+        ArgVars = [FutureVar],
+        generate_simple_call(ModuleName, PredName, pf_predicate,
+            only_mode, detism_det, purity_pure, ArgVars, Features, InstMapSrc,
+            ModuleInfo, Context, AllocGoal)
+    ;
+        ShouldInline = yes,
+        ForeignAttrs = par_builtin_foreign_proc_attributes(purity_pure, no),
+        Arg1 = foreign_arg(FutureVar, yes("Future" - out_mode),
+            FutureVarType, native_if_possible),
+        Args = [Arg1],
+        ExtraArgs = [],
+        Code = "MR_par_builtin_new_future(Future);",
+        generate_foreign_proc(ModuleName, PredName, pf_predicate,
+            only_mode, detism_det, purity_pure, ForeignAttrs, Args, ExtraArgs,
+            no, Code, Features, InstMapSrc, ModuleInfo, Context, AllocGoal)
+    ).
 
     % Given a variable SharedVar of type SharedVarType, add a new variable
     % FutureVar of type future(SharedVarType).
     %
 :- pred make_future_var(prog_var::in, mer_type::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    prog_var::out) is det.
+    prog_var::out, mer_type::out) is det.
 
-make_future_var(SharedVar, SharedVarType, !VarSet, !VarTypes, FutureVar) :-
-    construct_future_type(SharedVarType, FutureType),
+make_future_var(SharedVar, SharedVarType, !VarSet, !VarTypes,
+        FutureVar, FutureVarType) :-
+    FutureVarType = future_type(SharedVarType),
     varset.lookup_name(!.VarSet, SharedVar, SharedVarName),
     svvarset.new_named_var("Future" ++ SharedVarName, FutureVar, !VarSet),
-    svmap.det_insert(FutureVar, FutureType, !VarTypes).
+    svmap.det_insert(FutureVar, FutureVarType, !VarTypes).
 
-    % Construct type future(T) given type T.
-    %
-:- pred construct_future_type(mer_type::in, mer_type::out) is det.
+:- pred make_wait_goal(module_info::in, vartypes::in,
+    prog_var::in, prog_var::in, hlds_goal::out) is det.
 
-construct_future_type(T, FutureT) :-
-    Future = qualified(mercury_par_builtin_module, "future"),
-    FutureCtor = type_ctor(Future, 1),
-    construct_type(FutureCtor, [T], FutureT).
+make_wait_goal(ModuleInfo, VarTypes, FutureVar, WaitVar, WaitGoal) :-
+    make_wait_or_get(ModuleInfo, VarTypes, FutureVar, WaitVar, wait_pred,
+        WaitGoal).
 
-:- pred make_wait_goal(module_info::in, prog_var::in, prog_var::in,
+:- pred make_get_goal(module_info::in, vartypes::in, future_var_pair::in,
     hlds_goal::out) is det.
 
-make_wait_goal(ModuleInfo, FutureVar, WaitVar, WaitGoal) :-
-    make_wait_or_get(ModuleInfo, FutureVar, WaitVar, "wait", WaitGoal).
+make_get_goal(ModuleInfo, VarTypes, future_var_pair(FutureVar, WaitVar),
+        WaitGoal) :-
+    make_wait_or_get(ModuleInfo, VarTypes, FutureVar, WaitVar, get_pred,
+        WaitGoal).
 
-:- pred make_get_goal(module_info::in, future_var_pair::in,
-    hlds_goal::out) is det.
+:- type wait_or_get_pred
+    --->    wait_pred
+    ;       get_pred.
 
-make_get_goal(ModuleInfo, future_var_pair(FutureVar, WaitVar), WaitGoal) :-
-    make_wait_or_get(ModuleInfo, FutureVar, WaitVar, "get", WaitGoal).
+:- pred make_wait_or_get(module_info::in, vartypes::in,
+    prog_var::in, prog_var::in, wait_or_get_pred::in, hlds_goal::out) is det.
 
-:- pred make_wait_or_get(module_info::in, prog_var::in, prog_var::in,
-    string::in, hlds_goal::out) is det.
-
-make_wait_or_get(ModuleInfo, FutureVar, WaitVar, PredName, WaitGoal) :-
+make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
+        WaitGoal) :-
     ModuleName = mercury_par_builtin_module,
-    Args = [FutureVar, WaitVar],
+    (
+        WaitOrGetPred = wait_pred,
+        PredName = wait_future_pred_name,
+        Code = "MR_par_builtin_wait_future(Future, Value);"
+    ;
+        WaitOrGetPred = get_pred,
+        PredName = get_future_pred_name,
+        Code = "MR_par_builtin_get_future(Future, Value);"
+    ),
     Features = [],
-    InstMapSrc = [WaitVar - ground(shared, none)],
+    InstMapSrc = [ConsumedVar - ground(shared, none)],
     Context = term.context_init,
-    goal_util.generate_simple_call(ModuleName, PredName, pf_predicate,
-        only_mode, detism_det, purity_pure, Args, Features, InstMapSrc,
-        ModuleInfo, Context, WaitGoal).
+    ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
+    (
+        ShouldInline = no,
+        ArgVars = [FutureVar, ConsumedVar],
+        generate_simple_call(ModuleName, PredName, pf_predicate,
+            only_mode, detism_det, purity_pure, ArgVars, Features, InstMapSrc,
+            ModuleInfo, Context, WaitGoal)
+    ;
+        ShouldInline = yes,
+        ForeignAttrs = par_builtin_foreign_proc_attributes(purity_pure, no),
+        Arg1 = foreign_arg(FutureVar, yes("Future" - in_mode),
+            map.lookup(VarTypes, FutureVar), native_if_possible),
+        Arg2 = foreign_arg(ConsumedVar, yes("Value" - out_mode),
+            map.lookup(VarTypes, ConsumedVar), native_if_possible),
+        Args = [Arg1, Arg2],
+        ExtraArgs = [],
+        generate_foreign_proc(ModuleName, PredName, pf_predicate,
+            only_mode, detism_det, purity_pure, ForeignAttrs, Args, ExtraArgs,
+            no, Code, Features, InstMapSrc, ModuleInfo, Context, WaitGoal)
+    ).
 
 :- pred make_signal_goal(module_info::in, future_map::in, prog_var::in,
-    hlds_goal::out) is det.
+    vartypes::in, hlds_goal::out) is det.
 
-make_signal_goal(ModuleInfo, FutureMap, ProducedVar, SignalGoal) :-
+make_signal_goal(ModuleInfo, FutureMap, ProducedVar, VarTypes, SignalGoal) :-
     FutureVar = map.lookup(FutureMap, ProducedVar),
     ModuleName = mercury_par_builtin_module,
-    PredName = "signal",
-    Args = [FutureVar, ProducedVar],
+    PredName = signal_future_pred_name,
     Features = [],
     InstMapSrc = [],
     Context = term.context_init,
-    goal_util.generate_simple_call(ModuleName, PredName, pf_predicate,
-        only_mode, detism_det, purity_impure, Args, Features, InstMapSrc,
-        ModuleInfo, Context, SignalGoal).
+    ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
+    (
+        ShouldInline = no,
+        ArgVars = [FutureVar, ProducedVar],
+        generate_simple_call(ModuleName, PredName, pf_predicate,
+            only_mode, detism_det, purity_impure, ArgVars, Features,
+            InstMapSrc, ModuleInfo, Context, SignalGoal)
+    ;
+        ShouldInline = yes,
+        ForeignAttrs = par_builtin_foreign_proc_attributes(purity_impure,
+            yes(needs_call_standard_output_registers)),
+        Arg1 = foreign_arg(FutureVar, yes("Future" - in_mode),
+            map.lookup(VarTypes, FutureVar), native_if_possible),
+        Arg2 = foreign_arg(ProducedVar, yes("Value" - in_mode),
+            map.lookup(VarTypes, ProducedVar), native_if_possible),
+        Args = [Arg1, Arg2],
+        ExtraArgs = [],
+        Code = "MR_par_builtin_signal_future(Future, Value);",
+        generate_foreign_proc(ModuleName, PredName, pf_predicate,
+            only_mode, detism_det, purity_impure, ForeignAttrs,
+            Args, ExtraArgs, no, Code, Features, InstMapSrc, ModuleInfo,
+            Context, SignalGoal)
+    ).
 
 :- pred is_wait_goal(hlds_goal::in) is semidet.
 
 is_wait_goal(hlds_goal(plain_call(_, _, _, _, _, SymName), _GoalInfo)) :-
-    SymName = qualified(mercury_par_builtin_module, "wait").
+    SymName = qualified(mercury_par_builtin_module, wait_future_pred_name).
 
 :- pred is_signal_goal(hlds_goal::in) is semidet.
 
 is_signal_goal(hlds_goal(plain_call(_, _, _, _, _, SymName), _GoalInfo)) :-
-    SymName = qualified(mercury_par_builtin_module, "signal").
+    SymName = qualified(mercury_par_builtin_module, signal_future_pred_name).
+
+:- func new_future_pred_name = string.
+:- func wait_future_pred_name = string.
+:- func get_future_pred_name = string.
+:- func signal_future_pred_name = string.
+
+new_future_pred_name = "new_future".
+wait_future_pred_name = "wait_future".
+get_future_pred_name = "get_future".
+signal_future_pred_name = "signal_future".
+
+:- func should_inline_par_builtin_calls(module_info) = bool.
+
+should_inline_par_builtin_calls(ModuleInfo) = ShouldInline :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, inline_par_builtins, ShouldInline).
+
+:- func par_builtin_foreign_proc_attributes(purity,
+    maybe(pragma_foreign_proc_extra_attribute))
+    = pragma_foreign_proc_attributes.
+
+par_builtin_foreign_proc_attributes(Purity, MaybeExtraAttr) = Attrs :-
+    some [!Attrs] (
+        !:Attrs = default_attributes(lang_c),
+        set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
+        % Even signal is thread safe, since it does its own locking.
+        set_thread_safe(proc_thread_safe, !Attrs),
+        set_purity(Purity, !Attrs),
+        set_terminates(proc_terminates, !Attrs),
+        set_may_throw_exception(proc_will_not_throw_exception, !Attrs),
+        set_may_modify_trail(proc_will_not_modify_trail, !Attrs),
+        set_affects_liveness(proc_does_not_affect_liveness, !Attrs),
+        set_allocates_memory(proc_allocates_bounded_memory, !Attrs),
+        set_registers_roots(proc_does_not_register_roots, !Attrs),
+        set_may_duplicate(yes(proc_may_duplicate), !Attrs),
+        (
+            MaybeExtraAttr = no
+        ;
+            MaybeExtraAttr = yes(ExtraAttr),
+            add_extra_attribute(ExtraAttr, !Attrs)
+        ),
+        Attrs = !.Attrs
+    ).
 
 %-----------------------------------------------------------------------------%
 

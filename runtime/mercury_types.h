@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2007 The University of Melbourne.
+** Copyright (C) 1995-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -26,7 +26,7 @@
 
 /*
 ** MR_VARIABLE_SIZED -- what to put between the []s when declaring
-**			a variable length array at the end of a struct.
+**          a variable length array at the end of a struct.
 **
 ** The preferred values, if the compiler understands them, convey to the
 ** implementation that the array has a variable length. The default value
@@ -39,15 +39,15 @@
 ** both MR_MAX_VIRTUAL_R_REG and MR_PSEUDOTYPEINFO_MAX_VAR.
 */
 
-#if __STDC_VERSION__ >= 199901	/* January 1999 */
+#if __STDC_VERSION__ >= 199901  /* January 1999 */
   /* Use C9X-style variable-length arrays. */
-  #define	MR_VARIABLE_SIZED	/* nothing */
+  #define   MR_VARIABLE_SIZED   /* nothing */
 #elif defined(__GNUC__)
   /* Use GNU-style variable-length arrays */
-  #define	MR_VARIABLE_SIZED	0
+  #define   MR_VARIABLE_SIZED   0
 #else
   /* Just fake it by pretending that the array has a fixed size */
-  #define	MR_VARIABLE_SIZED	1024
+  #define   MR_VARIABLE_SIZED   1024
 #endif
 
 /*
@@ -77,9 +77,9 @@ typedef MR_INT_LEAST16_TYPE             MR_int_least16_t;
 typedef unsigned char                   MR_uint_least8_t;
 typedef signed char                     MR_int_least8_t;
 
-/* 
+/*
 ** This section defines the basic types that we use.
-** Note that we require 
+** Note that we require
 **      sizeof(MR_Word) == sizeof(MR_Integer) == sizeof(MR_CodePtr).
 */
 
@@ -140,20 +140,20 @@ typedef const MR_Char   *MR_ConstString;
 */
 
 typedef struct {
-	MR_Integer size;
-	MR_Word elements[MR_VARIABLE_SIZED];
+    MR_Integer size;
+    MR_Word elements[MR_VARIABLE_SIZED];
 } MR_ArrayType;
 
-typedef MR_ArrayType		*MR_ArrayPtr;
-typedef const MR_ArrayType	*MR_ConstArrayPtr;
+typedef MR_ArrayType        *MR_ArrayPtr;
+typedef const MR_ArrayType  *MR_ConstArrayPtr;
 
 typedef struct {
-	MR_Integer num_bits;
-	MR_uint_least8_t elements[MR_VARIABLE_SIZED];
+    MR_Integer num_bits;
+    MR_uint_least8_t elements[MR_VARIABLE_SIZED];
 } MR_BitmapType;
 
-typedef MR_BitmapType		*MR_BitmapPtr;
-typedef const MR_BitmapType	*MR_ConstBitmapPtr;
+typedef MR_BitmapType       *MR_BitmapPtr;
+typedef const MR_BitmapType *MR_ConstBitmapPtr;
 
 #ifndef MR_HIGHLEVEL_CODE
   /*
@@ -286,10 +286,10 @@ typedef struct MR_SubgoalDebug_Struct           MR_SubgoalDebug;
 typedef struct MR_ConsDebug_Struct              MR_ConsDebug;
 typedef struct MR_GenDebug_Struct               MR_GenDebug;
 
-typedef	MR_Word		                            *MR_AnswerBlock;
-typedef	MR_Subgoal	                            *MR_SubgoalPtr;
-typedef	MR_Consumer	                            *MR_ConsumerPtr;
-typedef	MR_Generator	                        *MR_GeneratorPtr;
+typedef MR_Word                                 *MR_AnswerBlock;
+typedef MR_Subgoal                              *MR_SubgoalPtr;
+typedef MR_Consumer                             *MR_ConsumerPtr;
+typedef MR_Generator                            *MR_GeneratorPtr;
 
 typedef struct MR_TableStepStats_Struct         MR_TableStepStats;
 typedef struct MR_TableStats_Struct             MR_TableStats;
@@ -307,5 +307,7 @@ typedef struct MR_RegionIteProtect_Struct       MR_RegionIteProtect;
 typedef struct MR_RegionSemiDisjProtect_Struct  MR_RegionSemiDisjProtect;
 typedef struct MR_RegionCommitSave_Struct       MR_RegionCommitSave;
 typedef struct MR_RegionProfUnit_Struct         MR_RegionProfUnit;
+
+typedef struct MR_Future_Struct                 MR_Future;
 
 #endif /* not MERCURY_TYPES_H */

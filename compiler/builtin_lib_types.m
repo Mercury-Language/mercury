@@ -46,6 +46,7 @@
 :- func stm_rollback_exception_type = mer_type.
 :- func stm_dummy_output_type = mer_type.
 :- func region_type = mer_type.
+:- func future_type(mer_type) = mer_type.
 
 %-----------------------------------------------------------------------------%
 %
@@ -187,6 +188,10 @@ stm_dummy_output_type = defined_type(Name, [], kind_star) :-
 region_type = defined_type(Name, [], kind_star) :-
     Module = mercury_region_builtin_module,
     Name = qualified(Module, "region").
+
+future_type(ValueType) = defined_type(Name, [ValueType], kind_star) :-
+    Module = mercury_par_builtin_module,
+    Name = qualified(Module, "future").
 
 %-----------------------------------------------------------------------------%
 

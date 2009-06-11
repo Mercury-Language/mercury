@@ -645,6 +645,7 @@
     ;       tuple_trace_counts_file
     ;       tuple_costs_ratio
     ;       tuple_min_args
+    ;       inline_par_builtins
     ;       always_specialize_in_dep_par_conjs
     ;       allow_some_paths_only_waits
     ;       control_granularity
@@ -1497,6 +1498,7 @@ option_defaults_2(optimization_option, [
     tuple_trace_counts_file             -   string(""),
     tuple_costs_ratio                   -   int(100),
     tuple_min_args                      -   int(4),
+    inline_par_builtins                 -   bool(no),
     always_specialize_in_dep_par_conjs  -   bool(no),
     allow_some_paths_only_waits         -   bool(yes),
     control_granularity                 -   bool(no),
@@ -2363,6 +2365,7 @@ long_option("tuple",                tuple).
 long_option("tuple-trace-counts-file",  tuple_trace_counts_file).
 long_option("tuple-costs-ratio",    tuple_costs_ratio).
 long_option("tuple-min-args",       tuple_min_args).
+long_option("inline-par-builtins",  inline_par_builtins).
 long_option("always-specialize-in-dep-par-conjs",
                                     always_specialize_in_dep_par_conjs).
 long_option("allow-some-paths-only-waits",
@@ -4833,19 +4836,22 @@ options_help_hlds_hlds_optimization -->
         % "\ttransformation will consider passing together as a",
         % "\ttuple. This is mostly to speed up the compilation",
         % "\tprocess by not pursuing (presumably) unfruitful searches.",
+% This is for measurements by implementors only.
+%       "--no-inline-par-builtins",
+%       "\tGenerate calls to the predicates of par_builtin.m, instead of",
+%       "\tbodily including their definitions as C code.",
+%       Actually, this is the default for now.
+% This is for measurements by implementors only.
+%       "--always-specialize-in-dep-par-conjs",
+%       "\tWhen the transformation for handling dependent parallel conjunctions",
+%       "\tadds waits and/or signals around a call, create a specialized",
+%       "\tversion of the called procedure, even if this is not profitable.",
         "--control-granularity",
         "\tDon't try to generate more parallelism than the machine can",
         "\thandle, which is specified using --parallelism-target.",
         "--parallelism-target <n>",
         "\tSpecify the number of CPUs of the target machine, for use by",
         "\tthe --control-granularity option.",
-        "--always-specialize-in-dep-par-conjs",
-% This is for measurements by implementors only.
-%       "\tWhen the transformation for handling dependent parallel conjunctions",
-%       "\tadds waits and/or signals around a call, create a specialized",
-%       "\tversion of the called procedure, even if this is not profitable.",
-        "--control-granularity",
-        "\tEnable the granularity control transformation.",
         "--distance-granularity <distance>",
         "\tControl the granularity of parallel execution using the",
         "\tspecified distance value.", 

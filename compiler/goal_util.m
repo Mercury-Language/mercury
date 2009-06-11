@@ -333,7 +333,8 @@
     hlds_goal::in, bool::out, module_info::in, module_info::out) is det.
 
     % generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
-    %   Purity, Args, Features, InstMapDelta, ModuleInfo, Context, CallGoal):
+    %   Purity, Args, Features, InstMapDeltaSrc, ModuleInfo, Context,
+    %   CallGoal):
     %
     % Generate a call to a builtin procedure (e.g. from the private_builtin
     % or table_builtin module). This is used by HLDS->HLDS transformation
@@ -352,14 +353,14 @@
 
     % generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
     %   Purity, Attributes, Args, ExtraArgs, MaybeTraceRuntimeCond, Code,
-    %   Features, InstMapDelta, ModuleInfo, Context, CallGoal):
+    %   Features, InstMapDeltaSrc, ModuleInfo, Context, CallGoal):
     %
     % generate_foreign_proc is similar to generate_simple_call,
     % but also assumes that the called predicate is defined via a
     % foreign_proc, that the foreign_proc's arguments are as given in
     % Args, its attributes are Attributes, and its code is Code.
     % As well as returning a foreign_code instead of a call, effectively
-    % inlining the call, generate_foreign_proc also and passes ExtraArgs
+    % inlining the call, generate_foreign_proc also passes ExtraArgs
     % as well as Args.
     %
 :- pred generate_foreign_proc(module_name::in, string::in, pred_or_func::in,

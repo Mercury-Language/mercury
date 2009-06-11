@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2007 The University of Melbourne.
+# Copyright (C) 1998-2009 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -70,6 +70,7 @@ HDRS		=	\
 			mercury_misc.h		\
 			mercury_mm_own_stacks.h	\
 			mercury_overflow.h	\
+			mercury_par_builtin.h	\
 			mercury_proc_id.h	\
 			mercury_prof.h		\
 			mercury_prof_mem.h	\
@@ -180,6 +181,7 @@ CFILES		= 	\
 			mercury_minimal_model.c	\
 			mercury_misc.c		\
 			mercury_mm_own_stacks.c	\
+			mercury_par_builtin.c		\
 			mercury_prof.c		\
 			mercury_profiling_builtin.c	\
 			mercury_prof_mem.c	\

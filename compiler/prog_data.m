@@ -1057,71 +1057,54 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- pred set_may_call_mercury(proc_may_call_mercury::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_thread_safe(proc_thread_safe::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_foreign_language(foreign_language::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_tabled_for_io(proc_tabled_for_io::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_purity(purity::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_terminates(proc_terminates::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_user_annotated_sharing(user_annotated_sharing::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_may_throw_exception(proc_may_throw_exception::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_legacy_purity_behaviour(bool::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_ordinary_despite_detism(bool::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_may_modify_trail(proc_may_modify_trail::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_may_call_mm_tabled(may_call_mm_tabled::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_box_policy(box_policy::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_affects_liveness(proc_affects_liveness::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_allocates_memory(proc_allocates_memory::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_registers_roots(proc_registers_roots::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_may_duplicate(maybe(proc_may_duplicate)::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-
 :- pred add_extra_attribute(pragma_foreign_proc_extra_attribute::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
@@ -1231,7 +1214,16 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- type pragma_foreign_proc_extra_attribute
     --->    max_stack_size(int)
     ;       refers_to_llds_stack
-    ;       backend(backend).
+    ;       backend(backend)
+    ;       needs_call_standard_output_registers.
+            % On the LLDS backend, this foreign_proc needs to put its outputs
+            % into the same registers as if it were a call. This is useful
+            % if the code of the foreign procedure being invoked can suspend
+            % for a while, resume at a label in the runtime system, and then
+            % return from code at that label. The code that places the outputs
+            % must put them where calls expect them, but without this
+            % attribute, the LLDS code generator could try to put the output
+            % somewhere else.
 
 :- type pragma_foreign_proc_extra_attributes ==
     list(pragma_foreign_proc_extra_attribute).
