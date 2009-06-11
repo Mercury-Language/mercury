@@ -51,6 +51,7 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -764,7 +765,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             % happen as higher order constants have been transformed to
             % lambda goals. See above.
             Unification = construct(_, ConsId, _, _, _, _, _),
-            ( ConsId = pred_const(ShroudedPredProcId, _) ->
+            ( ConsId = closure_cons(ShroudedPredProcId, _) ->
                 PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
                 set.insert(!.HasAT, PredProcId, !:HasAT)
             ;
@@ -886,7 +887,7 @@ get_called_procs(Goal, !Calls) :-
             % happen as higher order constants have been transformed to lambda
             % goals. See above.
             Unification = construct(_, ConsId, _, _, _, _, _),
-            ( ConsId = pred_const(ShroudedPredProcId, _) ->
+            ( ConsId = closure_cons(ShroudedPredProcId, _) ->
                 PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
                 !:Calls = [PredProcId | !.Calls]
             ;

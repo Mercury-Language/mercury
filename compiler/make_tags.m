@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998-2008 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: make_tags.m.
 % Main author: fjh.
-% 
+%
 % This module is where we determine the representation for
 % discriminated union types.  Each d.u. type is represented as
 % a word.  In the case of functors with arguments, we allocate
@@ -53,7 +53,7 @@
 % unbound variables).  This is used by HAL, for Herbrand constraints
 % (i.e. Prolog-style logic variables).
 % This also disables enumerations and no_tag types.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_tags.
@@ -99,8 +99,7 @@
 %-----------------------------------------------------------------------------%
 
 assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
-        CtorTags, ReservedAddr, DuTypeKind) :-
-
+        !:CtorTags, ReservedAddr, DuTypeKind) :-
     % Work out how many tag bits and reserved addresses we've got to play with.
     globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
     globals.lookup_int_option(Globals, num_reserved_addresses,
@@ -120,7 +119,7 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
     ),
 
     % Now assign them.
-    map.init(CtorTags0),
+    map.init(!:CtorTags),
     (
         % Try representing the type as an enumeration: all the constructors
         % must be constant, and we must be allowed to make unboxed enums.
@@ -133,7 +132,7 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         ;
             DuTypeKind = du_type_kind_mercury_enum
         ),
-        assign_enum_constants(Ctors, InitTag, CtorTags0, CtorTags),
+        assign_enum_constants(TypeCtor, Ctors, InitTag, !CtorTags),
         ReservedAddr = does_not_use_reserved_address
     ;
         (
@@ -142,9 +141,8 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
                 Ctors, UserEqCmp, SingleFunctorName, SingleArgType,
                 MaybeSingleArgName)
         ->
-            SingleConsId = make_cons_id_from_qualified_sym_name(
-                SingleFunctorName, [SingleArgType]),
-            map.set(CtorTags0, SingleConsId, no_tag, CtorTags),
+            SingleConsId = cons(SingleFunctorName, 1, TypeCtor),
+            svmap.det_insert(SingleConsId, no_tag, !CtorTags),
             % XXX What if SingleArgType uses reserved addresses?
             ReservedAddr = does_not_use_reserved_address,
             DuTypeKind = du_type_kind_notag(SingleFunctorName, SingleArgType,
@@ -162,93 +160,97 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
                 ),
                 % Assign reserved addresses to the constants, if possible.
                 separate_out_constants(Ctors, Constants, Functors),
-                assign_reserved_numeric_addresses(Constants,
-                    LeftOverConstants0, CtorTags0, CtorTags1,
-                    0, NumReservedAddresses,
+                assign_reserved_numeric_addresses(TypeCtor, Constants,
+                    LeftOverConstants0, !CtorTags, 0, NumReservedAddresses,
                     does_not_use_reserved_address, ReservedAddr1),
                 (
                     HighLevelCode = yes,
-                    assign_reserved_symbolic_addresses(
-                        LeftOverConstants0, LeftOverConstants, TypeCtor,
-                        CtorTags1, CtorTags2, 0, NumReservedObjects,
+                    assign_reserved_symbolic_addresses(TypeCtor,
+                        LeftOverConstants0, LeftOverConstants,
+                        !CtorTags, 0, NumReservedObjects,
                         ReservedAddr1, ReservedAddr)
                 ;
                     HighLevelCode = no,
                     % Reserved symbolic addresses are not supported for the
                     % LLDS back-end.
                     LeftOverConstants = LeftOverConstants0,
-                    CtorTags2 = CtorTags1,
                     ReservedAddr = ReservedAddr1
                 ),
                 % Assign shared_with_reserved_address(...) representations
                 % for the remaining constructors.
                 RemainingCtors = LeftOverConstants ++ Functors,
-                ReservedAddresses = list.filter_map(
-                    (func(reserved_address_tag(RA)) = RA is semidet),
-                    map.values(CtorTags2)),
-                assign_unshared_tags(RemainingCtors, 0, 0, ReservedAddresses,
-                    CtorTags2, CtorTags)
+                GetRA = (func(reserved_address_tag(RA)) = RA is semidet),
+                ReservedAddresses = list.filter_map(GetRA,
+                    map.values(!.CtorTags)),
+                assign_unshared_tags(TypeCtor, RemainingCtors, 0, 0,
+                    ReservedAddresses, !CtorTags)
             ;
                 MaxTag = max_num_tags(NumTagBits) - 1,
                 separate_out_constants(Ctors, Constants, Functors),
-                assign_constant_tags(Constants, CtorTags0, CtorTags1,
+                assign_constant_tags(TypeCtor, Constants, !CtorTags,
                     InitTag, NextTag),
-                assign_unshared_tags(Functors, NextTag, MaxTag, [],
-                    CtorTags1, CtorTags),
+                assign_unshared_tags(TypeCtor, Functors, NextTag, MaxTag,
+                    [], !CtorTags),
                 ReservedAddr = does_not_use_reserved_address
             )
         )
     ).
 
-:- pred assign_enum_constants(list(constructor)::in, int::in,
+:- pred assign_enum_constants(type_ctor::in, list(constructor)::in, int::in,
     cons_tag_values::in, cons_tag_values::out) is det.
 
-assign_enum_constants([], _, !CtorTags).
-assign_enum_constants([Ctor | Rest], Val, !CtorTags) :-
+assign_enum_constants(_, [], _, !CtorTags).
+assign_enum_constants(TypeCtor, [Ctor | Ctors], Val, !CtorTags) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-    ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+    ConsId = cons(Name, list.length(Args), TypeCtor),
     Tag = int_tag(Val),
+    % We call set instead of det_insert because we don't want types
+    % that erroneously contain more than one copy of a cons_id to crash
+    % the compiler.
     svmap.set(ConsId, Tag, !CtorTags),
-    assign_enum_constants(Rest, Val + 1, !CtorTags).
+    assign_enum_constants(TypeCtor, Ctors, Val + 1, !CtorTags).
 
     % Assign the representations null_pointer, small_pointer(1),
     % small_pointer(2), ..., small_pointer(N) to the constructors,
     % until N >= NumReservedAddresses.
     %
-:- pred assign_reserved_numeric_addresses(
+:- pred assign_reserved_numeric_addresses(type_ctor::in,
     list(constructor)::in, list(constructor)::out,
     cons_tag_values::in, cons_tag_values::out, int::in, int::in,
     uses_reserved_address::in, uses_reserved_address::out) is det.
 
-assign_reserved_numeric_addresses([], [], !CtorTags, _, _, !ReservedAddr).
-assign_reserved_numeric_addresses([Ctor | Rest], LeftOverConstants,
+assign_reserved_numeric_addresses(_, [], [], !CtorTags, _, _, !ReservedAddr).
+assign_reserved_numeric_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
         !CtorTags, Address, NumReservedAddresses, !ReservedAddr) :-
     ( Address >= NumReservedAddresses ->
-        LeftOverConstants = [Ctor | Rest]
+        LeftOverConstants = [Ctor | Ctors]
     ;
         Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-        ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+        ConsId = cons(Name, list.length(Args), TypeCtor),
         ( Address = 0 ->
             Tag = reserved_address_tag(null_pointer)
         ;
             Tag = reserved_address_tag(small_pointer(Address))
         ),
+        % We call set instead of det_insert because we don't want types
+        % that erroneously contain more than one copy of a cons_id to crash
+        % the compiler.
         svmap.set(ConsId, Tag, !CtorTags),
         !:ReservedAddr = uses_reserved_address,
-        assign_reserved_numeric_addresses(Rest, LeftOverConstants,
+        assign_reserved_numeric_addresses(TypeCtor, Ctors, LeftOverConstants,
             !CtorTags, Address + 1, NumReservedAddresses, !ReservedAddr)
     ).
 
     % Assign reserved_object(CtorName, CtorArity) representations
     % to the specified constructors.
     %
-:- pred assign_reserved_symbolic_addresses(
-    list(constructor)::in, list(constructor)::out, type_ctor::in,
+:- pred assign_reserved_symbolic_addresses(type_ctor::in,
+    list(constructor)::in, list(constructor)::out,
     cons_tag_values::in, cons_tag_values::out, int::in, int::in,
     uses_reserved_address::in, uses_reserved_address::out) is det.
 
-assign_reserved_symbolic_addresses([], [], _, !CtorTags, _, _, !ReservedAddr).
-assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
+assign_reserved_symbolic_addresses(_, [], [], !CtorTags, _, _, !ReservedAddr).
+assign_reserved_symbolic_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
         !CtorTags, Num, Max, !ReservedAddr) :-
     ( Num >= Max ->
         LeftOverConstants = [Ctor | Ctors]
@@ -256,15 +258,18 @@ assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
         Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
         Arity = list.length(Args),
         Tag = reserved_address_tag(reserved_object(TypeCtor, Name, Arity)),
-        ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+        ConsId = cons(Name, list.length(Args), TypeCtor),
+        % We call set instead of det_insert because we don't want types
+        % that erroneously contain more than one copy of a cons_id to crash
+        % the compiler.
         svmap.set(ConsId, Tag, !CtorTags),
         !:ReservedAddr = uses_reserved_address,
-        assign_reserved_symbolic_addresses(Ctors, LeftOverConstants,
-            TypeCtor, !CtorTags, Num + 1, Max, !ReservedAddr)
+        assign_reserved_symbolic_addresses(TypeCtor, Ctors, LeftOverConstants,
+            !CtorTags, Num + 1, Max, !ReservedAddr)
     ).
 
-:- pred assign_constant_tags(list(constructor)::in, cons_tag_values::in,
-    cons_tag_values::out, int::in, int::out) is det.
+:- pred assign_constant_tags(type_ctor::in, list(constructor)::in,
+    cons_tag_values::in, cons_tag_values::out, int::in, int::out) is det.
 
     % If there's no constants, don't do anything. Otherwise, allocate the
     % first tag for the constants, and give them all shared local tags
@@ -275,78 +280,90 @@ assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
     % shared_local_tag rather than a unshared_tag. That's because
     % deconstruction of the shared_local_tag is more efficient.
     %
-assign_constant_tags(Constants, !CtorTags, InitTag, NextTag) :-
+assign_constant_tags(TypeCtor, Constants, !CtorTags, InitTag, NextTag) :-
     (
         Constants = [],
         NextTag = InitTag
     ;
         Constants = [_ | _],
         NextTag = InitTag + 1,
-        assign_shared_local_tags(Constants, InitTag, 0, !CtorTags)
+        assign_shared_local_tags(TypeCtor, Constants, InitTag, 0, !CtorTags)
     ).
 
-:- pred assign_unshared_tags(list(constructor)::in, int::in, int::in,
-    list(reserved_address)::in, cons_tag_values::in, cons_tag_values::out)
-    is det.
+:- pred assign_unshared_tags(type_ctor::in, list(constructor)::in,
+    int::in, int::in, list(reserved_address)::in,
+    cons_tag_values::in, cons_tag_values::out) is det.
 
-assign_unshared_tags([], _, _, _, !CtorTags).
-assign_unshared_tags([Ctor | Rest], Val, MaxTag, ReservedAddresses,
+assign_unshared_tags(_, [], _, _, _, !CtorTags).
+assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         !CtorTags) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-    ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-    % If there's only one functor,
-    % give it the "single_functor" (untagged)
+    ConsId = cons(Name, list.length(Args), TypeCtor),
+    % If there's only one functor, give it the "single_functor" (untagged)
     % representation, rather than giving it unshared_tag(0).
     (
         Val = 0,
-        Rest = []
+        Ctors = []
     ->
         Tag = maybe_add_reserved_addresses(ReservedAddresses,
             single_functor_tag),
+        % We call set instead of det_insert because we don't want types
+        % that erroneously contain more than one copy of a cons_id to crash
+        % the compiler.
         svmap.set(ConsId, Tag, !CtorTags)
     ;
         % If we're about to run out of unshared tags, start assigning
         % shared remote tags instead.
         Val = MaxTag,
-        Rest = [_ | _]
+        Ctors = [_ | _]
     ->
-        assign_shared_remote_tags([Ctor | Rest], MaxTag, 0, ReservedAddresses,
-            !CtorTags)
+        assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], MaxTag, 0,
+            ReservedAddresses, !CtorTags)
     ;
         Tag = maybe_add_reserved_addresses(ReservedAddresses,
             unshared_tag(Val)),
+        % We call set instead of det_insert because we don't want types
+        % that erroneously contain more than one copy of a cons_id to crash
+        % the compiler.
         svmap.set(ConsId, Tag, !CtorTags),
-        assign_unshared_tags(Rest, Val + 1, MaxTag, ReservedAddresses,
-            !CtorTags)
+        assign_unshared_tags(TypeCtor, Ctors, Val + 1, MaxTag,
+            ReservedAddresses, !CtorTags)
     ).
 
-:- pred assign_shared_remote_tags(list(constructor)::in, int::in, int::in,
-    list(reserved_address)::in, cons_tag_values::in, cons_tag_values::out)
-    is det.
-
-assign_shared_remote_tags([], _, _, _, !CtorTags).
-assign_shared_remote_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
-        ReservedAddresses, !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-    ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-    Tag = maybe_add_reserved_addresses(ReservedAddresses,
-        shared_remote_tag(PrimaryVal, SecondaryVal)),
-    svmap.set(ConsId, Tag, !CtorTags),
-    SecondaryVal1 = SecondaryVal + 1,
-    assign_shared_remote_tags(Rest, PrimaryVal, SecondaryVal1,
-        ReservedAddresses, !CtorTags).
-
-:- pred assign_shared_local_tags(list(constructor)::in, int::in, int::in,
+:- pred assign_shared_remote_tags(type_ctor::in, list(constructor)::in,
+    int::in, int::in, list(reserved_address)::in,
     cons_tag_values::in, cons_tag_values::out) is det.
 
-assign_shared_local_tags([], _, _, !CtorTags).
-assign_shared_local_tags([Ctor | Rest], PrimaryVal, SecondaryVal, !CtorTags) :-
+assign_shared_remote_tags(_, [], _, _, _, !CtorTags).
+assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
+        ReservedAddresses, !CtorTags) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-    ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-    Tag = shared_local_tag(PrimaryVal, SecondaryVal),
+    ConsId = cons(Name, list.length(Args), TypeCtor),
+    Tag = maybe_add_reserved_addresses(ReservedAddresses,
+        shared_remote_tag(PrimaryVal, SecondaryVal)),
+    % We call set instead of det_insert because we don't want types
+    % that erroneously contain more than one copy of a cons_id to crash
+    % the compiler.
     svmap.set(ConsId, Tag, !CtorTags),
     SecondaryVal1 = SecondaryVal + 1,
-    assign_shared_local_tags(Rest, PrimaryVal, SecondaryVal1, !CtorTags).
+    assign_shared_remote_tags(TypeCtor, Ctors, PrimaryVal, SecondaryVal1,
+        ReservedAddresses, !CtorTags).
+
+:- pred assign_shared_local_tags(type_ctor::in, list(constructor)::in,
+    int::in, int::in, cons_tag_values::in, cons_tag_values::out) is det.
+
+assign_shared_local_tags(_, [], _, _, !CtorTags).
+assign_shared_local_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
+        !CtorTags) :-
+    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
+    ConsId = cons(Name, list.length(Args), TypeCtor),
+    Tag = shared_local_tag(PrimaryVal, SecondaryVal),
+    % We call set instead of det_insert because we don't want types
+    % that erroneously contain more than one copy of a cons_id to crash
+    % the compiler.
+    svmap.set(ConsId, Tag, !CtorTags),
+    assign_shared_local_tags(TypeCtor, Ctors, PrimaryVal, SecondaryVal + 1,
+        !CtorTags).
 
 :- func maybe_add_reserved_addresses(list(reserved_address), cons_tag) =
     cons_tag.

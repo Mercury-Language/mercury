@@ -133,6 +133,7 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
+:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -770,7 +771,7 @@ module_qualify_unify_rhs(RHS0, RHS, DoWrite, !Info) :-
         RHS0 = rhs_functor(Functor, _Exist, _Vars),
         RHS = RHS0,
         % Is this a higher-order predicate or higher-order function term?
-        ( Functor = pred_const(ShroudedPredProcId, _) ->
+        ( Functor = closure_cons(ShroudedPredProcId, _) ->
             % Yes, the unification creates a higher-order term.
             % Make sure that the predicate/function is exported.
 
@@ -978,8 +979,9 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
     ),
     module_info_get_cons_table(ModuleInfo, Ctors),
     (
-        map.search(Ctors, cons(InstanceMethodName0, MethodArity),
-            MatchingConstructors)
+        ConsId = cons(InstanceMethodName0, MethodArity,
+            cons_id_dummy_type_ctor),
+        map.search(Ctors, ConsId, MatchingConstructors)
     ->
         TypeCtors1 = list.map(
             (func(ConsDefn) = TypeCtor :-
@@ -1443,7 +1445,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
     is det.
 
 gather_foreign_enum_value_pair(ConsId, ConsTag, !Values) :-
-    ( ConsId = cons(SymName0, 0) ->
+    ( ConsId = cons(SymName0, 0, _) ->
         SymName = SymName0
     ;
         unexpected(this_file, "expected enumeration constant")
@@ -1845,10 +1847,14 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
                 ConsId = float_const(Float),
                 RHSTerm = term.functor(term.float(Float), [], Context)
             ;
+                ConsId = char_const(Char),
+                RHSTerm = term.functor(term.atom(term_io.escaped_char(Char)),
+                    [], Context)
+            ;
                 ConsId = string_const(String),
                 RHSTerm = term.functor(term.string(String), [], Context)
             ;
-                ConsId = cons(SymName, _),
+                ConsId = cons(SymName, _, _),
                 term.var_list_to_term_list(Args, ArgTerms),
                 construct_qualified_term(SymName, ArgTerms, RHSTerm)
             )

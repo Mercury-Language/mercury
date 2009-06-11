@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2006, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -164,6 +164,12 @@
     %
 :- func term_io.escaped_char(char) = string.
 
+    % A reversible version of escaped_char.
+    %
+:- pred string_is_escaped_char(char, string).
+:- mode string_is_escaped_char(in, out) is det.
+:- mode string_is_escaped_char(out, in) is semidet.
+
     % Given a string S, write S, with characters escaped if necessary,
     % to stdout. The string is not enclosed in quotes.
     %
@@ -204,6 +210,19 @@
     % Succeed if the given character is a Mercury punctuation character.
     %
 :- pred is_mercury_punctuation_char(char::in) is semidet.
+
+    % encode_escaped_char(Char, Str):
+    %
+    % Succeed in one of two cases:
+    %
+    % - Char is 'x', and Str is "x", where x is a valid Mercury source
+    %   character, or
+    % - Char is '\x' and Str is "\x", where '\x' is a valid character
+    %   escape sequence.
+    %
+:- pred encode_escaped_char(char, string).
+:- mode encode_escaped_char(in, out) is semidet.
+:- mode encode_escaped_char(out, in) is semidet.
 
     % for use by io.m.
 
@@ -716,13 +735,36 @@ term_io.write_escaped_char(Stream, Char, !State) :-
     ).
 
 term_io.escaped_char(Char) = String :-
+    string_is_escaped_char(Char, String).
+
+:- pragma promise_equivalent_clauses(string_is_escaped_char/2).
+
+string_is_escaped_char(Char::in, String::out) :-
     ( mercury_escape_special_char(Char, QuoteChar) ->
-        String = string.append("\\",
-            string.char_to_string(QuoteChar))
+        String = string.append("\\", string.char_to_string(QuoteChar))
     ; is_mercury_source_char(Char) ->
         String = string.char_to_string(Char)
     ;
         String = mercury_escape_char(Char)
+    ).
+string_is_escaped_char(Char::out, String::in) :-
+    string.to_char_list(String, Chars),
+    (
+        Chars = [Char],
+        (
+            is_mercury_source_char(Char)
+        ;
+            mercury_escape_special_char(Char, _QuoteChar)
+        )
+    ;
+        Chars = ['\\', QuoteChar],
+        mercury_escape_special_char(Char, QuoteChar)
+    ;
+        Chars = ['\\', Char1, Char2, Char3],
+        NumChars = [Char1, Char2, Char3],
+        string.from_char_list(NumChars, NumString),
+        string.base_string_to_int(8, NumString, Int),
+        char.to_int(Char, Int)
     ).
 
 mercury_escape_char(Char) = EscapeCode :-
@@ -786,6 +828,25 @@ is_mercury_punctuation_char('|').
 
 %-----------------------------------------------------------------------------%
 
+:- pragma promise_equivalent_clauses(encode_escaped_char/2).
+
+encode_escaped_char(Char::in, Str::out) :-
+    ( mercury_escape_special_char(Char, EscapeChar) ->
+        string.from_char_list(['\\', EscapeChar], Str)
+    ; is_mercury_source_char(Char) ->
+        string.from_char_list([Char], Str)
+    ;
+        fail
+    ).
+encode_escaped_char(Char::out, Str::in) :-
+    string.to_char_list(Str, Chars),
+    (
+        Chars = [Char]
+    ;
+        Chars = ['\\', EscapedChar],
+        mercury_escape_special_char(Char, EscapedChar)
+    ).
+
     % mercury_escape_special_char(Char, EscapeChar) is true iff Char
     % is character for which there is a special backslash-escape character
     % EscapeChar that can be used after a backslash in string literals or
@@ -794,7 +855,9 @@ is_mercury_punctuation_char('|').
     % Note: the code here is similar to code in compiler/mercury_to_mercury.m;
     % any changes here may require similar changes there.
     %
-:- pred mercury_escape_special_char(char::in, char::out) is semidet.
+:- pred mercury_escape_special_char(char, char).
+:- mode mercury_escape_special_char(in, out) is semidet.
+:- mode mercury_escape_special_char(out, in) is semidet.
 
 mercury_escape_special_char('''', '''').
 mercury_escape_special_char('"', '"').

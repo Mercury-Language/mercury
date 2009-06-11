@@ -216,7 +216,7 @@ select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
     (
         instmap_delta_is_reachable(DeltaInstMap),
         instmap_delta_search_var(DeltaInstMap, Var, Inst),
-        \+ inst_matches_final(Inst, Inst0, Type, ModuleInfo)
+        \+ inst_matches_final_typed(Inst, Inst0, Type, ModuleInfo)
     ->
         select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo, ChangedVars1),
         ChangedVars = [Var | ChangedVars1]

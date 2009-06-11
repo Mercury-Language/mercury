@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,6 +32,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.goal_path.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
@@ -225,7 +226,7 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
     % Handle the unification on the switch var if it has been removed.
     % We add a dummy program point for this unification.
     (
-        MainConsId = cons(_SymName, Arity),
+        MainConsId = cons(_SymName, Arity, _),
         ( Arity = 0 ->
             append_to_each_execution_path(!.ExecPaths,
                 [[pair(ProgPoint, Switch)]], ExecPathsBeforeCase)
@@ -234,22 +235,24 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
         )
     ;
         ( MainConsId = int_const(_Int)
-        ; MainConsId = string_const(_String)
         ; MainConsId = float_const(_Float)
+        ; MainConsId = char_const(_Char)
+        ; MainConsId = string_const(_String)
         ),
         % need to add a dummy pp
         append_to_each_execution_path(!.ExecPaths,
             [[pair(ProgPoint, Switch)]], ExecPathsBeforeCase)
     ;
-        ( MainConsId = implementation_defined_const(_)
-        ; MainConsId = pred_const(_, _)
+        ( MainConsId = tuple_cons(_)
+        ; MainConsId = closure_cons(_, _)
+        ; MainConsId = impl_defined_const(_)
         ; MainConsId = type_ctor_info_const(_, _, _)
         ; MainConsId = base_typeclass_info_const(_, _, _, _)
         ; MainConsId = type_info_cell_constructor(_)
         ; MainConsId = typeclass_info_cell_constructor
         ; MainConsId = tabling_info_const(_)
-        ; MainConsId = deep_profiling_proc_layout(_)
         ; MainConsId = table_io_decl(_)
+        ; MainConsId = deep_profiling_proc_layout(_)
         ),
         unexpected(this_file,
             "execution_paths_covered_cases: new cons_id encountered")

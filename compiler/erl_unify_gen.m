@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: erl_unify_gen.m
 % Main author: wangp.
-% 
+%
 % This module is part of the Erlang code generator.
 % It handles Erlang code generation for unifications.
-% 
+%
 % TODO
 %   type t
 %       --->    f(int, string)
@@ -60,10 +60,12 @@
 :- mode cons_id_to_term(in(termable_cons_id), in, in, out, in, out) is det.
 
 :- inst termable_cons_id
-    --->    cons(ground, ground)
+    --->    cons(ground, ground, ground)
+    ;       tuple_cons(ground)
     ;       int_const(ground)
-    ;       string_const(ground)
-    ;       float_const(ground).
+    ;       float_const(ground)
+    ;       char_const(ground)
+    ;       string_const(ground).
 
     % Convert a cons id to the ELDS equivalent expression.
     %
@@ -191,10 +193,9 @@ erl_gen_construct(Var, ConsId, Args, ArgTypes, UniModes, _Context, Statement,
         !Info) :-
     cons_id_to_expr(ConsId, Args, elds_false, RHS, !Info),
     Construct = elds_eq(expr_from_var(Var), RHS),
-    %
+
     % If there are any free variables in Args, assign them to false first.
     % i.e. we are constructing a partially instantiated data structure.
-    %
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     AssignFreeVars = list.filter_map_corresponding3(
         assign_free_var(ModuleInfo), Args, ArgTypes, UniModes),
@@ -255,52 +256,55 @@ erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,
 
 cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info) :-
     (
-        ConsId = cons(Name, _Arity),
         (
-            Name = unqualified(String),
-            string.char_to_string(Char, String)
-        ->
-            Term = elds_char(Char)
+            ConsId = cons(Name, _Arity, _TypeCtor)
         ;
-            % XXX optimise the cases where we don't actually need a
-            % distinguishing atom.
-            Functor = elds_term(elds_atom(Name)),
-            erl_gen_info_get_module_info(!.Info, ModuleInfo),
-            erl_gen_info_get_var_types(!.Info, VarTypes),
+            ConsId = tuple_cons(_Arity),
+            Name = unqualified("{}")
+        ),
+        % XXX We should optimise the cases where we don't actually need a
+        % distinguishing atom.
+        Functor = elds_term(elds_atom(Name)),
+        erl_gen_info_get_module_info(!.Info, ModuleInfo),
+        erl_gen_info_get_var_types(!.Info, VarTypes),
 
-            % Replace dummy variables in the term.  In construction
-            % unifications we would want to replace them with `false' (what
-            % we use for all dummy values).  In deconstructions we replace
-            % them by anonymous variables (_).
-            TermArgs = list.map(erl_var_or_dummy_replacement(ModuleInfo,
-                VarTypes, DummyVarReplacement), Args),
-            Term = elds_tuple([Functor | TermArgs])
-        )
+        % Replace dummy variables in the term. In construction unifications
+        % we would want to replace them with `false' (what we use for all
+        % dummy values). In deconstructions we replace them by anonymous
+        % variables (_).
+        TermArgs = list.map(erl_var_or_dummy_replacement(ModuleInfo,
+            VarTypes, DummyVarReplacement), Args),
+        Term = elds_tuple([Functor | TermArgs])
     ;
         ConsId = int_const(Int),
         Term = elds_int(Int)
     ;
-        ConsId = string_const(String),
-        Term = elds_binary(String)
-    ;
         ConsId = float_const(Float),
         Term = elds_float(Float)
+    ;
+        ConsId = char_const(Char),
+        Term = elds_char(Char)
+    ;
+        ConsId = string_const(String),
+        Term = elds_binary(String)
     ).
 
 cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
     (
-        ( ConsId = cons(_, _)
+        ( ConsId = cons(_, _, _)
+        ; ConsId = tuple_cons(_)
         ; ConsId = int_const(_)
-        ; ConsId = string_const(_)
         ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
         ),
         cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info),
         Expr = elds_term(Term)
     ;
-        ConsId = implementation_defined_const(_),
-        unexpected(this_file, "cons_id_to_expr: implementation_defined_const")
+        ConsId = impl_defined_const(_),
+        unexpected(this_file, "cons_id_to_expr: impl_defined_const")
     ;
-        ConsId = pred_const(ShroudedPredProcId, lambda_normal),
+        ConsId = closure_cons(ShroudedPredProcId, lambda_normal),
         pred_const_to_closure(ShroudedPredProcId, Args, Expr, !Info)
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeCtor, Arity),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -269,7 +269,7 @@ modecheck_unification_functor(X0, ConsId0, IsExistConstruction, ArgVars0,
         % Check if variable has a higher-order type.
         type_is_higher_order_details(TypeOfX, Purity, _, EvalMethod,
             PredArgTypes),
-        ConsId0 = pred_const(ShroudedPredProcId, _)
+        ConsId0 = closure_cons(ShroudedPredProcId, _)
     ->
         % Convert the pred term to a lambda expression.
         mode_info_get_varset(!.ModeInfo, VarSet0),
@@ -586,7 +586,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     % Fully module qualify all cons_ids (except for builtins such as
     % ints and characters).
 
-    qualify_cons_id(TypeOfX, ArgVars0, ConsId0, ConsId, InstConsId),
+    qualify_cons_id(ArgVars0, ConsId0, ConsId, InstConsId),
 
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     instmap_lookup_var(InstMap0, X0, InstOfX0),
@@ -687,7 +687,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             list.member(InstArg, InstArgs),
             inst_is_free(ModuleInfo0, InstArg),
             list.member(ArgVar, ArgVars0),
-            ArgType = VarTypes ^ elem(ArgVar),
+            map.search(VarTypes, ArgVar, ArgType),
             type_is_solver_type(ModuleInfo0, ArgType)
         ),
         abstractly_unify_inst_functor(LiveX, InstOfX, InstConsId,
@@ -1226,7 +1226,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
     ;
         % Ensure that we will generate code for the unification procedure
         % that will be used to implement this complicated unification.
-        type_to_ctor_and_args(Type, TypeCtor, _)
+        type_to_ctor(Type, TypeCtor)
     ->
         mode_info_get_context(!.ModeInfo, Context),
         mode_info_get_instvarset(!.ModeInfo, InstVarSet),
@@ -1253,29 +1253,27 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
     % If we are re-doing mode analysis, preserve the existing cons_id.
     list.length(ArgVars, Arity),
     (
-        Unification0 = construct(_, ConsIdPrime, _, _, _, _, SubInfo0),
+        Unification0 = construct(_, ConsId, _, _, _, _, SubInfo),
         (
-            SubInfo0 = construct_sub_info(MaybeTakeAddr, _MaybeSize),
+            SubInfo = construct_sub_info(MaybeTakeAddr, _MaybeSize),
             expect(unify(MaybeTakeAddr, no), this_file,
                 "categorize_unify_var_lambda: take_addr")
         ;
-            SubInfo0 = no_construct_sub_info
-        ),
-        SubInfo = SubInfo0,
-        ConsId = ConsIdPrime
+            SubInfo = no_construct_sub_info
+        )
     ;
-        Unification0 = deconstruct(_, ConsIdPrime, _, _, _, _),
-        SubInfo = no_construct_sub_info,
-        ConsId = ConsIdPrime
+        Unification0 = deconstruct(_, ConsId, _, _, _, _),
+        SubInfo = no_construct_sub_info
     ;
         ( Unification0 = assign(_, _)
         ; Unification0 = simple_test(_, _)
         ; Unification0 = complicated_unify(_, _, _)
         ),
+        SubInfo = no_construct_sub_info,
         % The real cons_id will be computed by lambda.m;
         % we just put in a dummy one for now.
-        SubInfo = no_construct_sub_info,
-        ConsId = cons(unqualified("__LambdaGoal__"), Arity)
+        TypeCtor = type_ctor(unqualified("int"), 0),
+        ConsId = cons(unqualified("__LambdaGoal__"), Arity, TypeCtor)
     ),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     modes_to_uni_modes(ModuleInfo, ArgModes0, ArgModes0, ArgModes),
@@ -1290,7 +1288,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
             % is considered to be bound. In this case the lambda_goal may
             % not be converted back to a predicate constant, but that doesn't
             % matter since the code will be pruned away later by simplify.m.
-            ConsId = pred_const(ShroudedPredProcId, EvalMethod),
+            ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
             instmap_is_reachable(InstMap)
         ->
             proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
@@ -1301,8 +1299,23 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 PredModule = pred_info_module(PredInfo),
                 PredName = pred_info_name(PredInfo),
-                RHS = rhs_functor(cons(qualified(PredModule, PredName), Arity),
-                    no, ArgVars)
+                mode_info_get_var_types(!.ModeInfo, VarTypes),
+                map.lookup(VarTypes, X, Type),
+                ( Type = higher_order_type(_, MaybeReturnType, _, _) ->
+                    (
+                        MaybeReturnType = no,
+                        RHSTypeCtor = type_ctor(unqualified("pred"), 0)
+                    ;
+                        MaybeReturnType = yes(_),
+                        RHSTypeCtor = type_ctor(unqualified("func"), 0)
+                    )
+                ;
+                    unexpected(this_file,
+                        "categorize_unify_var_lambda: bad HO type")
+                ),
+                RHSConsId = cons(qualified(PredModule, PredName), Arity,
+                    RHSTypeCtor),
+                RHS = rhs_functor(RHSConsId, no, ArgVars)
             ;
                 unexpected(this_file,
                     "categorize_unify_var_lambda - reintroduced lambda goal")

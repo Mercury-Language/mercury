@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,16 +16,16 @@
 :- module check_hlds.mode_errors.
 :- interface.
 
+:- import_module check_hlds.mode_info.
 :- import_module hlds.
-:- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
-:- import_module check_hlds.mode_info.
 
 :- import_module bool.
 :- import_module io.
@@ -115,8 +115,8 @@
     ;       mode_error_unify_var_var(prog_var, prog_var, mer_inst, mer_inst)
             % Attempt to unify two free variables.
 
-    ;       mode_error_unify_var_functor(prog_var, cons_id, list(prog_var),
-                mer_inst, list(mer_inst))
+    ;       mode_error_unify_var_functor(prog_var, cons_id,
+                list(prog_var), mer_inst, list(mer_inst))
             % Attempt to unify a free var with a functor containing
             % free arguments.
 
@@ -1030,19 +1030,17 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, Args,
         words("term"),
         words(add_quotes(hlds_out.functor_cons_id_to_string(ConsId, Args,
             VarSet, ModuleInfo, no)))],
+    ConsIdStr = mercury_cons_id_to_string(ConsId, does_not_need_brackets),
     (
         Args = [_ | _],
         Pieces2 = [words("has instantiatedness"),
-            prefix("`"),
-            words(mercury_cons_id_to_string(ConsId, does_not_need_brackets)),
-            suffix("("), nl_indent_delta(1)] ++
+            prefix("`"), words(ConsIdStr), suffix("("), nl_indent_delta(1)] ++
             inst_list_to_sep_lines(ModeInfo, ArgInsts) ++
             [fixed(")'.")]
     ;
         Args = [],
         Pieces2 = [words("has instantiatedness"),
-            words(add_quotes(mercury_cons_id_to_string(ConsId,
-                does_not_need_brackets))), suffix("."), nl]
+            words(ConsIdStr), suffix("."), nl]
     ),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces1 ++ Pieces2)])]).

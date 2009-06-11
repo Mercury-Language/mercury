@@ -185,6 +185,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
@@ -916,7 +917,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     map.lookup(VarTypes, Var, TypeOfVar),
     Context = goal_info_get_context(GoalInfo),
     (
-        ConsId = cons(PName, _),
+        ConsId = cons(PName, _, _),
         type_is_higher_order_details(TypeOfVar, TypePurity, PredOrFunc,
             _EvalMethod, VarArgTypes)
     ->
@@ -937,7 +938,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
             pred_info_get_purity(CalleePredInfo, CalleePurity),
             check_closure_purity(GoalInfo, TypePurity, CalleePurity, !Info)
         ;
-            % If we can't find the type of the function, it's because
+            % If we can't find the type of the function, it is because
             % typecheck couldn't give it one. Typechecking gives an error
             % in this case, we just keep silent.
             true

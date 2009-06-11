@@ -1911,27 +1911,6 @@ cons_id_in_bound_insts(ConsId, [bound_functor(ConsId0, Insts0) | BIs],
         cons_id_in_bound_insts(ConsId, BIs, Insts)
     ).
 
-:- pred equivalent_cons_ids(cons_id::in, cons_id::in) is semidet.
-
-equivalent_cons_ids(ConsIdA, ConsIdB) :-
-    (
-        ConsIdA = cons(NameA, ArityA),
-        ConsIdB = cons(NameB, ArityB)
-    ->
-        ArityA = ArityB,
-        equivalent_sym_names(NameA, NameB)
-    ;
-        ConsIdA = ConsIdB
-    ).
-
-:- pred equivalent_sym_names(sym_name::in, sym_name::in) is semidet.
-
-equivalent_sym_names(unqualified(S), unqualified(S)).
-equivalent_sym_names(qualified(_, S), unqualified(S)).
-equivalent_sym_names(unqualified(S), qualified(_, S)).
-equivalent_sym_names(qualified(QualA, S), qualified(QualB, S)) :-
-    equivalent_sym_names(QualA, QualB).
-
 %------------------------------------------------------------------------%
 
 % For local variables, V_ must be equivalent to Vgp.

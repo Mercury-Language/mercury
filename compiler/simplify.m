@@ -150,6 +150,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -1053,8 +1054,11 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     simplify_info_get_instmap(!.Info, InstMap0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     instmap_lookup_var(InstMap0, Var, VarInst),
-    ( inst_is_bound_to_functors(ModuleInfo0, VarInst, Functors) ->
-        functors_to_cons_ids(Functors, ConsIds0),
+    simplify_info_get_var_types(!.Info, VarTypes),
+    ( inst_is_bound_to_functors(ModuleInfo0, VarInst, BoundInsts) ->
+        map.lookup(VarTypes, Var, VarType),
+        type_to_ctor_det(VarType, VarTypeCtor),
+        list.map(bound_inst_to_cons_id(VarTypeCtor), BoundInsts, ConsIds0),
         list.sort(ConsIds0, ConsIds),
         delete_unreachable_cases(Cases0, ConsIds, Cases1),
         MaybeConsIds = yes(ConsIds)
@@ -1087,13 +1091,11 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             % existential type variables in the types of the constructor
             % arguments or their typeinfos.
 
-            simplify_info_get_var_types(!.Info, VarTypes1),
-            map.lookup(VarTypes1, Var, Type),
+            map.lookup(VarTypes, Var, Type),
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             ( type_util.is_existq_cons(ModuleInfo1, Type, MainConsId) ->
                 GoalExpr = switch(Var, SwitchCanFail, Cases),
                 NonLocals = goal_info_get_nonlocals(GoalInfo0),
-                simplify_info_get_var_types(!.Info, VarTypes),
                 merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
                     InstMaps, NewDelta, ModuleInfo1, ModuleInfo2),
                 simplify_info_set_module_info(ModuleInfo2, !Info),
@@ -1146,7 +1148,6 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         ;
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             NonLocals = goal_info_get_nonlocals(GoalInfo0),
-            simplify_info_get_var_types(!.Info, VarTypes),
             merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
                 NewDelta, ModuleInfo1, ModuleInfo2),
             simplify_info_set_module_info(ModuleInfo2, !Info),
@@ -1155,7 +1156,9 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     ),
     list.length(Cases0, Cases0Length),
     list.length(Cases, CasesLength),
-    ( CasesLength \= Cases0Length ->
+    ( CasesLength = Cases0Length ->
+        true
+    ;
         % If we pruned some cases, variables used by those cases may no longer
         % be nonlocal to the switch. Also, the determinism may have changed
         % (especially if we pruned all the cases). If the switch now can't
@@ -1165,8 +1168,6 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
 
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
-    ;
-        true
     ).
 
 :- pred simplify_goal_generic_call(
@@ -2158,7 +2159,9 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     CmpGoal  = hlds_goal(CmpExpr, CmpInfo),
 
     % Construct the unification R = Inequality.
-    ConsId   = cons(qualified(BuiltinModule, Inequality), 0),
+    TypeCtor = type_ctor(
+        qualified(mercury_public_builtin_module, "comparison_result"), 0),
+    ConsId   = cons(qualified(BuiltinModule, Inequality), 0, TypeCtor),
     Bound    = bound(shared, [bound_functor(ConsId, [])]),
     UMode    = ((Unique -> Bound) - (Bound -> Bound)),
     RHS      = rhs_functor(ConsId, no, []),
@@ -2417,9 +2420,14 @@ simplify_library_call("builtin", "compare", _ModeNum, _CrossCompiling,
         purity_pure, [X, Y], [], [], ModuleInfo, Context, CondLt),
 
     Builtin = mercury_public_builtin_module,
-    make_const_construction(Res, cons(qualified(Builtin, "="), 0), ReturnEq),
-    make_const_construction(Res, cons(qualified(Builtin, "<"), 0), ReturnLt),
-    make_const_construction(Res, cons(qualified(Builtin, ">"), 0), ReturnGt),
+    TypeCtor = type_ctor(
+        qualified(mercury_public_builtin_module, "comparison_result"), 0),
+    make_const_construction(Res, cons(qualified(Builtin, "="), 0, TypeCtor),
+        ReturnEq),
+    make_const_construction(Res, cons(qualified(Builtin, "<"), 0, TypeCtor),
+        ReturnLt),
+    make_const_construction(Res, cons(qualified(Builtin, ">"), 0, TypeCtor),
+        ReturnGt),
 
     NonLocals = set.from_list([Res, X, Y]),
     goal_info_set_nonlocals(NonLocals, !GoalInfo),

@@ -166,6 +166,7 @@
 :- import_module ml_backend.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_ctgc.
@@ -1264,7 +1265,7 @@ target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
 
 make_foreign_tag(ForeignLanguage, ForeignTagMap, ConsId, _, !ConsTagValues,
         !UnmappedCtors) :-
-    ( ConsId = cons(ConsSymName0, 0) ->
+    ( ConsId = cons(ConsSymName0, 0, _) ->
         ConsSymName = ConsSymName0
     ;
         unexpected(this_file, "non arity zero enumeration constant.")

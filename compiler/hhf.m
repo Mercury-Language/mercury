@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2008 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,6 +50,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module mdbcomp.prim_data.
 
 :- import_module list.
 :- import_module map.
@@ -73,10 +74,10 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
         some [!IG] (
             pred_info_get_inst_graph_info(PredInfo0, !:IG),
             inst_graph.init(HeadVars, InstGraph),
-            !:IG = !.IG ^ implementation_inst_graph := InstGraph,
-            !:IG = !.IG ^ interface_inst_graph := InstGraph,
-            !:IG = !.IG ^ interface_vars := HeadVars,
-            !:IG = !.IG ^ interface_varset := VarSet,
+            !IG ^ implementation_inst_graph := InstGraph,
+            !IG ^ interface_inst_graph := InstGraph,
+            !IG ^ interface_vars := HeadVars,
+            !IG ^ interface_varset := VarSet,
             pred_info_set_inst_graph_info(!.IG, PredInfo0, PredInfo2)
         )
     ;
@@ -101,8 +102,8 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
                     inst_graph.reachable(ImplementationInstGraph,
                     V0, V)
                 ), InterfaceVars),
-            !:IG = !.IG ^ interface_vars := InterfaceVars,
-            !:IG = !.IG ^ interface_varset := VarSet,
+            !IG ^ interface_vars := InterfaceVars,
+            !IG ^ interface_varset := VarSet,
 
             pred_info_set_inst_graph_info(!.IG, PredInfo1, PredInfo2)
         )
@@ -300,8 +301,7 @@ process_unify(rhs_lambda_goal(A,B,C,D,E,F,G,H,LambdaGoal0), NonLocals, _, X,
         Unif, Context).
 process_unify(rhs_functor(ConsId0, IsExistConstruct, ArgsA), NonLocals,
         GoalInfo0, X, Mode, Unif, Context, GoalExpr, !HI) :-
-    map.lookup(!.HI ^ hhfi_vartypes, X, TypeOfX),
-    qualify_cons_id(TypeOfX, ArgsA, ConsId0, _, ConsId),
+    qualify_cons_id(ArgsA, ConsId0, _, ConsId),
     InstGraph0 = !.HI ^ hhfi_inst_graph,
     map.lookup(InstGraph0, X, node(Functors0, MaybeParent)),
     ( map.search(Functors0, ConsId, ArgsB) ->
@@ -365,9 +365,9 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
         map.det_insert(VarTypes0, V, Type, VarTypes),
         map.init(Empty),
         map.det_insert(InstGraph0, V, node(Empty, top_level), InstGraph),
-        !:HI = !.HI ^ hhfi_varset := VarSet,
-        !:HI = !.HI ^ hhfi_vartypes := VarTypes,
-        !:HI = !.HI ^ hhfi_inst_graph := InstGraph,
+        !HI ^ hhfi_varset := VarSet,
+        !HI ^ hhfi_vartypes := VarTypes,
+        !HI ^ hhfi_inst_graph := InstGraph,
         GINonlocals0 = goal_info_get_nonlocals(GI0),
         GINonlocals = set.insert(GINonlocals0, V),
         goal_info_set_nonlocals(GINonlocals, GI0, GI),
@@ -395,18 +395,31 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
         type_constructors(ModuleInfo, Type, Constructors),
         type_to_ctor_and_args(Type, TypeCtor, _)
     ->
-        list.foldl(maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor),
+        TypeCtor = type_ctor(TypeCtorSymName, _),
+        (
+            TypeCtorSymName = unqualified(_),
+            unexpected(this_file,
+                "complete_inst_graph_node: unqualified TypeCtorSymName")
+        ;
+            TypeCtorSymName = qualified(TypeCtorModuleName, _)
+        ),
+        list.foldl(
+            maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor,
+                TypeCtorModuleName),
             Constructors, !HI)
     ;
         true
     ).
 
 :- pred maybe_add_cons_id(prog_var::in, module_info::in, list(prog_var)::in,
-    type_ctor::in, constructor::in, hhf_info::in, hhf_info::out) is det.
+    type_ctor::in, module_name::in, constructor::in,
+    hhf_info::in, hhf_info::out) is det.
 
-maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor, Ctor, !HI) :-
+maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor, TypeCtorModuleName,
+        Ctor, !HI) :-
     Ctor = ctor(_, _, Name, Args, _),
-    ConsId = make_cons_id(Name, Args, TypeCtor),
+    SymName = qualified(TypeCtorModuleName, unqualify_name(Name)),
+    ConsId = cons(SymName, list.length(Args), TypeCtor),
     map.lookup(!.HI ^ hhfi_inst_graph, Var, node(Functors0, MaybeParent)),
     ( map.contains(Functors0, ConsId) ->
         true
@@ -414,7 +427,7 @@ maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor, Ctor, !HI) :-
         list.map_foldl(add_cons_id(Var, ModuleInfo, BaseVars), Args, NewVars,
             !HI),
         map.det_insert(Functors0, ConsId, NewVars, Functors),
-        !:HI = !.HI ^ hhfi_inst_graph :=
+        !HI ^ hhfi_inst_graph :=
             map.det_update(!.HI ^ hhfi_inst_graph, Var,
                 node(Functors, MaybeParent))
     ).

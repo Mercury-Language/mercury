@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: erl_rtti.m.
 % Main author: wangp, petdr
-% 
+%
 % This module converts from the back-end-independent RTTI data structures into
 % ELDS function definitions.
 %
@@ -28,15 +28,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    %
     % erlang_rtti_data(MI, RD)
     %
-    % converts from rtti_data to erlang_rtti_data.
+    % Converts from rtti_data to erlang_rtti_data.
     %
 :- func erlang_rtti_data(module_info, rtti_data) = erlang_rtti_data.
 
-    %
-    % Generate a representation of all the erlang RTTI
+    % Generate a representation of all the erlang RTTI.
     %
 :- pred rtti_data_list_to_elds(module_info::in,
     list(erlang_rtti_data)::in, list(elds_rtti_defn)::out) is det.
@@ -57,6 +55,8 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
+:- import_module deconstruct.
+:- import_module exception.
 :- import_module int.
 :- import_module maybe.
 :- import_module string.
@@ -87,7 +87,7 @@ erlang_rtti_data(_, rtti_data_type_class_decl(TCDecl)) =
     erlang_rtti_data_type_class_decl(TCDecl).
 erlang_rtti_data(_, rtti_data_type_class_instance(TCInstance)) =
     erlang_rtti_data_type_class_instance(TCInstance).
-    
+
 :- func maybe_get_special_predicate(univ) = maybe(rtti_proc_label).
 
 maybe_get_special_predicate(Univ) =
@@ -97,9 +97,7 @@ maybe_get_special_predicate(Univ) =
         no
     ).
 
-    %
-    % Given the type_ctor_details return the erlang version of those
-    % details.
+    % Given the type_ctor_details return the erlang version of those details.
     % This means conflating enum and no_tags into erlang_du,
     % aborting on reserved types, and specially handling the list type.
     %
@@ -126,47 +124,59 @@ erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
 :- func erlang_type_ctor_details_2(type_ctor_details) =
     erlang_type_ctor_details.
 
-erlang_type_ctor_details_2(enum(_, Functors, _, _, IsDummy, FunctorNums))
-        = Details :-
+erlang_type_ctor_details_2(CtorDetails) = Details :-
     (
-        IsDummy = yes,
-        ( Functors = [F] ->
-            Details = erlang_dummy(F ^ enum_name)
+        CtorDetails = tcd_enum(_, Functors, _, _, IsDummy, FunctorNums),
+        (
+            IsDummy = yes,
+            ( Functors = [F] ->
+                Details = erlang_dummy(F ^ enum_name)
+            ;
+                unexpected(this_file, "dummy type with more than one functor")
+            )
         ;
-            unexpected(this_file, "dummy type with more than one functor")
+            IsDummy = no,
+            list.map_corresponding(convert_enum_functor, Functors, FunctorNums,
+                ErlFunctors),
+            Details = erlang_du(ErlFunctors)
         )
     ;
-        IsDummy = no,
-        list.map_corresponding(convert_enum_functor, Functors, FunctorNums,
-            ErlFunctors),
-        Details = erlang_du(ErlFunctors)
-    ).
-erlang_type_ctor_details_2(foreign_enum(_, _, _, _, _, _)) =
-    sorry(this_file, "NYI foreign enumerations for Erlang.").
-erlang_type_ctor_details_2(du(_, Functors, _, _, FunctorNums)) = Details :-
-    list.map_corresponding(convert_du_functor, Functors, FunctorNums,
-        ErlangFunctors),
-    Details = erlang_du(ErlangFunctors).
-erlang_type_ctor_details_2(reserved(_, _, _, _, _, _)) =
+        CtorDetails = tcd_foreign_enum(_, _, _, _, _, _),
+        sorry(this_file, "NYI foreign enumerations for Erlang.")
+    ;
+        CtorDetails = tcd_du(_, Functors, _, _, FunctorNums),
+        list.map_corresponding(convert_du_functor, Functors, FunctorNums,
+            ErlangFunctors),
+        Details = erlang_du(ErlangFunctors)
+    ;
+        CtorDetails = tcd_reserved(_, _, _, _, _, _),
         % Reserved types are not supported on the Erlang backend.
-    unexpected(this_file, "erlang_type_ctor_details: reserved").
-erlang_type_ctor_details_2(notag(_, NoTagFunctor)) = Details :-
-    NoTagFunctor = notag_functor(Name, TypeInfo, ArgName),
-    OrigArity = 1,
-    Ordinal = 0,
-    FunctorNum = 0,
-    ArgTypeInfo = convert_to_rtti_maybe_pseudo_type_info_or_self(TypeInfo),
-    ArgInfos = [du_arg_info(ArgName, ArgTypeInfo)],
-    DUFunctor = erlang_du_functor(Name, OrigArity, Ordinal, FunctorNum,
-        erlang_atom_raw(Name), ArgInfos, no),
-    Details = erlang_du([DUFunctor]).
-erlang_type_ctor_details_2(eqv(Type)) = erlang_eqv(Type).
-erlang_type_ctor_details_2(builtin(Builtin)) = erlang_builtin(Builtin).
-erlang_type_ctor_details_2(impl_artifact(Impl)) = erlang_impl_artifact(EImpl) :-
-    EImpl = erlang_impl_ctor(Impl).
-erlang_type_ctor_details_2(foreign(_)) = erlang_foreign.
-    
-    %
+        unexpected(this_file, "erlang_type_ctor_details: reserved")
+    ;
+        CtorDetails = tcd_notag(_, NoTagFunctor),
+        NoTagFunctor = notag_functor(Name, TypeInfo, ArgName),
+        OrigArity = 1,
+        Ordinal = 0,
+        FunctorNum = 0,
+        ArgTypeInfo = convert_to_rtti_maybe_pseudo_type_info_or_self(TypeInfo),
+        ArgInfos = [du_arg_info(ArgName, ArgTypeInfo)],
+        DUFunctor = erlang_du_functor(Name, OrigArity, Ordinal, FunctorNum,
+            erlang_atom_raw(Name), ArgInfos, no),
+        Details = erlang_du([DUFunctor])
+    ;
+        CtorDetails = tcd_eqv(Type),
+        Details = erlang_eqv(Type)
+    ;
+        CtorDetails = tcd_builtin(Builtin),
+        Details = erlang_builtin(Builtin)
+    ;
+        CtorDetails = tcd_impl_artifact(Impl),
+        Details = erlang_impl_artifact(erlang_impl_ctor(Impl))
+    ;
+        CtorDetails = tcd_foreign(_),
+        Details = erlang_foreign
+    ).
+
     % Convert an enum_functor into the equivalent erlang_du_functor
     %
 :- pred convert_enum_functor(enum_functor::in, int::in, erlang_du_functor::out)
@@ -177,7 +187,6 @@ convert_enum_functor(EnumFunctor, FunctorNum, ErlangFunctor) :-
     ErlangFunctor = erlang_du_functor(Name, 0, Ordinal, FunctorNum,
         erlang_atom_raw(Name), [], no).
 
-    %
     % Convert a du_functor into the equivalent erlang_du_functor
     %
 :- pred convert_du_functor(du_functor::in, int::in, erlang_du_functor::out)
@@ -194,7 +203,6 @@ convert_du_functor(Functor, FunctorNum, ErlangFunctor) :-
 convert_to_rtti_maybe_pseudo_type_info_or_self(pseudo(P)) = pseudo(P).
 convert_to_rtti_maybe_pseudo_type_info_or_self(plain(P)) = plain(P).
 
-    %
     % Restrict the implementation artifacts to only those
     % allowed on the erlang backend.
     %
@@ -230,9 +238,8 @@ erlang_impl_ctor(impl_ctor_trail_ptr) = _ :-
 rtti_data_list_to_elds(ModuleInfo, RttiDatas, RttiDefns) :-
     list.map(rtti_data_to_elds(ModuleInfo), RttiDatas, RttiDefns0),
 
-        % XXX See mlds_defn_is_potentially_duplicated for how this can
-        % be made more efficient.
-        %
+    % XXX See mlds_defn_is_potentially_duplicated for how this can
+    % be made more efficient.
     RttiDefns = list.sort_and_remove_dups(list.condense(RttiDefns0)).
 
 :- pred rtti_data_to_elds(module_info::in, erlang_rtti_data::in,
@@ -245,10 +252,9 @@ rtti_data_to_elds(ModuleInfo, RttiData, [RttiDefn]) :-
     NumExtra = BaseTypeClassInfo ^ num_extra,
     list.map_foldl(erl_gen_method_wrapper(ModuleInfo, NumExtra), Methods,
         MethodWrappers, varset.init, VarSet),
-    % 
+
     % NOTE: if you modify this structure you may need to modify
     % erl_base_typeclass_info_method_offset.
-    %
     BaseTypeClassInfoData = elds_tuple([
         elds_term(elds_int(N1)),
         elds_term(elds_int(N2)),
@@ -310,7 +316,6 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcId, WrapperFun,
     %           E2, E3, ..., W1, W2, ...),
     %       {Y1, Y2, ...}   /* may have additional outputs */
     %   end
-    %
 
     svvarset.new_named_var("TypeClassInfo", TCIVar, !VarSet),
     svvarset.new_vars(list.length(ArgTypes) - NumExtra, Ws, !VarSet),
@@ -401,8 +406,8 @@ rtti_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
     ;
         TypeInfo = plain_type_info(TypeCtor, ArgTypeInfos),
 
-        rtti_type_info_to_elds_2(ModuleInfo,
-                ArgTypeInfos, ELDSArgTypeInfos, ArgRttiDefns),
+        rtti_type_info_to_elds_2(ModuleInfo, ArgTypeInfos, ELDSArgTypeInfos,
+            ArgRttiDefns),
 
         ELDSTypeInfo = elds_term(elds_tuple([
             elds_rtti_ref(elds_rtti_type_ctor_id(TypeCtor)) |
@@ -411,8 +416,8 @@ rtti_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
         TypeInfo = var_arity_type_info(VarCtorId, ArgTypeInfos),
         TypeCtor = var_arity_id_to_rtti_type_ctor(VarCtorId),
 
-        rtti_type_info_to_elds_2(ModuleInfo,
-                ArgTypeInfos, ELDSArgTypeInfos, ArgRttiDefns),
+        rtti_type_info_to_elds_2(ModuleInfo, ArgTypeInfos, ELDSArgTypeInfos,
+            ArgRttiDefns),
 
         ELDSTypeInfo = elds_term(elds_tuple([
             elds_rtti_ref(elds_rtti_type_ctor_id(TypeCtor)),
@@ -420,26 +425,24 @@ rtti_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
             ELDSArgTypeInfos]))
     ),
 
-        %
-        % A type_info can contain a call to construct a type_ctor_info
-        % which requires this type_info, leading to infinite recursion,
-        % we break this recursion by creating a closure which will
-        % evaluate to the type_info, if the type_info is needed.
-        %
+    % A type_info can contain a call to construct a type_ctor_info
+    % which requires this type_info, leading to infinite recursion,
+    % we break this recursion by creating a closure which will
+    % evaluate to the type_info, if the type_info is needed.
+
     ELDSFun = elds_fun(elds_clause([], ELDSTypeInfo)),
 
     ELDSTuple = elds_term(elds_tuple([
         elds_term(elds_atom_raw("plain")),
         ELDSFun
-        ])),
-    
+    ])),
+
     RttiId = elds_rtti_type_info_id(TypeInfo),
     IsExported = no,
     RttiDefn = elds_rtti_defn(RttiId, IsExported, varset.init,
         elds_clause([], ELDSTuple)),
 
     RttiDefns = [RttiDefn | ArgRttiDefns].
-
 
 :- pred rtti_type_info_to_elds_2(module_info::in,
     list(rtti_type_info)::in,
@@ -452,7 +455,6 @@ rtti_type_info_to_elds_2(ModuleInfo,
 
     ELDSArgTypeInfos = list.map(
         func(TI) = elds_rtti_ref(elds_rtti_type_info_id(TI)), ArgTypeInfos).
-
 
 %-----------------------------------------------------------------------------%
 
@@ -493,23 +495,22 @@ rtti_pseudo_type_info_to_elds(ModuleInfo, TypeInfo, RttiDefns) :-
             elds_term(elds_int(list.length(ArgTypeInfos))) |
             ELDSArgTypeInfos]))
     ;
-        TypeInfo = type_var(I), 
+        TypeInfo = type_var(I),
         ELDSTypeInfo = elds_term(elds_int(I)),
         ArgRttiDefns = []
     ),
 
-        %
-        % A pseudo_type_info can contain a call to construct a type_ctor_info
-        % which requires this pseudo_type_info, leading to infinite recursion.
-        % We break this recursion by creating a closure which will
-        % evaluate to the pseudo_type_info, if the type_info is needed.
-        %
+    % A pseudo_type_info can contain a call to construct a type_ctor_info
+    % which requires this pseudo_type_info, leading to infinite recursion.
+    % We break this recursion by creating a closure which will
+    % evaluate to the pseudo_type_info, if the type_info is needed.
+    %
     ELDSFun = elds_fun(elds_clause([], ELDSTypeInfo)),
 
     ELDSTuple = elds_term(elds_tuple([
         elds_term(elds_atom_raw("pseudo")),
         ELDSFun
-        ])),
+    ])),
 
     RttiId = elds_rtti_pseudo_type_info_id(TypeInfo),
     IsExported = no,
@@ -539,7 +540,6 @@ rtti_pseudo_type_info_to_elds_2(ModuleInfo,
             )
         ), ArgTypeInfos).
 
-
 :- pred rtti_maybe_pseudo_type_info_to_elds(module_info::in,
     rtti_maybe_pseudo_type_info::in, list(elds_rtti_defn)::out) is det.
 
@@ -550,7 +550,6 @@ rtti_maybe_pseudo_type_info_to_elds(ModuleInfo, pseudo(TypeInfo), Defns) :-
 
 %-----------------------------------------------------------------------------%
 
-    %
     % This predicate defines the representation of type_ctor_info
     % for the erlang backend.
     %
@@ -583,7 +582,7 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
         elds_term(elds_list_of_ints(TypeName)),
         erlang_type_ctor_rep(Details),
         ELDSDetails
-        ]),
+    ]),
     ClauseBody = elds_block(list.reverse(RevAssignments) ++
         [elds_term(ELDSTypeCtorData)]),
 
@@ -620,19 +619,19 @@ erlang_type_ctor_rep(erlang_builtin(builtin_ctor_c_pointer(is_stable))) =
     elds_term(make_enum_alternative("etcr_stable_c_pointer")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_c_pointer(is_not_stable))) =
     elds_term(make_enum_alternative("etcr_c_pointer")).
-erlang_type_ctor_rep(erlang_builtin(builtin_ctor_pred_ctor)) = 
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_pred_ctor)) =
     elds_term(make_enum_alternative("etcr_pred")).
-erlang_type_ctor_rep(erlang_builtin(builtin_ctor_func_ctor)) = 
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_func_ctor)) =
     elds_term(make_enum_alternative("etcr_func")).
-erlang_type_ctor_rep(erlang_builtin(builtin_ctor_tuple)) = 
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_tuple)) =
     elds_term(make_enum_alternative("etcr_tuple")).
-erlang_type_ctor_rep(erlang_builtin(builtin_ctor_ref)) = 
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_ref)) =
     elds_term(make_enum_alternative("etcr_ref")).
-erlang_type_ctor_rep(erlang_builtin(builtin_ctor_type_desc)) = 
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_type_desc)) =
     elds_term(make_enum_alternative("etcr_type_desc")).
-erlang_type_ctor_rep(erlang_builtin(builtin_ctor_pseudo_type_desc)) = 
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_pseudo_type_desc)) =
     elds_term(make_enum_alternative("etcr_pseudo_type_desc")).
-erlang_type_ctor_rep(erlang_builtin(builtin_ctor_type_ctor_desc)) = 
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_type_ctor_desc)) =
     elds_term(make_enum_alternative("etcr_type_ctor_desc")).
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_type_info)) =
     elds_term(make_enum_alternative("etcr_type_info")).
@@ -646,9 +645,7 @@ erlang_type_ctor_rep(
 erlang_type_ctor_rep(erlang_foreign) =
     elds_term(make_enum_alternative("etcr_foreign")).
 
-    %
-    % These three types should never actually be used in
-    % an Erlang program.
+    % These three types should never actually be used in an Erlang program.
     %
 erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_hp)) =
     elds_term(make_enum_alternative("etcr_hp")).
@@ -666,10 +663,9 @@ gen_init_special_pred(ModuleInfo, MaybeRttiProcId, Expr, !VarSet) :-
         erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, Expr, !VarSet)
     ;
         MaybeRttiProcId = no,
-        unexpected(this_file,
-            "gen_init_special_pred: no special pred")
+        unexpected(this_file, "gen_init_special_pred: no special pred")
     ).
-    
+
 :- pred erl_gen_special_pred_wrapper(module_info::in, rtti_proc_label::in,
     elds_expr::out, prog_varset::in, prog_varset::out) is det.
 
@@ -727,8 +723,6 @@ erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, WrapperFun, !VarSet) :-
     WrapperFun = elds_fun(elds_clause(terms_from_vars(WrapperInputVars),
         DoCall)).
 
-
-    %
     % erlang_type_ctor_details(ModuleInfo, Details, Expr, Defns)
     %
     % will return the expr, Expr, which evaluates to an erlang term
@@ -739,9 +733,8 @@ erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, WrapperFun, !VarSet) :-
     % definitions, so the user is responsible for getting rid
     % of duplicate definitions.
     %
-:- pred erlang_type_ctor_details(module_info::in,
-    erlang_type_ctor_details::in, elds_expr::out, 
-    list(elds_rtti_defn)::out) is det.
+:- pred erlang_type_ctor_details(module_info::in, erlang_type_ctor_details::in,
+    elds_expr::out, list(elds_rtti_defn)::out) is det.
 
 erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
     (
@@ -754,7 +747,7 @@ erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
         Details = erlang_eqv(MaybePseudoTypeInfo),
         rtti_to_elds_expr(ModuleInfo, MaybePseudoTypeInfo, Term, [], Defns)
     ;
-            % The types don't require any extra information
+        % The types don't require any extra information
         ( Details = erlang_list
         ; Details = erlang_array
         ; Details = erlang_builtin(_)
@@ -778,27 +771,23 @@ erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
     prog_varset::in, prog_varset::out) is det.
 
 reduce_list_term_complexity(Expr0, Expr, !RevAssignments, !VarSet) :-
-    (if
+    (
         Expr0 = elds_term(elds_tuple([Functor, Head, Tail0])),
         Functor = elds_term(elds_atom(SymName)),
         unqualify_name(SymName) = "[|]"
-    then
+    ->
         reduce_list_term_complexity(Tail0, Tail, !RevAssignments, !VarSet),
         svvarset.new_var(V, !VarSet),
         Assign = elds_eq(expr_from_var(V), Tail),
         Expr = elds_term(elds_tuple([Functor, Head, expr_from_var(V)])),
         list.cons(Assign, !RevAssignments)
-    else
+    ;
         Expr = Expr0
     ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- import_module deconstruct.
-:- import_module exception.
-
-    %
     % rtti_to_elds_expr(MI, T, Expr, !Defns)
     %
     % Given some T which is a representation of the RTTI data,
@@ -813,7 +802,6 @@ reduce_list_term_complexity(Expr0, Expr, !RevAssignments, !VarSet) :-
 :- pred rtti_to_elds_expr(module_info::in, T::in, elds_expr::out,
     list(elds_rtti_defn)::in, list(elds_rtti_defn)::out) is det.
 
-
 rtti_to_elds_expr(MI, Term, ELDS, !Defns) :-
     ( dynamic_cast(Term, Int) ->
         ELDS = elds_term(elds_int(Int))
@@ -824,9 +812,7 @@ rtti_to_elds_expr(MI, Term, ELDS, !Defns) :-
     ; dynamic_cast(Term, Float) ->
         ELDS = elds_term(elds_float(Float))
 
-        %
-        % The RTTI types which have to be handled specially.
-        %
+    % The RTTI types which have to be handled specially.
     ; dynamic_cast(Term, Atom) ->
         Atom = erlang_atom_raw(S),
         ELDS = elds_term(elds_atom_raw(S))
@@ -863,7 +849,8 @@ convert_arg_to_elds_expr(MI, Term, Index, ELDS, !Defns) :-
 
 :- pred convert_maybe_pseudo_type_info_or_self_to_elds(module_info::in,
     rtti_maybe_pseudo_type_info_or_self::in,
-    elds_expr::out, list(elds_rtti_defn)::in, list(elds_rtti_defn)::out) is det.
+    elds_expr::out, list(elds_rtti_defn)::in, list(elds_rtti_defn)::out)
+    is det.
 
 convert_maybe_pseudo_type_info_or_self_to_elds(MI, TI, Expr, !Defns) :-
     maybe_pseudo_type_info_or_self_to_elds(MI, TI, RttiId, Defns),
@@ -872,7 +859,8 @@ convert_maybe_pseudo_type_info_or_self_to_elds(MI, TI, Expr, !Defns) :-
 
 :- pred convert_maybe_pseudo_type_info_to_elds(module_info::in,
     rtti_maybe_pseudo_type_info::in,
-    elds_expr::out, list(elds_rtti_defn)::in, list(elds_rtti_defn)::out) is det.
+    elds_expr::out, list(elds_rtti_defn)::in, list(elds_rtti_defn)::out)
+    is det.
 
 convert_maybe_pseudo_type_info_to_elds(MI, TI, Expr, !Defns) :-
     maybe_pseudo_type_info_to_elds(MI, TI, RttiId, Defns),
@@ -889,7 +877,7 @@ maybe_pseudo_type_info_or_self_to_elds(MI, pseudo(PTI), RttiId, Defns) :-
     maybe_pseudo_type_info_to_elds(MI, pseudo(PTI), RttiId, Defns).
 maybe_pseudo_type_info_or_self_to_elds(_MI, self, _RttiId, _Defns) :-
     unexpected(this_file,
-            "maybe_pseudo_type_info_or_self_to_elds: self not handled yet.").
+        "maybe_pseudo_type_info_or_self_to_elds: self not handled yet").
 
 :- pred maybe_pseudo_type_info_to_elds(module_info::in,
     rtti_maybe_pseudo_type_info::in,

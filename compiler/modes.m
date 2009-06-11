@@ -383,6 +383,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_event.
@@ -736,8 +737,7 @@ modecheck_procs([ProcId | ProcIds], PredId, WhatToCheck, MayChangeCalledProc,
 
     % Mode-check the code for predicate in a given mode.
     %
-modecheck_proc(ProcId, PredId, !ModuleInfo, Errors, Changed, !IO)
-        :-
+modecheck_proc(ProcId, PredId, !ModuleInfo, Errors, Changed, !IO) :-
     modecheck_proc_general(ProcId, PredId, check_modes, may_change_called_proc,
         !ModuleInfo, Errors, Changed, !IO).
 
@@ -754,9 +754,12 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         !ModuleInfo, !Changed, Errors, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         _PredInfo0, ProcInfo0),
-    ( proc_info_get_can_process(ProcInfo0, no) ->
+    proc_info_get_can_process(ProcInfo0, CanProcess),
+    (
+        CanProcess = no,
         Errors = []
     ;
+        CanProcess = yes,
         do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             !ModuleInfo, ProcInfo0, ProcInfo, !Changed, Errors, !IO),
         module_info_preds(!.ModuleInfo, Preds1),
@@ -943,11 +946,11 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             InferModes = no,
             AllErrorSpecs = list.map(mode_error_info_to_spec(!.ModeInfo),
                 ModeErrors),
-            %
+
             % We only return the first error, because there could be a
             % large number of mode errors and usually only one is needed to
             % diagnose the problem.
-            %
+
             (
                 AllErrorSpecs = [ErrorSpec | _],
                 ErrorSpecs = [ErrorSpec]
@@ -1184,7 +1187,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         map.lookup(VarTypes, Var, Type),
         (
-            inst_matches_final(VarInst, Inst, Type, ModuleInfo)
+            inst_matches_final_typed(VarInst, Inst, Type, ModuleInfo)
         ->
             true
         ;
@@ -2556,7 +2559,7 @@ modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
         mode_info_set_instmap(InstMap0, !ModeInfo),
         mode_info_add_live_vars(NonLocalVars, !ModeInfo),
         delay_info_delay_goal(DelayInfo0, FirstErrorInfo, Goal0, DelayInfo1),
-        %  Delaying an impure goal is an impurity error.
+        % Delaying an impure goal is an impurity error.
         (
             Impure = yes,
             FirstErrorInfo = mode_error_info(Vars, _, _, _),
@@ -3549,7 +3552,7 @@ modecheck_var_has_inst_exact_match(VarId, Inst, !Subst, !ModeInfo) :-
     map.lookup(VarTypes, VarId, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
-        inst_matches_initial_no_implied_modes(VarInst, Inst, Type,
+        inst_matches_initial_no_implied_modes_sub(VarInst, Inst, Type,
             ModuleInfo0, ModuleInfo, !Subst)
     ->
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
@@ -3570,7 +3573,7 @@ modecheck_var_has_inst_no_exact_match(VarId, Inst, !Subst, !ModeInfo) :-
     map.lookup(VarTypes, VarId, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
-        inst_matches_initial(VarInst, Inst, Type, ModuleInfo0, ModuleInfo,
+        inst_matches_initial_sub(VarInst, Inst, Type, ModuleInfo0, ModuleInfo,
             !Subst)
     ->
         mode_info_set_module_info(ModuleInfo, !ModeInfo)

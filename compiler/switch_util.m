@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2008 The University of Melbourne.
+% Copyright (C) 2000-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -208,6 +208,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_out.
 :- import_module libs.
@@ -235,10 +236,10 @@ tag_cases(_ModuleInfo, _SwitchType, [], [], _) :-
 tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
         [TaggedCase | TaggedCases], MaybeIntSwitchLimits) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    MainConsTag = cons_id_to_tag(ModuleInfo, SwitchVarType, MainConsId),
+    MainConsTag = cons_id_to_tag(ModuleInfo, MainConsId),
     TaggedMainConsId = tagged_cons_id(MainConsId, MainConsTag),
     ( MainConsTag = int_tag(IntTag) ->
-        list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo, SwitchVarType),
+        list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo),
             OtherConsIds, TaggedOtherConsIds,
             IntTag, LowerLimit1, IntTag, UpperLimit1,
             1, NumValues1, is_int_switch, IsIntSwitch1),
@@ -255,8 +256,7 @@ tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
             MaybeIntSwitchLimits = not_int_switch
         )
     ;
-        list.map(tag_cons_id(ModuleInfo, SwitchVarType), OtherConsIds,
-            TaggedOtherConsIds),
+        list.map(tag_cons_id(ModuleInfo), OtherConsIds, TaggedOtherConsIds),
         TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
         tag_cases_plain(ModuleInfo, SwitchVarType, Cases, TaggedCases),
         MaybeIntSwitchLimits = not_int_switch
@@ -269,9 +269,8 @@ tag_cases_plain(_, _, [], []).
 tag_cases_plain(ModuleInfo, SwitchVarType, [Case | Cases],
         [TaggedCase | TaggedCases]) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    tag_cons_id(ModuleInfo, SwitchVarType, MainConsId, TaggedMainConsId),
-    list.map(tag_cons_id(ModuleInfo, SwitchVarType),
-        OtherConsIds, TaggedOtherConsIds),
+    tag_cons_id(ModuleInfo, MainConsId, TaggedMainConsId),
+    list.map(tag_cons_id(ModuleInfo), OtherConsIds, TaggedOtherConsIds),
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
     tag_cases_plain(ModuleInfo, SwitchVarType, Cases, TaggedCases).
 
@@ -285,30 +284,29 @@ tag_cases_in_int_switch(ModuleInfo, SwitchVarType, [Case | Cases],
         [TaggedCase | TaggedCases], !LowerLimit, !UpperLimit, !NumValues,
         !IsIntSwitch) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    tag_cons_id_in_int_switch(ModuleInfo, SwitchVarType,
-        MainConsId, TaggedMainConsId, !LowerLimit, !UpperLimit,
-        !NumValues, !IsIntSwitch),
-    list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo, SwitchVarType),
+    tag_cons_id_in_int_switch(ModuleInfo, MainConsId, TaggedMainConsId,
+        !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch),
+    list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo),
         OtherConsIds, TaggedOtherConsIds, !LowerLimit, !UpperLimit,
         !NumValues, !IsIntSwitch),
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
     tag_cases_in_int_switch(ModuleInfo, SwitchVarType, Cases, TaggedCases,
         !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch).
 
-:- pred tag_cons_id(module_info::in, mer_type::in, cons_id::in,
-    tagged_cons_id::out) is det.
+:- pred tag_cons_id(module_info::in, cons_id::in, tagged_cons_id::out) is det.
 
-tag_cons_id(ModuleInfo, SwitchVarType, ConsId, TaggedConsId) :-
-    ConsTag = cons_id_to_tag(ModuleInfo, SwitchVarType, ConsId),
+tag_cons_id(ModuleInfo, ConsId, TaggedConsId) :-
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     TaggedConsId = tagged_cons_id(ConsId, ConsTag).
 
-:- pred tag_cons_id_in_int_switch(module_info::in, mer_type::in, cons_id::in,
-    tagged_cons_id::out, int::in, int::out, int::in, int::out,
-    int::in, int::out, is_int_switch::in, is_int_switch::out) is det.
+:- pred tag_cons_id_in_int_switch(module_info::in,
+    cons_id::in, tagged_cons_id::out,
+    int::in, int::out, int::in, int::out, int::in, int::out,
+    is_int_switch::in, is_int_switch::out) is det.
 
-tag_cons_id_in_int_switch(ModuleInfo, SwitchVarType, ConsId, TaggedConsId,
+tag_cons_id_in_int_switch(ModuleInfo, ConsId, TaggedConsId,
         !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch) :-
-    ConsTag = cons_id_to_tag(ModuleInfo, SwitchVarType, ConsId),
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     TaggedConsId = tagged_cons_id(ConsId, ConsTag),
     ( ConsTag = int_tag(IntTag) ->
         int.min(IntTag, !LowerLimit),
@@ -400,7 +398,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         Cost = 2 * list.length(RAs) + estimate_switch_tag_test_cost(SubTag)
     ;
         ( Tag = no_tag
-        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = tabling_info_tag(_, _)
@@ -645,7 +643,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
         ; Tag = foreign_tag(_, _)
-        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = tabling_info_tag(_, _)
@@ -723,7 +721,7 @@ group_case_by_ptag(CaseRep, TaggedConsId, !PtagCaseMap) :-
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
         ; Tag = foreign_tag(_, _)
-        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = tabling_info_tag(_, _)

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2008 University of Melbourne.
+% Copyright (C) 2000-2009 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -68,6 +68,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.
@@ -464,12 +465,15 @@ cons_id_to_byte_list(SymName, Bytes, !StackInfo) :-
 
 :- func cons_id_rep(cons_id) = string.
 
-cons_id_rep(cons(SymName, _)) = prog_rep.sym_base_name_to_string(SymName).
+cons_id_rep(cons(SymName, _, _)) =
+    prog_rep.sym_base_name_to_string(SymName).
+cons_id_rep(tuple_cons(_)) = "{}".
 cons_id_rep(int_const(Int)) = string.int_to_string(Int).
 cons_id_rep(float_const(Float)) = string.float_to_string(Float).
-cons_id_rep(string_const(String)) = string.append_list(["""", String, """"]).
-cons_id_rep(implementation_defined_const(Name)) = "$" ++ Name.
-cons_id_rep(pred_const(_, _)) = "$pred_const".
+cons_id_rep(char_const(Char)) = string.char_to_string(Char).
+cons_id_rep(string_const(String)) = """" ++ String ++ """".
+cons_id_rep(impl_defined_const(Name)) = "$" ++ Name.
+cons_id_rep(closure_cons(_, _)) = "$closure_cons".
 cons_id_rep(type_ctor_info_const(_, _, _)) = "$type_ctor_info_const".
 cons_id_rep(base_typeclass_info_const(_, _, _, _)) =
     "$base_typeclass_info_const".
@@ -477,8 +481,8 @@ cons_id_rep(type_info_cell_constructor(_)) = "$type_info_cell_constructor".
 cons_id_rep(typeclass_info_cell_constructor) =
     "$typeclass_info_cell_constructor".
 cons_id_rep(tabling_info_const(_)) = "$tabling_info_const".
-cons_id_rep(deep_profiling_proc_layout(_)) = "$deep_profiling_procedure_data".
 cons_id_rep(table_io_decl(_)) = "$table_io_decl".
+cons_id_rep(deep_profiling_proc_layout(_)) = "$deep_profiling_proc_layout".
 
 :- func sym_base_name_to_string(sym_name) = string.
 

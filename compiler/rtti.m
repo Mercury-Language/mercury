@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -173,7 +173,7 @@
     % the second, third and fourth components.
     %
 :- type type_ctor_details
-    --->    enum(
+    --->    tcd_enum(
                 enum_axioms         :: equality_axioms,
                 enum_functors       :: list(enum_functor),
                 enum_value_table    :: map(int, enum_functor),
@@ -182,7 +182,7 @@
                 enum_functor_number_mapping
                                     :: list(int)
             )
-    ;       foreign_enum(
+    ;       tcd_foreign_enum(
                 foreign_enum_language      :: foreign_language,
                 foreign_enum_axioms        :: equality_axioms,
                 foreign_enum_functors      :: list(foreign_enum_functor),
@@ -191,7 +191,7 @@
                 foreign_enum_functor_number_mapping
                                            :: list(int)
             )
-    ;       du(
+    ;       tcd_du(
                 du_axioms           :: equality_axioms,
                 du_functors         :: list(du_functor),
                 du_value_table      :: ptag_map,
@@ -199,7 +199,7 @@
                 du_functor_number_mapping
                                     :: list(int)
             )
-    ;       reserved(
+    ;       tcd_reserved(
                 res_axioms          :: equality_axioms,
                 res_functors        :: list(maybe_reserved_functor),
                 res_value_table_res :: list(reserved_functor),
@@ -209,20 +209,20 @@
                 res_functor_number_mapping
                                     :: list(int)
             )
-    ;       notag(
+    ;       tcd_notag(
                 notag_axioms        :: equality_axioms,
                 notag_functor       :: notag_functor
             )
-    ;       eqv(
+    ;       tcd_eqv(
                 eqv_type            :: rtti_maybe_pseudo_type_info
             )
-    ;       builtin(
+    ;       tcd_builtin(
                 builtin_ctor        :: builtin_ctor
             )
-    ;       impl_artifact(
+    ;       tcd_impl_artifact(
                 impl_ctor           :: impl_ctor
             )
-    ;       foreign(
+    ;       tcd_foreign(
                 is_stable           :: is_stable
             ).
 
@@ -1517,7 +1517,7 @@ sectag_and_locn_to_locn_string(sectag_locn_remote(_), "MR_SECTAG_REMOTE").
 type_ctor_rep_to_string(TypeCtorData, RepStr) :-
     TypeCtorDetails = TypeCtorData ^ tcr_rep_details,
     (
-        TypeCtorDetails = enum(TypeCtorUserEq, _, _, _, IsDummy, _),
+        TypeCtorDetails = tcd_enum(TypeCtorUserEq, _, _, _, IsDummy, _),
         (
             IsDummy = yes,
             expect(unify(TypeCtorUserEq, standard), this_file,
@@ -1534,7 +1534,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             )
         )
     ;
-        TypeCtorDetails = foreign_enum(_, TypeCtorUserEq, _, _, _, _),
+        TypeCtorDetails = tcd_foreign_enum(_, TypeCtorUserEq, _, _, _, _),
         (
             TypeCtorUserEq = standard,
             RepStr = "MR_TYPECTOR_REP_FOREIGN_ENUM"
@@ -1543,7 +1543,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             RepStr = "MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ"
         )
     ;
-        TypeCtorDetails = du(TypeCtorUserEq, _, _, _, _),
+        TypeCtorDetails = tcd_du(TypeCtorUserEq, _, _, _, _),
         (
             TypeCtorUserEq = standard,
             RepStr = "MR_TYPECTOR_REP_DU"
@@ -1552,7 +1552,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             RepStr = "MR_TYPECTOR_REP_DU_USEREQ"
         )
     ;
-        TypeCtorDetails = reserved(TypeCtorUserEq, _, _, _, _, _),
+        TypeCtorDetails = tcd_reserved(TypeCtorUserEq, _, _, _, _, _),
         (
             TypeCtorUserEq = standard,
             RepStr = "MR_TYPECTOR_REP_RESERVED_ADDR"
@@ -1561,7 +1561,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             RepStr = "MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ"
         )
     ;
-        TypeCtorDetails = notag(TypeCtorUserEq, NotagFunctor),
+        TypeCtorDetails = tcd_notag(TypeCtorUserEq, NotagFunctor),
         NotagEqvType = NotagFunctor ^ nt_arg_type,
         (
             TypeCtorUserEq = standard,
@@ -1583,7 +1583,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             )
         )
     ;
-        TypeCtorDetails = eqv(EqvType),
+        TypeCtorDetails = tcd_eqv(EqvType),
         (
             EqvType = pseudo(_),
             RepStr = "MR_TYPECTOR_REP_EQUIV"
@@ -1592,13 +1592,13 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             RepStr = "MR_TYPECTOR_REP_EQUIV_GROUND"
         )
     ;
-        TypeCtorDetails = builtin(BuiltinCtor),
+        TypeCtorDetails = tcd_builtin(BuiltinCtor),
         builtin_ctor_rep_to_string(BuiltinCtor, RepStr)
     ;
-        TypeCtorDetails = impl_artifact(ImplCtor),
+        TypeCtorDetails = tcd_impl_artifact(ImplCtor),
         impl_ctor_rep_to_string(ImplCtor, RepStr)
     ;
-        TypeCtorDetails = foreign(IsStable),
+        TypeCtorDetails = tcd_foreign(IsStable),
         ModuleName = TypeCtorData ^ tcr_module_name,
         TypeName = TypeCtorData ^ tcr_type_name,
         TypeArity = TypeCtorData ^ tcr_arity,
@@ -1676,12 +1676,12 @@ maybe_pseudo_type_info_or_self_to_rtti_data(plain(TypeInfo)) =
 maybe_pseudo_type_info_or_self_to_rtti_data(self) =
     rtti_data_pseudo_type_info(type_var(0)).
 
-type_ctor_details_num_ptags(enum(_, _, _, _, _, _)) = -1.
-type_ctor_details_num_ptags(foreign_enum(_, _, _, _, _, _)) = -1.
-type_ctor_details_num_ptags(du(_, _, PtagMap, _, _)) = LastPtag + 1 :-
+type_ctor_details_num_ptags(tcd_enum(_, _, _, _, _, _)) = -1.
+type_ctor_details_num_ptags(tcd_foreign_enum(_, _, _, _, _, _)) = -1.
+type_ctor_details_num_ptags(tcd_du(_, _, PtagMap, _, _)) = LastPtag + 1 :-
     map.keys(PtagMap, Ptags),
     list.last_det(Ptags, LastPtag).
-type_ctor_details_num_ptags(reserved(_, _, _, PtagMap, _, _)) = NumPtags :-
+type_ctor_details_num_ptags(tcd_reserved(_, _, _, PtagMap, _, _)) = NumPtags :-
     map.keys(PtagMap, Ptags),
     (
         Ptags = [],
@@ -1691,25 +1691,25 @@ type_ctor_details_num_ptags(reserved(_, _, _, PtagMap, _, _)) = NumPtags :-
         list.last_det(Ptags, LastPtag),
         NumPtags = LastPtag + 1
     ).
-type_ctor_details_num_ptags(notag(_, _)) = -1.
-type_ctor_details_num_ptags(eqv(_)) = -1.
-type_ctor_details_num_ptags(builtin(_)) = -1.
-type_ctor_details_num_ptags(impl_artifact(_)) = -1.
-type_ctor_details_num_ptags(foreign(_)) = -1.
+type_ctor_details_num_ptags(tcd_notag(_, _)) = -1.
+type_ctor_details_num_ptags(tcd_eqv(_)) = -1.
+type_ctor_details_num_ptags(tcd_builtin(_)) = -1.
+type_ctor_details_num_ptags(tcd_impl_artifact(_)) = -1.
+type_ctor_details_num_ptags(tcd_foreign(_)) = -1.
 
-type_ctor_details_num_functors(enum(_, Functors, _, _, _, _)) =
+type_ctor_details_num_functors(tcd_enum(_, Functors, _, _, _, _)) =
     list.length(Functors).
-type_ctor_details_num_functors(foreign_enum(_, _, Functors, _, _, _)) = 
+type_ctor_details_num_functors(tcd_foreign_enum(_, _, Functors, _, _, _)) = 
     list.length(Functors).
-type_ctor_details_num_functors(du(_, Functors, _, _, _)) =
+type_ctor_details_num_functors(tcd_du(_, Functors, _, _, _)) =
     list.length(Functors).
-type_ctor_details_num_functors(reserved(_, Functors, _, _, _, _)) =
+type_ctor_details_num_functors(tcd_reserved(_, Functors, _, _, _, _)) =
     list.length(Functors).
-type_ctor_details_num_functors(notag(_, _)) = 1.
-type_ctor_details_num_functors(eqv(_)) = -1.
-type_ctor_details_num_functors(builtin(_)) = -1.
-type_ctor_details_num_functors(impl_artifact(_)) = -1.
-type_ctor_details_num_functors(foreign(_)) = -1.
+type_ctor_details_num_functors(tcd_notag(_, _)) = 1.
+type_ctor_details_num_functors(tcd_eqv(_)) = -1.
+type_ctor_details_num_functors(tcd_builtin(_)) = -1.
+type_ctor_details_num_functors(tcd_impl_artifact(_)) = -1.
+type_ctor_details_num_functors(tcd_foreign(_)) = -1.
 
 du_arg_info_name(ArgInfo) = ArgInfo ^ du_arg_name.
 

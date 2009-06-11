@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -135,8 +135,9 @@
     ;       doesnt_need_flush.
 
 :- typeclass build_interval_info_acc(T) where [
-    pred use_cell(prog_var::in, list(prog_var)::in, cons_id::in, hlds_goal::in,
-        interval_info::in, interval_info::out, T::in, T::out) is det
+    pred use_cell(prog_var::in, list(prog_var)::in, cons_id::in,
+        hlds_goal::in, interval_info::in, interval_info::out, T::in, T::out)
+        is det
 ].
 
 :- pred build_interval_info_in_goal(hlds_goal::in, interval_info::in,

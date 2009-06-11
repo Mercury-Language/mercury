@@ -295,9 +295,9 @@ generate_tag_test(Var, ConsId, CheaperTagTest, Sense, ElseLabel, Code, !CI) :-
     maybe_cheaper_tag_test::in, test_sense::in, label::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
-generate_raw_tag_test(VarRval, VarType, VarName, ConsId, MaybeConsTag,
+generate_raw_tag_test(VarRval, _VarType, VarName, ConsId, MaybeConsTag,
         CheaperTagTest, Sense, ElseLabel, Code, !CI) :-
-    ConsIdName = hlds_out.cons_id_to_string(ConsId),
+    ConsIdName = cons_id_and_arity_to_string(ConsId),
     % As an optimization, for data types with exactly two alternatives,
     % one of which is a constant, we make sure that we test against the
     % constant (negating the result of the test, if needed),
@@ -319,7 +319,8 @@ generate_raw_tag_test(VarRval, VarType, VarName, ConsId, MaybeConsTag,
             % Our caller has already computed ConsTag.
         ;
             MaybeConsTag = no,
-            ConsTag = cons_id_to_tag_for_type(!.CI, VarType, ConsId)
+            get_module_info(!.CI, ModuleInfo),
+            ConsTag = cons_id_to_tag(ModuleInfo, ConsId)
         ),
         raw_tag_test(VarRval, ConsTag, TestRval)
     ),
@@ -362,7 +363,7 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
             "foreign tag for language other than C"),
         TestRval = binop(eq, Rval, const(llconst_foreign(ForeignVal, integer)))
     ;
-        ConsTag = pred_closure_tag(_, _, _),
+        ConsTag = closure_tag(_, _, _),
         % This should never happen, since the error will be detected
         % during mode checking.
         unexpected(this_file, "Attempted higher-order unification")
@@ -449,7 +450,8 @@ generate_reserved_address(reserved_object(_, _, _)) = _ :-
 
 generate_construction(Var, ConsId, Args, Modes, HowToConstruct,
         TakeAddr, MaybeSize, GoalInfo, Code, !CI) :-
-    Tag = cons_id_to_tag_for_var(!.CI, Var, ConsId),
+    get_module_info(!.CI, ModuleInfo),
+    Tag = cons_id_to_tag(ModuleInfo, ConsId),
     generate_construction_2(Tag, Var, Args, Modes, HowToConstruct,
         TakeAddr, MaybeSize, GoalInfo, Code, !CI).
 
@@ -594,11 +596,11 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
             Var, Args, Modes, HowToConstruct, TakeAddr, MaybeSize, GoalInfo,
             Code, !CI)
     ;
-        ConsTag = pred_closure_tag(PredId, ProcId, EvalMethod),
+        ConsTag = closure_tag(PredId, ProcId, EvalMethod),
         expect(unify(TakeAddr, []), this_file,
-            "generate_construction_2: pred_closure_tag has take_addr"),
+            "generate_construction_2: closure_tag has take_addr"),
         expect(unify(MaybeSize, no), this_file,
-            "generate_construction_2: pred_closure_tag has size"),
+            "generate_construction_2: closure_tag has size"),
         generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo,
             Code, !CI)
     ).
@@ -1029,7 +1031,8 @@ make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
     code_info::in, code_info::out) is det.
 
 generate_det_deconstruction(Var, Cons, Args, Modes, Code, !CI) :-
-    Tag = cons_id_to_tag_for_var(!.CI, Var, Cons),
+    get_module_info(!.CI, ModuleInfo),
+    Tag = cons_id_to_tag(ModuleInfo, Cons),
     generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI).
 
 :- pred generate_det_deconstruction_2(prog_var::in, cons_id::in,
@@ -1044,7 +1047,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
         ; Tag = int_tag(_Int)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
-        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = tabling_info_tag(_, _)
@@ -1264,12 +1267,11 @@ generate_ground_term(TermVar, Goal, !CI) :-
         ( NonLocal = TermVar ->
             ( GoalExpr = conj(plain_conj, Conjuncts) ->
                 get_module_info(!.CI, ModuleInfo),
-                VarTypes = get_var_types(!.CI),
                 get_exprn_opts(!.CI, ExprnOpts),
                 UnboxedFloats = get_unboxed_floats(ExprnOpts),
                 get_static_cell_info(!.CI, StaticCellInfo0),
                 map.init(ActiveMap0),
-                generate_ground_term_conjuncts(ModuleInfo, VarTypes, Conjuncts,
+                generate_ground_term_conjuncts(ModuleInfo, Conjuncts,
                     UnboxedFloats, StaticCellInfo0, StaticCellInfo,
                     ActiveMap0, ActiveMap),
                 map.to_assoc_list(ActiveMap, ActivePairs),
@@ -1293,26 +1295,26 @@ generate_ground_term(TermVar, Goal, !CI) :-
         unexpected(this_file, "generate_ground_term: unexpected nonlocals")
     ).
 
-:- pred generate_ground_term_conjuncts(module_info::in, vartypes::in,
+:- pred generate_ground_term_conjuncts(module_info::in,
     list(hlds_goal)::in, have_unboxed_floats::in,
     static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_conjuncts(_ModuleInfo, _VarTypes, [],
+generate_ground_term_conjuncts(_ModuleInfo, [],
         _UnboxedFloats, !StaticCellInfo, !ActiveMap).
-generate_ground_term_conjuncts(ModuleInfo, VarTypes, [Goal | Goals],
+generate_ground_term_conjuncts(ModuleInfo, [Goal | Goals],
         UnboxedFloats, !StaticCellInfo, !ActiveMap) :-
-    generate_ground_term_conjunct(ModuleInfo, VarTypes, Goal, UnboxedFloats,
+    generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
         !StaticCellInfo, !ActiveMap),
-    generate_ground_term_conjuncts(ModuleInfo, VarTypes, Goals, UnboxedFloats,
+    generate_ground_term_conjuncts(ModuleInfo, Goals, UnboxedFloats,
         !StaticCellInfo, !ActiveMap).
 
-:- pred generate_ground_term_conjunct(module_info::in, vartypes::in,
+:- pred generate_ground_term_conjunct(module_info::in,
     hlds_goal::in, have_unboxed_floats::in,
     static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_conjunct(ModuleInfo, VarTypes, Goal, UnboxedFloats,
+generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
         !StaticCellInfo, !ActiveMap) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
@@ -1320,8 +1322,7 @@ generate_ground_term_conjunct(ModuleInfo, VarTypes, Goal, UnboxedFloats,
         Unify = construct(Var, ConsId, Args, _, _, _, SubInfo),
         SubInfo = no_construct_sub_info
     ->
-        map.lookup(VarTypes, Var, Type),
-        ConsTag = cons_id_to_tag(ModuleInfo, Type, ConsId),
+        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
             !StaticCellInfo, !ActiveMap)
     ;
@@ -1420,7 +1421,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
         ActiveGroundTerm = Rval - data_ptr,
         svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
-        ( ConsTag = pred_closure_tag(_, _, _)
+        ( ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = tabling_info_tag(_, _)

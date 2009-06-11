@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,8 +107,9 @@
 
     % Various predicates for accessing the cons_id type.
 
-    % Given a cons_id and a list of argument terms, convert it into a
-    % term. Fails if the cons_id is a pred_const, or type_ctor_info_const.
+    % Given a cons_id and a list of argument terms, convert it into a term.
+    % Works only on the cons_ids that can be expressed in source programs,
+    % so it fails e.g. on pred_consts and type_ctor_info_consts.
     %
 :- pred cons_id_and_args_to_term(cons_id::in, list(term(T))::in, term(T)::out)
     is semidet.
@@ -127,23 +128,6 @@
     % Given a const and an arity for the functor, create a cons_id.
     %
 :- func make_functor_cons_id(const, arity) = cons_id.
-
-    % Another way of making a cons_id from a functor.
-    % Given the name, argument types, and type_ctor of a functor,
-    % create a cons_id for that functor.
-    %
-:- func make_cons_id(sym_name, list(constructor_arg), type_ctor) = cons_id.
-
-    % Another way of making a cons_id from a functor.
-    % Given the name, argument types, and type_ctor of a functor,
-    % create a cons_id for that functor.
-    %
-    % Differs from make_cons_id in that (a) it requires the sym_name
-    % to be already module qualified, which means that it does not
-    % need the module qualification of the type, (b) it can compute the
-    % arity from any list of the right length.
-    %
-:- func make_cons_id_from_qualified_sym_name(sym_name, list(_)) = cons_id.
 
 %-----------------------------------------------------------------------------%
 
@@ -215,6 +199,7 @@
 :- import_module pair.
 :- import_module string.
 :- import_module svmap.
+:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -577,46 +562,52 @@ cons_id_and_args_to_term(int_const(Int), [], Term) :-
 cons_id_and_args_to_term(float_const(Float), [], Term) :-
     term.context_init(Context),
     Term = term.functor(term.float(Float), [], Context).
+cons_id_and_args_to_term(char_const(Char), [], Term) :-
+    SymName = unqualified(term_io.escaped_char(Char)),
+    construct_qualified_term(SymName, [], Term).
 cons_id_and_args_to_term(string_const(String), [], Term) :-
     term.context_init(Context),
     Term = term.functor(term.string(String), [], Context).
-cons_id_and_args_to_term(cons(SymName, _Arity), Args, Term) :-
+cons_id_and_args_to_term(tuple_cons(_Arity), Args, Term) :-
+    SymName = unqualified("{}"),
+    construct_qualified_term(SymName, Args, Term).
+cons_id_and_args_to_term(cons(SymName, _Arity, _TypeCtor), Args, Term) :-
     construct_qualified_term(SymName, Args, Term).
 
-cons_id_arity(cons(_, Arity)) = Arity.
-cons_id_arity(int_const(_)) = 0.
-cons_id_arity(string_const(_)) = 0.
-cons_id_arity(float_const(_)) = 0.
-cons_id_arity(implementation_defined_const(_)) = 0.
-cons_id_arity(pred_const(_, _)) =
-    unexpected(this_file, "cons_id_arity: can't get arity of pred_const").
-cons_id_arity(type_ctor_info_const(_, _, _)) =
-    unexpected(this_file,
-        "cons_id_arity: can't get arity of type_ctor_info_const").
-cons_id_arity(base_typeclass_info_const(_, _, _, _)) =
-    unexpected(this_file, "cons_id_arity: " ++
-        "can't get arity of base_typeclass_info_const").
-cons_id_arity(type_info_cell_constructor(_)) =
-    unexpected(this_file, "cons_id_arity: " ++
-        "can't get arity of type_info_cell_constructor").
-cons_id_arity(typeclass_info_cell_constructor) =
-    unexpected(this_file, "cons_id_arity: " ++
-        "can't get arity of typeclass_info_cell_constructor").
-cons_id_arity(tabling_info_const(_)) =
-    unexpected(this_file,
-        "cons_id_arity: can't get arity of tabling_info_const").
-cons_id_arity(deep_profiling_proc_layout(_)) =
-    unexpected(this_file, "cons_id_arity: " ++
-        "can't get arity of deep_profiling_proc_layout").
-cons_id_arity(table_io_decl(_)) =
-    unexpected(this_file, "cons_id_arity: can't get arity of table_io_decl").
+cons_id_arity(ConsId) = Arity :-
+    (
+        ConsId = cons(_, Arity, _)
+    ;
+        ConsId = tuple_cons(Arity)
+    ;
+        ( ConsId = int_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
+        ),
+        Arity = 0
+    ;
+        ( ConsId = closure_cons(_, _)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ; ConsId = table_io_decl(_)
+        ),
+        unexpected(this_file, "cons_id_arity: unexpected cons_id")
+    ).
 
-cons_id_maybe_arity(cons(_, Arity)) = yes(Arity).
+cons_id_maybe_arity(cons(_, Arity, _)) = yes(Arity).
+cons_id_maybe_arity(tuple_cons(Arity)) = yes(Arity).
 cons_id_maybe_arity(int_const(_)) = yes(0).
-cons_id_maybe_arity(string_const(_)) = yes(0).
 cons_id_maybe_arity(float_const(_)) = yes(0).
-cons_id_maybe_arity(implementation_defined_const(_)) = yes(0).
-cons_id_maybe_arity(pred_const(_, _)) = no.
+cons_id_maybe_arity(char_const(_)) = yes(0).
+cons_id_maybe_arity(string_const(_)) = yes(0).
+cons_id_maybe_arity(impl_defined_const(_)) = yes(0).
+cons_id_maybe_arity(closure_cons(_, _)) = no.
 cons_id_maybe_arity(type_ctor_info_const(_, _, _)) = no.
 cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _)) = no.
 cons_id_maybe_arity(type_info_cell_constructor(_)) = no.
@@ -625,35 +616,13 @@ cons_id_maybe_arity(tabling_info_const(_)) = no.
 cons_id_maybe_arity(deep_profiling_proc_layout(_)) = no.
 cons_id_maybe_arity(table_io_decl(_)) = no.
 
-make_functor_cons_id(term.atom(Name), Arity) = cons(unqualified(Name), Arity).
+make_functor_cons_id(term.atom(Name), Arity) =
+    cons(unqualified(Name), Arity, cons_id_dummy_type_ctor).
 make_functor_cons_id(term.integer(Int), _) = int_const(Int).
 make_functor_cons_id(term.string(String), _) = string_const(String).
 make_functor_cons_id(term.float(Float), _) = float_const(Float).
 make_functor_cons_id(term.implementation_defined(Name), _) =
-    implementation_defined_const(Name).
-
-make_cons_id(SymName0, Args, TypeCtor) = cons(SymName, Arity) :-
-    % Use the module qualifier on the SymName, if there is one,
-    % otherwise use the module qualifier on the Type, if there is one,
-    % otherwise leave it unqualified.
-    % XXX is that the right thing to do?
-    (
-        SymName0 = qualified(_, _),
-        SymName = SymName0
-    ;
-        SymName0 = unqualified(ConsName),
-        (
-            TypeCtor = type_ctor(unqualified(_), _),
-            SymName = SymName0
-        ;
-            TypeCtor = type_ctor(qualified(TypeModule, _), _),
-            SymName = qualified(TypeModule, ConsName)
-        )
-    ),
-    list.length(Args, Arity).
-
-make_cons_id_from_qualified_sym_name(SymName, Args) = cons(SymName, Arity) :-
-    list.length(Args, Arity).
+    impl_defined_const(Name).
 
 %-----------------------------------------------------------------------------%
 

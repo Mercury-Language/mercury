@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2008 The University of Melbourne.
+% Copyright (C) 2005-2006, 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,23 +105,26 @@
 
 top_selector = [].
 
-selector_init(Cons, Index) = [TermSel] :-
+selector_init(ConsId, Index) = [TermSel] :-
     (
-        Cons = cons(_, _),
-        TermSel = termsel(Cons, Index)
+        ( ConsId = cons(_, _, _)
+        ; ConsId = tuple_cons(_)
+        ),
+        TermSel = termsel(ConsId, Index)
     ;
-        ( Cons = int_const(_)
-        ; Cons = string_const(_)
-        ; Cons = float_const(_)
-        ; Cons = implementation_defined_const(_)
-        ; Cons = pred_const(_, _)
-        ; Cons = type_ctor_info_const(_, _, _)
-        ; Cons = base_typeclass_info_const(_, _, _, _)
-        ; Cons = type_info_cell_constructor(_)
-        ; Cons = typeclass_info_cell_constructor
-        ; Cons = tabling_info_const(_)
-        ; Cons = deep_profiling_proc_layout(_)
-        ; Cons = table_io_decl(_)
+        ( ConsId = closure_cons(_, _)
+        ; ConsId = int_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = table_io_decl(_)
+        ; ConsId = deep_profiling_proc_layout(_)
         ),
         unexpected(this_file, "selector_init: cannot handle cons_id")
     ).

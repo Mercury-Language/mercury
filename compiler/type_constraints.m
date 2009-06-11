@@ -44,6 +44,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_event.
@@ -68,6 +69,7 @@
 :- import_module svset.
 :- import_module svvarset.
 :- import_module term.
+:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -1640,11 +1642,12 @@ goal_to_constraint(Environment, Goal, !TCInfo) :-
                     Context, no, no)],
                 RelevantTVars = [LTVar]
             ;
-                ConsId = cons(Name, Arity),
+                ConsId = cons(Name, Arity, _TypeCtor),
+                % The _TypeCtor field is not meaningful yet.
                 Arity = list.length(Args)
             ->
                 list.map_foldl(get_var_type, Args, ArgTypeVars, !TCInfo),
-                % If it is a type constructor, create a disjunction
+                % If it is a data constructor, create a disjunction
                 % constraint with each possible type of the constructor.
                 ( map.search(FuncEnv, ConsId, Cons_Defns) ->
                     list.map_foldl(
@@ -1653,7 +1656,7 @@ goal_to_constraint(Environment, Goal, !TCInfo) :-
                 ;
                     TypeConstraints = []
                 ),
-                % If it is a predicate constructor, create a disjunction
+                % If it is a closure constructor, create a disjunction
                 % constraint for each predicate it could refer to.
                 (
                     predicate_table_search_sym(PredEnv,
@@ -2063,9 +2066,9 @@ pred_has_arity(Preds, Arity, PredId) :-
 builtin_atomic_type(int_const(_), builtin_type_int).
 builtin_atomic_type(float_const(_), builtin_type_float).
 builtin_atomic_type(string_const(_), builtin_type_string).
-builtin_atomic_type(cons(unqualified(String), 0), builtin_type_character) :-
-    string.char_to_string(_, String).
-builtin_atomic_type(implementation_defined_const(Name), Type) :-
+builtin_atomic_type(cons(unqualified(String), 0, _), builtin_type_char) :-
+    term_io.string_is_escaped_char(_, String).
+builtin_atomic_type(impl_defined_const(Name), Type) :-
     (
         ( Name = "file"
         ; Name = "module"
@@ -2394,8 +2397,8 @@ type_to_string(TVarSet, Type, Name) :-
     ;
         Type = builtin_type(builtin_type_string),
         Name = "string"
-    ;
-        Type = builtin_type(builtin_type_character),
+    ; 
+        Type = builtin_type(builtin_type_char),
         Name = "character"
     ;
         Type = tuple_type(Subtypes, _),

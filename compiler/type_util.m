@@ -237,7 +237,8 @@
 :- pred get_existq_cons_defn(module_info::in, mer_type::in, cons_id::in,
     ctor_defn::out) is semidet.
 
-:- pred is_existq_cons(module_info::in, mer_type::in, cons_id::in) is semidet.
+:- pred is_existq_cons(module_info::in, mer_type::in, cons_id::in)
+    is semidet.
 
     % Check whether a type is a no_tag type (i.e. one with only one
     % constructor, and whose one constructor has only one argument).
@@ -345,6 +346,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -990,6 +992,7 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     map.member(TypeDefnBody ^ du_type_cons_tag_values, ConsId, _),
 
+    % XXX We should look it up in a type_ctor-specific table, not a global one.
     module_info_get_cons_table(ModuleInfo, Ctors),
     map.lookup(Ctors, ConsId, ConsDefns),
     list.member(ConsDefn, ConsDefns),
@@ -1011,7 +1014,9 @@ is_existq_cons(ModuleInfo, VarType, ConsId) :-
     is_existq_cons(ModuleInfo, VarType, ConsId, _).
 
 get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
+    % XXX We should look it up in a type_ctor-specific table, not a global one.
     module_info_get_cons_table(ModuleInfo, Ctors),
+
     % will fail for builtin cons_ids.
     map.search(Ctors, ConsId, ConsDefns),
     MatchingCons =
@@ -1093,10 +1098,13 @@ type_not_stored_in_region(Type, ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId0, Arity,
+maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId, Arity,
         MaybeTypes) :-
-    ( ConsId0 = cons(_SymName, _) ->
-        ConsId = ConsId0,
+    (
+        ( ConsId = cons(_SymName, _, _)
+        ; ConsId = tuple_cons(_)
+        )
+    ->
         (
             MaybeType = yes(Type),
 

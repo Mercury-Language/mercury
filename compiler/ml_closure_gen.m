@@ -96,15 +96,14 @@
 % XXX The following modules depend on the LLDS,
 % so ideally they should not be used here.
 :- import_module ll_backend.
-:- import_module ll_backend.continuation_info. % needed for
-                                               % `generate_closure_layout'
-:- import_module ll_backend.llds.              % needed for `layout_locn'
-:- import_module ll_backend.stack_layout.      % needed for
-                                               % `represent_locn_as_int'
+:- import_module ll_backend.continuation_info. % for `generate_closure_layout'
+:- import_module ll_backend.llds.              % for `layout_locn'
+:- import_module ll_backend.stack_layout.      % for `represent_locn_as_int'
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.rtti_to_mlds.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.

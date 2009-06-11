@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: hlds_out.m.
 % Main authors: conway, fjh.
-% 
+%
 % There is quite a bit of overlap between the following modules:
 %
 %   hlds_out.m
@@ -18,7 +18,7 @@
 % mercury_to_mercury.m prints the parse tree data structure defined
 % in prog_data.m.  hlds_out.m does a similar task, but for the data
 % structure defined in hlds.m.  term_io.m prints terms.
-% 
+%
 % There are two different ways of printing variables.
 % One way uses the names Var', Var'', etc. which are generated
 % by the compiler.  The other way converts all names back into
@@ -26,7 +26,7 @@
 % mercury_to_mercury.m, which uses the second method, rather
 % than term_io.m, which uses the first method.  We should
 % think about using an option to specify which method is used.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -56,8 +56,8 @@
 
 :- pred write_class_id(class_id::in, io::di, io::uo) is det.
 
-:- pred write_cons_id(cons_id::in, io::di, io::uo) is det.
-:- func cons_id_to_string(cons_id) = string.
+:- pred write_cons_id_and_arity(cons_id::in, io::di, io::uo) is det.
+:- func cons_id_and_arity_to_string(cons_id) = string.
 
     % write_pred_id/4 writes out a message such as
     %       predicate `foo.bar/3'
@@ -183,8 +183,8 @@
     % give the context. The boolean says whether variables should have
     % their numbers appended to them.
     %
-:- pred write_functor_cons_id(cons_id::in, list(prog_var)::in, prog_varset::in,
-    module_info::in, bool::in, io::di, io::uo) is det.
+:- pred write_functor_cons_id(cons_id::in, list(prog_var)::in,
+    prog_varset::in, module_info::in, bool::in, io::di, io::uo) is det.
 :- func functor_cons_id_to_string(cons_id, list(prog_var), prog_varset,
     module_info, bool) = string.
 
@@ -318,58 +318,87 @@ type_ctor_to_string(type_ctor(Name, Arity)) =
 write_class_id(class_id(Name, Arity), !IO) :-
     prog_out.write_sym_name_and_arity(Name / Arity, !IO).
 
-write_cons_id(ConsId, !IO) :-
-    io.write_string(cons_id_to_string(ConsId), !IO).
+write_cons_id_and_arity(ConsId, !IO) :-
+    io.write_string(cons_id_and_arity_to_string(ConsId), !IO).
 
-cons_id_to_string(cons(SymName, Arity)) = String :-
-    SymNameString0 = sym_name_to_string(SymName),
-    ( string.contains_char(SymNameString0, '*') ->
-        % We need to protect against the * appearing next to a /
-        Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
-            ( Char = ('*') ->
-                string.append(Str0, "star", Str)
-            ;
-                string.char_to_string(Char, CharStr),
-                string.append(Str0, CharStr, Str)
-            )
+cons_id_and_arity_to_string(ConsId) = String :-
+    (
+        ConsId = cons(SymName, Arity, _TypeCtor),
+        SymNameString0 = sym_name_to_string(SymName),
+        ( string.contains_char(SymNameString0, '*') ->
+            % We need to protect against the * appearing next to a /
+            Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
+                ( Char = ('*') ->
+                    string.append(Str0, "star", Str)
+                ;
+                    string.char_to_string(Char, CharStr),
+                    string.append(Str0, CharStr, Str)
+                )
+            ),
+            string.foldl(Stuff, SymNameString0, "", SymNameString1)
+        ;
+            SymNameString1 = SymNameString0
         ),
-        string.foldl(Stuff, SymNameString0, "", SymNameString1)
+        SymNameString = term_io.escaped_string(SymNameString1),
+        string.int_to_string(Arity, ArityString),
+        string.append_list([SymNameString, "/", ArityString], String)
     ;
-        SymNameString1 = SymNameString0
-    ),
-    SymNameString = term_io.escaped_string(SymNameString1),
-    string.int_to_string(Arity, ArityString),
-    string.append_list([SymNameString, "/", ArityString], String).
-cons_id_to_string(int_const(Int)) = String :-
-    string.int_to_string(Int, String).
-cons_id_to_string(string_const(String)) =
-    term_io.quoted_string(String).
-cons_id_to_string(float_const(Float)) =
-    float_to_string(Float).
-cons_id_to_string(implementation_defined_const(Name)) =
-    "$" ++ Name.
-cons_id_to_string(pred_const(shrouded_pred_proc_id(PredId, ProcId), _)) =
-    "<pred " ++ int_to_string(PredId) ++
-    " proc " ++ int_to_string(ProcId) ++ ">".
-cons_id_to_string(type_ctor_info_const(Module, Ctor, Arity)) =
-    "<type_ctor_info " ++ sym_name_to_string(Module) ++ "." ++
-    Ctor ++ "/" ++ int_to_string(Arity) ++ ">".
-cons_id_to_string(base_typeclass_info_const(_, _, _, _)) =
-    "<base_typeclass_info>".
-cons_id_to_string(type_info_cell_constructor(_)) =
-    "<type_info_cell_constructor>".
-cons_id_to_string(typeclass_info_cell_constructor) =
-    "<typeclass_info_cell_constructor>".
-cons_id_to_string(tabling_info_const(shrouded_pred_proc_id(PredId, ProcId))) =
-    "<tabling_info " ++ int_to_string(PredId) ++
-    ", " ++ int_to_string(ProcId) ++ ">".
-cons_id_to_string(deep_profiling_proc_layout(
-        shrouded_pred_proc_id(PredId, ProcId))) =
-    "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++
-    ", " ++ int_to_string(ProcId) ++ ">".
-cons_id_to_string(table_io_decl(shrouded_pred_proc_id(PredId, ProcId))) =
-    "<table_io_decl " ++ int_to_string(PredId) ++
-    ", " ++ int_to_string(ProcId) ++ ">".
+        ConsId = tuple_cons(Arity),
+        String = "{}/" ++ string.int_to_string(Arity)
+    ;
+        ConsId = int_const(Int),
+        string.int_to_string(Int, String)
+    ;
+        ConsId = float_const(Float),
+        String = float_to_string(Float)
+    ;
+        ConsId = char_const(CharConst),
+        String = term_io.quoted_char(CharConst)
+    ;
+        ConsId = string_const(StringConst),
+        String = term_io.quoted_string(StringConst)
+    ;
+        ConsId = impl_defined_const(Name),
+        String = "$" ++ Name
+    ;
+        ConsId = closure_cons(PredProcId, _),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<pred " ++ int_to_string(PredId) ++
+            " proc " ++ int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = type_ctor_info_const(Module, Ctor, Arity),
+        String =
+            "<type_ctor_info " ++ sym_name_to_string(Module) ++ "." ++
+            Ctor ++ "/" ++ int_to_string(Arity) ++ ">"
+    ;
+        ConsId = base_typeclass_info_const(_, _, _, _),
+        String = "<base_typeclass_info>"
+    ;
+        ConsId = type_info_cell_constructor(_),
+        String = "<type_info_cell_constructor>"
+    ;
+        ConsId = typeclass_info_cell_constructor,
+        String = "<typeclass_info_cell_constructor>"
+    ;
+        ConsId = tabling_info_const(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<tabling_info " ++ int_to_string(PredId) ++
+            ", " ++ int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = table_io_decl(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<table_io_decl " ++ int_to_string(PredId) ++ ", " ++
+            int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = deep_profiling_proc_layout(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++ ", " ++
+            int_to_string(ProcId) ++ ">"
+    ).
 
 write_pred_id(ModuleInfo, PredId, !IO) :-
     % The code of this predicate duplicates the functionality of
@@ -616,8 +645,9 @@ unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts], !Pieces) :-
 
 contexts_describe_list_element([SubContext | SubContexts],
         NumElementsBefore, ElementNum, AfterContexts) :-
-    SubContext = ConsId - ArgNum,
-    ConsId = cons(Functor, 2),
+    SubContext = unify_sub_context(ConsId, ArgNum),
+    ConsId = cons(Functor, 2, _TypeCtor),
+    % We ignore _TypeCtor since it may not have been set yet.
     (
         Functor = unqualified("[|]")
     ;
@@ -634,16 +664,16 @@ contexts_describe_list_element([SubContext | SubContexts],
             NumElementsBefore + 1, ElementNum, AfterContexts)
     ).
 
-:- pred in_argument_to_pieces(is_first::in, pair(cons_id, int)::in,
+:- pred in_argument_to_pieces(is_first::in, unify_sub_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 in_argument_to_pieces(First, SubContext, !Pieces) :-
     start_in_message_to_pieces(First, !Pieces),
-    SubContext = ConsId - ArgNum,
+    SubContext = unify_sub_context(ConsId, ArgNum),
     ArgNumStr = int_to_string(ArgNum),
+    ConsIdStr = cons_id_and_arity_to_string(ConsId),
     !:Pieces = !.Pieces ++ [words("argument"), fixed(ArgNumStr),
-        words("of functor"),
-        prefix("`"), fixed(cons_id_to_string(ConsId)), suffix("':"), nl].
+        words("of functor"), quote(ConsIdStr), suffix(":"), nl].
 
 :- pred in_element_to_pieces(is_first::in, int::in,
     list(format_component)::in, list(format_component)::out) is det.
@@ -1473,7 +1503,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
                 ;
                     PortCountsGiveCoverageAfter =
                         no_port_counts_give_coverage_after,
-                    io.write_string("% no port counts give coverage after\n", 
+                    io.write_string("% no port counts give coverage after\n",
                         !IO)
                 )
             ;
@@ -1543,8 +1573,8 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ( string.contains_char(Verbose, 'R') ->
         (
             yes(LFU) = goal_info_get_maybe_lfu(GoalInfo),
-            yes(LBU) = goal_info_get_maybe_lbu(GoalInfo), 
-            yes(ReuseDescription) = goal_info_get_maybe_reuse(GoalInfo), 
+            yes(LBU) = goal_info_get_maybe_lbu(GoalInfo),
+            yes(ReuseDescription) = goal_info_get_maybe_reuse(GoalInfo),
             set.to_sorted_list(LFU, ListLFU),
             set.to_sorted_list(LBU, ListLBU)
         ->
@@ -1567,22 +1597,22 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
                 io.write_string("no possible reuse", !IO)
             ;
                 ReuseDescription = missed_reuse(Messages),
-                io.write_string("missed (", !IO), 
+                io.write_string("missed (", !IO),
                 io.write_list(Messages, ", ", io.write_string, !IO),
                 io.write_string(")", !IO)
             ;
                 ReuseDescription = potential_reuse(ShortReuseDescr),
-                io.write_string("potential reuse (", !IO), 
-                write_short_reuse_description(ShortReuseDescr, VarSet, 
-                    AppendVarNums, !IO), 
+                io.write_string("potential reuse (", !IO),
+                write_short_reuse_description(ShortReuseDescr, VarSet,
+                    AppendVarNums, !IO),
                 io.write_string(")", !IO)
             ;
                 ReuseDescription = reuse(ShortReuseDescr),
-                io.write_string("reuse (", !IO), 
+                io.write_string("reuse (", !IO),
                 write_short_reuse_description(ShortReuseDescr, VarSet,
-                    AppendVarNums, !IO), 
+                    AppendVarNums, !IO),
                 io.write_string(")", !IO)
-            ), 
+            ),
             io.write_string("\n", !IO)
         ;
             true
@@ -2168,7 +2198,7 @@ write_goal_2(shorthand(ShortHandGoal), ModuleInfo, VarSet, AppendVarNums,
     write_goal_2_shorthand(ShortHandGoal, ModuleInfo, VarSet, AppendVarNums,
         Indent, Follow, TypeQual, !IO).
 
-:- pred write_atomic_interface_vars(string::in, atomic_interface_vars::in, 
+:- pred write_atomic_interface_vars(string::in, atomic_interface_vars::in,
     prog_varset::in, bool::in, io::di, io::uo) is det.
 
 write_atomic_interface_vars(CompName, CompState, VarSet, AppendVarNums, !IO) :-
@@ -2190,7 +2220,7 @@ write_or_else_list([Goal | Goals], ModuleInfo, VarSet, AppendVarNums, Indent,
     io.write_string("or_else\n", !IO),
     write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent+1, Follow,
         TypeQual, !IO),
-    write_or_else_list(Goals, ModuleInfo, VarSet, AppendVarNums, Indent+1, 
+    write_or_else_list(Goals, ModuleInfo, VarSet, AppendVarNums, Indent+1,
         Follow, TypeQual, !IO).
 
 :- pred write_goal_2_shorthand(shorthand_goal_expr::in, module_info::in,
@@ -2219,8 +2249,8 @@ write_goal_2_shorthand(ShortHand, ModuleInfo, VarSet, AppendVarNums,
             io.write_string("])", !IO)
         ),
         io.write_string("] (\n",!IO),
-        
-        write_goal_a(MainGoal, ModuleInfo, VarSet, AppendVarNums, 
+
+        write_goal_a(MainGoal, ModuleInfo, VarSet, AppendVarNums,
             Indent + 1, "\n", TypeQual, !IO),
         write_goal_list(OrElseGoals, ModuleInfo, VarSet, AppendVarNums,
             Indent, "or_else\n", TypeQual, !IO),
@@ -2548,6 +2578,15 @@ write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
 
     globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
     ( string.contains_char(Verbose, 'u') ->
+        ( ConsId = cons(_, _, TypeCtor) ->
+            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+            write_indent(Indent, !IO),
+            TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
+            io.format("%% cons_id type_ctor: %s/%d",
+                [s(TypeCtorSymNameStr), i(TypeCtorArity)], !IO)
+        ;
+            true
+        ),
         (
             Uniqueness = cell_is_unique,
             write_indent(Indent, !IO),
@@ -2664,7 +2703,7 @@ write_static_cons(Indent, Depth, VarSet, AppendVarNums, StaticCons, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
     write_indent(Depth, !IO),
-    mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
+    write_cons_id_and_arity(ConsId, !IO),
     io.write_string("\n", !IO),
     (
         ArgVars = []
@@ -2685,7 +2724,7 @@ write_static_cons(Indent, Depth, VarSet, AppendVarNums, StaticCons, !IO) :-
 
 write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo, ProgVarSet,
         InstVarSet, AppendVarNums, Indent, !IO) :-
-    write_cons_id(ConsId, !IO),
+    write_cons_id_and_arity(ConsId, !IO),
     (
         ArgVars = [],
         io.write_string("\n", !IO)
@@ -2730,10 +2769,10 @@ write_unify_rhs_3(rhs_functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
         VarSet, _, AppendVarNums, _Indent, MaybeType, TypeQual, !IO) :-
     (
         IsExistConstruct = yes,
-        ConsId0 = cons(SymName0, Arity)
+        ConsId0 = cons(SymName0, Arity, TypeCtor)
     ->
         remove_new_prefix(SymName, SymName0),
-        ConsId = cons(SymName, Arity)
+        ConsId = cons(SymName, Arity, TypeCtor)
     ;
         ConsId = ConsId0
     ),
@@ -2842,10 +2881,10 @@ unify_rhs_to_string(rhs_functor(ConsId0, IsExistConstruct, ArgVars),
         ModuleInfo, VarSet, AppendVarNums) = Str :-
     (
         IsExistConstruct = yes,
-        ConsId0 = cons(SymName0, Arity)
+        ConsId0 = cons(SymName0, Arity, TypeCtor)
     ->
         remove_new_prefix(SymName, SymName0),
-        ConsId = cons(SymName, Arity)
+        ConsId = cons(SymName, Arity, TypeCtor)
     ;
         ConsId = ConsId0
     ),
@@ -2941,7 +2980,7 @@ write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums,
 functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
         = Str :-
     (
-        ConsId = cons(SymName, _),
+        ConsId = cons(SymName, _, _),
         (
             SymName = qualified(Module, Name),
             Str = qualified_functor_to_string(Module, term.atom(Name),
@@ -2952,6 +2991,10 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
                 ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
         )
     ;
+        ConsId = tuple_cons(_),
+        Str = functor_to_string_maybe_needs_quotes(term.atom("{}"),
+            ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
+    ;
         ConsId = int_const(Int),
         Str = functor_to_string(term.integer(Int), ArgVars, VarSet,
             AppendVarNums)
@@ -2960,28 +3003,40 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
         Str = functor_to_string(term.float(Float), ArgVars, VarSet,
             AppendVarNums)
     ;
+        ConsId = char_const(Char),
+        % XXX The strings ('z') and ('\n') should always denote
+        % the last letter of the alphabet and the newline character
+        % respectively. We need to decide whether forms such as (z)
+        % and 'z' should acceptable too. I (zs) think that 'z' should
+        % be acceptable to the scanner and parser (which currently it isn't),
+        % but (z) should not be.
+        Str = "(" ++ term_io.quoted_char(Char) ++ ")"
+    ;
         ConsId = string_const(String),
         Str = functor_to_string(term.string(String), ArgVars, VarSet,
             AppendVarNums)
     ;
-        ConsId = implementation_defined_const(Name),
+        ConsId = impl_defined_const(Name),
         Str = "$" ++ Name
     ;
-        ConsId = pred_const(ShroudedPredProcId, _),
+        ConsId = closure_cons(ShroudedPredProcId, _),
         proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         PredModule = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
-        Str = functor_cons_id_to_string(cons(qualified(PredModule, PredName),
-            list.length(ArgVars)), ArgVars, VarSet, ModuleInfo, AppendVarNums)
+        PredSymName = qualified(PredModule, PredName),
+        PredConsId = cons(PredSymName, list.length(ArgVars),
+            cons_id_dummy_type_ctor),
+        Str = functor_cons_id_to_string(PredConsId, ArgVars, VarSet,
+            ModuleInfo, AppendVarNums)
     ;
         ConsId = type_ctor_info_const(Module, Name, Arity),
         Str = "type_ctor_info("""
             ++ prog_out.sym_name_to_escaped_string(Module)
             ++ """, """ ++ Name ++ """, " ++ int_to_string(Arity) ++ ")"
     ;
-        ConsId = base_typeclass_info_const(Module, class_id(Name, Arity), _,
-            Instance),
+        ConsId = base_typeclass_info_const(Module, ClassId, _, Instance),
+        ClassId = class_id(Name, Arity),
         Str = "base_typeclass_info("""
             ++ prog_out.sym_name_to_escaped_string(Module) ++ """, "
             ++ "class_id(" ++ prog_out.sym_name_to_escaped_string(Name)
@@ -3004,17 +3059,17 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
             ++ pred_id_to_string(ModuleInfo, PredId)
             ++ ", " ++ int_to_string(ProcIdInt) ++ ")"
     ;
-        ConsId = deep_profiling_proc_layout(ShroudedPredProcId),
-        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        proc_id_to_int(ProcId, ProcIdInt),
-        Str = "deep_profiling_proc_layout("
-            ++ pred_id_to_string(ModuleInfo, PredId)
-            ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
-    ;
         ConsId = table_io_decl(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
         Str = "table_io_decl("
+            ++ pred_id_to_string(ModuleInfo, PredId)
+            ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
+    ;
+        ConsId = deep_profiling_proc_layout(ShroudedPredProcId),
+        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
+        proc_id_to_int(ProcId, ProcIdInt),
+        Str = "deep_profiling_proc_layout("
             ++ pred_id_to_string(ModuleInfo, PredId)
             ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
     ).
@@ -3094,7 +3149,7 @@ write_case(case(MainConsId, OtherConsIds, Goal), Var, ModuleInfo,
     io.write_string("% ", !IO),
     mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string(" has functor ", !IO),
-    write_cons_id(MainConsId, !IO),
+    write_cons_id_and_arity(MainConsId, !IO),
     list.foldl(write_alternative_cons_id, OtherConsIds, !IO),
     io.write_string("\n", !IO),
     % XXX if the output of this is to be used, e.g. in
@@ -3109,7 +3164,7 @@ write_case(case(MainConsId, OtherConsIds, Goal), Var, ModuleInfo,
 
 write_alternative_cons_id(ConsId, !IO) :-
     io.write_string(" or ", !IO),
-    write_cons_id(ConsId, !IO).
+    write_cons_id_and_arity(ConsId, !IO).
 
 :- pred write_cases(list(case)::in, prog_var::in, module_info::in,
     prog_varset::in, bool::in, int::in, maybe_vartypes::in, io::di, io::uo)
@@ -3470,7 +3525,7 @@ write_types_2(Indent, [TypeCtor - TypeDefn | Types], !IO) :-
     ),
     write_type_name(TypeCtor, !IO),
     write_type_params(TVarSet, TypeParams, !IO),
-    write_type_body(Indent + 1, TVarSet, TypeBody, !IO),
+    write_type_body(TypeCtor, TypeBody, Indent + 1, TVarSet, !IO),
     write_types_2(Indent, Types, !IO).
 
 :- pred write_type_name(type_ctor::in, io::di, io::uo) is det.
@@ -3507,10 +3562,10 @@ write_type_params_2(TVarSet, [P | Ps], !IO) :-
     mercury_output_var(TVarSet, no, P, !IO),
     write_type_params_2(TVarSet, Ps, !IO).
 
-:- pred write_type_body(int::in, tvarset::in, hlds_type_body::in,
-    io::di, io::uo) is det.
+:- pred write_type_body(type_ctor::in, hlds_type_body::in,
+    int::in, tvarset::in, io::di, io::uo) is det.
 
-write_type_body(Indent, TVarSet, TypeBody, !IO) :-
+write_type_body(TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
     (
         TypeBody = hlds_du_type(Ctors, ConsTagMap, CheaperTagTest, DuTypeKind,
             MaybeUserEqComp, ReservedTag, ReservedAddr, Foreign),
@@ -3521,11 +3576,11 @@ write_type_body(Indent, TVarSet, TypeBody, !IO) :-
             CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
                 CheapConsId, CheapConsTag),
             io.write_string("/* cheaper tag test: ", !IO),
-            write_cons_id(ExpConsId, !IO),
+            write_cons_id_and_arity(ExpConsId, !IO),
             io.write_string(" tag ", !IO),
             io.print(ExpConsTag, !IO),
             io.write_string(" -> ", !IO),
-            write_cons_id(CheapConsId, !IO),
+            write_cons_id_and_arity(CheapConsId, !IO),
             io.write_string(" tag ", !IO),
             io.print(CheapConsTag, !IO),
             io.write_string(" */\n", !IO)
@@ -3545,7 +3600,8 @@ write_type_body(Indent, TVarSet, TypeBody, !IO) :-
             write_indent(Indent, !IO),
             io.write_string("/* KIND dummy */\n", !IO)
         ;
-            DuTypeKind = du_type_kind_notag(FunctorName, ArgType, MaybeArgName),
+            DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
+                MaybeArgName),
             write_indent(Indent, !IO),
             io.write_string("/* KIND notag: ", !IO),
             write_sym_name(FunctorName, !IO),
@@ -3578,7 +3634,7 @@ write_type_body(Indent, TVarSet, TypeBody, !IO) :-
         ;
             ReservedAddr = does_not_use_reserved_address
         ),
-        write_constructors(Indent, TVarSet, Ctors, ConsTagMap, !IO),
+        write_constructors(TypeCtor, Indent, TVarSet, Ctors, ConsTagMap, !IO),
         mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),
         (
             Foreign = yes(_),
@@ -3607,46 +3663,48 @@ write_type_body(Indent, TVarSet, TypeBody, !IO) :-
         io.write_string(".\n", !IO)
     ).
 
-:- pred write_constructors(int::in, tvarset::in,
+:- pred write_constructors(type_ctor::in, int::in, tvarset::in,
     list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
 
-write_constructors(_Indent, _TVarSet, [], _, !IO) :-
+write_constructors(_TypeCtor, _Indent, _TVarSet, [], _, !IO) :-
     unexpected(this_file, "write_constructors: empty constructor list?").
-write_constructors(Indent, TVarSet, [C], TagValues, !IO) :-
+write_constructors(TypeCtor, Indent, TVarSet, [Ctor], TagValues, !IO) :-
     write_indent(Indent, !IO),
     io.write_char('\t', !IO),
-    write_ctor(C, TVarSet, TagValues, !IO).
-write_constructors(Indent, TVarSet, [C | Cs], TagValues, !IO) :-
-    Cs = [_ | _],
+    write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO).
+write_constructors(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
+        !IO) :-
+    Ctors = [_ | _],
     write_indent(Indent, !IO),
     io.write_char('\t', !IO),
-    write_ctor(C, TVarSet, TagValues, !IO),
+    write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO),
     io.write_string("\n", !IO),
-    write_constructors_2(Indent, TVarSet, Cs, TagValues, !IO).
+    write_constructors_2(TypeCtor, Indent, TVarSet, Ctors, TagValues, !IO).
 
-:- pred write_constructors_2(int::in, tvarset::in,
+:- pred write_constructors_2(type_ctor::in, int::in, tvarset::in,
     list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
 
-write_constructors_2(_Indent, _TVarSet, [], _, !IO).
-write_constructors_2(Indent, TVarSet, [C | Cs], TagValues, !IO) :-
+write_constructors_2(_TypeCtor, _Indent, _TVarSet, [], _, !IO).
+write_constructors_2(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
+        !IO) :-
     write_indent(Indent, !IO),
     io.write_string(";\t", !IO),
-    write_ctor(C, TVarSet, TagValues, !IO),
+    write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO),
     (
-        Cs = []
+        Ctors = []
     ;
-        Cs = [_ | _],
+        Ctors = [_ | _],
         io.write_string("\n", !IO),
-        write_constructors_2(Indent, TVarSet, Cs, TagValues, !IO)
+        write_constructors_2(TypeCtor, Indent, TVarSet, Ctors, TagValues, !IO)
     ).
 
-:- pred write_ctor(constructor::in, tvarset::in, cons_tag_values::in,
-    io::di, io::uo) is det.
+:- pred write_ctor(type_ctor::in, constructor::in, tvarset::in,
+    cons_tag_values::in, io::di, io::uo) is det.
 
-write_ctor(C, TVarSet, TagValues, !IO) :-
-    mercury_output_ctor(C, TVarSet, !IO),
-    C = ctor(_, _, Name, Args, _),
-    ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO) :-
+    mercury_output_ctor(Ctor, TVarSet, !IO),
+    Ctor = ctor(_, _, Name, Args, _),
+    ConsId = cons(Name, list.length(Args), TypeCtor),
     ( map.search(TagValues, ConsId, TagValue) ->
         io.write_string("\t% tag: ", !IO),
         io.print(TagValue, !IO)
@@ -3899,7 +3957,7 @@ write_table_struct_info(ModuleInfo, PredProcId - TableStructInfo, !IO) :-
         io.write_string("% no output steps", !IO)
     ),
     write_table_arg_infos(TVarSet, ArgInfos, !IO),
-    
+
     Attributes = table_attributes(Strictness, SizeLimit, Stats, AllowReset),
     (
         Strictness = all_strict,
@@ -4006,8 +4064,8 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     proc_info_get_context(Proc, ModeContext),
     proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize),
     proc_info_get_maybe_termination_info(Proc, MaybeTermination),
-    proc_info_get_structure_sharing(Proc, MaybeStructureSharing), 
-    proc_info_get_structure_reuse(Proc, MaybeStructureReuse), 
+    proc_info_get_structure_sharing(Proc, MaybeStructureSharing),
+    proc_info_get_structure_reuse(Proc, MaybeStructureReuse),
     proc_info_get_rtti_varmaps(Proc, RttiVarMaps),
     proc_info_get_eval_method(Proc, EvalMethod),
     proc_info_get_is_address_taken(Proc, IsAddressTaken),
@@ -4765,12 +4823,10 @@ inst_uniqueness(mostly_clobbered, _) = "mostly_clobbered".
 
 bound_insts_to_term([], _) = _ :-
     unexpected(this_file, "bound_insts_to_term([])").
-bound_insts_to_term([bound_functor(ConsId, Args) | BoundInsts], Context)
-        = Term :-
-    (
-        cons_id_and_args_to_term(ConsId,
-            list.map(map_inst_to_term(Context), Args), FirstTerm)
-    ->
+bound_insts_to_term([BoundInst | BoundInsts], Context) = Term :-
+    BoundInst = bound_functor(ConsId, Args),
+    ArgTerms = list.map(map_inst_to_term(Context), Args),
+    ( cons_id_and_args_to_term(ConsId, ArgTerms, FirstTerm) ->
         (
             BoundInsts = [],
             Term = FirstTerm
@@ -4880,23 +4936,23 @@ mercury_expanded_inst_to_string(Inst, VarSet, ModuleInfo) = String :-
     mercury_format_inst(Inst,
         expanded_inst_info(VarSet, ModuleInfo, Expansions), "", String).
 
-:- pred write_short_reuse_description(short_reuse_description::in, 
-    prog_varset::in, bool::in, 
+:- pred write_short_reuse_description(short_reuse_description::in,
+    prog_varset::in, bool::in,
     io::di, io::uo) is det.
 
-write_short_reuse_description(ShortDescription, VarSet, AppendVarnums, !IO):- 
+write_short_reuse_description(ShortDescription, VarSet, AppendVarnums, !IO):-
     (
-        ShortDescription = cell_died, 
+        ShortDescription = cell_died,
         io.write_string("cell died", !IO)
     ;
         ShortDescription = cell_reused(Var, IsConditional, _, _),
         io.write_string("cell reuse - ", !IO),
         mercury_output_var(VarSet, AppendVarnums, Var, !IO),
-        io.write_string(" - ", !IO), 
+        io.write_string(" - ", !IO),
         write_is_conditional(IsConditional, !IO)
     ;
         ShortDescription = reuse_call(IsConditional, NoClobbers),
-        io.write_string("reuse call - ", !IO), 
+        io.write_string("reuse call - ", !IO),
         write_is_conditional(IsConditional, !IO),
         io.write_string(", no clobbers = ", !IO),
         io.write(NoClobbers, !IO)
@@ -4904,7 +4960,7 @@ write_short_reuse_description(ShortDescription, VarSet, AppendVarnums, !IO):-
 
 :- pred write_is_conditional(is_conditional::in, io::di, io::uo) is det.
 
-write_is_conditional(IsConditional, !IO) :- 
+write_is_conditional(IsConditional, !IO) :-
     (
         IsConditional = conditional_reuse,
         io.write_string("with condition", !IO)
@@ -4917,7 +4973,7 @@ write_is_conditional(IsConditional, !IO) :-
 
 project_cons_name_and_tag(TaggedConsId, ConsName, ConsTag) :-
     TaggedConsId = tagged_cons_id(ConsId, ConsTag),
-    ConsName = hlds_out.cons_id_to_string(ConsId).
+    ConsName = cons_id_and_arity_to_string(ConsId).
 
 case_comment(VarName, MainConsName, OtherConsNames) = Comment :-
     (

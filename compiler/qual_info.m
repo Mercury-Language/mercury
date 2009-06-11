@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,6 +34,7 @@
 :- pred init_qual_info(mq_info::in, eqv_map::in, qual_info::out) is det.
 
     % Update the qual_info when processing a new clause.
+    %
 :- pred update_qual_info(tvar_name_map::in, tvarset::in,
     vartypes::in, import_status::in,
     qual_info::in, qual_info::out) is det.
@@ -264,7 +265,7 @@ record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
 :- pred record_used_functor(cons_id::in, qual_info::in, qual_info::out) is det.
 
 record_used_functor(ConsId, !QualInfo) :-
-    ( ConsId = cons(SymName, Arity) ->
+    ( ConsId = cons(SymName, Arity, _) ->
         Id = item_name(SymName, Arity),
         apply_to_recompilation_info(record_used_item(functor_item, Id, Id),
             !QualInfo)
@@ -286,19 +287,19 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         GoalInfo, Goal) :-
     (
         PredOrFunc = pf_predicate,
-        Goal = hlds_goal(
-            plain_call(PredId, invalid_proc_id, Args, not_builtin, no,
-                SymName),
-            GoalInfo)
+        GoalExpr = plain_call(PredId, invalid_proc_id, Args, not_builtin, no,
+            SymName),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(Args, FuncArgs, RetArg),
         list.length(FuncArgs, Arity),
-        ConsId = cons(SymName, Arity),
+        TypeCtor = cons_id_dummy_type_ctor,
+        ConsId = cons(SymName, Arity, TypeCtor),
         Context = goal_info_get_context(GoalInfo),
-        create_pure_atomic_complicated_unification(RetArg,
-            rhs_functor(ConsId, no, FuncArgs), Context, umc_explicit, [],
-            hlds_goal(GoalExpr, _)),
+        RHS = rhs_functor(ConsId, no, FuncArgs),
+        create_pure_atomic_complicated_unification(RetArg, RHS,
+            Context, umc_explicit, [], hlds_goal(GoalExpr, _)),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 

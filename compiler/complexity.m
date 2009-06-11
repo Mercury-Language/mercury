@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,6 +69,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
@@ -323,7 +324,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
         CodeModel = model_det,
         TransformedGoalExpr = conj(plain_conj,
             SlotGoals ++ [OrigGoal, ExitGoal]),
-        TransformedGoal = hlds_goal(TransformedGoalExpr, ImpureOrigGoalInfo)
+        TransGoal = hlds_goal(TransformedGoalExpr, ImpureOrigGoalInfo)
     ;
         CodeModel = model_semi,
         OrigAfterGoal = hlds_goal(conj(plain_conj, [OrigGoal, ExitGoal]),
@@ -331,7 +332,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
         DisjGoal = hlds_goal(
             disj([OrigAfterGoal, FailGoal]),
             ImpureOrigGoalInfo),
-        TransformedGoal = hlds_goal(
+        TransGoal = hlds_goal(
             conj(plain_conj, SlotGoals ++ [DisjGoal]),
             ImpureOrigGoalInfo)
     ;
@@ -352,15 +353,16 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
         DisjGoal = hlds_goal(
             disj([OrigAfterGoal, FailGoal]),
             ImpureOrigGoalInfo),
-        TransformedGoal = hlds_goal(
+        TransGoal = hlds_goal(
             conj(plain_conj, SlotGoals ++ [DisjGoal]),
             ImpureOrigGoalInfo)
     ),
 
     TSPB = mercury_term_size_prof_builtin_module,
+    TypeCtor = type_ctor(qualified(TSPB, "complexity_is_active"), 0),
     SwitchArms = [
-        case(cons(qualified(TSPB, "is_inactive"), 0), [], TransformedGoal),
-        case(cons(qualified(TSPB, "is_active"), 0), [], OrigGoal)
+        case(cons(qualified(TSPB, "is_inactive"), 0, TypeCtor), [], TransGoal),
+        case(cons(qualified(TSPB, "is_active"), 0, TypeCtor), [], OrigGoal)
     ],
 
     SwitchExpr = switch(IsActiveVar, cannot_fail, SwitchArms),

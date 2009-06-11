@@ -523,7 +523,7 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
         FunctorInit, LayoutInit, NumberMapInit, Defns) :-
     module_info_get_name(ModuleInfo, ModuleName),
     (
-        TypeCtorDetails = enum(_, EnumFunctors, EnumByValue, EnumByName,
+        TypeCtorDetails = tcd_enum(_, EnumFunctors, EnumByValue, EnumByName,
             _IsDummy, FunctorNumberMap),
         EnumFunctorDescs = list.map(
             gen_enum_functor_desc(ModuleInfo, RttiTypeCtor), EnumFunctors),
@@ -540,8 +540,9 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
             type_ctor_functor_number_map),
         Defns = EnumFunctorDescs ++ [ByValueDefn, ByNameDefn, NumberMapDefn]
     ;
-        TypeCtorDetails = foreign_enum(ForeignEnumLang, _, ForeignEnumFunctors,
-            ForeignEnumByOrdinal, ForeignEnumByName, FunctorNumberMap),
+        TypeCtorDetails = tcd_foreign_enum(ForeignEnumLang, _,
+            ForeignEnumFunctors, ForeignEnumByOrdinal, ForeignEnumByName,
+            FunctorNumberMap),
         ForeignEnumFunctorDescs = list.map(
             gen_foreign_enum_functor_desc(ModuleInfo, ForeignEnumLang,
                 RttiTypeCtor),
@@ -560,8 +561,8 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
         Defns = ForeignEnumFunctorDescs ++
             [ByOrdinalDefn, ByNameDefn, NumberMapDefn]
     ;
-        TypeCtorDetails = du(_, DuFunctors, DuByPtag,
-            DuByName, FunctorNumberMap),
+        TypeCtorDetails = tcd_du(_, DuFunctors, DuByPtag, DuByName,
+            FunctorNumberMap),
         DuFunctorDefns = list.map(
             gen_du_functor_desc(ModuleInfo, RttiTypeCtor), DuFunctors),
         ByPtagDefns = gen_du_ptag_ordered_table(ModuleInfo,
@@ -578,7 +579,7 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
         Defns = list.condense(DuFunctorDefns) ++
             [ByNameDefn, NumberMapDefn | ByPtagDefns]
     ;
-        TypeCtorDetails = reserved(_, MaybeResFunctors, ResFunctors,
+        TypeCtorDetails = tcd_reserved(_, MaybeResFunctors, ResFunctors,
             DuByPtag, MaybeResByName, FunctorNumberMap),
         MaybeResFunctorDefns = list.map(
             gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor),
@@ -597,7 +598,7 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
         Defns = [ByNameDefn, NumberMapDefn | ByValueDefns] ++
             list.condense(MaybeResFunctorDefns)
     ;
-        TypeCtorDetails = notag(_, NotagFunctor),
+        TypeCtorDetails = tcd_notag(_, NotagFunctor),
         NumberMapDefn = gen_functor_number_map(RttiTypeCtor, [0]),
         LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_notag_functor_desc),
@@ -609,26 +610,17 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
             NotagFunctor),
         Defns = [NumberMapDefn | FunctorDefn]
     ;
-        TypeCtorDetails = eqv(EqvType),
+        TypeCtorDetails = tcd_eqv(EqvType),
         TypeRttiData = maybe_pseudo_type_info_to_rtti_data(EqvType),
         gen_pseudo_type_info(ModuleInfo, TypeRttiData, LayoutInit, Defns),
         % The type is a lie, but a safe one.
         FunctorInit = gen_init_null_pointer(mlds_generic_type),
         NumberMapInit = gen_init_null_pointer(mlds_generic_type)
     ;
-        TypeCtorDetails = builtin(_),
-        Defns = [],
-        LayoutInit = gen_init_null_pointer(mlds_generic_type),
-        FunctorInit = gen_init_null_pointer(mlds_generic_type),
-        NumberMapInit = gen_init_null_pointer(mlds_generic_type)
-    ;
-        TypeCtorDetails = impl_artifact(_),
-        Defns = [],
-        LayoutInit = gen_init_null_pointer(mlds_generic_type),
-        FunctorInit = gen_init_null_pointer(mlds_generic_type),
-        NumberMapInit = gen_init_null_pointer(mlds_generic_type)
-    ;
-        TypeCtorDetails = foreign(_),
+        ( TypeCtorDetails = tcd_builtin(_)
+        ; TypeCtorDetails = tcd_impl_artifact(_)
+        ; TypeCtorDetails = tcd_foreign(_)
+        ),
         Defns = [],
         LayoutInit = gen_init_null_pointer(mlds_generic_type),
         FunctorInit = gen_init_null_pointer(mlds_generic_type),

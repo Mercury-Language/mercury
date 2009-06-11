@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2008 The University of Melbourne.
+% Copyright (C) 2000-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -692,7 +692,7 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                     BuiltinType = builtin_type_string,
                     Result = "MR_String"
                 ;
-                    BuiltinType = builtin_type_character,
+                    BuiltinType = builtin_type_char,
                     Result = "MR_Char"
                 )
             ;
@@ -734,7 +734,7 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                     BuiltinType = builtin_type_string,
                     Result = "java.lang.String"
                 ;
-                    BuiltinType = builtin_type_character,
+                    BuiltinType = builtin_type_char,
                     Result = "char"
                 )
             ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,6 +178,7 @@
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.purity.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
@@ -802,13 +803,17 @@ make_recursive_call(PredInfo, ModuleInfo, PredId, ProcId, HeadVars, Goal) :-
 make_switch_goal(SwitchVar, DoRetryGoal, DoNotRetryGoal, GoalInfo,
         SwitchGoal) :-
     SSDBModule = mercury_ssdb_builtin_module,
-    ConsIdDoRetry = cons(qualified(SSDBModule, "do_retry"), 0),
-    ConsIdDoNotRetry = cons(qualified(SSDBModule, "do_not_retry"), 0),
+    RetryTypeSymName = qualified(SSDBModule, "ssdb_retry"),
+    RetryTypeCtor = type_ctor(RetryTypeSymName, 0),
+    ConsIdDoRetry = cons(qualified(SSDBModule, "do_retry"), 0,
+        RetryTypeCtor),
+    ConsIdDoNotRetry = cons(qualified(SSDBModule, "do_not_retry"), 0,
+        RetryTypeCtor),
     CaseDoRetry = case(ConsIdDoRetry, [], DoRetryGoal),
     CaseDoNotRetry = case(ConsIdDoNotRetry, [], DoNotRetryGoal),
-    SwitchGoal = hlds_goal(
-        switch(SwitchVar, cannot_fail, [CaseDoRetry, CaseDoNotRetry]),
-        GoalInfo).
+    SwitchGoalExpr = switch(SwitchVar, cannot_fail,
+        [CaseDoRetry, CaseDoNotRetry]),
+    SwitchGoal = hlds_goal(SwitchGoalExpr, GoalInfo).
 
     % wrap_with_purity_scope(Purity, GoalInfo, Goal0, Goal):
     %
@@ -887,7 +892,7 @@ make_proc_id_construction(PredInfo, Goals, ProcIdVar, !Varset, !Vartypes) :-
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_proc_id"), 0),
 
     svvarset.new_named_var("ProcId", ProcIdVar, !Varset),
-    ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 2),
+    ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 2, TypeCtor),
     construct_type(TypeCtor, [], ProcIdType),
     svmap.det_insert(ProcIdVar, ProcIdType, !Vartypes),
     construct_functor(ProcIdVar, ConsId, [ModuleNameVar, PredNameVar],
@@ -958,7 +963,9 @@ make_arg_list(_Pos, _InstMap, [], _Renaming, Var, [Goal], !ModuleInfo,
         !ProcInfo, !PredInfo, !Varset, !Vartypes, !BoundVarDescs) :-
     svvarset.new_named_var("EmptyVarList", Var, !Varset),
     svmap.det_insert(Var, list_var_value_type, !Vartypes),
-    ConsId = cons(qualified(unqualified("list"), "[]" ), 0),
+    ListTypeSymName = qualified(mercury_list_module, "list"),
+    ListTypeCtor = type_ctor(ListTypeSymName, 1),
+    ConsId = cons(qualified(mercury_list_module, "[]" ), 0, ListTypeCtor),
     construct_functor(Var, ConsId, [], Goal).
 
 make_arg_list(Pos0, InstMap, [VarToInspect | ListVar], Renaming, Var,
@@ -984,7 +991,9 @@ make_arg_list(Pos0, InstMap, [VarToInspect | ListVar], Renaming, Var,
 
     svvarset.new_named_var("FullListVar", Var, !Varset),
     svmap.det_insert(Var, list_var_value_type, !Vartypes),
-    ConsId = cons(qualified(unqualified("list"), "[|]" ), 2),
+    ListTypeSymName = qualified(mercury_list_module, "list"),
+    ListTypeCtor = type_ctor(ListTypeSymName, 1),
+    ConsId = cons(qualified(unqualified("list"), "[|]" ), 2, ListTypeCtor),
     construct_functor(Var, ConsId, [VarDesc, Var0], Goal),
 
     %XXX Optimize me: repeated appends are slow.
@@ -998,8 +1007,7 @@ list_var_value_type = ListVarValueType :-
     SSDBModule = mercury_ssdb_builtin_module,
     VarValueTypeCtor = type_ctor(qualified(SSDBModule, "var_value"), 0),
     construct_type(VarValueTypeCtor, [], VarValueType),
-
-    ListTypeCtor = type_ctor(qualified(unqualified("list"), "list"), 1),
+    ListTypeCtor = type_ctor(qualified(mercury_list_module, "list"), 1),
     construct_type(ListTypeCtor, [VarValueType], ListVarValueType).
 
     % Create the goal's argument description :
@@ -1017,13 +1025,15 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         !ModuleInfo, !ProcInfo, !PredInfo, !VarSet, !VarTypes,
         !BoundVarDescs) :-
     SSDBModule = mercury_ssdb_builtin_module,
-    TypeCtor = type_ctor(qualified(SSDBModule, "var_value"), 0),
+    VarValueTypeCtor = type_ctor(qualified(SSDBModule, "var_value"), 0),
+    construct_type(VarValueTypeCtor, [], VarValueType),
     varset.lookup_name(!.VarSet, VarToInspect, VarName),
     make_string_const_construction_alloc(VarName, yes("VarName"),
         ConstructVarName, VarNameVar, !VarSet, !VarTypes),
     make_int_const_construction_alloc(VarPos, yes("VarPos"),
         ConstructVarPos, VarPosVar, !VarSet, !VarTypes),
 
+    svvarset.new_named_var("VarDesc", VarDesc, !VarSet),
     ( var_is_ground_in_instmap(!.ModuleInfo, InstMap, VarToInspect) ->
         % Update proc_varset and proc_vartypes, without this, the
         % polymorphism_make_type_info_var uses a prog_var which is
@@ -1051,10 +1061,9 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
 
         % Constructor of the variable's description.
-        svvarset.new_named_var("VarDesc", VarDesc, !VarSet),
-        ConsId = cons(qualified(SSDBModule, "bound_head_var"), 3),
-        construct_type(TypeCtor, [], VarType),
-        svmap.det_insert(VarDesc, VarType, !VarTypes),
+        ConsId = cons(qualified(SSDBModule, "bound_head_var"), 3,
+            VarValueTypeCtor),
+        svmap.det_insert(VarDesc, VarValueType, !VarTypes),
 
         % Renaming contains the names of all instantiated arguments
         % during the execution of the procedure's body.
@@ -1070,10 +1079,9 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
             [ConstructVarGoal],
         svmap.det_insert(VarToInspect, VarDesc, !BoundVarDescs)
     ;
-        svvarset.new_named_var("VarDesc", VarDesc, !VarSet),
-        ConsId = cons(qualified(SSDBModule, "unbound_head_var"), 2),
-        construct_type(TypeCtor, [], VarType),
-        svmap.det_insert(VarDesc, VarType, !VarTypes),
+        ConsId = cons(qualified(SSDBModule, "unbound_head_var"), 2,
+            VarValueTypeCtor),
+        svmap.det_insert(VarDesc, VarValueType, !VarTypes),
         construct_functor(VarDesc, ConsId, [VarNameVar, VarPosVar],
             ConstructVarGoal),
 

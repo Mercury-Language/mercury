@@ -1238,9 +1238,9 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 InnermostSubContext),
             InputTermArgNumber = 1,
             InputTermArgContext = ac_functor(Functor, umc_explicit, []),
-            ( Functor = cons(FuncName0, FuncArity0) ->
-                FuncName = FuncName0,
-                FuncArity = FuncArity0
+            ( Functor = cons(FuncNamePrime, FuncArityPrime, _TypeCtor) ->
+                FuncName = FuncNamePrime,
+                FuncArity = FuncArityPrime
             ;
                 unexpected(this_file, "transform_dcg_record_syntax_2")
             ),
@@ -1268,9 +1268,9 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
             InputTermArgNumber = 1,
             InputTermArgContext = ac_functor(Functor, umc_explicit, []),
 
-            ( InnermostFunctor = cons(FuncName0, FuncArity0) ->
-                FuncName = FuncName0,
-                FuncArity = FuncArity0
+            ( InnermostFunctor = cons(FuncNamePrime, FuncArityPrime, _TC) ->
+                FuncName = FuncNamePrime,
+                FuncArity = FuncArityPrime
             ;
                 unexpected(this_file, "transform_dcg_record_syntax_2")
             ),

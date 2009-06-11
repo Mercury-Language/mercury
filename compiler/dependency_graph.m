@@ -468,7 +468,7 @@ add_dependency_arcs_in_cases(Caller, [Case | Cases], !DepGraph) :-
 
 add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph) :-
     (
-        ConsId = pred_const(ShroudedPredProcId, _),
+        ConsId = closure_cons(ShroudedPredProcId, _),
         PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
         (
             % If the node isn't in the graph, then we didn't insert it
@@ -480,18 +480,20 @@ add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph) :-
             true
         )
     ;
-        ( ConsId = cons(_, _)
+        ( ConsId = cons(_, _, _)
+        ; ConsId = tuple_cons(_)
         ; ConsId = int_const(_)
-        ; ConsId = string_const(_)
         ; ConsId = float_const(_)
-        ; ConsId = implementation_defined_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
         ; ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = type_info_cell_constructor(_)
         ; ConsId = typeclass_info_cell_constructor
         ; ConsId = tabling_info_const(_)
-        ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_decl(_)
+        ; ConsId = deep_profiling_proc_layout(_)
         )
     ).
 

@@ -98,6 +98,7 @@
 :- import_module ml_backend.ml_code_util.  % for ml_gen_local_var_decl_flags.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.    % for mercury_std_library_name.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_data.
@@ -136,8 +137,7 @@ output_mlds(ModuleInfo, MLDS, !IO) :-
 % Utility predicates for various purposes.
 %
 
-    % Succeeds iff this definition is a data definition which
-    % defines RTTI.
+    % Succeeds iff this definition is a data definition which defines RTTI.
     %
 :- pred defn_is_rtti_data(mlds_defn::in) is semidet.
 
@@ -3461,7 +3461,7 @@ java_builtin_type(Type, "double", "java.lang.Double", "doubleValue") :-
 java_builtin_type(Type, "char", "java.lang.Character", "charValue") :-
     Type = mlds_native_char_type.
 java_builtin_type(Type, "char", "java.lang.Character", "charValue") :-
-    Type = mercury_type(builtin_type(builtin_type_character), _, _).
+    Type = mercury_type(builtin_type(builtin_type_char), _, _).
 java_builtin_type(Type, "boolean", "java.lang.Boolean", "booleanValue") :-
     Type = mlds_native_bool_type.
 

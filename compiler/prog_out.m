@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -296,7 +296,7 @@ promise_to_string(promise_type_exclusive_exhaustive) =
 builtin_type_to_string(builtin_type_int, "int").
 builtin_type_to_string(builtin_type_float, "float").
 builtin_type_to_string(builtin_type_string, "string").
-builtin_type_to_string(builtin_type_character, "character").
+builtin_type_to_string(builtin_type_char, "character").
 
 write_promise_type(PromiseType, !IO) :-
     io.write_string(promise_to_string(PromiseType), !IO).

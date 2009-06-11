@@ -46,7 +46,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.    % for type_util and mode_util
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
@@ -59,7 +59,7 @@
 :- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.compiler_util.
-:- import_module ll_backend.  	% bytecode_gen uses ll_backend__call_gen.m
+:- import_module ll_backend.
 :- import_module ll_backend.call_gen.  % XXX for arg passing convention
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -500,7 +500,7 @@ gen_unify(construct(Var, ConsId, Args, UniModes, _, _, _), _, _,
         ByteInfo, Code) :-
     map_var(ByteInfo, Var, ByteVar),
     map_vars(ByteInfo, Args, ByteArgs),
-    map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
+    map_cons_id(ByteInfo, ConsId, ByteConsId),
     ( ByteConsId = byte_pred_const(_, _, _, _, _) ->
         Code = singleton(byte_construct(ByteVar, ByteConsId, ByteArgs))
     ;
@@ -520,7 +520,7 @@ gen_unify(deconstruct(Var, ConsId, Args, UniModes, _, _), _, _,
         ByteInfo, Code) :-
     map_var(ByteInfo, Var, ByteVar),
     map_vars(ByteInfo, Args, ByteArgs),
-    map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
+    map_cons_id(ByteInfo, ConsId, ByteConsId),
     map_uni_modes(UniModes, Args, ByteInfo, Dirs),
     ( all_dirs_same(Dirs, to_arg) ->
         Code = singleton(byte_deconstruct(ByteVar, ByteConsId, ByteArgs))
@@ -687,8 +687,8 @@ gen_disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
 gen_switch([], _, _, !ByteInfo, empty).
 gen_switch([Case | Cases], Var, EndLabel, !ByteInfo, Code) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    map_cons_id(!.ByteInfo, Var, MainConsId, ByteMainConsId),
-    list.map(map_cons_id(!.ByteInfo, Var), OtherConsIds, ByteOtherConsIds),
+    map_cons_id(!.ByteInfo, MainConsId, ByteMainConsId),
+    list.map(map_cons_id(!.ByteInfo), OtherConsIds, ByteOtherConsIds),
     gen_goal(Goal, !ByteInfo, GoalCode),
     gen_switch(Cases, Var, EndLabel, !ByteInfo, CasesCode),
     get_next_label(NextLabel, !ByteInfo),
@@ -700,52 +700,31 @@ gen_switch([Case | Cases], Var, EndLabel, !ByteInfo, Code) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred map_cons_id(byte_info::in, prog_var::in, cons_id::in,
-    byte_cons_id::out) is det.
+:- pred map_cons_id(byte_info::in, cons_id::in, byte_cons_id::out) is det.
 
-map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
+map_cons_id(ByteInfo, ConsId, ByteConsId) :-
     get_module_info(ByteInfo, ModuleInfo),
     (
-        ConsId = cons(Functor, Arity),
-        get_var_type(ByteInfo, Var, Type),
+        ConsId = cons(Functor, Arity, _TypeCtor),
         (
-            % Everything other than characters and tuples should
-            % be module qualified.
-            Functor = unqualified(FunctorName),
-            \+ type_is_tuple(Type, _)
-        ->
-            string.to_char_list(FunctorName, FunctorList),
-            ( FunctorList = [Char] ->
-                ByteConsId = byte_char_const(Char)
-            ;
-                unexpected(this_file, "map_cons_id: " ++
-                    "unqualified cons_id is not a char_const")
-            )
+            Functor = qualified(ModuleName, FunctorName)
         ;
-            (
-                Functor = unqualified(FunctorName),
-                ModuleName = unqualified("builtin")
-            ;
-                Functor = qualified(ModuleName, FunctorName)
-            ),
-            ConsTag = cons_id_to_tag(ModuleInfo, Type, ConsId),
-            map_cons_tag(ConsTag, ByteConsTag),
-            ByteConsId = byte_cons(ModuleName, FunctorName, Arity, ByteConsTag)
-        )
+            Functor = unqualified(_),
+            unexpected(this_file, "map_cons_id: unqualified cons")
+        ),
+        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+        map_cons_tag(ConsTag, ByteConsTag),
+        ByteConsId = byte_cons(ModuleName, FunctorName, Arity, ByteConsTag)
     ;
-        ConsId = int_const(IntVal),
-        ByteConsId = byte_int_const(IntVal)
+        ConsId = tuple_cons(Arity),
+        ModuleName = unqualified("builtin"),
+        FunctorName = "{}",
+        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+        map_cons_tag(ConsTag, ByteConsTag),
+        % XXX We should have a byte_tuple_cons separate from byte_cons.
+        ByteConsId = byte_cons(ModuleName, FunctorName, Arity, ByteConsTag)
     ;
-        ConsId = string_const(StringVal),
-        ByteConsId = byte_string_const(StringVal)
-    ;
-        ConsId = float_const(FloatVal),
-        ByteConsId = byte_float_const(FloatVal)
-    ;
-        ConsId = implementation_defined_const(_),
-        unexpected(this_file, "map_cons_id: implementation_defined_const")
-    ;
-        ConsId = pred_const(ShroudedPredProcId, _EvalMethod),
+        ConsId = closure_cons(ShroudedPredProcId, _EvalMethod),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
 
@@ -755,6 +734,21 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
         proc_id_to_int(ProcId, ProcInt),
         ByteConsId = byte_pred_const(ModuleName, PredName, Arity, IsFunc,
             ProcInt)
+    ;
+        ConsId = int_const(IntVal),
+        ByteConsId = byte_int_const(IntVal)
+    ;
+        ConsId = float_const(FloatVal),
+        ByteConsId = byte_float_const(FloatVal)
+    ;
+        ConsId = char_const(CharVal),
+        ByteConsId = byte_char_const(CharVal)
+    ;
+        ConsId = string_const(StringVal),
+        ByteConsId = byte_string_const(StringVal)
+    ;
+        ConsId = impl_defined_const(_),
+        unexpected(this_file, "map_cons_id: impl_defined_const")
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity),
         ByteConsId = byte_type_ctor_info_const(ModuleName, TypeName, TypeArity)
@@ -799,9 +793,9 @@ map_cons_tag(foreign_tag(_, _), _) :-
 map_cons_tag(float_tag(_), _) :-
     unexpected(this_file, "float_tag cons tag " ++
         "for non-float_constant cons id").
-map_cons_tag(pred_closure_tag(_, _, _), _) :-
-    unexpected(this_file, "pred_closure_tag cons tag " ++
-        "for non-pred_const cons id").
+map_cons_tag(closure_tag(_, _, _), _) :-
+    unexpected(this_file, "closure_tag cons tag " ++
+        "for non-closure_cons cons id").
 map_cons_tag(type_ctor_info_tag(_, _, _), _) :-
     unexpected(this_file, "type_ctor_info_tag cons tag " ++
         "for non-type_ctor_info_constant cons id").

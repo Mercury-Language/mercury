@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1160,23 +1160,25 @@ qualify_bound_inst_list([], [], !Info, !Specs).
 qualify_bound_inst_list([bound_functor(ConsId, Insts0) | BoundInsts0],
          [bound_functor(ConsId, Insts) | BoundInsts], !Info, !Specs) :-
     (
-        ConsId = cons(Name, Arity),
+        ConsId = cons(Name, Arity, _),
         Id = item_name(Name, Arity),
         update_recompilation_info(
             recompilation.record_used_item(functor_item, Id, Id), !Info)
     ;
-        ( ConsId = int_const(_)
-        ; ConsId = string_const(_)
+        ( ConsId = tuple_cons(_)
+        ; ConsId = closure_cons(_, _)
+        ; ConsId = int_const(_)
         ; ConsId = float_const(_)
-        ; ConsId = implementation_defined_const(_)
-        ; ConsId = pred_const(_, _)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
         ; ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = type_info_cell_constructor(_)
         ; ConsId = typeclass_info_cell_constructor
         ; ConsId = tabling_info_const(_)
-        ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_decl(_)
+        ; ConsId = deep_profiling_proc_layout(_)
         )
     ),
     qualify_inst_list(Insts0, Insts, !Info, !Specs),
@@ -1243,7 +1245,7 @@ qualify_type(builtin_type(BuiltinType), builtin_type(BuiltinType), !Info,
         BuiltinType = builtin_type_string,
         mq_info_set_module_used(unqualified("string"), !Info)
     ;
-        BuiltinType = builtin_type_character
+        BuiltinType = builtin_type_char
     ).
 qualify_type(higher_order_type(Args0, MaybeRet0, Purity, EvalMethod),
         higher_order_type(Args, MaybeRet, Purity, EvalMethod),

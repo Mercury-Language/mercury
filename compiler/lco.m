@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -485,8 +485,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
             SubInfo = construct_sub_info(no, _)
         ),
         all_true(acceptable_construct_mode(ModuleInfo), ArgUniModes),
-        map.lookup(VarTypes, ConstructedVar, ConstructedType),
-        ConsTag = cons_id_to_tag(ModuleInfo, ConstructedType, ConsId),
+        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         % The code generator can't handle the other tags. For example, it
         % doesn't make sense to take the address of the field of a function
         % symbol of a `notag' type.

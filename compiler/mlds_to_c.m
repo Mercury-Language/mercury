@@ -3727,7 +3727,7 @@ mlds_output_boxed_rval(Type, Expr, !IO) :-
         mlds_output_rval(Expr, !IO),
         io.write_string(")", !IO)
     ;
-        ( Type = mercury_type(builtin_type(builtin_type_character), _, _)
+        ( Type = mercury_type(builtin_type(builtin_type_char), _, _)
         ; Type = mlds_native_char_type
         ; Type = mlds_native_bool_type
         ; Type = mlds_native_int_type
@@ -3772,7 +3772,7 @@ mlds_output_unboxed_rval(Type, Expr, !IO) :-
         mlds_output_rval(Expr, !IO),
         io.write_string(")", !IO)
     ;
-        ( Type = mercury_type(builtin_type(builtin_type_character), _, _)
+        ( Type = mercury_type(builtin_type(builtin_type_char), _, _)
         ; Type = mlds_native_char_type
         ; Type = mlds_native_bool_type
         ; Type = mlds_native_int_type

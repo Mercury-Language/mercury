@@ -486,7 +486,7 @@ instmap_changed_vars_2([VarB | VarBs], InstMapA, InstMapB, VarTypes,
     instmap_lookup_var(InstMapB, VarB, FinalInst),
     map.lookup(VarTypes, VarB, Type),
 
-    ( inst_matches_final(InitialInst, FinalInst, Type, ModuleInfo) ->
+    ( inst_matches_final_typed(InitialInst, FinalInst, Type, ModuleInfo) ->
         ChangedVars = ChangedVars0
     ;
         set.insert(ChangedVars0, VarB, ChangedVars)

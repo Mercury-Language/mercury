@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -758,7 +758,7 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         ( sym_name_and_args(RHS, FunctorName, FunctorArgsPrime) ->
             FunctorArgs = FunctorArgsPrime,
             list.length(FunctorArgs, Arity),
-            ConsId = cons(FunctorName, Arity)
+            ConsId = cons(FunctorName, Arity, cons_id_dummy_type_ctor)
         ;
             % float, int or string constant
             %   - any errors will be caught by typechecking
@@ -1054,7 +1054,8 @@ arg_context_to_unify_context(ArgContext, ArgNum, MainContext, SubContexts) :-
         SubContexts = []
     ;
         ArgContext = ac_functor(ConsId, MainContext, SubContexts0),
-        SubContexts = [ConsId - ArgNum | SubContexts0]
+        SubContext = unify_sub_context(ConsId, ArgNum),
+        SubContexts = [SubContext | SubContexts0]
     ).
 
 %-----------------------------------------------------------------------------%

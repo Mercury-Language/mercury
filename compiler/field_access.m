@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006, 2008 The University of Melbourne.
+% Copyright (C) 1993-2006, 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -163,7 +163,7 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
 
         % Recursively update the field.
         SubTermInputArgNumber = 2 + list.length(FieldArgs),
-        TermInputContext = Functor - SubTermInputArgNumber,
+        TermInputContext = unify_sub_context(Functor, SubTermInputArgNumber),
         SubContext = [TermInputContext | SubContext0],
         expand_set_field_function_call_2(Context, MainContext,
             SubContext, FieldNames, FieldValueVar, SubTermInputVar,
@@ -248,7 +248,7 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
 
         % Recursively extract until we run out of field names.
         TermInputArgNumber = 1 + list.length(FieldArgVars),
-        TermInputContext = Functor - TermInputArgNumber,
+        TermInputContext = unify_sub_context(Functor, TermInputArgNumber),
         SubContext = [TermInputContext | SubContext0],
         expand_get_field_function_call_2(Context, MainContext,
             SubContext, FieldNames, FieldValueVar, SubTermInputVar, Purity,
@@ -284,7 +284,7 @@ construct_field_access_function_call(AccessType, Context, MainContext,
         !QualInfo) :-
     field_access_function_name(AccessType, FieldName, FuncName),
     list.length(Args, Arity),
-    Functor = cons(FuncName, Arity),
+    Functor = cons(FuncName, Arity, cons_id_dummy_type_ctor),
     make_atomic_unification(RetArg, rhs_functor(Functor, no, Args),
         Context, MainContext, SubContext, Purity, Goal, !QualInfo).
 

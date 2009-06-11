@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -282,7 +282,7 @@ process_goal(VarTypes, _, Goal, Goal, !ClosureInfo) :-
     (
         Unification = construct(LHS, RHS, _, _, _, _, _),
         (
-            RHS = pred_const(ShroudedPPId, EvalMethod),
+            RHS = closure_cons(ShroudedPPId, EvalMethod),
             EvalMethod = lambda_normal
         ->
             PPId = unshroud_pred_proc_id(ShroudedPPId),

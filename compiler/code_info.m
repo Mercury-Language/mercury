@@ -75,6 +75,7 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.var_locn.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.mercury_to_mercury.
 
@@ -807,15 +808,6 @@ set_used_env_vars(UEV, CI,
 
 :- func filter_region_vars(code_info, set(prog_var)) = set(prog_var).
 
-    % Given a constructor id, and the type to which it belongs, determine
-    % the tag representing that constructor.
-    %
-:- func cons_id_to_tag_for_type(code_info, mer_type, cons_id) = cons_tag.
-
-    % As cons_id_to_tag_for_type, but get the type from the variable.
-    %
-:- func cons_id_to_tag_for_var(code_info, prog_var, cons_id) = cons_tag.
-
     % Get the code model of the current procedure.
     %
 :- func get_proc_model(code_info) = code_model.
@@ -1013,13 +1005,6 @@ filter_region_vars(CI, ForwardLiveVarsBeforeGoal) = RegionVars :-
     VarTypes = code_info.get_var_types(CI),
     RegionVars = set.filter(is_region_var(VarTypes),
         ForwardLiveVarsBeforeGoal).
-
-cons_id_to_tag_for_type(CI, Type, ConsId) = ConsTag :-
-    get_module_info(CI, ModuleInfo),
-    ConsTag = cons_id_to_tag(ModuleInfo, Type, ConsId).
-
-cons_id_to_tag_for_var(CI, Var, ConsId) =
-    cons_id_to_tag_for_type(CI, variable_type(CI, Var), ConsId).
 
 %---------------------------------------------------------------------------%
 

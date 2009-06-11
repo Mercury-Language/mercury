@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -73,6 +73,7 @@
 :- import_module ll_backend.
 :- import_module ll_backend.continuation_info.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -755,10 +756,9 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         purity_impure, Context, InactiveGoalInfo),
     InactiveGoal = hlds_goal(InactiveGoalExpr, InactiveGoalInfo),
 
-    TB = mercury_table_builtin_module,
     SwitchArms = [
-        case(cons(qualified(TB, "loop_active"), 0), [], ActiveGoal),
-        case(cons(qualified(TB, "loop_inactive"), 0), [], InactiveGoal)
+        case(loop_active_cons_id, [], ActiveGoal),
+        case(loop_inactive_cons_id, [], InactiveGoal)
     ],
     SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
     set.insert_list(InactiveNonLocals, [StatusVar, TableTipVar],
@@ -956,14 +956,10 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
             Detism, purity_impure, Context, InactiveGoalInfo),
         InactiveGoal = hlds_goal(InactiveGoalExpr, InactiveGoalInfo),
 
-        TB = mercury_table_builtin_module,
         SwitchArms = [
-            case(cons(qualified(TB, "memo_det_active"), 0), [],
-                ActiveGoal),
-            case(cons(qualified(TB, "memo_det_inactive"), 0), [],
-                InactiveGoal),
-            case(cons(qualified(TB, "memo_det_succeeded"), 0), [],
-                SucceededGoal)
+            case(memo_det_active_cons_id, [], ActiveGoal),
+            case(memo_det_inactive_cons_id, [], InactiveGoal),
+            case(memo_det_succeeded_cons_id, [], SucceededGoal)
         ]
     ;
         CodeModel = model_semi,
@@ -997,16 +993,11 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         InactiveGoal = hlds_goal(InactiveGoalExpr, InactiveGoalInfo),
         FailedGoal = fail_goal,
 
-        TB = mercury_table_builtin_module,
         SwitchArms = [
-            case(cons(qualified(TB, "memo_semi_active"), 0), [],
-                ActiveGoal),
-            case(cons(qualified(TB, "memo_semi_inactive"), 0), [],
-                InactiveGoal),
-            case(cons(qualified(TB, "memo_semi_succeeded"), 0), [],
-                SucceededGoal),
-            case(cons(qualified(TB, "memo_semi_failed"), 0), [],
-                FailedGoal)
+            case(memo_semi_active_cons_id, [], ActiveGoal),
+            case(memo_semi_inactive_cons_id, [], InactiveGoal),
+            case(memo_semi_succeeded_cons_id, [], SucceededGoal),
+            case(memo_semi_failed_cons_id, [], FailedGoal)
         ]
     ),
 
@@ -1119,16 +1110,11 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     OutputVars = list.map(project_var, NumberedOutputVars),
     InactiveInstmapDelta = bind_vars(OutputVars),
 
-    TB = mercury_table_builtin_module,
     SwitchArms = [
-        case(cons(qualified(TB, "memo_non_active"), 0), [],
-            InfiniteRecursionGoal),
-        case(cons(qualified(TB, "memo_non_inactive"), 0), [],
-            InactiveGoal),
-        case(cons(qualified(TB, "memo_non_incomplete"), 0), [],
-            NeedMinModelGoal),
-        case(cons(qualified(TB, "memo_non_complete"), 0), [],
-            RestoreAllAnswerGoal)
+        case(memo_non_active_cons_id, [], InfiniteRecursionGoal),
+        case(memo_non_inactive_cons_id, [], InactiveGoal),
+        case(memo_non_incomplete_cons_id, [], NeedMinModelGoal),
+        case(memo_non_complete_cons_id, [], RestoreAllAnswerGoal)
     ],
 
     SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
@@ -1519,14 +1505,10 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
     InactiveExpr = disj([MainGoal, ResumeGoal]),
     InactiveGoal = hlds_goal(InactiveExpr, MainGoalInfo),
 
-    TB = mercury_table_builtin_module,
     SwitchArms = [
-        case(cons(qualified(TB, "mm_inactive"), 0), [],
-            InactiveGoal),
-        case(cons(qualified(TB, "mm_complete"), 0), [],
-            RestoreAllAnswerGoal),
-        case(cons(qualified(TB, "mm_active"), 0), [],
-            SuspendGoal)
+        case(mm_inactive_cons_id, [], InactiveGoal),
+        case(mm_active_cons_id, [], SuspendGoal),
+        case(mm_complete_cons_id, [], RestoreAllAnswerGoal)
     ],
     SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
     goal_info_add_feature(feature_hide_debug_event,
@@ -1634,7 +1616,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         !VarSet, !VarTypes, ConsumerVar),
 
     ShroudedPredProcId = shroud_pred_proc_id(proc(GeneratorPredId, ProcId)),
-    GeneratorConsId = pred_const(ShroudedPredProcId, lambda_normal),
+    GeneratorConsId = closure_cons(ShroudedPredProcId, lambda_normal),
     make_const_construction(GeneratorPredVar, GeneratorConsId,
         MakeGeneratorVarGoal),
 
@@ -3245,58 +3227,6 @@ gen_string_construction(VarName, VarValue, !VarSet, !VarTypes, Var, Goal) :-
     make_string_const_construction_alloc(VarValue, yes(VarName), Goal, Var,
         !VarSet, !VarTypes).
 
-:- func proc_table_info_type = mer_type.
-:- func trie_node_type = mer_type.
-:- func memo_non_record_type = mer_type.
-:- func subgoal_type = mer_type.
-:- func answer_block_type = mer_type.
-:- func loop_status_type = mer_type.
-:- func memo_det_status_type = mer_type.
-:- func memo_semi_status_type = mer_type.
-:- func memo_non_status_type = mer_type.
-:- func mm_status_type = mer_type.
-
-proc_table_info_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "ml_proc_table_info"), 0),
-        [], Type).
-
-trie_node_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "ml_trie_node"), 0), [], Type).
-
-memo_non_record_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "memo_non_record"), 0), [], Type).
-
-subgoal_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "ml_subgoal"), 0), [], Type).
-
-answer_block_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "ml_answer_block"), 0), [], Type).
-
-loop_status_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "loop_status"), 0), [], Type).
-
-memo_det_status_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "memo_det_status"), 0), [], Type).
-
-memo_semi_status_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "memo_semi_status"), 0), [], Type).
-
-memo_non_status_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "memo_non_status"), 0), [], Type).
-
-mm_status_type = Type :-
-    TB = mercury_table_builtin_module,
-    construct_type(type_ctor(qualified(TB, "mm_status"), 0), [], Type).
-
 %-----------------------------------------------------------------------------%
 
 :- func consumer_type = mer_type.
@@ -3816,6 +3746,171 @@ dummy_type_var = Type :-
     varset.init(DummyTVarSet0),
     varset.new_var(DummyTVarSet0, DummyTVar, _),
     Type = type_variable(DummyTVar, kind_star).
+
+%-----------------------------------------------------------------------------%
+
+:- func loop_inactive_cons_id = cons_id.
+:- func loop_active_cons_id = cons_id.
+
+loop_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "loop_inactive"),
+    TypeCtor = loop_status_type_ctor.
+loop_active_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "loop_active"),
+    TypeCtor = loop_status_type_ctor.
+
+:- func memo_det_inactive_cons_id = cons_id.
+:- func memo_det_active_cons_id = cons_id.
+:- func memo_det_succeeded_cons_id = cons_id.
+
+memo_det_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_det_inactive"),
+    TypeCtor = memo_det_status_type_ctor.
+memo_det_active_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_det_active"),
+    TypeCtor = memo_det_status_type_ctor.
+memo_det_succeeded_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_det_succeeded"),
+    TypeCtor = memo_det_status_type_ctor.
+
+:- func memo_semi_inactive_cons_id = cons_id.
+:- func memo_semi_active_cons_id = cons_id.
+:- func memo_semi_succeeded_cons_id = cons_id.
+:- func memo_semi_failed_cons_id = cons_id.
+
+memo_semi_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_semi_inactive"),
+    TypeCtor = memo_semi_status_type_ctor.
+memo_semi_active_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_semi_active"),
+    TypeCtor = memo_semi_status_type_ctor.
+memo_semi_succeeded_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_semi_succeeded"),
+    TypeCtor = memo_semi_status_type_ctor.
+memo_semi_failed_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_semi_failed"),
+    TypeCtor = memo_semi_status_type_ctor.
+
+:- func memo_non_inactive_cons_id = cons_id.
+:- func memo_non_active_cons_id = cons_id.
+:- func memo_non_incomplete_cons_id = cons_id.
+:- func memo_non_complete_cons_id = cons_id.
+
+memo_non_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_non_inactive"),
+    TypeCtor = memo_non_status_type_ctor.
+memo_non_active_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_non_active"),
+    TypeCtor = memo_non_status_type_ctor.
+memo_non_incomplete_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_non_incomplete"),
+    TypeCtor = memo_non_status_type_ctor.
+memo_non_complete_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "memo_non_complete"),
+    TypeCtor = memo_non_status_type_ctor.
+
+:- func mm_inactive_cons_id = cons_id.
+:- func mm_active_cons_id = cons_id.
+:- func mm_complete_cons_id = cons_id.
+
+mm_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "mm_inactive"),
+    TypeCtor = mm_status_type_ctor.
+mm_active_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "mm_active"),
+    TypeCtor = mm_status_type_ctor.
+mm_complete_cons_id = cons(SymName, 0, TypeCtor) :-
+    SymName = qualified(mercury_table_builtin_module, "mm_complete"),
+    TypeCtor = mm_status_type_ctor.
+
+:- func loop_status_type_ctor = type_ctor.
+
+loop_status_type_ctor = TypeCtor :-
+    TypeModule = mercury_table_builtin_module,
+    TypeSymName = qualified(TypeModule, "loop_status"),
+    TypeCtor = type_ctor(TypeSymName, 0).
+
+:- func memo_det_status_type_ctor = type_ctor.
+
+memo_det_status_type_ctor = TypeCtor :-
+    TypeModule = mercury_table_builtin_module,
+    TypeSymName = qualified(TypeModule, "memo_det_status"),
+    TypeCtor = type_ctor(TypeSymName, 0).
+
+:- func memo_semi_status_type_ctor = type_ctor.
+
+memo_semi_status_type_ctor = TypeCtor :-
+    TypeModule = mercury_table_builtin_module,
+    TypeSymName = qualified(TypeModule, "memo_semi_status"),
+    TypeCtor = type_ctor(TypeSymName, 0).
+
+:- func memo_non_status_type_ctor = type_ctor.
+
+memo_non_status_type_ctor = TypeCtor :-
+    TypeModule = mercury_table_builtin_module,
+    TypeSymName = qualified(TypeModule, "memo_non_status"),
+    TypeCtor = type_ctor(TypeSymName, 0).
+
+:- func mm_status_type_ctor = type_ctor.
+
+mm_status_type_ctor = TypeCtor :-
+    TypeModule = mercury_table_builtin_module,
+    TypeSymName = qualified(TypeModule, "mm_status"),
+    TypeCtor = type_ctor(TypeSymName, 0).
+
+%-----------------------------------------------------------------------------%
+
+:- func proc_table_info_type = mer_type.
+:- func trie_node_type = mer_type.
+:- func memo_non_record_type = mer_type.
+:- func subgoal_type = mer_type.
+:- func answer_block_type = mer_type.
+:- func loop_status_type = mer_type.
+:- func memo_det_status_type = mer_type.
+:- func memo_semi_status_type = mer_type.
+:- func memo_non_status_type = mer_type.
+:- func mm_status_type = mer_type.
+
+proc_table_info_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "ml_proc_table_info"), 0),
+        [], Type).
+
+trie_node_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "ml_trie_node"), 0), [], Type).
+
+memo_non_record_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "memo_non_record"), 0), [], Type).
+
+subgoal_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "ml_subgoal"), 0), [], Type).
+
+answer_block_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "ml_answer_block"), 0), [], Type).
+
+loop_status_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "loop_status"), 0), [], Type).
+
+memo_det_status_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "memo_det_status"), 0), [], Type).
+
+memo_semi_status_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "memo_semi_status"), 0), [], Type).
+
+memo_non_status_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "memo_non_status"), 0), [], Type).
+
+mm_status_type = Type :-
+    TB = mercury_table_builtin_module,
+    construct_type(type_ctor(qualified(TB, "mm_status"), 0), [], Type).
 
 %-----------------------------------------------------------------------------%
 

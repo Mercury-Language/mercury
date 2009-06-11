@@ -152,6 +152,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -574,9 +575,13 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             (
                 (
                     instmap_lookup_var(InstMap0, Var, VarInst),
-                    inst_is_bound_to_functors(ModuleInfo, VarInst, Functors)
+                    inst_is_bound_to_functors(ModuleInfo, VarInst, BoundInsts)
                 ->
-                    functors_to_cons_ids(Functors, ConsIds)
+                    det_info_get_vartypes(!.DetInfo, VarTypes),
+                    map.lookup(VarTypes, Var, VarType),
+                    type_to_ctor_det(VarType, VarTypeCtor),
+                    list.map(bound_inst_to_cons_id(VarTypeCtor),
+                        BoundInsts, ConsIds)
                 ;
                     det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
                     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
@@ -897,7 +902,7 @@ compute_covered_cons_ids([Case | Cases], !CoveredConsIds) :-
 
 cons_id_list_to_pieces([], []).
 cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
-    ConsIdStr = cons_id_to_string(ConsId),
+    ConsIdStr = cons_id_and_arity_to_string(ConsId),
     (
         ConsIds = [],
         PiecesHead = [fixed(ConsIdStr ++ ".")]
@@ -915,9 +920,9 @@ cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
 
 :- type switch_context
     --->    switch_context(
-                prog_var,       % The variable being switched on.
-                cons_id,        % The first cons_id of this case.
-                list(cons_id)   % Any other cons_ids of this case.
+                prog_var,           % The variable being switched on.
+                cons_id,       % The first cons_id of this case.
+                list(cons_id)  % Any other cons_ids of this case.
             ).
 
 :- pred det_diagnose_switch_context(list(switch_context)::in, det_info::in,
@@ -929,8 +934,8 @@ det_diagnose_switch_context([SwitchContext | SwitchContexts], DetInfo,
     det_get_proc_info(DetInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     SwitchContext = switch_context(Var, MainConsId, OtherConsIds),
-    MainConsIdStr = cons_id_to_string(MainConsId),
-    OtherConsIdStrs = list.map(cons_id_to_string, OtherConsIds),
+    MainConsIdStr = cons_id_and_arity_to_string(MainConsId),
+    OtherConsIdStrs = list.map(cons_id_and_arity_to_string, OtherConsIds),
     ConsIdsStr = string.join_list(", ", [MainConsIdStr | OtherConsIdStrs]),
     VarStr = mercury_var_to_string(VarSet, no, Var),
     HeadPieces = [words("Inside the case"), words(ConsIdsStr),
@@ -1085,7 +1090,7 @@ failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
     ;
         FailingGoal = deconstruct_goal(Var, ConsId),
         VarStr = mercury_var_to_string(VarSet, no, Var),
-        ConsIdStr = cons_id_to_string(ConsId),
+        ConsIdStr = cons_id_and_arity_to_string(ConsId),
         Pieces = [words("Unification of"), fixed(VarStr),
             words("with"), fixed(ConsIdStr), words("can fail.")]
     ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006, 2008 The University of Melbourne.
+% Copyright (C) 2006, 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -195,6 +195,9 @@ parse_unit_selector(Term) = UnitSelector :-
     (
         Term = term.functor(term.atom(Cons), Args, _)
     ->
+        % XXX We should include non-dummy type_ctors in cons ConsIds.
+        % XXX Why do we parse int, float, and string ConsIds when they
+        % never have any arguments and thus cannot select anything?
         (
             Cons = "sel",
             Args = [ConsTerm, ArityTerm, PosTerm]
@@ -204,22 +207,22 @@ parse_unit_selector(Term) = UnitSelector :-
                 ArityTerm = term.functor(term.integer(Arity), _, _),
                 PosTerm = term.functor(term.integer(Pos), _, _)
             ->
-                ConsId = cons(ConsIdName, Arity),
+                ConsId = cons(ConsIdName, Arity, cons_id_dummy_type_ctor),
                 UnitSelector = termsel(ConsId, Pos)
             ;
-                ConsTerm = term.functor(term.integer(X), _, _)
+                ConsTerm = term.functor(term.integer(Int), _, _)
             ->
-                ConsId = int_const(X),
+                ConsId = int_const(Int),
                 UnitSelector = termsel(ConsId, 0)
             ;
-                ConsTerm = term.functor(term.float(X), _, _)
+                ConsTerm = term.functor(term.float(Float), _, _)
             ->
-                ConsId = float_const(X),
+                ConsId = float_const(Float),
                 UnitSelector = termsel(ConsId, 0)
             ;
-                ConsTerm = term.functor(term.string(S), _, _)
+                ConsTerm = term.functor(term.string(Str), _, _)
             ->
-                ConsId = string_const(S),
+                ConsId = string_const(Str),
                 UnitSelector = termsel(ConsId, 0)
             ;
                 unexpected(this_file, "parse_unit_selector: " ++

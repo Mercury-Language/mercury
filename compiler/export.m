@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -610,7 +610,7 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
             BuiltinType = builtin_type_float,
             ConvertedRval = "MR_float_to_word(" ++ Rval ++ ")"
         ;
-            BuiltinType = builtin_type_character,
+            BuiltinType = builtin_type_char,
             % We need to explicitly cast to UnsignedChar
             % to avoid problems with C compilers for which `char'
             % is signed.
@@ -641,7 +641,7 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
             ConvertedRval = "MR_word_to_float(" ++ Rval ++ ")"
         ;
             ( BuiltinType = builtin_type_int
-            ; BuiltinType = builtin_type_character
+            ; BuiltinType = builtin_type_char
             ),
             ConvertedRval = Rval
         )
@@ -843,7 +843,8 @@ output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
             ; DuTypeKind = du_type_kind_foreign_enum(_)
             ; DuTypeKind = du_type_kind_direct_dummy
             ),
-            list.foldl(foreign_const_name_and_tag(NameMapping, TagValues),
+            list.foldl(
+                foreign_const_name_and_tag(TypeCtor, NameMapping, TagValues),
                 Ctors, [], ForeignNamesAndTags0),
             % We reverse the list so the constants are printed out in order.
             list.reverse(ForeignNamesAndTags0, ForeignNamesAndTags),
@@ -876,15 +877,17 @@ output_exported_enum_3(_, ConstName - Tag, !IO) :-
         io.format("#define %s %s", [s(ConstName), s(RawStrTag)], !IO)
     ).
 
-:- pred foreign_const_name_and_tag(map(sym_name, string)::in,
+:- pred foreign_const_name_and_tag(type_ctor::in, map(sym_name, string)::in,
     cons_tag_values::in, constructor::in,
     assoc_list(string, exported_enum_tag_rep)::in,
     assoc_list(string, exported_enum_tag_rep)::out) is det.
 
-foreign_const_name_and_tag(Mapping, TagValues, Ctor, !NamesAndTags) :-
+foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
+        !NamesAndTags) :-
     Ctor = ctor(_, _, QualifiedCtorName, Args, _),
     list.length(Args, Arity),
-    map.lookup(TagValues, cons(QualifiedCtorName, Arity), TagVal),
+    ConsId = cons(QualifiedCtorName, Arity, TypeCtor),
+    map.lookup(TagValues, ConsId, TagVal),
     (
         TagVal = int_tag(IntTag),
         Tag    = ee_tag_rep_int(IntTag)
@@ -894,7 +897,7 @@ foreign_const_name_and_tag(Mapping, TagValues, Ctor, !NamesAndTags) :-
     ;
         ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)
-        ; TagVal = pred_closure_tag(_, _, _)
+        ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)
         ; TagVal = base_typeclass_info_tag(_, _, _)
         ; TagVal = tabling_info_tag(_, _)

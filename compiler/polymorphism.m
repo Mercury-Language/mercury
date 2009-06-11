@@ -407,6 +407,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -1348,8 +1349,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
     poly_info_get_var_types(!.Info, VarTypes0),
     map.lookup(VarTypes0, X0, TypeOfX),
     list.length(ArgVars0, Arity),
-    (
-    %
+
     % We replace any unifications with higher order pred constants
     % by lambda expressions. For example, we replace
     %
@@ -1364,19 +1364,19 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
     % (e.g. `Y' in above example). This would require a bit of moderately
     % tricky special case code if we didn't expand them here. Second, this pass
     % (polymorphism.m) is a lot easier if we don't have to handle higher order
-    % pred consts. If it turns out that the predicate was nonpolymorphic,
-    % lambda.m will turn the lambda expression back into a higher order pred
+    % constants. If it turns out that the predicate was nonpolymorphic,
+    % lambda.m will turn the lambda expression back into a higher order
     % constant again.
     %
     % Note that this transformation is also done by modecheck_unify.m, in case
     % we are rerunning mode analysis after lambda.m has already been run;
     % any changes to the code here will also need to be duplicated there.
-    %
 
+    (
         % Check if variable has a higher order type.
         type_is_higher_order_details(TypeOfX, Purity, _PredOrFunc, EvalMethod,
             CalleeArgTypes),
-        ConsId0 = pred_const(ShroudedPredProcId, _),
+        ConsId0 = closure_cons(ShroudedPredProcId, _),
         proc(PredId, ProcId0) = unshroud_pred_proc_id(ShroudedPredProcId)
     ->
         % An `invalid_proc_id' means the predicate is multi-moded. We can't
@@ -1417,9 +1417,9 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         % If so, assume it is a construction, and strip off the prefix.
         % Otherwise, assume it is a deconstruction.
 
-        ConsId0 = cons(Functor0, Arity),
+        ConsId0 = cons(Functor0, Arity, ConsTypeCtor),
         ( remove_new_prefix(Functor0, OrigFunctor) ->
-            ConsId = cons(OrigFunctor, Arity),
+            ConsId = cons(OrigFunctor, Arity, ConsTypeCtor),
             IsConstruction = yes
         ;
             ConsId = ConsId0,
@@ -1479,9 +1479,11 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     PredName = pred_info_name(PredInfo),
     QualifiedPName = qualified(PredModule, PredName),
 
-    CallUnifyContext = call_unify_context(X0,
-        rhs_functor(cons(QualifiedPName, list.length(ArgVars0)), no, ArgVars0),
-        UnifyContext),
+    % The ConsId's type_ctor shouldn't matter in a call_unify_context.
+    ConsId = cons(QualifiedPName, list.length(ArgVars0),
+        cons_id_dummy_type_ctor),
+    RHS = rhs_functor(ConsId, no, ArgVars0),
+    CallUnifyContext = call_unify_context(X0, RHS, UnifyContext),
     LambdaGoalExpr = plain_call(PredId, ProcId, Args, not_builtin,
         yes(CallUnifyContext), QualifiedPName),
 

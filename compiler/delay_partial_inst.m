@@ -298,7 +298,9 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 %   V = f(A1, A2, A3, ...)
                 % and at least one of the arguments is free?
                 %
-                ConsId = cons(_, _),
+                ( ConsId = cons(_, _, _)
+                ; ConsId = tuple_cons(_)
+                ),
                 ModuleInfo = !.DelayInfo ^ dpi_module_info,
                 some [RhsAfter] (
                     list.member(_ -> _ - RhsAfter, UniModes),

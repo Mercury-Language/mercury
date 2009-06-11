@@ -36,12 +36,12 @@
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_util.
 
 :- import_module cord.
 :- import_module int.
 :- import_module svmap.
 :- import_module svmulti_map.
-:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -249,6 +249,16 @@
     % a cons_tag which specifies how that functor and its arguments are
     % represented.
     %
+    % XXX At the moment, every value is in the map several times.
+    % One reason for duplicating values is to be able to get at them
+    % with the sym_name in the cons_id key being fully qualified, unqualified,
+    % or anything in between. Another reason is the need to get at them
+    % with the cons_id containing the standard dummy type_ctor before
+    % post-typecheck, and with the actual correct type_ctor after
+    % post-typecheck.
+    %
+    % The key in the map should be just a string/arity pair.
+    %
 :- type cons_tag_values == map(cons_id, cons_tag).
 
     % A cons_id together with its tag.
@@ -287,7 +297,7 @@
             % foreign enumerations, i.e. those enumeration types that are the
             % subject of a foreign_enum pragma.
 
-    ;       pred_closure_tag(pred_id, proc_id, lambda_eval_method)
+    ;       closure_tag(pred_id, proc_id, lambda_eval_method)
             % Higher-order pred closures tags. These are represented as
             % a pointer to an argument vector. For closures with
             % lambda_eval_method `normal', the first two words of the argument
@@ -385,6 +395,18 @@
     %
 :- type tag_bits    ==  int.    % actually only 2 (or maybe 3) bits
 
+    % Return the primary tag, if any, for a cons_tag.
+    % A return value of `no' means the primary tag is unknown.
+    % A return value of `yes(N)' means the primary tag is N.
+    % (`yes(0)' also corresponds to the case where there no primary tag.)
+    %
+:- func get_primary_tag(cons_tag) = maybe(int).
+
+    % Return the secondary tag, if any, for a cons_tag.
+    % A return value of `no' means there is no secondary tag.
+    %
+:- func get_secondary_tag(cons_tag) = maybe(int).
+
     % The type definitions for no_tag types have information mirrored in a
     % separate table for faster lookups. mode_util.mode_to_arg_mode makes
     % heavy use of type_util.type_is_no_tag_type.
@@ -399,18 +421,6 @@
 :- type no_tag_type_table == map(type_ctor, no_tag_type).
 
 :- func get_maybe_cheaper_tag_test(hlds_type_body) = maybe_cheaper_tag_test.
-
-    % Return the primary tag, if any, for a cons_tag.
-    % A return value of `no' means the primary tag is unknown.
-    % A return value of `yes(N)' means the primary tag is N.
-    % (`yes(0)' also corresponds to the case where there no primary tag.)
-    %
-:- func get_primary_tag(cons_tag) = maybe(int).
-
-    % Return the secondary tag, if any, for a cons_tag.
-    % A return value of `no' means there is no secondary tag.
-    %
-:- func get_secondary_tag(cons_tag) = maybe(int).
 
     % The atomic variants of the Boehm gc allocator calls (e.g.
     % GC_malloc_atomic instead of GC_malloc) may yield slightly faster code
@@ -427,8 +437,71 @@
 
 :- implementation.
 
+:- import_module string.
+
 project_tagged_cons_id_tag(TaggedConsId) = Tag :-
     TaggedConsId = tagged_cons_id(_, Tag).
+
+get_primary_tag(Tag) = MaybePrimaryTag :-
+    (
+        % In some of the cases where we return `no' here,
+        % it would probably be OK to return `yes(0)'.
+        % But it's safe to be conservative...
+        ( Tag = int_tag(_)
+        ; Tag = float_tag(_)
+        ; Tag = string_tag(_)
+        ; Tag = foreign_tag(_, _)
+        ; Tag = closure_tag(_, _, _)
+        ; Tag = no_tag
+        ; Tag = reserved_address_tag(_)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ),
+        MaybePrimaryTag = no
+    ;
+        Tag = single_functor_tag,
+        MaybePrimaryTag = yes(0)
+    ;
+        ( Tag = unshared_tag(PrimaryTag)
+        ; Tag = shared_remote_tag(PrimaryTag, _SecondaryTag)
+        ; Tag = shared_local_tag(PrimaryTag, _SecondaryTag)
+        ),
+        MaybePrimaryTag = yes(PrimaryTag)
+    ;
+        Tag = shared_with_reserved_addresses_tag(_RAs, InnerTag),
+        MaybePrimaryTag = get_primary_tag(InnerTag)
+    ).
+
+get_secondary_tag(Tag) = MaybeSecondaryTag :-
+    (
+        ( Tag = int_tag(_)
+        ; Tag = float_tag(_)
+        ; Tag = string_tag(_)
+        ; Tag = foreign_tag(_, _)
+        ; Tag = closure_tag(_, _, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = no_tag
+        ; Tag = reserved_address_tag(_)
+        ; Tag = unshared_tag(_PrimaryTag)
+        ; Tag = single_functor_tag
+        ),
+        MaybeSecondaryTag = no
+    ;
+        ( Tag = shared_remote_tag(_PrimaryTag, SecondaryTag)
+        ; Tag = shared_local_tag(_PrimaryTag, SecondaryTag)
+        ),
+        MaybeSecondaryTag = yes(SecondaryTag)
+    ;
+        Tag = shared_with_reserved_addresses_tag(_RAs, InnerTag),
+        MaybeSecondaryTag = get_secondary_tag(InnerTag)
+    ).
 
 get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
     (
@@ -441,49 +514,6 @@ get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
         ),
         CheaperTagTest = no_cheaper_tag_test
     ).
-
-% In some of the cases where we return `no' here,
-% it would probably be OK to return `yes(0)'.
-% But it's safe to be conservative...
-get_primary_tag(string_tag(_)) = no.
-get_primary_tag(float_tag(_)) = no.
-get_primary_tag(int_tag(_)) = no.
-get_primary_tag(foreign_tag(_, _)) = no.
-get_primary_tag(pred_closure_tag(_, _, _)) = no.
-get_primary_tag(type_ctor_info_tag(_, _, _)) = no.
-get_primary_tag(base_typeclass_info_tag(_, _, _)) = no.
-get_primary_tag(tabling_info_tag(_, _)) = no.
-get_primary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
-get_primary_tag(table_io_decl_tag(_, _)) = no.
-get_primary_tag(single_functor_tag) = yes(0).
-get_primary_tag(unshared_tag(PrimaryTag)) = yes(PrimaryTag).
-get_primary_tag(shared_remote_tag(PrimaryTag, _SecondaryTag))
-        = yes(PrimaryTag).
-get_primary_tag(shared_local_tag(PrimaryTag, _)) = yes(PrimaryTag).
-get_primary_tag(no_tag) = no.
-get_primary_tag(reserved_address_tag(_)) = no.
-get_primary_tag(shared_with_reserved_addresses_tag(_RAs, TagValue))
-        = get_primary_tag(TagValue).
-
-get_secondary_tag(string_tag(_)) = no.
-get_secondary_tag(float_tag(_)) = no.
-get_secondary_tag(int_tag(_)) = no.
-get_secondary_tag(foreign_tag(_, _)) = no.
-get_secondary_tag(pred_closure_tag(_, _, _)) = no.
-get_secondary_tag(type_ctor_info_tag(_, _, _)) = no.
-get_secondary_tag(base_typeclass_info_tag(_, _, _)) = no.
-get_secondary_tag(tabling_info_tag(_, _)) = no.
-get_secondary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
-get_secondary_tag(table_io_decl_tag(_, _)) = no.
-get_secondary_tag(single_functor_tag) = no.
-get_secondary_tag(unshared_tag(_)) = no.
-get_secondary_tag(shared_remote_tag(_PrimaryTag, SecondaryTag))
-        = yes(SecondaryTag).
-get_secondary_tag(shared_local_tag(_, _)) = no.
-get_secondary_tag(no_tag) = no.
-get_secondary_tag(reserved_address_tag(_)) = no.
-get_secondary_tag(shared_with_reserved_addresses_tag(_RAs, TagValue))
-        = get_secondary_tag(TagValue).
 
 :- type hlds_type_defn
     --->    hlds_type_defn(
@@ -541,13 +571,14 @@ get_type_defn_in_exported_eqv(Defn, Defn ^ type_defn_in_exported_eqv).
 get_type_defn_need_qualifier(Defn, Defn ^ type_defn_need_qualifier).
 get_type_defn_context(Defn, Defn ^ type_defn_context).
 
-set_type_defn_body(Body, Defn, Defn ^ type_defn_body := Body).
-set_type_defn_tvarset(TVarSet, Defn,
-        Defn ^ type_defn_tvarset := TVarSet).
-set_type_defn_status(Status, Defn,
-        Defn ^ type_defn_import_status := Status).
-set_type_defn_in_exported_eqv(InExportedEqv, Defn,
-        Defn ^ type_defn_in_exported_eqv := InExportedEqv).
+set_type_defn_body(Body, !Defn) :-
+    !Defn ^ type_defn_body := Body.
+set_type_defn_tvarset(TVarSet, !Defn) :-
+    !Defn ^ type_defn_tvarset := TVarSet.
+set_type_defn_status(Status, !Defn) :-
+    !Defn ^ type_defn_import_status := Status.
+set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
+    !Defn ^ type_defn_in_exported_eqv := InExportedEqv.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

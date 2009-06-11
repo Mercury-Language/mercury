@@ -755,6 +755,7 @@
 :- import_module mdbcomp.program_representation.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_gen.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.

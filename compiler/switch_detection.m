@@ -79,6 +79,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1029,13 +1030,14 @@ conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
 cases_to_switch(Var, VarTypes, AllowMulti, Cases0, InstMap, GoalExpr,
         !ModuleInfo, !Requant) :-
     instmap_lookup_var(InstMap, Var, VarInst),
+    map.lookup(VarTypes, Var, Type),
     ( inst_is_bound_to_functors(!.ModuleInfo, VarInst, Functors) ->
-        functors_to_cons_ids(Functors, ConsIds),
+        type_to_ctor_det(Type, TypeCtor),
+        bound_insts_to_cons_ids(TypeCtor, Functors, ConsIds),
         delete_unreachable_cases(Cases0, ConsIds, Cases1),
         CanFail = compute_can_fail(ConsIds, Cases1)
     ;
         Cases1 = Cases0,
-        map.lookup(VarTypes, Var, Type),
         ( switch_type_num_functors(!.ModuleInfo, Type, NumFunctors) ->
             % We could check for each cons_id of the type whether a case covers
             % it, but given that type checking ensures that the set of covered

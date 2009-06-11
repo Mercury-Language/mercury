@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,10 +127,12 @@ type_is_user_visible(Section, TypeDef) :-
 :- type functors_to_types == multi_map(sym_name_and_arity, hlds_type_defn).
 
 :- type bound_inst_functor
-    --->    name_and_arity(sym_name, arity)
-    ;       string_constant
-    ;       int_constant
-    ;       float_constant.
+    --->    bif_name_and_arity(sym_name, arity)
+    ;       bif_tuple(arity)
+    ;       bif_int_constant
+    ;       bif_float_constant
+    ;       bif_char_constant
+    ;       bif_string_constant.
 
 :- type type_defn_or_builtin
     --->    type_def(hlds_type_defn)
@@ -229,32 +231,30 @@ type_matched_all_functors(Type, MatchingTypeLists) :-
 
 find_types_for_functor(FunctorsToTypes, Functor, Types) :-
     (
-        Functor = name_and_arity(Name, Arity),
-        ( multi_map.search(FunctorsToTypes, strip_qualifiers(Name) / Arity,
-                TypeDefs) ->
+        Functor = bif_name_and_arity(Name, Arity),
+        (
+            multi_map.search(FunctorsToTypes, strip_qualifiers(Name) / Arity,
+                TypeDefs)
+        ->
             TypesExceptChar = list.map(func(TypeDef) = type_def(TypeDef),
                 TypeDefs)
         ;
             TypesExceptChar = []
         ),
         (
-            %
-            % Zero arity functors with length 1 could match the
-            % character builtin type.
-            %
+            % Zero arity functors with length 1 could match the builtin
+            % character type.
             Name = unqualified(NameStr),
             string.length(NameStr) = 1
         ->
-            TypesExceptTuple = [type_builtin(builtin_type_character)
+            TypesExceptTuple = [type_builtin(builtin_type_char)
                 | TypesExceptChar]
         ;
             TypesExceptTuple = TypesExceptChar
         ),
         (
-            %
             % The inst could match a tuple type, which won't be explicitly
             % declared.
-            %
             type_ctor_is_tuple(type_ctor(Name, Arity))
         ->
             Types = [type_tuple(Arity) | TypesExceptTuple]
@@ -262,13 +262,19 @@ find_types_for_functor(FunctorsToTypes, Functor, Types) :-
             Types = TypesExceptTuple
         )
     ;
-        Functor = int_constant,
+        Functor = bif_tuple(Arity),
+        Types = [type_tuple(Arity)]
+    ;
+        Functor = bif_int_constant,
         Types = [type_builtin(builtin_type_int)]
     ;
-        Functor = float_constant,
+        Functor = bif_float_constant,
         Types = [type_builtin(builtin_type_float)]
     ;
-        Functor = string_constant,
+        Functor = bif_char_constant,
+        Types = [type_builtin(builtin_type_char)]
+    ;
+        Functor = bif_string_constant,
         Types = [type_builtin(builtin_type_string)]
     ).
 
@@ -288,20 +294,26 @@ bound_inst_to_functor(bound_functor(ConsId, _), Functor) :-
 
 get_functor_if_must_check_for_type(ConsId, MaybeFunctor) :-
     (
-        ConsId = cons(Name, Arity),
-        MaybeFunctor = yes(name_and_arity(Name, Arity))
+        ConsId = cons(Name, Arity, _),
+        MaybeFunctor = yes(bif_name_and_arity(Name, Arity))
+    ;
+        ConsId = tuple_cons(Arity),
+        MaybeFunctor = yes(bif_tuple(Arity))
     ;
         ConsId = int_const(_),
-        MaybeFunctor = yes(int_constant)
-    ;
-        ConsId = string_const(_),
-        MaybeFunctor = yes(string_constant)
+        MaybeFunctor = yes(bif_int_constant)
     ;
         ConsId = float_const(_),
-        MaybeFunctor = yes(float_constant)
+        MaybeFunctor = yes(bif_float_constant)
     ;
-        ( ConsId = implementation_defined_const(_)
-        ; ConsId = pred_const(_, _)
+        ConsId = char_const(_),
+        MaybeFunctor = yes(bif_char_constant)
+    ;
+        ConsId = string_const(_),
+        MaybeFunctor = yes(bif_string_constant)
+    ;
+        ( ConsId = closure_cons(_, _)
+        ; ConsId = impl_defined_const(_)
         ; ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = type_info_cell_constructor(_)

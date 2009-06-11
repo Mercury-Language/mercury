@@ -76,12 +76,12 @@
     %
 :- func ml_gen_special_member_decl_flags = mlds_decl_flags.
 
-    % ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag):
+    % ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag):
     % Check if this constructor uses a secondary tag,
     % and if so, return the secondary tag value.
     %
-:- pred ml_uses_secondary_tag(cons_tag_values::in, constructor::in, int::out)
-    is semidet.
+:- pred ml_uses_secondary_tag(type_ctor::in, cons_tag_values::in,
+    constructor::in, int::out) is semidet.
 
     % A constructor is represented using the base class rather than a derived
     % class if there is only a single functor, or if there is a single
@@ -234,7 +234,8 @@ ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
 
     % Generate the class members.
     ValueMember = ml_gen_enum_value_member(Context),
-    EnumConstMembers = list.map(ml_gen_enum_constant(Context, TagValues),
+    EnumConstMembers = list.map(
+        ml_gen_enum_constant(Context, TypeCtor, TagValues),
         Ctors),
     Members = MaybeEqualityMembers ++
         [ValueMember | EnumConstMembers],
@@ -262,14 +263,14 @@ ml_gen_enum_value_member(Context) =
         ml_gen_member_decl_flags,
         mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)).
 
-:- func ml_gen_enum_constant(prog_context, cons_tag_values, constructor)
-    = mlds_defn.
+:- func ml_gen_enum_constant(prog_context, type_ctor, cons_tag_values,
+    constructor) = mlds_defn.
 
-ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
+ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, Ctor) = MLDS_Defn :-
     % Figure out the value of this enumeration constant.
     Ctor = ctor(_ExistQTVars, _Constraints, Name, Args, _Ctxt),
     list.length(Args, Arity),
-    map.lookup(ConsTagValues, cons(Name, Arity), TagVal),
+    map.lookup(ConsTagValues, cons(Name, Arity, TypeCtor), TagVal),
     (
         TagVal = int_tag(Int),
         ConstValue = ml_const(mlconst_int(Int))
@@ -280,7 +281,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
     ;
         ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)
-        ; TagVal = pred_closure_tag(_, _, _)
+        ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)
         ; TagVal = base_typeclass_info_tag(_, _, _)
         ; TagVal = tabling_info_tag(_, _)
@@ -423,7 +424,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
 
         \+ (some [Ctor] (
             list.member(Ctor, Ctors),
-            ml_needs_secondary_tag(TagValues, Ctor)
+            ml_needs_secondary_tag(TypeCtor, TagValues, Ctor)
         ))
     ->
         TagMembers = [],
@@ -435,18 +436,18 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         % XXX we don't yet bother with these;
         % mlds_to_c.m doesn't support static (one_copy) members.
         %   TagConstMembers = list.condense(list.map(
-        %       ml_gen_tag_constant(Context, TagValues), Ctors)),
+        %       ml_gen_tag_constant(Context, TypeCtor, TagValues), Ctors)),
         TagMembers0 = [TagDataMember | TagConstMembers],
 
         % If all the constructors for this type need a secondary tag, then
         % we put the secondary tag members directly in the base class,
         % otherwise we put it in a separate nested derived class.
-        %
+
         (
             all [Ctor] (
                 list.member(Ctor, Ctors)
             =>
-                ml_needs_secondary_tag(TagValues, Ctor)
+                ml_needs_secondary_tag(TypeCtor, TagValues, Ctor)
             )
         ->
             TagMembers = TagMembers0,
@@ -504,12 +505,12 @@ ml_gen_tag_member(Name, Context) =
         ml_gen_member_decl_flags,
         mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)).
 
-:- func ml_gen_tag_constant(prog_context, cons_tag_values, constructor)
-    = list(mlds_defn).
+:- func ml_gen_tag_constant(prog_context, type_ctor, cons_tag_values,
+    constructor) = list(mlds_defn).
 
-ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
+ml_gen_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = MLDS_Defns :-
     % Check if this constructor uses a secondary tag.
-    ( ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag) ->
+    ( ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag) ->
         % Generate an MLDS definition for this secondary tag constant.
         % We do this mainly for readability and interoperability. Note that
         % we don't do the same thing for primary tags, so this is most useful
@@ -532,8 +533,8 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
     % and if so, return the secondary tag value.
     % BEWARE that this is not the same as ml_needs_secondary_tag, below.
     %
-ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag) :-
-    TagVal = get_tagval(ConsTagValues, Ctor),
+ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag) :-
+    TagVal = get_tagval(TypeCtor, ConsTagValues, Ctor),
     get_secondary_tag(TagVal) = yes(SecondaryTag).
 
     % Check if this constructor needs a secondary tag. This is true if its
@@ -544,24 +545,14 @@ ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag) :-
     % to ensure that its address is distinct from any other reserved objects
     % for the same type.
     %
-:- pred ml_needs_secondary_tag(cons_tag_values::in, constructor::in)
-    is semidet.
+:- pred ml_needs_secondary_tag(type_ctor::in, cons_tag_values::in,
+    constructor::in) is semidet.
 
-ml_needs_secondary_tag(TagValues, Ctor) :-
-    TagVal = get_tagval(TagValues, Ctor),
+ml_needs_secondary_tag(TypeCtor, TagValues, Ctor) :-
+    TagVal = get_tagval(TypeCtor, TagValues, Ctor),
     ( get_secondary_tag(TagVal) = yes(_)
     ; tagval_is_reserved_addr(TagVal, reserved_object(_, _, _))
     ).
-
-    % Check if this constructor is a constant whose value is represented
-    % as a reserved address.
-    %
-:- pred ml_uses_reserved_addr(cons_tag_values::in, constructor::in,
-    reserved_address::out) is semidet.
-
-ml_uses_reserved_addr(ConsTagValues, Ctor, RA) :-
-    TagVal = get_tagval(ConsTagValues, Ctor),
-    tagval_is_reserved_addr(TagVal, RA).
 
 :- pred tagval_is_reserved_addr(cons_tag::in, reserved_address::out)
     is semidet.
@@ -570,12 +561,12 @@ tagval_is_reserved_addr(reserved_address_tag(RA), RA).
 tagval_is_reserved_addr(shared_with_reserved_addresses_tag(_, TagVal), RA) :-
     tagval_is_reserved_addr(TagVal, RA).
 
-:- func get_tagval(cons_tag_values, constructor) = cons_tag.
+:- func get_tagval(type_ctor, cons_tag_values, constructor) = cons_tag.
 
-get_tagval(ConsTagValues, Ctor) = TagVal :-
+get_tagval(TypeCtor, ConsTagValues, Ctor) = TagVal :-
     Ctor = ctor(_ExistQTVars, _Constraints, Name, Args, _Ctxt),
     list.length(Args, Arity),
-    map.lookup(ConsTagValues, cons(Name, Arity), TagVal).
+    map.lookup(ConsTagValues, cons(Name, Arity, TypeCtor), TagVal).
 
     % Generate a definition for the class used for the secondary tag type.
     % This is needed for discriminated unions for which some but not all
@@ -647,7 +638,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
     UnqualCtorName = ml_gen_du_ctor_name(Target, TypeCtor,
         CtorName, CtorArity),
 
-    TagVal = get_tagval(ConsTagValues, Ctor),
+    TagVal = get_tagval(TypeCtor, ConsTagValues, Ctor),
     ( tagval_is_reserved_addr(TagVal, ReservedAddr) ->
         ( ReservedAddr = reserved_object(_, _, _) ->
             % Generate a reserved object for this constructor.
@@ -1137,21 +1128,23 @@ ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
         TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
             _IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
             _IsForeignType),
-        list.foldl(generate_foreign_enum_constant(Mapping, TagValues),
+        list.foldl(
+            generate_foreign_enum_constant(TypeCtor, Mapping, TagValues),
             Ctors, [], ExportConstants),
         MLDS_ExportedEnum = mlds_exported_enum(Lang, Context, TypeCtor,
             ExportConstants)
     ).
 
-:- pred generate_foreign_enum_constant(map(sym_name, string)::in,
-    cons_tag_values::in, constructor::in,
+:- pred generate_foreign_enum_constant(type_ctor::in,
+    map(sym_name, string)::in, cons_tag_values::in, constructor::in,
     list(mlds_exported_enum_constant)::in,
     list(mlds_exported_enum_constant)::out) is det.
 
-generate_foreign_enum_constant(Mapping, TagValues, Ctor, !ExportConstants) :-
+generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, Ctor,
+        !ExportConstants) :-
     Ctor = ctor(_, _, QualName, Args, _),
     list.length(Args, Arity),
-    map.lookup(TagValues, cons(QualName, Arity), TagVal),
+    map.lookup(TagValues, cons(QualName, Arity, TypeCtor), TagVal),
     (
         TagVal = int_tag(Int),
         ConstValue = ml_const(mlconst_int(Int))
@@ -1162,7 +1155,7 @@ generate_foreign_enum_constant(Mapping, TagValues, Ctor, !ExportConstants) :-
     ;
         ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)
-        ; TagVal = pred_closure_tag(_, _, _)
+        ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)
         ; TagVal = base_typeclass_info_tag(_, _, _)
         ; TagVal = tabling_info_tag(_, _)

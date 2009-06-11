@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006, 2008 The University of Melbourne.
+% Copyright (C) 2004-2006, 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: prog_mode.m.
 % Main author: fjh.
-% 
+%
 % Utility predicates dealing with modes and insts that do not require access
 % to the HLDS. (The predicates that do are in mode_util.m.)
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_mode.
@@ -105,9 +105,13 @@
 :- pred get_arg_insts(mer_inst::in, cons_id::in, arity::in,
     list(mer_inst)::out) is semidet.
 
-    % Given a list of bound_insts, get the corresponding list of cons_ids
+    % Given a (list of) bound_insts, get the corresponding cons_ids.
+    % The type_ctor, if given,
     %
-:- pred functors_to_cons_ids(list(bound_inst)::in, list(cons_id)::out) is det.
+:- pred bound_inst_to_cons_id(type_ctor::in, bound_inst::in,
+    cons_id::out) is det.
+:- pred bound_insts_to_cons_ids(type_ctor::in, list(bound_inst)::in,
+    list(cons_id)::out) is det.
 
 :- pred mode_id_to_int(mode_id::in, int::out) is det.
 
@@ -502,10 +506,19 @@ inst_contains_unconstrained_var(abstract_inst(_SymName, Insts)) :-
 
 %-----------------------------------------------------------------------------%
 
-functors_to_cons_ids([], []).
-functors_to_cons_ids([Functor | Functors], [ConsId | ConsIds]) :-
-    Functor = bound_functor(ConsId, _ArgInsts),
-    functors_to_cons_ids(Functors, ConsIds).
+bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
+    BoundInst = bound_functor(ConsId0, _ArgInsts),
+    ( ConsId0 = cons(SymName, Arity, _TypeCtor) ->
+        ConsId = cons(SymName, Arity, TypeCtor)
+    ;
+        ConsId = ConsId0
+    ).
+
+bound_insts_to_cons_ids(_, [], []).
+bound_insts_to_cons_ids(TypeCtor, [BoundInst | BoundInsts],
+        [ConsId | ConsIds]) :-
+    bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId),
+    bound_insts_to_cons_ids(TypeCtor, BoundInsts, ConsIds).
 
 %-----------------------------------------------------------------------------%
 
@@ -531,13 +544,16 @@ get_arg_insts(any(Uniq, _), _ConsId, Arity, ArgInsts) :-
     is semidet.
 
 get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
-    ( BoundInst = bound_functor(ConsId, ArgInsts0) ->
+    (
+        BoundInst = bound_functor(FunctorConsId, ArgInsts0),
+        equivalent_cons_ids(ConsId, FunctorConsId)
+    ->
         ArgInsts = ArgInsts0
     ;
         get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
     ).
 
-    % In case we later decided to change the representation of mode_ids.
+    % In case we later decide to change the representation of mode_ids.
 mode_id_to_int(mode_id(_, X), X).
 
 %-----------------------------------------------------------------------------%
@@ -552,16 +568,15 @@ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
 strip_builtin_qualifiers_from_mode((Initial0 -> Final0), (Initial -> Final)) :-
     strip_builtin_qualifiers_from_inst(Initial0, Initial),
     strip_builtin_qualifiers_from_inst(Final0, Final).
-
 strip_builtin_qualifiers_from_mode(user_defined_mode(SymName0, Insts0),
         user_defined_mode(SymName, Insts)) :-
     strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
     strip_builtin_qualifier_from_sym_name(SymName0, SymName).
 
 strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
-    ( ConsId0 = cons(Name0, Arity) ->
+    ( ConsId0 = cons(Name0, Arity, TypeCtor) ->
         strip_builtin_qualifier_from_sym_name(Name0, Name),
-        ConsId = cons(Name, Arity)
+        ConsId = cons(Name, Arity, TypeCtor)
     ;
         ConsId = ConsId0
     ).

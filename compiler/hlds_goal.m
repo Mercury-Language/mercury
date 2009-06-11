@@ -17,9 +17,9 @@
 :- module hlds.hlds_goal.
 :- interface.
 
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_data.
 :- import_module hlds.instmap.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
@@ -693,22 +693,18 @@
     --->    construct_sub_info(
                 take_address_fields     :: maybe(list(int)),
 
+                % The value `yes' tells the code generator to reserve an extra
+                % slot, at offset -1, to hold an integer giving the size of
+                % the term. The argument specifies the value to be put into
+                % this slot, either as an integer constant or as the value
+                % of a given variable.
+                %
+                % The value `no' means there is no extra slot, and is the
+                % default.
+                %
+                % The content of this slot is not meaningful before the
+                % size_prof pass has been run.
                 term_size_slot          :: maybe(term_size_value)
-                                        % The value `yes' tells the code
-                                        % generator to reserve an extra slot,
-                                        % at offset -1, to hold an integer
-                                        % giving the size of the term.
-                                        % The argument specifies the value
-                                        % to be put into this slot, either
-                                        % as an integer constant or as the
-                                        % value of a given variable.
-                                        %
-                                        % The value `no' means there is no
-                                        % extra slot, and is the default.
-                                        %
-                                        % The content of this slot is not
-                                        % meaningful before the size_prof pass
-                                        % has been run.
             )
     ;       no_construct_sub_info.
 
@@ -903,10 +899,10 @@
     % unification.
     %
 :- type unify_sub_context
-    ==  pair(
-            cons_id,    % The functor.
-            int         % The argument number (first arg == 1).
-        ).
+    --->    unify_sub_context(
+                cons_id,    % The functor.
+                int         % The argument number (first arg == 1).
+            ).
 
 :- type unify_sub_contexts == list(unify_sub_context).
 
@@ -949,7 +945,7 @@
     %
 :- type static_cons
     --->    static_cons(
-                cons_id,            % The cons_id of the functor.
+                cons_id,       % The cons_id of the functor.
                 list(prog_var),     % The list of arg variables.
                 list(static_cons)   % How to construct the args.
             ).
@@ -959,7 +955,7 @@
 :- type cell_to_reuse
     --->    cell_to_reuse(
                 prog_var,
-                list(cons_id),      % The cell to be reused may be tagged
+                list(cons_id), % The cell to be reused may be tagged
                                     % with one of these cons_ids.
                 list(needs_update)  % Whether the corresponding
                                     % argument already has the correct value
@@ -1151,18 +1147,26 @@
 :- type short_reuse_description
     --->    cell_died
     ;       cell_reused(
-                dead_var,       % The dead variable selected for reusing.
-                is_conditional, % States whether the reuse is conditional.
-                list(cons_id),  % What are the possible cons_ids that the
-                                % variable to be reused can have.
+                % The dead variable selected for reusing.
+                dead_var,
+
+                % States whether the reuse is conditional.
+                is_conditional,
+
+                % What are the possible cons_ids that the variable
+                % to be reused can have.
+                list(cons_id),
+
+                % Which of the fields of the cell to be reused already contain
+                % the correct value.
                 list(needs_update)
-                                % Which of the fields of the cell to be
-                                % reused already contain the correct value.
             )
     ;       reuse_call(
                 is_conditional,
-                list(int)       % Which arguments must not be clobbered;
-                                % determines the reuse version to call.
+
+                % Which arguments must not be clobbered; determines the reuse
+                % version to call.
+                list(int)
             ).
 
     % Used to represent the fact whether a reuse opportunity is either
@@ -1742,6 +1746,7 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
@@ -3179,8 +3184,7 @@ make_float_const_construction(Var, Float, Goal) :-
     make_const_construction(Var, float_const(Float), Goal).
 
 make_char_const_construction(Var, Char, Goal) :-
-    string.char_to_string(Char, String),
-    make_const_construction(Var, cons(unqualified(String), 0), Goal).
+    make_const_construction(Var, char_const(Char), Goal).
 
 make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
     RHS = rhs_functor(ConsId, no, []),
@@ -3229,12 +3233,12 @@ deconstruct_functor(Var, ConsId, Args, Goal) :-
 
 construct_tuple(Tuple, Args, Goal) :-
     list.length(Args, Arity),
-    ConsId = cons(unqualified("{}"), Arity),
+    ConsId = tuple_cons(Arity),
     construct_functor(Tuple, ConsId, Args, Goal).
 
 deconstruct_tuple(Tuple, Args, Goal) :-
     list.length(Args, Arity),
-    ConsId = cons(unqualified("{}"), Arity),
+    ConsId = tuple_cons(Arity),
     deconstruct_functor(Tuple, ConsId, Args, Goal).
 
 %-----------------------------------------------------------------------------%

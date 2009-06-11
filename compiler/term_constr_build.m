@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2008 The University of Melbourne.
+% Copyright (C) 2003, 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -684,6 +684,8 @@ build_abstract_switch_acc(SwitchProgVar, [Case | Cases], !AbstractGoals,
     % switch arm is for several cons_ids). They are of course in the HLDS,
     % just not stored in a way we can derive them from the goal in the normal
     % fashion unless there is actually a deconstruction unification present.
+    %
+    % XXX Why do we ignore OtherConsIds when it is not []?
 
     (
         OtherConsIds = [],
@@ -1075,9 +1077,8 @@ find_failure_constraint_for_goal_2(
     find_deconstruct_fail_bound(GoalExpr, Info, Polyhedron),
     AbstractGoal = term_primitive(Polyhedron, [], []).
 
-    % Given a deconstruction unification and assuming that it has
-    % failed, find a bound on the size of the variable being
-    % deconstructed.
+    % Given a deconstruction unification and assuming that it has failed,
+    % find a bound on the size of the variable being deconstructed.
     %
 :- pred find_deconstruct_fail_bound(hlds_goal_expr::in, traversal_info::in,
     polyhedron::out) is semidet.
@@ -1085,10 +1086,12 @@ find_failure_constraint_for_goal_2(
 find_deconstruct_fail_bound(unify(_, _, _, Kind, _), Info, Polyhedron) :-
     Kind = deconstruct(Var, ConsId, _, _, can_fail, _),
     map.lookup(Info ^ tti_vartypes, Var, Type),
-    prog_type.type_to_ctor_and_args(Type, TypeCtor, _),
+    type_to_ctor_det(Type, TypeCtor),
     ModuleInfo = Info ^ tti_module_info,
     type_util.type_constructors(ModuleInfo, Type, Constructors0),
-    ( ConsId = cons(ConsName, ConsArity) ->
+    ( ConsId = cons(ConsName, ConsArity, ConsTypeCtor) ->
+        expect(unify(TypeCtor, ConsTypeCtor), this_file,
+            "find_deconstruct_fail_bound: mismatched type_ctors"),
         FindComplement = (pred(Ctor::in) is semidet :-
             Ctor = ctor(_, _, SymName, Args, _),
             list.length(Args, Arity),
@@ -1152,7 +1155,7 @@ bounds_on_var(Norm, ModuleInfo, TypeCtor, Var, Constructors, Polyhedron) :-
 lower_bound(Norm, Module, TypeCtor, Constructor) = LowerBound :-
     Constructor = ctor(_, _, SymName, Args, _),
     Arity = list.length(Args),
-    ConsId = cons(SymName, Arity),
+    ConsId = cons(SymName, Arity, TypeCtor),
     LowerBound = functor_lower_bound(Norm, TypeCtor, ConsId, Module).
 
     % Given a variable, its type and a set of constructors to which it
@@ -1179,7 +1182,7 @@ upper_bound_constraints(Norm, Module, Var, TypeCtor, Ctors, Constraints) :-
             zero_size_type(Module, Arg ^ arg_type)
         ),
         Arity = list.length(Args),
-        ConsId = cons(SymName, Arity),
+        ConsId = cons(SymName, Arity, TypeCtor),
         Bound = functor_lower_bound(Norm, TypeCtor, ConsId, Module),
         ( if Bound > !.B then !:B = Bound else true )
     ),

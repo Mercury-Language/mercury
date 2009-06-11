@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,8 +23,8 @@
 
 :- import_module io.
 
-:- pred subst_implementation_defined_literals(module_info::in,
-    module_info::out, io::di, io::uo) is det.
+:- pred subst_impl_defined_literals(module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -57,7 +57,7 @@
 
 %-----------------------------------------------------------------------------%
 
-subst_implementation_defined_literals(!ModuleInfo, !IO) :-
+subst_impl_defined_literals(!ModuleInfo, !IO) :-
     module_info_preds(!.ModuleInfo, Preds0),
     map.map_values(subst_literals_in_pred(!.ModuleInfo), Preds0, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
@@ -93,18 +93,19 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
         (
             RHS0 = rhs_functor(ConsId, _, _),
             (
-                ConsId = implementation_defined_const(Name),
+                ConsId = impl_defined_const(Name),
                 Context = goal_info_get_context(GoalInfo0),
-                make_implementation_defined_literal(Var, Name, Context, Info,
-                    Goal1),
+                make_impl_defined_literal(Var, Name, Context, Info, Goal1),
                 Goal1 = hlds_goal(GoalExpr, _),
                 Goal = hlds_goal(GoalExpr, GoalInfo0)
             ;
-                ( ConsId = cons(_, _)
+                ( ConsId = cons(_, _, _)
+                ; ConsId = tuple_cons(_)
+                ; ConsId = closure_cons(_, _)
                 ; ConsId = int_const(_)
-                ; ConsId = string_const(_)
                 ; ConsId = float_const(_)
-                ; ConsId = pred_const(_, _)
+                ; ConsId = char_const(_)
+                ; ConsId = string_const(_)
                 ; ConsId = type_ctor_info_const(_, _, _)
                 ; ConsId = base_typeclass_info_const(_, _, _, _)
                 ; ConsId = type_info_cell_constructor(_)
@@ -180,10 +181,10 @@ subst_literals_in_case(Info, Case0, Case) :-
     subst_literals_in_goal(Info, Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-:- pred make_implementation_defined_literal(prog_var::in, string::in,
+:- pred make_impl_defined_literal(prog_var::in, string::in,
     term.context::in, subst_literals_info::in, hlds_goal::out) is det.
 
-make_implementation_defined_literal(Var, Name, Context, Info, Goal) :-
+make_impl_defined_literal(Var, Name, Context, Info, Goal) :-
     Context = term.context(File, Line),
     Info = subst_literals_info(ModuleInfo, PredInfo, PredId),
     ( Name = "file" ->
@@ -204,7 +205,7 @@ make_implementation_defined_literal(Var, Name, Context, Info, Goal) :-
     ;
         % These should have been caught during type checking.
         unexpected(this_file,
-            "make_implementation_defined_literal: unknown literal")
+            "make_impl_defined_literal: unknown literal")
     ).
 
 %-----------------------------------------------------------------------------%

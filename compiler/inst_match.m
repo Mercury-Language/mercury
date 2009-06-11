@@ -81,7 +81,7 @@
     % (inst_var_sub). For each inst_var which occurs in InstA there will be
     % a substitution to the corresponding inst in InstB.
     %
-:- pred inst_matches_initial(mer_inst::in, mer_inst::in, mer_type::in,
+:- pred inst_matches_initial_sub(mer_inst::in, mer_inst::in, mer_type::in,
     module_info::in, module_info::out, inst_var_sub::in, inst_var_sub::out)
     is semidet.
 
@@ -94,7 +94,7 @@
 
     % A version of the above that also computes the inst_var_sub.
     %
-:- pred inst_matches_initial_no_implied_modes(mer_inst::in, mer_inst::in,
+:- pred inst_matches_initial_no_implied_modes_sub(mer_inst::in, mer_inst::in,
     mer_type::in, module_info::in, module_info::out,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
@@ -115,7 +115,7 @@
     % bound(...), ...).  This version is to be preferred when the type is
     % available.
     %
-:- pred inst_matches_final(mer_inst::in, mer_inst::in, mer_type::in,
+:- pred inst_matches_final_typed(mer_inst::in, mer_inst::in, mer_type::in,
     module_info::in) is semidet.
 
     % The difference between inst_matches_initial and inst_matches_final is
@@ -558,21 +558,22 @@ update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
 inst_matches_initial(InstA, InstB, Type, ModuleInfo) :-
     inst_matches_initial_1(InstA, InstB, Type, ModuleInfo, _, no, _).
 
-inst_matches_initial(InstA, InstB, Type, !ModuleInfo, !Sub) :-
+inst_matches_initial_sub(InstA, InstB, Type, !ModuleInfo, !Sub) :-
     inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo,
         yes(!.Sub), MaybeSub),
     (
         MaybeSub = yes(!:Sub)
     ;
         MaybeSub = no,
-        unexpected(this_file, "inst_matches_initial: missing inst_var_sub")
+        unexpected(this_file, "inst_matches_initial_sub: missing inst_var_sub")
     ).
 
 inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo) :-
     Info0 = init_inst_match_info(ModuleInfo, no, forward, match, yes),
     inst_matches_final_2(InstA, InstB, yes(Type), Info0, _).
 
-inst_matches_initial_no_implied_modes(InstA, InstB, Type, !ModuleInfo, !Sub) :-
+inst_matches_initial_no_implied_modes_sub(InstA, InstB, Type,
+        !ModuleInfo, !Sub) :-
     Info0 = init_inst_match_info(!.ModuleInfo, yes(!.Sub), forward,
         match, yes),
     inst_matches_final_2(InstA, InstB, yes(Type), Info0, Info),
@@ -758,30 +759,6 @@ inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
         Inst \= not_reached
     ).
 
-    % Check that two cons_ids are the same, except that one may be less
-    % module qualified than the other.
-    %
-:- pred equivalent_cons_ids(cons_id::in, cons_id::in) is semidet.
-
-equivalent_cons_ids(ConsIdA, ConsIdB) :-
-    (
-        ConsIdA = cons(NameA, ArityA),
-        ConsIdB = cons(NameB, ArityB)
-    ->
-        ArityA = ArityB,
-        equivalent_sym_names(NameA, NameB)
-    ;
-        ConsIdA = ConsIdB
-    ).
-
-:- pred equivalent_sym_names(sym_name::in, sym_name::in) is semidet.
-
-equivalent_sym_names(unqualified(S), unqualified(S)).
-equivalent_sym_names(qualified(_, S), unqualified(S)).
-equivalent_sym_names(unqualified(S), qualified(_, S)).
-equivalent_sym_names(qualified(QualA, S), qualified(QualB, S)) :-
-    equivalent_sym_names(QualA, QualB).
-
     % Check that the first cons_id is lexically greater than the
     % second, after all module qualifiers have been removed.
     %
@@ -790,8 +767,8 @@ equivalent_sym_names(qualified(QualA, S), qualified(QualB, S)) :-
 
 greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
     (
-        ConsIdA = cons(QNameA, ArityA),
-        ConsIdB = cons(QNameB, ArityB)
+        ConsIdA = cons(QNameA, ArityA, _),
+        ConsIdB = cons(QNameB, ArityB, _)
     ->
         ( QNameA = unqualified(NameA)
         ; QNameA = qualified(_, NameA)
@@ -994,7 +971,7 @@ inst_matches_final(InstA, InstB, ModuleInfo) :-
     Info0 = init_inst_match_info(ModuleInfo, no, none, match, yes),
     inst_matches_final_2(InstA, InstB, no, Info0, _).
 
-inst_matches_final(InstA, InstB, Type, ModuleInfo) :-
+inst_matches_final_typed(InstA, InstB, Type, ModuleInfo) :-
     Info0 = init_inst_match_info(ModuleInfo, no, none, match, yes),
     inst_matches_final_2(InstA, InstB, yes(Type), Info0, _).
 
@@ -2040,8 +2017,9 @@ mode_contains_inst_var(Mode, InstVar) :-
 maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, none, Inst) :-
     \+ type_util.is_solver_type(ModuleInfo, Type),
     ( type_constructors(ModuleInfo, Type, Constructors) ->
-        constructors_to_bound_any_insts(ModuleInfo, Uniq, Constructors,
-            BoundInsts0),
+        type_to_ctor_det(Type, TypeCtor),
+        constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor,
+            Constructors, BoundInsts0),
         list.sort_and_remove_dups(BoundInsts0, BoundInsts),
         Inst = bound(Uniq, BoundInsts)
     ; type_may_contain_solver_type(ModuleInfo, Type) ->

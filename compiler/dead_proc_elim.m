@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -564,7 +564,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
             Unification = construct(_, ConsId, _, _, _, _, _),
             (
                 (
-                    ConsId = pred_const(ShroudedPredProcId, _),
+                    ConsId = closure_cons(ShroudedPredProcId, _),
                     proc(PredId, ProcId) =
                         unshroud_pred_proc_id(ShroudedPredProcId),
                     Entity = entity_proc(PredId, ProcId),
@@ -594,11 +594,13 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 svqueue.put(Entity, !Queue),
                 svmap.set(Entity, not_eliminable, !Needed)
             ;
-                ( ConsId = cons(_, _)
+                ( ConsId = cons(_, _, _)
+                ; ConsId = tuple_cons(_)
                 ; ConsId = int_const(_)
-                ; ConsId = string_const(_)
                 ; ConsId = float_const(_)
-                ; ConsId = implementation_defined_const(_)
+                ; ConsId = char_const(_)
+                ; ConsId = string_const(_)
+                ; ConsId = impl_defined_const(_)
                 ; ConsId = base_typeclass_info_const(_, _, _, _)
                 ; ConsId = type_info_cell_constructor(_)
                 ; ConsId = typeclass_info_cell_constructor
@@ -1100,7 +1102,7 @@ pre_modecheck_examine_goal_expr(shorthand(ShortHand), !DeadInfo) :-
 
 pre_modecheck_examine_unify_rhs(rhs_var(_), !DeadInfo).
 pre_modecheck_examine_unify_rhs(rhs_functor(Functor, _, _), !DeadInfo) :-
-    ( Functor = cons(Name, _) ->
+    ( Functor = cons(Name, _, _) ->
         dead_pred_info_add_pred_name(Name, !DeadInfo)
     ;
         true

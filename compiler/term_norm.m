@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
     % This predicate sets the functor_info depending on the value of the
     % termination_norm or termination2_norm option.
     %
-:- func set_functor_info(globals.termination_norm, module_info) = functor_info.  
+:- func set_functor_info(globals.termination_norm, module_info) = functor_info.
 
     % This predicate computes the weight of a functor and the set of arguments
     % of that functor whose sizes should be counted towards the size of the
@@ -46,7 +46,7 @@
     % track of typeinfo related variables - it used to but intervening
     % compiler passes tend to do things to the code in the mean time so the
     % whole lot becomes inconsistent - in the end it's just easier to ignore
-    % them). 
+    % them).
     %
 :- pred functor_norm(functor_info::in, type_ctor::in, cons_id::in,
     module_info::in, int::out, list(prog_var)::in, list(prog_var)::out,
@@ -58,9 +58,9 @@
     % of the functor.  (And if there were this function wouldn't tell you about
     % it anyhow).
     %
-:- func functor_lower_bound(functor_info, type_ctor, cons_id, module_info) 
+:- func functor_lower_bound(functor_info, type_ctor, cons_id, module_info)
     = int.
-    
+
     % Succeeds if all values of the given type are zero size (for all norms).
     %
 :- pred zero_size_type(module_info::in, mer_type::in) is semidet.
@@ -191,7 +191,7 @@ find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
     ;
         WeightInfo = weight(0, [])
     ),
-    ConsId = cons(SymName, Arity),
+    ConsId = cons(SymName, Arity, TypeCtor),
     svmap.det_insert(TypeCtor - ConsId, WeightInfo, !Weights).
 
 :- pred find_weights_for_tuple(arity::in, weight_info::out) is det.
@@ -254,41 +254,46 @@ set_functor_info(norm_size_data_elems, ModuleInfo) = use_map(WeightMap) :-
 % Although the module info is not used in any of these norms, it could
 % be needed for other norms, so it should not be removed.
 
-functor_norm(simple, _, ConsId, _, Int, !Args, !Modes) :-
+functor_norm(FunctorInfo, TypeCtor, ConsId, _ModuleInfo, Int, !Args, !Modes) :-
     (
-        ConsId = cons(_, Arity),
-        Arity \= 0
-    ->
-        Int = 1
-    ;
-        Int = 0
-    ).
-functor_norm(total, _, ConsId, _, Int, !Args, !Modes) :-
-    ( ConsId = cons(_, Arity) ->
-        Int = Arity
-    ;
-        Int = 0
-    ).
-functor_norm(use_map(WeightMap), TypeCtor, ConsId, _, Int, !Args, !Modes) :-
-    ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
-        WeightInfo = weight(Int, _)
-    ;
-        Int = 0
-    ).
-functor_norm(use_map_and_args(WeightMap), TypeCtor, ConsId, _, Int, !Args,
-        !Modes) :-
-    ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
-        WeightInfo = weight(Int, UseArgList),
+        FunctorInfo = simple,
         (
-            functor_norm_filter_args(UseArgList, !Args, !Modes)
+            ConsId = cons(_, Arity, _),
+            Arity \= 0
         ->
-            true
+            Int = 1
         ;
-            unexpected(this_file,
-                "Unmatched lists in functor_norm_filter_args.")
+            Int = 0
         )
     ;
-        Int = 0
+        FunctorInfo = total,
+        ( ConsId = cons(_, Arity, _) ->
+            Int = Arity
+        ;
+            Int = 0
+        )
+    ;
+        FunctorInfo = use_map(WeightMap),
+        ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+            WeightInfo = weight(Int, _)
+        ;
+            Int = 0
+        )
+    ;
+        FunctorInfo = use_map_and_args(WeightMap),
+        ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+            WeightInfo = weight(Int, UseArgList),
+            (
+                functor_norm_filter_args(UseArgList, !Args, !Modes)
+            ->
+                true
+            ;
+                unexpected(this_file,
+                    "Unmatched lists in functor_norm_filter_args.")
+            )
+        ;
+            Int = 0
+        )
     ).
 
     % This predicate will fail if the length of the input lists are not
@@ -308,20 +313,25 @@ functor_norm_filter_args([no | Bools], [_Arg0 | Args0], Args,
 
 %-----------------------------------------------------------------------------%
 
-functor_lower_bound(simple, _, ConsId, _) =
-    ( if ConsId = cons(_, Arity), Arity \= 0 then 1 else 0).
-functor_lower_bound(total, _, ConsId, _) =
-    ( if ConsId = cons(_, Arity) then Arity else 0 ).
-functor_lower_bound(use_map(WeightMap), TypeCtor, ConsId, _) = Weight :-
-    ( if    search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo)
-      then  WeightInfo = weight(Weight, _)
-      else  Weight = 0
-    ).
-functor_lower_bound(use_map_and_args(WeightMap), TypeCtor, ConsId, _) 
-        = Weight :-
-    ( if    search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo)
-      then  WeightInfo = weight(Weight, _)
-      else  Weight = 0
+functor_lower_bound(FunctorInfo, TypeCtor, ConsId, _ModuleInfo) = Weight :-
+    (
+        FunctorInfo = simple,
+        Weight = ( if ConsId = cons(_, Arity, _), Arity \= 0 then 1 else 0 )
+    ;
+        FunctorInfo = total,
+        Weight = ( if ConsId = cons(_, Arity, _) then Arity else 0 )
+    ;
+        FunctorInfo = use_map(WeightMap),
+        ( if    search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo)
+          then  WeightInfo = weight(Weight, _)
+          else  Weight = 0
+        )
+    ;
+        FunctorInfo = use_map_and_args(WeightMap),
+        ( if    search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo)
+          then  WeightInfo = weight(Weight, _)
+          else  Weight = 0
+        )
     ).
 
 %-----------------------------------------------------------------------------%

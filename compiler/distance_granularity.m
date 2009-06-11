@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -152,11 +152,11 @@
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
-:- import_module term.
 :- import_module transform_hlds.implicit_parallelism.
 
 :- import_module bool.
@@ -169,6 +169,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module set.
+:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -695,9 +696,10 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                         MinusPredId, MinusProcId),
                     MinusCallArgs = [GranularityVar, Var, VarResult],
                     MinusCallBuiltin = inline_builtin,
-                    MinusCallSymName = qualified(unqualified("int"),"-"),
-                    Rhs = rhs_functor(cons(MinusCallSymName, 2), no,
-                        [GranularityVar, Var]),
+                    MinusCallSymName = qualified(unqualified("int"), "-"),
+                    ConsId =
+                        cons(MinusCallSymName, 2, cons_id_dummy_type_ctor),
+                    Rhs = rhs_functor(ConsId, no, [GranularityVar, Var]),
                     MinusCallUnifyContext = yes(call_unify_context(VarResult,
                         Rhs, unify_context(
                         umc_implicit("distance_granularity"), []))),

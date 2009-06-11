@@ -141,11 +141,10 @@
     % Convert a list of constructors to a list of bound_insts where the
     % arguments are `ground'.
     %
-    % NOTE: the list(bound_inst) is not sorted and may contain
-    %       duplicates.
+    % NOTE: the list(bound_inst) is not sorted and may contain duplicates.
     %
 :- pred constructors_to_bound_insts(module_info::in, uniqueness::in,
-    list(constructor)::in, list(bound_inst)::out) is det.
+    type_ctor::in, list(constructor)::in, list(bound_inst)::out) is det.
 
     % Convert a list of constructors to a list of bound_insts where the
     % arguments are `any'.
@@ -154,7 +153,7 @@
     %       duplicates.
     %
 :- pred constructors_to_bound_any_insts(module_info::in, uniqueness::in,
-    list(constructor)::in, list(bound_inst)::out) is det.
+    type_ctor::in, list(constructor)::in, list(bound_inst)::out) is det.
 
     % Given the mode of a predicate, work out which arguments are live
     % (might be used again by the caller of that predicate) and which
@@ -288,12 +287,10 @@ mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
     list(type_ctor)::in, arg_mode::out) is det.
 
 mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
-    %
     % We need to handle no_tag types (types which have exactly one constructor,
     % and whose one constructor has exactly one argument) specially here,
     % since for them an inst of bound(f(free)) is not really bound as far as
     % code generation is concerned, since the f/1 will get optimized away.
-    %
     (
         % Is this a no_tag type?
         type_is_no_tag_type(ModuleInfo, Type, FunctorName, ArgType),
@@ -304,11 +301,11 @@ mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
         % The arg_mode will be determined by the mode and type of the
         % functor's argument, so we figure out the mode and type of the
         % argument, and then recurse.
-        %
+
         mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
-        ConsId = cons(FunctorName, 1),
-        get_single_arg_inst(InitialInst, ModuleInfo, ConsId, InitialArgInst),
-        get_single_arg_inst(FinalInst, ModuleInfo, ConsId, FinalArgInst),
+        ConsId = cons(FunctorName, 1, TypeCtor),
+        get_single_arg_inst(ModuleInfo, InitialInst, ConsId, InitialArgInst),
+        get_single_arg_inst(ModuleInfo, FinalInst, ConsId, FinalArgInst),
         ModeOfArg = (InitialArgInst -> FinalArgInst),
         mode_to_arg_mode_2(ModuleInfo, ModeOfArg, ArgType,
             [TypeCtor | ContainingTypes], ArgMode)
@@ -331,37 +328,53 @@ base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
 
 %-----------------------------------------------------------------------------%
 
-    % get_single_arg_inst(Inst, ConsId, Arity, ArgInsts):
+    % get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInsts):
     % Given an inst `Inst', figure out what the inst of the argument would be,
     % assuming that the functor is the one given by the specified ConsId,
     % whose arity is 1.
     %
-:- pred get_single_arg_inst(mer_inst::in, module_info::in, cons_id::in,
+:- pred get_single_arg_inst(module_info::in, mer_inst::in, cons_id::in,
     mer_inst::out) is det.
 
-get_single_arg_inst(defined_inst(InstName), ModuleInfo, ConsId, ArgInst) :-
-    inst_lookup(ModuleInfo, InstName, Inst),
-    get_single_arg_inst(Inst, ModuleInfo, ConsId, ArgInst).
-get_single_arg_inst(not_reached, _, _, not_reached).
-get_single_arg_inst(ground(Uniq, _PredInst), _, _, ground(Uniq, none)).
-get_single_arg_inst(bound(_Uniq, List), _, ConsId, ArgInst) :-
-    ( get_single_arg_inst_2(List, ConsId, ArgInst0) ->
-        ArgInst = ArgInst0
+get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
+    (
+        Inst = defined_inst(InstName),
+        inst_lookup(ModuleInfo, InstName, NamedInst),
+        get_single_arg_inst(ModuleInfo, NamedInst, ConsId, ArgInst)
     ;
-        % The code is unreachable.
+        Inst = not_reached,
         ArgInst = not_reached
+    ;
+        Inst = ground(Uniq, _PredInst),
+        ArgInst = ground(Uniq, none)
+    ;
+        Inst = bound(_Uniq, List),
+        ( get_single_arg_inst_2(List, ConsId, ArgInst0) ->
+            ArgInst = ArgInst0
+        ;
+            % The code is unreachable.
+            ArgInst = not_reached
+        )
+    ;
+        Inst = free,
+        ArgInst = free
+    ;
+        Inst = free(_Type),
+        ArgInst = free   % XXX loses type info
+    ;
+        Inst = any(Uniq, _),
+        ArgInst = any(Uniq, none)
+    ;
+        Inst = abstract_inst(_, _),
+        unexpected(this_file,
+            "get_single_arg_inst: abstract insts not supported")
+    ;
+        Inst = inst_var(_),
+        unexpected(this_file, "get_single_arg_inst: inst_var")
+    ;
+        Inst = constrained_inst_vars(_, InsideInst),
+        get_single_arg_inst(ModuleInfo, InsideInst, ConsId, ArgInst)
     ).
-get_single_arg_inst(free, _, _, free).
-get_single_arg_inst(free(_Type), _, _, free).   % XXX loses type info
-get_single_arg_inst(any(Uniq, _), _, _, any(Uniq, none)).
-get_single_arg_inst(abstract_inst(_, _), _, _, _) :-
-    unexpected(this_file,
-        "get_single_arg_inst: abstract insts not supported").
-get_single_arg_inst(inst_var(_), _, _, _) :-
-    unexpected(this_file, "get_single_arg_inst: inst_var").
-get_single_arg_inst(constrained_inst_vars(_, Inst), ModuleInfo, ConsId,
-        ArgInst) :-
-    get_single_arg_inst(Inst, ModuleInfo, ConsId, ArgInst).
 
 :- pred get_single_arg_inst_2(list(bound_inst)::in, cons_id::in, mer_inst::out)
     is semidet.
@@ -579,8 +592,9 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
             default_higher_order_func_inst(ModuleInfo, ArgTypes, PredInstInfo),
             Inst = any(Uniq, higher_order(PredInstInfo))
         ;
-            constructors_to_bound_any_insts(ModuleInfo, Uniq, Constructors,
-                BoundInsts0),
+            type_to_ctor_det(Type, TypeCtor),
+            constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor,
+                Constructors, BoundInsts0),
             list.sort_and_remove_dups(BoundInsts0, BoundInsts),
             Inst = bound(Uniq, BoundInsts)
         )
@@ -626,7 +640,8 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
                 HigherOrderInstInfo),
             Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
         ;
-            constructors_to_bound_insts(ModuleInfo, Uniq,
+            type_to_ctor_det(Type, TypeCtor),
+            constructors_to_bound_insts(ModuleInfo, Uniq, TypeCtor,
                 Constructors, BoundInsts0),
             list.sort_and_remove_dups(BoundInsts0, BoundInsts),
             Inst = bound(Uniq, BoundInsts)
@@ -803,25 +818,28 @@ default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
         PredArgModes0, PredArgModes),
     PredInstInfo = pred_inst_info(pf_function, PredArgModes, detism_det).
 
-constructors_to_bound_insts(ModuleInfo, Uniq, Constructors, BoundInsts) :-
-    constructors_to_bound_insts_2(ModuleInfo, Uniq,
-        Constructors, ground(Uniq, none), BoundInsts).
+constructors_to_bound_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
+        BoundInsts) :-
+    constructors_to_bound_insts_2(ModuleInfo, Uniq, TypeCtor, Constructors,
+        ground(Uniq, none), BoundInsts).
 
-constructors_to_bound_any_insts(ModuleInfo, Uniq, Constructors, BoundInsts) :-
-    constructors_to_bound_insts_2(ModuleInfo, Uniq,
-        Constructors, any(Uniq, none), BoundInsts).
+constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
+        BoundInsts) :-
+    constructors_to_bound_insts_2(ModuleInfo, Uniq, TypeCtor, Constructors,
+        any(Uniq, none), BoundInsts).
 
 :- pred constructors_to_bound_insts_2(module_info::in, uniqueness::in,
-    list(constructor)::in, mer_inst::in, list(bound_inst)::out) is det.
+    type_ctor::in, list(constructor)::in, mer_inst::in, list(bound_inst)::out)
+    is det.
 
-constructors_to_bound_insts_2(_, _, [], _, []).
-constructors_to_bound_insts_2(ModuleInfo, Uniq, [Ctor | Ctors], ArgInst,
-        [BoundInst | BoundInsts]) :-
+constructors_to_bound_insts_2(_, _, _, [], _, []).
+constructors_to_bound_insts_2(ModuleInfo, Uniq, TypeCtor, [Ctor | Ctors],
+        ArgInst, [BoundInst | BoundInsts]) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
     list.length(Insts, Arity),
-    BoundInst = bound_functor(cons(Name, Arity), Insts),
-    constructors_to_bound_insts_2(ModuleInfo, Uniq, Ctors,
+    BoundInst = bound_functor(cons(Name, Arity, TypeCtor), Insts),
+    constructors_to_bound_insts_2(ModuleInfo, Uniq, TypeCtor, Ctors,
         ArgInst, BoundInsts).
 
 :- pred ctor_arg_list_to_inst_list(list(constructor_arg)::in, mer_inst::in,
@@ -850,8 +868,8 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
         Constructors = TypeBody ^ du_type_ctors
     ->
         map.from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
-        propagate_ctor_info_3(ModuleInfo, ArgSubst, TypeModule, Constructors,
-            BoundInsts0, BoundInsts1),
+        propagate_ctor_info_3(ModuleInfo, ArgSubst, TypeCtor, TypeModule,
+            Constructors, BoundInsts0, BoundInsts1),
         list.sort(BoundInsts1, BoundInsts)
     ;
         % Builtin types don't need processing.
@@ -864,7 +882,7 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
 propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
     BoundInst0 = bound_functor(Functor, ArgInsts0),
     (
-        Functor = cons(unqualified("{}"), _),
+        Functor = tuple_cons(_),
         list.length(ArgInsts0, ArgInstsLen),
         list.length(TupleArgTypes, TupleArgTypesLen),
         ArgInstsLen = TupleArgTypesLen
@@ -873,30 +891,30 @@ propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
         propagate_types_into_inst_list(ModuleInfo, Subst, TupleArgTypes,
             ArgInsts0, ArgInsts)
     ;
-        % The bound_inst's arity does not match the
-        % tuple's arity, so leave it alone. This can
-        % only happen in a user defined bound_inst.
-        % A mode error should be reported if anything
-        % tries to match with the inst.
+        % The bound_inst's arity does not match the tuple's arity, so leave it
+        % alone. This can only happen in a user defined bound_inst.
+        % A mode error should be reported if anything tries to match with
+        % the inst.
         ArgInsts = ArgInsts0
     ),
     BoundInst = bound_functor(Functor, ArgInsts).
 
 :- pred propagate_ctor_info_3(module_info::in, tsubst::in,
-    module_name::in, list(constructor)::in,
+    type_ctor::in, module_name::in, list(constructor)::in,
     list(bound_inst)::in, list(bound_inst)::out) is det.
 
-propagate_ctor_info_3(_, _, _, _, [], []).
-propagate_ctor_info_3(ModuleInfo, Subst, TypeModule, Constructors,
+propagate_ctor_info_3(_, _, _, _, _, [], []).
+propagate_ctor_info_3(ModuleInfo, Subst, TypeCtor, TypeModule, Constructors,
         [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts]) :-
     BoundInst0 = bound_functor(ConsId0, ArgInsts0),
-    ( ConsId0 = cons(unqualified(Name), Ar) ->
-        ConsId = cons(qualified(TypeModule, Name), Ar)
+    ( ConsId0 = cons(unqualified(Name), ConsArity, _ConsTypeCtor) ->
+        % _ConsTypeCtor should be either TypeCtor or cons_id_dummy_type_ctor.
+        ConsId = cons(qualified(TypeModule, Name), ConsArity, TypeCtor)
     ;
         ConsId = ConsId0
     ),
     (
-        ConsId = cons(ConsName, Arity),
+        ConsId = cons(ConsName, Arity, _),
         GetCons = (pred(Ctor::in) is semidet :-
                 Ctor = ctor(_, _, ConsName, CtorArgs, _),
                 list.length(CtorArgs, Arity)
@@ -918,7 +936,7 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeModule, Constructors,
         % tries to match with the inst.
         BoundInst = bound_functor(ConsId, ArgInsts0)
     ),
-    propagate_ctor_info_3(ModuleInfo, Subst, TypeModule,
+    propagate_ctor_info_3(ModuleInfo, Subst, TypeCtor, TypeModule,
         Constructors, BoundInsts0, BoundInsts).
 
 :- pred apply_type_subst(mer_type::in, tsubst::in, mer_type::out) is det.
@@ -936,10 +954,14 @@ apply_type_subst(Type0, Subst, Type) :-
 :- pred inst_lookup_subst_args(hlds_inst_body::in, list(inst_var)::in,
     sym_name::in, list(mer_inst)::in, mer_inst::out) is det.
 
-inst_lookup_subst_args(eqv_inst(Inst0), Params, _Name, Args, Inst) :-
-    inst_substitute_arg_list(Params, Args, Inst0, Inst).
-inst_lookup_subst_args(abstract_inst, _Params, Name, Args,
-        abstract_inst(Name, Args)).
+inst_lookup_subst_args(InstBody, Params, Name, Args, Inst) :-
+    (
+        InstBody = eqv_inst(Inst0),
+        inst_substitute_arg_list(Params, Args, Inst0, Inst)
+    ;
+        InstBody = abstract_inst,
+        Inst = abstract_inst(Name, Args)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1376,7 +1398,7 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
     ( instmap_is_reachable(InstMap) ->
         instmap_lookup_var(InstMap, Arg, ArgInst),
         map.lookup(VarTypes, Arg, Type),
-        ( inst_matches_initial(ArgInst, Inst, Type, !ModuleInfo, !Sub) ->
+        ( inst_matches_initial_sub(ArgInst, Inst, Type, !ModuleInfo, !Sub) ->
             true
         ;
             % error("compute_inst_var_sub: " ++
@@ -1518,42 +1540,50 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
     %
 :- func cons_id_to_shared_inst(module_info, cons_id, int) = maybe(mer_inst).
 
-cons_id_to_shared_inst(_, cons(_, _), _) = no.
-cons_id_to_shared_inst(_, ConsId @ int_const(_), _) =
-            yes(bound(shared, [bound_functor(ConsId, [])])).
-cons_id_to_shared_inst(_, ConsId @ float_const(_), _) =
-            yes(bound(shared, [bound_functor(ConsId, [])])).
-cons_id_to_shared_inst(_, ConsId @ string_const(_), _) =
-            yes(bound(shared, [bound_functor(ConsId, [])])).
-cons_id_to_shared_inst(_, implementation_defined_const(_), _) = _ :-
-    unexpected(this_file,
-        "cons_id_to_shared_inst: implementation_defined_const").
-cons_id_to_shared_inst(ModuleInfo, pred_const(PredProcId, _), NumArgs) =
-        yes(ground(shared, higher_order(pred_inst_info(PorF, Modes, Det)))) :-
-    module_info_pred_proc_info(ModuleInfo, unshroud_pred_proc_id(PredProcId),
-        PredInfo, ProcInfo),
-    PorF = pred_info_is_pred_or_func(PredInfo),
-    proc_info_interface_determinism(ProcInfo, Det),
-    proc_info_get_argmodes(ProcInfo, ProcArgModes),
-    ( list.drop(NumArgs, ProcArgModes, Modes0) ->
-        Modes = Modes0
+cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
+    (
+        ( ConsId = cons(_, _, _)
+        ; ConsId = tuple_cons(_)
+        ),
+        MaybeInst = no
+    ;   
+        % Note that before the change that introduced the char_const functor,
+        % we used to handle character constants as user-defined cons_ids.
+        ( ConsId = int_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ),
+        MaybeInst = yes(bound(shared, [bound_functor(ConsId, [])]))
+    ;   
+        ConsId = impl_defined_const(_),
+        unexpected(this_file,
+            "cons_id_to_shared_inst: impl_defined_const")
     ;
-        unexpected(this_file, "list.drop failed in cons_id_to_shared_inst")
+        ConsId = closure_cons(PredProcId, _),
+        module_info_pred_proc_info(ModuleInfo,
+            unshroud_pred_proc_id(PredProcId), PredInfo, ProcInfo),
+        PorF = pred_info_is_pred_or_func(PredInfo),
+        proc_info_interface_determinism(ProcInfo, Det),
+        proc_info_get_argmodes(ProcInfo, ProcArgModes),
+        ( list.drop(NumArgs, ProcArgModes, ModesPrime) ->
+            Modes = ModesPrime
+        ;
+            unexpected(this_file, "cons_id_to_shared_inst: list.drop failed")
+        ),
+        Inst = ground(shared, higher_order(pred_inst_info(PorF, Modes, Det))),
+        MaybeInst = yes(Inst)
+    ;
+        ( ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = table_io_decl(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ),
+        MaybeInst = yes(ground(shared, none))
     ).
-cons_id_to_shared_inst(_, type_ctor_info_const(_, _, _), _) =
-            yes(ground(shared, none)).
-cons_id_to_shared_inst(_, base_typeclass_info_const(_, _, _, _), _) =
-            yes(ground(shared, none)).
-cons_id_to_shared_inst(_, type_info_cell_constructor(_), _) =
-            yes(ground(shared, none)).
-cons_id_to_shared_inst(_, typeclass_info_cell_constructor, _) =
-            yes(ground(shared, none)).
-cons_id_to_shared_inst(_, tabling_info_const(_), _) =
-            yes(ground(shared, none)).
-cons_id_to_shared_inst(_, deep_profiling_proc_layout(_), _) =
-            yes(ground(shared, none)).
-cons_id_to_shared_inst(_, table_io_decl(_), _) =
-            yes(ground(shared, none)).
 
 %-----------------------------------------------------------------------------%
 

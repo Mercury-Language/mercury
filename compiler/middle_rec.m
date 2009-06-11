@@ -32,6 +32,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module libs.compiler_util.
 :- import_module ll_backend.code_gen.
@@ -235,8 +236,8 @@ contains_only_builtins_list([Goal | Goals]) = OnlyBuiltins :-
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec_generate_switch(prog_var::in, cons_id::in, hlds_goal::in,
-    hlds_goal::in, hlds_goal_info::in, llds_code::out,
+:- pred middle_rec_generate_switch(prog_var::in, cons_id::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out) is semidet.
 
 middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,

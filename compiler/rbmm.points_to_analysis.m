@@ -49,6 +49,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.goal_path.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module libs.

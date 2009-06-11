@@ -463,7 +463,7 @@ unify_rhs_used_modules(rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
 
 cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
     (
-        ( ConsId = cons(SymName, _)
+        ( ConsId = cons(SymName, _, _)
         ; ConsId = type_info_cell_constructor(type_ctor(SymName, _))
         ),
         add_sym_name_module(Visibility, SymName, !UsedModules)
@@ -473,15 +473,17 @@ cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
         ),
         add_all_modules(Visibility, ModuleName, !UsedModules)
     ;
-        ( ConsId = int_const(_)
-        ; ConsId = string_const(_)
+        ( ConsId = tuple_cons(_)
+        ; ConsId = closure_cons(_, _)
+        ; ConsId = int_const(_)
         ; ConsId = float_const(_)
-        ; ConsId = implementation_defined_const(_)
-        ; ConsId = pred_const(_, _)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
         ; ConsId = typeclass_info_cell_constructor
         ; ConsId = tabling_info_const(_)
-        ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_decl(_)
+        ; ConsId = deep_profiling_proc_layout(_)
         )
     ).
 

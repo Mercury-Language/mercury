@@ -400,9 +400,15 @@ is_construction_equivalence_assertion(Module, AssertId, ConsId, PredId) :-
     %
 :- pred single_construction(hlds_goal::in, cons_id::in) is semidet.
 
-single_construction(hlds_goal(unify(_, UnifyRhs, _, _, _), _),
-        cons(QualifiedSymName, Arity)) :-
-    UnifyRhs = rhs_functor(cons(UnqualifiedSymName, Arity), _, _),
+single_construction(Goal, ConsId) :-
+    Goal = hlds_goal(GoalExpr, _),
+    GoalExpr = unify(_, UnifyRHS, _, _, _),
+    UnifyRHS = rhs_functor(cons(UnqualifiedSymName, Arity, _TypeCtorA), _, _),
+    ConsId = cons(QualifiedSymName, Arity, _TypeCtorB),
+    % Before post-typecheck, TypeCtorA and TypeCtorB would be dummies,
+    % and would thus match even if the two functors are NOT of the same type.
+    % Note that by insisting on cons, we effectively disallow assertions
+    % about tuples.
     match_sym_name(UnqualifiedSymName, QualifiedSymName).
 
     % The side containing the predicate call must be a single call

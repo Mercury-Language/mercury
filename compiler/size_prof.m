@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2008 The University of Melbourne.
+% Copyright (C) 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,6 +114,7 @@
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_rtti.
@@ -123,6 +124,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.term_norm.
@@ -667,7 +669,7 @@ size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
             no_construct_sub_info),
         GoalExpr = unify(LHS, RHS, UniMode, Unification, UnifyContext)
     ;
-        ConsId = cons(_Name, _Arity),
+        ConsId = cons(_Name, _Arity, _TypeCtor),
         Args = [_ | _]
     ->
         size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext,
@@ -706,7 +708,9 @@ size_prof_process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr,
     ->
         Goal0 = hlds_goal(GoalExpr, _)
     ;
-        ConsId = cons(_Name, _Arity),
+        ( ConsId = cons(_Name, _Arity, _TypeCtor)
+        ; ConsId = tuple_cons(_Arity)
+        ),
         Args = [_ | _]
     ->
         size_prof_process_cons_deconstruct(Var, Args, ArgModes, Goal0,
@@ -721,10 +725,10 @@ size_prof_process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr,
 %-----------------------------------------------------------------------------%
 
 :- pred size_prof_process_cons_construct(prog_var::in, unify_rhs::in,
-    unify_mode::in, unify_context::in, prog_var::in, mer_type::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
-    cell_is_unique::in, hlds_goal_info::in, hlds_goal_expr::out,
-    info::in, info::out) is det.
+    unify_mode::in, unify_context::in, prog_var::in, mer_type::in,
+    cons_id::in, list(prog_var)::in, list(uni_mode)::in,
+    how_to_construct::in, cell_is_unique::in, hlds_goal_info::in,
+    hlds_goal_expr::out, info::in, info::out) is det.
 
 size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type,
         ConsId, Args, ArgModes, How, Unique, GoalInfo0, GoalExpr, !Info) :-

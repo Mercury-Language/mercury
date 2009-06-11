@@ -343,8 +343,7 @@ ml_switch_lookup_tags(Info, [Case | Cases], Var,
     Case = case(MainConsId, OtherConsIds, Goal),
     expect(unify(OtherConsIds, []), this_file,
         "ml_switch_lookup_tags: multi-cons-id switch arms NYI"),
-    ml_variable_type(Info, Var, Type),
-    ml_cons_id_to_tag(Info, MainConsId, Type, MainConsTag),
+    ml_cons_id_to_tag(Info, MainConsId, MainConsTag),
     Cost = estimate_switch_tag_test_cost(MainConsTag),
     TaggedMainConsId = tagged_cons_id(MainConsId, MainConsTag),
     TaggedCase = tagged_case(TaggedMainConsId, [], Goal),
@@ -467,7 +466,7 @@ ml_switch_generate_mlds_case(TaggedCase, CodeModel, MLDS_Case, !Info) :-
             mlds_native_int_type))
     ;
         ( Tag = float_tag(_)
-        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = tabling_info_tag(_, _)

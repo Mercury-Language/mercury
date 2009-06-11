@@ -130,6 +130,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -144,6 +145,7 @@
 :- import_module string.
 :- import_module svmap.
 :- import_module svvarset.
+:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -678,7 +680,7 @@ in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
         DefinedInImpl = status_defined_in_impl_section(TypeStatus),
         (
             DefinedInImpl = yes,
-            ConsIdStr = cons_id_to_string(ConsId),
+            ConsIdStr = cons_id_and_arity_to_string(ConsId),
             IdPieces = [words("constructor"), quote(ConsIdStr)],
             report_assertion_interface_error(ModuleInfo, Context, IdPieces,
                 !Specs)
@@ -932,7 +934,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % function call? Or the impure/semipure equivalents impure_apply/N
         % and semipure_apply/N?
         % (XXX FIXME We should use nicer syntax for impure apply/N.)
-        ConsId0 = cons(unqualified(ApplyName), _),
+        ConsId0 = cons(unqualified(ApplyName), _, _),
         ( ApplyName = "apply", Purity = purity_pure
         ; ApplyName = "", Purity = purity_pure
         ; ApplyName = "impure_apply", Purity = purity_impure
@@ -944,7 +946,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % Convert the higher-order function call (apply/N) into a higher-order
         % predicate call (i.e., replace `X = apply(F, A, B, C)'
         % with `call(F, A, B, C, X)')
-        list.append(FuncArgVars, [X0], ArgVars),
+        ArgVars = FuncArgVars ++ [X0],
         Modes = [],
         Det = detism_erroneous,
         adjust_func_arity(pf_function, Arity, FullArity),
@@ -958,7 +960,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
 
         % Find the set of candidate predicates which have the
         % specified name and arity (and module, if module-qualified)
-        ConsId0 = cons(PredName, _),
+        ConsId0 = cons(PredName, _, _),
 
         % We don't do this for compiler-generated predicates; they are assumed
         % to have been generated with all functions already expanded. If we did
@@ -986,7 +988,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         pred_info_get_exist_quant_tvars(!.PredInfo, ExistQTVars),
         pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
         map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
-        list.append(ArgTypes0, [TypeOfX], ArgTypes),
+        ArgTypes = ArgTypes0 ++ [TypeOfX],
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
         GoalPath = goal_info_get_goal_path(GoalInfo0),
         ConstraintSearch =
@@ -996,20 +998,19 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             ArgTypes, HeadTypeParams, yes(ConstraintSearch), Context,
             PredId, QualifiedFuncName)
     ->
-        % Convert function calls into predicate calls:
+        % Convert function calls in unifications into plain calls:
         % replace `X = f(A, B, C)' with `f(A, B, C, X)'.
-        %
+
         ProcId = invalid_proc_id,
-        list.append(ArgVars0, [X0], ArgVars),
+        ArgVars = ArgVars0 ++ [X0],
         FuncCallUnifyContext = call_unify_context(X0,
             rhs_functor(ConsId0, no, ArgVars0), UnifyContext),
         FuncCall = plain_call(PredId, ProcId, ArgVars, not_builtin,
             yes(FuncCallUnifyContext), QualifiedFuncName),
         Goal = hlds_goal(FuncCall, GoalInfo0)
     ;
-        % Is the function symbol a higher-order predicate
-        % or function constant?
-        ConsId0 = cons(Name, _),
+        % Is the function symbol a higher-order predicate or function constant?
+        ConsId0 = cons(Name, _, _),
         type_is_higher_order_details(TypeOfX, _Purity, PredOrFunc,
             EvalMethod, HOArgTypes),
 
@@ -1045,7 +1046,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             get_proc_id(ModuleInfo, PredId, ProcId)
         ),
         ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
-        ConsId = pred_const(ShroudedPredProcId, EvalMethod),
+        ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
         GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
             Unification0, UnifyContext),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -1055,7 +1056,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % higher-order terms above. It's done that way because it's easier
         % to check that the types match for functions calls and higher-order
         % terms.
-        ConsId0 = cons(Name, Arity),
+        ConsId0 = cons(Name, Arity, _),
         is_field_access_function_name(ModuleInfo, Name, Arity,
             AccessType, FieldName),
 
@@ -1076,13 +1077,37 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             AccessType, FieldName, UnifyContext, X0, ArgVars0, GoalInfo0, Goal)
     ;
         % Module qualify ordinary construction/deconstruction unifications.
-        (
-            ConsId0 = cons(Name0, Arity),
-            type_to_ctor_and_args(TypeOfX, TypeCtorOfX, _),
-            TypeCtorOfX = type_ctor(qualified(TypeModule, _), _)
-        ->
-            Name = unqualify_name(Name0),
-            ConsId = cons(qualified(TypeModule, Name), Arity)
+        type_to_ctor_det(TypeOfX, TypeCtorOfX),
+        ( ConsId0 = cons(SymName0, Arity, _OldTypeCtor) ->
+            ( TypeOfX = tuple_type(_, _) ->
+                ConsId = tuple_cons(Arity)
+            ; TypeOfX = builtin_type(builtin_type_char) ->
+                (
+                    SymName0 = unqualified(Name0),
+                    ( encode_escaped_char(Char, Name0) ->
+                        ConsId = char_const(Char)
+                    ;
+                        unexpected(this_file,
+                            "resolve_unify_functor: encode_escaped_char")
+                    )
+                ;
+                    SymName0 = qualified(_, _),
+                    unexpected(this_file,
+                        "resolve_unify_functor: qualified char const")
+                )
+            ;
+                Name = unqualify_name(SymName0),
+                TypeCtorOfX = type_ctor(TypeCtorSymName, _),
+                ( 
+                    TypeCtorSymName = qualified(TypeCtorModule, _),
+                    SymName = qualified(TypeCtorModule, Name),
+                    ConsId = cons(SymName, Arity, TypeCtorOfX)
+                ;
+                    TypeCtorSymName = unqualified(_),
+                    unexpected(this_file,
+                        "resolve_unify_functor: unqualified type_ctor")
+                )
+            )
         ;
             ConsId = ConsId0
         ),
@@ -1197,7 +1222,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     make_new_vars(TypesBeforeField, VarsBeforeField, !VarTypes, !VarSet),
     make_new_vars(TypesAfterField, VarsAfterField, !VarTypes, !VarSet),
 
-    list.append(VarsBeforeField, [FieldVar | VarsAfterField], ArgVars),
+    ArgVars = VarsBeforeField ++ [FieldVar | VarsAfterField],
 
     RestrictNonLocals = goal_info_get_nonlocals(OldGoalInfo),
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
@@ -1211,11 +1236,10 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     prog_var::in, prog_var::in, prog_var::in,
     hlds_goal_info::in, hlds_goal_expr::out) is det.
 
-translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
-        FieldName, UnifyContext, FieldVar, TermInputVar, TermOutputVar,
-        OldGoalInfo, Goal) :-
+translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
+        UnifyContext, FieldVar, TermInputVar, TermOutputVar, OldGoalInfo,
+        Goal) :-
     map.lookup(!.VarTypes, TermInputVar, TermType),
-
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId0, FieldNumber),
 
@@ -1231,12 +1255,10 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
     make_new_vars(TypesAfterField, VarsAfterField, !VarTypes, !VarSet),
 
     % Build a goal to deconstruct the input.
-    list.append(VarsBeforeField, [SingletonFieldVar | VarsAfterField],
-        DeconstructArgs),
+    DeconstructArgs = VarsBeforeField ++ [SingletonFieldVar | VarsAfterField],
     OldNonLocals = goal_info_get_nonlocals(OldGoalInfo),
-    list.append(VarsBeforeField, VarsAfterField, NonLocalArgs),
-    set.insert_list(OldNonLocals, NonLocalArgs,
-        DeconstructRestrictNonLocals),
+    NonLocalArgs = VarsBeforeField ++ VarsAfterField,
+    set.insert_list(OldNonLocals, NonLocalArgs, DeconstructRestrictNonLocals),
 
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
         rhs_functor(ConsId0, no, DeconstructArgs), OldGoalInfo,
@@ -1244,7 +1266,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
         UnifyContext, DeconstructGoal),
 
     % Build a goal to construct the output.
-    list.append(VarsBeforeField, [FieldVar | VarsAfterField], ConstructArgs),
+    ConstructArgs = VarsBeforeField ++ [FieldVar | VarsAfterField],
     set.insert_list(OldNonLocals, NonLocalArgs, ConstructRestrictNonLocals),
 
     % If the cons_id is existentially quantified, add a `new' prefix
@@ -1254,9 +1276,9 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
         ConsId = ConsId0
     ;
         ExistQVars = [_ | _],
-        ( ConsId0 = cons(ConsName0, ConsArity) ->
+        ( ConsId0 = cons(ConsName0, ConsArity, TypeCtor) ->
             remove_new_prefix(ConsName, ConsName0),
-            ConsId = cons(ConsName, ConsArity)
+            ConsId = cons(ConsName, ConsArity, TypeCtor)
         ;
             unexpected(this_file, "translate_set_function: invalid cons_id")
         )
@@ -1390,19 +1412,14 @@ split_list_at_index(Index, List, Before, At, After) :-
 
 get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId, FieldNumber) :-
-    ( type_to_ctor_and_args(TermType, TermTypeCtor0, _) ->
-        TermTypeCtor = TermTypeCtor0
-    ;
-        unexpected(this_file,
-            "get_constructor_containing_field: type_to_ctor_and_args failed")
-    ),
+    type_to_ctor_det(TermType, TermTypeCtor),
     module_info_get_type_table(ModuleInfo, Types),
     map.lookup(Types, TermTypeCtor, TermTypeDefn),
     hlds_data.get_type_defn_body(TermTypeDefn, TermTypeBody),
     (
         TermTypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _),
-        get_constructor_containing_field_2(Ctors, FieldName, ConsId,
-            FieldNumber)
+        get_constructor_containing_field_2(TermTypeCtor, Ctors, FieldName,
+            ConsId, FieldNumber)
     ;
         ( TermTypeBody = hlds_eqv_type(_)
         ; TermTypeBody = hlds_foreign_type(_)
@@ -1412,13 +1429,13 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         unexpected(this_file, "get_constructor_containing_field: not du type")
     ).
 
-:- pred get_constructor_containing_field_2(list(constructor)::in,
-    ctor_field_name::in, cons_id::out, int::out) is det.
+:- pred get_constructor_containing_field_2(type_ctor::in,
+    list(constructor)::in, ctor_field_name::in, cons_id::out, int::out) is det.
 
-get_constructor_containing_field_2([], _, _, _) :-
+get_constructor_containing_field_2(_, [], _, _, _) :-
     unexpected(this_file,
         "get_constructor_containing_field: can't find field").
-get_constructor_containing_field_2([Ctor | Ctors], FieldName,
+get_constructor_containing_field_2(TypeCtor, [Ctor | Ctors], FieldName,
         ConsId, FieldNumber) :-
     Ctor = ctor(_, _, SymName, CtorArgs, _Ctxt),
     (
@@ -1426,10 +1443,10 @@ get_constructor_containing_field_2([Ctor | Ctors], FieldName,
             1, FieldNumber0)
     ->
         list.length(CtorArgs, Arity),
-        ConsId = cons(SymName, Arity),
+        ConsId = cons(SymName, Arity, TypeCtor),
         FieldNumber = FieldNumber0
     ;
-        get_constructor_containing_field_2(Ctors, FieldName,
+        get_constructor_containing_field_2(TypeCtor, Ctors, FieldName,
             ConsId, FieldNumber)
     ).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -814,14 +814,13 @@ convert_bound_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 :- pred convert_bound_inst(allow_constrained_inst_var::in, term::in,
     bound_inst::out) is semidet.
 
-convert_bound_inst(AllowConstrainedInstVar, InstTerm,
-        bound_functor(ConsId, Args)) :-
+convert_bound_inst(AllowConstrainedInstVar, InstTerm, BoundInst) :-
     InstTerm = term.functor(Functor, Args0, _),
     (
         Functor = term.atom(_),
         sym_name_and_args(InstTerm, SymName, Args1),
         list.length(Args1, Arity),
-        ConsId = cons(SymName, Arity)
+        ConsId = cons(SymName, Arity, cons_id_dummy_type_ctor)
     ;
         Functor = term.implementation_defined(_),
         % Implementation-defined literals should not appear in inst
@@ -836,7 +835,8 @@ convert_bound_inst(AllowConstrainedInstVar, InstTerm,
         list.length(Args1, Arity),
         ConsId = make_functor_cons_id(Functor, Arity)
     ),
-    convert_inst_list(AllowConstrainedInstVar, Args1, Args).
+    convert_inst_list(AllowConstrainedInstVar, Args1, Args),
+    BoundInst = bound_functor(ConsId, Args).
 
 disjunction_to_list(Term, List) :-
     binop_term_to_list(";", Term, List).

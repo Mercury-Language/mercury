@@ -231,6 +231,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -595,7 +596,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         TmpTupleVar, !ProcInfo),
     proc_info_create_var_from_type(OutputTupleType, yes("OutputTuple"),
         TupleVar, !ProcInfo),
-    deconstruct_functor(ResultVar, succeeded_cons_id, [TmpTupleVar],
+    deconstruct_functor(ResultVar, exception_succeeded_functor, [TmpTupleVar],
         DeconstructSucceeded),
     instmap_lookup_vars(Instmap, GoalOutputVars, TupleArgInsts),
     make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
@@ -603,15 +604,15 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
     deconstruct_tuple(TupleVar, GoalOutputVars, DeconstructOutputs),
     conj_list_to_goal([DeconstructSucceeded, CastOutputTuple,
         DeconstructOutputs, Then], GoalInfo, DeconstructsThen),
-    SucceededCase = case(succeeded_cons_id, [], DeconstructsThen),
+    SucceededCase = case(exception_succeeded_functor, [], DeconstructsThen),
 
     % The `exception' case.
-    ExceptionCase = case(exception_cons_id, [], ExcpHandling),
+    ExceptionCase = case(exception_exception_functor, [], ExcpHandling),
 
     % The `failed' case.
     (
         MaybeElse1 = yes(Else1),
-        FailedCase = case(failed_cons_id, [], Else1),
+        FailedCase = case(exception_failed_functor, [], Else1),
         MaybeFailedCase = [FailedCase]
     ;
         MaybeElse1 = no,
@@ -658,11 +659,11 @@ extract_intermediate_goal_parts_2(ModuleInfo, ResultVar, IntermediateGoal,
     MagicCall = plain_call(_, _, [ResultVar], _, _, _),
     Switch = switch(ResultVar, cannot_fail, Cases),
 
-    lookup_case_goal(Cases, succeeded_cons_id, SucceededGoal),
+    lookup_case_goal(Cases, exception_succeeded_functor, SucceededGoal),
     extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
         MaybeElse),
 
-    lookup_case_goal(Cases, exception_cons_id, ExcpHandling).
+    lookup_case_goal(Cases, exception_exception_functor, ExcpHandling).
 
     % There are two forms we could extract when TryResult has the
     % functor exception.succeeded/1.
@@ -693,7 +694,7 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
     Conjuncts0 = [DeconstructResult, TestNullTuple | Conjuncts1],
     DeconstructResult = hlds_goal(unify(_ResultVar, _, _, _, _), _),
     TestNullTuple = hlds_goal(unify(_, TestRHS, _, _, _), _),
-    TestRHS = rhs_functor(cons(unqualified("{}"), 0), no, []),
+    TestRHS = rhs_functor(tuple_cons(0), no, []),
 
     (
         Conjuncts1 = [hlds_goal(IfThenElse, _) | Rest],
@@ -901,7 +902,7 @@ make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
     ->
         TupleArity = list.length(TupleArgInsts),
         TupleInst = bound(shared, [
-            bound_functor(cons(unqualified("{}"), TupleArity), TupleArgInsts)
+            bound_functor(tuple_cons(TupleArity), TupleArgInsts)
         ]),
         generate_cast_with_insts(unsafe_type_inst_cast, TmpTupleVar, TupleVar,
             ground_inst, TupleInst, term.context_init, CastOrUnify)
@@ -910,20 +911,6 @@ make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
             rhs_var(TmpTupleVar), term.context_init,
             umc_implicit("try_expand"), [], CastOrUnify)
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func succeeded_cons_id = cons_id.
-
-succeeded_cons_id = cons(qualified(mercury_exception_module, "succeeded"), 1).
-
-:- func failed_cons_id = cons_id.
-
-failed_cons_id = cons(qualified(mercury_exception_module, "failed"), 0).
-
-:- func exception_cons_id = cons_id.
-
-exception_cons_id = cons(qualified(mercury_exception_module, "exception"), 1).
 
 %-----------------------------------------------------------------------------%
 

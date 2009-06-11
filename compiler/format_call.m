@@ -109,6 +109,7 @@
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
+:- import_module parse_tree.builtin_lib_types.
 
 :- import_module bool.
 :- import_module counter.
@@ -526,16 +527,17 @@ traverse_unify(Unification, CurId, !ConjMaps, !PredMap, !RelevantVars) :-
                 map.set(StringMap0, CellVar, StringConst, StringMap),
                 ConjMap = conj_map(StringMap, ListMap0, ElementMap0, EqvMap0)
             ;
-                ConsId = cons(SymName, _Arity),
-                StringModule =
-                    mercury_std_lib_module_name(unqualified("list")),
-                SymName = qualified(StringModule, Functor),
+                ConsId = cons(SymName, Arity, TypeCtor),
+                TypeCtor = list_type_ctor,
+                Functor = unqualify_name(SymName),
                 (
                     Functor = "[|]",
+                    Arity = 2,
                     ArgVars = [ArgVar1, ArgVar2],
                     List = list_skeleton_cons(ArgVar1, ArgVar2)
                 ;
                     Functor = "[]",
+                    Arity = 0,
                     ArgVars = [],
                     List = list_skeleton_nil
                 )
@@ -545,11 +547,10 @@ traverse_unify(Unification, CurId, !ConjMaps, !PredMap, !RelevantVars) :-
                 map.set(ListMap0, CellVar, List, ListMap),
                 ConjMap = conj_map(StringMap0, ListMap, ElementMap0, EqvMap0)
             ;
-                ConsId = cons(SymName, Arity),
+                ConsId = cons(SymName, Arity, TypeCtor),
+                TypeCtor = poly_type_type_ctor,
                 Arity = 1,
-                StringModule =
-                    mercury_std_lib_module_name(unqualified("string")),
-                SymName = qualified(StringModule, Functor),
+                Functor = unqualify_name(SymName),
                 (
                     Functor = "f",
                     PolyType = f(0.0)

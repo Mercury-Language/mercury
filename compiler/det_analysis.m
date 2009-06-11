@@ -1226,31 +1226,33 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
         Context = goal_info_get_context(GoalInfo),
         (
             Unify = construct(_, _, _, _, _, _, _),
-            unexpected(this_file, "can_fail construct")
+            unexpected(this_file, "det_infer_unify: can_fail construct")
         ;
             Unify = assign(_, _),
-            unexpected(this_file, "can_fail assign")
+            unexpected(this_file, "det_infer_unify: can_fail assign")
         ;
             Unify = complicated_unify(_, _, _),
             (
                 RHS = rhs_var(RHSVar),
-                FailingContext = failing_context(Context,
-                    test_goal(LHS, RHSVar)),
+                FailingGoal = test_goal(LHS, RHSVar),
+                FailingContext = failing_context(Context, FailingGoal),
                 GoalFailingContexts = [FailingContext]
             ;
                 ( RHS = rhs_functor(_, _, _)
                 ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
                 ),
-                unexpected(this_file, "complicated_unify but no var")
+                unexpected(this_file,
+                    "det_infer_unify: complicated_unify but no var")
             )
         ;
             Unify = deconstruct(Var, ConsId, _, _, _, _),
-            FailingContext = failing_context(Context,
-                deconstruct_goal(Var, ConsId)),
+            FailingGoal = deconstruct_goal(Var, ConsId),
+            FailingContext = failing_context(Context, FailingGoal),
             GoalFailingContexts = [FailingContext]
         ;
             Unify = simple_test(Var1, Var2),
-            FailingContext = failing_context(Context, test_goal(Var1, Var2)),
+            FailingGoal = test_goal(Var1, Var2),
+            FailingContext = failing_context(Context, FailingGoal),
             GoalFailingContexts = [FailingContext]
         )
     ;

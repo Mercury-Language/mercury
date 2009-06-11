@@ -29,6 +29,7 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module assoc_list.
+:- import_module char.
 :- import_module bool.
 :- import_module list.
 :- import_module map.
@@ -39,7 +40,19 @@
 :- import_module unit.
 :- import_module varset.
 
+:- implementation.
+
+:- import_module library.
+:- import_module libs.compiler_util.
+
+:- import_module string.
+
 %-----------------------------------------------------------------------------%
+%
+% Miscellaneous stuff.
+%
+
+:- interface.
 
     % Indicates the type of information the compiler should get from the
     % promise declaration's clause.
@@ -62,6 +75,13 @@
     --->    type_only(mer_type)
     ;       type_and_mode(mer_type, mer_mode).
 
+%-----------------------------------------------------------------------------%
+%
+% Stuff about purity.
+%
+
+:- interface.
+
     % Purity indicates whether a goal can have side effects or can depend on
     % global state. See purity.m and the "Purity" section of the Mercury
     % language reference manual.
@@ -81,6 +101,46 @@
     % Sort of a "minimum" for impurity.
     %
 :- func best_purity(purity, purity) = purity.
+
+:- implementation.
+
+less_pure(P1, P2) :-
+    \+ ( worst_purity(P1, P2) = P2).
+
+    % worst_purity/3 could be written more compactly, but this definition
+    % guarantees us a determinism error if we add to type `purity'.  We also
+    % define less_pure/2 in terms of worst_purity/3 rather than the other way
+    % around for the same reason.
+    %
+worst_purity(purity_pure, purity_pure) = purity_pure.
+worst_purity(purity_pure, purity_semipure) = purity_semipure.
+worst_purity(purity_pure, purity_impure) = purity_impure.
+worst_purity(purity_semipure, purity_pure) = purity_semipure.
+worst_purity(purity_semipure, purity_semipure) = purity_semipure.
+worst_purity(purity_semipure, purity_impure) = purity_impure.
+worst_purity(purity_impure, purity_pure) = purity_impure.
+worst_purity(purity_impure, purity_semipure) = purity_impure.
+worst_purity(purity_impure, purity_impure) = purity_impure.
+
+    % best_purity/3 is written as a switch for the same reason as
+    % worst_purity/3.
+    %
+best_purity(purity_pure, purity_pure) = purity_pure.
+best_purity(purity_pure, purity_semipure) = purity_pure.
+best_purity(purity_pure, purity_impure) = purity_pure.
+best_purity(purity_semipure, purity_pure) = purity_pure.
+best_purity(purity_semipure, purity_semipure) = purity_semipure.
+best_purity(purity_semipure, purity_impure) = purity_semipure.
+best_purity(purity_impure, purity_pure) = purity_pure.
+best_purity(purity_impure, purity_semipure) = purity_semipure.
+best_purity(purity_impure, purity_impure) = purity_impure.
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff about determinism.
+%
+
+:- interface.
 
     % The `determinism' type specifies how many solutions a given procedure
     % may have.
@@ -126,6 +186,18 @@
 
 :- pred det_negation_det(determinism::in, maybe(determinism)::out) is det.
 
+    % The following predicates do abstract interpretation to count
+    % the number of solutions and the possible number of failures.
+    %
+    % If the num_solns is at_most_many_cc, this means that the goal might have
+    % many logical solutions if there were no pruning, but that the goal occurs
+    % in a single-solution context, so only the first solution will be
+    % returned.
+    %
+    % The reason why we don't throw an exception in det_switch_maxsoln and
+    % det_disjunction_maxsoln is given in the documentation of the test case
+    % invalid/magicbox.m.
+
 :- pred det_conjunction_maxsoln(soln_count::in, soln_count::in,
     soln_count::out) is det.
 
@@ -143,10 +215,148 @@
 
 :- pred det_switch_canfail(can_fail::in, can_fail::in, can_fail::out) is det.
 
+:- implementation.
+
+determinism_components(detism_det,       cannot_fail, at_most_one).
+determinism_components(detism_semi,      can_fail,    at_most_one).
+determinism_components(detism_multi,     cannot_fail, at_most_many).
+determinism_components(detism_non,       can_fail,    at_most_many).
+determinism_components(detism_cc_multi,  cannot_fail, at_most_many_cc).
+determinism_components(detism_cc_non,    can_fail,    at_most_many_cc).
+determinism_components(detism_erroneous, cannot_fail, at_most_zero).
+determinism_components(detism_failure,   can_fail,    at_most_zero).
+
+det_conjunction_detism(DetismA, DetismB, Detism) :-
+    % When figuring out the determinism of a conjunction, if the second goal
+    % is unreachable, then then the determinism of the conjunction is just
+    % the determinism of the first goal.
+
+    determinism_components(DetismA, CanFailA, MaxSolnA),
+    (
+        MaxSolnA = at_most_zero,
+        Detism = DetismA
+    ;
+        ( MaxSolnA = at_most_one
+        ; MaxSolnA = at_most_many
+        ; MaxSolnA = at_most_many_cc
+        ),
+        determinism_components(DetismB, CanFailB, MaxSolnB),
+        det_conjunction_canfail(CanFailA, CanFailB, CanFail),
+        det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
+        determinism_components(Detism, CanFail, MaxSoln)
+    ).
+
+det_par_conjunction_detism(DetismA, DetismB, Detism) :-
+    % Figuring out the determinism of a parallel conjunction is much easier
+    % than for a sequential conjunction, since you simply ignore the case
+    % where the second goal is unreachable. Just do a normal solution count.
+
+    determinism_components(DetismA, CanFailA, MaxSolnA),
+    determinism_components(DetismB, CanFailB, MaxSolnB),
+    det_conjunction_canfail(CanFailA, CanFailB, CanFail),
+    det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
+    determinism_components(Detism, CanFail, MaxSoln).
+
+det_switch_detism(DetismA, DetismB, Detism) :-
+    determinism_components(DetismA, CanFailA, MaxSolnA),
+    determinism_components(DetismB, CanFailB, MaxSolnB),
+    det_switch_canfail(CanFailA, CanFailB, CanFail),
+    det_switch_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
+    determinism_components(Detism, CanFail, MaxSoln).
+
+det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
+det_conjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_zero).
+det_conjunction_maxsoln(at_most_zero,    at_most_many,    at_most_zero).
+
+det_conjunction_maxsoln(at_most_one,     at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_one,     at_most_one,     at_most_one).
+det_conjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
+det_conjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
+
+det_conjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
+det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
+det_conjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
+    % If the first conjunct could be cc pruned, the second conj ought to have
+    % been cc pruned too.
+    unexpected(this_file, "det_conjunction_maxsoln: many_cc , many").
+
+det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
+det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
+det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
+
+det_conjunction_canfail(can_fail,    can_fail,    can_fail).
+det_conjunction_canfail(can_fail,    cannot_fail, can_fail).
+det_conjunction_canfail(cannot_fail, can_fail,    can_fail).
+det_conjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
+
+det_disjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
+det_disjunction_maxsoln(at_most_zero,    at_most_one,     at_most_one).
+det_disjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_zero,    at_most_many,    at_most_many).
+
+det_disjunction_maxsoln(at_most_one,     at_most_zero,    at_most_one).
+det_disjunction_maxsoln(at_most_one,     at_most_one,     at_most_many).
+det_disjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
+
+det_disjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
+det_disjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
+det_disjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
+
+det_disjunction_maxsoln(at_most_many,    at_most_zero,    at_most_many).
+det_disjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
+det_disjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
+
+det_disjunction_canfail(can_fail,    can_fail,    can_fail).
+det_disjunction_canfail(can_fail,    cannot_fail, cannot_fail).
+det_disjunction_canfail(cannot_fail, can_fail,    cannot_fail).
+det_disjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
+
+det_switch_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
+det_switch_maxsoln(at_most_zero,    at_most_one,     at_most_one).
+det_switch_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_zero,    at_most_many,    at_most_many).
+
+det_switch_maxsoln(at_most_one,     at_most_zero,    at_most_one).
+det_switch_maxsoln(at_most_one,     at_most_one,     at_most_one).
+det_switch_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_one,     at_most_many,    at_most_many).
+
+det_switch_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
+det_switch_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
+det_switch_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
+
+det_switch_maxsoln(at_most_many,    at_most_zero,    at_most_many).
+det_switch_maxsoln(at_most_many,    at_most_one,     at_most_many).
+det_switch_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_many,    at_most_many,    at_most_many).
+
+det_switch_canfail(can_fail,    can_fail,    can_fail).
+det_switch_canfail(can_fail,    cannot_fail, can_fail).
+det_switch_canfail(cannot_fail, can_fail,    can_fail).
+det_switch_canfail(cannot_fail, cannot_fail, cannot_fail).
+
+det_negation_det(detism_det,       yes(detism_failure)).
+det_negation_det(detism_semi,      yes(detism_semi)).
+det_negation_det(detism_multi,     no).
+det_negation_det(detism_non,       no).
+det_negation_det(detism_cc_multi,  no).
+det_negation_det(detism_cc_non,    no).
+det_negation_det(detism_erroneous, yes(detism_erroneous)).
+det_negation_det(detism_failure,   yes(detism_det)).
+
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the foreign language interface pragmas
+% Stuff for the foreign language interface pragmas.
 %
+
+:- interface.
 
     % Is the foreign code declarations local to this module or
     % exported?
@@ -197,7 +407,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for tabling pragmas
+% Stuff for tabling pragmas.
 %
 
 :- type eval_minimal_method
@@ -283,11 +493,43 @@
 
 :- func eval_method_to_table_type(eval_method) = string.
 
+:- implementation.
+
+default_memo_table_attributes =
+    table_attributes(all_strict, no, table_dont_gather_statistics,
+        table_dont_allow_reset).
+
+eval_method_to_table_type(EvalMethod) = TableTypeStr :-
+    (
+        EvalMethod = eval_normal,
+        unexpected(this_file, "eval_method_to_table_type: eval_normal")
+    ;
+        EvalMethod = eval_table_io(_, _),
+        unexpected(this_file, "eval_method_to_table_type: eval_table_io")
+    ;
+        EvalMethod = eval_loop_check,
+        TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
+    ;
+        EvalMethod = eval_memo,
+        TableTypeStr = "MR_TABLE_TYPE_MEMO"
+    ;
+        EvalMethod = eval_minimal(stack_copy),
+        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY"
+    ;
+        EvalMethod = eval_minimal(own_stacks_consumer),
+        unexpected(this_file, "eval_method_to_table_type: own_stacks_consumer")
+    ;
+        EvalMethod = eval_minimal(own_stacks_generator),
+        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"
+    ).
+
 %-----------------------------------------------------------------------------%
 %
 % Stuff for the `termination_info' pragma.
 % See term_util.m.
 %
+
+:- interface.
 
 :- type generic_arg_size_info(ErrorInfo)
     --->    finite(int, list(bool))
@@ -310,8 +552,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the `termination2_info' pragma
+% Stuff for the `termination2_info' pragma.
 %
+
+:- interface.
 
     % This is the form in which termination information from other
     % modules (imported via `.opt' or `.trans_opt' files) comes.
@@ -338,6 +582,8 @@
 %
 % Stuff for the `structure_sharing_info' pragma.
 %
+
+:- interface.
 
     % Whenever structure sharing analysis is unable to determine a good
     % approximation of the set of structure sharing pairs that might exist
@@ -396,10 +642,10 @@
     %
 :- type selector == list(unit_selector).
 
-    % Unit-selectors are either term selectors or type selectors.  A term
-    % selector selects a subterm f/n of a term, where f is a functor
-    % (identified by the cons_id), and n an integer.  A type selector
-    % designates any subterm that has that specific type.
+    % Unit-selectors are either term selectors or type selectors.
+    % - A term selector selects a subterm f/n of a term, where f is a functor
+    %   (identified by the cons_id), and n an integer.
+    % - A type selector designates any subterm that has that specific type.
     %
 :- type unit_selector
     --->    termsel(cons_id, int)       % term selector
@@ -428,6 +674,8 @@
 %
 % Stuff for the `structure_reuse_info' pragma.
 %
+
+:- interface.
 
 :- type dead_var == prog_var.
 :- type dead_vars == list(dead_var).
@@ -468,8 +716,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the `unused_args' pragma
+% Stuff for the `unused_args' pragma.
 %
+
+:- interface.
 
     % This `mode_num' type is only used for mode numbers written out in
     % automatically-generated `pragma unused_args' pragmas in `.opt' files.
@@ -481,8 +731,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the `exceptions' pragma
+% Stuff for the `exceptions' pragma.
 %
+
+:- interface.
 
 :- type exception_status
     --->    will_not_throw
@@ -511,8 +763,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the trailing analysis
+% Stuff for the trailing analysis.
 %
+
+:- interface.
 
 :- type trailing_status
     --->    trail_may_modify
@@ -521,8 +775,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for minimal model tabling analysis
+% Stuff for minimal model tabling analysis.
 %
+
+:- interface.
 
 :- type mm_tabling_status
     --->    mm_tabled_may_call
@@ -531,8 +787,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the `type_spec' pragma
+% Stuff for the `type_spec' pragma.
 %
+
+:- interface.
 
     % The type substitution for a `pragma type_spec' declaration.
     % Elsewhere in the compiler we generally use the `tsubst' type
@@ -542,8 +800,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for `foreign_code' pragma
+% Stuff for `foreign_code' pragma.
 %
+
+:- interface.
 
     % This type holds information about the implementation details
     % of procedures defined via `pragma foreign_code'.
@@ -573,32 +833,31 @@
                 % This is a foreign language definition of a model_non
                 % procedure.
 
+                % The info saved for the time when backtracking reenters
+                % this procedure is stored in a data structure.  This arg
+                % contains the field declarations.
                 string,
                 maybe(prog_context),
-                    % The info saved for the time when backtracking reenters
-                    % this procedure is stored in a data structure.  This arg
-                    % contains the field declarations.
 
+                % Gives the code to be executed when the procedure is
+                % called for the first time. This code may access the
+                % input variables.
                 string,
                 maybe(prog_context),
-                    % Gives the code to be executed when the procedure is
-                    % called for the first time. This code may access the
-                    % input variables.
 
+                % Gives the code to be executed when control backtracks
+                % into the procedure.  This code may not access the input
+                % variables.
                 string,
                 maybe(prog_context),
-                    % Gives the code to be executed when control backtracks
-                    % into the procedure.  This code may not access the input
-                    % variables.
 
+                % How should the shared code be treated during code generation.
                 foreign_proc_shared_code_treatment,
-                    % How should the shared code be treated during code
-                    % generation.
 
+                % Shared code that is executed after both the previous
+                % code fragments. May not access the input variables.
                 string,
                 maybe(prog_context)
-                    % Shared code that is executed after both the previous
-                    % code fragments.  May not access the input variables.
             )
 
     ;       fc_impl_import(
@@ -617,8 +876,8 @@
     ;       shared_code_share
     ;       shared_code_automatic.
 
+    % In reverse order.
 :- type foreign_import_module_info_list  == list(foreign_import_module_info).
-                    % in reverse order
 
 :- type foreign_import_module_info
     --->    foreign_import_module_info(
@@ -629,8 +888,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the `foreign_export_enum' pragma
+% Stuff for the `foreign_export_enum' pragma.
 %
+
+:- interface.
 
 :- type uppercase_export_enum
     --->    uppercase_export_enum
@@ -644,10 +905,17 @@
 
 :- func default_export_enum_attributes = export_enum_attributes.
 
+:- implementation.
+
+default_export_enum_attributes =
+    export_enum_attributes(no, do_not_uppercase_export_enum).
+
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the `require_feature_set' pragma
+% Stuff for the `require_feature_set' pragma.
 %
+
+:- interface.
 
 :- type required_feature
     --->    reqf_concurrency
@@ -661,8 +929,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Type classes
+% Type classes.
 %
+
+:- interface.
 
     % A class constraint represents a constraint that a given list of types
     % is a member of the specified type class. It is an invariant of this data
@@ -742,7 +1012,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 
 %-----------------------------------------------------------------------------%
 %
-% Some more stuff for the foreign language interface
+% Some more stuff for the foreign language interface.
 %
 
 :- interface.
@@ -966,13 +1236,113 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- type pragma_foreign_proc_extra_attributes ==
     list(pragma_foreign_proc_extra_attribute).
 
+:- implementation.
+
+    % If you add an attribute you may need to modify
+    % `foreign_proc_attributes_to_strings'.
+    %
+:- type pragma_foreign_proc_attributes
+    --->    attributes(
+                attr_foreign_language           :: foreign_language,
+                attr_may_call_mercury           :: proc_may_call_mercury,
+                attr_thread_safe                :: proc_thread_safe,
+                attr_tabled_for_io              :: proc_tabled_for_io,
+                attr_purity                     :: purity,
+                attr_terminates                 :: proc_terminates,
+                attr_user_annotated_sharing     :: user_annotated_sharing,
+                attr_may_throw_exception        :: proc_may_throw_exception,
+
+                % There is some special case behaviour for pragma c_code
+                % and pragma import purity if legacy_purity_behaviour is `yes'.
+                attr_legacy_purity_behaviour    :: bool,
+                attr_ordinary_despite_detism    :: bool,
+                attr_may_modify_trail           :: proc_may_modify_trail,
+                attr_may_call_mm_tabled         :: may_call_mm_tabled,
+                attr_box_policy                 :: box_policy,
+                attr_affects_liveness           :: proc_affects_liveness,
+                attr_allocates_memory           :: proc_allocates_memory,
+                attr_registers_roots            :: proc_registers_roots,
+                attr_may_duplicate              :: maybe(proc_may_duplicate),
+                attr_extra_attributes ::
+                    list(pragma_foreign_proc_extra_attribute)
+            ).
+
+default_attributes(Language) =
+    attributes(Language, proc_may_call_mercury, proc_not_thread_safe,
+        proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
+        no_user_annotated_sharing, default_exception_behaviour,
+        no, no, proc_may_modify_trail, default_calls_mm_tabled,
+        native_if_possible, proc_default_affects_liveness,
+        proc_default_allocates_memory, proc_default_registers_roots,
+        no, []).
+
+get_may_call_mercury(Attrs) = Attrs ^ attr_may_call_mercury.
+get_thread_safe(Attrs) = Attrs ^ attr_thread_safe.
+get_foreign_language(Attrs) = Attrs ^ attr_foreign_language.
+get_tabled_for_io(Attrs) = Attrs ^ attr_tabled_for_io.
+get_purity(Attrs) = Attrs ^ attr_purity.
+get_terminates(Attrs) = Attrs ^ attr_terminates.
+get_user_annotated_sharing(Attrs) = Attrs ^ attr_user_annotated_sharing.
+get_may_throw_exception(Attrs) = Attrs ^ attr_may_throw_exception.
+get_legacy_purity_behaviour(Attrs) = Attrs ^ attr_legacy_purity_behaviour.
+get_ordinary_despite_detism(Attrs) = Attrs ^ attr_ordinary_despite_detism.
+get_may_modify_trail(Attrs) = Attrs ^ attr_may_modify_trail.
+get_may_call_mm_tabled(Attrs) = Attrs ^ attr_may_call_mm_tabled.
+get_box_policy(Attrs) = Attrs ^ attr_box_policy.
+get_affects_liveness(Attrs) = Attrs ^ attr_affects_liveness.
+get_allocates_memory(Attrs) = Attrs ^ attr_allocates_memory.
+get_registers_roots(Attrs) = Attrs ^ attr_registers_roots.
+get_may_duplicate(Attrs) = Attrs ^ attr_may_duplicate.
+get_extra_attributes(Attrs) = Attrs ^ attr_extra_attributes.
+
+set_may_call_mercury(MayCallMercury, !Attrs) :-
+    !Attrs ^ attr_may_call_mercury := MayCallMercury.
+set_thread_safe(ThreadSafe, !Attrs) :-
+    !Attrs ^ attr_thread_safe := ThreadSafe.
+set_foreign_language(ForeignLanguage, !Attrs) :-
+    !Attrs ^ attr_foreign_language := ForeignLanguage.
+set_tabled_for_io(TabledForIo, !Attrs) :-
+    !Attrs ^ attr_tabled_for_io := TabledForIo.
+set_purity(Purity, !Attrs) :-
+    !Attrs ^ attr_purity := Purity.
+set_terminates(Terminates, !Attrs) :-
+    !Attrs ^ attr_terminates := Terminates.
+set_user_annotated_sharing(UserSharing, !Attrs) :-
+    !Attrs ^ attr_user_annotated_sharing := UserSharing.
+set_may_throw_exception(MayThrowException, !Attrs) :-
+    !Attrs ^ attr_may_throw_exception := MayThrowException.
+set_legacy_purity_behaviour(Legacy, !Attrs) :-
+    !Attrs ^ attr_legacy_purity_behaviour := Legacy.
+set_ordinary_despite_detism(OrdinaryDespiteDetism, !Attrs) :-
+    !Attrs ^ attr_ordinary_despite_detism := OrdinaryDespiteDetism.
+set_may_modify_trail(MayModifyTrail, !Attrs) :-
+    !Attrs ^ attr_may_modify_trail := MayModifyTrail.
+set_may_call_mm_tabled(MayCallMM_Tabled, !Attrs) :-
+    !Attrs ^ attr_may_call_mm_tabled := MayCallMM_Tabled.
+set_box_policy(BoxPolicyStr, !Attrs) :-
+    !Attrs ^ attr_box_policy := BoxPolicyStr.
+set_affects_liveness(AffectsLiveness, !Attrs) :-
+    !Attrs ^ attr_affects_liveness := AffectsLiveness.
+set_allocates_memory(AllocatesMemory, !Attrs) :-
+    !Attrs ^ attr_allocates_memory := AllocatesMemory.
+set_registers_roots(RegistersRoots, !Attrs) :-
+    !Attrs ^ attr_registers_roots := RegistersRoots.
+set_may_duplicate(MayDuplicate, !Attrs) :-
+    !Attrs ^ attr_may_duplicate := MayDuplicate.
+
+add_extra_attribute(NewAttribute, !Attrs) :-
+    !Attrs ^ attr_extra_attributes :=
+        [NewAttribute | !.Attrs ^ attr_extra_attributes].
+
 %-----------------------------------------------------------------------------%
 %
-% Goals
+% Goals.
 %
 
 % NOTE: the representation of goals in the parse tree is defined in
-%       prog_item.m.
+% prog_item.m.
+
+:- interface.
 
 :- type trace_expr(Base)
     --->    trace_base(Base)
@@ -1024,6 +1394,17 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     %
 :- type prog_context    ==  term.context.
 
+%-----------------------------------------------------------------------------%
+%
+% Renaming
+%
+% The predicates here are similar to the "apply_variable_renaming" family of
+% predicates in library/term.m, but they allow the caller to specify that all
+% variables in the data structure being updated must appear in the renaming.
+%
+
+:- interface.
+
 :- type must_rename
     --->    must_rename
     ;       need_not_rename.
@@ -1043,10 +1424,56 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- pred rename_var(must_rename::in, map(var(V), var(V))::in,
     var(V)::in, var(V)::out) is det.
 
+:- implementation.
+
+rename_vars_in_term(Must, Renaming, Term0, Term) :-
+    (
+        Term0 = variable(Var0, Context),
+        rename_var(Must, Renaming, Var0, Var),
+        Term = variable(Var, Context)
+    ;
+        Term0 = functor(ConsId, Args0, Context),
+        rename_vars_in_term_list(Must, Renaming, Args0, Args),
+        Term = functor(ConsId, Args, Context)
+    ).
+
+rename_vars_in_term_list(_Must, _Renaming, [], []).
+rename_vars_in_term_list(Must, Renaming, [Term0 | Terms0], [Term | Terms]) :-
+    rename_vars_in_term(Must, Renaming, Term0, Term),
+    rename_vars_in_term_list(Must, Renaming, Terms0, Terms).
+
+rename_vars_in_var_set(Must, Renaming, Vars0, Vars) :-
+    set.to_sorted_list(Vars0, VarsList0),
+    rename_var_list(Must, Renaming, VarsList0, VarsList),
+    set.list_to_set(VarsList, Vars).
+
+rename_var_list(_Must, _Renaming, [], []).
+rename_var_list(Must, Renaming, [Var0 | Vars0], [Var | Vars]) :-
+    rename_var(Must, Renaming, Var0, Var),
+    rename_var_list(Must, Renaming, Vars0, Vars).
+
+rename_var(Must, Renaming, Var0, Var) :-
+    ( map.search(Renaming, Var0, VarPrime) ->
+        Var = VarPrime
+    ;
+        (
+            Must = need_not_rename,
+            Var = Var0
+        ;
+            Must = must_rename,
+            term.var_to_int(Var0, Var0Int),
+            string.format("rename_var: no substitute for var %i", [i(Var0Int)],
+                Msg),
+            unexpected(this_file, Msg)
+        )
+    ).
+
 %-----------------------------------------------------------------------------%
 %
-% Cons ids
+% Cons ids.
 %
+
+:- interface.
 
     % The representation of cons_ids below is a compromise. The cons_id
     % type must be defined here, in a submodule of parse_tree.m, because
@@ -1064,7 +1491,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     % for cons_ids, one defined here for use in the parse tree and one
     % defined in hlds_data.m for use in the HLDS. We could distinguish
     % the two by having the HLDS cons_id have a definition such as
-    % hlds_cons_id ---> parse_cons_id(parse_cons_id) ; ...
+    % cons_id ---> parse_cons_id(parse_cons_id) ; ...
     % or, alternatively, by making cons_id parametric in the type of
     % constants, and substitute different constant types (since all the
     % cons_ids that refer to HLDS concepts are constants).
@@ -1086,22 +1513,34 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     % equivalents by the unshroud functions in hlds_pred.m, and for
     % printing for diagnostics.
     %
-:- type shrouded_pred_id    ---> shrouded_pred_id(int).
-:- type shrouded_proc_id    ---> shrouded_proc_id(int).
+:- type shrouded_pred_id        ---> shrouded_pred_id(int).
+:- type shrouded_proc_id        ---> shrouded_proc_id(int).
 :- type shrouded_pred_proc_id   ---> shrouded_pred_proc_id(int, int).
 
 :- type cons_id
-    --->    cons(sym_name, arity)   % name, arity
-            % Tuples have cons_id `cons(unqualified("{}"), Arity)'.
+    --->    cons(sym_name, arity, type_ctor)
+            % Before post-typecheck, the type_ctor field is not meaningful.
+            %
+            % Before post-typecheck, tuples and characters have this cons_id.
+            % For tuples, this will be of the form
+            % `cons(unqualified("{}"), Arity, _)',
+            % while for charaters, this will be of the form
+            % `cons(unqualified(Str), 0, _)'
+            % where Str = term_io.quoted_char(Char).
+
+    ;       tuple_cons(arity)
+
+    ;       closure_cons(shrouded_pred_proc_id, lambda_eval_method)
+            % Note that a closure_cons represents a closure, not just
+            % a code address.
+            % XXX We should have a pred_or_func field as well.
 
     ;       int_const(int)
-    ;       string_const(string)
     ;       float_const(float)
-    ;       implementation_defined_const(string)
+    ;       char_const(char)
+    ;       string_const(string)
 
-    ;       pred_const(shrouded_pred_proc_id, lambda_eval_method)
-            % Note that a pred_const represents a closure,
-            % not just a code address.
+    ;       impl_defined_const(string)
 
     ;       type_ctor_info_const(
                 module_name,
@@ -1126,14 +1565,14 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
             % about the table that implements memoization, loop checking
             % or the minimal model semantics for the given procedure.
 
-    ;       deep_profiling_proc_layout(shrouded_pred_proc_id)
+    ;       table_io_decl(shrouded_pred_proc_id)
+            % The address of a structure that describes the layout of the
+            % answer block used by I/O tabling for declarative debugging.
+
+    ;       deep_profiling_proc_layout(shrouded_pred_proc_id).
             % The Proc_Layout structure of a procedure. Its proc_static field
             % is used by deep profiling, as documented in the deep profiling
             % paper.
-
-    ;       table_io_decl(shrouded_pred_proc_id).
-            % The address of a structure that describes the layout of the
-            % answer block used by I/O tabling for declarative debugging.
 
     % Describe how a lambda expression is to be evaluated.
     %
@@ -1142,10 +1581,57 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- type lambda_eval_method
     --->    lambda_normal.
 
+:- func cons_id_dummy_type_ctor = type_ctor.
+
+    % Are the two cons_ids equivalent, modulo any module qualifications?
+    %
+:- pred equivalent_cons_ids(cons_id::in, cons_id::in) is semidet.
+
+:- implementation.
+
+cons_id_dummy_type_ctor = type_ctor(unqualified(""), -1).
+
+equivalent_cons_ids(ConsIdA, ConsIdB) :-
+    (
+        ConsIdA = cons(SymNameA, ArityA, _),
+        ConsIdB = cons(SymNameB, ArityB, _)
+    ->
+        ArityA = ArityB,
+        (
+            SymNameA = unqualified(Name),
+            SymNameB = unqualified(Name)
+        ;
+            SymNameA = unqualified(Name),
+            SymNameB = qualified(_, Name)
+        ;
+            SymNameA = qualified(_, Name),
+            SymNameB = unqualified(Name)
+        ;
+            SymNameA = qualified(Qualifier, Name),
+            SymNameB = qualified(Qualifier, Name)
+        )
+    ;
+        ConsIdA = cons(SymNameA, ArityA, _),
+        ConsIdB = tuple_cons(ArityB)
+    ->
+        ArityA = ArityB,
+        SymNameA = unqualified("{}")
+    ;
+        ConsIdA = tuple_cons(ArityA),
+        ConsIdB = cons(SymNameB, ArityB, _)
+    ->
+        ArityA = ArityB,
+        SymNameB = unqualified("{}")
+    ;
+        ConsIdA = ConsIdB
+    ).
+
 %-----------------------------------------------------------------------------%
 %
-% Types
+% Types.
 %
+
+:- interface.
 
 % This is how types are represented.
 
@@ -1195,9 +1681,14 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- type constructor
     --->    ctor(
                 cons_exist          :: existq_tvars,
+                % existential constraints
                 cons_constraints    :: list(prog_constraint),
-                                    % existential constraints
+
+                % The cons_id should be cons(SymName, Arity, TypeCtor)
+                % for user-defined types, and tuple_cons(Arity) for the
+                % system-defined tuple types.
                 cons_name           :: sym_name,
+
                 cons_args           :: list(constructor_arg),
                 cons_context        :: prog_context
             ).
@@ -1322,7 +1813,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     --->    builtin_type_int
     ;       builtin_type_float
     ;       builtin_type_string
-    ;       builtin_type_character.
+    ;       builtin_type_char.
 
 :- type type_term   ==  term(tvar_type).
 
@@ -1375,14 +1866,33 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- pred tvarset_merge_renaming_without_names(tvarset::in, tvarset::in,
     tvarset::out, tvar_renaming::out) is det.
 
+:- implementation.
+
+tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
+    varset.merge_subst(TVarSetA, TVarSetB, TVarSet, Subst),
+    map.map_values(convert_subst_term_to_tvar, Subst, Renaming).
+
+tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
+    varset.merge_subst_without_names(TVarSetA, TVarSetB, TVarSet, Subst),
+    map.map_values(convert_subst_term_to_tvar, Subst, Renaming).
+
+:- pred convert_subst_term_to_tvar(tvar::in, term(tvar_type)::in, tvar::out)
+    is det.
+
+convert_subst_term_to_tvar(_, variable(TVar, _), TVar).
+convert_subst_term_to_tvar(_, functor(_, _, _), _) :-
+    unexpected(this_file, "non-variable found in renaming").
+
 %-----------------------------------------------------------------------------%
 %
-% Kinds
+% Kinds.
 %
 
-    % Note that we don't support any kind other than `star' at the
-    % moment.  The other kinds are intended for the implementation
-    % of constructor classes.
+:- interface.
+
+    % Note that we don't support any kind other than `star' at the moment.
+    % The other kinds are intended for the implementation of constructor
+    % classes.
     %
 :- type kind
     --->    kind_star
@@ -1414,10 +1924,29 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     %
 :- func get_type_kind(mer_type) = kind.
 
+:- implementation.
+
+get_tvar_kind(Map, TVar, Kind) :-
+    ( map.search(Map, TVar, Kind0) ->
+        Kind = Kind0
+    ;
+        Kind = kind_star
+    ).
+
+get_type_kind(type_variable(_, Kind)) = Kind.
+get_type_kind(defined_type(_, _, Kind)) = Kind.
+get_type_kind(builtin_type(_)) = kind_star.
+get_type_kind(higher_order_type(_, _, _, _)) = kind_star.
+get_type_kind(tuple_type(_, Kind)) = Kind.
+get_type_kind(apply_n_type(_, _, Kind)) = Kind.
+get_type_kind(kinded_type(_, Kind)) = Kind.
+
 %-----------------------------------------------------------------------------%
 %
-% Insts and modes
+% Insts and modes.
 %
+
+:- interface.
 
     % This is how instantiatednesses and modes are represented.
     %
@@ -1602,8 +2131,10 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 
 %-----------------------------------------------------------------------------%
 %
-% Module system
+% Module system.
 %
+
+:- interface.
 
 :- type backend
     --->    high_level_backend
@@ -1654,9 +2185,6 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     --->    has_main
     ;       no_main.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 :- type item_visibility
     --->    visibility_public
     ;       visibility_private.
@@ -1683,10 +2211,36 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- pred add_all_modules(item_visibility::in, sym_name::in,
     used_modules::in, used_modules::out) is det.
 
+:- implementation.
+
+used_modules_init = used_modules(set.init, set.init).
+
+add_sym_name_module(_Visibility, unqualified(_), !UsedModules).
+add_sym_name_module(Visibility, qualified(ModuleName, _), !UsedModules) :-
+    add_all_modules(Visibility, ModuleName, !UsedModules).
+
+add_all_modules(Visibility, ModuleName @ unqualified(_), !UsedModules) :-
+    add_module(Visibility, ModuleName, !UsedModules).
+add_all_modules(Visibility, ModuleName @ qualified(Parent, _), !UsedModules) :-
+    add_module(Visibility, ModuleName, !UsedModules),
+    add_all_modules(Visibility, Parent, !UsedModules).
+
+:- pred add_module(item_visibility::in, module_name::in,
+    used_modules::in, used_modules::out) is det.
+
+add_module(visibility_public, Module, !UsedModules) :-
+    !UsedModules ^ int_used_modules :=
+        set.insert(!.UsedModules ^ int_used_modules, Module).
+add_module(visibility_private, Module, !UsedModules) :-
+    !UsedModules ^ impl_used_modules :=
+        set.insert(!.UsedModules ^ impl_used_modules, Module).
+
 %-----------------------------------------------------------------------------%
 %
-% Event specifications
+% Event specifications.
 %
+
+:- interface.
 
 :- type event_attribute
     --->    event_attribute(
@@ -1731,456 +2285,8 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
             ).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module libs.compiler_util.
-
-:- import_module string.
-
-%-----------------------------------------------------------------------------%
-
-eval_method_to_table_type(EvalMethod) = TableTypeStr :-
-    (
-        EvalMethod = eval_normal,
-        unexpected(this_file, "eval_method_to_table_type: eval_normal")
-    ;
-        EvalMethod = eval_table_io(_, _),
-        unexpected(this_file, "eval_method_to_table_type: eval_table_io")
-    ;
-        EvalMethod = eval_loop_check,
-        TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
-    ;
-        EvalMethod = eval_memo,
-        TableTypeStr = "MR_TABLE_TYPE_MEMO"
-    ;
-        EvalMethod = eval_minimal(stack_copy),
-        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY"
-    ;
-        EvalMethod = eval_minimal(own_stacks_consumer),
-        unexpected(this_file, "eval_method_to_table_type: own_stacks_consumer")
-    ;
-        EvalMethod = eval_minimal(own_stacks_generator),
-        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"
-    ).
-
-default_memo_table_attributes =
-    table_attributes(all_strict, no, table_dont_gather_statistics,
-        table_dont_allow_reset).
-
-%-----------------------------------------------------------------------------%
-%
-% Some more stuff for the foreign language interface
-%
-
-    % If you add an attribute you may need to modify
-    % `foreign_proc_attributes_to_strings'.
-    %
-:- type pragma_foreign_proc_attributes
-    --->    attributes(
-                attr_foreign_language           :: foreign_language,
-                attr_may_call_mercury           :: proc_may_call_mercury,
-                attr_thread_safe                :: proc_thread_safe,
-                attr_tabled_for_io              :: proc_tabled_for_io,
-                attr_purity                     :: purity,
-                attr_terminates                 :: proc_terminates,
-                attr_user_annotated_sharing     :: user_annotated_sharing,
-                attr_may_throw_exception        :: proc_may_throw_exception,
-
-                % There is some special case behaviour for pragma c_code
-                % and pragma import purity if legacy_purity_behaviour is `yes'.
-                attr_legacy_purity_behaviour    :: bool,
-                attr_ordinary_despite_detism    :: bool,
-                attr_may_modify_trail           :: proc_may_modify_trail,
-                attr_may_call_mm_tabled         :: may_call_mm_tabled,
-                attr_box_policy                 :: box_policy,
-                attr_affects_liveness           :: proc_affects_liveness,
-                attr_allocates_memory           :: proc_allocates_memory,
-                attr_registers_roots            :: proc_registers_roots,
-                attr_may_duplicate              :: maybe(proc_may_duplicate),
-                attr_extra_attributes ::
-                    list(pragma_foreign_proc_extra_attribute)
-            ).
-
-default_attributes(Language) =
-    attributes(Language, proc_may_call_mercury, proc_not_thread_safe,
-        proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
-        no_user_annotated_sharing, default_exception_behaviour,
-        no, no, proc_may_modify_trail, default_calls_mm_tabled,
-        native_if_possible, proc_default_affects_liveness,
-        proc_default_allocates_memory, proc_default_registers_roots,
-        no, []).
-
-get_may_call_mercury(Attrs) = Attrs ^ attr_may_call_mercury.
-get_thread_safe(Attrs) = Attrs ^ attr_thread_safe.
-get_foreign_language(Attrs) = Attrs ^ attr_foreign_language.
-get_tabled_for_io(Attrs) = Attrs ^ attr_tabled_for_io.
-get_purity(Attrs) = Attrs ^ attr_purity.
-get_terminates(Attrs) = Attrs ^ attr_terminates.
-get_user_annotated_sharing(Attrs) = Attrs ^ attr_user_annotated_sharing.
-get_may_throw_exception(Attrs) = Attrs ^ attr_may_throw_exception.
-get_legacy_purity_behaviour(Attrs) = Attrs ^ attr_legacy_purity_behaviour.
-get_ordinary_despite_detism(Attrs) = Attrs ^ attr_ordinary_despite_detism.
-get_may_modify_trail(Attrs) = Attrs ^ attr_may_modify_trail.
-get_may_call_mm_tabled(Attrs) = Attrs ^ attr_may_call_mm_tabled.
-get_box_policy(Attrs) = Attrs ^ attr_box_policy.
-get_affects_liveness(Attrs) = Attrs ^ attr_affects_liveness.
-get_allocates_memory(Attrs) = Attrs ^ attr_allocates_memory.
-get_registers_roots(Attrs) = Attrs ^ attr_registers_roots.
-get_may_duplicate(Attrs) = Attrs ^ attr_may_duplicate.
-get_extra_attributes(Attrs) = Attrs ^ attr_extra_attributes.
-
-set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_may_call_mercury := MayCallMercury.
-set_thread_safe(ThreadSafe, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_thread_safe := ThreadSafe.
-set_foreign_language(ForeignLanguage, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_foreign_language := ForeignLanguage.
-set_tabled_for_io(TabledForIo, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_tabled_for_io := TabledForIo.
-set_purity(Purity, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_purity := Purity.
-set_terminates(Terminates, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_terminates := Terminates.
-set_user_annotated_sharing(UserSharing, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_user_annotated_sharing := UserSharing.
-set_may_throw_exception(MayThrowException, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_may_throw_exception := MayThrowException.
-set_legacy_purity_behaviour(Legacy, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_legacy_purity_behaviour := Legacy.
-set_ordinary_despite_detism(OrdinaryDespiteDetism, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_ordinary_despite_detism := OrdinaryDespiteDetism.
-set_may_modify_trail(MayModifyTrail, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_may_modify_trail := MayModifyTrail.
-set_may_call_mm_tabled(MayCallMM_Tabled, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_may_call_mm_tabled := MayCallMM_Tabled.
-set_box_policy(BoxPolicyStr, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_box_policy := BoxPolicyStr.
-set_affects_liveness(AffectsLiveness, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_affects_liveness := AffectsLiveness.
-set_allocates_memory(AllocatesMemory, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_allocates_memory := AllocatesMemory.
-set_registers_roots(RegistersRoots, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_registers_roots := RegistersRoots.
-set_may_duplicate(MayDuplicate, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ attr_may_duplicate := MayDuplicate.
-
-add_extra_attribute(NewAttribute, Attributes0,
-    Attributes0 ^ attr_extra_attributes :=
-        [NewAttribute | Attributes0 ^ attr_extra_attributes]).
-
-%-----------------------------------------------------------------------------%
-%
-% Renaming
-%
-% The predicates here are similar to the "apply_variable_renaming" family of
-% predicates in library/term.m, but they allow the caller to specify that all
-% variables in the data structure being updated must appear in the renaming.
-
-rename_vars_in_term(Must, Renaming, Term0, Term) :-
-    (
-        Term0 = variable(Var0, Context),
-        rename_var(Must, Renaming, Var0, Var),
-        Term = variable(Var, Context)
-    ;
-        Term0 = functor(ConsId, Args0, Context),
-        rename_vars_in_term_list(Must, Renaming, Args0, Args),
-        Term = functor(ConsId, Args, Context)
-    ).
-
-rename_vars_in_term_list(_Must, _Renaming, [], []).
-rename_vars_in_term_list(Must, Renaming, [Term0 | Terms0], [Term | Terms]) :-
-    rename_vars_in_term(Must, Renaming, Term0, Term),
-    rename_vars_in_term_list(Must, Renaming, Terms0, Terms).
-
-rename_vars_in_var_set(Must, Renaming, Vars0, Vars) :-
-    set.to_sorted_list(Vars0, VarsList0),
-    rename_var_list(Must, Renaming, VarsList0, VarsList),
-    set.list_to_set(VarsList, Vars).
-
-rename_var_list(_Must, _Renaming, [], []).
-rename_var_list(Must, Renaming, [Var0 | Vars0], [Var | Vars]) :-
-    rename_var(Must, Renaming, Var0, Var),
-    rename_var_list(Must, Renaming, Vars0, Vars).
-
-rename_var(Must, Renaming, Var0, Var) :-
-    ( map.search(Renaming, Var0, VarPrime) ->
-        Var = VarPrime
-    ;
-        (
-            Must = need_not_rename,
-            Var = Var0
-        ;
-            Must = must_rename,
-            term.var_to_int(Var0, Var0Int),
-            string.format("rename_var: no substitute for var %i", [i(Var0Int)],
-                Msg),
-            unexpected(this_file, Msg)
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Purity
-%
-
-less_pure(P1, P2) :-
-    \+ ( worst_purity(P1, P2) = P2).
-
-    % worst_purity/3 could be written more compactly, but this definition
-    % guarantees us a determinism error if we add to type `purity'.  We also
-    % define less_pure/2 in terms of worst_purity/3 rather than the other way
-    % around for the same reason.
-    %
-worst_purity(purity_pure, purity_pure) = purity_pure.
-worst_purity(purity_pure, purity_semipure) = purity_semipure.
-worst_purity(purity_pure, purity_impure) = purity_impure.
-worst_purity(purity_semipure, purity_pure) = purity_semipure.
-worst_purity(purity_semipure, purity_semipure) = purity_semipure.
-worst_purity(purity_semipure, purity_impure) = purity_impure.
-worst_purity(purity_impure, purity_pure) = purity_impure.
-worst_purity(purity_impure, purity_semipure) = purity_impure.
-worst_purity(purity_impure, purity_impure) = purity_impure.
-
-    % best_purity/3 is written as a switch for the same reason as
-    % worst_purity/3.
-    %
-best_purity(purity_pure, purity_pure) = purity_pure.
-best_purity(purity_pure, purity_semipure) = purity_pure.
-best_purity(purity_pure, purity_impure) = purity_pure.
-best_purity(purity_semipure, purity_pure) = purity_pure.
-best_purity(purity_semipure, purity_semipure) = purity_semipure.
-best_purity(purity_semipure, purity_impure) = purity_semipure.
-best_purity(purity_impure, purity_pure) = purity_pure.
-best_purity(purity_impure, purity_semipure) = purity_semipure.
-best_purity(purity_impure, purity_impure) = purity_impure.
-
-%-----------------------------------------------------------------------------%
-%
-% Determinism
-%
-
-determinism_components(detism_det,       cannot_fail, at_most_one).
-determinism_components(detism_semi,      can_fail,    at_most_one).
-determinism_components(detism_multi,     cannot_fail, at_most_many).
-determinism_components(detism_non,       can_fail,    at_most_many).
-determinism_components(detism_cc_multi,  cannot_fail, at_most_many_cc).
-determinism_components(detism_cc_non,    can_fail,    at_most_many_cc).
-determinism_components(detism_erroneous, cannot_fail, at_most_zero).
-determinism_components(detism_failure,   can_fail,    at_most_zero).
-
-det_conjunction_detism(DetismA, DetismB, Detism) :-
-    % When figuring out the determinism of a conjunction, if the second goal
-    % is unreachable, then then the determinism of the conjunction is just
-    % the determinism of the first goal.
-
-    determinism_components(DetismA, CanFailA, MaxSolnA),
-    (
-        MaxSolnA = at_most_zero,
-        Detism = DetismA
-    ;
-        ( MaxSolnA = at_most_one
-        ; MaxSolnA = at_most_many
-        ; MaxSolnA = at_most_many_cc
-        ),
-        determinism_components(DetismB, CanFailB, MaxSolnB),
-        det_conjunction_canfail(CanFailA, CanFailB, CanFail),
-        det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
-        determinism_components(Detism, CanFail, MaxSoln)
-    ).
-
-det_par_conjunction_detism(DetismA, DetismB, Detism) :-
-    % Figuring out the determinism of a parallel conjunction is much easier
-    % than for a sequential conjunction, since you simply ignore the case
-    % where the second goal is unreachable. Just do a normal solution count.
-
-    determinism_components(DetismA, CanFailA, MaxSolnA),
-    determinism_components(DetismB, CanFailB, MaxSolnB),
-    det_conjunction_canfail(CanFailA, CanFailB, CanFail),
-    det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
-    determinism_components(Detism, CanFail, MaxSoln).
-
-det_switch_detism(DetismA, DetismB, Detism) :-
-    determinism_components(DetismA, CanFailA, MaxSolnA),
-    determinism_components(DetismB, CanFailB, MaxSolnB),
-    det_switch_canfail(CanFailA, CanFailB, CanFail),
-    det_switch_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
-    determinism_components(Detism, CanFail, MaxSoln).
-
-%-----------------------------------------------------------------------------%
-%
-% The predicates in this section do abstract interpretation to count
-% the number of solutions and the possible number of failures.
-%
-% If the num_solns is at_most_many_cc, this means that the goal might have
-% many logical solutions if there were no pruning, but that the goal occurs
-% in a single-solution context, so only the first solution will be
-% returned.
-%
-% The reason why we don't throw an exception in det_switch_maxsoln and
-% det_disjunction_maxsoln is given in the documentation of the test case
-% invalid/magicbox.m.
-
-det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
-det_conjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_zero).
-det_conjunction_maxsoln(at_most_zero,    at_most_many,    at_most_zero).
-
-det_conjunction_maxsoln(at_most_one,     at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_one,     at_most_one,     at_most_one).
-det_conjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
-det_conjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
-
-det_conjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
-det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_conjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
-    % If the first conjunct could be cc pruned, the second conj ought to have
-    % been cc pruned too.
-    unexpected(this_file, "det_conjunction_maxsoln: many_cc , many").
-
-det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
-det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-det_conjunction_canfail(can_fail,    can_fail,    can_fail).
-det_conjunction_canfail(can_fail,    cannot_fail, can_fail).
-det_conjunction_canfail(cannot_fail, can_fail,    can_fail).
-det_conjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
-
-det_disjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
-det_disjunction_maxsoln(at_most_zero,    at_most_one,     at_most_one).
-det_disjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_zero,    at_most_many,    at_most_many).
-
-det_disjunction_maxsoln(at_most_one,     at_most_zero,    at_most_one).
-det_disjunction_maxsoln(at_most_one,     at_most_one,     at_most_many).
-det_disjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
-
-det_disjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
-
-det_disjunction_maxsoln(at_most_many,    at_most_zero,    at_most_many).
-det_disjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_disjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-det_disjunction_canfail(can_fail,    can_fail,    can_fail).
-det_disjunction_canfail(can_fail,    cannot_fail, cannot_fail).
-det_disjunction_canfail(cannot_fail, can_fail,    cannot_fail).
-det_disjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
-
-det_switch_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
-det_switch_maxsoln(at_most_zero,    at_most_one,     at_most_one).
-det_switch_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_zero,    at_most_many,    at_most_many).
-
-det_switch_maxsoln(at_most_one,     at_most_zero,    at_most_one).
-det_switch_maxsoln(at_most_one,     at_most_one,     at_most_one).
-det_switch_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_one,     at_most_many,    at_most_many).
-
-det_switch_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
-
-det_switch_maxsoln(at_most_many,    at_most_zero,    at_most_many).
-det_switch_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_switch_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-det_switch_canfail(can_fail,    can_fail,    can_fail).
-det_switch_canfail(can_fail,    cannot_fail, can_fail).
-det_switch_canfail(cannot_fail, can_fail,    can_fail).
-det_switch_canfail(cannot_fail, cannot_fail, cannot_fail).
-
-det_negation_det(detism_det,       yes(detism_failure)).
-det_negation_det(detism_semi,      yes(detism_semi)).
-det_negation_det(detism_multi,     no).
-det_negation_det(detism_non,       no).
-det_negation_det(detism_cc_multi,  no).
-det_negation_det(detism_cc_non,    no).
-det_negation_det(detism_erroneous, yes(detism_erroneous)).
-det_negation_det(detism_failure,   yes(detism_det)).
-
-%-----------------------------------------------------------------------------%
-
-tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
-    varset.merge_subst(TVarSetA, TVarSetB, TVarSet, Subst),
-    map.map_values(convert_subst_term_to_tvar, Subst, Renaming).
-
-tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
-    varset.merge_subst_without_names(TVarSetA, TVarSetB, TVarSet, Subst),
-    map.map_values(convert_subst_term_to_tvar, Subst, Renaming).
-
-:- pred convert_subst_term_to_tvar(tvar::in, term(tvar_type)::in, tvar::out)
-    is det.
-
-convert_subst_term_to_tvar(_, variable(TVar, _), TVar).
-convert_subst_term_to_tvar(_, functor(_, _, _), _) :-
-    unexpected(this_file, "non-variable found in renaming").
-
-%-----------------------------------------------------------------------------%
-
-get_tvar_kind(Map, TVar, Kind) :-
-    ( map.search(Map, TVar, Kind0) ->
-        Kind = Kind0
-    ;
-        Kind = kind_star
-    ).
-
-get_type_kind(type_variable(_, Kind)) = Kind.
-get_type_kind(defined_type(_, _, Kind)) = Kind.
-get_type_kind(builtin_type(_)) = kind_star.
-get_type_kind(higher_order_type(_, _, _, _)) = kind_star.
-get_type_kind(tuple_type(_, Kind)) = Kind.
-get_type_kind(apply_n_type(_, _, Kind)) = Kind.
-get_type_kind(kinded_type(_, Kind)) = Kind.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-used_modules_init = used_modules(set.init, set.init).
-
-%-----------------------------------------------------------------------------%
-
-add_sym_name_module(_Status, unqualified(_), !UsedModules).
-add_sym_name_module(Visibility, qualified(ModuleName, _), !UsedModules) :-
-    add_all_modules(Visibility, ModuleName, !UsedModules).
-
-add_all_modules(Visibility, ModuleName @ unqualified(_), !UsedModules) :-
-    add_module(Visibility, ModuleName, !UsedModules).
-add_all_modules(Visibility, ModuleName @ qualified(Parent, _), !UsedModules) :-
-    add_module(Visibility, ModuleName, !UsedModules),
-    add_all_modules(Visibility, Parent, !UsedModules).
-
-:- pred add_module(item_visibility::in, module_name::in,
-    used_modules::in, used_modules::out) is det.
-
-add_module(visibility_public, Module, !UsedModules) :-
-    !:UsedModules = !.UsedModules ^ int_used_modules :=
-            set.insert(!.UsedModules ^ int_used_modules, Module).
-add_module(visibility_private, Module, !UsedModules) :-
-    !:UsedModules = !.UsedModules ^ impl_used_modules :=
-            set.insert(!.UsedModules ^ impl_used_modules, Module).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-%
-% Stuff for the `foreign_export_enum' pragma
-%
-
-default_export_enum_attributes =
-    export_enum_attributes(no, do_not_uppercase_export_enum).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 

@@ -76,6 +76,7 @@
 :- import_module check_hlds.purity.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
@@ -83,6 +84,7 @@
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.rbmm.points_to_graph.
@@ -659,10 +661,11 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
     expect(unify(OtherConsIds, []), this_file,
         "NYI: region_transform_case for multi-cons-id cases"),
     (
-        ( MainConsId = cons(_, 0)
+        ( MainConsId = cons(_, 0, _)
         ; MainConsId = int_const(_)
-        ; MainConsId = string_const(_)
         ; MainConsId = float_const(_)
+        ; MainConsId = char_const(_)
+        ; MainConsId = string_const(_)
         ),
         Switch = hlds_goal(switch(_, _, _), Info)
     ->

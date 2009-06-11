@@ -68,10 +68,10 @@
     % Compute the inst that results from abstractly unifying
     % a variable with a functor.
     %
-:- pred abstractly_unify_inst_functor(is_live::in, mer_inst::in, cons_id::in,
-    list(mer_inst)::in, list(is_live)::in, unify_is_real::in, mer_type::in,
-    mer_inst::out, determinism::out, module_info::in, module_info::out)
-    is semidet.
+:- pred abstractly_unify_inst_functor(is_live::in, mer_inst::in,
+    cons_id::in, list(mer_inst)::in, list(is_live)::in, unify_is_real::in,
+    mer_type::in, mer_inst::out, determinism::out,
+    module_info::in, module_info::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -157,6 +157,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 
 :- import_module int.
 :- import_module list.
@@ -576,10 +577,10 @@ abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives,
             ArgLives, Real, Type, Inst, Det, !ModuleInfo)
     ).
 
-:- pred abstractly_unify_inst_functor_2(is_live::in, mer_inst::in, cons_id::in,
-    list(mer_inst)::in, list(is_live)::in, unify_is_real::in, mer_type::in,
-    mer_inst::out, determinism::out, module_info::in, module_info::out)
-    is semidet.
+:- pred abstractly_unify_inst_functor_2(is_live::in, mer_inst::in,
+    cons_id::in, list(mer_inst)::in, list(is_live)::in, unify_is_real::in,
+    mer_type::in, mer_inst::out, determinism::out,
+    module_info::in, module_info::out) is semidet.
 
 abstractly_unify_inst_functor_2(is_live, not_reached, _, _, _, _, _,
         not_reached, detism_erroneous, !ModuleInfo).
@@ -686,7 +687,7 @@ abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, L, Det, !ModuleInfo) :-
         (
             Xs = [bound_functor(ConsIdX, _)],
             Ys = [bound_functor(ConsIdY, _)],
-            cons_ids_match(ConsIdX, ConsIdY)
+            equivalent_cons_ids(ConsIdX, ConsIdY)
         ->
             Det = Det0
         ;
@@ -710,7 +711,7 @@ abstractly_unify_bound_inst_list_2(Live, [X | Xs], [Y | Ys], Real, L, Det,
         !ModuleInfo) :-
     X = bound_functor(ConsIdX, ArgsX),
     Y = bound_functor(ConsIdY, ArgsY),
-    ( cons_ids_match(ConsIdX, ConsIdY) ->
+    ( equivalent_cons_ids(ConsIdX, ConsIdY) ->
         abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real,
             Args, Det1, !ModuleInfo),
         abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
@@ -745,7 +746,7 @@ abstractly_unify_bound_inst_list_lives([], _, _, _, _, [], detism_failure,
 abstractly_unify_bound_inst_list_lives([X | Xs], ConsIdY, ArgsY, LivesY, Real,
         L, Det, !ModuleInfo) :-
     X = bound_functor(ConsIdX, ArgsX),
-    ( cons_ids_match(ConsIdX, ConsIdY) ->
+    ( equivalent_cons_ids(ConsIdX, ConsIdY) ->
         abstractly_unify_inst_list_lives(ArgsX, ArgsY, LivesY, Real,
             Args, Det, !ModuleInfo),
         L = [bound_functor(ConsIdX, Args)]
@@ -1693,8 +1694,9 @@ inst_merge_bound_ground(UniqA, ListA, UniqB, MaybeType, Result, !ModuleInfo) :-
         (
             MaybeType = yes(Type),
             type_constructors(!.ModuleInfo, Type, Constructors),
-            constructors_to_bound_insts(!.ModuleInfo, UniqB, Constructors,
-                ListB0),
+            type_to_ctor_det(Type, TypeCtor),
+            constructors_to_bound_insts(!.ModuleInfo, UniqB, TypeCtor,
+                Constructors, ListB0),
             list.sort_and_remove_dups(ListB0, ListB),
             inst_merge_4(bound(UniqA, ListA), bound(UniqB, ListB),
                 MaybeType, Result, !ModuleInfo)
@@ -1738,7 +1740,7 @@ bound_inst_list_merge(Xs, Ys, MaybeType, Zs, !ModuleInfo) :-
         Ys = [Y | Ys1],
         X = bound_functor(ConsIdX, ArgsX),
         Y = bound_functor(ConsIdY, ArgsY),
-        ( cons_ids_match(ConsIdX, ConsIdY) ->
+        ( equivalent_cons_ids(ConsIdX, ConsIdY) ->
             maybe_get_cons_id_arg_types(!.ModuleInfo, MaybeType,
                 ConsIdX, list.length(ArgsX), MaybeTypes),
             inst_list_merge(ArgsX, ArgsY, MaybeTypes, Args, !ModuleInfo),
@@ -1829,36 +1831,6 @@ pred_inst_info_standard_func_mode(Arity) =
     in_mode(InMode),
     out_mode(OutMode),
     ArgModes = list.duplicate(Arity - 1, InMode) ++ [OutMode].
-
-%-----------------------------------------------------------------------------%
-
-    % A non-module-qualified cons_id name matches a module-qualified
-    % cons_id name.
-    %
-:- pred cons_ids_match(cons_id::in, cons_id::in) is semidet.
-
-cons_ids_match(ConsIdA, ConsIdB) :-
-    (
-        ConsIdA = cons(SymNameA, ArityA),
-        ConsIdB = cons(SymNameB, ArityB)
-    ->
-        ArityA = ArityB,
-        (
-            SymNameA = unqualified(Name),
-            SymNameB = unqualified(Name)
-        ;
-            SymNameA = unqualified(Name),
-            SymNameB = qualified(_, Name)
-        ;
-            SymNameA = qualified(_, Name),
-            SymNameB = unqualified(Name)
-        ;
-            SymNameA = qualified(Qualifier, Name),
-            SymNameB = qualified(Qualifier, Name)
-        )
-    ;
-        ConsIdA = ConsIdB
-    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -441,7 +441,7 @@ mer_type(TVarset, defined_type(TypeName, Args, _)) = Xml :-
 mer_type(_, builtin_type(builtin_type_int)) = elem("int", [], []).
 mer_type(_, builtin_type(builtin_type_float)) = elem("float", [], []).
 mer_type(_, builtin_type(builtin_type_string)) = elem("string", [], []).
-mer_type(_, builtin_type(builtin_type_character)) = elem("character", [], []).
+mer_type(_, builtin_type(builtin_type_char)) = elem("character", [], []).
 mer_type(TVarset, higher_order_type(Types, MaybeResult, _, _)) = Xml :-
     XmlTypes = xml_list("higher_order_type_args", mer_type(TVarset), Types),
     ( MaybeResult = yes(ResultType),
@@ -625,20 +625,25 @@ bound_inst(IVarset, bound_functor(ConsId, Insts)) = Xml :-
 
 :- func cons_id(cons_id) = xml.
 
-cons_id(cons(Name, Arity)) = elem("cons", [], [name(Name), arity(Arity)]).
+cons_id(cons(Name, Arity, _)) = elem("cons", [], [name(Name), arity(Arity)]).
+% XXX We could do better for tuple_cons and closure_cons.
+% The return values here are just a continuation of what we used to do.
+cons_id(tuple_cons(Arity)) =
+    elem("cons", [], [name(unqualified("{}")), arity(Arity)]).
 cons_id(int_const(I)) = tagged_int("int", I).
-cons_id(string_const(S)) = tagged_string("string", S).
 cons_id(float_const(F)) = tagged_float("float", F).
-cons_id(implementation_defined_const(_)) = nyi("implementation_defined_const").
-cons_id(pred_const(_, _)) = nyi("pred_const").
+cons_id(char_const(C)) = tagged_char("char", C).
+cons_id(string_const(S)) = tagged_string("string", S).
+cons_id(impl_defined_const(_)) = nyi("impl_defined_const").
+cons_id(closure_cons(_, _)) = nyi("closure_cons").
 cons_id(type_ctor_info_const(_, _, _)) = nyi("type_ctor_info_const").
 cons_id(base_typeclass_info_const(_,_,_,_)) = nyi("base_typeclass_info_const").
 cons_id(type_info_cell_constructor(_)) = nyi("type_info_cell_constructor").
 cons_id(typeclass_info_cell_constructor) =
     nyi("typeclass_info_cell_constructor").
 cons_id(tabling_info_const(_)) = nyi("tabling_info_const").
-cons_id(deep_profiling_proc_layout(_)) = nyi("deep_profiling_proc_layout").
 cons_id(table_io_decl(_)) = nyi("table_io_decl").
+cons_id(deep_profiling_proc_layout(_)) = nyi("deep_profiling_proc_layout").
 
 :- func arity(int) = xml.
 
@@ -785,10 +790,6 @@ prefixed_sym_name(Prefix, Name) = Prefix ++ "." ++ sym_name_to_string(Name).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- func tagged_string(string, string) = xml.
-
-tagged_string(E, S) = elem(E, [], [data(S)]).
-
 :- func tagged_int(string, int) = xml.
 
 tagged_int(E, I) = elem(E, [], [data(int_to_string(I))]).
@@ -796,6 +797,14 @@ tagged_int(E, I) = elem(E, [], [data(int_to_string(I))]).
 :- func tagged_float(string, float) = xml.
 
 tagged_float(E, F) = elem(E, [], [data(float_to_string(F))]).
+
+:- func tagged_char(string, char) = xml.
+
+tagged_char(E, C) = elem(E, [], [data(char_to_string(C))]).
+
+:- func tagged_string(string, string) = xml.
+
+tagged_string(E, S) = elem(E, [], [data(S)]).
 
 %-----------------------------------------------------------------------------%
 

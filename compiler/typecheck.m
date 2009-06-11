@@ -127,6 +127,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.         % undesirable dependency
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_event.
@@ -145,6 +146,7 @@
 :- import_module svset.
 :- import_module svvarset.
 :- import_module term.
+:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -921,8 +923,9 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         PredArity = pred_info_orig_arity(!.PredInfo),
         adjust_func_arity(pf_function, FuncArity, PredArity),
         FuncSymName = qualified(FuncModule, FuncName),
+        FuncConsId = cons(FuncSymName, FuncArity, cons_id_dummy_type_ctor),
         create_pure_atomic_complicated_unification(FuncRetVal,
-            rhs_functor(cons(FuncSymName, FuncArity), no, FuncArgs),
+            rhs_functor(FuncConsId, no, FuncArgs),
             Context, umc_explicit, [], Goal0),
         Goal0 = hlds_goal(GoalExpr, GoalInfo0),
         NonLocals = proc_arg_vector_to_set(HeadVars),
@@ -1895,25 +1898,24 @@ typecheck_unify_var_var(X, Y, !Info) :-
     list(prog_var)::in, goal_path::in,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info) :-
+typecheck_unify_var_functor(Var, ConsId, Args, GoalPath, !Info) :-
     % Get the list of possible constructors that match this functor/arity.
     % If there aren't any, report an undefined constructor error.
     list.length(Args, Arity),
-    typecheck_info_get_ctor_list(!.Info, Functor, Arity, GoalPath,
-        ConsDefnList, InvalidConsDefnList),
+    typecheck_info_get_ctor_list(!.Info, ConsId, Arity, GoalPath,
+        ConsDefns, ConsErrors),
     (
-        ConsDefnList = [],
-        Spec = report_error_undef_cons(!.Info, InvalidConsDefnList, Functor,
-            Arity),
+        ConsDefns = [],
+        Spec = report_error_undef_cons(!.Info, ConsErrors, ConsId, Arity),
         typecheck_info_add_error(Spec, !Info)
     ;
         (
-            ConsDefnList = [_]
+            ConsDefns = [_]
         ;
-            ConsDefnList = [_, _ | _],
+            ConsDefns = [_, _ | _],
             Context = !.Info ^ tc_info_context,
-            Sources = list.map(project_cons_type_info_source, ConsDefnList),
-            Symbol = overloaded_func(Functor, Sources),
+            Sources = list.map(project_cons_type_info_source, ConsDefns),
+            Symbol = overloaded_func(ConsId, Sources),
             typecheck_info_add_overloaded_symbol(Symbol, Context, !Info)
         ),
 
@@ -1921,7 +1923,7 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info) :-
         % cross-product of the TypeAssignSet0 and the ConsDefnList.
         TypeAssignSet0 = !.Info ^ tc_info_type_assign_set,
         typecheck_unify_var_functor_get_ctors(TypeAssignSet0,
-            !.Info, ConsDefnList, [], ConsTypeAssignSet),
+            !.Info, ConsDefns, [], ConsTypeAssignSet),
         (
             ConsTypeAssignSet = [],
             TypeAssignSet0 = [_ | _]
@@ -1940,9 +1942,9 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info) :-
             ArgsTypeAssignSet = [],
             ConsTypeAssignSet = [_ | _]
         ->
-            FunctorSpec = report_error_functor_type(!.Info, Var, ConsDefnList,
-                Functor, Arity, TypeAssignSet0),
-            typecheck_info_add_error(FunctorSpec, !Info)
+            ConsIdSpec = report_error_functor_type(!.Info, Var, ConsDefns,
+                ConsId, Arity, TypeAssignSet0),
+            typecheck_info_add_error(ConsIdSpec, !Info)
         ;
             true
         ),
@@ -1955,8 +1957,8 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info) :-
             TypeAssignSet = [],
             ArgsTypeAssignSet = [_ | _]
         ->
-            ArgSpec = report_error_functor_arg_types(!.Info, Var, ConsDefnList,
-                Functor, Args, ArgsTypeAssignSet),
+            ArgSpec = report_error_functor_arg_types(!.Info, Var, ConsDefns,
+                ConsId, Args, ArgsTypeAssignSet),
             typecheck_info_add_error(ArgSpec, !Info)
         ;
             true
@@ -1966,10 +1968,10 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info) :-
         % original type assign set.
         (
             TypeAssignSet = [],
-            !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet0
+            !Info ^ tc_info_type_assign_set := TypeAssignSet0
         ;
             TypeAssignSet = [_ | _],
-            !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet
+            !Info ^ tc_info_type_assign_set := TypeAssignSet
         )
     ).
 
@@ -2016,8 +2018,8 @@ typecheck_unify_var_functor_get_ctors_2([ConsDefn | ConsDefns], Info,
         TypeAssign0, !ConsTypeAssignSet) :-
     get_cons_stuff(ConsDefn, TypeAssign0, Info, ConsType, ArgTypes,
         TypeAssign1),
-    list.append([TypeAssign1 - cons_type(ConsType, ArgTypes)],
-        !ConsTypeAssignSet),
+    ConsTypeAssign = TypeAssign1 - cons_type(ConsType, ArgTypes),
+    !:ConsTypeAssignSet = [ConsTypeAssign | !.ConsTypeAssignSet],
     typecheck_unify_var_functor_get_ctors_2(ConsDefns, Info, TypeAssign0,
         !ConsTypeAssignSet).
 
@@ -2167,7 +2169,9 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
     % Rename apart the type vars in the type of the constructor
     % and the types of its arguments.
     % (Optimize the common case of a non-polymorphic type)
-    ( varset.is_empty(ConsTypeVarSet) ->
+    (
+        varset.is_empty(ConsTypeVarSet)
+    ->
         ConsType = ConsType0,
         ArgTypes = ArgTypes0,
         TypeAssign2 = TypeAssign0,
@@ -2314,17 +2318,28 @@ type_assign_unify_type(TypeAssign0, X, Y, TypeAssign) :-
 
     % builtin_atomic_type(Const, TypeName):
     %
-    % If Const is a constant of a builtin atomic type, instantiates TypeName
-    % to the name of that type, otherwise fails.
+    % If Const is *or can be* a constant of a builtin atomic type,
+    % set TypeName to the name of that type, otherwise fail.
     %
 :- pred builtin_atomic_type(cons_id::in, string::out) is semidet.
 
 builtin_atomic_type(int_const(_), "int").
 builtin_atomic_type(float_const(_), "float").
+builtin_atomic_type(char_const(_), "character").
 builtin_atomic_type(string_const(_), "string").
-builtin_atomic_type(cons(unqualified(String), 0), "character") :-
+builtin_atomic_type(cons(unqualified(String), 0, _), "character") :-
+    % We are before post-typecheck, so character constants have not yet been
+    % converted to char_consts.
+    %
+    % XXX We cannot use "term_io.string_is_escaped_char(_, String)"
+    % because the characters in String have already had any backslash
+    % characters in them processed by now.
+    %
+    % XXX The parser should have a separate term.functor representation
+    % for character constants, which should be converted to char_consts
+    % during the term to item translation.
     string.char_to_string(_, String).
-builtin_atomic_type(implementation_defined_const(Name), Type) :-
+builtin_atomic_type(impl_defined_const(Name), Type) :-
     (
         ( Name = "file"
         ; Name = "module"
@@ -2337,13 +2352,13 @@ builtin_atomic_type(implementation_defined_const(Name), Type) :-
         Type = "int"
     ).
 
-    % builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfoList):
+    % builtin_pred_type(Info, ConsId, Arity, GoalPath, PredConsInfoList):
     %
-    % If Functor/Arity is a constant of a pred type, instantiates
+    % If ConsId/Arity is a constant of a pred type, instantiates
     % the output parameters, otherwise fails.
     %
     % Instantiates PredConsInfoList to the set of cons_type_info structures
-    % for each predicate with name `Functor' and arity greater than
+    % for each predicate with name `ConsId' and arity greater than
     % or equal to Arity.  GoalPath is used to identify any constraints
     % introduced.
     %
@@ -2353,8 +2368,8 @@ builtin_atomic_type(implementation_defined_const(Name), Type) :-
 :- pred builtin_pred_type(typecheck_info::in, cons_id::in, int::in,
     goal_path::in, list(cons_type_info)::out) is semidet.
 
-builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfoList) :-
-    Functor = cons(SymName, _),
+builtin_pred_type(Info, ConsId, Arity, GoalPath, PredConsInfoList) :-
+    ConsId = cons(SymName, _, _),
     ModuleInfo = Info ^ tc_info_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     (
@@ -2455,9 +2470,9 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
         true
     ).
 
-    % builtin_apply_type(Info, Functor, Arity, ConsTypeInfos):
+    % builtin_apply_type(Info, ConsId, Arity, ConsTypeInfos):
     %
-    % Succeed if Functor is the builtin apply/N or ''/N (N>=2),
+    % Succeed if ConsId is the builtin apply/N or ''/N (N>=2),
     % which is used to invoke higher-order functions.
     % If so, bind ConsTypeInfos to a singleton list containing
     % the appropriate type for apply/N of the specified Arity.
@@ -2465,8 +2480,8 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
 :- pred builtin_apply_type(typecheck_info::in, cons_id::in, int::in,
     list(cons_type_info)::out) is semidet.
 
-builtin_apply_type(_Info, Functor, Arity, ConsTypeInfos) :-
-    Functor = cons(unqualified(ApplyName), _),
+builtin_apply_type(_Info, ConsId, Arity, ConsTypeInfos) :-
+    ConsId = cons(unqualified(ApplyName), _, _),
     % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
     (
         ApplyName = "apply",
@@ -2495,20 +2510,20 @@ builtin_apply_type(_Info, Functor, Arity, ConsTypeInfos) :-
         [FuncType | ArgTypes], EmptyConstraints,
         source_apply(ApplyNameToUse))].
 
-    % builtin_field_access_function_type(Info, GoalPath, Functor,
+    % builtin_field_access_function_type(Info, GoalPath, ConsId,
     %   Arity, ConsTypeInfos):
     %
-    % Succeed if Functor is the name of one the automatically
+    % Succeed if ConsId is the name of one the automatically
     % generated field access functions (fieldname, '<fieldname> :=').
     %
 :- pred builtin_field_access_function_type(typecheck_info::in, goal_path::in,
     cons_id::in, arity::in, list(maybe_cons_type_info)::out) is semidet.
 
-builtin_field_access_function_type(Info, GoalPath, Functor, Arity,
+builtin_field_access_function_type(Info, GoalPath, ConsId, Arity,
         MaybeConsTypeInfos) :-
     % Taking the address of automatically generated field access functions
     % is not allowed, so currying does have to be considered here.
-    Functor = cons(Name, Arity),
+    ConsId = cons(Name, Arity, _),
     ModuleInfo = Info ^ tc_info_module_info,
     is_field_access_function_name(ModuleInfo, Name, Arity, AccessType,
         FieldName),
@@ -2813,7 +2828,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
     % cons_type_infos.
     typecheck_info_get_ctors(Info, Ctors),
     (
-        Functor = cons(_, _),
+        Functor = cons(_, _, _),
         map.search(Ctors, Functor, HLDS_ConsDefns)
     ->
         convert_cons_defn_list(Info, GoalPath, do_not_flip_constraints,
@@ -2839,9 +2854,9 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
     % the type definition (i.e. convert the existential quantifiers and
     % constraints into universal ones).
     (
-        Functor = cons(Name, Arity),
+        Functor = cons(Name, Arity, FunctorTypeCtor),
         remove_new_prefix(Name, OrigName),
-        OrigFunctor = cons(OrigName, Arity),
+        OrigFunctor = cons(OrigName, Arity, FunctorTypeCtor),
         map.search(Ctors, OrigFunctor, HLDS_ExistQConsDefns)
     ->
         convert_cons_defn_list(Info, GoalPath, flip_constraints_for_new,
@@ -2883,7 +2898,11 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
     ),
 
     % Check if Functor is a tuple constructor.
-    ( Functor = cons(unqualified("{}"), TupleArity) ->
+    (
+        ( Functor = cons(unqualified("{}"), TupleArity, _)
+        ; Functor = tuple_cons(TupleArity)
+        )
+    ->
         % Make some fresh type variables for the argument types. These have
         % kind `star' since there are values (namely the arguments of the
         % tuple constructor) which have these types.

@@ -377,8 +377,8 @@ lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
 
     % We need all the typeinfos, including the ones that are not used,
     % for the layout structure describing the closure.
-    NewTypeInfos = ExtraTypeInfos `set.difference` NonLocals1,
-    NonLocals = NonLocals1 `set.union` NewTypeInfos,
+    set.difference(ExtraTypeInfos, NonLocals1, NewTypeInfos),
+    set.union(NonLocals1, NewTypeInfos, NonLocals),
 
     % If we added variables to the nonlocals of the lambda goal, then
     % we need to recompute the nonlocals for the procedure that contains it.
@@ -560,7 +560,7 @@ lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
             ModuleInfo1, ModuleInfo)
     ),
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
-    ConsId = pred_const(ShroudedPredProcId, EvalMethod),
+    ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
     Functor = rhs_functor(ConsId, no, ArgVars),
 
     Unification = construct(Var, ConsId, ArgVars, UniModes,

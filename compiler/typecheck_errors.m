@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -453,10 +453,10 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                 simple_call(CallId), words("is also overloaded here.")]
         ;
             Symbol = overloaded_func(ConsId, Sources),
-            ( ConsId = cons(SymName, Arity) ->
+            ( ConsId = cons(SymName, Arity, _) ->
                 ConsIdPiece = sym_name_and_arity(SymName / Arity)
             ;
-                ConsIdPiece = fixed(cons_id_to_string(ConsId))
+                ConsIdPiece = fixed(cons_id_and_arity_to_string(ConsId))
             ),
             StartPieces = [words("The function symbol"), ConsIdPiece,
                 suffix("."), nl,
@@ -801,7 +801,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
         % instead of
         %   Argument 1 (F) has type ...;
         %   argument 2 (A) has type ...
-        Functor = cons(unqualified(""), Arity),
+        Functor = cons(unqualified(""), Arity, _),
         Arity > 0
     ->
         (
@@ -1004,7 +1004,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity) = Spec :-
 
     % Check for some special cases, so that we can give clearer error messages.
     (
-        Functor = cons(unqualified(FunctorName), FunctorArity),
+        Functor = cons(unqualified(FunctorName), FunctorArity, _),
         expect(unify(Arity, FunctorArity), this_file,
             "report_error_undef_cons: arity mismatch"),
         (
@@ -1023,13 +1023,13 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity) = Spec :-
         FunctorComps = FunctorComps1,
         ReportConsErrors = no
     ;
-        Functor = cons(Constructor, FunctorArity),
+        Functor = cons(Constructor, FunctorArity, _),
         expect(unify(Arity, FunctorArity), this_file,
             "report_error_undef_cons: arity mismatch"),
         typecheck_info_get_ctors(Info, ConsTable),
         solutions.solutions(
             (pred(N::out) is nondet :-
-                map.member(ConsTable, cons(Constructor, N), _),
+                map.member(ConsTable, cons(Constructor, N, _), _),
                 N \= Arity
             ), ActualArities),
         ActualArities = [_ | _]
@@ -1041,14 +1041,14 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity) = Spec :-
     ;
         strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
         Pieces1 = [words("error: undefined symbol"),
-            quote(cons_id_to_string(StrippedFunctor))],
+            quote(cons_id_and_arity_to_string(StrippedFunctor))],
         (
-            Functor = cons(Constructor, _),
+            Functor = cons(Constructor, _, _),
             Constructor = qualified(ModQual, _)
         ->
             Pieces2 = maybe_report_missing_import_addendum(Info, ModQual)
         ;
-            Functor = cons(unqualified("[|]"), 2)
+            Functor = cons(unqualified("[|]"), 2, _)
         ->
             Pieces2 = maybe_report_missing_import_addendum(Info,
                 unqualified("list"))
@@ -1222,7 +1222,7 @@ report_cons_error(Context, ConsError) = Msgs :-
             TVarsStr = mercury_vars_to_string(TVarSet, no, TVars),
             Pieces2 = [words("variables"), quote(TVarsStr), words("occur")]
         ),
-        ConsIdStr = cons_id_to_string(ConsId),
+        ConsIdStr = cons_id_and_arity_to_string(ConsId),
         Pieces3 = [words("in the types of field"), sym_name(FieldName),
             words("and some other field"),
             words("in definition of constructor"),
@@ -1402,17 +1402,18 @@ functor_name_to_pieces(Functor, Arity) = Pieces :-
     strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
     ( Arity = 0 ->
         Piece1 = words("constant"),
-        ( Functor = cons(Name, _) ->
+        ( Functor = cons(Name, _, _) ->
             Piece2 = sym_name(Name)
         ;
-            Piece2 = quote(cons_id_to_string(StrippedFunctor))
+            Piece2 = quote(cons_id_and_arity_to_string(StrippedFunctor))
         ),
         Pieces = [Piece1, Piece2]
-    ; Functor = cons(unqualified(""), _) ->
+    ; Functor = cons(unqualified(""), _, _) ->
         Pieces = [words("higher-order term (with arity"),
             int_fixed(Arity - 1), suffix(")")]
     ;
-        Pieces = [words("functor"), quote(cons_id_to_string(StrippedFunctor))]
+        Pieces = [words("functor"),
+            quote(cons_id_and_arity_to_string(StrippedFunctor))]
     ).
 
 :- func type_of_var_to_pieces(type_assign_set, prog_var)
@@ -1460,7 +1461,7 @@ cons_type_to_pieces(ConsInfo, Functor) = Pieces :-
     ConsInfo = cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _, _),
     (
         ArgTypes = [_ | _],
-        ( Functor = cons(SymName, _Arity) ->
+        ( Functor = cons(SymName, _Arity, _) ->
             % What we construct in Type is not really a type: it is a
             % function symbol applied to a list of argument types. However
             % *syntactically*, it looks like a type, and we already have

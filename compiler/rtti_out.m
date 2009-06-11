@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -654,7 +654,7 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName, MaybeLayoutName, HaveFunctorNumberMap,
         !DeclSet, !IO) :-
     (
-        TypeCtorDetails = enum(_, EnumFunctors, EnumByRep, EnumByName,
+        TypeCtorDetails = tcd_enum(_, EnumFunctors, EnumByRep, EnumByName,
             _IsDummy, FunctorNumberMap),
         list.foldl2(output_enum_functor_defn(RttiTypeCtor), EnumFunctors,
             !DeclSet, !IO),
@@ -668,7 +668,7 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_enum_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = foreign_enum(Lang, _, ForeignEnumFunctors,
+        TypeCtorDetails = tcd_foreign_enum(Lang, _, ForeignEnumFunctors,
             ForeignEnumByOrdinal, ForeignEnumByName, FunctorNumberMap),
         expect(unify(Lang, lang_c), this_file,
             "language other than C for foreign enumeration"),
@@ -684,7 +684,7 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_foreign_enum_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = du(_, DuFunctors, DuByRep,
+        TypeCtorDetails = tcd_du(_, DuFunctors, DuByRep,
             DuByName, FunctorNumberMap),
         list.foldl2(output_du_functor_defn(RttiTypeCtor), DuFunctors,
             !DeclSet, !IO),
@@ -696,7 +696,7 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_du_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = reserved(_, MaybeResFunctors, ResFunctors,
+        TypeCtorDetails = tcd_reserved(_, MaybeResFunctors, ResFunctors,
             DuByRep, MaybeResByName, FunctorNumberMap),
         list.foldl2(output_maybe_res_functor_defn(RttiTypeCtor),
             MaybeResFunctors, !DeclSet, !IO),
@@ -710,7 +710,7 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_res_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = notag(_, NotagFunctor),
+        TypeCtorDetails = tcd_notag(_, NotagFunctor),
         output_notag_functor_defn(RttiTypeCtor, NotagFunctor,
             !DeclSet, !IO),
         output_functor_number_map(RttiTypeCtor, [0], !DeclSet, !IO),
@@ -718,7 +718,7 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_notag_functor_desc),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = eqv(EqvType),
+        TypeCtorDetails = tcd_eqv(EqvType),
         output_maybe_pseudo_type_info_defn(EqvType, !DeclSet, !IO),
         TypeData = maybe_pseudo_type_info_to_rtti_data(EqvType),
         output_rtti_data_decls(TypeData, "", "", 0, _, !DeclSet, !IO),
@@ -733,17 +733,10 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = no,
         HaveFunctorNumberMap = no
     ;
-        TypeCtorDetails = builtin(_),
-        MaybeLayoutName = no,
-        MaybeFunctorsName = no,
-        HaveFunctorNumberMap = no
-    ;
-        TypeCtorDetails = impl_artifact(_),
-        MaybeLayoutName = no,
-        MaybeFunctorsName = no,
-        HaveFunctorNumberMap = no
-    ;
-        TypeCtorDetails = foreign(_),
+        ( TypeCtorDetails = tcd_builtin(_)
+        ; TypeCtorDetails = tcd_impl_artifact(_)
+        ; TypeCtorDetails = tcd_foreign(_)
+        ),
         MaybeLayoutName = no,
         MaybeFunctorsName = no,
         HaveFunctorNumberMap = no

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -494,7 +494,7 @@ mercury_output_item(Item, !IO) :-
 mercury_output_item_2(UnqualifiedItemNames, Item, !IO) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        mercury_output_item_module_defn(UnqualifiedItemNames, ItemModuleDefn, 
+        mercury_output_item_module_defn(UnqualifiedItemNames, ItemModuleDefn,
             !IO)
     ;
         Item = item_clause(ItemClause),
@@ -528,7 +528,7 @@ mercury_output_item_2(UnqualifiedItemNames, Item, !IO) :-
         mercury_output_item_instance(UnqualifiedItemNames, ItemInstance, !IO)
     ;
         Item = item_initialise(ItemInitialise),
-        mercury_output_item_initialise(UnqualifiedItemNames, ItemInitialise, 
+        mercury_output_item_initialise(UnqualifiedItemNames, ItemInitialise,
             !IO)
     ;
         Item = item_finalise(ItemFinalise),
@@ -692,10 +692,10 @@ mercury_output_item_pragma(_UnqualifiedItemNames, ItemPragma, !IO) :-
             ExportName),
         mercury_format_pragma_foreign_export(Lang, Pred, PredOrFunc, ModeList,
             ExportName, !IO)
-    ;    
+    ;
         Pragma = pragma_foreign_export_enum(Lang, TypeName, TypeArity,
             Attributes, Overrides),
-        mercury_format_pragma_foreign_export_enum(Lang, TypeName, TypeArity, 
+        mercury_format_pragma_foreign_export_enum(Lang, TypeName, TypeArity,
             Attributes, Overrides, !IO)
     ;
         Pragma = pragma_foreign_enum(Lang, TypeName, TypeArity, Values),
@@ -971,7 +971,7 @@ mercury_output_item_instance(_, ItemInstance, !IO) :-
 :- pred mercury_output_item_initialise(bool::in, item_initialise_info::in,
     io::di, io::uo) is det.
 
-mercury_output_item_initialise(_, ItemInitialise, !IO) :-   
+mercury_output_item_initialise(_, ItemInitialise, !IO) :-
     ItemInitialise = item_initialise_info(_, PredSymName, Arity, _Context,
         _SeqNum),
     io.write_string(":- initialise ", !IO),
@@ -1717,8 +1717,8 @@ mercury_format_structured_bound_insts([BoundInst | BoundInsts],
     U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
 mercury_format_bound_insts([], _, !U).
-mercury_format_bound_insts([bound_functor(ConsId, Args) | BoundInsts],
-        InstInfo, !U) :-
+mercury_format_bound_insts([BoundInst | BoundInsts], InstInfo, !U) :-
+    BoundInst = bound_functor(ConsId, Args),
     (
         Args = [],
         mercury_format_cons_id(ConsId, needs_brackets, !U)
@@ -1743,68 +1743,88 @@ mercury_output_cons_id(ConsId, NeedsBrackets, !IO) :-
 mercury_cons_id_to_string(ConsId, NeedsBrackets) = String :-
     mercury_format_cons_id(ConsId, NeedsBrackets, "", String).
 
-:- pred mercury_format_cons_id(cons_id::in, needs_brackets::in,
-    U::di, U::uo) is det <= output(U).
+:- pred mercury_format_cons_id(cons_id::in, needs_brackets::in, U::di, U::uo)
+    is det <= output(U).
 
-mercury_format_cons_id(cons(Name, _), NeedsBrackets, !U) :-
+mercury_format_cons_id(ConsId, NeedsBrackets, !U) :-
     (
-        NeedsBrackets = needs_brackets,
-        mercury_format_bracketed_sym_name(Name, !U)
+        ConsId = cons(Name, _, _),
+        (
+            NeedsBrackets = needs_brackets,
+            mercury_format_bracketed_sym_name(Name, !U)
+        ;
+            NeedsBrackets = does_not_need_brackets,
+            mercury_format_sym_name(Name, !U)
+        )
     ;
-        NeedsBrackets = does_not_need_brackets,
-        mercury_format_sym_name(Name, !U)
+        ConsId = tuple_cons(_),
+        add_string("{}", !U)
+    ;
+        ConsId = int_const(Int),
+        add_int(Int, !U)
+    ;
+        ConsId = float_const(Float),
+        add_float(Float, !U)
+    ;
+        ConsId = char_const(Char),
+        add_string(term_io.quoted_char(Char), !U)
+    ;
+        ConsId = string_const(Str),
+        add_quoted_string(Str, !U)
+    ;
+        ConsId = impl_defined_const(Name),
+        add_string("$", !U),
+        add_string(Name, !U)
+    ;
+        ConsId = closure_cons(ShroudedPredProcId, _EvalMethod),
+        % XXX Should probably print this out in name/arity form.
+        ShroudedPredProcId = shrouded_pred_proc_id(PredInt, ProcInt),
+        add_string("<closure_cons(", !U),
+        add_int(PredInt, !U),
+        add_string(", ", !U),
+        add_int(ProcInt, !U),
+        % add_string(", ", !U),
+        % add_lambda_eval_method(EvalMethod, !U),
+        add_string(")>", !U)
+    ;
+        ConsId = type_ctor_info_const(Module, Type, Arity),
+        ModuleString = sym_name_to_string(Module),
+        string.int_to_string(Arity, ArityString),
+        add_strings(["<type_ctor_info for ",
+            ModuleString, ".", Type, "/", ArityString, ">"], !U)
+    ;
+        ConsId = base_typeclass_info_const(Module, Class, InstanceNum,
+            InstanceString),
+        ModuleString = sym_name_to_string(Module),
+        add_string("<base_typeclass_info for ", !U),
+        add_class_id(Class, !U),
+        ( ModuleString \= "some bogus module name" ->
+            add_strings([" from module ", ModuleString], !U)
+        ;
+            true
+        ),
+        add_format(", instance number %d (%s)>",
+            [i(InstanceNum), s(InstanceString)], !U)
+    ;
+        ConsId = type_info_cell_constructor(_),
+        add_string("<type_info_cell_constructor>", !U)
+    ;
+        ConsId = typeclass_info_cell_constructor,
+        add_string("<typeclass_info_cell_constructor>", !U)
+    ;
+        ConsId = tabling_info_const(_),
+        add_string("<tabling info>", !U)
+    ;
+        ConsId = table_io_decl(_),
+        add_string("<table_io_decl>", !U)
+    ;
+        ConsId = deep_profiling_proc_layout(_),
+        add_string("<deep_profiling_proc_layout>", !U)
     ).
-mercury_format_cons_id(int_const(X), _, !U) :-
-    add_int(X, !U).
-mercury_format_cons_id(float_const(X), _, !U) :-
-    add_float(X, !U).
-mercury_format_cons_id(string_const(X), _, !U) :-
-    add_quoted_string(X, !U).
-mercury_format_cons_id(implementation_defined_const(Name), _, !U) :-
-    add_string("$", !U),
-    add_string(Name, !U).
-mercury_format_cons_id(pred_const(ShroudedPredProcId, EvalMethod), _, !U) :-
-    % XXX Sufficient, but probably should print this out in
-    %     name/arity form.
-    ShroudedPredProcId = shrouded_pred_proc_id(PredInt, ProcInt),
-    add_string("<pred_const(", !U),
-    add_int(PredInt, !U),
-    add_string(", ", !U),
-    add_int(ProcInt, !U),
-    add_string(", ", !U),
-    add_lambda_eval_method(EvalMethod, !U),
-    add_string(")>", !U).
-mercury_format_cons_id(type_ctor_info_const(Module, Type, Arity), _, !U) :-
-    ModuleString = sym_name_to_string(Module),
-    string.int_to_string(Arity, ArityString),
-    add_strings(["<type_ctor_info for ",
-        ModuleString, ".", Type, "/", ArityString, ">"], !U).
-mercury_format_cons_id(base_typeclass_info_const(Module, Class, InstanceNum,
-        InstanceString), _, !U) :-
-    ModuleString = sym_name_to_string(Module),
-    add_string("<base_typeclass_info for ", !U),
-    add_class_id(Class, !U),
-    ( ModuleString \= "some bogus module name" ->
-        add_strings([" from module ", ModuleString], !U)
-    ;
-        true
-    ),
-    add_format(", instance number %d (%s)>",
-        [i(InstanceNum), s(InstanceString)], !U).
-mercury_format_cons_id(type_info_cell_constructor(_), _, !U) :-
-    add_string("<type_info_cell_constructor>", !U).
-mercury_format_cons_id(typeclass_info_cell_constructor, _, !U) :-
-    add_string("<typeclass_info_cell_constructor>", !U).
-mercury_format_cons_id(tabling_info_const(_), _, !U) :-
-    add_string("<tabling info>", !U).
-mercury_format_cons_id(deep_profiling_proc_layout(_), _, !U) :-
-    add_string("<deep_profiling_proc_layout>", !U).
-mercury_format_cons_id(table_io_decl(_), _, !U) :-
-    add_string("<table_io_decl>", !U).
 
 :- pred mercury_format_constrained_inst_vars(set(inst_var)::in, mer_inst::in,
-        InstInfo::in, U::di, U::uo) is det
-        <= (output(U), inst_info(InstInfo)).
+    InstInfo::in, U::di, U::uo) is det
+    <= (output(U), inst_info(InstInfo)).
 
 mercury_format_constrained_inst_vars(Vars0, Inst, InstInfo, !U) :-
     ( set.remove_least(Vars0, Var, Vars1) ->
@@ -2937,7 +2957,7 @@ mercury_output_goal_2(promise_purity_expr(Purity, Goal), VarSet,
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2(atomic_expr(Outer, Inner, _, MainExpr, 
+mercury_output_goal_2(atomic_expr(Outer, Inner, _, MainExpr,
         OrElseExprs), VarSet, Indent, !IO) :-
     io.write_string("atomic [outer(", !IO),
     (
@@ -3858,7 +3878,7 @@ mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, MaybeAfter,
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_format_pragma_import(sym_name::in, pred_or_func::in,
-    list(mer_mode)::in, pragma_foreign_proc_attributes::in, prog_varset::in, 
+    list(mer_mode)::in, pragma_foreign_proc_attributes::in, prog_varset::in,
     string::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
@@ -3894,7 +3914,7 @@ mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
 
 mercury_format_pragma_foreign_export_enum(Lang, TypeName, TypeArity,
         Attributes, Overrides, !U) :-
-    add_string(":- pragma foreign_export_enum(", !U),        
+    add_string(":- pragma foreign_export_enum(", !U),
     mercury_format_foreign_language_string(Lang, !U),
     add_string(", ", !U),
     mercury_format_bracketed_sym_name(TypeName, next_to_graphic_token, !U),
@@ -3944,14 +3964,14 @@ mercury_format_sym_name_string_pair(SymName - String, !U) :-
     add_quoted_string(String, !U).
 
 %-----------------------------------------------------------------------------%
-       
+
 :- pred mercury_format_pragma_foreign_enum(foreign_language::in,
     sym_name::in, arity::in, assoc_list(sym_name, string)::in,
     U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_foreign_enum(Lang, TypeName, TypeArity,
         Values, !U) :-
-    add_string(":- pragma foreign_enum(", !U),        
+    add_string(":- pragma foreign_enum(", !U),
     mercury_format_foreign_language_string(Lang, !U),
     add_string(", ", !U),
     mercury_format_bracketed_sym_name(TypeName, next_to_graphic_token, !U),
@@ -4723,14 +4743,12 @@ mercury_quoted_atom_to_string(Name, NextToGraphicToken) = String :-
     is det <= output(U).
 
 mercury_format_quoted_atom(Name, NextToGraphicToken, !U) :-
-    %
-    % If the symname is composed of only graphic token chars,
-    % then term_io.quote_atom will not quote it; but if
-    % it is next another graphic token, it needs to be quoted,
-    % otherwise the two would be considered part of one
-    % symbol name (e.g. In "int:<", the ":<" parses as one token,
-    % so when writing out the "<" after the ":" we need to quote it.
-    %
+    % If the symname is composed of only graphic token chars, then
+    % term_io.quote_atom will not quote it; but if it is next another
+    % graphic token, it needs to be quoted, otherwise the two would be
+    % considered part of one symbol name (e.g. In "int:<", the ":<" parses
+    % as one token, so when writing out the "<" after the ":" we need
+    % to quote it.
     (
         NextToGraphicToken = next_to_graphic_token,
         string.to_char_list(Name, Chars),

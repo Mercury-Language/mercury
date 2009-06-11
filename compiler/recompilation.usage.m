@@ -731,16 +731,18 @@ do_record_used_functor(ModuleQualifier, SymName, Arity, Recorded,
 find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
     % Is it a constructor.
     module_info_get_cons_table(ModuleInfo, Ctors),
-    ( map.search(Ctors, cons(SymName, Arity), ConsDefns0) ->
+    ConsId = cons(SymName, Arity, cons_id_dummy_type_ctor),
+    ( map.search(Ctors, ConsId, ConsDefns0) ->
         ConsDefns1 = ConsDefns0
     ;
         ConsDefns1 = []
     ),
     (
         remove_new_prefix(SymName, SymNameMinusNew),
-        map.search(Ctors, cons(SymNameMinusNew, Arity), ConsDefns2)
+        ConsIdMinumNew = cons(SymNameMinusNew, Arity, cons_id_dummy_type_ctor),
+        map.search(Ctors, ConsIdMinumNew, ConsDefns2)
     ->
-        ConsDefns = list.append(ConsDefns1, ConsDefns2)
+        ConsDefns = ConsDefns1 ++ ConsDefns2
     ;
         ConsDefns = ConsDefns1
     ),
@@ -775,8 +777,9 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
     ->
         MatchingFields = list.map(
             (func(FieldDefn) = FieldCtor :-
-                FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
-                ( ConsId = cons(ConsName, ConsArity) ->
+                FieldDefn =
+                    hlds_ctor_field_defn(_, _, TypeCtor, FieldConsId, _),
+                ( FieldConsId = cons(ConsName, ConsArity, _) ->
                     FieldCtor = resolved_functor_field(
                         type_ctor_to_item_name(TypeCtor),
                         item_name(ConsName, ConsArity))
@@ -1357,7 +1360,7 @@ find_items_used_by_inst(abstract_inst(Name, ArgInsts), !Info) :-
 
 find_items_used_by_bound_inst(BoundInst, !Info) :-
     BoundInst = bound_functor(ConsId, ArgInsts),
-    ( ConsId = cons(Name, Arity) ->
+    ( ConsId = cons(Name, Arity, _) ->
         record_used_functor(Name - Arity, !Info)
     ;
         true

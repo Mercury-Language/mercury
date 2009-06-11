@@ -37,6 +37,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
@@ -49,6 +50,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.
@@ -1684,11 +1686,13 @@ generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
     VarInfo0 = !.DeepInfo ^ deep_varinfo,
     ProfilingBuiltin = mercury_profiling_builtin_module,
     CellTypeName = string.format("call_site_nums_%d", [i(Length)]),
-    CellTypeId = type_ctor(qualified(ProfilingBuiltin, CellTypeName), Length),
-    construct_type(CellTypeId, [], CellType),
+    CellTypeCtor = type_ctor(qualified(ProfilingBuiltin, CellTypeName),
+        Length),
+    construct_type(CellTypeCtor, [], CellType),
     generate_var("CSNCell", CellType, CellVar, VarInfo0, VarInfo),
     !DeepInfo ^ deep_varinfo := VarInfo,
-    ConsId = cons(qualified(ProfilingBuiltin, CellTypeName), Length),
+    ConsId = cons(qualified(ProfilingBuiltin, CellTypeName), Length,
+        CellTypeCtor),
     generate_cell_unify(Length, ConsId, CSNVars, CellVar, CellGoal).
 
 :- pred generate_single_csn_unify(int::in,

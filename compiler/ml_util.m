@@ -17,8 +17,8 @@
 :- interface.
 
 :- import_module libs.globals.          % for foreign_language
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 

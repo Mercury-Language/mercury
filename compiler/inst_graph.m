@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 The University of Melbourne.
+% Copyright (C) 2001-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -424,7 +424,7 @@ dump_node(VarSet, Var, Node, !IO) :-
 
 dump_functor(VarSet, ConsId, Args, !IO) :-
     io.write_string("%%\t", !IO),
-    hlds_out.write_cons_id(ConsId, !IO),
+    write_cons_id_and_arity(ConsId, !IO),
     (
         Args = [_ | _],
         io.write_char('(', !IO),

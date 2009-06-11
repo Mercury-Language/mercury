@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,11 +69,13 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
         (
             Unification = construct(Var, ConsId, Args, _, _, _, _),
             Desc = describe_var(VarSet, Var) ++ " <= " ++
-                cons_id_to_string(ConsId) ++ describe_args(VarSet, Args)
+                cons_id_and_arity_to_string(ConsId) ++
+                describe_args(VarSet, Args)
         ;
             Unification = deconstruct(Var, ConsId, Args, _, _, _),
             Desc = describe_var(VarSet, Var) ++ " => " ++
-                cons_id_to_string(ConsId) ++ describe_args(VarSet, Args)
+                cons_id_and_arity_to_string(ConsId) ++
+                describe_args(VarSet, Args)
         ;
             Unification = assign(ToVar, FromVar),
             Desc = describe_var(VarSet, ToVar) ++

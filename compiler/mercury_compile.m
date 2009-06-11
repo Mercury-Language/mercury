@@ -3829,7 +3829,7 @@ subst_implementation_defined_literals(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose,
         "% Substituting implementation-defined literals...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    subst_implementation_defined_literals(!HLDS, !IO),
+    subst_impl_defined_literals(!HLDS, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

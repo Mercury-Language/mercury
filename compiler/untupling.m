@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -745,7 +745,7 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
         type_ctor_is_tuple(TypeCtor)
     ->
         Arity = list.length(TypeArgs),
-        ConsId = cons(unqualified("{}"), Arity),
+        ConsId = tuple_cons(Arity),
         Expansion = expansion(ConsId, TypeArgs)
     ;
         % Expand a discriminated union type if it has only a
@@ -763,7 +763,7 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
         \+ list.member(Type, ContainerTypes)
     ->
         Arity = list.length(SingleCtorArgs),
-        ConsId = cons(SingleCtorName, Arity),
+        ConsId = cons(SingleCtorName, Arity, TypeCtor),
         ExpandedTypes = list.map(func(C) = C ^ arg_type, SingleCtorArgs),
         Expansion = expansion(ConsId, ExpandedTypes)
     ;

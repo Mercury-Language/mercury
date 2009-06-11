@@ -371,9 +371,17 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
         module_info_get_cons_table(!.ModuleInfo, Ctors0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         module_info_get_ctor_field_table(!.ModuleInfo, CtorFields0),
-        ctors_add(ConsList, TypeCtor, TVarSet, Args, KindMap, NeedQual, PQInfo,
-            Context, Status, CtorFields0, CtorFields, Ctors0, Ctors,
-            [], CtorAddSpecs),
+        TypeCtor = type_ctor(TypeCtorSymName, _),
+        (
+            TypeCtorSymName = unqualified(_),
+            unexpected(this_file,
+                "process_type_defn: unqualified TypeCtorSymName")
+        ;
+            TypeCtorSymName = qualified(TypeCtorModuleName, _)
+        ),
+        ctors_add(ConsList, TypeCtor, TypeCtorModuleName, TVarSet, Args,
+            KindMap, NeedQual, PQInfo, Context, Status,
+            CtorFields0, CtorFields, Ctors0, Ctors, [], CtorAddSpecs),
         module_info_set_cons_table(Ctors, !ModuleInfo),
         module_info_set_ctor_field_table(CtorFields, !ModuleInfo),
 
@@ -461,7 +469,7 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         VerbosePieces = [words("There are representations for this type"),
             words("on other back-ends, but none for this back-end."), nl],
         Msg = simple_msg(Context,
-            [always(MainPieces), 
+            [always(MainPieces),
             option_is_set(very_verbose, yes, [always(VerbosePieces)])]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [Msg]),
@@ -623,8 +631,8 @@ convert_type_defn(parse_tree_du_type(Body, MaybeUserEqComp), TypeCtor, Globals,
         ReservedAddr = does_not_use_reserved_address,
         map.to_assoc_list(CtorTagMap, CtorTagList),
         CtorTagList = [ConsIdA - ConsTagA, ConsIdB - ConsTagB],
-        ConsIdA = cons(_, ArityA),
-        ConsIdB = cons(_, ArityB)
+        ConsIdA = cons(_, ArityA, _),
+        ConsIdB = cons(_, ArityB, _)
     ->
         (
             ArityB = 0,
@@ -675,18 +683,27 @@ convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
         Body = foreign_type_body(no, no, no, yes(Data))
     ).
 
-:- pred ctors_add(list(constructor)::in, type_ctor::in, tvarset::in,
-    list(type_param)::in, tvar_kind_map::in, need_qualifier::in,
+:- pred ctors_add(list(constructor)::in, type_ctor::in, module_name::in,
+    tvarset::in, list(type_param)::in, tvar_kind_map::in, need_qualifier::in,
     partial_qualifier_info::in, prog_context::in,
     import_status::in, ctor_field_table::in, ctor_field_table::out,
     cons_table::in, cons_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-ctors_add([], _, _, _, _, _, _, _, _, !FieldNameTable, !Ctors, !Specs).
-ctors_add([Ctor | Rest], TypeCtor, TVarSet, TypeParams, KindMap, NeedQual,
-        PQInfo, _Context, ImportStatus, !FieldNameTable, !Ctors, !Specs) :-
+ctors_add([], _, _, _, _, _, _, _, _, _, !FieldNameTable, !Ctors, !Specs).
+ctors_add([Ctor | Rest], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
+        KindMap, NeedQual, PQInfo, _Context, ImportStatus, !FieldNameTable,
+        !Ctors, !Specs) :-
     Ctor = ctor(ExistQVars, Constraints, Name, Args, Context),
-    QualifiedConsId = make_cons_id(Name, Args, TypeCtor),
+    list.length(Args, Arity),
+    BaseName = unqualify_name(Name),
+    QualifiedName = qualified(TypeCtorModuleName, BaseName),
+    UnqualifiedName = unqualified(BaseName),
+    QualifiedConsIdA = cons(QualifiedName, Arity, TypeCtor),
+    QualifiedConsIdB = cons(QualifiedName, Arity, cons_id_dummy_type_ctor),
+    UnqualifiedConsIdA = cons(UnqualifiedName, Arity, TypeCtor),
+    UnqualifiedConsIdB = cons(UnqualifiedName, Arity, cons_id_dummy_type_ctor),
+
     ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
         ExistQVars, Constraints, Args, Context),
 
@@ -694,65 +711,72 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, TypeParams, KindMap, NeedQual,
     % Also check that there is at most one definition of a given cons_id
     % in each type.
 
-    ( map.search(!.Ctors, QualifiedConsId, QualifiedConsDefns0) ->
-        QualifiedConsDefns1 = QualifiedConsDefns0
+    ( map.search(!.Ctors, QualifiedConsIdA, QualifiedConsDefnsA0) ->
+        QualifiedConsDefnsA1 = QualifiedConsDefnsA0
     ;
-        QualifiedConsDefns1 = []
+        QualifiedConsDefnsA1 = []
+    ),
+    ( map.search(!.Ctors, QualifiedConsIdB, QualifiedConsDefnsB0) ->
+        QualifiedConsDefnsB1 = QualifiedConsDefnsB0
+    ;
+        QualifiedConsDefnsB1 = []
     ),
     (
         some [OtherConsDefn] (
-            list.member(OtherConsDefn, QualifiedConsDefns1),
+            list.member(OtherConsDefn, QualifiedConsDefnsA1),
             OtherConsDefn ^ cons_type_ctor = TypeCtor
         )
     ->
-        QualifiedConsIdStr = cons_id_to_string(QualifiedConsId),
+        QualifiedConsIdStr = cons_id_and_arity_to_string(QualifiedConsIdA),
         TypeCtorStr = type_ctor_to_string(TypeCtor),
         Pieces = [words("Error: constructor"), quote(QualifiedConsIdStr),
             words("for type"), quote(TypeCtorStr), words("multiply defined.")],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs],
-        QualifiedConsDefns = QualifiedConsDefns1
+        QualifiedConsDefnsA = QualifiedConsDefnsA1
     ;
-        QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1]
+        QualifiedConsDefnsA = [ConsDefn | QualifiedConsDefnsA1]
     ),
-    svmap.set(QualifiedConsId, QualifiedConsDefns, !Ctors),
+    QualifiedConsDefnsB = [ConsDefn | QualifiedConsDefnsB1],
+    svmap.set(QualifiedConsIdA, QualifiedConsDefnsA, !Ctors),
+    svmap.set(QualifiedConsIdB, QualifiedConsDefnsB, !Ctors),
 
-    ( QualifiedConsId = cons(qualified(Module, ConsName), Arity) ->
-        % Add the unqualified version of the cons_id to the cons_table,
-        % if appropriate.
-        (
-            NeedQual = may_be_unqualified,
-            UnqualifiedConsId = cons(unqualified(ConsName), Arity),
-            svmulti_map.set(UnqualifiedConsId, ConsDefn, !Ctors)
-        ;
-            NeedQual = must_be_qualified 
-        ),
-
-        % Add partially qualified versions of the cons_id.
-        get_partial_qualifiers(Module, PQInfo, PartialQuals),
-        list.map_foldl(add_ctor(ConsName, Arity, ConsDefn),
-            PartialQuals, _PartiallyQualifiedConsIds, !Ctors),
-
-        FieldNames = list.map(func(C) = C ^ arg_field_name, Args),
-
-        FirstField = 1,
-
-        add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
-            QualifiedConsId, Context, ImportStatus, FirstField,
-            !FieldNameTable, !Specs)
+    % Add the unqualified version of the cons_id to the cons_table,
+    % if appropriate.
+    (
+        NeedQual = may_be_unqualified,
+        svmulti_map.set(UnqualifiedConsIdA, ConsDefn, !Ctors),
+        svmulti_map.set(UnqualifiedConsIdB, ConsDefn, !Ctors)
     ;
-        unexpected(this_file, "ctors_add: cons_id not qualified")
+        NeedQual = must_be_qualified
     ),
-    ctors_add(Rest, TypeCtor, TVarSet, TypeParams, KindMap, NeedQual,
-        PQInfo, Context, ImportStatus, !FieldNameTable, !Ctors, !Specs).
 
-:- pred add_ctor(string::in, int::in, hlds_cons_defn::in, module_name::in,
-    cons_id::out, cons_table::in, cons_table::out) is det.
+    % Add partially qualified versions of the cons_id.
+    get_partial_qualifiers(TypeCtorModuleName, PQInfo, PartialQuals),
+    list.foldl(
+        add_ctor(TypeCtor, BaseName, Arity, ConsDefn),
+        PartialQuals, !Ctors),
+    list.foldl(
+        add_ctor(cons_id_dummy_type_ctor, BaseName, Arity, ConsDefn),
+        PartialQuals, !Ctors),
 
-add_ctor(ConsName, Arity, ConsDefn, ModuleQual, ConsId, CtorsIn, CtorsOut) :-
-    ConsId = cons(qualified(ModuleQual, ConsName), Arity),
-    multi_map.set(CtorsIn, ConsId, ConsDefn, CtorsOut).
+    FieldNames = list.map(func(C) = C ^ arg_field_name, Args),
+    FirstField = 1,
+    add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
+        QualifiedConsIdA, Context, ImportStatus, FirstField,
+        !FieldNameTable, !Specs),
+
+    ctors_add(Rest, TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
+        KindMap, NeedQual, PQInfo, Context, ImportStatus, !FieldNameTable,
+        !Ctors, !Specs).
+
+:- pred add_ctor(type_ctor::in, string::in, int::in, hlds_cons_defn::in,
+    module_name::in, cons_table::in, cons_table::out) is det.
+
+add_ctor(TypeCtor, ConsName, Arity, ConsDefn, ModuleQual, !Ctors) :-
+    ConsId = cons(qualified(ModuleQual, ConsName), Arity, TypeCtor),
+    svmulti_map.set(ConsId, ConsDefn, !Ctors).
 
 :- pred add_ctor_field_names(list(maybe(ctor_field_name))::in,
     need_qualifier::in, list(module_name)::in, type_ctor::in, cons_id::in,
@@ -829,7 +853,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
             svmulti_map.set(unqualified(UnqualFieldName), FieldDefn,
                 !FieldNameTable)
         ;
-            NeedQual = must_be_qualified 
+            NeedQual = must_be_qualified
         ),
 
         % Add partially qualified versions of the cons_id

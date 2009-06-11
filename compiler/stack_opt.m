@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -364,8 +364,8 @@ opt_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
                 set(interval_id)
             ).
 
-:- pred use_cell(prog_var::in, list(prog_var)::in, cons_id::in, hlds_goal::in,
-    interval_info::in, interval_info::out, stack_opt_info::in,
+:- pred use_cell(prog_var::in, list(prog_var)::in, cons_id::in,
+    hlds_goal::in, interval_info::in, interval_info::out, stack_opt_info::in,
     stack_opt_info::out) is det.
 
 use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
@@ -381,7 +381,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
     ->
         true
     ;
-        ConsId = cons(_Name, _Arity),
+        ConsId = cons(_Name, _Arity, _TypeCtor),
         IntParams = !.IntervalInfo ^ ii_interval_params,
         VarTypes = IntParams ^ ip_var_types,
         map.lookup(VarTypes, CellVar, Type),
@@ -532,8 +532,8 @@ apply_matching_for_path(CellVar, CellVarFlushedLater, StackOptParams,
             BenefitNodes, CostNodes, ViaCellVars)
     ).
 
-:- pred record_matching_result(prog_var::in, cons_id::in, list(prog_var)::in,
-    set(prog_var)::in, hlds_goal::in, set(anchor)::in,
+:- pred record_matching_result(prog_var::in, cons_id::in,
+    list(prog_var)::in, set(prog_var)::in, hlds_goal::in, set(anchor)::in,
     set(interval_id)::in, interval_info::in, interval_info::out,
     stack_opt_info::in, stack_opt_info::out) is det.
 
@@ -1054,7 +1054,7 @@ dump_insert(insert_spec(Goal, Vars), !IO) :-
         term.var_to_int(CellVar, CellVarNum),
         io.write_int(CellVarNum, !IO),
         io.write_string(" => ", !IO),
-        mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
+        write_cons_id_and_arity(ConsId, !IO),
         io.write_string("(", !IO),
         list.map(term.var_to_int, ArgVars, ArgVarNums),
         write_int_list(ArgVarNums, !IO),
@@ -1075,11 +1075,10 @@ dump_matching_result(MatchingResult, !IO) :-
     io.write_string("\n", !IO),
     term.var_to_int(CellVar, CellVarNum),
     list.map(term.var_to_int, ArgVars, ArgVarNums),
-    list.map(term.var_to_int, set.to_sorted_list(ViaCellVars),
-        ViaCellVarNums),
+    list.map(term.var_to_int, set.to_sorted_list(ViaCellVars), ViaCellVarNums),
     io.write_int(CellVarNum, !IO),
     io.write_string(" => ", !IO),
-    mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
+    write_cons_id_and_arity(ConsId, !IO),
     io.write_string("(", !IO),
     write_int_list(ArgVarNums, !IO),
     io.write_string("): via cell ", !IO),

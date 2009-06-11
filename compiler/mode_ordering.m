@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,6 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.inst_graph.
 
 :- import_module io.
 :- import_module list.
@@ -39,10 +38,6 @@
 :- pred mode_ordering(pred_constraint_map::in, list(list(pred_id))::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred mode_ordering.proc(inst_graph::in, mode_constraint::in,
-    mode_constraint_info::in, module_info::in, pred_constraint_map::in,
-    proc_info::in, proc_info::out) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -51,6 +46,7 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.inst_graph.
 :- import_module mode_robdd.
 % :- import_module mode_robdd.check.
 % :- import_module mode_robdd.tfeir.
@@ -71,20 +67,20 @@
 :- import_module stack.
 
 mode_ordering(PredConstraintMap, SCCs, !ModuleInfo, !IO) :-
-    list.foldl(mode_ordering.scc(PredConstraintMap), SCCs, !ModuleInfo),
+    list.foldl(mode_ordering_scc(PredConstraintMap), SCCs, !ModuleInfo),
     report_ordering_mode_errors(!.ModuleInfo, !IO).
 
-:- pred mode_ordering.scc(pred_constraint_map::in, list(pred_id)::in,
+:- pred mode_ordering_scc(pred_constraint_map::in, list(pred_id)::in,
     module_info::in, module_info::out) is det.
 
-mode_ordering.scc(PredConstraintMap, SCC, !ModuleInfo) :-
+mode_ordering_scc(PredConstraintMap, SCC, !ModuleInfo) :-
     copy_module_clauses_to_procs(SCC, !ModuleInfo),
-    list.foldl(mode_ordering.pred(PredConstraintMap, SCC), SCC, !ModuleInfo).
+    list.foldl(mode_ordering_pred(PredConstraintMap, SCC), SCC, !ModuleInfo).
 
-:- pred mode_ordering.pred(pred_constraint_map::in, list(pred_id)::in,
+:- pred mode_ordering_pred(pred_constraint_map::in, list(pred_id)::in,
     pred_id::in, module_info::in, module_info::out) is det.
 
-mode_ordering.pred(PredConstraintMap, _SCC, PredId, !ModuleInfo) :-
+mode_ordering_pred(PredConstraintMap, _SCC, PredId, !ModuleInfo) :-
     % XXX Mode inference NYI.
     RequestedProcsMap0 = map.init,
 
@@ -94,7 +90,7 @@ mode_ordering.pred(PredConstraintMap, _SCC, PredId, !ModuleInfo) :-
     ( pred_info_infer_modes(PredInfo0) ->
         ( map.search(RequestedProcsMap0, PredId, RequestedProcs) ->
             list.foldl(
-                mode_ordering.infer_proc(ModeConstraint0,
+                mode_ordering_infer_proc(ModeConstraint0,
                     ModeConstraintInfo, !.ModuleInfo, PredConstraintMap),
                 RequestedProcs, PredInfo0, PredInfo)
         ;
@@ -105,42 +101,46 @@ mode_ordering.pred(PredConstraintMap, _SCC, PredId, !ModuleInfo) :-
     ;
         ProcIds = pred_info_non_imported_procids(PredInfo0),
         list.foldl(
-            mode_ordering.check_proc(ModeConstraint0,
+            mode_ordering_check_proc(ModeConstraint0,
                 ModeConstraintInfo, !.ModuleInfo, PredConstraintMap),
             ProcIds, PredInfo0, PredInfo)
     ),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-:- pred mode_ordering.infer_proc(mode_constraint::in,
+:- pred mode_ordering_infer_proc(mode_constraint::in,
     mode_constraint_info::in, module_info::in, pred_constraint_map::in,
     mode_constraint::in, pred_info::in, pred_info::out) is det.
 
-mode_ordering.infer_proc(Constraint0, ModeConstraintInfo, ModuleInfo,
+mode_ordering_infer_proc(Constraint0, ModeConstraintInfo, ModuleInfo,
         PredConstraintMap, ModeDeclConstraint, !PredInfo) :-
     pred_info_create_proc_info_for_mode_decl_constraint(
         ModeDeclConstraint, ProcId, !PredInfo),
-    mode_ordering.check_proc(Constraint0, ModeConstraintInfo, ModuleInfo,
+    mode_ordering_check_proc(Constraint0, ModeConstraintInfo, ModuleInfo,
         PredConstraintMap, ProcId, !PredInfo).
 
-:- pred mode_ordering.check_proc(mode_constraint::in,
+:- pred mode_ordering_check_proc(mode_constraint::in,
     mode_constraint_info::in, module_info::in, pred_constraint_map::in,
     proc_id::in, pred_info::in, pred_info::out) is det.
 
-mode_ordering.check_proc(Constraint0, ModeConstraintInfo, ModuleInfo,
+mode_ordering_check_proc(Constraint0, ModeConstraintInfo, ModuleInfo,
         PredConstraintMap, ProcId, !PredInfo) :-
     pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
     proc_info_head_modes_constraint(ProcInfo0, ModeDeclConstraint),
     Constraint = Constraint0 * ModeDeclConstraint,
     pred_info_get_inst_graph_info(!.PredInfo, InstGraphInfo),
     InstGraph = InstGraphInfo ^ implementation_inst_graph,
-    mode_ordering.proc(InstGraph, Constraint, ModeConstraintInfo,
+    mode_ordering_proc(InstGraph, Constraint, ModeConstraintInfo,
         ModuleInfo, PredConstraintMap, ProcInfo0, ProcInfo),
     pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo).
+
+:- pred mode_ordering_proc(inst_graph::in, mode_constraint::in,
+    mode_constraint_info::in, module_info::in, pred_constraint_map::in,
+    proc_info::in, proc_info::out) is det.
 
     % Perform mode ordering for a procedure. The ModeConstraint must be
     % constrained to contain just the mode information for this procedure.
     %
-mode_ordering.proc(InstGraph, ModeConstraint, ModeConstraintInfo, ModuleInfo,
+mode_ordering_proc(InstGraph, ModeConstraint, ModeConstraintInfo, ModuleInfo,
         PredConstraintMap, !ProcInfo) :-
     MOI = mode_ordering_info(InstGraph,
         atomic_prodvars_map(ModeConstraint, ModeConstraintInfo),

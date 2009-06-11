@@ -1,6 +1,6 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -345,6 +345,14 @@
     %
 :- func mercury_ssdb_builtin_module = sym_name.
 
+    % Returns the name of the list module.
+    %
+:- func mercury_list_module = sym_name.
+
+    % Returns the name of the string module.
+    %
+:- func mercury_string_module = sym_name.
+
     % Returns the sym_name of the module with the given name in the
     % Mercury standard library.
     %
@@ -553,22 +561,28 @@ mercury_public_builtin_module = unqualified("builtin").
 mercury_private_builtin_module = unqualified("private_builtin").
 mercury_region_builtin_module = unqualified("region_builtin").
 mercury_stm_builtin_module = unqualified("stm_builtin").
+% Exception is a non-builtin module needed by the STM system.
+mercury_exception_module = unqualified("exception").
+% Univ is a non-builtin module needed by the STM system.
+mercury_univ_module = unqualified("univ").
 mercury_table_builtin_module = unqualified("table_builtin").
 mercury_table_statistics_module = unqualified("table_statistics").
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_par_builtin_module = unqualified("par_builtin").
 mercury_ssdb_builtin_module = unqualified("ssdb").
-mercury_std_lib_module_name(Name) = Name.
+mercury_list_module = unqualified("list").
+mercury_string_module = unqualified("string").
 
-% Additional non-builtin modules that are needed by the STM system.
-%
-mercury_exception_module = unqualified("exception").
-mercury_univ_module = unqualified("univ").
-
-is_std_lib_module_name(SymName, Name) :-
-    Name = sym_name_to_string(SymName),
+is_std_lib_module_name(ModuleName, Name) :-
+    % -- not yet:
+    % ModuleName = qualified(unqualified("std"), UnqualifiedModuleName),
+    Name = sym_name_to_string(ModuleName),
     mercury_std_library_module(Name).
+
+mercury_std_lib_module_name(ModuleName) = ModuleName.
+    % -- not yet:
+    % QualfiedModuleName = qualified(unqualified("std"), ModuleName),
 
 any_mercury_builtin_module(Module) :-
     ( Module = mercury_public_builtin_module
