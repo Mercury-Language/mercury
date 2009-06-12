@@ -125,6 +125,7 @@ MCFLAGS-solv			= --halt-at-warn
 MCFLAGS-spurious_purity_warning	= --halt-at-warn
 MCFLAGS-stack_opt_simplify	= --optimize-saved-vars
 MCFLAGS-table_no_attr           = --structure-sharing
+MCFLAGS-tci_spec_varmap         = --deforestation --type-specialisation
 MCFLAGS-time_yaowl		= --allow-stubs
 MCFLAGS-tuple_eqv               = --smart-recompilation
 MCFLAGS-two_way_unif		= -O-1

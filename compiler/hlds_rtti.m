@@ -249,6 +249,14 @@
 :- pred rtti_var_info_duplicate(prog_var::in, prog_var::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
+    % rtti_var_info_duplicate_replace(Var, NewVar, !RttiVarMaps)
+    %
+    % Duplicate the rtti_var_info we have about Var for NewVar.
+    % Replace old information about Var which already exists.
+    %
+:- pred rtti_var_info_duplicate_replace(prog_var::in, prog_var::in,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
+
     % Returns all of the tvars that we have information about in the
     % rtti_varmaps structure.
     %
@@ -520,6 +528,18 @@ rtti_var_info_duplicate(Var, NewVar, !VarMaps) :-
     ;
         VarInfo = typeclass_info_var(Constraint),
         rtti_det_insert_typeclass_info_var(Constraint, NewVar, !VarMaps)
+    ;
+        VarInfo = non_rtti_var
+    ).
+
+rtti_var_info_duplicate_replace(Var, NewVar, !VarMaps) :-
+    rtti_varmaps_var_info(!.VarMaps, Var, VarInfo),
+    (
+        VarInfo = type_info_var(Type),
+        rtti_set_type_info_type(NewVar, Type, !VarMaps)
+    ;
+        VarInfo = typeclass_info_var(Constraint),
+        rtti_set_typeclass_info_var(Constraint, NewVar, !VarMaps)
     ;
         VarInfo = non_rtti_var
     ).

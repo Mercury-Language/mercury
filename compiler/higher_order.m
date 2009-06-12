@@ -2039,6 +2039,14 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         Uni = assign(TypeInfoVar, TypeInfoArg),
         Goal = unify(TypeInfoVar, rhs_var(TypeInfoArg), out_mode - in_mode,
             Uni, unify_context(umc_explicit, [])),
+
+        ProcInfo0 = !.Info ^ hoi_proc_info,
+        proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
+        rtti_var_info_duplicate_replace(TypeInfoArg, TypeInfoVar,
+            RttiVarMaps0, RttiVarMaps),
+        proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo0, ProcInfo),
+        !Info ^ hoi_proc_info := ProcInfo,
+
         !Info ^ hoi_changed := ho_changed
     ;
         Goal = Goal0
