@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2005-2007 The University of Melbourne. 
+# Copyright (C) 2005-2007, 2009 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -165,6 +165,7 @@ ils:	$(mslice.ils) $(mdice.ils) $(mtc_union.ils) $(mcov.ils) $(mtc_diff.ils)
 realclean_local:
 	rm -f tags SLICE_FLAGS SLICE_FLAGS.date \
 		$(MDBCOMP_MODULES) mdbcomp.*.err
+	rm -rf mercury
 
 #-----------------------------------------------------------------------------#
 

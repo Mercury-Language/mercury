@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2007 The University of Melbourne.
+# Copyright (C) 1998-2007, 2009 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -262,6 +262,7 @@ $(os_subdir)mdb.pic_o \
 
 realclean_local:
 	rm -f Mercury.modules tags MDB_FLAGS MDB_FLAGS.date
+	rm -rf mercury
 
 #-----------------------------------------------------------------------------#
 
