@@ -207,8 +207,8 @@ process_clause(_HeadVars, clause(ProcIds, Goal0, Lang, Context),
     % VarTypes1 = !.HI ^ hhfi_vartypes,
     % implicitly_quantify_clause_body(HeadVars, Goal1, VarSet1, VarTypes1,
     %     Goal, VarSet, VarTypes, _Warnings),
-    % !:HI = !.HI ^ hhfi_varset := VarSet,
-    % !:HI = !.HI ^ hhfi_vartypes := VarTypes.
+    % !HI ^ hhfi_varset := VarSet,
+    % !HI ^ hhfi_vartypes := VarTypes.
 
 :- pred process_goal(set(prog_var)::in, hlds_goal::in, hlds_goal::out,
     hhf_info::in, hhf_info::out) is det.
@@ -316,7 +316,7 @@ process_unify(rhs_functor(ConsId0, IsExistConstruct, ArgsA), NonLocals,
         map.det_update(InstGraph1, X, node(Functors, MaybeParent),
             InstGraph2),
         list.foldl(inst_graph.set_parent(X), Args, InstGraph2, InstGraph),
-        !:HI = !.HI ^ hhfi_inst_graph := InstGraph
+        !HI ^ hhfi_inst_graph := InstGraph
     ),
     GINonlocals0 = goal_info_get_nonlocals(GoalInfo0),
     GINonlocals = set.union(GINonlocals0, list_to_set(Args)),
