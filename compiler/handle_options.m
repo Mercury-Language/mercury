@@ -479,10 +479,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             TagsMethod = TagsMethod0
         ),
 
-        globals.lookup_bool_option(!.Globals, highlevel_data, HighLevelData),
-        globals.lookup_bool_option(!.Globals,
-            automatic_intermodule_optimization, AutoIntermodOptimization),
-
         % Implicit parallelism requires feedback information, however this
         % error should only be shown in a parallel grade, otherwise implicit
         % parallelism should be disabled.
@@ -550,14 +546,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %             --high-level-data. But this has been (mostly?) fixed now.
         %             So we should investigate re-enabling static ground terms.
         %         Currently mlds_to_il.m doesn't support them yet?
-        %   - intermodule optimization
-        %     This is only required for high-level data and is needed
-        %     so that abstract equivalence types can be expanded.  They
-        %     need to be expanded because .NET requires that the structural
-        %     representation of a type is known at all times.
-        %   - dead procedure optimization
-        %         intermodule optimization pulls in a lot of code which isn't
-        %         needed, so ensure that this dead code is removed.
         %   - no library grade installation check with `mmc --make'.
 
         ( 
@@ -578,17 +566,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             % globals.set_option(num_reserved_addresses, int(1), !Globals)
             globals.set_option(static_ground_cells, bool(no), !Globals),
             globals.set_option(libgrade_install_check, bool(no), !Globals),
-
-            (
-                HighLevelData = yes,
-                AutoIntermodOptimization = yes
-            ->
-                globals.set_option(intermodule_optimization, bool(yes),
-                    !Globals),
-                globals.set_option(optimize_dead_procs, bool(yes), !Globals)
-            ;
-                true
-            ),
 
             % On the .NET backend we will be using a language independent
             % debugger not mdb.  Thus --debug has to imply --target-debug.
@@ -652,14 +629,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         XXX Previously static ground terms used to not work with
         %             --high-level-data. But this has been (mostly?) fixed now.
         %             So we should investigate re-enabling static ground terms.
-        %   - intermodule optimization
-        %     This is only required for high-level data and is needed
-        %     so that abstract equivalence types can be expanded.  They
-        %     need to be expanded because Java requires that the structural
-        %     representation of a type is known at all times.
-        %   - dead procedure optimization
-        %         intermodule optimization pulls in a lot of code which isn't
-        %         needed, so ensure that this dead code is removed.
         %   - no library grade installation check with `mmc --make'. 
         %   - no pretest equality check
         %     Because it assumes pointers can be cast to integers.
@@ -682,16 +651,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(static_ground_cells, bool(no), !Globals),
             globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
             globals.set_option(libgrade_install_check, bool(no), !Globals),
-            globals.set_option(should_pretest_equality, bool(no), !Globals),
-    
-            (
-                AutoIntermodOptimization = yes,
-                globals.set_option(intermodule_optimization, bool(yes),
-                    !Globals),
-                globals.set_option(optimize_dead_procs, bool(yes), !Globals)
-            ;
-                AutoIntermodOptimization = no
-            )
+            globals.set_option(should_pretest_equality, bool(no), !Globals)
         ;
             ( Target = target_c
             ; Target = target_il

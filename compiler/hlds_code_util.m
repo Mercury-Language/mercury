@@ -24,10 +24,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Are equivalence types fully expanded on this backend?
-    %
-:- pred are_equivalence_types_expanded(module_info::in) is semidet.
-
     % Find out how a function symbol (constructor) is represented
     % in the given type.
     %
@@ -63,17 +59,6 @@
 :- import_module map.
 :- import_module set.
 :- import_module string.
-
-%-----------------------------------------------------------------------------%
-
-are_equivalence_types_expanded(ModuleInfo) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    HighLevelData = yes,
-    globals.get_target(Globals, Target),
-    ( Target = target_il
-    ; Target = target_java
-    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -9,47 +9,31 @@ MCFLAGS-any_mode	=	--infer-types
 # were imported in the interface or the implementation. The error
 # is reported correctly when building the `.opt' file.
 MCFLAGS-assert_in_interface =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization \
 				--verbose-error-messages
 
-MCFLAGS-actual_expected =       --no-intermodule-optimization \
-			        --no-automatic-intermodule-optimization	
-MCFLAGS-children =		--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+MCFLAGS-actual_expected =       --no-intermodule-optimization
+MCFLAGS-children =		--no-intermodule-optimization
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-ee_invalid = 		--verbose-error-messages
-MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-exported_unify =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-exported_unify3 =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization
+MCFLAGS-exported_unify =	--no-intermodule-optimization
+MCFLAGS-exported_unify3 =	--no-intermodule-optimization
 MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers --compile-only
 MCFLAGS-foreign_enum_invalid	 = --verbose-error-messages
 MCFLAGS-foreign_type_line_number = --no-errorcheck-only --line-numbers --compile-only
-MCFLAGS-foreign_type_missing =  --grade il --no-intermodule-optimization \
-                                --no-automatic-intermodule-optimization
+MCFLAGS-foreign_type_missing =  --grade il --no-intermodule-optimization
 MCFLAGS-foreign_singleton =	--halt-at-warn
 MCFLAGS-foreign_type =		--compile-only
-MCFLAGS-foreign_type_2 =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-foreign_type_visibility = --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-ii_parent = 		--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-ii_parent.ii_child =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+MCFLAGS-foreign_type_2 =	--no-intermodule-optimization
+MCFLAGS-foreign_type_visibility = --no-intermodule-optimization
+MCFLAGS-ii_parent = 		--no-intermodule-optimization
+MCFLAGS-ii_parent.ii_child =	--no-intermodule-optimization
 MCFLAGS-illtyped_compare =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization \
 				--verbose-error-messages
-MCFLAGS-import_in_parent =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-import_in_parent.sub =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+MCFLAGS-import_in_parent =	--no-intermodule-optimization
+MCFLAGS-import_in_parent.sub =	--no-intermodule-optimization
+MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization
 MCFLAGS-impure_method_impl =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization \
 				--verbose-error-messages
 MCFLAGS-invalid_event =		--event-set-file-name invalid_event_spec
 MCFLAGS-invalid_mllibs =	--no-errorcheck-only --no-verbose-make \
@@ -59,21 +43,17 @@ MCFLAGS-instance_var_bug =      --verbose-error-messages
 MCFLAGS-loopcheck =		--warn-inferred-erroneous \
 				--verbose-error-messages
 MCFLAGS-method_impl =		--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization \
 				--verbose-error-messages
 MCFLAGS-missing_det_decls =	--no-infer-det --verbose-error-messages
 MCFLAGS-missing_interface_import = --make-interface
-MCFLAGS-missing_interface_import2 = --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-missing_parent_import = --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+MCFLAGS-missing_interface_import2 = --no-intermodule-optimization
+MCFLAGS-missing_parent_import = --no-intermodule-optimization
 MCFLAGS-mode_inf	=	--infer-all --verbose-error-messages
 MCFLAGS-mpj1		=	--infer-all --verbose-error-messages
 MCFLAGS-multisoln_func	=	--infer-types --verbose-error-messages
 MCFLAGS-no_exports = 		--halt-at-warn --verbose-error-messages
 MCFLAGS-nonexistent_import =    --no-verbose-make --make nonexistent_import
-MCFLAGS-overloading = 		--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+MCFLAGS-overloading = 		--no-intermodule-optimization
 MCFLAGS-pragma_c_code_no_det =	--warn-inferred-erroneous
 MCFLAGS-record_syntax_errors =	--verbose-error-messages
 MCFLAGS-string_format_bad =	--halt-at-warn --warn-known-bad-format-calls \
@@ -81,8 +61,7 @@ MCFLAGS-string_format_bad =	--halt-at-warn --warn-known-bad-format-calls \
 MCFLAGS-string_format_unknown =	--halt-at-warn --warn-known-bad-format-calls \
 				--warn-unknown-format-calls
 MCFLAGS-sub_c = 		--verbose-error-messages \
-				--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+				--no-intermodule-optimization
 MCFLAGS-synth_attr_error =	--event-set-file-name synth_attr_error_spec
 MCFLAGS-syntax_error_event =	--event-set-file-name syntax_error_event_spec
 
@@ -91,25 +70,16 @@ MCFLAGS-syntax_error_event =	--event-set-file-name syntax_error_event_spec
 MCFLAGS-trailed_mutable = --no-use-trail
 
 MCFLAGS-test_nested =		--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization \
 				--verbose-error-messages
-MCFLAGS-transitive_import = --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-transitive_import2 = --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-transitive_import_class = --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-transitive_import_class2 = --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-transitive_import_class3 = --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+MCFLAGS-transitive_import = --no-intermodule-optimization
+MCFLAGS-transitive_import2 = --no-intermodule-optimization
+MCFLAGS-transitive_import_class = --no-intermodule-optimization
+MCFLAGS-transitive_import_class2 = --no-intermodule-optimization
+MCFLAGS-transitive_import_class3 = --no-intermodule-optimization
 MCFLAGS-typeclass_mode =	--infer-all
-MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-undef_symbol = 		--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-unresolved_overloading =    --no-intermodule-optimization \
-				    --no-automatic-intermodule-optimization
+MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization
+MCFLAGS-undef_symbol = 		--no-intermodule-optimization
+MCFLAGS-unresolved_overloading =    --no-intermodule-optimization
 
 # Include the verbose part of the error message where we have one.
 #

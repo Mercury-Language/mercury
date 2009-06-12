@@ -423,22 +423,13 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
         !.FoundError = yes
     ;
         !.FoundError = no,
-        (
-            % Equivalence types are fully expanded on the IL and Java backends,
-            % so the special predicates aren't required.
-            are_equivalence_types_expanded(!.ModuleInfo),
-            Body = hlds_eqv_type(_)
-        ->
-            true
-        ;
-            % XXX kind inference:
-            % We set the kinds to `star'. This will be different when we have
-            % a kind system.
-            prog_type.var_list_to_type_list(map.init, Args, ArgTypes),
-            construct_type(TypeCtor, ArgTypes, Type),
-            add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
-                !ModuleInfo)
-        )
+        % XXX kind inference:
+        % We set the kinds to `star'. This will be different when we have
+        % a kind system.
+        prog_type.var_list_to_type_list(map.init, Args, ArgTypes),
+        construct_type(TypeCtor, ArgTypes, Type),
+        add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
+            !ModuleInfo)
     ).
 
     % Check_foreign_type ensures that if we are generating code for a specific

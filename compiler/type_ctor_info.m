@@ -150,21 +150,19 @@ gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable, ModuleName,
         unexpected(this_file, Msg)
     ).
 
-    % Should we create a type_ctor_info for the given type constructor?
-    % The answer is yes, with four exceptions:
+    % Check if we should generate a type_ctor_info for this type.
+    % These are the cases that we have to check:
     %
     % - The builtin types which have no hlds_type_defn
     %   (i.e. no declaration and no definition).
     %
-    % - The builtin types which have a fake type body and as such have to have
-    %   hand-defined RTTI (types such as private_builtin.type_info which is
-    %   defined as a discriminated union type).
-    %
     % - The builtin types which are declared abstract and are not defined
     %   (i.e. they have a declaration, but no definition).
     %
-    % - All the rest of the types (types with a definition, or both a
-    %   declaration and a definition). XXX This "explanation" does make sense.
+    % - The builtin types which have a fake type body and as such have to have
+    %   hand-defined RTTI.
+    %
+    % - All the rest of the types.
     %
 :- pred create_type_ctor_gen(module_info::in, type_table::in, type_ctor::in,
     module_name::in, string::in, int::in, hlds_type_defn::out) is semidet.
@@ -195,13 +193,7 @@ create_type_ctor_gen(ModuleInfo, TypeTable, TypeCtor, TypeModuleName,
                 impl_type_ctor(ModuleNameString, TypeName, TypeArity, _)
             )
         ;
-            % All the other types.
-            \+ type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody),
-            (
-                are_equivalence_types_expanded(ModuleInfo)
-            =>
-                TypeBody \= hlds_eqv_type(_)
-            )
+            true
         )
     ).
 

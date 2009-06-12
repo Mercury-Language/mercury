@@ -569,7 +569,6 @@
     ;       opt_space                   % Default is to optimize time.
     ;       intermodule_optimization
     ;       read_opt_files_transitively
-    ;       automatic_intermodule_optimization
     ;       use_opt_files
     ;       use_trans_opt_files
     ;       transitive_optimization
@@ -1377,7 +1376,6 @@ option_defaults_2(special_optimization_option, [
     opt_space                           -   special,
     intermodule_optimization            -   bool(no),
     read_opt_files_transitively         -   bool(yes),
-    automatic_intermodule_optimization  -   bool(yes),
     use_opt_files                       -   bool(no),
     use_trans_opt_files                 -   bool(no),
     transitive_optimization             -   bool(no),
@@ -2209,10 +2207,6 @@ long_option("intermod-opt",        intermodule_optimization).
 long_option("intermodule-optimization", intermodule_optimization).
 long_option("intermodule-optimisation", intermodule_optimization).
 long_option("read-opt-files-transitively", read_opt_files_transitively).
-long_option("automatic-intermodule-optimization",
-                    automatic_intermodule_optimization).
-long_option("automatic-intermodule-optimisation",
-                    automatic_intermodule_optimization).
 long_option("use-opt-files",        use_opt_files).
 long_option("use-trans-opt-files",  use_trans_opt_files).
 long_option("transitive-intermodule-optimization",
@@ -4584,12 +4578,6 @@ options_help_optimization -->
         "\tOnly read the inter-module optimization information",
         "\tfor directly imported modules, not the transitive",
         "\tclosure of the imports.",
-        /* Developer only option
-        ** Used in tests/invalid/Mercury.options
-        "--no-automatic-intermodule-optimization",
-        "\tDon't automatically enable intermodule optimization for"
-        "\tthose backends which require it.",
-        */
         "--use-opt-files",
         "\tPerform inter-module optimization using any",
         "\t`.opt' files which are already built,",

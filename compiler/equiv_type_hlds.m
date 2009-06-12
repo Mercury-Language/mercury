@@ -74,14 +74,17 @@ replace_in_hlds(!ModuleInfo) :-
     module_info_set_type_table(Types, !ModuleInfo),
     module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
 
-    InstCache0 = map.init,
-
     module_info_get_inst_table(!.ModuleInfo, Insts0),
-    replace_in_inst_table(EqvMap, Insts0, Insts, InstCache0, InstCache1),
+    InstCache0 = map.init,
+    replace_in_inst_table(EqvMap, Insts0, Insts, InstCache0, InstCache),
     module_info_set_inst_table(Insts, !ModuleInfo),
 
+    module_info_get_cons_table(!.ModuleInfo, ConsTable0),
+    replace_in_cons_table(EqvMap, ConsTable0, ConsTable),
+    module_info_set_cons_table(ConsTable, !ModuleInfo),
+
     module_info_predids(PredIds, !ModuleInfo),
-    list.foldl2(replace_in_pred(EqvMap), PredIds, !ModuleInfo, InstCache1, _).
+    list.foldl2(replace_in_pred(EqvMap), PredIds, !ModuleInfo, InstCache, _).
 
 :- pred add_type_to_eqv_map(type_ctor::in, hlds_type_defn::in,
     eqv_map::in, eqv_map::out, set(type_ctor)::in, set(type_ctor)::out)
@@ -288,6 +291,42 @@ replace_in_maybe_inst_det(EqvMap, inst_det_known(Inst0, Det),
     % XXX We don't have a valid tvarset here.
     varset.init(TVarSet),
     replace_in_inst(EqvMap, Inst0, Inst, _, TVarSet, _, !Cache).
+
+%-----------------------------------------------------------------------------%
+
+:- pred replace_in_cons_table(eqv_map::in, cons_table::in, cons_table::out)
+    is det.
+
+replace_in_cons_table(EqvMap, !ConsTable) :-
+    map.map_values(replace_in_cons_defns(EqvMap), !ConsTable).
+
+:- pred replace_in_cons_defns(eqv_map::in, cons_id::in,
+    list(hlds_cons_defn)::in, list(hlds_cons_defn)::out) is det.
+
+replace_in_cons_defns(EqvMap, _ConsId, !ConsDefns) :-
+    list.map(replace_in_cons_defn(EqvMap), !ConsDefns).
+
+:- pred replace_in_cons_defn(eqv_map::in,
+    hlds_cons_defn::in, hlds_cons_defn::out) is det.
+
+replace_in_cons_defn(EqvMap, ConsDefn0, ConsDefn) :-
+    ConsDefn0 = hlds_cons_defn(TypeCtor, TVarSet0, TypeParams, KindMap,
+        ExistQTVars, ProgConstraints, ConstructorArgs0, Context),
+    list.map_foldl(replace_in_constructor_arg(EqvMap),
+        ConstructorArgs0, ConstructorArgs, TVarSet0, TVarSet),
+    ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
+        ExistQTVars, ProgConstraints, ConstructorArgs, Context).
+
+:- pred replace_in_constructor_arg(eqv_map::in,
+    constructor_arg::in, constructor_arg::out,
+    tvarset::in, tvarset::out) is det.
+
+replace_in_constructor_arg(EqvMap, CtorArg0, CtorArg, !TVarSet) :-
+    CtorArg0 = ctor_arg(MaybeFieldName, Type0, Context),
+    replace_in_type(EqvMap, Type0, Type, _Changed, !TVarSet, no, _),
+    CtorArg = ctor_arg(MaybeFieldName, Type, Context).
+
+%-----------------------------------------------------------------------------%
 
 :- pred replace_in_pred(eqv_map::in, pred_id::in,
     module_info::in, module_info::out,

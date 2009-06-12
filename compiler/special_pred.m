@@ -301,7 +301,10 @@ is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
 compiler_generated_rtti_for_builtins(ModuleInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    ( Target = target_il ; Target = target_java ; Target = target_erlang ).
+    ( Target = target_il
+    ; Target = target_java
+    ; Target = target_erlang
+    ).
 
 %-----------------------------------------------------------------------------%
 
