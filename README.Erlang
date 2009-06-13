@@ -41,11 +41,6 @@ Please note that the Erlang backend is still an experimental feature.
 
 INSTALLATION
 
-The Mercury compiler itself can be installed with Erlang support as
-usual, but the standard library can currently only be built for the
-Erlang using `mmc --make'.  Therefore you must already have an
-installed Mercury compiler available.
-
 Invoke configure with the option `--enable-erlang-grade' in order to
 enable Erlang support.  Make sure it was detected properly by running:
 
@@ -53,9 +48,9 @@ enable Erlang support.  Make sure it was detected properly by running:
 
 Then run:
 
-    mmake --use-mmc-make install
+    mmake install
 or
-    mmake --use-mmc-make install LIBGRADES=erlang
+    mmake install LIBGRADES=erlang
 
 For better performance you will need to add the following line to
 Mmake.params before installing:
@@ -72,8 +67,8 @@ The erlang grade is enabled by using any of the options
 in combination with `mmc --make'.  Mmake does _not_ currently support
 the erlang grade.
 
-To run a Mercury program using the erlang grade, you need to build the
-Mercury library in the erlang grade, using the Mercury source distribution.
+To run a Mercury program using the erlang grade, you need to install the
+Mercury library in the erlang grade, as described above.
 
 You can now build programs such as hello.m or calculator.m in the samples
 directory.

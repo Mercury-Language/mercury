@@ -607,46 +607,53 @@ install_grades: all
 	# Compile different grades in different directories, so that we can
 	# optionally preserve all the directories, and include them in
 	# a distribution.
-	+for grade in x $(LIBGRADES); do				\
-	    if [ "$${grade}" != "x" -a "$${grade}" != "$(GRADE)" ]; then \
-		gc_grade=`scripts/ml --grade $${grade} --print-gc-grade`; \
-		IWS=`/bin/pwd`/install_grade_dir.$${grade};		\
-		tmpdirs="$$t{mpdirs} $${IWS}";				\
-		scripts/prepare_install_dir $${IWS} &&			\
-	        ( cd $${IWS}/boehm_gc &&				\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-		  	GC_GRADE=$${gc_grade} install_lib ) &&		\
-		( cd $${IWS}/runtime &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			install_lib ) &&				\
-		( cd $${IWS}/library &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			depend &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			install_library ) &&				\
-		( cd $${IWS}/mdbcomp &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			depend &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			install_library ) &&				\
-		( cd $${IWS}/browser &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			depend &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			install_library ) &&				\
-		( cd $${IWS}/ssdb &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			depend &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			install_library ) &&				\
-		( cd $${IWS}/trace &&					\
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS} \
-			install_lib ) &&				\
-		true ||							\
-		{ echo "To clean up from failed install, remove $${IWS}"; \
-		  exit 1; };						\
-		if test ! -f .leave_tmp_dir; then rm -fr $${IWS}; fi; 	\
-	    fi;								\
+	#
+	# Force mmc --make for grades which require it.
+	+for grade in x $(LIBGRADES); do                                      \
+	    if [ "$${grade}" = "x" -o "$${grade}" = "$(GRADE)" ]; then        \
+		continue;                                                     \
+	    fi;                                                               \
+	    gc_grade=`scripts/ml --grade $${grade} --print-gc-grade`;         \
+	    IWS=`/bin/pwd`/install_grade_dir.$${grade};                       \
+	    (                                                                 \
+		if [ "$${grade}" = "erlang" ]; then                           \
+		    MMAKE_USE_MMC_MAKE=yes;                                   \
+		fi;                                                           \
+		scripts/prepare_install_dir $${IWS} &&                        \
+		( cd $${IWS}/boehm_gc &&                                      \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			GC_GRADE=$${gc_grade} install_lib ) &&                \
+		( cd $${IWS}/runtime &&                                       \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			install_lib ) &&                                      \
+		( cd $${IWS}/library &&                                       \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			depend &&                                             \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			install_library ) &&                                  \
+		( cd $${IWS}/mdbcomp &&                                       \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			depend &&                                             \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			install_library ) &&                                  \
+		( cd $${IWS}/browser &&                                       \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			depend &&                                             \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			install_library ) &&                                  \
+		( cd $${IWS}/ssdb &&                                          \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			depend &&                                             \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			install_library ) &&                                  \
+		( cd $${IWS}/trace &&                                         \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+			install_lib ) &&                                      \
+		true                                                          \
+	    ) ||                                                              \
+	    { echo "To clean up from failed install, remove $${IWS}";         \
+	      exit 1; };                                                      \
+	    if test ! -f .leave_tmp_dir; then rm -fr $${IWS}; fi;             \
 	done;
 
 #-----------------------------------------------------------------------------#
