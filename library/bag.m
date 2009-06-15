@@ -420,7 +420,7 @@ bag.count_value(bag(Bag), Item, Count) :-
 
 %---------------------------------------------------------------------------%
 
-bag.subtract(bag(Bag0), bag(SubBag), bag(Bag)) :-
+bag.subtract(bag(Bag0), bag(SubBag), Bag) :-
     ( map.remove_smallest(SubBag, SubKey, SubVal, SubBag0) ->
         ( map.search(Bag0, SubKey, Val) ->
             NewVal = Val - SubVal,
@@ -432,12 +432,12 @@ bag.subtract(bag(Bag0), bag(SubBag), bag(Bag)) :-
         ;
             Bag1 = Bag0
         ),
-        bag.subtract(bag(Bag1), bag(SubBag0), bag(Bag))
+        bag.subtract(bag(Bag1), bag(SubBag0), Bag)
     ;
-        Bag = Bag0
+        Bag = bag(Bag0)
     ).
 
-bag.union(bag(A), bag(B), bag(Out)) :-
+bag.union(bag(A), bag(B), Out) :-
     ( map.remove_smallest(B, Key, BVal, B0) ->
         ( map.search(A, Key, AVal) ->
             NewVal = AVal + BVal,
@@ -445,9 +445,9 @@ bag.union(bag(A), bag(B), bag(Out)) :-
         ;
             map.det_insert(A, Key, BVal, A0)
         ),
-        bag.union(bag(A0), bag(B0), bag(Out))
+        bag.union(bag(A0), bag(B0), Out)
     ;
-        Out = A
+        Out = bag(A)
     ).
 
 bag.intersect(A, B, Out) :-
@@ -457,7 +457,7 @@ bag.intersect(A, B, Out) :-
 :- pred bag.intersect_2(bag(T)::in, bag(T)::in, bag(T)::in, bag(T)::out)
     is det.
 
-bag.intersect_2(bag(A), bag(B), bag(Out0), bag(Out)) :-
+bag.intersect_2(bag(A), bag(B), bag(Out0), Out) :-
     ( map.remove_smallest(A, Key, AVal,A0) ->
         ( map.search(B, Key, BVal) ->
             int.min(AVal, BVal, Val),
@@ -465,9 +465,9 @@ bag.intersect_2(bag(A), bag(B), bag(Out0), bag(Out)) :-
         ;
             Out1 = Out0
         ),
-        bag.intersect_2(bag(A0), bag(B), bag(Out1), bag(Out))
+        bag.intersect_2(bag(A0), bag(B), bag(Out1), Out)
     ;
-        Out = Out0
+        Out = bag(Out0)
     ).
 
 bag.intersect(bag(A), bag(B)) :-
@@ -478,7 +478,7 @@ bag.intersect(bag(A), bag(B)) :-
         bag.intersect(bag(A0), bag(B))
     ).
 
-bag.least_upper_bound(bag(A), bag(B), bag(Out)) :-
+bag.least_upper_bound(bag(A), bag(B), Out) :-
     ( map.remove_smallest(B, Key, BVal, B0) ->
         ( map.search(A, Key, AVal) ->
             int.max(AVal, BVal, NewVal),
@@ -486,9 +486,9 @@ bag.least_upper_bound(bag(A), bag(B), bag(Out)) :-
         ;
             map.det_insert(A, Key, BVal, A0)
         ),
-        bag.least_upper_bound(bag(A0), bag(B0), bag(Out))
+        bag.least_upper_bound(bag(A0), bag(B0), Out)
     ;
-        Out = A
+        Out = bag(A)
     ).
 
 %---------------------------------------------------------------------------%

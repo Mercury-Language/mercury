@@ -2706,20 +2706,8 @@ output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
     io.write_string("}\n", !IO),
     ExitMethods = set.make_singleton_set(can_fall_through).
 
-output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_return(Results0), _,
+output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_return(Results), _,
         ExitMethods, !IO) :-
-    %
-    % XXX It's not right to just remove the dummy variables like this, but
-    % currently they do not seem to be included in the ReturnTypes of
-    % func_params by the MLDS, so the easiest thing to do here is just remove
-    % them.
-    %
-    % When this is resolved, the right way to handle it would be to check for
-    % `dummy_var' in the `var' clause for output_lval, and output a reference
-    % to a static variable `dummy_var' defined in a fixed class (e.g. some
-    % class in the mercury/java directory, or mercury.private_builtin).
-    %
-    Results = remove_dummy_vars(ModuleInfo, Results0),
     (
         Results = [],
         indent_line(Indent, !IO),
@@ -2859,22 +2847,6 @@ output_boxed_args(ModuleInfo, [CallArg | CallArgs],
         CallArgs = [_ | _],
         io.write_string(", ", !IO),
         output_boxed_args(ModuleInfo, CallArgs, CallArgTypes, ModuleName, !IO)
-    ).
-
-:- func remove_dummy_vars(module_info, list(mlds_rval)) = list(mlds_rval).
-
-remove_dummy_vars(_, []) = [].
-remove_dummy_vars(ModuleInfo, [Var | Vars0]) = VarList :-
-    Vars = remove_dummy_vars(ModuleInfo, Vars0),
-    (
-        Var = ml_lval(Lval),
-        Lval = ml_var(_VarName, VarType),
-        VarType = mercury_type(ProgDataType, _, _),
-        check_dummy_type(ModuleInfo, ProgDataType) = is_dummy_type
-    ->
-        VarList = Vars
-    ;
-        VarList = [Var | Vars]
     ).
 
 %-----------------------------------------------------------------------------%

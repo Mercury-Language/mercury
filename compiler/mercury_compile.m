@@ -2930,17 +2930,19 @@ backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
         MaybeDupProcMap = yes(map.init)
     ),
     backend_pass_by_preds_2(OrderedPredIds, !HLDS, !GlobalData,
-        MaybeDupProcMap, LLDS, !IO).
+        MaybeDupProcMap, [], RevCodes, !IO),
+    list.reverse(RevCodes, Codes),
+    list.condense(Codes, LLDS).
 
 :- pred backend_pass_by_preds_2(list(pred_id)::in,
     module_info::in, module_info::out, global_data::in, global_data::out,
-    maybe(map(mdbcomp.prim_data.proc_label,
-        mdbcomp.prim_data.proc_label))::in,
-    list(c_procedure)::out, io::di, io::uo) is det.
+    maybe(map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label))::in,
+    list(list(c_procedure))::in, list(list(c_procedure))::out, io::di, io::uo)
+    is det.
 
-backend_pass_by_preds_2([], !HLDS, !GlobalData, _, [], !IO).
+backend_pass_by_preds_2([], !HLDS, !GlobalData, _, !RevCodes, !IO).
 backend_pass_by_preds_2([PredId | PredIds], !HLDS,
-        !GlobalData, !.MaybeDupProcMap, Code, !IO) :-
+        !GlobalData, !.MaybeDupProcMap, !RevCodes, !IO) :-
     module_info_preds(!.HLDS, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
@@ -2995,9 +2997,9 @@ backend_pass_by_preds_2([PredId | PredIds], !HLDS,
             !:MaybeDupProcMap = yes(DupProcMap)
         )
     ),
+    !:RevCodes = [ProcList | !.RevCodes],
     backend_pass_by_preds_2(PredIds, !HLDS, !GlobalData, !.MaybeDupProcMap,
-        TailPredsCode, !IO),
-    list.append(ProcList, TailPredsCode, Code).
+        !RevCodes, !IO).
 
 :- pred backend_pass_by_preds_3(list(proc_id)::in, pred_id::in, pred_info::in,
     module_info::in, module_info::out, global_data::in, global_data::out,

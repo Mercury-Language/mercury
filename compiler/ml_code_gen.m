@@ -1442,11 +1442,13 @@ ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, det_copy_out, DetCopyOut),
     (
-        % If --det-copy-out is enabled, all output variables are returned
-        % by value, rather than passing them by reference.
+        % If --det-copy-out is enabled, all non-dummy output variables are
+        % returned by value, rather than passing them by reference.
         DetCopyOut = yes,
         ByRefOutputVars = [],
-        CopiedOutputVars = OutputVars
+        ml_gen_info_get_var_types(!.Info, VarTypes),
+        list.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), OutputVars,
+            _, CopiedOutputVars)
     ;
         DetCopyOut = no,
         (
