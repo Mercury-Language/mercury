@@ -197,7 +197,7 @@ module_name_to_file_name_general(ModuleName, Ext, Search, MkDir, FileName,
         ),
         BaseName = unqualify_name(JavaModuleName) ++ Ext,
         choose_file_name(ModuleName, BaseParentDirs, BaseName, Ext, Search,
-            do_create_dirs, FileName, !IO)
+            MkDir, FileName, !IO)
     ;
         % Erlang uses `.' as a package separator and expects a module
         % `a.b.c' to be in a file `a/b/c.erl'.  Rather than that, we use
