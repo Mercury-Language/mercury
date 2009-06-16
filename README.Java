@@ -112,12 +112,7 @@ A. Java 2 Platform Standard Edition, version 1.5 or greater.
 
 Q. What features are not yet implemented for the Java back-end?
 
-A. The following language features are not yet fully supported:
-
-	Type classes
-	Sub-modules
-
-   The following implementation features are not supported:
+A. The following implementation features are not supported:
 
 	Mercury-level debugging
 	Mercury-level profiling
@@ -125,18 +120,9 @@ A. The following language features are not yet fully supported:
    The following standard library modules are completely unimplemented:
 
 	construct
-	deconstruct
-	type_desc
-
-   This in turn means that any other routines which depend on those
-   (such as io.print/3, io.write/3 and io.read/3) won't work.
 
    In addition, the following individual procedures are incompletely
    implemented:
-
-   	builtin.copy/2:
-		Currently only works for strings and arrays thereof.
-		For any other type, it throws an exception.
 
    	io.read_binary/{3,4}:
    	io.write_binary/{3,4}:

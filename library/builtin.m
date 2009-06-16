@@ -783,53 +783,63 @@ special__Compare____tuple_0_0(ref object[] result,
 
 :- pragma foreign_code("Java",
 "
-public static java.lang.Object
-deep_copy(java.lang.Object original) {
-    java.lang.Object clone;
-
-    if (original == null) {
-        return null;
-    }
-
-    java.lang.Class cls = original.getClass();
-
-    if (cls.getName().equals(""java.lang.String"")) {
-        return new java.lang.String((java.lang.String) original);
-    }
-
-    if (cls.isArray()) {
-        int length = java.lang.reflect.Array.getLength(original);
-        clone = java.lang.reflect.Array.newInstance(
-                cls.getComponentType(), length);
-        for (int i = 0; i < length; i++) {
-            java.lang.Object X, Y;
-            X = java.lang.reflect.Array.get(original, i);
-            Y = deep_copy(X);
-            java.lang.reflect.Array.set(clone, i, Y);
-        }
-        return clone;
-    }
-
     /*
-    ** XXX Two possible approaches are possible here:
+    ** Two other approaches to implement deep copy might be:
     **
     ** 1. Get all mercury objects to implement the Serializable interface.
     **    Then this whole function could be replaced with code that writes
     **    the Object out via an ObjectOutputStream into a byte array (or
     **    something), then reads it back in again, thus creating a copy.
-    ** 2. Call cls.getConstructors(), then iterate through the resulting
-    **    array until one of them allows instantiation with all parameters
-    **    set to 0 or null (or some sort of recursive call that attempts to
-    **    instantiate the parameters).
-    **    This approach is of course not guaranteed to work all the time.
-    **    Then we can just copy the fields across using Reflection.
+    **    This would copy non-Mercury objects as well, though.
     **
-    ** For now, we're just throwing an exception.
+    ** 2. Get all mercury objects to implement a clone() method (either the
+    **    one in Object or our own). The MLDS doesn't have method calls
+    **    and probably we wouldn't want to clutter it up just for this.
     */
 
-    throw new java.lang.RuntimeException(
-        ""deep copy not yet fully implemented"");
-}
+    public static <T> T
+    deep_copy(final T original) throws
+        java.lang.InstantiationException, java.lang.IllegalAccessException
+    {
+        if (original == null) {
+            return null;
+        }
+
+        final java.lang.Class<T> cls = (java.lang.Class<T>) original.getClass();
+
+        if (cls.isArray()) {
+            int length = java.lang.reflect.Array.getLength(original);
+            T clone = (T) java.lang.reflect.Array.newInstance(
+                cls.getComponentType(), length);
+            for (int i = 0; i < length; i++) {
+                java.lang.Object X = java.lang.reflect.Array.get(original, i);
+                java.lang.Object Y = deep_copy(X);
+                java.lang.reflect.Array.set(clone, i, Y);
+            }
+            return clone;
+        }
+
+        // We'll only copy objects of Mercury-defined types.  We could copy
+        // more but that's what we do for C backends and it's enough.
+        if (!(original instanceof MercuryType)) {
+            return original;
+        }
+
+        // Make a new instance of the class and fill in the fields.
+        // This requires the class have a default constructor.
+        // (alternatively, we could use the Objenesis library).
+        T clone = cls.newInstance();
+        java.lang.Class<?> c = cls;
+        while (c != Object.class && c != null) {
+            for (java.lang.reflect.Field field : c.getDeclaredFields()) {
+                java.lang.Object X = field.get(original);
+                java.lang.Object Y = deep_copy(X);
+                field.set(clone, Y);
+            }
+            c = c.getSuperclass();
+        }
+        return clone;
+    }
 ").
 
 :- pragma foreign_code("Erlang", "
@@ -925,14 +935,26 @@ deep_copy(java.lang.Object original) {
     copy(X::ui, Y::uo),
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
-    Y = deep_copy(X);
+    try {
+        Y = deep_copy(X);
+    } catch (java.lang.InstantiationException E) {
+        throw new RuntimeException(E);
+    } catch (java.lang.IllegalAccessException E) {
+        throw new RuntimeException(E);
+    }
 ").
 
 :- pragma foreign_proc("Java",
     copy(X::in, Y::uo),
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
-    Y = deep_copy(X);
+    try {
+        Y = deep_copy(X);
+    } catch (java.lang.InstantiationException E) {
+        throw new RuntimeException(E);
+    } catch (java.lang.IllegalAccessException E) {
+        throw new RuntimeException(E);
+    }
 ").
 
 :- pragma foreign_proc("Erlang",

@@ -721,12 +721,19 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             % also need to generate an additional zero-argument constructor,
             % which is used to construct the class that is used for
             % reserved_objects.
+            %
+            % The implementation of deep copy in Java grades also depends on
+            % zero-argument constructors.
             (
-                TagVal = shared_with_reserved_addresses_tag(RAs,
-                    single_functor_tag),
-                some [RA] (
-                    list.member(RA, RAs),
-                    RA = reserved_object(_, _, _)
+                (
+                    Target = target_java
+                ;
+                    TagVal = shared_with_reserved_addresses_tag(RAs,
+                        single_functor_tag),
+                    some [RA] (
+                        list.member(RA, RAs),
+                        RA = reserved_object(_, _, _)
+                    )
                 ),
                 Members = [_ | _]
             ->
