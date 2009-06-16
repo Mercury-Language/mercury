@@ -63,6 +63,7 @@ ORDINARY_PROGS=	\
 	dupcall_types_bug \
 	ee_dummy \
 	ee_valid_test \
+	elim_local_var_char \
 	elim_special_pred \
 	equality_pred_which_requires_boxing \
 	eqv_type_bug \

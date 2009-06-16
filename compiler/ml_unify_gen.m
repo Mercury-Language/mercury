@@ -106,6 +106,7 @@
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
@@ -441,7 +442,17 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Context, Defns, Rval,
 ml_gen_constant(Tag, VarType, Rval, !Info) :-
     (
         Tag = int_tag(Int),
-        Rval = ml_const(mlconst_int(Int))
+        IntRval = ml_const(mlconst_int(Int)),
+        % Add an explicit cast if this is a character constant.  Although we
+        % can usually rely on implicit casts, if the char variable that the
+        % constant is assigned to is eliminated, we can end up passing an int
+        % where a char is expected.  In Java, and probably any language with
+        % overloading, the explicit cast is required.
+        ( VarType = char_type ->
+            Rval = ml_unop(cast(mlds_native_char_type), IntRval)
+        ;
+            Rval = IntRval
+        )
     ;
         Tag = float_tag(Float),
         Rval = ml_const(mlconst_float(Float))

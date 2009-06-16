@@ -17,6 +17,7 @@ MCFLAGS-delay_partial_test =    --delay-partial-instantiations
 MCFLAGS-delay_partial_test2 =   --delay-partial-instantiations
 MCFLAGS-lp		=	--intermodule-optimization -O3
 MCFLAGS-boyer		=	--infer-all
+MCFLAGS-elim_local_var_char =   --eliminate-local-vars
 MCFLAGS-float_consistency =	--optimize-constant-propagation
 MCFLAGS-foreign_enum_mod1 = 	--intermodule-optimization
 MCFLAGS-foreign_enum_mod2 = 	--intermodule-optimization
