@@ -8300,6 +8300,14 @@ io.stdin_stream = input_stream(io.stdin_stream_2).
     Stream = mercury_stdin;
 ").
 
+:- pragma foreign_proc("Java",
+    io.stdin_stream_2 = (Stream::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
+"
+    Stream = mercury_stdin;
+").
+
 io.stdin_stream(input_stream(Stream), !IO) :-
     io.stdin_stream_2(Stream, !IO).
 
@@ -8369,6 +8377,14 @@ io.stderr_stream = output_stream(io.stderr_stream_2).
 ").
 
 :- pragma foreign_proc("C#",
+    io.stderr_stream_2 = (Stream::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
+"
+    Stream = mercury_stderr;
+").
+
+:- pragma foreign_proc("Java",
     io.stderr_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
