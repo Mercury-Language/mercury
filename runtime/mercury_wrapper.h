@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2008 The University of Melbourne.
+** Copyright (C) 1994-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -255,6 +255,8 @@ extern	MR_Unsigned	MR_contexts_per_thread;
 ** (MR_contexts_per_thread * MR_num_threads)
 */
 extern	MR_Unsigned	MR_max_outstanding_contexts;
+
+extern  MR_Unsigned MR_num_threads;
 
 /* file names for the mdb debugging streams */
 extern	const char	*MR_mdb_in_filename;

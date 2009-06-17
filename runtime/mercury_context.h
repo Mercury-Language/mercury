@@ -59,6 +59,7 @@
 #include "mercury_goto.h"       /* for MR_GOTO() */
 #include "mercury_conf.h"       /* for MR_CONSERVATIVE_GC */
 #include "mercury_backjump.h"   /* for MR_BackJumpHandler, etc */
+#include "mercury_atomic_ops.h" /* for MR_atomic_* */
 
 #ifdef  MR_THREAD_SAFE
   #define MR_IF_THREAD_SAFE(x)  x
@@ -392,21 +393,29 @@ extern  MR_PendingContext   *MR_pending_contexts;
 
   /*
   ** The number of contexts that are not in the free list (i.e. are executing
-  ** or suspended) plus the number of sparks in the spark queue.  We count
-  ** those sparks as they can quickly accumulate on the spark queue before any
-  ** of them are taken up for execution.  Once they do get taken up, many
-  ** contexts would need to be allocated to execute them.  Sparks not on the
-  ** spark queue are currently guaranteed to be executed on their originating
-  ** context so won't cause allocation of more contexts.
+  ** or suspended) plus the number of sparks in the global spark queue.
+  ** We count those sparks as they can quickly accumulate on the spark queue
+  ** before any of them are taken up for execution. Once they do get taken up,
+  ** many contexts would need to be allocated to execute them. Sparks not
+  ** on the global spark queue are currently guaranteed to be executed
+  ** on their originating context so won't cause allocation of more contexts.
   **
   ** What we are mainly interested in here is preventing too many contexts from
   ** being allocated, as each context is quite large and we can quickly run out
-  ** of memory.  Another problem is due to the context free list and
+  ** of memory. Another problem is due to the context free list and
   ** conservative garbage collection: every context ever allocated will be
-  ** scanned.  (Getting the garbage collector not to scan contexts on the free
+  ** scanned. (Getting the garbage collector not to scan contexts on the free
   ** list should be possible though.)
   */
-  extern volatile int   MR_num_outstanding_contexts_and_sparks;
+  extern volatile int   MR_num_outstanding_contexts_and_global_sparks;
+  
+  /*
+  ** As above, except that sparks on local spark queues are also counted even
+  ** though they don't represent _parallel_ work.  Since local queues are
+  ** manipulated without locking this variable must be modified by atomic
+  ** instructions, even when done from within a critical section.
+  */
+  extern volatile MR_Integer    MR_num_outstanding_contexts_and_all_sparks;
 #endif  /* !MR_LL_PARALLEL_CONJ */
 
 /*---------------------------------------------------------------------------*/
@@ -749,10 +758,18 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
 
   #define MR_fork_globally_criteria                                           \
     (MR_num_idle_engines != 0 &&                                              \
-    MR_num_outstanding_contexts_and_sparks < MR_max_outstanding_contexts)
+    MR_num_outstanding_contexts_and_global_sparks < MR_max_outstanding_contexts)
 
-  #define MR_choose_parallel_over_sequential_cond(target_cpus)                \
-      (MR_num_outstanding_contexts_and_sparks < target_cpus)
+  /*
+  ** These macros may be used as conditions for runtime parallelism decisions.
+  ** They return nonzero when parallelism is recommended (because there are
+  ** enough CPUs to assign work to).
+  */
+  #define MR_par_cond_contexts_and_global_sparks_vs_num_cpus(target_cpus)     \
+      (MR_num_outstanding_contexts_and_global_sparks < target_cpus)
+
+  #define MR_par_cond_contexts_and_all_sparks_vs_num_cpus(target_cpus)        \
+      (MR_num_outstanding_contexts_and_all_sparks < target_cpus)
 
   #define MR_schedule_spark_locally(spark)                                    \
     do {                                                                      \
@@ -764,6 +781,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
         */                                                                    \
         ssl_ctxt = MR_ENGINE(MR_eng_this_context);                            \
         MR_wsdeque_push_bottom(&ssl_ctxt->MR_ctxt_spark_deque, (spark));      \
+        MR_atomic_inc_int(&MR_num_outstanding_contexts_and_all_sparks);       \
     } while (0)
 
   #define MR_join_and_continue(sync_term, join_label)                         \
@@ -819,6 +837,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
         jnc_popped = MR_wsdeque_pop_bottom(&jnc_ctxt->MR_ctxt_spark_deque,    \
             &jnc_spark);                                                      \
         if (jnc_popped) {                                                     \
+            MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);   \
             MR_GOTO(jnc_spark.MR_spark_resume);                               \
         } else {                                                              \
             MR_runnext();                                                     \
@@ -842,6 +861,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
             ** the current context.                                           \
             */                                                                \
             MR_UNLOCK(&MR_sync_term_lock, "continue_2 i");                    \
+            MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);   \
             MR_GOTO(jnc_spark.MR_spark_resume);                               \
         } else {                                                              \
             /*                                                                \

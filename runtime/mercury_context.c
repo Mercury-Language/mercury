@@ -80,7 +80,8 @@ static MR_Context       *free_small_context_list = NULL;
 
 #ifdef  MR_LL_PARALLEL_CONJ
 int volatile MR_num_idle_engines = 0;
-int volatile MR_num_outstanding_contexts_and_sparks = 0;
+int volatile MR_num_outstanding_contexts_and_global_sparks = 0;
+MR_Integer volatile MR_num_outstanding_contexts_and_all_sparks = 0;
 
 static MercuryLock MR_par_cond_stats_lock;
 #endif
@@ -321,7 +322,8 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     MR_LOCK(&free_context_list_lock, "create_context");
 
 #ifdef MR_LL_PARALLEL_CONJ
-    MR_num_outstanding_contexts_and_sparks++;
+    MR_num_outstanding_contexts_and_global_sparks++;
+    MR_atomic_inc_int(&MR_num_outstanding_contexts_and_all_sparks);
 #endif
 
     /*
@@ -380,7 +382,8 @@ MR_destroy_context(MR_Context *c)
 
     MR_LOCK(&free_context_list_lock, "destroy_context");
 #ifdef MR_LL_PARALLEL_CONJ
-    MR_num_outstanding_contexts_and_sparks--;
+    MR_num_outstanding_contexts_and_global_sparks--;
+    MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);
 #endif
 
     switch (c->MR_ctxt_size) {
@@ -538,7 +541,8 @@ MR_schedule_spark_globally(const MR_Spark *proto_spark)
 {
     MR_LOCK(&MR_runqueue_lock, "schedule_spark_globally");
     MR_wsdeque_push_bottom(&MR_spark_queue, proto_spark);
-    MR_num_outstanding_contexts_and_sparks++;
+    MR_num_outstanding_contexts_and_global_sparks++;
+    MR_atomic_inc_int(&MR_num_outstanding_contexts_and_all_sparks);
     MR_SIGNAL(&MR_runqueue_cond);
     MR_UNLOCK(&MR_runqueue_lock, "schedule_spark_globally");
 }
@@ -617,7 +621,8 @@ MR_define_entry(MR_do_runnext);
         /* Check if the global spark queue is nonempty. */
         if (MR_wsdeque_take_top(&MR_spark_queue, &spark)) {
             MR_num_idle_engines--;
-            MR_num_outstanding_contexts_and_sparks--;
+            MR_num_outstanding_contexts_and_global_sparks--;
+            MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);
             goto ReadySpark;
         }
 

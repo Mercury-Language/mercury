@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007 The University of Melbourne.
+** Copyright (C) 2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,6 +16,7 @@
 
 #include "mercury_std.h"
 
+/*---------------------------------------------------------------------------*/
 #if defined(MR_LL_PARALLEL_CONJ)
 
 /*
@@ -25,8 +26,6 @@
 MR_EXTERN_INLINE MR_bool
 MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
         MR_Integer new_val);
-
-/*---------------------------------------------------------------------------*/
 
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
 
@@ -79,11 +78,119 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
     }
 #endif
 
+/*---------------------------------------------------------------------------*/
+
+/*
+** Increment the word pointed at by the address.
+*/
+MR_EXTERN_INLINE void
+MR_atomic_inc_int(volatile MR_Integer *addr);
+
+#if defined(__GNUC__) && defined(__x86_64__)
+
+    #define MR_ATOMIC_INC_WORD_BODY                                         \
+        do {                                                                \
+            __asm__ __volatile__(                                           \
+                "lock; incq %0;"                                            \
+                : "=m"(*addr)                                               \
+                : "m"(*addr)                                                \
+                );                                                          \
+        } while (0)
+
+#elif defined(__GNUC__) && defined(__i386__)
+
+    /* Really 486 or better. */
+    #define MR_ATOMIC_INC_WORD_BODY                                         \
+        do {                                                                \
+            __asm__ __volatile__(                                           \
+                "lock; incl %0;"                                            \
+                : "=m"(*addr)                                               \
+                : "m"(*addr)                                                \
+                );                                                          \
+        } while (0)
+
+#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+
+    /*
+    ** gcc doesn't seem to have an atomic operation for increment, it does have
+    ** one for add though.  We prefer the hand-written increment operations
+    ** above.
+    */
+    #define MR_ATOMIC_INC_WORD_BODY                                         \
+        do {                                                                \
+            __sync_add_and_fetch(addr, 1);                                  \
+        } while (0)
+
+#endif
+
+#ifdef MR_ATOMIC_INC_WORD_BODY
+    MR_EXTERN_INLINE void 
+    MR_atomic_inc_int(volatile MR_Integer *addr)
+    {
+        MR_ATOMIC_INC_WORD_BODY;
+    }
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Decrement the word pointed at by the address.
+*/
+MR_EXTERN_INLINE void
+MR_atomic_dec_int(volatile MR_Integer *addr);
+
+#if defined(__GNUC__) && defined(__x86_64__)
+
+    #define MR_ATOMIC_DEC_WORD_BODY                                         \
+        do {                                                                \
+            __asm__ __volatile__(                                           \
+                "lock; decq %0;"                                            \
+                : "=m"(*addr)                                               \
+                : "m"(*addr)                                                \
+                );                                                          \
+        } while (0)
+
+#elif defined(__GNUC__) && defined(__i386__)
+
+    /* Really 486 or better. */
+    #define MR_ATOMIC_DEC_WORD_BODY                                         \
+        do {                                                                \
+            __asm__ __volatile__(                                           \
+                "lock; decl %0;"                                            \
+                : "=m"(*addr)                                               \
+                : "m"(*addr)                                                \
+                );                                                          \
+        } while (0)
+
+#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+
+    /*
+    ** gcc doesn't seem to have an atomic operation for increment, it does have
+    ** one for add though.  We prefer the hand-written increment operations
+    ** above.
+    */
+    #define MR_ATOMIC_DEC_WORD_BODY                                         \
+        do {                                                                \
+            __sync_sub_and_fetch(addr, 1);                                  \
+        } while (0)
+
+#endif
+
+#ifdef MR_ATOMIC_DEC_WORD_BODY
+    MR_EXTERN_INLINE void 
+    MR_atomic_dec_int(volatile MR_Integer *addr)
+    {
+        MR_ATOMIC_DEC_WORD_BODY;
+    }
+#endif
+
+#endif /* MR_LL_PARALLEL_CONJ */
+/*---------------------------------------------------------------------------*/
+
 /*
 ** If we don't have definitions available for this compiler or architecture
 ** then we will get a link error in low-level .par grades.  No other grades
 ** currently require any atomic ops.
 */
 
-#endif /* MR_LL_PARALLEL_CONJ */
 #endif /* not MERCURY_ATOMIC_OPS_H */

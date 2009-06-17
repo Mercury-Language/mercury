@@ -434,6 +434,11 @@ $(os_subdir)table_builtin.pic_o \
 	../runtime/mercury_tabling_preds.h \
 	../runtime/mercury_minimal_model.h
 
+$(os_subdir)par_builtin.$O \
+$(os_subdir)par_builtin.pic_o \
+	: ../runtime/mercury_context.h \
+	../runtime/mercury_thread.h
+
 #-----------------------------------------------------------------------------#
 
 # In the past we generated liblibrary.* and then linked

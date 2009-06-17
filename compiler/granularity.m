@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,7 +114,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                     NumCPUs),
                 NumCPUsStr = string.int_to_string(NumCPUs),
                 Code = "SUCCESS_INDICATOR = " ++
-                    "MR_choose_parallel_over_sequential_cond(" ++
+                    "MR_par_cond_contexts_and_global_sparks_vs_num_cpus(" ++
                     NumCPUsStr ++ ");",
                 Args = [],
                 ExtraArgs = [],

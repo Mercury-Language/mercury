@@ -74,17 +74,40 @@
     %
 :- impure pred evaluate_parallelism_condition is semidet.
 
-    % par_cond_outstanding_jobs_vs_num_cpus(NumCPUs):
+    % par_cond_contexts_and_global_sparks_vs_num_cpus(NumCPUs)
     %
     % True iff NumCPUs > executable contexts + global sparks.
     %
     % XXX We should consider passing MR_num_threads as the argument.
     %
-:- impure pred par_cond_outstanding_jobs_vs_num_cpus(int::in) is semidet.
+:- impure pred par_cond_contexts_and_global_sparks_vs_num_cpus(int::in) 
+    is semidet.
+    
+    % par_cond_contexts_and_all_sparks_vs_num_cpus(NumCPUs)
+    %
+    % True iff NumCPUs > executable contexts + global sparks + local sparks.
+    %
+    % Consider passing MR_num_threads as the argument.
+    %
+:- impure pred par_cond_contexts_and_all_sparks_vs_num_cpus(int::in) is semidet.
+
+    % num_os_threads(Num)
+    %
+    % Num is the number of OS threads the runtime is configured to use, it is
+    % the value of MR_num_threads.  This is the value given to -P in the
+    % MERCURY_OPTIONS environment variable.
+    %
+:- pred num_os_threads(int::out) is det.
 
     % Close the file that was used to log the parallel condition decisions.
     %
-    % XXX Document where that file is opened.
+    % The parallel condition stats file is opened the first time it is
+    % required.  If it is not open this predicate will do nothing.  The
+    % recording of statistics and managment of the parallel condition stats
+    % file is enabled by a C compiler macro
+    % 'MR_DEBUG_RUNTIME_GRANULARITY_CONTRO' as well as the
+    % 'MR_LL_PARALLEL_CONJ' macro.  If either of these is not set this
+    % predicate will throw an exception.
     %
 :- pred par_cond_close_stats_file(io::di, io::uo) is det.
 
@@ -217,11 +240,12 @@ INIT mercury_sys_init_par_builtin_modules
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    par_cond_outstanding_jobs_vs_num_cpus(NumCPUs::in),
-    [will_not_call_mercury, thread_safe, may_not_duplicate],
+    par_cond_contexts_and_global_sparks_vs_num_cpus(NumCPUs::in),
+    [will_not_call_mercury, thread_safe],
 "
 #ifdef MR_LL_PARALLEL_CONJ
-    SUCCESS_INDICATOR = MR_choose_parallel_over_sequential_cond(NumCPUs);
+    SUCCESS_INDICATOR =
+        MR_par_cond_contexts_and_global_sparks_vs_num_cpus(NumCPUs);
   #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     MR_record_conditional_parallelism_decision(SUCCESS_INDICATOR);
   #endif
@@ -232,8 +256,37 @@ INIT mercury_sys_init_par_builtin_modules
 ").
 
 :- pragma foreign_proc("C",
+    par_cond_contexts_and_all_sparks_vs_num_cpus(NumCPUs::in),
+    [will_not_call_mercury, thread_safe],
+"
+#ifdef MR_LL_PARALLEL_CONJ
+    SUCCESS_INDICATOR =
+        MR_par_cond_contexts_and_all_sparks_vs_num_cpus(NumCPUs);
+  #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
+    MR_record_conditional_parallelism_decision(SUCCESS_INDICATOR);
+  #endif
+#else
+    MR_fatal_error(
+      ""par_cond_outstanding_jobs_vs_num_cpus is unavailable in this grade"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+    num_os_threads(NThreads::out),
+    [will_not_call_mercury, will_not_throw_exception, thread_safe, 
+     promise_pure],
+"
+    /*
+     * MR_num_threads is available in all grades, although it won't make sense
+     * for non-parallel grades it will still reflect the value configured by
+     * the user.
+     */
+    NThreads = MR_num_threads
+").
+
+:- pragma foreign_proc("C",
     par_cond_close_stats_file(IO0::di, IO::uo),
-    [will_not_call_mercury, thread_safe, may_not_duplicate, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
 #if defined(MR_LL_PARALLEL_CONJ) && \
         defined(MR_DEBUG_RUNTIME_GRANULARITY_CONTROL)

@@ -289,7 +289,7 @@ static  char        *MR_mem_usage_report_prefix = NULL;
 
 static  int         MR_num_output_args = 0;
 
-unsigned int        MR_num_threads = 1;
+MR_Unsigned         MR_num_threads = 1;
 
 static  MR_bool     MR_print_table_statistics = MR_FALSE;
 
