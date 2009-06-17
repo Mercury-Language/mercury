@@ -205,29 +205,38 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
                 BuildDepsSucceeded0, !Info, !IO),
             (
                 BuildDepsSucceeded0 = yes,
-                maybe_make_java_files(MainModuleName,
-                    ObjectTargetType, ObjModules, BuildDepsSucceeded1,
-                    !Info, !IO)
+                ( ObjectTargetType = module_target_java_class_code ->
+                    make_java_files(MainModuleName, ObjModules,
+                        BuildJavaSucceeded, !Info, !IO),
+                    (
+                        BuildJavaSucceeded = yes,
+                        % Disable the `--rebuild' option during this pass
+                        % otherwise all the Java classes will be built again.
+                        globals.io_lookup_bool_option(rebuild, Rebuild, !IO),
+                        globals.io_set_option(rebuild, bool(no), !IO),
+                        foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                            make_module_target, ObjTargets,
+                            BuildDepsSucceeded1, !Info, !IO),
+                        globals.io_set_option(rebuild, bool(Rebuild), !IO)
+                    ;
+                        BuildJavaSucceeded = no,
+                        BuildDepsSucceeded1 = no
+                    )
+                ;
+                    foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                        make_module_target, ObjTargets, BuildDepsSucceeded1,
+                        !Info, !IO)
+                )
             ;
                 BuildDepsSucceeded0 = no,
                 BuildDepsSucceeded1 = no
             ),
             (
                 BuildDepsSucceeded1 = yes,
-                foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
-                    make_module_target, ObjTargets, BuildDepsSucceeded2,
-                    !Info, !IO)
+                foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
+                    ForeignObjTargets, BuildDepsSucceeded, !Info, !IO)
             ;
                 BuildDepsSucceeded1 = no,
-                BuildDepsSucceeded2 = no
-            ),
-            (
-                BuildDepsSucceeded2 = yes,
-                foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
-                    ForeignObjTargets,
-                    BuildDepsSucceeded, !Info, !IO)
-            ;
-                BuildDepsSucceeded2 = no,
                 BuildDepsSucceeded = no
             )
         ),
@@ -638,31 +647,25 @@ linked_target_cleanup(MainModuleName, FileType, OutputFileName,
     % list of all out-of-date `.java' files.  This is a lot quicker than
     % compiling each Java file individually.
     %
-:- pred maybe_make_java_files(module_name::in, module_target_type::in,
-    list(module_name)::in, bool::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred make_java_files(module_name::in, list(module_name)::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_make_java_files(MainModuleName, ObjectTargetType, ObjModules, Succeeded,
-        !Info, !IO) :-
-    ( ObjectTargetType = module_target_java_class_code ->
-        out_of_date_java_modules(ObjModules, OutOfDateModules, !Info, !IO),
-        (
-            OutOfDateModules = [],
-            Succeeded = yes
-        ;
-            OutOfDateModules = [_ | _],
-            build_java_files(MainModuleName, OutOfDateModules, Succeeded,
-                !Info, !IO),
-            % javac might write more `.class' files than we anticipated (though
-            % it probably won't) so clear out all the timestamps which might be
-            % affected.
-            Timestamps0 = !.Info ^ file_timestamps,
-            map.foldl(delete_java_class_timestamps, Timestamps0,
-                map.init, Timestamps),
-            !Info ^ file_timestamps := Timestamps
-        )
-    ;
+make_java_files(MainModuleName, ObjModules, Succeeded, !Info, !IO) :-
+    out_of_date_java_modules(ObjModules, OutOfDateModules, !Info, !IO),
+    (
+        OutOfDateModules = [],
         Succeeded = yes
+    ;
+        OutOfDateModules = [_ | _],
+        build_java_files(MainModuleName, OutOfDateModules, Succeeded,
+            !Info, !IO),
+        % javac might write more `.class' files than we anticipated (though
+        % it probably won't) so clear out all the timestamps which might be
+        % affected.
+        Timestamps0 = !.Info ^ file_timestamps,
+        map.foldl(delete_java_class_timestamps, Timestamps0,
+            map.init, Timestamps),
+        !Info ^ file_timestamps := Timestamps
     ).
 
 :- pred out_of_date_java_modules(list(module_name)::in, list(module_name)::out,
