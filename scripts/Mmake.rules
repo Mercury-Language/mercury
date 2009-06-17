@@ -406,8 +406,11 @@ $(ALL_MC_BUILD_FILES) %.err:
 .DEFAULT:
 	$(MCM) $@
 
-clean_local: $(MERCURY_MAIN_MODULES:%=%.clean)
-realclean_local: $(MERCURY_MAIN_MODULES:%=%.realclean)
+clean_local:
+	$(MCM) $(MERCURY_MAIN_MODULES:%=%.clean)
+
+realclean_local:
+	$(MCM) $(MERCURY_MAIN_MODULES:%=%.realclean)
 
 endif # $(MMAKE_USE_MMC_MAKE) == yes
 

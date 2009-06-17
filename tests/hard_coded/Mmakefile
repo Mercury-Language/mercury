@@ -241,7 +241,6 @@ ORDINARY_PROGS=	\
 	trace_goal_1 \
 	trace_goal_2 \
 	trace_goal_3 \
-	trans_intermod_user_equality \
 	transform_value \
 	transitive_inst_type \
 	trigraphs \
@@ -269,6 +268,12 @@ ORDINARY_PROGS=	\
 	write_reg2 \
 	write_xml \
 	xmlable_test
+
+# --transitive-intermodule-optimization is incompatible with mmc --make.
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
+ORDINARY_PROGS += \
+	trans_intermod_user_equality
+endif
 
 # JAVA_PASS_PROGS lists those tests which will succeed in grade Java.
 
