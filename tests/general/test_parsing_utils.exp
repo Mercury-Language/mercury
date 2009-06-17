@@ -213,3 +213,20 @@ pass: comma_separated_list(punct("!")) on "!   abc"
 pass: comma_separated_list(punct("!")) on "!, ! , !   abc"
 	returned [unit, unit, unit] as expected
 	[11 chars consumed]
+pass: optional(int_with_state) on "abc"
+	returned [] as expected
+	[0 chars consumed]
+pass: optional(int_with_state) on "1"
+	returned [1] as expected
+	[1 chars consumed]
+pass: zero_or_more(int_with_state) on "abc"
+	returned [] as expected
+	[0 chars consumed]
+pass: zero_or_more(int_with_state) on "1 2 3"
+	returned [3, 2, 1] as expected
+	[5 chars consumed]
+pass: one_or_more(int_with_state) on "abc"
+	failed as expected
+pass: one_or_more(int_with_state) on "1 2 3"
+	returned [3, 2, 1] as expected
+	[5 chars consumed]

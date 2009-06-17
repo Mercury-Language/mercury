@@ -295,6 +295,38 @@ test_case("comma_separated_list(punct(\"!\"))",
     stringify(comma_separated_list(punct("!"))),
     "!, ! , !   abc", yes("[unit, unit, unit]")).
 
+test_case("optional(int_with_state)",
+    stringify_state(optional(int_with_state)),
+    "abc", yes("[]")).
+
+test_case("optional(int_with_state)",
+    stringify_state(optional(int_with_state)),
+    "1", yes("[1]")).
+
+test_case("zero_or_more(int_with_state)",
+    stringify_state(zero_or_more(int_with_state)),
+    "abc", yes("[]")).
+
+test_case("zero_or_more(int_with_state)",
+    stringify_state(zero_or_more(int_with_state)),
+    "1 2 3", yes("[3, 2, 1]")).
+
+test_case("one_or_more(int_with_state)",
+    stringify_state(one_or_more(int_with_state)),
+    "abc", no).
+
+test_case("one_or_more(int_with_state)",
+    stringify_state(one_or_more(int_with_state)),
+    "1 2 3", yes("[3, 2, 1]")).
+
+%-----------------------------------------------------------------------------%
+
+:- pred int_with_state(src::in, int::out, list(int)::in, list(int)::out,
+        ps::in, ps::out) is semidet.
+
+int_with_state(Src, X, Xs, [X | Xs], !PS) :-
+    int_literal(Src, X, !PS).
+
 %-----------------------------------------------------------------------------%
 
 :- pred stringify(
@@ -308,6 +340,21 @@ test_case("comma_separated_list(punct(\"!\"))",
 stringify(P, Src, String, !PS) :-
     P(Src, X, !PS),
     String = string.string(X).
+
+%-----------------------------------------------------------------------------%
+
+:- pred stringify_state(
+        pred(src, T, list(S), list(S), ps, ps)::
+            in(pred(in, out, in, out, in, out) is semidet),
+        src::in,
+        string::out,
+        ps::in,
+        ps::out)
+        is semidet.
+
+stringify_state(P, Src, String, !PS) :-
+    P(Src, _, [], State, !PS),
+    String = string.string(State).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
