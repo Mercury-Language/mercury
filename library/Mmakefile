@@ -243,10 +243,9 @@ javas: $(STD_LIB_NAME).javas
 endif
 
 # The compiler names Java files differently to the original source files to
-# avoid keywords, and will place them in subdirectories to reflect package
-# names.  Instead of replicating that logic here we just use a wildcard to
-# find the file names.
-JAVAS = $(wildcard mercury/*.java mercury/*_/*.java)
+# avoid keywords.  Instead of replicating that logic here we just use a
+# wildcard to find the file names.
+JAVAS = $(wildcard jmercury/*.java)
 
 # We need to invoke javac on all of the classes at the same time,
 # rather than compiling them separately.  This is needed because
@@ -261,8 +260,8 @@ classes: javas java_symlinks
 # the sources.
 .PHONY: java_symlinks
 java_symlinks:
-	[ -d mercury ] || mkdir mercury
-	[ -d mercury/runtime ] || ln -s ../../java/runtime mercury/runtime
+	[ -d jmercury ] || mkdir jmercury
+	[ -d jmercury/runtime ] || ln -s ../../java/runtime jmercury/runtime
 
 # Once all of the library classes have been compiled, we put them in a single
 # jar file.  At this point we also add the runtime classes to a jar file.
@@ -279,18 +278,14 @@ JARS = $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar
 # any architecture-specific objects.
 .PHONY:	jars
 jars:	classes
-	echo mercury/*.class > $(STD_LIB_NAME).classes
-	echo mercury/bit_buffer_/*.class >> $(STD_LIB_NAME).classes
-	echo mercury/stream_/*.class >> $(STD_LIB_NAME).classes
-	echo mercury/string_/*.class >> $(STD_LIB_NAME).classes
-	echo mercury/thread_/*.class >> $(STD_LIB_NAME).classes
+	echo jmercury/*.class > $(STD_LIB_NAME).classes
 	$(JAR) $(JAR_CREATE_FLAGS) $(STD_LIB_NAME).jar @$(STD_LIB_NAME).classes
 	$(JAR) i $(STD_LIB_NAME).jar
 	$(RM) $(STD_LIB_NAME).classes
-	$(JAR) $(JAR_CREATE_FLAGS) $(RT_LIB_NAME).jar mercury/runtime/*.class
+	$(JAR) $(JAR_CREATE_FLAGS) $(RT_LIB_NAME).jar jmercury/runtime/*.class
 	$(JAR) i $(RT_LIB_NAME).jar
-	-+cd mercury/runtime && mmake $(NATIVE_SO)
-	-cp mercury/runtime/$(NATIVE_SO) .
+	-+cd jmercury/runtime && mmake $(NATIVE_SO)
+	-cp jmercury/runtime/$(NATIVE_SO) .
 
 # This shared object is needed to run some of the standard library methods.
 NATIVE_SO = Native.$(EXT_FOR_SHARED_LIB)
@@ -352,10 +347,15 @@ CSHARP_DLLS = $(CSHARP_MODULES:%=%__csharp_code.dll)
 $(CSHARP_DLLS) : $(RUNTIME_DLLS)
 
 endif
+
 #-----------------------------------------------------------------------------#
+
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 ifeq ("$(findstring java,$(GRADE))","java")
 lib_std: jars
 endif
+endif
+
 #-----------------------------------------------------------------------------#
 #
 # Some extra rules that we need for the C and asm back-ends

@@ -1792,9 +1792,9 @@
 :- pragma foreign_code("Java",
 "
     static java.lang.Object ML_io_stream_db =
-        new mercury.tree234.Tree234_2.Empty_0();
+        new tree234.Tree234_2.Empty_0();
     static java.lang.Object ML_io_user_globals =
-        new mercury.tree234.Tree234_2.Empty_0();
+        new tree234.Tree234_2.Empty_0();
 ").
 
 :- type io.stream_putback ==  map(io.stream_id, list(char)).
@@ -1811,7 +1811,7 @@
     [can_pass_as_mercury_type]).
 :- pragma foreign_type("il", io.stream,
     "class [mercury]mercury.io__csharp_code.MR_MercuryFileStruct").
-:- pragma foreign_type("Java", io.stream, "mercury.io.MR_MercuryFileStruct").
+:- pragma foreign_type("Java", io.stream, "io.MR_MercuryFileStruct").
 :- pragma foreign_type("Erlang", io.stream, "").
 
     % A unique identifier for an I/O stream.
@@ -2883,7 +2883,7 @@ io.file_modification_time(File, Result, !IO) :-
         Msg = ""lastModified() failed: "" + e.getMessage();
         Status = 0;
     }
-    Time = mercury.time.ML_construct_time_t(date);
+    Time = time.ML_construct_time_t(date);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -3135,11 +3135,11 @@ file_type_implemented :-
     // directories, and for everything else it just returns unknown.
 
     if (file.isFile()) {
-        Result = new mercury.io.Res_1.Ok_1(ML_file_type_regular());
+        Result = new io.Res_1.Ok_1(ML_file_type_regular());
     } else if (file.isDirectory()) {
-        Result = new mercury.io.Res_1.Ok_1(ML_file_type_directory());
+        Result = new io.Res_1.Ok_1(ML_file_type_directory());
     } else {
-        Result = new mercury.io.Res_1.Ok_1(ML_file_type_unknown());
+        Result = new io.Res_1.Ok_1(ML_file_type_unknown());
     }
 ").
 
@@ -3339,11 +3339,11 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 "
     java.lang.String permissions = null;
 
-    if (ML_access_types_includes_read((mercury.list.List_1) AccessTypes)) {
+    if (ML_access_types_includes_read((list.List_1) AccessTypes)) {
         permissions = ""read"";
     }
 
-    if (ML_access_types_includes_write((mercury.list.List_1) AccessTypes)) {
+    if (ML_access_types_includes_write((list.List_1) AccessTypes)) {
         if (permissions == null) {
             permissions = ""write"";
         } else {
@@ -3351,7 +3351,7 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
         }
     }
 
-    if (ML_access_types_includes_execute((mercury.list.List_1) AccessTypes))
+    if (ML_access_types_includes_execute((list.List_1) AccessTypes))
     {
         if (permissions == null) {
             permissions = ""execute"";
@@ -9675,21 +9675,21 @@ io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
     io.progname(_Default::in, PrognameOut::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    PrognameOut = mercury.runtime.JavaInternal.progname;
+    PrognameOut = jmercury.runtime.JavaInternal.progname;
 ").
 
 :- pragma foreign_proc("Java",
     io.get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    ExitStatus = mercury.runtime.JavaInternal.exit_status;
+    ExitStatus = jmercury.runtime.JavaInternal.exit_status;
 ").
 
 :- pragma foreign_proc("Java",
     io.set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    mercury.runtime.JavaInternal.exit_status = ExitStatus;
+    jmercury.runtime.JavaInternal.exit_status = ExitStatus;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -9747,7 +9747,7 @@ command_line_argument(_, "") :-
     command_line_argument(ArgNum::in, Arg::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    String[] arg_vector = mercury.runtime.JavaInternal.args;
+    String[] arg_vector = jmercury.runtime.JavaInternal.args;
 
     if (ArgNum < arg_vector.length && ArgNum >= 0) {
         Arg = arg_vector[ArgNum];

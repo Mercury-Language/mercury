@@ -6,7 +6,7 @@
 // This is a throwable class used for the Java implementation of commits.
 // 
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class Commit extends java.lang.Error {
 

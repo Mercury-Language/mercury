@@ -19,8 +19,6 @@
 
 :- import_module mdbcomp.prim_data.
 
-:- import_module bool.
-
 %-----------------------------------------------------------------------------%
 
     % For the Java back-end, we need to distinguish between module qualifiers
@@ -34,38 +32,10 @@
     --->    module_qual
     ;       type_qual.
 
-    % Java doesn't allow a fully-qualified class to have the same name as a
-    % package.  Our workaround is to name package components with trailing
-    % underscores, e.g. `mammal_.primate_.chimp' where `chimp' is a class.
-    % This is enabled with `package_name_mangling'.
-    %
-    % The packages `mercury' and `mercury.runtime' are named without
-    % underscores simply because there is existing handwritten code already
-    % using those names.
-    %
-:- type package_name_mangling
-    --->    package_name_mangling
-    ;       no_package_name_mangling.
-
     % Mangle a name so that it is suitable for Java.
     %
 :- pred mangle_sym_name_for_java(sym_name::in, java_qual_kind::in,
-    string::in, package_name_mangling::in, string::out) is det.
-
-    % Returns yes iff the given package is one provided by the Mercury
-    % implementation, `mercury' or `mercury.runtime'.
-    %
-:- func is_mercury_provided_java_package(sym_name) = bool.
-
-    % Used in module_name_to_file_name to derive file names for Java files.
-    % Returns a module name which each component mangled.
-    %
-:- func java_module_name(module_name) = module_name.
-
-    % Return the given module name with an outermost "mercury" qualifier,
-    % if it is not already present.
-    %
-:- func enforce_outermost_mercury_qualifier(module_name) = module_name.
+    string::in, string::out) is det.
 
     % If the given name conficts with a reserved Java word we must add a
     % prefix to it to avoid compilation errors.
@@ -85,10 +55,6 @@
     %
 :- func flip_initial_case_of_final_part(sym_name) = sym_name.
 
-    % The package containing the Mercury standard library.
-    %
-:- func mercury_std_library_package_name = sym_name.
-
     % The package containing the Mercury Java runtime classes.
     %
 :- func mercury_runtime_package_name = sym_name.
@@ -106,17 +72,22 @@
 
 %-----------------------------------------------------------------------------%
 
-mangle_sym_name_for_java(SymName, QualKind, QualifierOp,
-        PackageNameMangling, JavaSafeName) :-
-    mangle_sym_name_for_java_2(SymName, QualKind, PackageNameMangling,
-        MangledSymName),
+mangle_sym_name_for_java(SymName0, QualKind, QualifierOp, JavaSafeName) :-
+    % Modules in the Mercury standard library get a `mercury' prefix when
+    % mapped to MLDS module names.  Since we place all Java classes inside a
+    % `jmercury' package, the extra prefix is just redundant so we remove it.
+    ( strip_outermost_qualifier(SymName0, "mercury", StrippedSymName) ->
+        SymName = StrippedSymName
+    ;
+        SymName = SymName0
+    ),
+    mangle_sym_name_for_java_2(SymName, QualKind, MangledSymName),
     JavaSafeName = sym_name_to_string_sep(MangledSymName, QualifierOp).
 
 :- pred mangle_sym_name_for_java_2(sym_name::in, java_qual_kind::in,
-    package_name_mangling::in, sym_name::out) is det.
+    sym_name::out) is det.
 
-mangle_sym_name_for_java_2(SymName, QualKind, PackageNameMangling,
-        MangledSymName) :-
+mangle_sym_name_for_java_2(SymName, QualKind, MangledSymName) :-
     (
         SymName = unqualified(Name),
         JavaSafeName = java_safe_name_component(QualKind, Name),
@@ -124,22 +95,7 @@ mangle_sym_name_for_java_2(SymName, QualKind, PackageNameMangling,
     ;
         SymName = qualified(ModuleName0, PlainName),
         mangle_sym_name_for_java_2(ModuleName0, module_qual,
-            PackageNameMangling, MangledModuleName0),
-        (
-            PackageNameMangling = package_name_mangling,
-            MercuryProvided = is_mercury_provided_java_package(ModuleName0),
-            (
-                MercuryProvided = yes,
-                MangledModuleName = MangledModuleName0
-            ;
-                MercuryProvided = no,
-                MangledModuleName = append_underscore_sym_name(
-                    MangledModuleName0)
-            )
-        ;
-            PackageNameMangling = no_package_name_mangling,
-            MangledModuleName = MangledModuleName0
-        ),
+            MangledModuleName),
         JavaSafePlainName = java_safe_name_component(QualKind, PlainName),
         MangledSymName = qualified(MangledModuleName, JavaSafePlainName)
     ).
@@ -156,45 +112,6 @@ java_safe_name_component(QualKind, Name) = JavaSafeName :-
     ),
     MangledName = name_mangle(FlippedName),
     JavaSafeName = valid_java_symbol_name(MangledName).
-
-is_mercury_provided_java_package(ModuleName) = MercuryProvided :-
-    ( ModuleName = mercury_std_library_package_name ->
-        MercuryProvided = yes
-    ; ModuleName = mercury_runtime_package_name ->
-        MercuryProvided = yes
-    ;
-        MercuryProvided = no
-    ).
-
-:- func append_underscore_sym_name(sym_name) = sym_name.
-
-append_underscore_sym_name(SymName0) = SymName :-
-    (
-        SymName0 = unqualified(Name),
-        SymName = unqualified(Name ++ "_")
-    ;
-        SymName0 = qualified(ModuleSymName, Name),
-        SymName = qualified(ModuleSymName, Name ++ "_")
-    ).
-
-%-----------------------------------------------------------------------------%
-
-java_module_name(ModuleName) = JavaModuleName :-
-    % Put a "mercury" prefix on the module name if it doesn't already have one,
-    % so that even unqualified module names to end up in a Java package.
-    % Java doesn't allow packaged classes to import types from the default
-    % unnamed package.  We don't do this earlier so as not to disturb other
-    % MLDS backends.
-    QualModuleName = enforce_outermost_mercury_qualifier(ModuleName),
-    mangle_sym_name_for_java_2(QualModuleName, module_qual,
-        package_name_mangling, JavaModuleName).
-
-enforce_outermost_mercury_qualifier(ModuleName) = QualModuleName :-
-    ( outermost_qualifier(ModuleName) = "mercury" ->
-        QualModuleName = ModuleName
-    ;
-        QualModuleName = add_outermost_qualifier("mercury", ModuleName)
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -290,9 +207,7 @@ flip_initial_case_of_final_part(qualified(Qual, Name)) =
 
 %-----------------------------------------------------------------------------%
 
-mercury_std_library_package_name = unqualified("mercury").
-
-mercury_runtime_package_name = qualified(unqualified("mercury"), "runtime").
+mercury_runtime_package_name = qualified(unqualified("jmercury"), "runtime").
 
 %-----------------------------------------------------------------------------%
 

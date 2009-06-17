@@ -417,10 +417,13 @@
     --->    il_assembly_name(mlds_module_name).
 
     % An mlds_module_name specifies the name of an mlds package or class.
+    % XXX This is wrongly named as it is also used for class names.
     %
 :- type mlds_module_name.
 
     % An mlds_package_name specifies the name of an mlds package.
+    % XXX This is wrongly named as it is used for module names in the Java
+    % backend.
     %
 :- type mlds_package_name == mlds_module_name.
 
@@ -1907,10 +1910,18 @@ mlds_get_arg_types(Parameters) = ArgTypes :-
 
 %-----------------------------------------------------------------------------%
 
+% For IL:
 % An MLDS module name consists of two parts. One part is the package
 % which the module name is defined in, and the other part is the actual
 % module name. For example the module name System.XML could be defined
 % in the package XML.
+%
+% For Java:
+% The "package_name" is really the name of the Mercury module, and the
+% "module_name" is the "package_name" plus additional qualifiers (if any).
+% For example, a type `c' in module `a.b' would have package_name == `a.b'
+% and module_name == `a.b.c'.
+% XXX clean this up
 %
 % Note that modules in the Mercury standard library map get a `mercury'
 % prefix e.g. `mercury.builtin', `mercury.io', `mercury.univ', etc.,

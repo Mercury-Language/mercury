@@ -688,8 +688,8 @@ private static int time_at_start    = 0;
 private static int time_at_last_stat    = 0;
 
 static {
-    if (mercury.runtime.Native.isAvailable()) {
-        time_at_start = mercury.runtime.Native.get_user_cpu_milliseconds();
+    if (jmercury.runtime.Native.isAvailable()) {
+        time_at_start = jmercury.runtime.Native.get_user_cpu_milliseconds();
         time_at_last_stat = time_at_start;
     }
 }
@@ -872,8 +872,8 @@ repeat(N) :-
     get_user_cpu_milliseconds(Time::out),
     [will_not_call_mercury],
 "
-    if (mercury.runtime.Native.isAvailable()) {
-        Time = mercury.runtime.Native.get_user_cpu_milliseconds();
+    if (jmercury.runtime.Native.isAvailable()) {
+        Time = jmercury.runtime.Native.get_user_cpu_milliseconds();
     } else {
         throw new java.lang.RuntimeException(
             ""get_user_cpu_milliseconds is not implemented in pure Java."" +
@@ -960,7 +960,7 @@ repeat(N) :-
         }
     }
 ").
-:- pragma foreign_type(java, int_reference, "mercury.benchmarking.IntRef").
+:- pragma foreign_type(java, int_reference, "benchmarking.IntRef").
 
 %  Create a new int_reference given a term for it to reference.
 :- impure pred new_int_reference(int::in, int_reference::out) is det.
@@ -979,7 +979,7 @@ repeat(N) :-
     new_int_reference(X::in, Ref::out),
     [will_not_call_mercury],
 "
-    Ref = new mercury.benchmarking.IntRef(X);
+    Ref = new benchmarking.IntRef(X);
 ").
 
 :- impure pred incr_ref(int_reference::in) is det.

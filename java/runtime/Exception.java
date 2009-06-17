@@ -4,7 +4,7 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class Exception extends java.lang.Error {
     // Should be mercury.univ.Univ_0 but we don't want to depend on the

@@ -1425,9 +1425,8 @@ string.from_char_list(Chars::in, Str::uo) :-
         does_not_affect_liveness],
 "
     java.lang.StringBuilder sb = new StringBuilder();
-    while (CharList instanceof mercury.list.List_1.F_cons_2) {
-        mercury.list.List_1.F_cons_2 cons =
-            (mercury.list.List_1.F_cons_2) CharList;
+    while (CharList instanceof list.List_1.F_cons_2) {
+        list.List_1.F_cons_2 cons = (list.List_1.F_cons_2) CharList;
         char c = ((java.lang.Character) cons.F1).charValue();
         sb.append(c);
         CharList = cons.F2;
@@ -1655,9 +1654,8 @@ string.append_list(Lists, string.append_list(Lists)).
         does_not_affect_liveness],
 "
     java.lang.StringBuilder sb = new java.lang.StringBuilder();
-    while (Strs instanceof mercury.list.List_1.F_cons_2) {
-        mercury.list.List_1.F_cons_2 cons =
-            (mercury.list.List_1.F_cons_2) Strs;
+    while (Strs instanceof list.List_1.F_cons_2) {
+        list.List_1.F_cons_2 cons = (list.List_1.F_cons_2) Strs;
         java.lang.String s = (java.lang.String) cons.F1;
         sb.append(s);
         Strs = cons.F2;

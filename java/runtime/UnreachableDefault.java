@@ -7,7 +7,7 @@
 // statement is reached.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class UnreachableDefault extends java.lang.RuntimeException {
 	

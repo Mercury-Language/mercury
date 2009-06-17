@@ -1552,7 +1552,7 @@ public class MercuryBitmap {
 :- pragma foreign_type("C", bitmap, "MR_BitmapPtr",
         [can_pass_as_mercury_type]) 
     where equality is bitmap_equal, comparison is bitmap_compare.
-:- pragma foreign_type("Java", bitmap, "mercury.bitmap.MercuryBitmap") 
+:- pragma foreign_type("Java", bitmap, "bitmap.MercuryBitmap") 
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("IL", bitmap,
     "class [mercury]mercury.bitmap__csharp_code.mercury_code.MercuryBitmap") 
@@ -1832,7 +1832,7 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     allocate_bitmap(N::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    BM = new mercury.bitmap.MercuryBitmap(N);
+    BM = new bitmap.MercuryBitmap(N);
 ").
 
 :- pragma foreign_proc("C#",

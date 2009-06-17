@@ -4,7 +4,7 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 	
-package mercury.runtime;
+package jmercury.runtime;
 
 public class TypeLayout {
 		// This should hold a value of one of the types
@@ -16,8 +16,8 @@ public class TypeLayout {
 		// typedef MR_DuPtagLayout *MR_DuTypeLayout;
 		// so here we just use DuPtagLayout[]
 		//
-	public mercury.runtime.DuPtagLayout[] layout_du() {
-		return (mercury.runtime.DuPtagLayout[]) layout_init;
+	public DuPtagLayout[] layout_du() {
+		return (DuPtagLayout[]) layout_init;
 	}
 
 		//
@@ -25,8 +25,8 @@ public class TypeLayout {
 		// typedef MR_EnumFunctorDesc **EnumTypeLayout;
 		// so here we just use EnumFunctorDesc[][]
 		//
-	public mercury.runtime.EnumFunctorDesc[] layout_enum() {
-		return (mercury.runtime.EnumFunctorDesc[]) layout_init;
+	public EnumFunctorDesc[] layout_enum() {
+		return (EnumFunctorDesc[]) layout_init;
 	}
 
 		//
@@ -34,16 +34,16 @@ public class TypeLayout {
 		// typedef MR_NotagFunctorDesc *MR_NotagTypeLayout;
 		// so here we just us NotagFunctorDesc[]
 		//
-	public mercury.runtime.NotagFunctorDesc[] layout_notag() {
-		return (mercury.runtime.NotagFunctorDesc[]) layout_init;
+	public NotagFunctorDesc[] layout_notag() {
+		return (NotagFunctorDesc[]) layout_init;
 	}
 		//
 		// In runtime/mercury_type_info.h:
 		// typedef MR_PseudoTypeInfo MR_EquivType;
 		// so here we just use MR_PseudoTypeInfo
 		//
-	public mercury.runtime.PseudoTypeInfo layout_equiv() {
-		return (mercury.runtime.PseudoTypeInfo) layout_init;
+	public PseudoTypeInfo layout_equiv() {
+		return (PseudoTypeInfo) layout_init;
 	}
 
 	public TypeLayout(java.lang.Object init) {

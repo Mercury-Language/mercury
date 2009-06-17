@@ -279,8 +279,8 @@ time.clock(Result, !IO) :-
     time.c_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    if (mercury.runtime.Native.isAvailable()) {
-        Ret = mercury.runtime.Native.clock();
+    if (jmercury.runtime.Native.isAvailable()) {
+        Ret = jmercury.runtime.Native.clock();
     } else {
         throw new java.lang.RuntimeException(
             ""time.clock is not implemented "" +
@@ -310,8 +310,8 @@ time.clock(Result, !IO) :-
     time.clocks_per_sec = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (mercury.runtime.Native.isAvailable()) {
-        Ret = mercury.runtime.Native.clocks_per_sec();
+    if (jmercury.runtime.Native.isAvailable()) {
+        Ret = jmercury.runtime.Native.clocks_per_sec();
     } else {
         throw new java.lang.RuntimeException(
             ""time.clocks_per_sec is not implemented "" +
@@ -392,8 +392,8 @@ time.times(Tms, Result, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    if (mercury.runtime.Native.isAvailable()) {
-        int[] times = mercury.runtime.Native.times();
+    if (jmercury.runtime.Native.isAvailable()) {
+        int[] times = jmercury.runtime.Native.times();
         if (times != null) {
             Ret = times[0];
             Ut  = times[1];
@@ -448,8 +448,8 @@ time.c_clk_tck = -1.   % default is to throw an exception.
     time.c_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (mercury.runtime.Native.isAvailable()) {
-        Ret = mercury.runtime.Native.clk_tck();
+    if (jmercury.runtime.Native.isAvailable()) {
+        Ret = jmercury.runtime.Native.clk_tck();
     } else {
         throw new java.lang.RuntimeException(
             ""time.clk_tck is not implemented "" +

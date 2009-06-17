@@ -4,7 +4,7 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 //   XXX In the C backend this was a union.  
 //   It might (eventually) be better to have derived classes
@@ -16,17 +16,17 @@ package mercury.runtime;
 public class TypeFunctors {
 	public java.lang.Object functors_init;
 	// the above field should contain one of the following types:
-	public mercury.runtime.DuFunctorDesc[] functors_du() {
-		return (mercury.runtime.DuFunctorDesc[]) functors_init;
+	public DuFunctorDesc[] functors_du() {
+		return (DuFunctorDesc[]) functors_init;
 	}
-	public mercury.runtime.EnumFunctorDesc[] functors_enum() {
-		return (mercury.runtime.EnumFunctorDesc[]) functors_init;
+	public EnumFunctorDesc[] functors_enum() {
+		return (EnumFunctorDesc[]) functors_init;
 	}
-	public mercury.runtime.ForeignEnumFunctorDesc[] functors_foreign_enum() {
-		return (mercury.runtime.ForeignEnumFunctorDesc[]) functors_init;
+	public ForeignEnumFunctorDesc[] functors_foreign_enum() {
+		return (ForeignEnumFunctorDesc[]) functors_init;
 	}
-	public mercury.runtime.NotagFunctorDesc functors_notag() {
-		return (mercury.runtime.NotagFunctorDesc) functors_init;
+	public NotagFunctorDesc functors_notag() {
+		return (NotagFunctorDesc) functors_init;
 	}
 	public TypeFunctors(java.lang.Object init) {
 		functors_init = init;

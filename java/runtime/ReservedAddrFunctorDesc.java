@@ -7,7 +7,7 @@
 // This corresponds to the C type MR_ReservedAddrFunctorDesc
 // in runtime/mercury_type_info.h.
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class ReservedAddrFunctorDesc {
 	public java.lang.String		ra_functor_name;

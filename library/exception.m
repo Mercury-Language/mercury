@@ -1645,7 +1645,7 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     throw_impl(T::in),
     [will_not_call_mercury, promise_pure],
 "
-    throw new mercury.runtime.Exception(T);
+    throw new jmercury.runtime.Exception(T);
 ").
 
 :- pragma foreign_proc("Java",
@@ -1653,13 +1653,15 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     [will_not_call_mercury, promise_pure],
 "
     try {
-        T = mercury.exception.ML_call_goal_det(
-            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Pred);
+        T = exception.ML_call_goal_det(
+            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            (Object[]) Pred);
     }
-    catch (mercury.runtime.Exception ex) {
-        T = mercury.exception.ML_call_handler_det(
-            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Handler,
-            (mercury.univ.Univ_0) ex.exception);
+    catch (jmercury.runtime.Exception ex) {
+        T = exception.ML_call_handler_det(
+            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            (Object[]) Handler,
+            (univ.Univ_0) ex.exception);
     }
 ").
 :- pragma foreign_proc("Java",
@@ -1667,13 +1669,15 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     [will_not_call_mercury, promise_pure],
 "
     try {
-        T = mercury.exception.ML_call_goal_semidet(
-            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Pred);
+        T = exception.ML_call_goal_semidet(
+            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            (Object[]) Pred);
     }
-    catch (mercury.runtime.Exception ex) {
-        T = mercury.exception.ML_call_handler_det(
-            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Handler,
-            (mercury.univ.Univ_0) ex.exception);
+    catch (jmercury.runtime.Exception ex) {
+        T = exception.ML_call_handler_det(
+            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            (Object[]) Handler,
+            (univ.Univ_0) ex.exception);
     }
 ").
 :- pragma foreign_proc("Java",
@@ -1681,13 +1685,15 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     [will_not_call_mercury, promise_pure],
 "
     try {
-        T = mercury.exception.ML_call_goal_det(
-            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Pred);
+        T = exception.ML_call_goal_det(
+            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            (Object[]) Pred);
     }
-    catch (mercury.runtime.Exception ex) {
-        T = mercury.exception.ML_call_handler_det(
-            (TypeInfo_Struct) TypeInfo_for_T, (Object[]) Handler,
-            (mercury.univ.Univ_0) ex.exception);
+    catch (jmercury.runtime.Exception ex) {
+        T = exception.ML_call_handler_det(
+            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            (Object[]) Handler,
+            (univ.Univ_0) ex.exception);
     }
 ").
 :- pragma foreign_proc("Java",
@@ -1712,13 +1718,13 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     Object[] Handler = (Object[]) Handler0;
 
     try {
-        mercury.runtime.MethodPtr pred = (mercury.runtime.MethodPtr) Pred[1];
+        jmercury.runtime.MethodPtr pred = (jmercury.runtime.MethodPtr) Pred[1];
         pred.call___0_0(new java.lang.Object[] { Pred, cont, cont_env_ptr });
     }
-    catch (mercury.runtime.Exception ex) {
-        Object T = mercury.exception.ML_call_handler_det(
-            (TypeInfo_Struct) TypeInfo_for_T, Handler,
-            (mercury.univ.Univ_0) ex.exception);
+    catch (jmercury.runtime.Exception ex) {
+        Object T = exception.ML_call_handler_det(
+            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T, Handler,
+            (univ.Univ_0) ex.exception);
         cont.call___0_0(new java.lang.Object[] { T, cont_env_ptr });
     }
 ").
@@ -1730,13 +1736,13 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     Object[] Handler = (Object[]) Handler0;
 
     try {
-        mercury.runtime.MethodPtr pred = (mercury.runtime.MethodPtr) Pred[1];
+        jmercury.runtime.MethodPtr pred = (jmercury.runtime.MethodPtr) Pred[1];
         pred.call___0_0(new java.lang.Object[] { Pred, cont, cont_env_ptr });
     }
-    catch (mercury.runtime.Exception ex) {
-        Object T = mercury.exception.ML_call_handler_det(
-            (TypeInfo_Struct) TypeInfo_for_T, Handler,
-            (mercury.univ.Univ_0) ex.exception);
+    catch (jmercury.runtime.Exception ex) {
+        Object T = exception.ML_call_handler_det(
+            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T, Handler,
+            (univ.Univ_0) ex.exception);
         cont.call___0_0(new java.lang.Object[] { T, cont_env_ptr });
     }
 ").

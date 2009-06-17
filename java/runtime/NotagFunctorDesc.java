@@ -4,16 +4,16 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class NotagFunctorDesc {
 	
 	public java.lang.String no_tag_functor_name;
-	public mercury.runtime.PseudoTypeInfo no_tag_functor_arg_type;
+	public PseudoTypeInfo no_tag_functor_arg_type;
 	public java.lang.String no_tag_functor_arg_name;
 
 	public NotagFunctorDesc(java.lang.String functor_name,
-		mercury.runtime.PseudoTypeInfo functor_arg_type,
+		PseudoTypeInfo functor_arg_type,
 		java.lang.Object functor_arg_name)
 	{
 		no_tag_functor_name = functor_name;

@@ -4,16 +4,15 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class DuPtagLayout {
 	
 	public int sectag_sharers;
-	public mercury.runtime.Sectag_Locn sectag_locn;
-	public /* final */ mercury.runtime.DuFunctorDesc[] sectag_alternatives;
+	public Sectag_Locn sectag_locn;
+	public /* final */ DuFunctorDesc[] sectag_alternatives;
 
-	public DuPtagLayout(int sharers, mercury.runtime.Sectag_Locn locn,
-			mercury.runtime.DuFunctorDesc[] alts)
+	public DuPtagLayout(int sharers, Sectag_Locn locn, DuFunctorDesc[] alts)
 	{
 		sectag_sharers = sharers;
 		sectag_locn = locn;
@@ -22,7 +21,7 @@ public class DuPtagLayout {
 
 	public DuPtagLayout(int sharers, int locn, DuFunctorDesc[] alts) {
 		sectag_sharers = sharers;
-		sectag_locn = new mercury.runtime.Sectag_Locn(locn);
+		sectag_locn = new Sectag_Locn(locn);
 		sectag_alternatives = alts;
 	}
 }

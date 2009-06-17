@@ -4,7 +4,7 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 // A PseudoTypeInfo represents a possibly non-ground type.
 // There are three possible cases:

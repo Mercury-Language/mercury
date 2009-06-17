@@ -4,7 +4,7 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class Sectag_Locn {
 	

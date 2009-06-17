@@ -821,7 +821,7 @@ special__Compare____tuple_0_0(ref object[] result,
 
         // We'll only copy objects of Mercury-defined types.  We could copy
         // more but that's what we do for C backends and it's enough.
-        if (!(original instanceof MercuryType)) {
+        if (!(original instanceof jmercury.runtime.MercuryType)) {
             return original;
         }
 
@@ -1029,42 +1029,42 @@ namespace mercury.builtin {
     //
 
     public static boolean
-    unify_2_p_0 (mercury.runtime.TypeInfo_Struct ti,
+    unify_2_p_0 (jmercury.runtime.TypeInfo_Struct ti,
         java.lang.Object x, java.lang.Object y)
     {
-        return mercury.rtti_implementation.generic_unify_2_p_0(ti, x, y);
+        return jmercury.rtti_implementation.generic_unify_2_p_0(ti, x, y);
     }
 
     public static Comparison_result_0
-    compare_3_p_0 (mercury.runtime.TypeInfo_Struct ti,
+    compare_3_p_0 (jmercury.runtime.TypeInfo_Struct ti,
         java.lang.Object x, java.lang.Object y)
     {
-        return mercury.rtti_implementation.generic_compare_3_p_0(ti, x, y);
+        return jmercury.rtti_implementation.generic_compare_3_p_0(ti, x, y);
     }
 
     public static Comparison_result_0
-    compare_3_p_1 (mercury.runtime.TypeInfo_Struct ti,
-        java.lang.Object x, java.lang.Object y)
-    {
-        return compare_3_p_0(ti, x, y);
-    }
-
-    public static Comparison_result_0
-    compare_3_p_2 (mercury.runtime.TypeInfo_Struct ti,
+    compare_3_p_1 (jmercury.runtime.TypeInfo_Struct ti,
         java.lang.Object x, java.lang.Object y)
     {
         return compare_3_p_0(ti, x, y);
     }
 
     public static Comparison_result_0
-    compare_3_p_3 (mercury.runtime.TypeInfo_Struct ti,
+    compare_3_p_2 (jmercury.runtime.TypeInfo_Struct ti,
         java.lang.Object x, java.lang.Object y)
     {
         return compare_3_p_0(ti, x, y);
     }
 
     public static Comparison_result_0
-    compare_representation_3_p_0 (mercury.runtime.TypeInfo_Struct ti,
+    compare_3_p_3 (jmercury.runtime.TypeInfo_Struct ti,
+        java.lang.Object x, java.lang.Object y)
+    {
+        return compare_3_p_0(ti, x, y);
+    }
+
+    public static Comparison_result_0
+    compare_representation_3_p_0 (jmercury.runtime.TypeInfo_Struct ti,
         java.lang.Object x, java.lang.Object y)
     {
         // stub only
@@ -1099,7 +1099,7 @@ namespace mercury.builtin {
     }
 
     public static boolean
-    __Unify____void_0_0(mercury.builtin.Void_0 x, mercury.builtin.Void_0 y)
+    __Unify____void_0_0(builtin.Void_0 x, builtin.Void_0 y)
     {
         // there should never be any values of type void/0
         throw new java.lang.Error (""unify/2 called for void type"");
@@ -1133,7 +1133,7 @@ namespace mercury.builtin {
     }
 
     public static Comparison_result_0
-    __Compare____void_0_0(mercury.builtin.Void_0 x, mercury.builtin.Void_0 y)
+    __Compare____void_0_0(builtin.Void_0 x, builtin.Void_0 y)
     {
         // there should never be any values of type void/0
         throw new java.lang.Error (""compare/3 called for void type"");

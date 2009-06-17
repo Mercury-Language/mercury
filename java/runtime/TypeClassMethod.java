@@ -4,7 +4,7 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 // This corresponds to the C type MR_TypeClassMethod
 // in runtime/mercury_typeclass_info.h.

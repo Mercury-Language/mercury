@@ -183,19 +183,16 @@ module_name_to_file_name_general(ModuleName, Ext, Search, MkDir, FileName,
         % Look up the module in the module->file mapping.
         source_file_map.lookup_module_source_file(ModuleName, FileName, !IO)
     ;
-        % Java files need to be placed in package subdirectories, e.g. the
-        % source file for `a.b.c' goes in `a_/b_/c.java'.
+        % Java files need to be placed into a package subdirectory and may need
+        % mangling.
         ( string.suffix(Ext, ".java")
         ; string.suffix(Ext, ".class")
         )
     ->
-        JavaModuleName = java_module_name(ModuleName),
-        ( sym_name_get_module_name(JavaModuleName, ParentModules) ->
-            BaseParentDirs = sym_name_to_list(ParentModules)
-        ;
-            BaseParentDirs = []
-        ),
-        BaseName = unqualify_name(JavaModuleName) ++ Ext,
+        BaseParentDirs = ["jmercury"],
+        mangle_sym_name_for_java(ModuleName, module_qual, "__",
+            MangledModuleName),
+        BaseName = MangledModuleName ++ Ext,
         choose_file_name(ModuleName, BaseParentDirs, BaseName, Ext, Search,
             MkDir, FileName, !IO)
     ;

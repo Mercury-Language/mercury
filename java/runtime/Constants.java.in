@@ -8,7 +8,7 @@
 // At the moment it just stores the library version.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class Constants {
 	public static final java.lang.String MR_VERSION = "@VERSION@";

@@ -650,7 +650,7 @@ ML_new_array(int Size, Object Item)
     java.lang.Class itemClass = Item.getClass();
     boolean found = false;
     for (java.lang.Class iface : itemClass.getInterfaces()) {
-        if (iface == mercury.runtime.MercuryType.class) {
+        if (iface == jmercury.runtime.MercuryType.class) {
             found = true;
             break;
         }

@@ -14,7 +14,7 @@
 // level class.   
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class JavaInternal {
 	public static java.lang.String		progname;

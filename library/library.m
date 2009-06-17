@@ -198,8 +198,8 @@
     library.version(Version::out),
     [will_not_call_mercury, promise_pure],
 "
-    Version = mercury.runtime.Constants.MR_VERSION + "" configured for ""
-        + mercury.runtime.Constants.MR_FULLARCH;
+    Version = jmercury.runtime.Constants.MR_VERSION + "" configured for ""
+        + jmercury.runtime.Constants.MR_FULLARCH;
 ").
 
 :- pragma foreign_decl("Erlang", local, "

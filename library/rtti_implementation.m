@@ -162,21 +162,20 @@
 
 :- type type_ctor_info ---> type_ctor_info(c_pointer).
 :- pragma foreign_type("Java", type_ctor_info,
-    "mercury.runtime.TypeCtorInfo_Struct").
+    "jmercury.runtime.TypeCtorInfo_Struct").
 
 :- type type_info ---> type_info(c_pointer).
-:- pragma foreign_type("Java", type_info,
-    "mercury.runtime.TypeInfo_Struct").
+:- pragma foreign_type("Java", type_info, "jmercury.runtime.TypeInfo_Struct").
 
 :- type type_layout ---> type_layout(c_pointer).
-:- pragma foreign_type("Java", type_layout, "mercury.runtime.TypeLayout").
+:- pragma foreign_type("Java", type_layout, "jmercury.runtime.TypeLayout").
 
 :- type pseudo_type_info ---> pseudo_type_info(int).
     % This should be a dummy type. The non-dummy definition is a workaround
     % for a bug in the Erlang backend that generates invalid code for the
     % dummy type.
 :- pragma foreign_type("Java", pseudo_type_info,
-    "mercury.runtime.PseudoTypeInfo").
+    "jmercury.runtime.PseudoTypeInfo").
 
 :- type typeclass_info ---> typeclass_info(c_pointer).
 :- pragma foreign_type("Java", typeclass_info, "java.lang.Object[]").
@@ -421,7 +420,7 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // XXX why is the cast needed here?
-    TypeInfo = (mercury.runtime.TypeInfo_Struct) TypeInfo_for_T;
+    TypeInfo = (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T;
 ").
 
 :- pragma foreign_proc("C#",
@@ -638,7 +637,7 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
     --->    unify_or_compare_pred.
 
 :- pragma foreign_type("Java", unify_or_compare_pred,
-    "mercury.runtime.MethodPtr").
+    "jmercury.runtime.MethodPtr").
 
 :- pred semidet_call_3(P::in, T::in, U::in) is semidet.
 semidet_call_3(_::in, _::in, _::in) :-
@@ -795,7 +794,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     semidet_call_3(Pred::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Object res = P.call___0_0(new Object[] { X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
@@ -803,7 +802,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     semidet_call_4(Pred::in, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Object res = P.call___0_0(new Object[] { A, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
@@ -811,7 +810,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Object res = P.call___0_0(new Object[] { A, B, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
@@ -819,7 +818,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Object res = P.call___0_0(new Object[] { A, B, C, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
@@ -827,7 +826,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Object res = P.call___0_0(new Object[] { A, B, C, D, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
@@ -835,7 +834,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Object res = P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
     succeeded = ((Boolean) res).booleanValue();
 ").
@@ -844,7 +843,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     result_call_4(Pred::in, Res::out, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Res = P.call___0_0(new Object[] { X, Y });
 ").
 
@@ -852,28 +851,28 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Res = P.call___0_0(new Object[] { A, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Res = P.call___0_0(new Object[] { A, B, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Res = P.call___0_0(new Object[] { A, B, C, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Res = P.call___0_0(new Object[] { A, B, C, D, X, Y });
 ").
 :- pragma foreign_proc("Java",
@@ -881,7 +880,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MethodPtr P = (MethodPtr) Pred;
+    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
     Res = P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
 ").
 
@@ -1665,10 +1664,10 @@ type_info_from_pseudo_type_info(PseudoTypeInfo) = TypeInfo :-
     type_info_from_pseudo_type_info(PseudoTypeInfo::in) = (TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (PseudoTypeInfo instanceof TypeCtorInfo_Struct) {
-        TypeInfo = new TypeInfo_Struct((TypeCtorInfo_Struct) PseudoTypeInfo);
+    if (PseudoTypeInfo instanceof jmercury.runtime.TypeCtorInfo_Struct) {
+        TypeInfo = new jmercury.runtime.TypeInfo_Struct((jmercury.runtime.TypeCtorInfo_Struct) PseudoTypeInfo);
     } else {
-        TypeInfo = (TypeInfo_Struct) PseudoTypeInfo;
+        TypeInfo = (jmercury.runtime.TypeInfo_Struct) PseudoTypeInfo;
     }
 ").
 
@@ -2029,26 +2028,26 @@ get_remote_secondary_tag(_::in) = (0::out) :-
     ;       stag_remote
     ;       stag_variable.
 
-% :- pragma foreign_type("Java", sectag_locn, "mercury.runtime.Sectag_Locn").
+% :- pragma foreign_type("Java", sectag_locn, "jmercury.runtime.Sectag_Locn").
 
 :- type du_sectag_alternatives ---> du_sectag_alternatives(c_pointer).
 :- pragma foreign_type("Java", du_sectag_alternatives,
-    "mercury.runtime.DuFunctorDesc[]").
+    "jmercury.runtime.DuFunctorDesc[]").
 
 :- type ptag_entry ---> ptag_entry(c_pointer).
-:- pragma foreign_type("Java", ptag_entry, "mercury.runtime.DuPtagLayout").
+:- pragma foreign_type("Java", ptag_entry, "jmercury.runtime.DuPtagLayout").
 
 :- type arg_types ---> arg_types(c_pointer).
-:- pragma foreign_type("Java", arg_types, "mercury.runtime.PseudoTypeInfo[]").
+:- pragma foreign_type("Java", arg_types, "jmercury.runtime.PseudoTypeInfo[]").
 
 :- type arg_names ---> arg_names(c_pointer).
 :- pragma foreign_type("Java", arg_names, "java.lang.String[]").
 
 :- type exist_info ---> exist_info(c_pointer).
-:- pragma foreign_type("Java", exist_info, "mercury.runtime.DuExistInfo").
+:- pragma foreign_type("Java", exist_info, "jmercury.runtime.DuExistInfo").
 
 :- type typeinfo_locn ---> typeinfo_locn(c_pointer).
-:- pragma foreign_type("Java", typeinfo_locn, "mercury.runtime.DuExistLocn").
+:- pragma foreign_type("Java", typeinfo_locn, "jmercury.runtime.DuExistLocn").
 
 :- func ptag_index(int, type_layout) = ptag_entry.
 
@@ -2089,10 +2088,9 @@ sectag_locn(_) = _ :-
     sectag_locn(PTagEntry::in) = (SectagLocn::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    mercury.runtime.Sectag_Locn SL_struct = PTagEntry.sectag_locn;
+    jmercury.runtime.Sectag_Locn SL_struct = PTagEntry.sectag_locn;
 
-    SectagLocn = new mercury.rtti_implementation.Sectag_locn_0(
-        SL_struct.value);
+    SectagLocn = new rtti_implementation.Sectag_locn_0(SL_struct.value);
 ").
 
 :- func du_sectag_alternatives(int, ptag_entry) = du_functor_desc.
@@ -2238,13 +2236,13 @@ get_type_info_from_term(_, _) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Term instanceof Object[]) {
-        TypeInfo = (TypeInfo_Struct) ((Object[]) Term)[Index];
+        TypeInfo = (jmercury.runtime.TypeInfo_Struct) ((Object[]) Term)[Index];
     } else {
         try {
             // The F<i> field variables are numbered from 1.
             int i = 1 + Index;
             Field f = Term.getClass().getDeclaredField(""F"" + i);
-            TypeInfo = (TypeInfo_Struct) f.get(Term);
+            TypeInfo = (jmercury.runtime.TypeInfo_Struct) f.get(Term);
         } catch (IllegalAccessException e) {
             throw new Error(e);
         } catch (NoSuchFieldException e) {
@@ -2296,7 +2294,7 @@ var_arity_type_info_index(TypeInfo, Index) =
 
     % The generic definition of var_arity_type_info_index assumes that
     % variable arity type_infos store the arity in the first word but that's
-    % not true for the TypeInfo_Struct in Java.
+    % not true for the jmercury.runtime.TypeInfo_Struct in Java.
     %
     % Keep this in sync with the Java version of type_info_index.
     %
@@ -2309,7 +2307,8 @@ var_arity_type_info_index(TypeInfo, Index) =
     // Variable numbers count from one.
     assert VarNum != 0;
 
-    TypeInfoAtIndex = (TypeInfo_Struct) TypeInfo.args[VarNum - 1];
+    TypeInfoAtIndex =
+        (jmercury.runtime.TypeInfo_Struct) TypeInfo.args[VarNum - 1];
 ").
 
 :- func type_info_index(type_info, int) = type_info.
@@ -2336,7 +2335,8 @@ type_info_index(TypeInfo, _) = TypeInfo :-
     // Variable numbers count from one.
     assert VarNum != 0;
 
-    TypeInfoAtIndex = (TypeInfo_Struct) TypeInfo.args[VarNum - 1];
+    TypeInfoAtIndex =
+        (jmercury.runtime.TypeInfo_Struct) TypeInfo.args[VarNum - 1];
 ").
 
 :- pred set_type_info_index(int::in, int::in, type_info::in,
@@ -2634,23 +2634,23 @@ type_ctor_num_functors(_) = _ :-
 
 :- type type_functors ---> type_functors(c_pointer).
 :- pragma foreign_type("Java", type_functors,
-    "mercury.runtime.TypeFunctors").
+    "jmercury.runtime.TypeFunctors").
 
 :- type du_functor_desc ---> du_functor_desc(c_pointer).
 :- pragma foreign_type("Java", du_functor_desc,
-    "mercury.runtime.DuFunctorDesc").
+    "jmercury.runtime.DuFunctorDesc").
 
 :- type enum_functor_desc ---> enum_functor_desc(c_pointer).
 :- pragma foreign_type("Java", enum_functor_desc,
-    "mercury.runtime.EnumFunctorDesc").
+    "jmercury.runtime.EnumFunctorDesc").
 
 :- type foreign_enum_functor_desc ---> foreign_enum_functor_desc(c_pointer).
 :- pragma foreign_type("Java", foreign_enum_functor_desc,
-    "mercury.runtime.ForeignEnumFunctorDesc").
+    "jmercury.runtime.ForeignEnumFunctorDesc").
 
 :- type notag_functor_desc ---> notag_functor_desc(c_pointer).
 :- pragma foreign_type("Java", notag_functor_desc,
-    "mercury.runtime.NotagFunctorDesc").
+    "jmercury.runtime.NotagFunctorDesc").
 
 :- inst du == bound(tcr_du ; tcr_du_usereq ; tcr_reserved_addr ;
     tcr_reserved_addr_usereq).

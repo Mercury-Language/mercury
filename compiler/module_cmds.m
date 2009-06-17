@@ -683,7 +683,7 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
     ClassPath = string.join_list(PathSeparator, Java_Incl_Dirs),
 
     globals.io_lookup_string_option(java_interpreter, Java, !IO),
-    ClassName = sym_name_to_string(java_module_name(MainModuleName)),
+    mangle_sym_name_for_java(MainModuleName, module_qual, ".", ClassName),
 
     % Remove symlink in the way, if any.
     io.remove_file(FileName, _, !IO),
@@ -697,7 +697,7 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
             "CLASSPATH=", ClassPath, "\n",
             "export CLASSPATH\n",
             "JAVA=${JAVA:-", Java, "}\n",
-            "exec $JAVA ", ClassName, " \"$@\"\n"
+            "exec $JAVA jmercury.", ClassName, " \"$@\"\n"
         ], !IO),
         io.close_output(ShellScript, !IO),
         io.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
@@ -737,7 +737,7 @@ list_class_files_for_jar(MainClassFiles, ClassSubDir, ListClassFiles, !IO) :-
         NestedClassPrefixes),
     NestedClassPrefixesSet = set.from_list(NestedClassPrefixes),
 
-    SearchDir = ClassSubDir / "mercury",
+    SearchDir = ClassSubDir / "jmercury",
     FollowSymLinks = yes,
     dir.recursive_foldl2(
         accumulate_nested_class_files(NestedClassPrefixesSet),

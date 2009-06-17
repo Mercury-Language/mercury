@@ -279,9 +279,7 @@ reverse_string(String0, String) :-
 :- pred output_imports(mlds_imports::in, io::di, io::uo) is det.
 
 output_imports(Imports, !IO) :-
-    list.foldl(output_import, Imports, !IO),
-    % We should always import the mercury.runtime classes.
-    io.write_string("import mercury.runtime.*;\n\n", !IO).
+    list.foldl(output_import, Imports, !IO).
 
 :- pred output_import(mlds_import::in, io::di, io::uo) is det.
 
@@ -300,9 +298,7 @@ output_import(Import, !IO) :-
         unexpected(this_file, "foreign import in Java backend")
     ),
     SymName = mlds_module_name_to_sym_name(ImportName),
-    PackageSymName = enforce_outermost_mercury_qualifier(SymName),
-    mangle_sym_name_for_java(PackageSymName, module_qual, ".",
-        package_name_mangling, ClassFile),
+    mangle_sym_name_for_java(SymName, module_qual, "__", ClassFile),
     % There are issues related to using import statements and Java's naming
     % conventions. To avoid these problems, we output dependencies as comments
     % only. This is ok, since we always use fully qualified names anyway.
@@ -836,7 +832,7 @@ create_addr_wrapper_name(CodeAddr, MangledClassEntityName) :-
     % (predicate) name.
     ModuleQualifierSym = mlds_module_name_to_sym_name(ModuleQualifier),
     mangle_sym_name_for_java(ModuleQualifierSym, convert_qual_kind(QualKind),
-        "__", no_package_name_mangling, ModuleNameStr),
+        "__", ModuleNameStr),
     ClassEntityName = "addrOf__" ++ ModuleNameStr ++ "__" ++ PredName,
     MangledClassEntityName = name_mangle_maybe_shorten(ClassEntityName).
 
@@ -1045,42 +1041,31 @@ output_init_2(Indent, InitPred, !IO) :-
 
 output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
         !IO) :-
-    JavaSafeModuleName = java_module_name(MercuryModuleName),
     output_auto_gen_comment(MercuryModuleName, !IO),
     indent_line(Indent, !IO),
     io.write_string("/* :- module ", !IO),
     prog_out.write_sym_name(MercuryModuleName, !IO),
     io.write_string(". */\n\n", !IO),
-    output_package_info(JavaSafeModuleName, !IO),
+    indent_line(Indent, !IO),
+    io.write_string("package jmercury;\n", !IO),
+
     output_imports(Imports, !IO),
     io.write_list(ForeignDecls, "\n", output_java_decl(Indent), !IO),
     io.write_string("public class ", !IO),
-    ClassName = unqualify_name(JavaSafeModuleName),
+    mangle_sym_name_for_java(MercuryModuleName, module_qual, "__", ClassName),
     io.write_string(ClassName, !IO),
     io.write_string(" {\n", !IO),
-    maybe_write_main_driver(Indent + 1, JavaSafeModuleName, Defns, !IO).
-
-    % Output a `package' directive at the top of the Java source file,
-    % if necessary.
-    %
-:- pred output_package_info(sym_name::in, io::di, io::uo) is det.
-
-output_package_info(unqualified(_), !IO).
-output_package_info(qualified(JavaSafeModule, _), !IO) :-
-    io.write_string("package ", !IO),
-    PackageName = sym_name_to_string(JavaSafeModule),
-    io.write_string(PackageName, !IO),
-    io.write_string(";\n", !IO).
+    maybe_write_main_driver(Indent + 1, ClassName, Defns, !IO).
 
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting Java class that calls the
     % `main' predicate. Save the command line arguments in the class
-    % variable `args' in the class `mercury.runtime.JavaInternal'.
+    % variable `args' in the class `jmercury.runtime.JavaInternal'.
     %
-:- pred maybe_write_main_driver(indent::in, sym_name::in,
+:- pred maybe_write_main_driver(indent::in, string::in,
     list(mlds_defn)::in, io::di, io::uo) is det.
 
-maybe_write_main_driver(Indent, JavaSafeModuleName, Defns, !IO) :-
+maybe_write_main_driver(Indent, ClassName, Defns, !IO) :-
     ( defns_contain_main(Defns) ->
         indent_line(Indent, !IO),
         io.write_string("public static void main", !IO),
@@ -1089,24 +1074,23 @@ maybe_write_main_driver(Indent, JavaSafeModuleName, Defns, !IO) :-
         io.write_string("{\n", !IO),
 
         % Save the progname and command line arguments in the class variables
-        % of `mercury.runtime.JavaInternal', as well as setting the default
+        % of `jmercury.runtime.JavaInternal', as well as setting the default
         % exit status.
-        ClassName = unqualify_name(JavaSafeModuleName),
         indent_line(Indent + 1, !IO),
-        io.write_string("mercury.runtime.JavaInternal.progname = """, !IO),
+        io.write_string("jmercury.runtime.JavaInternal.progname = """, !IO),
         io.write_string(ClassName, !IO),
         io.write_string(""";\n", !IO),
         indent_line(Indent + 1, !IO),
-        io.write_string("mercury.runtime.JavaInternal.args = args;\n", !IO),
+        io.write_string("jmercury.runtime.JavaInternal.args = args;\n", !IO),
         indent_line(Indent + 1, !IO),
-        io.write_string("mercury.runtime.JavaInternal.exit_status = ", !IO),
+        io.write_string("jmercury.runtime.JavaInternal.exit_status = ", !IO),
         io.write_string("0;\n", !IO),
         indent_line(Indent + 1, !IO),
-        prog_out.write_sym_name(JavaSafeModuleName, !IO),
+        io.write_string(ClassName, !IO),
         io.write_string(".main_2_p_0();\n", !IO),
         indent_line(Indent + 1, !IO),
         io.write_string("java.lang.System.exit", !IO),
-        io.write_string("(mercury.runtime.JavaInternal.exit_status);", !IO),
+        io.write_string("(jmercury.runtime.JavaInternal.exit_status);", !IO),
         io.nl(!IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
@@ -1306,9 +1290,8 @@ output_interface(Interface, !IO) :-
             Arity, _)
     ->
         SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-        PackageSymName = enforce_outermost_mercury_qualifier(SymName),
-        mangle_sym_name_for_java(PackageSymName, convert_qual_kind(QualKind),
-            ".", package_name_mangling, ModuleName),
+        mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind),
+            ".", ModuleName),
         io.format("%s.%s", [s(ModuleName), s(Name)], !IO),
         %
         % Check if the interface is one of the ones in the runtime
@@ -1861,50 +1844,48 @@ output_maybe_qualified_name(QualifiedName, CurrentModuleName, !IO) :-
     ( ModuleName = CurrentModuleName ->
         output_name(Name, !IO)
     ;
-        output_fully_qualified_thing(QualifiedName, output_name, ".", !IO)
+        output_fully_qualified_thing(QualifiedName, output_name, !IO)
     ).
 
 :- pred output_fully_qualified_name(mlds_qualified_entity_name::in,
     io::di, io::uo) is det.
 
 output_fully_qualified_name(QualifiedName, !IO) :-
-    output_fully_qualified_thing(QualifiedName, output_name, ".", !IO).
+    output_fully_qualified_thing(QualifiedName, output_name, !IO).
 
 :- pred output_fully_qualified_proc_label(mlds_qualified_proc_label::in,
     io::di, io::uo) is det.
 
 output_fully_qualified_proc_label(QualifiedName, !IO) :-
-    output_fully_qualified_thing(QualifiedName, mlds_output_proc_label, ".",
-        !IO).
+    output_fully_qualified_thing(QualifiedName, mlds_output_proc_label, !IO).
 
 :- pred output_fully_qualified_thing(mlds_fully_qualified_name(T)::in,
-    pred(T, io, io)::pred(in, di, uo) is det, string::in, io::di, io::uo)
-    is det.
+    pred(T, io, io)::pred(in, di, uo) is det, io::di, io::uo) is det.
 
-output_fully_qualified_thing(qual(ModuleName, QualKind, Name), OutputFunc,
-        Qualifier, !IO) :-
-    mlds_module_name_to_package_name(ModuleName) = PackageName,
-    mlds_module_name_to_sym_name(ModuleName) = WholeModuleName,
+output_fully_qualified_thing(qual(MLDS_ModuleName, QualKind, Name), OutputFunc,
+        !IO) :-
+    % XXX These functions are named wrongly for Java.
+    mlds_module_name_to_package_name(MLDS_ModuleName) = OuterName,
+    mlds_module_name_to_sym_name(MLDS_ModuleName) = InnerName,
 
-    % Write the package name components.
-    QualPackageName = enforce_outermost_mercury_qualifier(PackageName),
-    mangle_sym_name_for_java(QualPackageName, module_qual, Qualifier,
-        package_name_mangling, MangledPackageName),
-    io.write_string(MangledPackageName, !IO),
+    % Write the part of the qualifier that corresponds to a top-level Java
+    % class.
+    mangle_sym_name_for_java(OuterName, module_qual, "__", MangledOuterName),
+    io.write_string(MangledOuterName, !IO),
 
-    % Any module components following the package name will correspond to
-    % class names, so should *not* be suffixed with underscores.
-    ( PackageName = WholeModuleName ->
+    % Write the later parts of the qualifier correspond to nested Java classes.
+    ( OuterName = InnerName ->
         true
     ;
-        remove_sym_name_prefixes(WholeModuleName, PackageName, NonPackageName),
-        mangle_sym_name_for_java(NonPackageName, convert_qual_kind(QualKind),
-            Qualifier, no_package_name_mangling, MangledNonPackageName),
-        io.write_string(Qualifier, !IO),
-        io.write_string(MangledNonPackageName, !IO)
+        io.write_string(".", !IO),
+        remove_sym_name_prefixes(InnerName, OuterName, Suffix),
+        mangle_sym_name_for_java(Suffix, convert_qual_kind(QualKind), ".",
+            MangledSuffix),
+        io.write_string(MangledSuffix, !IO)
     ),
 
-    io.write_string(Qualifier, !IO),
+    % Write the qualified thing.
+    io.write_string(".", !IO),
     OutputFunc(Name, !IO).
 
 :- pred remove_sym_name_prefixes(sym_name::in, sym_name::in, sym_name::out)
@@ -2125,7 +2106,7 @@ output_type(_, mlds_foreign_type(ForeignType), !IO) :-
 output_type(_, mlds_class_type(Name, Arity, _ClassKind), !IO) :-
     % We used to treat enumerations specially here, outputting
     % them as "int", but now we do the same for all classes.
-    output_fully_qualified_thing(Name, output_class_name, ".", !IO),
+    output_fully_qualified_thing(Name, output_class_name, !IO),
     io.format("_%d", [i(Arity)], !IO).
 output_type(Style, mlds_ptr_type(Type), !IO) :-
     % XXX should we report an error here, if the type pointed to
@@ -2135,20 +2116,20 @@ output_type(Style, mlds_array_type(Type), !IO) :-
     output_type(Style, Type, !IO),
     output_array_brackets(Style, !IO).
 output_type(_, mlds_func_type(_FuncParams), !IO) :-
-    io.write_string("mercury.runtime.MethodPtr", !IO).
+    io.write_string("jmercury.runtime.MethodPtr", !IO).
 output_type(_, mlds_generic_type, !IO) :-
     io.write_string("java.lang.Object", !IO).
 output_type(_, mlds_generic_env_ptr_type, !IO) :-
     io.write_string("/* env_ptr */ java.lang.Object", !IO).
 output_type(_, mlds_type_info_type, !IO) :-
-    io.write_string("mercury.runtime.TypeInfo", !IO).
+    io.write_string("jmercury.runtime.TypeInfo", !IO).
 output_type(_, mlds_pseudo_type_info_type, !IO) :-
-    io.write_string("mercury.runtime.PseudoTypeInfo", !IO).
+    io.write_string("jmercury.runtime.PseudoTypeInfo", !IO).
 output_type(_, mlds_cont_type(_), !IO) :-
     % XXX Should this actually be a class that extends MethodPtr?
-    io.write_string("mercury.runtime.MethodPtr", !IO).
+    io.write_string("jmercury.runtime.MethodPtr", !IO).
 output_type(_, mlds_commit_type, !IO) :-
-    io.write_string("mercury.runtime.Commit", !IO).
+    io.write_string("jmercury.runtime.Commit", !IO).
 output_type(Style, mlds_rtti_type(RttiIdMaybeElement), !IO) :-
     rtti_id_maybe_element_java_type(RttiIdMaybeElement, JavaTypeName, IsArray),
     io.write_string(JavaTypeName, !IO),
@@ -2188,7 +2169,7 @@ output_mercury_type(Style, Type, CtorCat, !IO) :-
         io.write_string("double", !IO)
     ;
         CtorCat = ctor_cat_void,
-        io.write_string("mercury.builtin.Void_0", !IO)
+        io.write_string("builtin.Void_0", !IO)
     ;
         CtorCat = ctor_cat_variable,
         io.write_string("java.lang.Object", !IO)
@@ -2293,10 +2274,10 @@ type_category_is_array(CtorCat) = IsArray :-
 hand_defined_type(ctor_cat_system(Kind), SubstituteName) :-
     (
         Kind = cat_system_type_info,
-        SubstituteName = "mercury.runtime.TypeInfo_Struct"
+        SubstituteName = "jmercury.runtime.TypeInfo_Struct"
     ;
         Kind = cat_system_type_ctor_info,
-        SubstituteName = "mercury.runtime.TypeCtorInfo_Struct"
+        SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct"
     ;
         Kind = cat_system_typeclass_info,
         SubstituteName = "/* typeclass_info */ java.lang.Object[]"
@@ -2744,7 +2725,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, DoCommitStmt, _, ExitMethods,
     DoCommitStmt = ml_stmt_do_commit(Ref),
     indent_line(Indent, !IO),
     output_rval(ModuleInfo, Ref, FuncInfo ^ func_info_name ^ mod_name, !IO),
-    io.write_string(" = new mercury.runtime.Commit();\n", !IO),
+    io.write_string(" = new jmercury.runtime.Commit();\n", !IO),
     indent_line(Indent, !IO),
     io.write_string("throw ", !IO),
     output_rval(ModuleInfo, Ref, FuncInfo ^ func_info_name ^ mod_name, !IO),
@@ -2763,7 +2744,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, TryCommitStmt, _, ExitMethods,
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO),
     indent_line(Indent, !IO),
-    io.write_string("catch (mercury.runtime.Commit commit_variable)\n", !IO),
+    io.write_string("catch (jmercury.runtime.Commit commit_variable)\n", !IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
     indent_line(Indent + 1, !IO),
@@ -2980,7 +2961,7 @@ output_switch_default(Indent, _ModuleInfo, _FuncInfo, Context,
     indent_line(Context, Indent, !IO),
     io.write_string("default: /*NOTREACHED*/\n", !IO),
     indent_line(Context, Indent + 1, !IO),
-    io.write_string("throw new mercury.runtime.UnreachableDefault();\n", !IO),
+    io.write_string("throw new jmercury.runtime.UnreachableDefault();\n", !IO),
     ExitMethods = set.make_singleton_set(can_throw).
 
 %-----------------------------------------------------------------------------%
@@ -3329,7 +3310,7 @@ output_unop(ModuleInfo, Unop, Expr, ModuleName, !IO) :-
     (
         Unop = cast(Type),
         % rtti_to_mlds.m generates casts from int to
-        % mercury.runtime.PseudoTypeInfo, but for Java
+        % jmercury.runtime.PseudoTypeInfo, but for Java
         % we need to treat these as constructions, not casts.
         % Similarly for conversions from TypeCtorInfo to TypeInfo.
         (
@@ -3337,7 +3318,7 @@ output_unop(ModuleInfo, Unop, Expr, ModuleName, !IO) :-
             Expr = ml_const(mlconst_int(_))
         ->
             maybe_output_comment("cast", !IO),
-            io.write_string("new mercury.runtime.PseudoTypeInfo(", !IO),
+            io.write_string("new jmercury.runtime.PseudoTypeInfo(", !IO),
             output_rval(ModuleInfo, Expr, ModuleName, !IO),
             io.write_string(")", !IO)
         ;
@@ -3346,7 +3327,7 @@ output_unop(ModuleInfo, Unop, Expr, ModuleName, !IO) :-
             )
         ->
             maybe_output_comment("cast", !IO),
-            io.write_string("new mercury.runtime.TypeInfo_Struct(", !IO),
+            io.write_string("new jmercury.runtime.TypeInfo_Struct(", !IO),
             output_rval(ModuleInfo, Expr, ModuleName, !IO),
             io.write_string(")", !IO)
         ;
@@ -3635,9 +3616,7 @@ mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
 
 mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
     SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-    PackageSymName = enforce_outermost_mercury_qualifier(SymName),
-    mangle_sym_name_for_java(PackageSymName, module_qual, ".",
-        package_name_mangling, ModuleName),
+    mangle_sym_name_for_java(SymName, module_qual, "__", ModuleName),
     io.write_string(ModuleName, !IO),
     io.write_string(".", !IO),
     output_data_name(DataName, !IO).

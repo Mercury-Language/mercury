@@ -4,7 +4,7 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 // This corresponds to the C typedef "MR_TypeClassDeclStruct"
 // in runtime/mercury_types.h, i.e. the C struct

@@ -342,13 +342,13 @@ store.new(S) :-
     S = S0;
 ").
 
-:- pragma foreign_type(java, generic_mutvar(T, S), "mercury.mutvar.Mutvar").
+:- pragma foreign_type(java, generic_mutvar(T, S), "mutvar.Mutvar").
 
 :- pragma foreign_proc("Java",
     new_mutvar(Val::in, Mutvar::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
 "
-    Mutvar = new mercury.mutvar.Mutvar(Val);
+    Mutvar = new mutvar.Mutvar(Val);
 ").
 
 :- pragma foreign_proc("Java",
@@ -416,7 +416,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
     unsafe_new_uninitialized_mutvar(Mutvar::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
 "
-    Mutvar = new mercury.mutvar.Mutvar();
+    Mutvar = new mutvar.Mutvar();
 ").
 
 store.new_cyclic_mutvar(Func, MutVar, !Store) :-
@@ -426,7 +426,7 @@ store.new_cyclic_mutvar(Func, MutVar, !Store) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type(java, generic_ref(T, S), "mercury.store.Ref").
+:- pragma foreign_type(java, generic_ref(T, S), "store.Ref").
 :- pragma foreign_code("Java",
 "
     public static class Ref {
@@ -521,7 +521,7 @@ store.new_cyclic_mutvar(Func, MutVar, !Store) :-
     new_ref(Val::di, Ref::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
 "
-    Ref = new mercury.store.Ref(Val);
+    Ref = new store.Ref(Val);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -621,7 +621,7 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     ** This will require RTTI.
     */
 
-    ArgRef = new mercury.store.Ref(Ref.getValue(), ArgNum);
+    ArgRef = new store.Ref(Ref.getValue(), ArgNum);
 ").
 
 :- pragma foreign_proc("C",
@@ -680,7 +680,7 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     ** This will require RTTI.
     */
 
-    ArgRef = new mercury.store.Ref(Val, ArgNum);
+    ArgRef = new store.Ref(Val, ArgNum);
 ").
 
 :- pragma foreign_proc("C",
@@ -745,7 +745,7 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     unsafe_arg_ref(Ref::in, Arg::in, ArgRef::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
 "
-    ArgRef = new mercury.store.Ref(Ref.getValue(), Arg);
+    ArgRef = new store.Ref(Ref.getValue(), Arg);
 ").
 
 :- pragma foreign_proc("C",
@@ -764,5 +764,5 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     unsafe_new_arg_ref(Val::di, Arg::in, ArgRef::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
 "
-    ArgRef = new mercury.store.Ref(Val, Arg);
+    ArgRef = new store.Ref(Val, Arg);
 ").

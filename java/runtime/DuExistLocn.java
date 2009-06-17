@@ -4,7 +4,7 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 // Corresponds to MR_DuExistLocn in runtime/mercury_type_info.h
 

@@ -1875,7 +1875,7 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
         % so there's no need for the "Ptr" suffixes.
         string.remove_suffix(GenTypeName0, "Ptr", GenTypeName1)
     ->
-        JavaTypeName = "mercury.runtime." ++ GenTypeName1
+        JavaTypeName = "jmercury.runtime." ++ GenTypeName1
     ;
         % In C, we do some nasty hacks to represent type class
         % constraints of different arities as different structures
@@ -1884,7 +1884,7 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
         % (with an extra level of indirection for the array).
         string.prefix(GenTypeName0, "TypeClassConstraint_")
     ->
-        JavaTypeName = "mercury.runtime.TypeClassConstraint"
+        JavaTypeName = "jmercury.runtime.TypeClassConstraint"
     ;
         % In C, we do some nasty hacks to represent type infos
         % different arities as different structures
@@ -1897,9 +1897,9 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
         ; string.prefix(GenTypeName0, "VA_TypeInfo_Struct")
         )
     ->
-        JavaTypeName = "mercury.runtime.TypeInfo_Struct"
+        JavaTypeName = "jmercury.runtime.TypeInfo_Struct"
     ;
-        JavaTypeName = "mercury.runtime." ++ GenTypeName0
+        JavaTypeName = "jmercury.runtime." ++ GenTypeName0
     ).
 
 tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
@@ -1925,11 +1925,11 @@ tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
         % (with an extra level of indirection for the array).
         string.prefix(GenTypeName, "TypeClassConstraint_")
     ->
-        JavaTypeName = "mercury.runtime.TypeClassConstraint"
+        JavaTypeName = "jmercury.runtime.TypeClassConstraint"
     ;
         % The rest are all defined in Mercury's Java runtime
         % (java/runtime/*.java).
-        JavaTypeName = "mercury.runtime." ++ GenTypeName
+        JavaTypeName = "jmercury.runtime." ++ GenTypeName
     ).
 
     % ctor_rtti_name_type(RttiName, Type, IsArray)
@@ -2149,7 +2149,7 @@ tabling_id_c_type(Id, JavaTypeName, IsArray) :-
 tabling_id_java_type(Id, JavaTypeName, IsArray) :-
     % Since tabling is not yet implemented for Java, this is only provisional.
     tabling_id_base_type(Id, CTypeName, IsArray),
-    JavaTypeName = "mercury.runtime." ++ CTypeName.
+    JavaTypeName = "jmercury.runtime." ++ CTypeName.
 
 :- pred tabling_id_base_type(proc_tabling_struct_id::in, string::out,
     is_array::out) is det.

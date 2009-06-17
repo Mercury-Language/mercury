@@ -4,7 +4,7 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 // This corresponds to the C type MR_TypeClassConstraint
 // in runtime/mercury_type_info.h.
@@ -18,7 +18,7 @@ public class TypeClassConstraint {
 	}
 
 	public void init(TypeClassDeclStruct type_class,
-		// XXX Object[] should be mercury.runtime.PseudoTypeInfo[],
+		// XXX Object[] should be PseudoTypeInfo[],
 		//     but mlds_to_java.m generates Object[] since
 		//     init_array/1 doesn't give type info
 		Object[] ptis)

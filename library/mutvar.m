@@ -152,13 +152,13 @@ new_mutvar(X, Ref) :-
     }
 ").
 
-:- pragma foreign_type("Java", mutvar(T), "mercury.mutvar.Mutvar").
+:- pragma foreign_type("Java", mutvar(T), "mutvar.Mutvar").
 
 :- pragma foreign_proc("Java",
     new_mutvar0(Ref::uo),
     [will_not_call_mercury, thread_safe],
 "
-    Ref = new mercury.mutvar.Mutvar();
+    Ref = new mutvar.Mutvar();
 ").
 
 :- pragma foreign_proc("Java",

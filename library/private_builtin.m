@@ -446,7 +446,7 @@ public static object[] MR_typeclass_info_arg_typeclass_info(
 
 :- pragma foreign_code("Java", "
 
-public static TypeInfo_Struct
+public static jmercury.runtime.TypeInfo_Struct
 MR_typeclass_info_param_type_info(/* typeclass_info */ Object[] tcinfo,
     int index)
 {
@@ -455,13 +455,14 @@ MR_typeclass_info_param_type_info(/* typeclass_info */ Object[] tcinfo,
 
     base_tcinfo = (Object[]) tcinfo[0];
     t1 = ((Integer) base_tcinfo[0]).intValue() + index;
-    return (TypeInfo_Struct) tcinfo[t1];
+    return (jmercury.runtime.TypeInfo_Struct) tcinfo[t1];
 }
 
-public static TypeInfo_Struct MR_typeclass_info_instance_tvar_type_info(
+public static jmercury.runtime.TypeInfo_Struct
+MR_typeclass_info_instance_tvar_type_info(
     /* typeclass_info */ Object[] tcinfo, int index) 
 {
-    return (TypeInfo_Struct) tcinfo[index];
+    return (jmercury.runtime.TypeInfo_Struct) tcinfo[index];
 }
 
 public static /* typeclass_info */ Object[] MR_typeclass_info_superclass_info(
@@ -475,7 +476,8 @@ public static /* typeclass_info */ Object[] MR_typeclass_info_superclass_info(
     return (/* typeclass_info */ Object[]) tcinfo[t1];
 }
 
-public static /* typeclass_info */ Object[] MR_typeclass_info_arg_typeclass_info(
+public static /* typeclass_info */ Object[]
+MR_typeclass_info_arg_typeclass_info(
     /* typeclass_info */ Object[] tcinfo, int index) 
 {
     return (/* typeclass_info */ Object[]) tcinfo[index];
@@ -1675,9 +1677,8 @@ no_clauses(PredName) :-
     //
 
     public static boolean
-    __Unify____ref_1_0(mercury.runtime.TypeInfo_Struct ti,
-        mercury.private_builtin.Ref_1 x,
-        mercury.private_builtin.Ref_1 y)
+    __Unify____ref_1_0(jmercury.runtime.TypeInfo_Struct ti,
+        private_builtin.Ref_1 x, private_builtin.Ref_1 y)
     {
         // stub only
         throw new java.lang.Error
@@ -1685,8 +1686,8 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
-        mercury.private_builtin.Heap_pointer_0 y)
+    __Unify____heap_pointer_0_0 (private_builtin.Heap_pointer_0 x,
+        private_builtin.Heap_pointer_0 y)
     {
         // stub only
         throw new java.lang.Error(""unify/2 for type heap_pointer/0"");
@@ -1694,8 +1695,8 @@ no_clauses(PredName) :-
 
     public static boolean
     __Unify____type_ctor_info_0_0(
-        mercury.runtime.TypeCtorInfo_Struct x,
-        mercury.runtime.TypeCtorInfo_Struct y)
+        jmercury.runtime.TypeCtorInfo_Struct x,
+        jmercury.runtime.TypeCtorInfo_Struct y)
     {
         // stub only
         throw new java.lang.Error
@@ -1703,9 +1704,9 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
-        mercury.runtime.TypeCtorInfo_Struct x,
-        mercury.runtime.TypeCtorInfo_Struct y)
+    __Unify____type_ctor_info_1_0(jmercury.runtime.TypeInfo_Struct ti,
+        jmercury.runtime.TypeCtorInfo_Struct x,
+        jmercury.runtime.TypeCtorInfo_Struct y)
     {
         // stub only
         throw new java.lang.Error
@@ -1714,8 +1715,8 @@ no_clauses(PredName) :-
 
     public static boolean
     __Unify____type_info_0_0(
-        mercury.runtime.TypeInfo_Struct x,
-        mercury.runtime.TypeInfo_Struct y)
+        jmercury.runtime.TypeInfo_Struct x,
+        jmercury.runtime.TypeInfo_Struct y)
     {
         // stub only
         throw new java.lang.Error
@@ -1723,9 +1724,9 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
-        mercury.runtime.TypeInfo_Struct x,
-        mercury.runtime.TypeInfo_Struct y)
+    __Unify____type_info_1_0(jmercury.runtime.TypeInfo_Struct ti,
+        jmercury.runtime.TypeInfo_Struct x,
+        jmercury.runtime.TypeInfo_Struct y)
     {
         // stub only
         throw new java.lang.Error
@@ -1741,7 +1742,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Unify____base_typeclass_info_1_0(jmercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
@@ -1757,7 +1758,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Unify____typeclass_info_1_0(jmercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
@@ -1765,65 +1766,65 @@ no_clauses(PredName) :-
             (""unify/2 for type typeclass_info/1"");
     }
 
-    public static mercury.builtin.Comparison_result_0
-    __Compare____ref_1_0(mercury.runtime.TypeInfo_Struct ti,
-        mercury.private_builtin.Ref_1 x,
-        mercury.private_builtin.Ref_1 y)
+    public static builtin.Comparison_result_0
+    __Compare____ref_1_0(jmercury.runtime.TypeInfo_Struct ti,
+        private_builtin.Ref_1 x, private_builtin.Ref_1 y)
     {
         // stub only
         throw new java.lang.Error
             (""called compare/3 for type private_builtin.ref"");
     }
 
-    public static mercury.builtin.Comparison_result_0
-    __Compare____heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
-        mercury.private_builtin.Heap_pointer_0 y)
+    public static builtin.Comparison_result_0
+    __Compare____heap_pointer_0_0 (
+        private_builtin.Heap_pointer_0 x,
+        private_builtin.Heap_pointer_0 y)
     {
         // stub only
         throw new java.lang.Error(""compare/2 for type heap_pointer/0"");
     }
 
-    public static mercury.builtin.Comparison_result_0
+    public static builtin.Comparison_result_0
     __Compare____type_ctor_info_0_0(
-        mercury.runtime.TypeCtorInfo_Struct x,
-        mercury.runtime.TypeCtorInfo_Struct y)
+        jmercury.runtime.TypeCtorInfo_Struct x,
+        jmercury.runtime.TypeCtorInfo_Struct y)
     {
         // stub only
         throw new java.lang.Error
             (""compare/2 for type type_ctor_info/1"");
     }
 
-    public static mercury.builtin.Comparison_result_0
-    __Compare____type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
-        mercury.runtime.TypeCtorInfo_Struct x,
-        mercury.runtime.TypeCtorInfo_Struct y)
+    public static builtin.Comparison_result_0
+    __Compare____type_ctor_info_1_0(jmercury.runtime.TypeInfo_Struct ti,
+        jmercury.runtime.TypeCtorInfo_Struct x,
+        jmercury.runtime.TypeCtorInfo_Struct y)
     {
         // stub only
         throw new java.lang.Error
             (""compare/2 for type type_ctor_info/1"");
     }
 
-    public static mercury.builtin.Comparison_result_0
+    public static builtin.Comparison_result_0
     __Compare____type_info_0_0(
-        mercury.runtime.TypeInfo_Struct x,
-        mercury.runtime.TypeInfo_Struct y)
+        jmercury.runtime.TypeInfo_Struct x, 
+        jmercury.runtime.TypeInfo_Struct y)
     {
         // stub only
         throw new java.lang.Error
             (""compare/2 for type type_info/0"");
     }
 
-    public static mercury.builtin.Comparison_result_0
-    __Compare____type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
-        mercury.runtime.TypeInfo_Struct x,
-        mercury.runtime.TypeInfo_Struct y)
+    public static builtin.Comparison_result_0
+    __Compare____type_info_1_0(jmercury.runtime.TypeInfo_Struct ti,
+        jmercury.runtime.TypeInfo_Struct x,
+        jmercury.runtime.TypeInfo_Struct y)
     {
         // stub only
         throw new java.lang.Error
             (""compare/2 for type type_info/0"");
     }
 
-    public static mercury.builtin.Comparison_result_0
+    public static builtin.Comparison_result_0
     __Compare____base_typeclass_info_0_0(
         java.lang.Object[] x, java.lang.Object[] y)
     {
@@ -1831,15 +1832,15 @@ no_clauses(PredName) :-
         throw new java.lang.Error(""compare/2 for type typeclass_info/1"");
     }
 
-    public static mercury.builtin.Comparison_result_0
-    __Compare____base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    public static builtin.Comparison_result_0
+    __Compare____base_typeclass_info_1_0(jmercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
         throw new java.lang.Error(""compare/2 for type typeclass_info/1"");
     }
 
-    public static mercury.builtin.Comparison_result_0
+    public static builtin.Comparison_result_0
     __Compare____typeclass_info_0_0(java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
@@ -1847,8 +1848,8 @@ no_clauses(PredName) :-
             (""compare/2 for type typeclass_info/0"");
     }
 
-    public static mercury.builtin.Comparison_result_0
-    __Compare____typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    public static builtin.Comparison_result_0
+    __Compare____typeclass_info_1_0(jmercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only

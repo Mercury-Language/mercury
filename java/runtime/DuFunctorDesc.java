@@ -4,22 +4,22 @@
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
-package mercury.runtime;
+package jmercury.runtime;
 
 public class DuFunctorDesc {
     
 	public java.lang.String du_functor_name;
 	public int du_functor_orig_arity;
 	public int du_functor_arg_type_contains_var;
-	public mercury.runtime.Sectag_Locn du_functor_sectag_locn;
+	public Sectag_Locn du_functor_sectag_locn;
 	public int du_functor_primary;
 	public int du_functor_secondary;
 	public int du_functor_ordinal;
 	// XXX PseudoTypeInfo's have not been implemented properly
 	//     yet, so this may not be correct.
-	public /*final*/ mercury.runtime.PseudoTypeInfo[] du_functor_arg_types;
+	public /*final*/ PseudoTypeInfo[] du_functor_arg_types;
 	public /*final*/ java.lang.String[] du_functor_arg_names;
-	public /*final*/ mercury.runtime.DuExistInfo du_functor_exist_info;
+	public /*final*/ DuExistInfo du_functor_exist_info;
 
 	public DuFunctorDesc()
 	{
@@ -37,15 +37,12 @@ public class DuFunctorDesc {
 		du_functor_orig_arity = orig_arity;
 		du_functor_ordinal = ordinal;
 		du_functor_arg_type_contains_var = arg_type_contains_var;
-		du_functor_sectag_locn =
-			new mercury.runtime.Sectag_Locn(sectag_locn);
+		du_functor_sectag_locn = new Sectag_Locn(sectag_locn);
 		du_functor_primary = primary;
 		du_functor_secondary = secondary;
 		du_functor_ordinal = ordinal;
-		du_functor_arg_types = (mercury.runtime.PseudoTypeInfo [])
-			arg_types;
+		du_functor_arg_types = (PseudoTypeInfo []) arg_types;
 		du_functor_arg_names = (java.lang.String []) arg_names;
-		du_functor_exist_info =
-			(mercury.runtime.DuExistInfo) exist_info;
+		du_functor_exist_info = (DuExistInfo) exist_info;
 	}
 }
