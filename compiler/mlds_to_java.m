@@ -364,6 +364,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_exported_enums(Indent + 1, ModuleInfo, ExportedEnums, !IO),
     io.write_string("\n// InitPreds\n", !IO),
     output_inits(Indent + 1, ModuleInfo, InitPreds, !IO),
+    io.write_string("\n// EnvVarNames\n", !IO),
+    output_env_vars(Indent + 1, NonRttiDefns, !IO),
     output_src_end(Indent, ModuleName, !IO).
     % XXX Need to handle non-Java foreign code at this point.
 
@@ -1032,6 +1034,53 @@ output_init_2(Indent, InitPred, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
+% Code to output globals for environment variables.
+%
+
+:- pred output_env_vars(indent::in, list(mlds_defn)::in, io::di, io::uo)
+    is det.
+
+output_env_vars(Indent, NonRttiDefns, !IO) :-
+    list.foldl(collect_env_var_names, NonRttiDefns, set.init, EnvVarNamesSet),
+    EnvVarNames = set.to_sorted_list(EnvVarNamesSet),
+    (
+        EnvVarNames = []
+    ;
+        EnvVarNames = [_ | _],
+        list.foldl(output_env_var_definition(Indent), EnvVarNames, !IO)
+    ).
+
+:- pred collect_env_var_names(mlds_defn::in,
+    set(string)::in, set(string)::out) is det.
+
+collect_env_var_names(Defn, !EnvVarNames) :-
+    Defn = mlds_defn(_, _, _, EntityDefn),
+    (
+        EntityDefn = mlds_data(_, _, _)
+    ;
+        EntityDefn = mlds_function(_, _, _, _, EnvVarNames),
+        set.union(EnvVarNames, !EnvVarNames)
+    ;
+        EntityDefn = mlds_class(_)
+    ).
+
+:- pred output_env_var_definition(indent::in, string::in, io::di, io::uo)
+    is det.
+
+output_env_var_definition(Indent, EnvVarName, !IO) :-
+    % We use int because the generated code compares against zero, and changing
+    % that is more trouble than it's worth as it affects the C backends.
+    indent_line(Indent, !IO),
+    io.write_string("private static int mercury_envvar_", !IO),
+    io.write_string(EnvVarName, !IO),
+    io.write_string(" =\n", !IO),
+    indent_line(Indent + 1, !IO),
+    io.write_string("java.lang.System.getenv(\"", !IO),
+    io.write_string(EnvVarName, !IO),
+    io.write_string("\") == null ? 0 : 1;\n", !IO).
+
+%-----------------------------------------------------------------------------%
+%
 % Code to output the start and end of a source file.
 %
 
@@ -1191,9 +1240,7 @@ output_defn_body(_, ModuleInfo, Name, OutputAux, _,
     output_data_defn(ModuleInfo, Name, OutputAux, Type, Initializer, !IO).
 output_defn_body(Indent, ModuleInfo, Name, OutputAux, Context,
         mlds_function(MaybePredProcId, Signature, MaybeBody,
-        _Attributes, EnvVarNames), !IO) :-
-    expect(set.empty(EnvVarNames), this_file,
-        "output_defn_body: EnvVarNames"),
+            _Attributes, _EnvVarNames), !IO) :-
     output_maybe(MaybePredProcId, output_pred_proc_id, !IO),
     output_func(Indent, ModuleInfo, Name, OutputAux, Context,
         Signature, MaybeBody, !IO).
@@ -3224,8 +3271,10 @@ output_lval(ModuleInfo, Lval, ModuleName, !IO) :-
         Lval = ml_mem_ref(Rval, _Type),
         output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO)
     ;
-        Lval = ml_global_var_ref(_),
-        sorry(this_file, "output_lval: global_var_ref NYI")
+        Lval = ml_global_var_ref(GlobalVarRef),
+        GlobalVarRef = env_var_ref(EnvVarName),
+        io.write_string("mercury_envvar_", !IO),
+        io.write_string(EnvVarName, !IO)
     ;
         Lval = ml_var(qual(ModName, QualKind, Name), _),
         QualName = qual(ModName, QualKind, entity_data(mlds_data_var(Name))),

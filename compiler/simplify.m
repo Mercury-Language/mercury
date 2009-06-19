@@ -1946,13 +1946,15 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
                 Target = target_erlang,
                 !:EvalAttributes = default_attributes(lang_erlang)
             ;
+                Target = target_java,
+                !:EvalAttributes = default_attributes(lang_java)
+            ;
                 ( Target = target_il
-                ; Target = target_java
                 ; Target = target_asm
                 ; Target = target_x86_64
                 ),
-                sorry(this_file, "NYI: runtime trace conditions "
-                    ++ "in languages other than C")
+                sorry(this_file,
+                    "runtime trace conditions for this target language")
             ),
             set_may_call_mercury(proc_will_not_call_mercury, !EvalAttributes),
             set_thread_safe(proc_thread_safe, !EvalAttributes),
