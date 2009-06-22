@@ -203,11 +203,14 @@
 
 %-----------------------------------------------------------------------------%
 
-defns_contain_main(Defns) :-
-    list.member(Defn, Defns),
-    Defn = mlds_defn(Name, _, _, _),
-    Name = entity_function(FuncName, _, _, _),
-    FuncName = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _).
+defns_contain_main([Defn | Defns]) :-
+    (
+        Defn = mlds_defn(Name, _, _, _),
+        Name = entity_function(FuncName, _, _, _),
+        FuncName = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _)
+    ;
+        defns_contain_main(Defns)
+    ).
 
 can_optimize_tailcall(Name, Call) :-
     Call = ml_stmt_call(_Signature, FuncRval, MaybeObject, _CallArgs,

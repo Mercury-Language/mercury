@@ -16,8 +16,8 @@
 % by the frontend of the compiler.
 %
 % Warning: any changes to the name mangling algorithms implemented in this
-% module may also require changes to extras/dynamic_linking/name_mangle.m,
-% profiler/demangle.m, util/mdemangle.c and compiler/name_mangle.m.
+% module may also require changes to profiler/demangle.m, util/mdemangle.c and
+% compiler/name_mangle.m.
 %
 % Main authors: trd, dgj.
 % This code was originally part of the foreign module and was moved here.
@@ -172,8 +172,14 @@
 :- func sym_name_mangle(sym_name) = string.
 
     % Mangle an arbitrary name into a C etc identifier.
+    % Initial digits are allowed.
     %
 :- func name_mangle(string) = string.
+
+    % Mangle an arbitrary name into a C etc identifier.
+    % The resulting identifier will not begin with a digit.
+    %
+:- func name_mangle_no_leading_digit(string) = string.
 
     % Produces a string of the form Module__Name.
     %
@@ -373,12 +379,29 @@ sym_name_mangle(qualified(ModuleName, PlainName)) = MangledName :-
     MangledPlainName = name_mangle(PlainName),
     MangledName = qualify_name(MangledModuleName, MangledPlainName).
 
-name_mangle(Name) = MangledName :-
-    % Warning: any changes to the name mangling algorithm here may also
-    % require changes to extras/dynamic_linking/name_mangle.m,
-    % profiler/demangle.m, util/mdemangle.c and compiler/name_mangle.m.
+name_mangle(Name) = name_mangle_2(yes, Name).
 
-    ( string.is_all_alnum_or_underscore(Name) ->
+name_mangle_no_leading_digit(Name) = name_mangle_2(no, Name).
+
+:- func name_mangle_2(bool, string) = string.
+
+name_mangle_2(AllowLeadingDigit, Name) = MangledName :-
+    % Warning: any changes to the name mangling algorithm here may also
+    % require changes to profiler/demangle.m, util/mdemangle.c and
+    % compiler/name_mangle.m.
+
+    (
+        string.is_all_alnum_or_underscore(Name),
+        (
+            AllowLeadingDigit = yes
+        ;
+            AllowLeadingDigit = no,
+            % If the mangled name may be used at the start of a symbol then
+            % leading digits are invalid.
+            string.index(Name, 0, FirstChar),
+            not char.is_digit(FirstChar)
+        )
+    ->
         % Any names that start with `f_' are changed so that they start with
         % `f__', so that we can use names starting with `f_' (followed by
         % anything except an underscore) without fear of name collisions.

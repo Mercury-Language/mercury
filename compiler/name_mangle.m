@@ -18,8 +18,8 @@
 % for generating makefile fragments etc.
 %
 % Warning: any changes to the name mangling algorithms implemented in this
-% module may also require changes to extras/dynamic_linking/name_mangle.m,
-% profiler/demangle.m, util/mdemangle.c and compiler/prog_foreign.m.
+% module may also require changes to profiler/demangle.m, util/mdemangle.c and
+% compiler/prog_foreign.m.
 %
 %-----------------------------------------------------------------------------%
 
@@ -190,8 +190,8 @@ proc_label_to_c_string(ProcLabel, AddPrefix) = ProcLabelString :-
 make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
         Name0, Arity, AddPrefix) = LabelName :-
     % WARNING: any changes to the name mangling algorithm here may also
-    % require changes to extras/dynamic_linking/name_mangle.m,
-    % profiler/demangle.m, util/mdemangle.c and compiler/prog_foreign.m.
+    % require changes to profiler/demangle.m, util/mdemangle.c and
+    % compiler/prog_foreign.m.
 
     DeclaringModuleName = sym_name_mangle(DeclaringModule),
     DefiningModuleName = sym_name_mangle(DefiningModule),

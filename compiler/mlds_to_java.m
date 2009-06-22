@@ -976,7 +976,7 @@ pred_label_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
         Suffix = "f",
         OrigArity = PredArity - 1
     ),
-    MangledName = name_mangle(Name),
+    MangledName = name_mangle_no_leading_digit(Name),
     PredLabelStr0 = MangledName ++ "_" ++ string.int_to_string(OrigArity)
         ++ "_" ++ Suffix,
     (
@@ -989,7 +989,7 @@ pred_label_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
     ).
 pred_label_string(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
         TypeArity)) = PredLabelStr :-
-    MangledPredName = name_mangle(PredName),
+    MangledPredName = name_mangle_no_leading_digit(PredName),
     MangledTypeName = name_mangle(TypeName),
     PredLabelStr0 = MangledPredName ++ "__",
     (
@@ -1972,7 +1972,7 @@ output_class_name_and_arity(Name, Arity, !IO) :-
 :- pred output_class_name(mlds_class_name::in, io::di, io::uo) is det.
 
 output_class_name(Name, !IO) :-
-    MangledName = name_mangle(Name),
+    MangledName = name_mangle_no_leading_digit(Name),
     % By convention, class names should start with a capital letter.
     UppercaseMangledName = flip_initial_case(MangledName),
     io.write_string(UppercaseMangledName, !IO).
@@ -2009,7 +2009,7 @@ output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
         Suffix = "f",
         OrigArity = PredArity - 1
     ),
-    MangledName = name_mangle(Name),
+    MangledName = name_mangle_no_leading_digit(Name),
     io.format("%s_%d_%s", [s(MangledName), i(OrigArity), s(Suffix)], !IO),
     (
         MaybeDefiningModule = yes(DefiningModule),
@@ -2021,7 +2021,7 @@ output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
 
 output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
         TypeArity), !IO) :-
-    MangledPredName = name_mangle(PredName),
+    MangledPredName = name_mangle_no_leading_digit(PredName),
     MangledTypeName = name_mangle(TypeName),
     io.write_string(MangledPredName, !IO),
     io.write_string("__", !IO),
@@ -2077,7 +2077,7 @@ output_mlds_var_name(mlds_var_name(Name, yes(Num)), !IO) :-
 :- func name_mangle_maybe_shorten(string) = string.
 
 name_mangle_maybe_shorten(Name) = MangledName :-
-    MangledName0 = name_mangle(Name),
+    MangledName0 = name_mangle_no_leading_digit(Name),
     ( string.length(MangledName0) < 100 ->
         MangledName = MangledName0
     ;
@@ -3244,8 +3244,7 @@ output_lval(ModuleInfo, Lval, ModuleName, !IO) :-
             FieldId = ml_field_named(FieldName, CtorType),
             (
                 FieldName = qual(_, _, UnqualFieldName),
-                MangledFieldName = name_mangle(UnqualFieldName),
-                MangledFieldName = "data_tag"
+                UnqualFieldName = "data_tag"
             ->
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.

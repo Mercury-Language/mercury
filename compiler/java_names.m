@@ -103,15 +103,15 @@ mangle_sym_name_for_java_2(SymName, QualKind, MangledSymName) :-
 :- func java_safe_name_component(java_qual_kind, string) = string.
 
 java_safe_name_component(QualKind, Name) = JavaSafeName :-
+    MangledName = name_mangle_no_leading_digit(Name),
     (
         QualKind = module_qual,
-        FlippedName = Name
+        FlippedName = MangledName
     ;
         QualKind = type_qual,
-        FlippedName = flip_initial_case(Name)
+        FlippedName = flip_initial_case(MangledName)
     ),
-    MangledName = name_mangle(FlippedName),
-    JavaSafeName = valid_java_symbol_name(MangledName).
+    JavaSafeName = valid_java_symbol_name(FlippedName).
 
 %-----------------------------------------------------------------------------%
 
