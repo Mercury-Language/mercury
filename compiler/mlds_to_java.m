@@ -315,7 +315,7 @@ output_import(Import, !IO) :-
 output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0,
-        InitPreds, _FinalPreds, ExportedEnums),
+        InitPreds, FinalPreds, ExportedEnums),
 
     % Do NOT enforce the outermost "mercury" qualifier here.  This module
     % name is compared with other module names in the MLDS, to avoid
@@ -364,6 +364,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_exported_enums(Indent + 1, ModuleInfo, ExportedEnums, !IO),
     io.write_string("\n// InitPreds\n", !IO),
     output_inits(Indent + 1, ModuleInfo, InitPreds, !IO),
+    io.write_string("\n// FinalPreds\n", !IO),
+    output_finals(Indent + 1, ModuleInfo, FinalPreds, !IO),
     io.write_string("\n// EnvVarNames\n", !IO),
     output_env_vars(Indent + 1, NonRttiDefns, !IO),
     output_src_end(Indent, ModuleName, !IO).
@@ -1034,6 +1036,46 @@ output_init_2(Indent, InitPred, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
+% Code to output module finalisers.
+%
+
+:- pred output_finals(indent::in, module_info::in, list(string)::in,
+    io::di, io::uo) is det.
+
+output_finals(Indent, _ModuleInfo, FinalPreds, !IO) :-
+    (
+        FinalPreds = []
+    ;
+        FinalPreds = [_ | _],
+        indent_line(Indent, !IO),
+        io.write_string("static {\n", !IO),
+        indent_line(Indent + 1, !IO),
+        io.write_string("jmercury.runtime.JavaInternal.register_finaliser(\n",
+            !IO),
+        indent_line(Indent + 2, !IO),
+        io.write_string("new java.lang.Runnable() {\n", !IO),
+        indent_line(Indent + 3, !IO),
+        io.write_string("public void run() {\n", !IO),
+        list.foldl(output_final_pred_call(Indent + 4), FinalPreds, !IO),
+        indent_line(Indent + 3, !IO),
+        io.write_string("}\n", !IO),
+        indent_line(Indent + 2, !IO),
+        io.write_string("}\n", !IO),
+        indent_line(Indent + 1, !IO),
+        io.write_string(");\n", !IO),
+        indent_line(Indent, !IO),
+        io.write_string("}\n", !IO)
+    ).
+
+:- pred output_final_pred_call(indent::in, string::in, io::di, io::uo) is det.
+
+output_final_pred_call(Indent, FinalPred, !IO) :-
+    indent_line(Indent, !IO),
+    io.write_string(FinalPred, !IO),
+    io.write_string("();\n", !IO).
+
+%-----------------------------------------------------------------------------%
+%
 % Code to output globals for environment variables.
 %
 
@@ -1137,6 +1179,9 @@ maybe_write_main_driver(Indent, ClassName, Defns, !IO) :-
         indent_line(Indent + 1, !IO),
         io.write_string(ClassName, !IO),
         io.write_string(".main_2_p_0();\n", !IO),
+        indent_line(Indent + 1, !IO),
+        io.write_string("jmercury.runtime.JavaInternal.run_finalisers();\n",
+            !IO),
         indent_line(Indent + 1, !IO),
         io.write_string("java.lang.System.exit", !IO),
         io.write_string("(jmercury.runtime.JavaInternal.exit_status);", !IO),

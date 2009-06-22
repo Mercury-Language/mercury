@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2001-2003 The University of Melbourne.
+// Copyright (C) 2001-2003, 2009 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -20,4 +20,17 @@ public class JavaInternal {
 	public static java.lang.String		progname;
 	public static java.lang.String[]	args;
 	public static int			exit_status;
+
+        private static java.util.List<Runnable> finalisers
+		= new java.util.ArrayList();
+
+	public static void register_finaliser(Runnable hook) {
+		finalisers.add(hook);
+	}
+
+	public static void run_finalisers() {
+		for (Runnable r : finalisers) {
+			r.run();
+		}
+	}
 }

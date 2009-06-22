@@ -1338,7 +1338,9 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
             pred_info_get_arg_types(PredInfo, ArgTypes),
             pred_info_get_procedures(PredInfo, ProcTable),
             ProcInfos = map.values(ProcTable),
-            ExportLang = lang_c,
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.get_target(Globals, CompilationTarget),
+            ExportLang = target_lang_to_foreign_export_lang(CompilationTarget),
             (
                 ArgTypes = [Arg1Type, Arg2Type],
                 type_is_io_state(Arg1Type),
@@ -1502,9 +1504,9 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
             pred_info_get_arg_types(PredInfo, ArgTypes),
             pred_info_get_procedures(PredInfo, ProcTable),
             ProcInfos = map.values(ProcTable),
-            % XXX We currently only support finalise declarations for the C
-            % and Erlang backends.
-            ExportLang = lang_c,
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.get_target(Globals, CompilationTarget),
+            ExportLang = target_lang_to_foreign_export_lang(CompilationTarget),
             (
                 ArgTypes = [Arg1Type, Arg2Type],
                 type_is_io_state(Arg1Type),
@@ -1584,6 +1586,27 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
+    ).
+
+:- func target_lang_to_foreign_export_lang(compilation_target)
+    = foreign_language.
+
+target_lang_to_foreign_export_lang(CompilationTarget) = ExportLang :-
+    (
+        ( CompilationTarget = target_c
+        ; CompilationTarget = target_asm
+        ; CompilationTarget = target_x86_64
+        ),
+        ExportLang = lang_c
+    ;
+        CompilationTarget = target_erlang,
+        ExportLang = lang_erlang
+    ;
+        CompilationTarget = target_il,
+        ExportLang = lang_il
+    ;
+        CompilationTarget = target_java,
+        ExportLang = lang_java
     ).
 
 :- pred add_pass_3_mutable(item_mutable_info::in,
