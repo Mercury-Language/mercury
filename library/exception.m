@@ -2764,6 +2764,8 @@ mercury_sys_init_exceptions_write_out_proc_statics(FILE *deep_fp,
     "ML_report_uncaught_exception").
 :- pragma foreign_export("IL", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
+:- pragma foreign_export("Java", report_uncaught_exception(in, di, uo),
+    "ML_report_uncaught_exception").
 :- pragma foreign_export("Erlang", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
 

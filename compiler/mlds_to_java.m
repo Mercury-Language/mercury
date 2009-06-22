@@ -1146,51 +1146,57 @@ output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
     mangle_sym_name_for_java(MercuryModuleName, module_qual, "__", ClassName),
     io.write_string(ClassName, !IO),
     io.write_string(" {\n", !IO),
-    maybe_write_main_driver(Indent + 1, ClassName, Defns, !IO).
 
     % Check if this module contains a `main' predicate and if it does insert
-    % a `main' method in the resulting Java class that calls the
-    % `main' predicate. Save the command line arguments in the class
-    % variable `args' in the class `jmercury.runtime.JavaInternal'.
-    %
-:- pred maybe_write_main_driver(indent::in, string::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
-
-maybe_write_main_driver(Indent, ClassName, Defns, !IO) :-
+    % a `main' method in the resulting Java class that calls the `main'
+    % predicate.
     ( defns_contain_main(Defns) ->
-        indent_line(Indent, !IO),
-        io.write_string("public static void main", !IO),
-        io.write_string("(java.lang.String[] args)\n", !IO),
-        indent_line(Indent, !IO),
-        io.write_string("{\n", !IO),
-
-        % Save the progname and command line arguments in the class variables
-        % of `jmercury.runtime.JavaInternal', as well as setting the default
-        % exit status.
-        indent_line(Indent + 1, !IO),
-        io.write_string("jmercury.runtime.JavaInternal.progname = """, !IO),
-        io.write_string(ClassName, !IO),
-        io.write_string(""";\n", !IO),
-        indent_line(Indent + 1, !IO),
-        io.write_string("jmercury.runtime.JavaInternal.args = args;\n", !IO),
-        indent_line(Indent + 1, !IO),
-        io.write_string("jmercury.runtime.JavaInternal.exit_status = ", !IO),
-        io.write_string("0;\n", !IO),
-        indent_line(Indent + 1, !IO),
-        io.write_string(ClassName, !IO),
-        io.write_string(".main_2_p_0();\n", !IO),
-        indent_line(Indent + 1, !IO),
-        io.write_string("jmercury.runtime.JavaInternal.run_finalisers();\n",
-            !IO),
-        indent_line(Indent + 1, !IO),
-        io.write_string("java.lang.System.exit", !IO),
-        io.write_string("(jmercury.runtime.JavaInternal.exit_status);", !IO),
-        io.nl(!IO),
-        indent_line(Indent, !IO),
-        io.write_string("}\n", !IO)
+        write_main_driver(Indent + 1, ClassName, !IO)
     ;
         true
-    ),
+    ).
+
+:- pred write_main_driver(indent::in, string::in, io::di, io::uo) is det.
+
+write_main_driver(Indent, ClassName, !IO) :-
+    indent_line(Indent, !IO),
+    io.write_string("public static void main", !IO),
+    io.write_string("(java.lang.String[] args)\n", !IO),
+    indent_line(Indent, !IO),
+    io.write_string("{\n", !IO),
+
+    % Save the progname and command line arguments in the class variables
+    % of `jmercury.runtime.JavaInternal', as well as setting the default
+    % exit status.
+    Body = [
+        "jmercury.runtime.JavaInternal.progname = """ ++ ClassName ++ """;",
+        "jmercury.runtime.JavaInternal.args = args;",
+        "jmercury.runtime.JavaInternal.exit_status = 0;",
+        "try {",
+        "   " ++ ClassName ++ ".main_2_p_0();",
+        "   jmercury.runtime.JavaInternal.run_finalisers();",
+        "} catch (jmercury.runtime.Exception e) {",
+        "   exception.ML_report_uncaught_exception(",
+        "       (univ.Univ_0) e.exception);",
+        "   if (System.getenv(""MERCURY_SUPPRESS_STACK_TRACE"") == null) {",
+        "       e.printStackTrace(System.err);",
+        "   }",
+        "   if (jmercury.runtime.JavaInternal.exit_status == 0) {",
+        "       jmercury.runtime.JavaInternal.exit_status = 1;",
+        "   }",
+        "}",
+        "java.lang.System.exit(jmercury.runtime.JavaInternal.exit_status);"
+    ],
+    list.foldl(write_indented_line(Indent + 1), Body, !IO),
+
+    indent_line(Indent, !IO),
+    io.write_string("}\n", !IO).
+
+:- pred write_indented_line(indent::in, string::in, io::di, io::uo) is det.
+
+write_indented_line(Indent, Line, !IO) :-
+    indent_line(Indent, !IO),
+    io.write_string(Line, !IO),
     io.nl(!IO).
 
 :- pred output_src_end(indent::in, mercury_module_name::in, io::di, io::uo)
