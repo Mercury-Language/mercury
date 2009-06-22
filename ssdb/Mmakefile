@@ -262,7 +262,6 @@ $(os_subdir)mdb.pic_o \
 
 realclean_local:
 	rm -f Mercury.modules tags SSDB_FLAGS SSDB_FLAGS.date
-	rm -rf mercury
 
 #-----------------------------------------------------------------------------#
 

@@ -84,7 +84,6 @@ ils: $(mercury_profile.ils)
 
 realclean_local:
 	rm -f tags PROF_FLAGS PROF_FLAGS.date
-	rm -rf mercury
 
 #-----------------------------------------------------------------------------#
 

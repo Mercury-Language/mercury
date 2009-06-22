@@ -326,7 +326,6 @@ clean_local:
 realclean_local:
 	rm -f tags $(MC_PROG).stats Mercury.modules \
 		COMP_FLAGS COMP_FLAGS.date mercury_compile$(EXT_FOR_EXE)
-	rm -rf mercury
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

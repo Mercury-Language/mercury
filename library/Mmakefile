@@ -449,7 +449,7 @@ realclean_local:
 	rm -f $($(STD_LIB_NAME).mods:%=%.h)
 	rm -f tags LIB_FLAGS LIB_FLAGS.date
 	rm -f runtime
-	rm -rf mercury
+	rm -rf jmercury
 	rm -f mr_int.class mr_float.class mr_char.class
 	rm -f mr_int\$$*.class mr_float\$$*.class mr_char\$$*.class
 	rm -f $(JARS) $(NATIVE_SO)
