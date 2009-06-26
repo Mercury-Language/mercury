@@ -887,6 +887,9 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- pragma foreign_export("Java", compare_type_infos(out, in, in),
+    "ML_compare_type_infos").
+
 compare_type_infos(Res, TypeInfo1, TypeInfo2) :-
     ( same_pointer_value(TypeInfo1, TypeInfo2) ->
         Res = (=)
@@ -983,29 +986,38 @@ type_ctor_is_variable_arity(TypeCtorInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % In the .NET backend, we don't generally have to collapse equivalences
-    % because they are already collapsed (il grades require
-    % intermodule optimization, which will collapse them for us).
-    %
-    % XXX For other backends this code may have to be completed.
-    %
 :- func collapse_equivalences(type_info) = type_info.
 
 collapse_equivalences(TypeInfo) = NewTypeInfo :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     (
+        % Look past equivalences.
         (
             TypeCtorRep = tcr_equiv_ground
         ;
             TypeCtorRep = tcr_equiv
         )
     ->
-        error("rtti_implementation.m: unimplemented: " ++
-            "collapsing equivalence types")
+        TypeLayout = get_type_layout(TypeCtorInfo),
+        EquivTypeInfo = get_layout_equiv(TypeLayout),
+        NewTypeInfo = collapse_equivalences(EquivTypeInfo)
     ;
         NewTypeInfo = TypeInfo
     ).
+
+:- func get_layout_equiv(type_layout) = type_info.
+
+:- pragma foreign_proc("Java",
+    get_layout_equiv(TypeLayout::in) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.PseudoTypeInfo pti = TypeLayout.layout_equiv();
+    TypeInfo = jmercury.runtime.TypeInfo_Struct.maybe_new(pti);
+").
+
+get_layout_equiv(_) = _ :-
+    private_builtin.sorry("get_layout_equiv").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1142,6 +1154,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor, Arity, Arguments)
     ;
         TypeCtorRep = tcr_notag,
+        % XXX incomplete
         Functor = "some_notag",
         Arity = 0,
         Arguments = []
@@ -1151,14 +1164,17 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor, Arity, Arguments)
     ;
         TypeCtorRep = tcr_notag_ground,
+        % XXX incomplete
         Functor = "some_notag_ground",
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_equiv_ground,
-        Functor = "some_equiv_ground",
-        Arity = 0,
-        Arguments = []
+        NewTypeInfo = collapse_equivalences(TypeInfo),
+        NewTypeCtorInfo = get_type_ctor_info(NewTypeInfo),
+        NewTypeCtorRep = get_type_ctor_rep(NewTypeCtorInfo),
+        deconstruct_2(Term, TypeInfo, NewTypeCtorInfo, NewTypeCtorRep,
+            NonCanon, Functor, Arity, Arguments)
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_func,
@@ -1167,6 +1183,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
         TypeCtorRep = tcr_equiv,
+        % XXX incomplete
         Functor = "some_equiv",
         Arity = 0,
         Arguments = []

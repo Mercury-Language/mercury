@@ -1017,18 +1017,14 @@ get_type_info_for_type_info = TypeDesc :-
     __Unify____type_ctor_desc_0_0(type_desc.Type_ctor_desc_0 x,
         type_desc.Type_ctor_desc_0 y)
     {
-        // stub only
-        throw new java.lang.Error
-            (""unify/2 for type_ctor_desc type not implemented"");
+        return x.struct.unify(y.struct);
     }
 
     public static builtin.Comparison_result_0
     __Compare____type_desc_0_0(type_desc.Type_desc_0 x,
         type_desc.Type_desc_0 y)
     {
-        // stub only
-        throw new java.lang.Error
-            (""compare/3 for type_desc type implemented"");
+        return rtti_implementation.ML_compare_type_infos(x.struct, y.struct);
     }
 
     public static builtin.Comparison_result_0
