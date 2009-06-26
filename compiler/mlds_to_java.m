@@ -98,6 +98,7 @@
 :- import_module ml_backend.ml_code_util.  % for ml_gen_local_var_decl_flags.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
+:- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.    % for mercury_std_library_name.
 :- import_module parse_tree.java_names.
@@ -1752,14 +1753,26 @@ output_rtti_assignments(Indent, ModuleInfo, ModuleName, Defns, !IO) :-
         Defns = []
     ;
         Defns = [_ | _],
+        OrderedDefns = order_mlds_rtti_defns(Defns),
         indent_line(Indent, !IO),
         io.write_string("static {\n", !IO),
         list.foldl(
-            output_rtti_defn_assignments(Indent + 1, ModuleInfo, ModuleName),
-            Defns, !IO),
+            output_rtti_defns_assignments(Indent + 1, ModuleInfo, ModuleName),
+            OrderedDefns, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
     ).
+
+:- pred output_rtti_defns_assignments(indent::in, module_info::in,
+    mlds_module_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
+
+output_rtti_defns_assignments(Indent, ModuleInfo, ModuleName, Defns, !IO) :-
+    % Separate cliques.
+    indent_line(Indent, !IO),
+    io.write_string("//\n", !IO),
+    list.foldl(
+        output_rtti_defn_assignments(Indent, ModuleInfo, ModuleName),
+        Defns, !IO).
 
 :- pred output_rtti_defn_assignments(indent::in, module_info::in,
     mlds_module_name::in, mlds_defn::in, io::di, io::uo) is det.
@@ -3414,19 +3427,29 @@ output_unop(ModuleInfo, Unop, Expr, ModuleName, !IO) :-
         % Similarly for conversions from TypeCtorInfo to TypeInfo.
         (
             Type = mlds_pseudo_type_info_type,
-            Expr = ml_const(mlconst_int(_))
+            Expr = ml_const(mlconst_int(N))
         ->
             maybe_output_comment("cast", !IO),
-            io.write_string("new jmercury.runtime.PseudoTypeInfo(", !IO),
-            output_rval(ModuleInfo, Expr, ModuleName, !IO),
-            io.write_string(")", !IO)
+            ( have_preallocated_pseudo_type_var(N) ->
+                io.write_string("jmercury.runtime.PseudoTypeInfo.K", !IO),
+                io.write_int(N, !IO)
+            ;
+                io.write_string("new jmercury.runtime.PseudoTypeInfo(", !IO),
+                output_rval(ModuleInfo, Expr, ModuleName, !IO),
+                io.write_string(")", !IO)
+            )
         ;
             ( Type = mercury_type(_, ctor_cat_system(cat_system_type_info), _)
             ; Type = mlds_type_info_type
             )
         ->
+            % XXX We really should be able to tell if we are casting a
+            % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
+            % be rather difficult as the compiler doesn't keep track of where
+            % type_ctor_infos are acting as type_infos properly.
             maybe_output_comment("cast", !IO),
-            io.write_string("new jmercury.runtime.TypeInfo_Struct(", !IO),
+            io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(",
+                !IO),
             output_rval(ModuleInfo, Expr, ModuleName, !IO),
             io.write_string(")", !IO)
         ;
@@ -3442,6 +3465,13 @@ output_unop(ModuleInfo, Unop, Expr, ModuleName, !IO) :-
         Unop = std_unop(StdUnop),
         output_std_unop(ModuleInfo, StdUnop, Expr, ModuleName, !IO)
     ).
+
+:- pred have_preallocated_pseudo_type_var(int::in) is semidet.
+
+have_preallocated_pseudo_type_var(N) :-
+    % Corresponds to static members in class PseudoTypeInfo.
+    N >= 1,
+    N =< 5.
 
 :- pred output_cast_rval(module_info::in, mlds_type::in, mlds_rval::in,
     mlds_module_name::in, io::di, io::uo) is det.

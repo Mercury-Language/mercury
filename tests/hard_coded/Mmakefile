@@ -139,6 +139,7 @@ ORDINARY_PROGS=	\
 	intermod_pragma_clause \
 	intermod_type_qual \
 	intermod_unused_args \
+	java_rtti_bug \
 	join_list \
 	lco_no_inline \
 	list_series_int \

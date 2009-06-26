@@ -18,22 +18,36 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 	public TypeInfo_Struct(TypeCtorInfo_Struct tc)
 	{
 		type_ctor = tc;
+		sanity_check();
 	}
 
-	// copy constructor
-	// XXX Rather than invoking this constructor, and allocating a new
-	//     type_info object on the heap, we should generate code which
-	//     just copies the pointer,
-	public TypeInfo_Struct(TypeInfo_Struct ti)
+	public static TypeInfo_Struct maybe_new(final Object obj)
 	{
-		type_ctor = ti.type_ctor;
-		args = ti.args;
+		// In at least one place in the standard library we make up a
+		// TypeInfo out of thin air to satisfy the compiler.
+		if (obj == null) {
+			return null;
+		}
+		if (obj instanceof TypeCtorInfo_Struct) {
+			return new TypeInfo_Struct((TypeCtorInfo_Struct) obj);
+		}
+		if (obj instanceof TypeInfo_Struct) {
+			return (TypeInfo_Struct) obj;
+		}
+		throw new java.lang.Error(
+			"expected TypeInfo_Struct or TypeCtorInfo_Struct");
 	}
 
 	public void init(TypeCtorInfo_Struct tc, PseudoTypeInfo[] as)
 	{
-	    type_ctor = tc;
-	    args = as;
+		type_ctor = tc;
+		args = as;
+
+		// We may be in the middle of initialising a cyclic data
+		// structure, so unfortunately, we can't actually sanity check
+		// the arguments here.
+		assert tc != null;
+		// sanity_check();
 	}
 
 	public TypeInfo_Struct copy()
@@ -43,6 +57,7 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 		if (args != null) {
 			ti.args = args.clone();
 		}
+		ti.sanity_check();
 		return ti;
 	}
 
@@ -119,4 +134,27 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 		}
 		return true;
 	}
+
+	private void sanity_check() {
+		assert type_ctor != null;
+
+		if (args == null) {
+			return;
+		}
+		for (PseudoTypeInfo pti : args) {
+			if (pti instanceof TypeInfo_Struct) {
+				TypeInfo_Struct ti = (TypeInfo_Struct) pti;
+				assert ti.type_ctor != null;
+				assert ti.variable_number == -1;
+			} else if (pti instanceof TypeCtorInfo_Struct) {
+				TypeCtorInfo_Struct tc =
+					(TypeCtorInfo_Struct) pti;
+				assert tc.variable_number == -1;
+			} else {
+				assert pti.variable_number != -1;
+			}
+		}
+	}
 }
+
+// vim: set ts=8 sw=8 sts=8 noet:

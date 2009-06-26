@@ -14,26 +14,6 @@
 % The RTTI data structures are used for static data that is used
 % for handling RTTI, polymorphism, and typeclasses.
 %
-% XXX There are problems with these definitions for the Java back-end.
-% Under the current system, the definitions are output as static variables
-% with static initializers, ordered so that subdefinitions always appear before
-% the definition which uses them.  This is neccessary because in Java, static
-% initializers are performed at runtime in textual order, and if a definition
-% relies on another static variable for its constructor but said variable has
-% not been initialized, then it is treated as `null' by the JVM with no
-% warning.
-% The problem with this approach is that it won't work for cyclic definitions.
-% eg:
-%   :- type foo ---> f(bar) ; g.
-%   :- type bar ---> f2(foo) ; g2
-% At some point this should be changed so that initialization is performed by 2
-% phases: first allocate all of the objects, then fill in the fields.
-%
-% XXX In the absence of this fix, there are still several places in the code
-% below which use list.append.  If possible these lists should instead be
-% manipulated through some use of prepending and/or list.reverse instead, so
-% that the algorithm stays O(N).
-%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.rtti_to_mlds.
@@ -50,6 +30,15 @@
     % Return a list of MLDS definitions for the given rtti_data list.
     %
 :- func rtti_data_list_to_mlds(module_info, list(rtti_data)) = list(mlds_defn).
+
+    % Given a list of MLDS RTTI data definitions (only), return the definitions
+    % such that if X appears in the initialiser for Y then X appears earlier in
+    % the list than Y.
+    %
+    % This function returns a list of cliques so that problems with ordering
+    % within cliques, if any, may be easier to discover.
+    %
+:- func order_mlds_rtti_defns(list(mlds_defn)) = list(list(mlds_defn)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -72,11 +61,14 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
+:- import_module digraph.
 :- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
+:- import_module svmap.
 :- import_module term.
 :- import_module univ.
 
@@ -117,7 +109,7 @@ rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
             Initializer, ExtraDefns),
         rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
             MLDS_Defn),
-        MLDS_Defns = ExtraDefns ++ [MLDS_Defn]
+        MLDS_Defns = [MLDS_Defn | ExtraDefns]
     ).
 
 :- pred rtti_name_and_init_to_defn(rtti_type_ctor::in, ctor_rtti_name::in,
@@ -339,7 +331,7 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
         SuperArrayInit = gen_init_array(
             gen_init_cast_rtti_id(ElementType, ModuleName), SuperRttiIds),
         rtti_id_and_init_to_defn(SuperArrayRttiId, SuperArrayInit, SuperDefn),
-        SuperDefns = SuperConstrDefns ++ [SuperDefn],
+        SuperDefns = [SuperDefn | SuperConstrDefns],
         SupersInit = gen_init_null_pointer(
             mlds_rtti_type(item_type(MethodIdsRttiId)))
     ),
@@ -538,7 +530,7 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
             type_ctor_enum_name_ordered_table),
         NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_functor_number_map),
-        Defns = EnumFunctorDescs ++ [ByValueDefn, ByNameDefn, NumberMapDefn]
+        Defns = [ByValueDefn, ByNameDefn, NumberMapDefn | EnumFunctorDescs]
     ;
         TypeCtorDetails = tcd_foreign_enum(ForeignEnumLang, _,
             ForeignEnumFunctors, ForeignEnumByOrdinal, ForeignEnumByName,
@@ -558,8 +550,8 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
             type_ctor_foreign_enum_name_ordered_table),
         NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_functor_number_map),
-        Defns = ForeignEnumFunctorDescs ++
-            [ByOrdinalDefn, ByNameDefn, NumberMapDefn]
+        Defns = [ByOrdinalDefn, ByNameDefn, NumberMapDefn |
+            ForeignEnumFunctorDescs]
     ;
         TypeCtorDetails = tcd_du(_, DuFunctors, DuByPtag, DuByName,
             FunctorNumberMap),
@@ -673,7 +665,7 @@ gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc)
         gen_init_maybe(ml_string_type, gen_init_string, MaybeArgName)
     ]),
     rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-    MLDS_Defns = SubDefns ++ [MLDS_Defn].
+    MLDS_Defns = [MLDS_Defn | SubDefns].
 
 :- func gen_du_functor_desc(module_info, rtti_type_ctor, du_functor)
     = list(mlds_defn).
@@ -758,7 +750,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
         ExistInfoInit
     ]),
     rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-    MLDS_Defns = SubDefns ++ [MLDS_Defn].
+    MLDS_Defns = [MLDS_Defn | SubDefns].
 
 :- func gen_res_addr_functor_desc(module_info, rtti_type_ctor,
     reserved_functor) = mlds_defn.
@@ -835,7 +827,7 @@ gen_tc_constraint(ModuleInfo, MakeRttiId, Constraint, RttiId, !Counter,
         PTIInits
     ]),
     rtti_id_and_init_to_defn(RttiId, Init, ConstrDefn),
-    !:Defns = !.Defns ++ PTIDefns ++ [ConstrDefn].
+    !:Defns = !.Defns ++ [ConstrDefn | PTIDefns].
 
 :- pred make_exist_tc_constr_id(rtti_type_ctor::in, int::in, int::in, int::in,
     rtti_id::out) is det.
@@ -875,7 +867,7 @@ gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo) = MLDS_Defns :-
             gen_init_cast_rtti_id(ElementType, ModuleName), TCConstrIds),
         rtti_name_and_init_to_defn(RttiTypeCtor, TCConstrArrayRttiName,
             TCConstrArrayInit, TCConstrArrayDefn),
-        ConstrDefns = TCConstrDefns ++ [TCConstrArrayDefn]
+        ConstrDefns = [TCConstrArrayDefn | TCConstrDefns]
     ),
     Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_int(Plain),
@@ -913,7 +905,7 @@ gen_field_types(ModuleInfo, RttiTypeCtor, Ordinal, Types) = MLDS_Defns :-
     gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, Init, SubDefns),
     RttiName = type_ctor_field_types(Ordinal),
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn),
-    MLDS_Defns = SubDefns ++ [MLDS_Defn].
+    MLDS_Defns = [MLDS_Defn | SubDefns].
 
 %-----------------------------------------------------------------------------%
 
@@ -1009,7 +1001,7 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
     RttiName = type_ctor_du_ptag_ordered_table,
     Init = init_array(PtagInitPrefix ++ PtagInits),
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn),
-    MLDS_Defns = SubDefns ++ [MLDS_Defn].
+    MLDS_Defns = [MLDS_Defn | SubDefns].
 
 :- func gen_du_ptag_ordered_table_body(module_name, rtti_type_ctor,
     assoc_list(int, sectag_table), int) = list(mlds_initializer).
@@ -1095,7 +1087,7 @@ gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor, ResFunctors,
             type_ctor_du_ptag_ordered_table)
     ]),
     rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-    MLDS_Defns = SubDefns ++ [MLDS_Defn].
+    MLDS_Defns = [MLDS_Defn | SubDefns].
 
 :- func gen_res_addr_functor_table(module_name, rtti_type_ctor,
     list(reserved_functor)) = mlds_defn.
@@ -1564,6 +1556,148 @@ gen_init_sectag_locn(Locn) = gen_init_builtin_const(Name) :-
 
 gen_init_type_ctor_rep(TypeCtorData) = gen_init_builtin_const(Name) :-
     rtti.type_ctor_rep_to_string(TypeCtorData, Name).
+
+%-----------------------------------------------------------------------------%
+%
+% Ordering RTTI definitions
+%
+
+order_mlds_rtti_defns(Defns) = OrdDefns :-
+    some [!Graph] (
+        digraph.init(!:Graph),
+        list.foldl2(add_rtti_defn_nodes, Defns, !Graph, map.init, NameMap),
+        list.foldl(add_rtti_defn_arcs, Defns, !Graph),
+        digraph.atsort(!.Graph, RevOrdSets)
+    ),
+    list.reverse(RevOrdSets, OrdSets),
+    list.map(set.to_sorted_list, OrdSets, OrdLists),
+    list.map(list.filter_map(map.search(NameMap)), OrdLists, OrdDefns).
+
+:- pred add_rtti_defn_nodes(mlds_defn::in,
+    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out,
+    map(mlds_data_name, mlds_defn)::in, map(mlds_data_name, mlds_defn)::out)
+    is det.
+
+add_rtti_defn_nodes(Defn, !Graph, !NameMap) :-
+    Name = Defn ^ mlds_entity_name,
+    (
+        Name = entity_data(DataName),
+        digraph.add_vertex(DataName, _, !Graph),
+        svmap.det_insert(DataName, Defn, !NameMap)
+    ;
+        ( Name = entity_type(_, _)
+        ; Name = entity_function(_, _, _, _)
+        ; Name = entity_export(_)
+        ),
+        unexpected(this_file, "add_rtti_defn_nodes: expected entity_data")
+    ).
+
+:- pred add_rtti_defn_arcs(mlds_defn::in,
+    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+
+add_rtti_defn_arcs(Defn, !Graph) :-
+    Defn = mlds_defn(EntityName, _, _, EntityDefn),
+    (
+        EntityName = entity_data(DefnDataName),
+        EntityDefn = mlds_data(Type, Initializer, _GCStatement),
+        Type = mlds_rtti_type(_)
+    ->
+        add_rtti_defn_arcs_initializer(DefnDataName, Initializer, !Graph)
+    ;
+        unexpected(this_file, "add_rtti_defn_arcs: expected rtti entity_data")
+    ).
+
+:- pred add_rtti_defn_arcs_initializer(mlds_data_name::in, mlds_initializer::in,
+    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+
+add_rtti_defn_arcs_initializer(DefnDataName, Initializer, !Graph) :-
+    (
+        Initializer = init_obj(Rval),
+        add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph)
+    ;
+        ( Initializer = init_struct(_, Initializers)
+        ; Initializer = init_array(Initializers)
+        ),
+        list.foldl(add_rtti_defn_arcs_initializer(DefnDataName), Initializers,
+            !Graph)
+    ;
+        Initializer = no_initializer
+    ).
+
+:- pred add_rtti_defn_arcs_rval(mlds_data_name::in, mlds_rval::in,
+    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+
+add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph) :-
+    (
+        Rval = ml_lval(Lval),
+        add_rtti_defn_arcs_lval(DefnDataName, Lval, !Graph)
+    ;
+        Rval = ml_mkword(_Tag, RvalA),
+        add_rtti_defn_arcs_rval(DefnDataName, RvalA, !Graph)
+    ;
+        Rval = ml_const(Const),
+        add_rtti_defn_arcs_const(DefnDataName, Const, !Graph)
+    ;
+        Rval = ml_unop(_, RvalA),
+        add_rtti_defn_arcs_rval(DefnDataName, RvalA, !Graph)
+    ;
+        Rval = ml_binop(_, RvalA, RvalB),
+        add_rtti_defn_arcs_rval(DefnDataName, RvalA, !Graph),
+        add_rtti_defn_arcs_rval(DefnDataName, RvalB, !Graph)
+    ;
+        Rval = ml_mem_addr(Lval),
+        add_rtti_defn_arcs_lval(DefnDataName, Lval, !Graph)
+    ;
+        Rval = ml_self(_)
+    ).
+
+:- pred add_rtti_defn_arcs_lval(mlds_data_name::in, mlds_lval::in,
+    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+
+add_rtti_defn_arcs_lval(DefnDataName, Lval, !Graph) :-
+    (
+        Lval = ml_field(_, Rval, _, _, _),
+        add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph)
+    ;
+        Lval = ml_mem_ref(Rval, _Type),
+        add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph)
+    ;
+        Lval = ml_global_var_ref(env_var_ref(_))
+    ;
+        Lval = ml_var(_, _)
+    ).
+
+:- pred add_rtti_defn_arcs_const(mlds_data_name::in, mlds_rval_const::in,
+    digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
+
+add_rtti_defn_arcs_const(DefnDataName, Const, !Graph) :-
+    (
+        Const = mlconst_data_addr(data_addr(_, DataName)),
+        (
+            DataName = mlds_rtti(_),
+            digraph.add_vertices_and_edge(DefnDataName, DataName, !Graph)
+        ;
+            ( DataName = mlds_data_var(_)
+            ; DataName = mlds_common(_)
+            ; DataName = mlds_module_layout
+            ; DataName = mlds_proc_layout(_)
+            ; DataName = mlds_internal_layout(_, _)
+            ; DataName = mlds_tabling_ref(_, _)
+            )
+        )
+    ;
+        ( Const = mlconst_true
+        ; Const = mlconst_false
+        ; Const = mlconst_int(_)
+        ; Const = mlconst_foreign(_, _, _)
+        ; Const = mlconst_float(_)
+        ; Const = mlconst_string(_)
+        ; Const = mlconst_multi_string(_)
+        ; Const = mlconst_named_const(_)
+        ; Const = mlconst_code_addr(_)
+        ; Const = mlconst_null(_)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
