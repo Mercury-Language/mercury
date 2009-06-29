@@ -63,7 +63,7 @@ then
     :
 else
     case "$HOST" in
-        goofy|eris|bob)
+        eris|bob)
         CVSROOT=":ext:mercury@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
         ;;
         *)
@@ -447,16 +447,14 @@ case $HOST in
         INSTALL_GRADE="hlc.gc"
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         INSTALL_LIBGRADES="hlc.gc           \
-            hlc.gc.tr                       \
             hlc.gc.trseg                    \
             hlc.par.gc                      \
             asm_fast.gc                     \
             asm_fast.par.gc                 \
-            asm_fast.gc.tr                  \
-            asm_fast.gc.tr.debug            \
+            asm_fast.gc.trseg               \
+            asm_fast.gc.trseg.debug         \
             asm_fast.gc.profdeep            \
-            asm_fast.gc.stseg               \
-            reg.gc.tr"                      
+            asm_fast.gc.stseg"
         ;;
     aral)
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
@@ -470,12 +468,12 @@ case $HOST in
         DEFAULT_GRADE="hlc.gc"
         export DEFAULT_GRADE
         INSTALL_GRADE="hlc.gc"
-        INSTALL_LIBGRADES="hlc.gc   \
-            hlc.gc.tr               \
-            hlc.gc.trseg            \
-            hlc.gc.tr.ll_debug      \
-            none.gc.tr              \
-            none.gc.trseg           \
+        INSTALL_LIBGRADES="hlc.gc       \
+            hlc.gc.trseg                \
+            hlc.gc.trseg.ll_debug       \
+            hlc.gc.trseg.prof           \
+            hlc.gc.trseg.memprof        \
+            none.gc.trseg               \
             none.gc.tr.debug"
         ;;
     taura)
@@ -986,10 +984,10 @@ case $HOST in
         fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O5-intermod
         ;;
     neptune)
-        fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O4
+        fullname=x86_64-unknown-linux-gnu-libc2.9-gnu-O4
         ;;
     goofy)
-        fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O2-intermod-hlc
+        fullname=x86_64-unknown-linux-gnu-libc2.9-gnu-O2-intermod-hlc
         ;;
     *)
         fullname=$fullarch
