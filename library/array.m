@@ -648,15 +648,18 @@ ML_new_array(int Size, Object Item)
     // to a functor, so we want the enclosing class.
 
     java.lang.Class itemClass = Item.getClass();
-    boolean found = false;
-    for (java.lang.Class iface : itemClass.getInterfaces()) {
-        if (iface == jmercury.runtime.MercuryType.class) {
-            found = true;
-            break;
+    if (!itemClass.isArray()) {
+        boolean found = false;
+        for (java.lang.Class iface : itemClass.getInterfaces()) {
+            if (iface == jmercury.runtime.MercuryType.class) {
+                found = true;
+                break;
+            }
         }
-    }
-    if (!found) {
-        itemClass = itemClass.getEnclosingClass();
+        if (!found) {
+            itemClass = itemClass.getEnclosingClass();
+        }
+        assert itemClass != null;
     }
     return java.lang.reflect.Array.newInstance(itemClass, Size);
 }
