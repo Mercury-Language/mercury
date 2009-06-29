@@ -1334,6 +1334,19 @@ string.to_char_list(Str::uo, CharList::in) :-
     }
 }").
 
+:- pragma foreign_proc("Java",
+    string.to_char_list_2(Str::in, CharList::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    list.List_1 lst = new list.List_1.F_nil_0();
+    for (int i = Str.length() - 1; i >= 0; i--) {
+        char c = Str.charAt(i);
+        lst = new list.List_1.F_cons_2(c, lst);
+    }
+    CharList = lst;
+").
+
 :- pragma foreign_proc("Erlang",
     string.to_char_list_2(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1731,6 +1744,28 @@ string.append_list(Strs::in) = (Str::uo) :-
     Str[len] = '\\0';
 }").
 
+:- pragma foreign_proc("Java",
+    string.join_list(Sep::in, Strs::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    java.lang.StringBuilder sb = new java.lang.StringBuilder();
+    boolean add_sep = false;
+
+    while (Strs instanceof list.List_1.F_cons_2) {
+        list.List_1.F_cons_2 cons = (list.List_1.F_cons_2) Strs;
+        java.lang.String s = (java.lang.String) cons.F1;
+        if (add_sep) {
+            sb.append(Sep);
+        }
+        sb.append(s);
+        add_sep = true;
+        Strs = cons.F2;
+    }
+
+    Str = sb.toString();
+").
+
 string.join_list(_, []) = "".
 string.join_list(Sep, [H | T]) = H ++ string.join_list_2(Sep, T).
 
@@ -1795,6 +1830,15 @@ string.sub_string_search(WholeString, Pattern, Index) :-
     Index = WholeString.IndexOf(Pattern, BeginAt);
     SUCCESS_INDICATOR = (Index >= 0);
 }").
+
+:- pragma foreign_proc("Java",
+    sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
+        Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Index = WholeString.indexOf(Pattern, BeginAt);
+    succeeded = (Index >= 0);
+").
 
 :- pragma foreign_proc("Erlang",
     sub_string_search_start(String::in, SubString::in, BeginAt::in, Index::out),
@@ -3539,12 +3583,21 @@ count_extra_trailing_zeroes(FloatStr, I, N0) = N :-
 "
     SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL) && Ch != '\\0';
 ").
+
 :- pragma foreign_proc("C#",
     string.contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);
 ").
+
+:- pragma foreign_proc("Java",
+    string.contains_char(Str::in, Ch::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    succeeded = (Str.indexOf(Ch) != -1);
+").
+
 string.contains_char(String, Char) :-
     string.contains_char(String, Char, 0, string.length(String)).
 
@@ -3714,6 +3767,20 @@ string.set_char(Char, Index, !Str) :-
             System.Convert.ToString(Ch),
             Str0.Substring(Index + 1));
         SUCCESS_INDICATOR = true;
+    }
+").
+:- pragma foreign_proc("Java",
+    string.set_char_2(Ch::in, Index::in, Str0::in, Str::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Index < 0 || Index >= Str0.length()) {
+        Str = null;
+        succeeded = false;
+    } else {
+        java.lang.StringBuilder sb = new StringBuilder(Str0);
+        sb.setCharAt(Index, Ch);
+        Str = sb.toString();
+        succeeded = true;
     }
 ").
 string.set_char_2(Ch, Index, Str0, Str) :-
@@ -3921,6 +3988,13 @@ string.append(S1::out, S2::out, S3::in) :-
     SUCCESS_INDICATOR = S3.Equals(System.String.Concat(S1, S2));
 }").
 
+:- pragma foreign_proc("Java",
+    string.append_iii(S1::in, S2::in, S3::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    succeeded = S3.equals(S1.concat(S2));
+").
+
 :- pragma foreign_proc("Erlang",
     string.append_iii(S1::in, S2::in, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -3975,6 +4049,19 @@ string.append_iii(X, Y, Z) :-
     }
 }").
 
+:- pragma foreign_proc("Java",
+    string.append_ioi(S1::in, S2::uo, S3::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (S3.startsWith(S1)) {
+        S2 = S3.substring(S1.length());
+        succeeded = true;
+    } else {
+        S2 = null;
+        succeeded = false;
+    }
+").
+
 string.append_ioi(X, Y, Z) :-
     string.mercury_append(X, Y, Z).
 
@@ -3999,6 +4086,13 @@ string.append_ioi(X, Y, Z) :-
 "{
     S3 = System.String.Concat(S1, S2);
 }").
+
+:- pragma foreign_proc("Java",
+    string.append_iio(S1::in, S2::in, S3::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S3 = S1.concat(S2);
+").
 
 :- pragma foreign_proc("Erlang",
     string.append_iio(S1::in, S2::in, S3::uo),
@@ -4053,6 +4147,14 @@ string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
     S2 = S3.Substring(S1Len);
 ").
 
+:- pragma foreign_proc("Java",
+    string.append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S1 = S3.substring(0, S1Len);
+    S2 = S3.substring(S1Len);
+").
+
 :- pragma foreign_proc("Erlang",
     string.append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -4077,21 +4179,28 @@ string.mercury_append(X, Y, Z) :-
 
 /*-----------------------------------------------------------------------*/
 
-string.substring(Str::in, Start::in, Count::in, SubStr::uo) :-
-    End = min(Start + Count, string.length(Str)),
-    SubStr = string.from_char_list(strchars(Start, End, Str)).
+substring(Str, !.Start, !.Count, SubStr) :-
+    ( !.Count =< 0 ->
+        SubStr = ""
+    ;
+        % Be careful about integer overflow when Count = max_int.
+        Len = string.length(Str),
+        max(0, !Start),
+        min(Len, !Start),
+        min(Len - !.Start, !Count),
+        CharList = strchars(!.Start, !.Start + !.Count, Str),
+        SubStr = string.from_char_list(CharList)
+    ).
 
 :- func strchars(int, int, string) = list(char).
 
-strchars(I, End, Str) =
-    (
-        ( I < 0
-        ; End =< I
-        )
-    ->
-        []
+strchars(I, End, Str) = Chars :-
+    ( I >= End ->
+        Chars = []
     ;
-        [string.index_det(Str, I) | strchars(I + 1, End, Str)]
+        C = string.unsafe_index(Str, I),
+        Cs = strchars(I + 1, End, Str),
+        Chars = [C | Cs]
     ).
 
 :- pragma foreign_proc("C",
@@ -4118,6 +4227,26 @@ strchars(I, End, Str) =
         SubString[Count] = '\\0';
     }
 }").
+
+:- pragma foreign_proc("Java",
+    string.substring(Str::in, Start::in, Count::in, SubString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
+"
+    if (Start < 0) Start = 0;
+    if (Count <= 0) {
+        SubString = """";
+    } else {
+        int len = Str.length();
+        if (Start > len) {
+            Start = len;
+        }
+        if (Count > len - Start) {
+            Count = len - Start;
+        }
+        SubString = Str.substring(Start, Start + Count);
+    }
+").
 
 :- pragma foreign_proc("Erlang",
     string.substring(Str::in, Start0::in, Count::in, SubString::uo),
@@ -4221,6 +4350,23 @@ strchars(I, End, Str) =
         Right = Str.Substring(Count);
     }
 }").
+
+:- pragma foreign_proc("Java",
+    string.split(Str::in, Count::in, Left::uo, Right::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Count <= 0) {
+        Left = """";
+        Right = Str;
+    } else {
+        int len = Str.length();
+        if (Count > len) {
+            Count = len;
+        }
+        Left = Str.substring(0, Count);
+        Right = Str.substring(Count);
+    }
+").
 
 :- pragma foreign_proc("Erlang",
     string.split(Str::in, Count::in, Left::uo, Right::uo),

@@ -1,0 +1,34 @@
+%-----------------------------------------------------------------------------%
+
+:- module string_split_2.
+:- interface.
+
+:- import_module io.
+
+:- pred main(io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
+
+main(!IO) :-
+    (
+        string.split("cat", -1, "", "cat"),
+        string.split("cat", 0, "", "cat"),
+        string.split("cat", 1, "c", "at"),
+        string.split("cat", 2, "ca", "t"),
+        string.split("cat", 3, "cat", ""),
+        string.split("cat", 4, "cat", "")
+    ->
+        io.write_string("test succeeded\n", !IO)
+    ;
+        io.write_string("test failed\n", !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=8 sts=4 sw=4 et
