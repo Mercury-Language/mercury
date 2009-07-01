@@ -42,6 +42,8 @@
     % mmc processes without exceeding command line limits on crappy operating
     % systems.
     %
+    % This is not quite the same as @file syntax as the environment is ignored.
+    %
 :- pred read_args_file(file_name::in, maybe(list(string))::out,
     io::di, io::uo) is det.
 

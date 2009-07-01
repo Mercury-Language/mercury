@@ -260,6 +260,7 @@ real_main_2(Args0, !IO) :-
     ( Args0 = ["--arg-file", ArgFile] ->
         % All the configuration and options file options are passed in the
         % given file, which is created by the parent `mmc --make' process.
+        % The environment is ignored, unlike with @file syntax.
         options_file.read_args_file(ArgFile, MaybeArgs1, !IO),
         (
             MaybeArgs1 = yes(Args1),
@@ -275,32 +276,26 @@ real_main_2(Args0, !IO) :-
         Link = no
     ;
         % Find out which options files to read.
-        handle_options(Args0, Errors0, OptionArgs, NonOptionArgs, Link, !IO),
+        % Don't report errors yet, as the errors may no longer exist
+        % after we have read in options files.
+        handle_options(Args0, _Errors0, OptionArgs, NonOptionArgs, Link, !IO),
+        read_options_files(options_variables_init, MaybeVariables0, !IO),
         (
-            Errors0 = [_ | _],
-            usage_errors(Errors0, !IO),
-            Variables = options_variables_init,
-            MaybeMCFlags = no
-        ;
-            Errors0 = [], read_options_files(options_variables_init, MaybeVariables0, !IO),
+            MaybeVariables0 = yes(Variables0),
+            lookup_mmc_options(Variables0, MaybeMCFlags0, !IO),
             (
-                MaybeVariables0 = yes(Variables0),
-                lookup_mmc_options(Variables0, MaybeMCFlags0, !IO),
-                (
-                    MaybeMCFlags0 = yes(MCFlags0),
-                    real_main_3(MCFlags0, MaybeMCFlags, Args0,
-                        Variables0, Variables, !IO)
-
-                ;
-                    MaybeMCFlags0 = no,
-                    Variables = options_variables_init,
-                    MaybeMCFlags = no
-                )
+                MaybeMCFlags0 = yes(MCFlags0),
+                real_main_3(MCFlags0, MaybeMCFlags, Args0,
+                    Variables0, Variables, !IO)
             ;
-                MaybeVariables0 = no,
+                MaybeMCFlags0 = no,
                 Variables = options_variables_init,
                 MaybeMCFlags = no
             )
+        ;
+            MaybeVariables0 = no,
+            Variables = options_variables_init,
+            MaybeMCFlags = no
         )
     ),
     (
