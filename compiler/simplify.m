@@ -1071,19 +1071,21 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         SwitchCanFail0, SwitchCanFail, !.Info, !Info),
     list.reverse(RevCases, Cases),
     (
-        Cases = [],
+        Cases = []
+    ->
         % An empty switch always fails.
         simplify_info_incr_cost_delta(cost_of_eliminate_switch, !Info),
         Context = goal_info_get_context(GoalInfo0),
         hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
     ;
         Cases = [case(MainConsId, OtherConsIds, SingleGoal)],
+        OtherConsIds = []
+    ->
         % A singleton switch is equivalent to the goal itself with a
         % possibly can_fail unification with the functor on the front.
         MainConsIdArity = cons_id_arity(MainConsId),
         (
             SwitchCanFail = can_fail,
-            OtherConsIds = [],
             MaybeConsIds \= yes([MainConsId])
         ->
             % Don't optimize in the case of an existentially typed constructor
@@ -1135,7 +1137,6 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         ),
         simplify_info_incr_cost_delta(cost_of_eliminate_switch, !Info)
     ;
-        Cases = [_, _ | _],
         GoalExpr = switch(Var, SwitchCanFail, Cases),
         (
             ( goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal)

@@ -207,6 +207,7 @@ ORDINARY_PROGS=	\
 	semi_disj \
 	setjmp_test \
 	shift_test \
+	simplify_multi_arm_switch \
 	solve_quadratic \
 	space \
 	stable_sort \
