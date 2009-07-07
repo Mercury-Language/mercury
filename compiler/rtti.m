@@ -453,7 +453,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% The data structures representing type class dictionaries
+% The data structures representing type class dictionaries.
 %
 
     % A base_typeclass_info holds information about a typeclass instance.
@@ -464,27 +464,27 @@
                 % Num_extra = num_unconstrained + num_constraints,
                 % where num_unconstrained is the number of unconstrained
                 % type variables from the head of the instance declaration.
-                num_extra :: int,
+                num_extra           :: int,
 
                 % Num_constraints is the number of constraints
                 % on the instance declaration.
-                num_constraints :: int,
+                num_constraints     :: int,
 
                 % Num_superclasses is the number of constraints
                 % on the typeclass declaration.
-                num_superclasses :: int,
+                num_superclasses    :: int,
 
                 % Class_arity is the number of type variables in the head
                 % of the class declaration.
-                class_arity :: int,
+                class_arity         :: int,
 
                 % Num_methods is the number of procedures in the typeclass
                 % declaration.
-                num_methods :: int,
+                num_methods         :: int,
 
                 % Methods is a list of length num_methods containing the
                 % addresses of the methods for this instance declaration.
-                methods :: list(rtti_proc_label)
+                methods             :: list(rtti_proc_label)
             ).
 
 %-----------------------------------------------------------------------------%

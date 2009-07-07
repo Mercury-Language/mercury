@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2008 The University of Melbourne.
+% Copyright (C) 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -104,11 +104,12 @@
 
 :- type static_cell_remap_info.
 
-    % bump_type_num_counter(GlobalData, Increment)
+    % bump_type_num_counter(Increment, !GlobalData)
     %
-    % Return a copy of GlobalData with a type counter incremented by Increment.
+    % Increment the type counter in GlobalData by Increment.
     %
-:- func bump_type_num_counter(global_data, int) = global_data.
+:- pred bump_type_num_counter(int::in, global_data::in, global_data::out)
+    is det.
 
     % merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, Remap)
     %
@@ -152,24 +153,23 @@
 
 :- type global_data
     --->    global_data(
+                % Information about the global variables defined by
+                % each procedure.
                 proc_var_map        :: proc_var_map,
-                                    % Information about the global variables
-                                    % defined by each procedure.
 
+                % Information about the layout structures defined by
+                % each procedure.
                 proc_layout_map     :: proc_layout_map,
-                                    % Information about the layout structures
-                                    % defined by each procedure.
 
+                % The list of all closure layouts generated in this module.
+                % While all closure layouts are different from all other
+                % layout_data, it is possible, although unlikely, for
+                % two closures to have the same layout.
                 closure_layouts     :: list(layout_data),
-                                    % The list of all closure layouts generated
-                                    % in this module. While all closure layouts
-                                    % are different from all other layout_data,
-                                    % it is possible, although unlikely, for
-                                    % two closures to have the same layout.
 
+                % Information about all the statically allocated cells
+                % created so far.
                 static_cell_info    :: static_cell_info
-                                    % Information about all the statically
-                                    % allocated cells created so far.
             ).
 
 global_data_init(StaticCellInfo, GlobalData) :-
@@ -180,22 +180,22 @@ global_data_init(StaticCellInfo, GlobalData) :-
 global_data_add_new_proc_var(PredProcId, ProcVar, !GlobalData) :-
     ProcVarMap0 = !.GlobalData ^ proc_var_map,
     map.det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
-    !:GlobalData = !.GlobalData ^ proc_var_map := ProcVarMap.
+    !GlobalData ^ proc_var_map := ProcVarMap.
 
 global_data_add_new_proc_layout(PredProcId, ProcLayout, !GlobalData) :-
     ProcLayoutMap0 = !.GlobalData ^ proc_layout_map,
     map.det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-    !:GlobalData = !.GlobalData ^ proc_layout_map := ProcLayoutMap.
+    !GlobalData ^ proc_layout_map := ProcLayoutMap.
 
 global_data_update_proc_layout(PredProcId, ProcLayout, !GlobalData) :-
     ProcLayoutMap0 = !.GlobalData ^ proc_layout_map,
     map.det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-    !:GlobalData = !.GlobalData ^ proc_layout_map := ProcLayoutMap.
+    !GlobalData ^ proc_layout_map := ProcLayoutMap.
 
 global_data_add_new_closure_layouts(NewClosureLayouts, !GlobalData) :-
     ClosureLayouts0 = !.GlobalData ^ closure_layouts,
     list.append(NewClosureLayouts, ClosureLayouts0, ClosureLayouts),
-    !:GlobalData = !.GlobalData ^ closure_layouts := ClosureLayouts.
+    !GlobalData ^ closure_layouts := ClosureLayouts.
 
 global_data_maybe_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
     ProcLayoutMap = GlobalData ^ proc_layout_map,
@@ -220,7 +220,7 @@ global_data_get_static_cell_info(GlobalData, StaticCellInfo) :-
     StaticCellInfo = GlobalData ^ static_cell_info.
 
 global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
-    !:GlobalData = !.GlobalData ^ static_cell_info := StaticCellInfo.
+    !GlobalData ^ static_cell_info := StaticCellInfo.
 
 %-----------------------------------------------------------------------------%
 
@@ -329,10 +329,10 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
             TypeNumCounter0 = !.Info ^ type_counter,
             counter.allocate(TypeNum0, TypeNumCounter0, TypeNumCounter),
             TypeNum = type_num(TypeNum0),
-            !:Info = !.Info ^ type_counter := TypeNumCounter,
+            !Info ^ type_counter := TypeNumCounter,
 
             bimap.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
-            !:Info = !.Info ^ cell_type_num_map := TypeNumMap,
+            !Info ^ cell_type_num_map := TypeNumMap,
 
             !:CellGroup = init_scalar_cell_group
         ),
@@ -342,16 +342,16 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
         ;
             CellNumCounter0 = !.CellGroup ^ scalar_cell_counter,
             counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
-            !:CellGroup = !.CellGroup ^ scalar_cell_counter := CellNumCounter,
+            !CellGroup ^ scalar_cell_counter := CellNumCounter,
             DataName = scalar_common_ref(TypeNum, CellNum),
             RevArray0 = !.CellGroup ^ scalar_cell_rev_array,
             RevArray = [CellValue | RevArray0],
-            !:CellGroup = !.CellGroup ^ scalar_cell_rev_array := RevArray,
+            !CellGroup ^ scalar_cell_rev_array := RevArray,
             InsertCommonData = !.Info ^ sub_info ^ common_data,
             (
                 InsertCommonData = yes,
                 bimap.det_insert(MembersMap0, Args, DataName, MembersMap),
-                !:CellGroup = !.CellGroup ^ scalar_cell_group_members
+                !CellGroup ^ scalar_cell_group_members
                     := MembersMap
             ;
                 InsertCommonData = no
@@ -360,7 +360,7 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
                 % be useful when comparing the LLDS and MLDS backends.
             ),
             map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
-            !:Info = !.Info ^ scalar_cell_group_map := CellGroupMap
+            !Info ^ scalar_cell_group_map := CellGroupMap
         )
     ),
     ModuleName = !.Info ^ sub_info ^ module_name,
@@ -460,23 +460,23 @@ add_vector_static_cell(LLDSTypes, VectorData, DataAddr, !Info) :-
             TypeNumCounter0 = !.Info ^ type_counter,
             counter.allocate(TypeNum0, TypeNumCounter0, TypeNumCounter),
             TypeNum = type_num(TypeNum0),
-            !:Info = !.Info ^ type_counter := TypeNumCounter,
+            !Info ^ type_counter := TypeNumCounter,
 
             bimap.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
-            !:Info = !.Info ^ cell_type_num_map := TypeNumMap,
+            !Info ^ cell_type_num_map := TypeNumMap,
 
             !:CellGroup = init_vector_cell_group
         ),
         CellNumCounter0 = !.CellGroup ^ vector_cell_counter,
         counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
-        !:CellGroup = !.CellGroup ^ vector_cell_counter := CellNumCounter,
+        !CellGroup ^ vector_cell_counter := CellNumCounter,
         DataName = vector_common_ref(TypeNum, CellNum),
         CellMap0 = !.CellGroup ^ vector_cell_map,
         VectorContents = vector_contents(VectorCells),
         map.det_insert(CellMap0, CellNum, VectorContents, CellMap),
-        !:CellGroup = !.CellGroup ^ vector_cell_map := CellMap,
+        !CellGroup ^ vector_cell_map := CellMap,
         map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
-        !:Info = !.Info ^ vector_cell_group_map := CellGroupMap
+        !Info ^ vector_cell_group_map := CellGroupMap
     ),
     ModuleName = !.Info ^ sub_info ^ module_name,
     DataAddr = data_addr(ModuleName, DataName).
@@ -638,11 +638,11 @@ associate_natural_type(UnboxFloat, Rval, Rval - Type) :-
 :- type scalar_cell_group_remap == map(data_name, data_name).
                                     % Mapping of old to new data_names.
 
-bump_type_num_counter(GlobalData0, Increment) = GlobalData :-
-    Counter0 = GlobalData0 ^ static_cell_info ^ type_counter,
+bump_type_num_counter(Increment, !GlobalData) :-
+    Counter0 = !.GlobalData ^ static_cell_info ^ type_counter,
     counter.allocate(N, Counter0, _),
     Counter = counter.init(N + Increment),
-    GlobalData = GlobalData0 ^ static_cell_info ^ type_counter := Counter.
+    !GlobalData ^ static_cell_info ^ type_counter := Counter.
 
 merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, Remap) :-
     GlobalDataA = global_data(ProcVarMapA, ProcLayoutMapA, ClosureLayoutsA,
@@ -685,7 +685,7 @@ merge_static_cell_infos(SCIa, SCIb, SCI, Remap) :-
     % Remap the information in the static_cell_info info itself.
     SCI0 = static_cell_info(SubInfoA, TypeCounter,
         CellTypeNumMap, ScalarCellGroupMap, VectorCellGroupMap),
-    SCI = remap_static_cell_info(Remap, SCI0).
+    remap_static_cell_info(Remap, SCI0, SCI).
 
 :- pred merge_cell_type_num_maps(common_cell_type::in, type_num::in,
     counter::in, counter::out, bimap(common_cell_type, type_num)::in,
@@ -819,131 +819,133 @@ nth_member_lookup0(List, Elem) = Pos-1 :-
     % The scalar cell group and vector cell group contents themselves
     % need to be updated to use the merged cell information.
     %
-:- func remap_static_cell_info(static_cell_remap_info, static_cell_info)
-    = static_cell_info.
+:- pred remap_static_cell_info(static_cell_remap_info::in,
+    static_cell_info::in, static_cell_info::out) is det.
 
-remap_static_cell_info(Remap, SCI0) = SCI :-
-    ScalarMap = map.map_values(remap_scalar_cell_group(Remap),
-        SCI0 ^ scalar_cell_group_map),
-    VectorMap = map.map_values(remap_vector_cell_group(Remap),
-        SCI0 ^ vector_cell_group_map),
-    SCI = (SCI0
-        ^ scalar_cell_group_map := ScalarMap)
-        ^ vector_cell_group_map := VectorMap.
+remap_static_cell_info(Remap, !SCI) :-
+    ScalarMap0 = !.SCI ^ scalar_cell_group_map,
+    VectorMap0 = !.SCI ^ vector_cell_group_map,
+    map.map_values(remap_scalar_cell_group(Remap), ScalarMap0, ScalarMap),
+    map.map_values(remap_vector_cell_group(Remap), VectorMap0, VectorMap),
+    !SCI ^ scalar_cell_group_map := ScalarMap,
+    !SCI ^ vector_cell_group_map := VectorMap.
 
-:- func remap_scalar_cell_group(static_cell_remap_info,
-    type_num, scalar_cell_group) = scalar_cell_group.
+:- pred remap_scalar_cell_group(static_cell_remap_info::in, type_num::in,
+    scalar_cell_group::in, scalar_cell_group::out) is det.
 
-remap_scalar_cell_group(Remap, _, ScalarCellGroup0) = ScalarCellGroup :-
-    Array0 = ScalarCellGroup0 ^ scalar_cell_rev_array,
-    ScalarCellGroup = ScalarCellGroup0 ^ scalar_cell_rev_array := Array,
-    Array = list.map(remap_common_cell_value(Remap), Array0).
+remap_scalar_cell_group(Remap, _, !ScalarCellGroup) :-
+    Array0 = !.ScalarCellGroup ^ scalar_cell_rev_array,
+    list.map(remap_common_cell_value(Remap), Array0, Array),
+    !ScalarCellGroup ^ scalar_cell_rev_array := Array.
 
-:- func remap_vector_cell_group(static_cell_remap_info,
-    type_num, vector_cell_group) = vector_cell_group.
+:- pred remap_vector_cell_group(static_cell_remap_info::in, type_num::in,
+    vector_cell_group::in, vector_cell_group::out) is det.
 
-remap_vector_cell_group(Remap, _, VectorCellGroup0) = VectorCellGroup :-
-    VectorCellGroup0 = vector_cell_group(Counter, Map0),
-    Map = map.map_values(remap_vector_contents(Remap), Map0),
-    VectorCellGroup = vector_cell_group(Counter, Map).
+remap_vector_cell_group(Remap, _, !VectorCellGroup) :-
+    !.VectorCellGroup = vector_cell_group(Counter, Map0),
+    map.map_values(remap_vector_contents(Remap), Map0, Map),
+    !:VectorCellGroup = vector_cell_group(Counter, Map).
 
-:- func remap_vector_contents(static_cell_remap_info,
-    int, vector_contents) = vector_contents.
+:- pred remap_vector_contents(static_cell_remap_info::in, int::in,
+    vector_contents::in, vector_contents::out) is det.
 
-remap_vector_contents(Remap, _, Contents0) = Contents :-
-    Contents0 = vector_contents(Values0),
-    Values = list.map(remap_common_cell_value(Remap), Values0),
-    Contents = vector_contents(Values).
+remap_vector_contents(Remap, _, !Contents) :-
+    !.Contents = vector_contents(Values0),
+    list.map(remap_common_cell_value(Remap), Values0, Values),
+    !:Contents = vector_contents(Values).
 
-:- func remap_common_cell_value(static_cell_remap_info,
-    common_cell_value) = common_cell_value.
+:- pred remap_common_cell_value(static_cell_remap_info::in,
+    common_cell_value::in, common_cell_value::out) is det.
 
-remap_common_cell_value(Remap, CommonCellValue0) = CommonCellValue :-
+remap_common_cell_value(Remap, !CommonCellValue) :-
     (
-        CommonCellValue0 = plain_value(RvalsTypes0),
-        RvalsTypes = list.map(remap_plain_value(Remap), RvalsTypes0),
-        CommonCellValue = plain_value(RvalsTypes)
+        !.CommonCellValue = plain_value(RvalsTypes0),
+        list.map(remap_plain_value(Remap), RvalsTypes0, RvalsTypes),
+        !:CommonCellValue = plain_value(RvalsTypes)
     ;
-        CommonCellValue0 = grouped_args_value(ArgGroup0),
-        ArgGroup = list.map(remap_arg_group_value(Remap), ArgGroup0),
-        CommonCellValue = grouped_args_value(ArgGroup)
+        !.CommonCellValue = grouped_args_value(ArgGroup0),
+        list.map(remap_arg_group_value(Remap), ArgGroup0, ArgGroup),
+        !:CommonCellValue = grouped_args_value(ArgGroup)
     ).
 
-:- func remap_plain_value(static_cell_remap_info,
-    pair(rval, llds_type)) = pair(rval, llds_type).
+:- pred remap_plain_value(static_cell_remap_info::in,
+    pair(rval, llds_type)::in, pair(rval, llds_type)::out) is det.
 
-remap_plain_value(Remap, Rval0 - Type) = Rval - Type :-
-    Rval = remap_rval(Remap, Rval0).
+remap_plain_value(Remap, Rval0 - Type, Rval - Type) :-
+    remap_rval(Remap, Rval0, Rval).
 
-:- func remap_arg_group_value(static_cell_remap_info,
-    common_cell_arg_group) = common_cell_arg_group.
+:- pred remap_arg_group_value(static_cell_remap_info::in,
+    common_cell_arg_group::in, common_cell_arg_group::out) is det.
 
-remap_arg_group_value(Remap, GroupedArgs0) = GroupedArgs :-
+remap_arg_group_value(Remap, !GroupedArgs) :-
     (
-        GroupedArgs0 = common_cell_grouped_args(Type, Fields, Rvals0),
-        Rvals = list.map(remap_rval(Remap), Rvals0),
-        GroupedArgs = common_cell_grouped_args(Type, Fields, Rvals)
+        !.GroupedArgs = common_cell_grouped_args(Type, Fields, Rvals0),
+        list.map(remap_rval(Remap), Rvals0, Rvals),
+        !:GroupedArgs = common_cell_grouped_args(Type, Fields, Rvals)
     ;
-        GroupedArgs0 = common_cell_ungrouped_arg(Type, Rvals0),
-        Rvals = remap_rval(Remap, Rvals0),
-        GroupedArgs = common_cell_ungrouped_arg(Type, Rvals)
+        !.GroupedArgs = common_cell_ungrouped_arg(Type, Rvals0),
+        remap_rval(Remap, Rvals0, Rvals),
+        !:GroupedArgs = common_cell_ungrouped_arg(Type, Rvals)
     ).
 
 %-----------------------------------------------------------------------------%
 
-remap_static_cell_references(Remap, Procedure0, Procedure) :-
-    Code0 = Procedure0 ^ cproc_code,
-    Code  = list.map(remap_instruction(Remap), Code0),
-    Procedure = Procedure0 ^ cproc_code := Code.
+remap_static_cell_references(Remap, !Procedure) :-
+    Code0 = !.Procedure ^ cproc_code,
+    list.map(remap_instruction(Remap), Code0, Code),
+    !Procedure ^ cproc_code := Code.
 
-:- func remap_instruction(static_cell_remap_info, instruction) = instruction.
+:- pred remap_instruction(static_cell_remap_info::in,
+    instruction::in, instruction::out) is det.
 
-remap_instruction(Remap, llds_instr(Instr0, Comment))
-    = llds_instr(remap_instr(Remap, Instr0), Comment).
+remap_instruction(Remap, !Instr) :-
+    !.Instr = llds_instr(Uinstr0, Comment),
+    remap_instr(Remap, Uinstr0, Uinstr),
+    !:Instr = llds_instr(Uinstr, Comment).
 
-:- func remap_instr(static_cell_remap_info, instr) = instr.
+:- pred remap_instr(static_cell_remap_info::in, instr::in, instr::out) is det.
 
-remap_instr(Remap, Instr0) = Instr :-
+remap_instr(Remap, Instr0, Instr) :-
     (
         Instr0 = block(NumIntTemps, NumFloatTemps, Block0),
-        Block = list.map(remap_instruction(Remap), Block0),
+        list.map(remap_instruction(Remap), Block0, Block),
         Instr = block(NumIntTemps, NumFloatTemps, Block)
     ;
         Instr0 = assign(Lval, Rval0),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Instr = assign(Lval, Rval)
     ;
         Instr0 = keep_assign(Lval, Rval0),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Instr = keep_assign(Lval, Rval)
     ;
         Instr0 = if_val(Rval0, CodeAddr),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Instr  = if_val(Rval, CodeAddr)
     ;
         Instr0 = foreign_proc_code(A, Comps0, B, C, D, E, F, G, H),
-        Comps = list.map(remap_foreign_proc_component(Remap), Comps0),
+        list.map(remap_foreign_proc_component(Remap), Comps0, Comps),
         Instr  = foreign_proc_code(A, Comps,  B, C, D, E, F, G, H)
     ;
         Instr0 = computed_goto(Rval0, CodeAddrs),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Instr = computed_goto(Rval, CodeAddrs)
     ;
         Instr0 = save_maxfr(Lval0),
-        Lval = remap_lval(Remap, Lval0),
+        remap_lval(Remap, Lval0, Lval),
         Instr = save_maxfr(Lval)
     ;
         Instr0 = restore_maxfr(Lval0),
-        Lval = remap_lval(Remap, Lval0),
+        remap_lval(Remap, Lval0, Lval),
         Instr = restore_maxfr(Lval)
     ;
         Instr0 = incr_hp(Lval0, MaybeTag, MaybeOffset, SizeRval0, Prof,
             Atomic, MaybeRegion0, MaybeReuse0),
-        Lval = remap_lval(Remap, Lval0),
-        SizeRval = remap_rval(Remap, SizeRval0),
+        remap_lval(Remap, Lval0, Lval),
+        remap_rval(Remap, SizeRval0, SizeRval),
         (
             MaybeRegion0 = yes(Region0),
-            Region = remap_rval(Remap, Region0),
+            remap_rval(Remap, Region0, Region),
             MaybeRegion = yes(Region)
         ;
             MaybeRegion0 = no,
@@ -951,10 +953,10 @@ remap_instr(Remap, Instr0) = Instr :-
         ),
         (
             MaybeReuse0 = llds_reuse(Reuse0, MaybeFlag0),
-            Reuse = remap_rval(Remap, Reuse0),
+            remap_rval(Remap, Reuse0, Reuse),
             (
                 MaybeFlag0 = yes(Flag0),
-                Flag = remap_lval(Remap, Flag0),
+                remap_lval(Remap, Flag0, Flag),
                 MaybeFlag = yes(Flag)
             ;
                 MaybeFlag0 = no,
@@ -969,15 +971,15 @@ remap_instr(Remap, Instr0) = Instr :-
             Atomic, MaybeRegion, MaybeReuse)
     ;
         Instr0 = mark_hp(Lval0),
-        Lval = remap_lval(Remap, Lval0),
+        remap_lval(Remap, Lval0, Lval),
         Instr = mark_hp(Lval)
     ;
         Instr0 = restore_hp(Rval0),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Instr = restore_hp(Rval)
     ;
         Instr0 = free_heap(Rval0),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Instr = free_heap(Rval)
     ;
         Instr0 = push_region_frame(StackId, EmbeddedStackFrame),
@@ -985,41 +987,41 @@ remap_instr(Remap, Instr0) = Instr :-
     ;
         Instr0 = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval0,
             NumLval0, AddrLval0),
-        IdRval = remap_rval(Remap, IdRval0),
-        NumLval = remap_lval(Remap, NumLval0),
-        AddrLval = remap_lval(Remap, AddrLval0),
+        remap_rval(Remap, IdRval0, IdRval),
+        remap_lval(Remap, NumLval0, NumLval),
+        remap_lval(Remap, AddrLval0, AddrLval),
         Instr = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval,
             NumLval, AddrLval)
     ;
         Instr0 = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval0),
-        ValueRval = remap_rval(Remap, ValueRval0),
+        remap_rval(Remap, ValueRval0, ValueRval),
         Instr = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval)
     ;
         Instr0 = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame),
         Instr = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame)
     ;
         Instr0 = store_ticket(Lval0),
-        Lval = remap_lval(Remap, Lval0),
+        remap_lval(Remap, Lval0, Lval),
         Instr = store_ticket(Lval)
     ;
         Instr0 = reset_ticket(Rval0, Reason),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Instr = reset_ticket(Rval, Reason)
     ;
         Instr0 = mark_ticket_stack(Lval0),
-        Lval = remap_lval(Remap, Lval0),
+        remap_lval(Remap, Lval0, Lval),
         Instr = mark_ticket_stack(Lval)
     ;
         Instr0 = prune_tickets_to(Rval0),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Instr = prune_tickets_to(Rval)
     ;
         Instr0 = init_sync_term(Lval0, NumJoins),
-        Lval = remap_lval(Remap, Lval0),
+        remap_lval(Remap, Lval0, Lval),
         Instr = init_sync_term(Lval, NumJoins)
     ;
         Instr0 = join_and_continue(Lval0, Label),
-        Lval = remap_lval(Remap, Lval0),
+        remap_lval(Remap, Lval0, Lval),
         Instr = join_and_continue(Lval, Label)
     ;
         ( Instr0 = comment(_)
@@ -1039,17 +1041,17 @@ remap_instr(Remap, Instr0) = Instr :-
         Instr = Instr0
     ).
 
-:- func remap_foreign_proc_component(static_cell_remap_info,
-    foreign_proc_component) = foreign_proc_component.
+:- pred remap_foreign_proc_component(static_cell_remap_info::in,
+    foreign_proc_component::in, foreign_proc_component::out) is det.
 
-remap_foreign_proc_component(Remap, Comp0) = Comp :-
+remap_foreign_proc_component(Remap, Comp0, Comp) :-
     (
         Comp0 = foreign_proc_inputs(Inputs0),
-        Inputs = list.map(remap_foreign_proc_input(Remap), Inputs0),
+        list.map(remap_foreign_proc_input(Remap), Inputs0, Inputs),
         Comp = foreign_proc_inputs(Inputs)
     ;
         Comp0 = foreign_proc_outputs(Outputs0),
-        Outputs = list.map(remap_foreign_proc_output(Remap), Outputs0),
+        list.map(remap_foreign_proc_output(Remap), Outputs0, Outputs),
         Comp = foreign_proc_outputs(Outputs)
     ;
         ( Comp0 = foreign_proc_raw_code(_, _, _, _)
@@ -1060,32 +1062,32 @@ remap_foreign_proc_component(Remap, Comp0) = Comp :-
         Comp = Comp0
     ).
 
-:- func remap_foreign_proc_input(static_cell_remap_info, foreign_proc_input)
-    = foreign_proc_input.
+:- pred remap_foreign_proc_input(static_cell_remap_info::in,
+    foreign_proc_input::in, foreign_proc_input::out) is det.
 
-remap_foreign_proc_input(Remap, Input0) = Input :-
+remap_foreign_proc_input(Remap, Input0, Input) :-
     Input0 = foreign_proc_input(A, B, C, D, Rval0, E, F),
-    Rval = remap_rval(Remap, Rval0),
+    remap_rval(Remap, Rval0, Rval),
     Input = foreign_proc_input(A, B, C, D, Rval, E, F).
 
-:- func remap_foreign_proc_output(static_cell_remap_info, foreign_proc_output)
-    = foreign_proc_output.
+:- pred remap_foreign_proc_output(static_cell_remap_info::in,
+    foreign_proc_output::in, foreign_proc_output::out) is det.
 
-remap_foreign_proc_output(Remap, Output0) = Output :-
+remap_foreign_proc_output(Remap, Output0, Output) :-
     Output0 = foreign_proc_output(Lval0, A, B, C, D, E, F),
-    Lval = remap_lval(Remap, Lval0),
+    remap_lval(Remap, Lval0, Lval),
     Output = foreign_proc_output(Lval, A, B, C, D, E, F).
 
-:- func remap_lval(static_cell_remap_info, lval) = lval.
+:- pred remap_lval(static_cell_remap_info::in, lval::in, lval::out) is det.
 
-remap_lval(Remap, Lval0) = Lval :-
+remap_lval(Remap, Lval0, Lval) :-
     (
         Lval0 = field(MaybeTag, Rval0, FieldNum),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Lval = field(MaybeTag, Rval, FieldNum)
     ;
         Lval0 = mem_ref(Rval0),
-        Rval = remap_rval(Remap, Rval0),
+        remap_rval(Remap, Rval0, Rval),
         Lval = mem_ref(Rval)
     ;
         ( Lval0 = reg(_, _)
@@ -1110,47 +1112,48 @@ remap_lval(Remap, Lval0) = Lval :-
         Lval = Lval0
     ).
 
-:- func remap_rval(static_cell_remap_info, rval) = rval.
+:- pred remap_rval(static_cell_remap_info::in, rval::in, rval::out) is det.
 
-remap_rval(Remap, Rval0) = Rval :-
+remap_rval(Remap, Rval0, Rval) :-
     (
         Rval0 = lval(Lval0),
-        Lval = remap_lval(Remap, Lval0),
+        remap_lval(Remap, Lval0, Lval),
         Rval = lval(Lval)
     ;
         Rval0 = var(_),
         Rval = Rval0
     ;
         Rval0 = mkword(Tag, Ptr0),
-        Ptr = remap_rval(Remap, Ptr0),
+        remap_rval(Remap, Ptr0, Ptr),
         Rval = mkword(Tag, Ptr)
     ;
         Rval0 = const(Const0),
-        Const = remap_rval_const(Remap, Const0),
+        remap_rval_const(Remap, Const0, Const),
         Rval = const(Const)
     ;
         Rval0 = unop(Unop, A0),
-        A = remap_rval(Remap, A0),
+        remap_rval(Remap, A0, A),
         Rval = unop(Unop, A)
     ;
         Rval0 = binop(Binop, A0, B0),
-        A = remap_rval(Remap, A0),
-        B = remap_rval(Remap, B0),
+        remap_rval(Remap, A0, A),
+        remap_rval(Remap, B0, B),
         Rval = binop(Binop, A, B)
     ;
         Rval0 = mem_addr(MemRef0),
-        MemRef = remap_mem_ref(Remap, MemRef0),
+        remap_mem_ref(Remap, MemRef0, MemRef),
         Rval = mem_addr(MemRef)
     ).
 
-:- func remap_rval_const(static_cell_remap_info, rval_const) = rval_const.
+:- pred remap_rval_const(static_cell_remap_info::in,
+    rval_const::in, rval_const::out) is det.
 
-remap_rval_const(Remap, Const0) = Const :-
+remap_rval_const(Remap, Const0, Const) :-
     (
         Const0 = llconst_data_addr(Addr0, MaybeOffset),
         (
             Addr0 = data_addr(ModuleName, DataName0),
-            DataName = remap_data_name(Remap, DataName0),
+            remap_data_name(Remap, DataName0, DataName),
             Addr = data_addr(ModuleName, DataName)
         ;
             ( Addr0 = rtti_addr(_)
@@ -1158,7 +1161,7 @@ remap_rval_const(Remap, Const0) = Const :-
             ),
             Addr = Addr0
         ),
-        Const  = llconst_data_addr(Addr,  MaybeOffset)
+        Const = llconst_data_addr(Addr,  MaybeOffset)
     ;
         ( Const0 = llconst_true
         ; Const0 = llconst_false
@@ -1172,9 +1175,10 @@ remap_rval_const(Remap, Const0) = Const :-
         Const = Const0
     ).
 
-:- func remap_data_name(static_cell_remap_info, data_name) = data_name.
+:- pred remap_data_name(static_cell_remap_info::in,
+    data_name::in, data_name::out) is det.
 
-remap_data_name(Remap, DataName0) = DataName :-
+remap_data_name(Remap, DataName0, DataName) :-
     Remap = static_cell_remap_info(TypeNumRemap, ScalarCellGroupRemap),
     (
         DataName0 = scalar_common_ref(TypeNum0, _Offset),
@@ -1196,9 +1200,10 @@ remap_data_name(Remap, DataName0) = DataName :-
         DataName = DataName0
     ).
 
-:- func remap_mem_ref(static_cell_remap_info, mem_ref) = mem_ref.
+:- pred remap_mem_ref(static_cell_remap_info::in, mem_ref::in, mem_ref::out)
+    is det.
 
-remap_mem_ref(Remap, MemRef0) = MemRef :-
+remap_mem_ref(Remap, MemRef0, MemRef) :-
     (
         ( MemRef0 = stackvar_ref(_)
         ; MemRef0 = framevar_ref(_)
@@ -1206,7 +1211,7 @@ remap_mem_ref(Remap, MemRef0) = MemRef :-
         MemRef = MemRef0
     ;
         MemRef0 = heap_ref(Ptr0, Tag, FieldNum),
-        Ptr = remap_rval(Remap, Ptr0),
+        remap_rval(Remap, Ptr0, Ptr),
         MemRef = heap_ref(Ptr, Tag, FieldNum)
     ).
 

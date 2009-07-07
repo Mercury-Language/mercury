@@ -175,7 +175,7 @@ generate_code_parallel(ModuleInfo0, PredIds, !GlobalData, Procedures) :-
     % XXX the following should be a parallel conjunction
     ,
         list.condense(ListsOfPredIdsB, PredIdsB),
-        GlobalData1 = bump_type_num_counter(GlobalData0, type_num_skip),
+        bump_type_num_counter(type_num_skip, GlobalData0, GlobalData1),
         list.map_foldl(generate_pred_code_par(ModuleInfo0),
             PredIdsB, PredProceduresB0, GlobalData1, GlobalDataB),
         list.condense(PredProceduresB0, ProceduresB0)
