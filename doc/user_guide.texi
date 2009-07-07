@@ -9467,6 +9467,11 @@ Specify the command used to invoke the linker when linking an executable.
 @findex --link-shared-lib-command
 Specify the command used to invoke the linker when linking a shared library.
 
+@sp 1
+@item --java-archive-command @var{command}
+@findex --java-archive-command
+Specify the command used to produce Java archive (JAR) files.
+
 @end table
 
 @c ----------------------------------------------------------------------------

@@ -2330,8 +2330,7 @@ create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
     list(file_name)::in, bool::out, io::di, io::uo) is det.
 
 create_java_archive(ErrorStream, JarFileName, ObjectList, Succeeded, !IO) :-
-    % XXX Maybe these should be set up as options:
-    Jar = "jar",
+    globals.io_lookup_string_option(java_archive_command, Jar, !IO),
 
     list_class_files_for_jar(ObjectList, ClassSubDir, ListClassFiles, !IO),
     (
