@@ -351,8 +351,7 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
             (
                 InsertCommonData = yes,
                 bimap.det_insert(MembersMap0, Args, DataName, MembersMap),
-                !CellGroup ^ scalar_cell_group_members
-                    := MembersMap
+                !CellGroup ^ scalar_cell_group_members := MembersMap
             ;
                 InsertCommonData = no
                 % With --no-common-data, we never insert any cell into
