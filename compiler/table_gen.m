@@ -3699,8 +3699,8 @@ table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred var_mode_pos_is_io_state(vartypes::in,
-    var_mode_pos_method::in) is semidet.
+:- pred var_mode_pos_is_io_state(vartypes::in, var_mode_pos_method::in)
+    is semidet.
 
 var_mode_pos_is_io_state(VarTypes, VarModePosMethod) :-
     var_is_io_state(VarTypes, project_var(VarModePosMethod)).
