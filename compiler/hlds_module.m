@@ -594,10 +594,6 @@
 :- pred module_info_set_pred_proc_info(pred_proc_id::in,
     pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
 
-:- pred module_info_typeids(module_info::in, list(type_ctor)::out) is det.
-
-:- pred module_info_consids(module_info::in, list(cons_id)::out) is det.
-
     % Please see module_info_ensure_dependency_info for the
     % constraints on this dependency_info.
     %
@@ -821,7 +817,7 @@
                 % All the directly imported module specifiers in the interface.
                 % (Used by unused_imports analysis).
                 interface_module_specifiers :: set(module_specifier),
-           
+
                 % Enumeration types that have been exported to a foreign
                 % language.
                 exported_enums              :: list(exported_enum_info),
@@ -887,7 +883,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         MaybeDependencyInfo, NumErrors, PragmaExportedProcs,
         MustBeStratifiedPreds, StratPreds, UnusedArgInfo,
         ExceptionInfo, TrailingInfo, TablingStructMap, MM_TablingInfo,
-        LambdasPerContext, AtomicsPerContext, ModelNonPragmaCounter, 
+        LambdasPerContext, AtomicsPerContext, ModelNonPragmaCounter,
         ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes,
         MaybeComplexityMap, ComplexityProcInfos,
@@ -1024,7 +1020,7 @@ module_info_new_user_init_pred(SymName, Arity, CName, !MI) :-
     CName = string.format("%s__user_init_pred_%d",
         [s(ModuleName), i(UserInitPredNo)]),
     InitPredCNames = InitPredCNames0 ++ [SymName / Arity - CName],
-    !:MI = !.MI ^ sub_info ^ user_init_pred_c_names := InitPredCNames.
+    !MI ^ sub_info ^ user_init_pred_c_names := InitPredCNames.
 
 module_info_user_init_pred_c_names(MI, CNames) :-
     InitPredCNames = MI ^ sub_info ^ user_init_pred_c_names,
@@ -1043,7 +1039,7 @@ module_info_new_user_final_pred(SymName, Arity, CName, !MI) :-
     CName = string.format("%s__user_final_pred_%d",
         [s(ModuleName), i(UserFinalPredNo)]),
     FinalPredCNames = FinalPredCNames0 ++ [SymName / Arity - CName],
-    !:MI = !.MI ^ sub_info ^ user_final_pred_c_names := FinalPredCNames.
+    !MI ^ sub_info ^ user_final_pred_c_names := FinalPredCNames.
 
 module_info_user_final_pred_c_names(MI, CNames) :-
     FinalPredCNames = MI ^ sub_info ^ user_final_pred_c_names,
@@ -1082,85 +1078,92 @@ module_info_user_init_fn_pred_procs_2(MI, SymName / Arity, PredProcId) :-
 % via the module_info structure.
 %
 
-module_info_set_globals(NewVal, MI,
-    MI ^ sub_info ^ globals := NewVal).
-module_info_set_contains_foreign_type(MI,
-    MI ^ sub_info ^ contains_foreign_type := yes).
-module_info_set_contains_par_conj(MI,
-    MI ^ sub_info ^ contains_par_conj := yes).
-module_info_set_contains_user_event(MI,
-    MI ^ sub_info ^ contains_user_event := yes).
-module_info_set_foreign_decl(NewVal, MI,
-    MI ^ sub_info ^ foreign_decl_info := NewVal).
-module_info_set_foreign_body_code(NewVal, MI,
-    MI ^ sub_info ^ foreign_body_info := NewVal).
-module_info_set_foreign_import_module(NewVal, MI,
-    MI ^ sub_info ^ foreign_import_modules := NewVal).
-module_info_set_maybe_dependency_info(NewVal, MI,
-    MI ^ sub_info ^ maybe_dependency_info := NewVal).
-module_info_set_num_errors(NewVal, MI,
-    MI ^ sub_info ^ num_errors := NewVal).
-module_info_set_pragma_exported_procs(NewVal, MI,
-    MI ^ sub_info ^ pragma_exported_procs := NewVal).
-module_info_set_type_ctor_gen_infos(NewVal, MI,
-    MI ^ sub_info ^ type_ctor_gen_infos := NewVal).
-module_info_set_stratified_preds(NewVal, MI,
-    MI ^ sub_info ^ must_be_stratified_preds := NewVal).
-module_info_set_unused_arg_info(NewVal, MI,
-    MI ^ sub_info ^ unused_arg_info := NewVal).
-module_info_set_exception_info(NewVal, MI,
-    MI ^ sub_info ^ exception_info := NewVal).
-module_info_set_trailing_info(NewVal, MI,
-    MI ^ sub_info ^ trailing_info := NewVal).
-module_info_set_table_struct_map(NewVal, MI,
-    MI ^ sub_info ^ table_struct_map := NewVal).
-module_info_set_mm_tabling_info(NewVal, MI,
-    MI ^ sub_info ^ mm_tabling_info := NewVal).
-module_info_set_lambdas_per_context(NewVal, MI,
-    MI ^ sub_info ^ lambdas_per_context := NewVal).
-module_info_set_atomics_per_context(NewVal, MI,
-    MI ^ sub_info ^ atomics_per_context := NewVal).
-module_info_set_model_non_pragma_counter(NewVal, MI,
-    MI ^ sub_info ^ model_non_pragma_counter := NewVal).
-module_add_imported_module_specifiers(IStat, ModuleSpecifiers, !MI) :-
-    !:MI = !.MI ^ sub_info ^ imported_module_specifiers :=
-        set.insert_list(!.MI ^ sub_info ^ imported_module_specifiers,
-            ModuleSpecifiers),
-    ( status_is_exported_to_non_submodules(IStat) = yes ->
-        !:MI = !.MI ^ sub_info ^ interface_module_specifiers :=
-            set.insert_list(!.MI ^ sub_info ^ interface_module_specifiers,
-                ModuleSpecifiers)
+module_info_set_globals(NewVal, !MI) :-
+    !MI ^ sub_info ^ globals := NewVal.
+module_info_set_contains_foreign_type(!MI) :-
+    !MI ^ sub_info ^ contains_foreign_type := yes.
+module_info_set_contains_par_conj(!MI) :-
+    !MI ^ sub_info ^ contains_par_conj := yes.
+module_info_set_contains_user_event(!MI) :-
+    !MI ^ sub_info ^ contains_user_event := yes.
+module_info_set_foreign_decl(NewVal, !MI) :-
+    !MI ^ sub_info ^ foreign_decl_info := NewVal.
+module_info_set_foreign_body_code(NewVal, !MI) :-
+    !MI ^ sub_info ^ foreign_body_info := NewVal.
+module_info_set_foreign_import_module(NewVal, !MI) :-
+    !MI ^ sub_info ^ foreign_import_modules := NewVal.
+module_info_set_maybe_dependency_info(NewVal, !MI) :-
+    !MI ^ sub_info ^ maybe_dependency_info := NewVal.
+module_info_set_num_errors(NewVal, !MI) :-
+    !MI ^ sub_info ^ num_errors := NewVal.
+module_info_set_pragma_exported_procs(NewVal, !MI) :-
+    !MI ^ sub_info ^ pragma_exported_procs := NewVal.
+module_info_set_type_ctor_gen_infos(NewVal, !MI) :-
+    !MI ^ sub_info ^ type_ctor_gen_infos := NewVal.
+module_info_set_stratified_preds(NewVal, !MI) :-
+    !MI ^ sub_info ^ must_be_stratified_preds := NewVal.
+module_info_set_unused_arg_info(NewVal, !MI) :-
+    !MI ^ sub_info ^ unused_arg_info := NewVal.
+module_info_set_exception_info(NewVal, !MI) :-
+    !MI ^ sub_info ^ exception_info := NewVal.
+module_info_set_trailing_info(NewVal, !MI) :-
+    !MI ^ sub_info ^ trailing_info := NewVal.
+module_info_set_table_struct_map(NewVal, !MI) :-
+    !MI ^ sub_info ^ table_struct_map := NewVal.
+module_info_set_mm_tabling_info(NewVal, !MI) :-
+    !MI ^ sub_info ^ mm_tabling_info := NewVal.
+module_info_set_lambdas_per_context(NewVal, !MI) :-
+    !MI ^ sub_info ^ lambdas_per_context := NewVal.
+module_info_set_atomics_per_context(NewVal, !MI) :-
+    !MI ^ sub_info ^ atomics_per_context := NewVal.
+module_info_set_model_non_pragma_counter(NewVal, !MI) :-
+    !MI ^ sub_info ^ model_non_pragma_counter := NewVal.
+module_add_imported_module_specifiers(IStat, AddedModuleSpecifiers, !MI) :-
+    ImportSpecifiers0 = !.MI ^ sub_info ^ imported_module_specifiers,
+    set.insert_list(ImportSpecifiers0, AddedModuleSpecifiers,
+        ImportSpecifiers),
+    !MI ^ sub_info ^ imported_module_specifiers := ImportSpecifiers,
+
+    Exported = status_is_exported_to_non_submodules(IStat),
+    (
+        Exported = yes,
+        InterfaceSpecifiers0 = !.MI ^ sub_info ^ interface_module_specifiers,
+        set.insert_list(InterfaceSpecifiers0, AddedModuleSpecifiers,
+            InterfaceSpecifiers),
+        !MI ^ sub_info ^ interface_module_specifiers := InterfaceSpecifiers
     ;
-        true
+        Exported = no
     ).
 
-module_add_indirectly_imported_module_specifiers(Modules, MI,
-    MI ^ sub_info ^ indirectly_imported_module_specifiers :=
-        set.insert_list(MI ^ sub_info ^ indirectly_imported_module_specifiers,
-            Modules)).
-module_info_set_type_spec_info(NewVal, MI,
-    MI ^ sub_info ^ type_spec_info := NewVal).
-module_info_set_no_tag_types(NewVal, MI,
-    MI ^ sub_info ^ no_tag_type_table := NewVal).
-module_info_set_analysis_info(NewVal, MI,
-    MI ^ sub_info ^ analysis_info := NewVal).
-module_info_set_maybe_complexity_proc_map(NewVal, MI,
-    MI ^ sub_info ^ maybe_complexity_proc_map := NewVal).
-module_info_set_complexity_proc_infos(NewVal, MI,
-    MI ^ sub_info ^ complexity_proc_infos := NewVal).
-module_info_set_structure_reuse_preds(ReusePreds, MI,
-    MI ^ sub_info ^ structure_reuse_preds := ReusePreds).
-module_info_set_used_modules(UsedModules, MI,
-    MI ^ sub_info ^ used_modules := UsedModules).
-module_info_set_event_set(EventSet, MI, MI ^ sub_info ^ event_set := EventSet).
+module_add_indirectly_imported_module_specifiers(AddedModules, !MI) :-
+    Modules0 = !.MI ^ sub_info ^ indirectly_imported_module_specifiers,
+    set.insert_list(Modules0, AddedModules, Modules),
+    !MI ^ sub_info ^ indirectly_imported_module_specifiers := Modules.
 
-module_info_add_parents_to_used_modules(Modules, MI,
-        MI ^ sub_info ^ used_modules := UsedModules) :-
-    module_info_get_used_modules(MI, UsedModules0),
-    list.foldl(add_all_modules(visibility_public),
-            Modules, UsedModules0, UsedModules).
-module_info_set_exported_enums(ExportedEnums, MI,
-        MI ^ sub_info ^ exported_enums := ExportedEnums).
+module_info_set_type_spec_info(NewVal, !MI) :-
+    !MI ^ sub_info ^ type_spec_info := NewVal.
+module_info_set_no_tag_types(NewVal, !MI) :-
+    !MI ^ sub_info ^ no_tag_type_table := NewVal.
+module_info_set_analysis_info(NewVal, !MI) :-
+    !MI ^ sub_info ^ analysis_info := NewVal.
+module_info_set_maybe_complexity_proc_map(NewVal, !MI) :-
+    !MI ^ sub_info ^ maybe_complexity_proc_map := NewVal.
+module_info_set_complexity_proc_infos(NewVal, !MI) :-
+    !MI ^ sub_info ^ complexity_proc_infos := NewVal.
+module_info_set_structure_reuse_preds(ReusePreds, !MI) :-
+    !MI ^ sub_info ^ structure_reuse_preds := ReusePreds.
+module_info_set_used_modules(UsedModules, !MI) :-
+    !MI ^ sub_info ^ used_modules := UsedModules.
+module_info_set_event_set(EventSet, !MI) :-
+    !MI ^ sub_info ^ event_set := EventSet.
+
+module_info_add_parents_to_used_modules(Modules, !MI) :-
+    module_info_get_used_modules(!.MI, UsedModules0),
+    list.foldl(add_all_modules(visibility_public), Modules,
+        UsedModules0, UsedModules),
+    !MI ^ sub_info ^ used_modules := UsedModules.
+module_info_set_exported_enums(ExportedEnums, !MI) :-
+    !MI ^ sub_info ^ exported_enums := ExportedEnums.
 
 %-----------------------------------------------------------------------------%
 
@@ -1231,14 +1234,6 @@ module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
     map.set(Procs0, ProcId, ProcInfo, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !MI).
-
-module_info_typeids(MI, TypeCtors) :-
-    module_info_get_type_table(MI, Types),
-    map.keys(Types, TypeCtors).
-
-module_info_consids(MI, ConsIds) :-
-    module_info_get_cons_table(MI, Ctors),
-    map.keys(Ctors, ConsIds).
 
 module_info_dependency_info(MI, DepInfo) :-
     module_info_get_maybe_dependency_info(MI, MaybeDepInfo),
@@ -1371,8 +1366,7 @@ module_get_fact_table_files(Module, FileNames) :-
 
 module_add_fact_table_file(FileName, !Module) :-
     FileNames = !.Module ^ sub_info ^ fact_table_file_names,
-    !:Module = !.Module ^ sub_info ^ fact_table_file_names
-        := [FileName | FileNames].
+    !Module ^ sub_info ^ fact_table_file_names := [FileName | FileNames].
 
 %-----------------------------------------------------------------------------%
 
