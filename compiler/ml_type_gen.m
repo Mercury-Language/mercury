@@ -180,13 +180,13 @@ ml_gen_type_2(TypeBody, ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
             ( DuTypeKind = du_type_kind_mercury_enum
             ; DuTypeKind = du_type_kind_foreign_enum(_)
             ),
-            ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
+            ml_gen_enum_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
                 MaybeEqualityMembers, !Defns)
         ;
             DuTypeKind = du_type_kind_direct_dummy,
             % XXX We shouldn't have to generate an MLDS type for these types,
             % but it is not easy to ensure that we never refer to that type.
-            ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
+            ml_gen_enum_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
                 MaybeEqualityMembers, !Defns)
         ;
             ( DuTypeKind = du_type_kind_notag(_, _, _)
@@ -219,11 +219,11 @@ ml_gen_type_2(TypeBody, ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     % generator can treat it specially if need be (e.g. generating
     % a C enum rather than a class).
     %
-:- pred ml_gen_enum_type(type_ctor::in, hlds_type_defn::in,
+:- pred ml_gen_enum_type(module_info::in, type_ctor::in, hlds_type_defn::in,
     list(constructor)::in, cons_tag_values::in, list(mlds_defn)::in,
     list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
-ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
+ml_gen_enum_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         MaybeEqualityMembers, MLDS_Defns0, MLDS_Defns) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     MLDS_Context = mlds_make_context(Context),
@@ -243,7 +243,29 @@ ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
     % Enums don't import or inherit anything.
     Imports = [],
     Inherits = [],
-    Implements = [],
+
+    % Make all Java classes corresponding to types implement the MercuryType
+    % and MercuryEnum interfaces.
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_java,
+        InterfaceModuleName = mercury_module_name_to_mlds(
+            java_names.mercury_runtime_package_name),
+        TypeInterface = qual(InterfaceModuleName, module_qual, "MercuryType"),
+        TypeInterfaceDefn = mlds_class_type(TypeInterface, 0, mlds_interface),
+        EnumInterface = qual(InterfaceModuleName, module_qual, "MercuryEnum"),
+        EnumInterfaceDefn = mlds_class_type(EnumInterface, 0, mlds_interface),
+        Implements = [TypeInterfaceDefn, EnumInterfaceDefn]
+    ;
+        ( Target = target_c
+        ; Target = target_il
+        ; Target = target_asm
+        ; Target = target_x86_64
+        ; Target = target_erlang
+        ),
+        Implements = []
+    ),
 
     % Put it all together.
     MLDS_TypeName = entity_type(MLDS_ClassName, MLDS_ClassArity),
@@ -471,16 +493,22 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
     Imports = [],
     Inherits = [],
 
-    % For the implementation of arrays in Java, we need to be able to find out
-    % whether a class corresponds to a Mercury type or functor.  We make
-    % classes corresponding to types implement the MercuryType interface.
-    ( Target = target_java ->
+    % Make all Java classes corresponding to types implement the MercuryType
+    % interface.
+    (
+        Target = target_java,
         InterfaceModuleName = mercury_module_name_to_mlds(
             java_names.mercury_runtime_package_name),
         Interface = qual(InterfaceModuleName, module_qual, "MercuryType"),
         InterfaceDefn = mlds_class_type(Interface, 0, mlds_interface),
         Implements = [InterfaceDefn]
     ;
+        ( Target = target_c
+        ; Target = target_il
+        ; Target = target_asm
+        ; Target = target_x86_64
+        ; Target = target_erlang
+        ),
         Implements = []
     ),
 

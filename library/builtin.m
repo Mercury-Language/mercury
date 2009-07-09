@@ -821,7 +821,11 @@ special__Compare____tuple_0_0(ref object[] result,
 
         // We'll only copy objects of Mercury-defined types.  We could copy
         // more but that's what we do for C backends and it's enough.
+        // We don't copy enumeration instances.
         if (!(original instanceof jmercury.runtime.MercuryType)) {
+            return original;
+        }
+        if (original instanceof jmercury.runtime.MercuryEnum) {
             return original;
         }
 

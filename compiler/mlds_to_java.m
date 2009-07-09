@@ -228,6 +228,7 @@ rval_is_enum_object(Rval) :-
     %
 :- pred interface_is_special(string::in) is semidet.
 
+interface_is_special("MercuryEnum").
 interface_is_special("MercuryType").
 interface_is_special("MethodPtr").
 
