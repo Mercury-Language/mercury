@@ -1769,6 +1769,9 @@ ml_should_add_local_data(Action, Info, DataName, GCStatement,
     % XXX Do we need to check for references from the GCStatement
     % fields here?
     %
+    % XXX This algorithm is quadratic. For a block with N defs, each of which
+    % is referenced in a later definition, we do N^2 tests.
+    %
 :- pred ml_need_to_hoist(mlds_module_name::in, mlds_data_name::in,
     list(mlds_defn)::in, list(statement)::in) is semidet.
 
