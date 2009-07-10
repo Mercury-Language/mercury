@@ -136,7 +136,7 @@ struct MR_RegionHeader_Struct {
 ** compiler options defined for them in compiler/options.m and also the
 ** constants defined above, right in this file.
 ** So changes to these data structures, such as removing or adding fields, must
-** be reflected in the other two places. 
+** be reflected in the other two places.
 ** Otherwise, runtime errors likely happen.
 */
 
@@ -241,7 +241,7 @@ extern  MR_Word         *MR_region_alloc(MR_RegionHeader *, unsigned int);
 
 /* Minus one due to the MR_regionpage_next field */
 #define     MR_region_to_first_regionpage(region)                           \
-            ( (MR_RegionPage *) ( ( (MR_Word *)region ) - 1 ) ) 
+            ( (MR_RegionPage *) ( ( (MR_Word *)region ) - 1 ) )
 
 #define     MR_region_page_end(region_page)                                 \
             ((region_page)->MR_regionpage_space + MR_REGION_PAGE_SPACE_SIZE)
@@ -502,7 +502,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 (snapshot_block) = (MR_Word) (snapshot + 1);                \
                 (num_snapshots)++;                                          \
             } while (0)
-            
+
     extern  void    MR_region_fill_ite_snapshot_not_removed_proc(
                         MR_RegionHeader *region,
                         MR_RegionSnapshot *snapshot);
@@ -819,7 +819,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_use_region_ite_else_semidet_proc(                        \
                         (MR_RegionIteFixedFrame *) (ite_sp));               \
             } while (0)
-    
+
     extern  void    MR_use_region_ite_else_semidet_proc(
                         MR_RegionIteFixedFrame *top_ite_frame);
 
@@ -1182,7 +1182,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
             do {                                                            \
                 MR_region_ite_restore_from_snapshots_proc(top_ite_frame);   \
             } while (0)
- 
+
     extern  void    MR_region_ite_restore_from_snapshots_proc(
                         MR_RegionIteFixedFrame *top_ite_frame);
 
@@ -1297,7 +1297,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 
     extern  void    MR_save_snapshot_proc(MR_RegionHeader *region,
                         MR_RegionSnapshot *snapshot);
-                
+
 #endif      /* MR_RBMM_USE_MACROS */
 
 /*
@@ -1434,10 +1434,10 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                 MR_region_disj_frame_msg(disj_sp)
 
     #define     MR_region_debug_disj_frame_protected_regions(disj_sp)       \
-                MR_region_disj_frame_protected_regions_msg(disj_sp) 
+                MR_region_disj_frame_protected_regions_msg(disj_sp)
 
     #define     MR_region_debug_disj_frame_snapshots(disj_sp)               \
-                MR_region_disj_frame_snapshots_msg(disj_sp) 
+                MR_region_disj_frame_snapshots_msg(disj_sp)
 
 /* Debug commit frame messages. */
     #define     MR_region_debug_push_commit_frame(frame)                    \
@@ -1457,28 +1457,28 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                 MR_region_end_msg(name)
 
     #define     MR_region_debug_fill_ite_protect(ite_prot, region)          \
-                MR_region_fill_ite_protect_msg(ite_prot, region) 
+                MR_region_fill_ite_protect_msg(ite_prot, region)
 
     #define     MR_region_debug_fill_ite_snapshot_not_removed(snapshot,     \
                     region)                                                 \
                 MR_region_fill_ite_snapshot_not_removed_msg(snapshot,       \
                     region)
-    
+
     #define     MR_region_debug_fill_ite_snapshot_removed(snapshot, region) \
                 MR_region_fill_ite_snapshot_removed_msg(snapshot, region)
 
     #define     MR_region_debug_fill_semi_disj_protect(semi_disj_prot,      \
                     region)                                                 \
-                MR_region_fill_semi_disj_protect_msg(semi_disj_prot, region) 
+                MR_region_fill_semi_disj_protect_msg(semi_disj_prot, region)
 
     #define     MR_region_debug_fill_disj_snapshot(snapshot, region)    \
                 MR_region_fill_disj_snapshot_msg(snapshot, region)
 
     #define     MR_region_debug_fill_commit(commit_save, region)            \
                 MR_region_fill_commit_msg(commit_save, region)
-    
+
     #define     MR_region_debug_ite_unprotect(protected_region)             \
-                MR_region_ite_unprotect_msg(protected_region)                
+                MR_region_ite_unprotect_msg(protected_region)
 
     #define     MR_region_debug_restore_from_snapshot(snapshot)             \
                 MR_region_restore_from_snapshot_msg(snapshot)
@@ -1541,7 +1541,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
     #define     MR_region_debug_fill_ite_snapshot_not_removed(snapshot,     \
                     region)                                                 \
                 ((void) 0)
-    
+
     #define     MR_region_debug_fill_ite_snapshot_removed(snapshot, region) \
                 ((void) 0)
 
@@ -1602,7 +1602,7 @@ extern  void    MR_region_fill_ite_snapshot_not_removed_msg(
 extern  void    MR_region_fill_ite_snapshot_removed_msg(MR_RegionSnapshot *,
                     MR_RegionHeader *);
 extern  void    MR_region_fill_semi_disj_protect_msg(
-                    MR_RegionSemiDisjProtect *, MR_RegionHeader *); 
+                    MR_RegionSemiDisjProtect *, MR_RegionHeader *);
 extern  void    MR_region_fill_disj_snapshot_msg(MR_RegionSnapshot *,
                     MR_RegionHeader *);
 extern  void    MR_region_fill_commit_msg(MR_RegionCommitSave *,
@@ -1714,7 +1714,7 @@ extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
                     -MR_region_get_ite_frame_size(top_ite_frame));          \
                 MR_region_update_profiling_unit(&MR_rbmmp_num_ite_frames,   \
                     -1);                                                    \
-            } while (0) 
+            } while (0)
 
 #define     MR_region_profile_pop_disj_frame(top_disj_frame,                \
                 new_top_disj_frame)                                         \
@@ -1752,7 +1752,7 @@ extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
                 MR_region_profile_increase_counter(                         \
                     &MR_rbmmp_regions_protected_at_ite);                    \
             } while (0)
-            
+
 #define     MR_region_profile_fill_commit                                   \
             do {                                                            \
                 MR_region_update_profiling_unit(                            \
@@ -1761,7 +1761,7 @@ extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
                 MR_region_profile_increase_counter(                         \
                     &MR_rbmmp_regions_saved_at_commit);                     \
             } while (0)
-            
+
 #define     MR_region_profile_fill_ite_snapshot                             \
             do {                                                            \
                 MR_region_update_profiling_unit(                            \
@@ -1779,7 +1779,7 @@ extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
                 MR_region_profile_increase_counter(                         \
                     &MR_rbmmp_regions_protected_at_semi_disj);              \
             } while (0)
-            
+
 #define     MR_region_profile_fill_disj_snapshot                            \
             do {                                                            \
                 MR_region_update_profiling_unit(                            \
@@ -1826,7 +1826,7 @@ extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
 
 #define     MR_region_profile_pop_commit_frame(top_commit_frame);           \
             ((void) 0)
- 
+
 #define     MR_region_profile_fill_ite_protect                              \
             ((void) 0)
 
@@ -1841,7 +1841,7 @@ extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
 
 #define     MR_region_profile_fill_disj_snapshot                            \
             ((void) 0)
- 
+
 #define     MR_region_profile_frame_destroy_region(region, frame_type)      \
             ((void) 0)
 #endif  /* End of not define MR_RBMM_PROFILING. */

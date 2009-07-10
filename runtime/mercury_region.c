@@ -573,7 +573,7 @@ MR_region_fill_ite_snapshot_removed_func(MR_RegionHeader *region,
     int incr;
 
     MR_region_debug_start("fill_ite_snapshot_removed");
-    if ((region->MR_region_ite_protected != NULL && 
+    if ((region->MR_region_ite_protected != NULL &&
         region->MR_region_ite_protected != MR_region_ite_sp) ||
         MR_region_is_disj_protected(region))
     {
@@ -586,7 +586,7 @@ MR_region_fill_ite_snapshot_removed_func(MR_RegionHeader *region,
         MR_region_debug_fill_ite_snapshot_removed(NULL, region);
         incr = 0;
     }
-    MR_region_debug_end("fill_ite_snapshot_removed");    
+    MR_region_debug_end("fill_ite_snapshot_removed");
 
     return incr;
 }
