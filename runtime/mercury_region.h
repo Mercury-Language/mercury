@@ -530,7 +530,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                         (MR_RegionSemiDisjProtect *) (protection_block);    \
                     semi_disj_prot->MR_semi_disj_prot_region = region;      \
                     (num_protected_regions)++;                              \
-                    (protection_block) = (MR_Word)(semi_disj_prot + 1);      \
+                    (protection_block) = (MR_Word) (semi_disj_prot + 1);    \
                     MR_region_profile_fill_semi_disj_protect;               \
                     MR_region_debug_fill_semi_disj_protect(semi_disj_prot,  \
                         region);                                            \
@@ -1471,7 +1471,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
                     region)                                                 \
                 MR_region_fill_semi_disj_protect_msg(semi_disj_prot, region) 
 
-    #define     MR_region_debug_fill_disj_snapshot(snapshot, region)        \
+    #define     MR_region_debug_fill_disj_snapshot(snapshot, region)    \
                 MR_region_fill_disj_snapshot_msg(snapshot, region)
 
     #define     MR_region_debug_fill_commit(commit_save, region)            \
@@ -1697,7 +1697,6 @@ extern  int     MR_region_get_commit_frame_size(MR_RegionCommitFixedFrame *);
                     &MR_rbmmp_words_used_by_disj_frames,                    \
                     MR_REGION_DISJ_FRAME_FIXED_SIZE);                       \
             } while (0)
-
 
 #define     MR_region_profile_push_commit_frame                             \
             do {                                                            \
