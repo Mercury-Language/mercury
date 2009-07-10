@@ -3342,6 +3342,16 @@ string.from_float(Flt) = string.float_to_string(Flt).
     MR_float_to_string(Flt, Str);
 }").
 
+:- pragma foreign_proc("Java",
+    string.float_to_string(Flt::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    Str = java.lang.Double.toString(Flt);
+").
+
+% XXX This implementation has problems when the mantissa cannot fit in an int.
+
 string.float_to_string(Float, unsafe_promise_unique(String)) :-
     % XXX The unsafe_promise_unique is needed because in
     % string.float_to_string_2 the call to string.to_float doesn't
