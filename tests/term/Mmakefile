@@ -111,14 +111,17 @@ MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)
 ALL_MCTOIFLAGS+=$(MCTRANSOPTFLAGS)
 
 %.trans_opt_res: %.trans_opt_exp $(trans_opts_subdir)%.trans_opt
-	@echo "Comparing $(trans_opts_subdir)$*.trans_opt with $*.trans_opt_exp2,"
-	@echo " results in $@"
+	@echo "Comparing $(trans_opts_subdir)$*.trans_opt"
+	@echo "with $*.trans_opt_exp"
 	@-rm -f $@ $*.trans_opt_res[1-2]
 	@{ diff $(DIFF_OPTS) $*.trans_opt_exp $(trans_opts_subdir)$*.trans_opt \
 			> $*.trans_opt_res1 && \
 		echo "Matches $*.trans_opt_exp" && \
 		cp $*.trans_opt_res1 $@; } || \
-	{ diff $(DIFF_OPTS) $*.trans_opt_exp2 $(trans_opts_subdir)$*.trans_opt \
+	{ test -f $*.trans_opt_exp2 && \
+		@echo "with $*.trans_opt_exp2" &&
+		diff $(DIFF_OPTS) $*.trans_opt_exp2 \
+			$(trans_opts_subdir)$*.trans_opt \
 			> $*.trans_opt_res2 && \
 		echo "Matches $*.trans_opt_exp2" && \
 		cp $*.trans_opt_res2 $@; } || \
@@ -137,4 +140,3 @@ clean_local:
 
 realclean_local:
 	rm -f *.trans_opt_res
-
