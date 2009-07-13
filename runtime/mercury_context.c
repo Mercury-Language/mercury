@@ -66,6 +66,21 @@ MR_PendingContext       *MR_pending_contexts;
   MercuryLock           MR_pending_contexts_lock;
 #endif
 
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+MR_bool                 MR_profile_parallel_execution = MR_FALSE;
+
+static MR_Integer       MR_profile_parallel_executed_global_sparks = 0;
+static MR_Integer       MR_profile_parallel_contexts_created_for_sparks = 0;
+
+/*
+** Write out the profiling data that we collect during exceution.
+*/
+static void
+MR_write_out_profiling_parallel_execution(void);
+
+#define MR_PROFILE_PARALLEL_EXECUTION_FILENAME "parallel_execution_profile.txt"
+#endif
+
 /*
 ** free_context_list and free_small_context_list are a global linked lists
 ** of unused context structures, with regular and small stacks respectively.
@@ -126,17 +141,64 @@ MR_init_thread_stuff(void)
 }
 
 void
-MR_finalize_runqueue(void)
+MR_finalize_thread_stuff(void)
 {
-#ifdef  MR_THREAD_SAFE
+#ifdef MR_THREAD_SAFE
     pthread_mutex_destroy(&MR_runqueue_lock);
     pthread_cond_destroy(&MR_runqueue_cond);
     pthread_mutex_destroy(&free_context_list_lock);
 #endif
+
 #ifdef  MR_LL_PARALLEL_CONJ
     pthread_mutex_destroy(&MR_sync_term_lock);
 #endif
+
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    if (MR_profile_parallel_execution) {
+        MR_write_out_profiling_parallel_execution();
+    }
+#endif
 }
+
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+/*
+ * Write out the profiling data for parallel execution.
+ *
+ * This writes out a flat text file which may be parsed by a machine or easily
+ * read by a human.  There is no advantage in using a binary format since we
+ * do this once at the end of execution and it's a small amount of data.
+ * Therefore a text file is used since it has the advantage of being human
+ * readable.
+ */
+static void
+MR_write_out_profiling_parallel_execution(void)
+{
+    FILE    *file;
+    int     result;
+
+    file = fopen(MR_PROFILE_PARALLEL_EXECUTION_FILENAME, "w");
+    if (NULL == file) goto Error;
+
+    result = fprintf(file, "Mercury parallel execution profiling data\n\n");
+    if (result < 0) goto Error;
+
+    result = fprintf(file, "Global sparks executed: %d\n",
+        MR_profile_parallel_executed_global_sparks); 
+    if (result < 0) goto Error;
+
+    result = fprintf(file, "Contexts created for global spark execution: %d\n",
+        MR_profile_parallel_contexts_created_for_sparks);
+    if (result < 0) goto Error;
+
+    if (0 != fclose(file)) goto Error;
+
+    return;
+
+    Error: 
+        perror(MR_PROFILE_PARALLEL_EXECUTION_FILENAME);
+        abort();
+}
+#endif
 
 static void 
 MR_init_context_maybe_generator(MR_Context *c, const char *id,
@@ -660,7 +722,17 @@ MR_define_entry(MR_do_runnext);
         MR_ENGINE(MR_eng_this_context) = MR_create_context("from spark",
             MR_CONTEXT_SIZE_SMALL, NULL);
         MR_load_context(MR_ENGINE(MR_eng_this_context));
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+        if (MR_profile_parallel_execution) {
+            MR_atomic_inc_int(&MR_profile_parallel_contexts_created_for_sparks);
+        }
+#endif
     }
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+    if (MR_profile_parallel_execution) {
+        MR_atomic_inc_int(&MR_profile_parallel_executed_global_sparks);
+    }
+#endif
     MR_parent_sp = spark.MR_spark_parent_sp;
     MR_assert(MR_parent_sp != MR_sp);
     MR_SET_THREAD_LOCAL_MUTABLES(spark.MR_spark_thread_local_mutables);

@@ -9577,6 +9577,24 @@ This only has an effect if the executable was built in a profiling grade.
 Tells the runtime system to use @var{num} threads
 if the program was built in a parallel grade.
 
+@sp 1
+@item --max-contexts-per-thread @var{num}
+@findex --max-contexts-per-thread (runtime option)
+Tells the runtime system to create at most @var{num} contexts per
+POSIX thread.
+Each context created requires a set of stacks, setting this value too high
+can consume excess memory.
+This only has an effect if the executable was built in a low-level C parallel
+grade.
+
+@c @sp 1
+@c @item --profile-parallel-execution
+@c @findex --profile-parallel-execution
+@c Tells the runtime to collect and write out parallel execution profiling
+@c information to a file named @file{parallel_execution_profile.txt}.
+@c This only has an effect if the executable was built in a parallel grade
+@c with the @samp{MR_PROFILE_PARALLEL_EXECUTION} C macro defined.
+
 @c @item -r @var{num}
 @c @findex -r (runtime option)
 @c Repeats execution of the entry point procedure @var{num} times,

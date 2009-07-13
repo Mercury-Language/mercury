@@ -1198,6 +1198,7 @@ enum MR_long_option {
     MR_GEN_NONDETSTACK_REDZONE_SIZE,
     MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS,
     MR_MAX_CONTEXTS_PER_THREAD,
+    MR_PROFILE_PARALLEL_EXECUTION,
     MR_MDB_TTY,
     MR_MDB_IN,
     MR_MDB_OUT,
@@ -1294,6 +1295,7 @@ struct MR_option MR_long_opts[] = {
     { "gen-nondetstack-zone-size-kwords",
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
+    { "profile-parallel-execution",     0, 0, MR_PROFILE_PARALLEL_EXECUTION },
     { "mdb-tty",                        1, 0, MR_MDB_TTY },
     { "mdb-in",                         1, 0, MR_MDB_IN },
     { "mdb-out",                        1, 0, MR_MDB_OUT },
@@ -1704,6 +1706,12 @@ MR_process_options(int argc, char **argv)
                 }
 
                 MR_max_contexts_per_thread = size;
+                break;
+
+            case MR_PROFILE_PARALLEL_EXECUTION:
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+                MR_profile_parallel_execution = MR_TRUE;
+#endif
                 break;
 
             case 'i':
@@ -2890,6 +2898,8 @@ mercury_runtime_terminate(void)
 
     assert(MR_primordial_thread == pthread_self());
     MR_primordial_thread = (MercuryThread) 0;
+    
+    MR_finalize_thread_stuff();
 #endif
 
 #ifdef MR_HAVE_SYS_STAT_H

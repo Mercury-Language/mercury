@@ -346,6 +346,10 @@ extern      MR_Context  *MR_runqueue_tail;
   extern    MercuryLock     MR_sync_term_lock;
 #endif
 
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+extern MR_bool  MR_profile_parallel_execution;
+#endif
+
 /*
 ** As well as the runqueue, we maintain a linked list of contexts
 ** and associated file descriptors that are suspended blocked for
@@ -447,9 +451,10 @@ extern  void        MR_destroy_context(MR_Context *context);
 extern  void        MR_init_thread_stuff(void);
 
 /*
-** MR_finalize_runqueue() finalizes the lock structures for the runqueue.
+** MR_finalize_thread_stuff() finalizes the lock structures for the runqueue
+** amoung other things setup by MR_init_thread_stuff().
 */
-extern  void        MR_finalize_runqueue(void);
+extern  void        MR_finalize_thread_stuff(void);
 
 /*
 ** MR_flounder() aborts with a runtime error message. It is called if
