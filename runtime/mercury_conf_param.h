@@ -113,6 +113,11 @@
 ** MR_THREAD_SAFE
 **	Enable support for parallelism.
 **
+** MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+**  Enable support for profiling parallel execution.  This only has an
+**  effect of MR_THREAD_SAFE is also defined.  This must also be enabled
+**  with the --profile-parallel-execution runtime option.
+**
 ** MR_NO_BACKWARDS_COMPAT
 **	Disable backwards compatibility with C code using obsolete low-level
 **	constructs, e.g. referring to variables and macros without their MR_

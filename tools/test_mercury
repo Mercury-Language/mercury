@@ -263,7 +263,7 @@ case $HOST in
         # inlineing which is confusing for programmers using the deep profiler.
         OPTIMIZE="-O5 --intermodule-optimization"
         EXTRA_INSTALL_MCFLAGS="--profile-for-implicit-parallelism"
-        EXTRA_INSTALL_CFLAGS="-DMR_PROFILE_PARALLEL_EXECUTION"
+        EXTRA_INSTALL_CFLAGS="-DMR_PROFILE_PARALLEL_EXECUTION_SUPPORT"
         ;;
 
     goliath)

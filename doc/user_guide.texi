@@ -9593,7 +9593,8 @@ grade.
 @c Tells the runtime to collect and write out parallel execution profiling
 @c information to a file named @file{parallel_execution_profile.txt}.
 @c This only has an effect if the executable was built in a parallel grade
-@c with the @samp{MR_PROFILE_PARALLEL_EXECUTION} C macro defined.
+@c and the @samp{MR_PROFILE_PARALLEL_EXECUTION_SUPPORT} C macro was
+@c defined when the runtime system was compiled.
 
 @c @item -r @var{num}
 @c @findex -r (runtime option)
