@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 University of Melbourne.
+% Copyright (C) 1999-2009 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -673,7 +673,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
     DeforestInfo = deforest_info(EarlierGoal, _, BetweenGoals,
         LaterGoal, _, DeforestBranches),
 
-    should_try_deforestation(DeforestInfo, ShouldOptimize, !PDInfo, !IO),
+    should_try_deforestation(DeforestInfo, ShouldOptimize, !PDInfo),
     (
         ShouldOptimize = no,
         Optimized0 = no,
@@ -747,8 +747,8 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
             Optimized0 = no
         )
     ),
-    check_improvement(Optimized0, CostDelta0, SizeDelta0, Optimized,
-        !.PDInfo, !IO),
+    Optimized = is_improvement_worth_while(!.PDInfo, Optimized0,
+        CostDelta0, SizeDelta0),
 
     % Clean up.
     pd_info_set_depth(Depth0, !PDInfo),
@@ -789,10 +789,10 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
 
     % Check whether deforestation is legal and worthwhile.
     %
-:- pred should_try_deforestation(deforest_info::in,
-    bool::out, pd_info::in, pd_info::out, io::di, io::uo) is det.
+:- pred should_try_deforestation(deforest_info::in, bool::out,
+    pd_info::in, pd_info::out) is det.
 
-should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo, !IO) :-
+should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
     DeforestInfo = deforest_info(EarlierGoal, EarlierBranchInfo,
         BetweenGoals, LaterGoal, _, _),
     pd_info_get_useless_versions(!.PDInfo, UselessVersions),
@@ -802,7 +802,9 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo, !IO) :-
         set.member(proc(PredId1, ProcId1) - proc(PredId2, ProcId2),
             UselessVersions)
     ->
-        pd_debug_message("version tried before, not worthwhile\n", [], !IO),
+        trace [compile_time(flag("debug_deforest")), io(!IO)] (
+            pd_debug_message("version tried before, not worthwhile\n", [], !IO)
+        ),
         ShouldTry = no
     ;
         % If some later goal depends on a variable such as an io.state
@@ -817,7 +819,9 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo, !IO) :-
         set.intersect(OpaqueNonLocals, OpaqueVars, UsedOpaqueVars),
         \+ set.empty(UsedOpaqueVars)
     ->
-        pd_debug_message("later goals depend on opaque vars\n", [], !IO),
+        trace [compile_time(flag("debug_deforest")), io(!IO)] (
+            pd_debug_message("later goals depend on opaque vars\n", [], !IO)
+        ),
         ShouldTry = no
     ;
         ShouldTry = yes
@@ -845,7 +849,9 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
     ->
         % The depth limit was exceeded. This should not occur too often in
         % practice - the depth limit is just a safety net.
-        pd_debug_message("\n\n*****Depth limit exceeded*****\n\n", [], !IO),
+        trace [compile_time(flag("debug_deforest")), io(!IO)] (
+            pd_debug_message("\n\n*****Depth limit exceeded*****\n\n", [], !IO)
+        ),
         ShouldTry = no
     ;
         % Check whether either of the goals to be deforested is too large.
@@ -936,28 +942,34 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
     % - without any check at all the code size of the library only increases
     % ~10%.
     %
-:- pred check_improvement(bool::in, int::in, int::in, bool::out,
-    pd_info::in, io::di, io::uo) is det.
+:- func is_improvement_worth_while(pd_info, bool, int, int) = bool.
 
-check_improvement(Optimized0, CostDelta0, SizeDelta0, Optimized, PDInfo,
-        !IO) :-
+is_improvement_worth_while(PDInfo, Optimized0, CostDelta0, SizeDelta0)
+        = Optimized :-
     pd_info_get_cost_delta(PDInfo, CostDelta),
     pd_info_get_size_delta(PDInfo, SizeDelta),
     Improvement = CostDelta - CostDelta0,
     SizeDifference = SizeDelta - SizeDelta0,
-    globals.io_lookup_int_option(deforestation_cost_factor, Factor, !IO),
+
+    pd_info_get_module_info(PDInfo, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_int_option(Globals, deforestation_cost_factor, Factor),
     (
         Optimized0 = yes,
         check_deforestation_improvement(Factor, Improvement, SizeDifference)
     ->
         Optimized = yes,
-        pd_debug_message("Enough improvement: cost(%i) size(%i)\n",
-            [i(Improvement), i(SizeDifference)], !IO)
+        trace [io(!IO)] (
+            pd_debug_message("Enough improvement: cost(%i) size(%i)\n",
+                [i(Improvement), i(SizeDifference)], !IO)
+        )
     ;
         Optimized = no,
-        pd_debug_message(
-            "Not enough improvement: cost(%i) size(%i)\n",
-            [i(Improvement), i(SizeDifference)], !IO)
+        trace [io(!IO)] (
+            pd_debug_message(
+                "Not enough improvement: cost(%i) size(%i)\n",
+                [i(Improvement), i(SizeDifference)], !IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1960,8 +1972,10 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
             )
         ->
             Goal = Goal4,
-            pd_debug_message("inlined: cost(%i) size(%i)\n",
-                [i(CostDelta), i(SizeDelta)], !IO),
+            trace [io(!IO)] (
+                pd_debug_message("inlined: cost(%i) size(%i)\n",
+                    [i(CostDelta), i(SizeDelta)], !IO)
+            ),
             pd_info_incr_size_delta(SizeDelta, !PDInfo),
             pd_info_set_changed(yes, !PDInfo),
             Goal0 = hlds_goal(_, GoalInfo0),
@@ -1980,9 +1994,11 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
 
             Optimized = yes
         ;
-            pd_debug_message("not enough improvement - " ++
-                "not inlining: cost(%i) size(%i)\n",
-                [i(CostDelta), i(SizeDelta)], !IO),
+            trace [io(!IO)] (
+                pd_debug_message("not enough improvement - " ++
+                    "not inlining: cost(%i) size(%i)\n",
+                    [i(CostDelta), i(SizeDelta)], !IO)
+            ),
             pd_info_set_pred_info(PredInfo0, !PDInfo),
             pd_info_set_proc_info(ProcInfo0, !PDInfo),
             pd_info_set_size_delta(SizeDelta0, !PDInfo),
@@ -1992,7 +2008,9 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
             Optimized = no
         )
     ;
-        pd_debug_message("too many variables - not inlining\n", [], !IO),
+        trace [io(!IO)] (
+            pd_debug_message("too many variables - not inlining\n", [], !IO)
+        ),
         Goal = Goal0,
         Optimized = no
     ).
