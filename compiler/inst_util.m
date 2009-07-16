@@ -175,6 +175,12 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
     ThisInstPair = unify_inst(Live, InstA, InstB, UnifyIsReal),
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_unify_insts(InstTable0, UnifyInsts0),
+    % XXX For code that uses large facts, the deeply nested insts we unify
+    % here means that searching UnifyInsts0 here, and updating it (twice)
+    % in the else case below are *extremely* expensive. In one version of
+    % Doug Auclair's training_cars example, the map search, insert and update
+    % account for 116 out the 120 clock ticks spent in this predicate,
+    % i.e. they account for almost 97% of its runtime.
     ( map.search(UnifyInsts0, ThisInstPair, Result) ->
         ( Result = inst_det_known(UnifyInst, UnifyDet) ->
             Inst0 = UnifyInst,
