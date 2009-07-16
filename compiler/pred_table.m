@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007 The University of Melbourne.
+% Copyright (C) 1996-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -422,16 +422,16 @@ predicate_table_get_predids(PredIds, !PredicateTable) :-
         NewRevPredIds = [_ | _],
         PredIds = OldPredIds ++ list.reverse(NewRevPredIds)
     ),
-    !:PredicateTable = !.PredicateTable ^ old_pred_ids := PredIds,
-    !:PredicateTable = !.PredicateTable ^ new_rev_pred_ids := [].
+    !PredicateTable ^ old_pred_ids := PredIds,
+    !PredicateTable ^ new_rev_pred_ids := [].
 
 predicate_table_remove_predid(PredId, !PredicateTable) :-
     OldPredIds0 = !.PredicateTable ^ old_pred_ids,
     NewRevPredIds0 = !.PredicateTable ^ new_rev_pred_ids,
     list.delete_all(OldPredIds0, PredId, OldPredIds),
     list.delete_all(NewRevPredIds0, PredId, NewRevPredIds),
-    !:PredicateTable = !.PredicateTable ^ old_pred_ids := OldPredIds,
-    !:PredicateTable = !.PredicateTable ^ new_rev_pred_ids := NewRevPredIds.
+    !PredicateTable ^ old_pred_ids := OldPredIds,
+    !PredicateTable ^ new_rev_pred_ids := NewRevPredIds.
 
 predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
     PredicateTable0 = predicate_table(Preds0, NextPredId,
@@ -788,8 +788,8 @@ predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
         PredIds, !PredicateTable),
     predicate_table_get_predids(NewPredIds, !PredicateTable),
     list.sort(NewPredIds, SortedNewPredIds),
-    !:PredicateTable = !.PredicateTable ^ old_pred_ids := SortedNewPredIds,
-    !:PredicateTable = !.PredicateTable ^ new_rev_pred_ids := [].
+    !PredicateTable ^ old_pred_ids := SortedNewPredIds,
+    !PredicateTable ^ new_rev_pred_ids := [].
 
 :- pred reinsert_for_restrict(partial_qualifier_info::in, pred_table::in,
     accessibility_table::in, pred_id::in,

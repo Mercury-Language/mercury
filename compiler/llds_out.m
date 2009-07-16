@@ -1702,22 +1702,19 @@ output_c_procedure(PrintComments, EmitCLoops, LocalThreadEngineBase, Proc,
     PredProcId = Proc ^ cproc_id,
     PredProcId = proc(_, ProcId),
     proc_id_to_int(ProcId, ModeNum),
-    (
-        PrintComments = yes,
-        io.write_string("\n/*-------------------------------------", !IO),
-        io.write_string("------------------------------------*/\n", !IO),
-        io.write_string("/* code for predicate '", !IO),
-        % Now that we have unused_args.m mangling predicate names,
-        % we should probably demangle them here.
-        io.write_string(Name, !IO),
-        io.write_string("'/", !IO),
-        io.write_int(Arity, !IO),
-        io.write_string(" in mode ", !IO),
-        io.write_int(ModeNum, !IO),
-        io.write_string(" */\n", !IO)
-    ;
-        PrintComments = no
-    ),
+
+    io.write_string("\n/*-------------------------------------", !IO),
+    io.write_string("------------------------------------*/\n", !IO),
+    io.write_string("/* code for '", !IO),
+    % Now that we have unused_args.m mangling predicate names,
+    % we should probably demangle them here.
+    io.write_string(Name, !IO),
+    io.write_string("'/", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string(" mode ", !IO),
+    io.write_int(ModeNum, !IO),
+    io.write_string(" */\n", !IO),
+
     find_caller_label(Instrs, CallerLabel),
     find_cont_labels(Instrs, set_tree234.init, ContLabelSet),
     (

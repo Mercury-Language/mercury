@@ -1393,6 +1393,8 @@ predicate_arity(ModuleInfo, PredId) = Arity :-
 
 :- interface.
 
+    % A dependency ordering gives the list of SCCs of the module. The list
+    % is in ascending order: the lowest SCC is first, the highest SCC is last.
 :- type dependency_ordering(T)  == list(list(T)).
 :- type dependency_ordering     == dependency_ordering(pred_proc_id).
 
@@ -1407,7 +1409,6 @@ predicate_arity(ModuleInfo, PredId) = Arity :-
 :- pred hlds_dependency_info_get_dependency_graph(dependency_info(T)::in,
     dependency_graph(T)::out) is det.
 
-    % XXX document whether the dependency_ordering is ascending or descending.
 :- pred hlds_dependency_info_get_dependency_ordering(dependency_info(T)::in,
     dependency_ordering(T)::out) is det.
 
