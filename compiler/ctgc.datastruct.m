@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ctgc.datastruct.m.
 % Main author: nancy.
-% 
+%
 % Definition of predicates and functions for the manipulation of
 % datastructures.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.datastruct.
@@ -36,7 +36,7 @@
 :- pred datastruct_equal(datastruct::in, datastruct::in) is semidet.
 
     % Check whether the two given datastructs are related to the
-    % same variable or not. 
+    % same variable or not.
     %
 :- pred datastruct_same_vars(datastruct::in, datastruct::in) is semidet.
 
@@ -82,7 +82,7 @@
 :- pred datastruct_apply_widening(module_info::in, proc_info::in,
     datastruct::in, datastruct::out) is det.
 
-:- func datastructs_project(list(prog_var), 
+:- func datastructs_project(list(prog_var),
     list(datastruct)) = list(datastruct).
 
 :- func datastructs_vars(list(datastruct)) = list(prog_var).
@@ -158,8 +158,8 @@ datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data0, [Data | Rest]):-
         datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data0, Rest)
     ).
 
-datastructs_subsumed_by_list(ModuleInfo, ProcInfo, PerhapsSubsumedData, 
-        Data) :- 
+datastructs_subsumed_by_list(ModuleInfo, ProcInfo, PerhapsSubsumedData,
+        Data) :-
     all [X] (
         list.member(X, PerhapsSubsumedData)
     =>
@@ -172,10 +172,10 @@ datastructs_that_are_subsumed_by_list(ModuleInfo, ProcInfo,
         datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Datastructs),
         PerhapsSubsumedData, SubsumedData).
 
-:- pred datastructs_subsume_datastruct(module_info::in, proc_info::in, 
+:- pred datastructs_subsume_datastruct(module_info::in, proc_info::in,
     list(datastruct)::in, datastruct::in) is semidet.
 
-datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Datastructs, Data):- 
+datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Datastructs, Data):-
     datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data, Datastructs).
 
 datastruct_apply_widening(ModuleInfo, ProcInfo, Data0, Data) :-
@@ -185,14 +185,14 @@ datastruct_apply_widening(ModuleInfo, ProcInfo, Data0, Data) :-
     selector_apply_widening(ModuleInfo, Type, Sel0, Sel),
     Data = selected_cel(Var, Sel).
 
-datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo, Data1, Data2) 
-        = Data :- 
+datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo, Data1, Data2)
+        = Data :-
     list.filter(
         datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Data1),
         Data2, _SubsumedData, NotSubsumedData),
     Data = list.append(NotSubsumedData, Data1).
 
-datastructs_project(Vars, DataIn) = 
+datastructs_project(Vars, DataIn) =
     list.filter(
         (pred(Data::in) is semidet :- list.member(Data ^ sc_var, Vars)),
         DataIn).

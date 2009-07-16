@@ -90,12 +90,12 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
         pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
         some [!IG] (
             pred_info_get_inst_graph_info(PredInfo1, !:IG),
-            !:IG = !.IG ^ implementation_inst_graph := ImplementationInstGraph,
+            !IG ^ implementation_inst_graph := ImplementationInstGraph,
 
             % AAA only for non-imported preds with no mode decls.
             clauses_info_get_headvar_list(ClausesInfo, HeadVars),
             clauses_info_get_varset(ClausesInfo, VarSet),
-            !:IG = !.IG ^ interface_inst_graph := ImplementationInstGraph,
+            !IG ^ interface_inst_graph := ImplementationInstGraph,
             solutions(
                 (pred(V::out) is nondet :-
                     list.member(V0, HeadVars),

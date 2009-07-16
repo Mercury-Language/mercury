@@ -234,13 +234,16 @@ delay_partial_inst_proc_2(ModuleInfo, !.ProcInfo, MaybeProcInfo) :-
     delay_partial_inst_in_goal(InstMap0, Goal0, Goal, map.init, _ConstructMap,
         DelayInfo0, DelayInfo),
 
-    (if DelayInfo ^ dpi_changed = yes then
+    Changed = DelayInfo ^ dpi_changed,
+    (
+        Changed = yes,
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(DelayInfo ^ dpi_varset, !ProcInfo),
         proc_info_set_vartypes(DelayInfo ^ dpi_vartypes, !ProcInfo),
         requantify_proc(!ProcInfo),
         MaybeProcInfo = yes(!.ProcInfo)
-    else
+    ;
+        Changed = no,
         MaybeProcInfo = no
     ).
 

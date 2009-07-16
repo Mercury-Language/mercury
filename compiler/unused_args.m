@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,8 +22,8 @@
 %   - involved in a simple test, switch or a semidet deconstruction
 %   - used as an argument to another predicate in this module which is used.
 %
-% When using alternate liveness calculation, the following variables are
-% also considered used
+% When using typeinfo liveness, the following variables are also
+% considered used:
 %   - a type-info (or part of a type-info) of a type parameter of the
 %     type of a variable that is used (for example, if a variable
 %     of type list(T) is used, then TypeInfo_for_T is used)
@@ -90,6 +90,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
@@ -99,8 +100,8 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -167,7 +168,7 @@
 get_unused_args(UnusedArgs) = UnusedArgs ^ args.
 
 :- instance analysis(unused_args_func_info, unused_args_call,
-        unused_args_answer) where
+    unused_args_answer) where
 [
     analysis_name(_, _) = analysis_name,
     analysis_version_number(_, _) = 3,
@@ -230,7 +231,7 @@ unused_args_process_module(!ModuleInfo, !Specs, !IO) :-
     init_var_usage(VarUsage0, PredProcs, ProcCallInfo0, !ModuleInfo),
     % maybe_write_string(VeryVerbose, "% Finished initialisation.\n", !IO),
 
-    unused_args_pass(PredProcs, VarUsage0, VarUsage),
+    unused_args_pass(0, !.ModuleInfo, PredProcs, VarUsage0, VarUsage),
     % maybe_write_string(VeryVerbose, "% Finished analysis.\n", !IO),
 
     map.init(UnusedArgInfo0),
@@ -631,8 +632,8 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
     ;
         GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
         module_info_pred_proc_info(Info ^ unarg_module_info, PredId, ProcId,
-            _Pred, Proc),
-        proc_info_get_headvars(Proc, HeadVars),
+            _PredInfo, ProcInfo),
+        proc_info_get_headvars(ProcInfo, HeadVars),
         add_pred_call_arg_dep(proc(PredId, ProcId), Args, HeadVars, !VarDep)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
@@ -860,14 +861,19 @@ unused_args_traverse_goals(Info, [Goal | Goals], !VarDep) :-
 
     % Do a full iteration, check if anything changed, if so, repeat.
     %
-:- pred unused_args_pass(pred_proc_list::in, var_usage::in,var_usage::out)
-    is det.
+:- pred unused_args_pass(int::in, module_info::in, pred_proc_list::in,
+    var_usage::in, var_usage::out) is det.
 
-unused_args_pass(LocalPredProcs, !VarUsage) :-
+unused_args_pass(PassNum, ModuleInfo, LocalPredProcs, !VarUsage) :-
     unused_args_single_pass(LocalPredProcs, no, Changed, !VarUsage),
     (
         Changed = yes,
-        unused_args_pass(LocalPredProcs, !VarUsage)
+        trace [compile_time(flag("unused_args_var_usage")), io(!IO)] (
+            io.format("\nVARIABLE USAGE MAP AFTER PASS %d\n", [i(PassNum)],
+                !IO),
+            write_var_usage_map(ModuleInfo, !.VarUsage, !IO)
+        ),
+        unused_args_pass(PassNum + 1, ModuleInfo, LocalPredProcs, !VarUsage)
     ;
         Changed = no
     ).
@@ -1966,6 +1972,75 @@ record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
     ;
         true
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred write_var_usage_map(module_info::in, var_usage::in, io::di, io::uo)
+    is det.
+
+write_var_usage_map(ModuleInfo, VarUsageMap, !IO) :-
+    map.to_assoc_list(VarUsageMap, VarUsageList),
+    list.foldl(write_var_usage(ModuleInfo), VarUsageList, !IO).
+
+:- pred write_var_usage(module_info::in, pair(pred_proc_id, var_dep)::in,
+    io::di, io::uo) is det.
+
+write_var_usage(ModuleInfo, PredProcId - VarDepMap, !IO) :-
+    PredProcIdStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
+    io.format("\n%s:\n", [s(PredProcIdStr)], !IO),
+    map.to_assoc_list(VarDepMap, VarDepList),
+    module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
+    proc_info_get_varset(ProcInfo, VarSet),
+    list.foldl2(write_usage_info(ModuleInfo, VarSet), VarDepList,
+        [], RevNoDependVars, !IO),
+    list.reverse(RevNoDependVars, NoDependVars),
+    (
+        NoDependVars = []
+    ;
+        NoDependVars = [_ | _],
+        NoDependVarsStr = mercury_vars_to_string(VarSet, yes, NoDependVars),
+        io.format("nodepend vars: %s\n", [s(NoDependVarsStr)], !IO)
+    ).
+
+:- pred write_usage_info(module_info::in, prog_varset::in,
+    pair(prog_var, usage_info)::in, list(prog_var)::in, list(prog_var)::out,
+    io::di, io::uo) is det.
+
+write_usage_info(ModuleInfo, VarSet, Var - UsageInfo, !RevNoDependVars, !IO) :-
+    UsageInfo = unused(Vars, Args),
+    set.to_sorted_list(Vars, VarList),
+    set.to_sorted_list(Args, ArgList),
+    ( VarList = [], ArgList = [] ->
+        !:RevNoDependVars = [Var | !.RevNoDependVars]
+    ;
+        VarStr = mercury_var_to_string(VarSet, yes, Var),
+        io.format("dependencies of %s:\n", [s(VarStr)], !IO),
+        (
+            VarList = []
+        ;
+            VarList = [_ | _],
+            VarListStr = mercury_vars_to_string(VarSet, yes, VarList),
+            io.format("on variables: %s\n", [s(VarListStr)], !IO)
+        ),
+        (
+            ArgList = []
+        ;
+            ArgList = [_ | _],
+            io.write_string("on arguments:\n", !IO),
+            list.foldl(write_arg_var_in_proc(ModuleInfo), ArgList, !IO)
+        )
+    ).
+
+:- pred write_arg_var_in_proc(module_info::in, arg_var_in_proc::in,
+    io::di, io::uo) is det.
+
+write_arg_var_in_proc(ModuleInfo, ArgVarInProc, !IO) :-
+    ArgVarInProc = arg_var_in_proc(PredProcId, Var),
+    PredProcIdStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
+    module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
+    proc_info_get_varset(ProcInfo, VarSet),
+    VarStr = mercury_var_to_string(VarSet, yes, Var),
+    io.format("%s: %s\n", [s(PredProcIdStr), s(VarStr)], !IO).
 
 %-----------------------------------------------------------------------------%
 

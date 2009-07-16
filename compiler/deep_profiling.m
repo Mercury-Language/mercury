@@ -146,8 +146,7 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
     ->
         proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
         figure_out_rec_call_numbers(Goal, 0, _N, [], TailCallSites),
-        OrigDeepRecInfo = yes(deep_recursion_info(
-            outer_proc(ClonePredProcId),
+        OrigDeepRecInfo = yes(deep_recursion_info(outer_proc(ClonePredProcId),
             [visible_scc_data(PredProcId, ClonePredProcId, TailCallSites)])),
         make_deep_original_body(ProcInfo0, !.ModuleInfo, DeepOriginalBody),
         OrigDeepProfileInfo = deep_profile_proc_info(OrigDeepRecInfo, no,
@@ -158,8 +157,8 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
             DeepOriginalBody),
         proc_info_set_maybe_deep_profile_info(yes(OrigDeepProfileInfo),
             ProcInfo1, ProcInfo),
-        proc_info_set_maybe_deep_profile_info(
-            yes(CloneDeepProfileInfo), ProcInfo1, CloneProcInfo),
+        proc_info_set_maybe_deep_profile_info(yes(CloneDeepProfileInfo),
+            ProcInfo1, CloneProcInfo),
         map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
         map.det_insert(ProcTable1, CloneProcId, CloneProcInfo, ProcTable),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
@@ -387,10 +386,12 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = call_foreign_proc(Attrs, _, _, _, _, _, _),
-        ( get_may_call_mercury(Attrs) = proc_may_call_mercury ->
+        MayCallMercury = get_may_call_mercury(Attrs),
+        (
+            MayCallMercury = proc_may_call_mercury,
             !:N = !.N + 1
         ;
-            true
+            MayCallMercury = proc_will_not_call_mercury
         )
     ;
         GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
@@ -519,17 +520,17 @@ deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             MaybeDeepRecInfo = yes(RecInfo),
             RecInfo ^ role = inner_proc(_)
         ->
-            transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo),
+            deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo),
             MaybeDeepLayoutInfo = no
         ;
-            transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
+            deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
                 DeepLayoutInfo),
             MaybeDeepLayoutInfo = yes(DeepLayoutInfo)
         )
     ;
         MaybeDeepInfo = no,
         make_deep_original_body(!.ProcInfo, ModuleInfo, OrigBody),
-        transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
+        deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
             DeepLayoutInfo),
         MaybeDeepLayoutInfo = yes(DeepLayoutInfo),
         MaybeDeepRecInfo = no
@@ -587,10 +588,11 @@ make_deep_original_body(ProcInfo, ModuleInfo, DeepOriginalBody) :-
 
     % Transfrom a procedure.
     %
-:- pred transform_normal_proc(module_info::in, pred_proc_id::in,
+:- pred deep_prof_transform_normal_proc(module_info::in, pred_proc_id::in,
     proc_info::in, proc_info::out, hlds_deep_layout::out) is det.
 
-transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo, DeepLayoutInfo) :-
+deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
+        DeepLayoutInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = hlds_goal(_, GoalInfo0),
@@ -623,9 +625,8 @@ transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo, DeepLayoutInfo) :-
             DoCoverageProfiling),
         (
             DoCoverageProfiling = yes,
-            coverage_prof_transform_goal(ModuleInfo, PredProcId,
-                MaybeRecInfo, Goal1, TransformedGoal, !VarInfo,
-                CoveragePoints)
+            coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo,
+                Goal1, TransformedGoal, !VarInfo, CoveragePoints)
         ;
             DoCoverageProfiling = no,
             CoveragePoints = [],
@@ -686,7 +687,6 @@ transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo, DeepLayoutInfo) :-
     proc_info_set_goal(Goal, !ProcInfo),
     DeepLayoutInfo = hlds_deep_layout(ProcStatic, ExcpVars).
 
-
     % Wrap the procedure body in the deep profiling port goals.
     %
     % When modifing this transformation be sure to modify original_root/3 in
@@ -728,7 +728,7 @@ build_det_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
     ]),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-    % Wrap the goal for a semidet procedure,
+    % Wrap the goal for a semidet procedure.
     %
     % If changing this transformation be sure to change original_root/3 in
     % deep_profiler/program_represenentation_utils.m.
@@ -880,17 +880,16 @@ build_non_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
     % XXX: Inner procedures have no coverage profiling transformation done to
     % them yet.  This is because they are currently broken, and hence disabled.
     %
-:- pred transform_inner_proc(module_info::in, pred_proc_id::in,
+:- pred deep_prof_transform_inner_proc(module_info::in, pred_proc_id::in,
     proc_info::in, proc_info::out) is det.
 
-transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
+deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = hlds_goal(_, GoalInfo0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     VarInfo0 = deep_prof_var_info(VarSet0, VarTypes0),
-    generate_var("MiddleCSD", c_pointer_type, MiddleCSD, VarInfo0,
-        VarInfo1),
+    generate_var("MiddleCSD", c_pointer_type, MiddleCSD, VarInfo0, VarInfo1),
 
     Context = goal_info_get_context(GoalInfo0),
     FileName = term.context_file(Context),
@@ -898,8 +897,7 @@ transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
     extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
     DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
-        counter.init(0), [], VarInfo1,
-        FileName, MaybeRecInfo),
+        counter.init(0), [], VarInfo1, FileName, MaybeRecInfo),
 
     deep_prof_transform_goal(empty_goal_path, Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
@@ -2335,7 +2333,7 @@ coverage_prof_second_pass_disj(DPInfo, CoverageBeforeKnown,
         % pbone: I don't think so, the deep profiler doesn't seem to add this
         % feature to disjuncts that end in failure, it is probably a good idea
         % to add this annotation to prevent later compiler passes from breaking
-        % the deep profiler. 
+        % the deep profiler.
     ->
         coverage_prof_second_pass_goal(FirstDisjunct0, FirstDisjunct,
             CoverageBeforeKnown, NextCoverageBeforeKnown, !Info,
@@ -2984,8 +2982,8 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
     counter.allocate(CPIndex, CPIndexCounter0, CPIndexCounter),
     map.det_insert(CoveragePointInfos0, CPIndex, CoveragePointInfo,
         CoveragePointInfos),
-    !:CoverageInfo = !.CoverageInfo ^ ci_coverage_points := CoveragePointInfos,
-    !:CoverageInfo = !.CoverageInfo ^ ci_cp_index_counter := CPIndexCounter,
+    !CoverageInfo ^ ci_coverage_points := CoveragePointInfos,
+    !CoverageInfo ^ ci_cp_index_counter := CPIndexCounter,
 
     % Build unifications for the coverage point index and the proc static.
 

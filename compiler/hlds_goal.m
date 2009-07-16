@@ -1828,7 +1828,7 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
                 % The overall determinism of the goal (computed during
                 % determinism analysis). Since the determinism analysis problem
                 % is is undecidable, this may be a conservative approximation.
-                gi_determinism      :: determinism,
+/*  1 */        gi_determinism      :: determinism,
 
                 % The change in insts over this goal (computed during mode
                 % analysis). Since the unreachability problem is undecidable,
@@ -1848,30 +1848,30 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
                 %
                 % Normally the instmap_delta will list only the nonlocal
                 % variables of the goal.
-                gi_instmap_delta    :: instmap_delta,
+/*  2 */        gi_instmap_delta    :: instmap_delta,
 
                 % The non-local vars in the goal, i.e. the variables that
                 % occur both inside and outside of the goal (computed by
                 % quantification.m). In some circumstances, this may be a
                 % conservative approximation: it may be a superset of the
                 % real non-locals.
-                gi_nonlocals        :: set(prog_var),
+/*  3 */        gi_nonlocals        :: set(prog_var),
 
-                gi_purity           :: purity,
+/*  4 */        gi_purity           :: purity,
 
                 % The set of compiler-defined "features" of this goal,
                 % which optimisers may wish to know about.
-                gi_features         :: set(goal_feature),
+/*  5 */        gi_features         :: set(goal_feature),
 
                 % The path to this goal from the root.
-                gi_goal_path        :: goal_path,
+/*  6 */        gi_goal_path        :: goal_path,
 
-                gi_code_gen_info    :: hlds_goal_code_gen_info,
+/*  7 */        gi_code_gen_info    :: hlds_goal_code_gen_info,
 
                 % Extra information about the goal that doesn't fit in an
                 % eight-word cell. Mostly used for information used by
                 % various optional analysis passes, e.g closure analysis.
-                gi_extra            :: hlds_goal_extra_info
+/*  8 */        gi_extra            :: hlds_goal_extra_info
             ).
 
 :- type hlds_goal_extra_info

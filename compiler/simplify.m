@@ -2128,7 +2128,7 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     % Construct the variable to hold the comparison result.
     VarSet0 = !.Info ^ simp_varset,
     varset.new_var(VarSet0, R, VarSet),
-    !:Info = !.Info ^ simp_varset := VarSet,
+    !Info ^ simp_varset := VarSet,
 
     % We have to add the type of R to the var_types.
     simplify_info_get_var_types(!.Info, VarTypes0),
@@ -3575,15 +3575,15 @@ simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
     simplify_info::in, simplify_info::out) is det.
 
 simplify_info_reinit(Simplifications, InstMap0, !Info) :-
-    !:Info = !.Info ^ simp_simplifications := Simplifications,
-    !:Info = !.Info ^ simp_common_info := common_info_init,
-    !:Info = !.Info ^ simp_instmap := InstMap0,
-    !:Info = !.Info ^ simp_requantify := no,
-    !:Info = !.Info ^ simp_recompute_atomic := no,
-    !:Info = !.Info ^ simp_rerun_det := no,
-    !:Info = !.Info ^ simp_lambdas := 0,
-    !:Info = !.Info ^ simp_has_parallel_conj := no,
-    !:Info = !.Info ^ simp_has_user_event := no.
+    !Info ^ simp_simplifications := Simplifications,
+    !Info ^ simp_common_info := common_info_init,
+    !Info ^ simp_instmap := InstMap0,
+    !Info ^ simp_requantify := no,
+    !Info ^ simp_recompute_atomic := no,
+    !Info ^ simp_rerun_det := no,
+    !Info ^ simp_lambdas := 0,
+    !Info ^ simp_has_parallel_conj := no,
+    !Info ^ simp_has_user_event := no.
 
     % exported for common.m
 :- interface.
@@ -3724,31 +3724,45 @@ simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
 :- pred simplify_info_set_module_info(module_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_info_set_det_info(Det, Info, Info ^ simp_det_info := Det).
-simplify_info_set_error_specs(Specs, Info, Info ^ simp_error_specs := Specs).
-simplify_info_set_simplifications(Simp, Info,
-    Info ^ simp_simplifications := Simp).
-simplify_info_set_instmap(InstMap, Info, Info ^ simp_instmap := InstMap).
-simplify_info_set_common_info(Common, Info, Info ^ simp_common_info := Common).
-simplify_info_set_varset(VarSet, Info, Info ^ simp_varset := VarSet).
-simplify_info_set_var_types(VarTypes, Info, Info ^ simp_det_info := DetInfo) :-
-    det_info_set_vartypes(VarTypes, Info ^ simp_det_info, DetInfo).
-simplify_info_set_requantify(Info, Info ^ simp_requantify := yes).
-simplify_info_set_recompute_atomic(Info, Info ^ simp_recompute_atomic := yes).
-simplify_info_set_rerun_det(Info, Info ^ simp_rerun_det := yes).
-simplify_info_set_cost_delta(Delta, Info, Info ^ simp_cost_delta := Delta).
-simplify_info_set_rtti_varmaps(Rtti, Info, Info ^ simp_rtti_varmaps := Rtti).
-simplify_info_set_format_calls(FC, Info, Info ^ simp_format_calls := FC).
-simplify_info_set_inside_duplicated_for_switch(IDFS, Info,
-    Info ^ simp_inside_dupl_for_switch := IDFS).
-simplify_info_set_has_parallel_conj(MHPC, Info,
-    Info ^ simp_has_parallel_conj := MHPC).
-simplify_info_set_found_contains_trace(FCT, Info,
-    Info ^ simp_found_contains_trace := FCT).
-simplify_info_set_has_user_event(HUE, Info, Info ^ simp_has_user_event := HUE).
+simplify_info_set_det_info(Det, !Info) :-
+    !Info ^ simp_det_info := Det.
+simplify_info_set_error_specs(Specs, !Info) :-
+    !Info ^ simp_error_specs := Specs.
+simplify_info_set_simplifications(Simp, !Info) :-
+    !Info ^ simp_simplifications := Simp.
+simplify_info_set_instmap(InstMap, !Info) :-
+    !Info ^ simp_instmap := InstMap.
+simplify_info_set_common_info(Common, !Info) :-
+    !Info ^ simp_common_info := Common.
+simplify_info_set_varset(VarSet, !Info) :-
+    !Info ^ simp_varset := VarSet.
+simplify_info_set_var_types(VarTypes, !Info) :-
+    DetInfo0 = !.Info ^ simp_det_info,
+    det_info_set_vartypes(VarTypes, DetInfo0, DetInfo),
+    !Info ^ simp_det_info := DetInfo.
+simplify_info_set_requantify(!Info) :-
+    !Info ^ simp_requantify := yes.
+simplify_info_set_recompute_atomic(!Info) :-
+    !Info ^ simp_recompute_atomic := yes.
+simplify_info_set_rerun_det(!Info) :-
+    !Info ^ simp_rerun_det := yes.
+simplify_info_set_cost_delta(Delta, !Info) :-
+    !Info ^ simp_cost_delta := Delta.
+simplify_info_set_rtti_varmaps(Rtti, !Info) :-
+    !Info ^ simp_rtti_varmaps := Rtti.
+simplify_info_set_format_calls(FC, !Info) :-
+    !Info ^ simp_format_calls := FC.
+simplify_info_set_inside_duplicated_for_switch(IDFS, !Info) :-
+    !Info ^ simp_inside_dupl_for_switch := IDFS.
+simplify_info_set_has_parallel_conj(MHPC, !Info) :-
+    !Info ^ simp_has_parallel_conj := MHPC.
+simplify_info_set_found_contains_trace(FCT, !Info) :-
+    !Info ^ simp_found_contains_trace := FCT.
+simplify_info_set_has_user_event(HUE, !Info) :-
+    !Info ^ simp_has_user_event := HUE.
 
-simplify_info_incr_cost_delta(Incr, Info,
-    Info ^ simp_cost_delta := Info ^ simp_cost_delta + Incr).
+simplify_info_incr_cost_delta(Incr, !Info) :-
+    !Info ^ simp_cost_delta := !.Info ^ simp_cost_delta + Incr.
 
 simplify_info_add_error_spec(Spec, !Info) :-
     ( simplify_do_warn_simple_code(!.Info) ->

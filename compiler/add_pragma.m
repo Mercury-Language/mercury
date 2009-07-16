@@ -468,20 +468,20 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId, Modes,
             Modes, !.ModuleInfo, ProcId)
     ->
         map.lookup(Procs, ProcId, ProcInfo),
-        proc_info_get_declared_determinism(ProcInfo, MaybeDet),
+        proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
         % We cannot catch those multi or nondet procedures that don't have
         % a determinism declaration until after determinism analysis.
         (
-            MaybeDet = yes(Det),
-            ( Det = detism_non
-            ; Det = detism_multi
+            MaybeDetism = yes(Detism),
+            ( Detism = detism_non
+            ; Detism = detism_multi
             )
         ->
             Pieces = [words("Error: "),
                 fixed("`:- pragma foreign_export' declaration"),
                 words("for a procedure that has"),
                 words("a declared determinism of"),
-                fixed(hlds_out.determinism_to_string(Det) ++ ".")
+                fixed(hlds_out.determinism_to_string(Detism) ++ ".")
             ],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
@@ -1952,7 +1952,7 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         )
     ;
         % XXX This happens in `.trans_opt' files sometimes --
-        % so just ignore it
+        % so just ignore it.
         true
         %   undefined_pred_or_func_error(
         %        SymName, Arity, Context,
@@ -2009,7 +2009,7 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
         )
     ;
         % XXX This happens in `.trans_opt' files sometimes --
-        % so just ignore it
+        % so just ignore it.
         true
         %   undefined_pred_or_func_error(SymName, Arity, Context,
         %       "`:- pragma structure_sharing' declaration",
@@ -2124,7 +2124,7 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
         )
     ;
         % XXX This happens in `.trans_opt' files sometimes --
-        % so just ignore it
+        % so just ignore it.
         true
         %   undefined_pred_or_func_error(SymName, Arity, Context,
         %       "`:- pragma termination_info' declaration",
@@ -3777,8 +3777,8 @@ match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
     ;
         HOInstInfoA = higher_order(PredInstInfoA),
         HOInstInfoB = higher_order(PredInstInfoB),
-        PredInstInfoA = pred_inst_info(PredOrFunc, ModesA, Det),
-        PredInstInfoB = pred_inst_info(PredOrFunc, ModesB, Det),
+        PredInstInfoA = pred_inst_info(PredOrFunc, ModesA, Detism),
+        PredInstInfoB = pred_inst_info(PredOrFunc, ModesB, Detism),
         mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo)
     ).
 

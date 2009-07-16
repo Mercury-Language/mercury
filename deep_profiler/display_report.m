@@ -1712,10 +1712,11 @@ display_report_clique_dump_member(Prefs, PDPtr, Pair, !Label) :-
 
 display_report_proc_var_use_dump(_Prefs, ProcVarUseDumpInfo, Display) :-
     ProcVarUseDumpInfo = proc_var_use_dump_info(AverageProcCost, VarUses),
-    ProcCostRow = table_row([table_cell(td_s("Average Proc Cost: ")),
-                             table_cell(td_f(AverageProcCost))]),
+    HeaderCell = table_cell(td_s("Average Proc Cost: ")),
+    DataCell = table_cell(td_f(AverageProcCost)),
+    ProcCostRow = table_row([HeaderCell, DataCell]),
     format_proc_var_uses(VarUses, 1, VarUseRows),
-    Rows = [ ProcCostRow | VarUseRows ],
+    Rows = [ProcCostRow | VarUseRows],
     Table = table(table_class_do_not_box, 2, no, Rows),
     Title = "Dump of procedure's var use info",
     Display = display(yes(Title), [display_table(Table)]). 
@@ -1725,9 +1726,42 @@ display_report_proc_var_use_dump(_Prefs, ProcVarUseDumpInfo, Display) :-
 
 format_proc_var_uses([], _, []).
 format_proc_var_uses([VarUse | VarUses], RowNum, [Row | Rows]) :-
-    format_proc_var_uses(VarUses, RowNum+1, Rows),
-    Row = table_row([table_cell(td_s(format("Argument: %i", [i(RowNum)]))), 
-                     table_cell(td_s(string(VarUse)))]).
+    HeaderCell = table_cell(td_s(format("Argument: %i", [i(RowNum)]))), 
+    VarUse = var_use_info(CostUntilUse, UseType),
+    (
+        CostUntilUse = cost_since_proc_start(CostSince),
+        (
+            UseType = var_use_production,
+            string.format("%f from start until production",
+                [f(CostSince)], UseStr)
+        ;
+            UseType = var_use_consumption,
+            string.format("%f from start until consumption",
+                [f(CostSince)], UseStr)
+        ;
+            UseType = var_use_other,
+            string.format("%f from start until other use",
+                [f(CostSince)], UseStr)
+        )
+    ;
+        CostUntilUse = cost_before_proc_end(CostBefore),
+        (
+            UseType = var_use_production,
+            string.format("%f from production until end",
+                [f(CostBefore)], UseStr)
+        ;
+            UseType = var_use_consumption,
+            string.format("%f from consumption until end",
+                [f(CostBefore)], UseStr)
+        ;
+            UseType = var_use_other,
+            string.format("%f from other use until end",
+                [f(CostBefore)], UseStr)
+        )
+    ),
+    DataCell = table_cell(td_s(UseStr)),
+    Row = table_row([HeaderCell, DataCell]),
+    format_proc_var_uses(VarUses, RowNum + 1, Rows).
 
 %-----------------------------------------------------------------------------%
 %

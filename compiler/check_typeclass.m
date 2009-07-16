@@ -1540,17 +1540,16 @@ check_typeclass_constraints(!ModuleInfo, !Specs) :-
 
 check_pred_constraints(PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    pred_info_get_import_status(PredInfo, ImportStatus),
+    NeedsAmbiguityCheck = needs_ambiguity_check(ImportStatus),
     (
-        pred_info_get_import_status(PredInfo, ImportStatus),
-        needs_ambiguity_check(ImportStatus) = no
-    ->
-        true
+        NeedsAmbiguityCheck = no
     ;
+        NeedsAmbiguityCheck = yes,
         trace [io(!IO)] (
             write_pred_progress_message("% Checking typeclass constraints on ",
                 PredId, !.ModuleInfo, !IO)
         ),
-
         check_pred_type_ambiguities(PredInfo, !ModuleInfo, !Specs),
         check_constraint_quant(PredInfo, !ModuleInfo, !Specs)
     ).

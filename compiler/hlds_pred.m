@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1014,49 +1014,49 @@ calls_are_fully_qualified(Markers) =
 :- type pred_info
     --->    pred_info(
                 % Module in which pred occurs.
-                module_name         :: module_name,
+/*  1 */        module_name         :: module_name,
 
                 % Predicate name.
-                name                :: string,
+/*  2 */        name                :: string,
 
                 % The arity of the pred (*not* counting any inserted type_info
                 % arguments).
-                orig_arity          :: arity,
+/*  3 */        orig_arity          :: arity,
 
                 % Whether this "predicate" is really a predicate or a function.
-                is_pred_or_func     :: pred_or_func,
+/*  4 */        is_pred_or_func     :: pred_or_func,
 
                 % Where did the predicate come from.
-                pred_origin         :: pred_origin,
+/*  5 */        pred_origin         :: pred_origin,
 
-                import_status       :: import_status,
+/*  6 */        import_status       :: import_status,
 
                 % Various boolean flags.
-                markers             :: pred_markers,
+/*  7 */        markers             :: pred_markers,
 
                 % Argument types.
-                arg_types           :: list(mer_type),
+/*  8 */        arg_types           :: list(mer_type),
 
                 % Names of type vars in the predicate's type declaration.
-                decl_typevarset     :: tvarset,
+/*  9 */        decl_typevarset     :: tvarset,
 
                 % Names of type vars in the predicate's type declaration
                 % or in the variable type assignments.
-                typevarset          :: tvarset,
+/* 10 */        typevarset          :: tvarset,
 
                 % The set of existentially quantified type variables in the
                 % predicate's type declaration.
-                exist_quant_tvars   :: existq_tvars,
+/* 11 */        exist_quant_tvars   :: existq_tvars,
 
                 % The class constraints on the type variables in the
                 % predicate's type declaration.
-                class_context       :: prog_constraints,
+/* 12 */        class_context       :: prog_constraints,
 
-                clauses_info        :: clauses_info,
+/* 13 */        clauses_info        :: clauses_info,
 
-                procedures          :: proc_table,
+/* 14 */        procedures          :: proc_table,
 
-                pred_sub_info       :: pred_sub_info
+/* 15 */        pred_sub_info       :: pred_sub_info
 
                 % If you are adding any new fields, please try to ensure
                 % that the number of fields doesn't cross a threshold that
@@ -2196,45 +2196,45 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    proc_info(
                 % The context of the `:- mode' decl (or the context of the
                 % first clause, if there was no mode declaration).
-                proc_context                :: prog_context,
+/*  1 */        proc_context                :: prog_context,
 
-                prog_varset                 :: prog_varset,
-                var_types                   :: vartypes,
-                head_vars                   :: list(prog_var),
-                inst_varset                 :: inst_varset,
+/*  2 */        prog_varset                 :: prog_varset,
+/*  3 */        var_types                   :: vartypes,
+/*  4 */        head_vars                   :: list(prog_var),
+/*  5 */        inst_varset                 :: inst_varset,
 
                 % The declared modes of arguments.
-                maybe_declared_head_modes   :: maybe(list(mer_mode)),
+/*  6 */        maybe_declared_head_modes   :: maybe(list(mer_mode)),
 
-                actual_head_modes           :: list(mer_mode),
-                maybe_head_modes_constraint :: maybe(mode_constraint),
+/*  7 */        actual_head_modes           :: list(mer_mode),
+/*  8 */        maybe_head_modes_constraint :: maybe(mode_constraint),
 
                 % Liveness (in the mode analysis sense) of the arguments
                 % in the caller; says whether each argument may be used
                 % after the call.
-                head_var_caller_liveness    :: maybe(list(is_live)),
+/*  9 */        head_var_caller_liveness    :: maybe(list(is_live)),
 
                 % The _declared_ determinism of the procedure, or `no'
                 % if there was no detism declaration.
-                declared_detism             :: maybe(determinism),
+/* 10 */        declared_detism             :: maybe(determinism),
 
-                inferred_detism             :: determinism,
-                body                        :: hlds_goal,
+/* 11 */        inferred_detism             :: determinism,
+/* 12 */        body                        :: hlds_goal,
 
                 % No if we must not process this procedure yet (used to delay
                 % mode checking etc. for complicated modes of unification
                 % predicates until the end of the unique_modes pass.)
-                can_process                 :: bool,
+/* 13 */        can_process                 :: bool,
 
-                mode_errors                 :: list(mode_error_info),
+/* 14 */        mode_errors                 :: list(mode_error_info),
 
                 % Information about type_infos and typeclass_infos.
-                proc_rtti_varmaps           :: rtti_varmaps,
+/* 15 */        proc_rtti_varmaps           :: rtti_varmaps,
 
                 % How should the proc be evaluated.
-                eval_method                 :: eval_method,
+/* 16 */        eval_method                 :: eval_method,
 
-                proc_sub_info               :: proc_sub_info
+/* 17 */        proc_sub_info               :: proc_sub_info
             ).
 
 :- type proc_sub_info

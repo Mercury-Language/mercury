@@ -415,8 +415,7 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         pred_info_get_origin(PredInfo, Origin),
         (
-            Origin = origin_special_pred(SpecialId - TypeCtor)
-        ->
+            Origin = origin_special_pred(SpecialId - TypeCtor),
             special_pred_description(SpecialId, Descr),
             TypeCtor = type_ctor(_TypeSymName, TypeArity),
             ( TypeArity = 0 ->
@@ -426,9 +425,7 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
             ),
             Str = Descr ++ ForStr ++ type_name_to_string(TypeCtor)
         ;
-            pred_info_get_origin(PredInfo, Origin),
-            Origin = origin_instance_method(MethodName, MethodConstraints)
-        ->
+            Origin = origin_instance_method(MethodName, MethodConstraints),
             MethodConstraints = instance_method_constraints(ClassId,
                 InstanceTypes, _, _),
             MethodStr = simple_call_id_to_string(PredOrFunc, MethodName,
@@ -441,13 +438,20 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
                 " for `", ClassStr, "(", TypeStrs, ")'"
             ])
         ;
-            pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType))
-        ->
-            Str = "`" ++ prog_out.promise_to_string(PromiseType)
-                ++ "' declaration"
-        ;
-            Str = simple_call_id_to_string(PredOrFunc, qualified(Module, Name),
-                Arity)
+            ( Origin = origin_transformed(_, _, _)
+            ; Origin = origin_assertion(_, _)
+            ; Origin = origin_created(_)
+            ; Origin = origin_lambda(_, _, _)
+            ; Origin = origin_user(_)
+            ),
+            pred_info_get_goal_type(PredInfo, GoalType),
+            ( GoalType = goal_type_promise(PromiseType) ->
+                Str = "`" ++ prog_out.promise_to_string(PromiseType)
+                    ++ "' declaration"
+            ;
+                Str = simple_call_id_to_string(PredOrFunc,
+                    qualified(Module, Name), Arity)
+            )
         )
     ;
         % The predicate has been deleted, so we print what we can.
