@@ -3663,7 +3663,7 @@ output_rval_const(Const, !IO) :-
         io.write_string("false", !IO)
     ;
         Const = mlconst_int(N),
-        io.write_int(N, !IO)
+        output_int_const(N, !IO)
     ;
         Const = mlconst_foreign(Lang, Value, _Type),
         expect(unify(Lang, lang_java), this_file,
@@ -3697,6 +3697,28 @@ output_rval_const(Const, !IO) :-
         Const = mlconst_null(Type),
         Initializer = get_java_type_initializer(Type),
         io.write_string(Initializer, !IO)
+    ).
+
+:- pred output_int_const(int::in, io::di, io::uo) is det.
+
+output_int_const(N, !IO) :-
+    % The Mercury compiler could be using 64-bit integers but Java has 32-bit
+    % ints.  A literal 0xffffffff in a source file would be interpreted by a
+    % 64-bit Mercury compiler as 4294967295.  If it is written out in decimal a
+    % Java compiler would rightly complain because the integer is too large to
+    % fit in a 32-bit int.  However, it won't complain if the literal is
+    % expressed in hexadecimal (nor as the negative decimal -1).
+    ( N < 0 ->
+        io.write_int(N, !IO)
+    ;
+        N >> 32 = 0,
+        N /\ 0x80000000 = 0x80000000
+    ->
+        % The bit pattern fits in 32 bits, but is too large to write as a
+        % positive decimal.  This branch is unreachable on a 32-bit compiler.
+        io.format("0x%x", [i(N /\ 0xffffffff)], !IO)
+    ;
+        io.write_int(N, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
