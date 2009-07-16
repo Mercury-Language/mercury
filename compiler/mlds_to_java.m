@@ -3776,13 +3776,40 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
 %-----------------------------------------------------------------------------%
 %
 % Miscellaneous stuff to handle indentation and generation of
-% source context annotations.  (XXX This can probably be simplified
-% since Java doesn't have an equivalent of #line directives.)
+% source context annotations.
 %
+
+:- mutable(last_context, prog_context, context_init, ground,
+    [untrailed, attach_to_io_state]).
 
 :- pred output_context(mlds_context::in, io::di, io::uo) is det.
 
-output_context(_Context, !IO).
+output_context(Context, !IO) :-
+    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+    (
+        LineNumbers = yes,
+        ProgContext = mlds_get_prog_context(Context),
+        get_last_context(LastContext, !IO),
+        term.context_file(ProgContext, File),
+        term.context_line(ProgContext, Line),
+        (
+            ProgContext \= LastContext,
+            Line > 0,
+            File \= ""
+        ->
+            % Java doesn't have an equivalent of #line directives.
+            io.write_string("// ", !IO),
+            io.write_string(File, !IO),
+            io.write_string(":", !IO),
+            io.write_int(Line, !IO),
+            io.nl(!IO),
+            set_last_context(ProgContext, !IO)
+        ;
+            true
+        )
+    ;
+        LineNumbers = no
+    ).
 
 :- pred indent_line(mlds_context::in, indent::in, io::di, io::uo) is det.
 
