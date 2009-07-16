@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -246,6 +246,10 @@
 
     % Merge the contents of the two maps.
     % Throws an exception if both sets of keys are not disjoint.
+    %
+    % The cost of this predicate is proportional to the number of elements
+    % in the second map, so for efficiency, you want to put the bigger map
+    % first and the smaller map second.
     %
 :- func map.merge(map(K, V), map(K, V)) = map(K, V).
 :- pred map.merge(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
@@ -793,11 +797,9 @@ map.from_corresponding_lists(Keys, Values, Map) :-
 
 %-----------------------------------------------------------------------------%
 
-map.merge(M0, M1, M) :-
-    map.to_assoc_list(M0, ML0),
-    map.to_assoc_list(M1, ML1),
-    list.merge(ML0, ML1, ML),
-    M = map.det_insert_from_assoc_list(map.init, ML).
+map.merge(MA, MB, M) :-
+    map.to_assoc_list(MB, MBList),
+    map.det_insert_from_assoc_list(MA, MBList, M).
 
 %-----------------------------------------------------------------------------%
 
