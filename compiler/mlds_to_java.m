@@ -2189,7 +2189,19 @@ output_type(Style, mlds_mercury_array_type(ElementType), !IO) :-
         % class, so we just use the universal base `java.lang.Object'.
         io.write_string("/* Array */ java.lang.Object", !IO)
     ;
-        output_type(Style, ElementType, !IO),
+        % For primitive element types we use arrays of the primitive type.
+        % For non-primitive element types, we just use `java.lang.Object []'.
+        % We used to use more specific types, but then to create an array of
+        % the right type we need to use reflection to determine the class of a
+        % representative element.  That doesn't work if the representative
+        % element is of a foreign type, and has the value null.
+        ( java_builtin_type(ElementType, _, _, _) ->
+            output_type(Style, ElementType, !IO)
+        ;
+            io.write_string("/* ", !IO),
+            output_type(Style, ElementType, !IO),
+            io.write_string("[] */ java.lang.Object", !IO)
+        ),
         output_array_brackets(Style, !IO)
     ).
 output_type(_, mlds_native_int_type, !IO) :-
