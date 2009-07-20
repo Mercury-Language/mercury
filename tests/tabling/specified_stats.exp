@@ -139,7 +139,7 @@ step 1, variable N: discriminated union nested trie
   number of hash table allocations:                 NNN
   number of bytes allocated for hash tables:        NNN
   number of bulk hash link allocations:             NNN
-  number of bytes allocated for hash links:   NNN   NNN
+  number of bytes allocated for hash links:         NNN
   number of key compares when unsuccessful:         NNN
   number of key compares when successful:           NNN
   number of hash table resizes:                     NNN
@@ -152,9 +152,9 @@ step 2, variable CopyN: discriminated union nested trie
   number of bytes allocated for du functors:        NNN
   number of du functor argument lookups:            NNN
   number of hash table allocations:                 NNN
-  number of bytes allocated for hash tables:    6   NNN
+  number of bytes allocated for hash tables:        NNN
   number of bulk hash link allocations:             NNN
-  number of bytes allocated for hash links:   3,7   NNN
+  number of bytes allocated for hash links:         NNN
   number of key compares when unsuccessful:         NNN
   number of key compares when successful:           NNN
   number of hash table resizes:                     NNN
@@ -176,7 +176,7 @@ step 1, variable N: discriminated union nested trie
   number of hash table allocations:                 NNN
   number of bytes allocated for hash tables:        NNN
   number of bulk hash link allocations:             NNN
-  number of bytes allocated for hash links:   NNN   NNN
+  number of bytes allocated for hash links:         NNN
   number of key compares when unsuccessful:         NNN
   number of key compares when successful:           NNN
   number of hash table resizes:                     NNN

@@ -1,0 +1,115 @@
+fib(1): 1
+fib(2): 2
+fib(3): 3
+fib(4): 5
+fib(5): 8
+fib(6): 13
+fib(7): 21
+fib(8): 34
+fib(9): 55
+fib(10): 89
+
+Previous call table for mfib, test 1 to 10:
+number of lookups:                                    0
+
+Current call table for mfib, test 1 to 10:
+number of lookups:                                   28
+number of successful lookups (old calls):            17  (60.71%)
+number of unsuccessful lookups (new calls):          11  (39.29%)
+statistics for the individual steps:
+
+step 1, variable N: hash table
+  number of lookups:                                 28
+  number of successful lookups:                      17  (60.71%)
+  number of unsuccessful lookups:                    11  (39.29%)
+  number of hash table allocations:                   1
+  number of bytes allocated for hash tables:      1,072
+  number of bulk hash link allocations:               1
+  number of bytes allocated for hash links:       6,160
+  number of key compares when unsuccessful:           0
+  number of key compares when successful:            17
+  number of hash table resizes:                       0
+
+Call table difference (curr - prev) for mfib, test 1 to 10:
+number of lookups:                                   28
+number of successful lookups (old calls):            17  (60.71%)
+number of unsuccessful lookups (new calls):          11  (39.29%)
+statistics for the individual steps:
+
+step 1, variable N: hash table
+  number of lookups:                                 28
+  number of successful lookups:                      17  (60.71%)
+  number of unsuccessful lookups:                    11  (39.29%)
+  number of hash table allocations:                   1
+  number of bytes allocated for hash tables:      1,072
+  number of bulk hash link allocations:               1
+  number of bytes allocated for hash links:       6,160
+  number of key compares when unsuccessful:           0
+  number of key compares when successful:            17
+  number of hash table resizes:                       0
+
+fib(11): 144
+fib(12): 233
+fib(13): 377
+fib(14): 610
+fib(15): 987
+fib(16): 1597
+fib(17): 2584
+fib(18): 4181
+fib(19): 6765
+fib(20): 10946
+
+Previous call table for mfib, test 11 to 20:
+number of lookups:                                   28
+number of successful lookups (old calls):            17  (60.71%)
+number of unsuccessful lookups (new calls):          11  (39.29%)
+statistics for the individual steps:
+
+step 1, variable N: hash table
+  number of lookups:                                 28
+  number of successful lookups:                      17  (60.71%)
+  number of unsuccessful lookups:                    11  (39.29%)
+  number of hash table allocations:                   1
+  number of bytes allocated for hash tables:      1,072
+  number of bulk hash link allocations:               1
+  number of bytes allocated for hash links:       6,160
+  number of key compares when unsuccessful:           0
+  number of key compares when successful:            17
+  number of hash table resizes:                       0
+
+Current call table for mfib, test 11 to 20:
+number of lookups:                                   58
+number of successful lookups (old calls):            37  (63.79%)
+number of unsuccessful lookups (new calls):          21  (36.21%)
+statistics for the individual steps:
+
+step 1, variable N: hash table
+  number of lookups:                                 58
+  number of successful lookups:                      37  (63.79%)
+  number of unsuccessful lookups:                    21  (36.21%)
+  number of hash table allocations:                   1
+  number of bytes allocated for hash tables:      1,072
+  number of bulk hash link allocations:               1
+  number of bytes allocated for hash links:       6,160
+  number of key compares when unsuccessful:           0
+  number of key compares when successful:            37
+  number of hash table resizes:                       0
+
+Call table difference (curr - prev) for mfib, test 11 to 20:
+number of lookups:                                   30
+number of successful lookups (old calls):            20  (66.67%)
+number of unsuccessful lookups (new calls):          10  (33.33%)
+statistics for the individual steps:
+
+step 1, variable N: hash table
+  number of lookups:                                 30
+  number of successful lookups:                      20  (66.67%)
+  number of unsuccessful lookups:                    10  (33.33%)
+  number of hash table allocations:                   0
+  number of bytes allocated for hash tables:          0
+  number of bulk hash link allocations:               0
+  number of bytes allocated for hash links:           0
+  number of key compares when unsuccessful:           0
+  number of key compares when successful:            20
+  number of hash table resizes:                       0
+
