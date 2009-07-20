@@ -501,12 +501,13 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
                 "generate_construction_2: no_tag: arity != 1")
         )
     ;
-        ConsTag = single_functor_tag,
-        % Treat single_functor the same as unshared_tag(0).
-        generate_construction_2(unshared_tag(0), Var, Args, Modes,
-            HowToConstruct, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
-    ;
-        ConsTag = unshared_tag(Ptag),
+        (
+            ConsTag = single_functor_tag,
+            % Treat single_functor the same as unshared_tag(0).
+            Ptag = 0
+        ;
+            ConsTag = unshared_tag(Ptag)
+        ),
         var_types(!.CI, Args, ArgTypes),
         generate_cons_args(Args, ArgTypes, Modes, 0, 1, TakeAddr, !.CI,
             MaybeRvals, FieldAddrs, MayUseAtomic),
@@ -522,9 +523,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         construct_cell(Var, Ptag, MaybeRvals, HowToConstruct,
             MaybeSize, FieldAddrs, MayUseAtomic, Code, !CI)
     ;
-        ConsTag = shared_local_tag(Bits1, Num1),
+        ConsTag = shared_local_tag(Ptag, Sectag),
         assign_const_to_var(Var,
-            mkword(Bits1, unop(mkbody, const(llconst_int(Num1)))), !CI),
+            mkword(Ptag, unop(mkbody, const(llconst_int(Sectag)))), !CI),
         Code = empty
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
@@ -540,10 +541,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         expect(unify(Args, []), this_file,
             "generate_construction_2: base_typeclass_info constant has args"),
         TCName = generate_class_name(ClassId),
-        assign_const_to_var(Var,
-            const(llconst_data_addr(rtti_addr(tc_rtti_id(TCName,
-                type_class_base_typeclass_info(ModuleName, Instance))), no)),
-                !CI),
+        DataAddr = rtti_addr(tc_rtti_id(TCName,
+            type_class_base_typeclass_info(ModuleName, Instance))),
+        assign_const_to_var(Var, const(llconst_data_addr(DataAddr, no)), !CI),
         Code = empty
     ;
         ConsTag = tabling_info_tag(PredId, ProcId),
@@ -592,9 +592,8 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         % For shared_with_reserved_address, the sharing is only important
         % for tag tests, not for constructions, so here we just recurse
         % on the real representation.
-        generate_construction_2(ThisTag,
-            Var, Args, Modes, HowToConstruct, TakeAddr, MaybeSize, GoalInfo,
-            Code, !CI)
+        generate_construction_2(ThisTag, Var, Args, Modes, HowToConstruct,
+            TakeAddr, MaybeSize, GoalInfo, Code, !CI)
     ;
         ConsTag = closure_tag(PredId, ProcId, EvalMethod),
         expect(unify(TakeAddr, []), this_file,
