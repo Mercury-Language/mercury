@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998, 2003-2007 The University of Melbourne.
+% Copyright (C) 1994-1998, 2003-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,8 +54,8 @@
 
     % Insert a new delayed goal into the delay_info structure.
     %
-:- pred delay_info_delay_goal(delay_info::in, mode_error_info::in,
-    hlds_goal::in, delay_info::out) is det.
+:- pred delay_info_delay_goal(mode_error_info::in, hlds_goal::in,
+    delay_info::in, delay_info::out) is det.
 
     % Mark a list of variables as having been bound.
     % This may allow a previously delayed goal to change status
@@ -297,7 +297,7 @@ remove_delayed_goals([SeqNum | SeqNums], DelayedGoalsTable, Depth,
     % We are going to delay a goal.
     % Update the delay info structure to record the delayed goal.
     %
-delay_info_delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
+delay_info_delay_goal(Error, Goal, DelayInfo0, DelayInfo) :-
     delay_info_check_invariant(DelayInfo0),
     Error = mode_error_info(Vars, _, _, _),
     DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0,

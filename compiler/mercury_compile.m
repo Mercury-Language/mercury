@@ -2583,14 +2583,14 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
     maybe_mode_constraints(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 33, "mode_constraints", !DumpInfo, !IO),
 
-    modecheck(Verbose, Stats, !HLDS, FoundModeError, UnsafeToContinue, !IO),
+    modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue, !IO),
     maybe_dump_hlds(!.HLDS, 35, "modecheck", !DumpInfo, !IO),
 
     (
-        UnsafeToContinue = yes,
+        SafeToContinue = modes_unsafe_to_continue,
         FoundError = yes
     ;
-        UnsafeToContinue = no,
+        SafeToContinue = modes_safe_to_continue,
         detect_switches(Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(!.HLDS, 40, "switch_detect", !DumpInfo, !IO),
 
@@ -3143,24 +3143,24 @@ puritycheck(Verbose, Stats, !HLDS, FoundTypeError, FoundPostTypecheckError,
     maybe_report_stats(Stats, !IO).
 
 :- pred modecheck(bool::in, bool::in, module_info::in, module_info::out,
-    bool::out, bool::out, io::di, io::uo) is det.
+    bool::out, modes_safe_to_continue::out, io::di, io::uo) is det.
 
-modecheck(Verbose, Stats, !HLDS, FoundModeError, UnsafeToContinue, !IO) :-
+modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue, !IO) :-
     module_info_get_num_errors(!.HLDS, NumErrors0),
     maybe_benchmark_modes(
         (pred(H0::in, {H, U}::out, !.IO::di, !:IO::uo) is det :-
-            modecheck(H0, H, U, !IO)
+            modecheck_module(H0, H, U, !IO)
         ),
-        "modecheck", !.HLDS, {!:HLDS, UnsafeToContinue}, !IO),
+        "modecheck", !.HLDS, {!:HLDS, SafeToContinue}, !IO),
     module_info_get_num_errors(!.HLDS, NumErrors),
-    ( NumErrors \= NumErrors0 ->
+    ( NumErrors = NumErrors0 ->
+        FoundModeError = no,
+        maybe_write_string(Verbose, "% Program is mode-correct.\n", !IO)
+    ;
         FoundModeError = yes,
         maybe_write_string(Verbose, "% Program contains mode error(s).\n",
             !IO),
         io.set_exit_status(1, !IO)
-    ;
-        FoundModeError = no,
-        maybe_write_string(Verbose, "% Program is mode-correct.\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
 

@@ -114,14 +114,14 @@
 % used in liveness.m and the code generator.  Here, we consider
 % a variable live if its value will be used later on in the computation.
 %
-% XXX we ought to allow unification of free with free even when both
-%     *variables* are live, if one of the particular *sub-nodes* is
-%     dead (causes problems handling e.g. `list.same_length').
+% XXX We ought to allow unification of free with free even when both
+% *variables* are live, if one of the particular *sub-nodes* is dead
+% (causes problems handling e.g. `list.same_length').
 %
-% XXX we ought to break unifications into "micro-unifications", because
-%     some code can't be scheduled without splitting up unifications.
-%     For example, `p(X) :- X = f(A, B), B is A + 1.', where
-%     p is declared as `:- mode p(bound(f(ground,free))->ground).'.
+% XXX We ought to break unifications into "micro-unifications", because
+% some code can't be scheduled without splitting up unifications.
+% For example, `p(X) :- X = f(A, B), B is A + 1.', where p is declared as
+% `:- mode p(bound(f(ground,free))->ground).'.
 %
 %-----------------------------------------------------------------------------%
 
@@ -145,22 +145,27 @@
 
 %-----------------------------------------------------------------------------%
 
-    % modecheck(HLDS0, HLDS, UnsafeToContinue):
+:- type modes_safe_to_continue
+    --->    modes_safe_to_continue
+    ;       modes_unsafe_to_continue.
+
+    % modecheck_module(!HLDS, safeToContinue, !IO):
     %
     % Perform mode inference and checking for a whole module.
-    % UnsafeToContinue = yes means that mode inference was halted
-    % prematurely, due to an error, and that we should therefore
-    % not perform determinism-checking, because we might get
-    % internal errors.
     %
-:- pred modecheck(module_info::in, module_info::out, bool::out,
-    io::di, io::uo) is det.
+    % SafeToContinue = modes_unsafe_to_continue means that mode inference
+    % was halted prematurely due to an error, and that we should therefore
+    % not perform determinism-checking, because we might get internal errors.
+    %
+:- pred modecheck_module(module_info::in, module_info::out,
+    modes_safe_to_continue::out, io::di, io::uo) is det.
 
     % Mode-check or unique-mode-check the code of all the predicates
     % in a module.
     %
 :- pred check_pred_modes(how_to_check_goal::in, may_change_called_proc::in,
-    module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
+    module_info::in, module_info::out, modes_safe_to_continue::out,
+    io::di, io::uo) is det.
 
     % Mode-check the code for the given predicate in a given mode.
     % Returns the number of errs found and a bool `Changed'
@@ -405,13 +410,13 @@
 
 %-----------------------------------------------------------------------------%
 
-modecheck(!Module, UnsafeToContinue, !IO) :-
+modecheck_module(!Module, SafeToContinue, !IO) :-
     globals.io_lookup_bool_option(statistics, Statistics, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
 
     maybe_write_string(Verbose, "% Mode-checking clauses...\n", !IO),
     check_pred_modes(check_modes, may_change_called_proc, !Module,
-        UnsafeToContinue, !IO),
+        SafeToContinue, !IO),
     maybe_report_stats(Statistics, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -419,25 +424,25 @@ modecheck(!Module, UnsafeToContinue, !IO) :-
     % Mode-check the code for all the predicates in a module.
 
 check_pred_modes(WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, UnsafeToContinue, !IO) :-
+        !ModuleInfo, SafeToContinue, !IO) :-
     module_info_predids(PredIds, !ModuleInfo),
     globals.io_lookup_int_option(mode_inference_iteration_limit,
         MaxIterations, !IO),
     modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck,
-        MayChangeCalledProc, !ModuleInfo, UnsafeToContinue0, !IO),
+        MayChangeCalledProc, !ModuleInfo, SafeToContinue0, !IO),
     (
         WhatToCheck = check_unique_modes,
         write_mode_inference_messages(PredIds, yes, !.ModuleInfo, !IO),
         check_eval_methods(!ModuleInfo, !IO),
-        UnsafeToContinue = UnsafeToContinue0
+        SafeToContinue = SafeToContinue0
     ;
         WhatToCheck = check_modes,
         (
-            UnsafeToContinue0 = yes,
+            SafeToContinue0 = modes_unsafe_to_continue,
             write_mode_inference_messages(PredIds, no, !.ModuleInfo, !IO),
-            UnsafeToContinue = yes
+            SafeToContinue = modes_unsafe_to_continue
         ;
-            UnsafeToContinue0 = no,
+            SafeToContinue0 = modes_safe_to_continue,
             globals.io_lookup_bool_option(delay_partial_instantiations,
                 DelayPartialInstantiations, !IO),
             (
@@ -447,10 +452,10 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc,
                 % --delay-partial-instantiations requires mode checking to be
                 % run again.
                 modecheck_to_fixpoint(ChangedPreds, MaxIterations, WhatToCheck,
-                    MayChangeCalledProc, !ModuleInfo, UnsafeToContinue, !IO)
+                    MayChangeCalledProc, !ModuleInfo, SafeToContinue, !IO)
             ;
                 DelayPartialInstantiations = no,
-                UnsafeToContinue = no
+                SafeToContinue = modes_safe_to_continue
             )
         )
     ).
@@ -459,10 +464,11 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc,
     %
 :- pred modecheck_to_fixpoint(list(pred_id)::in, int::in,
     how_to_check_goal::in, may_change_called_proc::in,
-    module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
+    module_info::in, module_info::out, modes_safe_to_continue::out,
+    io::di, io::uo) is det.
 
 modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, UnsafeToContinue, !IO) :-
+        !ModuleInfo, SafeToContinue, !IO) :-
     % Save the old procedure bodies so that we can restore them for the
     % next pass.
     module_info_preds(!.ModuleInfo, OldPredTable0),
@@ -480,13 +486,15 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
     bool.or(Changed1, Changed2, Changed),
 
     % Stop if we have reached a fixpoint or found any errors.
-    ( ( Changed = no ; NumErrors > 0 ; ExitStatus \= 0 ) ->
-        UnsafeToContinue = Changed
+    ( Changed = no ->
+        SafeToContinue = modes_safe_to_continue
+    ; ( NumErrors > 0 ; ExitStatus \= 0 ) ->
+        SafeToContinue = modes_unsafe_to_continue
     ;
         % Stop if we have exceeded the iteration limit.
         ( MaxIterations =< 1 ->
             report_max_iterations_exceeded(!.ModuleInfo, !IO),
-            UnsafeToContinue = yes
+            SafeToContinue = modes_unsafe_to_continue
         ;
             globals.io_lookup_bool_option(debug_modes, DebugModes, !IO),
             (
@@ -520,7 +528,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 
             MaxIterations1 = MaxIterations - 1,
             modecheck_to_fixpoint(PredIds, MaxIterations1, WhatToCheck,
-                MayChangeCalledProc, !ModuleInfo, UnsafeToContinue, !IO)
+                MayChangeCalledProc, !ModuleInfo, SafeToContinue, !IO)
         )
     ).
 
@@ -2558,7 +2566,7 @@ modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
         mode_info_set_errors([], !ModeInfo),
         mode_info_set_instmap(InstMap0, !ModeInfo),
         mode_info_add_live_vars(NonLocalVars, !ModeInfo),
-        delay_info_delay_goal(DelayInfo0, FirstErrorInfo, Goal0, DelayInfo1),
+        delay_info_delay_goal(FirstErrorInfo, Goal0, DelayInfo0, DelayInfo1),
         % Delaying an impure goal is an impurity error.
         (
             Impure = yes,
@@ -3130,11 +3138,11 @@ get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 :- pred redelay_goals(list(delayed_goal)::in, delay_info::in, delay_info::out)
     is det.
 
-redelay_goals([], DelayInfo, DelayInfo).
-redelay_goals([DelayedGoal | DelayedGoals], DelayInfo0, DelayInfo) :-
+redelay_goals([], !DelayInfo).
+redelay_goals([DelayedGoal | DelayedGoals], !DelayInfo) :-
     DelayedGoal = delayed_goal(_WaitingVars, ModeErrorInfo, Goal),
-    delay_info_delay_goal(DelayInfo0, ModeErrorInfo, Goal, DelayInfo1),
-    redelay_goals(DelayedGoals, DelayInfo1, DelayInfo).
+    delay_info_delay_goal(ModeErrorInfo, Goal, !DelayInfo),
+    redelay_goals(DelayedGoals, !DelayInfo).
 
 %-----------------------------------------------------------------------------%
 
