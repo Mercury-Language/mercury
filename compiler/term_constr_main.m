@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2008 The University of Melbourne.
+% Copyright (C) 1997,2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -130,12 +130,12 @@
 
 %----------------------------------------------------------------------------%
 %
-% The 'termination2_info' structure
+% The 'termination2_info' structure.
 %
 
 % All the information needed by the termination analysis is stored in
-% this structure.  There is one such structure attached to every
-% procedure in the module.
+% this structure. There is one such structure attached to every procedure
+% in the module.
 
 :- type termination2_info.
 
@@ -194,8 +194,7 @@
 :- pred term_constr_main.output_pragma_termination2_info(pred_or_func::in,
     sym_name::in, list(mer_mode)::in, prog_context::in,
     maybe(constr_arg_size_info)::in, maybe(constr_arg_size_info)::in,
-    maybe(constr_termination_info)::in, size_vars::in, io::di,
-    io::uo) is det.
+    maybe(constr_termination_info)::in, size_vars::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -280,7 +279,7 @@ term2_info_init = term2_info(map.init, [], no, no, no, no, no, no, no).
 
 %----------------------------------------------------------------------------%
 %
-% Main pass
+% Main pass.
 %
 
 term_constr_main.pass(!ModuleInfo, !IO) :-
@@ -291,9 +290,8 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     globals.io_get_termination2_norm(Norm, !IO),
     FunctorInfo = set_functor_info(Norm, !.ModuleInfo),
     globals.io_lookup_bool_option(propagate_failure_constrs, Fail, !IO),
-    globals.io_lookup_bool_option(arg_size_analysis_only, ArgSizeOnly,
-        !IO),
-    BuildOptions = build_options_init(FunctorInfo, Fail, ArgSizeOnly),
+    globals.io_lookup_bool_option(arg_size_analysis_only, ArgSizeOnly, !IO),
+    BuildOptions = term_build_options_init(FunctorInfo, Fail, ArgSizeOnly),
 
     % Get options required by the fixpoint pass.
     % These are:
@@ -328,7 +326,7 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 %
-% Analyse a single SCC
+% Analyse a single SCC.
 %
 
     % Analyse a single SCC of the call graph.  This will require results
@@ -366,7 +364,7 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     % If no argument size constraint is supplied then non-zero arguments
     % are assumed to have unbounded size.
     %
-:- pred analyse_scc(dependency_ordering::in, build_options::in,
+:- pred analyse_scc(dependency_ordering::in, term_build_options::in,
     fixpoint_options::in, pass2_options::in,
     list(pred_proc_id)::in, module_info::in, module_info::out, io::di,
     io::uo) is det.
@@ -381,7 +379,7 @@ analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
     % Build the abstract representation for those procedures that require it.
     % The procedures that require it are those that do not already have
     % both argument size information and termination information.
-    term_constr_build.build_abstract_scc(DepOrder, NeedsAR, BuildOpts,
+    term_constr_build_abstract_scc(DepOrder, NeedsAR, BuildOpts,
         BuildErrors, !ModuleInfo, !IO),
 
     % We only perform the fixpoint computation for those procedures where
@@ -433,7 +431,7 @@ analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
 
 %------------------------------------------------------------------------------%
 %
-% Procedures for storing 'termination2_info' in the HLDS
+% Procedures for storing 'termination2_info' in the HLDS.
 %
 
 :- pred set_termination_info_for_procs(list(pred_proc_id)::in,
@@ -455,7 +453,7 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates for writing optimization interfaces
+% Predicates for writing optimization interfaces.
 %
 
 :- pred maybe_make_optimization_interface(module_info::in, io::di, io::uo)
@@ -559,7 +557,7 @@ make_opt_int_procs(PredId, [ProcId | ProcIds], ProcTable,
 
 %----------------------------------------------------------------------------%
 %
-% Predicates for writing 'termination2_info' pragmas
+% Predicates for writing 'termination2_info' pragmas.
 %
 
 % NOTE: if these predicates are changed then prog_io_pragma.m must
@@ -630,7 +628,7 @@ output_maybe_termination2_info(MaybeConstrTermInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 %
-% Utility predicates
+% Utility predicates.
 %
 
 % These test whether various fields in the termination2_info struct have

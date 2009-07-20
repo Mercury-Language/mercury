@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2008 The University of Melbourne.
+% Copyright (C) 2002, 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -259,7 +259,7 @@
     %
 :- type abstract_goal
     --->    term_disj(
-                disj_goals     :: abstract_goals,
+                disj_goals     :: list(abstract_goal),
                 disj_size      :: int,
                         % We keep track of the number of disjuncts for use
                         % in heuristics that may speed up the convex hull
@@ -268,13 +268,11 @@
                 disj_locals    :: local_vars,
                 disj_nonlocals :: nonlocal_vars
             )
-
     ;       term_conj(
-                conj_goals     :: abstract_goals,
+                conj_goals     :: list(abstract_goal),
                 conj_locals    :: local_vars,
                 conj_nonlocals :: nonlocal_vars
             )
-
     ;       term_call(
                 call_ppid      :: abstract_ppid,
                 call_context   :: prog_context,
@@ -284,7 +282,6 @@
                 call_nonlocals :: nonlocal_vars,
                 call_constrs   :: polyhedron
             )
-
     ;       term_primitive(
                 prim_constrs   :: polyhedron,
                 prim_locals    :: local_vars,
@@ -334,7 +331,7 @@
     % so there is one large block of constraints.
     %
 :- func simplify_abstract_rep(abstract_goal) = abstract_goal.
-:- func simplify_conjuncts(abstract_goals) = abstract_goals.
+:- func simplify_conjuncts(list(abstract_goal)) = list(abstract_goal).
 
     % Succeeds iff the given SCC contains recursion.
     %
@@ -361,17 +358,17 @@
 
     % Dump a representation of the AR to stdout.
     %
-:- pred dump_abstract_scc(abstract_scc::in, module_info::in, io::di,
+:- pred dump_abstract_scc(module_info::in, abstract_scc::in, io::di,
     io::uo) is det.
 
     % As above.  The extra argument specifies the indentation level.
     %
-:- pred dump_abstract_scc(abstract_scc::in, int::in, module_info::in, io::di,
+:- pred dump_abstract_scc(module_info::in, int::in, abstract_scc::in, io::di,
     io::uo) is det.
 
     % Write an abstract_proc to stdout.
     %
-:- pred dump_abstract_proc(abstract_proc::in, int::in, module_info::in,
+:- pred dump_abstract_proc(module_info::in, int::in, abstract_proc::in,
     io::di, io::uo) is det.
 
     % Write an abstract_goal to stdout.
@@ -517,7 +514,8 @@ simplify_abstract_rep(Goal0, Goal) :-
     % conjunction but that unnecessarily increases the size of the edge
     % labels in pass 2.
     %
-:- pred flatten_conjuncts(abstract_goals::in, abstract_goals::out) is det.
+:- pred flatten_conjuncts(list(abstract_goal)::in, list(abstract_goal)::out)
+    is det.
 
 flatten_conjuncts([], []).
 flatten_conjuncts([Goal], [Goal]).
@@ -525,8 +523,8 @@ flatten_conjuncts(Goals0 @ [_, _ | _], Goals) :-
     flatten_conjuncts_2(Goals0, [], RevGoals),
     Goals = list.reverse(RevGoals).
 
-:- pred flatten_conjuncts_2(abstract_goals::in, abstract_goals::in,
-    abstract_goals::out) is det.
+:- pred flatten_conjuncts_2(list(abstract_goal)::in, list(abstract_goal)::in,
+    list(abstract_goal)::out) is det.
 
 flatten_conjuncts_2([], !RevGoals).
 flatten_conjuncts_2([Goal0 | Goals0], !RevGoals) :-
@@ -632,23 +630,20 @@ combine_primitive_goals(GoalA, GoalB) = Goal :-
 % (These are for debugging only)
 %
 
-dump_abstract_scc(SCC, Module, !IO) :-
-    dump_abstract_scc(SCC, 0, Module, !IO).
+dump_abstract_scc(ModuleInfo, SCC, !IO) :-
+    dump_abstract_scc(ModuleInfo, 0, SCC, !IO).
 
-dump_abstract_scc(SCC, Indent, Module, !IO) :-
-    list.foldl(
-        (pred(Proc::in, !.IO::di, !:IO::uo) is det :-
-            dump_abstract_proc(Proc, Indent, Module, !IO)
-        ), SCC, !IO).
+dump_abstract_scc(ModuleInfo, Indent, SCC, !IO) :-
+    list.foldl(dump_abstract_proc(ModuleInfo, Indent), SCC, !IO).
 
-dump_abstract_proc(Proc, Indent, Module, !IO) :-
+dump_abstract_proc(ModuleInfo, Indent, Proc, !IO) :-
     AbstractPPId = Proc ^ ap_ppid,
     HeadVars = Proc ^ ap_head_vars,
     Body = Proc ^ ap_body,
     SizeVarSet = Proc ^ ap_size_varset,
     indent_line(Indent, !IO),
     AbstractPPId = real(PPId),
-    hlds_out.write_pred_proc_id(Module, PPId, !IO),
+    hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
     io.write_string(" : [", !IO),
     WriteHeadVars = (pred(Var::in, !.IO::di, !:IO::uo) is det :-
         varset.lookup_name(SizeVarSet, Var, VarName),
@@ -656,7 +651,7 @@ dump_abstract_proc(Proc, Indent, Module, !IO) :-
     ),
     io.write_list(HeadVars, ", ", WriteHeadVars, !IO),
     io.write_string(" ] :- \n", !IO),
-    dump_abstract_goal(Module, SizeVarSet, Indent + 1, Body, !IO).
+    dump_abstract_goal(ModuleInfo, SizeVarSet, Indent + 1, Body, !IO).
 
 :- func recursion_type_to_string(recursion_type) = string.
 
@@ -665,12 +660,12 @@ recursion_type_to_string(direct_only) = "direct recursion only".
 recursion_type_to_string(mutual_only) = "mutual recursion only".
 recursion_type_to_string(both)        = "mutual and direct recursion".
 
-:- pred dump_abstract_disjuncts(abstract_goals::in, size_varset::in, int::in,
-    module_info::in, io::di, io::uo) is det.
+:- pred dump_abstract_disjuncts(module_info::in, size_varset::in, int::in,
+    list(abstract_goal)::in, io::di, io::uo) is det.
 
-dump_abstract_disjuncts([], _, _, _, !IO).
-dump_abstract_disjuncts([Goal | Goals], Varset, Indent, Module, !IO) :-
-    dump_abstract_goal(Module, Varset, Indent + 1, Goal, !IO),
+dump_abstract_disjuncts(_, _, _, [], !IO).
+dump_abstract_disjuncts(ModuleInfo, VarSet, Indent, [Goal | Goals], !IO) :-
+    dump_abstract_goal(ModuleInfo, VarSet, Indent + 1, Goal, !IO),
     (
         Goals = [_ | _],
         indent_line(Indent, !IO),
@@ -678,73 +673,68 @@ dump_abstract_disjuncts([Goal | Goals], Varset, Indent, Module, !IO) :-
     ;
         Goals = []
     ),
-    dump_abstract_disjuncts(Goals, Varset, Indent, Module, !IO).
+    dump_abstract_disjuncts(ModuleInfo, VarSet, Indent, Goals, !IO).
 
-dump_abstract_goal(Module, Varset, Indent,
-        term_disj(Goals, Size, Locals, NonLocals), !IO) :-
-    indent_line(Indent, !IO),
-    io.format("disj[%d](\n", [i(Size)], !IO),
-    dump_abstract_disjuncts(Goals, Varset, Indent, Module, !IO),
-    WriteVars = (pred(Var::in, !.IO::di, !:IO::uo) is det :-
-        varset.lookup_name(Varset, Var, VarName),
-        io.write_string(VarName, !IO)
-    ),
-    indent_line(Indent, !IO),
-    io.write_string(" Locals: ", !IO),
-    io.write_list(Locals, ", ", WriteVars, !IO),
-    io.nl(!IO),
-    indent_line(Indent, !IO),
-    io.write_string(" Non-Locals: ", !IO),
-    io.write_list(NonLocals, ", ", WriteVars, !IO),
-    io.nl(!IO),
-    indent_line(Indent, !IO),
-    io.write_string(")\n", !IO).
+dump_abstract_goal(ModuleInfo, VarSet, Indent, AbstractGoal, !IO) :-
+    (
+        AbstractGoal = term_disj(Goals, Size, Locals, NonLocals),
+        indent_line(Indent, !IO),
+        io.format("disj[%d](\n", [i(Size)], !IO),
+        dump_abstract_disjuncts(ModuleInfo, VarSet, Indent, Goals, !IO),
+        indent_line(Indent, !IO),
+        io.write_string(" Locals: ", !IO),
+        io.write_list(Locals, ", ", dump_var_name(VarSet), !IO),
+        io.nl(!IO),
+        indent_line(Indent, !IO),
+        io.write_string(" Non-Locals: ", !IO),
+        io.write_list(NonLocals, ", ", dump_var_name(VarSet), !IO),
+        io.nl(!IO),
+        indent_line(Indent, !IO),
+        io.write_string(")\n", !IO)
+    ;
+        AbstractGoal = term_conj(Goals, Locals, NonLocals),
+        indent_line(Indent, !IO),
+        io.write_string("conj(\n", !IO),
+        list.foldl(dump_abstract_goal(ModuleInfo, VarSet, Indent + 1), Goals,
+            !IO),
+        indent_line(Indent, !IO),
+        io.write_string(" Locals: ", !IO),
+        io.write_list(Locals, ", ", dump_var_name(VarSet), !IO),
+        io.nl(!IO),
+        indent_line(Indent, !IO),
+        io.write_string(" Non-Locals: ", !IO),
+        io.write_list(NonLocals, ", ", dump_var_name(VarSet), !IO),
+        io.nl(!IO),
+        indent_line(Indent, !IO),
+        io.write_string(")\n", !IO)
+    ;
+        AbstractGoal = term_call(PPId0, _, CallVars, _, _, _, CallPoly),
+        indent_line(Indent, !IO),
+        io.write_string("call: ", !IO),
+        PPId0 = real(PPId),
+        hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
+        io.write_string(" : [", !IO),
+        io.write_list(CallVars, ", ", dump_var_name(VarSet), !IO),
+        io.write_string("]\n", !IO),
+        indent_line(Indent, !IO),
+        io.write_string("Other call constraints:[\n", !IO),
+        polyhedron.write_polyhedron(CallPoly, VarSet, !IO),
+        indent_line(Indent, !IO),
+        io.write_string("]\n", !IO)
+    ;
+        AbstractGoal = term_primitive(Poly, _, _),
+        indent_line(Indent, !IO),
+        io.write_string("[\n", !IO),
+        polyhedron.write_polyhedron(Poly, VarSet, !IO),
+        indent_line(Indent, !IO),
+        io.write_string("]\n", !IO)
+    ).
 
-dump_abstract_goal(Module, Varset, Indent, term_conj(Goals, Locals, NonLocals),
-        !IO)  :-
-    indent_line(Indent, !IO),
-    io.write_string("conj(\n", !IO),
-    list.foldl(dump_abstract_goal(Module, Varset, Indent + 1), Goals, !IO),
-    WriteVars = (pred(Var::in, !.IO::di, !:IO::uo) is det :-
-        varset.lookup_name(Varset, Var, VarName),
-        io.write_string(VarName, !IO)
-    ),
-    indent_line(Indent, !IO),
-    io.write_string(" Locals: ", !IO),
-    io.write_list(Locals, ", ", WriteVars, !IO),
-    io.nl(!IO),
-    indent_line(Indent, !IO),
-    io.write_string(" Non-Locals: ", !IO),
-    io.write_list(NonLocals, ", ", WriteVars, !IO),
-    io.nl(!IO),
-    indent_line(Indent, !IO),
-    io.write_string(")\n", !IO).
+:- pred dump_var_name(size_varset::in, size_var::in, io::di, io::uo) is det.
 
-dump_abstract_goal(Module, Varset, Indent,
-        term_call(PPId0, _, CallVars, _, _, _, CallPoly), !IO) :-
-    indent_line(Indent, !IO),
-    io.write_string("call: ", !IO),
-    PPId0 = real(PPId),
-    hlds_out.write_pred_proc_id(Module, PPId, !IO),
-    io.write_string(" : [", !IO),
-    WriteVars = (pred(Var::in, !.IO::di, !:IO::uo) is det :-
-        varset.lookup_name(Varset, Var, VarName),
-        io.write_string(VarName, !IO)
-    ),
-    io.write_list(CallVars, ", ", WriteVars, !IO),
-    io.write_string("]\n", !IO),
-    indent_line(Indent, !IO),
-    io.write_string("Other call constraints:[\n", !IO),
-    polyhedron.write_polyhedron(CallPoly, Varset, !IO),
-    indent_line(Indent, !IO),
-    io.write_string("]\n", !IO).
-
-dump_abstract_goal(_, Varset, Indent, term_primitive(Poly, _, _), !IO) :-
-    indent_line(Indent, !IO),
-    io.write_string("[\n", !IO),
-    polyhedron.write_polyhedron(Poly, Varset, !IO),
-    indent_line(Indent, !IO),
-    io.write_string("]\n", !IO).
+dump_var_name(VarSet, Var, !IO) :-
+    varset.lookup_name(VarSet, Var, VarName),
+    io.write_string(VarName, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -756,7 +746,8 @@ dump_abstract_goal(_, Varset, Indent, term_primitive(Poly, _, _), !IO) :-
 simplify_conjuncts(Goals0) = Goals :-
     simplify_conjuncts(Goals0, Goals).
 
-:- pred simplify_conjuncts(abstract_goals::in, abstract_goals::out) is det.
+:- pred simplify_conjuncts(list(abstract_goal)::in, list(abstract_goal)::out)
+    is det.
 
 simplify_conjuncts(Goals0, Goals) :-
     (
@@ -793,7 +784,8 @@ simplify_conjuncts(Goals0, Goals) :-
 
 indent_line(N, !IO) :-
     ( N > 0 ->
-        io.write_string("  ", !IO), indent_line(N - 1, !IO)
+        io.write_string("  ", !IO),
+        indent_line(N - 1, !IO)
     ;
         true
     ).

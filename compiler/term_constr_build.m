@@ -14,8 +14,8 @@
 % used by the constraint termination analyser.
 % (The AR is defined in term_constr_data.m).
 %
-% TODO: make the resulting abstract representations more independent of the
-%       HLDS.
+% TODO:
+% Make the abstract representations more independent of the HLDS.
 %
 %------------------------------------------------------------------------------%
 
@@ -36,21 +36,23 @@
     % This structure holds the values of options used to control the build
     % pass.
     %
-:- type build_options.
+:- type term_build_options.
 
-    % build_options_init(Norm, PropFailure, ArgSizeOnly).
-    % Initialise the `build_options' structure.  `Norm' is the norm
-    % that we are using.  `PropFailure' is `yes' if we are propagating
-    % failure constraints and no otherwise; `ArgSizeOnly' is `yes'
-    % if the `--arg-size-analysis-only' option is enabled and `no'
-    % otherwise.
+    % term_build_options_init(Norm, PropFailure, ArgSizeOnly):
     %
-:- func build_options_init(functor_info, bool, bool) = build_options.
+    % Initialise the `build_options' structure.
+    % `Norm' is the norm we are using.
+    % `PropFailure' is `yes' if we are propagating failure constraints
+    % and no otherwise.
+    % `ArgSizeOnly' is `yes' if the `--arg-size-analysis-only' option
+    % is enabled and `no' otherwise.
+    %
+:- func term_build_options_init(functor_info, bool, bool) = term_build_options.
 
     % Builds the abstract representation of an SCC.
     %
-:- pred term_constr_build.build_abstract_scc(dependency_ordering::in,
-    list(pred_proc_id)::in, build_options::in, term2_errors::out,
+:- pred term_constr_build_abstract_scc(dependency_ordering::in,
+    list(pred_proc_id)::in, term_build_options::in, term2_errors::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -93,20 +95,20 @@
 % Build pass options.
 %
 
-:- type build_options
-    --->    build_options(
+:- type term_build_options
+    --->    term_build_options(
                 % Which norm we are using.
-                bo_functor_info     :: functor_info,
+                tbo_functor_info    :: functor_info,
 
                 % Whether propagating failure constraints is enabled.
-                bo_failure_constrs  :: bool,
+                tbo_failure_constrs :: bool,
 
                 % Whether `--term2-arg-size-only' is enabled.
-                bo_arg_size_only    :: bool
+                tbo_arg_size_only   :: bool
             ).
 
-build_options_init(Norm, Failure, ArgSizeOnly) =
-    build_options(Norm, Failure, ArgSizeOnly).
+term_build_options_init(Norm, Failure, ArgSizeOnly) =
+    term_build_options(Norm, Failure, ArgSizeOnly).
 
 %-----------------------------------------------------------------------------%
 
@@ -116,26 +118,30 @@ build_options_init(Norm, Failure, ArgSizeOnly) =
 % procedure because we will not have all the information we need until
 % we have finished processing the entire SCC.
 
-:- type scc_info
-    --->    scc_info(
-                si_scc_ppid         :: pred_proc_id,
-                si_proc             :: abstract_proc,
-                si_size_var_map     :: size_var_map,
-                si_intermod         :: intermod_status,
-                si_accum_errors     :: term2_errors,
-                si_non_zero_heads   :: list(size_var)
+:- type term_scc_info
+    --->    term_scc_info(
+                tsi_scc_ppid        :: pred_proc_id,
+                tsi_proc            :: abstract_proc,
+                tsi_size_var_map    :: size_var_map,
+                tsi_intermod        :: intermod_status,
+                tsi_accum_errors    :: term2_errors,
+                tsi_non_zero_heads  :: list(size_var)
             ).
 
 %-----------------------------------------------------------------------------%
 
-build_abstract_scc(DepOrder, SCC, Options, Errors, !Module, !IO) :-
-    dependency_graph.get_scc_entry_points(SCC, DepOrder, !.Module, EntryProcs),
-    list.foldl3(build_abstract_proc(EntryProcs, Options, SCC, !.Module),
+term_constr_build_abstract_scc(DepOrder, SCC, Options, Errors,
+        !ModuleInfo, !IO) :-
+    dependency_graph.get_scc_entry_points(SCC, DepOrder, !.ModuleInfo,
+        EntryProcs),
+    list.foldl3(
+        term_constr_build_abstract_proc(EntryProcs, Options, SCC,
+            !.ModuleInfo),
         SCC, varset.init, SizeVarset, [], AbstractSCC, !IO),
-    module_info_preds(!.Module, PredTable0),
+    module_info_preds(!.ModuleInfo, PredTable0),
     RecordInfo = (pred(Info::in, !.Errors::in, !:Errors::out,
             !.PredTable::in, !:PredTable::out) is det :-
-        Info = scc_info(proc(PredId, ProcId), AR0, VarMap, Status,
+        Info = term_scc_info(proc(PredId, ProcId), AR0, VarMap, Status,
             ProcErrors, HeadSizeVars),
 
         % Record the proper size_varset.  Each procedure has a copy.
@@ -174,24 +180,23 @@ build_abstract_scc(DepOrder, SCC, Options, Errors, !Module, !IO) :-
         list.append(ProcErrors, !Errors)
     ),
     list.foldl2(RecordInfo, AbstractSCC, [], Errors, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !Module).
+    module_info_set_preds(PredTable, !ModuleInfo).
 
-:- pred build_abstract_proc(list(pred_proc_id)::in, build_options::in,
-    list(pred_proc_id)::in, module_info::in, pred_proc_id::in,
-    size_varset::in, size_varset::out,
-    list(scc_info)::in, list(scc_info)::out,
-    io::di, io::uo) is det.
+:- pred term_constr_build_abstract_proc(list(pred_proc_id)::in,
+    term_build_options::in, list(pred_proc_id)::in, module_info::in,
+    pred_proc_id::in, size_varset::in, size_varset::out,
+    list(term_scc_info)::in, list(term_scc_info)::out, io::di, io::uo) is det.
 
-build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
-        !AbstractInfo, !IO) :-
+term_constr_build_abstract_proc(EntryProcs, Options, SCC, ModuleInfo, PPId,
+        !SizeVarset, !AbstractInfo, !IO) :-
     trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
         io.write_string("Building procedure: ", !DebugIO),
-        hlds_out.write_pred_proc_id(Module, PPId, !DebugIO),
+        hlds_out.write_pred_proc_id(ModuleInfo, PPId, !DebugIO),
         io.nl(!DebugIO),
         io.flush_output(!DebugIO)
     ),
 
-    module_info_pred_proc_info(Module, PPId, PredInfo, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
     pred_info_get_context(PredInfo, Context),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_headvars(ProcInfo, HeadProgVars),
@@ -206,10 +211,10 @@ build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
     % Allocate one size_var for each real var. in the procedure.
     % Work out which variables have zero size.
     allocate_sizevars(HeadProgVars, Goal, SizeVarMap, !SizeVarset),
-    Zeros = find_zero_size_vars(Module, SizeVarMap, VarTypes),
-    Info0 = init_traversal_info(Module, Options ^ bo_functor_info, PPId,
+    Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
+    Info0 = init_traversal_info(ModuleInfo, Options ^ tbo_functor_info, PPId,
         Context, VarTypes, Zeros, SizeVarMap, SCC,
-        Options ^ bo_failure_constrs, Options ^ bo_arg_size_only ),
+        Options ^ tbo_failure_constrs, Options ^ tbo_arg_size_only),
 
     % Traverse the HLDS and construct the abstract version of
     % this procedure.
@@ -223,8 +228,8 @@ build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
     ChooseArg = (func(Var, Mode) = UseArg :-
         map.lookup(VarTypes, Var, Type),
         (
-            not zero_size_type(Module, Type),
-            mode_util.mode_is_input(Module, Mode)
+            not zero_size_type(ModuleInfo, Type),
+            mode_util.mode_is_input(ModuleInfo, Mode)
         ->
             UseArg = yes
         ;
@@ -240,14 +245,14 @@ build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
         HeadSizeVars, Inputs, AbstractBody, SizeVarMap, !.SizeVarset, Zeros,
         Info ^ tti_recursion, Info ^ tti_maxcalls, Info ^ tti_ho_info),
 
-    ThisProcInfo = scc_info(PPId, AbstractProc, SizeVarMap, IntermodStatus,
-        Info ^ tti_errors, HeadSizeVars),
+    ThisProcInfo = term_scc_info(PPId, AbstractProc, SizeVarMap,
+        IntermodStatus, Info ^ tti_errors, HeadSizeVars),
 
     list.cons(ThisProcInfo, !AbstractInfo),
 
     trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
         io.write_string("Abstract proc is:\n", !DebugIO),
-        dump_abstract_proc(AbstractProc, 0, Module, !DebugIO),
+        dump_abstract_proc(ModuleInfo, 0, AbstractProc, !DebugIO),
         io.nl(!DebugIO)
     ).
 
@@ -337,7 +342,7 @@ init_traversal_info(ModuleInfo, Norm, PPId, Context, Types, Zeros,
     is det.
 
 info_increment_maxcalls(!Info) :-
-    !:Info = !.Info ^ tti_maxcalls := !.Info ^ tti_maxcalls + 1.
+    !Info ^ tti_maxcalls := !.Info ^ tti_maxcalls + 1.
 
 :- pred info_update_errors(term_constr_errors.error::in, traversal_info::in,
     traversal_info::out) is det.
@@ -350,19 +355,19 @@ info_update_errors(Error, !Info) :-
 
 info_update_recursion(RecType, !Info) :-
     UpdatedRecType = combine_recursion_types(!.Info ^ tti_recursion, RecType),
-    !:Info = !.Info ^ tti_recursion := UpdatedRecType.
+    !Info ^ tti_recursion := UpdatedRecType.
 
 :- pred info_update_ho_info(context::in,
     traversal_info::in, traversal_info::out) is det.
 
 info_update_ho_info(Context, !Info) :-
-    !:Info = !.Info ^ tti_ho_info := [ho_call(Context) | !.Info ^ tti_ho_info].
+    !Info ^ tti_ho_info := [ho_call(Context) | !.Info ^ tti_ho_info].
 
 :- pred set_intermod_status(intermod_status::in,
     traversal_info::in, traversal_info::out) is det.
 
 set_intermod_status(Status, !TraversalInfo) :-
-    !:TraversalInfo = !.TraversalInfo ^ tti_intermod_status := Status.
+    !TraversalInfo ^ tti_intermod_status := Status.
 
 %------------------------------------------------------------------------------%
 %
@@ -1152,21 +1157,22 @@ bounds_on_var(Norm, ModuleInfo, TypeCtor, Var, Constructors, Polyhedron) :-
 
 :- func lower_bound(functor_info, module_info, type_ctor, constructor) = int.
 
-lower_bound(Norm, Module, TypeCtor, Constructor) = LowerBound :-
+lower_bound(Norm, ModuleInfo, TypeCtor, Constructor) = LowerBound :-
     Constructor = ctor(_, _, SymName, Args, _),
     Arity = list.length(Args),
     ConsId = cons(SymName, Arity, TypeCtor),
-    LowerBound = functor_lower_bound(Norm, TypeCtor, ConsId, Module).
+    LowerBound = functor_lower_bound(Norm, TypeCtor, ConsId, ModuleInfo).
 
     % Given a variable, its type and a set of constructors to which it
     % could be bound, return a constraint that specifies an upper bound
     % on the size of the variable.  An empty list means that there is no
     % upper bound.
     %
-:- pred upper_bound_constraints(functor_info::in, module_info::in, size_var::in,
-    type_ctor::in, list(constructor)::in, constraints::out) is det.
+:- pred upper_bound_constraints(functor_info::in, module_info::in,
+    size_var::in, type_ctor::in, list(constructor)::in, constraints::out)
+    is det.
 
-upper_bound_constraints(Norm, Module, Var, TypeCtor, Ctors, Constraints) :-
+upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor, Ctors, Constraints) :-
     % If all the arguments of a functor are zero sized then we can give
     % an upper bound on its size.  If we have a set of such functors
     % then the upper bound is the maximum of the individual upper bounds.
@@ -1179,11 +1185,11 @@ upper_bound_constraints(Norm, Module, Var, TypeCtor, Ctors, Constraints) :-
         all [Arg] (
             list.member(Arg, Args)
         =>
-            zero_size_type(Module, Arg ^ arg_type)
+            zero_size_type(ModuleInfo, Arg ^ arg_type)
         ),
         Arity = list.length(Args),
         ConsId = cons(SymName, Arity, TypeCtor),
-        Bound = functor_lower_bound(Norm, TypeCtor, ConsId, Module),
+        Bound = functor_lower_bound(Norm, TypeCtor, ConsId, ModuleInfo),
         ( if Bound > !.B then !:B = Bound else true )
     ),
     ( list.foldl(FindUpperBound, Ctors, 0, Bound0) ->
