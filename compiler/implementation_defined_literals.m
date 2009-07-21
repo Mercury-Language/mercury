@@ -21,10 +21,7 @@
 
 :- import_module hlds.hlds_module.
 
-:- import_module io.
-
-:- pred subst_impl_defined_literals(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred subst_impl_defined_literals(module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -57,7 +54,7 @@
 
 %-----------------------------------------------------------------------------%
 
-subst_impl_defined_literals(!ModuleInfo, !IO) :-
+subst_impl_defined_literals(!ModuleInfo) :-
     module_info_preds(!.ModuleInfo, Preds0),
     map.map_values(subst_literals_in_pred(!.ModuleInfo), Preds0, Preds),
     module_info_set_preds(Preds, !ModuleInfo).

@@ -22,16 +22,18 @@
 :- module check_hlds.inst_check.
 :- interface.
 
-:- import_module io.
-
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
+
+:- import_module list.
 
     % This predicate issues a warning for each user defined bound inst
     % that is not consistent with at least one type in scope.
     %
 :- pred check_insts_have_matching_types(module_info::in,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -40,7 +42,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -54,13 +55,12 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
 %-----------------------------------------------------------------------------%
 
-check_insts_have_matching_types(Module, !IO) :-
+check_insts_have_matching_types(Module, !Specs) :-
     module_info_get_inst_table(Module, InstTable),
     inst_table_get_user_insts(InstTable, UserInstTable),
     user_inst_table_get_inst_defns(UserInstTable, InstDefs),
@@ -74,7 +74,7 @@ check_insts_have_matching_types(Module, !IO) :-
     FunctorsToTypeDefs = index_types_by_unqualified_functors(
         UserVisibleTypeDefs),
     list.foldl(check_inst(FunctorsToTypeDefs), InstIdDefPairsForCurrentModule,
-        !IO).
+        !Specs).
 
     % Returns yes if a type definition with the given import status
     % is user visible in a section of the current module.
@@ -140,9 +140,9 @@ type_is_user_visible(Section, TypeDef) :-
     ;       type_tuple(arity).
 
 :- pred check_inst(functors_to_types::in, pair(inst_id, hlds_inst_defn)::in,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_inst(FunctorsToTypes, InstId - InstDef, !IO) :-
+check_inst(FunctorsToTypes, InstId - InstDef, !Specs) :-
     InstBody = InstDef ^ inst_body,
     (
         InstBody = eqv_inst(Inst),
@@ -154,7 +154,7 @@ check_inst(FunctorsToTypes, InstId - InstDef, !IO) :-
                 list.map(find_types_for_functor(FunctorsToTypes),
                     Functors, MatchingTypeLists),
                 maybe_issue_inst_check_warning(InstId, InstDef,
-                    MatchingTypeLists, !IO)
+                    MatchingTypeLists, !Specs)
             ;
                 true
             )
@@ -175,9 +175,10 @@ check_inst(FunctorsToTypes, InstId - InstDef, !IO) :-
     ).
 
 :- pred maybe_issue_inst_check_warning(inst_id::in, hlds_inst_defn::in,
-    list(list(type_defn_or_builtin))::in, io::di, io::uo) is det.
+    list(list(type_defn_or_builtin))::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_issue_inst_check_warning(InstId, InstDef, MatchingTypeLists, !IO) :-
+maybe_issue_inst_check_warning(InstId, InstDef, MatchingTypeLists, !Specs) :-
     InstImportStatus = InstDef ^ inst_status,
     InstIsExported = status_is_exported_to_non_submodules(InstImportStatus),
     (
@@ -206,12 +207,12 @@ maybe_issue_inst_check_warning(InstId, InstDef, MatchingTypeLists, !IO) :-
     ->
         Context = InstDef ^ inst_context,
         InstId = inst_id(InstName, InstArity),
-        Warning = [
-            words("Warning: inst "),
+        Pieces = [words("Warning: inst "),
             sym_name_and_arity(InstName / InstArity),
-            words("does not match any of the types in scope.")
-        ],
-        report_warning(Context, 0, Warning, !IO)
+            words("does not match any of the types in scope.")],
+        Spec = error_spec(severity_warning, phase_inst_check,
+            [simple_msg(Context, [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
     ;
         true
     ).

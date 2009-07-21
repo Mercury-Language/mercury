@@ -186,7 +186,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module term.
@@ -195,8 +194,7 @@
 
     % Run the polymorphism pass over the whole HLDS.
     %
-:- pred polymorphism_process_module(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred polymorphism_process_module(module_info::in, module_info::out) is det.
 
     % Run the polymorphism pass over a single pred. This is used to transform
     % clauses introduced by unify_proc.m for complicated unification predicates
@@ -417,6 +415,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module pair.
 :- import_module set.
@@ -434,19 +433,19 @@
 % looks at the argtypes of the called predicates, and so we need to make
 % sure we don't muck them up before we've finished the first pass.
 
-polymorphism_process_module(!ModuleInfo, !IO) :-
+polymorphism_process_module(!ModuleInfo) :-
     module_info_preds(!.ModuleInfo, Preds0),
     map.keys(Preds0, PredIds0),
-    list.foldl2(maybe_polymorphism_process_pred, PredIds0, !ModuleInfo, !IO),
+    list.foldl(maybe_polymorphism_process_pred, PredIds0, !ModuleInfo),
     module_info_preds(!.ModuleInfo, Preds1),
     map.keys(Preds1, PredIds1),
     list.foldl(fixup_pred_polymorphism, PredIds1, !ModuleInfo),
     expand_class_method_bodies(!ModuleInfo).
 
 :- pred maybe_polymorphism_process_pred(pred_id::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-maybe_polymorphism_process_pred(PredId, !ModuleInfo, !IO) :-
+maybe_polymorphism_process_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     (
         PredModule = pred_info_module(PredInfo),
@@ -457,7 +456,7 @@ maybe_polymorphism_process_pred(PredId, !ModuleInfo, !IO) :-
         % Just copy the clauses to the proc_infos.
         copy_module_clauses_to_procs([PredId], !ModuleInfo)
     ;
-        polymorphism_process_pred_msg(PredId, !ModuleInfo, !IO)
+        polymorphism_process_pred_msg(PredId, !ModuleInfo)
     ).
 
 %---------------------------------------------------------------------------%
@@ -526,11 +525,13 @@ polymorphism_introduce_exists_casts_pred(ModuleInfo, !PredInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred polymorphism_process_pred_msg(pred_id::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-polymorphism_process_pred_msg(PredId, !ModuleInfo, !IO) :-
-    write_pred_progress_message("% Transforming polymorphism for ",
-        PredId, !.ModuleInfo, !IO),
+polymorphism_process_pred_msg(PredId, !ModuleInfo) :-
+    trace [io(!IO)] (
+        write_pred_progress_message("% Transforming polymorphism for ",
+            PredId, !.ModuleInfo, !IO)
+    ),
     polymorphism_process_pred(PredId, !ModuleInfo).
 
 polymorphism_process_generated_pred(PredId, !ModuleInfo) :-

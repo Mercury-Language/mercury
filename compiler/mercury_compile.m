@@ -2147,7 +2147,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
     globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
     globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
-    globals.lookup_bool_option(Globals, type_check_constraints, 
+    globals.lookup_bool_option(Globals, type_check_constraints,
         TypeCheckConstraints),
     (
         ( IntermodOpt = yes
@@ -2174,7 +2174,10 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         WarnInstsWithNoMatchingType = yes,
         maybe_write_string(Verbose,
             "% Checking that insts have matching types... ", !IO),
-        check_hlds.inst_check.check_insts_have_matching_types(!.HLDS, !IO),
+        check_hlds.inst_check.check_insts_have_matching_types(!.HLDS,
+            [], InstSpecs),
+        write_error_specs(InstSpecs, Globals,
+            0, _NumInstWarnings, 0, _NumInstErrors, !IO),
         maybe_write_string(Verbose, "done.\n", !IO),
         maybe_dump_hlds(!.HLDS, 12, "warn_insts_without_matching_type",
             !DumpInfo, !IO)
@@ -2191,7 +2194,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         ExceededTypeCheckIterationLimit = no
     ;
         TypeCheckConstraints = no,
-        typecheck_module(!HLDS, TypeCheckSpecs, 
+        typecheck_module(!HLDS, TypeCheckSpecs,
             ExceededTypeCheckIterationLimit)
     ),
     write_error_specs(TypeCheckSpecs, Globals, 0, _NumTypeWarnings,
@@ -3071,7 +3074,7 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     Simplifications = list_to_simplifications(SimpList),
     write_proc_progress_message("% Simplifying ", PredId, ProcId,
         !.HLDS, !IO),
-    simplify_proc(Simplifications, PredId, ProcId, !HLDS, !ProcInfo, !IO),
+    simplify_proc(Simplifications, PredId, ProcId, !HLDS, !ProcInfo),
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
         !.HLDS, !IO),
     detect_liveness_proc(PredId, ProcId, !.HLDS, !ProcInfo, !IO),
@@ -3215,7 +3218,7 @@ do_io_benchmark(Pred, Repeats, A0, A - Time, !IO) :-
 detect_switches(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Detecting switches...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    detect_switches(!HLDS, !IO),
+    detect_switches_in_module(!HLDS),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -3419,9 +3422,11 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !IO) :-
             "% Checking stratification...\n", !IO),
         io.get_exit_status(OldStatus, !IO),
         io.set_exit_status(0, !IO),
-        stratify.check_stratification(!HLDS, !IO),
-        io.get_exit_status(NewStatus, !IO),
-        ( NewStatus \= 0 ->
+        stratify.check_stratification(!HLDS, [], Specs),
+        module_info_get_globals(!.HLDS, Globals),
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+        module_info_incr_num_errors(NumErrors, !HLDS),
+        ( NumErrors > 0 ->
             FoundError = yes,
             maybe_write_string(Verbose,
                 "% Program contains stratification error(s).\n", !IO)
@@ -3440,11 +3445,12 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !IO) :-
 
 process_try_goals(Verbose, Stats, !HLDS, FoundError, !IO) :-
     maybe_write_string(Verbose, "% Transforming try goals...\n", !IO),
-    module_info_get_num_errors(!.HLDS, NumErrors0),
-    expand_try_goals(!HLDS, !IO),
-    module_info_get_num_errors(!.HLDS, NumErrors),
+    expand_try_goals_in_module(!HLDS, [], Specs),
+    module_info_get_globals(!.HLDS, Globals),
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !HLDS),
     maybe_write_string(Verbose, "% done.\n", !IO),
-    ( NumErrors \= NumErrors0 ->
+    ( NumErrors > 0 ->
         FoundError = yes,
         maybe_write_string(Verbose, "% Program contains error(s).\n", !IO),
         io.set_exit_status(1, !IO)
@@ -3580,7 +3586,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
     ),
     (
         SimpList = [_ | _],
-    
+
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         Simplifications = list_to_simplifications(SimpList),
@@ -3834,7 +3840,7 @@ subst_implementation_defined_literals(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose,
         "% Substituting implementation-defined literals...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    subst_impl_defined_literals(!HLDS, !IO),
+    subst_impl_defined_literals(!HLDS),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -3857,7 +3863,7 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
                 "% Transforming polymorphic unifications...\n", !IO)
         ),
         maybe_flush_output(Verbose, !IO),
-        polymorphism_process_module(!HLDS, !IO),
+        polymorphism_process_module(!HLDS),
         (
             VeryVerbose = no,
             maybe_write_string(Verbose, " done.\n", !IO)

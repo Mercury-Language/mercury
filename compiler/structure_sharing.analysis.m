@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -360,8 +360,7 @@ simplify_and_detect_liveness_proc(PredId, ProcId, !ProcInfo, !ModuleInfo,
     % example, an if-then-else with an `erroneous' condition will cause an
     % assertion failure if it is not simplified away. 
     Simplifications = list_to_simplifications([]),
-    simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo,
-        !IO),
+    simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo),
     detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO).
 
 %-----------------------------------------------------------------------------%

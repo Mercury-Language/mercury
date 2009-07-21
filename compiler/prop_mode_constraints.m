@@ -496,21 +496,21 @@ module_info_pred_status_is_imported(ModuleInfo, PredId) :-
 
 %----------------------------------------------------------------------------%
 
-    % Put the constraints to the current output stream in human
-    % readable format. It titles each pred's constraints with a
-    % module qualification based on the default filename for the
-    % module followed by the predicate's name.
+    % Print the constraints to the current output stream in human readable
+    % format. It titles each pred's constraints with a module qualification
+    % based on the default filename for the module followed by the
+    % predicate's name.
     %
-pretty_print_pred_constraints_map(
-    ModuleInfo, ConstraintVarset, PredConstraintsMap, !IO) :-
+pretty_print_pred_constraints_map(ModuleInfo, ConstraintVarset,
+        PredConstraintsMap, !IO) :-
     ConstrainedPreds = map.keys(PredConstraintsMap),
     list.foldl(
         pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
             PredConstraintsMap),
         ConstrainedPreds, !IO).
 
-    % Puts the constraints for the specified predicate from the
-    % pred_constraints_map to the current output stream in human
+    % Print the constraints for the specified predicate from the
+    % pred_constraints_map to the current output stream in a human
     % readable format.
     %
 :- pred pretty_print_pred_constraints(module_info::in, mc_varset::in,

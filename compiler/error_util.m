@@ -109,6 +109,7 @@
     ;       phase_parse_tree_to_hlds
     ;       phase_expand_types
     ;       phase_type_check
+    ;       phase_inst_check
     ;       phase_mode_check(mode_report_control)
     ;       phase_purity_check
     ;       phase_detism_check
@@ -667,6 +668,7 @@ get_maybe_mode_report_control(phase_term_to_parse_tree) = no.
 get_maybe_mode_report_control(phase_parse_tree_to_hlds) = no.
 get_maybe_mode_report_control(phase_expand_types) = no.
 get_maybe_mode_report_control(phase_type_check) = no.
+get_maybe_mode_report_control(phase_inst_check) = no.
 get_maybe_mode_report_control(phase_mode_check(Control)) = yes(Control).
 get_maybe_mode_report_control(phase_purity_check) = no.
 get_maybe_mode_report_control(phase_detism_check) = no.

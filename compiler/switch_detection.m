@@ -25,13 +25,11 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_switches(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred detect_switches_in_module(module_info::in, module_info::out) is det.
 
 :- pred detect_switches_in_proc(proc_id::in, pred_id::in,
     module_info::in, module_info::out) is det.
@@ -114,36 +112,34 @@ lookup_allow_multi_arm(ModuleInfo, AllowMulti) :-
         AllowMulti = dont_allow_multi_arm
     ).
 
-detect_switches(!ModuleInfo, !IO) :-
+detect_switches_in_module(!ModuleInfo) :-
     % Traverse the module structure, calling `detect_switches_in_goal'
     % for each procedure body.
     lookup_allow_multi_arm(!.ModuleInfo, AllowMulti),
     module_info_predids(PredIds, !ModuleInfo),
-    detect_switches_in_preds_allow(PredIds, AllowMulti, !ModuleInfo, !IO).
+    detect_switches_in_preds_allow(PredIds, AllowMulti, !ModuleInfo).
 
 :- pred detect_switches_in_preds_allow(list(pred_id)::in, allow_multi_arm::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-detect_switches_in_preds_allow([], _, !ModuleInfo, !IO).
-detect_switches_in_preds_allow([PredId | PredIds], AllowMulti, !ModuleInfo,
-        !IO) :-
+detect_switches_in_preds_allow([], _, !ModuleInfo).
+detect_switches_in_preds_allow([PredId | PredIds], AllowMulti, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    detect_switches_in_pred_allow(PredId, PredInfo, AllowMulti, !ModuleInfo,
-        !IO),
-    detect_switches_in_preds_allow(PredIds, AllowMulti, !ModuleInfo, !IO).
+    detect_switches_in_pred_allow(PredId, PredInfo, AllowMulti, !ModuleInfo),
+    detect_switches_in_preds_allow(PredIds, AllowMulti, !ModuleInfo).
 
 :- pred detect_switches_in_pred_allow(pred_id::in, pred_info::in,
-    allow_multi_arm::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    allow_multi_arm::in, module_info::in, module_info::out) is det.
 
-detect_switches_in_pred_allow(PredId, PredInfo0, AllowMulti, !ModuleInfo,
-        !IO) :-
+detect_switches_in_pred_allow(PredId, PredInfo0, AllowMulti, !ModuleInfo) :-
     ProcIds = pred_info_non_imported_procids(PredInfo0),
     (
         ProcIds = [_ | _],
-        write_pred_progress_message("% Detecting switches in ", PredId,
-            !.ModuleInfo, !IO),
+        trace [io(!IO)] (
+            write_pred_progress_message("% Detecting switches in ", PredId,
+                !.ModuleInfo, !IO)
+        ),
         detect_switches_in_procs_allow(ProcIds, PredId, AllowMulti,
             !ModuleInfo)
         % This is where we should print statistics, if we ever need

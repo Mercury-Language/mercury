@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -81,8 +81,7 @@
         ;   update_proc_io(pred(in, in, in, in, out, di, uo) is det)
         ;   update_proc_error(pred(in, in, in, out, in, out, out, out, di, uo)
                 is det)
-        ;   update_pred_error(pred(in, in, out, in, out, in, out, di, uo)
-                is det)
+        ;   update_pred_error(pred(in, in, out, in, out, in, out) is det)
         ;   update_module(pred(in, in, in, in, out, in, out) is det)
         ;   update_module_io(pred(in, in, in, out, in, out, di, uo) is det)
         ;   update_module_cookie(pred(in, in, in, out, in, out, in, out)
@@ -93,10 +92,10 @@
 
 :- type pred_error_task ==
         pred(pred_id, module_info, module_info, pred_info, pred_info,
-            list(error_spec), list(error_spec), io, io).
+            list(error_spec), list(error_spec)).
 
 :- inst pred_error_task ==
-    (pred(in, in, out, in, out, in, out, di, uo) is det).
+    (pred(in, in, out, in, out, in, out) is det).
 
 :- pred process_all_nonimported_procs_errors(task::task,
     module_info::in, module_info::out,
@@ -205,8 +204,8 @@ process_matching_nonimported_procs_errors(Task, Filter, !ModuleInfo,
         !Specs, !IO) :-
     module_info_predids(PredIds, !ModuleInfo),
     ( Task = update_pred_error(Pred) ->
-        list.foldl3(process_nonimported_pred(Pred, Filter), PredIds,
-            !ModuleInfo, !Specs, !IO)
+        list.foldl2(process_nonimported_pred(Pred, Filter), PredIds,
+            !ModuleInfo, !Specs)
     ;
         process_nonimported_procs_in_preds(PredIds, Task, _, Filter,
             !ModuleInfo, !IO)
@@ -234,9 +233,9 @@ process_matching_nonimported_procs_update(Task0, Task, Filter,
 :- pred process_nonimported_pred(pred_error_task::in(pred_error_task),
     pred(pred_info)::in(pred(in) is semidet), pred_id::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !Specs, !IO) :-
+process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     (
         ( pred_info_is_imported(PredInfo0)
@@ -245,7 +244,7 @@ process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !Specs, !IO) :-
     ->
         true
     ;
-        Task(PredId, !ModuleInfo, PredInfo0, PredInfo, !Specs, !IO),
+        Task(PredId, !ModuleInfo, PredInfo0, PredInfo, !Specs),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ).
 

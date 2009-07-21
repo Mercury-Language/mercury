@@ -1,5 +1,3 @@
-inst_with_no_type.m:079: Warning: inst `inst_with_no_type.citrus'/0 does not
-inst_with_no_type.m:079:   match any of the types in scope.
 inst_with_no_type.m:014: Warning: inst `inst_with_no_type.i1_no_match'/0 does
 inst_with_no_type.m:014:   not match any of the types in scope.
 inst_with_no_type.m:035: Warning: inst `inst_with_no_type.i2_no_match'/1 does
@@ -13,9 +11,11 @@ inst_with_no_type.m:070:   does not match any of the types in scope.
 inst_with_no_type.m:072: Warning: inst
 inst_with_no_type.m:072:   `inst_with_no_type.mostly_unique_no_match'/0 does
 inst_with_no_type.m:072:   not match any of the types in scope.
-inst_with_no_type.m:092: Warning: inst `inst_with_no_type.t_no_match'/0 does
-inst_with_no_type.m:092:   not match any of the types in scope.
 inst_with_no_type.m:074: Warning: inst `inst_with_no_type.unique_inst'/0 does
 inst_with_no_type.m:074:   not match any of the types in scope.
 inst_with_no_type.m:076: Warning: inst `inst_with_no_type.unique_no_match'/0
 inst_with_no_type.m:076:   does not match any of the types in scope.
+inst_with_no_type.m:079: Warning: inst `inst_with_no_type.citrus'/0 does not
+inst_with_no_type.m:079:   match any of the types in scope.
+inst_with_no_type.m:092: Warning: inst `inst_with_no_type.t_no_match'/0 does
+inst_with_no_type.m:092:   not match any of the types in scope.
