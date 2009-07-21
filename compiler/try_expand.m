@@ -313,7 +313,7 @@ update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, !.ProcInfo,
         !ModuleInfo),
 
-    modecheck_proc(ProcId, PredId, !ModuleInfo, ErrorSpecs, _Changed, !IO),
+    modecheck_proc(ProcId, PredId, !ModuleInfo, ErrorSpecs, _Changed),
     module_info_get_globals(!.ModuleInfo, Globals),
     write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !ModuleInfo),

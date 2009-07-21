@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997, 2003-2008 The University of Melbourne.
+% Copyright (C) 1996-1997, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,13 +17,12 @@
 :- interface.
 
 :- import_module check_hlds.mode_info.
-:- import_module io.
 
     % Print a debugging message which includes the port, message string,
     % and the current instmap (but only if `--debug-modes' was enabled).
     %
-:- pred mode_checkpoint(port::in, string::in, mode_info::in, mode_info::out,
-    io::di, io::uo) is det.
+:- pred mode_checkpoint(port::in, string::in, mode_info::in, mode_info::out)
+    is det.
 
 :- type port
     --->    enter
@@ -45,6 +44,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -53,67 +53,65 @@
 
 %-----------------------------------------------------------------------------%
 
-    % This code is used to trace the actions of the mode checker.
-
-mode_checkpoint(Port, Msg, !ModeInfo, !IO) :-
+mode_checkpoint(Port, Msg, !ModeInfo) :-
     mode_info_get_debug_modes(!.ModeInfo, DebugModes),
     (
-        DebugModes = yes(debug_flags(Verbose, Minimal, Statistics)),
-        mode_checkpoint_write(Verbose, Minimal, Statistics, Port, Msg,
-            !ModeInfo, !IO)
-    ;
         DebugModes = no
-    ).
-
-:- pred mode_checkpoint_write(bool::in, bool::in, bool::in, port::in,
-    string::in, mode_info::in, mode_info::out, io::di, io::uo) is det.
-
-mode_checkpoint_write(Verbose, Minimal, Statistics, Port, Msg, !ModeInfo,
-        !IO) :-
-    mode_info_get_errors(!.ModeInfo, Errors),
-    (
-        Port = enter,
-        io.write_string("Enter ", !IO),
-        Detail = yes
     ;
-        Port = wakeup,
-        io.write_string("Wake ", !IO),
-        Detail = no
-    ;
-        Port = exit,
+        DebugModes = yes(debug_flags(Verbose, Minimal, Statistics)),
+        mode_info_get_errors(!.ModeInfo, Errors),
         (
-            Errors = [],
-            io.write_string("Exit ", !IO),
+            Port = enter,
+            PortStr = "Enter ",
             Detail = yes
         ;
-            Errors = [_ | _],
-            io.write_string("Delay ", !IO),
+            Port = wakeup,
+            PortStr = "Wake ",
+            Detail = no
+        ;
+            Port = exit,
+            (
+                Errors = [],
+                PortStr = "Exit ",
+                Detail = yes
+            ;
+                Errors = [_ | _],
+                PortStr = "Delay ",
+                Detail = no
+            )
+        ),
+        mode_info_get_instmap(!.ModeInfo, InstMap),
+        trace [io(!IO)] (
+            io.write_string(PortStr, !IO),
+            io.write_string(Msg, !IO),
+            (
+                Detail = yes,
+                io.write_string(":\n", !IO),
+                maybe_report_stats(Statistics, !IO),
+                maybe_flush_output(Statistics, !IO),
+                ( instmap_is_reachable(InstMap) ->
+                    instmap_to_assoc_list(InstMap, NewInsts),
+                    mode_info_get_last_checkpoint_insts(!.ModeInfo, OldInstMap),
+                    mode_info_get_varset(!.ModeInfo, VarSet),
+                    mode_info_get_instvarset(!.ModeInfo, InstVarSet),
+                    write_var_insts(NewInsts, OldInstMap, VarSet, InstVarSet,
+                        Verbose, Minimal, !IO)
+                ;
+                    io.write_string("\tUnreachable\n", !IO)
+                )
+            ;
+                Detail = no
+            ),
+            io.write_string("\n", !IO),
+            io.flush_output(!IO)
+        ),
+        (
+            Detail = yes,
+            mode_info_set_last_checkpoint_insts(InstMap, !ModeInfo)
+        ;
             Detail = no
         )
-    ),
-    io.write_string(Msg, !IO),
-    (
-        Detail = yes,
-        io.write_string(":\n", !IO),
-        maybe_report_stats(Statistics, !IO),
-        maybe_flush_output(Statistics, !IO),
-        mode_info_get_instmap(!.ModeInfo, InstMap),
-        ( instmap_is_reachable(InstMap) ->
-            instmap_to_assoc_list(InstMap, NewInsts),
-            mode_info_get_last_checkpoint_insts(!.ModeInfo, OldInstMap),
-            mode_info_get_varset(!.ModeInfo, VarSet),
-            mode_info_get_instvarset(!.ModeInfo, InstVarSet),
-            write_var_insts(NewInsts, OldInstMap, VarSet, InstVarSet,
-                Verbose, Minimal, !IO)
-        ;
-            io.write_string("\tUnreachable\n", !IO)
-        ),
-        mode_info_set_last_checkpoint_insts(InstMap, !ModeInfo)
-    ;
-        Detail = no
-    ),
-    io.write_string("\n", !IO),
-    io.flush_output(!IO).
+    ).
 
 :- pred write_var_insts(assoc_list(prog_var, mer_inst)::in, instmap::in,
     prog_varset::in, inst_varset::in, bool::in, bool::in,

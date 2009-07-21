@@ -24,12 +24,10 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module io.
-
-:- pred detect_cse(module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred detect_cse_in_module(module_info::in, module_info::out) is det.
 
 :- pred detect_cse_in_proc(proc_id::in, pred_id::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -60,8 +58,10 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -71,93 +71,109 @@
 
 %-----------------------------------------------------------------------------%
 
-detect_cse(!ModuleInfo, !IO) :-
+detect_cse_in_module(!ModuleInfo) :-
     % Traverse the module structure, calling `detect_cse_in_goal'
     % for each procedure body.
     module_info_predids(PredIds, !ModuleInfo),
-    detect_cse_in_preds(PredIds, !ModuleInfo, !IO).
+    detect_cse_in_preds(PredIds, !ModuleInfo).
 
 :- pred detect_cse_in_preds(list(pred_id)::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-detect_cse_in_preds([], !ModuleInfo, !IO).
-detect_cse_in_preds([PredId | PredIds], !ModuleInfo, !IO) :-
+detect_cse_in_preds([], !ModuleInfo).
+detect_cse_in_preds([PredId | PredIds], !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    detect_cse_in_pred(PredId, PredInfo, !ModuleInfo, !IO),
-    detect_cse_in_preds(PredIds, !ModuleInfo, !IO).
+    detect_cse_in_pred(PredId, PredInfo, !ModuleInfo),
+    detect_cse_in_preds(PredIds, !ModuleInfo).
 
 :- pred detect_cse_in_pred(pred_id::in, pred_info::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-detect_cse_in_pred(PredId, PredInfo0, !ModuleInfo, !IO) :-
-    ProcIds = pred_info_non_imported_procids(PredInfo0),
-    detect_cse_in_procs(ProcIds, PredId, !ModuleInfo, !IO).
+detect_cse_in_pred(PredId, PredInfo, !ModuleInfo) :-
+    ProcIds = pred_info_non_imported_procids(PredInfo),
+    detect_cse_in_procs(ProcIds, PredId, !ModuleInfo).
 
 :- pred detect_cse_in_procs(list(proc_id)::in, pred_id::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-detect_cse_in_procs([], _PredId, !ModuleInfo, !IO).
-detect_cse_in_procs([ProcId | ProcIds], PredId, !ModuleInfo, !IO) :-
-    detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO),
-    detect_cse_in_procs(ProcIds, PredId, !ModuleInfo, !IO).
+detect_cse_in_procs([], _PredId, !ModuleInfo).
+detect_cse_in_procs([ProcId | ProcIds], PredId, !ModuleInfo) :-
+    detect_cse_in_proc(ProcId, PredId, !ModuleInfo),
+    detect_cse_in_procs(ProcIds, PredId, !ModuleInfo).
 
-detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        io.write_string("% Detecting common deconstructions for ", !IO),
-        hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
-        io.write_string("\n", !IO)
+        trace [io(!IO)] (
+            io.write_string("% Detecting common deconstructions for ", !IO),
+            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+            io.write_string("\n", !IO)
+        )
     ;
         VeryVerbose = no
     ),
     detect_cse_in_proc_pass(ProcId, PredId, Redo, !ModuleInfo),
-    globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
-    maybe_report_stats(Statistics, !IO),
+    globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
+    trace [io(!IO)] (
+        maybe_report_stats(Statistics, !IO)
+    ),
     (
         Redo = no
     ;
         Redo = yes,
         (
             VeryVerbose = yes,
-            io.write_string("% Repeating mode check for ", !IO),
-            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
-            io.write_string("\n", !IO)
+            trace [io(!IO)] (
+                io.write_string("% Repeating mode check for ", !IO),
+                hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+                io.write_string("\n", !IO)
+            )
         ;
             VeryVerbose = no
         ),
-        modecheck_proc(ProcId, PredId, !ModuleInfo, ErrorSpecs, _Changed, !IO),
-        maybe_report_stats(Statistics, !IO),
-        module_info_get_globals(!.ModuleInfo, Globals),
-        write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, NumErrors,
-            !IO),
-        module_info_incr_num_errors(NumErrors, !ModuleInfo),
-        ( NumErrors > 0 ->
+        modecheck_proc(ProcId, PredId, !ModuleInfo, ModeSpecs, _Changed),
+        trace [io(!IO)] (
+            maybe_report_stats(Statistics, !IO)
+        ),
+        ContainsErrors = contains_errors(Globals, ModeSpecs),
+        (
+            ContainsErrors = yes,
             unexpected(this_file, "mode check fails when repeated")
         ;
-            true
+            ContainsErrors = no
+            % There is no point in returning any warnings and/or informational
+            % messages to our caller, since any such messages should already
+            % have been gathered during the initial mode analysis pass.
         ),
         (
             VeryVerbose = yes,
-            io.write_string("% Repeating switch detection for ", !IO),
-            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
-            io.write_string("\n", !IO)
+            trace [io(!IO)] (
+                io.write_string("% Repeating switch detection for ", !IO),
+                hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+                io.write_string("\n", !IO)
+            )
         ;
             VeryVerbose = no
         ),
         detect_switches_in_proc(ProcId, PredId, !ModuleInfo),
-        maybe_report_stats(Statistics, !IO),
+        trace [io(!IO)] (
+            maybe_report_stats(Statistics, !IO)
+        ),
         (
             VeryVerbose = yes,
-            io.write_string("% Repeating common " ++
-                "deconstruction detection for ", !IO),
-            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
-            io.write_string("\n", !IO)
+            trace [io(!IO)] (
+                io.write_string("% Repeating common " ++
+                    "deconstruction detection for ", !IO),
+                hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+                io.write_string("\n", !IO)
+            )
         ;
             VeryVerbose = no
         ),
-        detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO)
+        detect_cse_in_proc(ProcId, PredId, !ModuleInfo)
     ).
 
 :- type cse_info

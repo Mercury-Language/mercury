@@ -47,27 +47,29 @@
 :- module check_hlds.unify_proc.
 :- interface.
 
-:- import_module check_hlds.mode_info.
 :- import_module hlds.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.pred_table.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module queue.
 
 %-----------------------------------------------------------------------------%
 
 :- type proc_requests.
+:- type req_queue == queue(pred_proc_id).
+
+:- pred get_req_queue(proc_requests::in, req_queue::out) is det.
+:- pred set_req_queue(req_queue::in,
+    proc_requests::in, proc_requests::out) is det.
 
 :- type unify_proc_id
     --->    unify_proc_id(type_ctor, uni_mode).
@@ -109,17 +111,6 @@
 :- pred add_lazily_generated_compare_pred_decl(type_ctor::in, pred_id::out,
     module_info::in, module_info::out) is det.
 
-    % Do mode analysis of the queued procedures. If the first argument is
-    % `unique_mode_check', then also go on and do full determinism analysis
-    % and unique mode analysis on them as well. The pred_table arguments
-    % are used to store copies of the procedure bodies before unique mode
-    % analysis, so that we can restore them before doing the next analysis
-    % pass.
-    %
-:- pred modecheck_queued_procs(how_to_check_goal::in,
-    pred_table::in, pred_table::out, module_info::in, module_info::out,
-    bool::out, io::di, io::uo) is det.
-
     % Given the type and mode of a unification, look up the mode number
     % for the unification proc.
     %
@@ -139,14 +130,11 @@
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
-:- import_module check_hlds.cse_detection.
-:- import_module check_hlds.det_analysis.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.post_typecheck.
-:- import_module check_hlds.switch_detection.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_util.
@@ -155,6 +143,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_hlds.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
 :- import_module libs.
@@ -168,10 +157,10 @@
 :- import_module parse_tree.prog_type.
 :- import_module recompilation.
 
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
-:- import_module queue.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
@@ -187,8 +176,6 @@
     % that mode.
     %
 :- type unify_req_map == map(unify_proc_id, proc_id).
-
-:- type req_queue == queue(pred_proc_id).
 
 :- type proc_requests
     --->    proc_requests(
@@ -212,10 +199,7 @@ init_requests(Requests) :-
     % Boring access predicates
 
 :- pred get_unify_req_map(proc_requests::in, unify_req_map::out) is det.
-:- pred get_req_queue(proc_requests::in, req_queue::out) is det.
 :- pred set_unify_req_map(unify_req_map::in,
-    proc_requests::in, proc_requests::out) is det.
-:- pred set_req_queue(req_queue::in,
     proc_requests::in, proc_requests::out) is det.
 
 get_unify_req_map(PR, PR ^ unify_req_map).
@@ -392,132 +376,6 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         set_req_queue(ReqQueue, Requests0, Requests),
         module_info_set_proc_requests(Requests, !ModuleInfo)
     ).
-
-%-----------------------------------------------------------------------------%
-
-    % XXX these belong in modes.m
-
-modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
-        !IO) :-
-    module_info_get_proc_requests(!.ModuleInfo, Requests0),
-    get_req_queue(Requests0, RequestQueue0),
-    ( queue.get(RequestQueue0, PredProcId, RequestQueue1) ->
-        set_req_queue(RequestQueue1, Requests0, Requests1),
-        module_info_set_proc_requests(Requests1, !ModuleInfo),
-
-        % Check that the procedure is valid (i.e. type-correct), before
-        % we attempt to do mode analysis on it. This check is necessary
-        % to avoid internal errors caused by doing mode analysis on
-        % type-incorrect code.
-        % XXX inefficient! This is O(N*M).
-
-        PredProcId = proc(PredId, _ProcId),
-        module_info_predids(ValidPredIds, !ModuleInfo),
-        ( list.member(PredId, ValidPredIds) ->
-            queued_proc_progress_message(PredProcId, HowToCheckGoal,
-                !.ModuleInfo, !IO),
-            modecheck_queued_proc(HowToCheckGoal, PredProcId,
-                !OldPredTable, !ModuleInfo, Changed1, !IO)
-        ;
-            Changed1 = no
-        ),
-        modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
-            Changed2, !IO),
-        bool.or(Changed1, Changed2, Changed)
-    ;
-        Changed = no
-    ).
-
-:- pred queued_proc_progress_message(pred_proc_id::in, how_to_check_goal::in,
-    module_info::in, io::di, io::uo) is det.
-
-queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    (
-        VeryVerbose = yes,
-        (
-            HowToCheckGoal = check_modes,
-            io.write_string("% Mode-analyzing ", !IO)
-        ;
-            HowToCheckGoal = check_unique_modes,
-            io.write_string("% Analyzing modes, determinism, " ++
-                "and unique-modes for\n% ", !IO)
-        ),
-        hlds_out.write_pred_proc_id(ModuleInfo, PredProcId, !IO),
-        io.write_string("\n", !IO)
-%       /*****
-%       mode_list_get_initial_insts(Modes, ModuleInfo1,
-%           InitialInsts),
-%       io.write_string("% Initial insts: `", !IO),
-%       varset.init(InstVarSet),
-%       mercury_output_inst_list(InitialInsts, InstVarSet, !IO),
-%       io.write_string("'\n", !IO)
-%       *****/
-    ;
-        VeryVerbose = no
-    ).
-
-:- pred modecheck_queued_proc(how_to_check_goal::in, pred_proc_id::in,
-    pred_table::in, pred_table::out, module_info::in, module_info::out,
-    bool::out, io::di, io::uo) is det.
-
-modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
-        !:Changed, !IO) :-
-    % Mark the procedure as ready to be processed.
-    PredProcId = proc(PredId, ProcId),
-    module_info_preds(!.ModuleInfo, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, Procs0),
-    map.lookup(Procs0, ProcId, ProcInfo0),
-    proc_info_set_can_process(yes, ProcInfo0, ProcInfo1),
-    map.det_update(Procs0, ProcId, ProcInfo1, Procs1),
-    pred_info_set_procedures(Procs1, PredInfo0, PredInfo1),
-    map.det_update(Preds0, PredId, PredInfo1, Preds1),
-    module_info_set_preds(Preds1, !ModuleInfo),
-
-    % Modecheck the procedure.
-    modecheck_proc(ProcId, PredId, !ModuleInfo, ErrorSpecs, !:Changed, !IO),
-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-    module_info_incr_num_errors(NumErrors, !ModuleInfo),
-    ( NumErrors > 0 ->
-        module_info_remove_predid(PredId, !ModuleInfo)
-    ;
-        (
-            HowToCheckGoal = check_unique_modes,
-            detect_switches_in_proc(ProcId, PredId, !ModuleInfo),
-            detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO),
-            determinism_check_proc(ProcId, PredId, !ModuleInfo, Specs),
-            (
-                Specs = []
-            ;
-                Specs = [_ | _],
-                unexpected(this_file, "modecheck_queued_proc: found error")
-            ),
-            save_proc_info(ProcId, PredId, !.ModuleInfo, !OldPredTable),
-            unique_modes_check_proc(ProcId, PredId, !ModuleInfo, NewChanged,
-                !IO),
-            bool.or(NewChanged, !Changed)
-        ;
-            HowToCheckGoal = check_modes
-        )
-    ).
-
-    % Save a copy of the proc info for the specified procedure in
-    % !OldProcTable.
-    %
-:- pred save_proc_info(proc_id::in, pred_id::in, module_info::in,
-    pred_table::in, pred_table::out) is det.
-
-save_proc_info(ProcId, PredId, ModuleInfo, !OldPredTable) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        _PredInfo, ProcInfo),
-    map.lookup(!.OldPredTable, PredId, OldPredInfo0),
-    pred_info_get_procedures(OldPredInfo0, OldProcTable0),
-    map.set(OldProcTable0, ProcId, ProcInfo, OldProcTable),
-    pred_info_set_procedures(OldProcTable, OldPredInfo0, OldPredInfo),
-    map.det_update(!.OldPredTable, PredId, OldPredInfo, !:OldPredTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

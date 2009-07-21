@@ -26,13 +26,11 @@
 :- import_module hlds.hlds_goal.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
-
     % Modecheck a unification.
     %
 :- pred modecheck_unification(prog_var::in, unify_rhs::in, unification::in,
     unify_context::in, hlds_goal_info::in, hlds_goal_expr::out,
-    mode_info::in, mode_info::out, io::di, io::uo) is det.
+    mode_info::in, mode_info::out) is det.
 
     % Create a unification between the two given variables.
     % The goal's mode and determinism information are not filled in.
@@ -73,6 +71,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -101,15 +100,15 @@
     % locals, provided the type of the higher-order value is impure.
     %
 modecheck_unification(LHSVar, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
-        Goal, !ModeInfo, !IO) :-
+        Goal, !ModeInfo) :-
     (
         RHS = rhs_var(RHSVar),
         modecheck_unification_var(LHSVar, RHSVar,
-            Unification0, UnifyContext, UnifyGoalInfo0, Goal, !ModeInfo, !IO)
+            Unification0, UnifyContext, UnifyGoalInfo0, Goal, !ModeInfo)
     ;
         RHS = rhs_functor(ConsId, IsExistConstr, RHSVars),
         modecheck_unification_functor(LHSVar, ConsId, IsExistConstr, RHSVars,
-            Unification0, UnifyContext, UnifyGoalInfo0, Goal, !ModeInfo, !IO)
+            Unification0, UnifyContext, UnifyGoalInfo0, Goal, !ModeInfo)
     ;
         RHS = rhs_lambda_goal(Purity, HOGroundness, _PredOrFunc,
             _LambdaEvalMethod, LambdaNonLocals, _LambdaQuantVars, _ArgModes,
@@ -134,21 +133,21 @@ modecheck_unification(LHSVar, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
             ->
                 modecheck_unification_rhs_undetermined_mode_lambda(LHSVar,
                     RHS, Unification0, UnifyContext, UnifyGoalInfo0, Goal,
-                    !ModeInfo, !IO)
+                    !ModeInfo)
             ;
                 modecheck_unification_rhs_lambda(LHSVar,
                     RHS, Unification0, UnifyContext, UnifyGoalInfo0, Goal,
-                    !ModeInfo, !IO)
+                    !ModeInfo)
             )
         )
     ).
 
 :- pred modecheck_unification_var(prog_var::in, prog_var::in, unification::in,
     unify_context::in, hlds_goal_info::in, hlds_goal_expr::out,
-    mode_info::in, mode_info::out, io::di, io::uo) is det.
+    mode_info::in, mode_info::out) is det.
 
 modecheck_unification_var(X, Y, Unification0, UnifyContext,
-        UnifyGoalInfo0, UnifyGoalExpr, !ModeInfo, !IO) :-
+        UnifyGoalInfo0, UnifyGoalExpr, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -242,10 +241,10 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
 :- pred modecheck_unification_functor(prog_var::in, cons_id::in,
     is_existential_construction::in, list(prog_var)::in, unification::in,
     unify_context::in, hlds_goal_info::in, hlds_goal_expr::out,
-    mode_info::in, mode_info::out, io::di, io::uo) is det.
+    mode_info::in, mode_info::out) is det.
 
 modecheck_unification_functor(X0, ConsId0, IsExistConstruction, ArgVars0,
-        Unification0, UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO) :-
+        Unification0, UnifyContext, GoalInfo0, Goal, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
     map.lookup(VarTypes0, X0, TypeOfX),
@@ -283,22 +282,22 @@ modecheck_unification_functor(X0, ConsId0, IsExistConstruction, ArgVars0,
 
         % Modecheck this unification in its new form.
         modecheck_unification(X0, Functor0, Unification0, UnifyContext,
-            GoalInfo0, Goal, !ModeInfo, !IO)
+            GoalInfo0, Goal, !ModeInfo)
     ;
-        % It's not a higher-order pred unification - just
-        % call modecheck_unify_functor to do the ordinary thing.
+        % It's not a higher-order pred unification, so just call
+        % modecheck_unify_functor to do the ordinary thing.
         modecheck_unify_functor(X0, TypeOfX, ConsId0,
             IsExistConstruction, ArgVars0, Unification0,
-            UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO)
+            UnifyContext, GoalInfo0, Goal, !ModeInfo)
     ).
 
 :- pred modecheck_unification_rhs_lambda(prog_var::in,
     unify_rhs::in(rhs_lambda_goal), unification::in, unify_context::in,
-    hlds_goal_info::in, hlds_goal_expr::out, mode_info::in, mode_info::out,
-    io::di, io::uo) is det.
+    hlds_goal_info::in, hlds_goal_expr::out, mode_info::in, mode_info::out)
+    is det.
 
 modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
-        unify(X, RHS, Mode, Unification, UnifyContext), !ModeInfo, !IO) :-
+        unify(X, RHS, Mode, Unification, UnifyContext), !ModeInfo) :-
     LambdaGoal = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
         ArgVars, Vars, Modes0, Det, Goal0),
 
@@ -425,19 +424,19 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
 
         mode_info_lock_vars(var_lock_lambda(PredOrFunc), NonLocals, !ModeInfo),
 
-        mode_checkpoint(enter, "lambda goal", !ModeInfo, !IO),
+        mode_checkpoint(enter, "lambda goal", !ModeInfo),
         % If we're being called from unique_modes.m, then we need to
-        % call unique_modes.check_goal rather than modecheck_goal.
+        % call unique_modes_check_goal rather than modecheck_goal.
         (
             HowToCheckGoal = check_unique_modes,
-            unique_modes_check_goal(Goal0, Goal1, !ModeInfo, !IO)
+            unique_modes_check_goal(Goal0, Goal1, !ModeInfo)
         ;
             HowToCheckGoal = check_modes,
-            modecheck_goal(Goal0, Goal1, !ModeInfo, !IO)
+            modecheck_goal(Goal0, Goal1, !ModeInfo)
         ),
         mode_list_get_final_insts(ModuleInfo0, Modes, FinalInsts),
         modecheck_lambda_final_insts(Vars, FinalInsts, Goal1, Goal, !ModeInfo),
-        mode_checkpoint(exit, "lambda goal", !ModeInfo, !IO),
+        mode_checkpoint(exit, "lambda goal", !ModeInfo),
 
         mode_info_remove_live_vars(LiveVars, !ModeInfo),
         mode_info_unlock_vars(var_lock_lambda(PredOrFunc), NonLocals,
@@ -529,11 +528,11 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 
 :- pred modecheck_unification_rhs_undetermined_mode_lambda(prog_var::in,
     unify_rhs::in(rhs_lambda_goal), unification::in, unify_context::in,
-    hlds_goal_info::in, hlds_goal_expr::out, mode_info::in, mode_info::out,
-    io::di, io::uo) is det.
+    hlds_goal_info::in, hlds_goal_expr::out, mode_info::in, mode_info::out)
+    is det.
 
 modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
-        UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO) :-
+        UnifyContext, GoalInfo0, Goal, !ModeInfo) :-
     RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal0),
     % Find out the predicate called in the lambda goal.
     ( predids_with_args_from_goal(Goal0, [{PredId, ArgVars}]) ->
@@ -558,7 +557,7 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
                 GoalInfo0, GoalInfo),
             % Modecheck this unification in its new form.
             modecheck_unification_rhs_lambda(X, RHS, Unification, UnifyContext,
-                GoalInfo, Goal, !ModeInfo, !IO)
+                GoalInfo, Goal, !ModeInfo)
         ;
             MatchResult = possible_modes([_, _ | _]),
             mode_info_error(set.make_singleton_set(X),
@@ -576,10 +575,10 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
 :- pred modecheck_unify_functor(prog_var::in, mer_type::in, cons_id::in,
     is_existential_construction::in, list(prog_var)::in, unification::in,
     unify_context::in, hlds_goal_info::in, hlds_goal_expr::out,
-    mode_info::in, mode_info::out, io::di, io::uo) is det.
+    mode_info::in, mode_info::out) is det.
 
 modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
-        Unification0, UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO) :-
+        Unification0, UnifyContext, GoalInfo0, Goal, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_how_to_check(!.ModeInfo, HowToCheckGoal),
 
@@ -784,8 +783,10 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         % Unifying two preds is not erroneous as far as the mode checker
         % is concerned, but a mode _error_.
         Goal = disj([]),
-        globals.io_lookup_bool_option(warn_unification_cannot_succeed,
-            WarnCannotSucceed, !IO),
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, warn_unification_cannot_succeed,
+            WarnCannotSucceed),
         (
             WarnCannotSucceed = yes,
             mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
@@ -796,11 +797,10 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             ;
                 InDuplForSwitch = not_in_dupl_for_switch,
                 mode_info_get_pred_id(!.ModeInfo, PredId),
-                mode_info_get_module_info(!.ModeInfo, ModuleInfo),
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 pred_info_get_origin(PredInfo, Origin),
-                should_report_mode_warning_for_pred_origin(Origin,
-                    ReportWarning),
+                ReportWarning =
+                    should_report_mode_warning_for_pred_origin(Origin),
                 (
                     ReportWarning = yes,
                     Warning = cannot_succeed_var_functor(X, InstOfX, ConsId),
@@ -837,7 +837,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             true
         ),
         handle_extra_goals(Unify, ExtraGoals, GoalInfo0,
-            [X0 | ArgVars0], [X | ArgVars], InstMap0, Goal, !ModeInfo, !IO)
+            [X0 | ArgVars0], [X | ArgVars], InstMap0, Goal, !ModeInfo)
     ).
 
 :- pred all_arg_vars_are_non_free_or_solver_vars(list(prog_var)::in,
@@ -1096,7 +1096,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
             mode_info_get_pred_id(!.ModeInfo, PredId),
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
             pred_info_get_origin(PredInfo, Origin),
-            should_report_mode_warning_for_pred_origin(Origin, ReportWarning),
+            ReportWarning = should_report_mode_warning_for_pred_origin(Origin),
             (
                 ReportWarning = yes,
                 Warning = cannot_succeed_var_var(X, Y, InstOfX, InstOfY),

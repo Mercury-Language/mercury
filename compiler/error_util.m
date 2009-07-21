@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -200,7 +200,8 @@
 :- func actual_error_severity(globals, error_severity)
     = maybe(actual_severity).
 
-    % Compute the worst actual severity (if any) occurring a list ofmessages.
+    % Compute the worst actual severity (if any) occurring in a list of
+    % error_specs.
     %
 :- func worst_severity_in_specs(globals, list(error_spec))
     = maybe(actual_severity).
@@ -220,11 +221,11 @@
 :- pred sort_error_msgs(list(error_msg)::in, list(error_msg)::out) is det.
 
 %-----------------------------------------------------------------------------%
+%
 % The error_spec_accumulator type can be used to accumulate errors for
 % multiple modes of a predicate.  accumulate_error_specs_for_proc will
 % eliminate warnings that should only be reported if they occur in every mode,
 % but don't occur in every mode.
-%
 
 :- type error_spec_accumulator.
 

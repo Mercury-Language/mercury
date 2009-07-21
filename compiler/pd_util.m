@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2008 University of Melbourne.
+% Copyright (C) 1998-2009 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -293,7 +293,7 @@ unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
     mode_info_init(ModuleInfo1, PredId, ProcId, Context, LiveVars, InstMap0,
         check_unique_modes, MayChangeCalledProc, ModeInfo0),
 
-    unique_modes_check_goal(Goal0, Goal, ModeInfo0, ModeInfo, !IO),
+    unique_modes_check_goal(Goal0, Goal, ModeInfo0, ModeInfo),
     globals.io_lookup_bool_option(debug_pd, Debug, !IO),
     (
         Debug = yes,

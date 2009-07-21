@@ -28,7 +28,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module set.
 
@@ -201,12 +200,12 @@
     %
 :- pred mode_context_init(mode_context::out) is det.
 
-    % Report an error for a predicate with no mode declarations
+    % Return an error for a predicate with no mode declarations
     % unless mode inference is enabled and the predicate is local.
     % XXX This predicate should be included in the types above.
     %
-:- pred maybe_report_error_no_modes(pred_id::in, pred_info::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- func maybe_report_error_no_modes(module_info, pred_id, pred_info)
+    = list(error_spec).
 
     % Report an error for the case when two mode declarations
     % declare indistinguishable modes.
@@ -215,13 +214,17 @@
 :- func report_indistinguishable_modes_error(module_info, proc_id, proc_id,
     pred_id, pred_info) = error_spec.
 
+:- type include_detism_on_modes
+    --->    include_detism_on_modes
+    ;       do_not_include_detism_on_modes.
+
     % Write out the inferred `mode' declarations for a list of pred_ids.
     % The bool indicates whether or not to write out determinism
     % annotations on the modes (it should only be set to `yes' _after_
     % determinism analysis).
     %
-:- pred write_mode_inference_messages(list(pred_id)::in, bool::in,
-    module_info::in, io::di, io::uo) is det.
+:- func report_mode_inference_messages(module_info, include_detism_on_modes,
+    list(pred_id)) = list(error_spec).
 
 :- func mode_decl_to_string(proc_id, pred_info) = string.
 
@@ -229,8 +232,7 @@
 
 :- func mode_warning_info_to_spec(mode_info, mode_warning_info) = error_spec.
 
-:- pred should_report_mode_warning_for_pred_origin(pred_origin::in,
-    bool::out) is det.
+:- func should_report_mode_warning_for_pred_origin(pred_origin) = bool.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -252,6 +254,7 @@
 
 :- import_module assoc_list.
 :- import_module int.
+:- import_module io.            % used only for a typeclass instance
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -498,7 +501,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
         [option_is_set(very_verbose, yes,
             [always([nl]),
              'new print_anything'(
-                write_indented_goal(Goal, ModuleInfo, VarSet))])]),
+                write_indented_goal(ModuleInfo, VarSet, Goal))])]),
     Error = mode_error_info(_, ModeError, ErrorContext, ModeContext),
     mode_info_set_context(ErrorContext, !ModeInfo),
     mode_info_set_mode_context(ModeContext, !ModeInfo),
@@ -507,15 +510,13 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     Msgs = [Msg1, Msg2] ++ SubMsgs.
 
 :- type write_indented_goal
-    --->    write_indented_goal(hlds_goal, module_info, prog_varset).
+    --->    write_indented_goal(module_info, prog_varset, hlds_goal).
 
 :- instance error_util.print_anything(write_indented_goal) where [
-
-    ( print_anything(write_indented_goal(Goal, ModuleInfo, VarSet), !IO) :-
+    ( print_anything(write_indented_goal(ModuleInfo, VarSet, Goal), !IO) :-
         io.write_string("\t\t", !IO),
         hlds_out.write_goal(Goal, ModuleInfo, VarSet, no, 2, ".\n", !IO)
     )
-
 ].
 
 %-----------------------------------------------------------------------------%
@@ -1230,28 +1231,29 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars) = Spec :-
 
 %-----------------------------------------------------------------------------%
 
-should_report_mode_warning_for_pred_origin(origin_special_pred(_), no).
-should_report_mode_warning_for_pred_origin(origin_instance_method(_, _), no).
-should_report_mode_warning_for_pred_origin(origin_transformed(_, _, _), no).
-should_report_mode_warning_for_pred_origin(origin_created(_), no).
-should_report_mode_warning_for_pred_origin(origin_assertion(_, _), no).
-should_report_mode_warning_for_pred_origin(origin_lambda(_, _, _), yes).
-should_report_mode_warning_for_pred_origin(origin_user(_), yes).
+should_report_mode_warning_for_pred_origin(origin_special_pred(_)) = no.
+should_report_mode_warning_for_pred_origin(origin_instance_method(_, _)) = no.
+should_report_mode_warning_for_pred_origin(origin_transformed(_, _, _)) = no.
+should_report_mode_warning_for_pred_origin(origin_created(_)) = no.
+should_report_mode_warning_for_pred_origin(origin_assertion(_, _)) = no.
+should_report_mode_warning_for_pred_origin(origin_lambda(_, _, _)) = yes.
+should_report_mode_warning_for_pred_origin(origin_user(_)) = yes.
 
 %-----------------------------------------------------------------------------%
 
-maybe_report_error_no_modes(PredId, PredInfo, !ModuleInfo, !IO) :-
+maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
     pred_info_get_import_status(PredInfo, ImportStatus),
+    module_info_get_globals(ModuleInfo, Globals),
     ( ImportStatus = status_local ->
-        globals.io_lookup_bool_option(infer_modes, InferModesOpt, !IO),
+        globals.lookup_bool_option(Globals, infer_modes, InferModesOpt),
         (
-            InferModesOpt = yes
+            InferModesOpt = yes,
+            Specs = []
         ;
             InferModesOpt = no,
-            io.set_exit_status(1, !IO),
             pred_info_get_context(PredInfo, Context),
             MainPieces = [words("Error: no mode declaration for")] ++
-                describe_one_pred_name(!.ModuleInfo, should_not_module_qualify,
+                describe_one_pred_name(ModuleInfo, should_not_module_qualify,
                     PredId) ++ [suffix("."), nl],
             VerbosePieces =
                 [words("(Use `--infer-modes' to enable mode inference.)"), nl],
@@ -1259,52 +1261,51 @@ maybe_report_error_no_modes(PredId, PredInfo, !ModuleInfo, !IO) :-
                 phase_mode_check(report_in_any_mode),
                 [simple_msg(Context,
                     [always(MainPieces), verbose_only(VerbosePieces)])]),
-            module_info_get_globals(!.ModuleInfo, Globals),
-            write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors,
-                !IO),
-            module_info_incr_num_errors(NumErrors, !ModuleInfo)
+            Specs = [Spec]
         )
     ;
-        io.set_exit_status(1, !IO),
         pred_info_get_context(PredInfo, Context),
         Pieces = [words("Error: no mode declaration for exported")] ++
-            describe_one_pred_name(!.ModuleInfo, should_module_qualify, PredId)
+            describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
             ++ [suffix("."), nl],
         Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
             [simple_msg(Context, [always(Pieces)])]),
-        module_info_get_globals(!.ModuleInfo, Globals),
-        write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !ModuleInfo)
+        Specs = [Spec]
     ).
 
 %-----------------------------------------------------------------------------%
 
     % Write out the inferred `mode' declarations for a list of pred_ids.
     %
-write_mode_inference_messages([], _, _, !IO).
-write_mode_inference_messages([PredId | PredIds], OutputDetism, ModuleInfo,
-        !IO) :-
+report_mode_inference_messages(_, _, []) = [].
+report_mode_inference_messages(ModuleInfo, OutputDetism, [PredId | PredIds]) =
+        Specs :-
+    TailSpecs = report_mode_inference_messages(ModuleInfo, OutputDetism,
+        PredIds),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( check_marker(Markers, marker_infer_modes) ->
         ProcIds = pred_info_all_procids(PredInfo),
         pred_info_get_procedures(PredInfo, Procs),
-        write_mode_inference_messages_2(ProcIds, Procs, PredInfo,
-            OutputDetism, ModuleInfo, !IO)
+        HeadSpecs = report_mode_inference_messages_2(ModuleInfo, OutputDetism,
+            PredInfo, Procs, ProcIds),
+        Specs = HeadSpecs ++ TailSpecs
     ;
-        true
-    ),
-    write_mode_inference_messages(PredIds, OutputDetism, ModuleInfo, !IO).
+        Specs = TailSpecs
+    ).
 
     % Write out the inferred `mode' declarations for a list of proc_ids.
     %
-:- pred write_mode_inference_messages_2(list(proc_id)::in, proc_table::in,
-    pred_info::in, bool::in, module_info::in, io::di, io::uo) is det.
+:- func report_mode_inference_messages_2(module_info, include_detism_on_modes,
+    pred_info, proc_table, list(proc_id)) = list(error_spec).
 
-write_mode_inference_messages_2([], _, _, _, _, !IO).
-write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo,
-        OutputDetism, ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+report_mode_inference_messages_2(_, _, _, _, []) = [].
+report_mode_inference_messages_2(ModuleInfo, OutputDetism, PredInfo, Procs,
+        [ProcId | ProcIds]) = Specs :-
+    TailSpecs = report_mode_inference_messages_2(ModuleInfo, OutputDetism,
+        PredInfo, Procs, ProcIds),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     map.lookup(Procs, ProcId, ProcInfo),
     (
         (
@@ -1316,22 +1317,21 @@ write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo,
             VerboseErrors = yes
         )
     ->
-        write_mode_inference_message(PredInfo, ProcInfo, OutputDetism,
-            ModuleInfo, !IO)
+        HeadSpec = report_mode_inference_message(ModuleInfo, OutputDetism,
+            PredInfo, ProcInfo),
+        Specs = [HeadSpec | TailSpecs]
     ;
-        true
-    ),
-    write_mode_inference_messages_2(ProcIds, Procs, PredInfo, OutputDetism,
-        ModuleInfo, !IO).
+        Specs = TailSpecs
+    ).
 
-    % Write out the inferred `mode' declaration for a single function
-    % or predicate.
+    % Return a description of the inferred mode declaration for the given
+    % predicate or function.
     %
-:- pred write_mode_inference_message(pred_info::in, proc_info::in, bool::in,
-    module_info::in, io::di, io::uo) is det.
+:- func report_mode_inference_message(module_info, include_detism_on_modes,
+    pred_info, proc_info) = error_spec.
 
-write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
-        !IO) :-
+report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
+        = Spec :-
     PredName = pred_info_name(PredInfo),
     Name = unqualified(PredName),
     pred_info_get_context(PredInfo, Context),
@@ -1353,11 +1353,11 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
         varset.init(VarSet),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         (
-            OutputDetism = yes,
+            OutputDetism = include_detism_on_modes,
             proc_info_get_inferred_determinism(ProcInfo, Detism),
             !:MaybeDet = yes(Detism)
         ;
-            OutputDetism = no,
+            OutputDetism = do_not_include_detism_on_modes,
             !:MaybeDet = no
         ),
         ( proc_info_is_valid_mode(ProcInfo) ->
@@ -1390,9 +1390,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
         Pieces = [words(Verb), words(Detail), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_informational,
-            phase_mode_check(report_in_any_mode), [Msg]),
-        module_info_get_globals(ModuleInfo, Globals),
-        write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
+            phase_mode_check(report_in_any_mode), [Msg])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1435,11 +1433,6 @@ mode_decl_to_string(ProcId, PredInfo) = String :-
     String = mercury_mode_subdecl_to_string(PredOrFunc, InstVarSet, Name,
         Modes, MaybeDet, Context).
 
-:- pred output_inst(mer_inst::in, mode_info::in, io::di, io::uo) is det.
-
-output_inst(Inst0, ModeInfo, !IO) :-
-    io.write_string(inst_to_string(ModeInfo, Inst0), !IO).
-
 :- func inst_to_string(mode_info, mer_inst) = string.
 
 inst_to_string(ModeInfo, Inst0) = Str :-
@@ -1448,33 +1441,10 @@ inst_to_string(ModeInfo, Inst0) = Str :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     Str = mercury_expanded_inst_to_string(Inst, InstVarSet, ModuleInfo).
 
-:- pred output_inst_list(list(mer_inst)::in, mode_info::in, io::di, io::uo)
-    is det.
-
-output_inst_list(Insts, ModeInfo, !IO) :-
-    io.write_string(inst_list_to_string(ModeInfo, Insts), !IO).
-
 :- func inst_list_to_string(mode_info, list(mer_inst)) = string.
 
 inst_list_to_string(ModeInfo, Insts) =
     string.join_list(", ", list.map(inst_to_string(ModeInfo), Insts)).
-
-:- pred output_inst_list_sep_lines(prog_context::in, list(mer_inst)::in,
-    mode_info::in, io::di, io::uo) is det.
-
-output_inst_list_sep_lines(_Context, [], _, !IO).
-output_inst_list_sep_lines(Context, [Inst | Insts], ModeInfo, !IO) :-
-    prog_out.write_context(Context, !IO),
-    io.write_string("    ", !IO),
-    output_inst(Inst, ModeInfo, !IO),
-    (
-        Insts = []
-    ;
-        Insts = [_ | _],
-        io.write_string(",", !IO)
-    ),
-    io.nl(!IO),
-    output_inst_list_sep_lines(Context, Insts, ModeInfo, !IO).
 
 :- func inst_list_to_sep_lines(mode_info, list(mer_inst))
     = list(format_component).

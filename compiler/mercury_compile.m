@@ -3149,7 +3149,11 @@ modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue, !IO) :-
     module_info_get_num_errors(!.HLDS, NumErrors0),
     maybe_benchmark_modes(
         (pred(H0::in, {H, U}::out, !.IO::di, !:IO::uo) is det :-
-            modecheck_module(H0, H, U, !IO)
+            modecheck_module(H0, H1, U, Specs),
+            module_info_get_globals(H1, Globals),
+            write_error_specs(Specs, Globals,
+                0, _SpecsNumWarnings, 0, SpecsNumErrors, !IO),
+            module_info_incr_num_errors(SpecsNumErrors, H1, H)
         ),
         "modecheck", !.HLDS, {!:HLDS, SafeToContinue}, !IO),
     module_info_get_num_errors(!.HLDS, NumErrors),
@@ -3224,7 +3228,7 @@ detect_cse(Verbose, Stats, !HLDS, !IO) :-
         CommonGoal = yes,
         maybe_write_string(Verbose,
             "% Detecting common deconstructions...\n", !IO),
-        detect_cse(!HLDS, !IO),
+        detect_cse_in_module(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -3383,7 +3387,11 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !IO) :-
     maybe_write_string(Verbose,
         "% Checking for backtracking over unique modes...\n", !IO),
     module_info_get_num_errors(!.HLDS, NumErrors0),
-    unique_modes_check_module(!HLDS, !IO),
+    unique_modes_check_module(!HLDS, Specs),
+    module_info_get_globals(!.HLDS, Globals),
+    write_error_specs(Specs, Globals, 0, _SpecsNumWarnings, 0, SpecsNumErrors,
+        !IO),
+    module_info_incr_num_errors(SpecsNumErrors, !HLDS),
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors \= NumErrors0 ->
         FoundError = yes,

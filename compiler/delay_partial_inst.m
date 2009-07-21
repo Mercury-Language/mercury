@@ -112,13 +112,12 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
 :- pred delay_partial_inst_preds(list(pred_id)::in, list(pred_id)::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -139,9 +138,10 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module maybe.
-:- import_module int.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -186,28 +186,29 @@
 
 %-----------------------------------------------------------------------------%
 
-delay_partial_inst_preds([], [], !ModuleInfo, !IO).
-delay_partial_inst_preds([PredId | PredIds], ChangedPreds, !ModuleInfo, !IO) :-
+delay_partial_inst_preds([], [], !ModuleInfo).
+delay_partial_inst_preds([PredId | PredIds], ChangedPreds, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
-    list.foldl3(delay_partial_inst_proc(PredId), ProcIds, !ModuleInfo,
-        no, Changed, !IO),
+    list.foldl2(delay_partial_inst_proc(PredId), ProcIds, !ModuleInfo,
+        no, Changed),
     (
         Changed = yes,
-        delay_partial_inst_preds(PredIds, ChangedPreds0, !ModuleInfo, !IO),
+        delay_partial_inst_preds(PredIds, ChangedPreds0, !ModuleInfo),
         ChangedPreds = [PredId | ChangedPreds0]
     ;
         Changed = no,
-        delay_partial_inst_preds(PredIds, ChangedPreds, !ModuleInfo, !IO)
+        delay_partial_inst_preds(PredIds, ChangedPreds, !ModuleInfo)
     ).
 
 :- pred delay_partial_inst_proc(pred_id::in, proc_id::in,
-    module_info::in, module_info::out, bool::in, bool::out, io::di, io::uo)
-    is det.
+    module_info::in, module_info::out, bool::in, bool::out) is det.
 
-delay_partial_inst_proc(PredId, ProcId, !ModuleInfo, !Changed, !IO) :-
-    write_proc_progress_message("% Delaying partial instantiations in ",
-        PredId, ProcId, !.ModuleInfo, !IO),
+delay_partial_inst_proc(PredId, ProcId, !ModuleInfo, !Changed) :-
+    trace [io(!IO)] (
+        write_proc_progress_message("% Delaying partial instantiations in ",
+            PredId, ProcId, !.ModuleInfo, !IO)
+    ),
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId, PredInfo,
         ProcInfo0),
     delay_partial_inst_proc_2(!.ModuleInfo, ProcInfo0, MaybeProcInfo),
