@@ -444,8 +444,12 @@ while ($#ARGV >= 0)
 
         if ($decl eq "type") {
             # Make sure we're at the line with the `--->'.
-            if ($body !~ /--->/) {
-                next if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
+            while ($body !~ /--->/) {
+                # Skip blank lines and comments but stop if we see the end of
+                # the term.
+                unless ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
+                    last if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
+                }
                 $_ = <SRCFILE>;
                 chop;
                 $body = $_;
