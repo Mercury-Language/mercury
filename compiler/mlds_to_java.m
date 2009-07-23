@@ -1549,7 +1549,6 @@ get_java_type_initializer(Type) = Initializer :-
             ( CtorCat = ctor_cat_builtin(cat_builtin_int)
             ; CtorCat = ctor_cat_builtin(cat_builtin_char)
             ; CtorCat = ctor_cat_builtin(cat_builtin_float)
-            ; CtorCat = ctor_cat_void
             ),
             Initializer = "0"
         ;
@@ -1560,6 +1559,7 @@ get_java_type_initializer(Type) = Initializer :-
             ; CtorCat = ctor_cat_enum(_)
             ; CtorCat = ctor_cat_builtin_dummy
             ; CtorCat = ctor_cat_variable
+            ; CtorCat = ctor_cat_void
             ; CtorCat = ctor_cat_user(_)
             ),
             Initializer = "null"
