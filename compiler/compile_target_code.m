@@ -1409,27 +1409,33 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
 
     globals.io_lookup_accumulating_option(init_files, InitFileNamesList0,
         !IO),
+    % If we pass the same .init file to mkinit multiple times we will end
+    % up with multiple calls to the functions that write out proc statics
+    % in deep profiling grades.  This will cause the runtime code that writes
+    % out the profile to abort.
+    list.remove_dups(InitFileNamesList0, InitFileNamesList1),
+
     globals.io_lookup_accumulating_option(trace_init_files,
         TraceInitFileNamesList0, !IO),
-    InitFileNamesList1 = StdInitFileNames ++ InitFileNamesList0,
+    InitFileNamesList2 = StdInitFileNames ++ InitFileNamesList1,
     TraceInitFileNamesList = StdTraceInitFileNames ++ TraceInitFileNamesList0,
 
     globals.io_get_trace_level(TraceLevel, !IO),
     ( given_trace_level_is_none(TraceLevel) = no ->
         TraceOpt = "-t",
-        InitFileNamesList2 = InitFileNamesList1 ++ TraceInitFileNamesList
+        InitFileNamesList3 = InitFileNamesList2 ++ TraceInitFileNamesList
     ;
         TraceOpt = "",
-        InitFileNamesList2 = InitFileNamesList1
+        InitFileNamesList3 = InitFileNamesList2
     ),
 
     globals.io_lookup_bool_option(source_to_source_debug, SourceDebug, !IO),
     (
         SourceDebug = yes,
-        InitFileNamesList = InitFileNamesList2 ++ SourceDebugInitFileNames
+        InitFileNamesList = InitFileNamesList3 ++ SourceDebugInitFileNames
     ;
         SourceDebug = no,
-        InitFileNamesList = InitFileNamesList2
+        InitFileNamesList = InitFileNamesList3
     ),
 
     globals.io_lookup_accumulating_option(runtime_flags, RuntimeFlagsList,
@@ -2685,6 +2691,9 @@ make_standalone_int_header(Basename, Succeeded, !IO) :-
 make_standalone_int_body(Basename, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_accumulating_option(Globals, init_files, InitFiles0),
+    % See the similar code in make_init_target_file for an explanation
+    % of why we must remove duplicates from this list.
+    list.remove_dups(InitFiles0, InitFiles1),
     globals.lookup_accumulating_option(Globals, trace_init_files,
         TraceInitFiles0),
     globals.lookup_maybe_string_option(Globals,
@@ -2692,10 +2701,10 @@ make_standalone_int_body(Basename, !IO) :-
     grade_directory_component(Globals, GradeDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
-        InitFiles1 = [
+        InitFiles2 = [
             StdLibDir / "modules" / GradeDir / "mer_rt.init",
             StdLibDir / "modules" / GradeDir / "mer_std.init" |
-            InitFiles0
+            InitFiles1
         ],
         TraceInitFiles = [
             StdLibDir / "modules" / GradeDir / "mer_browser.init",
@@ -2710,25 +2719,25 @@ make_standalone_int_body(Basename, !IO) :-
         % in order to use `--generate-standalone-interface' with the
         % the lmc script.
         MaybeStdLibDir = no,
-        InitFiles1 = InitFiles0,
+        InitFiles2 = InitFiles1,
         TraceInitFiles = TraceInitFiles0,
         SourceDebugInitFiles = []
     ),
     globals.get_trace_level(Globals, TraceLevel),
     ( given_trace_level_is_none(TraceLevel) = no ->
         TraceOpt = "-t",
-        InitFiles2 = InitFiles1 ++ TraceInitFiles
+        InitFiles3 = InitFiles2 ++ TraceInitFiles
     ;
         TraceOpt = "",
-        InitFiles2 = InitFiles1
+        InitFiles3 = InitFiles2
     ),
     globals.lookup_bool_option(Globals, source_to_source_debug, SourceDebug),
     (
         SourceDebug = yes,
-        InitFiles = InitFiles2 ++ SourceDebugInitFiles
+        InitFiles = InitFiles3 ++ SourceDebugInitFiles
     ;
         SourceDebug = no,
-        InitFiles = InitFiles2
+        InitFiles = InitFiles3
     ),
     globals.lookup_accumulating_option(Globals, runtime_flags,
         RuntimeFlagsList),
