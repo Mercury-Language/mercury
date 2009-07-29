@@ -598,7 +598,7 @@ install_deep_profiler: deep_profiler
 #	.trans_opt .trans_opt_date .d .mh .mih .c_date  .c .o .pic_o
 
 .PHONY: install_grades
-install_grades: all
+install_grades: install_main
 	# Use the newly installed compiler to build the libraries in various
 	# different grades. We need to override MC=mmc so that we use the mmc
 	# from the scripts directory, which runs the newly installed compiler,
