@@ -443,9 +443,7 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
         destroy_job_ctl(JobCtl, !IO)
     ;
         MaybeJobCtl = no,
-	% XXX hack so that we just fall back to non-parallel build,
-	% until I can get it working for Mac OS X.
-        Success = yes
+        Success = no
     ).
 
 :- pred start_worker_process(bool::in,
@@ -522,16 +520,29 @@ typedef struct MC_JobCtl MC_JobCtl;
 
 :- pragma foreign_decl("C", local,
 "
-#if defined(MR_HAVE_PTHREAD_H) && defined(MR_HAVE_SYS_MMAN_H)
-  #include <pthread.h>
+#ifdef MR_HAVE_SYS_MMAN_H
   #include <sys/mman.h>
 
   /* Just in case. */
   #if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
     #define MAP_ANONYMOUS MAP_ANON
   #endif
+#endif
 
-  #ifdef MAP_ANONYMOUS
+#ifdef MAP_ANONYMOUS
+  /*
+  ** Darwin 5.x doesn't implement unnamed POSIX semaphores nor process-shared
+  ** POSIX mutexes; the functions fail when you try to create them.
+  ** System V semaphores do work however.
+  */
+  #if !defined(__APPLE__) && defined(MR_HAVE_PTHREAD_H)
+    #include <pthread.h>
+
+    #define MC_HAVE_JOBCTL_IPC 1
+  #elif defined(MR_HAVE_SYS_SEM_H)
+    #include <sys/sem.h>
+
+    #define MC_USE_SYSV_SEMAPHORE 1
     #define MC_HAVE_JOBCTL_IPC 1
   #endif
 #endif
@@ -553,7 +564,11 @@ struct MC_JobCtl {
     MR_Integer      jc_total_tasks;
 
     /* Dynamic data.  The mutex protects the rest. */
+  #ifdef MC_USE_SYSV_SEMAPHORE
+    int             jc_semid;
+  #else
     pthread_mutex_t jc_mutex;
+  #endif
     MR_bool         jc_abort;
     MC_TaskStatus   jc_tasks[MR_VARIABLE_SIZED];
 };
@@ -576,7 +591,6 @@ MC_create_job_ctl(MR_Integer total_tasks)
 {
     size_t              size;
     MC_JobCtl           *job_ctl;
-    pthread_mutexattr_t mutex_attr;
     MR_Integer          i;
 
     size = MC_JOB_CTL_SIZE(total_tasks);
@@ -589,27 +603,51 @@ MC_create_job_ctl(MR_Integer total_tasks)
         return NULL;
     }
 
-    /*
-    ** Create a mutex.  Mac OS X doesn't implement unnamed POSIX
-    ** semaphores so we use POSIX threads mutexes.
-    */
-    pthread_mutexattr_init(&mutex_attr);
-    if (pthread_mutexattr_setpshared(&mutex_attr, PTHREAD_PROCESS_SHARED) != 0)
+#ifdef MC_USE_SYSV_SEMAPHORE
     {
-        perror(""MC_create_job_ctl: pthread_mutexattr_setpshared"");
-        pthread_mutexattr_destroy(&mutex_attr);
-        munmap(job_ctl, size);
-        return NULL;
-    }
+        struct sembuf sb;
 
-    if (pthread_mutex_init(&job_ctl->jc_mutex, &mutex_attr) != 0) {
-        perror(""MC_create_job_ctl: sem_init"");
-        pthread_mutexattr_destroy(&mutex_attr);
-        munmap(job_ctl, size);
-        return NULL;
-    }
+        job_ctl->jc_semid = semget(IPC_PRIVATE, 1, 0600);
+        if (job_ctl->jc_semid == -1) {
+            perror(""MC_create_sem: semget"");
+            munmap(job_ctl, size);
+            return NULL;
+        }
 
-    pthread_mutexattr_destroy(&mutex_attr);
+        sb.sem_num = 0;
+        sb.sem_op = 1;
+        sb.sem_flg = 0;
+        if (semop(job_ctl->jc_semid, &sb, 1) == -1) {
+            perror(""MC_create_sem: semop"");
+            semctl(job_ctl->jc_semid, 0, IPC_RMID);
+            munmap(job_ctl, size);
+            return NULL;
+        }
+    }
+#else
+    {
+        pthread_mutexattr_t mutex_attr;
+
+        pthread_mutexattr_init(&mutex_attr);
+        if (pthread_mutexattr_setpshared(&mutex_attr, PTHREAD_PROCESS_SHARED)
+            != 0)
+        {
+            perror(""MC_create_job_ctl: pthread_mutexattr_setpshared"");
+            pthread_mutexattr_destroy(&mutex_attr);
+            munmap(job_ctl, size);
+            return NULL;
+        }
+
+        if (pthread_mutex_init(&job_ctl->jc_mutex, &mutex_attr) != 0) {
+            perror(""MC_create_job_ctl: sem_init"");
+            pthread_mutexattr_destroy(&mutex_attr);
+            munmap(job_ctl, size);
+            return NULL;
+        }
+
+        pthread_mutexattr_destroy(&mutex_attr);
+    }
+#endif
 
     job_ctl->jc_total_tasks = total_tasks;
     job_ctl->jc_abort = MR_FALSE;
@@ -623,13 +661,35 @@ MC_create_job_ctl(MR_Integer total_tasks)
 static void
 MC_lock_job_ctl(MC_JobCtl *job_ctl)
 {
+#ifdef MC_USE_SYSV_SEMAPHORE
+    struct sembuf sb;
+
+    sb.sem_num = 0;
+    sb.sem_op = -1;
+    sb.sem_flg = 0;
+    if (semop(job_ctl->jc_semid, &sb, 1) == -1) {
+        perror(""MC_lock_job_ctl: semop"");
+    }
+#else
     pthread_mutex_lock(&job_ctl->jc_mutex);
+#endif
 }
 
 static void
 MC_unlock_job_ctl(MC_JobCtl *job_ctl)
 {
+#ifdef MC_USE_SYSV_SEMAPHORE
+    struct sembuf sb;
+
+    sb.sem_num = 0;
+    sb.sem_op = 1;
+    sb.sem_flg = 0;
+    if (semop(job_ctl->jc_semid, &sb, 1) == -1) {
+        perror(""MC_unlock_job_ctl: semop"");
+    }
+#else
     pthread_mutex_unlock(&job_ctl->jc_mutex);
+#endif
 }
 
 #endif /* MC_HAVE_JOBCTL_IPC */
@@ -684,7 +744,12 @@ have_job_ctl_ipc :-
         may_not_duplicate],
 "
 #ifdef MC_HAVE_JOBCTL_IPC
+  #ifdef MC_USE_SYSV_SEMAPHORE
+    semctl(JobCtl->jc_semid, 0, IPC_RMID);
+  #else
     pthread_mutex_destroy(&JobCtl->jc_mutex);
+  #endif
+
     munmap(JobCtl, MC_JOB_CTL_SIZE(JobCtl->jc_total_tasks));
 #endif
     IO = IO0;

@@ -135,6 +135,7 @@
 ** 	MR_HAVE_SPAWN_H		we have <spawn.h>
 **	MR_HAVE_FENV_H		we have <fenv.h>
 **	MR_HAVE_SYS_MMAN_H	we have <sys/mman.h>
+**	MR_HAVE_SYS_SEM_H 	we have <sys/sem.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -163,6 +164,7 @@
 #undef	MR_HAVE_SPAWN_H
 #undef	MR_HAVE_FENV_H
 #undef	MR_HAVE_SYS_MMAN_H
+#undef	MR_HAVE_SYS_SEM_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
