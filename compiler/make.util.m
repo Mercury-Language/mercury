@@ -443,7 +443,9 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
         destroy_job_ctl(JobCtl, !IO)
     ;
         MaybeJobCtl = no,
-        Success = no
+	% XXX hack so that we just fall back to non-parallel build,
+	% until I can get it working for Mac OS X.
+        Success = yes
     ).
 
 :- pred start_worker_process(bool::in,
