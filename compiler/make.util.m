@@ -330,6 +330,7 @@
 :- import_module dir.
 :- import_module exception.
 :- import_module getopt_io.
+:- import_module maybe.
 :- import_module set.
 :- import_module thread.
 :- import_module thread.channel.
@@ -392,50 +393,17 @@ foldl3_maybe_stop_at_error_2(KeepGoing, P, [T | Ts],
 % Parallel (concurrent) fold
 %
 
-:- type child_exit
-    --->    child_succeeded
-    ;       child_failed
-    ;       child_exception(univ).
-
-:- inst child_succeeded_or_failed
-    --->    child_succeeded
-    ;       child_failed.
-
-    % A generic interface for the two parallel fold implementations:
-    % one using processes and one using threads.
-    %
-:- typeclass par_fold(PF) where [
-
-    % run_in_child(Pred, Info, T, Succeeded, !PF, !IO)
-    %
-    % Start executing Pred in a child thread/process.  Succeeded is `yes' iff
-    % the child was successfully spawned.
-    %
-    pred run_in_child(
-        foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-        Info::in, T::in, bool::out, PF::in, PF::out, io::di, io::uo) is det,
-
-    % Block until a child exit code is received.
-    %
-    pred wait_for_child_exit(child_exit::out(child_succeeded_or_failed),
-        PF::in, PF::out, io::di, io::uo) is det
-].
-
 foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Targets,
         Success, !Info, !IO) :-
     globals.io_lookup_int_option(jobs, Jobs, !IO),
-    ( Jobs > 1 ->
+    (
+        Jobs > 1,
+        process_util.can_fork,
+        have_job_ctl_ipc
+    ->
         % First pass.
-        % fork() is disabled on threaded grades.
-        ( process_util.can_fork ->
-            foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs,
-                MakeTarget, Targets, Success0, !.Info, !IO)
-        ; thread.can_spawn ->
-            foldl2_maybe_stop_at_error_parallel_threads(KeepGoing, Jobs,
-                MakeTarget, Targets, Success0, !.Info, !IO)
-        ;
-            Success0 = yes
-        ),
+        foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs,
+            MakeTarget, Targets, Success0, !Info, !IO),
         % Second pass (sequential).
         (
             Success0 = yes,
@@ -455,270 +423,348 @@ foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Targets,
             !Info, !IO)
     ).
 
-:- pred do_parallel_foldl2(bool::in, int::in,
-    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    Info::in, list(T)::in, bool::out, PF::in, PF::out, io::di, io::uo)
-    is det <= par_fold(PF).
-
-do_parallel_foldl2(KeepGoing, Jobs, MakeTarget, Info, Targets, Success,
-        !PF, !IO) :-
-    list.split_upto(Jobs, Targets, InitialTargets, LaterTargets),
-    start_initial_child_jobs(KeepGoing, MakeTarget, Info, InitialTargets,
-        0, NumChildJobs, !PF, !IO),
-    ( NumChildJobs < length(InitialTargets) ->
-        Success0 = no
-    ;
-        Success0 = yes
-    ),
-    do_parallel_foldl2_parent_loop(KeepGoing, MakeTarget, Info,
-        NumChildJobs, LaterTargets, Success0, Success, !PF, !IO).
-
-:- pred start_initial_child_jobs(bool::in,
-    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    Info::in, list(T)::in, int::in, int::out,
-    PF::in, PF::out, io::di, io::uo) is det <= par_fold(PF).
-
-start_initial_child_jobs(_KeepGoing, _MakeTarget, _Info,
-        [], !NumChildJobs, !PF, !IO).
-start_initial_child_jobs(KeepGoing, MakeTarget, Info,
-        [Target | Targets], !NumChildJobs, !PF, !IO) :-
-    run_in_child(MakeTarget, Info, Target, Success, !PF, !IO),
-    (
-        Success = yes,
-        start_initial_child_jobs(KeepGoing, MakeTarget, Info, Targets,
-            !.NumChildJobs + 1, !:NumChildJobs, !PF, !IO)
-    ;
-        Success = no,
-        KeepGoing = yes,
-        start_initial_child_jobs(KeepGoing, MakeTarget, Info, Targets,
-            !NumChildJobs, !PF, !IO)
-    ;
-        Success = no,
-        KeepGoing = no
-    ).
-
-:- pred do_parallel_foldl2_parent_loop(bool::in,
-    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    Info::in, int::in, list(T)::in, bool::in, bool::out, PF::in, PF::out,
-    io::di, io::uo) is det <= par_fold(PF).
-
-do_parallel_foldl2_parent_loop(KeepGoing, MakeTarget, Info, NumChildJobs0,
-        Targets, !Success, !PF, !IO) :-
-    (
-        % We are done once all running children have terminated and there are
-        % no more targets to make.
-        NumChildJobs0 = 0,
-        Targets = []
-    ->
-        true
-    ;
-        % Wait for a running child to indicate that it is finished.
-        wait_for_child_exit(Exit, !PF, !IO),
-        (
-            Exit = child_succeeded,
-            NewSuccess = yes
-        ;
-            Exit = child_failed,
-            NewSuccess = no
-        ),
-        (
-            ( NewSuccess = yes
-            ; KeepGoing = yes
-            )
-        ->
-            !:Success = !.Success `and` NewSuccess,
-            (
-                Targets = [],
-                MoreTargets = [],
-                NumChildJobs = NumChildJobs0 - 1
-            ;
-                Targets = [NextTarget | MoreTargets],
-                run_in_child(MakeTarget, Info, NextTarget, ChildStarted,
-                    !PF, !IO),
-                (
-                    ChildStarted = yes,
-                    NumChildJobs = NumChildJobs0
-                ;
-                    ChildStarted = no,
-                    NumChildJobs = NumChildJobs0 - 1,
-                    !:Success = no
-                )
-            ),
-            do_parallel_foldl2_parent_loop(KeepGoing, MakeTarget, Info,
-                NumChildJobs, MoreTargets, !Success, !PF, !IO)
-        ;
-            % Wait for the other running children to terminate before
-            % returning.
-            !:Success = no,
-            wait_for_child_exits(NumChildJobs0 - 1, !PF, !IO)
-        )
-    ).
-
-:- pred wait_for_child_exits(int::in,
-    PF::in, PF::out, io::di, io::uo) is det <= par_fold(PF).
-
-wait_for_child_exits(Num, !PF, !IO) :-
-    ( Num > 0 ->
-        wait_for_child_exit(_, !PF, !IO),
-        wait_for_child_exits(Num - 1, !PF, !IO)
-    ;
-        true
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Parallel fold using processes
-%
-
-:- type fork_par_fold
-    --->    fork_par_fold(
-                fpf_children :: set(pid)
-            ).
-
-:- instance par_fold(fork_par_fold) where [
-    pred(run_in_child/8) is run_in_child_process,
-    pred(wait_for_child_exit/5) is wait_for_child_process_exit
-].
-
 :- pred foldl2_maybe_stop_at_error_parallel_processes(bool::in, int::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    list(T)::in, bool::out, Info::in, io::di, io::uo) is det.
+    list(T)::in, bool::out, Info::in, Info::out, io::di, io::uo) is det.
 
 foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
-        Targets, Success, Info, !IO) :-
-    PF0 = fork_par_fold(set.init),
-    do_parallel_foldl2(KeepGoing, Jobs, MakeTarget, Info, Targets,
-        Success, PF0, _PF, !IO).
-
-:- pred run_in_child_process(
-    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    Info::in, T::in, bool::out, fork_par_fold::in, fork_par_fold::out,
-    io::di, io::uo) is det.
-
-run_in_child_process(P, Info, T, ChildStarted, PF0, PF, !IO) :-
-    start_in_forked_process(
-        (pred(Success::out, !.IO::di, !:IO::uo) is det :-
-            P(T, Success, Info, _Info, !IO)
-        ), MaybePid, !IO),
+        Targets, Success, !Info, !IO) :-
+    TotalTasks = list.length(Targets),
+    create_job_ctl(TotalTasks, MaybeJobCtl, !IO),
     (
-        MaybePid = yes(Pid),
-        ChildStarted = yes,
-        PF0 = fork_par_fold(Set0),
-        set.insert(Set0, Pid, Set),
-        PF = fork_par_fold(Set)
+        MaybeJobCtl = yes(JobCtl),
+        list.map_foldl(
+            start_worker_process(KeepGoing, MakeTarget, Targets, JobCtl,
+                !.Info),
+            2 .. Jobs, MaybePids, !IO),
+        worker_loop(KeepGoing, MakeTarget, Targets, JobCtl, yes, Success0,
+            !Info, !IO),
+        list.foldl2(reap_worker_process, MaybePids, Success0, Success, !IO),
+        destroy_job_ctl(JobCtl, !IO)
     ;
-        MaybePid = no,
-        ChildStarted = no,
-        PF = PF0
+        MaybeJobCtl = no,
+        Success = no
     ).
 
-:- pred wait_for_child_process_exit(child_exit::out(child_succeeded_or_failed),
-    fork_par_fold::in, fork_par_fold::out, io::di, io::uo) is det.
+:- pred start_worker_process(bool::in,
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    list(T)::in, job_ctl::in, Info::in, int::in, maybe(pid)::out,
+    io::di, io::uo) is det.
 
-wait_for_child_process_exit(ChildExit, PF0, PF, !IO) :-
-    wait_any(DeadPid, ChildStatus, !IO),
-    fork_par_fold(Pids0) = PF0,
-    ( set.remove(Pids0, DeadPid, Pids) ->
-        ( ChildStatus = ok(exited(0)) ->
-            ChildExit = child_succeeded
+start_worker_process(KeepGoing, MakeTarget, Targets, JobCtl, Info, _ChildN,
+        MaybePid, !IO) :-
+    start_in_forked_process(
+        child_worker(KeepGoing, MakeTarget, Targets, JobCtl, Info),
+        MaybePid, !IO).
+
+:- pred child_worker(bool::in,
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    list(T)::in, job_ctl::in, Info::in, bool::out, io::di, io::uo) is det.
+
+child_worker(KeepGoing, MakeTarget, Targets, JobCtl, Info0, Success, !IO) :-
+    worker_loop(KeepGoing, MakeTarget, Targets, JobCtl, yes, Success,
+        Info0, _Info, !IO).
+
+:- pred worker_loop(bool::in,
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    list(T)::in, job_ctl::in, bool::in, bool::out, Info::in, Info::out,
+    io::di, io::uo) is det.
+
+worker_loop(KeepGoing, MakeTarget, Targets, JobCtl, !Success, !Info, !IO) :-
+    accept_task(JobCtl, TaskNumber, !IO),
+    ( TaskNumber >= 0 ->
+        Target = list.det_index0(Targets, TaskNumber),
+        MakeTarget(Target, TargetSuccess, !Info, !IO),
+        (
+            TargetSuccess = yes,
+            mark_task_done(JobCtl, TaskNumber, !IO)
         ;
-            ChildExit = child_failed
+            TargetSuccess = no,
+            mark_task_error(JobCtl, TaskNumber, KeepGoing, !IO),
+            !:Success = no
         ),
-        PF = fork_par_fold(Pids)
+        worker_loop(KeepGoing, MakeTarget, Targets, JobCtl,
+            !Success, !Info, !IO)
     ;
-        % Not a child of ours, maybe a grand child.  Ignore it.
-        wait_for_child_process_exit(ChildExit, PF0, PF, !IO)
+        % No more tasks.
+        true
+    ).
+
+:- pred reap_worker_process(maybe(pid)::in, bool::in, bool::out,
+    io::di, io::uo) is det.
+
+reap_worker_process(MaybePid, !Success, !IO) :-
+    (
+        MaybePid = yes(Pid),
+        wait_pid(Pid, Status, !IO),
+        (
+            !.Success = yes,
+            Status = ok(exited(0))
+        ->
+            true
+        ;
+            !:Success = no
+        )
+    ;
+        MaybePid = no
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Parallel fold using threads
+% Shared memory IPC for parallel workers
 %
 
-:- type thread_par_fold
-    --->    thread_par_fold(
-                tpf_channel     :: channel(child_exit),
-                                % A channel to communicate between the children
-                                % and the parent.
+:- pragma foreign_decl("C", "
+typedef struct MC_JobCtl MC_JobCtl;
+").
 
-                tpf_maybe_excp  :: maybe(univ)
-                                % Remember the first of any exceptions thrown
-                                % by child threads.
-            ).
+:- pragma foreign_decl("C", local,
+"
+#if defined(MR_HAVE_PTHREAD_H) && defined(MR_HAVE_SYS_MMAN_H)
+  #include <pthread.h>
+  #include <sys/mman.h>
 
-:- instance par_fold(thread_par_fold) where [
-    pred(run_in_child/8) is run_in_child_thread,
-    pred(wait_for_child_exit/5) is wait_for_child_thread_exit
-].
+  /* Just in case. */
+  #if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
+    #define MAP_ANONYMOUS MAP_ANON
+  #endif
 
-:- pred foldl2_maybe_stop_at_error_parallel_threads(bool::in, int::in,
-    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    list(T)::in, bool::out, Info::in, io::di, io::uo) is det.
+  #ifdef MAP_ANONYMOUS
+    #define MC_HAVE_JOBCTL_IPC 1
+  #endif
+#endif
 
-foldl2_maybe_stop_at_error_parallel_threads(KeepGoing, Jobs, MakeTarget,
-        Targets, Success, Info, !IO) :-
-    channel.init(Channel, !IO),
-    PF0 = thread_par_fold(Channel, no),
-    do_parallel_foldl2(KeepGoing, Jobs, MakeTarget, Info, Targets, Success,
-        PF0, PF, !IO),
-    %
-    % Rethrow the first of any exceptions which terminated a child thread.
-    %
-    MaybeExcp = PF ^ tpf_maybe_excp,
-    (
-        MaybeExcp = yes(Excp),
-        rethrow(exception(Excp) : exception_result(unit))
-    ;
-        MaybeExcp = no
-    ).
+#ifdef MC_HAVE_JOBCTL_IPC
 
-:- pred run_in_child_thread(
-    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    Info::in, T::in, bool::out, thread_par_fold::in, thread_par_fold::out,
-    io::di, io::uo) is det.
+typedef enum MC_TaskStatus MC_TaskStatus;
 
-run_in_child_thread(P, Info, T, ChildStarted, PF, PF, !IO) :-
-    promise_equivalent_solutions [!:IO] (
-        spawn((pred(!.IO::di, !:IO::uo) is cc_multi :-
-            try_io((pred(Succ::out, !.IO::di, !:IO::uo) is det :-
-                P(T, Succ, Info, _Info, !IO)
-            ), Result, !IO),
-            (
-                Result = succeeded(yes),
-                Exit = child_succeeded
-            ;
-                Result = succeeded(no),
-                Exit = child_failed
-            ;
-                Result = exception(Excp),
-                Exit = child_exception(Excp)
-            ),
-            channel.put(PF ^ tpf_channel, Exit, !IO)
-        ), !IO)
-    ),
-    ChildStarted = yes.
+enum MC_TaskStatus {
+    TASK_NEW,       /* task not yet attempted */
+    TASK_ACCEPTED,  /* someone is working on this task */
+    TASK_DONE,      /* task successfully completed */
+    TASK_ERROR      /* error occurred when working on the task */
+};
 
-:- pred wait_for_child_thread_exit(child_exit::out(child_succeeded_or_failed),
-    thread_par_fold::in, thread_par_fold::out, io::di, io::uo) is det.
+/* This structure is placed in shared memory. */
+struct MC_JobCtl {
+    /* Static data. */
+    MR_Integer      jc_total_tasks;
 
-wait_for_child_thread_exit(ChildExit, !PF, !IO) :-
-    channel.take(!.PF ^ tpf_channel, ChildExit0, !IO),
-    (
-        ( ChildExit0 = child_succeeded
-        ; ChildExit0 = child_failed
-        ),
-        ChildExit = ChildExit0
-    ;
-        ChildExit0 = child_exception(Excp),
-        ChildExit = child_failed,
-        MaybeExcp0 = !.PF ^ tpf_maybe_excp,
-        (
-            MaybeExcp0 = no,
-            !PF ^ tpf_maybe_excp := yes(Excp)
-        ;
-            MaybeExcp0 = yes(_)
-        )
-    ).
+    /* Dynamic data.  The mutex protects the rest. */
+    pthread_mutex_t jc_mutex;
+    MR_bool         jc_abort;
+    MC_TaskStatus   jc_tasks[MR_VARIABLE_SIZED];
+};
+
+#define MC_JOB_CTL_SIZE(N)  (sizeof(MC_JobCtl) + (N) * sizeof(MC_TaskStatus))
+
+static MC_JobCtl *  MC_create_job_ctl(MR_Integer total_tasks);
+static void         MC_lock_job_ctl(MC_JobCtl *job_ctl);
+static void         MC_unlock_job_ctl(MC_JobCtl *job_ctl);
+
+#endif /* MC_HAVE_JOBCTL_IPC */
+").
+
+:- pragma foreign_code("C", "
+
+#ifdef MC_HAVE_JOBCTL_IPC
+
+static MC_JobCtl *
+MC_create_job_ctl(MR_Integer total_tasks)
+{
+    size_t              size;
+    MC_JobCtl           *job_ctl;
+    pthread_mutexattr_t mutex_attr;
+    MR_Integer          i;
+
+    size = MC_JOB_CTL_SIZE(total_tasks);
+
+    /* Create the shared memory segment. */
+    job_ctl = mmap(NULL, size, PROT_READ | PROT_WRITE,
+        MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    if (job_ctl == (void *) -1) {
+        perror(""MC_create_job_ctl: mmap"");
+        return NULL;
+    }
+
+    /*
+    ** Create a mutex.  Mac OS X doesn't implement unnamed POSIX
+    ** semaphores so we use POSIX threads mutexes.
+    */
+    pthread_mutexattr_init(&mutex_attr);
+    if (pthread_mutexattr_setpshared(&mutex_attr, PTHREAD_PROCESS_SHARED) != 0)
+    {
+        perror(""MC_create_job_ctl: pthread_mutexattr_setpshared"");
+        pthread_mutexattr_destroy(&mutex_attr);
+        munmap(job_ctl, size);
+        return NULL;
+    }
+
+    if (pthread_mutex_init(&job_ctl->jc_mutex, &mutex_attr) != 0) {
+        perror(""MC_create_job_ctl: sem_init"");
+        pthread_mutexattr_destroy(&mutex_attr);
+        munmap(job_ctl, size);
+        return NULL;
+    }
+
+    pthread_mutexattr_destroy(&mutex_attr);
+
+    job_ctl->jc_total_tasks = total_tasks;
+    job_ctl->jc_abort = MR_FALSE;
+    for (i = 0; i < total_tasks; i++) {
+        job_ctl->jc_tasks[i] = TASK_NEW;
+    }
+
+    return job_ctl;
+}
+
+static void
+MC_lock_job_ctl(MC_JobCtl *job_ctl)
+{
+    pthread_mutex_lock(&job_ctl->jc_mutex);
+}
+
+static void
+MC_unlock_job_ctl(MC_JobCtl *job_ctl)
+{
+    pthread_mutex_unlock(&job_ctl->jc_mutex);
+}
+
+#endif /* MC_HAVE_JOBCTL_IPC */
+").
+
+:- type job_ctl.
+:- pragma foreign_type("C", job_ctl, "MC_JobCtl *").
+
+:- pred have_job_ctl_ipc is semidet.
+
+have_job_ctl_ipc :-
+    semidet_fail.
+
+:- pragma foreign_proc("C",
+    have_job_ctl_ipc,
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+#ifdef MC_HAVE_JOBCTL_IPC
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+
+:- pred create_job_ctl(int::in, maybe(job_ctl)::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    create_job_ctl(TotalJobs::in, MaybeJobCtl::out, IO0::di, IO::uo),
+    [may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+#ifdef MC_HAVE_JOBCTL_IPC
+    MC_JobCtl *job_ctl;
+
+    job_ctl = MC_create_job_ctl(TotalJobs);
+    if (job_ctl != NULL) {
+        MaybeJobCtl = MC_make_yes_job_ctl(job_ctl);
+    } else {
+        MaybeJobCtl = MC_make_no_job_ctl();
+    }
+#else
+    MaybeJobCtl = MC_make_no_job_ctl();
+#endif
+    IO = IO0;
+").
+
+:- pred destroy_job_ctl(job_ctl::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    destroy_job_ctl(JobCtl::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+#ifdef MC_HAVE_JOBCTL_IPC
+    pthread_mutex_destroy(&JobCtl->jc_mutex);
+    munmap(JobCtl, MC_JOB_CTL_SIZE(JobCtl->jc_total_tasks));
+#endif
+    IO = IO0;
+").
+
+:- pred accept_task(job_ctl::in, int::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    accept_task(JobCtl::in, TaskNumber::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    TaskNumber = -1;
+
+#ifdef MC_HAVE_JOBCTL_IPC
+    MC_lock_job_ctl(JobCtl);
+
+    if (!JobCtl->jc_abort) {
+        MR_Integer  i;
+
+        for (i = 0; i < JobCtl->jc_total_tasks; i++) {
+            if (JobCtl->jc_tasks[i] == TASK_NEW) {
+                JobCtl->jc_tasks[i] = TASK_ACCEPTED;
+                TaskNumber = i;
+                break;
+            }
+        }
+    }
+
+    MC_unlock_job_ctl(JobCtl);
+#endif
+
+    IO = IO0;
+").
+
+:- pred mark_task_done(job_ctl::in, int::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    mark_task_done(JobCtl::in, TaskNumber::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+#ifdef MC_HAVE_JOBCTL_IPC
+    MC_lock_job_ctl(JobCtl);
+    JobCtl->jc_tasks[TaskNumber] = TASK_DONE;
+    MC_unlock_job_ctl(JobCtl);
+#endif
+    IO = IO0;
+").
+
+:- pred mark_task_error(job_ctl::in, int::in, bool::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    mark_task_error(JobCtl::in, TaskNumber::in, KeepGoing::in,
+        IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+#ifdef MC_HAVE_JOBCTL_IPC
+    MC_lock_job_ctl(JobCtl);
+
+    JobCtl->jc_tasks[TaskNumber] = TASK_ERROR;
+    if (!KeepGoing) {
+        JobCtl->jc_abort = MR_TRUE;
+    }
+
+    MC_unlock_job_ctl(JobCtl);
+#endif
+    IO = IO0;
+").
+
+:- func make_yes_job_ctl(job_ctl) = maybe(job_ctl).
+:- pragma foreign_export("C", make_yes_job_ctl(in) = out,
+    "MC_make_yes_job_ctl").
+
+make_yes_job_ctl(JobCtl) = yes(JobCtl).
+
+:- func make_no_job_ctl = maybe(job_ctl).
+:- pragma foreign_export("C", make_no_job_ctl = out,
+    "MC_make_no_job_ctl").
+
+make_no_job_ctl = no.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

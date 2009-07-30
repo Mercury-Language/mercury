@@ -95,6 +95,14 @@
 :- pred start_in_forked_process(io_pred::in(io_pred), maybe(pid)::out,
     io::di, io::uo) is det.
 
+    % wait_pid(Pid, ExitCode, !IO)
+    %
+    % Block until the child process with process id Pid exited.
+    % Return the exit code of the child.
+    %
+:- pred wait_pid(pid::in, io.res(io.system_result)::out, io::di, io::uo)
+    is det.
+
     % wait_any(Pid, ExitCode, !IO)
     %
     % Block until a child process has exited. Return the process ID
@@ -423,35 +431,32 @@ call_child_process_io_pred(P, Status, !IO) :-
 #endif
 
         while (1) {
-            wait_status = wait(&child_status);
-            if (Pid == -1 || wait_status == Pid) {
+            wait_status = waitpid(Pid, &child_status, 0);
+            if (wait_status != -1) {
                 WaitedPid = wait_status;
                 Status = child_status;
                 break;
-            } else if (wait_status == -1) {
-                if (MR_is_eintr(errno)) {
-                    if (MC_signalled) {
-                        /*
-                        ** A normally fatal signal has been received,
-                        ** so kill the child immediately.
-                        ** Use SIGTERM, not MC_signal_received,
-                        ** because the child may be inside a call
-                        ** to system() which would cause SIGINT
-                        ** to be ignored on some systems (e.g. Linux).
-                        */
-                        if (Pid != -1) {
-                            kill(Pid, SIGTERM);
-                        }
-                        break;
-                    }
-                } else {
+            } else if (MR_is_eintr(errno)) {
+                if (MC_signalled) {
                     /*
-                    ** This should never happen.
+                    ** A normally fatal signal has been received, so kill the
+                    ** child immediately.  Use SIGTERM, not MC_signal_received,
+                    ** because the child may be inside a call to system() which
+                    ** would cause SIGINT to be ignored on some systems (e.g.
+                    ** Linux).
                     */
-                    MR_perror(""error in wait(): "");
-                    Status = 1;
+                    if (Pid != -1) {
+                        kill(Pid, SIGTERM);
+                    }
                     break;
                 }
+            } else {
+                /*
+                ** This should never happen.
+                */
+                MR_perror(""error in wait(): "");
+                Status = 1;
+                break;
             }
         }
 
@@ -474,6 +479,10 @@ call_child_process_io_pred(P, Status, !IO) :-
     Status = 1;
 #endif /* ! MC_CAN_FORK */
 ").
+
+wait_pid(Pid, Status, !IO) :-
+    do_wait(Pid, _Pid, Status0, !IO),
+    Status = io.handle_system_command_exit_status(Status0).
 
 wait_any(Pid, Status, !IO) :-
     do_wait(-1, Pid, Status0, !IO),

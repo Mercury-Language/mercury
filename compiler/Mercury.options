@@ -20,6 +20,9 @@ MCFLAGS-hlds.quantification = --optimize-unused-args
 # which are not available with `--ansi'.
 MGNUCFLAGS-libs.process_util = --no-ansi
 
+# make.util.m uses POSIX IPC.
+MGNUCFLAGS-make.util = --no-ansi
+
 # If intermodule optimization is enabled, we also need to use `--no-ansi'
 # for the following modules, because they import process_util.
 MGNUCFLAGS-make.module_dep_file = --no-ansi
@@ -33,6 +36,7 @@ MCFLAGS-libs.process_util = --no-ansi-c
 MCFLAGS-make.module_dep_file = --no-ansi-c
 MCFLAGS-make.module_target = --no-ansi-c
 MCFLAGS-make.program_target = --no-ansi-c
+MCFLAGS-make.util = --no-ansi-c
 
 MCFLAGS-erl_backend = --no-warn-unused-imports
 MCFLAGS-hlds = --no-warn-unused-imports
