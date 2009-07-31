@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2006, 2008 The University of Melbourne.
+% Copyright (C) 2003-2006, 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -116,14 +116,7 @@
 mmc_module_name_to_read_file_name(ModuleName, Ext, MaybeFileName, !IO) :-
     module_name_to_search_file_name(ModuleName, Ext, FileName0, !IO),
     globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
-    search_for_file(Dirs, FileName0, MaybeFileName, !IO),
-    (
-        MaybeFileName = ok(_),
-        % `search_for_file' actually opens the file.
-        io.seen(!IO)
-    ;
-        MaybeFileName = error(_)
-    ).
+    search_for_file(do_not_open_file, Dirs, FileName0, MaybeFileName, !IO).
 
 :- pred mmc_module_name_to_write_file_name(module_name::in, string::in,
     string::out, io::di, io::uo) is det.

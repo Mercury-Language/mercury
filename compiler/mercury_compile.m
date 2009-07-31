@@ -2431,11 +2431,11 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         ; UseOptFiles = yes ->
             module_info_get_name(!.HLDS, ModuleName),
             module_name_to_search_file_name(ModuleName, ".opt", OptName, !IO),
-            search_for_file(IntermodDirs, OptName, Found, !IO),
+            search_for_file_returning_dir(do_not_open_file, IntermodDirs,
+                OptName, Found, !IO),
             (
                 Found = ok(_),
-                UpdateStatus = yes,
-                io.seen(!IO)
+                UpdateStatus = yes
             ;
                 Found = error(_),
                 UpdateStatus = no

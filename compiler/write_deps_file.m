@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2358,21 +2358,21 @@ get_both_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs,
         Found = no,
         module_name_to_file_name(Dep, ".opt", do_not_create_dirs,
             OptName, !IO),
-        search_for_file(IntermodDirs, OptName, Result2, !IO),
+        search_for_file_returning_dir(do_not_open_file, IntermodDirs,
+            OptName, Result2, !IO),
         (
             Result2 = ok(_),
-            !:OptDeps = [Dep | !.OptDeps],
-            io.seen(!IO)
+            !:OptDeps = [Dep | !.OptDeps]
         ;
             Result2 = error(_)
         ),
         module_name_to_file_name(Dep, ".trans_opt", do_not_create_dirs,
             TransOptName, !IO),
-        search_for_file(IntermodDirs, TransOptName, Result3, !IO),
+        search_for_file_returning_dir(do_not_open_file, IntermodDirs,
+            TransOptName, Result3, !IO),
         (
             Result3 = ok(_),
-            !:TransOptDeps = [Dep | !.TransOptDeps],
-            io.seen(!IO)
+            !:TransOptDeps = [Dep | !.TransOptDeps]
         ;
             Result3 = error(_)
         )
@@ -2404,11 +2404,10 @@ get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, !:OptDeps,
     (
         Found = no,
         module_name_to_search_file_name(Dep, Suffix, OptName, !IO),
-        search_for_file(IntermodDirs, OptName, Result2, !IO),
+        search_for_file(do_not_open_file, IntermodDirs, OptName, Result2, !IO),
         (
             Result2 = ok(_),
-            !:OptDeps = [Dep | !.OptDeps],
-            io.seen(!IO)
+            !:OptDeps = [Dep | !.OptDeps]
         ;
             Result2 = error(_)
         )

@@ -2273,14 +2273,11 @@ process_link_library(MercuryLibDirs, LibName, LinkerOpt, !Succeeded, !IO) :-
             do_not_create_dirs, LibFileName, !IO),
         globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
 
-        io.input_stream(InputStream, !IO),
-        search_for_file_returning_dir(MercuryLibDirs, LibFileName,
-            SearchResult, !IO),
+        search_for_file_returning_dir(do_not_open_file, MercuryLibDirs,
+            LibFileName, SearchResult, !IO),
         (
             SearchResult = ok(DirName),
-            LinkerOpt = DirName/LibFileName,
-            io.set_input_stream(InputStream, LibInputStream, !IO),
-            io.close_input(LibInputStream, !IO)
+            LinkerOpt = DirName/LibFileName
         ;
             SearchResult = error(Error),
             LinkerOpt = "",

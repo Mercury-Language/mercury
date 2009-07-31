@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -199,7 +199,7 @@ do_read_module(IgnoreErrors, ModuleName, Extension, Descr, Search,
         OpenFile = search_for_module_source(SearchDirs,
             InterfaceSearchDirs, ModuleName)
     ;
-        OpenFile = search_for_file(SearchDirs, FileName0)
+        OpenFile = search_for_file(open_file, SearchDirs, FileName0)
     ),
     (
         MaybeOldTimestamp = yes(OldTimestamp),
@@ -276,7 +276,7 @@ read_module_from_file(FileName, Extension, Descr, Search, ReturnTimestamp,
         Search = do_not_search,
         SearchDirs = [dir.this_directory]
     ),
-    OpenFile = search_for_file(SearchDirs, FullFileName),
+    OpenFile = search_for_file(open_file, SearchDirs, FullFileName),
     prog_io.read_module(OpenFile, DefaultModuleName, ReturnTimestamp,
         _, ModuleName, Items, Specs, Error, MaybeTimestamp0, !IO),
     check_timestamp(FullFileName, MaybeTimestamp0, MaybeTimestamp, !IO),

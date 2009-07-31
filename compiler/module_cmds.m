@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -937,14 +937,11 @@ find_erlang_library_path(MercuryLibDirs, LibName, LibPath, !Succeeded, !IO) :-
         do_not_create_dirs, LibFileName, !IO),
     globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
 
-    io.input_stream(InputStream, !IO),
-    search_for_file_returning_dir(MercuryLibDirs, LibFileName,
-        SearchResult, !IO),
+    search_for_file_returning_dir(do_not_open_file, MercuryLibDirs,
+        LibFileName, SearchResult, !IO),
     (
         SearchResult = ok(DirName),
-        LibPath = DirName/LibFileName,
-        io.set_input_stream(InputStream, LibInputStream, !IO),
-        io.close_input(LibInputStream, !IO)
+        LibPath = DirName/LibFileName
     ;
         SearchResult = error(Error),
         LibPath = "",

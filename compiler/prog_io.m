@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -89,12 +89,12 @@
     % DefaultModuleName if there is no `:- module' declaration.
     % Specs is a list of warning/error messages. Program is the parse tree.
     %
-:- pred read_module(open_file(FileInfo)::in(open_file),
+:- pred read_module(open_file_pred(FileInfo)::in(open_file_pred),
     module_name::in, maybe_return_timestamp::in, maybe(FileInfo)::out,
     module_name::out, list(item)::out, list(error_spec)::out,
     module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
-:- pred read_module_if_changed(open_file(FileInfo)::in(open_file),
+:- pred read_module_if_changed(open_file_pred(FileInfo)::in(open_file_pred),
     module_name::in, timestamp::in, maybe(FileInfo)::out, module_name::out,
     list(item)::out, list(error_spec)::out, module_error::out,
     maybe(io.res(timestamp))::out, io::di, io::uo) is det.
@@ -228,8 +228,9 @@ read_module_if_changed(OpenFile, DefaultModuleName, OldTimestamp, FileData,
 
 read_opt_file(FileName, DefaultModuleName, Items, Specs, Error, !IO) :-
     globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
-    read_module_2(search_for_file(Dirs, FileName), DefaultModuleName, no,
-        do_not_return_timestamp, _, ModuleName, Items, Specs, Error, _, !IO),
+    read_module_2(search_for_file(open_file, Dirs, FileName),
+        DefaultModuleName, no, do_not_return_timestamp, _, ModuleName, Items,
+        Specs, Error, _, !IO),
     check_module_has_expected_name(FileName, DefaultModuleName, ModuleName,
         !IO).
 
@@ -252,7 +253,7 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName, !IO) :-
     % and then reverse them afterwards. (Using difference lists would require
     % late-input modes.)
     %
-:- pred read_module_2(open_file(T)::in(open_file), module_name::in,
+:- pred read_module_2(open_file_pred(T)::in(open_file_pred), module_name::in,
     maybe(timestamp)::in, maybe_return_timestamp::in, maybe(T)::out,
     module_name::out, list(item)::out, list(error_spec)::out,
     module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
@@ -355,13 +356,8 @@ search_for_module_source(Dirs, InterfaceDirs, ModuleName, MaybeFileName,
             ;
                 module_name_to_file_name(ModuleName, ".int",
                     do_not_create_dirs, IntFile, !IO),
-                search_for_file_returning_dir(InterfaceDirs, IntFile,
-                    MaybeIntDir, !IO),
-                ( MaybeIntDir = ok(_) ->
-                    io.seen(!IO)
-                ;
-                    true
-                ),
+                search_for_file_returning_dir(do_not_open_file, InterfaceDirs,
+                    IntFile, MaybeIntDir, !IO),
                 (
                     MaybeIntDir = ok(IntDir),
                     IntDir \= dir.this_directory
@@ -405,7 +401,7 @@ search_for_module_source_2(Dirs, ModuleName, PartialModuleName, MaybeFileName,
         !IO) :-
     module_name_to_file_name(PartialModuleName, ".m", do_not_create_dirs,
         FileName, !IO),
-    search_for_file(Dirs, FileName, MaybeFileName0, !IO),
+    search_for_file(open_file, Dirs, FileName, MaybeFileName0, !IO),
     (
         MaybeFileName0 = ok(_),
         MaybeFileName = MaybeFileName0

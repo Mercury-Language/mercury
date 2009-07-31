@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -260,7 +260,8 @@ read_options_file_params(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
             FileToFind = OptionsFile0
         ),
         io.input_stream(OldInputStream, !IO),
-        search_for_file_returning_dir(Dirs, FileToFind, MaybeDir, !IO),
+        search_for_file_returning_dir(open_file, Dirs, FileToFind, MaybeDir,
+            !IO),
         (
             MaybeDir = ok(FoundDir),
             debug_msg(write_reading_options_file(FoundDir/FileToFind), !IO),

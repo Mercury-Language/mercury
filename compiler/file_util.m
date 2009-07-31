@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,6 +20,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module time.
 
 %-----------------------------------------------------------------------------%
 
@@ -29,24 +30,42 @@
     % Open a source or interface file, returning `ok(FileInfo)' on success
     % (where FileInfo is information about the file such as the file name
     % or the directory in which it was found), or `error(Message)' on failure.
-:- type open_file(FileInfo) == pred(maybe_error(FileInfo), io, io).
-:- inst open_file == (pred(out, di, uo) is det).
+:- type open_file_pred(FileInfo) == pred(maybe_error(FileInfo), io, io).
+:- inst open_file_pred == (pred(out, di, uo) is det).
 
-    % search_for_file(Dirs, FileName, FoundFileName, !IO):
+:- type maybe_open_file
+    --->    open_file
+    ;       do_not_open_file.
+
+    % search_for_file(MaybeOpen, Dirs, FileName, FoundFileName, !IO):
     %
-    % Search Dirs for FileName, opening the file if it is found,
-    % and returning the path name of the file that was found.
+    % Search Dirs for FileName, returning the path name of the file that was
+    % found.  If requested, the found file will be left
+    % open as the current input stream.
     %
-:- pred search_for_file(list(dir_name)::in, file_name::in,
+    % NB. Consider using search_for_file_returning_dir, which does not
+    % canonicalise the path so is more efficient.
+    %
+:- pred search_for_file(maybe_open_file::in, list(dir_name)::in, file_name::in,
     maybe_error(file_name)::out, io::di, io::uo) is det.
 
-    % search_for_file_returning_dir(Dirs, FileName, FoundDirName, !IO):
+    % search_for_file_returning_dir(MaybeOpen, Dirs, FileName, FoundDirName,
+    %   !IO):
     %
-    % Search Dirs for FileName, opening the file if it is found, and returning
-    % the name of the directory in which the file was found.
+    % Search Dirs for FileName, returning the name of the directory in
+    % which the file was found.  If requested, the found file will be left
+    % open as the current input stream.
     %
-:- pred search_for_file_returning_dir(list(dir_name)::in, file_name::in,
-    maybe_error(dir_name)::out, io::di, io::uo) is det.
+:- pred search_for_file_returning_dir(maybe_open_file::in, list(dir_name)::in,
+    file_name::in, maybe_error(dir_name)::out, io::di, io::uo) is det.
+
+    % search_for_file_mod_time(Dirs, FileName, FoundModTime, !IO)
+    %
+    % Search Dirs for FileName, returning the last modification time of the
+    % file that was found.  Does NOT open the file for reading.
+    %
+:- pred search_for_file_mod_time(list(dir_name)::in, file_name::in,
+    maybe_error(time_t)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -94,13 +113,14 @@
 :- import_module libs.handle_options.
 :- import_module libs.options.
 
+:- import_module char.
 :- import_module dir.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-search_for_file(Dirs, FileName, Result, !IO) :-
-    search_for_file_returning_dir(Dirs, FileName, Result0, !IO),
+search_for_file(MaybeOpen, Dirs, FileName, Result, !IO) :-
+    search_for_file_returning_dir(MaybeOpen, Dirs, FileName, Result0, !IO),
     (
         Result0 = ok(Dir),
         ( dir.this_directory(Dir) ->
@@ -114,8 +134,9 @@ search_for_file(Dirs, FileName, Result, !IO) :-
         Result = error(Message)
     ).
 
-search_for_file_returning_dir(Dirs, FileName, Result, !IO) :-
-    search_for_file_returning_dir_2(Dirs, FileName, MaybeDir, !IO),
+search_for_file_returning_dir(MaybeOpen, Dirs, FileName, Result, !IO) :-
+    do_search_for_file(check_file_return_dir(MaybeOpen), Dirs, FileName,
+        MaybeDir, !IO),
     (
         MaybeDir = yes(Dir),
         Result = ok(Dir)
@@ -126,23 +147,73 @@ search_for_file_returning_dir(Dirs, FileName, Result, !IO) :-
         Result = error(Msg)
     ).
 
-:- pred search_for_file_returning_dir_2(list(dir_name)::in,
-    file_name::in, maybe(dir_name)::out, io::di, io::uo) is det.
+:- pred check_file_return_dir(maybe_open_file::in, dir_name::in, file_name::in,
+    io.res(dir_name)::out, io::di, io::uo) is det.
 
-search_for_file_returning_dir_2([], _FileName, no, !IO).
-search_for_file_returning_dir_2([Dir | Dirs], FileName, MaybeDir, !IO) :-
-    ( dir.this_directory(Dir) ->
-        ThisFileName = FileName
-    ;
-        ThisFileName = dir.make_path_name(Dir, FileName)
-    ),
-    io.see(ThisFileName, SeeResult0, !IO),
+check_file_return_dir(MaybeOpen, Dir, FileName, Result, !IO) :-
+    make_path_name_noncanon(Dir, FileName, PathName),
+    io.open_input(PathName, OpenResult, !IO),
     (
-        SeeResult0 = ok,
-        MaybeDir = yes(Dir)
+        OpenResult = ok(Stream),
+        (
+            MaybeOpen = open_file,
+            io.set_input_stream(Stream, _, !IO)
+        ;
+            MaybeOpen = do_not_open_file,
+            io.close_input(Stream, !IO)
+        ),
+        Result = ok(Dir)
     ;
-        SeeResult0 = error(_),
-        search_for_file_returning_dir_2(Dirs, FileName, MaybeDir, !IO)
+        OpenResult = error(Error),
+        Result = error(Error)
+    ).
+
+search_for_file_mod_time(Dirs, FileName, Result, !IO) :-
+    do_search_for_file(check_file_mod_time, Dirs, FileName, MaybeTime, !IO),
+    (
+        MaybeTime = yes(Time),
+        Result = ok(Time)
+    ;
+        MaybeTime = no,
+        Msg = "cannot find `" ++ FileName ++ "' in directories " ++
+            string.join_list(", ", Dirs),
+        Result = error(Msg)
+    ).
+
+:- pred check_file_mod_time(dir_name::in, file_name::in, io.res(time_t)::out,
+    io::di, io::uo) is det.
+
+check_file_mod_time(Dir, FileName, Result, !IO) :-
+    make_path_name_noncanon(Dir, FileName, PathName),
+    io.file_modification_time(PathName, Result, !IO).
+
+:- pred do_search_for_file(
+    pred(dir_name, file_name, io.res(T), io, io)
+        ::in(pred(in, in, out, di, uo) is det),
+    list(dir_name)::in, file_name::in, maybe(T)::out, io::di, io::uo) is det.
+
+do_search_for_file(_P, [], _FileName, no, !IO).
+do_search_for_file(P, [Dir | Dirs], FileName, Result, !IO) :-
+    P(Dir, FileName, Result0, !IO),
+    (
+        Result0 = ok(TimeT),
+        Result = yes(TimeT)
+    ;
+        Result0 = error(_),
+        do_search_for_file(P, Dirs, FileName, Result, !IO)
+    ).
+
+:- pred make_path_name_noncanon(dir_name::in, file_name::in, file_name::out)
+    is det.
+
+make_path_name_noncanon(Dir, FileName, PathName) :-
+    ( dir.this_directory(Dir) ->
+        PathName = FileName
+    ;
+        % dir.make_path_name is slow so we avoid it when path names don't
+        % need to be canonicalised.
+        Sep = string.from_char(dir.directory_separator),
+        PathName = string.append_list([Dir, Sep, FileName])
     ).
 
 %-----------------------------------------------------------------------------%

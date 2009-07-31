@@ -1252,24 +1252,12 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
     ( MaybeTimestamp0 = !.Info ^ file_timestamps ^ elem(FileName) ->
         MaybeTimestamp = MaybeTimestamp0
     ;
-        io.input_stream(OldInputStream, !IO),
-        search_for_file(SearchDirs, FileName, SearchResult, !IO),
+        search_for_file_mod_time(SearchDirs, FileName, SearchResult, !IO),
         (
-            SearchResult = ok(_),
-            io.input_stream_name(FullFileName, !IO),
-            io.set_input_stream(OldInputStream, FileStream, !IO),
-            io.close_input(FileStream, !IO),
-            io.file_modification_time(FullFileName, TimeTResult, !IO),
-            (
-                TimeTResult = ok(TimeT),
-                Timestamp = time_t_to_timestamp(TimeT),
-                MaybeTimestamp = ok(Timestamp)
-            ;
-                TimeTResult = error(Error),
-                MaybeTimestamp = error(io.error_message(Error))
-            ),
-            !:Info = !.Info ^ file_timestamps ^ elem(FileName)
-                := MaybeTimestamp
+            SearchResult = ok(TimeT),
+            Timestamp = time_t_to_timestamp(TimeT),
+            MaybeTimestamp = ok(Timestamp),
+            !Info ^ file_timestamps ^ elem(FileName) := MaybeTimestamp
         ;
             SearchResult = error(_),
             MaybeTimestamp = error("file `" ++ FileName ++ "' not found")

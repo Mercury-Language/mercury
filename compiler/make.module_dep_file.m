@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -381,8 +381,8 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
     module_name_to_search_file_name(ModuleName, make_module_dep_file_extension,
         ModuleDepFile, !IO),
     io.input_stream(OldInputStream, !IO),
-    search_for_file_returning_dir(SearchDirs, ModuleDepFile, SearchResult,
-        !IO),
+    search_for_file_returning_dir(open_file, SearchDirs, ModuleDepFile,
+        SearchResult, !IO),
     (
         SearchResult = ok(ModuleDir),
         parser.read_term(ImportsTermResult, !IO),

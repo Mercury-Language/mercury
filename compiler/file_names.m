@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -506,29 +506,12 @@ get_class_dir_name(ClassDirName, !IO) :-
 file_is_arch_or_grade_dependent(_, Ext) :-
     file_is_arch_or_grade_dependent_2(Ext).
 file_is_arch_or_grade_dependent(Globals, Ext0) :-
-    string.append(Ext, ".tmp", Ext0), % for mercury_update_interface.
-    file_is_arch_or_grade_dependent(Globals, Ext).
-file_is_arch_or_grade_dependent(Globals, Ext) :-
-    globals.lookup_string_option(Globals, executable_file_extension, Ext).
-file_is_arch_or_grade_dependent(Globals, Ext) :-
-    (
-        globals.lookup_string_option(Globals,
-            object_file_extension, ObjExt)
+    % for mercury_update_interface
+    ( string.remove_suffix(Ext0, ".tmp", Ext) ->
+        file_is_arch_or_grade_dependent(Globals, Ext)
     ;
-        globals.lookup_string_option(Globals,
-            pic_object_file_extension, ObjExt)
-    ;
-        globals.lookup_string_option(Globals,
-            link_with_pic_object_file_extension, ObjExt)
-    ),
-    ( Ext = ObjExt
-    ; Ext = "_init" ++ ObjExt
+        file_is_arch_or_grade_dependent_3(Globals, Ext0)
     ).
-file_is_arch_or_grade_dependent(Globals, Ext) :-
-    globals.lookup_string_option(Globals, library_extension, LibExt),
-    Ext = LibExt.
-file_is_arch_or_grade_dependent(Globals, Ext) :-
-    globals.lookup_string_option(Globals, shared_library_extension, Ext).
 
 :- pred file_is_arch_or_grade_dependent_2(string::in) is semidet.
 
@@ -572,6 +555,33 @@ file_is_arch_or_grade_dependent_2("_init.c").
 file_is_arch_or_grade_dependent_2("_init.$O").
 file_is_arch_or_grade_dependent_2("_init.erl").
 file_is_arch_or_grade_dependent_2("_init.beam").
+
+:- pred file_is_arch_or_grade_dependent_3(globals::in, string::in) is semidet.
+
+file_is_arch_or_grade_dependent_3(Globals, Ext) :-
+    (
+        globals.lookup_string_option(Globals, executable_file_extension, Ext)
+    ;
+        globals.lookup_string_option(Globals, library_extension, Ext)
+    ;
+        globals.lookup_string_option(Globals, shared_library_extension, Ext)
+    ).
+file_is_arch_or_grade_dependent_3(Globals, Ext) :-
+    (
+        globals.lookup_string_option(Globals,
+            object_file_extension, ObjExt)
+    ;
+        globals.lookup_string_option(Globals,
+            pic_object_file_extension, ObjExt)
+    ;
+        globals.lookup_string_option(Globals,
+            link_with_pic_object_file_extension, ObjExt)
+    ),
+    (
+        Ext = ObjExt
+    ;
+        Ext = "_init" ++ ObjExt
+    ).
 
 %-----------------------------------------------------------------------------%
 

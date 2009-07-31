@@ -2069,11 +2069,10 @@ check_library_is_installed(Dirs, Grade, LibName, !Succeeded, !IO) :-
     % whether its .init file exists.  This will work because all libraries
     % have a grade dependent .init file.
     InitFileName = LibName ++ ".init",
-    search_for_file(Dirs, InitFileName, SearchResult, !IO),
+    search_for_file_returning_dir(do_not_open_file, Dirs, InitFileName,
+        SearchResult, !IO),
     (
-        SearchResult = ok(_),
-        % search_for_file/5 has opened the file, so close it.
-        io.seen(!IO)
+        SearchResult = ok(_)
     ;
         SearchResult = error(_),
         io.stderr_stream(Stderr, !IO),
