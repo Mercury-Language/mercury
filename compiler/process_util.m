@@ -51,6 +51,13 @@
     %
 :- pred raise_signal(int::in, io::di, io::uo) is det.
 
+    % send_signal(Signal, Pid).
+    % Send `Signal' to `Pid'.
+    %
+:- pred send_signal(int::in, pid::in, io::di, io::uo) is det.
+
+:- func sigint = int.
+
 %-----------------------------------------------------------------------------%
 
 :- type io_pred == pred(bool, io, io).
@@ -297,6 +304,21 @@ raise_signal(_::in, IO::di, IO::uo).
 "
     IO = IO0;
     raise(Signal);
+").
+
+:- pragma foreign_proc("C",
+    send_signal(Pid::in, Signal::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    IO = IO0;
+    kill(Pid, Signal);
+").
+
+:- pragma foreign_proc("C",
+    sigint = (Sigint::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Sigint = SIGINT;
 ").
 
 %-----------------------------------------------------------------------------%

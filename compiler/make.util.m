@@ -436,13 +436,14 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
     create_job_ctl(TotalTasks, MaybeJobCtl, !IO),
     (
         MaybeJobCtl = yes(JobCtl),
-        list.map_foldl(
+        list.foldl2(
             start_worker_process(KeepGoing, MakeTarget, Targets, JobCtl,
                 !.Info),
-            2 .. Jobs, MaybePids, !IO),
-        worker_loop(KeepGoing, MakeTarget, Targets, JobCtl, yes, Success0,
-            !Info, !IO),
-        list.foldl2(reap_worker_process, MaybePids, Success0, Success, !IO),
+            2 .. Jobs, [], Pids, !IO),
+        build_with_check_for_interrupt(
+            worker_loop(KeepGoing, MakeTarget, Targets, JobCtl, yes),
+            worker_loop_signal_cleanup(JobCtl, Pids), Success0, !Info, !IO),
+        list.foldl2(reap_worker_process, Pids, Success0, Success, !IO),
         destroy_job_ctl(JobCtl, !IO)
     ;
         MaybeJobCtl = no,
@@ -451,22 +452,29 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
 
 :- pred start_worker_process(bool::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    list(T)::in, job_ctl::in, Info::in, int::in, maybe(pid)::out,
+    list(T)::in, job_ctl::in, Info::in, int::in, list(pid)::in, list(pid)::out,
     io::di, io::uo) is det.
 
 start_worker_process(KeepGoing, MakeTarget, Targets, JobCtl, Info, _ChildN,
-        MaybePid, !IO) :-
+        !Pids, !IO) :-
     start_in_forked_process(
         child_worker(KeepGoing, MakeTarget, Targets, JobCtl, Info),
-        MaybePid, !IO).
+        MaybePid, !IO),
+    (
+        MaybePid = yes(Pid),
+        !:Pids = [Pid | !.Pids]
+    ;
+        MaybePid = no
+    ).
 
 :- pred child_worker(bool::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
     list(T)::in, job_ctl::in, Info::in, bool::out, io::di, io::uo) is det.
 
 child_worker(KeepGoing, MakeTarget, Targets, JobCtl, Info0, Success, !IO) :-
-    worker_loop(KeepGoing, MakeTarget, Targets, JobCtl, yes, Success,
-        Info0, _Info, !IO).
+    build_with_check_for_interrupt(
+        worker_loop(KeepGoing, MakeTarget, Targets, JobCtl, yes),
+        worker_loop_signal_cleanup(JobCtl, []), Success, Info0, _Info, !IO).
 
 :- pred worker_loop(bool::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
@@ -493,23 +501,25 @@ worker_loop(KeepGoing, MakeTarget, Targets, JobCtl, !Success, !Info, !IO) :-
         true
     ).
 
-:- pred reap_worker_process(maybe(pid)::in, bool::in, bool::out,
+:- pred worker_loop_signal_cleanup(job_ctl::in, list(pid)::in,
+    Info::in, Info::out, io::di, io::uo) is det.
+
+worker_loop_signal_cleanup(JobCtl, Pids, !Info, !IO) :-
+    mark_abort(JobCtl, !IO),
+    list.foldl(send_signal(sigint), Pids, !IO).
+
+:- pred reap_worker_process(pid::in, bool::in, bool::out,
     io::di, io::uo) is det.
 
-reap_worker_process(MaybePid, !Success, !IO) :-
+reap_worker_process(Pid, !Success, !IO) :-
+    wait_pid(Pid, Status, !IO),
     (
-        MaybePid = yes(Pid),
-        wait_pid(Pid, Status, !IO),
-        (
-            !.Success = yes,
-            Status = ok(exited(0))
-        ->
-            true
-        ;
-            !:Success = no
-        )
+        !.Success = yes,
+        Status = ok(exited(0))
+    ->
+        true
     ;
-        MaybePid = no
+        !:Success = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -819,6 +829,21 @@ have_job_ctl_ipc :-
         JobCtl->jc_abort = MR_TRUE;
     }
 
+    MC_unlock_job_ctl(JobCtl);
+#endif
+    IO = IO0;
+").
+
+:- pred mark_abort(job_ctl::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    mark_abort(JobCtl::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+#ifdef MC_HAVE_JOBCTL_IPC
+    MC_lock_job_ctl(JobCtl);
+    JobCtl->jc_abort = MR_TRUE;
     MC_unlock_job_ctl(JobCtl);
 #endif
     IO = IO0;
