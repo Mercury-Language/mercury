@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -831,8 +831,12 @@ make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_all_interface_files(AllModules, Succeeded, !Info, !IO) :-
+    list.foldl3(collect_modules_with_children, AllModules, [], ParentModules,
+        !Info, !IO),
     ShortInts = make_dependency_list(AllModules,
         module_target_unqualified_short_interface),
+    PrivateInts = make_dependency_list(ParentModules,
+        module_target_private_interface),
     LongInts = make_dependency_list(AllModules,
         module_target_long_interface),
     globals.io_get_any_intermod(AnyIntermod, !IO),
@@ -845,10 +849,41 @@ make_all_interface_files(AllModules, Succeeded, !Info, !IO) :-
         OptFiles = []
     ),
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
+    % Private interfaces (.int0) need to be made before building long interface
+    % files in parallel, otherwise two processes may try to build the same
+    % private interface file.
     foldl2_maybe_stop_at_error(KeepGoing,
         foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
-        [ShortInts, LongInts, OptFiles],
-        Succeeded, !Info, !IO).
+        [ShortInts, PrivateInts], Succeeded0, !Info, !IO),
+    (
+        Succeeded0 = yes,
+        foldl2_maybe_stop_at_error(KeepGoing,
+            foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                make_module_target),
+            [LongInts, OptFiles], Succeeded, !Info, !IO)
+    ;
+        Succeeded0 = no,
+        Succeeded = no
+    ).
+
+:- pred collect_modules_with_children(module_name::in,
+    list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+collect_modules_with_children(ModuleName, !ParentModules, !Info, !IO) :-
+    get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
+    (
+        MaybeImports = yes(Imports),
+        Children = Imports ^ children,
+        (
+            Children = []
+        ;
+            Children = [_ | _],
+            !:ParentModules = [ModuleName | !.ParentModules]
+        )
+    ;
+        MaybeImports = no
+    ).
 
 %-----------------------------------------------------------------------------%
 

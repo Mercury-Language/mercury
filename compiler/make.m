@@ -557,9 +557,9 @@ make_track_flags_files(ModuleName, Success, !Info, !IO) :-
     (
         Success0 = yes,
         KeepGoing = no,
-        DummyLashHash = last_hash([], ""),
+        DummyLastHash = last_hash([], ""),
         foldl3_maybe_stop_at_error(KeepGoing, make_track_flags_files_2,
-            set.to_sorted_list(Modules), Success, DummyLashHash, _LastHash,
+            set.to_sorted_list(Modules), Success, DummyLastHash, _LastHash,
             !Info, !IO)
     ;
         Success0 = no,

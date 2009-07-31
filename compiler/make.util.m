@@ -1,13 +1,13 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 University of Melbourne.
+% Copyright (C) 2002-2009 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
 % File: make.util.m.
-% Main author: stayl.
+% Authors: stayl, wangp.
 %
 % Assorted predicates used to implement `mmc --make'.
 %
