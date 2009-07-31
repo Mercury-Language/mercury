@@ -129,7 +129,7 @@ build_with_check_for_interrupt(Build, Cleanup, Succeeded, !Info, !IO) :-
     check_for_signal(Signalled, Signal, !IO),
     ( Signalled = 1 ->
         Succeeded = no,
-        globals.io_lookup_bool_option(verbose_make, Verbose, !IO),
+        globals.io_lookup_bool_option(very_verbose, Verbose, !IO),
         (
             Verbose = yes,
             io.write_string("** Received signal ", !IO),

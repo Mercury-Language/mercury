@@ -683,7 +683,7 @@ cleanup_short_interfaces(SubModuleNames, !Info, !IO) :-
     list.foldl2(
         (pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
                 is det :-
-            make_remove_target_file(verbose_make, SubModuleName,
+            make_remove_target_file(very_verbose, SubModuleName,
                 module_target_unqualified_short_interface, !Info, !IO)
         ), SubModuleNames, !Info, !IO).
 

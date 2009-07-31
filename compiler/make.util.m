@@ -259,6 +259,9 @@
 
 :- pred make_write_target_file(target_file::in, io::di, io::uo) is det.
 
+:- pred make_write_target_file_wrapped(string::in, target_file::in, string::in,
+    io::di, io::uo) is det.
+
     % Write a message "Making <filename>" if `--verbose-make' is set.
     %
 :- pred maybe_make_linked_target_message(file_name::in, io::di, io::uo) is det.
@@ -1619,17 +1622,29 @@ make_write_dependency_file_list([DepFile | DepFiles], !IO) :-
     make_write_dependency_file_list(DepFiles, !IO).
 
 make_write_target_file(TargetFile, !IO) :-
+    make_write_target_file_wrapped("", TargetFile, "", !IO).
+
+make_write_target_file_wrapped(Prefix, TargetFile, Suffix, !IO) :-
     TargetFile = target_file(ModuleName, FileType),
     module_target_to_file_name(ModuleName, FileType, do_not_create_dirs,
         FileName, !IO),
-    io.write_string(FileName, !IO).
+    (
+        Prefix = "",
+        Suffix = ""
+    ->
+        io.write_string(FileName, !IO)
+    ;
+        % Try to write this with one call to avoid interleaved output when
+        % doing parallel builds.
+        io.write_string(Prefix ++ FileName ++ Suffix, !IO)
+    ).
 
 maybe_make_linked_target_message(TargetFile, !IO) :-
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Making ", !IO),
-            io.write_string(TargetFile, !IO),
-            io.nl(!IO)
+            % Try to write this with one call to avoid interleaved output
+            % when doing parallel builds.
+            io.write_string("Making " ++ TargetFile ++ "\n", !IO)
         ), !IO).
 
 maybe_make_target_message(TargetFile, !IO) :-
@@ -1640,30 +1655,26 @@ maybe_make_target_message_to_stream(OutputStream, TargetFile, !IO) :-
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
             io.set_output_stream(OutputStream, OldOutputStream, !IO),
-            io.write_string("Making ", !IO),
-            make_write_target_file(TargetFile, !IO),
-            io.nl(!IO),
+            make_write_target_file_wrapped("Making ", TargetFile, "\n", !IO),
             io.set_output_stream(OldOutputStream, _, !IO)
         ), !IO).
 
 maybe_reanalyse_modules_message(!IO) :-
-    io.output_stream(OutputStream, !IO),
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
-            io.set_output_stream(OutputStream, OldOutputStream, !IO),
-            io.write_string("Reanalysing invalid/suboptimal modules\n", !IO),
-            io.set_output_stream(OldOutputStream, _, !IO)
+            io.output_stream(OutputStream, !IO),
+            io.write_string(OutputStream,
+                "Reanalysing invalid/suboptimal modules\n", !IO)
         ), !IO).
 
 target_file_error(TargetFile, !IO) :-
-    io.write_string("** Error making `", !IO),
-    make_write_target_file(TargetFile, !IO),
-    io.write_string("'.\n", !IO).
+    make_write_target_file_wrapped("** Error making `", TargetFile, "'.\n",
+        !IO).
 
 file_error(TargetFile, !IO) :-
-    io.write_string("** Error making `", !IO),
-    io.write_string(TargetFile, !IO),
-    io.write_string("'.\n", !IO).
+    % Try to write this with one call to avoid interleaved output when doing
+    % parallel builds.
+    io.write_string("** Error making `" ++ TargetFile ++ "'.\n", !IO).
 
 maybe_warn_up_to_date_target(Target, !Info, !IO) :-
     globals.io_lookup_bool_option(warn_up_to_date, Warn, !IO),

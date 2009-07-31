@@ -366,9 +366,9 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
     Cleanup =
         (pred(!.MakeInfo::in, !:MakeInfo::out, !.IO::di, !:IO::uo) is det :-
             % XXX Remove `.int.tmp' files.
-            list.foldl2(make_remove_target_file(verbose_make),
+            list.foldl2(make_remove_target_file(very_verbose),
                 TouchedTargetFiles, !MakeInfo, !IO),
-            list.foldl2(make_remove_file(verbose_make), TouchedFiles,
+            list.foldl2(make_remove_file(very_verbose), TouchedFiles,
                 !MakeInfo, !IO),
             (
                 MaybeArgFileName = yes(ArgFileName2),
