@@ -7,13 +7,13 @@
 %-----------------------------------------------------------------------------%
 %
 % File: rtti_implementation.m.
-% Main author: trd, petdr.
+% Main author: trd, petdr, wangp.
 % Stability: low.
 %
 % This file is intended to provide portable RTTI functionality by implementing
 % most of Mercury's RTTI functionality in Mercury.
 %
-% This is simpler writing large amounts of low-level C code, and is much
+% This is simpler than writing large amounts of low-level C code, and is much
 % easier to maintain and port to new platforms.
 %
 % This module is not complete, the majority of the functionality is
@@ -27,14 +27,8 @@
 % compiler/rtti.m here, and to interpret them, instead of relying on access
 % to C level data structures.
 %
-% XXX The Java implementation of this module is incomplete.  Currently, it can
-% handle strings, ints, floats and enumerated types, but anything more
-% complicated will throw exceptions.  This is mainly due to the fact that a lot
-% of the low-level procedures have yet to be implemented for the Java back-end.
-%
-% XXX Also, the existing Java code needs to be reviewed.
-%
-% XXX Also there are too many unsafe_casts.
+% At least, that may have been the plan at some point.  Currently this module
+% is used for the Java and IL backends only.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -67,6 +61,10 @@
 
 :- pred type_ctor_name_and_arity(type_ctor_info::in,
     string::out, string::out, int::out) is det.
+
+:- func construct(type_info, int, list(univ)) = univ is semidet.
+
+:- func construct_tuple_2(list(univ), list(type_info), int) = univ.
 
 :- pred deconstruct(T, noncanon_handling, string, int, list(univ)).
 :- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
@@ -179,6 +177,18 @@
 
 :- type typeclass_info ---> typeclass_info(c_pointer).
 :- pragma foreign_type("Java", typeclass_info, "java.lang.Object[]").
+
+:- pragma foreign_decl("Java", local,
+"
+    import java.lang.reflect.Constructor;
+    import java.lang.reflect.Field;
+    import java.lang.reflect.InvocationTargetException;
+
+    import jmercury.runtime.DuFunctorDesc;
+    import jmercury.runtime.EnumFunctorDesc;
+    import jmercury.runtime.TypeCtorInfo_Struct;
+    import jmercury.runtime.TypeInfo_Struct;
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -374,7 +384,7 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
     TypeDescList = iterate(0, Arity - 1, F),
 
     ( get_du_functor_arg_names(DuFunctorDesc, ArgNames) ->
-        Names = iterate(0, Arity - 1, (func(I) = ArgNames ^ unsafe_index(I)))
+        Names = iterate(0, Arity - 1, arg_names_index(ArgNames))
     ;
         Names = list.duplicate(Arity, null_string)
     ).
@@ -384,9 +394,9 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
 
 get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
         TypeDescList, Names) :-
-    TypeLayout = get_type_layout(TypeCtorInfo),
+    TypeFunctors = get_type_functors(TypeCtorInfo),
     EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, FunctorNumber,
-        TypeLayout),
+        TypeFunctors),
 
     FunctorName = EnumFunctorDesc ^ enum_functor_name,
     Arity = 0,
@@ -987,6 +997,8 @@ type_ctor_is_variable_arity(TypeCtorInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- func collapse_equivalences(type_info) = type_info.
+:- pragma foreign_export("Java", collapse_equivalences(in) = out,
+    "ML_collapse_equivalences").
 
 collapse_equivalences(TypeInfo) = NewTypeInfo :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
@@ -1053,6 +1065,384 @@ iterate(Start, Max, Func) = Results :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- pragma foreign_code("Java", "
+
+    private static Object[]
+    ML_construct(
+        jmercury.runtime.TypeInfo_Struct TypeInfo,
+        int FunctorNumber,
+        list.List_1 ArgList)
+    {
+        /* If type_info is an equivalence type, expand it. */
+        TypeInfo = ML_collapse_equivalences(TypeInfo);
+
+        Object new_data = null;
+
+        try {
+            final jmercury.runtime.TypeCtorInfo_Struct tc = TypeInfo.type_ctor;
+
+            switch (tc.type_ctor_rep.value) {
+
+            case private_builtin.MR_TYPECTOR_REP_ENUM:
+            case private_builtin.MR_TYPECTOR_REP_ENUM_USEREQ:
+                EnumFunctorDesc[] functors_enum =
+                    tc.type_functors.functors_enum();
+                if (FunctorNumber >= 0 && FunctorNumber < functors_enum.length)
+                {
+                    new_data = ML_construct_static_member(tc,
+                        functors_enum[FunctorNumber].enum_functor_ordinal);
+                }
+                break;
+
+            case private_builtin.MR_TYPECTOR_REP_FOREIGN_ENUM:
+            case private_builtin.MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+            case private_builtin.MR_TYPECTOR_REP_NOTAG:
+            case private_builtin.MR_TYPECTOR_REP_NOTAG_USEREQ:
+            case private_builtin.MR_TYPECTOR_REP_NOTAG_GROUND:
+            case private_builtin.MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+            case private_builtin.MR_TYPECTOR_REP_RESERVED_ADDR:
+            case private_builtin.MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+                /* These don't exist in the Java backend yet. */
+                break;
+
+            case private_builtin.MR_TYPECTOR_REP_DU:
+            case private_builtin.MR_TYPECTOR_REP_DU_USEREQ:
+                DuFunctorDesc[] functor_desc = tc.type_functors.functors_du();
+                if (FunctorNumber >= 0 && FunctorNumber < functor_desc.length)
+                {
+                    new_data = ML_construct_du(tc, functor_desc[FunctorNumber],
+                        ArgList);
+                }
+                break;
+
+            case private_builtin.MR_TYPECTOR_REP_TUPLE:
+                int arity = TypeInfo.args.length;
+                new_data = ML_univ_list_to_array(ArgList, arity);
+                break;
+
+            case private_builtin.MR_TYPECTOR_REP_DUMMY:
+                if (FunctorNumber == 0 &&
+                    ArgList instanceof list.List_1.F_nil_0)
+                {
+                    new_data = ML_construct_static_member(tc, 0);
+                }
+                break;
+
+            case private_builtin.MR_TYPECTOR_REP_INT:
+                /* ints don't have functor ordinals. */
+                throw new Error(
+                    ""cannot construct int with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_FLOAT:
+                /* floats don't have functor ordinals. */
+                throw new Error(
+                    ""cannot construct float with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_CHAR:
+                /* chars don't have functor ordinals. */
+                throw new Error(
+                    ""cannot construct chars with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_STRING:
+                /* strings don't have functor ordinals. */
+                throw new Error(
+                    ""cannot construct strings with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_BITMAP:
+                /* bitmaps don't have functor ordinals. */
+                throw new Error(
+                    ""cannot construct bitmaps with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_EQUIV:
+            case private_builtin.MR_TYPECTOR_REP_EQUIV_GROUND:
+                /* These should be eliminated above. */
+                throw new Error(""equiv type in construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_VOID:
+                /* These should be eliminated above. */
+                throw new Error(
+                    ""cannot construct void values with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_FUNC:
+                throw new Error(
+                    ""cannot construct functions with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_PRED:
+                throw new Error(
+                    ""cannot construct predicates with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_SUBGOAL:
+                throw new Error(
+                    ""cannot construct subgoals with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_TYPEDESC:
+                throw new Error(
+                    ""cannot construct type_descs with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_TYPECTORDESC:
+                throw new Error(
+                    ""cannot construct type_descs with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_PSEUDOTYPEDESC:
+                throw new Error(
+                    ""cannot construct pseudotype_descs with "" +
+                    ""construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_TYPEINFO:
+                throw new Error(
+                    ""cannot construct type_infos with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_TYPECTORINFO:
+                throw new Error(
+                    ""cannot construct type_ctor_infos with "" +
+                    ""construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_TYPECLASSINFO:
+                throw new Error(
+                    ""cannot construct type_class_infos with "" +
+                    ""construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_BASETYPECLASSINFO:
+                throw new Error(
+                    ""cannot construct base_type_class_infos "" +
+                    ""with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_SUCCIP:
+                throw new Error(
+                    ""cannot construct succips with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_HP:
+                throw new Error(
+                    ""cannot construct hps with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_CURFR:
+                throw new Error(
+                    ""cannot construct curfrs with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_MAXFR:
+                throw new Error(
+                    ""cannot construct maxfrs with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_REDOFR:
+                throw new Error(
+                    ""cannot construct redofrs with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_REDOIP:
+                throw new Error(
+                    ""cannot construct redoips with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_TRAIL_PTR:
+                throw new Error(
+                    ""cannot construct trail_ptrs with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_TICKET:
+                throw new Error(
+                    ""cannot construct tickets with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_C_POINTER:
+            case private_builtin.MR_TYPECTOR_REP_STABLE_C_POINTER:
+                throw new Error(
+                    ""cannot construct c_pointers with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_ARRAY:
+                throw new Error(
+                    ""cannot construct arrays with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_REFERENCE:
+                throw new Error(
+                    ""cannot construct references with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_FOREIGN:
+            case private_builtin.MR_TYPECTOR_REP_STABLE_FOREIGN:
+                throw new Error(
+                    ""cannot construct values of foreign types "" +
+                    ""with construct.construct"");
+
+            case private_builtin.MR_TYPECTOR_REP_UNKNOWN:
+                throw new Error(
+                    ""cannot construct values of unknown types "" +
+                    ""with construct.construct"");
+
+            default:
+                throw new Error(""bad type_ctor_rep in construct.construct"");
+            }
+        } catch (ClassNotFoundException e) {
+            throw new Error(e.getMessage());
+        } catch (NoSuchFieldException e) {
+            throw new Error(e.getMessage());
+        } catch (IllegalAccessException e) {
+            throw new Error(e.getMessage());
+        } catch (InstantiationException e) {
+            throw new Error(e.getMessage());
+        } catch (InvocationTargetException e) {
+            throw new Error(e.getMessage());
+        }
+
+        boolean succeeded;
+        Object Term;
+
+        if (new_data != null) {
+            succeeded = true;
+            Term = new univ.Univ_0(TypeInfo, new_data);
+        } else {
+            succeeded = false;
+            Term = null;
+        }
+
+        return new Object[] { succeeded, Term };
+    }
+
+    private static Object
+    ML_construct_du(TypeCtorInfo_Struct tc, DuFunctorDesc functor_desc,
+            list.List_1 arg_list)
+        throws ClassNotFoundException, NoSuchFieldException,
+            IllegalAccessException, InstantiationException,
+            InvocationTargetException
+    {
+        Class<?> cls;
+
+        if (tc.type_ctor_num_functors == 1) {
+            cls = Class.forName(""jmercury."" + tc.type_ctor_module_name
+                + ""$"" + ML_flipInitialCase(tc.type_ctor_name)
+                + ""_"" + tc.arity);
+        } else {
+            cls = Class.forName(""jmercury."" + tc.type_ctor_module_name
+                + ""$"" + ML_flipInitialCase(tc.type_ctor_name)
+                + ""_"" + tc.arity
+                + ""$"" + ML_flipInitialCase(functor_desc.du_functor_name)
+                + ""_"" + functor_desc.du_functor_orig_arity);
+        }
+
+        final int arity = functor_desc.du_functor_orig_arity;
+        final Object[] args = ML_univ_list_to_array(arg_list, arity);
+
+        if (args == null) {
+            /* Argument list length doesn't match arity. */
+            return null;
+        }
+
+        for (Constructor ctor : cls.getConstructors()) {
+            Class<?>[] param_types = ctor.getParameterTypes();
+            if (param_types.length == arity) {
+                try {
+                    return ctor.newInstance(args);
+                } catch (IllegalArgumentException e) {
+                    /* e.g. argument type mismatch */
+                    return null;
+                }
+            }
+        }
+
+        throw new Error(
+            ""construct.construct: could not find constructor for functor"");
+    }
+
+    private static Object[]
+    ML_univ_list_to_array(list.List_1 list, int arity)
+    {
+        final Object[] args = new Object[arity];
+
+        for (int i = 0; i < arity; i++) {
+            univ.Univ_0 head = (univ.Univ_0) ((list.List_1.F_cons_2) list).F1;
+            args[i] = head.F2;
+            list = ((list.List_1.F_cons_2) list).F2;
+        }
+
+        if (list instanceof list.List_1.F_nil_0) {
+            return args;
+        } else {
+            return null;
+        }
+    }
+
+    private static Object
+    ML_construct_static_member(TypeCtorInfo_Struct tc, int i)
+        throws ClassNotFoundException, NoSuchFieldException,
+            IllegalAccessException
+    {
+        Class<?> cls = Class.forName(""jmercury."" + tc.type_ctor_module_name
+            + ""$"" + ML_flipInitialCase(tc.type_ctor_name)
+            + ""_"" + tc.arity);
+
+        String field_name = ""K"" + i;
+        Field field = cls.getField(field_name);
+
+        return field.get(cls);
+    }
+
+    private static String
+    ML_flipInitialCase(String s)
+    {
+        if (s.length() > 0) {
+            char first = s.charAt(0);
+            String rest = s.substring(1);
+            if (Character.isLowerCase(first)) {
+                return Character.toString(Character.toUpperCase(first)) + rest;
+            }
+            if (Character.isUpperCase(first)) {
+                return Character.toString(Character.toLowerCase(first)) + rest;
+            }
+        }
+        return s;
+    }
+
+    private static Object[]
+    ML_list_to_array(list.List_1 list, int arity)
+    {
+        final Object[] array = new Object[arity];
+
+        for (int i = 0; i < arity; i++) {
+            array[i] = ((list.List_1.F_cons_2) list).F1;
+            list = ((list.List_1.F_cons_2) list).F2;
+        }
+
+        return array;
+    }
+
+").
+
+:- pragma foreign_proc("Java",
+    construct(TypeInfo::in, FunctorNumber::in, ArgList::in) = (Term::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    Object[] rc = ML_construct(TypeInfo, FunctorNumber, (list.List_1) ArgList);
+    succeeded = (Boolean) rc[0];
+    Term = rc[1];
+").
+
+construct(_, _, _) = _ :-
+    private_builtin.sorry("construct/3").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("Java",
+    construct_tuple_2(Args::in, ArgTypes::in, Arity::in) = (Tuple::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        may_not_duplicate],
+"
+    Object[] args_array = new Object[Arity];
+
+    for (int i = 0; i < Arity; i++) {
+        univ.Univ_0 head = (univ.Univ_0) ((list.List_1.F_cons_2) Args).F1;
+        Object[] rc = univ.ML_unravel_univ(head);
+        args_array[i] = rc[1];
+
+        Args = ((list.List_1.F_cons_2) Args).F2;
+    }
+
+    Object[] args = ML_list_to_array((list.List_1) ArgTypes, Arity);
+    TypeInfo_Struct ti = new TypeInfo_Struct();
+    ti.init(builtin.builtin__type_ctor_info_tuple_0, args);
+
+    Tuple = univ.ML_construct_univ(ti, args_array);
+").
+
+construct_tuple_2(_Args, _ArgTypes, _Arity) = _ :-
+    private_builtin.sorry("construct_tuple_2/3").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     TypeInfo = get_type_info(Term),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
@@ -1083,7 +1473,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_enum,
         TypeLayout = get_type_layout(TypeCtorInfo),
-        EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep,
+        EnumFunctorDesc = get_enum_functor_desc_from_layout_enum(TypeCtorRep,
             unsafe_get_enum_value(Term), TypeLayout),
         Functor = enum_functor_name(EnumFunctorDesc),
         Arity = 0,
@@ -1103,7 +1493,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_dummy,
         TypeLayout = get_type_layout(TypeCtorInfo),
-        EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, 0, TypeLayout),
+        EnumFunctorDesc = get_enum_functor_desc_from_layout_enum(TypeCtorRep,
+            0, TypeLayout),
         Functor = enum_functor_name(EnumFunctorDesc),
         Arity = 0,
         Arguments = []
@@ -1682,7 +2073,8 @@ type_info_from_pseudo_type_info(PseudoTypeInfo) = TypeInfo :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (PseudoTypeInfo instanceof jmercury.runtime.TypeCtorInfo_Struct) {
-        TypeInfo = new jmercury.runtime.TypeInfo_Struct((jmercury.runtime.TypeCtorInfo_Struct) PseudoTypeInfo);
+        TypeInfo = new jmercury.runtime.TypeInfo_Struct(
+            (jmercury.runtime.TypeCtorInfo_Struct) PseudoTypeInfo);
     } else {
         TypeInfo = (jmercury.runtime.TypeInfo_Struct) PseudoTypeInfo;
     }
@@ -1712,11 +2104,6 @@ get_subterm(_, _, _, _, _) = -1 :-
         Arg = Term.GetType().GetFields()[i].GetValue(Term);
     }
     TypeInfo_for_T = SubTermTypeInfo;
-").
-
-:- pragma foreign_decl("Java", local,
-"
-    import java.lang.reflect.Field;
 ").
 
 :- pragma foreign_proc("Java",
@@ -2594,6 +2981,18 @@ get_type_ctor_functors(_) = _ :-
     % matching foreign_proc version.
     private_builtin.sorry("get_type_ctor_functors").
 
+:- func get_type_functors(type_ctor_info) = type_functors.
+
+:- pragma foreign_proc("Java",
+    get_type_functors(TypeCtorInfo::in) = (TypeFunctors::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeFunctors = TypeCtorInfo.type_functors;
+").
+
+get_type_functors(_) = _ :-
+    private_builtin.sorry("get_type_functors").
+
 :- func get_type_layout(type_ctor_info) = type_layout.
 
 :- pragma foreign_proc("C#",
@@ -2787,6 +3186,18 @@ get_du_functor_arg_names(DuFunctorDesc, ArgNames) :-
     ArgNames = DuFunctorDesc ^ unsafe_index(8),
     not null(ArgNames).
 
+:- func arg_names_index(arg_names, int) = string.
+
+:- pragma foreign_proc("Java",
+    arg_names_index(ArgNames::in, Index::in) = (Name::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Name = ArgNames[Index];
+").
+
+arg_names_index(_, _) = _ :-
+    private_builtin.sorry("arg_names_index/2").
+
 :- pragma foreign_proc("Java",
     get_du_functor_arg_names(DuFunctorDesc::in, ArgNames::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2814,16 +3225,29 @@ get_du_functor_exist_info(DuFunctorDesc, ExistInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func get_enum_functor_desc(type_ctor_rep, int, type_layout)
-    = enum_functor_desc.
-:- mode get_enum_functor_desc(in(enum), in, in) = out is det.
+:- func get_enum_functor_desc(type_ctor_rep::in(enum), int::in,
+    type_functors::in) = (enum_functor_desc::out) is det.
 
-get_enum_functor_desc(_, Num, TypeLayout) = EnumFunctorDesc :-
+get_enum_functor_desc(_, Num, TypeFunctors) = EnumFunctorDesc :-
+    EnumFunctorDesc = TypeFunctors ^ unsafe_index(Num).
+
+:- pragma foreign_proc("Java",
+    get_enum_functor_desc(_TypeCtorRep::in(enum), X::in, TypeFunctors::in) =
+        (EnumFunctorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    EnumFunctorDesc = (TypeFunctors.functors_enum())[X];
+").
+
+:- func get_enum_functor_desc_from_layout_enum(type_ctor_rep::in(enum),
+    int::in, type_layout::in) = (enum_functor_desc::out) is det.
+
+get_enum_functor_desc_from_layout_enum(_, Num, TypeLayout) = EnumFunctorDesc :-
     EnumFunctorDesc = TypeLayout ^ unsafe_index(Num).
 
 :- pragma foreign_proc("Java",
-    get_enum_functor_desc(_TypeCtorRep::in(enum), X::in, TypeLayout::in) =
-        (EnumFunctorDesc::out),
+    get_enum_functor_desc_from_layout_enum(_TypeCtorRep::in(enum), X::in,
+        TypeLayout::in) = (EnumFunctorDesc::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     EnumFunctorDesc = (TypeLayout.layout_enum())[X];
@@ -2937,6 +3361,7 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+    % XXX get rid of this
 :- func unsafe_index(int, T) = U.
 :- pragma foreign_proc("C#",
     unsafe_index(Num::in, Array::in) = (Item::out),

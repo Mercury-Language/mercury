@@ -117,10 +117,6 @@ A. The following implementation features are not supported:
 	Mercury-level debugging
 	Mercury-level profiling
 
-   The following standard library modules are completely unimplemented:
-
-	construct
-
    In addition, the following individual procedures are incompletely
    implemented:
 

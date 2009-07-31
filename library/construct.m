@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -822,7 +822,7 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
         case MR_TYPECTOR_REP_EQUIV:
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             /* These should be eliminated by MR_collapse_equivalences above. */
-            MR_fatal_error(""equiv type in in construct.construct"");
+            MR_fatal_error(""equiv type in construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_VOID:
@@ -975,7 +975,8 @@ construct(TypeDesc, Index, Args) = Term :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         Term = erlang_rtti_implementation.construct(TypeDesc, Index, Args)
     ;
-        private_builtin.sorry("construct/3")
+        type_desc_to_type_info(TypeDesc, TypeInfo),
+        Term = rtti_implementation.construct(TypeInfo, Index, Args)
     ).
 
 construct_tuple(Args) =
@@ -1032,12 +1033,13 @@ construct_tuple(Args) =
     MR_new_univ_on_hp(Term, type_info, new_data);
 }").
 
-construct_tuple_2(Args, ArgTypes, Arity) = Term :-
+construct_tuple_2(Args, ArgTypeDescs, Arity) = Term :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        Term = erlang_rtti_implementation.construct_tuple_2(Args, ArgTypes,
+        Term = erlang_rtti_implementation.construct_tuple_2(Args, ArgTypeDescs,
             Arity)
     ;
-        private_builtin.sorry("construct_tuple_2/3")
+        list.map(type_desc_to_type_info, ArgTypeDescs, ArgTypeInfos),
+        Term = rtti_implementation.construct_tuple_2(Args, ArgTypeInfos, Arity)
     ).
 
 %-----------------------------------------------------------------------------%

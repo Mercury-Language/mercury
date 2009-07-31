@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2001-2004 The University of Melbourne.
+// Copyright (C) 2001-2004, 2009 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -50,6 +50,7 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 		type_ctor_name = name;
 		type_functors = (TypeFunctors) name_ordered_functor_descs;
 		type_layout = (TypeLayout) value_ordered_functor_descs;
+		type_ctor_num_functors = num_functors;
 		type_ctor_flags = flags;
 		type_functor_number_map = functor_number_map;
 	}
