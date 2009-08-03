@@ -2788,13 +2788,42 @@ report_uncaught_exception_2(Exception, unit, !IO) :-
     io.flush_output(!IO),
     io.stderr_stream(StdErr, !IO),
     io.write_string(StdErr, "Uncaught Mercury exception:\n", !IO),
-    ( univ_to_type(Exception, software_error(Message)) ->
-        io.format(StdErr, "Software Error: %s\n", [s(Message)], !IO)
-    ;
-        io.write(StdErr, univ_value(Exception), !IO),
-        io.nl(StdErr, !IO)
-    ),
+    io.write_string(StdErr, exception_to_string(Exception), !IO),
+    io.nl(StdErr, !IO),
     io.flush_output(StdErr, !IO).
+
+:- func exception_to_string(univ) = string.
+
+:- pragma foreign_export("Java", exception_to_string(in) = out,
+    "ML_exception_to_string").
+
+exception_to_string(Exception) = Message :-
+    ( univ_to_type(Exception, software_error(MessagePrime)) ->
+        Message = "Software Error: " ++ MessagePrime
+    ;
+        Message = string(univ_value(Exception))
+    ).
+
+:- initialise(set_get_message_hook/2).
+
+:- pred set_get_message_hook(io::di, io::uo) is det.
+
+set_get_message_hook(!IO).
+
+:- pragma foreign_proc("Java",
+    set_get_message_hook(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    jmercury.runtime.Exception.getMessageHook =
+        new jmercury.runtime.MethodPtr() {
+            public java.lang.Object call___0_0(java.lang.Object[] args) {
+                univ.Univ_0 univ = (univ.Univ_0) args[0];
+                return ML_exception_to_string(univ);
+            }
+        };
+    IO = IO0;
+").
 
 %-----------------------------------------------------------------------------%
 
