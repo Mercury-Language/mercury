@@ -1139,7 +1139,17 @@ copy_bytes(SameBM, SrcBM, SrcStartByte, DestBM, DestStartByte, NumBytes) =
         MR_memcpy(DestBM->elements + DestFirstByteIndex,
             SrcBM->elements + SrcFirstByteIndex, NumBytes);
     }
+").
 
+:- pragma foreign_proc("Java",
+    unsafe_copy_bytes(_SameBM::in, SrcBM::in, SrcFirstByteIndex::in,
+        DestBM0::bitmap_di, DestFirstByteIndex::in,
+        NumBytes::in) = (DestBM::bitmap_uo),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+"
+    DestBM = DestBM0;
+    System.arraycopy(SrcBM.elements, SrcFirstByteIndex,
+        DestBM.elements, DestFirstByteIndex, NumBytes);
 ").
 
 unsafe_copy_bytes(SameBM, SrcBM, SrcFirstByteIndex,
@@ -1571,6 +1581,13 @@ public class MercuryBitmap {
     SUCCESS_INDICATOR = MR_bitmap_eq(BM1, BM2);
 ").
 
+:- pragma foreign_proc("Java",
+    bitmap_equal(BM1::in, BM2::in),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+"
+    succeeded = java.util.Arrays.equals(BM1.elements, BM2.elements);
+").
+
 :- pragma foreign_proc("Erlang",
     bitmap_equal(BM1::in, BM2::in),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
@@ -1606,6 +1623,32 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
     Result = ((res < 0) ? MR_COMPARE_LESS
                 : (res == 0) ? MR_COMPARE_EQUAL
                 : MR_COMPARE_GREATER);
+").
+
+:- pragma foreign_proc("Java",
+    bitmap_compare(Result::uo, BM1::in, BM2::in),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
+        may_not_duplicate],
+"
+    if (BM1.num_bits < BM2.num_bits) {
+        Result = builtin.ML_COMPARE_LESS;
+    } else if (BM1.num_bits > BM2.num_bits) {
+        Result = builtin.ML_COMPARE_GREATER;
+    } else {
+        Result = builtin.ML_COMPARE_EQUAL;
+        for (int i = 0; i < BM1.elements.length; i++) {
+            byte b1 = BM1.elements[i];
+            byte b2 = BM2.elements[i];
+            if (b1 < b2) {
+                Result = builtin.ML_COMPARE_LESS;
+                break;
+            }
+            if (b1 > b2) {
+                Result = builtin.ML_COMPARE_GREATER;
+                break;
+            }
+        }
+    }
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -1752,7 +1795,7 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     unsafe_byte(N::in, BM::in) = (Byte::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    // Mask off sign bits.
+    // Mask off sign bits so Byte is in range 0-255.
     Byte = ((int) BM.elements[N]) & 0xff;
 ").
 
@@ -1858,13 +1901,20 @@ resize_bitmap(OldBM, N) =
     copy_bits(OldBM, 0, allocate_bitmap(N), 0,
         int.min(OldBM ^ num_bits, N)).
 
-:- pragma promise_pure(copy/1).
 :- pragma foreign_proc("C",
     copy(BM0::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     MR_allocate_bitmap_msg(BM, BM0->num_bits, MR_PROC_LABEL);
     MR_copy_bitmap(BM, BM0);
+").
+
+:- pragma foreign_proc("Java",
+    copy(BM0::in) = (BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = new bitmap.MercuryBitmap(BM0.num_bits);
+    System.arraycopy(BM0.elements, 0, BM.elements, 0, BM0.elements.length);
 ").
 
 :- pragma foreign_proc("Erlang",

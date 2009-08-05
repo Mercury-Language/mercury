@@ -602,6 +602,13 @@ get_one_solution_io(Pred, X, !IO) :-
 :- external(compare/3).
 :- external(compare_representation/3).
 
+:- pragma foreign_export_enum("Java", comparison_result/0, [],
+    [
+        (=) - "ML_COMPARE_EQUAL",
+        (<) - "ML_COMPARE_LESS",
+        (>) - "ML_COMPARE_GREATER"
+    ]).
+
 ordering(X, Y) = R :-
     compare(R, X, Y).
 

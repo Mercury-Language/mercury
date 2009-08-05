@@ -253,7 +253,11 @@ test_error_sequence(ErrorTestType, BufferSize,
     io.nl(!IO),
     ExpectedBM = requests_to_bitmap(SetupRequests),
     TempFile = bit_buffer_test_tmp_file,
-    ( ( ErrorTestType = io_and_bitmap ; ErrorTestType = timebomb(_) ) ->
+    (
+        ( ErrorTestType = io_and_bitmap
+        ; ErrorTestType = timebomb(_)
+        )
+    ->
         test_writes(8, TempFile, SetupRequests, ExpectedBM, !IO)
     ;
         true
@@ -368,7 +372,7 @@ test_writes(BufferSize, FileName, Writes, ExpectedBM, !IO) :-
                 BMReadResult = ok(ReadBM),
                 ( ReadBM = ExpectedBM ->
                     io.write_string("I/O bitmap compares OK.\n", !IO),
-                io.flush_output(!IO)
+                    io.flush_output(!IO)
                 ;
                     io.write_string("I/O bitmap differs: \n", !IO),
                     io.write_string(to_byte_string(ReadBM), !IO),

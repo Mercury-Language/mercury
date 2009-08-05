@@ -262,6 +262,9 @@ if test "$BOOTSTRAP_MC" != ""; then
 
         :- type t    ---> a ; b ; c(int).
 
+        :- type bear ---> brown ; black ; teddy.
+        :- pragma foreign_export_enum("Java", bear/0).
+
         :- pragma foreign_export("IL", p(out), "IL_EXPORT").
 
         :- pred p(t::out) is det.
