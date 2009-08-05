@@ -95,6 +95,13 @@
 #endif
 ").
 
+:- pragma foreign_proc("Java",
+    can_spawn,
+    [will_not_call_mercury, promise_pure],
+"
+    succeeded = true;
+").
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
@@ -147,6 +154,19 @@
     t.Start();
 ").
 
+:- pragma foreign_proc("Java",
+    spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    MercuryThread mt = new MercuryThread((Object[]) Goal);
+    Thread thread = new Thread(mt);
+    thread.start();
+    IO = IO0;
+").
+
+%-----------------------------------------------------------------------------%
+
 :- pragma no_inline(yield/2).
 :- pragma foreign_proc("C",
     yield(IO0::di, IO::uo),
@@ -170,6 +190,15 @@
     yield_skip_to_the_end:
   #endif
 #endif
+    IO = IO0;
+").
+
+:- pragma foreign_proc("Java",
+    yield(IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    java.lang.Thread.yield();
     IO = IO0;
 ").
 
@@ -360,6 +389,9 @@ INIT mercury_sys_init_thread_modules
 :- pragma foreign_export("IL",
     call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
     "ML_call_back_to_mercury_cc_multi").
+:- pragma foreign_export("Java",
+    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
+    "ML_call_back_to_mercury_cc_multi").
 
 call_back_to_mercury(Goal, !IO) :-
     Goal(!IO).
@@ -378,6 +410,21 @@ public class MercuryThread {
     public void execute_goal()
     {
         mercury.thread.mercury_code.ML_call_back_to_mercury_cc_multi(Goal);
+    }
+}").
+
+:- pragma foreign_code("Java", "
+public static class MercuryThread implements Runnable {
+    final Object[] Goal;
+
+    public MercuryThread(Object[] g)
+    {
+        Goal = g;
+    }
+
+    public void run()
+    {
+        thread.ML_call_back_to_mercury_cc_multi(Goal);
     }
 }").
 

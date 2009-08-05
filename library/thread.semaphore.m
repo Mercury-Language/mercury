@@ -148,6 +148,13 @@ new(Semaphore, !IO) :-
     Semaphore.count = Count;
 ").
 
+:- pragma foreign_proc("Java",
+    new(Count::in) = (Semaphore::uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Semaphore = new java.util.concurrent.Semaphore(Count);
+").
+
 :- pragma foreign_code("C", "
 
 void
@@ -256,6 +263,13 @@ ML_finalize_semaphore(void *obj, void *cd)
     System.Threading.Monitor.Exit(Semaphore);
 ").
 
+:- pragma foreign_proc("Java",
+    signal(Semaphore::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    Semaphore.release();
+").
+
     % semaphore.wait causes the calling context to resume in semaphore.nop,
     % which simply jumps to the succip. That will return control to the caller
     % of semaphore.wait as intended, but not if this procedure is inlined.
@@ -341,6 +355,17 @@ ML_finalize_semaphore(void *obj, void *cd)
     System.Threading.Monitor.Exit(Semaphore);
 ").
 
+:- pragma foreign_proc("Java",
+    wait(Semaphore::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    /*
+    ** acquire() might be useful as well; it will throw an exception if the
+    ** thread is interrupted.
+    */
+    Semaphore.acquireUninterruptibly();
+").
+
 semaphore.try_wait(Sem, Res, !IO) :-
     try_wait_2(Sem, Res0, !IO),
     Res = ( Res0 = 0 -> yes ; no ).
@@ -383,6 +408,13 @@ semaphore.try_wait(Sem, Res, !IO) :-
     } else {
         Res = 1;
     }
+").
+
+:- pragma foreign_proc("Java",
+    try_wait_2(Semaphore::in, Res::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    Res = Semaphore.tryAcquire() ? 0 : 1;
 ").
 
 %-----------------------------------------------------------------------------%
