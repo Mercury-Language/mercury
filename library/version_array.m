@@ -259,6 +259,12 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
         equality   is eq_version_array,
         comparison is cmp_version_array.
 
+:- pragma foreign_type("Java", version_array(T),
+    "jmercury.version_array.ML_va")
+    where
+        equality   is eq_version_array,
+        comparison is cmp_version_array.
+
     % This is necessary for the library to compile in the il and java
     % grades.
 :- type version_array(T)
@@ -334,6 +340,18 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA->rest.array->size = 0;
 ").
 
+:- pragma foreign_proc("Java",
+    version_array.empty = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = new version_array.ML_va();
+
+    VA.index = -1;
+    VA.value = null;
+    VA.rest  = new Object[0];
+").
+
 :- pragma foreign_proc("C",
     version_array.new(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
@@ -350,6 +368,19 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     for (i = 0; i < N; i++) {
         VA->rest.array->elements[i] = X;
     }
+").
+
+:- pragma foreign_proc("Java",
+    version_array.new(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = new version_array.ML_va();
+    VA.index = -1;
+    VA.value = null;
+    VA.rest  = new Object[N];
+
+    java.util.Arrays.fill(VA.array(), X);
 ").
 
 :- pragma foreign_proc("C",
@@ -384,6 +415,32 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     }
 ").
 
+:- pragma foreign_proc("Java",
+    resize(VA0::in, N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    ML_va   latest;
+    int     size_VA0;
+    int     min;
+
+    latest = VA0.latest();
+
+    size_VA0 = latest.size();
+    min      = (N <= size_VA0 ? N : size_VA0);
+    VA       = new ML_va();
+
+    VA.index = -1;
+    VA.value = null;
+    VA.rest  = new Object[N];
+
+    System.arraycopy(VA.array(), 0, latest.array(), 0, min);
+
+    VA0.rewind_into(VA);
+
+    java.util.Arrays.fill(VA.array(), min, N, X);
+").
+
 resize(N, X, VA, resize(VA, N, X)).
 
 :- pragma foreign_proc("C",
@@ -394,6 +451,14 @@ resize(N, X, VA, resize(VA, N, X)).
     N = ML_va_size(VA);
 ").
 
+:- pragma foreign_proc("Java",
+    size(VA::in) = (N::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    N = VA.size();
+").
+
 :- pred get_if_in_range(version_array(T)::in, int::in, T::out) is semidet.
 
 :- pragma foreign_proc("C",
@@ -402,6 +467,20 @@ resize(N, X, VA, resize(VA, N, X)).
         does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = ML_va_get(VA, I, &X);
+").
+
+:- pragma foreign_proc("Java",
+    get_if_in_range(VA::in, I::in, X::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    try {
+        X = VA.get(I);
+        succeeded = true;
+    } catch (ArrayIndexOutOfBoundsException e) {
+        X = null;
+        succeeded = false;
+    }
 ").
 
 :- pred set_if_in_range(version_array(T)::in, int::in, T::in,
@@ -415,12 +494,34 @@ resize(N, X, VA, resize(VA, N, X)).
     SUCCESS_INDICATOR = ML_va_set(VA0, I, X, &VA);
 ").
 
+:- pragma foreign_proc("Java",
+    set_if_in_range(VA0::in, I::in, X::in, VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    try {
+        VA = VA0.set(I, X);
+        succeeded = true;
+    } catch (ArrayIndexOutOfBoundsException e) {
+        VA = null;
+        succeeded = false;
+    }
+").
+
 :- pragma foreign_proc("C",
     unsafe_rewind(VA0::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
     VA = ML_va_rewind(VA0);
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_rewind(VA0::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = VA0.rewind();
 ").
 
 :- pragma foreign_decl("C", "
@@ -625,6 +726,142 @@ ML_va_rewind(ML_va_ptr VA)
     return VA;
 }
 
+").
+
+:- pragma foreign_code("Java", "
+
+static class ML_va {
+    int                 index;  /* -1 for latest, >= 0 for older */
+    Object              value;  /* Valid if index >= 0           */
+    Object              rest;   /* array if index == -1          */
+                                /* next if index >= 0            */
+
+    boolean is_latest()
+    {
+        return index == -1;
+    }
+
+    ML_va latest()
+    {
+        ML_va VA = this;
+        while (!VA.is_latest()) {
+            VA = VA.next();
+        }
+        return VA;
+    }
+
+    Object[] array()
+    {
+        return (Object[]) rest;
+    }
+
+    ML_va next()
+    {
+        return (ML_va) rest;
+    }
+
+    int size()
+    {
+        return latest().array().length;
+    }
+
+    Object get(int I)
+        throws ArrayIndexOutOfBoundsException
+    {
+        ML_va VA = this;
+
+        while (!VA.is_latest()) {
+            if (I == VA.index) {
+                return VA.value;
+            }
+
+            VA = VA.next();
+        }
+
+        return VA.array()[I];
+    }
+
+    ML_va set(int I, Object X)
+    {
+        ML_va VA0 = this;
+        ML_va VA1;
+
+        if (VA0.is_latest()) {
+            VA1 = new ML_va();
+            VA1.index   = -1;
+            VA1.value   = null;
+            VA1.rest    = VA0.array();
+
+            VA0.index   = I;
+            VA0.value   = VA0.array()[I];
+            VA0.rest    = VA1;
+
+            VA1.array()[I] = X;
+        } else {
+            VA1 = VA0.flat_copy();
+
+            VA1.array()[I] = X;
+        }
+
+        return VA1;
+    }
+
+    ML_va flat_copy()
+    {
+        ML_va   VA0 = this;
+        ML_va   latest;
+        ML_va   VA;
+        int     N;
+
+        latest = VA0.latest();
+        N = latest.size();
+
+        VA = new ML_va();
+        VA.index = -1;
+        VA.value = null;
+        VA.rest  = latest.array().clone();
+
+        VA0.rewind_into(VA);
+
+        return VA;
+    }
+
+    void rewind_into(ML_va VA)
+    {
+        int     I;
+        Object  X;
+
+        if (this.is_latest()) {
+            return;
+        }
+
+        this.next().rewind_into(VA);
+
+        I = this.index;
+        X = this.value;
+        if (I < VA.size()) {
+            VA.array()[I] = X;
+        }
+    }
+
+    ML_va rewind()
+    {
+        ML_va   VA = this;
+        int     I;
+        Object  X;
+
+        if (VA.is_latest()) {
+            return VA;
+        }
+
+        I  = VA.index;
+        X  = VA.value;
+        VA = VA.next().rewind();
+        VA.array()[I] = X;
+
+        return VA;
+    }
+}
 ").
 
 %-----------------------------------------------------------------------------%
