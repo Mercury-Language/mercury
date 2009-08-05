@@ -210,11 +210,21 @@ module_name_to_index(ModuleName, Index, !Info) :-
         Map0 = module_index_map(Forward0, Reverse0, Size0),
         Index = module_index(Size0),
         Size = Size0 + 1,
-        Forward = version_hash_table.det_insert(Forward0, ModuleName, Index),
-        version_array.resize(Size, ModuleName, Reverse0, Reverse),
+        version_hash_table.det_insert(ModuleName, Index, Forward0, Forward),
+        TrueSize = version_array.size(Reverse0),
+        ( Size > TrueSize ->
+            NewSize = increase_array_size(TrueSize),
+            version_array.resize(NewSize, ModuleName, Reverse0, Reverse)
+        ;
+            version_array.set(Size0, ModuleName, Reverse0, Reverse)
+        ),
         Map = module_index_map(Forward, Reverse, Size),
         !Info ^ module_index_map := Map
     ).
+
+:- func increase_array_size(int) = int.
+
+increase_array_size(N) = (if N = 0 then 1 else N * 2).
 
 :- pred module_index_to_name(make_info::in, module_index::in, module_name::out)
     is det.
@@ -259,7 +269,13 @@ dependency_file_to_index(DepFile, Index, !Info) :-
         Index = dependency_file_index(Size0),
         Size = Size0 + 1,
         version_hash_table.det_insert(DepFile, Index, Forward0, Forward),
-        version_array.resize(Size, DepFile, Reverse0, Reverse),
+        TrueSize = version_array.size(Reverse0),
+        ( Size > TrueSize ->
+            NewSize = increase_array_size(TrueSize),
+            version_array.resize(NewSize, DepFile, Reverse0, Reverse)
+        ;
+            version_array.set(Size0, DepFile, Reverse0, Reverse)
+        ),
         Map = dependency_file_index_map(Forward, Reverse, Size),
         !Info ^ dep_file_index_map := Map
     ).

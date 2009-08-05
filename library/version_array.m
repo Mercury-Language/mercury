@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2008 The University of Melbourne.
+% Copyright (C) 2004-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -357,11 +357,14 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "
+    ML_va_ptr   latest;
     MR_Integer  i;
     MR_Integer  size_VA0;
     MR_Integer  min;
 
-    size_VA0 = ML_va_size(VA0);
+    latest = ML_va_get_latest(VA0);
+
+    size_VA0 = ML_va_size(latest);
     min      = (N <= size_VA0 ? N : size_VA0);
     VA       = MR_GC_NEW(struct ML_va);
 
@@ -371,8 +374,10 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA->rest.array->size = N;
 
     for (i = 0; i < min; i++) {
-        (void) ML_va_get(VA0, i, &VA->rest.array->elements[i]);
+        VA->rest.array->elements[i] = latest->rest.array->elements[i];
     }
+
+    ML_va_rewind_into(VA, VA0);
 
     for (i = min; i < N; i++) {
         VA->rest.array->elements[i] = X;
@@ -439,6 +444,11 @@ struct ML_va {
 };
 
     /*
+    ** Returns a pointer to the latest version of the array.
+    */
+extern ML_va_ptr    ML_va_get_latest(ML_va_ptr VA);
+
+    /*
     ** Returns the number of items in a version array.
     */
 extern MR_Integer   ML_va_size(ML_va_ptr);
@@ -458,6 +468,17 @@ extern int          ML_va_get(ML_va_ptr, MR_Integer, MR_Word *);
 extern int          ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *);
 
     /*
+    ** Create a copy of VA0 as a new array.
+    */
+static ML_va_ptr    ML_va_flat_copy(const ML_va_ptr VA0);
+
+    /*
+    ** Update the array VA using the override values in VA0
+    ** i.e. recreate the state of the version array as captured in VA0.
+    */
+static void         ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0);
+
+    /*
     ** `Rewinds' a version array, invalidating all extant successors
     ** including the argument.
     */
@@ -469,12 +490,20 @@ extern ML_va_ptr    ML_va_rewind(ML_va_ptr);
 
 #define ML_va_latest_version(VA)   ((VA)->index == -1)
 
-MR_Integer
-ML_va_size(ML_va_ptr VA)
+ML_va_ptr
+ML_va_get_latest(ML_va_ptr VA)
 {
     while (!ML_va_latest_version(VA)) {
         VA = VA->rest.next;
     }
+
+    return VA;
+}
+
+MR_Integer
+ML_va_size(ML_va_ptr VA)
+{
+    VA = ML_va_get_latest(VA);
 
     return VA->rest.array->size;
 }
@@ -502,13 +531,14 @@ ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 int
 ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
 {
-    ML_va_ptr VA1 = MR_GC_NEW(struct ML_va);
+    ML_va_ptr VA1;
 
     if (ML_va_latest_version(VA0)) {
         if (I < 0 || I >= VA0->rest.array->size) {
             return MR_FALSE;
         }
 
+        VA1 = MR_GC_NEW(struct ML_va);
         VA1->index      = -1;
         VA1->value      = (MR_Word) NULL;
         VA1->rest.array = VA0->rest.array;
@@ -519,17 +549,62 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
 
         VA1->rest.array->elements[I] = X;
     } else {
-        if (I < 0 || I >= ML_va_size(VA0)) {
+        VA1 = ML_va_flat_copy(VA0);
+
+        if (I < 0 || I >= VA1->rest.array->size) {
             return MR_FALSE;
         }
 
-        VA1->index      = I;
-        VA1->value      = X;
-        VA1->rest.next  = VA0;
+        VA1->rest.array->elements[I] = X;
     }
 
     *VAptr = VA1;
     return MR_TRUE;
+}
+
+static ML_va_ptr
+ML_va_flat_copy(const ML_va_ptr VA0)
+{
+    ML_va_ptr   latest;
+    ML_va_ptr   VA;
+    MR_Integer  N;
+    MR_Integer  i;
+
+    latest = ML_va_get_latest(VA0);
+    N = latest->rest.array->size;
+
+    VA = MR_GC_NEW(struct ML_va);
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array->size = N;
+
+    for (i = 0; i < N; i++) {
+        VA->rest.array->elements[i] = latest->rest.array->elements[i];
+    }
+
+    ML_va_rewind_into(VA, VA0);
+
+    return VA;
+}
+
+static void
+ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0)
+{
+    MR_Integer I;
+    MR_Word    X;
+
+    if (ML_va_latest_version(VA0)) {
+        return;
+    }
+
+    ML_va_rewind_into(VA, VA0->rest.next);
+
+    I  = VA0->index;
+    X  = VA0->value;
+    if (I < VA->rest.array->size) {
+        VA->rest.array->elements[I] = X;
+    }
 }
 
 ML_va_ptr
