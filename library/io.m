@@ -5744,7 +5744,10 @@ namespace mercury {
             }
             try {
                 randomaccess = new java.io.RandomAccessFile(file, openstring);
-                if (mode == 'a') {
+                if (mode == 'w') {
+                    // Truncate an existing file.
+                    randomaccess.setLength(0);
+                } else if (mode == 'a') {
                     seek(SEEK_END, 0);
                 }
             } catch (java.lang.Exception e) {
