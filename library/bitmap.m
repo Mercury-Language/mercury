@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne
+% Copyright (C) 2001-2002, 2004-2007, 2009 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1637,8 +1637,9 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
     } else {
         Result = builtin.ML_COMPARE_EQUAL;
         for (int i = 0; i < BM1.elements.length; i++) {
-            byte b1 = BM1.elements[i];
-            byte b2 = BM2.elements[i];
+            // Mask off sign bits.
+            int b1 = ((int) BM1.elements[i]) & 0xff;
+            int b2 = ((int) BM2.elements[i]) & 0xff;
             if (b1 < b2) {
                 Result = builtin.ML_COMPARE_LESS;
                 break;

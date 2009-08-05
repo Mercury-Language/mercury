@@ -434,7 +434,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA.value = null;
     VA.rest  = new Object[N];
 
-    System.arraycopy(VA.array(), 0, latest.array(), 0, min);
+    System.arraycopy(latest.array(), 0, VA.array(), 0, min);
 
     VA0.rewind_into(VA);
 
