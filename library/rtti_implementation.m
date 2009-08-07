@@ -1302,14 +1302,18 @@ iterate(Start, Max, Func) = Results :-
         Class<?> cls;
 
         if (tc.type_ctor_num_functors == 1) {
-            cls = Class.forName(""jmercury."" + tc.type_ctor_module_name
-                + ""$"" + ML_flipInitialCase(tc.type_ctor_name)
+            cls = Class.forName(
+                ""jmercury."" + ML_name_mangle(tc.type_ctor_module_name)
+                + ""$"" + ML_flipInitialCase(ML_name_mangle(tc.type_ctor_name))
                 + ""_"" + tc.arity);
         } else {
-            cls = Class.forName(""jmercury."" + tc.type_ctor_module_name
-                + ""$"" + ML_flipInitialCase(tc.type_ctor_name)
+            cls = Class.forName(
+                ""jmercury."" + ML_name_mangle(tc.type_ctor_module_name)
+                + ""$"" + ML_flipInitialCase(
+                            ML_name_mangle(tc.type_ctor_name))
                 + ""_"" + tc.arity
-                + ""$"" + ML_flipInitialCase(functor_desc.du_functor_name)
+                + ""$"" + ML_flipInitialCase(
+                            ML_name_mangle(functor_desc.du_functor_name))
                 + ""_"" + functor_desc.du_functor_orig_arity);
         }
 
@@ -1360,8 +1364,9 @@ iterate(Start, Max, Func) = Results :-
         throws ClassNotFoundException, NoSuchFieldException,
             IllegalAccessException
     {
-        Class<?> cls = Class.forName(""jmercury."" + tc.type_ctor_module_name
-            + ""$"" + ML_flipInitialCase(tc.type_ctor_name)
+        Class<?> cls = Class.forName(
+            ""jmercury."" + ML_name_mangle(tc.type_ctor_module_name)
+            + ""$"" + ML_flipInitialCase(ML_name_mangle(tc.type_ctor_name))
             + ""_"" + tc.arity);
 
         String field_name = ""K"" + i;
@@ -1384,6 +1389,43 @@ iterate(Start, Max, Func) = Results :-
             }
         }
         return s;
+    }
+
+    private static String
+    ML_name_mangle(String s)
+    {
+        if (s.matches(""[A-Za-z_][A-Za-z0-9_]*"")) {
+            if (s.startsWith(""f_"")) {
+                return ""f__"" + s.substring(2);
+            } else {
+                return s;
+            }
+        }
+
+        /* This is from prog_foreign.name_conversion_table. */
+        if (s.equals(""\\\\="")) return ""f_not_equal"";
+        if (s.equals("">="")) return ""f_greater_or_equal"";
+        if (s.equals(""=<"")) return ""f_less_or_equal"";
+        if (s.equals(""="")) return ""f_equal"";
+        if (s.equals(""<"")) return ""f_less_than"";
+        if (s.equals("">"")) return ""f_greater_than"";
+        if (s.equals(""-"")) return ""f_minus"";
+        if (s.equals(""+"")) return ""f_plus"";
+        if (s.equals(""*"")) return ""f_times"";
+        if (s.equals(""/"")) return ""f_slash"";
+        if (s.equals("","")) return ""f_comma"";
+        if (s.equals("";"")) return ""f_semicolon"";
+        if (s.equals(""!"")) return ""f_cut"";
+        if (s.equals(""{}"")) return ""f_tuple"";
+        if (s.equals(""[|]"")) return ""f_cons"";
+        if (s.equals(""[]"")) return ""f_nil"";
+
+        StringBuilder sb = new StringBuilder(""f"");
+        for (int i = 0; i < s.length(); i++) {
+            sb.append('_');
+            sb.append(s.codePointAt(i));
+        }
+        return sb.toString();
     }
 
     private static Object[]

@@ -30,6 +30,7 @@ ORDINARY_PROGS=	\
 	constraint \
 	constraint_order \
 	construct_bug \
+	construct_mangle \
 	construct_test \
 	construct_test_exist \
 	contains_char \

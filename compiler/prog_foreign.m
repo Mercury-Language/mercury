@@ -387,8 +387,8 @@ name_mangle_no_leading_digit(Name) = name_mangle_2(no, Name).
 
 name_mangle_2(AllowLeadingDigit, Name) = MangledName :-
     % Warning: any changes to the name mangling algorithm here may also
-    % require changes to profiler/demangle.m, util/mdemangle.c and
-    % compiler/name_mangle.m.
+    % require changes to profiler/demangle.m, util/mdemangle.c,
+    % compiler/name_mangle.m and library/rtti_implementation.m.
 
     (
         string.is_all_alnum_or_underscore(Name),
@@ -430,6 +430,9 @@ convert_to_valid_c_identifier(String) = Name :-
     % should start with "f_", to avoid introducing name clashes. If the functor
     % name is not found in the table, then we use a fall-back method which
     % produces ugly names.
+    %
+    % Additions to this table should be reflected in rtti_implementation.m,
+    % in the ML_name_mangle() method.
     %
 :- pred name_conversion_table(string::in, string::out) is semidet.
 
