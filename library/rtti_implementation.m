@@ -1342,17 +1342,17 @@ iterate(Start, Max, Func) = Results :-
     }
 
     private static Object[]
-    ML_univ_list_to_array(list.List_1 list, int arity)
+    ML_univ_list_to_array(list.List_1 lst, int arity)
     {
         final Object[] args = new Object[arity];
 
         for (int i = 0; i < arity; i++) {
-            univ.Univ_0 head = (univ.Univ_0) ((list.List_1.F_cons_2) list).F1;
-            args[i] = head.F2;
-            list = ((list.List_1.F_cons_2) list).F2;
+            univ.Univ_0 head = (univ.Univ_0) list.det_head(lst);
+            args[i] = univ.ML_unravel_univ(head)[1];
+            lst = list.det_tail(lst);
         }
 
-        if (list instanceof list.List_1.F_nil_0) {
+        if (list.is_empty(lst)) {
             return args;
         } else {
             return null;
@@ -1429,13 +1429,13 @@ iterate(Start, Max, Func) = Results :-
     }
 
     private static Object[]
-    ML_list_to_array(list.List_1 list, int arity)
+    ML_list_to_array(list.List_1 lst, int arity)
     {
         final Object[] array = new Object[arity];
 
         for (int i = 0; i < arity; i++) {
-            array[i] = ((list.List_1.F_cons_2) list).F1;
-            list = ((list.List_1.F_cons_2) list).F2;
+            array[i] = list.det_head(lst);
+            lst = list.det_tail(lst);
         }
 
         return array;
@@ -1462,14 +1462,13 @@ construct(_, _, _) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe,
         may_not_duplicate],
 "
+    list.List_1 args_list = (list.List_1) Args;
     Object[] args_array = new Object[Arity];
 
     for (int i = 0; i < Arity; i++) {
-        univ.Univ_0 head = (univ.Univ_0) ((list.List_1.F_cons_2) Args).F1;
-        Object[] rc = univ.ML_unravel_univ(head);
-        args_array[i] = rc[1];
-
-        Args = ((list.List_1.F_cons_2) Args).F2;
+        univ.Univ_0 head = (univ.Univ_0) list.det_head(args_list);
+        args_array[i] = univ.ML_unravel_univ(head)[1];
+        args_list = list.det_tail(args_list);
     }
 
     Object[] args = ML_list_to_array((list.List_1) ArgTypes, Arity);

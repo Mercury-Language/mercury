@@ -79,8 +79,8 @@
 
 :- pragma foreign_export_enum("Java", bool/0, [],
     [
-        no  - "ML_NO",
-        yes - "ML_YES"
+        no  - "NO",
+        yes - "YES"
     ]).
 
 :- instance enum(bool) where [

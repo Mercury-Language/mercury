@@ -1631,21 +1631,21 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
         may_not_duplicate],
 "
     if (BM1.num_bits < BM2.num_bits) {
-        Result = builtin.ML_COMPARE_LESS;
+        Result = builtin.COMPARE_LESS;
     } else if (BM1.num_bits > BM2.num_bits) {
-        Result = builtin.ML_COMPARE_GREATER;
+        Result = builtin.COMPARE_GREATER;
     } else {
-        Result = builtin.ML_COMPARE_EQUAL;
+        Result = builtin.COMPARE_EQUAL;
         for (int i = 0; i < BM1.elements.length; i++) {
             // Mask off sign bits.
             int b1 = ((int) BM1.elements[i]) & 0xff;
             int b2 = ((int) BM2.elements[i]) & 0xff;
             if (b1 < b2) {
-                Result = builtin.ML_COMPARE_LESS;
+                Result = builtin.COMPARE_LESS;
                 break;
             }
             if (b1 > b2) {
-                Result = builtin.ML_COMPARE_GREATER;
+                Result = builtin.COMPARE_GREATER;
                 break;
             }
         }

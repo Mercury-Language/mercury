@@ -2775,3 +2775,81 @@ list_to_doc_2([X | Xs]) = Doc :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- pragma foreign_code("Java", "
+
+/*
+** We don't use `:- pragma foreign_export' to generate these methods because
+** the interfaces would expect type_info arguments.
+*/
+
+public static List_1 empty_list()
+{
+    return new List_1.F_nil_0();
+}
+
+public static List_1 cons(Object H, List_1 T)
+{
+    return new List_1.F_cons_2(H, T);
+}
+
+public static boolean is_empty(List_1 lst)
+{
+    return (lst instanceof List_1.F_nil_0);
+}
+
+public static Object det_head(List_1 lst)
+{
+    return ((List_1.F_cons_2) lst).F1;
+}
+
+public static List_1 det_tail(List_1 lst)
+{
+    return ((List_1.F_cons_2) lst).F2;
+}
+
+/*
+** A wrapper class to allow for-each syntax.
+** You must use a new instance of this class for each loop!
+*/
+
+public static class ListIterator<E>
+    implements java.lang.Iterable, java.util.Iterator<E>
+{
+    private List_1 lst;
+
+    public ListIterator(List_1 lst)
+    {
+        this.lst = lst;
+    }
+
+    public java.util.Iterator<E> iterator()
+    {
+        return this;
+    }
+
+    public boolean hasNext()
+    {
+        return !is_empty(lst);
+    }
+
+    public E next()
+    {
+        if (is_empty(lst)) {
+            E head = (E) det_head(lst);
+            lst = det_tail(lst);
+            return head;
+        } else {
+            throw new java.util.NoSuchElementException();
+        }
+    }
+
+    public void remove()
+    {
+        throw new java.lang.UnsupportedOperationException();
+    }
+}
+").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

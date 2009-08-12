@@ -10134,6 +10134,9 @@ Runtime (sometimes also known as CIL or MSIL).
 Only available on backends that compile to IL.
 This is the preferred foreign language for IL code generation.
 
+@item @samp{Java}
+This is the only foreign language for backends which compile to Java.
+
 @end table
 
 @c ----------------------------------------------------------------------------

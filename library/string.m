@@ -1339,10 +1339,10 @@ string.to_char_list(Str::uo, CharList::in) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    list.List_1 lst = new list.List_1.F_nil_0();
+    list.List_1 lst = list.empty_list();
     for (int i = Str.length() - 1; i >= 0; i--) {
         char c = Str.charAt(i);
-        lst = new list.List_1.F_cons_2(c, lst);
+        lst = list.cons(c, lst);
     }
     CharList = lst;
 ").
@@ -1438,11 +1438,9 @@ string.from_char_list(Chars::in, Str::uo) :-
         does_not_affect_liveness],
 "
     java.lang.StringBuilder sb = new StringBuilder();
-    while (CharList instanceof list.List_1.F_cons_2) {
-        list.List_1.F_cons_2 cons = (list.List_1.F_cons_2) CharList;
-        char c = ((java.lang.Character) cons.F1).charValue();
+    Iterable<Character> iterable = new list.ListIterator((list.List_1) CharList);
+    for (char c : iterable) {
         sb.append(c);
-        CharList = cons.F2;
     }
     Str = sb.toString();
     succeeded = true;
@@ -1667,12 +1665,12 @@ string.append_list(Lists, string.append_list(Lists)).
         does_not_affect_liveness],
 "
     java.lang.StringBuilder sb = new java.lang.StringBuilder();
-    while (Strs instanceof list.List_1.F_cons_2) {
-        list.List_1.F_cons_2 cons = (list.List_1.F_cons_2) Strs;
-        java.lang.String s = (java.lang.String) cons.F1;
+
+    Iterable<String> iterable = new list.ListIterator((list.List_1) Strs);
+    for (String s : iterable) {
         sb.append(s);
-        Strs = cons.F2;
     }
+
     Str = sb.toString();
 ").
 
@@ -1752,15 +1750,13 @@ string.append_list(Strs::in) = (Str::uo) :-
     java.lang.StringBuilder sb = new java.lang.StringBuilder();
     boolean add_sep = false;
 
-    while (Strs instanceof list.List_1.F_cons_2) {
-        list.List_1.F_cons_2 cons = (list.List_1.F_cons_2) Strs;
-        java.lang.String s = (java.lang.String) cons.F1;
+    Iterable<String> iterable = new list.ListIterator((list.List_1) Strs);
+    for (String s : iterable) {
         if (add_sep) {
             sb.append(Sep);
         }
         sb.append(s);
         add_sep = true;
-        Strs = cons.F2;
     }
 
     Str = sb.toString();
