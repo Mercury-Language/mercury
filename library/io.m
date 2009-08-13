@@ -1275,6 +1275,8 @@
     % is the value to be assigned to that variable. Will throw an exception
     % if the system runs out of environment space.
     %
+    % Note: this predicate is not supported on Java.
+    %
 :- pred io.set_environment_var(string::in, string::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -9835,22 +9837,8 @@ command_line_argument(_, "") :-
     io.getenv(Var::in, Value::out),
     [will_not_call_mercury, tabled_for_io],
 "
-    // Note that this approach only works for environmental variables that
-    // are recognized by Java and hava a special format.
-    // (eg os.name, user.timezone etc)
-    // To add custom environmental variables, they must be set at the
-    // command line with java's -D option
-    // (ie java -DENV_VARIABLE_NAME=$ENV_VARIABLE_NAME ClassName)
-    // XXX Perhaps a better approach would be to determine the OS at
-    // runtime and then Runtime.exec() the equivalent of 'env'?
-
-    try {
-        Value = java.lang.System.getProperty(Var);
-        succeeded = (Value != null);
-    } catch (java.lang.Exception e) {
-        Value = null;
-        succeeded = false;
-    }
+    Value = System.getenv(Var);
+    succeeded = (Value != null);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -9902,14 +9890,11 @@ io.setenv(Var, Value) :-
     io.setenv(Var::in, Value::in),
     [will_not_call_mercury, tabled_for_io],
 "
-    // XXX see io.getenv/2
+    // Java does not provide a method to set environment variables, only a way
+    // to modify the environment when creating a new process.
 
-    try {
-        Value = java.lang.System.setProperty(Var, Value);
-        succeeded = true;
-    } catch (java.lang.Exception e) {
-        succeeded = false;
-    }
+    // Avoid warning: Var, Value
+    succeeded = false;
 ").
 
 :- pragma foreign_proc("Java",
