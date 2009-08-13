@@ -2835,7 +2835,7 @@ public static class ListIterator<E>
 
     public E next()
     {
-        if (is_empty(lst)) {
+        if (!is_empty(lst)) {
             E head = (E) det_head(lst);
             lst = det_tail(lst);
             return head;
