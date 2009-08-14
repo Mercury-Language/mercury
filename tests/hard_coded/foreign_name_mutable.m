@@ -8,7 +8,11 @@
 
 :- implementation.
 
-:- mutable(foo, int, 42, ground, [untrailed, foreign_name("C", "FOO")]).
+:- mutable(foo, int, 42, ground, [
+	untrailed,
+	foreign_name("C", "FOO"),
+	foreign_name("Java", "FOO")
+]).
 
 main(!IO) :-
 	increment_global(!IO),
@@ -22,6 +26,14 @@ main(!IO) :-
 :- pred increment_global(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
+	increment_global(IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	FOO++;
+	IO = IO0;
+").
+
+:- pragma foreign_proc("Java",
 	increment_global(IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "

@@ -57,6 +57,15 @@ bump_counter :-
 ").
 :- pragma foreign_proc("C#", set_counter(X::in), [], "counter = X;").
 
+:- pragma foreign_code("Java", "static int counter = 0;").
+:- pragma foreign_proc("Java",
+	get_counter(X::out),
+	[will_not_call_mercury, promise_semipure],
+"
+	X = counter;
+").
+:- pragma foreign_proc("Java", set_counter(X::in), [], "counter = X;").
+
 :- pragma foreign_proc("Erlang",
 	get_counter(X::out),
 	[will_not_call_mercury, promise_semipure],

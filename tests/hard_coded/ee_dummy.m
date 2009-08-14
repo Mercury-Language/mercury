@@ -19,6 +19,9 @@
 :- pragma foreign_export_enum("C", dummy_type/0, [prefix("FOO_")]).
 :- pragma foreign_export_enum("C", poly_dummy_type/1, [prefix("BAR_")]).
 
+:- pragma foreign_export_enum("Java", dummy_type/0, [prefix("FOO_")]).
+:- pragma foreign_export_enum("Java", poly_dummy_type/1, [prefix("BAR_")]).
+
 main(!IO) :-
 	check_dummy_type(dummy_type, DummyTypeSucceeded, !IO),
 	(
@@ -45,6 +48,13 @@ main(!IO) :-
 	Result = (X == FOO_dummy_type) ? MR_YES : MR_NO;
 	IO = IO0;
 ").
+:- pragma foreign_proc("Java",
+	check_dummy_type(X::in, Result::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Result = (X == FOO_dummy_type) ? bool.ML_YES : bool.ML_NO;
+	IO = IO0;
+").
 
 :- pred check_poly_dummy_type(poly_dummy_type(dummy_type)::in, bool::out,
 	io::di, io::uo) is det.
@@ -53,5 +63,12 @@ main(!IO) :-
 	[will_not_call_mercury, promise_pure],
 "
 	Result = (X == BAR_poly_dummy_type) ? MR_YES : MR_NO;
+	IO = IO0;
+").
+:- pragma foreign_proc("Java",
+	check_poly_dummy_type(X::in, Result::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Result = (X == BAR_poly_dummy_type) ? bool.ML_YES : bool.ML_NO;
 	IO = IO0;
 ").

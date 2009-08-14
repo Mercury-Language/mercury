@@ -16,6 +16,8 @@ main(!IO) :-
 :- pred hello_world(io::di, io::uo) is det.
 :- pragma foreign_export("C", hello_world(di, uo),
 	"exported_hello_world").
+:- pragma foreign_export("Java", hello_world(di, uo),
+	"exported_hello_world").
 :- pragma foreign_export("Erlang", hello_world(di, uo),
 	"exported_hello_world").
 
@@ -28,6 +30,13 @@ hello_world(!IO) :-
 "
 	exported_hello_world();
 	IO = IO0;
+").
+
+:- pragma foreign_proc("Java",
+	call_foreign(_IO0::di, _IO::uo),
+	[promise_pure, may_call_mercury],
+"
+	exported_hello_world();
 ").
 
 :- pragma foreign_proc("Erlang",

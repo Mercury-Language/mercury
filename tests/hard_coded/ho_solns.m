@@ -48,6 +48,13 @@ main -->
 	L = L0;
 }
 ").
+:- pragma foreign_proc("Java",
+	convert_list(L0 :: in, L :: out(list_skel(mypred))),
+	[promise_pure], "
+{
+	L = L0;
+}
+").
 :- pragma foreign_proc("Erlang",
 	convert_list(L0 :: in, L :: out(list_skel(mypred))),
 	[promise_pure], "

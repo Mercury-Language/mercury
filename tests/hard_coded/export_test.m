@@ -24,6 +24,7 @@ main -->
 foo(X, X+1).
 
 :- pragma export(foo(in, out), "foo").
+:- pragma foreign_export("Java", foo(in, out), "foo").
 
 :- pragma c_code(bar(X::in, Y::out), may_call_mercury,
 "
@@ -32,6 +33,10 @@ foo(X, X+1).
 :- pragma foreign_proc("C#", bar(X::in, Y::out),
 		[may_call_mercury, promise_pure], "
 	export_test.mercury_code.foo(X, ref Y);
+").
+:- pragma foreign_proc("Java", bar(X::in, Y::out),
+		[may_call_mercury, promise_pure], "
+	Y = export_test.foo(X);
 ").
 :- pragma foreign_proc("Erlang", bar(X::in, Y::out),
 		[may_call_mercury, promise_pure], "

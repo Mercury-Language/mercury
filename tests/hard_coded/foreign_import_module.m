@@ -21,6 +21,7 @@ main -->
 
 :- pragma foreign_import_module(c, foreign_import_module_2).
 :- pragma foreign_import_module(il, foreign_import_module_2).
+:- pragma foreign_import_module(java, foreign_import_module_2).
 % not actually necessary in Erlang
 % :- pragma foreign_import_module(erlang, foreign_import_module_2).
 
@@ -44,6 +45,12 @@ main -->
 	} else {
 		throw new System.Exception(""Y1 != Y2"");
 	}
+").
+:- pragma foreign_proc("Java",
+	bar(X::in, Y::out),
+	[may_call_mercury, promise_pure],
+"
+	Y = foreign_import_module_2.foo(X);
 ").
 :- pragma foreign_proc("Erlang",
 	bar(X::in, Y::out),
@@ -73,6 +80,12 @@ main -->
 	} else {
 		throw new System.Exception(""Y1 != Y2"");
 	}
+").
+:- pragma foreign_proc("Java",
+	bar2(X::in, Y::out),
+	[may_call_mercury, promise_pure],
+"
+	Y = foreign_import_module_2.foo(X);
 ").
 :- pragma foreign_proc("Erlang",
 	bar2(X::in, Y::out),

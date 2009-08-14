@@ -64,6 +64,11 @@ bar(X) :- X = 1.
 "
 	SUCCESS_INDICATOR = false
 ").
+:- pragma foreign_proc("Java", use(_X::in),
+	[will_not_call_mercury, promise_pure],
+"
+	succeeded = false;
+").
 :- pragma foreign_proc("Erlang", use(_X::in),
 	[will_not_call_mercury, promise_pure],
 "

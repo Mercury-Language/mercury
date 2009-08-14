@@ -43,6 +43,8 @@ main -->
 
 :- pragma foreign_code("C#", "static int counter = 1;").
 
+:- pragma foreign_code("Java", "static int counter = 1;").
+
 :- impure pred incr(int::out) is det.
 
 incr(_::out) :- error("incr/1 called for language other than C").
@@ -50,6 +52,8 @@ incr(_::out) :- error("incr/1 called for language other than C").
 :- pragma foreign_proc("C", incr(Val::out), [will_not_call_mercury],
 			"counter++; Val = counter;").
 :- pragma foreign_proc("C#", incr(Val::out), [will_not_call_mercury],
+			"counter++; Val = counter;").
+:- pragma foreign_proc("Java", incr(Val::out), [will_not_call_mercury],
 			"counter++; Val = counter;").
 :- pragma foreign_proc("Erlang", incr(Val::out), [will_not_call_mercury],
 			"case get(counter) of
@@ -66,6 +70,9 @@ get(_::out) :- error("get/1 called for language other than C").
 		[will_not_call_mercury, promise_semipure],
 		"Val = counter").
 :- pragma foreign_proc("C#", get(Val::out),
+		[will_not_call_mercury, promise_semipure],
+		"Val = counter;").
+:- pragma foreign_proc("Java", get(Val::out),
 		[will_not_call_mercury, promise_semipure],
 		"Val = counter;").
 :- pragma foreign_proc("Erlang", get(Val::out),

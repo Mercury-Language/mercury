@@ -12,21 +12,24 @@
 :- implementation.
 
 :- pred q(f::di, f::uo) is det.
-:- external(q/2).
+:- pragma no_inline(q/2).
+
+q(!F).
+
 :- pred q2(fg::di, fg::uo) is det.
-:- external(q2/2).
+:- pragma no_inline(q2/2).
+
+q2(!FG).
 
 :- pred r(f::di, f::uo) is det.
-:- external(r/2).
-:- pred r2(fg::di, fg::uo) is det.
-:- external(r2/2).
+:- pragma no_inline(r/2).
 
-:- pragma foreign_code("Erlang", "
-q_2_p_0(_) -> void.
-q2_2_p_0(_) -> void.
-r_2_p_0(_) -> void.
-r2_2_p_0(_) -> void.
-").
+r(!F).
+
+:- pred r2(fg::di, fg::uo) is det.
+:- pragma no_inline(r2/2).
+
+r2(!FG).
 
 % This is a regression test: a previous version of the compiler
 % reported a spurious mode error because after `F0 = f(_)' it

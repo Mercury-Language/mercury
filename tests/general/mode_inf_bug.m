@@ -37,7 +37,7 @@ write_s(S) --> io__write_string(S).
 
 %% Description: Speed tests for meta predicates.
 
-%% RCS: $Id: mode_inf_bug.m,v 1.5 2003-05-26 09:00:59 zs Exp $
+%% RCS: $Id: mode_inf_bug.m,v 1.6 2009-08-14 03:21:53 wangp Exp $
 
 %%% Simple test predicate --------------------------------------------
 :- mode is_a(in) is semidet.
@@ -71,13 +71,15 @@ map_list_hook(hook_is_a,X) :- is_a(X).
 
 %%% Generate a list of atoms -----------------------------------------
 gen_a_list(N,L) :-
-	( N = 0 ->
-		L = []
-	;
-		L = [a|R],
-		N1 = N - 1,
-		gen_a_list(N1,R)
-	).
+        gen_a_list(N, [], L).
+
+gen_a_list(N, L0, L) :-
+        ( N = 0 ->
+                L = L0
+        ;
+                N1 = N - 1,
+                gen_a_list(N1, [a | L0], L)
+        ).
 
 %%% Test suite -------------------------------------------------------
 

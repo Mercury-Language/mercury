@@ -18,16 +18,16 @@
 
 :- pred occurs(var(S), list(term(S)), store(S), store(S)).
 :- mode occurs(in, in, mdi, muo) is semidet.
+:- pragma no_inline(occurs/4).
 
-:- external(occurs/4).
-:- pragma foreign_code("Erlang", "occurs_4_p_0(_, _, _) -> void.").
+occurs(_, _, !S) :-
+        semidet_true.
 
 :- pred tr_store_set_mutvar(store_mutvar(T, S), T, store(S), store(S)).
 :- mode tr_store_set_mutvar(in, in, mdi, muo) is det.
+:- pragma no_inline(tr_store_set_mutvar/4).
 
-:- external(tr_store_set_mutvar/4).
-:- pragma foreign_code("Erlang",
-    "tr_store_set_mutvar_4_p_0(_, _, _, _) -> void.").
+tr_store_set_mutvar(_, _, S, S).
 
 unify(T1, free, _T2, functor(Name2, Arity2, Args2)) -->
         \+ occurs(T1, Args2),

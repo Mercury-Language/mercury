@@ -42,15 +42,8 @@ TESTS_SHOULD_FAIL = \
 	type_qual_re \
 	with_type_re
 
-# We currently don't do any testing in java, il or erlang grades in this
-# directory because smart compilation doesn't support intermodule-optimization
-# yet
-ifneq "$(filter java% il% erlang%,$(GRADE))" ""
-	PROGS=
-else
-	PROGS= $(TESTS_SHOULD_SUCCEED) $(NO_PARALLEL_MAKE_TESTS) \
-		$(TESTS_SHOULD_FAIL)
-endif
+PROGS= $(TESTS_SHOULD_SUCCEED) $(NO_PARALLEL_MAKE_TESTS) \
+	$(TESTS_SHOULD_FAIL)
 
 TESTS= $(sort $(PROGS:%=%-nodepend))
 SUBDIRS =

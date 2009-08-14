@@ -34,6 +34,9 @@ make_closure(A, B, foo(A, B)).
 :- pragma foreign_proc("C#",
 	inst_cast(X::in, Y::out(pred(in, out) is det)),
 	[will_not_call_mercury, thread_safe, promise_pure], "Y = X;").
+:- pragma foreign_proc("Java",
+	inst_cast(X::in, Y::out(pred(in, out) is det)),
+	[will_not_call_mercury, thread_safe, promise_pure], "Y = X;").
 :- pragma foreign_proc("Erlang",
 	inst_cast(X::in, Y::out(pred(in, out) is det)),
 	[will_not_call_mercury, thread_safe, promise_pure], "Y = X").

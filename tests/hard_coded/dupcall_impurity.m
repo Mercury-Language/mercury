@@ -65,6 +65,29 @@ test2 -->
 :- pragma foreign_proc("C#", next_x(X::out), [], "X = my_global++;").
 :- pragma foreign_proc("C#", incr_x, [], "my_global++;").
 
+:- pragma foreign_code("Java", "static int my_global;").
+
+:- pragma foreign_proc("Java",
+	get_x(X::out),
+	[will_not_call_mercury, promise_semipure],
+"
+        X = my_global;
+").
+
+:- pragma foreign_proc("Java",
+	next_x(X::out),
+	[will_not_call_mercury],
+"
+        X = my_global++;
+").
+
+:- pragma foreign_proc("Java",
+	incr_x,
+	[will_not_call_mercury],
+"
+        my_global++;
+").
+
 :- pragma foreign_proc("Erlang",
 	get_x(X::out),
 	[will_not_call_mercury, promise_semipure],

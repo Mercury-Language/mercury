@@ -87,6 +87,17 @@ loop2(N, Acc0, Acc) :-
 
     X = 42;
 ").
+:- pragma foreign_code("Java", "static int p_num_calls = 0;").
+:- pragma foreign_proc("Java", p(X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    /* Test that p/1 only gets called once. */
+    if (p_num_calls++ > 0) { 
+        throw new Error(""p/1 called more than once"");
+    }
+
+    X = 42;
+").
 :- pragma foreign_proc("Erlang", p(X::out),
     [will_not_call_mercury, promise_pure],
 "
@@ -120,6 +131,17 @@ loop2(N, Acc0, Acc) :-
     static int num_calls = 0;
     if (num_calls++) { 
         mercury.runtime.Errors.fatal_error(""q/1 called more than once"");
+    }
+
+    X = 53;
+").
+:- pragma foreign_code("Java", "static int q_num_calls = 0;").
+:- pragma foreign_proc("Java", q(X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    /* Test that q/1 only gets called once. */
+    if (q_num_calls++ > 0) { 
+        throw new Error(""q/1 called more than once"");
     }
 
     X = 53;

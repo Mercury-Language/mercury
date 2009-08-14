@@ -81,14 +81,10 @@ EXCEPTION_PROGS = \
 #     currently fail.  The reason for this is that they depend too
 #     heavily on the mercury library which cannot yet be compiled
 #     in grade java.
-ifneq "$(findstring java,$(GRADE))" ""
-	PROGS0 =
+ifneq "$(findstring profdeep,$(GRADE))" ""
+	PROGS0 = $(ORDINARY_PROGS)
 else
-	ifneq "$(findstring profdeep,$(GRADE))" ""
-		PROGS0 = $(ORDINARY_PROGS)
-	else
-		PROGS0 = $(ORDINARY_PROGS) $(EXCEPTION_PROGS)
-	endif
+	PROGS0 = $(ORDINARY_PROGS) $(EXCEPTION_PROGS)
 endif
 
 	# On Dec OSF 5.1 the floating point tests of

@@ -147,5 +147,12 @@ do_replace_neg(I, !HT) :-
     HT = HT0;
 ").
 
+:- pragma foreign_proc("Java",
+    unsafe_hash_table_cast(HT0::in, HT::out(hash_table)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    HT = HT0;
+").
+
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sts=4 sw=4 et

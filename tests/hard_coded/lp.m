@@ -380,6 +380,12 @@ set_index(Tableau0, Rows0, Cols0, J, K, R, Tableau) :-
 	ldloc 'A'
 	stloc 'B'
 ").
+:- pragma foreign_proc("Java",
+	mkuniq(A::in, B::array_uo),
+	[will_not_call_mercury, promise_pure],
+"
+	B = A;
+").
 :- pragma foreign_proc("Erlang",
 	mkuniq(A::in, B::array_uo),
 	[will_not_call_mercury, promise_pure],

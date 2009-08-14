@@ -14,14 +14,13 @@ q :- p1(X, Y), p2(X, Y).
 
 :- pred p1(int, int).
 :- mode p1(free >> free, out) is nondet.
+:- pragma no_inline(p1/2).
+
+p1(_, 42) :- semidet_fail.
 
 :- pred p2(int, int).
 :- mode p2(out, in) is nondet.
+:- pragma no_inline(p2/2).
 
-:- external(p1/2).
-:- external(p2/2).
-
-:- pragma foreign_code("Erlang", "
-p1_2_p_0(_) -> void.
-p2_2_p_0(_, _) -> void.
-").
+p2(X, X) :- semidet_true.
+p2(X, X) :- semidet_true.

@@ -119,6 +119,9 @@ test2(_A::di, B::uo) :-
 :- pragma foreign_proc("C#", mkany(S::out(any)), [promise_pure], "
 	S = null;
 ").
+:- pragma foreign_proc("Java", mkany(S::out(any)), [promise_pure], "
+	S = null;
+").
 :- pragma foreign_proc("Erlang", mkany(S::out(any)), [promise_pure], "
 	S = null
 ").

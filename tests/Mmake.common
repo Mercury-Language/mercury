@@ -98,19 +98,9 @@ $(TESTS_DIR)/Mmake.params: ;
 # to print out the contents, because that precedes each line of output with
 # the filename, which is helpful when running a parallel make.
 #
-ifneq "$(findstring java,$(GRADE))" ""
-
-%.out: %.class
-	{ [ -f $*.inp ] && cat $*.inp; } | $(JAVA) $* > $@ 2>&1 \
-		|| { grep . $@ /dev/null; exit 1; }
-
-else
-
 %.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
-
-endif
 
 #
 # For some test cases, there is more than one valid output.

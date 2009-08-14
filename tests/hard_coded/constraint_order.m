@@ -42,6 +42,10 @@ test(3) :- impure puts("call to test").
 :- pragma c_code(puts(Str::in), "puts(Str);").
 :- pragma foreign_proc("C#", puts(Str::in), [],
 		"System.Console.WriteLine(Str);").
+:- pragma foreign_proc("Java", puts(Str::in), [],
+"
+    System.out.println(Str);
+").
 :- pragma foreign_proc("Erlang", puts(Str::in), [],
 "
     io:put_chars(Str),

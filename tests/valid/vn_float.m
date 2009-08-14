@@ -104,42 +104,41 @@ get_angles_from_z_axis(Vec, Theta, Phi) :-
 :- pred move_vertices_to_plane(list(int), array(vec3), vec3, mat3, list(vec3)).
 :- mode move_vertices_to_plane(in, in, in, in, out) is det.
 
-:- external(move_vertices_to_plane/5).
+:- pragma no_inline(move_vertices_to_plane/5).
+
+move_vertices_to_plane(_, _, _, _, []).
 
 :- func unit(vec3) = vec3.
+:- pragma no_inline(unit/1).
 
-:- external(unit/1).
+unit(V) = V.
 
 :- func cross(vec3, vec3) = vec3.
+:- pragma no_inline(cross/2).
 
-:- external(cross/2).
+cross(V, _) = V.
 
 :- func '-'(vec3, vec3) = vec3.
+:- pragma no_inline(('-')/2).
 
-:- external(('-')/2).
+V - _ = V.
 
 :- func '-'(vec3) = vec3.
+:- pragma no_inline(('-')/1).
 
-:- external(('-')/1).
+-V = V.
 
 :- func mag(vec3) = float.
+:- pragma no_inline(mag/1).
 
-:- external(mag/1).
+mag(_) = 42.0.
 
 :- func '*'(vec3, mat3) = vec3.
+:- pragma no_inline('*'/2).
 
-:- external('*'/2).
+V * _ = V.
 
 :- func matmult(mat3, mat3) = mat3.
+:- pragma no_inline(matmult/2).
 
-:- external(matmult/2).
-
-:- pragma foreign_code("Erlang", "
-    move_vertices_to_plane_5_p_0(_, _, _, _) -> void.
-    unit_1_f_0(_) -> void.
-    cross_2_f_0(_, _) -> void.
-    '-_2_f_0'(_, _) -> void.
-    '-_1_f_0'(_) -> void.
-    mag_1_f_0(_) -> void.
-    matmult_2_f_0(_, _) -> void.
-").
+matmult(M, _) = M.

@@ -18,6 +18,8 @@
 		where equality is unify_ft.
 :- pragma foreign_type(il, type_which_needs_boxing,
 		"valuetype [mscorlib]System.Double") where equality is unify_ft.
+:- pragma foreign_type(java, type_which_needs_boxing,
+		"Double") where equality is unify_ft.
 :- pragma foreign_type(erlang, type_which_needs_boxing,
 		"") where equality is unify_ft.
 
@@ -26,6 +28,8 @@
 		where equality is unify_ft_T.
 :- pragma foreign_type(il, type_which_needs_boxing(T),
 		"valuetype [mscorlib]System.Double")
+		where equality is unify_ft_T.
+:- pragma foreign_type(java, type_which_needs_boxing(T), "Double")
 		where equality is unify_ft_T.
 :- pragma foreign_type(erlang, type_which_needs_boxing(T), "")
 		where equality is unify_ft_T.
@@ -80,6 +84,9 @@ unify(S, X, Y, !IO) :-
 :- pragma foreign_proc("C#", create(X::in) = (Y::out), [promise_pure], "
 	Y = X;
 ").
+:- pragma foreign_proc("Java", create(X::in) = (Y::out), [promise_pure], "
+	Y = X;
+").
 :- pragma foreign_proc("Erlang", create(X::in) = (Y::out), [promise_pure], "
 	Y = X
 ").
@@ -89,6 +96,9 @@ unify(S, X, Y, !IO) :-
 	Y = X;
 ").
 :- pragma foreign_proc("C#", create_T(X::in) = (Y::out), [promise_pure], "
+	Y = X;
+").
+:- pragma foreign_proc("Java", create_T(X::in) = (Y::out), [promise_pure], "
 	Y = X;
 ").
 :- pragma foreign_proc("Erlang", create_T(X::in) = (Y::out), [promise_pure], "
@@ -103,6 +113,9 @@ unify(S, X, Y, !IO) :-
 :- pragma foreign_proc("C#", unify_ft(X::in, Y::in), [promise_pure], "
 	SUCCESS_INDICATOR = (X == Y);
 ").
+:- pragma foreign_proc("Java", unify_ft(X::in, Y::in), [promise_pure], "
+	succeeded = X.equals(Y);
+").
 :- pragma foreign_proc("Erlang", unify_ft(X::in, Y::in), [promise_pure], "
 	SUCCESS_INDICATOR = (X =:= Y)
 ").
@@ -114,6 +127,9 @@ unify(S, X, Y, !IO) :-
 ").
 :- pragma foreign_proc("C#", unify_ft_T(X::in, Y::in), [promise_pure], "
 	SUCCESS_INDICATOR = (X == Y);
+").
+:- pragma foreign_proc("Java", unify_ft_T(X::in, Y::in), [promise_pure], "
+	succeeded = X.equals(Y);
 ").
 :- pragma foreign_proc("Erlang", unify_ft_T(X::in, Y::in), [promise_pure], "
 	SUCCESS_INDICATOR = (X =:= Y)

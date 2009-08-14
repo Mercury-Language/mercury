@@ -80,12 +80,7 @@ endif	# $(MMAKE_USE_MMC_MAKE) == no
 # can be found by `mmc --make'.
 include Mercury.options
 
-# We currently don't do any testing in grade java on this directory.
-ifneq "$(findstring java,$(GRADE))" ""
-	PROGS=
-else
-	PROGS=$(TERM_PROGS)
-endif
+PROGS=$(TERM_PROGS)
 
 #-----------------------------------------------------------------------------#
 

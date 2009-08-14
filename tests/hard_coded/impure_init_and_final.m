@@ -22,6 +22,12 @@ main(!IO) :- io.write_string("This is main...\n", !IO).
 "
 	puts(S);
 ").
+:- pragma foreign_proc("Java",
+	puts(S::in),
+	[will_not_call_mercury],
+"
+	System.out.println(S);
+").
 :- pragma foreign_proc("Erlang",
 	puts(S::in),
 	[will_not_call_mercury],

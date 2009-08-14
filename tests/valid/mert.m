@@ -41,11 +41,13 @@
 :- type c_candidate. % C-implemented, represents one sentence
 :- pragma foreign_type("C", c_candidate, "void *",
     [stable, can_pass_as_mercury_type]).
+:- pragma foreign_type("Java", c_candidate, "Object").
 :- pragma foreign_type("Erlang", c_candidate, "").
 
 :- type data. % C-implemented, represents the whole nbestlist
 :- pragma foreign_type("C", data, "void *",
     [stable, can_pass_as_mercury_type]).
+:- pragma foreign_type("Java", data, "Object").
 :- pragma foreign_type("Erlang", data, "").
 
 :- type feats == list(float). % score breakdown
@@ -61,6 +63,13 @@ new_c_candidate(F, C) = new_c_candidate(length(F), F, length(C), C).
 new_c_candidate(NFeats::in, Feats::in, NComps::in, Comps::in) = (C::uo),
   [promise_pure, will_not_call_mercury, thread_safe], "
   /* NFeats, Feats, NComps, Comps, C */
+").
+
+:- pragma foreign_proc("Java",
+new_c_candidate(NFeats::in, Feats::in, NComps::in, Comps::in) = (C::uo),
+  [promise_pure, will_not_call_mercury, thread_safe], "
+  /* NFeats, Feats, NComps, Comps, C */
+  C = null;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -90,6 +99,12 @@ new_c_data(NSents::in, CandsPerSent::in, TotNCands::in, AllCands::in) = (D::uo),
   [promise_pure, will_not_call_mercury, thread_safe], "
   /* NSents, CandsPerSent, TotNCands, AllCands */
 ").
+:- pragma foreign_proc("Java",
+new_c_data(NSents::in, CandsPerSent::in, TotNCands::in, AllCands::in) = (D::uo),
+  [promise_pure, will_not_call_mercury, thread_safe], "
+  /* NSents, CandsPerSent, TotNCands, AllCands */
+  D = null;
+").
 :- pragma foreign_proc("Erlang",
 new_c_data(NSents::in, CandsPerSent::in, TotNCands::in, AllCands::in) = (D::uo),
   [promise_pure, will_not_call_mercury, thread_safe], "
@@ -100,6 +115,7 @@ new_c_data(NSents::in, CandsPerSent::in, TotNCands::in, AllCands::in) = (D::uo),
 :- type point. % C-implemented, represents the whole nbestlist
 :- pragma foreign_type("C", point, "void *",
     [stable, can_pass_as_mercury_type]).
+:- pragma foreign_type("Java", point, "Object").
 :- pragma foreign_type("Erlang", point, "").
 
 optimize(NBL, Rand, InW) = OutW :-
@@ -128,6 +144,12 @@ optimize_random(Data::in, BestSoFar::in, Min::in, Max::in, Iter::in) = (Out::out
   [promise_pure, will_not_call_mercury, thread_safe], "
   /* Data, BestSoFar, Min, Max, Iter */
 ").
+:- pragma foreign_proc("Java",
+optimize_random(Data::in, BestSoFar::in, Min::in, Max::in, Iter::in) = (Out::out),
+  [promise_pure, will_not_call_mercury, thread_safe], "
+  /* Data, BestSoFar, Min, Max, Iter */
+  Out = null;
+").
 :- pragma foreign_proc("Erlang",
 optimize_random(Data::in, BestSoFar::in, Min::in, Max::in, Iter::in) = (Out::out),
   [promise_pure, will_not_call_mercury, thread_safe], "
@@ -142,6 +164,12 @@ optimize_random(Data::in, BestSoFar::in, Min::in, Max::in, Iter::in) = (Out::out
 optimize_koehn(Data::in, In::in) = (Out::out),
   [promise_pure, will_not_call_mercury, thread_safe], "
   /* Data, In, Out */
+").
+:- pragma foreign_proc("Java",
+optimize_koehn(Data::in, In::in) = (Out::out),
+  [promise_pure, will_not_call_mercury, thread_safe], "
+  /* Data, In, Out */
+  Out = null;
 ").
 :- pragma foreign_proc("Erlang",
 optimize_koehn(Data::in, In::in) = (Out::out),
@@ -161,6 +189,12 @@ construct_point(List::in) = (Point::out),
   [promise_pure, will_not_call_mercury, thread_safe], "
   /* List, Point */
 ").
+:- pragma foreign_proc("Java",
+construct_point(List::in) = (Point::out),
+  [promise_pure, will_not_call_mercury, thread_safe], "
+  /* List, Point */
+  Point = null;
+").
 :- pragma foreign_proc("Erlang",
 construct_point(List::in) = (Point::out),
   [promise_pure, will_not_call_mercury, thread_safe], "
@@ -171,6 +205,13 @@ construct_point(List::in) = (Point::out),
 deconstruct_point(Point::in) = (List::out),
   [promise_pure, will_not_call_mercury, thread_safe], "
   /* Point, List */
+").
+
+:- pragma foreign_proc("Java",
+deconstruct_point(Point::in) = (List::out),
+  [promise_pure, will_not_call_mercury, thread_safe], "
+  /* Point, List */
+  List = null;
 ").
 
 :- pragma foreign_proc("Erlang",

@@ -342,6 +342,7 @@ ifeq "$(filter il% java% erlang%,$(GRADE))" ""
 		any_free_unify \
 		solver_build_call \
 		solver_construction_init_test \
+		solver_default_eq_cmp \
 		solver_disj_inits \
 		solver_ite_inits
 else
@@ -356,16 +357,16 @@ else
 		mutable_decl
 endif
 
-# Mutables work properly only in C grades and Erlang grades.
-ifeq "$(filter il% java%,$(GRADE))" ""
+# Mutables don't work in IL grades.
+ifeq "$(filter il%,$(GRADE))" ""
 	MUTABLE_PROGS = \
 		float_gv
 else
 	MUTABLE_PROGS =
 endif
 
-# Trace goal with runtime conditions work properly only in C and Erlang grades.
-ifeq "$(filter il% java%,$(GRADE))" ""
+# Trace goal with runtime conditions don't work in IL grades.
+ifeq "$(filter il%,$(GRADE))" ""
 	TRACE_GOAL_ENV_PROGS = \
 		trace_goal_env_1 \
 		trace_goal_env_2 \
@@ -552,7 +553,6 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		mutable_excp \
 		null_char \
 		io_globals_deadlock \
-		solver_default_eq_cmp \
 		test_array2d \
 		test_injection \
 		tl_backjump_test \
@@ -660,18 +660,14 @@ ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
 endif
 
 # We currently test only a limited selection in grade java on this directory.
-ifneq "$(findstring java,$(GRADE))" ""
-	PROGS = $(JAVA_PROGS) $(JAVA_PASS_PROGS)
-else
-	PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
-		$(CLOSURE_LAYOUT_PROGS) $(NON_PROFDEEP_PROGS) \
-		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
-		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
-		$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
-		$(DOTNET_PROGS) $(JAVA_PROGS) $(SOLVER_PROGS) \
-		$(TRAILED_PROGS) $(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS) \
-		$(CTGC_PROGS) $(BIG_DATA_PROGS)
-endif
+PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
+	$(CLOSURE_LAYOUT_PROGS) $(NON_PROFDEEP_PROGS) \
+	$(BACKEND_PROGS) $(NONDET_C_PROGS) \
+	$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
+	$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
+	$(DOTNET_PROGS) $(JAVA_PROGS) $(SOLVER_PROGS) \
+	$(TRAILED_PROGS) $(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS) \
+	$(CTGC_PROGS) $(BIG_DATA_PROGS)
 
 #-----------------------------------------------------------------------------#
 

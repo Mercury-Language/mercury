@@ -38,6 +38,6 @@ det_insert_fcl(Map0, Ks, Vs, Map) :-
 
 :- pred det_insert(map(K,V), K, V, map(K,V)).
 :- mode det_insert(in, in, in, out) is det.
+:- pragma no_inline(det_insert/4).
 
-:- external(det_insert/4).
-:- pragma foreign_code("Erlang", "det_insert_4_p_0(_, _, _, _, _) -> void.").
+det_insert(M, _, _, M).

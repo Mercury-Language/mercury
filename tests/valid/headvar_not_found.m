@@ -16,8 +16,9 @@
 :- type module_info ---> module_info(int, int).
 
 :- pred mode_is_input(module_info::in, (mode)::in) is semidet.
-:- external(mode_is_input/2).
-:- pragma foreign_code("Erlang", "mode_is_input_2_p_0(_, _) -> void.").
+
+mode_is_input(_, _) :-
+        semidet_true.
 
 % succeed iff all the inputs in the list of modes precede the outputs
 

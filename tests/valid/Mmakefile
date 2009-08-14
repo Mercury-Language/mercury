@@ -333,11 +333,10 @@ CONSTRAINT_TYPECHECK_PROGS = \
 ifeq "$(findstring hl,$(GRADE))$(findstring .agc,$(GRADE))" "hl"
 	PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 else
-	# The agc.* tests don't work in the il grades, as the CLR has
-	# its own builtin GC.
+	# The agc.* tests don't work in the il, java or erlang grades.
 	# The agc.* tests also don't work in minimal model grades,
 	# because the collector doesn't scan the copied areas of the stacks.
-	ifneq "$(findstring il,$(GRADE))$(findstring mm,$(GRADE))" ""
+    	ifneq "$(filter java% il% erlang%,$(GRADE))$(findstring mm,$(GRADE))" ""
 		PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 	else
 		PROGS0 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)
@@ -368,12 +367,7 @@ else
 endif
 
 ifneq "$(filter java% il% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
-	# We currently don't do any testing in grade java on this directory.
-	ifneq "$(findstring java,$(GRADE))" ""
-		PROGS3 =
-	else
-		PROGS3 = $(PROGS2)
-	endif
+	PROGS3 = $(PROGS2)
 else
 	PROGS3 = $(PROGS2) $(TABLE_PROGS)
 endif
@@ -414,10 +408,12 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 OS_SUBDIR=
 ILS_SUBDIR=
 DLLS_SUBDIR=
+CLASSES_SUBDIR=
 else
 OS_SUBDIR=$(os_subdir)
 ILS_SUBDIR=$(ils_subdir)
 DLLS_SUBDIR=$(dlls_subdir)
+CLASSES_SUBDIR=$(classes_subdir)
 endif
 
 
@@ -430,8 +426,13 @@ ifeq ($(findstring erlang,$(GRADE)),erlang)
 	# Erlang backend currently requires `mmc --make'.
 	TARGET_OBJ_SUBDIR=
 else
+ifeq ($(findstring java,$(GRADE)),java)
+	TARGET_OBJ_EXT=class
+	TARGET_OBJ_SUBDIR=$(CLASSES_SUBDIR)
+else
 	TARGET_OBJ_EXT=$(O)
 	TARGET_OBJ_SUBDIR=$(OS_SUBDIR)
+endif
 endif
 endif
 OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \

@@ -43,21 +43,39 @@ public struct coord {
 }
 ").
 
+:- pragma foreign_decl("Java", "
+enum dirs {
+	north,
+	east,
+	west,
+	south
+}
+
+class coord {
+	public int x;
+	public int y;
+}
+").
+
+
 :- type dir.
 :- pragma foreign_type(c, dir, "dirs").
 :- pragma foreign_type(il, dir,
 		"valuetype [foreign_type3__csharp_code]dirs").
+:- pragma foreign_type(java, dir, "dirs").
 :- pragma foreign_type(erlang, dir, "").
 
 :- type coord.
 :- pragma foreign_type(c, coord, "coord").
 :- pragma foreign_type(il, coord,
 		"valuetype [foreign_type3__csharp_code]coord").
+:- pragma foreign_type(java, coord, "coord").
 :- pragma foreign_type(erlang, coord, "").
 
 :- type double.
 :- pragma foreign_type(c, double, "double").
 :- pragma foreign_type(il, double, "valuetype [mscorlib]System.Double").
+:- pragma foreign_type(java, double, "Double").
 :- pragma foreign_type(erlang, double, "").
 
 :- func north = dir.
@@ -66,6 +84,10 @@ public struct coord {
 	E = north;
 ").
 :- pragma foreign_proc("C#", north = (E::out),
+		[will_not_call_mercury, promise_pure], "
+	E = dirs.north;
+").
+:- pragma foreign_proc("Java", north = (E::out),
 		[will_not_call_mercury, promise_pure], "
 	E = dirs.north;
 ").
@@ -85,6 +107,12 @@ public struct coord {
 	C.x = X;
 	C.y = Y;
 ").
+:- pragma foreign_proc("Java", new(X::in, Y::in) = (C::out),
+		[will_not_call_mercury, promise_pure], "
+        C = new coord();
+	C.x = X;
+	C.y = Y;
+").
 :- pragma foreign_proc("Erlang", new(X::in, Y::in) = (C::out),
 		[will_not_call_mercury, promise_pure], "
 	C = {X, Y}
@@ -96,6 +124,10 @@ public struct coord {
 	Pi = 3.14;
 ").
 :- pragma foreign_proc("C#", pi = (Pi::out),
+		[will_not_call_mercury, promise_pure], "
+	Pi = 3.14;
+").
+:- pragma foreign_proc("Java", pi = (Pi::out),
 		[will_not_call_mercury, promise_pure], "
 	Pi = 3.14;
 ").

@@ -47,6 +47,13 @@ beta(_E, V, _R0, R) :- R = gamma(V).
 "
 	/* V F */
 ").
+:- pragma foreign_proc("Java",
+	gamma(V::in) = (F::out),
+	[will_not_call_mercury, promise_pure],
+"
+	/* V */
+	F = null;
+").
 :- pragma foreign_proc("Erlang",
 	gamma(V::in) = (F::out),
 	[will_not_call_mercury, promise_pure],

@@ -249,6 +249,8 @@ set(Vec0, Ind, V, Vec) :-
 ").
 :- pragma foreign_proc("C#", rfloat(I::in) = (F::out),
 		[promise_pure], "F = I;").
+:- pragma foreign_proc("Java", rfloat(I::in) = (F::out),
+		[promise_pure], "F = I;").
 :- pragma foreign_proc("Erlang", rfloat(I::in) = (F::out),
 		[promise_pure], "F = float(I)").
 
@@ -260,6 +262,8 @@ set(Vec0, Ind, V, Vec) :-
 	I = F;
 ").
 :- pragma foreign_proc("C#", rint(F::in) = (I::out),
+		[promise_pure], "I = (int) F;").
+:- pragma foreign_proc("Java", rint(F::in) = (I::out),
 		[promise_pure], "I = (int) F;").
 :- pragma foreign_proc("Erlang", rint(F::in) = (I::out),
 		[promise_pure], "I = trunc(F)").

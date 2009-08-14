@@ -19,12 +19,19 @@
 
 :- type coord.
 :- pragma foreign_type(c, coord, "coord *").
+:- pragma foreign_type("Java", coord, "Coord").
 :- pragma foreign_type("Erlang", coord, "").
 
 :- pragma foreign_decl(c, "
 typedef struct {
     int x, y;
 } coord;
+").
+
+:- pragma foreign_decl("Java", "
+class Coord {
+    public int x, y;
+}
 ").
 
 :- func new_coord(int, int) = coord.
@@ -53,6 +60,29 @@ typedef struct {
     [will_not_call_mercury, promise_pure],
 "
     Y = C->y;
+").
+
+:- pragma foreign_proc("Java",
+    new_coord(X::in, Y::in) = (C::out),
+    [will_not_call_mercury, promise_pure],
+"
+    C = new Coord();
+    C.x = X;
+    C.y = Y;
+").
+
+:- pragma foreign_proc("Java",
+    x(C::in) = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = C.x;
+").
+
+:- pragma foreign_proc("Java",
+    y(C::in) = (Y::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Y = C.y;
 ").
 
 :- pragma foreign_proc("Erlang",

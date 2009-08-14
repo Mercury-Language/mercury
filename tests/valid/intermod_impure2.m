@@ -29,6 +29,13 @@ intermod_impure(Int) :-
 	ldc.i4 2
 	stloc Int
 ").
+:- pragma foreign_proc("Java",
+	intermod_impure_2(Int::out), 
+	[will_not_call_mercury],
+"
+	System.out.println(""Output from impure predicate\\n"");
+	Int = 2;
+").
 :- pragma foreign_proc("Erlang",
 	intermod_impure_2(Int::out), 
 	[will_not_call_mercury],

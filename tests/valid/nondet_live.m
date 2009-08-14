@@ -59,12 +59,15 @@ a3(X, _, Y) :-
 :- pred c(int::in, int::out) is nondet.
 :- pred d(int::in, int::out) is nondet.
 
-:- external(b/2).
-:- external(c/2).
-:- external(d/2).
+:- pragma no_inline(b/2).
+:- pragma no_inline(c/2).
+:- pragma no_inline(d/2).
 
-:- pragma foreign_code("Erlang", "
-b_2_p_0(_, _) -> void.
-c_2_p_0(_, _) -> void.
-d_2_p_0(_, _) -> void.
-").
+b(X, X) :- semidet_true.
+b(X, X) :- semidet_true.
+
+c(X, X) :- semidet_true.
+c(X, X) :- semidet_true.
+
+d(X, X) :- semidet_true.
+d(X, X) :- semidet_true.
