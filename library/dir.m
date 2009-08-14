@@ -872,6 +872,20 @@ dir.relative_path_name_from_components(Components) = PathName :-
     IO = IO0;
 ").
 
+:- pragma foreign_proc("Java",
+    dir.current_directory(Res::out, _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        may_not_duplicate],
+"
+    java.io.File dir = new java.io.File(""."");
+    try {
+        Res = io.ML_make_io_res_1_ok_string(dir.getCanonicalPath());
+    } catch (Exception e) {
+        Res = io.ML_make_io_res_1_error_string(e,
+            ""dir.current_directory failed: "");
+    }
+").
+
 :- pragma foreign_proc("Erlang",
     dir.current_directory(Res::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],

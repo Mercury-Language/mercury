@@ -1236,7 +1236,11 @@ string.c_pointer_to_string(C_Pointer, Str) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     /* Within the spirit of the function, at least. */
-    Str = C_Pointer.toString();
+    if (C_Pointer == null) {
+        Str = ""null"";
+    } else {
+        Str = C_Pointer.toString();
+    }
 ").
 
 string.int_to_string_thousands(N) =

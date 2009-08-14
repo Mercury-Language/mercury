@@ -28,6 +28,14 @@ main(!IO) :-
 	IO = IO0;
 ").
 
+:- pragma foreign_proc("Java",
+	call_foreign(IO0::di, IO::uo),
+	[may_call_mercury, promise_pure],
+"
+	WRITE_HELLO();
+	IO = IO0;
+").
+
 :- pragma foreign_proc("Erlang",
 	call_foreign(_IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure],
@@ -36,6 +44,7 @@ main(!IO) :-
 ").
 
 :- pragma foreign_export("C", write_hello(di, uo), "WRITE_HELLO").
+:- pragma foreign_export("Java", write_hello(di, uo), "WRITE_HELLO").
 :- pragma foreign_export("Erlang", write_hello(di, uo), "WRITE_HELLO").
 :- pred write_hello(io::di, io::uo) is det.
 write_hello(!IO) :-

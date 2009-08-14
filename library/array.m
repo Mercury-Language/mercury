@@ -626,22 +626,55 @@ ML_init_array(MR_ArrayPtr array, MR_Integer size, MR_Word item)
 ").
 
 :- pragma foreign_code("Java", "
-static Object
-ML_new_array(int Size, Object Item)
+public static Object
+ML_new_array(int Size, Object Item, boolean fill)
 {
+    if (Size == 0) {
+        return null;
+    }
     if (Item instanceof Integer) {
-        return new int[Size];
+        int[] as = new int[Size];
+        if (fill) {
+            java.util.Arrays.fill(as, (Integer) Item);
+        }
+        return as;
     }
     if (Item instanceof Double) {
-        return new double[Size];
+        double[] as = new double[Size];
+        if (fill) {
+            java.util.Arrays.fill(as, (Double) Item);
+        }
+        return as;
     }
     if (Item instanceof Character) {
-        return new char[Size];
+        char[] as = new char[Size];
+        if (fill) {
+            java.util.Arrays.fill(as, (Character) Item);
+        }
+        return as;
     }
     if (Item instanceof Boolean) {
-        return new boolean[Size];
+        boolean[] as = new boolean[Size];
+        if (fill) {
+            java.util.Arrays.fill(as, (Boolean) Item);
+        }
+        return as;
     }
-    return new Object[Size];
+    Object[] as = new Object[Size];
+    if (fill) {
+        java.util.Arrays.fill(as, Item);
+    }
+    return as;
+}
+
+public static int
+ML_array_size(Object Array)
+{
+    if (Array == null) {
+        return 0;
+    } else {
+        return java.lang.reflect.Array.getLength(Array);
+    }
 }
 ").
 
@@ -716,10 +749,7 @@ array.init(Size, Item, Array) :-
     array.init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Array = ML_new_array(Size, Item);
-    for (int i = 0; i < Size; i++) {
-        java.lang.reflect.Array.set(Array, i, Item);
-    }
+    Array = array.ML_new_array(Size, Item, true);
 ").
 :- pragma foreign_proc("Java",
     array.make_empty_array(Array::array_uo),
@@ -793,7 +823,7 @@ array.init(Size, Item, Array) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array != null) {
-        Max = java.lang.reflect.Array.getLength(Array) - 1;
+        Max = array.ML_array_size(Array) - 1;
     } else {
         Max = -1;
     }
@@ -1078,22 +1108,16 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
     if (Size == 0) {
         Array = null;
     } else if (Array0 == null) {
-        Array = ML_new_array(Size, Item);
-        for (int i = 0; i < Size; i++) {
-            java.lang.reflect.Array.set(Array, i, Item);
-        }
-    } else if (java.lang.reflect.Array.getLength(Array0) == Size) {
+        Array = array.ML_new_array(Size, Item, true);
+    } else if (array.ML_array_size(Array0) == Size) {
         Array = Array0;
     } else {
-        Array = ML_new_array(Size, Item);
+        Array = array.ML_new_array(Size, Item, false);
 
         int i;
-        for (i = 0; i < java.lang.reflect.Array.getLength(Array0) &&
-                i < Size; i++)
-        {
+        for (i = 0; i < array.ML_array_size(Array0) && i < Size; i++) {
             java.lang.reflect.Array.set(Array, i,
-                    java.lang.reflect.Array.get(Array0, i)
-                    );
+                java.lang.reflect.Array.get(Array0, i));
         }
         for (/*i = Array0.length*/; i < Size; i++) {
             java.lang.reflect.Array.set(Array, i, Item);
@@ -1183,14 +1207,20 @@ array.shrink(Array0, Size, Array) :-
 "
     if (Array0 == null) {
         Array = null;
+    } else if (Array0 instanceof int[]) {
+        Array = new int[Size];
+    } else if (Array0 instanceof double[]) {
+        Array = new double[Size];
+    } else if (Array0 instanceof char[]) {
+        Array = new char[Size];
+    } else if (Array0 instanceof boolean[]) {
+        Array = new boolean[Size];
     } else {
-        java.lang.Class itemClass =
-            java.lang.reflect.Array.get(Array0, 0).getClass();
-        Array = java.lang.reflect.Array.newInstance(itemClass, Size);
-        for (int i = 0; i < Size; i++) {
-            java.lang.reflect.Array.set(Array, i,
-                java.lang.reflect.Array.get(Array0, i));
-        }
+        Array = new Object[Size];
+    }
+
+    if (Array != null) {
+        System.arraycopy(Array0, 0, Array, 0, Size);
     }
 ").
 
@@ -1259,17 +1289,30 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
     array.copy(Array0::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
+    int Size;
+
     if (Array0 == null) {
         Array = null;
+        Size = 0;
+    } else if (Array0 instanceof int[]) {
+        Size = ((int[]) Array0).length;
+        Array = new int[Size];
+    } else if (Array0 instanceof double[]) {
+        Size = ((double[]) Array0).length;
+        Array = new double[Size];
+    } else if (Array0 instanceof char[]) {
+        Size = ((double[]) Array0).length;
+        Array = new char[Size];
+    } else if (Array0 instanceof boolean[]) {
+        Size = ((boolean[]) Array0).length;
+        Array = new boolean[Size];
     } else {
-        java.lang.Class itemClass =
-            java.lang.reflect.Array.get(Array0, 0).getClass();
-        int length = java.lang.reflect.Array.getLength(Array0);
-        Array = java.lang.reflect.Array.newInstance(itemClass, length);
-        for (int i = 0; i < length; i++) {
-            java.lang.reflect.Array.set(Array, i,
-                java.lang.reflect.Array.get(Array0, i));
-        }
+        Size = ((boolean[]) Array0).length;
+        Array = new Object[Size];
+    }
+
+    if (Array != null) {
+        System.arraycopy(Array0, 0, Array, 0, Size);
     }
 ").
 

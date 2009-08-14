@@ -909,7 +909,7 @@ compare_type_infos(Res, TypeInfo1, TypeInfo2) :-
         ( same_pointer_value(NewTypeInfo1, NewTypeInfo2) ->
             Res = (=)
         ;
-            compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2)
+            compare_collapsed_type_infos(Res, NewTypeInfo1, NewTypeInfo2)
         )
     ).
 
@@ -1605,7 +1605,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         NewTypeInfo = collapse_equivalences(TypeInfo),
         NewTypeCtorInfo = get_type_ctor_info(NewTypeInfo),
         NewTypeCtorRep = get_type_ctor_rep(NewTypeCtorInfo),
-        deconstruct_2(Term, TypeInfo, NewTypeCtorInfo, NewTypeCtorRep,
+        deconstruct_2(Term, NewTypeInfo, NewTypeCtorInfo, NewTypeCtorRep,
             NonCanon, Functor, Arity, Arguments)
     ;
         % XXX noncanonical term
