@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,6 +26,10 @@
     % the performance of a program. It has the side-effect of reporting
     % some memory and time usage statistics about the time period since
     % the last call to report_stats to stderr.
+    %
+    % Note: in Java, this reports usage of the calling thread.  You will get
+    % nonsensical results if the previous call to `report_stats' was from a
+    % different thread.
     %
     % Note: in Erlang, the benchmark_* procedures will change the apparent time
     % of the last call to report_stats.
@@ -684,26 +688,45 @@ ML_memory_profile_compare_final(const void *i1, const void *i2)
 
 :- pragma foreign_code("Java",
 "
-private static int time_at_start    = 0;
-private static int time_at_last_stat    = 0;
+private static int user_time_at_start = 0;
+private static int user_time_at_last_stat = 0;
+private static long real_time_at_start;
+private static long real_time_at_last_stat;
 
-static {
-    if (jmercury.runtime.Native.isAvailable()) {
-        time_at_start = jmercury.runtime.Native.get_user_cpu_milliseconds();
-        time_at_last_stat = time_at_start;
-    }
+public static void
+ML_initialise()
+{
+    /*
+    ** Class initialisation may be delayed so main() must explicitly initialise
+    ** these variables at startup, otherwise the first call to `report_stats'
+    ** will show the wrong elapsed time.
+    */
+    real_time_at_start = System.currentTimeMillis();
+    real_time_at_last_stat = real_time_at_start;
 }
 
 private static void
-ML_report_stats() {
-    int time_at_prev_stat = time_at_last_stat;
-    time_at_last_stat = get_user_cpu_milliseconds_1_p_0();
+ML_report_stats()
+{
+    int user_time_at_prev_stat = user_time_at_last_stat;
+    user_time_at_last_stat = ML_get_user_cpu_milliseconds();
 
-    System.err.print(""[Time: "" +
-        ((time_at_last_stat - time_at_prev_stat) / 1000.0) +
-        "", "" +
-        ((time_at_last_stat - time_at_start) / 1000.0)
-        );
+    long real_time_at_prev_stat = real_time_at_last_stat;
+    real_time_at_last_stat = System.currentTimeMillis();
+
+    System.err.print(
+        ""[User time: +"" +
+        ((user_time_at_last_stat - user_time_at_prev_stat) / 1000.0) +
+        ""s, "" +
+        ((user_time_at_last_stat - user_time_at_start) / 1000.0) +
+        ""s"");
+
+    System.err.print(
+        "" Real time: +"" +
+        ((real_time_at_last_stat - real_time_at_prev_stat) / 1000.0) +
+        ""s, "" +
+        ((real_time_at_last_stat - real_time_at_start) / 1000.0) +
+        ""s"");
 
     /*
     ** XXX At this point there should be a whole bunch of memory usage
@@ -715,7 +738,8 @@ ML_report_stats() {
 }
 
 private static void
-ML_report_full_memory_stats() {
+ML_report_full_memory_stats()
+{
     /*
     ** XXX The support for this predicate is even worse.  Since we don't have
     ** access to memory usage statistics, all you get here is an apology.
@@ -849,6 +873,9 @@ repeat(N) :-
 
 :- impure pred get_user_cpu_milliseconds(int::out) is det.
 
+:- pragma foreign_export("Java", get_user_cpu_milliseconds(out),
+    "ML_get_user_cpu_milliseconds").
+
 :- pragma foreign_proc("C",
     get_user_cpu_milliseconds(Time::out),
     [will_not_call_mercury],
@@ -870,14 +897,19 @@ repeat(N) :-
 
 :- pragma foreign_proc("Java",
     get_user_cpu_milliseconds(Time::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, may_not_duplicate],
 "
-    if (jmercury.runtime.Native.isAvailable()) {
-        Time = jmercury.runtime.Native.get_user_cpu_milliseconds();
-    } else {
-        throw new java.lang.RuntimeException(
-            ""get_user_cpu_milliseconds is not implemented in pure Java."" +
-            ""Native dynamic link library is required."");
+    try {
+        java.lang.management.ThreadMXBean bean =
+            java.lang.management.ManagementFactory.getThreadMXBean();
+        long nsecs = bean.getCurrentThreadUserTime();
+        if (nsecs == -1) {
+            Time = -1;
+        } else {
+            Time = (int) (nsecs / 1000000L);
+        }
+    } catch (java.lang.UnsupportedOperationException e) {
+        Time = -1;
     }
 ").
 

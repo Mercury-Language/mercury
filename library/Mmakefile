@@ -284,10 +284,11 @@ jars:	classes
 	$(RM) $(STD_LIB_NAME).classes
 	$(JAR) $(JAR_CREATE_FLAGS) $(RT_LIB_NAME).jar jmercury/runtime/*.class
 	$(JAR) i $(RT_LIB_NAME).jar
-	-+cd jmercury/runtime && mmake $(NATIVE_SO)
-	-cp jmercury/runtime/$(NATIVE_SO) .
+	# -+cd jmercury/runtime && mmake $(NATIVE_SO)
+	# -cp jmercury/runtime/$(NATIVE_SO) .
 
-# This shared object is needed to run some of the standard library methods.
+# This shared object was used to implement some standard library methods,
+# but currently not.
 NATIVE_SO = Native.$(EXT_FOR_SHARED_LIB)
 
 #-----------------------------------------------------------------------------#
@@ -536,7 +537,7 @@ ifneq (,$(findstring java,$(GRADE)))
 install_library: jars
 	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
 	cp $(JARS) $(INSTALL_JAVA_LIBRARY_DIR)
-	-cp $(NATIVE_SO) $(INSTALL_JAVA_LIBRARY_DIR)
+	# -cp $(NATIVE_SO) $(INSTALL_JAVA_LIBRARY_DIR)
 
 else
 

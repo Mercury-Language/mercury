@@ -15,14 +15,14 @@
  * Method:    clock
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clock(JNIEnv *, jclass);
+JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_clock(JNIEnv *, jclass);
 
 /*
  * Class:     Native
  * Method:    clocks_per_sec
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clocks_1per_1sec(
+JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_clocks_1per_1sec(
 		JNIEnv *, jclass);
 
 /*
@@ -30,7 +30,7 @@ JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clocks_1per_1sec(
  * Method:    times
  * Signature: ()[I
  */
-JNIEXPORT jintArray JNICALL Java_mercury_runtime_Native_times(
+JNIEXPORT jintArray JNICALL Java_jmercury_runtime_Native_times(
 		JNIEnv *, jclass);
 
 /*
@@ -38,14 +38,14 @@ JNIEXPORT jintArray JNICALL Java_mercury_runtime_Native_times(
  * Method:    clk_tck
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clk_1tck(JNIEnv *, jclass);
+JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_clk_1tck(JNIEnv *, jclass);
 
 /*
  * Class:     Native
  * Method:    get_user_cpu_milliseconds
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_mercury_runtime_Native_get_1user_1cpu_1milliseconds(
+JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_get_1user_1cpu_1milliseconds(
 		JNIEnv *, jclass);
 
 #include "mercury_imp.h"
@@ -63,17 +63,17 @@ JNIEXPORT jint JNICALL Java_mercury_runtime_Native_get_1user_1cpu_1milliseconds(
 #endif
 
 JNIEXPORT jint JNICALL
-Java_mercury_runtime_Native_clock(JNIEnv *env, jclass obj) {
+Java_jmercury_runtime_Native_clock(JNIEnv *env, jclass obj) {
 	return (MR_Integer) clock();
 }
 
 JNIEXPORT jint JNICALL
-Java_mercury_runtime_Native_clocks_1per_1sec(JNIEnv *env, jclass obj) {
+Java_jmercury_runtime_Native_clocks_1per_1sec(JNIEnv *env, jclass obj) {
 	return CLOCKS_PER_SEC;
 }
 
 JNIEXPORT jintArray JNICALL
-Java_mercury_runtime_Native_times(JNIEnv *env, jclass obj) {
+Java_jmercury_runtime_Native_times(JNIEnv *env, jclass obj) {
 	jint		intarray[5];
 	jintArray	result;
 
@@ -97,7 +97,7 @@ Java_mercury_runtime_Native_times(JNIEnv *env, jclass obj) {
 	return result;
 }
 
-JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clk_1tck(
+JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_clk_1tck(
 		JNIEnv *env, jclass obj)
 {
 #if defined(MR_CLOCK_TICKS_PER_SECOND)
@@ -108,7 +108,7 @@ JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clk_1tck(
 }
 
 JNIEXPORT jint JNICALL
-Java_mercury_runtime_Native_get_1user_1cpu_1milliseconds(
+Java_jmercury_runtime_Native_get_1user_1cpu_1milliseconds(
 		JNIEnv *env, jclass obj)
 {
 	return MR_get_user_cpu_milliseconds();

@@ -127,7 +127,11 @@ A. The following implementation features are not supported:
 	benchmarking.report_stats/0:
 	benchmarking.report_full_memory_stats/0:
 		Memory usage statistics are not yet available, and cpu time
-		is obtained via native code as per time.m.
+		is not the same as in the C backends, as per time.m.
+
+	io.set_environment_var/4:
+		The Java APIs do not allow setting environment variables hence
+		this predicate simply throws an exception.
 
 	store.arg_ref/5:
 	store.new_arg_ref/5:
@@ -139,9 +143,8 @@ A. The following implementation features are not supported:
 	time.times/7:
 	time.clk_tck/0:
 		Because the current Java APIs do not provide any way of
-		implementing these procedures in pure Java, we have implemented
-		them using a native code library implemented in C and accessed
-		via JNI.  This approach sacrifices some portability.
+		implementing these procedures exactly in pure Java, we have
+		approximated them with what is available.
 
    This list is probably not complete.
 

@@ -4,7 +4,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2007 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2007,2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -88,6 +88,8 @@
     % cannot be obtained, this procedure will throw a time_error exception.
     % To obtain a time in seconds, divide Result by `time.clocks_per_sec'.
     %
+    % On Java the elapsed time for the calling thread is returned.
+    %
 :- pred time.clock(clock_t::out, io::di, io::uo) is det.
 
     % time.clocks_per_sec:
@@ -124,7 +126,8 @@
     % On non-POSIX systems that do not support this functionality,
     % this procedure may simply always throw an exception.
     %
-    % Currently on Win32 the child part of 'tms' is always zero.
+    % On Java the times for the calling thread are returned.
+    % On Win32 and Java the child part of 'tms' is always zero.
     %
 :- pred time.times(tms::out, clock_t::out, io::di, io::uo) is det.
 
@@ -279,13 +282,14 @@ time.clock(Result, !IO) :-
     time.c_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    if (jmercury.runtime.Native.isAvailable()) {
-        Ret = jmercury.runtime.Native.clock();
+    java.lang.management.ThreadMXBean bean =
+        java.lang.management.ManagementFactory.getThreadMXBean();
+    long nsecs = bean.getCurrentThreadCpuTime();
+    if (nsecs == -1) {
+        Ret = -1;
     } else {
-        throw new java.lang.RuntimeException(
-            ""time.clock is not implemented "" +
-            ""in pure Java.  Native dynamic link "" +
-            ""library is required."");
+        /* This must match the definition of clocks_per_sec. */
+        Ret = (int) (nsecs / 1000L);
     }
 ").
 
@@ -310,14 +314,8 @@ time.clock(Result, !IO) :-
     time.clocks_per_sec = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (jmercury.runtime.Native.isAvailable()) {
-        Ret = jmercury.runtime.Native.clocks_per_sec();
-    } else {
-        throw new java.lang.RuntimeException(
-            ""time.clocks_per_sec is not implemented "" +
-            ""in pure Java.  Native dynamic link "" +
-            ""library is required."");
-    }
+    /* Emulate the POSIX value. */
+    Ret = 1000000;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -390,27 +388,31 @@ time.times(Tms, Result, !IO) :-
 :- pragma foreign_proc("Java",
     time.c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
-    if (jmercury.runtime.Native.isAvailable()) {
-        int[] times = jmercury.runtime.Native.times();
-        if (times != null) {
-            Ret = times[0];
-            Ut  = times[1];
-            St  = times[2];
-            CUt = times[3];
-            CSt = times[4];
+    /* We can only keep the lower 31 bits of the timestamp. */
+    Ret = (int) (System.currentTimeMillis() & 0x7fffffff);
+
+    try {
+        java.lang.management.ThreadMXBean bean =
+            java.lang.management.ManagementFactory.getThreadMXBean();
+        long user_nsecs = bean.getCurrentThreadUserTime();
+        long cpu_nsecs = bean.getCurrentThreadCpuTime();
+        if (user_nsecs == -1 || cpu_nsecs == -1) {
+            Ut = -1;
+            St = -1;
         } else {
-            throw new java.lang.RuntimeException(
-                ""time_times failed to construct "" +
-                ""integer array"");
+            /* These units must match the definition of clk_tck. */
+            Ut = (int) (user_nsecs / 1000000L);
+            St = (int) ((cpu_nsecs - user_nsecs) / 1000000L);
         }
-    } else {
-        throw new java.lang.RuntimeException(
-            ""time.times is not implemented "" +
-            ""in pure Java.  Native dynamic link "" +
-            ""library is required."");
+    } catch (java.lang.UnsupportedOperationException e) {
+        Ut = -1;
+        St = -1;
     }
+
+    CUt = 0;
+    CSt = 0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -448,14 +450,11 @@ time.c_clk_tck = -1.   % default is to throw an exception.
     time.c_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (jmercury.runtime.Native.isAvailable()) {
-        Ret = jmercury.runtime.Native.clk_tck();
-    } else {
-        throw new java.lang.RuntimeException(
-            ""time.clk_tck is not implemented "" +
-            ""in pure Java.  Native dynamic link "" +
-            ""library is required."");
-    }
+    /*
+    ** We use System.currentTimeMillis() to return elapsed time so say that
+    ** there are 1000 clock ticks per second.
+    */
+    Ret = 1000;
 ").
 
 %-----------------------------------------------------------------------------%
