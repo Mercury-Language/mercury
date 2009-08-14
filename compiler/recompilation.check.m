@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,6 +17,7 @@
 :- interface.
 
 :- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.read_modules.
 
@@ -37,7 +38,7 @@
 :- inst find_timestamp_file_names ==
    (pred(in, out, di, uo) is det).
 
-    % should_recompile(ModuleName, FindTargetFiles,
+    % should_recompile(Globals, ModuleName, FindTargetFiles,
     %   FindTimestampFiles, ModulesToRecompile, ReadModules)
     %
     % Process the `.used'  files for the given module and all its
@@ -51,10 +52,11 @@
     % recompilation checking, returned to avoid rereading them
     % if recompilation is required.
     %
-:- pred should_recompile(module_name::in,
+:- pred should_recompile(globals::in, module_name::in,
     find_target_file_names::in(find_target_file_names),
     find_timestamp_file_names::in(find_timestamp_file_names),
-    modules_to_recompile::out, read_modules::out, io::di, io::uo) is det.
+    modules_to_recompile::out, have_read_module_map::out, io::di, io::uo)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -65,7 +67,6 @@
 :- import_module hlds.hlds_pred.    % for field_access_function_name,
                                     % type pred_id.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module parse_tree.error_util.
@@ -97,25 +98,27 @@
 
 %-----------------------------------------------------------------------------%
 
-should_recompile(ModuleName, FindTargetFiles, FindTimestampFiles,
-        Info ^ modules_to_recompile, Info ^ read_modules, !IO) :-
+should_recompile(Globals, ModuleName, FindTargetFiles, FindTimestampFiles,
+        Info ^ rci_modules_to_recompile, Info ^ rci_have_read_module_map,
+        !IO) :-
     globals.io_lookup_bool_option(find_all_recompilation_reasons,
         FindAll, !IO),
     Info0 = recompilation_check_info(ModuleName, no, [], map.init,
         init_item_id_set(map.init, map.init, map.init),
         set.init, some_modules([]), FindAll, []),
-    should_recompile_2(no, FindTargetFiles, FindTimestampFiles, ModuleName,
-        Info0, Info, !IO).
+    should_recompile_2(Globals, no, FindTargetFiles, FindTimestampFiles,
+        ModuleName, Info0, Info, !IO).
 
-:- pred should_recompile_2(bool::in,
+:- pred should_recompile_2(globals::in, bool::in,
     find_target_file_names::in(find_target_file_names),
-    find_timestamp_file_names::in(find_timestamp_file_names),
-    module_name::in, recompilation_check_info::in,
-    recompilation_check_info::out, io::di, io::uo) is det.
+    find_timestamp_file_names::in(find_timestamp_file_names), module_name::in,
+    recompilation_check_info::in, recompilation_check_info::out,
+    io::di, io::uo) is det.
 
-should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
+should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
         ModuleName, !Info, !IO) :-
-    !:Info = (!.Info ^ module_name := ModuleName) ^ sub_modules := [],
+    !Info ^ rci_module_name := ModuleName,
+    !Info ^ rci_sub_modules := [],
     module_name_to_file_name(ModuleName, ".used", do_not_create_dirs,
         UsageFileName, !IO),
     io.open_input(UsageFileName, MaybeVersionStream, !IO),
@@ -124,12 +127,12 @@ should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
         io.set_input_stream(VersionStream0, OldInputStream, !IO),
 
         promise_equivalent_solutions [Result, !:IO] (
-            should_recompile_3_try(IsSubModule, FindTimestampFiles,
-                !.Info, Result, !IO)
+            should_recompile_3_try(Globals, IsSubModule, FindTimestampFiles,
+            !.Info, Result, !IO)
         ),
         (
             Result = succeeded(!:Info),
-            Reasons = !.Info ^ recompilation_reasons
+            Reasons = !.Info ^ rci_recompilation_reasons
         ;
             Result = failed,
             unexpected(this_file, "should_recompile_2")
@@ -158,21 +161,22 @@ should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
         io.set_input_stream(OldInputStream, VersionStream, !IO),
         io.close_input(VersionStream, !IO),
 
-        ModulesToRecompile = !.Info ^ modules_to_recompile,
+        ModulesToRecompile = !.Info ^ rci_modules_to_recompile,
         (
             ModulesToRecompile = all_modules
         ;
             ModulesToRecompile = some_modules(_),
-            !:Info = !.Info ^ is_inline_sub_module := yes,
+            !Info ^ rci_is_inline_sub_module := yes,
             list.foldl2(
-                should_recompile_2(yes, FindTargetFiles, FindTimestampFiles),
-                !.Info ^ sub_modules, !Info, !IO)
+                should_recompile_2(Globals, yes, FindTargetFiles,
+                    FindTimestampFiles),
+                !.Info ^ rci_sub_modules, !Info, !IO)
         )
     ;
         MaybeVersionStream = error(_),
         write_recompilation_message(
             write_not_found_reasons_message(UsageFileName, ModuleName), !IO),
-        !:Info = !.Info ^ modules_to_recompile := all_modules
+        !Info ^ rci_modules_to_recompile := all_modules
     ).
 
 :- pred write_not_recompiling_message(module_name::in, io::di, io::uo) is det.
@@ -196,22 +200,23 @@ write_not_found_reasons_message(UsageFileName, ModuleName, !IO) :-
         [words("file"), quote(UsageFileName), words("not found."), nl]),
     write_recompile_reason(ModuleName, Reason, !IO).
 
-:- pred should_recompile_3_try(bool::in,
+:- pred should_recompile_3_try(globals::in, bool::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     recompilation_check_info::in,
     exception_result(recompilation_check_info)::out,
     io::di, io::uo) is cc_multi.
 
-should_recompile_3_try(IsSubModule, FindTargetFiles, Info, Result, !IO) :-
-    try_io(should_recompile_3(IsSubModule, FindTargetFiles, Info),
+should_recompile_3_try(Globals, IsSubModule, FindTargetFiles, Info,
+        Result, !IO) :-
+    try_io(should_recompile_3(Globals, IsSubModule, FindTargetFiles, Info),
         Result, !IO).
 
-:- pred should_recompile_3(bool::in,
+:- pred should_recompile_3(globals::in, bool::in,
     find_target_file_names::in(find_target_file_names),
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
+should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
     % WARNING: any exceptions thrown before the sub_modules field is set
     % in the recompilation_check_info must set the modules_to_recompile field
     % to `all', or else the nested sub-modules will not be checked
@@ -251,17 +256,18 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
     ;
         IsSubModule = no,
         % If the module has changed, recompile.
-        ModuleName = !.Info ^ module_name,
-        read_module_if_changed(ModuleName, ".m", "Reading module", do_search,
-            RecordedTimestamp, Items, Error, FileName, MaybeNewTimestamp, !IO),
+        ModuleName = !.Info ^ rci_module_name,
+        read_module_if_changed(Globals, ModuleName, ".m", "Reading module",
+            do_search, RecordedTimestamp, Items, Specs, Error, FileName,
+            MaybeNewTimestamp, !IO),
         (
             MaybeNewTimestamp = yes(NewTimestamp),
             NewTimestamp \= RecordedTimestamp
         ->
             record_read_file(ModuleName,
                 ModuleTimestamp ^ timestamp := NewTimestamp,
-                Items, Error, FileName, !Info),
-            !:Info = !.Info ^ modules_to_recompile := all_modules,
+                Items, Specs, Error, FileName, !Info),
+            !Info ^ rci_modules_to_recompile := all_modules,
             record_recompilation_reason(recompile_for_module_changed(FileName),
                 !Info)
         ;
@@ -269,11 +275,15 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
             ; MaybeNewTimestamp = no
             )
         ->
-            Reason = recompile_for_file_error(FileName,
-                [words("error reading file"), quote(FileName), suffix("."),
-                nl]),
+            % We are throwing away Specs, even though some of its elements
+            % could illuminate the cause of the problem. XXX Is this OK?
+            Pieces = [words("error reading file"), quote(FileName),
+                suffix("."), nl],
+            Reason = recompile_for_file_error(FileName, Pieces),
             throw_syntax_error(Reason, !.Info)
         ;
+            % We are throwing away Specs. Since it should be a repeat of the
+            % errors we saw when the file was first read in, this should be OK.
             true
         )
     ),
@@ -290,7 +300,7 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
             ),
             SubModuleTerms, SubModules)
     ->
-        !:Info = !.Info ^ sub_modules := SubModules
+        !Info ^ rci_sub_modules := SubModules
     ;
         Reason1 = recompile_for_syntax_error(get_term_context(SubModulesTerm),
             "error in sub_modules term"),
@@ -298,14 +308,14 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
     ),
 
     % Check whether the output files are present and up-to-date.
-    FindTargetFiles(!.Info ^ module_name, TargetFiles, !IO),
+    FindTargetFiles(!.Info ^ rci_module_name, TargetFiles, !IO),
     list.foldl2(require_recompilation_if_not_up_to_date(RecordedTimestamp),
         TargetFiles, !Info, !IO),
 
     % Read in the used items, used for checking for ambiguities with new items.
     read_term_check_for_error_or_eof(!.Info, "used items", UsedItemsTerm, !IO),
     parse_used_items(!.Info, UsedItemsTerm, UsedItems),
-    !:Info = !.Info ^ used_items := UsedItems,
+    !Info ^ rci_used_items := UsedItems,
 
     read_term_check_for_error_or_eof(!.Info, "used classes",
         UsedClassesTerm, !IO),
@@ -314,13 +324,13 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
             UsedClassTerms, _),
         list.map(parse_name_and_arity_to_used, UsedClassTerms, UsedClasses)
     ->
-        !:Info = !.Info ^ used_typeclasses := set.list_to_set(UsedClasses)
+        !Info ^ rci_used_typeclasses := set.list_to_set(UsedClasses)
     ;
         Reason3 = recompile_for_syntax_error(get_term_context(UsedClassesTerm),
             "error in used_typeclasses term"),
         throw_syntax_error(Reason3, !.Info)
     ),
-    check_imported_modules(!Info, !IO).
+    check_imported_modules(Globals, !Info, !IO).
 
 :- pred require_recompilation_if_not_up_to_date(timestamp::in, file_name::in,
     recompilation_check_info::in, recompilation_check_info::out,
@@ -614,18 +624,19 @@ parse_resolved_item_arity_matches(Info, ParseMatches, Term,
     % compilation has changed, and if so whether the items have changed
     % in a way which should cause a recompilation.
     %
-:- pred check_imported_modules(recompilation_check_info::in,
-    recompilation_check_info::out, io::di, io::uo) is det.
+:- pred check_imported_modules(globals::in,
+    recompilation_check_info::in, recompilation_check_info::out,
+    io::di, io::uo) is det.
 
-check_imported_modules(!Info, !IO) :-
+check_imported_modules(Globals, !Info, !IO) :-
     parser.read_term(TermResult, !IO),
     (
         TermResult = term(_, Term),
         ( Term = term.functor(term.atom("done"), [], _) ->
             true
         ;
-            check_imported_module(Term, !Info, !IO),
-            check_imported_modules(!Info, !IO)
+            check_imported_module(Globals, Term, !Info, !IO),
+            check_imported_modules(Globals, !Info, !IO)
         )
     ;
         TermResult = error(Message, Line),
@@ -645,11 +656,11 @@ check_imported_modules(!Info, !IO) :-
         throw_syntax_error(Reason, !.Info)
     ).
 
-:- pred check_imported_module(term::in,
+:- pred check_imported_module(globals::in, term::in,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-check_imported_module(Term, !Info, !IO) :-
+check_imported_module(Globals, Term, !Info, !IO) :-
     (
         Term = term.functor(term.atom("=>"),
             [TimestampTerm0, UsedItemsTerm0], _)
@@ -668,62 +679,73 @@ check_imported_module(Term, !Info, !IO) :-
     (
         % If we're checking a sub-module, don't re-read interface files
         % read for other modules checked during this compilation.
-        !.Info ^ is_inline_sub_module = yes,
-        find_read_module(!.Info ^ read_modules, ImportedModuleName, Suffix,
-            do_return_timestamp, ItemsPrime, MaybeNewTimestampPrime,
-            ErrorPrime, FileNamePrime)
+        !.Info ^ rci_is_inline_sub_module = yes,
+        find_read_module(!.Info ^ rci_have_read_module_map, ImportedModuleName,
+            Suffix, do_return_timestamp, ItemsPrime, SpecsPrime, ErrorPrime,
+            FileNamePrime, MaybeNewTimestampPrime)
     ->
         Items = ItemsPrime,
-        MaybeNewTimestamp = MaybeNewTimestampPrime,
+        Specs = SpecsPrime,
         Error = ErrorPrime,
         FileName = FileNamePrime,
+        MaybeNewTimestamp = MaybeNewTimestampPrime,
         Recorded = bool.yes
     ;
         Recorded = bool.no,
-        read_module_if_changed(ImportedModuleName, Suffix,
+        read_module_if_changed(Globals, ImportedModuleName, Suffix,
             "Reading interface file for module", do_search, RecordedTimestamp,
-            Items, Error, FileName, MaybeNewTimestamp, !IO)
+            Items, Specs, Error, FileName, MaybeNewTimestamp, !IO)
     ),
     (
-        MaybeNewTimestamp = yes(NewTimestamp),
-        NewTimestamp \= RecordedTimestamp,
-        Error = no_module_errors
-    ->
-        ( Recorded = no ->
-            record_read_file(ImportedModuleName,
-                ModuleTimestamp ^ timestamp := NewTimestamp,
-                Items, Error, FileName, !Info)
-        ;
-            true
-        ),
+        Error = no_module_errors,
         (
-            MaybeUsedItemsTerm = yes(UsedItemsTerm),
-            Items = [InterfaceItem, VersionNumberItem | OtherItems],
-            InterfaceItem = item_module_defn(InterfaceItemModuleDefn),
-            InterfaceItemModuleDefn =
-                item_module_defn_info(md_interface, _, _),
-            VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
-            VersionNumberItemModuleDefn =
-                item_module_defn_info(md_version_numbers(_, VersionNumbers),
-                _, _)
+            MaybeNewTimestamp = yes(NewTimestamp),
+            NewTimestamp \= RecordedTimestamp
         ->
-            check_module_used_items(ImportedModuleName, NeedQualifier,
-                RecordedTimestamp, UsedItemsTerm, VersionNumbers,
-                OtherItems, !Info)
+            (
+                Recorded = no,
+                record_read_file(ImportedModuleName,
+                    ModuleTimestamp ^ timestamp := NewTimestamp,
+                    Items, Specs, Error, FileName, !Info)
+            ;
+                Recorded = yes
+            ),
+            (
+                MaybeUsedItemsTerm = yes(UsedItemsTerm),
+                Items = [InterfaceItem, VersionNumberItem | OtherItems],
+                InterfaceItem = item_module_defn(InterfaceItemModuleDefn),
+                InterfaceItemModuleDefn =
+                    item_module_defn_info(md_interface, _, _),
+                VersionNumberItem =
+                    item_module_defn(VersionNumberItemModuleDefn),
+                VersionNumberItemModuleDefn =
+                    item_module_defn_info(
+                        md_version_numbers(_, VersionNumbers),
+                        _, _)
+            ->
+                check_module_used_items(ImportedModuleName, NeedQualifier,
+                    RecordedTimestamp, UsedItemsTerm, VersionNumbers,
+                    OtherItems, !Info)
+            ;
+                record_recompilation_reason(
+                    recompile_for_module_changed(FileName), !Info)
+            )
         ;
-            record_recompilation_reason(recompile_for_module_changed(FileName),
-                !Info)
+            % We are throwing away Specs. Since it should be a repeat of the
+            % errors we saw when the file was first read in, this should be OK.
+            true
         )
     ;
-        Error \= no_module_errors
-    ->
+        ( Error = some_module_errors
+        ; Error = fatal_module_errors
+        ),
+        % We are throwing away Specs, even though some of its elements
+        % could illuminate the cause of the problem. XXX Is this OK?
         throw_syntax_error(
             recompile_for_file_error(FileName,
                 [words("error reading file"), quote(FileName), suffix("."),
                 nl]),
             !.Info)
-    ;
-        true
     ).
 
 :- pred check_module_used_items(module_name::in, need_qualifier::in,
@@ -775,7 +797,7 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
     UsedInstances = set.sorted_list_to_set(
         map.sorted_keys(UsedInstanceVersionNumbers)),
 
-    UsedClasses = !.Info ^ used_typeclasses,
+    UsedClasses = !.Info ^ rci_used_typeclasses,
     set.difference(set.intersect(UsedClasses, ModuleInstances),
         UsedInstances, AddedInstances),
     ( [AddedInstance | _] = set.to_sorted_list(AddedInstances) ->
@@ -970,7 +992,7 @@ check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
             ItemType, SymName, Arity)
     ->
         NeedsCheck = yes,
-        UsedItems = !.Info ^ used_items,
+        UsedItems = !.Info ^ rci_used_items,
         UsedItemMap = extract_simple_item_set(UsedItems, ItemType),
         Name = unqualify_name(SymName),
         (
@@ -1039,7 +1061,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
                 ItemType, SymName, Arity)
         )
     ->
-        UsedItems = !.Info ^ used_items,
+        UsedItems = !.Info ^ rci_used_items,
         UsedItemMap = extract_pred_or_func_set(UsedItems, ItemType),
         Name = unqualify_name(SymName),
         ( map.search(UsedItemMap, Name, MatchingArityList) ->
@@ -1202,7 +1224,7 @@ check_field_ambiguities(NeedQualifier, ResolvedCtor,
 
 check_functor_ambiguities_by_name(NeedQualifier, Name, MatchArity,
         ResolvedCtor, !Info) :-
-    UsedItems = !.Info ^ used_items,
+    UsedItems = !.Info ^ rci_used_items,
     UnqualName = unqualify_name(Name),
     UsedCtors = UsedItems ^ functors,
     ( map.search(UsedCtors, UnqualName, UsedCtorAL) ->
@@ -1295,15 +1317,15 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
 
 :- type recompilation_check_info
     --->    recompilation_check_info(
-                module_name             :: module_name,
-                is_inline_sub_module    :: bool,
-                sub_modules             :: list(module_name),
-                read_modules            :: read_modules,
-                used_items              :: resolved_used_items,
-                used_typeclasses        :: set(item_name),
-                modules_to_recompile    :: modules_to_recompile,
-                collect_all_reasons     :: bool,
-                recompilation_reasons   :: list(recompile_reason)
+                rci_module_name             :: module_name,
+                rci_is_inline_sub_module    :: bool,
+                rci_sub_modules             :: list(module_name),
+                rci_have_read_module_map    :: have_read_module_map,
+                rci_used_items              :: resolved_used_items,
+                rci_used_typeclasses        :: set(item_name),
+                rci_modules_to_recompile    :: modules_to_recompile,
+                rci_collect_all_reasons     :: bool,
+                rci_recompilation_reasons   :: list(recompile_reason)
             ).
 
 :- type recompile_exception
@@ -1317,49 +1339,39 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
                 file_name,
                 list(format_component)
             )
-
     ;       recompile_for_output_file_not_up_to_date(
                 file_name
             )
-
     ;       recompile_for_syntax_error(
                 term.context,
                 string
             )
-
     ;       recompile_for_unreadable_used_items(
                 list(error_spec)
             )
-
     ;       recompile_for_module_changed(
                 file_name
             )
-
     ;       recompile_for_item_ambiguity(
                 item_id,                % new item.
                 list(item_id)           % ambiguous declarations.
             )
-
     ;       recompile_for_functor_ambiguity(
                 sym_name,
                 arity,
                 resolved_functor,       % new item.
                 list(resolved_functor)  % ambiguous declarations.
             )
-
     ;       recompile_for_changed_item(
                 item_id
             )
-
     ;       recompile_for_removed_item(
                 item_id
             )
-
     ;       recompile_for_changed_or_added_instance(
                 module_name,
                 item_name               % class name
             )
-
     ;       recompile_for_removed_instance(
                 module_name,
                 item_name               % class name
@@ -1369,24 +1381,25 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
     recompilation_check_info::out) is det.
 
 add_module_to_recompile(Module, !Info) :-
-    ModulesToRecompile0 = !.Info ^ modules_to_recompile,
+    ModulesToRecompile0 = !.Info ^ rci_modules_to_recompile,
     (
         ModulesToRecompile0 = all_modules
     ;
         ModulesToRecompile0 = some_modules(Modules0),
-        !:Info = !.Info ^ modules_to_recompile :=
-            some_modules([Module | Modules0])
+        !Info ^ rci_modules_to_recompile := some_modules([Module | Modules0])
     ).
 
-:- pred record_read_file(module_name::in, module_timestamp::in, list(item)::in,
-    module_error::in, file_name::in,
+:- pred record_read_file(module_name::in, module_timestamp::in,
+    list(item)::in, list(error_spec)::in, module_error::in, file_name::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-record_read_file(ModuleName, ModuleTimestamp, Items, Error, FileName, !Info) :-
-    Imports0 = !.Info ^ read_modules,
-    map.set(Imports0, ModuleName - ModuleTimestamp ^ suffix,
-        read_module(ModuleTimestamp, Items, Error, FileName), Imports),
-    !:Info = !.Info ^ read_modules := Imports.
+record_read_file(ModuleName, ModuleTimestamp, Items, Specs, Error, FileName,
+        !Info) :-
+    Imports0 = !.Info ^ rci_have_read_module_map,
+    svmap.set(ModuleName - ModuleTimestamp ^ suffix,
+        have_read_module(ModuleTimestamp, Items, Specs, Error, FileName),
+        Imports0, Imports),
+    !Info ^ rci_have_read_module_map := Imports.
 
 %-----------------------------------------------------------------------------%
 
@@ -1559,10 +1572,13 @@ read_term_check_for_error_or_eof(Info, Item, Term, !IO) :-
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 record_recompilation_reason(Reason, !Info) :-
-    ( !.Info ^ collect_all_reasons = yes ->
-        !:Info = !.Info ^ recompilation_reasons :=
-            [Reason | !.Info ^ recompilation_reasons]
+    CollectAllReasons = !.Info ^ rci_collect_all_reasons,
+    (
+        CollectAllReasons = yes,
+        !Info ^ rci_recompilation_reasons :=
+            [Reason | !.Info ^ rci_recompilation_reasons]
     ;
+        CollectAllReasons = no,
         throw(recompile_exception(Reason, !.Info))
     ).
 
@@ -1573,13 +1589,13 @@ throw_syntax_error(Reason, Info) :-
     % If there were syntax errors in a `.used' file written during
     % a compilation, all outputs of that compilation are slightly
     % suspect, so it's worth entirely redoing the compilation.
-    RecompileInfo = Info ^ modules_to_recompile := all_modules,
+    RecompileInfo = Info ^ rci_modules_to_recompile := all_modules,
     throw(recompile_exception(Reason, RecompileInfo)).
 
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
-this_file = "recompilation.version.m".
+this_file = "recompilation.check.m".
 
 %-----------------------------------------------------------------------------%

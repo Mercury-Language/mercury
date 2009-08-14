@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,6 +20,7 @@
 :- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.    % for module_error;
@@ -44,7 +45,7 @@
                 need_qualifier  :: need_qualifier
             ).
 
-    % The `module_imports' structure holds information about
+    % The `module_and_imports' structure holds information about
     % a module and the modules that it imports.
     %
     % Note that we build this structure up as we go along.
@@ -61,115 +62,128 @@
     % modules and imported modules to their respective lists as we process
     % the interface files for those imported or ancestor modules.
     %
-:- type module_imports
-    --->    module_imports(
+:- type module_and_imports
+    --->    module_and_imports(
                 % The source file.
-                source_file_name            :: file_name,
+                mai_source_file_name            :: file_name,
 
                 % The name of the top-level module in the source file
                 % containing the module that we are compiling.
-                source_file_module_name     :: module_name,
+                mai_source_file_module_name     :: module_name,
 
                 % The module (or sub-module) that we are compiling.
-                module_name                 :: module_name,
+                mai_module_name                 :: module_name,
 
                 % The list of ancestor modules it inherits.
-                parent_deps                 :: list(module_name),
+                mai_parent_deps                 :: list(module_name),
 
                 % The list of modules it directly imports in the interface
                 % (imports via ancestors count as direct).
-                int_deps                    :: list(module_name),
+                mai_int_deps                    :: list(module_name),
 
                 % The list of modules it directly imports in the
                 % implementation.
-                impl_deps                   :: list(module_name),
+                mai_impl_deps                   :: list(module_name),
 
                 % The list of modules it indirectly imports.
-                indirect_deps               :: list(module_name),
+                mai_indirect_deps               :: list(module_name),
 
-                children                    :: list(module_name),
+                mai_children                    :: list(module_name),
 
                 % The list of its public children, i.e. child modules that
                 % it includes in the interface section.
-                public_children             :: list(module_name),
+                mai_public_children             :: list(module_name),
 
                 % The modules included in the same source file. This field
                 % is only set for the top-level module in each file.
-                nested_children             :: list(module_name),
+                mai_nested_children             :: list(module_name),
 
                 % The list of filenames for fact tables in this module.
-                fact_table_deps             :: list(string),
+                mai_fact_table_deps             :: list(string),
 
                 % Whether or not the module contains foreign code, and if yes,
                 % which languages they use.
-                has_foreign_code            :: contains_foreign_code,
+                mai_has_foreign_code            :: contains_foreign_code,
 
                 % The `:- pragma foreign_import_module' declarations.
-                foreign_import_modules      :: foreign_import_module_info_list,
+                mai_foreign_import_modules  :: foreign_import_module_info_list,
 
                 % Does the module contain any `:- pragma foreign_export'
                 % declarations?
-                contains_foreign_export     :: contains_foreign_export,
+                mai_contains_foreign_export     :: contains_foreign_export,
 
                 % The contents of the module and its imports.
-                items                       :: cord(item),
+                mai_items_cord                  :: cord(item),
 
                 % Whether an error has been encountered when reading in
                 % this module.
-                error                       :: module_error,
+                mai_specs                       :: list(error_spec),
+                mai_error                       :: module_error,
 
                 % If we are doing smart recompilation, we need to keep
                 % the timestamps of the modules read in.
-                maybe_timestamps            :: maybe(module_timestamps),
+                mai_maybe_timestamps            :: maybe(module_timestamps),
 
                 % Does this module contain main/2?
-                has_main                    :: has_main,
+                mai_has_main                    :: has_main,
 
                 % The directory containing the module source.
-                module_dir                  :: dir_name
+                mai_module_dir                  :: dir_name
             ).
 
-:- pred module_imports_get_source_file_name(module_imports::in, file_name::out)
-    is det.
-:- pred module_imports_get_module_name(module_imports::in, module_name::out)
-    is det.
-:- pred module_imports_get_impl_deps(module_imports::in,
+:- pred module_and_imports_get_source_file_name(module_and_imports::in,
+    file_name::out) is det.
+:- pred module_and_imports_get_module_name(module_and_imports::in,
+    module_name::out) is det.
+:- pred module_and_imports_get_impl_deps(module_and_imports::in,
     list(module_name)::out) is det.
-:- pred module_imports_get_items(module_imports::in, cord(item)::out) is det.
-:- pred module_imports_get_items_list(module_imports::in, list(item)::out)
-    is det.
-:- pred module_imports_get_error(module_imports::in, module_error::out) is det.
-
-:- pred module_imports_set_items(cord(item)::in,
-    module_imports::in, module_imports::out) is det.
-:- pred module_imports_set_items_list(list(item)::in,
-    module_imports::in, module_imports::out) is det.
-:- pred module_imports_set_error(module_error::in,
-    module_imports::in, module_imports::out) is det.
 
     % Set the interface dependencies.
     %
-:- pred module_imports_set_int_deps(list(module_name)::in,
-    module_imports::in, module_imports::out) is det.
+:- pred module_and_imports_set_int_deps(list(module_name)::in,
+    module_and_imports::in, module_and_imports::out) is det.
 
     % Set the implementation dependencies.
     %
-:- pred module_imports_set_impl_deps(list(module_name)::in,
-    module_imports::in, module_imports::out) is det.
+:- pred module_and_imports_set_impl_deps(list(module_name)::in,
+    module_and_imports::in, module_and_imports::out) is det.
 
     % Set the indirect dependencies.
     %
-:- pred module_imports_set_indirect_deps(list(module_name)::in,
-    module_imports::in, module_imports::out) is det.
+:- pred module_and_imports_set_indirect_deps(list(module_name)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
+:- pred module_and_imports_set_error(module_error::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
+:- pred module_and_imports_add_specs(list(error_spec)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
+:- pred module_and_imports_add_interface_error(module_error::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
+    % Add items to the end of the list.
+    %
+:- pred module_and_imports_add_items(cord(item)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
+    % Return the results recorded in the module_and_imports structure.
+    %
+    % There is no predicate to return *just* the items, since that would
+    % allow callers to forget to retrieve and then print the error
+    % specifications.
+    %
+:- pred module_and_imports_get_results(module_and_imports::in,
+    list(item)::out, list(error_spec)::out, module_error::out) is det.
 
 %-----------------------------------------------------------------------------%
 
     % init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
-    %   Error, Globals, ModuleName - Items, ModuleImports).
+    %   Specs, Error, Globals, ModuleName - Items, ModuleImports).
     %
 :- pred init_dependencies(file_name::in, module_name::in,
-    list(module_name)::in, module_error::in, globals::in,
-    pair(module_name, list(item))::in, module_imports::out) is det.
+    list(module_name)::in, list(error_spec)::in, module_error::in, globals::in,
+    pair(module_name, list(item))::in, module_and_imports::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -249,26 +263,49 @@
 
 %-----------------------------------------------------------------------------%
 
-module_imports_get_source_file_name(Module, Module ^ source_file_name).
-module_imports_get_module_name(Module, Module ^ module_name).
-module_imports_get_impl_deps(Module, Module ^ impl_deps).
-module_imports_get_items(Module, Module ^ items).
-module_imports_get_items_list(Module, cord.list(Module ^ items)).
-module_imports_get_error(Module, Module ^ error).
-module_imports_set_items(Items, Module, Module ^ items := Items).
-module_imports_set_items_list(Items, Module, Module ^ items := Cord) :-
-    Cord = cord.from_list(Items).
-module_imports_set_error(Error, Module, Module ^ error := Error).
-module_imports_set_int_deps(IntDeps, Module, Module ^ int_deps := IntDeps).
-module_imports_set_impl_deps(ImplDeps, Module,
-        Module ^ impl_deps := ImplDeps).
-module_imports_set_indirect_deps(IndirectDeps, Module,
-        Module ^ indirect_deps := IndirectDeps).
+module_and_imports_get_source_file_name(Module, Module ^ mai_source_file_name).
+module_and_imports_get_module_name(Module, Module ^ mai_module_name).
+module_and_imports_get_impl_deps(Module, Module ^ mai_impl_deps).
+
+module_and_imports_set_int_deps(IntDeps, !Module) :-
+    !Module ^ mai_int_deps := IntDeps.
+module_and_imports_set_impl_deps(ImplDeps, !Module) :-
+    !Module ^ mai_impl_deps := ImplDeps.
+module_and_imports_set_indirect_deps(IndirectDeps, !Module) :-
+    !Module ^ mai_indirect_deps := IndirectDeps.
+module_and_imports_set_error(Error, !Module) :-
+    !Module ^ mai_error := Error.
+
+module_and_imports_add_specs(NewSpecs, !Module) :-
+    Specs0 = !.Module ^ mai_specs,
+    Specs = NewSpecs ++ Specs0,
+    !Module ^ mai_specs := Specs.
+
+module_and_imports_add_items(NewItems, !Module) :-
+    Items0 = !.Module ^ mai_items_cord,
+    Items = Items0 ++ NewItems,
+    !Module ^ mai_items_cord := Items.
+
+module_and_imports_add_interface_error(InterfaceError, !Module) :-
+    (
+        InterfaceError = no_module_errors
+    ;
+        ( InterfaceError = some_module_errors
+        ; InterfaceError = fatal_module_errors
+        ),
+        % XXX What if Error0 = fatal_module_errors?
+        !Module ^ mai_error := some_module_errors
+    ).
+
+module_and_imports_get_results(Module, Items, Specs, Error) :-
+    Items = cord.list(Module ^ mai_items_cord),
+    Specs = Module ^ mai_specs,
+    Error = Module ^ mai_error.
 
 %-----------------------------------------------------------------------------%
 
 init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
-        Error, Globals, ModuleName - Items, ModuleImports) :-
+        Specs, Error, Globals, ModuleName - Items, ModuleImports) :-
     ParentDeps = get_ancestors(ModuleName),
 
     get_dependencies(Items, ImplImportDeps0, ImplUseDeps0),
@@ -341,12 +378,12 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         HasMain = no_main
     ),
 
-    ModuleImports = module_imports(FileName, SourceFileModuleName,
+    ModuleImports = module_and_imports(FileName, SourceFileModuleName,
         ModuleName, ParentDeps, InterfaceDeps,
         ImplementationDeps, IndirectDeps, IncludeDeps,
         InterfaceIncludeDeps, NestedDeps, FactTableDeps,
         ContainsForeignCode, ForeignImports, ContainsPragmaExport,
-        cord.empty, Error, no, HasMain, dir.this_directory).
+        cord.empty, Specs, Error, no, HasMain, dir.this_directory).
 
 %-----------------------------------------------------------------------------%
 

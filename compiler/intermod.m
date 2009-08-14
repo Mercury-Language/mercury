@@ -39,6 +39,7 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module libs.globals.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_io.
@@ -61,7 +62,8 @@
     % Add the items from the .opt files of imported modules to
     % the items for this module.
     %
-:- pred grab_opt_files(module_imports::in, module_imports::out, bool::out,
+:- pred grab_opt_files(globals::in,
+    module_and_imports::in, module_and_imports::out, bool::out,
     io::di, io::uo) is det.
 
     % Make sure that local preds which have been exported in the .opt
@@ -74,10 +76,11 @@
     --->    opt_file
     ;       trans_opt_file.
 
-    % update_error_status(OptFileType, FileName, Error, Specs, !Status):
+    % update_error_status(Globals, OptFileType, FileName,
+    %   ModuleSpecs, !Specs, ModuleError, !Error):
     %
     % Work out whether any fatal errors have occurred while reading
-    % `.opt' files, updating Status0 if there were fatal errors.
+    % `.opt' files, updating !Error if there were fatal errors.
     %
     % A missing `.opt' file is only a fatal error if
     % `--warn-missing-opt-files --halt-at-warn' was passed the compiler.
@@ -86,8 +89,9 @@
     %
     % This is also used by trans_opt.m for reading `.trans_opt' files.
     %
-:- pred update_error_status(opt_file_type::in, string::in, module_error::in,
-    list(error_spec)::in, bool::in, bool::out, io::di, io::uo) is det.
+:- pred update_error_status(globals::in, opt_file_type::in, string::in,
+    list(error_spec)::in, list(error_spec)::in, list(error_spec)::out,
+    module_error::in, bool::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -179,9 +183,8 @@ write_opt_file(!ModuleInfo, !IO) :-
             do_adjust_pred_import_status(!.IntermodInfo, !ModuleInfo)
         )
     ),
-    %
+
     % Restore the option setting that we overrode above.
-    %
     globals.io_set_option(line_numbers, bool(LineNumbers), !IO).
 
 %-----------------------------------------------------------------------------%
@@ -2306,29 +2309,31 @@ import_status_to_write(status_external(Status)) =
 
     % Read in and process the optimization interfaces.
     %
-grab_opt_files(!Module, FoundError, !IO) :-
+grab_opt_files(Globals, !Module, FoundError, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
-    ModuleName = !.Module ^ module_name,
-    Ancestors0 = !.Module ^ parent_deps,
-    InterfaceDeps0 = !.Module ^ int_deps,
-    ImplementationDeps0 = !.Module ^ impl_deps,
+    ModuleName = !.Module ^ mai_module_name,
+    Ancestors0 = !.Module ^ mai_parent_deps,
+    InterfaceDeps0 = !.Module ^ mai_int_deps,
+    ImplementationDeps0 = !.Module ^ mai_impl_deps,
     OptFiles = list.sort_and_remove_dups(list.condense(
         [Ancestors0, InterfaceDeps0, ImplementationDeps0])),
-    globals.io_lookup_bool_option(read_opt_files_transitively, Transitive,
-        !IO),
+    globals.lookup_bool_option(Globals, read_opt_files_transitively,
+        Transitive),
     ModulesProcessed = set.insert(set.sorted_list_to_set(OptFiles),
         ModuleName),
-    read_optimization_interfaces(Transitive, ModuleName, OptFiles,
-        ModulesProcessed, cord.empty, OptItemsCord, no, OptError, !IO),
-    OptItems = cord.list(OptItemsCord),
+    read_optimization_interfaces(Globals, Transitive, ModuleName, OptFiles,
+        ModulesProcessed, cord.empty, OptItemsCord, [], OptSpecs, no, OptError,
+        !IO),
 
     % Append the items to the current item list, using a `opt_imported'
-    % psuedo-declaration to let make_hlds know the opt_imported stuff
+    % pseudo-declaration to let make_hlds know the opt_imported stuff
     % is coming.
-    module_imports_get_items(!.Module, Items0),
-    Items1 = Items0 ++ cord.from_list([
-        make_pseudo_decl(md_opt_imported) | OptItems]),
-    module_imports_set_items(Items1, !Module),
+    % 
+    % XXX Using this mechanism to let make_hlds know this is a bad design.
+    OptItems = cord.list(OptItemsCord),
+    AddedItems = [make_pseudo_decl(md_opt_imported) | OptItems],
+    module_and_imports_add_items(cord.from_list(AddedItems), !Module),
+    module_and_imports_add_specs(OptSpecs, !Module),
 
     % Get the :- pragma unused_args(...) declarations created when writing
     % the .opt file for the current module. These are needed because we can
@@ -2341,17 +2346,17 @@ grab_opt_files(!Module, FoundError, !IO) :-
     % condition reuse actually has none. But we have to maintain the interface
     % for modules that use the conditional reuse information from the `.opt'
     % file.
-    globals.io_lookup_bool_option(intermod_unused_args, UnusedArgs, !IO),
-    globals.io_lookup_bool_option(structure_reuse_analysis, StructureReuse,
-        !IO),
+    globals.lookup_bool_option(Globals, intermod_unused_args, UnusedArgs),
+    globals.lookup_bool_option(Globals, structure_reuse_analysis,
+        StructureReuse),
     (
         ( UnusedArgs = yes
         ; StructureReuse = yes
         )
     ->
-        read_optimization_interfaces(no, ModuleName, [ModuleName],
-            set.init, cord.empty, LocalItemsCord, no, UA_SR_Error, !IO),
-        LocalItems = cord.list(LocalItemsCord),
+        read_optimization_interfaces(Globals, no, ModuleName, [ModuleName],
+            set.init, cord.empty, LocalItemsCord, [], LocalSpecs,
+            no, UA_SR_Error, !IO),
         KeepPragma = (pred(Item::in) is semidet :-
             Item = item_pragma(ItemPragma),
             ItemPragma = item_pragma_info(_, Pragma, _, _),
@@ -2363,11 +2368,9 @@ grab_opt_files(!Module, FoundError, !IO) :-
                 Pragma = pragma_structure_reuse(_, _, _, _, _, _)
             )
         ),
-        list.filter(KeepPragma, LocalItems, PragmaItems),
-
-        module_imports_get_items(!.Module, Items2),
-        Items = Items2 ++ cord.from_list(PragmaItems),
-        module_imports_set_items(Items, !Module)
+        cord.filter(KeepPragma, LocalItemsCord, PragmaItemsCord),
+        module_and_imports_add_items(PragmaItemsCord, !Module),
+        module_and_imports_add_specs(LocalSpecs, !Module)
     ;
         UA_SR_Error = no
     ),
@@ -2375,7 +2378,7 @@ grab_opt_files(!Module, FoundError, !IO) :-
     % Read .int0 files required by the `.opt' files.
     Int0Files = list.delete_all(
         list.condense(list.map(get_ancestors, OptFiles)), ModuleName),
-    process_module_private_interfaces(ReadModules, Int0Files,
+    process_module_private_interfaces(Globals, ReadModules, Int0Files,
         make_pseudo_decl(md_opt_imported),
         make_pseudo_decl(md_opt_imported),
         [], AncestorImports1,
@@ -2383,7 +2386,6 @@ grab_opt_files(!Module, FoundError, !IO) :-
 
     % Figure out which .int files are needed by the .opt files
     get_dependencies(OptItems, NewImportDeps0, NewUseDeps0),
-    globals.io_get_globals(Globals, !IO),
     get_implicit_dependencies(OptItems, Globals,
         NewImplicitImportDeps0, NewImplicitUseDeps0),
     NewDeps = list.sort_and_remove_dups(list.condense(
@@ -2393,17 +2395,19 @@ grab_opt_files(!Module, FoundError, !IO) :-
 
     % Read in the .int, and .int2 files needed by the .opt files.
     map.init(ReadModules),
-    process_module_long_interfaces(ReadModules, must_be_qualified,
+    process_module_long_interfaces(Globals, ReadModules, must_be_qualified,
         NewDeps, ".int",
         make_pseudo_decl(md_opt_imported), make_pseudo_decl(md_opt_imported),
         [], NewIndirectDeps, [], NewImplIndirectDeps, !Module, !IO),
-    process_module_short_interfaces_and_impls_transitively(ReadModules,
-        NewIndirectDeps ++ NewImplIndirectDeps, ".int2",
+    process_module_short_interfaces_and_impls_transitively(Globals,
+        ReadModules, NewIndirectDeps ++ NewImplIndirectDeps, ".int2",
         make_pseudo_decl(md_opt_imported), make_pseudo_decl(md_opt_imported),
         !Module, !IO),
 
     % Figure out whether anything went wrong.
-    module_imports_get_error(!.Module, FoundError0),
+    % XXX We should try to put all the relevant error indications into !Module,
+    % and let our caller figure out what to do with them.
+    module_and_imports_get_results(!.Module, _Items, _Specs, FoundError0),
     (
         ( FoundError0 \= no_module_errors
         ; OptError = yes
@@ -2415,16 +2419,18 @@ grab_opt_files(!Module, FoundError, !IO) :-
         FoundError = no
     ).
 
-:- pred read_optimization_interfaces(bool::in, module_name::in,
+:- pred read_optimization_interfaces(globals::in, bool::in, module_name::in,
     list(module_name)::in, set(module_name)::in,
-    cord(item)::in, cord(item)::out, bool::in, bool::out,
-    io::di, io::uo) is det.
+    cord(item)::in, cord(item)::out,
+    list(error_spec)::in, list(error_spec)::out, 
+    bool::in, bool::out, io::di, io::uo) is det.
 
-read_optimization_interfaces(_, _, [], _, !Items, !Error, !IO).
-read_optimization_interfaces(Transitive, ModuleName,
-        [ModuleToRead | ModulesToRead], ModulesProcessed0, !Items, !Error,
-        !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+read_optimization_interfaces(_, _, _, [], _, !Items, !Specs, !Error, !IO).
+read_optimization_interfaces(Globals, Transitive, ModuleName,
+        [ModuleToRead | ModulesToRead], ModulesProcessed0,
+        !Items, !Specs, !Error, !IO) :-
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
     maybe_write_string(VeryVerbose,
         "% Reading optimization interface for module", !IO),
     maybe_write_string(VeryVerbose, " `", !IO),
@@ -2434,13 +2440,14 @@ read_optimization_interfaces(Transitive, ModuleName,
     maybe_flush_output(VeryVerbose, !IO),
 
     module_name_to_search_file_name(ModuleToRead, ".opt", FileName, !IO),
-    prog_io.read_opt_file(FileName, ModuleToRead, OptItems, Specs, ModuleError,
-        !IO),
-    update_error_status(opt_file, FileName, ModuleError, Specs, !Error, !IO),
+    actually_read_opt_file(FileName, ModuleToRead, OptItems, OptSpecs,
+        OptError, !IO),
+    update_error_status(Globals, opt_file, FileName,
+        OptSpecs, !Specs, OptError, !Error),
     !:Items = !.Items ++ cord.from_list(OptItems),
+    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
     maybe_write_string(VeryVerbose, "% done.\n", !IO),
 
-    globals.io_get_globals(Globals, !IO),
     (
         Transitive = yes,
         get_dependencies(OptItems, NewImportDeps0, NewUseDeps0),
@@ -2457,21 +2464,33 @@ read_optimization_interfaces(Transitive, ModuleName,
         ModulesProcessed = ModulesProcessed0,
         NewDeps = []
     ),
-    read_optimization_interfaces(Transitive, ModuleName,
-        NewDeps ++ ModulesToRead, ModulesProcessed, !Items, !Error, !IO).
+    read_optimization_interfaces(Globals, Transitive, ModuleName,
+        NewDeps ++ ModulesToRead, ModulesProcessed,
+        !Items, !Specs, !Error, !IO).
 
-update_error_status(FileType, FileName, ModuleError, Specs,
-        !Error, !IO) :-
+update_error_status(_Globals, FileType, FileName,
+        ModuleSpecs, !Specs, ModuleError, !Error) :-
     (
         ModuleError = no_module_errors
+        % OptSpecs contains no errors. I (zs) don't know whether it could
+        % contain any warnings or informational messages, but if it could,
+        % we should add those error_specs to !Specs. Not doing so preserves
+        % old behavior.
     ;
         ModuleError = some_module_errors,
-        globals.io_get_globals(Globals, !IO),
-        % XXX _NumWarnings _NumErrors
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+        !:Specs = ModuleSpecs ++ !.Specs,
         !:Error = yes
     ;
         ModuleError = fatal_module_errors,
+        % We get here if we couldn't find and/or open the file.
+        % ModuleSpecs will already contain an error_severity error_spec
+        % about that, with more details than the message we generate below,
+        % but the test case hard_coded/intermod_unused_args insists on
+        % there being no error, only a warning, and on the text below.
+        % That is why we do not add ModuleSpecs to !Specs here.
+        %
+        % I (zs) don't know whether adding a version of ModuleSpecs (possibly
+        % with downgraded severity) to !Specs would be a better idea.
         (
             FileType = opt_file,
             WarningOption = warn_missing_opt_files
@@ -2479,22 +2498,14 @@ update_error_status(FileType, FileName, ModuleError, Specs,
             FileType = trans_opt_file,
             WarningOption = warn_missing_trans_opt_files
         ),
-        globals.io_lookup_bool_option(WarningOption, DoWarn, !IO),
-        (
-            DoWarn = yes,
-            io.write_string("Warning: cannot open `", !IO),
-            io.write_string(FileName, !IO),
-            io.write_string("'.\n", !IO),
-            globals.io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
-            (
-                HaltAtWarn = yes,
-                !:Error = yes
-            ;
-                HaltAtWarn = no
-            )
-        ;
-            DoWarn = no
-        )
+        Severity =
+            severity_conditional(WarningOption, yes, severity_warning, no),
+        Pieces = [option_is_set(WarningOption, yes,
+            [always([words("Warning: cannot open"), quote(FileName),
+                suffix("."), nl])])],
+        Msg = error_msg(no, treat_as_first, 0, Pieces),
+        Spec = error_spec(Severity, phase_read_files, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %-----------------------------------------------------------------------------%

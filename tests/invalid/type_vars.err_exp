@@ -1,10 +1,3 @@
-type_vars.m:007: Error: type variable T2 in existential quantifier does not
-type_vars.m:007:   occur in arguments or constraints of constructor.
-type_vars.m:008: Error: type variable T1 has overlapping scopes (explicit type
-type_vars.m:008:   quantifier shadows argument type).
-type_vars.m:009: Error: type variable T2 in class constraints, which was
-type_vars.m:009:   introduced with `=>' must be explicitly existentially
-type_vars.m:009:   quantified using `some'.
 type_vars.m:006: In declaration for type `type_vars.t1'/0:
 type_vars.m:006:   error in type class constraints: type variable T2 occurs in
 type_vars.m:006:   the constraints, but is not determined by the constructor's
@@ -24,3 +17,10 @@ type_vars.m:006:   2) The type variable occurs in a type which is fully
 type_vars.m:006:   determined.
 type_vars.m:006:   See the "Functional dependencies" section of the reference
 type_vars.m:006:   manual for details.
+type_vars.m:007: Error: type variable T2 in existential quantifier does not
+type_vars.m:007:   occur in arguments or constraints of constructor.
+type_vars.m:008: Error: type variable T1 has overlapping scopes (explicit type
+type_vars.m:008:   quantifier shadows argument type).
+type_vars.m:009: Error: type variable T2 in class constraints, which was
+type_vars.m:009:   introduced with `=>' must be explicitly existentially
+type_vars.m:009:   quantified using `some'.

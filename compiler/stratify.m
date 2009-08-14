@@ -215,7 +215,7 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
         ->
             Context = goal_info_get_context(GoalInfo),
             ErrorMsg = "call introduces a non-stratified loop.",
-            Spec = generate_message(ModuleInfo, ThisPredProcId, Context,
+            Spec = generate_stratify_error(ModuleInfo, ThisPredProcId, Context,
                 ErrorMsg, ErrorOrWarning),
             !:Specs = [Spec | !.Specs]
         ;
@@ -370,7 +370,7 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         ->
             Context = goal_info_get_context(GoalInfo),
             ErrorMsg = "call to solutions/2 introduces a non-stratified loop.",
-            Spec = generate_message(ModuleInfo, ThisPredProcId, Context,
+            Spec = generate_stratify_error(ModuleInfo, ThisPredProcId, Context,
                 ErrorMsg, ErrorOrWarning),
             !:Specs = [Spec | !.Specs]
         ;
@@ -387,7 +387,7 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         ->
             Context = goal_info_get_context(GoalInfo),
             ErrorMsg = Msg ++ " call may introduce a non-stratified loop.",
-            Spec = generate_message(ModuleInfo, ThisPredProcId, Context,
+            Spec = generate_stratify_error(ModuleInfo, ThisPredProcId, Context,
                 ErrorMsg, ErrorOrWarning),
             !:Specs = [Spec | !.Specs]
         ;
@@ -995,10 +995,11 @@ get_called_procs_cases([Case | Cases], !Calls) :-
     --->    is_error
     ;       is_warning.
 
-:- func generate_message(module_info, pred_proc_id, prog_context, string,
-    error_or_warning) = error_spec.
+:- func generate_stratify_error(module_info, pred_proc_id, prog_context,
+    string, error_or_warning) = error_spec.
 
-generate_message(ModuleInfo, PPId, Context, Message, ErrorOrWarning) = Spec :-
+generate_stratify_error(ModuleInfo, PPId, Context, Message, ErrorOrWarning)
+        = Spec :-
     PPIdDescription = describe_one_proc_name_mode(ModuleInfo,
         should_not_module_qualify, PPId),
     Preamble = [words("In")] ++ PPIdDescription ++ [suffix(":"), nl],

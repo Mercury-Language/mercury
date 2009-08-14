@@ -29,6 +29,7 @@
 :- pred real_main(io::di, io::uo) is det.
 
     % main(Args).
+    % It is called from make.module_target.call_mercury_compile_main.
     %
 :- pred main(list(string)::in, io::di, io::uo) is det.
 
@@ -167,6 +168,7 @@
 :- import_module check_hlds.unused_imports.
 :- import_module check_hlds.xml_documentation.
 :- import_module hlds.arg_info.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
@@ -224,6 +226,7 @@
 :- import_module pprint.
 :- import_module set.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 :- import_module unit.
 
@@ -379,31 +382,42 @@ gc_init(!IO).
 :- pred main_2(list(string)::in, options_variables::in, list(string)::in,
     list(string)::in, bool::in, io::di, io::uo) is det.
 
-main_2(Errors @ [_ | _], _, _, _, _, !IO) :-
-    usage_errors(Errors, !IO).
-main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, version, Version),
-    globals.lookup_bool_option(Globals, help, Help),
-    globals.lookup_bool_option(Globals, generate_source_file_mapping,
+main_2(Errors, OptionVariables, OptionArgs, Args, Link, !IO) :-
+    (
+        Errors = [_ | _],
+        usage_errors(Errors, !IO)
+    ;
+        Errors = [],
+        globals.io_get_globals(Globals0, !IO),
+        main_3(OptionVariables, OptionArgs, Args, Link,
+            Globals0, _Globals, !IO)
+    ).
+
+:- pred main_3(options_variables::in, list(string)::in, list(string)::in,
+    bool::in, globals::in, globals::out, io::di, io::uo) is det.
+
+main_3(OptionVariables, OptionArgs, Args, Link, !Globals, !IO) :-
+    globals.lookup_bool_option(!.Globals, version, Version),
+    globals.lookup_bool_option(!.Globals, help, Help),
+    globals.lookup_bool_option(!.Globals, generate_source_file_mapping,
         GenerateMapping),
-    globals.lookup_bool_option(Globals, output_grade_string,
+    globals.lookup_bool_option(!.Globals, output_grade_string,
         OutputGrade),
-    globals.lookup_bool_option(Globals, output_link_command,
+    globals.lookup_bool_option(!.Globals, output_link_command,
         OutputLinkCommand),
-    globals.lookup_bool_option(Globals, output_shared_lib_link_command,
+    globals.lookup_bool_option(!.Globals, output_shared_lib_link_command,
         OutputShLibLinkCommand),
-    globals.lookup_bool_option(Globals, filenames_from_stdin,
+    globals.lookup_bool_option(!.Globals, filenames_from_stdin,
         FileNamesFromStdin),
-    globals.lookup_bool_option(Globals, output_libgrades,
+    globals.lookup_bool_option(!.Globals, output_libgrades,
         OutputLibGrades),
-    globals.lookup_bool_option(Globals, output_cc, OutputCC),
-    globals.lookup_bool_option(Globals, output_cflags, OutputCFlags),
-    globals.lookup_bool_option(Globals, output_library_link_flags,
+    globals.lookup_bool_option(!.Globals, output_cc, OutputCC),
+    globals.lookup_bool_option(!.Globals, output_cflags, OutputCFlags),
+    globals.lookup_bool_option(!.Globals, output_library_link_flags,
         OutputLibraryLinkFlags),
-    globals.lookup_bool_option(Globals, make, Make),
-    globals.lookup_maybe_string_option(Globals, generate_standalone_interface,
-        GenerateStandaloneInt),
+    globals.lookup_bool_option(!.Globals, make, Make),
+    globals.lookup_maybe_string_option(!.Globals,
+        generate_standalone_interface, GenerateStandaloneInt),
     ( Version = yes ->
         io.stdout_stream(Stdout, !IO),
         io.set_output_stream(Stdout, OldOutputStream, !IO),
@@ -418,28 +432,28 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         % When Mmake asks for the grade, it really wants
         % the directory component to use. This is consistent
         % with scripts/canonical_grade.
-        grade_directory_component(Globals, Grade),
+        grade_directory_component(!.Globals, Grade),
         io.stdout_stream(Stdout, !IO),
         io.write_string(Stdout, Grade, !IO),
         io.write_string(Stdout, "\n", !IO)
     ; OutputLinkCommand = yes ->
-        globals.lookup_string_option(Globals, link_executable_command,
+        globals.lookup_string_option(!.Globals, link_executable_command,
             LinkCommand),
         io.stdout_stream(Stdout, !IO),
         io.write_string(Stdout, LinkCommand, !IO),
         io.write_string(Stdout, "\n", !IO)
     ; OutputShLibLinkCommand = yes ->
-        globals.lookup_string_option(Globals, link_shared_lib_command,
+        globals.lookup_string_option(!.Globals, link_shared_lib_command,
             LinkCommand),
         io.stdout_stream(Stdout, !IO),
         io.write_string(Stdout, LinkCommand, !IO),
         io.write_string(Stdout, "\n", !IO)
     ; OutputLibGrades = yes ->
-        globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
+        globals.lookup_accumulating_option(!.Globals, libgrades, LibGrades),
         io.stdout_stream(Stdout, !IO),
         io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO)
     ; OutputCC = yes ->
-        globals.lookup_string_option(Globals, cc, CC),
+        globals.lookup_string_option(!.Globals, cc, CC),
         io.stdout_stream(StdOut, !IO),
         io.write_string(StdOut, CC ++ "\n", !IO)
     ; OutputCFlags = yes ->
@@ -479,7 +493,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         usage(!IO)
     ;
         process_all_args(OptionVariables, OptionArgs,
-            Args, ModulesToLink, FactTableObjFiles, !IO),
+            Args, ModulesToLink, FactTableObjFiles, !Globals, !IO),
         io.get_exit_status(ExitStatus, !IO),
         ( ExitStatus = 0 ->
             (
@@ -488,7 +502,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
             ->
                 file_name_to_module_name(FirstModule,
                     MainModuleName),
-                globals.get_target(Globals, Target),
+                globals.get_target(!.Globals, Target),
                 (
                     Target = target_java,
                     % For Java, at the "link" step we just generate a shell
@@ -516,7 +530,8 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
             % (`--verbose-errors') option, give them a hint about it.
             % Of course, we should only output the hint when we have further
             % information to give the user.
-            globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
+            globals.lookup_bool_option(!.Globals, verbose_errors,
+                VerboseErrors),
             globals.io_get_extra_error_info(ExtraErrorInfo, !IO),
             (
                 VerboseErrors = no,
@@ -531,7 +546,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
                 VerboseErrors = yes
             )
         ),
-        globals.lookup_bool_option(Globals, statistics, Statistics),
+        globals.lookup_bool_option(!.Globals, statistics, Statistics),
         (
             Statistics = yes,
             io.report_stats("full_memory_stats", !IO)
@@ -542,10 +557,10 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
 
 :- pred process_all_args(options_variables::in, list(string)::in,
     list(string)::in, list(string)::out, list(string)::out,
-    io::di, io::uo) is det.
+    globals::in, globals::out, io::di, io::uo) is det.
 
 process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
-        FactTableObjFiles, !IO) :-
+        FactTableObjFiles, !Globals, !IO) :-
     % Because of limitations in the GCC back-end,
     % we can only call the GCC back-end once (per process),
     % to generate a single assembler file, rather than
@@ -553,11 +568,10 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
     % assembler files for each module.
     % So if we're generating code using the GCC back-end,
     % we need to call run_gcc_backend here at the top level.
-    globals.io_get_globals(Globals, !IO),
-    ( compiling_to_asm(Globals) ->
+    ( compiling_to_asm(!.Globals) ->
         (
             Args = [FirstArg | OtherArgs],
-            globals.lookup_bool_option(Globals, smart_recompilation, Smart),
+            globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
             (
                 Smart = yes,
                 (
@@ -566,7 +580,7 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
                     % the gcc backend to avoid overwriting the output assembler
                     % file even if recompilation is found to be unnecessary.
                     process_args(OptionVariables, OptionArgs, Args,
-                        ModulesToLink, FactTableObjFiles, !IO)
+                        ModulesToLink, FactTableObjFiles, !Globals, !IO)
                 ;
                     OtherArgs = [_ | _],
                     Msg = "Sorry, not implemented: " ++
@@ -579,12 +593,14 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
                 )
             ;
                 Smart = no,
+                globals.io_set_globals(!.Globals, !IO),
                 compile_using_gcc_backend(OptionVariables, OptionArgs,
                     string_to_file_or_module(FirstArg),
                     process_args_no_fact_table(OptionVariables, OptionArgs,
                         Args),
                     ModulesToLink, !IO),
-                FactTableObjFiles = []
+                FactTableObjFiles = [],
+                globals.io_get_globals(!:Globals, !IO)
             )
         ;
             Args = [],
@@ -599,7 +615,7 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
         % If we're NOT using the GCC back-end, then we can just call
         % process_args directly, rather than via GCC.
         process_args(OptionVariables, OptionArgs, Args, ModulesToLink,
-            FactTableObjFiles, !IO)
+            FactTableObjFiles, !Globals, !IO)
     ).
 
 :- pred compiling_to_asm(globals::in) is semidet.
@@ -621,8 +637,8 @@ compiling_to_asm(Globals) :-
 
 :- pred compile_using_gcc_backend(options_variables::in, list(string)::in,
     file_or_module::in,
-    frontend_callback(list(string))::in(frontend_callback),
-    list(string)::out, io::di, io::uo) is det.
+    frontend_callback(list(string))::in(frontend_callback), list(string)::out,
+    io::di, io::uo) is det.
 
 compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
         CallBack, ModulesToLink, !IO) :-
@@ -769,32 +785,35 @@ do_rename_file(OldFileName, NewFileName, Result, !IO) :-
 
 process_args_no_fact_table(OptionVariables, OptionArgs, Args, ModulesToLink,
         !IO) :-
+    globals.io_get_globals(Globals0, !IO),
     process_args(OptionVariables, OptionArgs, Args, ModulesToLink,
-        _FactTableObjFiles, !IO).
+        _FactTableObjFiles, Globals0, Globals, !IO),
+    globals.io_set_globals(Globals, !IO).
 
 :- pred process_args(options_variables::in, list(string)::in, list(string)::in,
-    list(string)::out, list(string)::out, io::di, io::uo) is det.
+    list(string)::out, list(string)::out,
+    globals::in, globals::out, io::di, io::uo) is det.
 
 process_args(OptionVariables, OptionArgs, Args, ModulesToLink,
-        FactTableObjFiles, !IO) :-
-    globals.io_lookup_bool_option(filenames_from_stdin, FileNamesFromStdin,
-        !IO),
+        FactTableObjFiles, !Globals, !IO) :-
+    globals.lookup_bool_option(!.Globals, filenames_from_stdin,
+        FileNamesFromStdin),
     (
         FileNamesFromStdin = yes,
         process_stdin_arg_list(OptionVariables, OptionArgs,
-            [], ModulesToLink, [], FactTableObjFiles, !IO)
+            [], ModulesToLink, [], FactTableObjFiles, !Globals, !IO)
     ;
         FileNamesFromStdin = no,
         process_arg_list(OptionVariables, OptionArgs,
-            Args, ModulesToLink, FactTableObjFiles, !IO)
+            Args, ModulesToLink, FactTableObjFiles, !Globals, !IO)
     ).
-
 :- pred process_stdin_arg_list(options_variables::in, list(string)::in,
     list(string)::in, list(string)::out,
-    list(string)::in, list(string)::out, io::di, io::uo) is det.
+    list(string)::in, list(string)::out,
+    globals::in, globals::out, io::di, io::uo) is det.
 
 process_stdin_arg_list(OptionVariables, OptionArgs, !Modules,
-        !FactTableObjFiles, !IO) :-
+        !FactTableObjFiles, !Globals, !IO) :-
     (
         !.Modules = [_ | _],
         garbage_collect(!IO)
@@ -806,11 +825,11 @@ process_stdin_arg_list(OptionVariables, OptionArgs, !Modules,
         FileResult = ok(Line),
         Arg = string.rstrip(Line),
         process_arg(OptionVariables, OptionArgs, Arg, Module,
-            FactTableObjFileList, !IO),
+            FactTableObjFileList, !Globals, !IO),
         list.append(Module, !Modules),
         list.append(FactTableObjFileList, !FactTableObjFiles),
         process_stdin_arg_list(OptionVariables, OptionArgs,
-            !Modules, !FactTableObjFiles, !IO)
+            !Modules, !FactTableObjFiles, !Globals, !IO)
     ;
         FileResult = eof
     ;
@@ -823,33 +842,33 @@ process_stdin_arg_list(OptionVariables, OptionArgs, !Modules,
 
 :- pred process_arg_list(options_variables::in, list(string)::in,
     list(string)::in, list(string)::out, list(string)::out,
-    io::di, io::uo) is det.
+    globals::in, globals::out, io::di, io::uo) is det.
 
 process_arg_list(OptionVariables, OptionArgs, Args, Modules, FactTableObjFiles,
-        !IO) :-
+        !Globals, !IO) :-
     process_arg_list_2(OptionVariables, OptionArgs, Args, ModulesList,
-        FactTableObjFileLists, !IO),
+        FactTableObjFileLists, !Globals, !IO),
     list.condense(ModulesList, Modules),
     list.condense(FactTableObjFileLists, FactTableObjFiles).
 
 :- pred process_arg_list_2(options_variables::in, list(string)::in,
     list(string)::in, list(list(string))::out, list(list(string))::out,
-    io::di, io::uo) is det.
+    globals::in, globals::out, io::di, io::uo) is det.
 
-process_arg_list_2(_, _, [], [], [], !IO).
+process_arg_list_2(_, _, [], [], [], !Globals, !IO).
 process_arg_list_2(OptionVariables, OptionArgs, [Arg | Args],
-        [Modules | ModulesList],
-        [FactTableObjFiles | FactTableObjFileLists], !IO) :-
+        [Modules | ModulesTail], [FactTableObjFiles | FactTableObjFileTail],
+        !Globals, !IO) :-
     process_arg(OptionVariables, OptionArgs, Arg, Modules, FactTableObjFiles,
-        !IO),
+        !Globals, !IO),
     (
         Args = [_ | _],
         garbage_collect(!IO)
     ;
         Args = []
     ),
-    process_arg_list_2(OptionVariables, OptionArgs, Args, ModulesList,
-        FactTableObjFileLists, !IO).
+    process_arg_list_2(OptionVariables, OptionArgs, Args, ModulesTail,
+        FactTableObjFileTail, !Globals, !IO).
 
     % Figure out whether the argument is a module name or a file name.
     % Open the specified file or module, and process it.
@@ -858,19 +877,22 @@ process_arg_list_2(OptionVariables, OptionArgs, [Arg | Args],
     % that should be linked into the final executable.
 
 :- pred process_arg(options_variables::in, list(string)::in, string::in,
-    list(string)::out, list(string)::out, io::di, io::uo) is det.
+    list(string)::out, list(string)::out,
+    globals::in, globals::out, io::di, io::uo) is det.
 
 process_arg(OptionVariables, OptionArgs, Arg, ModulesToLink, FactTableObjFiles,
-        !IO) :-
+        !Globals, !IO) :-
     FileOrModule = string_to_file_or_module(Arg),
     globals.io_lookup_bool_option(invoked_by_mmc_make, InvokedByMake, !IO),
     (
         InvokedByMake = no,
+        globals.io_set_globals(!.Globals, !IO),
         build_with_module_options_args(
             file_or_module_to_module_name(FileOrModule),
             OptionVariables, OptionArgs, [],
             process_arg_build(FileOrModule, OptionVariables, OptionArgs),
             _, [], MaybePair, !IO),
+        globals.io_get_globals(!:Globals, !IO),
         (
             MaybePair = yes(ModulesToLink - FactTableObjFiles)
         ;
@@ -882,7 +904,7 @@ process_arg(OptionVariables, OptionArgs, Arg, ModulesToLink, FactTableObjFiles,
         InvokedByMake = yes,
         % `mmc --make' has already set up the options.
         process_arg_2(OptionVariables, OptionArgs, FileOrModule,
-            ModulesToLink, FactTableObjFiles, !IO)
+            ModulesToLink, FactTableObjFiles, !Globals, !IO)
     ).
 
 :- pred process_arg_build(file_or_module::in, options_variables::in,
@@ -891,46 +913,48 @@ process_arg(OptionVariables, OptionArgs, Arg, ModulesToLink, FactTableObjFiles,
 
 process_arg_build(FileOrModule, OptionVariables, OptionArgs, _, yes,
         _, Modules - FactTableObjFiles, !IO) :-
+    globals.io_get_globals(Globals0, !IO),
     process_arg_2(OptionVariables, OptionArgs, FileOrModule, Modules,
-        FactTableObjFiles, !IO).
+        FactTableObjFiles, Globals0, Globals, !IO),
+    globals.io_set_globals(Globals, !IO).
 
 :- pred process_arg_2(options_variables::in, list(string)::in,
     file_or_module::in, list(string)::out, list(string)::out,
-    io::di, io::uo) is det.
+    globals::in, globals::out, io::di, io::uo) is det.
 
 process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
-        FactTableObjFiles, !IO) :-
-    globals.io_lookup_bool_option(generate_dependencies, GenerateDeps, !IO),
+        FactTableObjFiles, !Globals, !IO) :-
+    globals.lookup_bool_option(!.Globals, generate_dependencies, GenerateDeps),
     (
         GenerateDeps = yes,
         ModulesToLink = [],
         FactTableObjFiles = [],
         (
             FileOrModule = fm_file(FileName),
-            generate_file_dependencies(FileName, !IO)
+            generate_file_dependencies(!.Globals, FileName, !IO)
         ;
             FileOrModule = fm_module(ModuleName),
-            generate_module_dependencies(ModuleName, !IO)
+            generate_module_dependencies(!.Globals, ModuleName, !IO)
         )
     ;
         GenerateDeps = no,
-        globals.io_lookup_bool_option(generate_dependency_file,
-            GenerateDepFile, !IO),
+        globals.lookup_bool_option(!.Globals, generate_dependency_file,
+            GenerateDepFile),
         (
             GenerateDepFile = yes,
             ModulesToLink = [],
             FactTableObjFiles = [],
             (
                 FileOrModule = fm_file(FileName),
-                generate_file_dependency_file(FileName, !IO)
+                generate_file_dependency_file(!.Globals, FileName, !IO)
             ;
                 FileOrModule = fm_module(ModuleName),
-                generate_module_dependency_file(ModuleName, !IO)
+                generate_module_dependency_file(!.Globals, ModuleName, !IO)
             )
         ;
             GenerateDepFile = no,
             process_module(OptionVariables, OptionArgs,
-                FileOrModule, ModulesToLink, FactTableObjFiles, !IO)
+                FileOrModule, ModulesToLink, FactTableObjFiles, !Globals, !IO)
         )
     ).
 
@@ -959,99 +983,113 @@ file_or_module_to_module_name(fm_file(FileName)) = ModuleName :-
     file_name_to_module_name(FileName, ModuleName).
 file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
 
-:- pred read_module_or_file(file_or_module::in, maybe_return_timestamp::in,
-    module_name::out, file_name::out, maybe(timestamp)::out, list(item)::out,
-    module_error::out, read_modules::in, read_modules::out,
-    io::di, io::uo) is det.
+:- pred read_module_or_file(file_or_module::in,
+    maybe_return_timestamp::in, module_name::out, file_name::out,
+    maybe(timestamp)::out, list(item)::out,
+    list(error_spec)::out, module_error::out,
+    have_read_module_map::in, have_read_module_map::out,
+    globals::in, globals::out, io::di, io::uo) is det.
 
-read_module_or_file(fm_module(ModuleName), ReturnTimestamp,
-        ModuleName, FileName, MaybeTimestamp, Items, Error, !ReadModules,
-        !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose, "% Parsing module `", !IO),
-    ModuleNameString = sym_name_to_string(ModuleName),
-    maybe_write_string(Verbose, ModuleNameString, !IO),
-    maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
+read_module_or_file(FileOrModuleName, ReturnTimestamp,
+        ModuleName, SourceFileName, MaybeTimestamp, Items, Specs, Error,
+        !HaveReadModuleMap, !Globals, !IO) :-
     (
-        % Avoid rereading the module if it was already read
-        % by recompilation_version.m.
-        find_read_module(!.ReadModules, ModuleName, ".m", ReturnTimestamp,
-            ItemsPrime, MaybeTimestampPrime, ErrorPrime, FileNamePrime)
-    ->
-        map.delete(!.ReadModules, ModuleName - ".m", !:ReadModules),
-        FileName = FileNamePrime,
-        Items = ItemsPrime,
-        Error = ErrorPrime,
-        MaybeTimestamp = MaybeTimestampPrime
-    ;
-        % We don't search `--search-directories' for source files
-        % because that can result in the generated interface files
-        % being created in the wrong directory.
-        read_module(ModuleName, ".m", "Reading module", do_not_search,
-            ReturnTimestamp, Items, Error, FileName, MaybeTimestamp, !IO)
-    ),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
-    maybe_report_stats(Stats, !IO).
-read_module_or_file(fm_file(FileName), ReturnTimestamp, ModuleName,
-        SourceFileName, MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose, "% Parsing file `", !IO),
-    maybe_write_string(Verbose, FileName, !IO),
-    maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
-
-    file_name_to_module_name(FileName, DefaultModuleName),
-    (
-        % Avoid rereading the module if it was already read
-        % by recompilation_version.m.
-        find_read_module(!.ReadModules, DefaultModuleName, ".m",
-            ReturnTimestamp, ItemsPrime, MaybeTimestampPrime, ErrorPrime, _)
-    ->
-        map.delete(!.ReadModules, ModuleName - ".m", !:ReadModules),
-        ModuleName = DefaultModuleName,
-        Items = ItemsPrime,
-        Error = ErrorPrime,
-        MaybeTimestamp = MaybeTimestampPrime
-    ;
-        % We don't search `--search-directories' for source files
-        % because that can result in the generated interface files
-        % being created in the wrong directory.
-        read_module_from_file(FileName, ".m", "Reading file", do_not_search,
-            ReturnTimestamp, Items, Error, ModuleName, MaybeTimestamp, !IO),
-
-        % XXX If the module name doesn't match the file name, the compiler
-        % won't be able to find the `.used' file (the name of the `.used' file
-        % is derived from the module name not the file name). This will be
-        % fixed when mmake functionality is moved into the compiler.
-
-        globals.io_lookup_bool_option(smart_recompilation, Smart, !IO),
+        FileOrModuleName = fm_module(ModuleName),
+        globals.lookup_bool_option(!.Globals, verbose, Verbose),
+        maybe_write_string(Verbose, "% Parsing module `", !IO),
+        ModuleNameString = sym_name_to_string(ModuleName),
+        maybe_write_string(Verbose, ModuleNameString, !IO),
+        maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
         (
-            Smart = yes,
-            ModuleName \= DefaultModuleName
+            % Avoid rereading the module if it was already read
+            % by recompilation_version.m.
+            find_read_module(!.HaveReadModuleMap, ModuleName, ".m",
+                ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorPrime,
+                SourceFileNamePrime, MaybeTimestampPrime)
         ->
-            globals.io_lookup_bool_option(warn_smart_recompilation, Warn, !IO),
-            (
-                Warn = yes,
-                Pieces =
-                    [words("Warning:"),
-                    words("module name does not match file name: "), nl,
-                    fixed(FileName), words("contains module"),
-                    sym_name(ModuleName), suffix("."), nl,
-                    words("Smart recompilation will not work unless"),
-                    words("a module name to file name mapping is created"),
-                    words("using `mmc -f *.m'."), nl],
-                write_error_pieces_plain(Pieces, !IO),
-                record_warning(!IO)
-            ;
-                Warn = no
-            ),
-            globals.io_set_option(smart_recompilation, bool(no), !IO)
+            svmap.delete(ModuleName - ".m", !HaveReadModuleMap),
+            Items = ItemsPrime,
+            Specs = SpecsPrime,
+            Error = ErrorPrime,
+            SourceFileName = SourceFileNamePrime,
+            MaybeTimestamp = MaybeTimestampPrime
         ;
-            true
-        )
-    ),
-    globals.io_lookup_bool_option(detailed_statistics, Stats, !IO),
-    maybe_report_stats(Stats, !IO),
-    string.append(FileName, ".m", SourceFileName).
+            % We don't search `--search-directories' for source files
+            % because that can result in the generated interface files
+            % being created in the wrong directory.
+            read_module(!.Globals, ModuleName, ".m", "Reading module",
+                do_not_search, ReturnTimestamp, Items, Specs, Error,
+                SourceFileName, MaybeTimestamp, !IO)
+        ),
+        globals.lookup_bool_option(!.Globals, statistics, Stats),
+        maybe_report_stats(Stats, !IO)
+    ;
+        FileOrModuleName = fm_file(FileName),
+        globals.lookup_bool_option(!.Globals, verbose, Verbose),
+        maybe_write_string(Verbose, "% Parsing file `", !IO),
+        maybe_write_string(Verbose, FileName, !IO),
+        maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
+
+        file_name_to_module_name(FileName, DefaultModuleName),
+        (
+            % Avoid rereading the module if it was already read
+            % by recompilation_version.m.
+            find_read_module(!.HaveReadModuleMap, DefaultModuleName, ".m",
+                ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorPrime,
+                _, MaybeTimestampPrime)
+        ->
+            svmap.delete(ModuleName - ".m", !HaveReadModuleMap),
+            ModuleName = DefaultModuleName,
+            Items = ItemsPrime,
+            Specs = SpecsPrime,
+            Error = ErrorPrime,
+            MaybeTimestamp = MaybeTimestampPrime
+        ;
+            % We don't search `--search-directories' for source files
+            % because that can result in the generated interface files
+            % being created in the wrong directory.
+            read_module_from_file(FileName, ".m", "Reading file",
+                do_not_search, ReturnTimestamp, Items, Specs, Error,
+                ModuleName, MaybeTimestamp, !IO),
+
+            % XXX If the module name doesn't match the file name, the compiler
+            % won't be able to find the `.used' file (the name of the `.used'
+            % file is derived from the module name not the file name).
+            % This will be fixed when mmake functionality is moved into
+            % the compiler.
+
+            globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
+            (
+                Smart = yes,
+                ModuleName \= DefaultModuleName
+            ->
+                globals.lookup_bool_option(!.Globals, warn_smart_recompilation,
+                    Warn),
+                (
+                    Warn = yes,
+                    Pieces =
+                        [words("Warning:"),
+                        words("module name does not match file name: "), nl,
+                        fixed(FileName), words("contains module"),
+                        sym_name(ModuleName), suffix("."), nl,
+                        words("Smart recompilation will not work unless"),
+                        words("a module name to file name mapping is created"),
+                        words("using `mmc -f *.m'."), nl],
+                    write_error_pieces_plain(Pieces, !IO),
+                    record_warning(!IO)
+                ;
+                    Warn = no
+                ),
+                globals.set_option(smart_recompilation, bool(no), !Globals),
+                globals.io_set_globals(!.Globals, !IO)
+            ;
+                true
+            )
+        ),
+        globals.lookup_bool_option(!.Globals, detailed_statistics, Stats),
+        maybe_report_stats(Stats, !IO),
+        string.append(FileName, ".m", SourceFileName)
+    ).
 
 :- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
 
@@ -1060,31 +1098,30 @@ version_numbers_return_timestamp(yes) = do_return_timestamp.
 
 :- pred process_module(options_variables::in, list(string)::in,
     file_or_module::in, list(string)::out, list(string)::out,
-    io::di, io::uo) is det.
+    globals::in, globals::out, io::di, io::uo) is det.
 
 process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
-        FactTableObjFiles, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, halt_at_syntax_errors, HaltSyntax),
-    globals.lookup_bool_option(Globals, make_interface, MakeInterface),
-    globals.lookup_bool_option(Globals, make_short_interface,
+        FactTableObjFiles, !Globals, !IO) :-
+    globals.lookup_bool_option(!.Globals, halt_at_syntax_errors, HaltSyntax),
+    globals.lookup_bool_option(!.Globals, make_interface, MakeInterface),
+    globals.lookup_bool_option(!.Globals, make_short_interface,
         MakeShortInterface),
-    globals.lookup_bool_option(Globals, make_private_interface,
+    globals.lookup_bool_option(!.Globals, make_private_interface,
         MakePrivateInterface),
-    globals.lookup_bool_option(Globals, convert_to_mercury,
+    globals.lookup_bool_option(!.Globals, convert_to_mercury,
         ConvertToMercury),
-    globals.lookup_bool_option(Globals, generate_item_version_numbers,
+    globals.lookup_bool_option(!.Globals, generate_item_version_numbers,
         GenerateVersionNumbers),
     (
         ( MakeInterface = yes ->
-            ProcessModule = make_interface,
+            ProcessModule = call_make_interface(!.Globals),
             ReturnTimestamp =
                 version_numbers_return_timestamp(GenerateVersionNumbers)
         ; MakeShortInterface = yes ->
-            ProcessModule = make_short_interface,
+            ProcessModule = call_make_short_interface(!.Globals),
             ReturnTimestamp = do_not_return_timestamp
         ; MakePrivateInterface = yes ->
-            ProcessModule = make_private_interface,
+            ProcessModule = call_make_private_interface(!.Globals),
             ReturnTimestamp =
                 version_numbers_return_timestamp(GenerateVersionNumbers)
         ;
@@ -1092,17 +1129,20 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         )
     ->
         read_module_or_file(FileOrModule, ReturnTimestamp,
-            ModuleName, FileName, MaybeTimestamp, Items, Error,
-            map.init, _, !IO),
+            ModuleName, FileName, MaybeTimestamp, Items, Specs0, Error,
+            map.init, _, !Globals, !IO),
         ( halt_at_module_error(HaltSyntax, Error) ->
             true
         ;
-            split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
+            split_into_submodules(ModuleName, Items, SubModuleList,
+                Specs0, Specs),
             % XXX _NumErrors
-            write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
+            write_error_specs(Specs, !.Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
-            list.foldl(apply_process_module(ProcessModule,
-                FileName, ModuleName, MaybeTimestamp), SubModuleList, !IO)
+            list.foldl(
+                apply_process_module(ProcessModule, FileName, ModuleName,
+                    MaybeTimestamp),
+                SubModuleList, !IO)
         ),
         ModulesToLink = [],
         FactTableObjFiles = []
@@ -1110,7 +1150,10 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         ConvertToMercury = yes
     ->
         read_module_or_file(FileOrModule, do_not_return_timestamp,
-            ModuleName, _, _, Items, Error, map.init, _, !IO),
+            ModuleName, _, _, Items, Specs, Error, map.init, _, !Globals, !IO),
+        % XXX _NumErrors
+        write_error_specs(Specs, !.Globals, 0, _NumWarnings, 0, _NumErrors,
+            !IO),
         ( halt_at_module_error(HaltSyntax, Error) ->
             true
         ;
@@ -1121,9 +1164,8 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         ModulesToLink = [],
         FactTableObjFiles = []
     ;
-        globals.lookup_bool_option(Globals, smart_recompilation,
-            Smart),
-        globals.get_target(Globals, Target),
+        globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
+        globals.get_target(!.Globals, Target),
         (
             Smart = yes,
             (
@@ -1139,11 +1181,12 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
                 file_name_to_module_name(FileName, ModuleName)
             ),
 
-            find_smart_recompilation_target_files(ModuleName, Globals,
+            find_smart_recompilation_target_files(ModuleName, !.Globals,
                 FindTargetFiles),
-            find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
-            recompilation.check.should_recompile(ModuleName, FindTargetFiles,
-                FindTimestampFiles, ModulesToRecompile0, ReadModules, !IO),
+            find_timestamp_files(ModuleName, !.Globals, FindTimestampFiles),
+            recompilation.check.should_recompile(!.Globals, ModuleName,
+                FindTargetFiles, FindTimestampFiles, ModulesToRecompile0,
+                HaveReadModuleMap, !IO),
             (
                 Target = target_asm,
                 ModulesToRecompile0 = some_modules([_ | _])
@@ -1157,7 +1200,7 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             )
         ;
             Smart = no,
-            map.init(ReadModules),
+            map.init(HaveReadModuleMap),
             ModulesToRecompile = all_modules
         ),
         ( ModulesToRecompile = some_modules([]) ->
@@ -1172,15 +1215,18 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
                 Smart = yes
             ->
                 % See the comment in process_all_args.
+                globals.io_set_globals(!.Globals, !IO),
                 compile_using_gcc_backend(OptionVariables,
                     OptionArgs, FileOrModule,
                     process_module_2_no_fact_table(FileOrModule,
-                        ModulesToRecompile, ReadModules),
+                        ModulesToRecompile, HaveReadModuleMap),
                     ModulesToLink, !IO),
-                FactTableObjFiles = []
+                FactTableObjFiles = [],
+                globals.io_get_globals(!:Globals, !IO)
             ;
-                process_module_2(FileOrModule, ModulesToRecompile, ReadModules,
-                    ModulesToLink, FactTableObjFiles, !IO)
+                process_module_2(FileOrModule, ModulesToRecompile,
+                    HaveReadModuleMap, ModulesToLink, FactTableObjFiles,
+                    !Globals, !IO)
             )
         )
     ).
@@ -1197,32 +1243,35 @@ apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
     ProcessModule(FileName, ModuleName, MaybeTimestamp, SubModule, !IO).
 
 :- pred process_module_2_no_fact_table(file_or_module::in,
-    modules_to_recompile::in, read_modules::in, list(string)::out,
+    modules_to_recompile::in, have_read_module_map::in, list(string)::out,
     io::di, io::uo) is det.
 
 process_module_2_no_fact_table(FileOrModule, MaybeModulesToRecompile,
-        ReadModules0, ModulesToLink, !IO) :-
-    process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
-        ModulesToLink, _FactTableObjFiles, !IO).
+        HaveReadModuleMap0, ModulesToLink, !IO) :-
+    globals.io_get_globals(Globals0, !IO),
+    process_module_2(FileOrModule, MaybeModulesToRecompile, HaveReadModuleMap0,
+        ModulesToLink, _FactTableObjFiles, Globals0, Globals, !IO),
+    globals.io_set_globals(Globals, !IO).
 
 :- pred process_module_2(file_or_module::in, modules_to_recompile::in,
-    read_modules::in, list(string)::out, list(string)::out,
-    io::di, io::uo) is det.
+    have_read_module_map::in, list(string)::out, list(string)::out,
+    globals::in, globals::out, io::di, io::uo) is det.
 
-process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
-        ModulesToLink, FactTableObjFiles, !IO) :-
+process_module_2(FileOrModule, MaybeModulesToRecompile,
+        HaveReadModuleMap0, ModulesToLink, FactTableObjFiles, !Globals, !IO) :-
     read_module_or_file(FileOrModule, do_return_timestamp,
-        ModuleName, FileName, MaybeTimestamp, Items, Error,
-        ReadModules0, ReadModules, !IO),
-    globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, halt_at_syntax_errors, HaltSyntax),
+        ModuleName, FileName, MaybeTimestamp, Items, Specs0, Error,
+        HaveReadModuleMap0, HaveReadModuleMap, !Globals, !IO),
+    globals.lookup_bool_option(!.Globals, halt_at_syntax_errors, HaltSyntax),
     ( halt_at_module_error(HaltSyntax, Error) ->
+        % XXX _NumErrors
+        write_error_specs(Specs0, !.Globals, 0, _NumWarnings, 0, _NumErrors,
+            !IO),
         ModulesToLink = [],
         FactTableObjFiles = []
     ;
-        split_into_submodules(ModuleName, Items, SubModuleList0, [], Specs),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
-            !IO),
+        split_into_submodules(ModuleName, Items, SubModuleList0,
+            Specs0, Specs1),
         (
             MaybeModulesToRecompile = some_modules(ModulesToRecompile),
             ToRecompile = (pred((SubModule - _)::in) is semidet :-
@@ -1236,9 +1285,9 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         assoc_list.keys(SubModuleList0, NestedSubModules0),
         list.delete_all(NestedSubModules0, ModuleName, NestedSubModules),
 
-        find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
+        find_timestamp_files(ModuleName, !.Globals, FindTimestampFiles),
 
-        globals.lookup_bool_option(Globals, trace_prof, TraceProf),
+        globals.lookup_bool_option(!.Globals, trace_prof, TraceProf),
 
         (
             non_traced_mercury_builtin_module(ModuleName),
@@ -1252,22 +1301,26 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
             % on them. Predicates defined there should never be part of
             % an execution trace anyway; they are effectively language
             % primitives. (They may still be parts of stack traces.)
-            globals.lookup_bool_option(Globals, trace_stack_layout, TSL),
-            globals.get_trace_level(Globals, TraceLevel),
+            globals.lookup_bool_option(!.Globals, trace_stack_layout, TSL),
+            globals.get_trace_level(!.Globals, TraceLevel),
 
-            globals.io_set_option(trace_stack_layout, bool(no), !IO),
-            globals.io_set_trace_level_none(!IO),
+            globals.set_option(trace_stack_layout, bool(no), !Globals),
+            globals.set_trace_level_none(!Globals),
+            globals.io_set_globals(!.Globals, !IO),
 
-            compile_all_submodules(FileName, ModuleName, NestedSubModules,
-                MaybeTimestamp, ReadModules, FindTimestampFiles,
-                SubModuleListToCompile, ModulesToLink, FactTableObjFiles, !IO),
+            compile_all_submodules(!.Globals, FileName, ModuleName,
+                NestedSubModules, MaybeTimestamp, HaveReadModuleMap,
+                FindTimestampFiles, SubModuleListToCompile, Specs1,
+                ModulesToLink, FactTableObjFiles, !IO),
 
-            globals.io_set_option(trace_stack_layout, bool(TSL), !IO),
-            globals.io_set_trace_level(TraceLevel, !IO)
+            globals.set_option(trace_stack_layout, bool(TSL), !Globals),
+            globals.set_trace_level(TraceLevel, !Globals),
+            globals.io_set_globals(!.Globals, !IO)
         ;
-            compile_all_submodules(FileName, ModuleName, NestedSubModules,
-                MaybeTimestamp, ReadModules, FindTimestampFiles,
-                SubModuleListToCompile, ModulesToLink, FactTableObjFiles, !IO)
+            compile_all_submodules(!.Globals, FileName, ModuleName,
+                NestedSubModules, MaybeTimestamp, HaveReadModuleMap,
+                FindTimestampFiles, SubModuleListToCompile, Specs1,
+                ModulesToLink, FactTableObjFiles, !IO)
         )
     ).
 
@@ -1282,43 +1335,49 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
     %
     % i.e. compile nested modules to a single C file.
 
-:- pred compile_all_submodules(string::in, module_name::in,
-    list(module_name)::in, maybe(timestamp)::in, read_modules::in,
+:- pred compile_all_submodules(globals::in, string::in, module_name::in,
+    list(module_name)::in, maybe(timestamp)::in, have_read_module_map::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    list(pair(module_name, list(item)))::in, list(string)::out,
-    list(string)::out, io::di, io::uo) is det.
+    list(pair(module_name, list(item)))::in, list(error_spec)::in,
+    list(string)::out, list(string)::out, io::di, io::uo) is det.
 
-compile_all_submodules(FileName, SourceFileModuleName, NestedSubModules,
-        MaybeTimestamp, ReadModules, FindTimestampFiles,
-        SubModuleList, ModulesToLink, FactTableObjFiles, !IO) :-
-    list.map_foldl(compile(FileName, SourceFileModuleName, NestedSubModules,
-            MaybeTimestamp, ReadModules, FindTimestampFiles),
-        SubModuleList, FactTableObjFileLists, !IO),
+compile_all_submodules(Globals, FileName, SourceFileModuleName,
+        NestedSubModules, MaybeTimestamp, HaveReadModuleMap,
+        FindTimestampFiles, SubModuleList, !.Specs,
+        ModulesToLink, FactTableObjFiles, !IO) :-
+    list.map_foldl2(
+        compile(Globals, FileName, SourceFileModuleName, NestedSubModules,
+            MaybeTimestamp, HaveReadModuleMap, FindTimestampFiles),
+        SubModuleList, FactTableObjFileLists, !Specs, !IO),
+    % XXX _NumErrors
+    write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
     list.map(module_to_link, SubModuleList, ModulesToLink),
     list.condense(FactTableObjFileLists, FactTableObjFiles).
 
-:- pred make_interface(file_name::in, module_name::in, maybe(timestamp)::in,
-    pair(module_name, list(item))::in, io::di, io::uo) is det.
+:- pred call_make_interface(globals::in, file_name::in, module_name::in,
+    maybe(timestamp)::in, pair(module_name, list(item))::in, io::di, io::uo)
+    is det.
 
-make_interface(SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        ModuleName - Items, !IO) :-
-    make_interface(SourceFileName, SourceFileModuleName,
+call_make_interface(Globals, SourceFileName, SourceFileModuleName,
+        MaybeTimestamp, ModuleName - Items, !IO) :-
+    make_interface(Globals, SourceFileName, SourceFileModuleName,
         ModuleName, MaybeTimestamp, Items, !IO).
 
-:- pred make_short_interface(file_name::in, module_name::in,
+:- pred call_make_short_interface(globals::in, file_name::in, module_name::in,
     maybe(timestamp)::in, pair(module_name, list(item))::in,
     io::di, io::uo) is det.
 
-make_short_interface(SourceFileName, _, _, ModuleName - Items, !IO) :-
-    make_short_interface(SourceFileName, ModuleName, Items, !IO).
+call_make_short_interface(Globals, SourceFileName, _, _, ModuleName - Items,
+        !IO) :-
+    make_short_interface(Globals, SourceFileName, ModuleName, Items, !IO).
 
-:- pred make_private_interface(file_name::in, module_name::in,
-    maybe(timestamp)::in, pair(module_name, list(item))::in,
+:- pred call_make_private_interface(globals::in, file_name::in,
+    module_name::in, maybe(timestamp)::in, pair(module_name, list(item))::in,
     io::di, io::uo) is det.
 
-make_private_interface(SourceFileName, SourceFileModuleName,
+call_make_private_interface(Globals, SourceFileName, SourceFileModuleName,
         MaybeTimestamp, ModuleName - Items, !IO) :-
-    make_private_interface(SourceFileName, SourceFileModuleName,
+    make_private_interface(Globals, SourceFileName, SourceFileModuleName,
         ModuleName, MaybeTimestamp, Items, !IO).
 
 :- pred halt_at_module_error(bool::in, module_error::in) is semidet.
@@ -1473,51 +1532,57 @@ find_timestamp_files_2(CompilationTarget, TimestampSuffix,
     % The initial arrangement has the stage numbers increasing by five
     % so that new stages can be slotted in without too much trouble.
 
-:- pred compile(file_name::in, module_name::in, list(module_name)::in,
-    maybe(timestamp)::in, read_modules::in,
+:- pred compile(globals::in, file_name::in, module_name::in,
+    list(module_name)::in, maybe(timestamp)::in, have_read_module_map::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     pair(module_name, list(item))::in, list(string)::out,
+    list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-compile(SourceFileName, SourceFileModuleName, NestedSubModules0,
-        MaybeTimestamp, ReadModules, FindTimestampFiles,
-        ModuleName - Items, FactTableObjFiles, !IO) :-
-    check_for_no_exports(Items, ModuleName, !IO),
+compile(Globals, SourceFileName, SourceFileModuleName, NestedSubModules0,
+        MaybeTimestamp, HaveReadModuleMap, FindTimestampFiles,
+        ModuleName - Items, FactTableObjFiles, !Specs, !IO) :-
+    check_for_no_exports(Globals, Items, ModuleName, !Specs, !IO),
     ( ModuleName = SourceFileModuleName ->
         NestedSubModules = NestedSubModules0
     ;
         NestedSubModules = []
     ),
-    grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
-        NestedSubModules, ReadModules, MaybeTimestamp, Items, Module, Error2,
-        !IO),
+    grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
+        ModuleName, NestedSubModules, HaveReadModuleMap, MaybeTimestamp,
+        Items, Module, !IO),
+    module_and_imports_get_results(Module, _, ImportedSpecs, Error),
+    !:Specs = ImportedSpecs ++ !.Specs,
     (
-        ( Error2 = no_module_errors
-        ; Error2 = some_module_errors
+        ( Error = no_module_errors
+        ; Error = some_module_errors
         ),
-        mercury_compile(Module, NestedSubModules, FindTimestampFiles,
-            FactTableObjFiles, no_prev_dump, _, !IO)
+        mercury_compile(Globals, Module, NestedSubModules, FindTimestampFiles,
+            FactTableObjFiles, no_prev_dump, _, !Specs, !IO)
     ;
-        Error2 = fatal_module_errors,
+        Error = fatal_module_errors,
         FactTableObjFiles = []
     ).
 
-:- pred mercury_compile(module_imports::in, list(module_name)::in,
+:- pred mercury_compile(globals::in, module_and_imports::in,
+    list(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    list(string)::out, dump_info::in, dump_info::out, io::di, io::uo) is det.
+    list(string)::out, dump_info::in, dump_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-mercury_compile(Module, NestedSubModules, FindTimestampFiles,
-        FactTableObjFiles, !DumpInfo, !IO) :-
-    module_imports_get_module_name(Module, ModuleName),
+mercury_compile(Globals, Module, NestedSubModules, FindTimestampFiles,
+        FactTableObjFiles, !DumpInfo, !Specs, !IO) :-
+    module_and_imports_get_module_name(Module, ModuleName),
     % If we are only typechecking or error checking, then we should not
     % modify any files, this includes writing to .d files.
-    globals.io_lookup_bool_option(typecheck_only, TypeCheckOnly, !IO),
-    globals.io_lookup_bool_option(errorcheck_only, ErrorCheckOnly, !IO),
+    globals.lookup_bool_option(Globals, typecheck_only, TypeCheckOnly),
+    globals.lookup_bool_option(Globals, errorcheck_only, ErrorCheckOnly),
     bool.or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile),
-    pre_hlds_pass(Module, DontWriteDFile, HLDS1, QualInfo, MaybeTimestamps,
-        UndefTypes, UndefModes, Errors1, !DumpInfo, !IO),
+    pre_hlds_pass(Globals, Module, DontWriteDFile, HLDS1, QualInfo,
+        MaybeTimestamps, UndefTypes, UndefModes, Errors1, !DumpInfo,
+        !Specs, !IO),
     frontend_pass(QualInfo, UndefTypes, UndefModes, Errors1, Errors2,
-        HLDS1, HLDS20, !DumpInfo, !IO),
+        HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
     (
         Errors1 = no,
         Errors2 = no
@@ -1565,7 +1630,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
                 !IO),
             mercury_compile_after_front_end(NestedSubModules,
                 FindTimestampFiles, MaybeTimestamps, ModuleName, HLDS22,
-                FactTableObjFiles, !DumpInfo, !IO)
+                !.Specs, FactTableObjFiles, !DumpInfo, !IO)
         )
     ;
         % If the number of errors is > 0, make sure that the compiler
@@ -1616,18 +1681,20 @@ prepare_intermodule_analysis(Verbose, Stats, !HLDS, !IO) :-
 :- pred mercury_compile_after_front_end(list(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     maybe(module_timestamps)::in, module_name::in, module_info::in,
-    list(string)::out, dump_info::in, dump_info::out, io::di, io::uo) is det.
+    list(error_spec)::in, list(string)::out,
+    dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
-        MaybeTimestamps, ModuleName, !.HLDS, FactTableBaseFiles, !DumpInfo,
-        !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+        MaybeTimestamps, ModuleName, !.HLDS, Specs, FactTableBaseFiles,
+        !DumpInfo, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO),
     middle_pass(ModuleName, !HLDS, !DumpInfo, !IO),
-    globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
-    globals.io_get_target(Target, !IO),
-    globals.io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.get_target(Globals, Target),
+    globals.lookup_bool_option(Globals, target_code_only, TargetCodeOnly),
 
     % Remove any existing `.used' file before writing the output file.
     % This avoids leaving the old `used' file lying around if compilation
@@ -1638,8 +1705,12 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         UsageFileName, !IO),
     io.remove_file(UsageFileName, _, !IO),
 
+    FrontEndErrors = contains_errors(Globals, Specs),
     module_info_get_num_errors(!.HLDS, NumErrors),
-    ( NumErrors = 0 ->
+    (
+        FrontEndErrors = no,
+        NumErrors = 0
+    ->
         (
             ( Target = target_c
             ; Target = target_asm
@@ -1661,11 +1732,11 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             (
                 TargetCodeOnly = yes,
-                mlds_to_il_assembler(MLDS, !IO)
+                mlds_to_il_assembler(Globals, MLDS, !IO)
             ;
                 TargetCodeOnly = no,
                 HasMain = mlds_has_main(MLDS),
-                mlds_to_il_assembler(MLDS, !IO),
+                mlds_to_il_assembler(Globals, MLDS, !IO),
                 io.output_stream(OutputStream, !IO),
                 compile_target_code.il_assemble(OutputStream, ModuleName,
                     HasMain, Succeeded, !IO),
@@ -1692,7 +1763,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             Target = target_asm,
             % Compile directly to assembler using the gcc back-end.
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-            maybe_mlds_to_gcc(MLDS, ContainsCCode, !IO),
+            maybe_mlds_to_gcc(Globals, MLDS, ContainsCCode, !IO),
             (
                 TargetCodeOnly = yes
             ;
@@ -1716,7 +1787,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             (
                 HighLevelCode = yes,
                 mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-                mlds_to_high_level_c(MLDS, !IO),
+                mlds_to_high_level_c(Globals, MLDS, !IO),
                 (
                     TargetCodeOnly = yes
                 ;
@@ -1823,14 +1894,14 @@ get_linked_target_type(LinkedTargetType, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred pre_hlds_pass(module_imports::in, bool::in, module_info::out,
-    make_hlds_qual_info::out, maybe(module_timestamps)::out,
+:- pred pre_hlds_pass(globals::in, module_and_imports::in, bool::in,
+    module_info::out, make_hlds_qual_info::out, maybe(module_timestamps)::out,
     bool::out, bool::out, bool::out, dump_info::in, dump_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
-        MaybeTimestamps, UndefTypes, UndefModes, FoundError, !DumpInfo, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+pre_hlds_pass(Globals, ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
+        MaybeTimestamps, UndefTypes, UndefModes, FoundError, !DumpInfo,
+        !Specs, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, MMCMake),
@@ -1842,7 +1913,7 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         MakeOptInt),
     DontWriteDFile = bool.or(DontWriteDFile1, MakeOptInt),
 
-    module_imports_get_module_name(ModuleImports0, ModuleName),
+    module_and_imports_get_module_name(ModuleImports0, ModuleName),
     (
         DontWriteDFile = yes,
         % The only time the TransOptDeps are required is when creating the
@@ -1856,8 +1927,13 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
     ),
 
     % Errors in .opt and .trans_opt files result in software errors.
-    maybe_grab_optfiles(ModuleImports0, Verbose, MaybeTransOptDeps,
+    maybe_grab_optfiles(Globals, ModuleImports0, Verbose, MaybeTransOptDeps,
         ModuleImports1, IntermodError, !IO),
+
+    % We pay attention to IntermodError instead of _Error. XXX Is this right?
+    module_and_imports_get_results(ModuleImports1, Items1, ItemSpecs, _Error),
+    !:Specs = ItemSpecs ++ !.Specs,
+    MaybeTimestamps = ModuleImports1 ^ mai_maybe_timestamps,
 
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
@@ -1867,52 +1943,36 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         EventSetErrors = no
     ;
         read_event_set(EventSetFileName, EventSetName0, EventSpecMap0,
-            EventSetErrorSpecs, !IO),
+            EventSetSpecs, !IO),
+        !:Specs = EventSetSpecs ++ !.Specs,
+        EventSetErrors = contains_errors(Globals, EventSetSpecs),
         (
-            EventSetErrorSpecs = [],
+            EventSetErrors = no,
             EventSetName = EventSetName0,
-            EventSpecMap1 = EventSpecMap0,
-            EventSetErrors = no
+            EventSpecMap1 = EventSpecMap0
         ;
-            EventSetErrorSpecs = [_ | _],
-            EventSetName = "",
-            EventSpecMap1 = map.init,
             EventSetErrors = yes,
-            % XXX _NumErrors
-            write_error_specs(EventSetErrorSpecs, Globals,
-                0, _EventSpecNumWarnings, 0, _EventSpecNumErrors, !IO)
+            EventSetName = "",
+            EventSpecMap1 = map.init
         )
     ),
 
-    module_imports_get_items_list(ModuleImports1, Items1),
-    MaybeTimestamps = ModuleImports1 ^ maybe_timestamps,
-
-    invoke_module_qualify_items(Items1, Items2, EventSpecMap1, EventSpecMap2,
-        ModuleName, EventSetFileName, Verbose, Stats, MQInfo0,
-        MQUndefTypes, MQUndefModes, !IO),
+    invoke_module_qualify_items(Globals, Items1, Items2,
+        EventSpecMap1, EventSpecMap2, ModuleName, EventSetFileName,
+        Verbose, Stats, MQInfo0, MQUndefTypes, MQUndefModes, !Specs, !IO),
 
     mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
-    expand_equiv_types(ModuleName, Verbose, Stats, Items2, Items,
+    expand_equiv_types(Globals, ModuleName, Verbose, Stats, Items2, Items,
         EventSpecMap2, EventSpecMap, EqvMap, UsedModules,
-        RecompInfo0, RecompInfo, ExpandSpecs, !IO),
+        RecompInfo0, RecompInfo, ExpandErrors, !Specs, !IO),
     mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
-    (
-        ExpandSpecs = [],
-        CircularTypes = no
-    ;
-        ExpandSpecs = [_ | _],
-        CircularTypes = yes,
-        % XXX _NumErrors
-        write_error_specs(ExpandSpecs, Globals,
-            0, _ExpandNumWarnings, 0, _ExpandNumErrors, !IO)
-    ),
 
     EventSet = event_set(EventSetName, EventSpecMap),
-    make_hlds(ModuleName, Items, EventSet, MQInfo, EqvMap, UsedModules,
-        Verbose, Stats, HLDS0, QualInfo,
-        MakeHLDSUndefTypes, MakeHLDSUndefModes, FoundError, !IO),
+    make_hlds(Globals, ModuleName, Items, EventSet, MQInfo, EqvMap,
+        UsedModules, Verbose, Stats, HLDS0, QualInfo,
+        MakeHLDSUndefTypes, MakeHLDSUndefModes, FoundError, !Specs, !IO),
 
-    bool.or_list([MQUndefTypes, EventSetErrors, CircularTypes,
+    bool.or_list([MQUndefTypes, EventSetErrors, ExpandErrors,
         MakeHLDSUndefTypes], UndefTypes),
     bool.or(MQUndefModes, MakeHLDSUndefModes, UndefModes),
 
@@ -1945,33 +2005,34 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         HLDS1 = HLDS0
     ).
 
-:- pred invoke_module_qualify_items(list(item)::in, list(item)::out,
-    event_spec_map::in, event_spec_map::out,
+:- pred invoke_module_qualify_items(globals::in,
+    list(item)::in, list(item)::out, event_spec_map::in, event_spec_map::out,
     module_name::in, string::in, bool::in, bool::in, mq_info::out,
-    bool::out, bool::out, io::di, io::uo) is det.
+    bool::out, bool::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-invoke_module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap,
+invoke_module_qualify_items(Globals, Items0, Items, EventSpecMap0, EventSpecMap,
         ModuleName, EventSpecFileName, Verbose, Stats, MQInfo,
-        UndefTypes, UndefModes, !IO) :-
+        UndefTypes, UndefModes, !Specs, !IO) :-
+    maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Module qualifying items...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    globals.io_get_globals(Globals, !IO),
     module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
         FileName, !IO),
     module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap,
         Globals, ModuleName, yes(FileName), EventSpecFileName, MQInfo,
-        UndefTypes, UndefModes, [], Specs),
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+        UndefTypes, UndefModes, [], QualifySpecs),
+    !:Specs = QualifySpecs ++ !.Specs,
+    maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred maybe_grab_optfiles(module_imports::in, bool::in,
-    maybe(list(module_name))::in, module_imports::out, bool::out,
+:- pred maybe_grab_optfiles(globals::in, module_and_imports::in, bool::in,
+    maybe(list(module_name))::in, module_and_imports::out, bool::out,
     io::di, io::uo) is det.
 
-maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
-        !IO) :-
-    globals.io_get_globals(Globals, !IO),
+maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
+        Imports, Error, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_optimization,
         IntermodOpt),
     globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
@@ -1991,7 +2052,7 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
     ->
         maybe_write_string(Verbose, "% Reading .opt files...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        grab_opt_files(Imports0, Imports1, Error1, !IO),
+        grab_opt_files(Globals, Imports0, Imports1, Error1, !IO),
         maybe_write_string(Verbose, "% Done.\n", !IO)
     ;
         Imports1 = Imports0,
@@ -2002,12 +2063,13 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
             MaybeTransOptDeps = yes(TransOptDeps),
             % When creating the trans_opt file, only import the
             % trans_opt files which are lower in the ordering.
-            grab_trans_opt_files(TransOptDeps, Imports1, Imports, Error2, !IO)
+            grab_trans_opt_files(Globals, TransOptDeps, Imports1, Imports,
+                Error2, !IO)
         ;
             MaybeTransOptDeps = no,
             Imports = Imports1,
             Error2 = no,
-            module_imports_get_module_name(Imports, ModuleName),
+            module_and_imports_get_module_name(Imports, ModuleName),
             globals.lookup_bool_option(Globals, warn_missing_trans_opt_deps,
                 WarnNoTransOptDeps),
             (
@@ -2038,9 +2100,13 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
             % the .opt or .trans opt file, then import the trans_opt files
             % for all the modules that are imported (or used), and for all
             % ancestor modules.
-            list.condense([Imports0 ^ parent_deps,
-                Imports0 ^ int_deps, Imports0 ^ impl_deps], TransOptFiles),
-            grab_trans_opt_files(TransOptFiles, Imports1, Imports, Error2, !IO)
+            TransOptFilesList =
+                [Imports0 ^ mai_parent_deps,
+                Imports0 ^ mai_int_deps,
+                Imports0 ^ mai_impl_deps],
+            list.condense(TransOptFilesList, TransOptFiles),
+            grab_trans_opt_files(Globals, TransOptFiles, Imports1, Imports,
+                Error2, !IO)
         ;
             TransOpt = no,
             Imports = Imports1,
@@ -2049,41 +2115,48 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
     ),
     bool.or(Error1, Error2, Error).
 
-:- pred expand_equiv_types(module_name::in, bool::in, bool::in,
+:- pred expand_equiv_types(globals::in, module_name::in, bool::in, bool::in,
     list(item)::in, list(item)::out, event_spec_map::in, event_spec_map::out,
     eqv_map::out, used_modules::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    list(error_spec)::out, io::di, io::uo) is det.
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out, bool::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-expand_equiv_types(ModuleName, Verbose, Stats, Items0, Items,
+expand_equiv_types(Globals, ModuleName, Verbose, Stats, Items0, Items,
         EventSpecMap0, EventSpecMap, EqvMap, UsedModules,
-        RecompInfo0, RecompInfo, Specs, !IO) :-
-    maybe_write_string(Verbose, "% Expanding equivalence types...", !IO),
+        RecompInfo0, RecompInfo, FoundError, !Specs, !IO) :-
+    maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
+    maybe_write_string(Verbose, "% Expanding equivalence types...\n", !IO),
     maybe_flush_output(Verbose, !IO),
     equiv_type.expand_eqv_types(ModuleName, Items0, Items,
         EventSpecMap0, EventSpecMap, EqvMap, UsedModules,
-        RecompInfo0, RecompInfo, Specs),
-    maybe_write_string(Verbose, " done.\n", !IO),
+        RecompInfo0, RecompInfo, ExpandSpecs),
+    FoundError = contains_errors(Globals, ExpandSpecs),
+    !:Specs = ExpandSpecs ++ !.Specs,
+    maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
+    maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred make_hlds(module_name::in, list(item)::in, event_set::in,
+:- pred make_hlds(globals::in, module_name::in, list(item)::in, event_set::in,
     mq_info::in, eqv_map::in, used_modules::in, bool::in, bool::in,
     module_info::out, make_hlds_qual_info::out,
-    bool::out, bool::out, bool::out, io::di, io::uo) is det.
+    bool::out, bool::out, bool::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-make_hlds(Module, Items, EventSet, MQInfo, EqvMap, UsedModules,
-        Verbose, Stats, !:HLDS, QualInfo,
-        UndefTypes, UndefModes, FoundSemanticError, !IO) :-
+make_hlds(Globals, ModuleName, Items, EventSet, MQInfo, EqvMap, UsedModules,
+        Verbose, Stats, !:HLDS, QualInfo, UndefTypes, UndefModes,
+        FoundSemanticError, !Specs, !IO) :-
+    maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
-    Prog = unit_module(Module, Items),
-    parse_tree_to_hlds(Prog, MQInfo, EqvMap, UsedModules, !:HLDS, QualInfo,
-        UndefTypes, UndefModes, !IO),
+    ParseTree = unit_module(ModuleName, Items),
+    parse_tree_to_hlds(Globals, ParseTree, MQInfo, EqvMap, UsedModules,
+        QualInfo, UndefTypes, UndefModes, !:HLDS, MakeSpecs),
+    !:Specs = MakeSpecs ++ !.Specs,
     module_info_set_event_set(EventSet, !HLDS),
-    module_info_get_num_errors(!.HLDS, NumErrors),
     io.get_exit_status(Status, !IO),
+    SpecsErrors = contains_errors(Globals, !.Specs),
     (
         ( Status \= 0
-        ; NumErrors > 0
+        ; SpecsErrors = yes
         )
     ->
         FoundSemanticError = yes,
@@ -2091,6 +2164,7 @@ make_hlds(Module, Items, EventSet, MQInfo, EqvMap, UsedModules,
     ;
         FoundSemanticError = no
     ),
+    maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -2099,46 +2173,53 @@ make_hlds(Module, Items, EventSet, MQInfo, EqvMap, UsedModules,
 
 :- pred frontend_pass(make_hlds_qual_info::in, bool::in, bool::in,
     bool::in, bool::out, module_info::in, module_info::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
-        !HLDS, !DumpInfo, !IO) :-
+        !HLDS, !DumpInfo, !Specs, !IO) :-
     % We can't continue after an undefined type error, since typecheck
     % would get internal errors.
-    globals.io_get_globals(Globals, !IO),
+    module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         FoundUndefTypeError = yes,
+        % We can't continue after an undefined type error, because if we did,
+        % typecheck could get internal errors.
         !:FoundError = yes,
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose,
             "% Program contains undefined type error(s).\n", !IO),
         io.set_exit_status(1, !IO)
     ;
         FoundUndefTypeError = no,
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Checking typeclasses...\n", !IO),
-        check_typeclasses(!HLDS, QualInfo0, QualInfo, [], Specs),
+        check_typeclasses(!HLDS, QualInfo0, QualInfo, [], TypeClassSpecs),
+        !:Specs = TypeClassSpecs ++ !.Specs,
         maybe_dump_hlds(!.HLDS, 5, "typeclass", !DumpInfo, !IO),
         set_module_recomp_info(QualInfo, !HLDS),
 
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-
-        % We can't continue after a typeclass error, since typecheck
-        % can get internal errors.
-        ( NumErrors > 0 ->
+        TypeClassErrors = contains_errors(Globals, TypeClassSpecs),
+        (
+            TypeClassErrors = yes,
+            % We can't continue after a typeclass error, because if we did,
+            % typecheck could get internal errors.
             !:FoundError = yes
         ;
-            frontend_pass_no_type_error(FoundUndefModeError, !FoundError,
-                !HLDS, !DumpInfo, !IO)
+            TypeClassErrors = no,
+            frontend_pass_no_type_error(FoundUndefModeError,
+                !FoundError, !HLDS, !DumpInfo, !Specs, !IO)
         )
     ).
 
 :- pred frontend_pass_no_type_error(bool::in, bool::in, bool::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
-        !IO) :-
-    globals.io_get_globals(Globals, !IO),
+frontend_pass_no_type_error(FoundUndefModeError, !FoundError,
+        !HLDS, !DumpInfo, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
@@ -2160,8 +2241,10 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         % to speed up compilation. This must be done after
         % typeclass instances have been checked, since that
         % fills in which pred_ids are needed by instance decls.
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Eliminating dead predicates... ", !IO),
         dead_pred_elim(!HLDS),
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "done.\n", !IO),
         maybe_dump_hlds(!.HLDS, 10, "dead_pred_elim", !DumpInfo, !IO)
     ;
@@ -2172,12 +2255,11 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         WarnInstsWithNoMatchingType),
     (
         WarnInstsWithNoMatchingType = yes,
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose,
             "% Checking that insts have matching types... ", !IO),
-        check_hlds.inst_check.check_insts_have_matching_types(!.HLDS,
-            [], InstSpecs),
-        write_error_specs(InstSpecs, Globals,
-            0, _NumInstWarnings, 0, _NumInstErrors, !IO),
+        check_insts_have_matching_types(!.HLDS, !Specs),
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "done.\n", !IO),
         maybe_dump_hlds(!.HLDS, 12, "warn_insts_without_matching_type",
             !DumpInfo, !IO)
@@ -2186,6 +2268,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
     ),
 
     % Next typecheck the clauses.
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     maybe_write_string(Verbose, "% Type-checking...\n", !IO),
     maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
     (
@@ -2197,11 +2280,10 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         typecheck_module(!HLDS, TypeCheckSpecs,
             ExceededTypeCheckIterationLimit)
     ),
-    write_error_specs(TypeCheckSpecs, Globals, 0, _NumTypeWarnings,
-        0, NumTypeErrors, !IO),
-    maybe_report_stats(Stats, !IO),
-    ( NumTypeErrors > 0 ->
-        module_info_incr_num_errors(NumTypeErrors, !HLDS),
+    !:Specs = TypeCheckSpecs ++ !.Specs,
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    FoundTypeError = contains_errors(Globals, TypeCheckSpecs),
+    (
         FoundTypeError = yes,
         maybe_write_string(Verbose,
             "% Program contains type error(s).\n", !IO)
@@ -2209,6 +2291,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         FoundTypeError = no,
         maybe_write_string(Verbose, "% Program is type-correct.\n", !IO)
     ),
+    maybe_report_stats(Stats, !IO),
     maybe_dump_hlds(!.HLDS, 15, "typecheck", !DumpInfo, !IO),
 
     % We can't continue after an undefined inst/mode error, since
@@ -2226,13 +2309,14 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
             "or undefined mode error(s).\n", !IO),
         io.set_exit_status(1, !IO)
     ; ExceededTypeCheckIterationLimit = yes ->
-        % FoundTypeError will always be true here, so we've already
-        % printed a message about the program containing type errors.
+        % FoundTypeError will always be true here, so if Verbose = yes,
+        % we've already printed a message about the program containing
+        % type errors.
         !:FoundError = yes,
         io.set_exit_status(1, !IO)
     ;
         puritycheck(Verbose, Stats, !HLDS, FoundTypeError,
-            FoundPostTypecheckError, !IO),
+            FoundPostTypecheckError, !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
 
         !:FoundError = !.FoundError `or` FoundTypeError,
@@ -2253,13 +2337,12 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
                 % polymorphism before running mode analysis, and currently
                 % polymorphism may get internal errors if any of the predicates
                 % are not type-correct.
-
                 !:FoundError = yes
             ;
                 % Substitute implementation-defined literals before clauses are
                 % written out to `.opt' files.
                 subst_implementation_defined_literals(Verbose, Stats, !HLDS,
-                    !IO),
+                    !Specs, !IO),
                 maybe_dump_hlds(!.HLDS, 25, "implementation_defined_literals",
                     !DumpInfo, !IO),
 
@@ -2268,7 +2351,8 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
                     !.FoundError = no,
                     FoundUndefModeError = no
                 ->
-                    maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO)
+                    maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs,
+                        !IO)
                 ;
                     true
                 ),
@@ -2280,7 +2364,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
                     % Now go ahead and do the rest of mode checking
                     % and determinism analysis.
                     frontend_pass_by_phases(!HLDS,
-                        FoundModeOrDetError, !DumpInfo, !IO),
+                        FoundModeOrDetError, !DumpInfo, !Specs, !IO),
                     !:FoundError = !.FoundError `or` FoundModeOrDetError
                 )
             )
@@ -2288,10 +2372,11 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
     ).
 
 :- pred maybe_write_optfile(bool::in, module_info::in, module_info::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    dump_info::in, dump_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
@@ -2338,7 +2423,8 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             ; ReuseAnalysis = yes
             )
         ->
-            frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo, !IO),
+            frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo,
+                !Specs, !IO),
             (
                 FoundModeError = no,
                 (
@@ -2570,23 +2656,26 @@ output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
         AnalysisInfo, _AnalysisInfo, !IO).
 
 :- pred frontend_pass_by_phases(module_info::in, module_info::out,
-    bool::out, dump_info::in, dump_info::out, io::di, io::uo) is det.
+    bool::out, dump_info::in, dump_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
+frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_polymorphism(Verbose, Stats, !HLDS, !IO),
+    maybe_polymorphism(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 30, "polymorphism", !DumpInfo, !IO),
 
-    maybe_unused_imports(Verbose, Stats, !.HLDS, UnusedImportSpecs, !IO),
+    maybe_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 31, "unused_imports", !DumpInfo, !IO),
 
+    % XXX Convert the mode constraints pass to use error_specs.
     maybe_mode_constraints(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 33, "mode_constraints", !DumpInfo, !IO),
 
-    modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue, !IO),
+    modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
+        !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 35, "modecheck", !DumpInfo, !IO),
 
     (
@@ -2600,42 +2689,31 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
         detect_cse(Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(!.HLDS, 45, "cse", !DumpInfo, !IO),
 
-        check_determinism(Verbose, Stats, !HLDS, DetismSpecs, !IO),
+        check_determinism(Verbose, Stats, !HLDS, !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 50, "determinism", !DumpInfo, !IO),
 
-        Specs1 = UnusedImportSpecs ++ DetismSpecs,
-        write_error_specs(Specs1, Globals, 0, _NumWarnings1, 0, NumErrors1,
-            !IO),
-        module_info_incr_num_errors(NumErrors1, !HLDS),
-
-        check_unique_modes(Verbose, Stats, !HLDS, FoundUniqError, !IO),
+        check_unique_modes(Verbose, Stats, !HLDS, FoundUniqError, !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 55, "unique_modes", !DumpInfo, !IO),
 
-        check_stratification(Verbose, Stats, !HLDS, FoundStratError, !IO),
+        check_stratification(Verbose, Stats, !HLDS, FoundStratError,
+            !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
 
-        process_try_goals(Verbose, Stats, !HLDS, FoundTryError, !IO),
+        process_try_goals(Verbose, Stats, !HLDS, FoundTryError, !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 62, "try", !DumpInfo, !IO),
 
-        maybe_simplify(yes, frontend, Verbose, Stats, !HLDS, SimplifySpecs,
-            !IO),
+        maybe_simplify(yes, frontend, Verbose, Stats, !HLDS, !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
 
-        % Once the other passes have all been converted to return error_specs,
-        % we can write them out all at once.
-        write_error_specs(SimplifySpecs, Globals, 0, _NumWarnings2,
-            0, NumErrors2, !IO),
-        module_info_incr_num_errors(NumErrors2, !HLDS),
-
         % Work out whether we encountered any errors.
+        module_info_get_num_errors(!.HLDS, NumErrors),
         io.get_exit_status(ExitStatus, !IO),
         (
             FoundModeError = no,
             FoundUniqError = no,
             FoundStratError = no,
             FoundTryError = no,
-            NumErrors1 = 0,
-            NumErrors2 = 0,
+            NumErrors = 0,
             % Strictly speaking, we shouldn't need to check the exit status.
             % But the values returned for FoundModeError etc. aren't always
             % correct.
@@ -2786,7 +2864,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     % propagation and we cannot do that once the term-size profiling or deep
     % profiling transformations have been applied.
     maybe_simplify(no, pre_prof_transforms, Verbose, Stats, !HLDS,
-        SimplifySpecs, !IO),
+        [], SimplifySpecs, !IO),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
         "middle_pass: simplify has errors"),
     maybe_dump_hlds(!.HLDS, 215, "pre_prof_transforms_simplify", !DumpInfo,
@@ -2825,10 +2903,11 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     global_data::out, list(c_procedure)::out, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
 
-backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
+backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
-    globals.io_lookup_bool_option(unboxed_float, OptUnboxFloat, !IO),
-    globals.io_lookup_bool_option(common_data, DoCommonData, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, unboxed_float, OptUnboxFloat),
+    globals.lookup_bool_option(Globals, common_data, DoCommonData),
     (
         OptUnboxFloat = yes,
         UnboxFloats = have_unboxed_floats
@@ -2838,10 +2917,10 @@ backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
     ),
     StaticCellInfo0 = init_static_cell_info(ModuleName, UnboxFloats,
         DoCommonData),
-    global_data_init(StaticCellInfo0, GlobalData0),
+    global_data_init(StaticCellInfo0, !:GlobalData),
 
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     % map_args_to_regs affects the interface to a predicate,
     % so it must be done in one phase immediately before code generation
@@ -2849,15 +2928,14 @@ backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
     map_args_to_regs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 305, "args_to_regs", !DumpInfo, !IO),
 
-    globals.io_lookup_bool_option(trad_passes, TradPasses, !IO),
-    add_all_tabling_info_structs(!.HLDS, GlobalData0, GlobalData1),
+    globals.lookup_bool_option(Globals, trad_passes, TradPasses),
+    add_all_tabling_info_structs(!.HLDS, !GlobalData),
     (
         TradPasses = no,
-        backend_pass_by_phases(!HLDS, GlobalData1, GlobalData, LLDS, !DumpInfo,
-            !IO)
+        backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO)
     ;
         TradPasses = yes,
-        backend_pass_by_preds(!HLDS, GlobalData1, GlobalData, LLDS, !IO)
+        backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2880,7 +2958,8 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     maybe_followcode(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 320, "followcode", !DumpInfo, !IO),
 
-    maybe_simplify(no, ll_backend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
+    maybe_simplify(no, ll_backend, Verbose, Stats, !HLDS,
+        [], SimplifySpecs, !IO),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
         "backend_pass_by_phases: simplify has errors"),
     maybe_dump_hlds(!.HLDS, 325, "ll_backend_simplify", !DumpInfo, !IO),
@@ -2914,7 +2993,8 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
 
 backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
     module_info_predids(PredIds, !HLDS),
-    globals.io_lookup_bool_option(optimize_proc_dups, ProcDups, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, optimize_proc_dups, ProcDups),
     (
         ProcDups = no,
         OrderedPredIds = PredIds,
@@ -2949,7 +3029,8 @@ backend_pass_by_preds_2([PredId | PredIds], !HLDS,
         ProcList = []
     ;
         ProcIds = [_ | _],
-        globals.io_lookup_bool_option(verbose, Verbose, !IO),
+        module_info_get_globals(!.HLDS, Globals0),
+        globals.lookup_bool_option(Globals0, verbose, Verbose),
         (
             Verbose = yes,
             io.write_string("% Generating code for ", !IO),
@@ -2968,7 +3049,6 @@ backend_pass_by_preds_2([PredId | PredIds], !HLDS,
             % typeinfo_liveness. Since they may be opt_imported into other
             % modules, we must switch off the tracing of such preds on a
             % pred-by-pred basis; module-by-module wouldn't work.
-            module_info_get_globals(!.HLDS, Globals0),
             globals.get_trace_level(Globals0, TraceLevel),
             globals.set_trace_level_none(Globals0, Globals1),
             module_info_set_globals(Globals1, !HLDS),
@@ -3128,46 +3208,60 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
 %-----------------------------------------------------------------------------%
 
 :- pred puritycheck(bool::in, bool::in, module_info::in, module_info::out,
-    bool::in, bool::out, io::di, io::uo) is det.
+    bool::in, bool::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 puritycheck(Verbose, Stats, !HLDS, FoundTypeError, FoundPostTypecheckError,
-        !IO) :-
-    puritycheck(FoundTypeError, FoundPostTypecheckError, !HLDS, [], Specs),
+        !Specs, !IO) :-
+    puritycheck_module(FoundTypeError, FoundPostTypecheckError, !HLDS,
+        [], PuritySpecs),
+    !:Specs = PuritySpecs ++ !.Specs,
     module_info_get_globals(!.HLDS, Globals),
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-    ( NumErrors > 0 ->
-        module_info_incr_num_errors(NumErrors, !HLDS),
+    PurityErrors = contains_errors(Globals, PuritySpecs),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    (
+        PurityErrors = yes,
         maybe_write_string(Verbose,
             "% Program contains purity error(s).\n", !IO)
     ;
+        PurityErrors = no,
         maybe_write_string(Verbose,
             "% Program is purity-correct.\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
 
 :- pred modecheck(bool::in, bool::in, module_info::in, module_info::out,
-    bool::out, modes_safe_to_continue::out, io::di, io::uo) is det.
+    bool::out, modes_safe_to_continue::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue, !IO) :-
-    module_info_get_num_errors(!.HLDS, NumErrors0),
-    maybe_benchmark_modes(
-        (pred(H0::in, {H, U}::out, !.IO::di, !:IO::uo) is det :-
-            modecheck_module(H0, H1, U, Specs),
-            module_info_get_globals(H1, Globals),
-            write_error_specs(Specs, Globals,
-                0, _SpecsNumWarnings, 0, SpecsNumErrors, !IO),
-            module_info_incr_num_errors(SpecsNumErrors, H1, H)
+modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
+        !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    globals.lookup_bool_option(Globals, benchmark_modes, BenchmarkModes),
+    (
+        BenchmarkModes = yes,
+        globals.lookup_int_option(Globals, benchmark_modes_repeat, Repeats),
+        promise_equivalent_solutions [!:HLDS, SafeToContinue, ModeSpecs, Time] (
+            benchmark_det(modecheck_module,
+                !.HLDS, {!:HLDS, SafeToContinue, ModeSpecs}, Repeats, Time)
         ),
-        "modecheck", !.HLDS, {!:HLDS, SafeToContinue}, !IO),
-    module_info_get_num_errors(!.HLDS, NumErrors),
-    ( NumErrors = NumErrors0 ->
+        io.format("BENCHMARK modecheck, %d repeats: %d ms\n",
+            [i(Repeats), i(Time)], !IO)
+    ;
+        BenchmarkModes = no,
+        modecheck_module(!.HLDS, {!:HLDS, SafeToContinue, ModeSpecs})
+    ),
+    !:Specs = ModeSpecs ++ !.Specs,
+    FoundModeError = contains_errors(Globals, ModeSpecs),
+    (
         FoundModeError = no,
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Program is mode-correct.\n", !IO)
     ;
         FoundModeError = yes,
-        maybe_write_string(Verbose, "% Program contains mode error(s).\n",
-            !IO),
-        io.set_exit_status(1, !IO)
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_string(Verbose, "% Program contains mode error(s).\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
 
@@ -3175,7 +3269,8 @@ modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(mode_constraints, ModeConstraints, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, mode_constraints, ModeConstraints),
     (
         ModeConstraints = yes,
         maybe_write_string(Verbose, "% Dumping mode constraints...\n", !IO),
@@ -3188,22 +3283,24 @@ maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
         ModeConstraints = no
     ).
 
-:- pred maybe_benchmark_modes(pred(T1, T2, io, io)::in(pred(in, out, di, uo)
-    is det), string::in, T1::in, T2::out, io::di, io::uo) is det.
+:- pred maybe_benchmark_modes(
+    pred(module_info, module_info, io, io)::in(pred(in, out, di, uo) is det),
+    string::in, module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_benchmark_modes(Pred, Stage, A0, A, !IO) :-
-    globals.io_lookup_bool_option(benchmark_modes, BenchmarkModes, !IO),
+maybe_benchmark_modes(Pred, Stage, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, benchmark_modes, BenchmarkModes),
     (
         BenchmarkModes = yes,
-        globals.io_lookup_int_option(benchmark_modes_repeat, Repeats, !IO),
+        globals.lookup_int_option(Globals, benchmark_modes_repeat, Repeats),
         io.format("%s %d ", [s(Stage), i(Repeats)], !IO),
-        promise_equivalent_solutions [A, Time, !:IO] (
-            do_io_benchmark(Pred, Repeats, A0, A - Time, !IO)
+        promise_equivalent_solutions [!:HLDS, Time, !:IO] (
+            do_io_benchmark(Pred, Repeats, !.HLDS, !:HLDS - Time, !IO)
         ),
         io.format("%d ms\n", [i(Time)], !IO)
     ;
         BenchmarkModes = no,
-        Pred(A0, A, !IO)
+        Pred(!HLDS, !IO)
     ).
 
 :- pred do_io_benchmark(pred(T1, T2, io, io)::in(pred(in, out, di, uo) is det),
@@ -3226,7 +3323,8 @@ detect_switches(Verbose, Stats, !HLDS, !IO) :-
     io::di, io::uo) is det.
 
 detect_cse(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(common_goal, CommonGoal, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, common_goal, CommonGoal),
     (
         CommonGoal = yes,
         maybe_write_string(Verbose,
@@ -3239,13 +3337,15 @@ detect_cse(Verbose, Stats, !HLDS, !IO) :-
     ).
 
 :- pred check_determinism(bool::in, bool::in,
-    module_info::in, module_info::out, list(error_spec)::out,
-    io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_determinism(Verbose, Stats, !HLDS, Specs, !IO) :-
-    determinism_pass(!HLDS, Specs),
+check_determinism(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    determinism_pass(!HLDS, DetismSpecs),
+    !:Specs = DetismSpecs ++ !.Specs,
     module_info_get_globals(!.HLDS, Globals),
-    FoundError = contains_errors(Globals, Specs),
+    FoundError = contains_errors(Globals, DetismSpecs),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     (
         FoundError = yes,
         maybe_write_string(Verbose,
@@ -3260,8 +3360,8 @@ check_determinism(Verbose, Stats, !HLDS, Specs, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(analyse_mm_tabling, TablingAnalysis,
-        !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, analyse_mm_tabling, TablingAnalysis),
     (
         TablingAnalysis = yes,
         maybe_write_string(Verbose, "% Analysing minimal model tabling...\n",
@@ -3277,7 +3377,8 @@ maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_closure_analysis(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
     (
         ClosureAnalysis = yes,
         maybe_write_string(Verbose, "% Analysing closures...\n", !IO),
@@ -3292,7 +3393,8 @@ maybe_closure_analysis(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 mercury_compile.maybe_exception_analysis(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(analyse_exceptions, ExceptionAnalysis, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, analyse_exceptions, ExceptionAnalysis),
     (
         ExceptionAnalysis = yes,
         maybe_write_string(Verbose, "% Analysing exceptions...\n", !IO),
@@ -3307,7 +3409,7 @@ mercury_compile.maybe_exception_analysis(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_termination(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+    module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, polymorphism, Polymorphism),
     globals.lookup_bool_option(Globals, termination, Termination),
     % Termination analysis requires polymorphism to be run,
@@ -3328,8 +3430,9 @@ maybe_termination(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(polymorphism, Polymorphism, !IO),
-    globals.io_lookup_bool_option(termination2, Termination2, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, polymorphism, Polymorphism),
+    globals.lookup_bool_option(Globals, termination2, Termination2),
     % Termination analysis requires polymorphism to be run,
     % as termination analysis does not handle complex unification.
     (
@@ -3348,9 +3451,10 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(source_to_source_debug, SSDB, !IO),
-    globals.io_lookup_bool_option(force_disable_ssdebug, ForceDisableSSDB,
-        !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, source_to_source_debug, SSDB),
+    globals.lookup_bool_option(Globals, force_disable_ssdebug,
+        ForceDisableSSDB),
     (
         SSDB = yes,
         ForceDisableSSDB = no
@@ -3362,7 +3466,8 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
 
-        % XXX Must be remove to manage the determinsim by hand
+        % XXX Must be remove to manage the determinism by hand
+        % XXX zs: what does the above comment mean?
         determinism_pass(!HLDS, _Specs)
     ;
         true
@@ -3372,7 +3477,8 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(analyse_trail_usage, AnalyseTrail, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, analyse_trail_usage, AnalyseTrail),
     (
         AnalyseTrail = yes,
         maybe_write_string(Verbose, "% Analysing trail usage...\n", !IO),
@@ -3384,23 +3490,22 @@ maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO) :-
     ).
 
 :- pred check_unique_modes(bool::in, bool::in,
-    module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
+    module_info::in, module_info::out, bool::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_unique_modes(Verbose, Stats, !HLDS, FoundError, !IO) :-
+check_unique_modes(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     maybe_write_string(Verbose,
         "% Checking for backtracking over unique modes...\n", !IO),
-    module_info_get_num_errors(!.HLDS, NumErrors0),
-    unique_modes_check_module(!HLDS, Specs),
-    module_info_get_globals(!.HLDS, Globals),
-    write_error_specs(Specs, Globals, 0, _SpecsNumWarnings, 0, SpecsNumErrors,
-        !IO),
-    module_info_incr_num_errors(SpecsNumErrors, !HLDS),
-    module_info_get_num_errors(!.HLDS, NumErrors),
-    ( NumErrors \= NumErrors0 ->
+    unique_modes_check_module(!HLDS, UniqueSpecs),
+    !:Specs = UniqueSpecs ++ !.Specs,
+    FoundError = contains_errors(Globals, UniqueSpecs),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    (
         FoundError = yes,
         maybe_write_string(Verbose,
-            "% Program contains unique mode error(s).\n", !IO),
-        io.set_exit_status(1, !IO)
+            "% Program contains unique mode error(s).\n", !IO)
     ;
         FoundError = no,
         maybe_write_string(Verbose, "% Program is unique-mode-correct.\n", !IO)
@@ -3408,32 +3513,32 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !IO) :-
     maybe_report_stats(Stats, !IO).
 
 :- pred check_stratification(bool::in, bool::in,
-    module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
+    module_info::in, module_info::out, bool::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_stratification(Verbose, Stats, !HLDS, FoundError, !IO) :-
+check_stratification(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     module_info_get_stratified_preds(!.HLDS, StratifiedPreds),
-    globals.io_lookup_bool_option(warn_non_stratification, Warn, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
     (
         ( \+ set.empty(StratifiedPreds)
         ; Warn = yes
         )
     ->
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose,
             "% Checking stratification...\n", !IO),
-        io.get_exit_status(OldStatus, !IO),
-        io.set_exit_status(0, !IO),
-        stratify.check_stratification(!HLDS, [], Specs),
-        module_info_get_globals(!.HLDS, Globals),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !HLDS),
-        ( NumErrors > 0 ->
+        check_stratification(!HLDS, [], StratifySpecs),
+        !:Specs = StratifySpecs ++ !.Specs,
+        FoundError = contains_errors(Globals, StratifySpecs),
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        (
             FoundError = yes,
             maybe_write_string(Verbose,
                 "% Program contains stratification error(s).\n", !IO)
         ;
             FoundError = no,
-            maybe_write_string(Verbose, "% done.\n", !IO),
-            io.set_exit_status(OldStatus, !IO)
+            maybe_write_string(Verbose, "% done.\n", !IO)
         ),
         maybe_report_stats(Stats, !IO)
     ;
@@ -3441,21 +3546,23 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !IO) :-
     ).
 
 :- pred process_try_goals(bool::in, bool::in,
-    module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
+    module_info::in, module_info::out, bool::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-process_try_goals(Verbose, Stats, !HLDS, FoundError, !IO) :-
-    maybe_write_string(Verbose, "% Transforming try goals...\n", !IO),
-    expand_try_goals_in_module(!HLDS, [], Specs),
+process_try_goals(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-    module_info_incr_num_errors(NumErrors, !HLDS),
-    maybe_write_string(Verbose, "% done.\n", !IO),
-    ( NumErrors > 0 ->
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_string(Verbose, "% Transforming try goals...\n", !IO),
+    expand_try_goals_in_module(!HLDS, [], TryExpandSpecs),
+    !:Specs = TryExpandSpecs ++ !.Specs,
+    FoundError = contains_errors(Globals, TryExpandSpecs),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    (
         FoundError = yes,
-        maybe_write_string(Verbose, "% Program contains error(s).\n", !IO),
-        io.set_exit_status(1, !IO)
+        maybe_write_string(Verbose, "% Program contains error(s).\n", !IO)
     ;
-        FoundError = no
+        FoundError = no,
+        maybe_write_string(Verbose, "% done.\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
 
@@ -3463,7 +3570,8 @@ process_try_goals(Verbose, Stats, !HLDS, FoundError, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(warn_dead_procs, WarnDead, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, warn_dead_procs, WarnDead),
     (
         WarnDead = yes,
         maybe_write_string(Verbose, "% Warning about dead procedures...\n",
@@ -3472,7 +3580,6 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         dead_proc_elim(do_not_elim_opt_imported, !.HLDS, _HLDS1, Specs),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
-        module_info_get_globals(!.HLDS, Globals),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS)
 
@@ -3521,10 +3628,11 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
     % This predicate set up and maybe run the simplification pass.
     %
 :- pred maybe_simplify(bool::in, simplify_pass::in, bool::in, bool::in,
-    module_info::in, module_info::out, list(error_spec)::out,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
+maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     some [!SimpList] (
         simplify.find_simplifications(Warn, Globals, Simplifications0),
@@ -3537,11 +3645,11 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
             list.cons(simp_do_once, !SimpList)
         ;
             SimplifyPass = pre_prof_transforms,
-            %
+
             % We run the simplify pass before the profiling transformations,
             % only if those transformations are being applied - otherwise we
             % just leave things to the backend simplification passes.
-            %
+
             globals.lookup_bool_option(Globals, pre_prof_transforms_simplify,
                 Simplify215),
             (
@@ -3587,17 +3695,28 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
     (
         SimpList = [_ | _],
 
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         Simplifications = list_to_simplifications(SimpList),
         process_all_nonimported_procs_errors(
             update_pred_error(simplify_pred(Simplifications)),
-            !HLDS, [], Specs, !IO),
+            !HLDS, [], SimplifySpecs, !IO),
+        (
+            SimplifyPass = frontend,
+            !:Specs = SimplifySpecs ++ !.Specs,
+            maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO)
+        ;
+            ( SimplifyPass = ll_backend
+            ; SimplifyPass = ml_backend
+            ; SimplifyPass = post_untuple
+            ; SimplifyPass = pre_prof_transforms
+            )
+        ),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        SimpList = [],
-        Specs = []
+        SimpList = []
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3606,7 +3725,8 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(static_ground_cells, SGCells, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, static_ground_cells, SGCells),
     (
         SGCells = yes,
         maybe_write_string(Verbose, "% Marking static ground terms...\n", !IO),
@@ -3625,13 +3745,15 @@ maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(use_trail, UseTrail, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
         UseTrail = no,
         EmitTrailOps = no
     ;
         UseTrail = yes,
-        globals.io_lookup_bool_option(disable_trail_ops, DisableTrailOps, !IO),
+        globals.lookup_bool_option(Globals, disable_trail_ops,
+            DisableTrailOps),
         (
             DisableTrailOps = yes,
             EmitTrailOps = no
@@ -3642,8 +3764,8 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
     ),
     (
         EmitTrailOps = yes,
-        globals.io_lookup_bool_option(optimize_trail_usage, OptTrailUse, !IO),
-        globals.io_get_target(Target, !IO),
+        globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailUse),
+        globals.get_target(Globals, Target),
         (
             Target = target_c,
             globals.io_lookup_bool_option(generate_trail_ops_inline,
@@ -3675,11 +3797,12 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_get_gc_method(GC, !IO),
-    globals.io_lookup_bool_option(reclaim_heap_on_semidet_failure,
-        SemidetReclaim, !IO),
-    globals.io_lookup_bool_option(reclaim_heap_on_nondet_failure,
-        NondetReclaim, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.get_gc_method(Globals, GC),
+    globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
+        SemidetReclaim),
+    globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
+        NondetReclaim),
     (
         gc_is_conservative(GC) = yes
     ->
@@ -3715,7 +3838,8 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(show_dependency_graph, ShowDepGraph, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, show_dependency_graph, ShowDepGraph),
     (
         ShowDepGraph = yes,
         maybe_write_string(Verbose, "% Writing dependency graph...", !IO),
@@ -3748,8 +3872,9 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
-    globals.io_lookup_bool_option(profile_time, ProfileTime, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
+    globals.lookup_bool_option(Globals, profile_time, ProfileTime),
     (
         ( ProfileCalls = yes
         ; ProfileTime = yes
@@ -3833,10 +3958,13 @@ expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred subst_implementation_defined_literals(bool::in, bool::in, module_info::in,
-    module_info::out, io::di, io::uo) is det.
+:- pred subst_implementation_defined_literals(bool::in, bool::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-subst_implementation_defined_literals(Verbose, Stats, !HLDS, !IO) :-
+subst_implementation_defined_literals(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     maybe_write_string(Verbose,
         "% Substituting implementation-defined literals...\n", !IO),
     maybe_flush_output(Verbose, !IO),
@@ -3845,10 +3973,12 @@ subst_implementation_defined_literals(Verbose, Stats, !HLDS, !IO) :-
     maybe_report_stats(Stats, !IO).
 
 :- pred maybe_polymorphism(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
+maybe_polymorphism(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     globals.lookup_bool_option(Globals, polymorphism, Polymorphism),
     (
         Polymorphism = yes,
@@ -3883,23 +4013,25 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
     ).
 
 :- pred maybe_unused_imports(bool::in, bool::in,
-    module_info::in, list(error_spec)::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_unused_imports(Verbose, Stats, HLDS, Specs, !IO) :-
-    module_info_get_globals(HLDS, Globals),
+maybe_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_unused_imports,
         WarnUnusedImports),
     (
         WarnUnusedImports = yes,
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Checking for unused imports...", !IO),
-        unused_imports(HLDS, Specs, !IO),
+        unused_imports(!.HLDS, UnusedImportSpecs, !IO),
+        !:Specs = UnusedImportSpecs ++ !.Specs,
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        WarnUnusedImports = no,
-        Specs = []
+        WarnUnusedImports = no
     ).
-
 
 :- pred maybe_type_ctor_infos(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -3967,8 +4099,8 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
         maybe_flush_output(Verbose, !IO),
         untuple_arguments(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_simplify(no, post_untuple, Verbose, Stats, !HLDS, SimplifySpecs,
-            !IO),
+        maybe_simplify(no, post_untuple, Verbose, Stats, !HLDS,
+            [], SimplifySpecs, !IO),
         expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
             "maybe_untuple_arguments: simplify has errors"),
         maybe_report_stats(Stats, !IO)
@@ -5038,7 +5170,8 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_simplify(no, ml_backend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
+    maybe_simplify(no, ml_backend, Verbose, Stats, !HLDS, [], SimplifySpecs,
+        !IO),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
         "ml_backend: simplify has errors"),
     maybe_dump_hlds(!.HLDS, 405, "ml_backend_simplify", !DumpInfo, !IO),
@@ -5069,13 +5202,13 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     ml_code_gen(!.HLDS, !:MLDS, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(!.MLDS, 0, "initial", !IO),
+    maybe_dump_mlds(Globals, !.MLDS, 0, "initial", !IO),
 
     maybe_write_string(Verbose, "% Generating RTTI data...\n", !IO),
     mlds_gen_rtti_data(!.HLDS, !MLDS),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(!.MLDS, 10, "rtti", !IO),
+    maybe_dump_mlds(Globals, !.MLDS, 10, "rtti", !IO),
 
     % Detection of tail calls needs to occur before the
     % chain_gc_stack_frame pass of ml_elim_nested, because we need to
@@ -5090,7 +5223,7 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
         OptimizeTailCalls = no
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(!.MLDS, 20, "tailcalls", !IO),
+    maybe_dump_mlds(Globals, !.MLDS, 20, "tailcalls", !IO),
 
     % Warning about non-tail calls must come after detection of tail calls.
     globals.lookup_bool_option(Globals, warn_non_tail_recursion,
@@ -5132,7 +5265,7 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
         Optimize = no
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(!.MLDS, 25, "optimize1", !IO),
+    maybe_dump_mlds(Globals, !.MLDS, 25, "optimize1", !IO),
 
     % Note that we call ml_elim_nested twice -- the first time to chain
     % the stack frames together, for accurate GC, and the second time to
@@ -5157,7 +5290,7 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
         )
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(!.MLDS, 30, "gc_frames", !IO),
+    maybe_dump_mlds(Globals, !.MLDS, 30, "gc_frames", !IO),
 
     globals.lookup_bool_option(Globals, gcc_nested_functions, NestedFuncs),
     (
@@ -5169,7 +5302,7 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
         NestedFuncs = yes
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(!.MLDS, 35, "nested_funcs", !IO),
+    maybe_dump_mlds(Globals, !.MLDS, 35, "nested_funcs", !IO),
 
     % Run the ml_optimize pass again after ml_elim_nested,
     % to do optimize_initializations.  (It may also help pick
@@ -5184,9 +5317,9 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
         Optimize = no
     ),
     maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(!.MLDS, 40, "optimize2", !IO),
+    maybe_dump_mlds(Globals, !.MLDS, 40, "optimize2", !IO),
 
-    maybe_dump_mlds(!.MLDS, 99, "final", !IO).
+    maybe_dump_mlds(Globals, !.MLDS, 99, "final", !IO).
 
 :- pred mlds_gen_rtti_data(module_info::in, mlds::in, mlds::out) is det.
 
@@ -5213,11 +5346,11 @@ mlds_gen_rtti_data(HLDS, !MLDS) :-
 % The `--high-level-code' MLDS output pass
 %
 
-:- pred mlds_to_high_level_c(mlds::in, io::di, io::uo) is det.
+:- pred mlds_to_high_level_c(globals::in, mlds::in, io::di, io::uo) is det.
 
-mlds_to_high_level_c(MLDS, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+mlds_to_high_level_c(Globals, MLDS, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to C...\n", !IO),
     mlds_to_c.output_mlds(MLDS, "", !IO),
@@ -5226,20 +5359,22 @@ mlds_to_high_level_c(MLDS, !IO) :-
 
 :- pred mlds_to_java(module_info::in, mlds::in, io::di, io::uo) is det.
 
-mlds_to_java(ModuleInfo, MLDS, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+mlds_to_java(HLDS, MLDS, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to Java...\n", !IO),
-    mlds_to_java.output_mlds(ModuleInfo, MLDS, !IO),
+    mlds_to_java.output_mlds(HLDS, MLDS, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to Java.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred maybe_mlds_to_gcc(mlds::in, bool::out, io::di, io::uo) is det.
+:- pred maybe_mlds_to_gcc(globals::in, mlds::in, bool::out, io::di, io::uo)
+    is det.
 
-maybe_mlds_to_gcc(MLDS, ContainsCCode, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+maybe_mlds_to_gcc(Globals, MLDS, ContainsCCode, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose,
         "% Passing MLDS to GCC and compiling to assembler...\n", !IO),
@@ -5247,11 +5382,11 @@ maybe_mlds_to_gcc(MLDS, ContainsCCode, !IO) :-
     maybe_write_string(Verbose, "% Finished compiling to assembler.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred mlds_to_il_assembler(mlds::in, io::di, io::uo) is det.
+:- pred mlds_to_il_assembler(globals::in, mlds::in, io::di, io::uo) is det.
 
-mlds_to_il_assembler(MLDS, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+mlds_to_il_assembler(Globals, MLDS, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to IL...\n", !IO),
     mlds_to_ilasm.output_mlds(MLDS, !IO),
@@ -5411,13 +5546,14 @@ dump_hlds(DumpFile, HLDS, !IO) :-
         report_error(Msg, !IO)
     ).
 
-:- pred maybe_dump_mlds(mlds::in, int::in, string::in, io::di, io::uo) is det.
+:- pred maybe_dump_mlds(globals::in, mlds::in, int::in, string::in,
+    io::di, io::uo) is det.
 
-maybe_dump_mlds(MLDS, StageNum, StageName, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_accumulating_option(dump_mlds, DumpStages, !IO),
-    globals.io_lookup_accumulating_option(verbose_dump_mlds,
-        VerboseDumpStages, !IO),
+maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_accumulating_option(Globals, dump_mlds, DumpStages),
+    globals.lookup_accumulating_option(Globals, verbose_dump_mlds,
+        VerboseDumpStages),
     StageNumStr = stage_num_str(StageNum),
     ( should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) ->
         maybe_write_string(Verbose, "% Dumping out MLDS as C...\n", !IO),
@@ -5435,17 +5571,17 @@ maybe_dump_mlds(MLDS, StageNum, StageName, !IO) :-
             BaseFileName, !IO),
         string.append_list([BaseFileName, ".", StageNumStr, "-", StageName],
             DumpFile),
-        dump_mlds(DumpFile, MLDS, !IO),
+        dump_mlds(Globals, DumpFile, MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         true
     ).
 
-:- pred dump_mlds(string::in, mlds::in, io::di, io::uo) is det.
+:- pred dump_mlds(globals::in, string::in, mlds::in, io::di, io::uo) is det.
 
-dump_mlds(DumpFile, MLDS, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+dump_mlds(Globals, DumpFile, MLDS, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_write_string(Verbose, "% Dumping out MLDS to `", !IO),
     maybe_write_string(Verbose, DumpFile, !IO),
     maybe_write_string(Verbose, "'...", !IO),
@@ -5478,8 +5614,9 @@ dump_mlds(DumpFile, MLDS, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 erlang_backend(HLDS, ELDS, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting HLDS to ELDS...\n", !IO),
     erl_code_gen(HLDS, ELDS0, !IO),
@@ -5494,12 +5631,13 @@ erlang_backend(HLDS, ELDS, !DumpInfo, !IO) :-
 :- pred elds_gen_rtti_data(module_info::in, elds::in, elds::out,
     io::di, io::uo) is det.
 
-elds_gen_rtti_data(HLDS, ELDS0, ELDS, !IO) :-
+elds_gen_rtti_data(HLDS, !ELDS, !IO) :-
     % Generate the representations for various data structures
     % used for type classes.
+    module_info_get_globals(HLDS, Globals),
     type_ctor_info.generate_rtti(HLDS, TypeCtorRttiData),
     generate_base_typeclass_info_rtti(HLDS, OldTypeClassInfoRttiData),
-    globals.io_lookup_bool_option(new_type_class_rtti, NewTypeClassRtti, !IO),
+    globals.lookup_bool_option(Globals, new_type_class_rtti, NewTypeClassRtti),
     generate_type_class_info_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
     list.append(OldTypeClassInfoRttiData, NewTypeClassInfoRttiData,
@@ -5507,18 +5645,19 @@ elds_gen_rtti_data(HLDS, ELDS0, ELDS, !IO) :-
     RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
     ErlangRttiDatas = list.map(erlang_rtti_data(HLDS), RttiDatas),
 
-    RttiDefns0 = ELDS0 ^ elds_rtti_funcs,
+    RttiDefns0 = !.ELDS ^ elds_rtti_funcs,
     rtti_data_list_to_elds(HLDS, ErlangRttiDatas, RttiDefns),
-    ELDS = ELDS0 ^ elds_rtti_funcs := RttiDefns0 ++ RttiDefns.
+    !ELDS ^ elds_rtti_funcs := RttiDefns0 ++ RttiDefns.
 
 :- pred elds_to_erlang(module_info::in, elds::in, io::di, io::uo) is det.
 
-elds_to_erlang(ModuleInfo, ELDS, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+elds_to_erlang(HLDS, ELDS, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting ELDS to Erlang...\n", !IO),
-    elds_to_erlang.output_elds(ModuleInfo, ELDS, !IO),
+    elds_to_erlang.output_elds(HLDS, ELDS, !IO),
     maybe_write_string(Verbose, "% Finished converting ELDS to Erlang.\n",
         !IO),
     maybe_report_stats(Stats, !IO).
@@ -5566,16 +5705,16 @@ at_file_error(File, E) =
     io.make_io_error("While attempting to process '" ++ File ++
         "' the following error occurred: " ++ io.error_message(E)).
 
-    %
     % Read each of the command line arguments from the given input file.
     % Note lines which consist purely of whitespace are ignored.
     %
-:- pred expand_file_into_arg_list(io.input_stream::in, io.res(list(string))::out,
-    io::di, io::uo) is det.
+:- pred expand_file_into_arg_list(io.input_stream::in,
+    io.res(list(string))::out, io::di, io::uo) is det.
 
 expand_file_into_arg_list(S, Res, !IO) :-
     io.read_line_as_string(S, LineRes, !IO),
-    ( LineRes = ok(Line),
+    (
+        LineRes = ok(Line),
         expand_file_into_arg_list(S, Res0, !IO),
         ( Res0 = ok(Lines),
             StrippedLine = strip(Line),
@@ -5587,9 +5726,11 @@ expand_file_into_arg_list(S, Res, !IO) :-
         ; Res0 = error(_E),
             Res = Res0
         )
-    ; LineRes = eof,
+    ;
+        LineRes = eof,
         Res = ok([])
-    ; LineRes = error(E),
+    ;
+        LineRes = error(E),
         Res = error(E)
     ).
 

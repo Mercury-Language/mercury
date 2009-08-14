@@ -186,6 +186,7 @@
 :- import_module bimap.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
@@ -3850,10 +3851,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         current_grade_supports_concurrency(Globals, IsConcurrencySupported),
         (
             IsConcurrencySupported = no,
-            Pieces = [
-                words("Error: this module must be compiled in a grade that"),
-                words("supports concurrent execution.")
-            ],
+            Pieces = [words("Error: this module must be compiled in a grade"),
+                words("that supports concurrent execution.")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -3866,14 +3865,11 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             SinglePrecFloat),
         (
             SinglePrecFloat = no,
-            Pieces = [
-                words("Error: this module must be compiled in a grade that"),
-                words("uses single precision floats.")
-            ],
-            VerbosePieces = [
-                words("Grades that use single precision floats contain the"),
-                words("grade modifier"), quote("spf"), suffix(".")
-            ],
+            Pieces = [words("Error: this module must be compiled in a grade"),
+                words("that uses single precision floats.")],
+            VerbosePieces = [words("Grades that use single precision floats"),
+                words("contain the grade modifier"),
+                quote("spf"), suffix(".")],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(VerbosePieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -3887,14 +3883,11 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             SinglePrecFloat),
         (
             SinglePrecFloat = yes,
-            Pieces = [
-                words("Error: this module must be compiled in a grade that"),
-                words("uses double precision floats.")
-            ],
-            VerbosePieces = [
-                words("Grades that use double precision floats do not"),
-                words("contain the grade modifier"), quote("spf"), suffix(".")
-            ],
+            Pieces = [words("Error: this module must be compiled in a grade"),
+                words("that uses double precision floats.")],
+            VerbosePieces = [words("Grades that use double precision floats"),
+                words("do not contain the grade modifier"),
+                quote("spf"), suffix(".")],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(VerbosePieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -3907,10 +3900,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         current_grade_supports_tabling(Globals, IsTablingSupported),
         (
             IsTablingSupported = no,
-            Pieces = [
-                words("Error: this module must be compiled in a grade that"),
-                words("supports memoisation.")
-            ],
+            Pieces = [words("Error: this module must be compiled in a grade"),
+                words("that supports memoisation.")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -3922,10 +3913,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         current_grade_supports_par_conj(Globals, IsParConjSupported),
         (
             IsParConjSupported = no,
-            Pieces = [
-                words("Error: this module must be compiled in a grade that"),
-                words("supports executing conjuntions in parallel.")
-            ],
+            Pieces = [words("Error: this module must be compiled in a grade"),
+                words("that supports executing conjuntions in parallel.")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -3937,14 +3926,11 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         globals.lookup_bool_option(Globals, use_trail, UseTrail),
         (
             UseTrail = no,
-            Pieces = [
-                words("Error: this module must be compiled in a grade that"),
-                words("supports trailing.")
-            ],
-            VerbosePieces = [
-                words("Grades that support trailing contain the"),
-                words("grade modifier"), quote("tr"), suffix(".")
-            ],
+            Pieces = [words("Error: this module must be compiled in a grade"),
+                words("that supports trailing.")],
+            VerbosePieces = [words("Grades that support trailing contain"),
+                words("the grade modifiers"), quote("tr"),
+                words("or"), quote("trseg"), suffix(".")],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(VerbosePieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -3964,10 +3950,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         ->
             true
         ;
-            Pieces = [
-                words("Error: this module must be compiled using the"),
-                words("strict sequential semantics.")
-            ],
+            Pieces = [words("Error: this module must be compiled using"),
+                words("the strict sequential semantics.")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -3978,9 +3962,9 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         (
             % We consider gc_automatic to be conservative even it may not be.
             % This is okay because this feature is only of interest with the
-            % C or asm backends.  We ignore it if the target language is
+            % C or asm backends. We ignore it if the target language is
             % something else.
-            %
+
             ( GC_Method = gc_automatic
             ; GC_Method = gc_boehm
             ; GC_Method = gc_boehm_debug
@@ -3990,10 +3974,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             ( GC_Method = gc_accurate
             ; GC_Method = gc_none
             ),
-            Pieces = [
-                words("Error: this module must be compiled in a grade that"),
-                words("uses conservative garbage collection.")
-            ],
+            Pieces = [words("Error: this module must be compiled in a grade"),
+                words("that uses conservative garbage collection.")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs] 

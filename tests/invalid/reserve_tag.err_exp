@@ -1,8 +1,8 @@
-reserve_tag.m:023: Error: expected type name/arity for `:- pragma reserve_tag'
-reserve_tag.m:023:   declaration, not `(list__list / 1)'.
 reserve_tag.m:021: In `pragma reserve_tag' declaration for
 reserve_tag.m:021:   `reserve_tag.undefined_type'/1:
 reserve_tag.m:021:   error: undefined type `reserve_tag.undefined_type'/1.
+reserve_tag.m:023: Error: expected type name/arity for `:- pragma reserve_tag'
+reserve_tag.m:023:   declaration, not `(list__list / 1)'.
 reserve_tag.m:024: In `pragma reserve_tag' declaration for
 reserve_tag.m:024:   `reserve_tag.list'/1:
 reserve_tag.m:024:   error: undefined type `reserve_tag.list'/1.

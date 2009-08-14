@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,7 +61,7 @@
     % Find the foreign code files generated when a module is processed.
     % The `pic' field is only used for C foreign code.
     %
-:- pred external_foreign_code_files(pic::in, module_imports::in,
+:- pred external_foreign_code_files(pic::in, module_and_imports::in,
     list(foreign_code_file)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -130,10 +130,10 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
                 % effect of making the target for the top-level module in
                 % the file.
                 CompilationTask = process_module(_) - _,
-                Imports ^ source_file_module_name \= ModuleName
+                Imports ^ mai_source_file_module_name \= ModuleName
             ->
                 NestedTargetFile = target_file(
-                    Imports ^ source_file_module_name, FileType),
+                    Imports ^ mai_source_file_module_name, FileType),
                 make_module_target_extra_options(ExtraOptions,
                     dep_target(NestedTargetFile),
                     Succeeded, !Info, !IO)
@@ -147,7 +147,8 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
                 debug_file_msg(TargetFile, "checking dependencies", !IO),
 
                 ( CompilationTask = process_module(_) - _ ->
-                    ModulesToCheck = [ModuleName | Imports ^ nested_children]
+                    ModulesToCheck =
+                        [ModuleName | Imports ^ mai_nested_children]
                 ;
                     ModulesToCheck = [ModuleName]
                 ),
@@ -340,7 +341,7 @@ force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis, Info,
 %-----------------------------------------------------------------------------%
 
 :- pred build_target(compilation_task_result::in, target_file::in,
-    module_imports::in, list(target_file)::in, list(file_name)::in,
+    module_and_imports::in, list(target_file)::in, list(file_name)::in,
     list(string)::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
@@ -405,7 +406,7 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
     ).
 
 :- pred build_target_2(module_name::in, compilation_task_type::in,
-    maybe(file_name)::in, module_imports::in, list(string)::in,
+    maybe(file_name)::in, module_and_imports::in, list(string)::in,
     io.output_stream::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
@@ -472,14 +473,14 @@ build_target_2(ModuleName, target_code_to_object_code(PIC), _,
         Succeeded, !IO).
 
 build_target_2(ModuleName, foreign_code_to_object_code(PIC, Lang), _,
-        Imports, _, ErrorStream, Succeeded, !Info, !Io) :-
-    foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile, !Io),
+        Imports, _, ErrorStream, Succeeded, !Info, !IO) :-
+    foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile, !IO),
 
     % Run the compilation in a child process so it can be killed
     % if an interrupt arrives.
     call_in_forked_process(
         compile_foreign_code_file(ErrorStream, PIC, Imports, ForeignCodeFile),
-        Succeeded, !Io).
+        Succeeded, !IO).
 
 build_target_2(ModuleName, fact_table_code_to_object_code(PIC, FactTableFile),
         _, Imports, _, ErrorStream, Succeeded, !Info, !IO) :-
@@ -494,7 +495,7 @@ build_target_2(ModuleName, fact_table_code_to_object_code(PIC, FactTableFile),
         Succeeded, !IO).
 
 :- pred build_object_code(module_name::in, compilation_target::in, pic::in,
-    io.output_stream::in, module_imports::in, bool::out,
+    io.output_stream::in, module_and_imports::in, bool::out,
     io::di, io::uo) is det.
 
 build_object_code(ModuleName, target_c, PIC, ErrorStream, _Imports,
@@ -514,7 +515,7 @@ build_object_code(ModuleName, target_java, _, ErrorStream, _Imports, Succeeded,
 build_object_code(ModuleName, target_il, _, ErrorStream, Imports, Succeeded,
         !IO) :-
     compile_target_code.il_assemble(ErrorStream, ModuleName,
-        Imports ^ has_main, Succeeded, !IO).
+        Imports ^ mai_has_main, Succeeded, !IO).
 build_object_code(_ModuleName, target_x86_64, _, _ErrorStream, _Imports,
         _Succeeded, _, _) :-
     sorry(this_file, "NYI mmc --make and target x86_64").
@@ -526,7 +527,7 @@ build_object_code(ModuleName, target_erlang, _, ErrorStream, _Imports,
         Succeeded, !IO).
 
 :- pred compile_foreign_code_file(io.output_stream::in, pic::in,
-    module_imports::in, foreign_code_file::in, bool::out,
+    module_and_imports::in, foreign_code_file::in, bool::out,
     io::di, io::uo) is det.
 
 compile_foreign_code_file(ErrorStream, PIC, _Imports,
@@ -628,13 +629,13 @@ get_object_extension(Globals, PIC) = Ext :-
 :- pred call_mercury_compile_main(list(string)::in, bool::out,
     io::di, io::uo) is det.
 
-call_mercury_compile_main(Args, Succeeded, !Io) :-
-    io.get_exit_status(Status0, !Io),
-    io.set_exit_status(0, !Io),
-    mercury_compile.main(Args, !Io),
-    io.get_exit_status(Status, !Io),
+call_mercury_compile_main(Args, Succeeded, !IO) :-
+    io.get_exit_status(Status0, !IO),
+    io.set_exit_status(0, !IO),
+    mercury_compile.main(Args, !IO),
+    io.get_exit_status(Status, !IO),
     Succeeded = ( Status = 0 -> yes ; no ),
-    io.set_exit_status(Status0, !Io).
+    io.set_exit_status(Status0, !IO).
 
 :- pred invoke_mmc(io.output_stream::in, maybe(file_name)::in,
     list(string)::in, bool::out, io::di, io::uo) is det.
@@ -862,7 +863,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         unexpected(this_file, "touched_files: no module dependencies")
     ),
 
-    NestedChildren = Imports ^ nested_children,
+    NestedChildren = Imports ^ mai_nested_children,
     SourceFileModuleNames = [ModuleName | NestedChildren],
 
     list.map_foldl2(get_module_dependencies, NestedChildren,
@@ -928,9 +929,9 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
             %
             HeaderModuleNames =
                 list.filter_map(
-                    (func(MImports) = MImports ^ module_name is semidet :-
+                    (func(MImports) = MImports ^ mai_module_name is semidet :-
                         contains_foreign_code(_) =
-                            MImports ^ has_foreign_code
+                            MImports ^ mai_has_foreign_code
                     ), ModuleImportsList),
             HeaderTargets0 = make_target_file_list(HeaderModuleNames,
                 module_target_c_header(header_mih))
@@ -1030,10 +1031,10 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
 
     maybe_pic_object_file_extension(PIC, ObjExt, !IO),
     globals.io_get_target(CompilationTarget, !IO),
-    ModuleName = Imports ^ module_name,
+    ModuleName = Imports ^ mai_module_name,
     (
         CompilationTarget = target_asm,
-        Imports ^ has_foreign_code = contains_foreign_code(Langs),
+        Imports ^ mai_has_foreign_code = contains_foreign_code(Langs),
         set.member(lang_c, Langs)
     ->
         module_name_to_file_name(
@@ -1045,7 +1046,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
         ForeignFiles0 = [foreign_code_file(lang_c, CCodeFileName, ObjFileName)]
     ;
         CompilationTarget = target_il,
-        Imports ^ has_foreign_code = contains_foreign_code(Langs)
+        Imports ^ mai_has_foreign_code = contains_foreign_code(Langs)
     ->
         list.map_foldl(external_foreign_code_files_for_il(ModuleName),
             set.to_sorted_list(Langs), ForeignFilesList, !IO),
@@ -1068,7 +1069,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
                     ObjExt, do_not_create_dirs, FactTableObjFile),
                 { FactTableForeignFile = foreign_code_file(lang_c,
                     FactTableCFile, FactTableObjFile) }
-            ), Imports ^ fact_table_deps, FactTableForeignFiles, !IO),
+            ), Imports ^ mai_fact_table_deps, FactTableForeignFiles, !IO),
         ForeignFiles = ForeignFiles0 ++ FactTableForeignFiles
     ;
         ( CompilationTarget = target_java

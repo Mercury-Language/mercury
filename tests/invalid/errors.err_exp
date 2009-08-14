@@ -1,22 +1,7 @@
-errors.m:010: Warning: module should start with a `:- module' declaration.
-errors.m:060: Error: free type parameter T in RHS of type definition.
-errors.m:061: Error: free type parameter in RHS of type definition: f(T).
 errors.m:001: Warning: interface for module `errors' does not export anything.
 errors.m:001: Warning: module `int' is imported using both `:- import_module'
 errors.m:001:   `:- use_module' declarations.
-errors.m:051: In definition of type
-errors.m:051:   `errors.du_type_which_references_undefined_type'/0:
-errors.m:051:   error: undefined type `undefined_type'/0.
-errors.m:053: In definition of type
-errors.m:053:   `errors.eqv_type_which_references_undefined_type'/0:
-errors.m:053:   error: undefined type `undefined_type'/0.
-errors.m:100: In definition of type `errors.needs_qualification'/0:
-errors.m:100:   error: undefined type `state'/0.
-errors.m:055: Error: circular equivalence type `errors.circular_eqv_type'/0.
-errors.m:057: Error: circular equivalence type
-errors.m:057:   `errors.indirectly_circular_eqv_type_1'/0.
-errors.m:058: Error: circular equivalence type
-errors.m:058:   `errors.indirectly_circular_eqv_type_2'/0.
+errors.m:010: Warning: module should start with a `:- module' declaration.
 errors.m:028: Error: mode declaration for predicate
 errors.m:028:   `errors.mode_declaration_without_pred_declaration'/0
 errors.m:028:   without preceding `pred' declaration.
@@ -30,9 +15,24 @@ errors.m:049: Error: constructor `errors.a/0' for type
 errors.m:049:   `errors.type_with_multiply_defined_ctors/0' multiply defined.
 errors.m:049: Error: constructor `errors.f/1' for type
 errors.m:049:   `errors.type_with_multiply_defined_ctors/0' multiply defined.
+errors.m:051: In definition of type
+errors.m:051:   `errors.du_type_which_references_undefined_type'/0:
+errors.m:051:   error: undefined type `undefined_type'/0.
+errors.m:053: In definition of type
+errors.m:053:   `errors.eqv_type_which_references_undefined_type'/0:
+errors.m:053:   error: undefined type `undefined_type'/0.
+errors.m:055: Error: circular equivalence type `errors.circular_eqv_type'/0.
+errors.m:057: Error: circular equivalence type
+errors.m:057:   `errors.indirectly_circular_eqv_type_1'/0.
+errors.m:058: Error: circular equivalence type
+errors.m:058:   `errors.indirectly_circular_eqv_type_2'/0.
+errors.m:060: Error: free type parameter T in RHS of type definition.
+errors.m:061: Error: free type parameter in RHS of type definition: f(T).
 errors.m:075: In clause for predicate
 errors.m:075:   `errors.pred_with_unresolved_polymorphism'/0:
 errors.m:075:   warning: variable `Arg' occurs only once in this scope.
 errors.m:091: In clause for predicate `errors.pred_with_singleton_vars'/1:
 errors.m:091:   warning: variable `X' occurs only once in this scope.
+errors.m:100: In definition of type `errors.needs_qualification'/0:
+errors.m:100:   error: undefined type `state'/0.
 For more information, recompile with `-E'.

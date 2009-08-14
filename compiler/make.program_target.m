@@ -296,7 +296,7 @@ get_target_modules_2(ModuleName, !TargetModules, !Info, !IO) :-
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        ModuleName = Imports ^ source_file_module_name
+        ModuleName = Imports ^ mai_source_file_module_name
     ->
         !:TargetModules = [ModuleName | !.TargetModules]
     ;
@@ -321,7 +321,7 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
     ),
     (
         CompilationTarget = target_asm,
-        Imports ^ has_foreign_code = contains_foreign_code(Langs),
+        Imports ^ mai_has_foreign_code = contains_foreign_code(Langs),
         set.member(lang_c, Langs)
     ->
         ForeignObjectFileType = module_target_foreign_object(PIC, lang_c),
@@ -329,7 +329,7 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
         ForeignObjectTargets  = [dep_target(ForeignObjectTarget)]
     ;
         CompilationTarget = target_il,
-        Imports ^ has_foreign_code = contains_foreign_code(Langs)
+        Imports ^ mai_has_foreign_code = contains_foreign_code(Langs)
     ->
         ForeignObjectTargets = list.map(
             (func(L) = dep_target(target_file(ModuleName,
@@ -350,7 +350,7 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
                 dep_target(target_file(ModuleName,
                     module_target_fact_table_object(PIC, FactFile)))
             ),
-            Imports ^ fact_table_deps),
+            Imports ^ mai_fact_table_deps),
         ObjectTargets = FactObjectTargets ++ ForeignObjectTargets
     ;
         ( CompilationTarget = target_java
@@ -874,7 +874,7 @@ collect_modules_with_children(ModuleName, !ParentModules, !Info, !IO) :-
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        Children = Imports ^ children,
+        Children = Imports ^ mai_children,
         (
             Children = []
         ;
@@ -1074,27 +1074,28 @@ build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
     % dependent modules (modules which form a clique in the dependency graph)
     % are returned adjacent in the list in arbitrary order.
     %
-:- pred reverse_ordered_modules(map(module_name, maybe(module_imports))::in,
+:- pred reverse_ordered_modules(map(module_name,
+    maybe(module_and_imports))::in,
     list(module_name)::in, list(module_name)::out) is det.
 
 reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
-    list.foldl2(add_module_relations(lookup_module_imports(ModuleDeps)),
+    list.foldl2(add_module_relations(lookup_module_and_imports(ModuleDeps)),
         Modules0, digraph.init, _IntDepsGraph, digraph.init, ImplDepsGraph),
     digraph.atsort(ImplDepsGraph, Order0),
     list.reverse(Order0, Order1),
     list.map(set.to_sorted_list, Order1, Order2),
     list.condense(Order2, Modules).
 
-:- func lookup_module_imports(map(module_name, maybe(module_imports)),
-    module_name) = module_imports.
+:- func lookup_module_and_imports(map(module_name, maybe(module_and_imports)),
+    module_name) = module_and_imports.
 
-lookup_module_imports(ModuleDeps, ModuleName) = ModuleImports :-
+lookup_module_and_imports(ModuleDeps, ModuleName) = ModuleImports :-
     map.lookup(ModuleDeps, ModuleName, MaybeModuleImports),
     (
         MaybeModuleImports = yes(ModuleImports)
     ;
         MaybeModuleImports = no,
-        unexpected(this_file, "lookup_module_imports")
+        unexpected(this_file, "lookup_module_and_imports")
     ).
 
 :- pred modules_needing_reanalysis(bool::in, list(module_name)::in,
@@ -1276,10 +1277,10 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
             AnyIntermod = yes,
             % `.int0' files are imported by `.opt' files.
             (
-                Imports ^ children = [_ | _],
+                Imports ^ mai_children = [_ | _],
                 Exts = ["int0", "opt"]
             ;
-                Imports ^ children = [],
+                Imports ^ mai_children = [],
                 Exts = ["opt"]
             )
         ;
@@ -1555,7 +1556,7 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
                 HighLevelCode = yes
             ;
                 Target = target_asm,
-                Imports ^ has_foreign_code = contains_foreign_code(_)
+                Imports ^ mai_has_foreign_code = contains_foreign_code(_)
             )
         ->
             GradeIncDir = LibDir/"lib"/GradeDir/"inc",
@@ -1921,7 +1922,7 @@ make_module_clean(ModuleName, !Info, !IO) :-
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        FactTableFiles = Imports ^ fact_table_deps
+        FactTableFiles = Imports ^ mai_fact_table_deps
     ;
         MaybeImports = no,
         FactTableFiles = []

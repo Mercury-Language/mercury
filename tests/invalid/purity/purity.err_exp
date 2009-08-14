@@ -23,6 +23,18 @@ purity.m:096: In call to impure predicate `purity.imp'/0:
 purity.m:096:   purity error: call must be preceded by `impure' indicator.
 purity.m:100: In call to semipure predicate `purity.semi'/0:
 purity.m:100:   purity error: call must be preceded by `semipure' indicator.
+purity.m:105: In clause for `e6':
+purity.m:105:   in argument 1 of call to predicate `purity.in'/1:
+purity.m:105:   mode error: variable `X' has instantiatedness `free',
+purity.m:105:   expected instantiatedness was `ground'.
+purity.m:105:   The goal could not be reordered, because it was followed by an
+purity.m:105:   impure goal.
+purity.m:106:   This is the location of the impure goal.
+purity.m:112: In clause for `e7':
+purity.m:112:   in argument 1 of call to predicate `purity.imp1'/1:
+purity.m:112:   mode error: variable `X' has instantiatedness `free',
+purity.m:112:   expected instantiatedness was `ground'.
+purity.m:112:   The goal could not be reordered, because it was impure.
 purity.m:115: In unification predicate for type `e8':
 purity.m:115:   purity error: predicate is impure.
 purity.m:115:   It must be pure.
@@ -37,16 +49,4 @@ purity.m:148: In call to semipure predicate `purity.semi'/1:
 purity.m:148:   purity error: call must be preceded by `semipure' indicator.
 purity.m:148: Purity error in closure: closure body is semipure, but closure
 purity.m:148:   was not declared semipure.
-purity.m:105: In clause for `e6':
-purity.m:105:   in argument 1 of call to predicate `purity.in'/1:
-purity.m:105:   mode error: variable `X' has instantiatedness `free',
-purity.m:105:   expected instantiatedness was `ground'.
-purity.m:105:   The goal could not be reordered, because it was followed by an
-purity.m:105:   impure goal.
-purity.m:106:   This is the location of the impure goal.
-purity.m:112: In clause for `e7':
-purity.m:112:   in argument 1 of call to predicate `purity.imp1'/1:
-purity.m:112:   mode error: variable `X' has instantiatedness `free',
-purity.m:112:   expected instantiatedness was `ground'.
-purity.m:112:   The goal could not be reordered, because it was impure.
 For more information, recompile with `-E'.

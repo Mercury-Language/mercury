@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,7 +39,8 @@
 :- pred make_process_args(options_variables::in, list(string)::in,
     list(file_name)::in, io::di, io::uo) is det.
 
-:- pred make_write_module_dep_file(module_imports::in, io::di, io::uo) is det.
+:- pred make_write_module_dep_file(module_and_imports::in, io::di, io::uo)
+    is det.
 
 :- func make_module_dep_file_extension = string.
 
@@ -98,10 +99,10 @@
 
 :- type make_info
     --->    make_info(
-                % The items field of each module_imports structure should be
-                % empty -- we're not trying to cache the items here.
+                % The items field of each module_and_imports structure
+                % should be empty -- we're not trying to cache the items here.
                 module_dependencies     :: map(module_name,
-                                            maybe(module_imports)),
+                                            maybe(module_and_imports)),
 
                 file_timestamps         :: file_timestamps,
 

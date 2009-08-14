@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module term.
 
@@ -31,20 +30,20 @@
 :- type item_status
     --->    item_status(import_status, need_qualifier).
 
-    % do_parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, UsedModules
-    %   HLDS, QualInfo, InvalidTypes, InvalidModes):
+    % do_parse_tree_to_hlds(Globals, ParseTree, MQInfo, EqvMap, UsedModules,
+    %   QualInfo, InvalidTypes, InvalidModes, HLDS, Specs):
     %
     % Given MQInfo (returned by module_qual.m) and EqvMap and UsedModules
-    % (both returned by equiv_type.m), converts ParseTree to HLDS. Any errors
-    % found are recorded in the HLDS num_errors field.
+    % (both returned by equiv_type.m), converts ParseTree to HLDS.
+    % Any errors found are returned in Specs.
     % Returns InvalidTypes = yes if undefined types found.
-    % Returns InvalidModes = yes if undefined or cyclic insts or modes
-    % found. QualInfo is an abstract type that is then passed back to
+    % Returns InvalidModes = yes if undefined or cyclic insts or modes found.
+    % QualInfo is an abstract type that is then passed back to
     % produce_instance_method_clauses (see below).
     %
-:- pred do_parse_tree_to_hlds(compilation_unit::in, mq_info::in, eqv_map::in,
-    used_modules::in, module_info::out, qual_info::out,
-    bool::out, bool::out, io::di, io::uo) is det.
+:- pred do_parse_tree_to_hlds(globals::in, compilation_unit::in, mq_info::in,
+    eqv_map::in, used_modules::in, qual_info::out,
+    bool::out, bool::out, module_info::out, list(error_spec)::out) is det.
 
     % The bool records whether any cyclic insts or modes were detected.
     %
@@ -134,85 +133,82 @@
 
 %-----------------------------------------------------------------------------%
 
-do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
-        ModuleInfo, QualInfo, InvalidTypes, InvalidModes, !IO) :-
-    some [!ModuleInfo, !Specs] (
-        globals.io_get_globals(Globals, !IO),
-        mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
-        module_info_init(Name, Items, Globals, PQInfo, no, !:ModuleInfo),
-        module_info_set_used_modules(UsedModules, !ModuleInfo),
-        !:Specs = [],
-        add_item_list_decls_pass_1(Items,
-            item_status(status_local, may_be_unqualified), !ModuleInfo,
-            no, InvalidModes0, !Specs),
-        globals.io_lookup_bool_option(statistics, Statistics, !IO),
+do_parse_tree_to_hlds(Globals, unit_module(Name, Items), MQInfo0, EqvMap,
+        UsedModules, QualInfo, InvalidTypes, InvalidModes,
+        !:ModuleInfo, !:Specs) :-
+    mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
+    module_info_init(Name, Items, Globals, PQInfo, no, !:ModuleInfo),
+    module_info_set_used_modules(UsedModules, !ModuleInfo),
+    !:Specs = [],
+    add_item_list_decls_pass_1(Items,
+        item_status(status_local, may_be_unqualified), !ModuleInfo,
+        no, InvalidModes0, !Specs),
+    globals.lookup_bool_option(Globals, statistics, Statistics),
+    trace [io(!IO)] (
         maybe_write_string(Statistics, "% Processed all items in pass 1\n",
             !IO),
-        maybe_report_stats(Statistics, !IO),
+        maybe_report_stats(Statistics, !IO)
+    ),
 
-        add_item_list_decls_pass_2(Items,
-            item_status(status_local, may_be_unqualified),
-            !ModuleInfo, [], Pass2Specs),
-        (
-            Pass2Specs = [],
-            InvalidTypes1 = no
-        ;
-            Pass2Specs = [_ | _],
-            InvalidTypes1 = yes
-        ),
-        !:Specs = Pass2Specs ++ !.Specs,
+    add_item_list_decls_pass_2(Items,
+        item_status(status_local, may_be_unqualified),
+        !ModuleInfo, [], Pass2Specs),
+    (
+        Pass2Specs = [],
+        InvalidTypes1 = no
+    ;
+        Pass2Specs = [_ | _],
+        InvalidTypes1 = yes
+    ),
+    !:Specs = Pass2Specs ++ !.Specs,
 
-        % Add constructors and special preds to the HLDS. This must be done
-        % after adding all type and `:- pragma foreign_type' declarations.
-        % If there were errors in foreign type type declarations, doing this
-        % may cause a compiler abort.
-        (
-            InvalidTypes1 = no,
-            module_info_get_type_table(!.ModuleInfo, Types),
-            map.foldl3(process_type_defn, Types, no, InvalidTypes2,
-                !ModuleInfo, !Specs)
-        ;
-            InvalidTypes1 = yes,
-            InvalidTypes2 = yes
-        ),
+    % Add constructors and special preds to the HLDS. This must be done
+    % after adding all type and `:- pragma foreign_type' declarations.
+    % If there were errors in foreign type type declarations, doing this
+    % may cause a compiler abort.
+    (
+        InvalidTypes1 = no,
+        module_info_get_type_table(!.ModuleInfo, Types),
+        map.foldl3(process_type_defn, Types, no, InvalidTypes2,
+            !ModuleInfo, !Specs)
+    ;
+        InvalidTypes1 = yes,
+        InvalidTypes2 = yes
+    ),
 
-        % Add the special preds for the builtin types which don't have a
-        % type declaration, hence no hlds_type_defn is generated for them.
-        (
-            Name = mercury_public_builtin_module,
-            compiler_generated_rtti_for_builtins(!.ModuleInfo)
-        ->
-            list.foldl(add_builtin_type_ctor_special_preds,
-                builtin_type_ctors_with_no_hlds_type_defn, !ModuleInfo)
-        ;
-            true
-        ),
+    % Add the special preds for the builtin types which don't have a
+    % type declaration, hence no hlds_type_defn is generated for them.
+    (
+        Name = mercury_public_builtin_module,
+        compiler_generated_rtti_for_builtins(!.ModuleInfo)
+    ->
+        list.foldl(add_builtin_type_ctor_special_preds,
+            builtin_type_ctors_with_no_hlds_type_defn, !ModuleInfo)
+    ;
+        true
+    ),
 
-        % Balance any data structures that need it.
-        module_info_optimize(!ModuleInfo),
+    % Balance any data structures that need it.
+    module_info_optimize(!ModuleInfo),
+    trace [io(!IO)] (
         maybe_write_string(Statistics, "% Processed all items in pass 2\n",
             !IO),
-        maybe_report_stats(Statistics, !IO),
+        maybe_report_stats(Statistics, !IO)
+    ),
 
-        init_qual_info(MQInfo0, EqvMap, QualInfo0),
-        add_item_list_pass_3(Items, status_local, !ModuleInfo,
-            QualInfo0, QualInfo, !Specs),
+    init_qual_info(MQInfo0, EqvMap, QualInfo0),
+    add_item_list_pass_3(Items, status_local, !ModuleInfo, QualInfo0, QualInfo,
+        !Specs),
+    trace [io(!IO)] (
         maybe_write_string(Statistics, "% Processed all items in pass 3\n",
-            !IO),
+            !IO)
+    ),
 
-        qual_info_get_mq_info(QualInfo, MQInfo),
-        mq_info_get_type_error_flag(MQInfo, InvalidTypes3),
-        InvalidTypes = InvalidTypes1 `or` InvalidTypes2 `or` InvalidTypes3,
-        mq_info_get_mode_error_flag(MQInfo, InvalidModes1),
-        InvalidModes = InvalidModes0 `or` InvalidModes1,
-
-        module_info_get_globals(!.ModuleInfo, CurGlobals),
-        write_error_specs(!.Specs, CurGlobals, 0, _NumWarnings, 0, NumErrors,
-            !IO),
-        module_info_incr_num_errors(NumErrors, !ModuleInfo),
-
-        ModuleInfo = !.ModuleInfo
-    ).
+    qual_info_get_mq_info(QualInfo, MQInfo),
+    mq_info_get_type_error_flag(MQInfo, InvalidTypes3),
+    InvalidTypes = InvalidTypes1 `or` InvalidTypes2 `or` InvalidTypes3,
+    mq_info_get_mode_error_flag(MQInfo, InvalidModes1),
+    InvalidModes = InvalidModes0 `or` InvalidModes1.
 
 :- pred add_builtin_type_ctor_special_preds(type_ctor::in,
     module_info::in, module_info::out) is det.
@@ -223,17 +219,17 @@ add_builtin_type_ctor_special_preds(TypeCtor, !ModuleInfo) :-
     term.context_init(Context),
     Status = status_local,
     construct_type(TypeCtor, [], Type),
-    %
-    % XXX we call `eagerly_add_special_preds' instead of `add_special_preds'
+
+    % XXX We call `eagerly_add_special_preds' instead of `add_special_preds'
     % to bypass a call to `special_pred_is_generated_lazily' which calls
-    % `classify_type_ctor'.  `classify_type_ctor' knows about unqualified
+    % `classify_type_ctor'. `classify_type_ctor' knows about unqualified
     % builtin types, but not the qualified types like `builtin.int'/0 from
-    % `builtin_type_ctors_with_no_hlds_type_defn'.  Eventually it tries to
+    % `builtin_type_ctors_with_no_hlds_type_defn'. Eventually it tries to
     % look up the builtin type from the type definition table, and aborts as
     % it won't find it.
     %
     % The special preds for these types shouldn't be generated lazily anyway.
-    %
+
     eagerly_add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
         !ModuleInfo).
 

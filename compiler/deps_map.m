@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,6 +16,7 @@
 :- module parse_tree.deps_map.
 :- interface.
 
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_imports.
@@ -34,7 +35,7 @@
 :- type deps
     --->    deps(
                 have_processed,
-                module_imports
+                module_and_imports
             ).
 
 :- type submodule_kind
@@ -49,7 +50,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_deps_map(module_name::in, maybe_search::in,
+:- pred generate_deps_map(globals::in, module_name::in, maybe_search::in,
     deps_map::in, deps_map::out, io::di, io::uo) is det.
 
     % Insert a new entry into the deps_map. If the module already occurred
@@ -73,8 +74,8 @@
     %
     % XXX This shouldn't need to be exported.
     %
-:- pred insert_into_deps_map(module_imports::in, deps_map::in, deps_map::out)
-    is det.
+:- pred insert_into_deps_map(module_and_imports::in,
+    deps_map::in, deps_map::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -104,8 +105,8 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
     ( list.last(Ancestors, Parent) ->
         map.lookup(DepsMap, ModuleName, deps(_, ModuleImports)),
         map.lookup(DepsMap, Parent, deps(_, ParentImports)),
-        ModuleFileName = ModuleImports ^ source_file_name,
-        ParentFileName = ParentImports ^ source_file_name,
+        ModuleFileName = ModuleImports ^ mai_source_file_name,
+        ParentFileName = ParentImports ^ mai_source_file_name,
         ( ModuleFileName = ParentFileName ->
             Kind = nested_submodule
         ;
@@ -117,31 +118,34 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
 
 %-----------------------------------------------------------------------------%
 
-generate_deps_map(ModuleName, Search, !DepsMap, !IO) :-
-    generate_deps_map_loop(set.make_singleton_set(ModuleName), Search,
+generate_deps_map(Globals, ModuleName, Search, !DepsMap, !IO) :-
+    generate_deps_map_loop(Globals, set.make_singleton_set(ModuleName), Search,
         !DepsMap, !IO).
 
-:- pred generate_deps_map_loop(set(module_name)::in, maybe_search::in,
+:- pred generate_deps_map_loop(globals::in,
+    set(module_name)::in, maybe_search::in,
     deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-generate_deps_map_loop(!.Modules, Search, !DepsMap, !IO) :-
+generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO) :-
     ( set.remove_least(!.Modules, Module, !:Modules) ->
-        generate_deps_map_step(Module, !Modules, Search, !DepsMap, !IO),
-        generate_deps_map_loop(!.Modules, Search, !DepsMap, !IO)
+        generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap,
+            !IO),
+        generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO)
     ;
         % If we can't remove the smallest, then the set of modules to be
         % processed is empty.
         true
     ).
 
-:- pred generate_deps_map_step(module_name::in,
+:- pred generate_deps_map_step(globals::in, module_name::in,
     set(module_name)::in, set(module_name)::out,
     maybe_search::in, deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-generate_deps_map_step(Module, !Modules, Search, !DepsMap, !IO) :-
+generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
     % Look up the module's dependencies, and determine whether
     % it has been processed yet.
-    lookup_dependencies(Module, Search, Done, !DepsMap, ModuleImports, !IO),
+    lookup_dependencies(Globals, Module, Search, Done, !DepsMap,
+        ModuleImports, !IO),
 
     % If the module hadn't been processed yet, then add its imports, parents,
     % and public children to the list of dependencies we need to generate,
@@ -153,12 +157,12 @@ generate_deps_map_step(Module, !Modules, Search, !DepsMap, !IO) :-
             list.map(
                 (func(foreign_import_module_info(_, ImportedModule, _))
                     = ImportedModule),
-                ModuleImports ^ foreign_import_modules),
+                ModuleImports ^ mai_foreign_import_modules),
         list.condense(
-            [ModuleImports ^ parent_deps,
-            ModuleImports ^ int_deps,
-            ModuleImports ^ impl_deps,
-            ModuleImports ^ public_children, % a.k.a. incl_deps
+            [ModuleImports ^ mai_parent_deps,
+            ModuleImports ^ mai_int_deps,
+            ModuleImports ^ mai_impl_deps,
+            ModuleImports ^ mai_public_children, % a.k.a. incl_deps
             ForeignImportedModules],
             ModulesToAdd),
         % We could keep a list of the modules we have already processed
@@ -174,40 +178,40 @@ generate_deps_map_step(Module, !Modules, Search, !DepsMap, !IO) :-
     % If we don't know its dependencies, read the module and
     % save the dependencies in the dependency map.
     %
-:- pred lookup_dependencies(module_name::in, maybe_search::in,
-    have_processed::out, deps_map::in, deps_map::out, module_imports::out,
+:- pred lookup_dependencies(globals::in, module_name::in, maybe_search::in,
+    have_processed::out, deps_map::in, deps_map::out, module_and_imports::out,
     io::di, io::uo) is det.
 
-lookup_dependencies(Module, Search, Done, !DepsMap, ModuleImports, !IO) :-
+lookup_dependencies(Globals, Module, Search, Done, !DepsMap, ModuleImports,
+        !IO) :-
     ( map.search(!.DepsMap, Module, deps(DonePrime, ModuleImportsPrime)) ->
         Done = DonePrime,
         ModuleImports = ModuleImportsPrime
     ;
-        read_dependencies(Module, Search, ModuleImportsList, !IO),
+        read_dependencies(Globals, Module, Search, ModuleImportsList, !IO),
         list.foldl(insert_into_deps_map, ModuleImportsList, !DepsMap),
         map.lookup(!.DepsMap, Module, deps(Done, ModuleImports))
     ).
 
 insert_into_deps_map(ModuleImports, !DepsMap) :-
-    module_imports_get_module_name(ModuleImports, ModuleName),
+    module_and_imports_get_module_name(ModuleImports, ModuleName),
     svmap.set(ModuleName, deps(not_yet_processed, ModuleImports), !DepsMap).
 
     % Read a module to determine the (direct) dependencies of that module
     % and any nested sub-modules it contains.
     %
-:- pred read_dependencies(module_name::in, maybe_search::in,
-    list(module_imports)::out, io::di, io::uo) is det.
+:- pred read_dependencies(globals::in, module_name::in, maybe_search::in,
+    list(module_and_imports)::out, io::di, io::uo) is det.
 
-read_dependencies(ModuleName, Search, ModuleImportsList, !IO) :-
-    read_module_ignore_errors(ModuleName, ".m",
+read_dependencies(Globals, ModuleName, Search, ModuleImportsList, !IO) :-
+    read_module_ignore_errors(Globals, ModuleName, ".m",
         "Getting dependencies for module", Search, do_not_return_timestamp,
         Items0, Error, FileName0, _, !IO),
-    globals.io_get_globals(Globals, !IO),
     (
         Items0 = [],
         Error = fatal_module_errors
     ->
-        read_module_ignore_errors(ModuleName, ".int",
+        read_module_ignore_errors(Globals, ModuleName, ".int",
             "Getting dependencies for module interface", Search,
             do_not_return_timestamp, Items, _Error, FileName, _, !IO),
         SubModuleList = [ModuleName - Items]
@@ -219,6 +223,6 @@ read_dependencies(ModuleName, Search, ModuleImportsList, !IO) :-
     ),
     assoc_list.keys(SubModuleList, SubModuleNames),
     list.map(init_dependencies(FileName, ModuleName, SubModuleNames,
-        Error, Globals), SubModuleList, ModuleImportsList).
+        [], Error, Globals), SubModuleList, ModuleImportsList).
 
 %-----------------------------------------------------------------------------%

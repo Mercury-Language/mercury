@@ -1,3 +1,5 @@
+impl_def_literal_syntax.m:007: Error: no clauses for predicate `g'/2.
+impl_def_literal_syntax.m:008: Error: no clauses for predicate `h'/2.
 impl_def_literal_syntax.m:010: Error: syntax error in `:- pred' declaration at
 impl_def_literal_syntax.m:010:   w($file).
 impl_def_literal_syntax.m:011: In `:- pred' declaration: error: atom expected
@@ -23,5 +25,3 @@ impl_def_literal_syntax.m:042: Syntax error at variable `ME_GRIMLOCK': expected
 impl_def_literal_syntax.m:042:   `,', `)', or operator.
 impl_def_literal_syntax.m:043: Syntax error at integer `123': expected `,',
 impl_def_literal_syntax.m:043:   `)', or operator.
-impl_def_literal_syntax.m:007: Error: no clauses for predicate `g'/2.
-impl_def_literal_syntax.m:008: Error: no clauses for predicate `h'/2.

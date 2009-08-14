@@ -29,10 +29,11 @@
     % command, so this predicate may need to read the source for
     % the module.
     %
-:- pred get_module_dependencies(module_name::in, maybe(module_imports)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred get_module_dependencies(module_name::in,
+    maybe(module_and_imports)::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
-:- pred write_module_dep_file(module_imports::in, io::di, io::uo) is det.
+:- pred write_module_dep_file(module_and_imports::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -90,8 +91,10 @@ get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-
             (
                 Error = yes,
                 MaybeImports = no,
-                !:Info = !.Info ^ module_dependencies
-                    ^ elem(ModuleName) := MaybeImports
+                ModuleDepMap0 = !.Info ^ module_dependencies,
+                % XXX Could this be map.det_update or map.det_insert?
+                map.set(ModuleDepMap0, ModuleName, MaybeImports, ModuleDepMap),
+                !Info ^ module_dependencies := ModuleDepMap
             ;
                 Error = no,
                 maybe_get_module_dependencies(RebuildModuleDeps,
@@ -119,8 +122,8 @@ generate_ancestor_dependencies(RebuildModuleDeps, ModuleName, no, Error,
     ).
 
 :- pred maybe_get_module_dependencies(rebuild_module_deps::in,
-    module_name::in, maybe(module_imports)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    module_name::in, maybe(module_and_imports)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 maybe_get_module_dependencies(RebuildModuleDeps, ModuleName, MaybeImports,
         !Info, !IO) :-
@@ -132,7 +135,7 @@ maybe_get_module_dependencies(RebuildModuleDeps, ModuleName, MaybeImports,
     ).
 
 :- pred do_get_module_dependencies(rebuild_module_deps::in, module_name::in,
-    maybe(module_imports)::out, make_info::in, make_info::out,
+    maybe(module_and_imports)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
@@ -184,9 +187,9 @@ do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
         map.lookup(!.Info ^ module_dependencies, ModuleName, !:MaybeImports),
         (
             !.MaybeImports = yes(Imports0),
-            Imports0 ^ module_dir = dir.this_directory
+            Imports0 ^ mai_module_dir = dir.this_directory
         ->
-            SourceFileName1 = Imports0 ^ source_file_name,
+            SourceFileName1 = Imports0 ^ mai_source_file_name,
             get_file_timestamp([dir.this_directory], SourceFileName1,
                 MaybeSourceFileTimestamp1, !Info, !IO),
             (
@@ -216,25 +219,28 @@ do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
     ;
         MaybeDepFileTimestamp = error(_),
 
-        %
-        % Try to make the dependencies. This will succeed when the
-        % module name doesn't match the file name and the dependencies
-        % for this module haven't been built before. It will fail if the
-        % source file is in another directory.
-        %
+        % Try to make the dependencies. This will succeed when the module name
+        % doesn't match the file name and the dependencies for this module
+        % haven't been built before. It will fail if the source file
+        % is in another directory.
         (
             RebuildModuleDeps = do_rebuild_module_deps,
             make_module_dependencies(ModuleName, !Info, !IO)
         ;
             RebuildModuleDeps = do_not_rebuild_module_deps,
-            !:Info = !.Info ^ module_dependencies ^ elem(ModuleName) := no
+            ModuleDepMap0 = !.Info ^ module_dependencies,
+            % XXX Could this be map.det_update or map.det_insert?
+            map.set(ModuleDepMap0, ModuleName, no, ModuleDepMap1),
+            !Info ^ module_dependencies := ModuleDepMap1
         )
     ),
-    ( !:MaybeImports = !.Info ^ module_dependencies ^ elem(ModuleName) ->
-        true
+    ModuleDepMap2 = !.Info ^ module_dependencies,
+    ( map.search(ModuleDepMap2, ModuleName, MaybeImportsPrime) ->
+        !:MaybeImports = MaybeImportsPrime
     ;
         !:MaybeImports = no,
-        !:Info = !.Info ^ module_dependencies ^ elem(ModuleName) := no
+        map.det_insert(ModuleDepMap2, ModuleName, no, ModuleDepMap),
+        !Info ^ module_dependencies := ModuleDepMap
     ).
 
 %-----------------------------------------------------------------------------%
@@ -246,18 +252,20 @@ module_dependencies_version_number = 1.
 write_module_dep_file(Imports0, !IO) :-
     % Make sure all the required fields are filled in.
     globals.io_get_globals(Globals, !IO),
-    module_imports_get_items_list(Imports0, Items0),
+    module_and_imports_get_results(Imports0, Items0, _Specs, _Errors),
     strip_imported_items(Items0, Items),
-    init_dependencies(Imports0 ^ source_file_name,
-        Imports0 ^ source_file_module_name,
-        Imports0 ^ nested_children, no_module_errors, Globals,
-        Imports0 ^ module_name - Items, Imports),
+    init_dependencies(Imports0 ^ mai_source_file_name,
+        Imports0 ^ mai_source_file_module_name,
+        Imports0 ^ mai_nested_children,
+        Imports0 ^ mai_specs, no_module_errors, Globals,
+        Imports0 ^ mai_module_name - Items, Imports),
     do_write_module_dep_file(Imports, !IO).
 
-:- pred do_write_module_dep_file(module_imports::in, io::di, io::uo) is det.
+:- pred do_write_module_dep_file(module_and_imports::in, io::di, io::uo)
+    is det.
 
 do_write_module_dep_file(Imports, !IO) :-
-    ModuleName = Imports ^ module_name,
+    ModuleName = Imports ^ mai_module_name,
     module_name_to_file_name(ModuleName, make_module_dep_file_extension,
         do_create_dirs, ProgDepFile, !IO),
     io.open_output(ProgDepFile, ProgDepResult, !IO),
@@ -267,31 +275,31 @@ do_write_module_dep_file(Imports, !IO) :-
         io.write_string("module(", !IO),
         io.write_int(module_dependencies_version_number, !IO),
         io.write_string(", """, !IO),
-        io.write_string(Imports ^ source_file_name, !IO),
+        io.write_string(Imports ^ mai_source_file_name, !IO),
         io.write_string(""",\n\t", !IO),
         mercury_output_bracketed_sym_name(
-            Imports ^ source_file_module_name, !IO),
+            Imports ^ mai_source_file_module_name, !IO),
         io.write_string(",\n\t{", !IO),
-        io.write_list(Imports ^ parent_deps,
+        io.write_list(Imports ^ mai_parent_deps,
             ", ", mercury_output_bracketed_sym_name, !IO),
         io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ int_deps,
+        io.write_list(Imports ^ mai_int_deps,
             ", ", mercury_output_bracketed_sym_name, !IO),
         io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ impl_deps,
+        io.write_list(Imports ^ mai_impl_deps,
             ", ", mercury_output_bracketed_sym_name, !IO),
         io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ children,
+        io.write_list(Imports ^ mai_children,
             ", ", mercury_output_bracketed_sym_name, !IO),
         io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ nested_children,
+        io.write_list(Imports ^ mai_nested_children,
             ", ", mercury_output_bracketed_sym_name, !IO),
         io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ fact_table_deps,
+        io.write_list(Imports ^ mai_fact_table_deps,
             ", ", io.write, !IO),
         io.write_string("},\n\t{", !IO),
         (
-            Imports ^ has_foreign_code =
+            Imports ^ mai_has_foreign_code =
                 contains_foreign_code(ForeignLanguages0)
         ->
             ForeignLanguages = set.to_sorted_list(ForeignLanguages0)
@@ -301,7 +309,7 @@ do_write_module_dep_file(Imports, !IO) :-
         io.write_list(ForeignLanguages, ", ",
             mercury_output_foreign_language_string, !IO),
         io.write_string("},\n\t{", !IO),
-        io.write_list(Imports  ^ foreign_import_modules, ", ",
+        io.write_list(Imports ^ mai_foreign_import_modules, ", ",
             (pred(ForeignImportModule::in, !.IO::di, !:IO::uo) is det :-
                 ForeignImportModule = foreign_import_module_info(Lang,
                     ForeignImport, _),
@@ -310,11 +318,11 @@ do_write_module_dep_file(Imports, !IO) :-
                 mercury_output_bracketed_sym_name(ForeignImport, !IO)
             ), !IO),
         io.write_string("},\n\t", !IO),
-        contains_foreign_export_to_string(Imports ^ contains_foreign_export,
-            ContainsForeignExportStr),
+        contains_foreign_export_to_string(
+            Imports ^ mai_contains_foreign_export, ContainsForeignExportStr),
         io.write_string(ContainsForeignExportStr, !IO),
         io.write_string(",\n\t", !IO),
-        has_main_to_string(Imports ^ has_main, HasMainStr),
+        has_main_to_string(Imports ^ mai_has_main, HasMainStr),
         io.write_string(HasMainStr, !IO),
         io.write_string("\n).\n", !IO),
         io.set_output_stream(OldOutputStream, _, !IO),
@@ -464,37 +472,29 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
                     set.list_to_set(ForeignLanguages))
             ),
 
-            % Imports = module_imports(^...),
-            Imports ^ source_file_name = SourceFileName,
-            Imports ^ source_file_module_name = SourceFileModuleName,
-            Imports ^ module_name = ModuleName,
-            Imports ^ parent_deps = Parents,
-            Imports ^ int_deps = IntDeps,
-            Imports ^ impl_deps = ImplDeps,
-            Imports ^ indirect_deps = [],   % not used.
-            Imports ^ children = Children,
-            Imports ^ public_children = [], % not used.
-            Imports ^ nested_children = NestedChildren,
-            Imports ^ fact_table_deps = FactDeps,
-            Imports ^ has_foreign_code = ContainsForeignCode,
-            Imports ^ foreign_import_modules = ForeignImports,
-            Imports ^ contains_foreign_export = ContainsForeignExport,
-            Imports ^ items = cord.empty,       % not used.
-            Imports ^ error = no_module_errors, % not used.
-            Imports ^ maybe_timestamps = no,    % not used.
-            Imports ^ has_main = HasMain,
-            Imports ^ module_dir = ModuleDir,
+            IndirectDeps = [],
+            PublicChildren = [],
+            Items = cord.empty,
+            Specs = [],
+            Errors = no_module_errors,
+            MaybeTimestamps = no,
+            Imports = module_and_imports(SourceFileName, SourceFileModuleName,
+                ModuleName, Parents, IntDeps, ImplDeps, IndirectDeps,
+                Children, PublicChildren, NestedChildren, FactDeps,
+                ContainsForeignCode, ForeignImports, ContainsForeignExport,
+                Items, Specs, Errors, MaybeTimestamps, HasMain, ModuleDir),
 
-            !:Info = !.Info ^ module_dependencies ^ elem(ModuleName)
-                := yes(Imports),
+            ModuleDepMap0 = !.Info ^ module_dependencies,
+            % XXX Could this be map.det_insert?
+            map.set(ModuleDepMap0, ModuleName, yes(Imports), ModuleDepMap),
+            !Info ^ module_dependencies := ModuleDepMap,
 
-            %
-            % Read the dependencies for the nested children.  If something
+            % Read the dependencies for the nested children. If something
             % goes wrong (for example one of the files was removed), the
             % dependencies for all modules in the source file will be remade
             % (make_module_dependencies expects to be given the top-level
             % module in the source file).
-            %
+
             SubRebuildModuleDeps = do_not_rebuild_module_deps,
             list.foldl2(
                 read_module_dependencies_2(SubRebuildModuleDeps, SearchDirs),
@@ -572,12 +572,18 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
     redirect_output(ModuleName, MaybeErrorStream, !Info, !IO),
     (
         MaybeErrorStream = yes(ErrorStream),
+        globals.io_get_globals(Globals, !IO),
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         % XXX Why ask for the timestamp if we then ignore it?
-        read_module(ModuleName, ".m", "Getting dependencies for module",
-            do_not_search, do_return_timestamp, Items, Error, SourceFileName,
-            _, !IO),
-        ( Error = fatal_module_errors ->
+        read_module(Globals, ModuleName, ".m",
+            "Getting dependencies for module",
+            do_not_search, do_return_timestamp, Items, Specs0, Error,
+            SourceFileName, _, !IO),
+        (
+            Error = fatal_module_errors,
+            io.set_output_stream(ErrorStream, _, !IO),
+            write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
+                !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
             io.write_string("** Error: error reading file `", !IO),
             io.write_string(SourceFileName, !IO),
@@ -597,30 +603,36 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
             module_name_to_file_name(ModuleName, ".err", do_not_create_dirs,
                 ErrFileName, !IO),
             io.remove_file(ErrFileName, _, !IO),
-            !:Info = !.Info ^ module_dependencies ^ elem(ModuleName) := no
+            ModuleDepMap0 = !.Info ^ module_dependencies,
+            % XXX Could this be map.det_update?
+            map.set(ModuleDepMap0, ModuleName, no, ModuleDepMap),
+            !Info ^ module_dependencies := ModuleDepMap
         ;
-            io.set_exit_status(0, !IO),
+            ( Error = no_module_errors
+            ; Error = some_module_errors
+            ),
             io.set_output_stream(ErrorStream, _, !IO),
-            split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
-            globals.io_get_globals(Globals, !IO),
+            split_into_submodules(ModuleName, Items, SubModuleList,
+                Specs0, Specs),
+            io.set_exit_status(0, !IO),
             write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
 
             assoc_list.keys(SubModuleList, SubModuleNames),
             list.map(init_dependencies(SourceFileName, ModuleName,
-                SubModuleNames, Error, Globals),
+                SubModuleNames, [], Error, Globals),
                 SubModuleList, ModuleImportList),
             list.foldl(
                 (pred(ModuleImports::in, Info0::in, Info::out) is det :-
-                    SubModuleName = ModuleImports ^ module_name,
+                    SubModuleName = ModuleImports ^ mai_module_name,
                     Info = Info0 ^ module_dependencies ^ elem(SubModuleName)
                         := yes(ModuleImports)
                 ), ModuleImportList, !Info),
 
             % If there were no errors, write out the `.int3' file
-            % while we have the contents of the module. The `int3'
-            % file doesn't depend on anything else.
+            % while we have the contents of the module. The `int3' file
+            % does not depend on anything else.
             (
                 Error = no_module_errors,
                 Target = target_file(ModuleName,
@@ -636,9 +648,7 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
                     cleanup_short_interfaces(SubModuleNames),
                     Succeeded, !Info, !IO)
             ;
-                ( Error = some_module_errors
-                ; Error = fatal_module_errors
-                ),
+                Error = some_module_errors,
                 Succeeded = no
             ),
 
@@ -666,10 +676,11 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
 make_short_interfaces(ErrorStream, SourceFileName, SubModuleList, _, Succeeded,
         !Info, !IO) :-
     io.set_output_stream(ErrorStream, OutputStream, !IO),
+    globals.io_get_globals(Globals, !IO),
     list.foldl(
         (pred(SubModule::in, !.IO::di, !:IO::uo) is det :-
             SubModule = SubModuleName - SubModuleItems,
-            modules.make_short_interface(SourceFileName,
+            modules.make_short_interface(Globals, SourceFileName,
                 SubModuleName, SubModuleItems, !IO)
         ), SubModuleList, !IO),
     io.set_output_stream(OutputStream, _, !IO),

@@ -1,3 +1,10 @@
+singleton_test.m:008: In function `my_append_func'/2:
+singleton_test.m:008:   warning: unresolved polymorphism.
+singleton_test.m:008:   The variables with unbound types were:
+singleton_test.m:008:     L2: V_1
+singleton_test.m:008:     L1: V_1
+singleton_test.m:008:   The unbound type variables will be implicitly bound to
+singleton_test.m:008:   the builtin type `void'.
 singleton_test.m:022: In clause for predicate `singleton_test.my_append'/3:
 singleton_test.m:022:   warning: variable `L2' occurs only once in this scope.
 singleton_test.m:026: In clause for function `singleton_test.my_append_func'/2:
@@ -12,10 +19,3 @@ singleton_test.m:045:   warning: variable `X' does not occur in the C code.
 singleton_test.m:063: In the C code for predicate
 singleton_test.m:063:   `singleton_test.c_hello_world'/3:
 singleton_test.m:063:   warning: variable `Msg' does not occur in the C code.
-singleton_test.m:008: In function `my_append_func'/2:
-singleton_test.m:008:   warning: unresolved polymorphism.
-singleton_test.m:008:   The variables with unbound types were:
-singleton_test.m:008:     L2: V_1
-singleton_test.m:008:     L1: V_1
-singleton_test.m:008:   The unbound type variables will be implicitly bound to
-singleton_test.m:008:   the builtin type `void'.

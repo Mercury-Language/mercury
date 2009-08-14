@@ -73,7 +73,7 @@
 
     % compile_csharp_file(ErrorStream, C#File, DLLFile, Succeeded)
     %
-:- pred compile_csharp_file(io.output_stream::in, module_imports::in,
+:- pred compile_csharp_file(io.output_stream::in, module_and_imports::in,
     file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
 
     % compile_erlang_file(ErrorStream, ErlangFile, Succeeded)
@@ -336,17 +336,18 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
         string.append_list(list.condense(list.map(
             (func(DLLDir) = ["/lib:", DLLDir, " "]), DLLDirs))),
 
-    ( mercury_std_library_module_name(Imports ^ module_name) ->
+    ( mercury_std_library_module_name(Imports ^ mai_module_name) ->
         Prefix = "/addmodule:"
     ;
         Prefix = "/r:"
     ),
     ForeignDeps = list.map(
         (func(M) =
-            foreign_import_module_name_from_module(M, Imports ^ module_name)),
-        Imports ^ foreign_import_modules),
-    ReferencedDlls = referenced_dlls(Imports ^ module_name,
-        Imports ^ int_deps ++ Imports ^ impl_deps ++ ForeignDeps),
+            foreign_import_module_name_from_module(M,
+                Imports ^ mai_module_name)),
+        Imports ^ mai_foreign_import_modules),
+    ReferencedDlls = referenced_dlls(Imports ^ mai_module_name,
+        Imports ^ mai_int_deps ++ Imports ^ mai_impl_deps ++ ForeignDeps),
     list.map_foldl(
         (pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
             module_name_to_file_name(Mod, ".dll", do_not_create_dirs,

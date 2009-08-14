@@ -1,7 +1,3 @@
-types2.m:017: Error: clause for predicate `types2.r'/0
-types2.m:017:   without preceding `pred' declaration.
-types2.m:020: Error: clause for predicate `types2.a'/1
-types2.m:020:   without preceding `pred' declaration.
 types2.m:005: Error: no clauses for predicate `p'/1.
 types2.m:012: In clause for predicate `q'/0:
 types2.m:012:   error: undefined predicate `zzzzzzzz'/0.
@@ -15,8 +11,12 @@ types2.m:013:     V_2: int
 types2.m:014: In clause for predicate `q'/0:
 types2.m:014:   error: wrong number of arguments (0; should be 1)
 types2.m:014:   in call to predicate `p'.
+types2.m:017: Error: clause for predicate `types2.r'/0
+types2.m:017:   without preceding `pred' declaration.
 types2.m:018: In clause for predicate `r'/0:
 types2.m:018:   error: undefined predicate `s'/0.
+types2.m:020: Error: clause for predicate `types2.a'/1
+types2.m:020:   without preceding `pred' declaration.
 types2.m:020: In clause for predicate `a'/1:
 types2.m:020:   error: undefined predicate `b'/1.
 types2.m:039: In clause for predicate `bar'/1:
@@ -27,6 +27,6 @@ types2.m:039:   constant `0' has type `int'.
 types2.m:039:   The partial type assignment was:
 types2.m:039:     some [BarTypeParam_1]
 types2.m:039:     X_2: BarTypeParam
-types2.m:050: Error: no clauses for predicate `bar2'/1.
 types2.m:048: Error: abstract declaration for type `types2.t'/2 has no
 types2.m:048:   corresponding definition.
+types2.m:050: Error: no clauses for predicate `bar2'/1.

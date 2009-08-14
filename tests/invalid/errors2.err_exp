@@ -5,19 +5,9 @@ errors2.m:001:   contain at least one declaration other than `:- import_module'
 errors2.m:001:   in its interface section(s). This would normally be a
 errors2.m:001:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
 errors2.m:001:   declaration.
+errors2.m:007: Error: no clauses for predicate `bind_type_param'/2.
 errors2.m:009: Error: clause for predicate `errors2.bind_type_param'/1
 errors2.m:009:   without preceding `pred' declaration.
-errors2.m:052: In clause for predicate `errors2.type_error_4'/0:
-errors2.m:052:   warning: variable `X' occurs only once in this scope.
-errors2.m:059: In clause for predicate `errors2.type_error_5'/0:
-errors2.m:059:   warning: variable `X' occurs only once in this scope.
-errors2.m:065: In clause for predicate `errors2.type_error_6'/0:
-errors2.m:065:   warning: variable `X' occurs only once in this scope.
-errors2.m:070: In clause for predicate `errors2.type_error_7'/0:
-errors2.m:070:   warning: variable `Y' occurs only once in this scope.
-errors2.m:071: In clause for predicate `errors2.type_error_7'/0:
-errors2.m:071:   warning: variables `A, B, Z' occur only once in this scope.
-errors2.m:007: Error: no clauses for predicate `bind_type_param'/2.
 errors2.m:009: Inferred :- pred bind_type_param(int).
 errors2.m:023: Error: no clauses for predicate `produce_string'/1.
 errors2.m:025: Error: no clauses for predicate `expect_int'/1.
@@ -53,6 +43,8 @@ errors2.m:052:     Y_1: int
 errors2.m:052:     X_2: errors2.foo_type
 errors2.m:052:     V_3: character
 errors2.m:052:     V_4: string
+errors2.m:052: In clause for predicate `errors2.type_error_4'/0:
+errors2.m:052:   warning: variable `X' occurs only once in this scope.
 errors2.m:059: In clause for predicate `type_error_5'/0:
 errors2.m:059:   in argument 3 of functor `foo_functor/3':
 errors2.m:059:   type error in unification of argument
@@ -64,6 +56,8 @@ errors2.m:059:     Y_1: character
 errors2.m:059:     X_2: errors2.foo_type
 errors2.m:059:     V_3: int
 errors2.m:059:     V_4: string
+errors2.m:059: In clause for predicate `errors2.type_error_5'/0:
+errors2.m:059:   warning: variable `X' occurs only once in this scope.
 errors2.m:065: In clause for predicate `type_error_6'/0:
 errors2.m:065:   in argument 3 of functor `bar_functor/3':
 errors2.m:065:   type error in unification of argument
@@ -75,6 +69,12 @@ errors2.m:065:     Y_1: character
 errors2.m:065:     X_2: errors2.bar_1_type
 errors2.m:065:     V_3: int
 errors2.m:065:     V_4: string
+errors2.m:065: In clause for predicate `errors2.type_error_6'/0:
+errors2.m:065:   warning: variable `X' occurs only once in this scope.
+errors2.m:070: In clause for predicate `errors2.type_error_7'/0:
+errors2.m:070:   warning: variable `Y' occurs only once in this scope.
+errors2.m:071: In clause for predicate `errors2.type_error_7'/0:
+errors2.m:071:   warning: variables `A, B, Z' occur only once in this scope.
 errors2.m:072: In clause for predicate `type_error_7'/0:
 errors2.m:072:   in argument 1 of call to predicate `expect_int'/1:
 errors2.m:072:   type error: variable `C' has type `string',

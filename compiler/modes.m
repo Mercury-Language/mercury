@@ -152,7 +152,7 @@
     --->    modes_safe_to_continue
     ;       modes_unsafe_to_continue.
 
-    % modecheck_module(!HLDS, SafeToContinue, Specs):
+    % modecheck_module(!.HLDS, {!:HLDS, SafeToContinue, Specs}):
     %
     % Perform mode inference and checking for a whole module.
     %
@@ -160,8 +160,12 @@
     % was halted prematurely due to an error, and that we should therefore
     % not perform determinism-checking, because we might get internal errors.
     %
-:- pred modecheck_module(module_info::in, module_info::out,
-    modes_safe_to_continue::out, list(error_spec)::out) is det.
+    % The outputs are in a tuple because our caller wants to be able to
+    % benchmark mode analysis, and the benchmark predicates require exactly
+    % one output argument.
+    %
+:- pred modecheck_module(module_info::in,
+    {module_info, modes_safe_to_continue, list(error_spec)}::out) is det.
 
     % Mode-check or unique-mode-check the code of all the predicates
     % in a module.
@@ -418,14 +422,14 @@
 
 %-----------------------------------------------------------------------------%
 
-modecheck_module(!ModuleInfo, SafeToContinue, Specs) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
+modecheck_module(ModuleInfo0, {ModuleInfo, SafeToContinue, Specs}) :-
+    module_info_get_globals(ModuleInfo0, Globals),
     trace [io(!IO)] (
         globals.lookup_bool_option(Globals, verbose, Verbose),
         maybe_write_string(Verbose, "% Mode-checking clauses...\n", !IO)
     ),
-    check_pred_modes(check_modes, may_change_called_proc, !ModuleInfo,
-        SafeToContinue, Specs),
+    check_pred_modes(check_modes, may_change_called_proc,
+        ModuleInfo0, ModuleInfo, SafeToContinue, Specs),
     trace [io(!IO)] (
         globals.lookup_bool_option(Globals, statistics, Statistics),
         maybe_report_stats(Statistics, !IO)

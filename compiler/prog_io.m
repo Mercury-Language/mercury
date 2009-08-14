@@ -74,9 +74,9 @@
     --->    do_return_timestamp
     ;       do_not_return_timestamp.
 
-    % read_module(OpenFile, FileName, DefaultModuleName, ReturnTimestamp,
-    %   MaybeFileInfo, ActualModuleName, Program, Specs, Error,
-    %   MaybeModuleTimestamp, !IO):
+    % actually_read_module(OpenFile, FileName, DefaultModuleName,
+    %   ReturnTimestamp, MaybeFileInfo, ActualModuleName, Items,
+    %   Specs, Error, MaybeModuleTimestamp, !IO):
     %
     % Reads and parses the file opened by OpenFile using the default module
     % name DefaultModuleName. If ReturnTimestamp is `yes', attempt to return
@@ -87,24 +87,25 @@
     % directory name) returned by OpenFile. ActualModuleName is the module name
     % specified in the `:- module' declaration, if any, or the
     % DefaultModuleName if there is no `:- module' declaration.
-    % Specs is a list of warning/error messages. Program is the parse tree.
+    % Specs is a list of warning/error messages. Items is the parse tree.
     %
-:- pred read_module(open_file_pred(FileInfo)::in(open_file_pred),
+:- pred actually_read_module(open_file_pred(FileInfo)::in(open_file_pred),
     module_name::in, maybe_return_timestamp::in, maybe(FileInfo)::out,
     module_name::out, list(item)::out, list(error_spec)::out,
     module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
-:- pred read_module_if_changed(open_file_pred(FileInfo)::in(open_file_pred),
+:- pred actually_read_module_if_changed(
+    open_file_pred(FileInfo)::in(open_file_pred),
     module_name::in, timestamp::in, maybe(FileInfo)::out, module_name::out,
     list(item)::out, list(error_spec)::out, module_error::out,
     maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
-    % Same as read_module, but use intermod_directories instead of
+    % Same as actually_read_module, but use intermod_directories instead of
     % search_directories when searching for the file.
     % Also report an error if the actual module name doesn't match
     % the expected module name.
     %
-:- pred read_opt_file(file_name::in, module_name::in, list(item)::out,
+:- pred actually_read_opt_file(file_name::in, module_name::in, list(item)::out,
     list(error_spec)::out, module_error::out, io::di, io::uo) is det.
 
     % check_module_has_expected_name(FileName, ExpectedName, ActualName):
@@ -215,20 +216,22 @@
 
 %-----------------------------------------------------------------------------%
 
-read_module(OpenFile, DefaultModuleName, ReturnTimestamp, FileData,
+actually_read_module(OpenFile, DefaultModuleName, ReturnTimestamp, FileData,
         ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
-    read_module_2(OpenFile, DefaultModuleName, no, ReturnTimestamp,
+    actually_read_module_2(OpenFile, DefaultModuleName, no, ReturnTimestamp,
         FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO).
 
-read_module_if_changed(OpenFile, DefaultModuleName, OldTimestamp, FileData,
-        ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
-    read_module_2(OpenFile, DefaultModuleName, yes(OldTimestamp),
+actually_read_module_if_changed(OpenFile, DefaultModuleName, OldTimestamp,
+        FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp,
+        !IO) :-
+    actually_read_module_2(OpenFile, DefaultModuleName, yes(OldTimestamp),
         do_return_timestamp,
         FileData, ModuleName, Items, Specs, Error,MaybeModuleTimestamp, !IO).
 
-read_opt_file(FileName, DefaultModuleName, Items, Specs, Error, !IO) :-
+actually_read_opt_file(FileName, DefaultModuleName, Items, Specs, Error,
+        !IO) :-
     globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
-    read_module_2(search_for_file(open_file, Dirs, FileName),
+    actually_read_module_2(search_for_file(open_file, Dirs, FileName),
         DefaultModuleName, no, do_not_return_timestamp, _, ModuleName, Items,
         Specs, Error, _, !IO),
     check_module_has_expected_name(FileName, DefaultModuleName, ModuleName,
@@ -253,13 +256,13 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName, !IO) :-
     % and then reverse them afterwards. (Using difference lists would require
     % late-input modes.)
     %
-:- pred read_module_2(open_file_pred(T)::in(open_file_pred), module_name::in,
-    maybe(timestamp)::in, maybe_return_timestamp::in, maybe(T)::out,
-    module_name::out, list(item)::out, list(error_spec)::out,
+:- pred actually_read_module_2(open_file_pred(T)::in(open_file_pred),
+    module_name::in, maybe(timestamp)::in, maybe_return_timestamp::in,
+    maybe(T)::out, module_name::out, list(item)::out, list(error_spec)::out,
     module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
-read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
-        MaybeFileData, ModuleName, Items, Specs, Error,
+actually_read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp,
+        ReturnTimestamp, MaybeFileData, ModuleName, Items, Specs, Error,
         MaybeModuleTimestamp, !IO) :-
     io.input_stream(OldInputStream, !IO),
     OpenFile(OpenResult, !IO),
@@ -288,7 +291,7 @@ read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
             % XXX Currently smart recompilation won't work
             % if ModuleName \= DefaultModuleName.
             % In that case, smart recompilation will be disabled
-            % and read_module should never be passed an old timestamp.
+            % and actually_read_module should never be passed an old timestamp.
 
             ModuleName = DefaultModuleName,
             Items = [],

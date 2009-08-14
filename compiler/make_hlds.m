@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2006, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: make_hlds.m.
 % Main author: fjh.
-% 
+%
 % This module converts from the parse tree structure which is read in by
 % prog_io.m, into the simplified high level data structure defined in
 % hlds.m.  In the parse tree, the program is represented as a list of
@@ -17,9 +17,7 @@
 % (A,B,C) into conj([A,B,C]) form, convert all unifications into
 % super-homogenous form, and introduce implicit quantification.
 %
-% XXX we should record each error using module_info_incr_errors.
-% 
-% WISHLIST - we should handle explicit module quantification
+% WISHLIST - we should handle explicit module quantification.
 %
 %-----------------------------------------------------------------------------%
 
@@ -30,6 +28,8 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
@@ -38,7 +38,6 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module term.
@@ -47,20 +46,20 @@
 
 :- type make_hlds_qual_info.
 
-    % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, UsedModules,
-    %   HLDS, QualInfo, InvalidTypes, InvalidModes):
+    % parse_tree_to_hlds(Globals, ParseTree, MQInfo, EqvMap, UsedModules,
+    %   QualInfo, InvalidTypes, InvalidModes, HLDS, Specs):
     %
     % Given MQInfo (returned by module_qual.m) and EqvMap and UsedModules
-    % (returned by equiv_type.m), converts ParseTree to HLDS. Any errors found
-    % are recorded in the HLDS num_errors field.
+    % (both returned by equiv_type.m), converts ParseTree to HLDS.
+    % Any errors found are returned in Specs.
     % Returns InvalidTypes = yes if undefined types found.
-    % Returns InvalidModes = yes if undefined or cyclic insts or modes
-    % found. QualInfo is an abstract type that is then passed back to
+    % Returns InvalidModes = yes if undefined or cyclic insts or modes found.
+    % QualInfo is an abstract type that is then passed back to
     % produce_instance_method_clauses (see below).
     %
-:- pred parse_tree_to_hlds(compilation_unit::in, mq_info::in, eqv_map::in,
-    used_modules::in, module_info::out, make_hlds_qual_info::out,
-    bool::out, bool::out, io::di, io::uo) is det.
+:- pred parse_tree_to_hlds(globals::in, compilation_unit::in, mq_info::in,
+    eqv_map::in, used_modules::in, make_hlds_qual_info::out,
+    bool::out, bool::out, module_info::out, list(error_spec)::out) is det.
 
 :- pred add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
@@ -140,10 +139,10 @@
 
 :- type make_hlds_qual_info == hlds.make_hlds.qual_info.qual_info.
 
-parse_tree_to_hlds(Module, MQInfo0, EqvMap, UsedModules, ModuleInfo,
-        QualInfo, InvalidTypes, InvalidModes, !IO) :-
-    do_parse_tree_to_hlds(Module, MQInfo0, EqvMap, UsedModules, ModuleInfo,
-        QualInfo, InvalidTypes, InvalidModes, !IO).
+parse_tree_to_hlds(Globals, ParseTree, MQInfo0, EqvMap, UsedModules,
+        QualInfo, InvalidTypes, InvalidModes, ModuleInfo, Specs) :-
+    do_parse_tree_to_hlds(Globals, ParseTree, MQInfo0, EqvMap, UsedModules,
+        QualInfo, InvalidTypes, InvalidModes, ModuleInfo, Specs).
 
 add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
         MaybeArgLives, MaybeDet, Context, IsAddressTaken, PredInfo0, PredInfo,

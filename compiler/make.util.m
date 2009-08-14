@@ -1183,7 +1183,7 @@ get_target_timestamp_2(Search, TargetFile, FileName, MaybeTimestamp,
         get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
         (
             MaybeImports = yes(Imports),
-            Imports ^ module_dir \= dir.this_directory
+            Imports ^ mai_module_dir \= dir.this_directory
         ->
             MaybeTimestamp = ok(oldest_timestamp),
             !:Info = !.Info ^ file_timestamps ^ elem(FileName)
@@ -1204,7 +1204,7 @@ get_file_name(Search, TargetFile, FileName, !Info, !IO) :-
         get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
         (
             MaybeImports = yes(Imports),
-            FileName = Imports ^ source_file_name
+            FileName = Imports ^ mai_source_file_name
         ;
             MaybeImports = no,
 

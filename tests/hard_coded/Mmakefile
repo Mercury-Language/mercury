@@ -113,7 +113,6 @@ ORDINARY_PROGS=	\
 	hash_bug \
 	hash_init_bug \
 	hash_table_delete \
-	hash_table_test \
 	higher_order_func_test \
 	higher_order_syntax \
 	higher_order_syntax2 \
@@ -398,7 +397,9 @@ endif
 
 ifneq "$(filter debug% deep%,$(GRADE))" ""
 	BIG_DATA_PROGS = \
-		big_array_from_list
+		big_array_from_list \
+		hash_table_test \
+		version_hash_table_test2
 else
 	BIG_DATA_PROGS =
 endif
@@ -567,7 +568,6 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		version_array_test \
 		version_hash_table_delete \
 		version_hash_table_test \
-		version_hash_table_test2 \
 		write_binary
 else
 	NON_PROFDEEP_PROGS =

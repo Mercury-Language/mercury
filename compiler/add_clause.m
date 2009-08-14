@@ -84,6 +84,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module pair.
 :- import_module set.
@@ -1124,7 +1125,7 @@ convert_colon_state_vars(Context, [Colon0 | Colons0], [Colon | Colons],
 
 report_svar_unify_error(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
-    Pieces = [nl, words("Error:"), fixed("!" ++ Name),
+    Pieces = [words("Error:"), fixed("!" ++ Name),
         words("cannot appear as a unification argument."), nl,
         words("You probably meant"), fixed("!." ++ Name),
         words("or"), fixed("!:" ++ Name), suffix(".")],

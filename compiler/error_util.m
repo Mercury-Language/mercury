@@ -240,6 +240,11 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pred maybe_write_out_errors_no_module(bool::in, globals::in,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
     % write_error_spec(Spec, Globals, !NumWarnings, !NumErrors, !IO):
     % write_error_specs(Specs, Globals, !NumWarnings, !NumErrors, !IO):
     %
@@ -703,22 +708,35 @@ compare_error_specs(SpecA, SpecB, Result) :-
 
 %-----------------------------------------------------------------------------%
 
+maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO) :-
+    % maybe_write_out_errors in hlds_error_util.m is a HLDS version
+    % of this predicate. The documentstion is in that file.
+    (
+        Verbose = no
+    ;
+        Verbose = yes,
+        % XXX _NumErrors
+        write_error_specs(!.Specs, Globals,
+            0, _NumWarnings, 0, _NumErrors, !IO),
+        !:Specs = []
+    ).
+
+%-----------------------------------------------------------------------------%
+
 write_error_spec(Spec, Globals, !NumWarnings, !NumErrors, !IO) :-
-    write_error_specs([Spec], Globals, !NumWarnings, !NumErrors, !IO).
+    do_write_error_spec(Globals, Spec, !NumWarnings, !NumErrors, !IO).
 
 write_error_specs(Specs0, Globals, !NumWarnings, !NumErrors, !IO) :-
     sort_error_specs(Specs0, Specs),
-    io.get_exit_status(OrigExitStatus, !IO),
-    list.foldl3(do_write_error_spec(Globals, OrigExitStatus), Specs,
+    list.foldl3(do_write_error_spec(Globals), Specs,
         !NumWarnings, !NumErrors, !IO).
 
-:- pred do_write_error_spec(globals::in, int::in, error_spec::in,
+:- pred do_write_error_spec(globals::in, error_spec::in,
     int::in, int::out, int::in, int::out, io::di, io::uo) is det.
 
-do_write_error_spec(Globals, OrigExitStatus, Spec, !NumWarnings, !NumErrors,
-        !IO) :-
+do_write_error_spec(Globals, Spec, !NumWarnings, !NumErrors, !IO) :-
     Spec = error_spec(Severity, _, Msgs),
-    do_write_error_msgs(Msgs, Globals, OrigExitStatus, treat_as_first,
+    do_write_error_msgs(Msgs, Globals, treat_as_first,
         have_not_printed_anything, PrintedSome, !IO),
     MaybeActual = actual_error_severity(Globals, Severity),
     (
@@ -760,14 +778,13 @@ do_write_error_spec(Globals, OrigExitStatus, Spec, !NumWarnings, !NumErrors,
     --->    lower_next_initial
     ;       do_not_lower_next_initial.
 
-:- pred do_write_error_msgs(list(error_msg)::in, globals::in, int::in,
+:- pred do_write_error_msgs(list(error_msg)::in, globals::in,
     maybe_treat_as_first::in,
     maybe_printed_something::in, maybe_printed_something::out,
     io::di, io::uo) is det.
 
-do_write_error_msgs([], _Globals, _OrigExitStatus, _First, !PrintedSome, !IO).
-do_write_error_msgs([Msg | Msgs], Globals, OrigExitStatus, !.First,
-        !PrintedSome, !IO) :-
+do_write_error_msgs([], _Globals, _First, !PrintedSome, !IO).
+do_write_error_msgs([Msg | Msgs], Globals, !.First, !PrintedSome, !IO) :-
     (
         Msg = simple_msg(SimpleContext, Components),
         MaybeContext = yes(SimpleContext),
@@ -786,19 +803,18 @@ do_write_error_msgs([Msg | Msgs], Globals, OrigExitStatus, !.First,
     ),
     Indent = ExtraIndentLevel * indent_increment,
     write_msg_components(Components, MaybeContext, Indent, Globals,
-        OrigExitStatus, !First, !PrintedSome, !IO),
-    do_write_error_msgs(Msgs, Globals, OrigExitStatus, !.First, !PrintedSome,
-        !IO).
+        !First, !PrintedSome, !IO),
+    do_write_error_msgs(Msgs, Globals, !.First, !PrintedSome, !IO).
 
 :- pred write_msg_components(list(error_msg_component)::in,
-    maybe(prog_context)::in, int::in, globals::in, int::in,
+    maybe(prog_context)::in, int::in, globals::in,
     maybe_treat_as_first::in, maybe_treat_as_first::out,
     maybe_printed_something::in, maybe_printed_something::out,
     io::di, io::uo) is det.
 
-write_msg_components([], _, _, _, _, !First, !PrintedSome, !IO).
+write_msg_components([], _, _, _, !First, !PrintedSome, !IO).
 write_msg_components([Component | Components], MaybeContext, Indent, Globals,
-        OrigExitStatus, !First, !PrintedSome, !IO) :-
+        !First, !PrintedSome, !IO) :-
     (
         Component = always(ComponentPieces),
         do_write_error_pieces(!.First, MaybeContext, Indent,
@@ -810,7 +826,7 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         globals.lookup_bool_option(Globals, Option, OptionValue),
         ( OptionValue = RequiredValue ->
             write_msg_components(EmbeddedComponents, MaybeContext, Indent,
-                Globals, OrigExitStatus, !First, !PrintedSome, !IO)
+                Globals, !First, !PrintedSome, !IO)
         ;
             true
         )
@@ -849,7 +865,7 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         !:PrintedSome = printed_something
     ),
     write_msg_components(Components, MaybeContext, Indent, Globals,
-        OrigExitStatus, !First, !PrintedSome, !IO).
+        !First, !PrintedSome, !IO).
 
 :- pred unsafe_cast_to_io_pred(pred(io, io)::in,
     pred(io, io)::out(pred(di, uo) is det)) is det.

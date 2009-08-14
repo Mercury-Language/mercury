@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -774,8 +774,8 @@ non_intermod_direct_imports_2(ModuleIndex, Success, Modules, !Info, !IO) :-
         % This is because if this module is a submodule, then it
         % may depend on things imported only by its ancestors.
         %
-        module_names_to_index_set(Imports ^ impl_deps, ImplDeps, !Info),
-        module_names_to_index_set(Imports ^ int_deps, IntDeps, !Info),
+        module_names_to_index_set(Imports ^ mai_impl_deps, ImplDeps, !Info),
+        module_names_to_index_set(Imports ^ mai_int_deps, IntDeps, !Info),
         Modules0 = union(ImplDeps, IntDeps),
         (
             ModuleName = qualified(ParentModule, _),
@@ -947,7 +947,7 @@ find_module_foreign_imports_3(Languages, ModuleIndex,
     (
         MaybeImports = yes(Imports),
         ForeignModulesList = get_foreign_imported_modules_lang(Languages,
-            Imports ^ foreign_import_modules),
+            Imports ^ mai_foreign_import_modules),
         module_names_to_index_set(ForeignModulesList, ForeignModules, !Info),
         Success = yes
     ;
@@ -1009,7 +1009,7 @@ foreign_imports_lang(Lang, ModuleIndex, Success, Modules, !Info, !IO) :-
         list.filter_map(
             (pred(FI::in, M::out) is semidet :-
                 FI = foreign_import_module_info(Lang, M, _)
-            ), Imports ^ foreign_import_modules, ModulesList),
+            ), Imports ^ mai_foreign_import_modules, ModulesList),
         module_names_to_index_set(ModulesList, Modules, !Info),
         Success = yes
     ;
@@ -1069,7 +1069,7 @@ fact_table_files(ModuleIndex, Success, Files, !Info, !IO) :-
         MaybeImports = yes(Imports),
         Success = yes,
         FilesList = map((func(File) = dep_file(File, no)),
-            Imports ^ fact_table_deps),
+            Imports ^ mai_fact_table_deps),
         Files = set.list_to_set(FilesList)
     ;
         MaybeImports = no,
@@ -1175,7 +1175,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
                     ModuleLocn = any_module
                 ;
                     ModuleLocn = local_module,
-                    Imports ^ module_dir = dir.this_directory
+                    Imports ^ mai_module_dir = dir.this_directory
                 )
             ->
                 (
@@ -1183,37 +1183,37 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
                     % Anywhere the interface of the child module is needed,
                     % the parent must also have been imported.
                     DependenciesType = interface_imports,
-                    ImportsToCheck = Imports ^ int_deps
+                    ImportsToCheck = Imports ^ mai_int_deps
                 ;
                     DependenciesType = all_dependencies,
                     ImportsToCheck = list.condense([
-                        Imports ^ int_deps,
-                        Imports ^ impl_deps,
-                        Imports ^ parent_deps,
-                        Imports ^ children,
+                        Imports ^ mai_int_deps,
+                        Imports ^ mai_impl_deps,
+                        Imports ^ mai_parent_deps,
+                        Imports ^ mai_children,
                         get_foreign_imported_modules(
-                            Imports ^ foreign_import_modules)
+                            Imports ^ mai_foreign_import_modules)
                     ])
                 ;
                     DependenciesType = all_imports,
                     ImportsToCheck = list.condense([
-                        Imports ^ int_deps,
-                        Imports ^ impl_deps,
-                        Imports ^ parent_deps,
+                        Imports ^ mai_int_deps,
+                        Imports ^ mai_impl_deps,
+                        Imports ^ mai_parent_deps,
                         get_foreign_imported_modules(
-                            Imports ^ foreign_import_modules)
+                            Imports ^ mai_foreign_import_modules)
                     ])
                 ),
                 module_names_to_index_set(ImportsToCheck, ImportsToCheckSet,
                     !Info),
                 ImportingModule = !.Info ^ importing_module,
-                !:Info = !.Info ^ importing_module := yes(ModuleName),
+                !Info ^ importing_module := yes(ModuleName),
                 Modules1 = insert(Modules0, ModuleIndex),
                 deps_set_foldl3_maybe_stop_at_error(KeepGoing,
                     find_transitive_module_dependencies_2(KeepGoing,
                         DependenciesType, ModuleLocn),
                     ImportsToCheckSet, Success, Modules1, Modules, !Info, !IO),
-                !:Info = !.Info ^ importing_module := ImportingModule
+                !Info ^ importing_module := ImportingModule
             ;
                 Success = yes,
                 Modules = Modules0
@@ -1473,7 +1473,7 @@ dependency_status(dep_target(Target) @ Dep, Status, !Info, !IO) :-
             Status = deps_status_error
         ;
             MaybeImports = yes(Imports),
-            ( Imports ^ module_dir \= dir.this_directory ->
+            ( Imports ^ mai_module_dir \= dir.this_directory ->
                 % Targets from libraries are always considered to be
                 % up-to-date if they exist.
 

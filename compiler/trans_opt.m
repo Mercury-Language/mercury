@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,6 +55,7 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.module_imports.
 
@@ -69,13 +70,14 @@
     %
 :- pred write_trans_opt_file(module_info::in, io::di, io::uo) is det.
 
-    % grab_trans_optfiles(ModuleList, !ModuleImports, Error, !IO):
+    % grab_trans_optfiles(Globals, ModuleList, !ModuleImports, Error, !IO):
     %
     % Add the items from each of the modules in ModuleList.trans_opt to
     % the items in ModuleImports.
     %
-:- pred grab_trans_opt_files(list(module_name)::in,
-    module_imports::in, module_imports::out, bool::out, io::di, io::uo) is det.
+:- pred grab_trans_opt_files(globals::in, list(module_name)::in,
+    module_and_imports::in, module_and_imports::out, bool::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -84,9 +86,9 @@
 
 :- import_module hlds.hlds_pred.
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
@@ -193,28 +195,31 @@ write_trans_opt_file(Module, !IO) :-
 % Read and process the transitive optimization interfaces.
 %
 
-grab_trans_opt_files(TransOptDeps, !Module, FoundError, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+grab_trans_opt_files(Globals, TransOptDeps, !Module, FoundError, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Reading .trans_opt files..\n", !IO),
     maybe_flush_output(Verbose, !IO),
 
-    read_trans_opt_files(TransOptDeps, cord.empty, OptItems, no, FoundError,
-        !IO),
+    read_trans_opt_files(Globals, TransOptDeps,
+        cord.empty, OptItems, [], OptSpecs, no, FoundError, !IO),
 
     append_pseudo_decl(md_opt_imported, !Module),
-    module_imports_get_items(!.Module, Items0),
-    Items = Items0 ++ OptItems,
-    module_imports_set_items(Items, !Module),
-    module_imports_set_error(no_module_errors, !Module),
+    module_and_imports_add_items(OptItems, !Module),
+    module_and_imports_add_specs(OptSpecs, !Module),
+    module_and_imports_set_error(no_module_errors, !Module),
 
     maybe_write_string(Verbose, "% Done.\n", !IO).
 
-:- pred read_trans_opt_files(list(module_name)::in, cord(item)::in,
-    cord(item)::out, bool::in, bool::out, io::di, io::uo) is det.
+:- pred read_trans_opt_files(globals::in, list(module_name)::in,
+    cord(item)::in, cord(item)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    bool::in, bool::out, io::di, io::uo) is det.
 
-read_trans_opt_files([], !Items, !Error, !IO).
-read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+read_trans_opt_files(_, [], !Items, !Specs, !Error, !IO).
+read_trans_opt_files(Globals, [Import | Imports], !Items, !Specs, !Error,
+        !IO) :-
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
     maybe_write_string(VeryVerbose,
         "% Reading transitive optimization interface for module", !IO),
     maybe_write_string(VeryVerbose, " `", !IO),
@@ -224,15 +229,15 @@ read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-
     maybe_flush_output(VeryVerbose, !IO),
 
     module_name_to_search_file_name(Import, ".trans_opt", FileName, !IO),
-    prog_io.read_opt_file(FileName, Import,
-        NewItems, Specs, ModuleError, !IO),
-
+    actually_read_opt_file(FileName, Import, NewItems, NewSpecs, NewError,
+        !IO),
     maybe_write_string(VeryVerbose, " done.\n", !IO),
-
-    intermod.update_error_status(trans_opt_file, FileName, ModuleError,
-        Specs, !Error, !IO),
+    !:Specs = NewSpecs ++ !.Specs,
+    intermod.update_error_status(Globals, trans_opt_file, FileName,
+        NewSpecs, !Specs, NewError, !Error),
+    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
     !:Items = !.Items ++ cord.from_list(NewItems),
-    read_trans_opt_files(Imports, !Items, !Error, !IO).
+    read_trans_opt_files(Globals, Imports, !Items, !Specs, !Error, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module trans_opt.

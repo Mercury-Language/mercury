@@ -1,7 +1,7 @@
-ee_invalid.m:037: In pragma:
-ee_invalid.m:037:   error: undefined type `undefined_type'/0.
 ee_invalid.m:033: In `pragma foreign_export_enum' declaration for `int'/0:
 ee_invalid.m:033:   error: `int'/0 is an atomic type.
+ee_invalid.m:037: In pragma:
+ee_invalid.m:037:   error: undefined type `undefined_type'/0.
 ee_invalid.m:041: In `pragma foreign_export_enum' declaration for
 ee_invalid.m:041:   `ee_invalid.foo'/1:
 ee_invalid.m:041:   error: `ee_invalid.foo'/1 is not an enumeration type. It

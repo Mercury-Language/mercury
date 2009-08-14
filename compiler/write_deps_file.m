@@ -35,7 +35,7 @@
     % `.trans_opt' file may depend on.  This is set to `no' if the
     % dependency list is not available.
     %
-:- pred write_dependency_file(module_imports::in, set(module_name)::in,
+:- pred write_dependency_file(module_and_imports::in, set(module_name)::in,
     maybe(list(module_name))::in, io::di, io::uo) is det.
 
     % Write out the `.dv' file, using the information collected in the
@@ -102,11 +102,11 @@
 %-----------------------------------------------------------------------------%
 
 write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
-    Module = module_imports(SourceFileName, SourceFileModuleName,
+    Module = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ParentDeps, IntDeps, ImplDeps, IndirectDeps,
         _Children, InclDeps, NestedDeps, FactDeps0,
         ContainsForeignCode, ForeignImports0, _ContainsForeignExport,
-        Items, _Error, _Timestamps, _HasMain, _Dir),
+        Items, _Specs, _Error, _Timestamps, _HasMain, _Dir),
 
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     module_name_to_make_var_name(ModuleName, MakeVarName),
@@ -1099,7 +1099,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     ModulesWithSubModules = list.filter(
       (pred(Module::in) is semidet :-
           map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-          ModuleImports ^ children = [_ | _]
+          ModuleImports ^ mai_children = [_ | _]
       ), Modules),
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".parent_mods =", !IO),
@@ -1578,19 +1578,22 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
 select_ok_modules([], _, []).
 select_ok_modules([Module | Modules0], DepsMap, Modules) :-
+    select_ok_modules(Modules0, DepsMap, ModulesTail),
     map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    module_imports_get_error(ModuleImports, Error),
-    ( Error = fatal_module_errors ->
-        Modules = Modules1
+    module_and_imports_get_results(ModuleImports, _Items, _Specs, Error),
+    (
+        Error = fatal_module_errors,
+        Modules = ModulesTail
     ;
-        Modules = [Module | Modules1]
-    ),
-    select_ok_modules(Modules0, DepsMap, Modules1).
+        ( Error = no_module_errors
+        ; Error = some_module_errors
+        ),
+        Modules = [Module | ModulesTail]
+    ).
 
 %-----------------------------------------------------------------------------%
 
-    % Find out which modules will generate as external foreign
-    % language files.
+    % Find out which modules will generate as external foreign language files.
     % We return the module names and file extensions.
     %
 :- func foreign_modules(list(module_name), deps_map)
@@ -1615,7 +1618,7 @@ foreign_modules(Modules, DepsMap) = ForeignModules :-
 
 module_has_foreign(DepsMap, Module, LangList) :-
     map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    ModuleImports ^ has_foreign_code = contains_foreign_code(Langs),
+    ModuleImports ^ mai_has_foreign_code = contains_foreign_code(Langs),
     LangList = set.to_sorted_list(Langs).
 
 %-----------------------------------------------------------------------------%
@@ -1644,7 +1647,7 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
     map.lookup(DepsMap, Module, deps(_, ModuleImports)),
 
     % Handle object files for fact tables.
-    FactDeps = ModuleImports ^ fact_table_deps,
+    FactDeps = ModuleImports ^ mai_fact_table_deps,
     list.length(FactDeps, NumFactDeps),
     list.duplicate(NumFactDeps, Module, ModuleList),
     assoc_list.from_corresponding_lists(FactDeps, ModuleList, FactTableObjs),
@@ -1653,7 +1656,7 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
     % XXX Currently we only support `C' foreign code.
     (
         Target = target_asm,
-        ModuleImports ^ has_foreign_code = contains_foreign_code(Langs),
+        ModuleImports ^ mai_has_foreign_code = contains_foreign_code(Langs),
         set.member(lang_c, Langs)
     ->
         FileName = sym_name_to_string(Module),
@@ -1972,7 +1975,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     (
         Intermod = yes,
         map.member(DepsMap, _, deps(_, Imports)),
-        Imports ^ children = [_ | _]
+        Imports ^ mai_children = [_ | _]
     ->
         % The `.int0' files only need to be installed with
         % `--intermodule-optimization'.
@@ -2284,7 +2287,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 get_source_file(DepsMap, ModuleName, FileName) :-
     map.lookup(DepsMap, ModuleName, Deps),
     Deps = deps(_, ModuleImports),
-    module_imports_get_source_file_name(ModuleImports, SourceFileName),
+    module_and_imports_get_source_file_name(ModuleImports, SourceFileName),
     ( string.remove_suffix(SourceFileName, ".m", SourceFileBase) ->
         FileName = SourceFileBase
     ;

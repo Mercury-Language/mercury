@@ -146,7 +146,8 @@
     % would cause problems for later passes (if so, we stop compilation after
     % this pass).
     %
-:- pred puritycheck(bool::in, bool::out, module_info::in, module_info::out,
+:- pred puritycheck_module(bool::in, bool::out,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Rerun purity checking on a procedure after an optimization pass has
@@ -209,7 +210,7 @@
 % Public Predicates
 %
 
-puritycheck(FoundTypeError, PostTypecheckError, !ModuleInfo, !Specs) :-
+puritycheck_module(FoundTypeError, PostTypecheckError, !ModuleInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, statistics, Statistics),
     globals.lookup_bool_option(Globals, verbose, Verbose),
