@@ -27,6 +27,9 @@ ENDINIT
 	#include <unistd.h>	/* for select() on OS X */
   #endif	
 #endif
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+  #include <math.h> /* for sqrt and pow */
+#endif
 
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
@@ -69,11 +72,24 @@ MR_PendingContext       *MR_pending_contexts;
 #if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
 MR_bool                 MR_profile_parallel_execution = MR_FALSE;
 
-static MR_Integer       MR_profile_parallel_executed_global_sparks = 0;
+static MR_Stats         MR_profile_parallel_executed_global_sparks = { 0, 0, 0, 0 };
+static MR_Stats         MR_profile_parallel_executed_contexts = { 0, 0, 0, 0 };
+static MR_Stats         MR_profile_parallel_executed_nothing = { 0, 0, 0, 0 };
+/* This cannot be static as it is used in macros by other modules. */
+MR_Stats                MR_profile_parallel_executed_local_sparks = { 0, 0, 0, 0 };
 static MR_Integer       MR_profile_parallel_contexts_created_for_sparks = 0;
 
 /*
-** Write out the profiling data that we collect during exceution.
+** We don't access these atomically.  They are protected by the free context
+** list lock
+*/
+static MR_Integer       MR_profile_parallel_small_context_reused = 0;
+static MR_Integer       MR_profile_parallel_regular_context_reused = 0;
+static MR_Integer       MR_profile_parallel_small_context_kept = 0;
+static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
+
+/*
+** Write out the profiling data that we collect during execution.
 */
 static void
 MR_write_out_profiling_parallel_execution(void);
@@ -161,15 +177,18 @@ MR_finalize_thread_stuff(void)
 }
 
 #if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+static int
+fprint_stats(FILE *stream, const char *message, MR_Stats *stats);
+
 /*
- * Write out the profiling data for parallel execution.
- *
- * This writes out a flat text file which may be parsed by a machine or easily
- * read by a human.  There is no advantage in using a binary format since we
- * do this once at the end of execution and it's a small amount of data.
- * Therefore a text file is used since it has the advantage of being human
- * readable.
- */
+** Write out the profiling data for parallel execution.
+**
+** This writes out a flat text file which may be parsed by a machine or easily
+** read by a human.  There is no advantage in using a binary format since we
+** do this once at the end of execution and it's a small amount of data.
+** Therefore a text file is used since it has the advantage of being human
+** readable.
+*/
 static void
 MR_write_out_profiling_parallel_execution(void)
 {
@@ -182,12 +201,40 @@ MR_write_out_profiling_parallel_execution(void)
     result = fprintf(file, "Mercury parallel execution profiling data\n\n");
     if (result < 0) goto Error;
 
-    result = fprintf(file, "Global sparks executed: %d\n",
-        MR_profile_parallel_executed_global_sparks); 
+    result = fprint_stats(file, "Global sparks executed",
+        &MR_profile_parallel_executed_global_sparks); 
+    if (result < 0) goto Error;
+
+    result = fprint_stats(file, "Global contexts executed",
+        &MR_profile_parallel_executed_contexts);
+    if (result < 0) goto Error;
+
+    result = fprint_stats(file, "MR_do_runnext executed nothing",
+        &MR_profile_parallel_executed_nothing);
+    if (result < 0) goto Error;
+
+    result = fprint_stats(file, "Local sparks executed",
+        &MR_profile_parallel_executed_local_sparks);
     if (result < 0) goto Error;
 
     result = fprintf(file, "Contexts created for global spark execution: %d\n",
         MR_profile_parallel_contexts_created_for_sparks);
+    if (result < 0) goto Error;
+
+    result = fprintf(file, "Number of times a small context was reused: %d\n",
+        MR_profile_parallel_small_context_reused);
+    if (result < 0) goto Error;
+    
+    result = fprintf(file, "Number of times a regular context was reused: %d\n",
+        MR_profile_parallel_regular_context_reused);
+    if (result < 0) goto Error;
+
+    result = fprintf(file, "Number of times a small context was kept for later use: %d\n",
+        MR_profile_parallel_small_context_kept);
+    if (result < 0) goto Error;
+    
+    result = fprintf(file, "Number of times a regular context was kept for later use: %d\n",
+        MR_profile_parallel_regular_context_kept);
     if (result < 0) goto Error;
 
     if (0 != fclose(file)) goto Error;
@@ -198,6 +245,41 @@ MR_write_out_profiling_parallel_execution(void)
         perror(MR_PROFILE_PARALLEL_EXECUTION_FILENAME);
         abort();
 }
+
+static int 
+fprint_stats(FILE *stream, const char *message, MR_Stats *stats) {
+    MR_Unsigned     count;
+    double          average;
+    double          sum_squared_over_n;
+    double          standard_deviation;
+
+    count = stats->MR_stat_count_recorded + stats->MR_stat_count_not_recorded;
+    
+    if (stats->MR_stat_count_recorded > 1)
+    {
+        average = (double)stats->MR_stat_sum /
+            (double)stats->MR_stat_count_recorded;
+        sum_squared_over_n = pow((double)stats->MR_stat_sum,2.0)/
+            (double)stats->MR_stat_count_recorded;
+        standard_deviation = 
+            sqrt(((double)stats->MR_stat_sum_squares - sum_squared_over_n) / 
+            (double)(stats->MR_stat_count_recorded - 1));
+
+        return fprintf(stream, 
+            "%s: count %d (%dr, %dnr), average %f, standard deviation %f\n",
+            message, count, stats->MR_stat_count_recorded, 
+            stats->MR_stat_count_not_recorded, average, standard_deviation);
+    } else if (stats->MR_stat_count_recorded == 1) {
+        return fprintf(stream, "%s: count %d (%dr, %dnr), sample %d\n",
+            message, count, stats->MR_stat_count_recorded, 
+            stats->MR_stat_count_not_recorded, stats->MR_stat_sum); 
+    } else {
+        return fprintf(stream, "%s: count %d (%dr, %dnr)\n",
+            message, count, stats->MR_stat_count_recorded, 
+            stats->MR_stat_count_not_recorded);
+    }
+};
+
 #endif
 
 static void 
@@ -396,9 +478,19 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     if (ctxt_size == MR_CONTEXT_SIZE_SMALL && free_small_context_list) {
         c = free_small_context_list;
         free_small_context_list = c->MR_ctxt_next;
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+        if (MR_profile_parallel_execution) {
+            MR_profile_parallel_small_context_reused++;
+        }
+#endif
     } else if (free_context_list != NULL) {
         c = free_context_list;
         free_context_list = c->MR_ctxt_next;
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+        if (MR_profile_parallel_execution) {
+            MR_profile_parallel_regular_context_reused++;
+        }
+#endif
     } else {
         c = NULL;
     }
@@ -452,10 +544,20 @@ MR_destroy_context(MR_Context *c)
         case MR_CONTEXT_SIZE_REGULAR:
             c->MR_ctxt_next = free_context_list;
             free_context_list = c;
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+            if (MR_profile_parallel_execution) {
+                MR_profile_parallel_regular_context_kept++;
+            }
+#endif
             break;
         case MR_CONTEXT_SIZE_SMALL:
             c->MR_ctxt_next = free_small_context_list;
             free_small_context_list = c;
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+            if (MR_profile_parallel_execution) {
+                MR_profile_parallel_small_context_kept++;
+            }
+#endif
             break;
     }
     MR_UNLOCK(&free_context_list_lock, "destroy_context");
@@ -628,6 +730,12 @@ MR_define_entry(MR_do_runnext);
     unsigned        depth;
     MercuryThread   thd;
 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+    MR_Timer        runnext_timer;
+    if (MR_profile_parallel_execution) {
+        MR_profiling_start_timer(&runnext_timer);
+    }
+#endif
     /*
     ** If this engine is holding onto a context, the context should not be
     ** in the middle of running some code.
@@ -689,6 +797,11 @@ MR_define_entry(MR_do_runnext);
         }
 
         /* Nothing to do, go back to sleep. */
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+        if (MR_profile_parallel_execution) {
+            MR_profiling_stop_timer(&runnext_timer, &MR_profile_parallel_executed_nothing);
+        }
+#endif
         while (MR_WAIT(&MR_runqueue_cond, &MR_runqueue_lock) != 0) {
         }
     }
@@ -709,6 +822,11 @@ MR_define_entry(MR_do_runnext);
     if (MR_ENGINE(MR_eng_this_context) != NULL) {
         MR_destroy_context(MR_ENGINE(MR_eng_this_context));
     }
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+    if (MR_profile_parallel_execution) {
+        MR_profiling_stop_timer(&runnext_timer, &MR_profile_parallel_executed_contexts);
+    }
+#endif
     MR_ENGINE(MR_eng_this_context) = tmp;
     MR_load_context(tmp);
     MR_GOTO(tmp->MR_ctxt_resume);
@@ -728,14 +846,14 @@ MR_define_entry(MR_do_runnext);
         }
 #endif
     }
-#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-    if (MR_profile_parallel_execution) {
-        MR_atomic_inc_int(&MR_profile_parallel_executed_global_sparks);
-    }
-#endif
     MR_parent_sp = spark.MR_spark_parent_sp;
     MR_assert(MR_parent_sp != MR_sp);
     MR_SET_THREAD_LOCAL_MUTABLES(spark.MR_spark_thread_local_mutables);
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+    if (MR_profile_parallel_execution) {
+        MR_profiling_stop_timer(&runnext_timer, &MR_profile_parallel_executed_global_sparks);
+    }
+#endif
     MR_GOTO(spark.MR_spark_resume);
 }
 #else /* !MR_THREAD_SAFE */

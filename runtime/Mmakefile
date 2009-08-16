@@ -431,6 +431,7 @@ mercury_conf.h: mercury_conf.h.date
 .PHONY: cs
 cs:	$(CFILES)
 
+.PHONY: tags
 tags:	$(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
 	ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
 

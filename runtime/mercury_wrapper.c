@@ -521,6 +521,16 @@ mercury_runtime_init(int argc, char **argv)
     }
 #endif
 
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    /*
+    ** Setup support for reading the CPU's TSC.  This is currently used by
+    ** profiling of the parallelism runtime but may be used by other profiling
+    ** or timing code.  On architectures other than i386 and amd64 this is a
+    ** no-op.
+    */
+    MR_configure_profiling_timers();
+#endif 
+
     /*
     ** This must be done before MR_init_conservative_GC(),
     ** to ensure that the GC's signal handler gets installed

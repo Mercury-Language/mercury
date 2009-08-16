@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2008 The University of Melbourne.
+# Copyright (C) 1995-2009 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -296,7 +296,8 @@ tags: 	tags_library \
 	tags_compiler \
 	tags_slice \
 	tags_profiler \
-	tags_deep_profiler
+	tags_deep_profiler \
+	tags_runtime
 
 .PHONY: tags_compiler
 tags_compiler:
@@ -329,6 +330,10 @@ tags_profiler:
 .PHONY: tags_deep_profiler
 tags_deep_profiler:
 	+cd deep_profiler && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_runtime
+tags_runtime:
+	+cd runtime && $(SUBDIR_MMAKE) tags
 
 #-----------------------------------------------------------------------------#
 
