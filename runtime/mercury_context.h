@@ -775,7 +775,8 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
 
   #define MR_fork_globally_criteria                                           \
     (MR_num_idle_engines != 0 &&                                              \
-    MR_num_outstanding_contexts_and_global_sparks < MR_max_outstanding_contexts)
+     MR_num_outstanding_contexts_and_global_sparks <                          \
+            MR_max_outstanding_contexts)
 
   /*
   ** These macros may be used as conditions for runtime parallelism decisions.
@@ -805,7 +806,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
     do {                                                                      \
         MR_SyncTerm *jnc_st = (MR_SyncTerm *) &sync_term;                     \
 MR_IF_PROFILE_PARALLEL_EXECUTION_SUPPORT(                                     \
-            MR_Timer MR_local_spark_timer;                                     \
+            MR_Timer MR_local_spark_timer;                                    \
             if (MR_profile_parallel_execution == MR_TRUE) {                   \
                 MR_profiling_start_timer(&MR_local_spark_timer);              \
             }                                                                 \

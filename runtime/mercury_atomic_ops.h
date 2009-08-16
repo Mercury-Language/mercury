@@ -54,7 +54,7 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
             char result;                                                    \
                                                                             \
             __asm__ __volatile__(                                           \
-                "lock; cmpxchgq %3, %0; setz %1"                             \
+                "lock; cmpxchgq %3, %0; setz %1"                            \
                 : "=m"(*addr), "=q"(result)                                 \
                 : "m"(*addr), "r" (new_val), "a"(old)                       \
             );                                                              \
@@ -207,7 +207,7 @@ MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend);
     #define MR_ATOMIC_ADD_INT_BODY                                          \
         do {                                                                \
             __asm__ __volatile__(                                           \
-                "lock; addl %2, %0;"                                         \
+                "lock; addl %2, %0;"                                        \
                 : "=m"(*addr)                                               \
                 : "m"(*addr), "r"(addend)                                   \
                 );                                                          \
@@ -249,7 +249,7 @@ MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
     #define MR_ATOMIC_SUB_INT_BODY                                          \
         do {                                                                \
             __asm__ __volatile__(                                           \
-                "lock; subl %2, %0;"                                         \
+                "lock; subl %2, %0;"                                        \
                 : "=m"(*addr)                                               \
                 : "m"(*addr), "r"(x)                                        \
                 );                                                          \

@@ -72,11 +72,13 @@ MR_PendingContext       *MR_pending_contexts;
 #if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
 MR_bool                 MR_profile_parallel_execution = MR_FALSE;
 
-static MR_Stats         MR_profile_parallel_executed_global_sparks = { 0, 0, 0, 0 };
+static MR_Stats         MR_profile_parallel_executed_global_sparks = 
+        { 0, 0, 0, 0 };
 static MR_Stats         MR_profile_parallel_executed_contexts = { 0, 0, 0, 0 };
 static MR_Stats         MR_profile_parallel_executed_nothing = { 0, 0, 0, 0 };
 /* This cannot be static as it is used in macros by other modules. */
-MR_Stats                MR_profile_parallel_executed_local_sparks = { 0, 0, 0, 0 };
+MR_Stats                MR_profile_parallel_executed_local_sparks = 
+        { 0, 0, 0, 0 };
 static MR_Integer       MR_profile_parallel_contexts_created_for_sparks = 0;
 
 /*
@@ -225,15 +227,18 @@ MR_write_out_profiling_parallel_execution(void)
         MR_profile_parallel_small_context_reused);
     if (result < 0) goto Error;
     
-    result = fprintf(file, "Number of times a regular context was reused: %d\n",
+    result = fprintf(file, i
+            "Number of times a regular context was reused: %d\n",
         MR_profile_parallel_regular_context_reused);
     if (result < 0) goto Error;
 
-    result = fprintf(file, "Number of times a small context was kept for later use: %d\n",
+    result = fprintf(file, 
+            "Number of times a small context was kept for later use: %d\n",
         MR_profile_parallel_small_context_kept);
     if (result < 0) goto Error;
     
-    result = fprintf(file, "Number of times a regular context was kept for later use: %d\n",
+    result = fprintf(file, 
+            "Number of times a regular context was kept for later use: %d\n",
         MR_profile_parallel_regular_context_kept);
     if (result < 0) goto Error;
 
@@ -799,7 +804,8 @@ MR_define_entry(MR_do_runnext);
         /* Nothing to do, go back to sleep. */
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
         if (MR_profile_parallel_execution) {
-            MR_profiling_stop_timer(&runnext_timer, &MR_profile_parallel_executed_nothing);
+            MR_profiling_stop_timer(&runnext_timer, 
+                    &MR_profile_parallel_executed_nothing);
         }
 #endif
         while (MR_WAIT(&MR_runqueue_cond, &MR_runqueue_lock) != 0) {
@@ -824,7 +830,8 @@ MR_define_entry(MR_do_runnext);
     }
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
     if (MR_profile_parallel_execution) {
-        MR_profiling_stop_timer(&runnext_timer, &MR_profile_parallel_executed_contexts);
+        MR_profiling_stop_timer(&runnext_timer, 
+                &MR_profile_parallel_executed_contexts);
     }
 #endif
     MR_ENGINE(MR_eng_this_context) = tmp;
@@ -842,7 +849,8 @@ MR_define_entry(MR_do_runnext);
         MR_load_context(MR_ENGINE(MR_eng_this_context));
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
         if (MR_profile_parallel_execution) {
-            MR_atomic_inc_int(&MR_profile_parallel_contexts_created_for_sparks);
+            MR_atomic_inc_int(
+                    &MR_profile_parallel_contexts_created_for_sparks);
         }
 #endif
     }
@@ -851,7 +859,8 @@ MR_define_entry(MR_do_runnext);
     MR_SET_THREAD_LOCAL_MUTABLES(spark.MR_spark_thread_local_mutables);
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
     if (MR_profile_parallel_execution) {
-        MR_profiling_stop_timer(&runnext_timer, &MR_profile_parallel_executed_global_sparks);
+        MR_profiling_stop_timer(&runnext_timer, 
+                &MR_profile_parallel_executed_global_sparks);
     }
 #endif
     MR_GOTO(spark.MR_spark_resume);
