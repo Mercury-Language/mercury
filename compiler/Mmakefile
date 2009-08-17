@@ -281,7 +281,10 @@ ints:	$(MC_PROG).ints
 .PHONY: tags
 tags:	.compiler_tags
 
-.compiler_tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
+.compiler_tags:	$(PREPROCESSED_M_FILES) \
+		$(wildcard *.m) \
+		$(wildcard $(LIBRARY_DIR)/*.m) \
+		$(wildcard $(MDBCOMP_DIR)/*.m)
 	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
 	touch .compiler_tags
 

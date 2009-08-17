@@ -149,7 +149,9 @@ DEEP_MS = \
 	$(mdprof_feedback.ms) \
 	$(mdprof_procrep.ms)
 
-.deep_tags: $(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m
+.deep_tags: $(MTAGS) $(DEEP_MS) \
+		$(wildcard $(MDBCOMP_DIR)/*.m) \
+		$(wildcard $(LIBRARY_DIR)/*.m)
 	$(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m
 	touch .deep_tags
 

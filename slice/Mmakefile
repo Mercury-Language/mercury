@@ -128,7 +128,7 @@ ints:	$(INTS)
 #-----------------------------------------------------------------------------#
 
 tags:	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
-		$(mtc_diff.ms) $(LIBRARY_DIR)/*.m
+		$(mtc_diff.ms) $(wildcard $(LIBRARY_DIR)/*.m)
 	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
 		$(mtc_diff.ms) $(LIBRARY_DIR)/*.m
 
