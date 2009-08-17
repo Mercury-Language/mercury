@@ -203,15 +203,15 @@ MR_write_out_profiling_parallel_execution(void)
     result = fprintf(file, "Mercury parallel execution profiling data\n\n");
     if (result < 0) goto Error;
 
-    result = fprint_stats(file, "Global sparks executed",
+    result = fprint_stats(file, "MR_do_runnext(): global sparks executed",
         &MR_profile_parallel_executed_global_sparks); 
     if (result < 0) goto Error;
 
-    result = fprint_stats(file, "Global contexts executed",
+    result = fprint_stats(file, "MR_do_runnext(): global contexts resumed",
         &MR_profile_parallel_executed_contexts);
     if (result < 0) goto Error;
 
-    result = fprint_stats(file, "MR_do_runnext executed nothing",
+    result = fprint_stats(file, "MR_do_runnext(): executed nothing",
         &MR_profile_parallel_executed_nothing);
     if (result < 0) goto Error;
 
@@ -227,7 +227,7 @@ MR_write_out_profiling_parallel_execution(void)
         MR_profile_parallel_small_context_reused);
     if (result < 0) goto Error;
     
-    result = fprintf(file, i
+    result = fprintf(file,
             "Number of times a regular context was reused: %d\n",
         MR_profile_parallel_regular_context_reused);
     if (result < 0) goto Error;
@@ -251,6 +251,18 @@ MR_write_out_profiling_parallel_execution(void)
         abort();
 }
 
+#define MR_FPRINT_STATS_FORMAT_STRING_FULL \
+    ("%s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%" \
+    MR_INTEGER_LENGTH_MODIFIER "ur, %" MR_INTEGER_LENGTH_MODIFIER \
+    "unr), average %.0f, standard deviation %.0f\n")
+#define MR_FPRINT_STATS_FORMAT_STRING_SINGLE \
+    ("%s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%" \
+    MR_INTEGER_LENGTH_MODIFIER "ur, %" MR_INTEGER_LENGTH_MODIFIER \
+    "unr), sample %ul\n")
+#define MR_FPRINT_STATS_FORMAT_STRING_NONE \
+    ("s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%" \
+    MR_INTEGER_LENGTH_MODIFIER "ur, %" MR_INTEGER_LENGTH_MODIFIER "unr)\n")
+
 static int 
 fprint_stats(FILE *stream, const char *message, MR_Stats *stats) {
     MR_Unsigned     count;
@@ -258,10 +270,10 @@ fprint_stats(FILE *stream, const char *message, MR_Stats *stats) {
     double          sum_squared_over_n;
     double          standard_deviation;
 
-    count = stats->MR_stat_count_recorded + stats->MR_stat_count_not_recorded;
+    count = (unsigned)(stats->MR_stat_count_recorded + 
+        stats->MR_stat_count_not_recorded);
     
-    if (stats->MR_stat_count_recorded > 1)
-    {
+    if (stats->MR_stat_count_recorded > 1) {
         average = (double)stats->MR_stat_sum /
             (double)stats->MR_stat_count_recorded;
         sum_squared_over_n = pow((double)stats->MR_stat_sum,2.0)/
@@ -270,16 +282,15 @@ fprint_stats(FILE *stream, const char *message, MR_Stats *stats) {
             sqrt(((double)stats->MR_stat_sum_squares - sum_squared_over_n) / 
             (double)(stats->MR_stat_count_recorded - 1));
 
-        return fprintf(stream, 
-            "%s: count %d (%dr, %dnr), average %f, standard deviation %f\n",
-            message, count, stats->MR_stat_count_recorded, 
+        return fprintf(stream, MR_FPRINT_STATS_FORMAT_STRING_FULL, message,
+            count, stats->MR_stat_count_recorded,
             stats->MR_stat_count_not_recorded, average, standard_deviation);
     } else if (stats->MR_stat_count_recorded == 1) {
-        return fprintf(stream, "%s: count %d (%dr, %dnr), sample %d\n",
+        return fprintf(stream, MR_FPRINT_STATS_FORMAT_STRING_SINGLE,
             message, count, stats->MR_stat_count_recorded, 
             stats->MR_stat_count_not_recorded, stats->MR_stat_sum); 
     } else {
-        return fprintf(stream, "%s: count %d (%dr, %dnr)\n",
+        return fprintf(stream, MR_FPRINT_STATS_FORMAT_STRING_NONE,
             message, count, stats->MR_stat_count_recorded, 
             stats->MR_stat_count_not_recorded);
     }
@@ -737,9 +748,6 @@ MR_define_entry(MR_do_runnext);
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
     MR_Timer        runnext_timer;
-    if (MR_profile_parallel_execution) {
-        MR_profiling_start_timer(&runnext_timer);
-    }
 #endif
     /*
     ** If this engine is holding onto a context, the context should not be
@@ -760,6 +768,13 @@ MR_define_entry(MR_do_runnext);
     MR_num_idle_engines++;
 
     while (1) {
+
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+        if (MR_profile_parallel_execution) {
+            MR_profiling_start_timer(&runnext_timer);
+        }
+#endif
+
         if (MR_exit_now) {
             /*
             ** The primordial thread has the responsibility of cleaning
