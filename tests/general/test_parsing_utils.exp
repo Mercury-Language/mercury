@@ -230,3 +230,13 @@ pass: one_or_more(int_with_state) on "abc"
 pass: one_or_more(int_with_state) on "1 2 3"
 	returned [3, 2, 1] as expected
 	[5 chars consumed]
+Line = 2, Pos = 5
+Line = 2, Pos = 3
+Line = 7, Pos = 1
+Line = 4, Pos = 2
+Line = 3, Pos = 1
+Line = 1, Pos = 3
+Line = 1, Pos = 1
+Line = 2, Pos = 10
+Line = 3, Pos = 1
+Line = 1, Pos = 1

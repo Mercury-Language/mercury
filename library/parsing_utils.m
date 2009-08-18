@@ -327,6 +327,9 @@ skip_whitespace(Src, PS0, PS) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+    % For a source string Src, the following array contains the positions
+    % of all the newline characters in the string Src ++ "\n".
+    %
 :- type line_numbers == array(int).
 
 %-----------------------------------------------------------------------------%
@@ -338,7 +341,7 @@ src_to_line_numbers(Src) = LineNos :-
     F = ( func(I, Ns) =
         ( if string.unsafe_index(Str, I) = ('\n') then [I | Ns] else Ns )
     ),
-    LineNosList = int.fold_down(F, Lo, Hi, []),
+    LineNosList = int.fold_down(F, Lo, Hi, [Src ^ input_length]),
     LineNos = array(LineNosList).
 
 %-----------------------------------------------------------------------------%
@@ -368,9 +371,16 @@ offset_to_line_number_and_position_2(LineNos, Lo, Hi, Offset, LineNo, Pos) :-
                 LineNo, Pos)
         )
       else
-        LoOffset = LineNos ^ elem(Lo),
+        % Lo is the index of the newline that terminates the line that Offset
+        % is on.  We compute LineBegin as the offset of the first character
+        % of the line Offset is on.
+        ( if Lo = 0 then
+            LineBegin = 0
+          else
+            LineBegin = LineNos ^ elem(Lo - 1) + 1
+        ),
         LineNo = 1 + Lo,
-        Pos = 1 + Offset - LoOffset
+        Pos = 1 + Offset - LineBegin
     ).
 
 %-----------------------------------------------------------------------------%

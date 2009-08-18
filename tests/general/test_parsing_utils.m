@@ -30,7 +30,17 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    unsorted_aggregate(run_test, io.write_string, !IO).
+    unsorted_aggregate(run_test, io.write_string, !IO),
+    test_pos("123456789\n123456789\n", 14, !IO),
+    test_pos("\n123456789\n123456789\n\n\n\n\n\n", 3, !IO),
+    test_pos("\n1234\n12\n\n\nfewefwef\nwwfwe\n\n", 20, !IO),
+    test_pos("123456789\n123456789\n\n1234567890", 22, !IO),
+    test_pos("123456789\n123456789\n\n1234567890", 20, !IO),
+    test_pos("123456789", 2, !IO),
+    test_pos("123456789", 0, !IO),
+    test_pos("123456789\n123456789\n\n", 19, !IO),
+    test_pos("123456789\n123456789\n\n", 20, !IO),
+    test_pos("", 0, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -340,6 +350,16 @@ int_with_state(Src, X, Xs, [X | Xs], !PS) :-
 stringify(P, Src, String, !PS) :-
     P(Src, X, !PS),
     String = string.string(X).
+
+%-----------------------------------------------------------------------------%
+
+:- pred test_pos(string::in, int::in, io::di, io::uo) is det.
+
+test_pos(Str, OS, !IO) :-
+    new_src_and_ps(Str, Src, _),
+    offset_to_line_number_and_position(src_to_line_numbers(Src), OS, Line,
+        Pos),
+    io.format("Line = %d, Pos = %d\n", [i(Line), i(Pos)], !IO).
 
 %-----------------------------------------------------------------------------%
 
