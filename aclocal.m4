@@ -328,7 +328,7 @@ if test "$JAVAC" != "" -a "$JAVA_INTERPRETER" != "" -a "$JAR" != ""; then
 	cat > conftest.java << EOF
 		// This program simply retrieves the constant
 		// specifying the version number of the Java SDK and
-		// checks it is at least 1.2, printing "Hello, world"
+		// checks it is at least 1.5, printing "Hello, world"
 		// if successful.
 		public class conftest {
 		    public static void main (String[[]] args) {
@@ -348,7 +348,7 @@ if test "$JAVAC" != "" -a "$JAVA_INTERPRETER" != "" -a "$JAR" != ""; then
 				version = 0f;
 			}
 
-			if (version >= 1.2f) {
+			if (version >= 1.5f) {
 				System.out.println("Hello, world\n");
 			} else {
 				System.out.println("Nope, sorry.\n");
@@ -385,6 +385,29 @@ fi
 AC_SUBST(JAVAC)
 AC_SUBST(JAVA_INTERPRETER)
 AC_SUBST(JAR)
+])
+
+AC_DEFUN(MERCURY_CHECK_JAVAC_HEAP_SIZE,
+[
+# The default maximum heap size is too small to build the standard library and
+# other programs so we need to increase it.  The option to do that is
+# non-standard so we have to check that it is accepted.
+AC_CACHE_VAL(mercury_cv_javac_flags_for_heap_size, [
+if test "$mercury_cv_java" = "yes"; then
+	AC_MSG_CHECKING(if the Java compiler accepts the max heap size option)
+	mercury_cv_javac_flags_for_heap_size="-J-Xmx256m"
+	if "$JAVAC" "$mercury_cv_javac_flags_for_heap_size" -version \
+                2> /dev/null
+        then
+		AC_MSG_RESULT(yes)
+	else
+		AC_MSG_RESULT(no)
+		mercury_cv_javac_flags_for_heap_size=
+	fi
+else
+	mercury_cv_javac_flags_for_heap_size=
+fi
+])
 ])
 
 #-----------------------------------------------------------------------------#

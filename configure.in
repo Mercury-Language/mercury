@@ -1051,6 +1051,23 @@ MERCURY_CHECK_DOTNET
 
 MERCURY_CHECK_JAVA
 
+AC_ARG_ENABLE(javac-flags-for-heap-size,
+    AC_HELP_STRING([--enable-javac-flags-for-heap-size],
+                   [enable maximum heap size option for Java compiler]),
+    enable_javac_flags_for_heap_size="$enableval",
+    enable_javac_flags_for_heap_size=yes)
+
+case "$enable_javac_flags_for_heap_size" in
+    yes)
+        MERCURY_CHECK_JAVAC_HEAP_SIZE
+        JAVAC_FLAGS_FOR_HEAP_SIZE=$mercury_cv_javac_flags_for_heap_size
+        ;;
+    no)
+        JAVAC_FLAGS_FOR_HEAP_SIZE=
+        ;;
+esac
+AC_SUBST(JAVAC_FLAGS_FOR_HEAP_SIZE)
+
 #-----------------------------------------------------------------------------#
 # Erlang configuration
 #
@@ -3170,14 +3187,13 @@ AC_ARG_ENABLE(dotnet-grades,
     AC_HELP_STRING([--enable-dotnet-grades], [install the .NET grades]),
     enable_dotnet_grades="$enableval",enable_dotnet_grades=no)
 
-# XXX The java backend is currently broken, so we don't
-# enable the java grade by default.
+# We don't enable the java grade by default.
 AC_ARG_ENABLE(java-grade,
    AC_HELP_STRING([--enable-java-grade], [install the Java grade]),
    enable_java_grade="$enableval",enable_java_grade=no)
 
 # We don't enable the Erlang grades by default because it is still
-# experimental and it requires mmc --make to install.
+# experimental.
 AC_ARG_ENABLE(erlang-grade,
    AC_HELP_STRING([--enable-erlang-grade], [install the Erlang grade]),
    enable_erlang_grade="$enableval",enable_erlang_grade=no)
