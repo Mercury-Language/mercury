@@ -96,11 +96,11 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module queue.
+:- import_module set_tree234.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
 :- import_module svqueue.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -127,7 +127,7 @@
 % or type_ctor_info structure whose id is not in the needed map.
 
 :- type entity_queue    ==  queue(entity).
-:- type examined_set    ==  set(entity).
+:- type examined_set    ==  set_tree234(entity).
 
 dead_proc_elim(ElimOptImported, !ModuleInfo, Specs) :-
     dead_proc_analyze(!ModuleInfo, Needed),
@@ -136,7 +136,7 @@ dead_proc_elim(ElimOptImported, !ModuleInfo, Specs) :-
 %-----------------------------------------------------------------------------%
 
 dead_proc_analyze(!ModuleInfo, !:Needed) :-
-    set.init(Examined0),
+    Examined0 = set_tree234.init,
     dead_proc_initialize(!ModuleInfo, Queue0, !:Needed),
     dead_proc_examine(Queue0, Examined0, !.ModuleInfo, !Needed).
 
@@ -318,10 +318,10 @@ dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
     % See if the queue is empty.
     ( svqueue.get(Entity, !Queue) ->
         % See if the next element has been examined before.
-        ( set.member(Entity, !.Examined) ->
+        ( set_tree234.member(!.Examined, Entity) ->
             dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed)
         ;
-            svset.insert(Entity, !Examined),
+            set_tree234.insert(Entity, !Examined),
             (
                 Entity = entity_proc(PredId, ProcId),
                 PredProcId = proc(PredId, ProcId),
@@ -875,9 +875,15 @@ dead_proc_eliminate_type_ctor_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
     --->    pred_elim_info(
                 pred_elim_module_info   :: module_info,
                 pred_elim_queue         :: queue(pred_id), % preds to examine.
-                pred_elim_examined      :: set(pred_id),   % preds examined.
-                pred_elim_needed_ids    :: set(pred_id),   % needed pred_ids.
-                pred_elim_needed_named  :: set(sym_name)   % pred names needed.
+
+                % preds examined.
+                pred_elim_examined      :: set_tree234(pred_id),
+
+                % needed pred_ids.
+                pred_elim_needed_ids    :: set_tree234(pred_id),
+
+                % pred names needed.
+                pred_elim_needed_named  :: set_tree234(sym_name)
             ).
 
 dead_pred_elim(!ModuleInfo) :-
@@ -896,14 +902,14 @@ dead_pred_elim(!ModuleInfo) :-
         Needed1, Needed),
     map.keys(Needed, Entities),
     queue.init(Queue1),
-    set.init(NeededPreds0),
+    NeededPreds0 = set_tree234.init,
     list.foldl2(dead_pred_elim_add_entity, Entities, Queue1, Queue,
         NeededPreds0, NeededPreds1),
 
     module_info_predids(PredIds, !ModuleInfo),
 
-    set.init(Preds0),
-    set.init(Names0),
+    Preds0 = set_tree234.init,
+    Names0 = set_tree234.init,
     DeadInfo0 = pred_elim_info(!.ModuleInfo, Queue, Preds0, NeededPreds1,
         Names0),
     list.foldl(dead_pred_elim_initialize, PredIds, DeadInfo0, DeadInfo1),
@@ -914,38 +920,44 @@ dead_pred_elim(!ModuleInfo) :-
     % to force type specialization are also not needed. Here we add in those
     % which are needed.
 
-    module_info_get_type_spec_info(!.ModuleInfo,
-        type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
-            SpecMap0, PragmaMap0)),
-    set.to_sorted_list(NeededPreds2, NeededPredList2),
+    module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo0),
+    TypeSpecInfo0 = type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
+        SpecMap0, PragmaMap0),
+    set_tree234.to_sorted_list(NeededPreds2) = NeededPredList2,
     list.foldl((pred(NeededPred::in, AllPreds0::in, AllPreds::out) is det :-
         ( map.search(SpecMap0, NeededPred, NewNeededPreds) ->
-            set.insert_list(AllPreds0, NewNeededPreds, AllPreds)
+            set_tree234.insert_list(NewNeededPreds, AllPreds0, AllPreds)
         ;
             AllPreds = AllPreds0
         )
     ), NeededPredList2, NeededPreds2, NeededPreds),
-    set.intersect(TypeSpecForcePreds0, NeededPreds, TypeSpecForcePreds),
+    % We expect TypeSpecForcePreds0 to have very few elements, and NeededPreds
+    % to have many. Therefore doing an individual O(log N) lookup in
+    % NeededPreds for each element of TypeSpecForcePreds0 is a better approach
+    % than an intersection operation that would have to traverse all of
+    % NeededPreds.
+    TypeSpecForcePreds =
+        set.filter(set_tree234.contains(NeededPreds), TypeSpecForcePreds0),
 
-    module_info_set_type_spec_info(
-        type_spec_info(TypeSpecProcs0, TypeSpecForcePreds,
-            SpecMap0, PragmaMap0),
-        !ModuleInfo),
+    TypeSpecInfo = type_spec_info(TypeSpecProcs0, TypeSpecForcePreds,
+        SpecMap0, PragmaMap0),
+    module_info_set_type_spec_info(TypeSpecInfo, !ModuleInfo),
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     module_info_get_partial_qualifier_info(!.ModuleInfo, PartialQualInfo),
     predicate_table_restrict(PartialQualInfo,
-        set.to_sorted_list(NeededPreds), PredTable0, PredTable),
+        set_tree234.to_sorted_list(NeededPreds), PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 :- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,
-    queue(pred_id)::out, set(pred_id)::in, set(pred_id)::out) is det.
+    queue(pred_id)::out, set_tree234(pred_id)::in, set_tree234(pred_id)::out)
+    is det.
 
 dead_pred_elim_add_entity(entity_type_ctor(_, _, _), !Queue, !Preds).
 dead_pred_elim_add_entity(entity_table_struct(_, _), !Queue, !Preds).
 dead_pred_elim_add_entity(entity_proc(PredId, _), !Queue, !Preds) :-
     svqueue.put(PredId, !Queue),
-    svset.insert(PredId, !Preds).
+    set_tree234.insert(PredId, !Preds).
 
 :- pred dead_pred_elim_initialize(pred_id::in,
     pred_elim_info::in, pred_elim_info::out) is det.
@@ -1002,7 +1014,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 pred_info_get_goal_type(PredInfo, goal_type_promise(_))
             )
         ->
-            svset.insert(qualified(PredModule, PredName), !NeededNames),
+            set_tree234.insert(qualified(PredModule, PredName), !NeededNames),
             svqueue.put(PredId, !Queue)
         ;
             true
@@ -1018,12 +1030,12 @@ dead_pred_elim_analyze(!DeadInfo) :-
         !.DeadInfo = pred_elim_info(ModuleInfo, !:Queue, !:Examined,
             !:Needed, NeededNames),
         ( svqueue.get(PredId, !Queue) ->
-            ( set.member(PredId, !.Examined) ->
+            ( set_tree234.member(!.Examined, PredId) ->
                 !:DeadInfo = pred_elim_info(ModuleInfo, !.Queue, !.Examined,
                     !.Needed, NeededNames)
             ;
-                svset.insert(PredId, !Needed),
-                svset.insert(PredId, !Examined),
+                set_tree234.insert(PredId, !Needed),
+                set_tree234.insert(PredId, !Examined),
                 !:DeadInfo = pred_elim_info(ModuleInfo, !.Queue, !.Examined,
                     !.Needed, NeededNames),
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1118,11 +1130,11 @@ dead_pred_info_add_pred_name(Name, !DeadInfo) :-
     some [!Queue, !NeededNames] (
         !.DeadInfo = pred_elim_info(ModuleInfo, !:Queue, Examined,
             Needed, !:NeededNames),
-        ( set.member(Name, !.NeededNames) ->
+        ( set_tree234.member(!.NeededNames, Name) ->
             true
         ;
             module_info_get_predicate_table(ModuleInfo, PredicateTable),
-            svset.insert(Name, !NeededNames),
+            set_tree234.insert(Name, !NeededNames),
             (
                 predicate_table_search_sym(PredicateTable,
                     may_be_partially_qualified, Name, PredIds)
