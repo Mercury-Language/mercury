@@ -369,9 +369,7 @@ report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
     report_non_contiguous_clause_contexts(PredPieces, 1,
         FirstRegion, SecondRegion, LaterRegions, ContextMsgs),
     Msgs = [FrontMsg | ContextMsgs],
-    Severity = severity_conditional(warn_non_contiguous_clauses, yes,
-        severity_warning, no),
-    Spec = error_spec(Severity, phase_type_check, Msgs).
+    Spec = error_spec(severity_warning, phase_type_check, Msgs).
 
 :- pred report_non_contiguous_clause_contexts(list(format_component)::in,
     int::in, clause_item_number_region::in, clause_item_number_region::in,
