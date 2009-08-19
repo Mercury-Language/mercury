@@ -312,7 +312,7 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
     pred_info_get_promised_purity(!.PredInfo, PromisedPurity),
     some [!ClausesInfo] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
-        clauses_info_clauses(Clauses0, !ClausesInfo),
+        clauses_info_clauses(Clauses0, ItemNumbers, !ClausesInfo),
         clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
         clauses_info_get_varset(!.ClausesInfo, VarSet0),
         PurityInfo0 = purity_info(ModuleInfo, run_post_typecheck,
@@ -323,7 +323,8 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
             VarTypes, VarSet, GoalSpecs, _),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
         clauses_info_set_varset(VarSet, !ClausesInfo),
-        clauses_info_set_clauses(Clauses, !ClausesInfo),
+        set_clause_list(Clauses, ClausesRep),
+        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo)
     ),
     WorstPurity = Purity,
@@ -507,15 +508,15 @@ compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
 
 :- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
 
-applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
+applies_to_all_modes(clause(ApplicableProcIds, _, _, _), AllProcIds) :-
     (
-        % An empty list here means that the clause applies to *all* procedures.
-        ClauseProcIds = []
+        ApplicableProcIds = all_modes
     ;
+        ApplicableProcIds = selected_modes(ClauseProcIds),
         % Otherwise the clause applies to the procids in the list.
         % Check if this is the same as the procids for this procedure.
-        list.sort(ClauseProcIds, SortedIds),
-        SortedIds = ProcIds
+        list.sort(ClauseProcIds, SortedClauseProcIds),
+        SortedClauseProcIds = AllProcIds
     ).
 
 :- pred compute_expr_purity(hlds_goal_expr::in, hlds_goal_expr::out,

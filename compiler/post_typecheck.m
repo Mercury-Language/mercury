@@ -398,7 +398,8 @@ constraint_to_error_piece(TVarset, Constraint) =
 
 find_constrained_goals(PredInfo, Constraints) = Goals :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_clauses_only(ClausesInfo, Clauses),
+    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
+    get_clause_list_any_order(ClausesRep, Clauses),
 
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     ReverseConstraintMap = map.reverse_map(ConstraintMap),
@@ -670,7 +671,8 @@ store_promise(PromiseType, PromiseId, !ModuleInfo, Goal) :-
 promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
     module_info_pred_info(ModuleInfo, ExclusiveDeclPredId, PredInfo),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_clauses_only(ClausesInfo, Clauses),
+    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
+    get_clause_list(ClausesRep, Clauses),
     ( Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)] ->
         assertion.normalise_goal(Goal0, Goal)
     ;

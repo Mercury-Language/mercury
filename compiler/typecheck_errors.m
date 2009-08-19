@@ -18,6 +18,7 @@
 
 :- import_module check_hlds.typecheck_info.
 :- import_module hlds.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -50,6 +51,10 @@
 :- func report_no_clauses(module_info, pred_id, pred_info) = error_spec.
 
 :- func report_no_clauses_stub(module_info, pred_id, pred_info) = error_spec.
+
+:- func report_non_contiguous_clauses(module_info, pred_id, pred_info,
+    clause_item_number_region, clause_item_number_region,
+    list(clause_item_number_region)) = error_spec.
 
 :- func report_warning_too_much_overloading(typecheck_info) = error_spec.
 
@@ -350,6 +355,66 @@ report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Spec :-
         [option_is_set(warn_stubs, yes, [always(Pieces)])]),
     Severity = severity_conditional(warn_stubs, yes, severity_warning, no),
     Spec = error_spec(Severity, phase_type_check, [Msg]).
+
+%-----------------------------------------------------------------------------%
+
+report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
+        FirstRegion, SecondRegion, LaterRegions) = Spec :-
+    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
+        PredId),
+    FrontPieces = [words("Warning: non-contiguous clauses for ") | PredPieces]
+        ++ [suffix(".")],
+    pred_info_get_context(PredInfo, Context),
+    FrontMsg = simple_msg(Context, [always(FrontPieces)]),
+    report_non_contiguous_clause_contexts(PredPieces, 1,
+        FirstRegion, SecondRegion, LaterRegions, ContextMsgs),
+    Msgs = [FrontMsg | ContextMsgs],
+    Severity = severity_conditional(warn_non_contiguous_clauses, yes,
+        severity_warning, no),
+    Spec = error_spec(Severity, phase_type_check, Msgs).
+
+:- pred report_non_contiguous_clause_contexts(list(format_component)::in,
+    int::in, clause_item_number_region::in, clause_item_number_region::in,
+    list(clause_item_number_region)::in, list(error_msg)::out) is det.
+
+report_non_contiguous_clause_contexts(PredPieces, GapNumber,
+        FirstRegion, SecondRegion, LaterRegions, Msgs) :-
+    FirstRegion =
+        clause_item_number_region(_FirstLowerNumber, _FirstUpperNumber,
+        _FirstLowerContext, FirstUpperContext),
+    SecondRegion =
+        clause_item_number_region(_SecondLowerNumber, _SecondUpperNumber,
+        SecondLowerContext, _SecondUpperContext),
+    (
+        GapNumber = 1,
+        LaterRegions = []
+    ->
+        % There is only one gap, so don't number it.
+        GapPieces = []
+    ;
+        GapPieces = [int_fixed(GapNumber)]
+    ),
+    % The wording here is chosen be non-confusing even if a clause has a gap
+    % both before and after it, so that gaps both end and start at the context
+    % of that clause. We could do better if we had separate contexts for the
+    % start and the end of the clause, but we don't.
+    FirstPieces = [words("Gap") | GapPieces] ++
+        [words("in clauses of") | PredPieces] ++
+        [words("starts after this clause.")],
+    SecondPieces = [words("Gap") | GapPieces] ++
+        [words("in clauses of") | PredPieces] ++
+        [words("ends with this clause.")],
+    FirstMsg = simple_msg(FirstUpperContext, [always(FirstPieces)]),
+    SecondMsg = simple_msg(SecondLowerContext, [always(SecondPieces)]),
+    (
+        LaterRegions = [],
+        Msgs = [FirstMsg, SecondMsg]
+    ;
+        LaterRegions = [FirstLaterRegion | LaterLaterRegions],
+        report_non_contiguous_clause_contexts(PredPieces, GapNumber + 1,
+            SecondRegion, FirstLaterRegion, LaterLaterRegions, LaterMsgs),
+        Msgs = [FirstMsg, SecondMsg | LaterMsgs]
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -575,13 +575,15 @@ polymorphism_process_pred(PredId, !ModuleInfo) :-
 polymorphism_process_clause_info(PredInfo0, ModuleInfo0, !ClausesInfo, !:Info,
         ExtraArgModes) :-
     init_poly_info(ModuleInfo0, PredInfo0, !.ClausesInfo, !:Info),
-    clauses_info_get_headvars(!.ClausesInfo, HeadVars0),
+    !.ClausesInfo = clauses_info(_VarSet, ExplicitVarTypes, _TVarNameMap,
+        _VarTypes, HeadVars0, ClausesRep0, ItemNumbers,
+        _RttiVarMaps, HaveForeignClauses),
 
     setup_headvars(PredInfo0, HeadVars0, HeadVars,
         ExtraArgModes, UnconstrainedTVars,
         ExtraTypeInfoHeadVars, ExistTypeClassInfoHeadVars, !Info),
 
-    clauses_info_clauses_only(!.ClausesInfo, Clauses0),
+    get_clause_list(ClausesRep0, Clauses0),
     list.map_foldl(
         polymorphism_process_clause(PredInfo0, HeadVars0, HeadVars,
             UnconstrainedTVars, ExtraTypeInfoHeadVars,
@@ -592,12 +594,11 @@ polymorphism_process_clause_info(PredInfo0, ModuleInfo0, !ClausesInfo, !:Info,
     poly_info_get_varset(!.Info, VarSet),
     poly_info_get_var_types(!.Info, VarTypes),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
-    clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes),
     set_clause_list(Clauses, ClausesRep),
     map.init(TVarNameMap), % This is only used while adding the clauses.
     !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-        VarTypes, HeadVars, ClausesRep, RttiVarMaps,
-        !.ClausesInfo ^ have_foreign_clauses).
+        VarTypes, HeadVars, ClausesRep, ItemNumbers,
+        RttiVarMaps, HaveForeignClauses).
 
 :- pred polymorphism_process_clause(pred_info::in,
     proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::in,

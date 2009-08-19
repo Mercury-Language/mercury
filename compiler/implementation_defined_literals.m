@@ -64,12 +64,13 @@ subst_impl_defined_literals(!ModuleInfo) :-
 
 subst_literals_in_pred(ModuleInfo, PredId, PredInfo0, PredInfo) :-
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
-    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
     get_clause_list(ClausesRep0, Clauses0),
     Info = subst_literals_info(ModuleInfo, PredInfo0, PredId),
     list.map(subst_literals_in_clause(Info), Clauses0, Clauses),
     set_clause_list(Clauses, ClausesRep),
-    clauses_info_set_clauses_rep(ClausesRep, ClausesInfo0, ClausesInfo),
+    clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
+        ClausesInfo0, ClausesInfo),
     pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo).
 
 :- pred subst_literals_in_clause(subst_literals_info::in, clause::in,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -623,7 +623,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         make_n_fresh_vars("HeadVar__", PredArity, HeadVars, VarSet0, VarSet),
         construct_pred_or_func_call(invalid_pred_id, PredOrFunc,
             InstancePredName, HeadVars, GoalInfo, IntroducedGoal, !QualInfo),
-        IntroducedClause = clause([], IntroducedGoal, impl_lang_mercury,
+        IntroducedClause = clause(all_modes, IntroducedGoal, impl_lang_mercury,
             Context),
 
         map.init(TVarNameMap),
@@ -633,11 +633,13 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         rtti_varmaps_init(RttiVarMaps),
         HasForeignClauses = no,
         ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-            HeadVarVec, ClausesRep, RttiVarMaps, HasForeignClauses)
+            HeadVarVec, ClausesRep, init_clause_item_numbers_comp_gen,
+            RttiVarMaps, HasForeignClauses)
     ;
         % Handle the arbitrary clauses syntax.
         InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),
-        clauses_info_init(PredOrFunc, PredArity, ClausesInfo0),
+        clauses_info_init(PredOrFunc, PredArity,
+            init_clause_item_numbers_comp_gen, ClausesInfo0),
         list.foldl4(
             produce_instance_method_clause(PredOrFunc, Context, Status),
             InstanceClauses, !ModuleInfo, !QualInfo,
@@ -664,18 +666,19 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         HeadTerms = expand_bang_state_var_args(HeadTerms0),
         PredArity = list.length(HeadTerms),
         adjust_func_arity(PredOrFunc, Arity, PredArity),
-        % The tvarset argument is only used for explicit type
-        % qualifications, of which there are none in this
-        % clause, so it is set to a dummy value.
+        % TVarSet0 is only used for explicit type qualifications, of which
+        % there are none in this clause, so this dummy value should be ok.
         varset.init(TVarSet0),
+        % AllProcIds is only used when the predicate has foreign procs,
+        % which the instance method pred should not have, so this dummy value
+        % should be ok.
+        AllProcIds = [],
 
-        ProcIds = [],
-        % Means this clause applies to _every_ mode of the procedure.
         GoalType = goal_type_none,    % goal is not a promise
-        clauses_info_add_clause(ProcIds, CVarSet, TVarSet0, HeadTerms,
-            Body, Context, Status, PredOrFunc, Arity, GoalType, Goal,
-            VarSet, _TVarSet, !ClausesInfo, Warnings, !ModuleInfo,
-            !QualInfo, !Specs),
+        clauses_info_add_clause(all_modes, AllProcIds, CVarSet, TVarSet0,
+            HeadTerms, Body, Context, no, Status, PredOrFunc, Arity,
+            GoalType, Goal, VarSet, _TVarSet, !ClausesInfo, Warnings,
+            !ModuleInfo, !QualInfo, !Specs),
 
         SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
 

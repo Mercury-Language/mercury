@@ -162,6 +162,10 @@
 :- import_module table_builtin.
 :- import_module term_size_prof_builtin.
 
+:- pragma foreign_decl("Erlang", local, "
+-include(""erlang_conf.hrl"").
+").
+
 % library.version must be implemented using pragma foreign_proc,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
 % parameters.  We can't just generate library.m from library.m.in
@@ -200,10 +204,6 @@
 "
     Version = jmercury.runtime.Constants.MR_VERSION + "" configured for ""
         + jmercury.runtime.Constants.MR_FULLARCH;
-").
-
-:- pragma foreign_decl("Erlang", local, "
--include(""erlang_conf.hrl"").
 ").
 
 :- pragma foreign_proc("Erlang",

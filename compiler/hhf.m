@@ -146,7 +146,7 @@ process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     Info0 = hhf_info(InstGraph0, VarSet0, VarTypes0),
 
     clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
-    clauses_info_clauses(Clauses0, !ClausesInfo),
+    clauses_info_clauses(Clauses0, ItemNumbers, !ClausesInfo),
 
     (
     %   % For simple mode checking we do not give the inst_graph any
@@ -160,7 +160,8 @@ process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
             Clauses0, Clauses, Info0, Info1)
     ),
 
-    clauses_info_set_clauses(Clauses, !ClausesInfo),
+    set_clause_list(Clauses, ClausesRep),
+    clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
 
     complete_inst_graph(ModuleInfo, Info1, Info),
     % XXX Comment out the above line for incomplete, quick checking.

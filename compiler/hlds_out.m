@@ -909,7 +909,7 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
         true
     ),
     ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars, ClausesRep,
-        RttiVarMaps, _),
+        _ItemNumbers, RttiVarMaps, _HaveForeignClauses),
     ( string.contains_char(Verbose, 'C') ->
         write_indent(Indent, !IO),
         io.write_string("% pred id: ", !IO),
@@ -1163,17 +1163,22 @@ write_clauses_2(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
 
 write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
         PredOrFunc, Clause, UseDeclaredModes, TypeQual, !IO) :-
-    Clause = clause(Modes, Goal, Lang, Context),
+    Clause = clause(ApplicableModes, Goal, Lang, Context),
     Indent1 = Indent + 1,
     globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'm') ->
-        write_indent(Indent, !IO),
-        io.write_string("% Modes for which this clause applies: ", !IO),
-        ModeInts = list.map(proc_id_to_int, Modes),
-        write_intlist(ModeInts, !IO),
-        io.write_string("\n", !IO)
+    (
+        ApplicableModes = all_modes
     ;
-        true
+        ApplicableModes = selected_modes(Modes),
+        ( string.contains_char(Verbose, 'm') ->
+            write_indent(Indent, !IO),
+            io.write_string("% Modes for which this clause applies: ", !IO),
+            ModeInts = list.map(proc_id_to_int, Modes),
+            write_intlist(ModeInts, !IO),
+            io.write_string("\n", !IO)
+        ;
+            true
+        )
     ),
     (
         Lang = impl_lang_mercury
@@ -1184,22 +1189,21 @@ write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
         io.nl(!IO)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    AllProcIds = pred_info_procids(PredInfo),
     (
-        ( Modes = []
-        ; Modes = ProcIds
-        )
+        ApplicableModes = selected_modes(SelectedProcIds),
+        SelectedProcIds \= AllProcIds
     ->
-        write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums,
-            HeadTerms, PredOrFunc, !IO)
-    ;
-        % If Modes contains more than one mode, the output will have
+        % If SelectedProcIds contains more than one mode, the output will have
         % multiple clause heads. This won't be pretty and it won't be
         % syntactically valid, but it is more useful for debugging
         % than a compiler abort during the dumping process.
         write_annotated_clause_heads(ModuleInfo, Context, PredId,
-            Modes, VarSet, AppendVarNums, HeadTerms, PredOrFunc,
+            SelectedProcIds, VarSet, AppendVarNums, HeadTerms, PredOrFunc,
             UseDeclaredModes, !IO)
+    ;
+        write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums,
+            HeadTerms, PredOrFunc, !IO)
     ),
     ( Goal = hlds_goal(conj(plain_conj, []), _GoalInfo) ->
         io.write_string(".\n", !IO)

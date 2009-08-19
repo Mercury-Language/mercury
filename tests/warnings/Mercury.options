@@ -46,4 +46,18 @@ MCFLAGS-warn_dead_procs 	= --warn-dead-procs --infer-all
 
 MCFLAGS-non_stratification = --warn-non-stratification --verbose-error-messages
 
-MCFLAGS-inst_with_no_type = --warn-insts-without-matching-type --intermodule-optimization --no-intermodule-analysis
+MCFLAGS-inst_with_no_type = 	\
+				--warn-insts-without-matching-type \
+				--intermodule-optimization \
+				--no-intermodule-analysis
+
+MCFLAGS-warn_contiguous_foreign = \
+				--warn-non-contiguous-clauses \
+				--no-warn-non-contiguous-foreign-procs
+MCFLAGS-warn_non_contiguous = 	\
+				--warn-non-contiguous-foreign-procs
+MCFLAGS-warn_non_contiguous_foreign = \
+				--warn-non-contiguous-foreign-procs
+MCFLAGS-warn_non_contiguous_foreign_group = \
+				--warn-non-contiguous-clauses \
+				--no-warn-non-contiguous-foreign-procs

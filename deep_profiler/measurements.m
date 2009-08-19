@@ -199,44 +199,49 @@
             ).
 
 calls(own_prof_fast_nomem_semi(Exits, Fails, _)) = Exits + Fails.
-exits(own_prof_fast_nomem_semi(Exits, _, _)) = Exits.
-fails(own_prof_fast_nomem_semi(_, Fails, _)) = Fails.
-redos(own_prof_fast_nomem_semi(_, _, _)) = 0.
-excps(own_prof_fast_nomem_semi(_, _, _)) = 0.
-callseqs(own_prof_fast_nomem_semi(_, _, CallSeqs)) = CallSeqs.
-quanta(own_prof_fast_nomem_semi(_, _, _)) = 0.
-allocs(own_prof_fast_nomem_semi(_, _, _)) = 0.
-words(own_prof_fast_nomem_semi(_, _, _)) = 0.
-
 calls(own_prof_fast_det(Exits, _, _, _)) = Exits.
-exits(own_prof_fast_det(Exits, _, _, _)) = Exits.
-fails(own_prof_fast_det(_, _, _, _)) = 0.
-redos(own_prof_fast_det(_, _, _, _)) = 0.
-excps(own_prof_fast_det(_, _, _, _)) = 0.
-quanta(own_prof_fast_det(_, _, _, _)) = 0.
-callseqs(own_prof_fast_det(_, CallSeqs, _, _)) = CallSeqs.
-allocs(own_prof_fast_det(_, _, Allocs, _)) = Allocs.
-words(own_prof_fast_det(_, _, _, Words)) = Words.
-
 calls(own_prof_det(Exits, _, _, _, _)) = Exits.
-exits(own_prof_det(Exits, _, _, _, _)) = Exits.
-fails(own_prof_det(_, _, _, _, _)) = 0.
-redos(own_prof_det(_, _, _, _, _)) = 0.
-excps(own_prof_det(_, _, _, _, _)) = 0.
-quanta(own_prof_det(_, Quanta, _, _, _)) = Quanta.
-callseqs(own_prof_det(_, _, CallSeqs, _, _)) = CallSeqs.
-allocs(own_prof_det(_, _, _, Allocs, _)) = Allocs.
-words(own_prof_det(_, _, _, _, Words)) = Words.
-
 calls(own_prof_all(Exits, Fails, Redos, Excps, _, _, _, _)) =
     Exits + Fails + Excps - Redos.
+
+exits(own_prof_fast_nomem_semi(Exits, _, _)) = Exits.
+exits(own_prof_fast_det(Exits, _, _, _)) = Exits.
+exits(own_prof_det(Exits, _, _, _, _)) = Exits.
 exits(own_prof_all(Exits, _, _, _, _, _, _, _)) = Exits.
+
+fails(own_prof_fast_nomem_semi(_, Fails, _)) = Fails.
+fails(own_prof_fast_det(_, _, _, _)) = 0.
+fails(own_prof_det(_, _, _, _, _)) = 0.
 fails(own_prof_all(_, Fails, _, _, _, _, _, _)) = Fails.
+
+redos(own_prof_fast_nomem_semi(_, _, _)) = 0.
+redos(own_prof_fast_det(_, _, _, _)) = 0.
+redos(own_prof_det(_, _, _, _, _)) = 0.
 redos(own_prof_all(_, _, Redos, _, _, _, _, _)) = Redos.
+
+excps(own_prof_fast_nomem_semi(_, _, _)) = 0.
+excps(own_prof_fast_det(_, _, _, _)) = 0.
+excps(own_prof_det(_, _, _, _, _)) = 0.
 excps(own_prof_all(_, _, _, Excps, _, _, _, _)) = Excps.
+
+quanta(own_prof_fast_nomem_semi(_, _, _)) = 0.
+quanta(own_prof_fast_det(_, _, _, _)) = 0.
+quanta(own_prof_det(_, Quanta, _, _, _)) = Quanta.
 quanta(own_prof_all(_, _, _, _, Quanta, _, _, _)) = Quanta.
+
+callseqs(own_prof_fast_nomem_semi(_, _, CallSeqs)) = CallSeqs.
+callseqs(own_prof_fast_det(_, CallSeqs, _, _)) = CallSeqs.
+callseqs(own_prof_det(_, _, CallSeqs, _, _)) = CallSeqs.
 callseqs(own_prof_all(_, _, _, _, _, CallSeqs, _, _)) = CallSeqs.
+
+allocs(own_prof_fast_nomem_semi(_, _, _)) = 0.
+allocs(own_prof_fast_det(_, _, Allocs, _)) = Allocs.
+allocs(own_prof_det(_, _, _, Allocs, _)) = Allocs.
 allocs(own_prof_all(_, _, _, _, _, _, Allocs, _)) = Allocs.
+
+words(own_prof_fast_nomem_semi(_, _, _)) = 0.
+words(own_prof_fast_det(_, _, _, Words)) = Words.
+words(own_prof_det(_, _, _, _, Words)) = Words.
 words(own_prof_all(_, _, _, _, _, _, _, Words)) = Words.
 
 zero_own_prof_info = own_prof_fast_nomem_semi(0, 0, 0).

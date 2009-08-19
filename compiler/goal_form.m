@@ -488,9 +488,6 @@ case_list_can_loop(MaybeModuleInfo, [case(_, _, Goal) | Cases]) =
 
 %-----------------------------------------------------------------------------%
 
-goal_cannot_throw(ModuleInfo, Goal) :-
-    goal_can_throw_func(yes(ModuleInfo), Goal) = no.
-
 :- func goal_can_throw_func(maybe(module_info), hlds_goal) = bool.
 
 goal_can_throw_func(MaybeModuleInfo, hlds_goal(GoalExpr, GoalInfo))

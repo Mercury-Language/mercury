@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -139,7 +139,8 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 
 copy_module_clauses_to_procs(PredIds, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
-    list.foldl(copy_pred_clauses_to_procs, PredIds, PredTable0, PredTable),
+    list.foldl(copy_pred_clauses_to_procs_if_needed, PredIds,
+        PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
     % For each mode of the given predicate, copy the clauses relevant
@@ -148,23 +149,21 @@ copy_module_clauses_to_procs(PredIds, !ModuleInfo) :-
     % This is not the only predicate in the compiler that does this task;
     % the other is polymorphism.process_proc.
     %
-:- pred copy_pred_clauses_to_procs(pred_id::in,
+:- pred copy_pred_clauses_to_procs_if_needed(pred_id::in,
     pred_table::in, pred_table::out) is det.
 
-copy_pred_clauses_to_procs(PredId, !PredTable) :-
+copy_pred_clauses_to_procs_if_needed(PredId, !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
-    (
-        do_copy_clauses_to_procs(PredInfo0)
-    ->
+    ( should_copy_clauses_to_procs(PredInfo0) ->
         copy_clauses_to_procs(PredInfo0, PredInfo),
         map.det_update(!.PredTable, PredId, PredInfo, !:PredTable)
     ;
         true
     ).
 
-:- pred do_copy_clauses_to_procs(pred_info::in) is semidet.
+:- pred should_copy_clauses_to_procs(pred_info::in) is semidet.
 
-do_copy_clauses_to_procs(PredInfo) :-
+should_copy_clauses_to_procs(PredInfo) :-
     % Don't process typeclass methods, because their proc_infos
     % are generated already mode-correct.
     pred_info_get_markers(PredInfo, PredMarkers),
@@ -191,11 +190,12 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, !Procs) :-
 
 copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
     ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars,
-        ClausesRep, RttiInfo, _),
+        ClausesRep, _ItemNumbers, RttiInfo, _HaveForeignClauses),
     get_clause_list(ClausesRep, Clauses),
     select_matching_clauses(Clauses, ProcId, MatchingClauses),
     get_clause_goals(MatchingClauses, GoalList),
-    ( GoalList = [SingleGoal] ->
+    (
+        GoalList = [SingleGoal],
         SingleGoal = hlds_goal(SingleExpr, _),
         (
             SingleExpr = call_foreign_proc(_, _, _, Args, ExtraArgs,
@@ -223,24 +223,23 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         ),
         Goal = SingleGoal
     ;
-        VarSet = VarSet0,
-
-        % Convert the list of clauses into a disjunction,
-        % and construct a goal_info for the disjunction.
-
         % We use the context of the first clause, unless there weren't
         % any clauses at all, in which case we use the context of the
         % mode declaration.
-        %
-        goal_info_init(GoalInfo0),
         (
-            GoalList = [FirstGoal | _],
+            GoalList = [FirstGoal, _ | _],
             FirstGoal = hlds_goal(_, FirstGoalInfo),
             Context = goal_info_get_context(FirstGoalInfo)
         ;
             GoalList = [],
             proc_info_get_context(!.Proc, Context)
         ),
+
+        % Convert the list of clauses into a disjunction,
+        % and construct a goal_info for the disjunction.
+
+        VarSet = VarSet0,
+        goal_info_init(GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
 
         % The non-local vars are just the head variables.
@@ -293,20 +292,19 @@ set_arg_names(Arg, Vars0) = Vars :-
 
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
-    Clause = clause(ProcIds, _, _, _),
-    % An empty list here means that the clause applies to all procs.
+    select_matching_clauses(Clauses, ProcId, MatchingClausesTail),
+    Clause = clause(ApplicableProcIds, _, _, _),
     (
-        ProcIds = [],
-        MatchingClauses = [Clause | MatchingClauses1]
+        ApplicableProcIds = all_modes,
+        MatchingClauses = [Clause | MatchingClausesTail]
     ;
-        ProcIds = [_ | _],
+        ApplicableProcIds = selected_modes(ProcIds),
         ( list.member(ProcId, ProcIds) ->
-            MatchingClauses = [Clause | MatchingClauses1]
+            MatchingClauses = [Clause | MatchingClausesTail]
         ;
-            MatchingClauses = MatchingClauses1
+            MatchingClauses = MatchingClausesTail
         )
-    ),
-    select_matching_clauses(Clauses, ProcId, MatchingClauses1).
+    ).
 
 :- pred get_clause_goals(list(clause)::in, list(hlds_goal)::out) is det.
 
@@ -336,7 +334,7 @@ introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
         \+ map.is_empty(Subn),
 
         % Only process preds for which we copied clauses to procs.
-        do_copy_clauses_to_procs(PredInfo0)
+        should_copy_clauses_to_procs(PredInfo0)
     ->
         pred_info_get_procedures(PredInfo0, Procs0),
         ProcIds = pred_info_all_non_imported_procids(PredInfo0),

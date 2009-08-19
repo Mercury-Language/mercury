@@ -249,7 +249,7 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
         % Write a declaration to the `.opt' file for
         % `exported_to_submodules' predicates.
         add_proc(PredId, DoWrite0, !Info),
-        clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
+        clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers0),
         (
             DoWrite0 = yes,
             clauses_info_get_vartypes(ClausesInfo0, VarTypes),
@@ -266,7 +266,7 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
         ),
         (
             DoWrite = yes,
-            clauses_info_set_clauses_rep(ClausesRep,
+            clauses_info_set_clauses_rep(ClausesRep, ItemNumbers0,
                 ClausesInfo0, ClausesInfo),
             pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo),
             map.det_update(PredTable0, PredId, PredInfo, PredTable),
@@ -310,7 +310,8 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
     ),
     (
         pred_info_get_clauses_info(PredInfo, ClauseInfo),
-        clauses_info_clauses_only(ClauseInfo, Clauses),
+        clauses_info_get_clauses_rep(ClauseInfo, ClausesRep, _ItemNumbers),
+        get_clause_list(ClausesRep, Clauses),
 
         [ProcId | _ProcIds] = pred_info_procids(PredInfo),
         pred_info_get_procedures(PredInfo, Procs),
@@ -1700,8 +1701,9 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_varset(ClausesInfo, VarSet),
     clauses_info_get_headvar_list(ClausesInfo, HeadVars),
-    clauses_info_clauses_only(ClausesInfo, Clauses),
+    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     clauses_info_get_vartypes(ClausesInfo, VarTypes),
+    get_clause_list(ClausesRep, Clauses),
 
     ( pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)) ->
         ( Clauses = [Clause] ->
@@ -1714,52 +1716,65 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
     ;
         pred_info_get_typevarset(PredInfo, TypeVarset),
         MaybeVarTypes = varset_vartypes(TypeVarset, VarTypes),
-        list.foldl(write_clause(ModuleInfo, PredId, VarSet,
+        list.foldl(intermod_write_clause(ModuleInfo, PredId, VarSet,
             HeadVars, PredOrFunc, SymName, MaybeVarTypes), Clauses, !IO)
     ),
     write_preds(ModuleInfo, PredIds, !IO).
 
-:- pred write_clause(module_info::in, pred_id::in, prog_varset::in,
+:- pred intermod_write_clause(module_info::in, pred_id::in, prog_varset::in,
     list(prog_var)::in, pred_or_func::in, sym_name::in,
     maybe_vartypes::in, clause::in, io::di, io::uo) is det.
 
-write_clause(ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc, _SymName,
-        MaybeVarTypes, Clause0, !IO) :-
-    Clause0 = clause(_, _, impl_lang_mercury, _),
-    strip_headvar_unifications(HeadVars, Clause0, ClauseHeadVars, Clause),
-    % Variable numbers need to be appended for the case
-    % where the added arguments for a DCG pred expression
-    % are named the same as variables in the enclosing clause.
-    AppendVarNums = yes,
-    UseDeclaredModes = yes,
-    hlds_out.write_clause(1, ModuleInfo, PredId, VarSet, AppendVarNums,
-        ClauseHeadVars, PredOrFunc, Clause, UseDeclaredModes, MaybeVarTypes,
-        !IO).
-
-write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
-        _, Clause, !IO) :-
-    Clause = clause(ProcIds, Goal, impl_lang_foreign(_), _),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, Procs),
+intermod_write_clause(ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc,
+        SymName, MaybeVarTypes, Clause0, !IO) :-
+    Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _),
     (
-        (
-            % Pull the foreign code out of the goal.
-            Goal = hlds_goal(conj(plain_conj, Goals), _),
-            list.filter(
-                (pred(X::in) is semidet :-
-                    X = hlds_goal(call_foreign_proc(_, _, _, _, _, _, _), _)
-                ), Goals, [ForeignCodeGoal]),
-            ForeignCodeGoal = hlds_goal(call_foreign_proc(Attributes,
-                _, _, Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode), _)
-        ;
-            Goal = hlds_goal(call_foreign_proc(Attributes, _, _,
-                Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode), _)
-        )
-    ->
-        list.foldl(write_foreign_clause(Procs, PredOrFunc,
-            PragmaCode, Attributes, Args, VarSet, SymName), ProcIds, !IO)
+        ImplLang = impl_lang_mercury,
+        strip_headvar_unifications(HeadVars, Clause0, ClauseHeadVars, Clause),
+        % Variable numbers need to be appended for the case
+        % where the added arguments for a DCG pred expression
+        % are named the same as variables in the enclosing clause.
+        AppendVarNums = yes,
+        UseDeclaredModes = yes,
+        write_clause(1, ModuleInfo, PredId, VarSet, AppendVarNums,
+            ClauseHeadVars, PredOrFunc, Clause, UseDeclaredModes,
+            MaybeVarTypes, !IO)
     ;
-        unexpected(this_file, "foreign_proc expected within this goal")
+        ImplLang = impl_lang_foreign(_),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_procedures(PredInfo, Procs),
+        (
+            (
+                % Pull the foreign code out of the goal.
+                Goal = hlds_goal(conj(plain_conj, Goals), _),
+                list.filter(
+                    (pred(G::in) is semidet :-
+                        G = hlds_goal(GE, _),
+                        GE = call_foreign_proc(_, _, _, _, _, _, _)
+                    ), Goals, [ForeignCodeGoal]),
+                ForeignCodeGoal = hlds_goal(ForeignCodeGoalExpr, _),
+                ForeignCodeGoalExpr = call_foreign_proc(Attributes, _, _,
+                    Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode)
+            ;
+                Goal = hlds_goal(GoalExpr, _),
+                GoalExpr = call_foreign_proc(Attributes, _, _,
+                    Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode)
+            )
+        ->
+            (
+                ApplicableProcIds = all_modes,
+                unexpected(this_file,
+                    "intermod_write_clause: all_modes foreign_proc")
+            ;
+                ApplicableProcIds = selected_modes(ProcIds),
+                list.foldl(
+                    write_foreign_clause(Procs, PredOrFunc, PragmaCode,
+                        Attributes, Args, VarSet, SymName),
+                    ProcIds, !IO)
+            )
+        ;
+            unexpected(this_file, "foreign_proc expected within this goal")
+        )
     ).
 
 :- pred write_foreign_clause(proc_table::in, pred_or_func::in,

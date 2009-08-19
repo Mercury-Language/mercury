@@ -334,7 +334,7 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
 
     % Find out the approriate context for the predicate's interface events.
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    get_clause_list(ClausesInfo ^ clauses_rep, Clauses),
+    get_clause_list(ClausesInfo ^ cli_rep, Clauses),
     (
         Clauses = [],
         % This predicate must have been created by the compiler. In that case,

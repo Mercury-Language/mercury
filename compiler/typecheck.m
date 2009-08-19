@@ -352,7 +352,7 @@ typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
         )
     ->
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-        clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
+        clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers),
         IsEmpty = clause_list_is_empty(ClausesRep0),
         (
             IsEmpty = yes,
@@ -388,7 +388,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
     pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
         ArgTypes0),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers0),
     pred_info_get_markers(!.PredInfo, Markers0),
     % Handle the --allow-stubs and --warn-stubs options. If --allow-stubs
     % is set, and there are no clauses, issue a warning (if --warn-stubs
@@ -401,8 +401,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
             globals.lookup_bool_option(Globals, allow_stubs, yes),
             \+ check_marker(Markers0, marker_class_method)
         ->
-            StartingSpecs = [report_no_clauses_stub(!.ModuleInfo, PredId,
-                !.PredInfo)],
+            Spec = report_no_clauses_stub(!.ModuleInfo, PredId, !.PredInfo),
+            StartingSpecs = [Spec],
             generate_stub_clause(PredId, !PredInfo, !.ModuleInfo)
         ;
             check_marker(Markers0, marker_builtin_stub)
@@ -414,11 +414,29 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
         )
     ;
         ClausesRep0IsEmpty = no,
-        StartingSpecs = []
+        globals.lookup_bool_option(Globals, warn_non_contiguous_foreign_procs,
+            WarnNonContiguousForeignProcs),
+        (
+            WarnNonContiguousForeignProcs = yes,
+            StartingSpecs = report_any_non_contiguous_clauses(!.ModuleInfo,
+                PredId, !.PredInfo, ItemNumbers0, clauses_and_foreign_procs)
+        ;
+            WarnNonContiguousForeignProcs = no,
+            globals.lookup_bool_option(Globals, warn_non_contiguous_clauses,
+                WarnNonContiguousClauses),
+            (
+                WarnNonContiguousClauses = yes,
+                StartingSpecs = report_any_non_contiguous_clauses(!.ModuleInfo,
+                    PredId, !.PredInfo, ItemNumbers0, only_clauses)
+            ;
+                WarnNonContiguousClauses = no,
+                StartingSpecs = []
+            )
+        )
     ),
     some [!ClausesInfo, !Info, !HeadTypeParams] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
-        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep1),
+        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep1, ItemNumbers),
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
         clauses_info_get_varset(!.ClausesInfo, VarSet),
         clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes0),
@@ -522,7 +540,9 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
                 ExplicitVarTypes1, ExplicitVarTypes),
 
             clauses_info_set_explicit_vartypes(ExplicitVarTypes, !ClausesInfo),
-            clauses_info_set_clauses(Clauses, !ClausesInfo),
+            set_clause_list(Clauses, ClausesRep),
+            clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
+                !ClausesInfo),
             pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
             pred_info_set_typevarset(TypeVarSet, !PredInfo),
             pred_info_set_constraint_proofs(ConstraintProofs, !PredInfo),
@@ -633,6 +653,22 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
         )
     ).
 
+:- func report_any_non_contiguous_clauses(module_info, pred_id, pred_info,
+    clause_item_numbers, clause_item_number_types) = list(error_spec).
+
+report_any_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
+        ItemNumbers, Type) = Specs :-
+    (
+        clauses_are_non_contiguous(ItemNumbers, Type,
+            FirstRegion, SecondRegion, LaterRegions)
+    ->
+        Spec = report_non_contiguous_clauses(ModuleInfo, PredId,
+            PredInfo, FirstRegion, SecondRegion, LaterRegions),
+        Specs = [Spec]
+    ;
+        Specs = []
+    ).
+
 :- pred check_existq_clause(tvarset::in, existq_tvars::in, clause::in,
     typecheck_info::in, typecheck_info::out) is det.
 
@@ -681,7 +717,9 @@ generate_stub_clause(PredId, !PredInfo, ModuleInfo) :-
         PredName = error_pieces_to_string(PredPieces),
         generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause,
             VarSet0, VarSet),
-        clauses_info_set_clauses([StubClause], !ClausesInfo),
+        set_clause_list([StubClause], ClausesRep),
+        ItemNumbers = init_clause_item_numbers_comp_gen,
+        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         clauses_info_set_varset(VarSet, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo)
     ).
@@ -716,7 +754,7 @@ generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     % Combine the unification and call into a conjunction.
     goal_info_init(Context, GoalInfo),
     Body = hlds_goal(conj(plain_conj, [UnifyGoal, CallGoal]), GoalInfo),
-    StubClause = clause([], Body, impl_lang_mercury, Context).
+    StubClause = clause(all_modes, Body, impl_lang_mercury, Context).
 
 :- pred rename_instance_method_constraints(tvar_renaming::in,
     pred_origin::in, pred_origin::out) is det.
@@ -909,7 +947,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
     pred_info_get_import_status(!.PredInfo, ImportStatus),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers0),
     (
         pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
         clause_list_is_empty(ClausesRep0) = yes,
@@ -931,9 +969,11 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         NonLocals = proc_arg_vector_to_set(HeadVars),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
-        ProcIds = [], % The clause applies to all procedures.
-        Clause = clause(ProcIds, Goal, impl_lang_mercury, Context),
-        clauses_info_set_clauses([Clause], ClausesInfo0, ClausesInfo),
+        Clause = clause(all_modes, Goal, impl_lang_mercury, Context),
+        set_clause_list([Clause], ClausesRep),
+        ItemNumbers = init_clause_item_numbers_comp_gen,
+        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
+            ClausesInfo0, ClausesInfo),
         pred_info_update_goal_type(goal_type_clause_and_foreign, !PredInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo),
         pred_info_get_markers(!.PredInfo, Markers0),

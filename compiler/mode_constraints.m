@@ -222,7 +222,7 @@ correct_nonlocals_in_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     some [!ClausesInfo, !Varset, !Vartypes, !Clauses, !Goals, !RttiVarMaps] (
         pred_info_get_clauses_info(PredInfo0, !:ClausesInfo),
-        clauses_info_clauses_only(!.ClausesInfo, !:Clauses),
+        clauses_info_clauses(!:Clauses, ItemNumbers, !ClausesInfo),
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
         clauses_info_get_varset(!.ClausesInfo, !:Varset),
         clauses_info_get_vartypes(!.ClausesInfo, !:Vartypes),
@@ -233,7 +233,8 @@ correct_nonlocals_in_pred(PredId, !ModuleInfo) :-
         !:Clauses = list.map_corresponding(
             func(Clause, Goal) = 'clause_body :='(Clause, Goal),
             !.Clauses, !.Goals),
-        clauses_info_set_clauses(!.Clauses, !ClausesInfo),
+        set_clause_list(!.Clauses, ClausesRep),
+        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         clauses_info_set_varset(!.Varset, !ClausesInfo),
         clauses_info_set_vartypes(!.Vartypes, !ClausesInfo),
         clauses_info_set_rtti_varmaps(!.RttiVarMaps, !ClausesInfo),
@@ -384,7 +385,8 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
     ( pred_info_is_imported(PredInfo0) ->
         true
     ;
-        clauses_info_clauses_only(ClausesInfo0, Clauses0),
+        clauses_info_clauses(Clauses0, ItemNumbers,
+            ClausesInfo0, ClausesInfo1),
         clauses_info_get_vartypes(ClausesInfo0, VarTypes),
         NRInfo0 = number_robdd_info(!.MCI, !.ModuleInfo, VarTypes),
 
@@ -397,7 +399,9 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
         ), Clauses0, Clauses, NRInfo0, NRInfo),
 
         !:MCI = NRInfo ^ mc_info,
-        clauses_info_set_clauses(Clauses, ClausesInfo0, ClausesInfo),
+        set_clause_list(Clauses, ClausesRep),
+        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
+            ClausesInfo1, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ),
@@ -1042,7 +1046,7 @@ process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
     map.foldl2(input_output_constraints(HeadVars, InstGraph),
         InstGraph, !Constraint, !ConstraintInfo),
 
-    clauses_info_clauses(Clauses, !ClausesInfo),
+    clauses_info_clauses(Clauses, _ItemNumbers, !ClausesInfo),
     list.map(pred(clause(_, Goal, _, _)::in, Goal::out) is det, Clauses,
         Goals),
     DisjGoal = disj(Goals),

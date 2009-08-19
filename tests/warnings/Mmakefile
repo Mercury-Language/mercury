@@ -18,9 +18,9 @@ ERRORCHECK_PROGS= \
 	double_underscore \
 	duplicate_call \
 	duplicate_const \
+	inf_recursion_lambda \
 	inference_test \
 	infinite_recursion \
-	inf_recursion_lambda \
 	inst_with_no_type \
 	missing_if \
 	non_stratification \
@@ -34,6 +34,10 @@ ERRORCHECK_PROGS= \
 	unify_f_g \
 	unused_args_test \
 	unused_import \
+	warn_contiguous_foreign \
+	warn_non_contiguous \
+	warn_non_contiguous_foreign \
+	warn_non_contiguous_foreign_group \
 	warn_stubs
 
 # We don't yet pass (or even have a .exp file for) this test.

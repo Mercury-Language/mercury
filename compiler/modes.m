@@ -847,12 +847,13 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
     % at all, in which case we use the context of the mode declaration.
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_clauses_only(ClausesInfo, ClauseList),
+    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
+    get_clause_list(ClausesRep, Clauses),
     (
-        ClauseList = [FirstClause | _],
+        Clauses = [FirstClause | _],
         FirstClause = clause(_, _, _, Context)
     ;
-        ClauseList = [],
+        Clauses = [],
         proc_info_get_context(!.ProcInfo, Context)
     ),
 

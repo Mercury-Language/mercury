@@ -2614,6 +2614,10 @@ mlds_output_statement(Indent, FuncInfo, statement(Statement, Context), !IO) :-
 
 mlds_output_stmt(Indent, FuncInfo, Statement, Context, !IO) :-
     (
+        Statement = ml_stmt_atomic(AtomicStatement),
+        mlds_output_atomic_stmt(Indent, FuncInfo, AtomicStatement, Context,
+            !IO)
+    ;
         Statement = ml_stmt_block(Defns, Statements),
         mlds_indent(Indent, !IO),
         io.write_string("{\n", !IO),
@@ -3119,10 +3123,6 @@ mlds_maybe_output_time_profile_instr(Context, Indent, Name, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-mlds_output_stmt(Indent, FuncInfo, ml_stmt_atomic(AtomicStatement), Context,
-        !IO) :-
-    mlds_output_atomic_stmt(Indent, FuncInfo, AtomicStatement, Context, !IO).
 
 :- pred mlds_output_label_name(mlds_label::in, io::di, io::uo) is det.
 

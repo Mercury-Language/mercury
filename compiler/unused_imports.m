@@ -362,7 +362,7 @@ proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 clauses_info_used_modules(ClausesInfo, !UsedModules) :-
-    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep),
+    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list(ClausesRep, Clauses),
     list.foldl(clause_used_modules, Clauses, !UsedModules).
 

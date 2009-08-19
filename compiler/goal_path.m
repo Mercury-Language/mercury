@@ -91,11 +91,14 @@ fill_goal_path_slots(ModuleInfo, !Proc) :-
 
 fill_goal_path_slots_in_clauses(ModuleInfo, OmitModeEquivPrefix, !PredInfo) :-
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_clauses_only(ClausesInfo0, Clauses0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
+    get_clause_list(ClausesRep0, Clauses0),
     clauses_info_get_vartypes(ClausesInfo0, VarTypes),
     SlotInfo = slot_info(VarTypes, ModuleInfo, OmitModeEquivPrefix),
     list.map_foldl(fill_slots_in_clause(SlotInfo), Clauses0, Clauses, 1, _),
-    clauses_info_set_clauses(Clauses, ClausesInfo0, ClausesInfo),
+    set_clause_list(Clauses, ClausesRep),
+    clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
+        ClausesInfo0, ClausesInfo),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo).
 
 :- pred fill_slots_in_clause(slot_info::in, clause::in, clause::out,

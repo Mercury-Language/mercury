@@ -111,6 +111,8 @@
     ;       warn_missing_opt_files
     ;       warn_missing_trans_opt_files
     ;       warn_missing_trans_opt_deps
+    ;       warn_non_contiguous_clauses
+    ;       warn_non_contiguous_foreign_procs
     ;       warn_non_stratification
     ;       warn_unification_cannot_succeed
     ;       warn_simple_code
@@ -1009,6 +1011,8 @@ option_defaults_2(warning_option, [
     warn_nothing_exported               -   bool(yes),
     warn_unused_args                    -   bool(no),
     warn_interface_imports              -   bool(yes),
+    warn_non_contiguous_clauses         -   bool(no),   % XXX should be yes
+    warn_non_contiguous_foreign_procs   -   bool(no),
     warn_non_stratification             -   bool(no),
     warn_missing_opt_files              -   bool(yes),
     warn_missing_trans_opt_files        -   bool(no),
@@ -1826,12 +1830,15 @@ long_option("warn-inferred-erroneous",  warn_inferred_erroneous).
 long_option("warn-nothing-exported",    warn_nothing_exported).
 long_option("warn-unused-args",         warn_unused_args).
 long_option("warn-interface-imports",   warn_interface_imports).
+long_option("warn-non-contiguous-clauses",  warn_non_contiguous_clauses).
+long_option("warn-non-contiguous-foreign-procs",
+                                        warn_non_contiguous_foreign_procs).
 long_option("warn-non-stratification",  warn_non_stratification).
 long_option("warn-missing-opt-files",   warn_missing_opt_files).
 long_option("warn-missing-trans-opt-files", warn_missing_trans_opt_files).
 long_option("warn-missing-trans-opt-deps",  warn_missing_trans_opt_deps).
 long_option("warn-unification-cannot-succeed",
-                    warn_unification_cannot_succeed).
+                                        warn_unification_cannot_succeed).
 long_option("warn-simple-code",         warn_simple_code).
 long_option("warn-duplicate-calls",     warn_duplicate_calls).
 long_option("warn-missing-module-name", warn_missing_module_name).
@@ -1850,7 +1857,7 @@ long_option("warn-known-bad-format-calls", warn_known_bad_format_calls).
 long_option("warn-unknown-format-calls", warn_unknown_format_calls).
 long_option("warn-obsolete",             warn_obsolete).
 long_option("warn-insts-without-matching-type",
-    warn_insts_without_matching_type).
+                                        warn_insts_without_matching_type).
 long_option("warn-unused-imports",      warn_unused_imports).
 long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
 long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
@@ -1861,38 +1868,38 @@ long_option("very-verbose",             very_verbose).
 long_option("verbose-error-messages",   verbose_errors).
 long_option("verbose-recompilation",    verbose_recompilation).
 long_option("find-all-recompilation-reasons",
-                    find_all_recompilation_reasons).
-long_option("verbose-make",         verbose_make).
-long_option("verbose-commands",     verbose_commands).
-long_option("output-compile-error-lines", output_compile_error_lines).
-long_option("statistics",           statistics).
-long_option("detailed-statistics",  detailed_statistics).
-long_option("debug-types",          debug_types).
-long_option("debug-modes",          debug_modes).
+                                        find_all_recompilation_reasons).
+long_option("verbose-make",             verbose_make).
+long_option("verbose-commands",         verbose_commands).
+long_option("output-compile-error-lines",   output_compile_error_lines).
+long_option("statistics",               statistics).
+long_option("detailed-statistics",      detailed_statistics).
+long_option("debug-types",              debug_types).
+long_option("debug-modes",              debug_modes).
 long_option("debug-modes-statistics",   debug_modes_statistics).
-long_option("debug-modes-minimal",  debug_modes_minimal).
-long_option("debug-modes-verbose",  debug_modes_verbose).
-long_option("debug-modes-pred-id",  debug_modes_pred_id).
-long_option("debug-determinism",    debug_det).
-long_option("debug-det",            debug_det).
+long_option("debug-modes-minimal",      debug_modes_minimal).
+long_option("debug-modes-verbose",      debug_modes_verbose).
+long_option("debug-modes-pred-id",      debug_modes_pred_id).
+long_option("debug-determinism",        debug_det).
+long_option("debug-det",                debug_det).
 long_option("debug-code-gen-pred-id",   debug_code_gen_pred_id).
-long_option("debug-termination",    debug_term).
-long_option("debug-term",           debug_term).
-long_option("debug-opt",            debug_opt).
-long_option("debug-opt-pred-id",    debug_opt_pred_id).
-long_option("debug-opt-pred-name",  debug_opt_pred_name).
-long_option("debug-pd",             debug_pd).
+long_option("debug-termination",        debug_term).
+long_option("debug-term",               debug_term).
+long_option("debug-opt",                debug_opt).
+long_option("debug-opt-pred-id",        debug_opt_pred_id).
+long_option("debug-opt-pred-name",      debug_opt_pred_name).
+long_option("debug-pd",                 debug_pd).
     % debug-il-asm does very low-level printf style debugging of
     % IL assembler.  Each instruction is written on stdout before it
     % is executed.  It is a temporary measure until the IL debugging
     % system built into .NET improves.
-long_option("debug-il-asm",         debug_il_asm).
-long_option("debug-liveness",       debug_liveness).
-long_option("debug-stack-opt",      debug_stack_opt).
-long_option("debug-make",           debug_make).
-long_option("debug-closure",        debug_closure).
-long_option("debug-trail-usage",    debug_trail_usage).
-long_option("debug-mode-constraints", debug_mode_constraints).
+long_option("debug-il-asm",             debug_il_asm).
+long_option("debug-liveness",           debug_liveness).
+long_option("debug-stack-opt",          debug_stack_opt).
+long_option("debug-make",               debug_make).
+long_option("debug-closure",            debug_closure).
+long_option("debug-trail-usage",        debug_trail_usage).
+long_option("debug-mode-constraints",   debug_mode_constraints).
 long_option("debug-intermodule-analysis",   debug_intermodule_analysis).
 long_option("debug-mm-tabling-analysis",    debug_mm_tabling_analysis).
 long_option("debug-indirect-reuse",         debug_indirect_reuse).
@@ -1903,89 +1910,89 @@ long_option("generate-dependency-file", generate_dependency_file).
 long_option("generate-dependencies",    generate_dependencies).
 long_option("generate-module-order",    generate_module_order).
 long_option("generate-standalone-interface", generate_standalone_interface).
-long_option("make-short-interface", make_short_interface).
-long_option("make-short-int",       make_short_interface).
-long_option("make-interface",       make_interface).
-long_option("make-int",             make_interface).
+long_option("make-short-interface",     make_short_interface).
+long_option("make-short-int",           make_short_interface).
+long_option("make-interface",           make_interface).
+long_option("make-int",                 make_interface).
 long_option("make-private-interface",   make_private_interface).
-long_option("make-priv-int",        make_private_interface).
+long_option("make-priv-int",            make_private_interface).
 long_option("make-optimization-interface", make_optimization_interface).
 long_option("make-optimisation-interface", make_optimization_interface).
-long_option("make-opt-int",     make_optimization_interface).
+long_option("make-opt-int",             make_optimization_interface).
 long_option("make-transitive-optimization-interface",
-        make_transitive_opt_interface).
+                                        make_transitive_opt_interface).
 long_option("make-transitive-optimisation-interface",
-        make_transitive_opt_interface).
-long_option("make-trans-opt",       make_transitive_opt_interface).
+                                        make_transitive_opt_interface).
+long_option("make-trans-opt",           make_transitive_opt_interface).
 long_option("make-analysis-registry",   make_analysis_registry).
-long_option("make-xml-doc",         make_xml_documentation).
+long_option("make-xml-doc",             make_xml_documentation).
 long_option("make-xml-documentation",   make_xml_documentation).
-long_option("convert-to-mercury",   convert_to_mercury).
-long_option("convert-to-Mercury",   convert_to_mercury).
-long_option("pretty-print",         convert_to_mercury).
-long_option("typecheck-only",       typecheck_only).
-long_option("errorcheck-only",      errorcheck_only).
-long_option("target-code-only",     target_code_only).
-long_option("compile-only",         compile_only).
+long_option("convert-to-mercury",       convert_to_mercury).
+long_option("convert-to-Mercury",       convert_to_mercury).
+long_option("pretty-print",             convert_to_mercury).
+long_option("typecheck-only",           typecheck_only).
+long_option("errorcheck-only",          errorcheck_only).
+long_option("target-code-only",         target_code_only).
+long_option("compile-only",             compile_only).
 long_option("compile-to-shared-lib",    compile_to_shared_lib).
-long_option("output-grade-string",  output_grade_string).
-long_option("output-link-command",  output_link_command).
+long_option("output-grade-string",      output_grade_string).
+long_option("output-link-command",      output_link_command).
 long_option("output-shared-lib-link-command", output_shared_lib_link_command).
-long_option("output-libgrades", output_libgrades).
-long_option("output-cc",        output_cc).
-long_option("output-cflags",    output_cflags).
-long_option("output-library-link-flags",  output_library_link_flags).
+long_option("output-libgrades",         output_libgrades).
+long_option("output-cc",                output_cc).
+long_option("output-cflags",            output_cflags).
+long_option("output-library-link-flags",    output_library_link_flags).
 
 % aux output options
-long_option("smart-recompilation",  smart_recompilation).
-long_option("assume-gmake",         assume_gmake).
+long_option("smart-recompilation",      smart_recompilation).
+long_option("assume-gmake",             assume_gmake).
 long_option("generate-mmc-make-module-dependencies",
-        generate_mmc_make_module_dependencies).
-long_option("generate-mmc-deps",    generate_mmc_make_module_dependencies).
-long_option("trace",                trace_level).
-long_option("trace-optimised",      trace_optimized).
-long_option("trace-optimized",      trace_optimized).
-long_option("trace-prof",           trace_prof).
-long_option("trace-table-io",       trace_table_io).
-long_option("trace-table-io-only-retry", trace_table_io_only_retry).
+                                        generate_mmc_make_module_dependencies).
+long_option("generate-mmc-deps",        generate_mmc_make_module_dependencies).
+long_option("trace",                    trace_level).
+long_option("trace-optimised",          trace_optimized).
+long_option("trace-optimized",          trace_optimized).
+long_option("trace-prof",               trace_prof).
+long_option("trace-table-io",           trace_table_io).
+long_option("trace-table-io-only-retry",    trace_table_io_only_retry).
 long_option("trace-table-io-states",    trace_table_io_states).
 long_option("trace-table-io-require",   trace_table_io_require).
-long_option("trace-table-io-all",   trace_table_io_all).
-long_option("trace-flag",           trace_goal_flags).
-long_option("profile-optimised",    prof_optimized).
-long_option("profile-optimized",    prof_optimized).
-long_option("exec-trace-tail-rec",  exec_trace_tail_rec).
-long_option("suppress-trace",       suppress_trace).
+long_option("trace-table-io-all",       trace_table_io_all).
+long_option("trace-flag",               trace_goal_flags).
+long_option("profile-optimised",        prof_optimized).
+long_option("profile-optimized",        prof_optimized).
+long_option("exec-trace-tail-rec",      exec_trace_tail_rec).
+long_option("suppress-trace",           suppress_trace).
 long_option("force-disable-tracing",    force_disable_tracing).
-long_option("delay-death",          delay_death).
+long_option("delay-death",              delay_death).
 long_option("stack-trace-higher-order", stack_trace_higher_order).
 long_option("force-disable-ssdebug",    force_disable_ssdebug).
-long_option("generate-bytecode",    generate_bytecode).
-long_option("line-numbers",         line_numbers).
-long_option("auto-comments",        auto_comments).
-long_option("frameopt-comments",    frameopt_comments).
+long_option("generate-bytecode",        generate_bytecode).
+long_option("line-numbers",             line_numbers).
+long_option("auto-comments",            auto_comments).
+long_option("frameopt-comments",        frameopt_comments).
 long_option("show-dependency-graph",    show_dependency_graph).
-long_option("imports-graph",        imports_graph).
-long_option("dump-trace-counts",    dump_trace_counts).
-long_option("dump-hlds",            dump_hlds).
-long_option("hlds-dump",            dump_hlds).
-long_option("dump-hlds-pred-id",    dump_hlds_pred_id).
-long_option("dump-hlds-pred-name",  dump_hlds_pred_name).
-long_option("dump-hlds-alias",      dump_hlds_alias).
-long_option("dump-hlds-options",    dump_hlds_options).
-long_option("dump-hlds-file-suffix", dump_hlds_file_suffix).
-long_option("dump-same-hlds",       dump_same_hlds).
-long_option("dump-mlds",            dump_mlds).
-long_option("mlds-dump",            dump_mlds).
-long_option("verbose-dump-mlds",    verbose_dump_mlds).
-long_option("verbose-mlds-dump",    verbose_dump_mlds).
-long_option("sign-assembly",        sign_assembly).
-long_option("separate-assemblies",  separate_assemblies).
-long_option("mode-constraints",     mode_constraints).
+long_option("imports-graph",            imports_graph).
+long_option("dump-trace-counts",        dump_trace_counts).
+long_option("dump-hlds",                dump_hlds).
+long_option("hlds-dump",                dump_hlds).
+long_option("dump-hlds-pred-id",        dump_hlds_pred_id).
+long_option("dump-hlds-pred-name",      dump_hlds_pred_name).
+long_option("dump-hlds-alias",          dump_hlds_alias).
+long_option("dump-hlds-options",        dump_hlds_options).
+long_option("dump-hlds-file-suffix",    dump_hlds_file_suffix).
+long_option("dump-same-hlds",           dump_same_hlds).
+long_option("dump-mlds",                dump_mlds).
+long_option("mlds-dump",                dump_mlds).
+long_option("verbose-dump-mlds",        verbose_dump_mlds).
+long_option("verbose-mlds-dump",        verbose_dump_mlds).
+long_option("sign-assembly",            sign_assembly).
+long_option("separate-assemblies",      separate_assemblies).
+long_option("mode-constraints",         mode_constraints).
 long_option("simple-mode-constraints",  simple_mode_constraints).
 long_option("prop-mode-constraints",    prop_mode_constraints).
-long_option("propagate-mode-constraints", prop_mode_constraints).
-long_option("benchmark-modes",      benchmark_modes).
+long_option("propagate-mode-constraints",   prop_mode_constraints).
+long_option("benchmark-modes",          benchmark_modes).
 long_option("benchmark-modes-repeat",   benchmark_modes_repeat).
 
 % language semantics options
@@ -3280,9 +3287,16 @@ options_help_warning -->
         "\tto allow `.trans_opt' files to be read when creating other",
         "\t`.trans_opt' files has been lost.  The information can be",
         "\trecreated by running `mmake <mainmodule>.depend'",
+        "--no-warn-non-contiguous-clauses",
+        "\tDo not generate a warning if the clauses of a predicate or function",
+        "\tare not contiguous.",
+        "--warn-non-contiguous-foreign-procs",
+        "\tGenerate a warning if the clauses and foreign_procs of a predicate",
+        "\tor function are not contiguous.",
         "--warn-non-stratification",
-        "\tWarn about possible non-stratification in the module.",
-        "\tNon-stratification occurs when a predicate/function can call",
+        "\tWarn about possible non-stratification of the predicates and/or",
+        "\tfunctions in the module.",
+        "\tNon-stratification occurs when a predicate or function can call",
         "\titself negatively through some path along its call graph.",
         "--no-warn-unification-cannot-succeed",
         "\tDisable warnings about unifications which cannot succeed.",

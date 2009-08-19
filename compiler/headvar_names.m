@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,9 +63,10 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
     ;
         MakeOpt = no,
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-        clauses_info_clauses_only(ClausesInfo0, Clauses0),
+        clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
         clauses_info_get_headvars(ClausesInfo0, HeadVars0),
         clauses_info_get_varset(ClausesInfo0, VarSet0),
+        get_clause_list(ClausesRep0, Clauses0),
         (
             Clauses0 = []
         ;
@@ -87,7 +88,8 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
             clauses_info_set_headvars(HeadVars, ClausesInfo0, ClausesInfo1),
 
             SingleClause = clause(ApplicableProcs, Goal, Language, Context),
-            clauses_info_set_clauses([SingleClause],
+            set_clause_list([SingleClause], ClausesRep),
+            clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
                 ClausesInfo1, ClausesInfo2),
             clauses_info_set_varset(VarSet, ClausesInfo2, ClausesInfo),
             pred_info_set_clauses_info(ClausesInfo, !PredInfo)

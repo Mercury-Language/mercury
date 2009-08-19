@@ -1040,7 +1040,8 @@ dead_pred_elim_analyze(!DeadInfo) :-
                     !.Needed, NeededNames),
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 pred_info_get_clauses_info(PredInfo, ClausesInfo),
-                clauses_info_get_clauses_rep(ClausesInfo, ClausesRep),
+                clauses_info_get_clauses_rep(ClausesInfo, ClausesRep,
+                    _ItemNumbers),
                 get_clause_list_any_order(ClausesRep, Clauses),
                 list.foldl(dead_pred_elim_process_clause, Clauses, !DeadInfo)
             ),

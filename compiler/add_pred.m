@@ -176,7 +176,8 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     ;
         PredName = qualified(MNameOfPred, PName),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-        clauses_info_init(PredOrFunc, Arity, ClausesInfo),
+        clauses_info_init(PredOrFunc, Arity, init_clause_item_numbers_user,
+            ClausesInfo),
         map.init(Proofs),
         map.init(ConstraintMap),
         purity_to_markers(Purity, PurityMarkers),
@@ -338,7 +339,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         Stub = no,
         % Construct a clause containing that pseudo-recursive call.
         Goal = hlds_goal(GoalExpr, GoalInfo),
-        Clause = clause([], Goal, impl_lang_mercury, Context),
+        Clause = clause(all_modes, Goal, impl_lang_mercury, Context),
         set_clause_list([Clause], ClausesRep)
     ;
         Stub = yes,
@@ -353,7 +354,8 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses),
+        HeadVars, ClausesRep, init_clause_item_numbers_comp_gen,
+        RttiVarMaps, HasForeignClauses),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
     % It's pointless but harmless to inline these clauses. The main purpose
@@ -492,7 +494,8 @@ preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
 
 preds_add_implicit(ModuleInfo, ModuleName, PredName, Arity, Status, Context,
         Origin, PredOrFunc, PredId, !PredicateTable) :-
-    clauses_info_init(PredOrFunc, Arity, ClausesInfo),
+    clauses_info_init(PredOrFunc, Arity, init_clause_item_numbers_user,
+        ClausesInfo),
     preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
         Arity, Status, Context, Origin, PredOrFunc, PredId, !PredicateTable).
 

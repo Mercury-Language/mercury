@@ -25,14 +25,14 @@
 
 :- pred module_add_clause(prog_varset::in, pred_or_func::in, sym_name::in,
     list(prog_term)::in, goal::in, import_status::in, prog_context::in,
-    goal_type::in, module_info::in, module_info::out,
+    maybe(int)::in, goal_type::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred clauses_info_add_clause(list(proc_id)::in,
+:- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
     prog_varset::in, tvarset::in, list(prog_term)::in, goal::in,
-    prog_context::in, import_status::in, pred_or_func::in, arity::in,
-    goal_type::in, hlds_goal::out, prog_varset::out, tvarset::out,
+    prog_context::in, maybe(int)::in, import_status::in, pred_or_func::in,
+    arity::in, goal_type::in, hlds_goal::out, prog_varset::out, tvarset::out,
     clauses_info::in, clauses_info::out, list(quant_warning)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -94,7 +94,7 @@
 %-----------------------------------------------------------------------------%
 
 module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
-        Context, GoalType, !ModuleInfo, !QualInfo, !Specs) :-
+        Context, MaybeSeqNum, GoalType, !ModuleInfo, !QualInfo, !Specs) :-
     ( illegal_state_var_func_result(PredOrFunc, Args0, SVar) ->
         IllegalSVarResult = yes(SVar)
     ;
@@ -150,12 +150,12 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
         map.lookup(Preds0, PredId, !:PredInfo),
 
         trace [io(!IO)] (
-            globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             (
                 VeryVerbose = yes,
                 pred_info_get_clauses_info(!.PredInfo, MsgClauses),
-                NumClauses =
-                    num_clauses_in_clauses_rep(MsgClauses ^ clauses_rep),
+                NumClauses = num_clauses_in_clauses_rep(MsgClauses ^ cli_rep),
                 io.format("%% Processing clause %d for ", [i(NumClauses + 1)],
                     !IO),
                 write_pred_or_func(PredOrFunc, !IO),
@@ -232,10 +232,11 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 maybe_add_default_func_mode(!PredInfo, _),
                 select_applicable_modes(Args, ClauseVarSet, Status, Context,
                     PredId, !.PredInfo, ArgTerms, ProcIdsForThisClause,
-                    !ModuleInfo, !QualInfo, !Specs),
-                clauses_info_add_clause(ProcIdsForThisClause, ClauseVarSet,
-                    TVarSet0, ArgTerms, Body, Context, Status, PredOrFunc,
-                    Arity, GoalType, Goal, VarSet, TVarSet, Clauses0, Clauses,
+                    AllProcIds, !ModuleInfo, !QualInfo, !Specs),
+                clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
+                    ClauseVarSet, TVarSet0, ArgTerms, Body,
+                    Context, MaybeSeqNum, Status, PredOrFunc, Arity,
+                    GoalType, Goal, VarSet, TVarSet, Clauses0, Clauses,
                     Warnings, !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
                 ( GoalType = goal_type_promise(PromiseType) ->
@@ -284,21 +285,21 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
     %
 :- pred select_applicable_modes(list(prog_term)::in, prog_varset::in,
     import_status::in, prog_context::in, pred_id::in, pred_info::in,
-    list(prog_term)::out, list(proc_id)::out,
+    list(prog_term)::out, clause_applicable_modes::out, list(proc_id)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
-        Args, ProcIds, !ModuleInfo, !QualInfo, !Specs) :-
+        Args, ApplProcIds, AllProcIds, !ModuleInfo, !QualInfo, !Specs) :-
+    AllProcIds = pred_info_all_procids(PredInfo),
     get_mode_annotations(Args0, Args, empty, ModeAnnotations),
     (
         ModeAnnotations = modes(ModeList0),
 
         % The user specified some mode annotations on this clause.
-        % First module-qualify the mode annotations. The annotations
-        % on clauses from `.opt' files will already be fully module
-        % qualified.
-        %
+        % First module-qualify the mode annotations. The annotations on
+        % clauses from `.opt' files will already be fully module qualified.
+
         ( Status = status_opt_imported ->
             ModeList = ModeList0
         ;
@@ -315,35 +316,25 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
             get_procedure_matching_declmodes_with_renaming(ExistingProcs,
                 ModeList, !.ModuleInfo, ProcId)
         ->
-            ProcIds = [ProcId]
+            ApplProcIds = selected_modes([ProcId])
         ;
             undeclared_mode_error(ModeList, VarSet, PredId, PredInfo,
                 !.ModuleInfo, Context, !Specs),
-            % apply the clause to all modes
-            % XXX would it be better to apply it to none?
-            ProcIds = pred_info_all_procids(PredInfo)
+            % Apply the clause to all modes.
+            % XXX Would it be better to apply it to none?
+            ApplProcIds = selected_modes(AllProcIds)
         )
     ;
-        ModeAnnotations = empty,
+        ( ModeAnnotations = empty
+        ; ModeAnnotations = none
+        ),
         ( pred_info_pragma_goal_type(PredInfo) ->
             % We are only allowed to mix foreign procs and
             % mode specific clauses, so make this clause
             % mode specific but apply to all modes.
-            ProcIds = pred_info_all_procids(PredInfo)
+            ApplProcIds = selected_modes(AllProcIds)
         ;
-            % this means the clauses applies to all modes
-            ProcIds = []
-        )
-    ;
-        ModeAnnotations = none,
-        ( pred_info_pragma_goal_type(PredInfo) ->
-            % We are only allowed to mix foreign procs and
-            % mode specific clauses, so make this clause
-            % mode specific but apply to all modes.
-            ProcIds = pred_info_all_procids(PredInfo)
-        ;
-            % this means the clauses applies to all modes
-            ProcIds = []
+            ApplProcIds = all_modes
         )
     ;
         ModeAnnotations = mixed,
@@ -357,7 +348,7 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
 
         % Apply the clause to all modes.
         % XXX Would it be better to apply it to none?
-        ProcIds = pred_info_all_procids(PredInfo)
+        ApplProcIds = selected_modes(AllProcIds)
     ).
 
 :- pred undeclared_mode_error(list(mer_mode)::in, prog_varset::in,
@@ -471,11 +462,12 @@ get_mode_annotation(Arg0, Arg, MaybeAnnotation) :-
         MaybeAnnotation = no
     ).
 
-clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
-        Status, PredOrFunc, Arity, GoalType, Goal, VarSet, TVarSet,
-        !ClausesInfo, Warnings, !ModuleInfo, !QualInfo, !Specs) :-
+clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
+        Args, Body, Context, MaybeSeqNum, Status, PredOrFunc, Arity,
+        GoalType, Goal, VarSet, TVarSet, !ClausesInfo, Warnings,
+        !ModuleInfo, !QualInfo, !Specs) :-
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes0,
-        TVarNameMap0, InferredVarTypes, HeadVars, ClausesRep0,
+        TVarNameMap0, InferredVarTypes, HeadVars, ClausesRep0, ItemNumbers0,
         RttiVarMaps, HasForeignClauses),
     IsEmpty = clause_list_is_empty(ClausesRep0),
     (
@@ -518,28 +510,45 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
             get_clause_list_any_order(ClausesRep0, AnyOrderClauseList),
             ForeignModeIds = list.condense(list.filter_map(
                 (func(C) = ProcIds is semidet :-
-                    C = clause(ProcIds, _, ClauseLang, _),
-                    not ClauseLang = impl_lang_mercury
+                    C = clause(ApplProcIds, _, ClauseLang, _),
+                    ClauseLang = impl_lang_foreign(_),
+                    (
+                        ApplProcIds = all_modes,
+                        unexpected(this_file,
+                            "clauses_info_add_clause: all_modes foreign_proc")
+                    ;
+                        ApplProcIds = selected_modes(ProcIds)
+                    )
                 ),
                 AnyOrderClauseList)),
+            (
+                ApplModeIds0 = all_modes,
+                ModeIds0 = AllModeIds
+            ;
+                ApplModeIds0 = selected_modes(ModeIds0)
+            ),
             ModeIds = list.delete_elems(ModeIds0, ForeignModeIds),
             (
                 ModeIds = [],
                 ClausesRep = ClausesRep0
             ;
                 ModeIds = [_ | _],
-                Clause = clause(ModeIds, Goal, impl_lang_mercury, Context),
+                ApplicableModeIds = selected_modes(ModeIds),
+                Clause = clause(ApplicableModeIds, Goal, impl_lang_mercury,
+                    Context),
                 add_clause(Clause, ClausesRep0, ClausesRep)
             )
         ;
             HasForeignClauses = no,
-            Clause = clause(ModeIds0, Goal, impl_lang_mercury, Context),
+            Clause = clause(ApplModeIds0, Goal, impl_lang_mercury, Context),
             add_clause(Clause, ClausesRep0, ClausesRep)
         ),
         qual_info_get_var_types(!.QualInfo, ExplicitVarTypes),
+        add_clause_item_number(MaybeSeqNum, Context, item_is_clause,
+            ItemNumbers0, ItemNumbers),
         !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-            InferredVarTypes, HeadVars, ClausesRep, RttiVarMaps,
-            HasForeignClauses)
+            InferredVarTypes, HeadVars, ClausesRep, ItemNumbers,
+            RttiVarMaps, HasForeignClauses)
     ).
 
 :- pred add_clause_transform(prog_var_renaming::in,

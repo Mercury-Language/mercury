@@ -252,7 +252,7 @@ typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
         )
     ->
         pred_info_get_clauses_info(PredInfo, ClausesInfo0),
-        clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
+        clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers),
         IsEmpty = clause_list_is_empty(ClausesRep0),
         (
             IsEmpty = yes,
@@ -286,7 +286,8 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         pred_info_get_context(!.PredInfo, Context),
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_get_varset(!.ClausesInfo, ProgVarSet),
-        clauses_info_clauses_only(!.ClausesInfo, !:Clauses),
+        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),
+        get_clause_list(ClausesRep0, !:Clauses),
 
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
             LineNumber = string.int_to_string(term.context_line(Context)),
@@ -318,7 +319,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
 
         % Solve all the constraints.
         find_type_constraint_solutions(Context, ProgVarSet, DomainMap0,
-            !TCInfo),
+                !TCInfo),
         list.foldl2_corresponding(unify_equal_tvars(!.TCInfo, set.init),
             HeadTVars, HeadTVars,
             map.init, ReplacementMap, DomainMap0, DomainMap),
@@ -336,7 +337,8 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         list.map_corresponding(set_clause_body, !.Goals, !Clauses),
         list.condense([VarTypeErrors | PredErrors], NewErrors),
         list.foldl(add_message_to_spec, NewErrors, !TCInfo),
-        clauses_info_set_clauses(!.Clauses, !ClausesInfo),
+        set_clause_list(!.Clauses, ClausesRep),
+        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         list.foldl(add_unused_prog_var(!.TCInfo), HeadVars, !Vartypes),
         clauses_info_set_vartypes(!.Vartypes, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),

@@ -354,7 +354,8 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         !Constraints) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_headvars(ClausesInfo, HeadVars),
-    clauses_info_clauses_only(ClausesInfo, Clauses),
+    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
+    get_clause_list(ClausesRep, Clauses),
     clauses_info_get_varset(ClausesInfo, ProgVarset),
 
     (
@@ -362,7 +363,7 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         % to produce constraints for.
         Clauses = []
     ;
-        Clauses = [FirstClause|_],
+        Clauses = [FirstClause | _],
 
         % Use the first clause for the context of the top level
         % goal constraints.

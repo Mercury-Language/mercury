@@ -333,7 +333,7 @@ add_pred_arcs([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
         true
     ;
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
-        clauses_info_get_clauses_rep(ClausesInfo, ClausesRep),
+        clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
         get_clause_list_any_order(ClausesRep, Clauses),
         Goals = list.map(func(clause(_, Goal, _, _)) = Goal, Clauses),
         digraph.lookup_key(!.DepGraph, PredId, Caller),

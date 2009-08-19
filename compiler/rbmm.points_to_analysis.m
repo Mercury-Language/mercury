@@ -436,14 +436,6 @@ inter_analyse_goal_expr(switch(_, _, Cases), _, ModuleInfo, InfoTable,
     list.foldl2(inter_analyse_case(ModuleInfo, InfoTable), Cases,
         !FPTable, !RptaInfo).
 
-:- pred inter_analyse_case(module_info::in,
-    rpta_info_table::in, case::in, rpta_fixpoint_table::in,
-    rpta_fixpoint_table::out, rpta_info::in, rpta_info::out) is det.
-
-inter_analyse_case(ModuleInfo, InfoTable, Case, !FPtable, !RptaInfo) :-
-    Case = case(_, _, Goal),
-    inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPtable, !RptaInfo).
-
     % Unifications are ignored in interprocedural analysis
     %
 inter_analyse_goal_expr(unify(_, _, _, _, _), _, _, _, !FPTable, !RptaInfo).
@@ -492,6 +484,14 @@ inter_analyse_goal_expr(GoalExpr, _, _, _, !FPTable, !RptaInfo) :-
 inter_analyse_goal_expr(shorthand(_), _, _, _, !FPTable, !RptaInfo) :-
     unexpected(this_file,
         "inter_analyse_goal_expr: shorthand goal not handled").
+
+:- pred inter_analyse_case(module_info::in,
+    rpta_info_table::in, case::in, rpta_fixpoint_table::in,
+    rpta_fixpoint_table::out, rpta_info::in, rpta_info::out) is det.
+
+inter_analyse_case(ModuleInfo, InfoTable, Case, !FPtable, !RptaInfo) :-
+    Case = case(_, _, Goal),
+    inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPtable, !RptaInfo).
 
 %-----------------------------------------------------------------------------%
 

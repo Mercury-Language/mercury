@@ -561,7 +561,8 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = yes,
     ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, ArgVec,
-        ClausesRep, RttiVarMaps, HasForeignClauses).
+        ClausesRep, init_clause_item_numbers_comp_gen,
+        RttiVarMaps, HasForeignClauses).
 
 :- pred generate_initialise_proc_body(mer_type::in, hlds_type_body::in,
     prog_var::in, prog_context::in, clause::out,
@@ -2002,7 +2003,7 @@ quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
     info_set_varset(Varset, !Info),
     info_set_types(Types, !Info),
     info_set_rtti_varmaps(RttiVarMaps, !Info),
-    Clause = clause([], Goal, impl_lang_mercury, Context).
+    Clause = clause(all_modes, Goal, impl_lang_mercury, Context).
 
 %-----------------------------------------------------------------------------%
 

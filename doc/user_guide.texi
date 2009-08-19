@@ -6176,11 +6176,23 @@ Warn about @samp{.opt} files that cannot be opened.
 Warn about @samp{.trans_opt} files that cannot be opened.
 
 @sp 1
+@item --no-warn-non-contiguous-clauses
+@findex --no-warn-non-contiguous-clauses
+Do not generate a warning if the clauses of a predicate or function
+are not contiguous.
+
+@sp 1
+@item --warn-non-contiguous-foreign-procs
+@findex --warn-non-contiguous-foreign-procs
+Generate a warning if the clauses and foreign_procs of a predicate
+or function are not contiguous.
+
+@sp 1
 @item --warn-non-stratification
 @findex --warn-non-stratification
-Warn about possible non-stratification of the predicates/functions in the
-module.
-Non-stratification occurs when a predicate/function can call itself
+Warn about possible non-stratification of the predicates and/or functions
+in the module.
+Non-stratification occurs when a predicate or function can call itself
 negatively through some path along its call graph.
 
 @sp 1

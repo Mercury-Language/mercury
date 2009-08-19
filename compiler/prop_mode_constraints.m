@@ -231,23 +231,25 @@ prop_mode_constraints_in_mode_declared_proc(ModuleInfo, PredId, ProcId, ProcInfo
 ensure_unique_arguments(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
-    clauses_info_clauses_only(ClausesInfo0, Clauses0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
     clauses_info_get_varset(ClausesInfo0, Varset0),
     clauses_info_get_vartypes(ClausesInfo0, VarTypes0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
     SeenSoFar = proc_arg_vector_to_set(HeadVars),
+    get_clause_list(ClausesRep0, Clauses0),
     BodyGoals0 = list.map(func(X) = clause_body(X), Clauses0),
     list.map_foldl3(ensure_unique_arguments_in_goal, BodyGoals0, BodyGoals,
         SeenSoFar, _, Varset0, Varset, VarTypes0, VarTypes),
 
     Clauses = list.map_corresponding(func(C, B) = C ^ clause_body := B,
         Clauses0, BodyGoals),
+    set_clause_list(Clauses, ClausesRep),
     some [!ClausesInfo] (
         !:ClausesInfo = ClausesInfo0,
         clauses_info_set_varset(Varset, !ClausesInfo),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
-        clauses_info_set_clauses(Clauses, !ClausesInfo),
+        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, PredInfo0, PredInfo)
     ),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).

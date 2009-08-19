@@ -1041,7 +1041,7 @@ add_item_pass_3(Item, !Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ItemClause = item_clause_info(Origin, VarSet, PredOrFunc,
-        PredName, Args, Body, Context, _SeqNum),
+        PredName, Args, Body, Context, SeqNum),
     ( Status = status_exported ->
         (
             Origin = user,
@@ -1076,7 +1076,7 @@ add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ),
     % At this stage we only need know that it's not a promise declaration.
     module_add_clause(VarSet, PredOrFunc, PredName, Args, Body, Status,
-        Context, goal_type_none, !ModuleInfo, !QualInfo, !Specs).
+        Context, yes(SeqNum), goal_type_none, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred add_pass_3_type_defn(item_type_defn_info::in,
     import_status::in, module_info::in, module_info::out,
@@ -1152,13 +1152,13 @@ add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
-    ItemPragma = item_pragma_info(Origin, Pragma, Context, _SeqNum),
+    ItemPragma = item_pragma_info(Origin, Pragma, Context, SeqNum),
     (
         Pragma = pragma_foreign_proc(Attributes, Pred, PredOrFunc,
             Vars, ProgVarSet, InstVarSet, PragmaImpl),
         module_add_pragma_foreign_proc(Attributes, Pred, PredOrFunc,
             Vars, ProgVarSet, InstVarSet, PragmaImpl, !.Status, Context,
-            !ModuleInfo, !QualInfo, !Specs)
+            yes(SeqNum), !ModuleInfo, !QualInfo, !Specs)
     ;
         Pragma = pragma_import(Name, PredOrFunc, Modes, Attributes,
             C_Function),
@@ -2785,7 +2785,7 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 
     module_info_get_name(!.ModuleInfo, ModuleName),
     module_add_clause(VarSet, pf_predicate, qualified(ModuleName, Name),
-        HeadVars, Goal, Status, Context, goal_type_promise(PromiseType),
+        HeadVars, Goal, Status, Context, no, goal_type_promise(PromiseType),
         !ModuleInfo, !QualInfo, !Specs).
 
 add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !Specs) :-

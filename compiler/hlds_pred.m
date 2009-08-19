@@ -1109,13 +1109,14 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     UnprovenBodyConstraints = [],
 
     % The empty list of clauses is a little white lie.
-    Clauses = init_clauses_rep,
+    ClausesRep = init_clauses_rep,
     map.init(TVarNameMap),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     HasForeignClauses = no,
     HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVarVec, Clauses, RttiVarMaps, HasForeignClauses),
+        HeadVarVec, ClausesRep, init_clause_item_numbers_user,
+        RttiVarMaps, HasForeignClauses),
 
     map.init(Procs0),
     next_mode_id(Procs0, ProcId),
@@ -1683,7 +1684,7 @@ attribute_list_to_attributes(Attributes, Attributes).
                 proc_static_line_number :: int,
                 proc_is_in_interface    :: bool,
                 call_site_statics       :: list(call_site_static_data),
-                coverage_points         :: list(coverage_point_info) 
+                coverage_points         :: list(coverage_point_info)
             ).
 
     % The hlds_deep_excp_vars gives the variables that hold the values returned
@@ -1707,26 +1708,22 @@ attribute_list_to_attributes(Attributes, Attributes).
 
 :- type deep_profile_proc_info
     --->    deep_profile_proc_info(
+                % This field is set during the first part of the deep profiling
+                % transformation; tail recursion, if that is enabled.
                 deep_rec        :: maybe(deep_recursion_info),
-                                % This field is set during the first part of
-                                % the deep profiling transformation; tail
-                                % recursion, if that is enabled.
-                                
+
+                % This field is set during the second part; it will be bound
+                % to `no' before and during the first part, and to `yes'
+                % after the second. The contents of this field govern
+                % what will go into MR_ProcStatic structures.
                 deep_layout     :: maybe(hlds_deep_layout),
-                                % This field is set during the second part; it
-                                % will be bound to `no' before and during the
-                                % first part, and to `yes' after the second.
-                                % The contents of this field govern what will
-                                % go into MR_ProcStatic structures.
-                
-                deep_orig_body  :: deep_original_body 
-                                % This field stores the origional body of a
-                                % procedure, before either part of the deep
-                                % profiling transformation was executed.  For
-                                % inner procedures created by the tail
-                                % recursion part of the deep profiling
-                                % transformation, it holds the origional body
-                                % of the outer procedure.
+
+                % This field stores the origional body of a procedure,
+                % before either part of the deep profiling transformation
+                % was executed. For inner procedures created by the tail
+                % recursion part of the deep profiling transformation,
+                % it holds the origional body of the outer procedure.
+                deep_orig_body  :: deep_original_body
             ).
 
 :- type deep_original_body

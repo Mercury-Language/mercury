@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
-% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+% vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne
+% Copyright (C) 2007, 2009 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,14 +38,13 @@
     %
 :- type error_stream ---> error_stream.
 :- type error_state ---> error_state.
-:- type error_stream_error
-        ---> error_stream_error.
+:- type error_stream_error ---> error_stream_error.
 :- instance stream.error(error_stream_error).
 :- instance stream.stream(error_stream, error_state).
 :- instance stream.input(error_stream, error_state).
 :- instance stream.bulk_reader(error_stream, byte_index, bitmap,
-        error_state, error_stream_error). 
-                 
+        error_state, error_stream_error).
+
 :- instance stream.output(error_stream, error_state).
 :- instance stream.writer(error_stream, bitmap.slice, error_state).
 
@@ -87,7 +86,7 @@
 [
     put(_, _, _, _) :- throw(error_stream_error)
 ].
-    
+
     % The bitmap has room for the chunk size given as an argument
     % to `new', plus a word.
     %
@@ -102,7 +101,7 @@
     % refilled.
     %
 :- type bit_buffer(Stream, State, Error)
-        ---> bit_buffer(
+    --->    bit_buffer(
                 mer_bitmap :: bitmap,
                 mer_pos :: bit_index,
                 mer_size :: num_bits,
@@ -114,17 +113,16 @@
 
                 % For write buffers only.
                 % If we're not writing to a stream, keep a list of filled
-                % bitmaps in reverse order.  These will be concatenated
-                % into a single bitmap by finalize_to_bitmap.
+                % bitmaps in reverse order. These will be concatenated into
+                % a single bitmap by finalize_to_bitmap.
                 %
                 mer_filled_bitmaps :: list(bitmap),
 
-                % For read buffers only.  The first error found
-                % when reading from a stream.  Subsequent calls 
-                % will return this error.
+                % For read buffers only. The first error found when reading
+                % from a stream. Subsequent calls will return this error.
                 %
                 mer_read_status :: stream.res(Error)
-        ).
+            ).
 
 :- type bit_buffer(Stream, State) == bit_buffer(Stream, State, {}).
 
@@ -209,67 +207,75 @@ Buffer ^ filled_bitmaps = Buffer ^ mer_filled_bitmaps.
 Buffer ^ read_status = Buffer ^ mer_read_status.
 
 :- pragma foreign_proc("C",
-        bitmap(Buffer::bit_buffer_ui) = (BM::bitmap_uo),
-        [will_not_call_mercury, promise_pure],
-        "BM = Buffer->ML_bit_buffer_bitmap;"
-).
+    bitmap(Buffer::bit_buffer_ui) = (BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure],
+"
+    BM = Buffer->ML_bit_buffer_bitmap;
+").
 
 :- pragma foreign_proc("C",
-        pos(Buffer::bit_buffer_ui) = (Pos::out),
-        [will_not_call_mercury, promise_pure],
-        "Pos = Buffer->ML_bit_buffer_pos;"
-).
+    pos(Buffer::bit_buffer_ui) = (Pos::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Pos = Buffer->ML_bit_buffer_pos;
+").
 
 :- pragma foreign_proc("C",
-        size(Buffer::bit_buffer_ui) = (Size::out),
-        [will_not_call_mercury, promise_pure],
-        "Size = Buffer->ML_bit_buffer_size;"
-).
+    size(Buffer::bit_buffer_ui) = (Size::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Size = Buffer->ML_bit_buffer_size;
+").
 
 :- pragma foreign_proc("C",
-        use_stream(Buffer::bit_buffer_ui) = (UseStream::out),
-        [will_not_call_mercury, promise_pure],
-        "UseStream = Buffer->ML_bit_buffer_use_stream;"
-).
+    use_stream(Buffer::bit_buffer_ui) = (UseStream::out),
+    [will_not_call_mercury, promise_pure],
+"
+    UseStream = Buffer->ML_bit_buffer_use_stream;
+").
 
 :- pragma foreign_proc("C",
-        stream(Buffer::bit_buffer_ui) = (Stream::out),
-        [will_not_call_mercury, promise_pure],
-        "Stream = Buffer->ML_bit_buffer_stream;"
-).
+    stream(Buffer::bit_buffer_ui) = (Stream::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Stream = Buffer->ML_bit_buffer_stream;
+").
 
 :- pragma foreign_proc("C",
-        state(Buffer::bit_buffer_ui) = (State::uo),
-        [will_not_call_mercury, promise_pure],
-        "State = Buffer->ML_bit_buffer_state;"
-).
+    state(Buffer::bit_buffer_ui) = (State::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    State = Buffer->ML_bit_buffer_state;
+").
 
 :- pragma foreign_proc("C",
-        filled_bitmaps(Buffer::bit_buffer_ui) = (FilledBMs::out),
-        [will_not_call_mercury, promise_pure],
-        "FilledBMs = Buffer->ML_bit_buffer_filled_bitmaps;"
-).
+    filled_bitmaps(Buffer::bit_buffer_ui) = (FilledBMs::out),
+    [will_not_call_mercury, promise_pure],
+"
+    FilledBMs = Buffer->ML_bit_buffer_filled_bitmaps;
+").
 
 :- pragma foreign_proc("C",
-        read_status(Buffer::bit_buffer_ui) = (ReadStatus::out),
-        [will_not_call_mercury, promise_pure],
-        "ReadStatus = Buffer->ML_bit_buffer_read_status;"
-).
+    read_status(Buffer::bit_buffer_ui) = (ReadStatus::out),
+    [will_not_call_mercury, promise_pure],
+"
+    ReadStatus = Buffer->ML_bit_buffer_read_status;
+").
 
 :- pred set_all(bitmap::bitmap_di, bit_index::in, num_bits::in, State::di,
     list(bitmap)::in, bit_buffer(Stream, State, Error)::bit_buffer_di,
     bit_buffer(Stream, State, Error)::bit_buffer_uo) is det.
 
 set_all(BM, Pos, Size, State, FilledBMs, !Buffer) :-
-    !:Buffer = ((((!.Buffer ^ mer_bitmap := BM)
-                ^ mer_pos := Pos)
-                ^ mer_state :=  State)
-                ^ mer_filled_bitmaps := FilledBMs)
-                ^ mer_size := Size.
+    !Buffer ^ mer_bitmap := BM,
+    !Buffer ^ mer_pos := Pos,
+    !Buffer ^ mer_state :=  State,
+    !Buffer ^ mer_filled_bitmaps := FilledBMs,
+    !Buffer ^ mer_size := Size.
 
 :- pragma foreign_proc("C",
     set_all(BM::bitmap_di, Pos::in, Size::in, State::di, FilledBMs::in,
-            Buffer0::bit_buffer_di, Buffer::bit_buffer_uo),
+        Buffer0::bit_buffer_di, Buffer::bit_buffer_uo),
     [will_not_call_mercury, promise_pure],
 "
     Buffer = Buffer0;
@@ -285,12 +291,12 @@ set_all(BM, Pos, Size, State, FilledBMs, !Buffer) :-
     bit_buffer(Stream, State, Error)::bit_buffer_uo) is det.
 
 set_bitmap(BM, Pos, !Buffer) :-
-    !:Buffer = (!.Buffer ^ mer_bitmap := BM)
-                ^ mer_pos := Pos.
+    !Buffer ^ mer_bitmap := BM,
+    !Buffer ^ mer_pos := Pos.
 
 :- pragma foreign_proc("C",
     set_bitmap(BM::bitmap_di, Pos::in,
-            Buffer0::bit_buffer_di, Buffer::bit_buffer_uo),
+        Buffer0::bit_buffer_di, Buffer::bit_buffer_uo),
     [will_not_call_mercury, promise_pure],
 "
     Buffer = Buffer0;

@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: bitmap.m.
 % Main author: rafe, stayl.
 % Stability: low.
-% 
+%
 % Efficient bitmap implementation.
 %
 % CAVEAT: the user is referred to the documentation in the header
@@ -18,7 +18,7 @@
 % non-unique modes until the situation is rectified; this places
 % a small burden on the programmer to ensure the correctness of his
 % code that would otherwise be assured by the compiler.)
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -59,7 +59,7 @@
 :- type byte_index == int.
 :- type num_bits == int.
 :- type num_bytes == int.
-  
+
     % 8 bits stored in the least significant bits of the integer.
     %
 :- type byte == int.
@@ -224,7 +224,7 @@
 :- func bitmap.byte_slice(bitmap, byte_index, num_bytes) = bitmap.slice.
 
     % Access functions for slices.
-    % 
+    %
 :- func slice ^ slice_bitmap = bitmap.
 :- func slice ^ slice_start_bit_index = bit_index.
 :- func slice ^ slice_num_bits = num_bits.
@@ -495,8 +495,8 @@ resize(!.BM, NewSize, InitializerBit) = !:BM :-
 
 shrink_without_copying(!.BM, NewSize) = !:BM :-
     ( if 0 =< NewSize, NewSize =< !.BM ^ num_bits then
-        !:BM = !.BM ^ num_bits := NewSize     
-      else 
+        !:BM = !.BM ^ num_bits := NewSize
+      else
         throw_bounds_error(!.BM,
             "bitmap.shrink_without_copying", NewSize) = _ : int
     ).
@@ -751,7 +751,7 @@ quotient_bits_per_byte_with_rem_zero(Pred, Int) =
 
 %-----------------------------------------------------------------------------%
 
-set(BM, I) = 
+set(BM, I) =
     ( if in_range(BM, I)
       then unsafe_set(BM, I)
       else throw_bounds_error(BM, "bitmap.set", I)
@@ -777,7 +777,7 @@ flip(I, BM, flip(BM, I)).
 
 %-----------------------------------------------------------------------------%
 
-unsafe_set(BM, I) = 
+unsafe_set(BM, I) =
     BM ^ unsafe_byte(byte_index_for_bit(I)) :=
         BM ^ unsafe_byte(byte_index_for_bit(I)) \/ bitmask(I).
 
@@ -886,7 +886,7 @@ xor(BMa, BMb) =
 %:- mode zip(func(in, in) = out is det,
 %    bitmap_ui, bitmap_di) = bitmap_uo is det.
 :- mode zip(func(in, in) = out is det,
-    in, bitmap_di) = bitmap_uo is det.  
+    in, bitmap_di) = bitmap_uo is det.
 
 zip(Fn, BMa, BMb) =
     ( if num_bits(BMb) = 0 then BMb
@@ -966,7 +966,7 @@ copy_bits(SameBM, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
           then
             throw_bounds_error(DestBM, "copy_bits (destination)",
                 DestStartBit, NumBits)
-          else  
+          else
             throw_bitmap_error("bitmap.copy_bits: failed to diagnose error")
         )
     ).
@@ -986,7 +986,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit,
         %
         % The alternatives below don't handle ranges that don't
         % span a byte boundary.
-        % 
+        %
         !:DestBM = !.DestBM ^ unsafe_bits(DestStartBit, !.NumBits) :=
                         SrcBM ^ unsafe_bits(SrcStartBit, !.NumBits)
       else if SrcStartIndex = DestStartIndex then
@@ -1013,7 +1013,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit,
             !:DestBM = unsafe_copy_bytes(SameBM, SrcBM, SrcStartByteIndex,
                             !.DestBM, DestStartByteIndex, NumBytes)
          else
-            % 
+            %
             % Grab the odd bits at each end of the block to move,
             % leaving a block of aligned bytes to move.
             %
@@ -1031,7 +1031,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit,
                 !:NumBits = !.NumBits - NumBitsAtStart
             ),
 
-            ( if EndIndex = bits_per_byte - 1 then 
+            ( if EndIndex = bits_per_byte - 1 then
                 NumBitsAtEnd = 0,
                 EndBitsToSet = 0
               else
@@ -1179,7 +1179,7 @@ unsafe_do_copy_bytes(SrcBM, SrcByteIndex, DestBM, DestByteIndex,
     ( if NumBytes = 0 then
         DestBM
       else
-        unsafe_do_copy_bytes(SrcBM, SrcByteIndex + AddForNext, 
+        unsafe_do_copy_bytes(SrcBM, SrcByteIndex + AddForNext,
             DestBM ^ unsafe_byte(DestByteIndex) :=
                 SrcBM ^ unsafe_byte(SrcByteIndex),
             DestByteIndex + AddForNext, NumBytes - 1, AddForNext)
@@ -1198,7 +1198,7 @@ unsafe_do_copy_bytes(SrcBM, SrcByteIndex, DestBM, DestByteIndex,
 
 unsafe_copy_unaligned_bits(SameBM, SrcBM, SrcStartBit,
         !.DestBM, DestStartBit, !.NumBits) = !:DestBM :-
-    % 
+    %
     % Grab the odd bits at each end of the block in the destination,
     % leaving a block of aligned bytes to copy.
     %
@@ -1386,7 +1386,7 @@ choose_copy_direction(SameBM, SrcStartBit, DestStartBit) =
     % runtime/mercury_bitmap.c.
     %
 to_string(BM) = Str :-
-    NumBits = BM ^ num_bits,     
+    NumBits = BM ^ num_bits,
     to_string_chars(byte_index_for_bit(NumBits - 1), BM,
         [('>')], Chars),
     Str = string.from_char_list(
@@ -1432,7 +1432,7 @@ from_string(Str) = BM :-
       else
         fail
     ).
-    
+
 :- pred hex_chars_to_bitmap(string::in, int::in, int::in, byte_index::in,
     bitmap::bitmap_di, bitmap::bitmap_uo) is semidet.
 
@@ -1442,7 +1442,7 @@ hex_chars_to_bitmap(Str, Index, End, ByteIndex, !BM) :-
       else if Index + 1 = End then
         % Each byte of the bitmap should have mapped to a pair of characters.
         fail
-      else    
+      else
         char.is_hex_digit(Str ^ unsafe_elem(Index), HighNibble),
         char.is_hex_digit(Str ^ unsafe_elem(Index + 1), LowNibble),
         Byte = (HighNibble `unchecked_left_shift` 4) \/ LowNibble,
@@ -1560,12 +1560,12 @@ public class MercuryBitmap {
 ").
 
 :- pragma foreign_type("C", bitmap, "MR_BitmapPtr",
-        [can_pass_as_mercury_type]) 
+        [can_pass_as_mercury_type])
     where equality is bitmap_equal, comparison is bitmap_compare.
-:- pragma foreign_type("Java", bitmap, "bitmap.MercuryBitmap") 
+:- pragma foreign_type("Java", bitmap, "bitmap.MercuryBitmap")
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("IL", bitmap,
-    "class [mercury]mercury.bitmap__csharp_code.mercury_code.MercuryBitmap") 
+    "class [mercury]mercury.bitmap__csharp_code.mercury_code.MercuryBitmap")
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("Erlang", bitmap, "")
     where equality is bitmap_equal, comparison is bitmap_compare.
@@ -1778,7 +1778,7 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
 
 %-----------------------------------------------------------------------------%
 
-BM ^ byte(N) = 
+BM ^ byte(N) =
     ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1)
       then BM ^ unsafe_byte(N)
       else throw_bounds_error(BM, "bitmap.byte", N)
@@ -1928,10 +1928,10 @@ resize_bitmap(OldBM, N) =
 copy(BM0) = BM :-
     NumBits = BM0 ^ num_bits,
     BM = clear_filler_bits(
-            unsafe_copy_bits(0, BM0, 0, allocate_bitmap(NumBits), 0, NumBits)).
-    
+        unsafe_copy_bits(0, BM0, 0, allocate_bitmap(NumBits), 0, NumBits)).
+
 %-----------------------------------------------------------------------------%
-   
+
 bits_per_byte = 8.
 
 %-----------------------------------------------------------------------------%
