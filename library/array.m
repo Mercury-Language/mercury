@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2008 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -390,7 +390,7 @@
     % but more efficient.
     %
 :- pred array.foldl2(pred(T1, T2, T2, T3, T3), array(T1), T2, T2, T3, T3).
-:- mode array.foldl2(pred(in, in, out, in, out) is det, in, in, out, in, out) 
+:- mode array.foldl2(pred(in, in, out, in, out) is det, in, in, out, in, out)
     is det.
 :- mode array.foldl2(pred(in, in, out, mdi, muo) is det, in, in, out, mdi, muo)
     is det.
@@ -1573,9 +1573,9 @@ foldl_0(P, A, I, Max, !X) :-
 array.foldl2(P, A, X0, X, Y0, Y) :-
     array.foldl2_0(P, A, array.min(A), array.max(A), X0, X, Y0, Y).
 
-:- pred foldl2_0(pred(T1, T2, T2, T3, T3), array(T1), int, int, T2, T2, 
+:- pred foldl2_0(pred(T1, T2, T2, T3, T3), array(T1), int, int, T2, T2,
     T3, T3).
-:- mode foldl2_0(pred(in, in, out, in, out) is det, in, in, in, in, out, 
+:- mode foldl2_0(pred(in, in, out, in, out) is det, in, in, in, in, out,
     in, out) is det.
 :- mode foldl2_0(pred(in, in, out, mdi, muo) is det, in, in, in, in, out,
     mdi, muo) is det.
@@ -1812,9 +1812,9 @@ out_of_bounds_error(Array, Index, PredName) :-
     % array.lookup are likely to be used in the inner loops of
     % performance-critical applications.
     array.bounds(Array, Min, Max),
-    throw(array.index_out_of_bounds(
-        string.format("%s: index %d not in range [%d, %d]",
-            [s(PredName), i(Index), i(Min), i(Max)]))).
+    string.format("%s: index %d not in range [%d, %d]",
+        [s(PredName), i(Index), i(Min), i(Max)], Msg),
+    throw(array.index_out_of_bounds(Msg)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1826,7 +1826,6 @@ array.greatest_index(A) = array.max(A).
 
 array.array_to_doc(A) =
     indent([str("array(["), array_to_doc_2(0, A), str("])")]).
-
 
 :- func array_to_doc_2(int, array(T)) = doc.
 
