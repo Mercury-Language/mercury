@@ -241,6 +241,7 @@ SINGLEMODULE= \
 	uniq_neg \
 	unsatisfiable_constraint \
 	unsatisfiable_constraint_bug \
+	unsatisfiable_constraint_msg \
 	unsatisfiable_super \
 	user_eq_dummy \
 	uu_type \

@@ -112,16 +112,15 @@ perform_context_reduction(!Info) :-
     ModuleInfo = tc_info_module_info(!.Info),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    list.filter_map(
-        reduce_type_assign_context(ClassTable, InstanceTable),
-        TypeAssignSet0, TypeAssignSet1),
+    list.foldl2(reduce_type_assign_context(ClassTable, InstanceTable),
+        TypeAssignSet0, [], TypeAssignSet1, [], UnsatTypeAssignSet),
     (
         % Check that this context reduction hasn't eliminated
         % all the type assignments.
         TypeAssignSet0 = [_ | _],
         TypeAssignSet1 = []
     ->
-        Spec = report_unsatisfiable_constraints(!.Info, TypeAssignSet0),
+        Spec = report_unsatisfiable_constraints(!.Info, UnsatTypeAssignSet),
         typecheck_info_add_error(Spec, !Info),
         DeleteConstraints = (pred(TA0::in, TA::out) is det :-
             % Make a new hlds_constraints structure for the type assign,
@@ -140,9 +139,11 @@ perform_context_reduction(!Info) :-
     !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet.
 
 :- pred reduce_type_assign_context(class_table::in, instance_table::in,
-    type_assign::in, type_assign::out) is semidet.
+    type_assign::in, list(type_assign)::in, list(type_assign)::out,
+    list(type_assign)::in, list(type_assign)::out) is det.
 
-reduce_type_assign_context(ClassTable, InstanceTable, !TypeAssign) :-
+reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
+        !TypeAssignSet, !UnsatTypeAssignSet) :-
     type_assign_get_head_type_params(!.TypeAssign, HeadTypeParams),
     type_assign_get_type_bindings(!.TypeAssign, Bindings0),
     type_assign_get_typeclass_constraints(!.TypeAssign, Constraints0),
@@ -154,13 +155,20 @@ reduce_type_assign_context(ClassTable, InstanceTable, !TypeAssign) :-
         HeadTypeParams, Bindings0, Bindings, TVarSet0, TVarSet,
         Proofs0, Proofs, ConstraintMap0, ConstraintMap,
         Constraints0, Constraints),
-    check_satisfiability(Constraints ^ unproven, HeadTypeParams),
 
     type_assign_set_type_bindings(Bindings, !TypeAssign),
     type_assign_set_typeclass_constraints(Constraints, !TypeAssign),
     type_assign_set_typevarset(TVarSet, !TypeAssign),
     type_assign_set_constraint_proofs(Proofs, !TypeAssign),
-    type_assign_set_constraint_map(ConstraintMap, !TypeAssign).
+    type_assign_set_constraint_map(ConstraintMap, !TypeAssign),
+
+    ( check_satisfiability(Constraints ^ unproven, HeadTypeParams) ->
+        !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
+    ;
+        % Remember the unsatisfiable type_assign_set so we can produce more
+        % specific error messages.
+        list.cons(!.TypeAssign, !UnsatTypeAssignSet)
+    ).
 
 reduce_context_by_rule_application(ClassTable, InstanceTable, HeadTypeParams,
         !Bindings, !TVarSet, !Proofs, !ConstraintMap, !Constraints) :-

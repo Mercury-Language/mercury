@@ -142,6 +142,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
 :- import_module svmap.
 :- import_module svvarset.
@@ -367,7 +368,18 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
             list.map(constraint_to_error_piece(TVarSet), Constraints), []) ++
         [nl_indent_delta(-1)],
     Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+
+    DueTo = choose_number(Constraints,
+        "The constraint is due to:",
+        "The constraints are due to:"),
+    ContextMsgStart = error_msg(yes(Context), do_not_treat_as_first, 0,
+        [always([words(DueTo)])]),
+    ConstrainedGoals = find_constrained_goals(PredInfo, Constraints),
+    ContextMsgs = constrained_goals_to_error_msgs(ModuleInfo,
+        ConstrainedGoals),
+
+    Spec = error_spec(severity_error, phase_type_check,
+        [Msg, ContextMsgStart | ContextMsgs]),
     !:Specs = [Spec | !.Specs].
 
 :- func constraint_to_error_piece(tvarset, prog_constraint)
@@ -375,6 +387,99 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
 
 constraint_to_error_piece(TVarset, Constraint) =
     [quote(mercury_constraint_to_string(TVarset, Constraint))].
+
+    % A prog_constraint cannot contain context information (see the comment on
+    % the type definition). However, a constraint_id happens to contain a
+    % goal_path so we can look up a constraint_id for a prog_constraint, then
+    % use the goal_path to reach the goal.
+    %
+:- func find_constrained_goals(pred_info, list(prog_constraint))
+    = list(hlds_goal).
+
+find_constrained_goals(PredInfo, Constraints) = Goals :-
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
+    clauses_info_clauses_only(ClausesInfo, Clauses),
+
+    pred_info_get_constraint_map(PredInfo, ConstraintMap),
+    ReverseConstraintMap = map.reverse_map(ConstraintMap),
+    map.apply_to_list(Constraints, ReverseConstraintMap, ConstraintIdSets),
+    ConstraintIds = set.union_list(ConstraintIdSets),
+
+    % This could be more efficient.
+    FindGoals = (pred(Goal::out) is nondet :-
+        set.member(ConstraintId, ConstraintIds),
+        ConstraintId = constraint_id(_, ConstraintGoalPath, _),
+        promise_equivalent_solutions [Goal] (
+            list.member(Clause, Clauses),
+            goal_contains_goal(Clause ^ clause_body, Goal),
+            Goal = hlds_goal(_, GoalInfo),
+            GoalPath = goal_info_get_goal_path(GoalInfo),
+            GoalPath = ConstraintGoalPath
+        )
+    ),
+    solutions(FindGoals, Goals).
+
+:- func constrained_goals_to_error_msgs(module_info, list(hlds_goal))
+    = list(error_msg).
+
+constrained_goals_to_error_msgs(_, []) = [].
+constrained_goals_to_error_msgs(ModuleInfo, [Goal | Goals]) = [Msg | Msgs] :-
+    (
+        Goals = [_, _ | _],
+        Words = describe_constrained_goal(ModuleInfo, Goal),
+        Suffix = suffix(",")
+    ;
+        Goals = [_],
+        Words = describe_constrained_goal(ModuleInfo, Goal),
+        Suffix = suffix(", and")
+    ;
+        Goals = [],
+        Words = describe_constrained_goal(ModuleInfo, Goal),
+        Suffix = suffix(".")
+    ),
+    Goal = hlds_goal(_, GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
+    Msg = error_msg(yes(Context), do_not_treat_as_first, 1,
+        [always(Words ++ [Suffix])]),
+    Msgs = constrained_goals_to_error_msgs(ModuleInfo, Goals).
+
+:- func describe_constrained_goal(module_info, hlds_goal)
+    = list(format_component).
+
+describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
+    Goal = hlds_goal(GoalExpr, _),
+    (
+        (
+            GoalExpr = plain_call(PredId, _, _, _, _, _),
+            CallPieces = describe_one_pred_name(ModuleInfo,
+                should_module_qualify, PredId)
+        ;
+            GoalExpr = generic_call(GenericCall, _, _, _),
+            GenericCall = class_method(_, _, _, SimpleCallId),
+            CallPieces = [simple_call(SimpleCallId)]
+        ;
+            GoalExpr = call_foreign_proc(_, PredId, _, _, _, _, _),
+            CallPieces = describe_one_pred_name(ModuleInfo,
+                should_module_qualify, PredId)
+        ),
+        Pieces = [words("the call to") | CallPieces]
+    ;
+        GoalExpr = generic_call(higher_order(_, _, _, _), _, _, _),
+        Pieces = [words("a higher-order call here")]
+    ;
+        ( GoalExpr = generic_call(event_call(_), _, _, _)
+        ; GoalExpr = generic_call(cast(_), _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = conj(_, _)
+        ; GoalExpr = disj(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = scope(_, _)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ; GoalExpr = shorthand(_)
+        ),
+        Pieces = [words("a goal here")]
+    ).
 
 %-----------------------------------------------------------------------------%
 
