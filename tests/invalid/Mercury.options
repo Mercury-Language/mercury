@@ -116,7 +116,8 @@ MCFLAGS-typeclass_test_11		= --verbose-error-messages
 MCFLAGS-typeclass_test_12		= --verbose-error-messages
 MCFLAGS-typeclass_test_8		= --verbose-error-messages
 MCFLAGS-types				= --verbose-error-messages
-MCFLAGS-types2				= --verbose-error-messages
+MCFLAGS-types2				= --verbose-error-messages \
+					   --warn-non-contiguous-clauses
 MCFLAGS-type_vars			= --verbose-error-messages
 MCFLAGS-unbound_type_vars		= --verbose-error-messages
 MCFLAGS-undef_type			= --verbose-error-messages
