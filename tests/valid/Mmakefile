@@ -155,6 +155,7 @@ OTHER_PROGS= \
 	lazy_list \
 	liveness_nonlocals \
 	livevals_seq \
+	livevars_shallow \
 	long_name \
 	loop \
 	loop_in_disj \

@@ -485,13 +485,20 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
         Detism = detism_erroneous,
         AllocData ^ ad_opt_no_return_calls = yes
     ->
-        NeedAcrossCall = need_across_call(set.init, set.init, set.init)
+        NeedAcrossCall = need_across_call(set.init, set.init, set.init),
+        GoalInfo1 = GoalInfo0
     ;
         NeedAcrossCall = need_across_call(ForwardVars, ResumeVars0,
-            !.NondetLiveness)
+            !.NondetLiveness),
+        % Make sure a variable doesn't appear in both the forward vars and
+        % post-death set.  (Perhaps the same thing needs to be done for
+        % other need_across_call sets?)
+        goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
+        set.difference(PostDeaths0, ForwardVars, PostDeaths1),
+        goal_info_set_post_deaths(PostDeaths1, GoalInfo0, GoalInfo1)
     ),
 
-    record_call_site(NeedAcrossCall, GoalInfo0, GoalInfo, !StackAlloc),
+    record_call_site(NeedAcrossCall, GoalInfo1, GoalInfo, !StackAlloc),
 
     % If this is a nondet call, then all the stack slots we need
     % must be protected against reuse in following code.

@@ -96,6 +96,7 @@ MCFLAGS-intermod_user_sharing	= --intermodule-optimization
 MCFLAGS-intermod_user_sharing_2	= --intermodule-optimization
 MCFLAGS-lambda_inference	= --infer-all
 MCFLAGS-livevals_seq		= -O5 --opt-space
+MCFLAGS-livevars_shallow	= --grade none --trace shallow
 MCFLAGS-loop_inv_bug		= --common-struct --loop-invariants
 MCFLAGS-mc_bag			= --prop-mode-constraints
 MCFLAGS-mc_extra_nonlocals	= --prop-mode-constraints
