@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003, 2005-2008 The University of Melbourne.
+** Copyright (C) 1995-2003, 2005-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -136,6 +136,7 @@
 **	MR_HAVE_FENV_H		we have <fenv.h>
 **	MR_HAVE_SYS_MMAN_H	we have <sys/mman.h>
 **	MR_HAVE_SYS_SEM_H 	we have <sys/sem.h>
+**	MR_HAVE_SCHED_H     we have <sched.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -165,6 +166,7 @@
 #undef	MR_HAVE_FENV_H
 #undef	MR_HAVE_SYS_MMAN_H
 #undef	MR_HAVE_SYS_SEM_H
+#undef	MR_HAVE_SCHED_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
@@ -263,6 +265,7 @@
 **	MR_HAVE__PUTENV		we have the _putenv() function.
 **	MR_HAVE_POSIX_SPAWN	we have the posix_spawn() function.
 **	MR_HAVE_FESETROUND	we have the fesetround() function.
+**	MR_HAVE_SCHED_SETAFFINITY if we have the sched_setaffinity() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -324,6 +327,7 @@
 #undef	MR_HAVE__PUTENV
 #undef	MR_HAVE_POSIX_SPAWN
 #undef	MR_HAVE_FESETROUND
+#undef	MR_HAVE_SCHED_SETAFFINITY
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.
@@ -356,6 +360,14 @@
 #undef	MR_HAVE_SIGCONTEXT_STRUCT
 #undef	MR_HAVE_SIGCONTEXT_STRUCT_3ARG
 #undef	MR_HAVE_SIGCONTEXT_STRUCT_2ARG
+
+/*
+** These specify weather the given C macros are defined.
+**
+** MR_HAVE__SC_NPROCESSORS_ONLN, This is defined as a parameter for sysconf to
+** determine the number of processors online.
+*/
+#undef	MR_HAVE__SC_NPROCESSORS_ONLN
 
 /*
 ** For debugging purposes, if we get a fatal signal, we print out the

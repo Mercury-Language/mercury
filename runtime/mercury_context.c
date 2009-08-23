@@ -31,6 +31,10 @@ ENDINIT
   #include <math.h> /* for sqrt and pow */
 #endif
 
+#ifdef MR_HAVE_SCHED_H 
+#include <sched.h>
+#endif
+
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
 #include "mercury_engine.h"             /* for `MR_memdebug' */
@@ -62,6 +66,9 @@ MR_Context              *MR_runqueue_tail;
 #ifdef  MR_LL_PARALLEL_CONJ
   MR_SparkDeque         MR_spark_queue;
   MercuryLock           MR_sync_term_lock;
+  MR_bool               MR_thread_pinning = MR_FALSE;
+  static MercuryLock    MR_next_cpu_lock;
+  static MR_Unsigned    MR_next_cpu = 0;
 #endif
 
 MR_PendingContext       *MR_pending_contexts;
@@ -134,6 +141,7 @@ MR_init_thread_stuff(void)
   #ifdef MR_LL_PARALLEL_CONJ
     MR_init_wsdeque(&MR_spark_queue, MR_INITIAL_GLOBAL_SPARK_QUEUE_SIZE);
     pthread_mutex_init(&MR_sync_term_lock, MR_MUTEX_ATTR);
+    pthread_mutex_init(&MR_next_cpu_lock, MR_MUTEX_ATTR);
   #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     pthread_mutex_init(&MR_par_cond_stats_lock, MR_MUTEX_ATTR);
   #endif
@@ -155,6 +163,66 @@ MR_init_thread_stuff(void)
     pthread_cond_init(&MR_thread_barrier_cond, MR_COND_ATTR);
   #endif
 
+    /* 
+     * Configure MR_num_threads if unset to match number of processors on the
+     * system, If we do this then we prepare to set processor affinities later
+     * on.
+     */
+    if (MR_num_threads == 0)
+    {
+#if defined(MR_HAVE_SYSCONF) && defined(MR_HAVE__SC_NPROCESSORS_ONLN) 
+        long result;
+
+        result = sysconf(_SC_NPROCESSORS_ONLN);
+        if (result < 1) {
+            /* We couldn't determine the number of processors. */
+            MR_num_threads = 1;
+        } else {
+            MR_num_threads = result;
+            /* On systems that don't support sched_setaffinity we don't try to
+            ** automatically enable thread pinning.  This prevents a runtime
+            ** warning that could unnecessarily confuse the user.
+            **/
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY) 
+            MR_thread_pinning = MR_TRUE;
+#endif
+        }
+#else
+        MR_num_threads = 1;
+#endif
+    }
+#endif
+}
+
+void
+MR_pin_thread(void)
+{
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
+        defined(MR_HAVE_SCHED_SETAFFINITY) 
+    MR_LOCK(&MR_next_cpu_lock, "MR_pin_thread");
+    if (MR_thread_pinning == MR_TRUE) {
+        cpu_set_t   cpus;
+
+        if (MR_next_cpu < CPU_SETSIZE) {
+            CPU_ZERO(&cpus);
+            CPU_SET(MR_next_cpu, &cpus);
+            if (sched_setaffinity(0, sizeof(cpu_set_t), &cpus) == 0)
+            {
+                MR_next_cpu++;
+            } else {
+                perror("Warning: Couldn't set CPU affinity");
+                /* if this failed once it will probably fail again so disable
+                ** it. 
+                */
+                MR_thread_pinning = MR_FALSE;
+            }
+        } else {
+            perror("Warning: Couldn't set CPU affinity due to a static " \
+                "system limit");
+            MR_thread_pinning = MR_FALSE;
+        }
+    }
+    MR_UNLOCK(&MR_next_cpu_lock, "MR_pin_thread");
 #endif
 }
 
@@ -260,7 +328,7 @@ MR_write_out_profiling_parallel_execution(void)
     MR_INTEGER_LENGTH_MODIFIER "ur, %" MR_INTEGER_LENGTH_MODIFIER \
     "unr), sample %ul\n")
 #define MR_FPRINT_STATS_FORMAT_STRING_NONE \
-    ("s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%" \
+    ("%s: count %" MR_INTEGER_LENGTH_MODIFIER "u (%" \
     MR_INTEGER_LENGTH_MODIFIER "ur, %" MR_INTEGER_LENGTH_MODIFIER "unr)\n")
 
 static int 

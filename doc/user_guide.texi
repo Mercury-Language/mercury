@@ -9587,7 +9587,10 @@ This only has an effect if the executable was built in a profiling grade.
 @item -P @var{num}
 @findex -P (runtime option)
 Tells the runtime system to use @var{num} threads
-if the program was built in a parallel grade.
+if the program was built in a parallel low-level C grade.
+The mercury runtime attempts to automatically determine this value if support
+is available from the operating system.
+If it cannot or support is unavailable it defaults to @samp{1}.
 
 @sp 1
 @item --max-contexts-per-thread @var{num}
@@ -9607,6 +9610,17 @@ grade.
 @c This only has an effect if the executable was built in a parallel grade
 @c and the @samp{MR_PROFILE_PARALLEL_EXECUTION_SUPPORT} C macro was
 @c defined when the runtime system was compiled.
+
+@sp 1
+@item --thread-pinning
+@findex --thread-pinning
+Request that the runtime system attempts to pin mercury engines (POSIX threads)
+to CPU cores/hardware threads.
+This only has an effect if the executable was build in a parallel low-level C 
+grade.
+It is disabled by default unless @samp{-P @var{num}} is not specified and the
+runtime system is able to detect the number of processors enabled by the
+operating system.
 
 @c @item -r @var{num}
 @c @findex -r (runtime option)

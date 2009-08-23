@@ -1107,7 +1107,7 @@ mercury_check_for_functions \
         getpid setpgid fork execlp wait kill \
         grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
         access sleep opendir readdir closedir mkdir symlink readlink \
-        gettimeofday setenv putenv _putenv posix_spawn
+        gettimeofday setenv putenv _putenv posix_spawn sched_setaffinity
 
 #-----------------------------------------------------------------------------#
 
@@ -1116,7 +1116,8 @@ MERCURY_CHECK_FOR_HEADERS( \
         asm/sigcontext.h sys/param.h sys/time.h sys/times.h \
         sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
         sys/stropts.h windows.h dirent.h getopt.h malloc.h \
-        semaphore.h pthread.h time.h spawn.h fenv.h sys/mman.h sys/sem.h)
+        semaphore.h pthread.h time.h spawn.h fenv.h sys/mman.h sys/sem.h \
+        sched.h)
 
 if test "$MR_HAVE_GETOPT_H" = 1; then
     GETOPT_H_AVAILABLE=yes
@@ -1135,6 +1136,24 @@ fi
 #
 
 MERCURY_CHECK_FOR_FENV_FUNC([fesetround], [$MATH_LIB])
+
+#-----------------------------------------------------------------------------#
+#
+# Check for declarations. 
+#
+
+mercury_check_for_declarations () {
+    for mercury_cv_decl in "$@"
+    do
+        mercury_cv_decl_define="MR_HAVE_`echo $mercury_cv_decl | \
+            tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`"
+        AC_CHECK_DECL($mercury_cv_decl, [
+            AC_DEFINE_UNQUOTED($mercury_cv_decl_define)
+        ])
+    done
+}
+
+mercury_check_for_declarations "_SC_NPROCESSORS_ONLN"
 
 #-----------------------------------------------------------------------------#
 #

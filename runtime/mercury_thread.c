@@ -90,6 +90,7 @@ MR_create_thread_2(void *goal0)
         MR_init_thread(MR_use_now);
         (goal->func)(goal->arg);
     } else {
+        MR_pin_thread();
         MR_init_thread(MR_use_later);
     }
 

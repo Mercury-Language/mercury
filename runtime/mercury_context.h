@@ -344,6 +344,7 @@ extern      MR_Context  *MR_runqueue_tail;
 #ifdef  MR_LL_PARALLEL_CONJ
   extern    MR_SparkDeque   MR_spark_queue;
   extern    MercuryLock     MR_sync_term_lock;
+  extern    MR_bool         MR_thread_pinning;
 #endif
 
 #if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
@@ -458,13 +459,20 @@ extern  MR_Context  *MR_create_context(const char *id,
 extern  void        MR_destroy_context(MR_Context *context);
 
 /*
-** MR_init_thread_stuff() initializes the lock structures for the runqueue.
+** MR_init_thread_stuff() initializes the lock structures for the runqueue, 
+** and detect the number of threads to use on the LLC backend.
 */
 extern  void        MR_init_thread_stuff(void);
 
 /*
+** MR_pin_thread() pins the current thread to the next available processor ID,
+** if thread pinning is enabled.
+*/
+extern  void        MR_pin_thread(void);
+
+/*
 ** MR_finalize_thread_stuff() finalizes the lock structures for the runqueue
-** amoung other things setup by MR_init_thread_stuff().
+** among other things setup by MR_init_thread_stuff().
 */
 extern  void        MR_finalize_thread_stuff(void);
 

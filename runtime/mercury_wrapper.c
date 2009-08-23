@@ -289,7 +289,13 @@ static  char        *MR_mem_usage_report_prefix = NULL;
 
 static  int         MR_num_output_args = 0;
 
-MR_Unsigned         MR_num_threads = 1;
+/*
+** This is initialized to zero, if it is still zero after configuration of the
+** runtime but before threads are started then the number of processors on the
+** system is detected and used if support is available.  Otherwise we fall back
+** to 1 
+*/
+MR_Unsigned         MR_num_threads = 0;
 
 static  MR_bool     MR_print_table_statistics = MR_FALSE;
 
@@ -582,6 +588,7 @@ mercury_runtime_init(int argc, char **argv)
 #ifdef MR_THREAD_SAFE
     /* MR_init_thread_stuff() must be called prior to MR_init_memory() */
     MR_init_thread_stuff();
+    MR_max_outstanding_contexts = MR_max_contexts_per_thread * MR_num_threads;
     MR_primordial_thread = pthread_self();
 #endif
 
@@ -623,9 +630,10 @@ mercury_runtime_init(int argc, char **argv)
         for (i = 1 ; i < MR_num_threads ; i++) {
             MR_create_thread(NULL);
         }
-
+        MR_pin_thread();
         while (MR_num_idle_engines < MR_num_threads-1) {
             /* busy wait until the worker threads are ready */
+            MR_ATOMIC_PAUSE;
         }
     }
   #endif /* ! MR_LL_PARALLEL_CONJ */
@@ -1208,6 +1216,7 @@ enum MR_long_option {
     MR_GEN_NONDETSTACK_REDZONE_SIZE,
     MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS,
     MR_MAX_CONTEXTS_PER_THREAD,
+    MR_THREAD_PINNING,
     MR_PROFILE_PARALLEL_EXECUTION,
     MR_MDB_TTY,
     MR_MDB_IN,
@@ -1305,6 +1314,7 @@ struct MR_option MR_long_opts[] = {
     { "gen-nondetstack-zone-size-kwords",
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
+    { "thread-pinning",                 0, 0, MR_THREAD_PINNING },
     { "profile-parallel-execution",     0, 0, MR_PROFILE_PARALLEL_EXECUTION },
     { "mdb-tty",                        1, 0, MR_MDB_TTY },
     { "mdb-in",                         1, 0, MR_MDB_IN },
@@ -1717,6 +1727,11 @@ MR_process_options(int argc, char **argv)
 
                 MR_max_contexts_per_thread = size;
                 break;
+
+            case MR_THREAD_PINNING:
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+                MR_thread_pinning = MR_TRUE;
+#endif
 
             case MR_PROFILE_PARALLEL_EXECUTION:
 #if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
@@ -2200,8 +2215,6 @@ MR_process_options(int argc, char **argv)
 
         }
     }
-
-    MR_max_outstanding_contexts = MR_max_contexts_per_thread * MR_num_threads;
 
     if (MR_lld_print_min > 0 || MR_lld_start_name != NULL) {
         MR_lld_print_enabled = 0;
