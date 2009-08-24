@@ -316,11 +316,28 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
         java_escape_special_char(Char, RevEscapeChars)
     ->
         list.append(RevEscapeChars, RevChars0, RevChars)
-    ; escape_special_char(Char, EscapeChar) ->
+    ;
+        escape_special_char(Char, EscapeChar)
+    ->
         RevChars = [EscapeChar, '\\' | RevChars0]
-    ; is_c_source_char(Char) ->
+    ;
+        is_c_source_char(Char)
+    ->
         RevChars = [Char | RevChars0]
-    ; char.to_int(Char, 0) ->
+    ;
+        Lang = literal_java,
+        char.to_int(Char) >= 0x80
+    ->
+        % If the compiler is built in a C grade (8-bit strings), we assume that
+        % both the Mercury source file and Java target file use UTF-8 encoding.
+        % Each `Char' will be a UTF-8 code unit in a multi-byte sequence.
+        % If the compiler is built in a Java backend, each `Char' will be a
+        % UTF-16 code unit, possibly of a surrogate pair. In both cases the
+        % code units must be passed through without escaping.
+        RevChars = [Char | RevChars0]
+    ;
+        char.to_int(Char, 0)
+    ->
         RevChars = ['0', '\\' | RevChars0]
     ;
         escape_any_char(Char, EscapeChars),
