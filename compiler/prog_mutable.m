@@ -112,21 +112,21 @@
 %
 % The other operations are all defined in Mercury using the above predicates:
 %
-% :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
+%   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
 %
-% set_<varname>(X) :-
-%   impure lock_<varname>,
-%   impure unsafe_set_<varname>(X),
-%   impure unlock_<varname>.
+%   set_<varname>(X) :-
+%       impure lock_<varname>,
+%       impure unsafe_set_<varname>(X),
+%       impure unlock_<varname>.
 %
-% :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
+%   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
 % 
-% get_<varname>(X) :-
-%   promise_semipure (
-%       impure lock_<varname>
-%       semipure unsafe_get_<varname>(X),
-%       impure unlock_<varname>
-%  ).
+%   get_<varname>(X) :-
+%       promise_semipure (
+%           impure lock_<varname>
+%           semipure unsafe_get_<varname>(X),
+%           impure unlock_<varname>
+%       ).
 %
 % etc.
 % 
@@ -234,10 +234,14 @@
 %       impure set_<varname>(<initval>).
 %
 % Operations on mutables are defined in terms of the following two predicates.
+% They are actually "safe": we synchronize the access and assignment statements
+% within the predicates (by the Java specification, only actually necessary for
+% doubles and longs).  They are named so to minimise the differences with the C
+% backends.
 %
-%   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
+%   :- impure pred unsafe_set_<varname>(<vartype>::in(<varinst>)) is det.
 %   :- pragma foreign_proc("Java",
-%       set_<varname>(X::in(<varinst>)),
+%       unsafe_set_<varname>(X::in(<varinst>)),
 %       [will_not_call_mercury, thread_safe],
 %   "
 %       synchronized (mutable_<varname>_lock) {
@@ -245,15 +249,28 @@
 %       }
 %   ").
 %
-%   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
+%   :- semipure pred unsafe_get_<varname>(<vartype>::out(<varinst>)) is det.
 %   :- pragma foreign_proc("Java",
-%       get_varname(X::out(<varinst>)),
+%       unsafe_get_varname(X::out(<varinst>)),
 %       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
 %       synchronized (mutable_<varname>_lock) {
 %           X = mutable_<varname>;
 %       }
 %   ").
+%
+% The above prediates are called by these predicates, again to minimise
+% differences with the C backends:
+%
+%   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
+%
+%   set_<varname>(X) :-
+%       impure unsafe_set_<varname>(X).
+%
+%   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
+%
+%   get_<varname>(X) :-
+%       semipure unsafe_get_<varname>(X).
 %
 % For constant mutables the transformation is:
 %

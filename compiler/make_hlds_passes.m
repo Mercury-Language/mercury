@@ -515,13 +515,18 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
         (
             CompilationTarget = target_c,
             WantPreInitDecl = yes,
-            WantUnsafeAccessAndLockDecls = yes
+            WantLockDecls = yes,
+            WantUnsafeAccessDecls = yes
         ;
-            ( CompilationTarget = target_erlang
-            ; CompilationTarget = target_java
-            ),
+            CompilationTarget = target_java,
             WantPreInitDecl = no,
-            WantUnsafeAccessAndLockDecls = no
+            WantLockDecls = no,
+            WantUnsafeAccessDecls = yes
+        ;
+            CompilationTarget = target_erlang,
+            WantPreInitDecl = no,
+            WantLockDecls = no,
+            WantUnsafeAccessDecls = no
         ;
             ( CompilationTarget = target_il
             ; CompilationTarget = target_asm
@@ -529,7 +534,8 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
             ),
             % Not supported yet.
             WantPreInitDecl = yes,
-            WantUnsafeAccessAndLockDecls = yes
+            WantLockDecls = yes,
+            WantUnsafeAccessDecls = yes
         ),
 
         % Create the mutable initialisation predicate.
@@ -555,13 +561,18 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
 
             % Create the primitive access and locking predicates.
             (
-                WantUnsafeAccessAndLockDecls = yes,
+                WantLockDecls = yes,
                 LockPredDeclItem = lock_pred_decl(ModuleName, Name, Context),
                 UnlockPredDecl = unlock_pred_decl(ModuleName, Name, Context),
                 add_item_decl_pass_1(LockPredDeclItem, _, Status, _,
                     !ModuleInfo, !Specs),
                 add_item_decl_pass_1(UnlockPredDecl, _, Status, _,
-                    !ModuleInfo, !Specs),
+                    !ModuleInfo, !Specs)
+            ;
+                WantLockDecls = no
+            ),
+            (
+                WantUnsafeAccessDecls = yes,
                 UnsafeGetPredDeclItem = unsafe_get_pred_decl(ModuleName, Name,
                     Type, Inst, Context),
                 UnsafeSetPredDeclItem = unsafe_set_pred_decl(ModuleName, Name,
@@ -571,7 +582,7 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
                 add_item_decl_pass_1(UnsafeSetPredDeclItem, _, Status, _,
                     !ModuleInfo, !Specs)
             ;
-                WantUnsafeAccessAndLockDecls = no
+                WantUnsafeAccessDecls = no
             ),
 
             % Create the standard, non-pure access predicates. These are
@@ -840,7 +851,7 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
         globals.get_target(Globals, CompilationTarget),
 
         % XXX We don't currently support the foreign_name attribute
-        % for languages other than C and Erlang.
+        % for all languages.
         (
             (
                 CompilationTarget = target_c,
@@ -2121,53 +2132,49 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
 add_c_java_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
         ForLang, Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var(varset.init, "X", X, ProgVarSet0),
+
     LockPredName   = mutable_lock_pred_sym_name(ModuleName, MutableName),
     UnlockPredName = mutable_unlock_pred_sym_name(ModuleName, MutableName),
-    SetPredName = mutable_set_pred_sym_name(ModuleName, MutableName),
-    GetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
+    CallLock   = call_expr(LockPredName, [], purity_impure) - Context,
+    CallUnlock = call_expr(UnlockPredName, [], purity_impure) - Context,
 
-    (
-        ForLang = for_c,
-        CallLock   = call_expr(LockPredName, [], purity_impure) - Context,
-        CallUnlock = call_expr(UnlockPredName, [], purity_impure) - Context,
-        GetterPredName = mutable_unsafe_get_pred_sym_name(ModuleName,
-            MutableName),
-        SetterPredName = mutable_unsafe_set_pred_sym_name(ModuleName,
-            MutableName)
-    ;
-        ForLang = for_java,
-        CallLock   = true_expr - Context,
-        CallUnlock = true_expr - Context,
-        GetterPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
-        SetterPredName = mutable_set_pred_sym_name(ModuleName, MutableName)
-    ),
-
-    % Construct the semipure get predicate.
+    GetterPredName = mutable_unsafe_get_pred_sym_name(ModuleName, MutableName),
+    SetterPredName = mutable_unsafe_set_pred_sym_name(ModuleName, MutableName),
     CallGetter = call_expr(GetterPredName, [variable(X, Context)],
         purity_semipure) - Context,
-
-    GetBody = goal_list_to_conj(Context, [CallLock, CallGetter, CallUnlock]),
-    StdGetBody = promise_purity_expr(purity_semipure, GetBody) - Context,
-
-    StdGetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet0,
-        pf_predicate, GetPredName, [variable(X, context_init)], StdGetBody,
-        Context, -1
-    ),
-    StdSetItem = item_clause(StdSetItemClause),
-    add_item_pass_3(StdGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
-
-    % Construct the impure set predicate.
     CallSetter = call_expr(SetterPredName, [variable(X, context_init)],
         purity_impure) - Context,
 
-    StdSetBody = goal_list_to_conj(Context,
-        [CallLock, CallSetter, CallUnlock]),
+    GetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
+    SetPredName = mutable_set_pred_sym_name(ModuleName, MutableName),
 
-    StdSetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet0,
-        pf_predicate, SetPredName, [variable(X, context_init)], StdSetBody,
-        Context, -1
+    (
+        ForLang = for_c,
+        GetBody = goal_list_to_conj(Context, [CallLock, CallGetter,
+            CallUnlock]),
+        StdSetBody = goal_list_to_conj(Context, [CallLock, CallSetter,
+            CallUnlock])
+    ;
+        ForLang = for_java,
+        % There are no separate lock predicates for Java; the synchronisation
+        % is performed within the "unsafe" predicates.
+        GetBody = CallGetter,
+        StdSetBody = CallSetter
     ),
+
+    % Construct the semipure get predicate.
+    StdGetBody = promise_purity_expr(purity_semipure, GetBody) - Context,
+    StdGetItemClause = item_clause_info(compiler(mutable_decl),
+        ProgVarSet0, pf_predicate, GetPredName,
+        [variable(X, context_init)], StdGetBody, Context, -1),
     StdGetItem = item_clause(StdGetItemClause),
+    add_item_pass_3(StdGetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
+
+    % Construct the impure set predicate.
+    StdSetItemClause = item_clause_info(compiler(mutable_decl),
+        ProgVarSet0, pf_predicate, SetPredName,
+        [variable(X, context_init)], StdSetBody, Context, -1),
+    StdSetItem = item_clause(StdSetItemClause),
     add_item_pass_3(StdSetItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     IOStateInterface = mutable_var_attach_to_io_state(MutAttrs),
@@ -2177,7 +2184,6 @@ add_c_java_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
 
         % Construct the pure get predicate.
         IOGetBody = promise_purity_expr(purity_pure, GetBody) - Context,
-
         Ctxt = context_init,
         IOGetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet,
             pf_predicate, GetPredName,
@@ -2192,9 +2198,7 @@ add_c_java_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
         % We just use the body of impure version and attach a promise_pure
         % pragma to the predicate. (The purity pragma was added during
         % stage 2.)
-
         IOSetBody = StdSetBody,
-
         IOSetItemClause = item_clause_info(compiler(mutable_decl), ProgVarSet,
             pf_predicate, SetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
@@ -2399,7 +2403,7 @@ add_java_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
         "\t\tX = " ++ TargetMutableName ++ ";\n\t}\n",
     GetForeignProc = pragma_foreign_proc(GetAttrs,
-        mutable_get_pred_sym_name(ModuleName, MutableName),
+        mutable_unsafe_get_pred_sym_name(ModuleName, MutableName),
         pf_predicate,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
@@ -2430,7 +2434,7 @@ add_java_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
     SetCode = "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
         "\t\t" ++ TargetMutableName ++ "= X;\n\t}\n",
     SetForeignProc = pragma_foreign_proc(SetAttrs,
-        mutable_set_pred_sym_name(ModuleName, MutableName),
+        mutable_unsafe_set_pred_sym_name(ModuleName, MutableName),
         pf_predicate,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
