@@ -2935,15 +2935,17 @@ gen_stmt(DefnInfo, ml_stmt_atomic(AtomicStatement), Context) -->
 % Extra code for outputting switch statements
 %
 
-:- pred gen_cases(defn_info::in, mlds_switch_cases::in,
-		io__state::di, io__state::uo) is det.
+:- pred gen_cases(defn_info::in, list(mlds_switch_case)::in,
+	io__state::di, io__state::uo) is det.
+
 gen_cases(DefnInfo, Cases) -->
 	list__foldl(gen_case(DefnInfo), Cases).
 
 :- pred gen_case(defn_info::in, mlds_switch_case::in,
 		io__state::di, io__state::uo) is det.
-gen_case(DefnInfo, mlds_switch_case(MatchConds, Code)) -->
-	list__foldl(gen_case_label(DefnInfo), MatchConds),
+gen_case(DefnInfo, mlds_switch_case(FirstCond, LaterConds, Code)) -->
+	gen_case_label(DefnInfo, FirstCond),
+	list__foldl(gen_case_label(DefnInfo), LaterConds),
 	gen_statement(DefnInfo, Code),
 	gcc__gen_break.
 

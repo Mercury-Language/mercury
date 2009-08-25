@@ -1006,7 +1006,7 @@
                 % want to achieve that effect, you need to use an explicit
                 % goto.
 
-                % The value to switch on
+                % The value to switch on.
                 mlds_type,
                 mlds_rval,
 
@@ -1015,7 +1015,7 @@
                 mlds_switch_range,
 
                 % The different cases.
-                mlds_switch_cases,
+                list(mlds_switch_case),
 
                 % What to do if none of the cases match.
                 mlds_switch_default
@@ -1127,13 +1127,15 @@
     % and the statement to execute if the match succeeds.
     % Unlike C, cases do NOT fall through; if you want to achieve that
     % effect, you need to use an explicit goto.
-:- type mlds_switch_cases == list(mlds_switch_case).
 :- type mlds_switch_case
-    --->    mlds_switch_case(mlds_case_match_conds, statement).
+    --->    mlds_switch_case(
+                % Each switch case contains one or more conditions.
+                % If _any_ of the conditions match, this case will be selected.
+                mlds_case_match_cond,
+                list(mlds_case_match_cond),
 
-    % Case_match_conds should be a _non-empty_ list of conditions;
-    % if _any_ of the conditions match, this case will be selected.
-:- type mlds_case_match_conds == list(mlds_case_match_cond).
+                statement
+            ).
 
     % A case_match_cond specifies when a switch case will be selected
 :- type mlds_case_match_cond

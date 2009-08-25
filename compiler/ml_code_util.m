@@ -2318,9 +2318,9 @@ fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
     fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
 fixup_newobj_in_case(Case0, Case, !Fixup) :-
-    Case0 = mlds_switch_case(Conds, Statement0),
+    Case0 = mlds_switch_case(FirstCond, LaterConds, Statement0),
     fixup_newobj_in_statement(Statement0, Statement, !Fixup),
-    Case  = mlds_switch_case(Conds, Statement).
+    Case  = mlds_switch_case(FirstCond, LaterConds, Statement).
 
 :- pred fixup_newobj_in_maybe_statement(maybe(statement)::in,
     maybe(statement)::out,

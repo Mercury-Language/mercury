@@ -300,7 +300,7 @@ project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
 
 filter_out_failing_cases([], !RevTaggedCases, !SwitchCanFail).
 filter_out_failing_cases([Case | Cases], !RevTaggedCases, !SwitchCanFail) :-
-    Case = tagged_case(_, _, Goal),
+    Case = tagged_case(_, _, _, Goal),
     Goal = hlds_goal(GoalExpr, _),
     ( GoalExpr = disj([]) ->
         !:SwitchCanFail = can_fail
@@ -322,7 +322,7 @@ generate_constants_for_lookup_switch([], _Vars, _StoreMap, no, !IndexMap,
 generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
         StoreMap, MaybeLiveness, !IndexMap, !MaybeEnd, !ResumeVars,
         !GoalsMayModifyTrail, !CI) :-
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
     % Goals with these features need special treatment in generate_goal.

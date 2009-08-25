@@ -152,6 +152,7 @@ ORDINARY_PROGS=	\
 	mode_check_clauses \
 	mode_choice \
 	multi_arm_switch \
+	multi_arm_switch_2 \
 	multi_map_test \
 	multimode \
 	multimode_addr \
@@ -227,9 +228,10 @@ ORDINARY_PROGS=	\
 	string_split_2 \
 	string_string \
 	string_strip \
-	string_substring \
 	string_sub_string_search \
+	string_substring \
 	string_suffix_bug \
+	string_switch \
 	string_various \
 	sv_nested_closures \
 	sv_record_update \

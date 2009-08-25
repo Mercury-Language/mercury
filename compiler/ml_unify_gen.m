@@ -41,18 +41,23 @@
     %
 :- pred ml_cons_id_to_tag(ml_gen_info::in, cons_id::in, cons_tag::out) is det.
 
-    % ml_gen_tag_test(Var, ConsId, Defns, Statements, Expression):
+    % ml_gen_tag_test(Var, ConsId, Expression, !Info):
     %
     % Generate code to perform a tag test.
     %
     % The test checks whether Var has the functor specified by ConsId.
-    % The generated code may contain Defns, Statements and an Expression.
-    % The Expression is a boolean rval. After execution of the Statements,
-    % Expression will evaluate to true iff the Var has the functor specified
-    % by ConsId.
+    % The generated code will not contain Defns or Statements; it will be
+    % only an Expression, which will be a boolean rval. Expression will
+    % evaluate to true iff the Var has the functor specified by ConsId.
     %
-:- pred ml_gen_tag_test(prog_var::in, cons_id::in,
-    list(mlds_defn)::out, list(statement)::out, mlds_rval::out,
+:- pred ml_gen_tag_test(prog_var::in, cons_id::in, mlds_rval::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+    % ml_gen_known_tag_test(Var, TaggedConsId, Expression, !Info):
+    %
+    % Same as ml_gen_tag_test, but the tag of ConsId is already known.
+    %
+:- pred ml_gen_known_tag_test(prog_var::in, tagged_cons_id::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo, VarRval):
@@ -1819,10 +1824,8 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
 
 ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
         Decls, Statements, !Info) :-
-    ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
-        TagTestExpression, !Info),
-    ml_gen_set_success(!.Info, TagTestExpression, Context,
-        SetTagTestResult),
+    ml_gen_tag_test(Var, ConsId, TagTestExpression, !Info),
+    ml_gen_set_success(!.Info, TagTestExpression, Context, SetTagTestResult),
     ml_gen_test_success(!.Info, SucceededExpression),
     ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
         GetArgsDecls, GetArgsStatements, !Info),
@@ -1830,44 +1833,46 @@ ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
         is_empty(GetArgsDecls),
         is_empty(GetArgsStatements)
     ->
-        Decls = TagTestDecls,
-        Statements = TagTestStatements ++ [SetTagTestResult]
+        Decls = [],
+        Statements = [SetTagTestResult]
     ;
         GetArgs = ml_gen_block(GetArgsDecls, GetArgsStatements, Context),
         IfStmt = ml_stmt_if_then_else(SucceededExpression, GetArgs, no),
         IfStatement = statement(IfStmt, mlds_make_context(Context)),
-        Decls = TagTestDecls,
-        Statements = TagTestStatements ++ [SetTagTestResult, IfStatement]
+        Decls = [],
+        Statements = [SetTagTestResult, IfStatement]
     ).
 
-    % ml_gen_tag_test(Var, ConsId, Defns, Statements, Expression):
-    %
-    % Generate code to perform a tag test.
-    %
-    % The test checks whether Var has the functor specified by ConsId.
-    % The generated code may contain Defns, Statements and an Expression.
-    % The Expression is a boolean rval. After execution of the Statements,
-    % Expression will evaluate to true iff the Var has the functor
-    % specified by ConsId.
-    %
+ml_gen_tag_test(Var, ConsId, TagTestExpression, !Info) :-
+    % NOTE: Keep in sync with ml_gen_known_tag_test below.
+
     % TODO: apply the reverse tag test optimization for types with two
     % functors (see unify_gen.m).
-    %
-ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
-        TagTestExpression, !Info) :-
+
     ml_gen_var(!.Info, Var, VarLval),
     ml_variable_type(!.Info, Var, Type),
     ml_cons_id_to_tag(!.Info, ConsId, Tag),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     TagTestExpression = ml_gen_tag_test_rval(Tag, Type, ModuleInfo,
-        ml_lval(VarLval)),
-    TagTestDecls = [],
-    TagTestStatements = [].
+        ml_lval(VarLval)).
 
-    % ml_gen_tag_test_rval(Tag, VarType, ModuleInfo, VarRval) = TestRval:
+ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpression, !Info) :-
+    % NOTE: Keep in sync with ml_gen_tag_test above.
+
+    % TODO: apply the reverse tag test optimization for types with two
+    % functors (see unify_gen.m).
+
+    ml_gen_var(!.Info, Var, VarLval),
+    ml_variable_type(!.Info, Var, Type),
+    TaggedConsId = tagged_cons_id(_ConsId, Tag),
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    TagTestExpression = ml_gen_tag_test_rval(Tag, Type, ModuleInfo,
+        ml_lval(VarLval)).
+
+    % ml_gen_tag_test_rval(Tag, Type, ModuleInfo, VarRval) = TestRval:
     %
-    % TestRval is a Rval of type bool which evaluates to true if VarRval has
-    % the specified Tag and false otherwise. VarType is the type of VarRval.
+    % TestRval is an Rval of type bool which evaluates to true if VarRval has
+    % the specified Tag and false otherwise. Type is the type of VarRval.
     %
 :- func ml_gen_tag_test_rval(cons_tag, mer_type, module_info, mlds_rval)
     = mlds_rval.

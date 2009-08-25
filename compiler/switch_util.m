@@ -30,7 +30,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
-:- import_module unit.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 %
@@ -56,8 +56,12 @@
 :- pred tag_cases(module_info::in, mer_type::in, list(case)::in,
     list(tagged_case)::out, maybe_int_switch_info::out) is det.
 
-:- pred represent_tagged_case_by_itself(tagged_case::in, tagged_case::out,
-    unit::in, unit::out, unit::in, unit::out, unit::in, unit::out) is det.
+    % num_cons_ids_in_tagged_cases(Cases, NumConsIds, NumArms):
+    %
+    % Count the number of cons_ids and the number of arms in Cases.
+    %
+:- pred num_cons_ids_in_tagged_cases(list(tagged_case)::in, int::out, int::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -152,32 +156,82 @@
 % don't support labels. Instead, if need be we duplicate the HLDS goal, which
 % means we will generate MLDS code for it more than once.
 
+    % Map primary tag values to the set of their switch arms.
+    %
+    % Given a key-value pair in this map, the key is duplicated
+    % in the tag_bits field of the value.
+    %
+:- type ptag_case_map(CaseRep) ==
+    map(tag_bits, ptag_case(CaseRep)).
+
+:- type ptag_case_entry(CaseRep)
+    --->    ptag_case_entry(
+                % If we are generating code of a shape that works with
+                % two possibly unrelated (e.g. non-consecutive) ptag values
+                % having the same code, use ptag_case_group_entry. This type
+                % is for code shapes that cannot exploit such sharing.
+
+                % The ptag value that has this code.
+                tag_bits,
+
+                % A representation of the code for this primary tag.
+                ptag_case(CaseRep)
+            ).
+
+:- type ptag_case_group_entry(CaseRep)
+    --->    ptag_case_group_entry(
+                % It is possible for two or more primary tag values
+                % to have exactly the same action, if those ptags represent
+                % cons_ids that share the same arm of the switch.
+                % The primary tag values 
+
+                % The first and any later ptag values that have this code.
+                tag_bits,
+                list(tag_bits),
+
+                % A representation of the code for this primary tag.
+                ptag_case(CaseRep)
+            ).
+
+:- type ptag_case(CaseRep)
+    --->    ptag_case(
+                sectag_locn,
+                stag_goal_map(CaseRep)
+            ).
+
+    % Map each secondary tag value to the representation of the associated
+    % code.
+    %
+    % It is of course possible that there is more than one secondary tag value
+    % that maps to the same code. Exploiting such sharing is up to
+    % backend-specific code.
+    %
 :- type stag_goal_map(CaseRep)   ==  map(int, CaseRep).
 :- type stag_goal_list(CaseRep)  ==  assoc_list(int, CaseRep).
 
-% Map primary tag values to the set of their switch arms.
+:- type ptag_case_list(CaseRep) ==  list(ptag_case_entry(CaseRep)).
+:- type ptag_case_group_list(CaseRep) ==  list(ptag_case_group_entry(CaseRep)).
 
-:- type ptag_case(CaseRep)
-    --->    ptag_case(sectag_locn, stag_goal_map(CaseRep)).
-:- type ptag_case_map(CaseRep)   ==  map(tag_bits, ptag_case(CaseRep)).
-:- type ptag_case_list(CaseRep)  ==  assoc_list(tag_bits, ptag_case(CaseRep)).
-
-% Map primary tag values to the number of constructors sharing them.
-
+    % Map primary tag values to the number of constructors sharing them.
+    %
 :- type ptag_count_map  ==  map(tag_bits, pair(sectag_locn, int)).
-:- type ptag_count_list ==  assoc_list(tag_bits, pair(sectag_locn, int)).
+
+    % Map case numbers to the set of primary tags used in the cons_ids
+    % of that case.
+    %
+:- type case_num_ptags_map == map(int, set(int)).
 
     % Group together all the cases that depend on the given variable
     % having the same primary tag value.
     %
-    % XXX
 :- pred group_cases_by_ptag(list(tagged_case)::in,
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
         ::in(pred(in, out, in, out, in, out, in, out) is det),
     StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
-    ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
+    case_num_ptags_map::out, ptag_case_map(CaseRep)::out) is det.
 
-    % Order the primary tags based on the number of secondary tags associated
+    % Group together any primary tags with the same cases.
+    % Order the groups based on the number of secondary tags associated
     % with them, putting the ones with the most secondary tags first.
     %
     % Note that it is not an error for a primary tag to have no case list;
@@ -185,8 +239,8 @@
     % initial inst of the switch variable is a bound(...) inst representing
     % a subtype.
     %
-:- pred order_ptags_by_count(ptag_count_list::in,
-    ptag_case_map(CaseRep)::in, ptag_case_list(CaseRep)::out) is det.
+:- pred order_ptags_by_count(ptag_count_map::in,
+    ptag_case_map(CaseRep)::in, ptag_case_group_list(CaseRep)::out) is det.
 
     % order_ptags_by_value(FirstPtag, MaxPtag, !PtagCaseList):
     %
@@ -243,8 +297,10 @@ tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
             OtherConsIds, TaggedOtherConsIds,
             IntTag, LowerLimit1, IntTag, UpperLimit1,
             1, NumValues1, is_int_switch, IsIntSwitch1),
-        TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
-        tag_cases_in_int_switch(ModuleInfo, SwitchVarType, Cases, TaggedCases,
+        TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
+            0, Goal),
+        tag_cases_in_int_switch(ModuleInfo, SwitchVarType, 1,
+            Cases, TaggedCases,
             LowerLimit1, LowerLimit, UpperLimit1, UpperLimit,
             NumValues1, NumValues, IsIntSwitch1, IsIntSwitch),
         (
@@ -257,30 +313,33 @@ tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
         )
     ;
         list.map(tag_cons_id(ModuleInfo), OtherConsIds, TaggedOtherConsIds),
-        TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
-        tag_cases_plain(ModuleInfo, SwitchVarType, Cases, TaggedCases),
+        TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
+            0, Goal),
+        tag_cases_plain(ModuleInfo, SwitchVarType, 1, Cases, TaggedCases),
         MaybeIntSwitchLimits = not_int_switch
     ).
 
-:- pred tag_cases_plain(module_info::in, mer_type::in, list(case)::in,
+:- pred tag_cases_plain(module_info::in, mer_type::in, int::in, list(case)::in,
     list(tagged_case)::out) is det.
 
-tag_cases_plain(_, _, [], []).
-tag_cases_plain(ModuleInfo, SwitchVarType, [Case | Cases],
+tag_cases_plain(_, _, _, [], []).
+tag_cases_plain(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
         [TaggedCase | TaggedCases]) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     tag_cons_id(ModuleInfo, MainConsId, TaggedMainConsId),
     list.map(tag_cons_id(ModuleInfo), OtherConsIds, TaggedOtherConsIds),
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
-    tag_cases_plain(ModuleInfo, SwitchVarType, Cases, TaggedCases).
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
+        CaseNum, Goal),
+    tag_cases_plain(ModuleInfo, SwitchVarType, CaseNum + 1, Cases,
+        TaggedCases).
 
-:- pred tag_cases_in_int_switch(module_info::in, mer_type::in, list(case)::in,
-    list(tagged_case)::out, int::in, int::out, int::in, int::out,
-    int::in, int::out, is_int_switch::in, is_int_switch::out) is det.
+:- pred tag_cases_in_int_switch(module_info::in, mer_type::in, int::in,
+    list(case)::in, list(tagged_case)::out, int::in, int::out, int::in,
+    int::out, int::in, int::out, is_int_switch::in, is_int_switch::out) is det.
 
-tag_cases_in_int_switch(_, _, [], [], !LowerLimit, !UpperLimit, !NumValues,
+tag_cases_in_int_switch(_, _, _, [], [], !LowerLimit, !UpperLimit, !NumValues,
         !IsIntSwitch).
-tag_cases_in_int_switch(ModuleInfo, SwitchVarType, [Case | Cases],
+tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
         [TaggedCase | TaggedCases], !LowerLimit, !UpperLimit, !NumValues,
         !IsIntSwitch) :-
     Case = case(MainConsId, OtherConsIds, Goal),
@@ -289,9 +348,11 @@ tag_cases_in_int_switch(ModuleInfo, SwitchVarType, [Case | Cases],
     list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo),
         OtherConsIds, TaggedOtherConsIds, !LowerLimit, !UpperLimit,
         !NumValues, !IsIntSwitch),
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
-    tag_cases_in_int_switch(ModuleInfo, SwitchVarType, Cases, TaggedCases,
-        !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch).
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
+        CaseNum, Goal),
+    tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum + 1,
+        Cases, TaggedCases, !LowerLimit, !UpperLimit, !NumValues,
+        !IsIntSwitch).
 
 :- pred tag_cons_id(module_info::in, cons_id::in, tagged_cons_id::out) is det.
 
@@ -316,8 +377,21 @@ tag_cons_id_in_int_switch(ModuleInfo, ConsId, TaggedConsId,
         !:IsIntSwitch = is_not_int_switch
     ).
 
-represent_tagged_case_by_itself(TaggedCase, TaggedCase,
-    !StateA, !StateB, !StateC).
+%-----------------------------------------------------------------------------%
+
+num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms) :-
+    num_cons_ids_in_tagged_cases_2(TaggedCases, 0, NumConsIds, 0, NumArms).
+
+:- pred num_cons_ids_in_tagged_cases_2(list(tagged_case)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+num_cons_ids_in_tagged_cases_2([], !NumConsIds, !NumArms).
+num_cons_ids_in_tagged_cases_2([TaggedCase | TaggedCases],
+        !NumConsIds, !NumArms) :-
+    TaggedCase = tagged_case(_MainConsId, OtherCondIds, _, _),
+    !:NumConsIds = !.NumConsIds + 1 + list.length(OtherCondIds),
+    !:NumArms = !.NumArms + 1,
+    num_cons_ids_in_tagged_cases_2(TaggedCases, !NumConsIds, !NumArms).
 
 %-----------------------------------------------------------------------------%
 %
@@ -460,9 +534,9 @@ string_hash_cases([TaggedCase | TaggedCases], HashMask, RepresentCase,
     string_hash_cases(TaggedCases, HashMask, RepresentCase,
         !StateA, !StateB, !StateC, !:HashMap),
     RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
-    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _Goal),
-    TaggedConsIds = [MainTaggedConsId | OtherTaggedConsIds],
-    list.foldl(string_hash_cons_id(CaseRep, HashMask), TaggedConsIds,
+    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
+    string_hash_cons_id(CaseRep, HashMask, MainTaggedConsId, !HashMap),
+    list.foldl(string_hash_cons_id(CaseRep, HashMask), OtherTaggedConsIds,
         !HashMap).
 
 :- pred string_hash_cons_id(CaseRep::in, int::in, tagged_cons_id::in,
@@ -658,20 +732,38 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
 
 %-----------------------------------------------------------------------------%
 
-group_cases_by_ptag([], _, !StateA, !StateB, !StateC, !PtagCaseMap).
-group_cases_by_ptag([TaggedCase | TaggedCases], RepresentCase,
-        !StateA, !StateB, !StateC, !PtagCaseMap) :-
-    TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, _Goal),
-    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
-    group_case_by_ptag(CaseRep, MainTaggedConsId, !PtagCaseMap),
-    list.foldl(group_case_by_ptag(CaseRep), OtherConsIds, !PtagCaseMap),
-    group_cases_by_ptag(TaggedCases, RepresentCase, !StateA, !StateB, !StateC,
-        !PtagCaseMap).
+group_cases_by_ptag(TaggedCases, RepresentCase, !StateA, !StateB, !StateC,
+        CaseNumPtagsMap, PtagCaseMap) :-
+    group_cases_by_ptag_2(TaggedCases, RepresentCase,
+        !StateA, !StateB, !StateC,
+        map.init, CaseNumPtagsMap, map.init, PtagCaseMap).
 
-:- pred group_case_by_ptag(CaseRep::in, tagged_cons_id::in,
+:- pred group_cases_by_ptag_2(list(tagged_case)::in,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
+        ::in(pred(in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    case_num_ptags_map::in, case_num_ptags_map::out,
     ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
 
-group_case_by_ptag(CaseRep, TaggedConsId, !PtagCaseMap) :-
+group_cases_by_ptag_2([], _,
+        !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap).
+group_cases_by_ptag_2([TaggedCase | TaggedCases], RepresentCase,
+        !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap) :-
+    TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, CaseNum, _Goal),
+    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
+    group_case_by_ptag(CaseNum, CaseRep, MainTaggedConsId,
+        !CaseNumPtagsMap, !PtagCaseMap),
+    list.foldl2(group_case_by_ptag(CaseNum, CaseRep), OtherConsIds,
+        !CaseNumPtagsMap, !PtagCaseMap),
+    group_cases_by_ptag_2(TaggedCases, RepresentCase,
+        !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap).
+
+:- pred group_case_by_ptag(int::in, CaseRep::in, tagged_cons_id::in,
+    map(int, set(int))::in, map(int, set(int))::out,
+    ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
+
+group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
+        !CaseNumPtagsMap, !PtagCaseMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, Tag),
     (
         ( Tag = single_functor_tag, Primary = 0
@@ -731,50 +823,95 @@ group_case_by_ptag(CaseRep, TaggedConsId, !PtagCaseMap) :-
         ; Tag = shared_with_reserved_addresses_tag(_, _)
         ),
         unexpected(this_file, "non-du tag in group_case_by_ptag")
+    ),
+    ( map.search(!.CaseNumPtagsMap, CaseNum, Ptags0) ->
+        set.insert(Ptags0, Primary, Ptags),
+        svmap.det_update(CaseNum, Ptags, !CaseNumPtagsMap)
+    ;
+        Ptags = set.make_singleton_set(Primary),
+        svmap.det_insert(CaseNum, Ptags, !CaseNumPtagsMap)
     ).
 
 %-----------------------------------------------------------------------------%
 
-order_ptags_by_count(PtagCountList0, PtagCaseMap0, PtagCaseList) :-
-    % We use selection sort.
-    ( select_frequent_ptag(PtagCountList0, Primary, _, PtagCountList1) ->
-        ( map.search(PtagCaseMap0, Primary, PtagCase) ->
-            map.delete(PtagCaseMap0, Primary, PtagCaseMap1),
-            order_ptags_by_count(PtagCountList1, PtagCaseMap1, PtagCaseList1),
-            PtagCaseList = [Primary - PtagCase | PtagCaseList1]
-        ;
-            order_ptags_by_count(PtagCountList1, PtagCaseMap0, PtagCaseList)
-        )
-    ;
-        ( map.is_empty(PtagCaseMap0) ->
-            PtagCaseList = []
-        ;
-            unexpected(this_file,
-                "PtagCaseMap0 is not empty in order_ptags_by_count")
-        )
-    ).
+order_ptags_by_count(PtagCountMap, PtagCaseMap, PtagGroupCaseList) :-
+    map.to_assoc_list(PtagCaseMap, PtagCaseList),
+    build_ptag_case_rev_map(PtagCaseList, PtagCountMap,
+        map.init, PtagCaseRevMap),
+    map.values(PtagCaseRevMap, PtagCaseRevList),
+    list.sort(PtagCaseRevList, PtagCaseRevSortedList),
+    % The sort puts the groups with the smallest counts first; we want the
+    % largest counts first.
+    list.reverse(PtagCaseRevSortedList, PtagCaseSortedList),
+    list.map(interpret_rev_map_entry, PtagCaseSortedList, PtagGroupCaseList).
 
-    % Select the most frequently used primary tag based on the number of
-    % secondary tags associated with it.
-    %
-:- pred select_frequent_ptag(ptag_count_list::in, tag_bits::out,
-    int::out, ptag_count_list::out) is semidet.
+:- pred interpret_rev_map_entry(ptag_case_rev_map_entry(CaseRep)::in,
+    ptag_case_group_entry(CaseRep)::out) is det.
 
-select_frequent_ptag([PtagCount0 | PtagCountList1], Primary,
-        Count, PtagCountList) :-
-    PtagCount0 = Primary0 - (_ - Count0),
+interpret_rev_map_entry(RevEntry, GroupEntry) :-
+    RevEntry = ptag_case_rev_map_entry(_Count, MainPtag, OtherPtags, Case),
+    GroupEntry = ptag_case_group_entry(MainPtag, OtherPtags, Case).
+
+:- type ptag_case_rev_map_entry(CaseRep)
+    --->    ptag_case_rev_map_entry(
+                % The total number of function symbols sharing this case.
+                % This must be the first field for the sort to work as
+                % intended.
+                int,
+
+                % The primary tag bit values sharing this case.
+                tag_bits,
+                list(tag_bits),
+
+                % The case itself.
+                ptag_case(CaseRep)
+            ).
+
+:- type ptag_case_rev_map(CaseRep)  ==
+    map(ptag_case(CaseRep), ptag_case_rev_map_entry(CaseRep)).
+
+:- pred build_ptag_case_rev_map(assoc_list(tag_bits, ptag_case(CaseRep))::in,
+    ptag_count_map::in,
+    ptag_case_rev_map(CaseRep)::in, ptag_case_rev_map(CaseRep)::out) is det.
+
+build_ptag_case_rev_map([], _PtagCountMap, !RevMap).
+build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
+    Entry = Ptag - Case,
+    map.lookup(PtagCountMap, Ptag, CountSecTagLocn - Count),
     (
-        select_frequent_ptag(PtagCountList1, Primary1, Count1, PtagCountList2),
-        Count1 > Count0
-    ->
-        Primary = Primary1,
-        Count = Count1,
-        PtagCountList = [PtagCount0 | PtagCountList2]
+        CountSecTagLocn = sectag_none,
+        ( map.search(!.RevMap, Case, OldEntry) ->
+            OldEntry = ptag_case_rev_map_entry(OldCount,
+                OldFirstPtag, OldLaterPtags0, OldCase),
+            expect(unify(Case, OldCase), this_file,
+                "build_ptag_case_rev_map: Case != OldCase"),
+            NewEntry = ptag_case_rev_map_entry(OldCount + Count,
+                OldFirstPtag, OldLaterPtags0 ++ [Ptag], OldCase),
+            svmap.det_update(Case, NewEntry, !RevMap)
+        ;
+            NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], Case),
+            svmap.det_insert(Case, NewEntry, !RevMap)
+        )
     ;
-        Primary = Primary0,
-        Count = Count0,
-        PtagCountList = PtagCountList1
-    ).
+        ( CountSecTagLocn = sectag_local
+        ; CountSecTagLocn = sectag_remote
+        ),
+        % There will only ever be at most one primary tag value with
+        % a shared local tag, and there will only ever be at most one primary
+        % tag value with a shared remote tag, so we can never have
+        % 
+        % - two ptags with CountSecTagLocn = sectag_local
+        % - two ptags with CountSecTagLocn = sectag_remote
+        %
+        % We can have two ptags, one with CountSecTagLocn = sectag_local and
+        % the other with CountSecTagLocn = sectag_remote, but even if their
+        % sectag_value to code maps were identical, their overall code couldn't
+        % be identical, since they would have to get the secondary tags from
+        % different places.
+        NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], Case),
+        svmap.det_insert(Case, NewEntry, !RevMap)
+    ),
+    build_ptag_case_rev_map(Entries, PtagCountMap, !RevMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -785,7 +922,8 @@ order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
             map.delete(PtagCaseMap0, Ptag, PtagCaseMap1),
             order_ptags_by_value(NextPtag, MaxPtag,
                 PtagCaseMap1, PtagCaseList1),
-            PtagCaseList = [Ptag - PtagCase | PtagCaseList1]
+            PtagCaseEntry = ptag_case_entry(Ptag, PtagCase),
+            PtagCaseList = [PtagCaseEntry | PtagCaseList1]
         ;
             order_ptags_by_value(NextPtag, MaxPtag, PtagCaseMap0, PtagCaseList)
         )

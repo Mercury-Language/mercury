@@ -331,9 +331,9 @@ mark_tailcalls_in_cases(AtTail, Locals, [Case0 | Cases0], [Case | Cases]) :-
     mlds_switch_case::in, mlds_switch_case::out) is det.
 
 mark_tailcalls_in_case(AtTail, Locals, Case0, Case) :-
-    Case0 = mlds_switch_case(Cond, Statement0),
+    Case0 = mlds_switch_case(FirstCond, LaterConds, Statement0),
     mark_tailcalls_in_statement(AtTail, Locals, Statement0, Statement),
-    Case = mlds_switch_case(Cond, Statement).
+    Case = mlds_switch_case(FirstCond, LaterConds, Statement).
 
 :- pred mark_tailcalls_in_default(at_tail::in, locals::in,
     mlds_switch_default::in, mlds_switch_default::out) is det.

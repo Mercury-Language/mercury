@@ -45,12 +45,14 @@
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_simplify_switch.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module svmap.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -96,7 +98,6 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     % Determine how big to make the hash table. Currently we round the number
     % of cases up to the nearest power of two, and then double it. This should
     % hopefully ensure that we don't get too many hash collisions.
-    %
     list.length(Cases, NumCases),
     int.log2(NumCases, LogNumCases),
     int.pow(2, LogNumCases, RoundedNumCases),
@@ -104,16 +105,18 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     HashMask = TableSize - 1,
 
     % Compute the hash table.
-    switch_util.string_hash_cases(Cases, HashMask,
-        represent_tagged_case_by_itself, unit, _, unit, _, unit, _,
-        HashValsMap),
+    string_hash_cases(Cases, HashMask,
+        gen_tagged_case_code_for_string_switch(CodeModel),
+        map.init, CodeMap, unit, _, !Info, HashValsMap),
     map.to_assoc_list(HashValsMap, HashValsList),
-    switch_util.calc_string_hash_slots(HashValsList, HashValsMap,
-        HashSlotsMap),
+    calc_string_hash_slots(HashValsList, HashValsMap, HashSlotsMap),
 
     % Generate the code for when the hash lookup fails.
     (
         CodeModel = model_det,
+        % This can happen if the initial inst of the switched-on variable
+        % shows that we know a finite set of strings that the variable can be
+        % bound to.
         FailComment =
             statement(ml_stmt_atomic(comment("switch cannot fail")),
                 MLDS_Context),
@@ -128,8 +131,11 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     ),
 
     % Generate the code etc. for the hash table.
-    ml_gen_string_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
-        Context, Strings, NextSlots, SlotsCases, !Info),
+    ml_gen_string_hash_slots(0, TableSize, HashSlotsMap,
+        Strings, NextSlots, map.init, RevMap),
+    map.to_assoc_list(RevMap, RevList),
+    generate_string_switch_arms(CodeMap, RevList, [], SlotsCases0),
+    list.sort(SlotsCases0, SlotsCases),
 
     % Generate the following local constant declarations:
     %   static const int next_slots_table = { <NextSlots> };
@@ -237,63 +243,123 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
 
 %-----------------------------------------------------------------------------%
 
-:- pred ml_gen_string_hash_slots(int::in, int::in,
-    map(int, string_hash_slot(tagged_case))::in, code_model::in,
-    prog_context::in, list(mlds_initializer)::out, list(mlds_initializer)::out,
-    list(mlds_switch_case)::out,
+:- pred gen_tagged_case_code_for_string_switch(code_model::in,
+    tagged_case::in, int::out,
+    map(int, statement)::in, map(int, statement)::out, unit::in, unit::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_string_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, Context,
-        Strings, NextSlots, MLDS_Cases, !Info) :-
-    ( Slot = TableSize ->
-        Strings = [],
-        NextSlots = [],
-        MLDS_Cases = []
+gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase, CaseNum,
+        !CodeMap, !Unit, !Info) :-
+    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds,
+        CaseNum, Goal),
+    ml_gen_goal_as_block(CodeModel, Goal, GoalStatement, !Info),
+    MainString = gen_string_switch_case_comment(MainTaggedConsId),
+    OtherStrings = list.map(gen_string_switch_case_comment,
+        OtherTaggedConsIds),
+    Strings = string.join_list(", ", [MainString | OtherStrings]),
+    % Note that the order of the strings in the comment will in general
+    % not match the order of the hash slots for which the case applies.
+    % In other words, if e.g. OtherTaggedConsIds has two elements and
+    % CaseStatement has the C code "case Slot1: case Slot2: case Slot3:"
+    % generated in front of it, Slot1 can be the slot of any of
+    % MainTaggedConsId and the two OtherTaggedConsIds; it will be the slot
+    % of MainTaggedConsId only by accident.
+    CommentString = "case " ++ Strings,
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
+    MLDS_Context = mlds_make_context(Context),
+    Comment = statement(ml_stmt_atomic(comment(CommentString)),
+        MLDS_Context),
+    CaseStatement = statement(ml_stmt_block([], [Comment, GoalStatement]),
+        MLDS_Context),
+    svmap.det_insert(CaseNum, CaseStatement, !CodeMap).
+
+:- func gen_string_switch_case_comment(tagged_cons_id) = string.
+
+gen_string_switch_case_comment(TaggedConsId) = String :-
+    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
+    ( ConsTag = string_tag(ConsString) ->
+        String = """" ++ ConsString ++ """"
     ;
-        MLDS_Context = mlds_make_context(Context),
-        ml_gen_string_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
-            String, NextSlot, SlotCases, !Info),
-        ml_gen_string_hash_slots(Slot + 1, TableSize, HashSlotMap, CodeModel,
-            Context, Strings0, NextSlots0, MLDS_Cases0, !Info),
-        Strings = [String | Strings0],
-        NextSlots = [NextSlot | NextSlots0],
-        MLDS_Cases = SlotCases ++ MLDS_Cases0
+        unexpected(this_file, "gen_string_switch_case_comment: non-string tag")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % A list of all the hash slots that all have the same code. The list is
+    % stored in reversed form.
+    %
+:- type hash_slots
+    --->    hash_slots(int, list(int)).
+
+    % Maps case numbers (each of which identifies the code of one switch arm)
+    % to the hash slots that share that code.
+    %
+:- type hash_slot_rev_map == map(int, hash_slots).
+
+:- pred ml_gen_string_hash_slots(int::in, int::in,
+    map(int, string_hash_slot(int))::in,
+    list(mlds_initializer)::out, list(mlds_initializer)::out,
+    hash_slot_rev_map::in, hash_slot_rev_map::out) is det.
+
+ml_gen_string_hash_slots(Slot, TableSize, HashSlotMap,
+        StringInits, NextSlotInits, !RevMap) :-
+    ( Slot = TableSize ->
+        StringInits = [],
+        NextSlotInits = []
+    ;
+        ml_gen_string_hash_slot(Slot, HashSlotMap,
+            StringInit, NextSlotInit, !RevMap),
+        ml_gen_string_hash_slots(Slot + 1, TableSize, HashSlotMap,
+            LaterStringInits, LaterNextSlotInits, !RevMap),
+        StringInits = [StringInit | LaterStringInits],
+        NextSlotInits = [NextSlotInit | LaterNextSlotInits]
     ).
 
 :- pred ml_gen_string_hash_slot(int::in,
-    map(int, string_hash_slot(tagged_case))::in, code_model::in,
-    mlds_context::in, mlds_initializer::out, mlds_initializer::out,
-    list(mlds_switch_case)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    map(int, string_hash_slot(int))::in,
+    mlds_initializer::out, mlds_initializer::out,
+    hash_slot_rev_map::in, hash_slot_rev_map::out) is det.
 
-ml_gen_string_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
-        init_obj(StringRval), init_obj(NextSlotRval), MLDS_Cases, !Info) :-
-    ( map.search(HashSlotMap, Slot, string_hash_slot(Next, String, Case)) ->
-        NextSlotRval = ml_const(mlconst_int(Next)),
-        Case = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
-        expect(unify(TaggedOtherConsIds, []), this_file,
-            "ml_gen_string_hash_slot: other cons_ids"),
-        TaggedMainConsId = tagged_cons_id(_ConsId, ConsTag),
-        ( ConsTag = string_tag(StringPrime) ->
-            expect(unify(String, StringPrime), this_file,
-                "ml_gen_string_hash_slot: string mismatch")
-        ;
-            unexpected(this_file, "ml_gen_string_hash_slot: string expected")
-        ),
+ml_gen_string_hash_slot(Slot, HashSlotMap, StringInit, NextSlotInit,
+        !RevMap) :-
+    ( map.search(HashSlotMap, Slot, string_hash_slot(Next, String, CaseNum)) ->
         StringRval = ml_const(mlconst_string(String)),
-        ml_gen_goal_as_block(CodeModel, Goal, GoalStatement, !Info),
-
-        CommentString = "case """ ++ String ++ """",
-        Comment = statement(ml_stmt_atomic(comment(CommentString)),
-            MLDS_Context),
-        CaseStatement = statement(ml_stmt_block([], [Comment, GoalStatement]),
-            MLDS_Context),
-        MLDS_Cases = [mlds_switch_case(
-            [match_value(ml_const(mlconst_int(Slot)))], CaseStatement)]
+        NextSlotRval = ml_const(mlconst_int(Next)),
+        ( map.search(!.RevMap, CaseNum, OldEntry) ->
+            OldEntry = hash_slots(OldFirstSlot, OldLaterSlots),
+            NewEntry = hash_slots(OldFirstSlot, [Slot | OldLaterSlots]),
+            svmap.det_update(CaseNum, NewEntry, !RevMap)
+        ;
+            NewEntry = hash_slots(Slot, []),
+            svmap.det_insert(CaseNum, NewEntry, !RevMap)
+        )
     ;
         StringRval = ml_const(mlconst_null(ml_string_type)),
-        NextSlotRval = ml_const(mlconst_int(-2)),
-        MLDS_Cases = []
-    ).
+        NextSlotRval = ml_const(mlconst_int(-2))
+    ),
+    StringInit = init_obj(StringRval),
+    NextSlotInit = init_obj(NextSlotRval).
+
+:- pred generate_string_switch_arms(map(int, statement)::in,
+    assoc_list(int, hash_slots)::in,
+    list(mlds_switch_case)::in, list(mlds_switch_case)::out) is det.
+
+generate_string_switch_arms(_, [], !Cases).
+generate_string_switch_arms(CodeMap, [Entry | Entries], !Cases) :-
+    Entry = CaseNum - HashSlots,
+    HashSlots = hash_slots(FirstHashSlot, RevLaterHashSlots),
+    list.reverse(RevLaterHashSlots, LaterHashSlots),
+    FirstMatchCond = make_hash_match(FirstHashSlot),
+    LaterMatchConds = list.map(make_hash_match, LaterHashSlots),
+    map.lookup(CodeMap, CaseNum, CaseStatement),
+    Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, CaseStatement),
+    !:Cases = [Case | !.Cases],
+    generate_string_switch_arms(CodeMap, Entries, !Cases).
+
+:- func make_hash_match(int) = mlds_case_match_cond.
+
+make_hash_match(Slot) = match_value(ml_const(mlconst_int(Slot))).
 
 %-----------------------------------------------------------------------------%
 

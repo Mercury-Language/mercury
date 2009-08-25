@@ -129,7 +129,7 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
     ;
         (
             SwitchCategory = atomic_switch,
-            list.length(TaggedCases, NumCases),
+            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
             (
                 MaybeIntSwitchInfo =
                     int_switch(LowerLimit, UpperLimit, NumValues),
@@ -137,7 +137,8 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                 MaybeTraceInfo = no,
                 globals.lookup_int_option(Globals, lookup_switch_size,
                     LookupSize),
-                NumCases >= LookupSize,
+                NumConsIds >= LookupSize,
+                NumArms > 1,
                 globals.lookup_int_option(Globals, lookup_switch_req_density,
                     ReqDensity),
                 is_lookup_switch(VarType, TaggedCases, LowerLimit, UpperLimit,
@@ -152,7 +153,8 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                     int_switch(LowerLimit, UpperLimit, NumValues),
                 globals.lookup_int_option(Globals, dense_switch_size,
                     DenseSize),
-                NumCases >= DenseSize,
+                NumConsIds >= DenseSize,
+                NumArms > 1,
                 globals.lookup_int_option(Globals, dense_switch_req_density,
                     ReqDensity),
                 tagged_case_list_is_dense_switch(!.CI, VarType, TaggedCases,
@@ -169,9 +171,9 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
             )
         ;
             SwitchCategory = string_switch,
-            list.length(TaggedCases, NumCases),
+            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
             globals.lookup_int_option(Globals, string_switch_size, StringSize),
-            ( NumCases >= StringSize ->
+            ( NumConsIds >= StringSize, NumArms > 1 ->
                 generate_string_switch(TaggedCases, VarRval, VarName,
                     CodeModel, CanFail, GoalInfo, EndLabel,
                     no, MaybeEnd, SwitchCode, !CI)
@@ -182,9 +184,9 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
             )
         ;
             SwitchCategory = tag_switch,
-            list.length(TaggedCases, NumCases),
+            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
             globals.lookup_int_option(Globals, tag_switch_size, TagSize),
-            ( NumCases >= TagSize ->
+            ( NumConsIds >= TagSize, NumArms > 1 ->
                 generate_tag_switch(TaggedCases, VarRval, VarType, VarName,
                     CodeModel, CanFail, GoalInfo, EndLabel, no, MaybeEnd,
                     SwitchCode, !CI)
@@ -331,7 +333,7 @@ separate_reserved_address_cases([TaggedCase | TaggedCases],
         ReservedAddrCases, NonReservedAddrCases) :-
     separate_reserved_address_cases(TaggedCases,
         ReservedAddrCasesTail, NonReservedAddrCasesTail),
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _),
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, _),
     TaggedConsIds = [TaggedMainConsId | TaggedOtherConsIds],
     ContainsReservedAddr = list_contains_reserved_addr_tag(TaggedConsIds),
     (
@@ -410,7 +412,7 @@ separate_cannot_succeed_cases([Case | Cases],
         CanSucceedCases, CannotSucceedCases) :-
     separate_cannot_succeed_cases(Cases,
         CanSucceedCases1, CannotSucceedCases1),
-    Case = tagged_case(_, _, Goal),
+    Case = tagged_case(_, _, _, Goal),
     Goal = hlds_goal(_, GoalInfo),
     Detism = goal_info_get_determinism(GoalInfo),
     determinism_components(Detism, _CanFail, SolnCount),
@@ -437,8 +439,8 @@ order_recursive_cases(Cases0, Cases, CodeModel, CanFail, CI) :-
         CodeModel = model_det,
         CanFail = cannot_fail,
         Cases0 = [Case1, Case2],
-        Case1 = tagged_case(_, _, Goal1),
-        Case2 = tagged_case(_, _, Goal2)
+        Case1 = tagged_case(_, _, _, Goal1),
+        Case2 = tagged_case(_, _, _, Goal2)
     ->
         get_module_info(CI, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
@@ -518,7 +520,7 @@ order_tag_test_cost(Cases0, Cases) :-
 :- func estimate_cost_of_case_test(tagged_case) = pair(int, tagged_case).
 
 estimate_cost_of_case_test(TaggedCase) = Cost - TaggedCase :-
-    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _Goal),
+    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
     MainTag = project_tagged_cons_id_tag(MainTaggedConsId),
     MainCost = estimate_switch_tag_test_cost(MainTag),
     OtherTags = list.map(project_tagged_cons_id_tag, OtherTaggedConsIds),
@@ -538,7 +540,7 @@ generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
         !MaybeEnd, Code, !CI) :-
     (
         Cases = [HeadCase | TailCases],
-        HeadCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, Goal),
+        HeadCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, Goal),
         remember_position(!.CI, BranchStart),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
         (

@@ -674,12 +674,12 @@ method_ptrs_in_switch_default(default_do_nothing, !CodeAddrs).
 method_ptrs_in_switch_default(default_case(Statement), !CodeAddrs) :-
     method_ptrs_in_statement(Statement, !CodeAddrs).
 
-:- pred method_ptrs_in_switch_cases(mlds_switch_cases::in,
+:- pred method_ptrs_in_switch_cases(list(mlds_switch_case)::in,
     list(mlds_code_addr)::in, list(mlds_code_addr)::out) is det.
 
 method_ptrs_in_switch_cases([], !CodeAddrs).
 method_ptrs_in_switch_cases([Case | Cases], !CodeAddrs) :-
-    Case = mlds_switch_case(_Conditions, Statement),
+    Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
     method_ptrs_in_statement(Statement, !CodeAddrs),
     method_ptrs_in_switch_cases(Cases, !CodeAddrs).
 
@@ -1330,10 +1330,10 @@ rename_class_names_stmt(Renaming, !Stmt) :-
     mlds_switch_case::in, mlds_switch_case::out) is det.
 
 rename_class_names_switch_case(Renaming, !Case) :-
-    !.Case = mlds_switch_case(MatchConds, Statement0),
+    !.Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, Statement0),
     % The rvals in the match conditions shouldn't need renaming.
     rename_class_names_statement(Renaming, Statement0, Statement),
-    !:Case = mlds_switch_case(MatchConds, Statement).
+    !:Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, Statement).
 
 :- pred rename_class_names_switch_default(class_name_renaming::in,
     mlds_switch_default::in, mlds_switch_default::out) is det.
@@ -3512,10 +3512,11 @@ output_switch_cases(Indent, ModuleInfo, FuncInfo, Context, [Case | Cases],
 
 output_switch_case(Indent, ModuleInfo, FuncInfo, Context, Case, ExitMethods,
         !IO) :-
-    Case = mlds_switch_case(Conds, Statement),
+    Case = mlds_switch_case(FirstCond, LaterConds, Statement),
     ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+    output_case_cond(Indent, ModuleInfo, ModuleName, Context, FirstCond, !IO),
     list.foldl(output_case_cond(Indent, ModuleInfo, ModuleName, Context),
-        Conds, !IO),
+        LaterConds, !IO),
     output_statement(Indent + 1, ModuleInfo, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( set.member(can_fall_through, StmtExitMethods) ->

@@ -204,9 +204,9 @@ optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
     mlds_switch_case::in, mlds_switch_case::out) is det.
 
 optimize_in_case(OptInfo, Case0, Case) :-
-    Case0 = mlds_switch_case(Conds, Statement0),
+    Case0 = mlds_switch_case(FirstCond, LaterConds, Statement0),
     optimize_in_statement(OptInfo, Statement0, Statement),
-    Case = mlds_switch_case(Conds, Statement).
+    Case = mlds_switch_case(FirstCond, LaterConds, Statement).
 
 :- pred optimize_in_default(opt_info::in,
     mlds_switch_default::in, mlds_switch_default::out) is det.
@@ -1167,10 +1167,12 @@ eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo) :-
     var_elim_info::in, var_elim_info::out) is det.
 
 eliminate_var_in_case(Case0, Case, !VarElimInfo) :-
-    Case0 = mlds_switch_case(Conds0, Statement0),
-    list.map_foldl(eliminate_var_in_case_cond, Conds0, Conds, !VarElimInfo),
+    Case0 = mlds_switch_case(FirstCond0, LaterConds0, Statement0),
+    eliminate_var_in_case_cond(FirstCond0, FirstCond, !VarElimInfo),
+    list.map_foldl(eliminate_var_in_case_cond, LaterConds0, LaterConds,
+        !VarElimInfo),
     eliminate_var_in_statement(Statement0, Statement, !VarElimInfo),
-    Case = mlds_switch_case(Conds, Statement).
+    Case = mlds_switch_case(FirstCond, LaterConds, Statement).
 
 :- pred eliminate_var_in_default(
     mlds_switch_default::in, mlds_switch_default::out,

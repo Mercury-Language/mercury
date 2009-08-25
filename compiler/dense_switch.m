@@ -196,7 +196,7 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
 
 generate_dense_case(VarName, CodeModel, SwitchGoalInfo, EndLabel,
         TaggedCase, Code, !IndexMap, !MaybeEnd, !CI) :-
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, Goal),
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
     project_cons_name_and_tag(TaggedMainConsId, MainConsName, MainConsTag),
     list.map2(project_cons_name_and_tag, TaggedOtherConsIds,
         OtherConsNames, OtherConsTags),

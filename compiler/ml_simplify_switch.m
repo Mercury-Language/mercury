@@ -109,7 +109,7 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         Cases = [SingleCase],
         Default = default_is_unreachable
     ->
-        SingleCase = mlds_switch_case(_MatchCondition, CaseStatement),
+        SingleCase = mlds_switch_case(_FirstCond, _LaterConds, CaseStatement),
         Statement = CaseStatement
     ;
         Stmt = Stmt0,
@@ -182,7 +182,7 @@ is_dense_switch(Cases, ReqDensity) :-
     NumCases > 2,
 
     % The switch needs to be dense enough.
-    find_first_and_last_case(Cases, FirstCaseVal, LastCaseVal),
+    find_min_and_max_in_cases(Cases, FirstCaseVal, LastCaseVal),
     CasesRange = LastCaseVal - FirstCaseVal + 1,
     Density = switch_density(NumCases, CasesRange),
     Density > ReqDensity.
@@ -220,7 +220,7 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
             ),
             NeedRangeCheck = yes
         ),
-        find_first_and_last_case(Cases, FirstCaseVal, LastCaseVal),
+        find_min_and_max_in_cases(Cases, FirstCaseVal, LastCaseVal),
         FirstVal = FirstCaseVal,
         LastVal = LastCaseVal
     ).
@@ -229,32 +229,34 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
 
     % Find the highest and lowest case values in a list of cases.
     %
-:- pred find_first_and_last_case(list(mlds_switch_case)::in,
+:- pred find_min_and_max_in_cases(list(mlds_switch_case)::in,
     int::out, int::out) is det.
 
-find_first_and_last_case(Cases, Min, Max) :-
-    list.foldl2(find_first_and_last_case_2, Cases, 0, Min, 0, Max).
+find_min_and_max_in_cases(Cases, Min, Max) :-
+    list.foldl2(find_min_and_max_in_case, Cases,
+        int.max_int, Min, int.min_int, Max).
 
-:- pred find_first_and_last_case_2(mlds_switch_case::in,
+:- pred find_min_and_max_in_case(mlds_switch_case::in,
     int::in, int::out, int::in, int::out) is det.
 
-find_first_and_last_case_2(Case, !Min, !Max) :-
-    Case = mlds_switch_case(CaseConds, _CaseStatement),
-    list.foldl2(find_first_and_last_case_3, CaseConds, !Min, !Max).
+find_min_and_max_in_case(Case, !Min, !Max) :-
+    Case = mlds_switch_case(FirstCond, LaterConds, _CaseStatement),
+    find_min_and_max_in_case_cond(FirstCond, !Min, !Max),
+    list.foldl2(find_min_and_max_in_case_cond, LaterConds, !Min, !Max).
 
-:- pred find_first_and_last_case_3(mlds_case_match_cond::in,
+:- pred find_min_and_max_in_case_cond(mlds_case_match_cond::in,
     int::in, int::out, int::in, int::out) is det.
 
-find_first_and_last_case_3(match_value(Rval), !Min, !Max) :-
+find_min_and_max_in_case_cond(match_value(Rval), !Min, !Max) :-
     (
         Rval = ml_const(mlconst_int(Val))
     ->
         int.min(Val, !Min),
         int.max(Val, !Max)
     ;
-        unexpected(this_file, "find_first_and_last_case_3: non-int case")
+        unexpected(this_file, "find_min_and_max_in_case_cond: non-int case")
     ).
-find_first_and_last_case_3(match_range(MinRval, MaxRval),
+find_min_and_max_in_case_cond(match_range(MinRval, MaxRval),
         !Min, !Max) :-
     (
         MinRval = ml_const(mlconst_int(RvalMin)),
@@ -263,7 +265,7 @@ find_first_and_last_case_3(match_range(MinRval, MaxRval),
         int.min(RvalMin, !Min),
         int.max(RvalMax, !Max)
     ;
-        unexpected(this_file, "find_first_and_last_case_3: non-int case")
+        unexpected(this_file, "find_min_and_max_in_case_cond: non-int case")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -365,12 +367,11 @@ generate_cases([Case | Cases], EndLabel, !CaseLabelsMap, Decls, Statements,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
-        Decls, Statements, !Info) :-
-    Case = mlds_switch_case(MatchCondition, CaseStatement),
+generate_case(Case, EndLabel, !CaseLabelsMap, Decls, Statements, !Info) :-
+    Case = mlds_switch_case(FirstCond, LaterConds, CaseStatement),
     ml_gen_new_label(ThisLabel, !Info),
-    insert_cases_into_map(MatchCondition, ThisLabel,
-        CaseLabelsMap0, CaseLabelsMap),
+    insert_case_into_map(ThisLabel, FirstCond, !CaseLabelsMap),
+    list.foldl(insert_case_into_map(ThisLabel), LaterConds, !CaseLabelsMap),
     CaseStatement = statement(_, MLDS_Context),
     LabelComment = statement(ml_stmt_atomic(comment("case of dense switch")),
         MLDS_Context),
@@ -390,32 +391,27 @@ generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
 
 :- type case_labels_map == map(int, mlds_label).
 
-:- pred insert_cases_into_map(mlds_case_match_conds::in, mlds_label::in,
+:- pred insert_case_into_map(mlds_label::in, mlds_case_match_cond::in,
     case_labels_map::in, case_labels_map::out) is det.
 
-insert_cases_into_map([], _ThisLabel, !CaseLabelsMap).
-insert_cases_into_map([Cond|Conds], ThisLabel, !CaseLabelsMap) :-
-    insert_case_into_map(Cond, ThisLabel, !CaseLabelsMap),
-    insert_cases_into_map(Conds, ThisLabel, !CaseLabelsMap).
-
-:- pred insert_case_into_map(mlds_case_match_cond::in, mlds_label::in,
-    case_labels_map::in, case_labels_map::out) is det.
-
-insert_case_into_map(match_value(Rval), ThisLabel, !CaseLabelsMap) :-
-    ( Rval = ml_const(mlconst_int(Val)) ->
-        map.det_insert(!.CaseLabelsMap, Val, ThisLabel, !:CaseLabelsMap)
-    ;
-        unexpected(this_file, "insert_case_into_map: non-int case")
-    ).
-insert_case_into_map(match_range(MinRval, MaxRval), ThisLabel,
-        !CaseLabelsMap) :-
+insert_case_into_map(ThisLabel, Cond, !CaseLabelsMap) :-
     (
-        MinRval = ml_const(mlconst_int(Min)),
-        MaxRval = ml_const(mlconst_int(Max))
-    ->
-        insert_range_into_map(Min, Max, ThisLabel, !CaseLabelsMap)
+        Cond = match_value(Rval),
+        ( Rval = ml_const(mlconst_int(Val)) ->
+            map.det_insert(!.CaseLabelsMap, Val, ThisLabel, !:CaseLabelsMap)
+        ;
+            unexpected(this_file, "insert_case_into_map: non-int case")
+        )
     ;
-        unexpected(this_file, "insert_case_into_map: non-int case")
+        Cond = match_range(MinRval, MaxRval),
+        (
+            MinRval = ml_const(mlconst_int(Min)),
+            MaxRval = ml_const(mlconst_int(Max))
+        ->
+            insert_range_into_map(Min, Max, ThisLabel, !CaseLabelsMap)
+        ;
+            unexpected(this_file, "insert_case_into_map: non-int case")
+        )
     ).
 
 :- pred insert_range_into_map(int::in, int::in, mlds_label::in,
@@ -458,7 +454,7 @@ get_case_labels(ThisVal, LastVal, CaseLabelsMap, DefaultLabel) = CaseLabels :-
     % Convert an int switch to a chain of if-then-elses that test each case
     % in turn.
     %
-:- func ml_switch_to_if_else_chain(mlds_switch_cases, mlds_switch_default,
+:- func ml_switch_to_if_else_chain(list(mlds_switch_case), mlds_switch_default,
     mlds_rval, mlds_context) = statement.
 
 ml_switch_to_if_else_chain([], Default, _Rval, MLDS_Context) = Statement :-
@@ -473,14 +469,15 @@ ml_switch_to_if_else_chain([], Default, _Rval, MLDS_Context) = Statement :-
     ).
 ml_switch_to_if_else_chain([Case | Cases], Default, SwitchRval, MLDS_Context) =
         Statement :-
-    Case = mlds_switch_case(MatchConditions, CaseStatement),
+    Case = mlds_switch_case(FirstMatchCond, LaterMatchConds, CaseStatement),
     (
         Cases = [],
         Default = default_is_unreachable
     ->
         Statement = CaseStatement
     ;
-        CaseMatchedRval = ml_gen_case_match_conds(MatchConditions, SwitchRval),
+        AllMatchConds = [FirstMatchCond | LaterMatchConds],
+        CaseMatchedRval = ml_gen_case_match_conds(AllMatchConds, SwitchRval),
         RestStatement = ml_switch_to_if_else_chain(Cases, Default, SwitchRval,
             MLDS_Context),
         IfStmt = ml_stmt_if_then_else(CaseMatchedRval, CaseStatement,
@@ -492,7 +489,8 @@ ml_switch_to_if_else_chain([Case | Cases], Default, SwitchRval, MLDS_Context) =
     % case conditions matches the specified rval (which must have integral
     % type).
     %
-:- func ml_gen_case_match_conds(mlds_case_match_conds, mlds_rval) = mlds_rval.
+:- func ml_gen_case_match_conds(list(mlds_case_match_cond), mlds_rval)
+    = mlds_rval.
 
 ml_gen_case_match_conds([], _) = ml_const(mlconst_false).
 ml_gen_case_match_conds([Cond], SwitchRval) =

@@ -1522,10 +1522,11 @@ flatten_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
 :- mode flatten_case(in(chain), in, out, in, out) is det.
 
 flatten_case(Action, Case0, Case, !Info) :-
-    Case0 = mlds_switch_case(Conds0, Statement0),
-    fixup_case_conds(Action, !.Info, Conds0, Conds),
+    Case0 = mlds_switch_case(FirstCond0, LaterConds0, Statement0),
+    fixup_case_cond(Action, !.Info, FirstCond0, FirstCond),
+    fixup_case_conds(Action, !.Info, LaterConds0, LaterConds),
     flatten_statement(Action, Statement0, Statement, !Info),
-    Case = mlds_switch_case(Conds, Statement).
+    Case = mlds_switch_case(FirstCond, LaterConds, Statement).
 
 :- pred flatten_default(action, mlds_switch_default, mlds_switch_default,
     elim_info, elim_info).
@@ -2348,7 +2349,7 @@ stmt_contains_defn(Stmt, Defn) :-
 
 cases_contains_defn(Cases, Defn) :-
     list.member(Case, Cases),
-    Case = mlds_switch_case(_MatchConds, Statement),
+    Case = mlds_switch_case(_FirstMatchCond, _LaterMatchConds, Statement),
     statement_contains_defn(Statement, Defn).
 
 :- pred default_contains_defn(mlds_switch_default::in, mlds_defn::out)
@@ -2489,10 +2490,11 @@ add_unchain_stack_to_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
 :- mode add_unchain_stack_to_case(in(chain), in, out, in, out) is det.
 
 add_unchain_stack_to_case(Action, Case0, Case, !Info) :-
-    Case0 = mlds_switch_case(Conds0, Statement0),
-    fixup_case_conds(Action, !.Info, Conds0, Conds),
+    Case0 = mlds_switch_case(FirstCond0, LaterConds0, Statement0),
+    fixup_case_cond(Action, !.Info, FirstCond0, FirstCond),
+    fixup_case_conds(Action, !.Info, LaterConds0, LaterConds),
     add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
-    Case = mlds_switch_case(Conds, Statement).
+    Case = mlds_switch_case(FirstCond, LaterConds, Statement).
 
 :- pred add_unchain_stack_to_default(action,
     mlds_switch_default, mlds_switch_default, elim_info, elim_info).

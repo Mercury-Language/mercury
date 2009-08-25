@@ -1001,6 +1001,9 @@
                 tagged_case_first_functor   :: tagged_cons_id,
                 tagged_case_later_functors  :: list(tagged_cons_id),
 
+                % An identifier of the switch arm.
+                tagged_case_id              :: int,
+
                 % The code of the switch arm.
                 tagged_case_goal            :: hlds_goal
             ).

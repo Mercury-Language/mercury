@@ -310,7 +310,7 @@ stmt_contains_statement(Stmt, SubStatement) :-
 
 cases_contains_statement(Cases, SubStatement) :-
     list.member(Case, Cases),
-    Case = mlds_switch_case(_MatchCond, Statement),
+    Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
     statement_contains_statement(Statement, SubStatement).
 
 :- pred default_contains_statement(mlds_switch_default::in,
@@ -410,7 +410,7 @@ stmt_contains_var(Stmt, Name) :-
 
 cases_contains_var(Cases, Name) :-
     list.member(Case, Cases),
-    Case = mlds_switch_case(_MatchConds, Statement),
+    Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
     statement_contains_var(Statement, Name).
 
 :- pred default_contains_var(mlds_switch_default::in, mlds_data::in)

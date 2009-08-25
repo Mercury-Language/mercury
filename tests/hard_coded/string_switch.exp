@@ -1,0 +1,12 @@
+a -> 1
+b -> 2
+c failed
+aa -> 11
+ab -> 11
+ac failed
+ba -> 12
+bb -> 12
+bc failed
+ca -> 13
+cb failed
+cc failed

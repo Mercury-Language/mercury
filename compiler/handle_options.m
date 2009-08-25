@@ -741,7 +741,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         (
             Target = target_x86_64,
             globals.set_option(use_local_vars, bool(no), !Globals)
-
         ;
             ( Target = target_asm
             ; Target = target_c
@@ -913,7 +912,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             bool(yes), !Globals),
         option_implies(find_all_recompilation_reasons, verbose_recompilation,
             bool(yes), !Globals),
-        %
+
         % Disable `--smart-recompilation' for compilation options which either
         % do not produce a compiled output file or for which smart
         % recompilation will not work.
@@ -1095,7 +1094,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % or with trailing; see the comments in runtime/mercury_grade.h.
 
         globals.lookup_bool_option(!.Globals, use_trail, UseTrail),
-        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevel),
+        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
         globals.lookup_bool_option(!.Globals, use_minimal_model_stack_copy,
             UseMinimalModelStackCopy),
         globals.lookup_bool_option(!.Globals, use_minimal_model_own_stacks,
@@ -1110,7 +1109,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 "at once", !Errors)
         ;
             UseMinimalModel = yes,
-            HighLevel = yes
+            HighLevelCode = yes
         ->
             add_error("minimal model tabling is incompatible "
                 ++ "with high level code", !Errors)
@@ -1134,8 +1133,20 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(highlevel_code, mutable_always_boxed, bool(no),
             !Globals),
 
-        option_implies(highlevel_code, allow_multi_arm_switches, bool(no),
-            !Globals),
+        % Currently, multi-arm switches % have been tested only for the LLDS
+        % backend (which always generates C) and for the MLDS backend when
+        % it is generating C code.
+        (
+            Target = target_c
+        ;
+            ( Target = target_x86_64
+            ; Target = target_asm
+            ; Target = target_il
+            ; Target = target_java
+            ; Target = target_erlang
+            ),
+            globals.set_option(allow_multi_arm_switches, bool(no), !Globals)
+        ),
 
         option_implies(target_debug, strip, bool(no), !Globals),
 
@@ -1348,7 +1359,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         (
             ProfileDeep = yes,
             (
-                HighLevel = no,
+                HighLevelCode = no,
                 Target = target_c
             ->
                 true
@@ -1391,11 +1402,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(optimize_constructor_last_call, bool(no),
                 !Globals),
             (
-                HighLevel = yes,
+                HighLevelCode = yes,
                 add_error("term size profiling is incompatible "
                     ++ "with high level code", !Errors)
             ;
-                HighLevel = no
+                HighLevelCode = no
             )
         ;
             true
@@ -1403,7 +1414,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         (
             ( given_trace_level_is_none(TraceLevel) = yes
-            ; HighLevel = no, Target = target_c
+            ; HighLevelCode = no, Target = target_c
             ; Target = target_il
             )
         ->
@@ -1526,7 +1537,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
             PutNondetEnvOnHeap),
         (
-            HighLevel = yes,
+            HighLevelCode = yes,
             GC_Method = gc_accurate,
             PutNondetEnvOnHeap = yes
         ->
@@ -1990,10 +2001,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             % may be back end specific, since different back ends have
             % different performance tradeoffs.
             (
-                HighLevel = no,
+                HighLevelCode = no,
                 globals.set_option(compare_specialization, int(13), !Globals)
             ;
-                HighLevel = yes,
+                HighLevelCode = yes,
                 globals.set_option(compare_specialization, int(14), !Globals)
             )
         ;
@@ -2028,10 +2039,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             !IO),
 
         (
-            HighLevel = no,
+            HighLevelCode = no,
             postprocess_options_lowlevel(!Globals)
         ;
-            HighLevel = yes
+            HighLevelCode = yes
         ),
         postprocess_options_libgrades(!Globals, !Errors),
         globals.io_set_globals(!.Globals, !IO)
