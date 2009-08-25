@@ -105,7 +105,7 @@ which does not use any GNU C extensions.
 The configure script for Mercury version 0.13.1 (and before) does not support
 the above option.
 Instead create a file in the top-level directory of the unpacked source tree
-named @samp{Mmake.params} containing the line @samp{GRADE=none}.
+named @samp{Mmake.params} containing the line @samp{GRADE=none.gc}.
 
 After running the configure script, do ``make'' and ``make install''
 as normal.
