@@ -418,16 +418,16 @@ status=0
 
 case $HOST in
     saturn)
-        CONFIG_OPTS="--disable-dotnet-grades"
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         INSTALL_LIBGRADES="asm_fast.gc  \
             asm_fast.gc.decldebug       \
             asm_fast.gc.memprof         \
             asm_fast.gc.prof            \
-            asm_fast.gc.tr              \
-            asm_fast.gc.tr.debug        \
-            asm_fast.gc.tr.profdeep     \
+            asm_fast.gc.trseg           \
+            asm_fast.gc.trseg.debug     \
+            asm_fast.gc.trseg.profdeep  \
             hlc.gc                      \
-            hlc.gc.tr                   \
+            hlc.gc.trseg                \
             hlc.par.gc                  \
             asm_fast.par.gc"
         ;;
@@ -984,7 +984,7 @@ case $HOST in
         fullname=i686-pc-linux-libc2.7-gnu-O2-intermod
         ;;
     saturn)
-        fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O5-intermod
+        fullname=x86_64-unknown-linux-gnu-libc2.7-gnu-O5-intermod
         ;;
     neptune)
         fullname=x86_64-unknown-linux-gnu-libc2.9-gnu-O4
