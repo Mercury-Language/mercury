@@ -455,7 +455,7 @@ AC_SUBST(ERL)
 
 #-----------------------------------------------------------------------------#
 
-# NOTE: updates to this macro may need to be reflected incompiler/globals.m.
+# NOTE: updates to this macro may need to be reflected in compiler/globals.m.
 
 AC_DEFUN([MERCURY_GCC_VERSION], [
 AC_REQUIRE([AC_PROG_CC])
