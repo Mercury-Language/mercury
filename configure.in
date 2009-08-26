@@ -2974,6 +2974,16 @@ case "$mercury_cv_user_base_grade" in
                 BEST_LLDS_BASE_GRADE=none
             fi
         fi
+
+        # Force the use of the none base grade if the C compiler
+        # is GCC 4.2 or 4.3.  The asm_fast and reg grades either
+        # don't work or are unstable with those versions.
+        # (See bugs #66 an #78 in the Mercury bug database.)
+        case "$mercury_cv_gcc_version" in
+            4_2_*|4_3_*)
+                BEST_LLDS_BASE_GRADE=none
+            ;;
+        esac
      ;;
 esac
 
