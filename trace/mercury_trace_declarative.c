@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2008 The University of Melbourne.
+** Copyright (C) 1998-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -2490,7 +2490,8 @@ MR_decl_checkpoint_tree(const char *tree_kind, MR_Unsigned final_event,
 {
     fprintf(MR_mdb_out, "DD STARTING %s: ", tree_kind);
     fprintf(MR_mdb_out, "final event %lu, topmost seqno %lu, depth %lu\n",
-        final_event, top_seqno, depth_limit);
+        (unsigned long) final_event, (unsigned long) top_seqno,
+        (unsigned long) depth_limit);
 }
 
 #ifdef MR_DD_PRINT_EDT_STATS
