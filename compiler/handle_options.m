@@ -1133,16 +1133,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(highlevel_code, mutable_always_boxed, bool(no),
             !Globals),
 
-        % Currently, multi-arm switches % have been tested only for the LLDS
+        % Currently, multi-arm switches have been tested only for the LLDS
         % backend (which always generates C) and for the MLDS backend when
-        % it is generating C code.
+        % it is generating C or Java code.
         (
-            Target = target_c
+            ( Target = target_c
+            ; Target = target_java
+            )
         ;
             ( Target = target_x86_64
             ; Target = target_asm
             ; Target = target_il
-            ; Target = target_java
             ; Target = target_erlang
             ),
             globals.set_option(allow_multi_arm_switches, bool(no), !Globals)
