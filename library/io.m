@@ -930,6 +930,10 @@
     % On some systems only one byte of pushback is guaranteed.
     % `io.putback_byte' will throw an io.error exception if ungetc() fails.
     %
+    % Pushing back a byte decrements the file position by one, except when
+    % the file position is already zero, in which case the new file position
+    % is unspecified.
+    %
 :- pred io.putback_byte(int::in, io::di, io::uo) is det.
 
     % Un-reads a byte from specified binary input stream.
@@ -939,6 +943,10 @@
     % Note: `io.putback_byte' uses the C library function ungetc().
     % On some systems only one byte of pushback is guaranteed.
     % `io.putback_byte' will throw an io.error exception if ungetc() fails.
+    %
+    % Pushing back a byte decrements the file position by one, except when
+    % the file position is already zero, in which case the new file position
+    % is unspecified.
     %
 :- pred io.putback_byte(io.binary_input_stream::in, int::in,
     io::di, io::uo) is det.
@@ -1049,6 +1057,8 @@
     % Seek to an offset relative to Whence (documented above)
     % on a specified binary input stream. Attempting to seek on a pipe
     % or tty results in implementation dependent behaviour.
+    %
+    % A successful seek undoes any effects of io.putback_byte on the stream.
     %
 :- pred io.seek_binary_input(io.binary_input_stream::in, io.whence::in,
     int::in, io::di, io::uo) is det.
@@ -1793,7 +1803,7 @@
 
 :- pragma foreign_code("Java",
 "
-    static java.lang.Object ML_io_stream_db =
+    static tree234.Tree234_2 ML_io_stream_db =
         new tree234.Tree234_2.Empty_0();
     static java.lang.Object ML_io_user_globals =
         new tree234.Tree234_2.Empty_0();
@@ -2182,7 +2192,7 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
     string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.read_line_as_string_2(Stream::in, _Bool::in, Res :: out,
+    io.read_line_as_string_2(Stream::in, _FirstCall::in, Res::out,
         RetString::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -2250,6 +2260,24 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
     MR_update_io(IO0, IO);
 ").
 
+:- pragma foreign_proc("Java",
+    io.read_line_as_string_2(Stream::in, _FirstCall::in, Res::out,
+        RetString::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    try {
+        StringBuilder sb = new StringBuilder();
+        Res = Stream.read_line(sb);
+        RetString = sb.toString();
+    } catch (java.io.IOException e) {
+        io.MR_io_exception.set(e);
+        Res = -3;
+        RetString = """";
+    }
+    IO = IO0;
+").
+
 io.read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
     % XXX This is terribly inefficient, a better approach would be to
     % use a buffer like what is done for io.read_file_as_string.
@@ -2311,6 +2339,23 @@ io.read_file_2(Stream, Chars0, Result, !IO) :-
 io.read_file_as_string(Result, !IO) :-
     io.input_stream(Stream, !IO),
     io.read_file_as_string(Stream, Result, !IO).
+
+:- pragma foreign_proc("Java",
+    io.read_file_as_string(InputStream::in, Result::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    io.MR_MercuryFileStruct File = ((io.Input_stream_0) InputStream).F1;
+    StringBuilder sb = new StringBuilder();
+
+    try {
+        File.read_file(sb);
+        Result = ML_make_io_maybe_partial_res_1_ok_string(sb.toString());
+    } catch (java.io.IOException e) {
+        Result = ML_make_io_maybe_partial_res_1_error_string(sb.toString(),
+            e, ""io.read_file_as_string failed: "");
+    }
+").
 
 :- pragma foreign_proc("Erlang",
     io.read_file_as_string(InputStream::in, Result::out, _IO0::di, _IO::uo),
@@ -2493,7 +2538,7 @@ io.output_clear_err(output_stream(Stream), !IO) :-
 
 :- pragma foreign_proc("Java",
     io.clear_err(_Stream::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     // XXX as for .NET above
 ").
@@ -2552,7 +2597,7 @@ io.check_err(Stream, Res, !IO) :-
 
 :- pragma foreign_proc("Java",
     ferror(_Stream::in, RetVal::out, _RetStr::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
     // XXX see clearerr
     RetVal = 0;
@@ -2600,9 +2645,9 @@ io.make_err_msg(Msg0, Msg, !IO) :-
 :- pragma foreign_proc("Java",
     io.get_system_error(Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
-    Error = MR_io_exception;
-}").
+"
+    Error = io.MR_io_exception.get();
+").
 
 :- pragma foreign_proc("Erlang",
     io.get_system_error(Error::out, _IO0::di, _IO::uo),
@@ -2635,13 +2680,13 @@ io.make_err_msg(Msg0, Msg, !IO) :-
 :- pragma foreign_proc("Java",
     make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
-"{
+"
     if (Error.getMessage() != null) {
         Msg = Msg0 + Error.getMessage();
     } else {
         Msg = Msg0;
     }
-}").
+").
 
 :- pragma foreign_proc("Erlang",
     make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
@@ -2794,9 +2839,13 @@ io.output_stream_file_size(output_stream(Stream), Size, !IO) :-
 
 :- pragma foreign_proc("Java",
     io.stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    Size = Stream.size();
+    try {
+        Size = Stream.size();
+    } catch (java.io.IOException e) {
+        Size = -1;
+    }
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -3337,7 +3386,8 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 :- pragma foreign_proc("Java",
     io.check_file_accessibility_2(FileName::in, AccessTypes::in,
         Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        may_not_duplicate],
 "
     java.lang.String permissions = null;
 
@@ -3702,6 +3752,25 @@ make_io_res_1_ok_string(String) = ok(String).
 make_io_res_1_error_string(Error, Msg0, error(make_io_error(Msg)), !IO) :-
     io.make_err_msg(Error, Msg0, Msg, !IO).
 
+:- func make_io_maybe_partial_res_1_ok_string(string)
+    = io.maybe_partial_res(string).
+:- pragma foreign_export("Java",
+    (make_io_maybe_partial_res_1_ok_string(in) = out),
+    "ML_make_io_maybe_partial_res_1_ok_string").
+
+make_io_maybe_partial_res_1_ok_string(String) = ok(String).
+
+:- pred make_io_maybe_partial_res_1_error_string(string::in,
+    io.system_error::in, string::in, io.maybe_partial_res(string)::out,
+    io::di, io::uo) is det.
+:- pragma foreign_export("Java",
+    make_io_maybe_partial_res_1_error_string(in, in, in, out, di, uo),
+    "ML_make_io_maybe_partial_res_1_error_string").
+
+make_io_maybe_partial_res_1_error_string(Partial, Error, Msg0, Res, !IO) :-
+    io.make_err_msg(Error, Msg0, Msg, !IO),
+    Res = error(Partial, make_io_error(Msg)).
+
 %-----------------------------------------------------------------------------%
 
 :- type file_id ---> file_id.
@@ -3783,8 +3852,7 @@ compare_file_id(Result, FileId1, FileId2) :-
     compare_file_id_2(_Res::out, _FileId1::in, _FileId2::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    throw new java.lang.RuntimeException(
-        ""File IDs are not supported by Java."");
+    io.ML_throw_io_error(""File IDs are not supported by Java."");
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -5009,21 +5077,21 @@ io.unlock_stream_db(!IO).
     io.get_stream_db_with_locking(StreamDb::out),
     [will_not_call_mercury, tabled_for_io],
 "
-    StreamDb = ML_io_stream_db;
+    StreamDb = io.ML_io_stream_db;
 ").
 
 :- pragma foreign_proc("Java",
     io.get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    StreamDb = ML_io_stream_db;
+    StreamDb = io.ML_io_stream_db;
 ").
 
 :- pragma foreign_proc("Java",
     io.set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    ML_io_stream_db = StreamDb;
+    io.ML_io_stream_db = (tree234.Tree234_2) StreamDb;
 ").
 
 % XXX the following Erlang implementation doesn't work with multiple threads
@@ -5230,14 +5298,14 @@ io.unlock_globals :-
     io.unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    Globals = ML_io_user_globals;
+    Globals = io.ML_io_user_globals;
 ").
 
 :- pragma foreign_proc("Java",
     io.unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    ML_io_user_globals = Globals;
+    io.ML_io_user_globals = Globals;
 ").
 
 % XXX the following Erlang implementation doesn't work with multiple threads
@@ -5644,6 +5712,10 @@ namespace mercury {
 }
 ").
 
+:- pragma foreign_decl("Java", local, "
+    import java.util.concurrent.atomic.AtomicInteger;
+").
+
 :- pragma foreign_code("Java",
 "
     /* All text files (including stdin/stdout/stderr) are run through
@@ -5654,9 +5726,8 @@ namespace mercury {
     ** Binary files are opened via RandomAccessFile, which supports seek,
     ** but not character encoding/decoding or buffering.
     ** Binary stdin and stdout are a special case.  They are opened via
-    ** FileInput/OutputStreams and for Java versions >= 1.4, seeking is
-    ** controlled through use of FileChannels. (obtained by Reflection so
-    ** as not to break the compilation using earlier versions of Java)
+    ** FileInput/OutputStreams and seeking is controlled through use of
+    ** FileChannels (requring Java versions >= 1.4).
     **
     ** The use of the methods in this implementation is not very flexible.
     ** You may not perform text mode operations on a binary file or vice
@@ -5675,13 +5746,15 @@ namespace mercury {
         private static final int            SEEK_CUR    = 1;
         private static final int            SEEK_END    = 2;
 
-        public  static int                  ML_next_stream_id = 0;
+        public  static final AtomicInteger  ML_next_stream_id
+                                                = new AtomicInteger();
         public  int                         id;
 
         // line_number is only valid for text streams
         public  int                         line_number = 1;
 
         // pushback is non-null only for input streams
+        // (both text and binary)
         private java.util.Stack<Integer>    pushback    = null;
 
         // input is non-null only for text input streams
@@ -5700,15 +5773,10 @@ namespace mercury {
         // binary_output is non-null only for binary_stdout
         private java.io.FileOutputStream    binary_output   = null;
 
-        // For Java versions < 1.4, there is no way to retrieve
-        // the current offset into binary stdin/out.
-        // In this case, position records the current offset,
-        // otherwise this field is not used for anything.
-        int                                 position    = 0;
-
-        // channel is non-null only for binary stdin/out using
-        // Java versions >= 1.4 (those supporting FileChannel).
-        private java.lang.Object            channel     = null;
+        // channel is non-null for any binary stream.
+        // It is used for positioning the stream.  Read/write operations
+        // use randomaccess, binary_input, binary_output instead.
+        private java.nio.channels.FileChannel channel       = null;
 
         /*
         ** This constructor is for text input streams.
@@ -5728,8 +5796,9 @@ namespace mercury {
         ** This constructor handles binary files (in or out) but does
         ** not cover mercury_stdin_binary/mercury_stdout_binary.
         */
-        public MR_MercuryFileStruct(java.lang.String file, char mode) {
-            id = ML_next_stream_id++;
+        public MR_MercuryFileStruct(java.lang.String file, char mode)
+        {
+            id = ML_next_stream_id.getAndAdd(1);
             String openstring;
 
             if (mode == 'r') {
@@ -5742,27 +5811,27 @@ namespace mercury {
                 // There is no such mode as ""w"", which could be a problem
                 // for write-only files.
             } else {
-                throw new RuntimeException(""Invalid file opening mode"");
+                openstring = """";
+                io.ML_throw_io_error(""Invalid file opening mode"");
             }
             try {
                 randomaccess = new java.io.RandomAccessFile(file, openstring);
+                channel = randomaccess.getChannel();
                 if (mode == 'w') {
                     // Truncate an existing file.
                     randomaccess.setLength(0);
                 } else if (mode == 'a') {
-                    seek(SEEK_END, 0);
+                    seek_binary(SEEK_END, 0);
                 }
             } catch (java.lang.Exception e) {
-                throw new RuntimeException(e.getMessage());
-                // We can't just throw e or the Java compiler
-                // will complain about unreported exceptions.
+                io.ML_throw_io_error(e.getMessage());
             }
         }
 
         public MR_MercuryFileStruct(java.io.InputStream stream,
             boolean openAsBinary)
         {
-            id          = ML_next_stream_id++;
+            id          = ML_next_stream_id.getAndAdd(1);
             mode        = INPUT;
             pushback    = new java.util.Stack<Integer>();
 
@@ -5772,14 +5841,14 @@ namespace mercury {
                 /* open stdin as binary */
                 binary_input = new java.io.FileInputStream(
                     java.io.FileDescriptor.in);
-                channel = get_channel(binary_input);
+                channel = binary_input.getChannel();
             }
         }
 
         public MR_MercuryFileStruct(java.io.OutputStream stream,
             boolean openAsBinary)
         {
-            id      = ML_next_stream_id++;
+            id      = ML_next_stream_id.getAndAdd(1);
             mode    = OUTPUT;
 
             if (!openAsBinary) {
@@ -5788,196 +5857,86 @@ namespace mercury {
                 /* open stdout as binary */
                 binary_output = new java.io.FileOutputStream(
                     java.io.FileDescriptor.out);
-                channel = get_channel(binary_output);
+                channel = binary_output.getChannel();
             }
         }
 
         /*
-        ** size():
+        ** size(): [Java]
         **
-        ** Returns the length of a binary file. XXX Note that this method
-        ** will return -1 for mercury_stdin_binary and the current position
-        ** for mercury_stdout_binary in Java versions < 1.4.
+        ** Returns the length of a file.
         */
-        public int size() {
-            if (randomaccess != null) {
-                try {
-                    return (int) randomaccess.length();
-                } catch (java.io.IOException e) {
-                    return -1;
-                }
-            }
-
-            try {
-                java.lang.reflect.Method size_mth =
-                    channel.getClass().getMethod(""size"");
-                return ((Long) size_mth.invoke(channel)).intValue();
-            } catch (java.lang.Exception e) {
-                if (binary_output != null) {
-                    return position;
-                } else {
-                    return -1;
-                }
-            }
-        }
-
-        /*
-        ** seek():
-        **
-        ** Seek relative to start, current position or end depending on the
-        ** flag. This function only works for binary files.
-        **
-        ** The binary versions of stdin and stdout are treated specially
-        ** as follows.
-        **
-        ** For Java versions >= 1.4:
-        **  Reflection is used to obtain and use the necessary FileChannel
-        **  object needed to perform seeking on each.
-        ** For older versions:
-        **  For mercury_stdin_binary, seek may be only be done forwards
-        **  from the current position and for mercury_stdout_binary seek is not
-        **  supported at all.
-        */
-        public void seek(int flag, int offset) {
-            if (channel != null) {
-                channelSeek(flag, offset);
-                return;
-            }
-
-            if (input != null || output != null) {
-                throw new java.lang.RuntimeException(
-                    ""Java text streams are not seekable"");
-            }
-            if (binary_output != null) {
-                throw new java.lang.RuntimeException(
-                    ""for Java versions < 1.4, "" +
-                    ""mercury_stdout_binary is not seekable"");
-            }
-            if (binary_input != null &&
-                (flag != SEEK_CUR || offset < 0))
-            {
-                throw new java.lang.RuntimeException(
-                    ""for Java versions < 1.4, "" +
-                    ""mercury_stdin_binary may only seek forwards "" +
-                    ""from the current position"");
-            }
-
-            pushback = new java.util.Stack<Integer>();
-
-            try {
-                switch (flag) {
-                    case SEEK_SET:
-                        randomaccess.seek(offset);
-                        break;
-                    case SEEK_CUR:
-                        if (randomaccess != null) {
-                            randomaccess.seek(
-                                randomaccess.getFilePointer() + offset);
-                        } else {
-                            binary_input.skip(offset);
-                        }
-                        break;
-                    case SEEK_END:
-                        randomaccess.seek(randomaccess.length() + offset);
-                        break;
-                    default:
-                        throw new java.lang.
-                            RuntimeException(""Invalid seek flag"");
-                }
-            } catch (java.lang.Exception e) {
-                throw new java.lang.RuntimeException(e.getMessage());
-            }
-        }
-
-        /*
-        ** channelSeek():
-        **
-        ** Seek relative to start, current position or end depending on the
-        ** flag. This function is a special case of seek() above, used when
-        ** a FileChannel is present and usable.  At present, this is only the
-        ** case for binary stdin/out using Java versions >= 1.4. FileChannel's
-        ** position() method must be called using Reflection so that this code
-        ** will still compile for Java versions < 1.4.
-        */
-        private void channelSeek(int flag, int offset) {
-            pushback = new java.util.Stack<Integer>();
-
-            try {
-                switch (flag) {
-                    case SEEK_SET:
-                        position = offset;
-                        break;
-                    case SEEK_CUR:
-                        position = getOffset() + offset;
-                        break;
-                    case SEEK_END:
-                        position = size() + offset;
-                        break;
-                    default:
-                        throw new java.lang.
-                            RuntimeException(""Invalid seek flag"");
-                }
-
-                // Simulate
-                //  channel.position(position);
-                // using reflection.
-                Class[] argTypes = {Long.TYPE};
-                java.lang.reflect.Method seek_mth =
-                    channel.getClass().getMethod(""position"", argTypes);
-
-                Object[] args = {new Long(position)};
-                seek_mth.invoke(channel, args);
-            }
-            catch (java.lang.Exception e) {
-                throw new java.lang.RuntimeException(e.getMessage());
-            }
+        public int size()
+            throws java.io.IOException
+        {
+            return (int) channel.size();
         }
 
         /*
         ** getOffset():
         **  Returns the current position in a binary file.
         */
-        public int getOffset() {
-            if (randomaccess != null) {
-                try {
-                    return (int) randomaccess.getFilePointer();
-                } catch (java.io.IOException e) {
-                    return -1;
-                }
+        public int getOffset()
+            throws java.io.IOException
+        {
+            return (int) channel.position() - pushback.size();
+        }
+
+        /*
+        ** seek(): [Java]
+        **
+        ** Seek relative to start, current position or end depending on the
+        ** flag. This function only works for binary files.
+        */
+        public void seek_binary(int flag, int offset)
+            throws java.io.IOException
+        {
+            long position;
+
+            switch (flag) {
+                case SEEK_SET:
+                    position = offset;
+                    break;
+                case SEEK_CUR:
+                    position = getOffset() + offset;
+                    break;
+                case SEEK_END:
+                    position = size() + offset;
+                    break;
+                default:
+                    throw new java.lang.
+                        RuntimeException(""Invalid seek flag"");
             }
 
+            channel.position(position);
+            pushback = new java.util.Stack<Integer>();
+        }
+
+        public void seek_binary_or_throw(int flag, int offset) {
             try {
-                java.lang.reflect.Method posn_mth =
-                    channel.getClass().getMethod(""position"");
-                return ((Long) posn_mth.invoke(channel)).intValue();
-            } catch (java.lang.Exception e) {
-                if (binary_input != null || binary_output != null) {
-                    return position;
-                } else {
-                    return -1;
-                }
+                seek_binary(flag, offset);
+            } catch (java.io.IOException e) {
+                io.ML_throw_io_error(e.getMessage());
             }
         }
 
         /*
-        ** read_char():
+        ** read_char(): [Java]
         **
         ** Reads one character in from a text input file using the default
         ** charset decoding.  Returns -1 at end of file.
         */
-        public int read_char() {
+        public int read_char()
+            throws java.io.IOException
+        {
             int c;
             if (input == null) {
-                throw new java.lang.RuntimeException(
+                io.ML_throw_io_error(
                     ""read_char_code may only be called"" +
                     "" on text input streams"");
             }
             if (pushback.empty()) {
-                try {
-                    c = input.read();
-                } catch (java.io.IOException e) {
-                    throw new java.lang.RuntimeException(e.getMessage());
-                }
+                c = input.read();
             } else {
                 c = pushback.pop();
             }
@@ -5990,41 +5949,102 @@ namespace mercury {
         }
 
         /*
-        ** read_byte():
+        ** read_line(): [Java]
+        **
+        ** Reads in a line of a text input file using the default
+        ** charset decoding.
+        */
+        public int read_line(StringBuilder sb)
+            throws java.io.IOException
+        {
+            int c;
+
+            while (!pushback.empty()) {
+                c = pushback.pop();
+                sb.append((char) c);
+                if (c == '\\n') {
+                    line_number++;
+                    return 0;   /* ok */
+                }
+            }
+
+            while ((c = input.read()) != -1) {
+                sb.append((char) c);
+                if (c == '\\n') {
+                    line_number++;
+                    return 0;   /* ok */
+                }
+            }
+
+            if (sb.length() > 0) {
+                return 0;       /* ok */
+            } else {
+                return -1;      /* eof */
+            }
+        }
+
+        /*
+        ** read_file(): [Java]
+        **
+        ** Reads in the rest of a text input file using the default
+        ** charset decoding.
+        */
+        public void read_file(StringBuilder sb)
+            throws java.io.IOException
+        {
+            if (input == null) {
+                io.ML_throw_io_error(
+                    ""read_file_as_string may only be called"" +
+                    "" on text input streams"");
+            }
+
+            while (!pushback.empty()) {
+                sb.append((char) read_char());
+            }
+
+            char[] chars = new char[1024];
+            int n = 0;
+            while ((n = input.read(chars)) > -1) {
+                for (int i = 0; i < n; i++) {
+                    if (chars[i] == '\\n') {
+                        line_number++;
+                    }
+                }
+                sb.append(chars, 0, n);
+            }
+        }
+
+        /*
+        ** read_byte(): [Java]
         **
         ** Reads one byte in from a binary file. Returns -1 at end of file.
         */
-        public int read_byte() {
+        public int read_byte()
+            throws java.io.IOException
+        {
             int c;
             if (mode == OUTPUT) {
-                throw new java.lang.RuntimeException(
-                    ""Attempted to read output stream"");
+                io.ML_throw_io_error(""Attempted to read output stream"");
             }
             if (randomaccess == null && binary_input == null) {
-                throw new java.lang.RuntimeException(
-                    ""read_byte_val may only be called"" +
+                io.ML_throw_io_error(""read_byte_val may only be called"" +
                     "" on binary input streams"");
             }
             if (pushback.empty()) {
-                try {
-                    if (binary_input != null) {
-                        c = binary_input.read();
-                    } else {
-                        c = randomaccess.read();
-                    }
-                } catch (java.io.IOException e) {
-                    throw new java.lang.RuntimeException(e.getMessage());
+                if (binary_input != null) {
+                    c = binary_input.read();
+                } else {
+                    c = randomaccess.read();
                 }
             } else {
                 c = pushback.pop();
             }
-            position++;
 
             return c;
         }
 
         /*
-        ** ungetc():
+        ** ungetc(): [Java]
         **
         ** Pushes an integer, which may represent either a byte or a character,
         ** onto the pushback stack. This stack is the same, regardless of
@@ -6032,19 +6052,17 @@ namespace mercury {
         */
         public void ungetc(int c) {
             if (mode == OUTPUT) {
-                throw new java.lang.RuntimeException(
+                io.ML_throw_io_error(
                     ""Attempted to unget char to output stream"");
             }
             if (c == '\\n') {
                 line_number--;
             }
-
             pushback.push(c);
-            position--;
         }
 
         /*
-        ** put():
+        ** put(): [Java]
         **
         ** Write one unit to an output stream.  If the file is text, the int
         ** will hold a character. If the file is binary, this will be a
@@ -6052,107 +6070,137 @@ namespace mercury {
         ** 16 bits hold a char, in latter we take only the lowest 8 bits
         ** for a byte.
         */
-        public void put(int c) {
+        public void put(int c)
+            throws java.io.IOException
+        {
             if (mode == INPUT) {
-                throw new java.lang.RuntimeException(
-                    ""Attempted to write to input stream"");
+                io.ML_throw_io_error(""Attempted to write to input stream"");
             }
+
+            if (output != null) {
+                output.write(c);
+                if (c == '\\n') {
+                    output.flush();
+                }
+            } else if (randomaccess != null) {
+                randomaccess.write(c);
+            } else {
+                binary_output.write(c);
+            }
+
+            /* Don't increment until the write succeeds. */
             if (c == '\\n') {
                 line_number++;
             }
+        }
 
+        public void put_or_throw(int c) {
             try {
-                if (output != null) {
-                    output.write(c);
-                    if (c == '\\n') {
-                        output.flush();
-                    }
-                } else if (randomaccess != null) {
-                    randomaccess.write(c);
-                } else {
-                    binary_output.write(c);
-                    position++;
-                }
+                put(c);
             } catch (java.io.IOException e) {
-                throw new java.lang.RuntimeException(e.getMessage());
+                io.ML_throw_io_error(e.getMessage());
             }
         }
 
         /*
-        ** write():
+        ** write(): [Java]
         **
         ** Writes a string to a file stream.  For text files, this string
         ** is encoded as a byte stream using default encoding. For binary
         ** files, the lower order 8 bits of each character are written.
         */
-        public void write(java.lang.String s) {
+        public void write(java.lang.String s)
+            throws java.io.IOException
+        {
             if (mode == INPUT) {
-                throw new java.lang.RuntimeException(
-                    ""Attempted to write to input stream"");
+                io.ML_throw_io_error(""Attempted to write to input stream"");
             }
 
-            try {
-                if (output != null) {
-                    int old_line_number = line_number;
-                    for (int i = 0; i < s.length(); i++) {
-                        if (s.charAt(i) == '\\n') {
-                            line_number++;
-                        }
-                    }
-                    output.write(s);
-                    /* Flush if we saw a newline. */
-                    if (old_line_number != line_number) {
-                        output.flush();
-                    }
-                } else {
-                    for (int i = 0; i < s.length(); i++) {
-                        // lower 8 bits of each
-                        put((byte) s.charAt(i));
+            if (output != null) {
+                output.write(s);
+
+                int old_line_number = line_number;
+                for (int i = 0; i < s.length(); i++) {
+                    if (s.charAt(i) == '\\n') {
+                        line_number++;
                     }
                 }
-            } catch (java.io.IOException e) {
-                throw new java.lang.RuntimeException(e.getMessage());
-            }
-        }
 
-        public void flush() {
-            if (mode == INPUT) {
-                throw new java.lang.RuntimeException(
-                    ""Attempted to flush input stream"");
-            }
-
-            try {
-                if (output != null) {
+                /* Flush if we saw a newline. */
+                if (old_line_number != line_number) {
                     output.flush();
                 }
-                if (binary_output != null) {
-                    binary_output.flush();
+            } else {
+                for (int i = 0; i < s.length(); i++) {
+                    // lower 8 bits of each
+                    put((byte) s.charAt(i));
                 }
-                // else randomaccess is already unbuffered.
-            } catch (java.io.IOException e) {
-                throw new java.lang.RuntimeException(e.getMessage());
             }
         }
 
-        public void close() {
+        public void write_or_throw(java.lang.String s) {
             try {
-                if (input != null) {
-                    input.close();
-                }
-                if (output != null) {
-                    output.close();
-                }
-                if (randomaccess != null) {
-                    randomaccess.close();
-                }
-                if (binary_input != null) {
-                    binary_input.close();
-                }
-                if (binary_output != null) {
-                    binary_output.close();
-                }
+                write(s);
             } catch (java.io.IOException e) {
-                throw new java.lang.RuntimeException(""Error closing stream"");
+                io.ML_throw_io_error(e.getMessage());
+            }
+        }
+
+        /*
+        ** flush(): [Java]
+        */
+        public void flush()
+            throws java.io.IOException
+        {
+            if (mode == INPUT) {
+                io.ML_throw_io_error(""Attempted to flush input stream"");
+            }
+
+            if (output != null) {
+                output.flush();
+            }
+            if (binary_output != null) {
+                binary_output.flush();
+            }
+            // else randomaccess is already unbuffered.
+        }
+
+        public void flush_or_throw() {
+            try {
+                flush();
+            } catch (java.io.IOException e) {
+                io.ML_throw_io_error(e.getMessage());
+            }
+        }
+
+        /*
+        ** close(): [Java]
+        */
+        public void close()
+            throws java.io.IOException
+        {
+            if (input != null) {
+                input.close();
+            }
+            if (output != null) {
+                output.close();
+            }
+            if (randomaccess != null) {
+                randomaccess.close();
+            }
+            if (binary_input != null) {
+                binary_input.close();
+            }
+            if (binary_output != null) {
+                binary_output.close();
+            }
+        }
+
+        public void close_or_throw() {
+            try {
+                close();
+            } catch (java.io.IOException e) {
+                io.ML_throw_io_error(e.getMessage());
             }
         }
     } // class MR_MercuryFileStruct
@@ -6196,34 +6244,6 @@ namespace mercury {
             }
         }
     } // class StreamPipe
-
-    /*
-    ** get_channel():
-    **
-    ** Given some object, attempts to call getChannel() using Reflection
-    ** and returns the result, or null if getChannel() is not available.
-    ** The reason we do this is that FileChannels were not supported until
-    ** Java v1.4, so users with older versions of Java would not be able to
-    ** compile this code if the call to getChannel were made directly.
-    ** This way, older versions of Java will still be able to compile,
-    ** but will not support binary seeking on stdin/out properly, since
-    ** this can't be done without FileChannel.
-    */
-    static java.lang.Object/*FileChannel*/ get_channel(java.lang.Object o)
-    {
-        try {
-            // Simulate
-            //  return o.getChannel();
-            // using reflection.
-            java.lang.reflect.Method getChannel_mth =
-                o.getClass().getMethod(""getChannel"");
-
-            return getChannel_mth.invoke(o);
-        }
-        catch (java.lang.Exception e) {
-            return null;
-        }
-    }
 ").
 
 :- pragma foreign_code("C", "
@@ -6410,6 +6430,7 @@ static MR_MercuryFileStruct mercury_stdout_binary =
     new MR_MercuryFileStruct(java.lang.System.out, true);
 
 // Note: these are set again in io.init_state.
+// XXX these should be thread-local
 static MR_MercuryFileStruct mercury_current_text_input =
     mercury_stdin;
 static MR_MercuryFileStruct mercury_current_text_output =
@@ -6419,8 +6440,7 @@ static MR_MercuryFileStruct mercury_current_binary_input =
 static MR_MercuryFileStruct mercury_current_binary_output =
     mercury_stdout_binary;
 
-// XXX not thread-safe!
-static java.lang.Exception MR_io_exception;
+static ThreadLocal<Exception> MR_io_exception = new ThreadLocal<Exception>();
 ").
 
 :- pragma foreign_decl("Erlang", local, "
@@ -6836,6 +6856,7 @@ static MR_MercuryFileStruct mercury_open(string filename, string openmode,
 :- pred throw_io_error(string::in) is erroneous.
 :- pragma foreign_export("C", throw_io_error(in), "ML_throw_io_error").
 :- pragma foreign_export("IL", throw_io_error(in), "ML_throw_io_error").
+:- pragma foreign_export("Java", throw_io_error(in), "ML_throw_io_error").
 
 throw_io_error(Message) :-
     throw(io_error(Message)).
@@ -7441,28 +7462,38 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 
 :- pragma foreign_proc("Java",
     io.read_char_code_2(File::in, CharCode::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    CharCode = File.read_char();
+    try {
+        CharCode = File.read_char();
+    } catch (java.io.IOException e) {
+        io.MR_io_exception.set(e);
+        CharCode = -2;
+    }
 ").
 
 :- pragma foreign_proc("Java",
     io.read_byte_val_2(File::in, ByteVal::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    ByteVal = File.read_byte();
+    try {
+        ByteVal = File.read_byte();
+    } catch (java.io.IOException e) {
+        io.MR_io_exception.set(e);
+        ByteVal = -2;
+    }
 ").
 
 :- pragma foreign_proc("Java",
     io.putback_char_2(File::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, terminates],
+    [may_call_mercury, promise_pure, thread_safe, terminates, tabled_for_io],
 "
     File.ungetc(Character);
 ").
 
 :- pragma foreign_proc("Java",
     io.putback_byte_2(File::in, Byte::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, terminates],
+    [may_call_mercury, promise_pure, thread_safe, terminates, tabled_for_io],
 "
     File.ungetc(Byte);
 ").
@@ -7683,53 +7714,53 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     io.write_string(Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    mercury_current_text_output.write(Message);
+    io.mercury_current_text_output.write_or_throw(Message);
 ").
 :- pragma foreign_proc("Java",
     io.write_char(Chr::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    mercury_current_text_output.write(java.lang.Character.toString(Chr));
+    io.mercury_current_text_output.write_or_throw(Character.toString(Chr));
 ").
 :- pragma foreign_proc("Java",
     io.write_int(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    mercury_current_text_output.write(java.lang.Integer.toString(Val));
+    io.mercury_current_text_output.write_or_throw(Integer.toString(Val));
 ").
 :- pragma foreign_proc("Java",
     io.write_float(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    mercury_current_text_output.write(java.lang.Double.toString(Val));
+    io.mercury_current_text_output.write_or_throw(Double.toString(Val));
 ").
 
 :- pragma foreign_proc("Java",
     io.write_byte(Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    mercury_current_binary_output.put((byte) Byte);
+    io.mercury_current_binary_output.put_or_throw((byte) Byte);
 ").
 
 :- pragma foreign_proc("Java",
     io.write_bytes(Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"{
-    mercury_current_binary_output.write(Message);
-}").
+"
+    io.mercury_current_binary_output.write_or_throw(Message);
+").
 
 :- pragma foreign_proc("Java",
     io.flush_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    mercury_current_text_output.flush();
+    io.mercury_current_text_output.flush_or_throw();
 ").
 
 :- pragma foreign_proc("Java",
     io.flush_binary_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    mercury_current_binary_output.flush();
+    io.mercury_current_binary_output.flush_or_throw();
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -8121,7 +8152,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates],
 "
-    Stream.seek(Flag, Off);
+    Stream.seek_binary_or_throw(Flag, Off);
 ").
 
 :- pragma foreign_proc("Java",
@@ -8129,63 +8160,67 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates],
 "
-    Offset = Stream.getOffset();
+    try {
+        Offset = Stream.getOffset();
+    } catch (java.io.IOException e) {
+        return -1;
+    }
 ").
 
 :- pragma foreign_proc("Java",
     io.write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    Stream.write(Message);
+    Stream.write_or_throw(Message);
 ").
 
 :- pragma foreign_proc("Java",
     io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    Stream.put(Character);
+    Stream.put_or_throw(Character);
 ").
 
 :- pragma foreign_proc("Java",
     io.write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
-    Stream.write(java.lang.String.valueOf(Val));
+    Stream.write_or_throw(java.lang.String.valueOf(Val));
 ").
 
 :- pragma foreign_proc("Java",
     io.write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
-    Stream.write(java.lang.String.valueOf(Val));
+    Stream.write_or_throw(java.lang.String.valueOf(Val));
 ").
 
 :- pragma foreign_proc("Java",
     io.write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    Stream.put(Byte);
+    Stream.put_or_throw(Byte);
 ").
 
 :- pragma foreign_proc("Java",
     io.write_bytes_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    Stream.write(Message);
+    Stream.write_or_throw(Message);
 ").
 
 :- pragma foreign_proc("Java",
     io.flush_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    Stream.flush();
+    Stream.flush_or_throw();
 ").
 
 :- pragma foreign_proc("Java",
     io.flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    Stream.flush();
+    Stream.flush_or_throw();
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -8310,7 +8345,7 @@ io.stdin_stream = input_stream(io.stdin_stream_2).
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
-    Stream = mercury_stdin;
+    Stream = io.mercury_stdin;
 ").
 
 io.stdin_stream(input_stream(Stream), !IO) :-
@@ -8352,7 +8387,7 @@ io.stdout_stream = output_stream(io.stdout_stream_2).
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
-    Stream = mercury_stdout;
+    Stream = io.mercury_stdout;
 ").
 
 io.stdout_stream(output_stream(Stream), !IO) :-
@@ -8394,7 +8429,7 @@ io.stderr_stream = output_stream(io.stderr_stream_2).
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
-    Stream = mercury_stderr;
+    Stream = io.mercury_stderr;
 ").
 
 io.stderr_stream(output_stream(Stream), !IO) :-
@@ -8819,70 +8854,70 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io.stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    Stream = mercury_stdin;
+    Stream = io.mercury_stdin;
 ").
 
 :- pragma foreign_proc("Java",
     io.stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    Stream = mercury_stdout;
+    Stream = io.mercury_stdout;
 ").
 
 :- pragma foreign_proc("Java",
     io.stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    Stream = mercury_stderr;
+    Stream = io.mercury_stderr;
 ").
 
 :- pragma foreign_proc("Java",
     io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    Stream = mercury_stdin_binary;
+    Stream = io.mercury_stdin_binary;
 ").
 
 :- pragma foreign_proc("Java",
     io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    Stream = mercury_stdout_binary;
+    Stream = io.mercury_stdout_binary;
 ").
 
 :- pragma foreign_proc("Java",
     io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    Stream = mercury_current_text_input;
+    Stream = io.mercury_current_text_input;
 ").
 
 :- pragma foreign_proc("Java",
     io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    Stream = mercury_current_text_output;
+    Stream = io.mercury_current_text_output;
 ").
 
 :- pragma foreign_proc("Java",
     io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    Stream = mercury_current_binary_input;
+    Stream = io.mercury_current_binary_input;
 ").
 
 :- pragma foreign_proc("Java",
     io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    Stream = mercury_current_binary_output;
+    Stream = io.mercury_current_binary_output;
 ").
 
 :- pragma foreign_proc("Java",
     io.get_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    LineNum = mercury_current_text_input.line_number;
+    LineNum = io.mercury_current_text_input.line_number;
 ").
 
 :- pragma foreign_proc("Java",
@@ -8896,43 +8931,43 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io.set_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    mercury_current_text_input.line_number = LineNum;
+    io.mercury_current_text_input.line_number = LineNum;
 ").
 
 :- pragma foreign_proc("Java",
     io.set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
+"
     Stream.line_number = LineNum;
-}").
+").
 
 :- pragma foreign_proc("Java",
     io.get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    LineNum = mercury_current_text_output.line_number;
+    LineNum = io.mercury_current_text_output.line_number;
 ").
 
 :- pragma foreign_proc("Java",
     io.get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
+"
     LineNum = Stream.line_number;
-}").
+").
 
 :- pragma foreign_proc("Java",
     io.set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    mercury_current_text_output.line_number = LineNum;
+    io.mercury_current_text_output.line_number = LineNum;
 ").
 
 :- pragma foreign_proc("Java",
     io.set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
+"
     Stream.line_number = LineNum;
-}").
+").
 
     % io.set_input_stream(NewStream, OldStream, IO0, IO1)
     % Changes the current input stream to the stream specified.
@@ -8942,16 +8977,16 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io.set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    OutStream = mercury_current_text_input;
-    mercury_current_text_input = NewStream;
+    OutStream = io.mercury_current_text_input;
+    io.mercury_current_text_input = NewStream;
 ").
 
 :- pragma foreign_proc("Java",
     io.set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    OutStream = mercury_current_text_output;
-    mercury_current_text_output = NewStream;
+    OutStream = io.mercury_current_text_output;
+    io.mercury_current_text_output = NewStream;
 ").
 
 :- pragma foreign_proc("Java",
@@ -8959,8 +8994,8 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    OutStream = mercury_current_binary_input;
-    mercury_current_binary_input = NewStream;
+    OutStream = io.mercury_current_binary_input;
+    io.mercury_current_binary_input = NewStream;
 ").
 
 :- pragma foreign_proc("Java",
@@ -8968,8 +9003,8 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    OutStream = mercury_current_binary_output;
-    mercury_current_binary_output = NewStream;
+    OutStream = io.mercury_current_binary_output;
+    io.mercury_current_binary_output = NewStream;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -9238,7 +9273,8 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 :- pragma foreign_proc("Java",
     io.do_open_text(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     try {
         if (Mode.charAt(0) == 'r') {
@@ -9251,13 +9287,14 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
             Stream = new MR_MercuryFileStruct(
                 new java.io.FileOutputStream(FileName, true));
         } else {
-            throw new java.lang.RuntimeException(""io.do_open_text: "" +
+            io.ML_throw_io_error(""io.do_open_text: "" +
                 ""Invalid open mode"" + "" \\"""" + Mode + ""\\"""");
+            throw new Error(""unreachable"");
         }
         StreamId = Stream.id;
         ResultCode = 0;
     } catch (java.lang.Exception e) {
-        MR_io_exception = e;
+        io.MR_io_exception.set(e);
         Stream = null;
         StreamId = -1;
         ResultCode = -1;
@@ -9267,14 +9304,15 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 :- pragma foreign_proc("Java",
     io.do_open_binary(FileName::in, Mode::in, ResultCode::out,
         StreamId::out, Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     try {
         Stream = new MR_MercuryFileStruct(FileName, Mode.charAt(0));
         StreamId = Stream.id;
         ResultCode = 0;
     } catch (java.lang.Exception e) {
-        MR_io_exception = e;
+        io.MR_io_exception.set(e);
         Stream = null;
         StreamId = -1;
         ResultCode = -1;
@@ -9361,7 +9399,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     io.close_stream(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
-    Stream.close();
+    Stream.close_or_throw();
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -9905,7 +9943,7 @@ io.setenv(Var, Value) :-
     // implemented directly for Java.
     // This implementation is included only to suppress warnings.
 
-    throw new RuntimeException(
+    io.ML_throw_io_error(
         ""io.putenv/1 not implemented for Java: "" + VarAndValue);
 ").
 
@@ -10079,7 +10117,8 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 
 :- pragma foreign_proc("Java",
     io.make_temp(FileName::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     try {
         java.io.File tmpdir = new java.io.File(
@@ -10087,15 +10126,15 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         FileName = java.io.File.createTempFile(""mtmp"", null, tmpdir).
             getName();
     } catch (java.lang.Exception e) {
-        throw new RuntimeException(e.getMessage());
-        // This is done instead of just 'throw e' because otherwise
-        // the java compiler complains about unreported exceptions.
+        io.ML_throw_io_error(e.getMessage());
+        FileName = null;
     }
 ").
 
 :- pragma foreign_proc("Java",
     io.make_temp(Dir::in, Prefix::in, FileName::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     try {
         if (Prefix.length() < 3) {
@@ -10110,9 +10149,8 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         FileName = java.io.File.createTempFile(Prefix, null,
             new java.io.File(Dir)).getName();
     } catch (java.lang.Exception e) {
-        throw new RuntimeException(e.getMessage());
-        // This is done instead of just 'throw e' because otherwise
-        // the java compiler complains about unreported exceptions.
+        io.ML_throw_io_error(e.getMessage());
+        FileName = null;
     }
 ").
 

@@ -215,6 +215,8 @@ ORDINARY_PROGS=	\
 	static_no_tag \
 	stream_format \
 	stream_ignore_ws \
+	stream_putback \
+	stream_putback_binary \
 	stream_test \
 	string_alignment \
 	string_alignment_bug \

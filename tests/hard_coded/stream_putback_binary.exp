@@ -1,0 +1,32 @@
+Position: 0
+
+Read: 'a'
+Position: 1
+
+Seek: +1
+Position: 2
+
+Read: 'c'
+Position: 3
+
+Put back: 'X'
+Position: 2
+
+Read: 'X'
+Position: 3
+
+Read: '\n'
+Position: 4
+
+Read: eof
+Position: 4
+
+Put back: 'Y'
+Position: 3
+
+Seek: -2
+Position: 1
+
+Read: 'b'
+Position: 2
+
