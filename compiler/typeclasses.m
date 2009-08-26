@@ -283,7 +283,7 @@ apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams, Constraints,
 do_class_improvement(ClassTable, HeadTypeParams, Constraints, !Bindings,
         Changed) :-
     Redundant = Constraints ^ redundant,
-    multi_map.keys(Redundant, ClassIds),
+    map.keys(Redundant, ClassIds),
     list.foldl2(
         do_class_improvement_2(ClassTable, HeadTypeParams, Redundant),
         ClassIds, !Bindings, no, Changed).
@@ -296,8 +296,9 @@ do_class_improvement_2(ClassTable, HeadTypeParams, RedundantConstraints,
         ClassId, !Bindings, !Changed) :-
     map.lookup(ClassTable, ClassId, ClassDefn),
     FunDeps = ClassDefn ^ class_fundeps,
-    map.lookup(RedundantConstraints, ClassId, Constraints),
-    do_class_improvement_by_pairs(Constraints, FunDeps, HeadTypeParams,
+    map.lookup(RedundantConstraints, ClassId, ConstraintSet),
+    set.to_sorted_list(ConstraintSet, ConstraintList),
+    do_class_improvement_by_pairs(ConstraintList, FunDeps, HeadTypeParams,
         !Bindings, !Changed).
 
 :- pred has_class_id(class_id::in, hlds_constraint::in) is semidet.
@@ -396,9 +397,10 @@ do_instance_improvement_2(ClassTable, InstanceTable, HeadTypeParams,
     map.lookup(ClassTable, ClassId, ClassDefn),
     FunDeps = ClassDefn ^ class_fundeps,
     map.lookup(InstanceTable, ClassId, InstanceDefns),
-    map.lookup(RedundantConstraints, ClassId, Constraints),
+    map.lookup(RedundantConstraints, ClassId, ConstraintSet),
+    set.to_sorted_list(ConstraintSet, ConstraintList),
     list.foldl3(
-        do_instance_improvement_3(Constraints, FunDeps, HeadTypeParams),
+        do_instance_improvement_3(ConstraintList, FunDeps, HeadTypeParams),
         InstanceDefns, !TVarSet, !Bindings, !Changed).
 
 :- pred do_instance_improvement_3(list(hlds_constraint)::in,

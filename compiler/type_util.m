@@ -1168,7 +1168,9 @@ apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
     apply_variable_renaming_to_constraint_list(Renaming, Unproven0, Unproven),
     apply_variable_renaming_to_constraint_list(Renaming, Assumed0, Assumed),
     Pred = (pred(_::in, C0::in, C::out) is det :-
-        apply_variable_renaming_to_constraint_list(Renaming, C0, C)
+        set.to_sorted_list(C0, L0),
+        apply_variable_renaming_to_constraint_list(Renaming, L0, L),
+        set.list_to_set(L, C)
     ),
     map.map_values(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
@@ -1185,7 +1187,9 @@ apply_subst_to_constraints(Subst, !Constraints) :-
     apply_subst_to_constraint_list(Subst, Unproven0, Unproven),
     apply_subst_to_constraint_list(Subst, Assumed0, Assumed),
     Pred = (pred(_::in, C0::in, C::out) is det :-
-        apply_subst_to_constraint_list(Subst, C0, C)
+        set.to_sorted_list(C0, L0),
+        apply_subst_to_constraint_list(Subst, L0, L),
+        set.list_to_set(L, C)
     ),
     map.map_values(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
@@ -1202,7 +1206,9 @@ apply_rec_subst_to_constraints(Subst, !Constraints) :-
     apply_rec_subst_to_constraint_list(Subst, Unproven0, Unproven),
     apply_rec_subst_to_constraint_list(Subst, Assumed0, Assumed),
     Pred = (pred(_::in, C0::in, C::out) is det :-
-        apply_rec_subst_to_constraint_list(Subst, C0, C)
+        set.to_sorted_list(C0, L0),
+        apply_rec_subst_to_constraint_list(Subst, L0, L),
+        set.list_to_set(L, C)
     ),
     map.map_values(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),

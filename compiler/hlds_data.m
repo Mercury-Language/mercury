@@ -26,7 +26,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module multi_map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
@@ -40,8 +39,8 @@
 
 :- import_module cord.
 :- import_module int.
+:- import_module multi_map.
 :- import_module svmap.
-:- import_module svmulti_map.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -1015,7 +1014,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
     % Redundant constraints are partitioned by class, which helps us
     % process them more efficiently.
     %
-:- type redundant_constraints == multi_map(class_id, hlds_constraint).
+:- type redundant_constraints == map(class_id, set(hlds_constraint)).
 
     % Constraints which are ancestors of assumed constraints, along with the
     % list of constraints (following the class hierarchy) which leads to
@@ -1124,7 +1123,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
 :- implementation.
 
 empty_hlds_constraints(Constraints) :-
-    Constraints = constraints([], [], multi_map.init, map.init).
+    Constraints = constraints([], [], map.init, map.init).
 
 init_hlds_constraint_list(ProgConstraints, Constraints) :-
     list.map(init_hlds_constraint, ProgConstraints, Constraints).
@@ -1156,7 +1155,7 @@ make_body_hlds_constraints(ClassTable, TVarSet, GoalPath, ProgConstraints,
 
 make_hlds_constraints(ClassTable, TVarSet, Unproven, Assumed, Constraints) :-
     list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
-        Unproven, multi_map.init, Redundant0),
+        Unproven, map.init, Redundant0),
     list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
         Assumed, Redundant0, Redundant),
     list.foldl(update_ancestor_constraints(ClassTable, TVarSet),
@@ -1186,7 +1185,7 @@ merge_hlds_constraints(ConstraintsA, ConstraintsB, Constraints) :-
     ConstraintsB = constraints(UnprovenB, AssumedB, RedundantB, AncestorsB),
     list.append(UnprovenA, UnprovenB, Unproven),
     list.append(AssumedA, AssumedB, Assumed),
-    multi_map.merge(RedundantA, RedundantB, Redundant),
+    map.union(set.union, RedundantA, RedundantB, Redundant),
     map.union(shortest_list, AncestorsA, AncestorsB, Ancestors),
     Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
 
@@ -1289,7 +1288,12 @@ add_redundant_constraint(Constraint, !Redundant) :-
     Constraint = constraint(_, Name, Args),
     list.length(Args, Arity),
     ClassId = class_id(Name, Arity),
-    svmulti_map.add(ClassId, Constraint, !Redundant).
+    ( map.search(!.Redundant, ClassId, Constraints0) ->
+        set.insert(Constraints0, Constraint, Constraints)
+    ;
+        Constraints = set.make_singleton_set(Constraint)
+    ),
+    svmap.set(ClassId, Constraints, !Redundant).
 
 lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalPath, Count,
         Constraints) :-
