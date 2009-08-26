@@ -715,7 +715,9 @@ MERCURY_CHECK_CC_NEEDS_TRAD_CPP
 AC_SUBST(CC)
 
 # AC_PROG_CC sets GCC to yes if $CC is GNU C.
+# If the C compiler is GCC try to work out what version we are using.
 if test "$GCC" = "yes"; then
+    MERCURY_GCC_VERSION
     GCC_PROG=$CC
 else
     AC_PATH_PROG(GCC_PROG,gcc)
@@ -4103,8 +4105,6 @@ esac
 # AC_PROG_CC sets GCC to yes if $CC is GNU C.
 if test "$GCC" = "yes"
 then
-
-    MERCURY_GCC_VERSION
     C_COMPILER_TYPE="gcc_${mercury_cv_gcc_version}"
     CFLAGS_FOR_ANSI="-ansi"
 
