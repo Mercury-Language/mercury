@@ -4216,10 +4216,10 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
             DeepRecInfo = deep_recursion_info(Role, _),
             io.write_string("% deep recursion info: ", !IO),
             (
-                Role = inner_proc(DeepPredProcId),
+                Role = deep_prof_inner_proc(DeepPredProcId),
                 io.write_string("inner, outer is ", !IO)
             ;
-                Role = outer_proc(DeepPredProcId),
+                Role = deep_prof_outer_proc(DeepPredProcId),
                 io.write_string("outer, inner is ", !IO)
             ),
             DeepPredProcId = proc(DeepPredId, DeepProcId),

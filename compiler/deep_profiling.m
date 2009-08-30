@@ -20,12 +20,8 @@
 
 :- import_module hlds.hlds_module.
 
-:- import_module io.
-
-%-----------------------------------------------------------------------------%
-
-:- pred apply_deep_profiling_transformation(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred apply_deep_profiling_transform(module_info::in, module_info::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -76,7 +72,7 @@
 
 %-----------------------------------------------------------------------------%
 
-apply_deep_profiling_transformation(!ModuleInfo, !IO) :-
+apply_deep_profiling_transform(!ModuleInfo) :-
     % XXX The dead proc elimination pass changes the status of opt_imported
     % predicates, which changes what labels they get generated. The
     % call_site_static structures we generate must match the labels created
@@ -94,8 +90,8 @@ apply_deep_profiling_transformation(!ModuleInfo, !IO) :-
     module_info_predids(PredIds, !ModuleInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_get_preds(PredTable0, PredMap0),
-    list.foldl2(deep_prof_transform_predicate(!.ModuleInfo), PredIds,
-        PredMap0, PredMap, !IO),
+    list.foldl(deep_prof_transform_pred(!.ModuleInfo), PredIds,
+        PredMap0, PredMap),
     predicate_table_set_preds(PredMap, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
@@ -146,12 +142,14 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
     ->
         proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
         figure_out_rec_call_numbers(Goal, 0, _N, [], TailCallSites),
-        OrigDeepRecInfo = yes(deep_recursion_info(outer_proc(ClonePredProcId),
+        OrigDeepRecInfo = yes(deep_recursion_info(
+            deep_prof_outer_proc(ClonePredProcId),
             [visible_scc_data(PredProcId, ClonePredProcId, TailCallSites)])),
-        make_deep_original_body(ProcInfo0, !.ModuleInfo, DeepOriginalBody),
+        make_deep_original_body(!.ModuleInfo, ProcInfo0, DeepOriginalBody),
         OrigDeepProfileInfo = deep_profile_proc_info(OrigDeepRecInfo, no,
             DeepOriginalBody),
-        CloneDeepRecInfo = yes(deep_recursion_info(inner_proc(PredProcId),
+        CloneDeepRecInfo = yes(deep_recursion_info(
+            deep_prof_inner_proc(PredProcId),
             [visible_scc_data(PredProcId, ClonePredProcId, TailCallSites)])),
         CloneDeepProfileInfo = deep_profile_proc_info(CloneDeepRecInfo, no,
             DeepOriginalBody),
@@ -184,16 +182,16 @@ find_list_of_output_args(Vars, Modes, Types, ModuleInfo, !:Outputs) :-
 find_list_of_output_args_2([], [], [], _, []).
 find_list_of_output_args_2([Var | Vars], [Mode | Modes], [Type | Types],
         ModuleInfo, Outputs) :-
-    find_list_of_output_args_2(Vars, Modes, Types, ModuleInfo, Outputs1),
+    find_list_of_output_args_2(Vars, Modes, Types, ModuleInfo, LaterOutputs),
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
     (
         ArgMode = top_in,
-        Outputs = Outputs1
+        Outputs = LaterOutputs
     ;
         ( ArgMode = top_out
         ; ArgMode = top_unused
         ),
-        Outputs = [Var | Outputs1]
+        Outputs = [Var | LaterOutputs]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -462,24 +460,22 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred deep_prof_transform_predicate(module_info::in, pred_id::in,
-    pred_table::in, pred_table::out, io::di, io::uo) is det.
+:- pred deep_prof_transform_pred(module_info::in, pred_id::in,
+    pred_table::in, pred_table::out) is det.
 
-deep_prof_transform_predicate(ModuleInfo, PredId, PredMap0, PredMap, !IO) :-
+deep_prof_transform_pred(ModuleInfo, PredId, PredMap0, PredMap) :-
     map.lookup(PredMap0, PredId, PredInfo0),
     ProcIds = pred_info_non_imported_procids(PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
-    list.foldl2(deep_prof_maybe_transform_procedure(ModuleInfo, PredId),
-        ProcIds, ProcTable0, ProcTable, !IO),
+    list.foldl(deep_prof_maybe_transform_proc(ModuleInfo, PredId),
+        ProcIds, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
     map.det_update(PredMap0, PredId, PredInfo, PredMap).
 
-:- pred deep_prof_maybe_transform_procedure(module_info::in,
-    pred_id::in, proc_id::in, proc_table::in, proc_table::out,
-    io::di, io::uo) is det.
+:- pred deep_prof_maybe_transform_proc(module_info::in,
+    pred_id::in, proc_id::in, proc_table::in, proc_table::out) is det.
 
-deep_prof_maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable,
-        !IO) :-
+deep_prof_maybe_transform_proc(ModuleInfo, PredId, ProcId, !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
     PredModuleName = predicate_module(ModuleInfo, PredId),
@@ -497,15 +493,16 @@ deep_prof_maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable,
     ->
         true
     ;
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-        ProcName = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
-        maybe_write_string(VeryVerbose,
-            string.format("%% Deep profiling: %s\n", [s(ProcName)]),
-            !IO),
+        trace [io(!IO)] (
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+            ProcName = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
+            maybe_write_string(VeryVerbose,
+                string.format("%% Deep profiling: %s\n", [s(ProcName)]), !IO)
+        ),
         deep_prof_transform_proc(ModuleInfo, proc(PredId, ProcId),
             ProcInfo0, ProcInfo),
-        map.det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable)
+        svmap.det_update(ProcId, ProcInfo, !ProcTable)
     ).
 
 :- pred deep_prof_transform_proc(module_info::in, pred_proc_id::in,
@@ -518,7 +515,7 @@ deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         DeepInfo0 = deep_profile_proc_info(MaybeDeepRecInfo, _, OrigBody),
         (
             MaybeDeepRecInfo = yes(RecInfo),
-            RecInfo ^ role = inner_proc(_)
+            RecInfo ^ dri_role = deep_prof_inner_proc(_)
         ->
             deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo),
             MaybeDeepLayoutInfo = no
@@ -529,7 +526,7 @@ deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         )
     ;
         MaybeDeepInfo = no,
-        make_deep_original_body(!.ProcInfo, ModuleInfo, OrigBody),
+        make_deep_original_body(ModuleInfo, !.ProcInfo, OrigBody),
         deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
             DeepLayoutInfo),
         MaybeDeepLayoutInfo = yes(DeepLayoutInfo),
@@ -541,10 +538,10 @@ deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_deep_original_body(proc_info::in, module_info::in,
+:- pred make_deep_original_body(module_info::in, proc_info::in,
     deep_original_body::out) is det.
 
-make_deep_original_body(ProcInfo, ModuleInfo, DeepOriginalBody) :-
+make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
     proc_info_get_goal(ProcInfo, Body),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, Instmap),
@@ -580,7 +577,7 @@ make_deep_original_body(ProcInfo, ModuleInfo, DeepOriginalBody) :-
                 deep_pred_proc_id       :: pred_proc_id,
                 deep_current_csd        :: prog_var,
                 deep_site_num_counter   :: counter,
-                deep_call_sites         :: list(call_site_static_data),
+                deep_call_sites         :: cord(call_site_static_data),
                 deep_varinfo            :: deep_prof_var_info,
                 deep_proc_filename      :: string,
                 deep_maybe_rec_info     :: maybe(deep_recursion_info)
@@ -612,13 +609,13 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
         proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
         extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
         DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
-            counter.init(0), [], !.VarInfo, FileName, MaybeRecInfo),
+            counter.init(0), cord.empty, !.VarInfo, FileName, MaybeRecInfo),
 
         % This call transforms the goals of the procedure.
         deep_prof_transform_goal(empty_goal_path, Goal0, Goal1, _,
             DeepInfo0, DeepInfo),
         !:VarInfo = DeepInfo ^ deep_varinfo,
-        CallSites = DeepInfo ^ deep_call_sites,
+        CallSites = cord.list(DeepInfo ^ deep_call_sites),
 
         % Do coverage profiling if requested.
         globals.lookup_bool_option(Globals, coverage_profiling,
@@ -635,7 +632,7 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
 
         (
             MaybeRecInfo = yes(RecInfo),
-            RecInfo ^ role = inner_proc(OuterPredProcId)
+            RecInfo ^ dri_role = deep_prof_inner_proc(OuterPredProcId)
         ->
             OuterPredProcId = proc(PredId, ProcId)
         ;
@@ -690,7 +687,7 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
     % Wrap the procedure body in the deep profiling port goals.
     %
     % When modifing this transformation be sure to modify original_root/3 in
-    % deep_profiler/program_represetntation_utils.m which must be able to undo
+    % deep_profiler/program_representation_utils.m which must be able to undo
     % this transformation.
     %
 :- pred build_det_proc_body(module_info::in, prog_var::in, prog_var::in,
@@ -897,7 +894,7 @@ deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
     extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
     DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
-        counter.init(0), [], VarInfo1, FileName, MaybeRecInfo),
+        counter.init(0), cord.empty, VarInfo1, FileName, MaybeRecInfo),
 
     deep_prof_transform_goal(empty_goal_path, Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
@@ -991,7 +988,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        GoalExpr0 = switch(Var, CF, Cases0),
+        GoalExpr0 = switch(Var, CanFail, Cases0),
         % XXX: This computation seems broken, it's been disabled so I can
         % relyably implement coverage profiling.  Test it on
         % erlang_rtti_implementation.deconstruct_2/9-2 whose switch's type has
@@ -1010,7 +1007,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         deep_prof_transform_switch(MaybeNumFunctors, 0, Path, Cases0, Cases,
             AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo2, GoalInfo),
-        GoalExpr = switch(Var, CF, Cases),
+        GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = negation(SubGoal0),
@@ -1069,7 +1066,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         ),
         ScopedGoalPath = goal_path_add_at_end(Path, step_scope(MaybeCut)),
         ( Reason = from_ground_term(_, from_ground_term_construct) ->
-            % We must annotate the scope goal and it's children with a default
+            % We must annotate the scope goal and its children with a default
             % deep profiling information structure, this is required by the
             % coverage profiling transformation.
             transform_all_goals(deep_prof_mark_goal_as_not_mdprof_inst,
@@ -1208,7 +1205,7 @@ deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
         MaybeRecInfo = !.DeepInfo ^ deep_maybe_rec_info,
         (
             MaybeRecInfo = yes(RecInfo1),
-            RecInfo1 ^ role = inner_proc(OuterPredProcId),
+            RecInfo1 ^ dri_role = deep_prof_inner_proc(OuterPredProcId),
             PredProcId = !.DeepInfo ^ deep_pred_proc_id
         ->
             OuterPredProcId = proc(OuterPredId, OuterProcId),
@@ -1216,7 +1213,7 @@ deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
                 OuterPredId, OuterProcId)
         ;
             MaybeRecInfo = yes(RecInfo2),
-            RecInfo2 ^ role = outer_proc(InnerPredProcId),
+            RecInfo2 ^ dri_role = deep_prof_outer_proc(InnerPredProcId),
             PredProcId = InnerPredProcId
         ->
             OuterPredProcId = !.DeepInfo ^ deep_pred_proc_id,
@@ -1280,13 +1277,13 @@ deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
     ),
 
     !DeepInfo ^ deep_call_sites :=
-        (!.DeepInfo ^ deep_call_sites ++ [CallSite]),
+        cord.snoc(!.DeepInfo ^ deep_call_sites, CallSite),
     (
         set.member(feature_deep_tail_rec_call, GoalFeatures),
         !.DeepInfo ^ deep_maybe_rec_info = yes(RecInfo),
-        RecInfo ^ role = outer_proc(_)
+        RecInfo ^ dri_role = deep_prof_outer_proc(_)
     ->
-        VisSCC = RecInfo ^ visible_scc,
+        VisSCC = RecInfo ^ dri_visible_scc,
         MiddleCSD = !.DeepInfo ^ deep_current_csd,
         (
             VisSCC = [],
@@ -1308,11 +1305,8 @@ deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
         CodeModel = goal_info_get_code_model(GoalInfo0),
         (
             CodeModel = model_det,
-            list.condense([
-                CallGoals,
-                [SiteNumVarGoal, PrepareGoal, Goal2],
-                ExitGoals
-            ], Goals),
+            Goals =
+                CallGoals ++ [SiteNumVarGoal, PrepareGoal, Goal2] ++ ExitGoals,
             GoalExpr = conj(plain_conj, Goals)
         ;
             ( CodeModel = model_semi
@@ -1339,12 +1333,8 @@ deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
 
             DisjGoalExpr = disj([
                 hlds_goal(
-                    conj(plain_conj, [
-                        SiteNumVarGoal,
-                        PrepareGoal,
-                        Goal2 |
-                        ExitGoals
-                    ]),
+                    conj(plain_conj,
+                        [SiteNumVarGoal, PrepareGoal, Goal2 | ExitGoals]),
                     WrappedGoalGoalInfo),
                 hlds_goal(
                     conj(plain_conj, FailGoalsAndFail),
@@ -1508,7 +1498,8 @@ deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
         GoalInfo),
     !DeepInfo ^ deep_site_num_counter := SiteNumCounter,
     !DeepInfo ^ deep_varinfo := VarInfo,
-    !DeepInfo ^ deep_call_sites := !.DeepInfo ^ deep_call_sites ++ [CallSite].
+    !DeepInfo ^ deep_call_sites :=
+        cord.snoc(!.DeepInfo ^ deep_call_sites, CallSite).
 
 :- pred compress_filename(deep_info::in, string::in, string::out) is det.
 
@@ -1827,8 +1818,7 @@ generate_outermost_proc_dyns(UseActivationCounts, TopCSD, MiddleCSD,
         UseActivationCounts = yes,
         MaybeOldActivationPtr = no
     ),
-    ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD,
-        MaybeOldActivationPtr),
+    ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD, MaybeOldActivationPtr),
     generate_var("NewOutermost", c_pointer_type, NewOutermostProcDyn,
         !VarInfo).
 
@@ -2278,7 +2268,7 @@ coverage_known_after_goal_with_detism(Detism, !CoverageKnown) :-
 
     % Perform the coverage profiling transformation for conjuncts.
     %
-    % The goal list represents the tail of a conjunction.  Pos is the position
+    % The goal list represents the tail of a conjunction. Pos is the position
     % of this list within the entire conjunction, if this is the entire
     % conjunction then Pos should be 1.
     %
@@ -2352,7 +2342,8 @@ coverage_prof_second_pass_disj(DPInfo, CoverageBeforeKnown,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
 coverage_prof_second_pass_disj_2(_, _, !CoverageKnownAfter, [], [], !Info, no).
-coverage_prof_second_pass_disj_2(DPInfo, CoverageBeforeKnown0, !CoverageAfterKnown,
+coverage_prof_second_pass_disj_2(DPInfo,
+        CoverageBeforeKnown0, !CoverageAfterKnown,
         [HeadDisjunct0 | TailDisjuncts0], [HeadDisjunct | TailDisjuncts],
         !Info, AddedImpurity) :-
     % Decide whether we want to insert a branch coverage point at the beginning
@@ -2697,8 +2688,8 @@ has_port_counts_after(Goal, PCDirect, PCBefore, PC) :-
     port_counts_give_coverage_after::in, port_counts_give_coverage_after::out)
     is det.
 
-has_port_counts_if_det(Detism, PortCountsCoverageAfter0,
-        PortCountsCoverageAfter) :-
+has_port_counts_if_det(Detism,
+        PortCountsCoverageAfter0, PortCountsCoverageAfter) :-
     (
         ( Detism = detism_det
         ; Detism = detism_cc_multi
@@ -3059,7 +3050,7 @@ pred_proc_id(CoverageInfo, PredId, ProcId) :-
     PredProcId = CoverageInfo ^ ci_pred_proc_id,
     (
         MaybeRecInfo = yes(RecInfo),
-        RecInfo ^ role = inner_proc(OuterPredProcId)
+        RecInfo ^ dri_role = deep_prof_inner_proc(OuterPredProcId)
     ->
         OuterPredProcId = proc(PredId, ProcId)
     ;

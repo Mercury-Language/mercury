@@ -1612,7 +1612,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % Various predicates for accessing the proc_info data structure.
+    % Various predicates for accessing the proc_info data structure,
+    % and the types they work with.
 
 :- interface.
 
@@ -1621,32 +1622,32 @@ attribute_list_to_attributes(Attributes, Attributes).
     ;       address_is_not_taken.
 
 :- type deep_profile_role
-    --->    inner_proc(
-                outer_proc  :: pred_proc_id
+    --->    deep_prof_inner_proc(
+                dpip_outer_proc         :: pred_proc_id
             )
-    ;       outer_proc(
-                inner_proc  :: pred_proc_id
+    ;       deep_prof_outer_proc(
+                dpop_inner_proc         :: pred_proc_id
             ).
 
 :- type deep_recursion_info
     --->    deep_recursion_info(
-                role        :: deep_profile_role,
-                visible_scc :: list(visible_scc_data)
-                            % If the procedure is not tail recursive, this list
-                            % is empty. Otherwise, it contains outer-inner
-                            % pairs of procedures in the visible SCC,
-                            % including this procedure and its copy.
+                dri_role                :: deep_profile_role,
+
+                % If the procedure is not tail recursive, this list is empty.
+                % Otherwise, it contains outer-inner pairs of procedures
+                % in the visible SCC, including this procedure and its copy.
+                dri_visible_scc         :: list(visible_scc_data)
             ).
 
 :- type visible_scc_data
     --->    visible_scc_data(
-                vis_outer_proc  :: pred_proc_id,
-                vis_inner_proc  :: pred_proc_id,
-                rec_call_sites  :: list(int)
-                                % A list of all the call site numbers that
-                                % correspond to tail calls. (Call sites are
-                                % numbered depth-first, left-to-right,
-                                % from zero.)
+                vis_outer_proc          :: pred_proc_id,
+                vis_inner_proc          :: pred_proc_id,
+
+                % A list of all the call site numbers that correspond to
+                % tail calls. (Call sites are numbered depth-first,
+                % left-to-right, starting from zero.)
+                rec_call_sites          :: list(int)
             ).
 
 :- type call_site_static_data           % defines MR_CallSiteStatic
@@ -1710,29 +1711,29 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    deep_profile_proc_info(
                 % This field is set during the first part of the deep profiling
                 % transformation; tail recursion, if that is enabled.
-                deep_rec        :: maybe(deep_recursion_info),
+                deep_rec                :: maybe(deep_recursion_info),
 
                 % This field is set during the second part; it will be bound
                 % to `no' before and during the first part, and to `yes'
                 % after the second. The contents of this field govern
                 % what will go into MR_ProcStatic structures.
-                deep_layout     :: maybe(hlds_deep_layout),
+                deep_layout             :: maybe(hlds_deep_layout),
 
                 % This field stores the origional body of a procedure,
                 % before either part of the deep profiling transformation
                 % was executed. For inner procedures created by the tail
                 % recursion part of the deep profiling transformation,
                 % it holds the origional body of the outer procedure.
-                deep_orig_body  :: deep_original_body
+                deep_orig_body          :: deep_original_body
             ).
 
 :- type deep_original_body
     --->    deep_original_body(
-                dob_body            :: hlds_goal,
-                dob_head_vars       :: list(prog_var),
-                dob_instmap         :: instmap,
-                dob_vartypes        :: vartypes,
-                dob_detism          :: determinism
+                dob_body                :: hlds_goal,
+                dob_head_vars           :: list(prog_var),
+                dob_instmap             :: instmap,
+                dob_vartypes            :: vartypes,
+                dob_detism              :: determinism
             ).
 
 :- type table_arg_infos
@@ -1743,10 +1744,10 @@ attribute_list_to_attributes(Attributes, Attributes).
 
 :- type table_arg_info
     --->    table_arg_info(
-                orig_var_num    :: int,
-                orig_var_name   :: string,
-                slot_num        :: int,
-                arg_type        :: mer_type
+                orig_var_num            :: int,
+                orig_var_name           :: string,
+                slot_num                :: int,
+                arg_type                :: mer_type
             ).
 
     % This type is analogous to llds:layout_locn, but it refers to slots in
