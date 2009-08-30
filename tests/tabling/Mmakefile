@@ -211,7 +211,11 @@ tc_memo2.out: tc_memo2
 	fi
 
 loopcheck.out: loopcheck
-	if ./$< > $@.tmp 2>&1; then \
+	grep -v "Warning" loopcheck.err > loopcheck.err_no_warn; \
+	if test -s loopcheck.err_no_warn; then \
+		cat loopcheck.err > loopcheck.out; \
+		exit 1; \
+	elif ./$< > $@.tmp 2>&1; then \
 		grep . $@.tmp; \
 		exit 1; \
 	else \
@@ -219,10 +223,14 @@ loopcheck.out: loopcheck
 			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
-	fi
+	fi; \
+	/bin/rm loopcheck.err_no_warn;
 
 loopcheck_nondet.out: loopcheck_nondet
-	if ./$< > $@.tmp 2>&1; then \
+	if test -s loopcheck_nondet.err; then \
+		cat loopcheck_nondet.err > loopcheck.out; \
+		exit 1; \
+	elif ./$< > $@.tmp 2>&1; then \
 		grep . $@.tmp; \
 		exit 1; \
 	else \
