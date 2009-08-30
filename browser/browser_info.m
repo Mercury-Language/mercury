@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -267,8 +267,8 @@
 %   ;       xml_tmp_filename(string)
 
 :- type debugger
-    --->    internal
-    ;       external.
+    --->    debugger_internal
+    ;       debugger_external.
 %
 % If the term browser is called from the internal debugger, input is
 % done via a call to the readline library (if available), using streams
@@ -952,24 +952,24 @@ size_len      = 10.
 width_len     = 10.
 lines_len     = 10.
 
-nl_debugger(internal, !IO) :-
+nl_debugger(debugger_internal, !IO) :-
     io.nl(!IO).
-nl_debugger(external, !IO) :-
+nl_debugger(debugger_external, !IO) :-
     send_term_to_socket(browser_nl, !IO).
 
-write_string_debugger(internal, String, !IO) :-
+write_string_debugger(debugger_internal, String, !IO) :-
     io.write_string(String, !IO).
-write_string_debugger(external, String, !IO) :-
+write_string_debugger(debugger_external, String, !IO) :-
     send_term_to_socket(browser_str(String), !IO).
 
-write_int_debugger(internal, Int, !IO) :-
+write_int_debugger(debugger_internal, Int, !IO) :-
     io.write_int(Int, !IO).
-write_int_debugger(external, Int, !IO) :-
+write_int_debugger(debugger_external, Int, !IO) :-
     send_term_to_socket(browser_int(Int), !IO).
 
-print_format_debugger(internal, X, !IO) :-
+print_format_debugger(debugger_internal, X, !IO) :-
     io.print(X, !IO).
-print_format_debugger(external, X, !IO) :-
+print_format_debugger(debugger_external, X, !IO) :-
     (
         X = flat,
         send_term_to_socket(browser_str("flat"), !IO)
@@ -1048,10 +1048,10 @@ send_term_to_socket(Term, !IO) :-
 ].
 
 :- instance stream.output(debugger, io) where [
-    (flush(internal, !IO) :-
+    (flush(debugger_internal, !IO) :-
         io.flush_output(!IO)
     ),
-    (flush(external, !IO) :-
+    (flush(debugger_external, !IO) :-
         % XXX
         true
     )

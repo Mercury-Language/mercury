@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -340,7 +340,7 @@ handle_command(user_cmd_param_command(ParamCommand), UserQuestion, Response,
     Browser0 = !.User ^ browser,
     DummyTerm = synthetic_term("", [], no),
     Info0 = browser_info(DummyTerm, [], print, no, Browser0, no_track, no),
-    run_param_command(internal, ParamCommand, no, Info0, Info, !IO),
+    run_param_command(debugger_internal, ParamCommand, no, Info0, Info, !IO),
     Info = browser_info(_, _, _, _, Browser, _, _),
     !:User = !.User ^ browser := Browser,
     query_user(UserQuestion, Response, !User, !IO).
@@ -960,11 +960,12 @@ print_arg_cmd(["io", Arg], user_cmd_print_io(From, To)) :-
 
 :- pred format_arg_cmd(list(string)::in, user_command::out) is semidet.
 
-format_arg_cmd(ArgWords,
-        user_cmd_param_command(format(MaybeOptionTable, Setting))) :-
+format_arg_cmd(ArgWords, UserCommand) :-
     ArgWords = [_ | _],
-    parse.parse(["format" | ArgWords],
-        param_command(format(MaybeOptionTable, Setting))).
+    parse.parse(["format" | ArgWords], Command),
+    Command = cmd_param(FormatCmd),
+    FormatCmd = format(MaybeOptionTable, Setting),
+    UserCommand = user_cmd_param_command(format(MaybeOptionTable, Setting)).
 
 :- pred format_param_arg_cmd(string::in, list(string)::in,
     user_command::out) is semidet.
@@ -977,9 +978,10 @@ format_param_arg_cmd(Cmd, ArgWords0, Command) :-
         ArgWords = ArgWords0,
         HasIOArg = no : bool
     ),
-    ArgWords \= [],
+    ArgWords = [_ | _],
     parse.parse([Cmd | ArgWords], ParsedCommand),
-    ParsedCommand = param_command(format_param(MaybeOptionTable0, Setting)),
+    ParsedCommand = cmd_param(FormatCmd),
+    FormatCmd = format_param(MaybeOptionTable0, Setting),
     ( 
         HasIOArg = yes,
         % Since the command was invoked with the `io' argument we want to

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2007 The University of Melbourne.
+% Copyright (C) 1998-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -128,20 +128,21 @@
 %---------------------------------------------------------------------------%
 
 :- type command
-    --->    print(maybe(maybe_option_table(format_option)), maybe(path))
-    ;       cd_path(path)
-    ;       cd_no_path
-    ;       track(how_track_subterm, should_assert_invalid, maybe(path))
-    ;       mode_query(path)
-    ;       mode_query
-    ;       pwd
-    ;       help
-    ;       param_command(param_cmd)
-    ;       quit
-    ;       display
-    ;       write
-    ;       empty
-    ;       unknown.
+    --->    cmd_print(maybe(maybe_option_table(format_option)), maybe(path))
+    ;       cmd_display
+    ;       cmd_write
+    ;       cmd_memory_addr(maybe(path))
+    ;       cmd_cd_path(path)
+    ;       cmd_cd_no_path
+    ;       cmd_pwd
+    ;       cmd_track(how_track_subterm, should_assert_invalid, maybe(path))
+    ;       cmd_mode_query(path)
+    ;       cmd_mode_query_no_path
+    ;       cmd_param(param_cmd)
+    ;       cmd_help
+    ;       cmd_quit
+    ;       cmd_empty
+    ;       cmd_unknown.
 
 :- type format_param_cmd
     --->    param_depth
@@ -198,24 +199,24 @@
 :- import_module string.
 
 :- type token
-    --->    (.)
-    ;       (..)
-    ;       (/)
-    ;       (?)
-    ;       (^)
-    ;       (<)
-    ;       num(int)
-    ;       name(string)
-    ;       arg(string)
-    ;       unknown(char).
+    --->    token_dot
+    ;       token_dot_dot
+    ;       token_slash
+    ;       token_question
+    ;       token_up
+    ;       token_lessthan
+    ;       token_num(int)
+    ;       token_name(string)
+    ;       token_arg(string)
+    ;       token_unknown(char).
 
 read_command(Prompt, Command, !IO) :-
     util.trace_get_command(Prompt, Line, !IO),
     string.words_separator(char.is_whitespace, Line) = Words,
-    ( parse(Words, Command2) ->
-        Command = Command2
+    ( parse(Words, CommandPrime) ->
+        Command = CommandPrime
     ;
-        Command = unknown
+        Command = cmd_unknown
     ).
 
 read_command_external(Command, !IO) :-
@@ -223,17 +224,17 @@ read_command_external(Command, !IO) :-
     (
         Result = ok(external_request(StringToParse)),
         string.words_separator(char.is_whitespace, StringToParse) = Words,
-        ( parse(Words, Command2) ->
-            Command = Command2
+        ( parse(Words, CommandPrime) ->
+            Command = CommandPrime
         ;
-            Command = unknown
+            Command = cmd_unknown
         )
     ;
         Result = eof,
-        Command = quit
+        Command = cmd_quit
     ;
         Result = error(_, _),
-        Command = unknown
+        Command = cmd_unknown
     ).
 
 :- pred lexer_words(list(string)::in, list(token)::out) is det.
@@ -257,16 +258,16 @@ lexer_word_chars([C | Cs], Toks) :-
     ( C = ('.') ->
         lexer_dots(Cs, Toks)
     ; C = ('/') ->
-        Toks = [(/) | Toks2],
+        Toks = [token_slash | Toks2],
         lexer_word_chars(Cs, Toks2)
     ; C = ('?') ->
-        Toks = [(?) | Toks2],
+        Toks = [token_question | Toks2],
         lexer_word_chars(Cs, Toks2)
     ; C = ('^') ->
-        Toks = [(^) | Toks2],
+        Toks = [token_up | Toks2],
         lexer_word_chars(Cs, Toks2)
     ; C = ('<') ->
-        Toks = [(<) | Toks2],
+        Toks = [token_lessthan | Toks2],
         lexer_word_chars(Cs, Toks2)
     ; C = ('-'), Cs = [H | T] ->
         lexer_arg([H | T], Toks)
@@ -278,7 +279,7 @@ lexer_word_chars([C | Cs], Toks) :-
     ; char.is_whitespace(C) ->
         lexer_word_chars(Cs, Toks)
     ;
-        Toks = [unknown(C) | Toks2],
+        Toks = [token_unknown(C) | Toks2],
         lexer_word_chars(Cs, Toks2)
     ).
 
@@ -287,13 +288,11 @@ lexer_word_chars([C | Cs], Toks) :-
 lexer_dots([], []).
 lexer_dots([C | Cs], Toks) :-
     ( C = ('.') ->
-        Tok = (..),
         lexer_word_chars(Cs, Toks2),
-        Toks = [Tok | Toks2]
+        Toks = [token_dot_dot | Toks2]
     ;
-        Tok = (.),
         lexer_word_chars([C | Cs], Toks2),
-        Toks = [Tok | Toks2]
+        Toks = [token_dot | Toks2]
     ).
 
 :- pred dig_to_int(char::in, int::out) is det.
@@ -311,14 +310,14 @@ lexer_arg([Head | Tail], Toks) :-
     ;
         string.from_char_list([Head | Tail], ArgName)
     ),
-    Toks = [arg(ArgName)].
+    Toks = [token_arg(ArgName)].
 
 :- pred lexer_num(int::in, list(char)::in, list(token)::out) is det.
 
 lexer_num(N, Cs, Toks) :-
     list.takewhile(char.is_digit, Cs, Digits, Rest),
     digits_to_int_acc(N, Digits, Num),
-    Toks = [num(Num) | Toks2],
+    Toks = [token_num(Num) | Toks2],
     lexer_word_chars(Rest, Toks2).
 
 :- pred digits_to_int_acc(int::in, list(char)::in, int::out) is det.
@@ -335,14 +334,14 @@ lexer_name(C, Cs, Toks) :-
     list.takewhile(char.is_alnum_or_underscore, Cs, Letters, Rest),
     string.from_char_list([C | Letters], Name),
     lexer_word_chars(Rest, Toks2),
-    Toks = [name(Name) | Toks2].
+    Toks = [token_name(Name) | Toks2].
 
 %---------------------------------------------------------------------------%
 
 parse(Words, Command) :-
     (
         Words = [],
-        Command = empty
+        Command = cmd_empty
     ;
         Words = [CmdWord | ArgWords],
         lexer_word(CmdWord, CmdTokens),
@@ -360,7 +359,7 @@ parse(Words, Command) :-
         list.append(CmdTokens, ArgTokens, AllTokens),
         (
             AllTokens = [],
-            Command = empty
+            Command = cmd_empty
         ;
             AllTokens = [FirstToken | LaterTokens],
             parse_cmd(FirstToken, LaterTokens, MaybeArgWords, Command)
@@ -371,173 +370,12 @@ parse(Words, Command) :-
     command::out) is semidet.
 
 parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
+    % Please keep the code recognizing commands in the same order
+    % as the definition of the command type.
     (
-        ( CmdToken = name("help")
-        ; CmdToken = (?)
-        ; CmdToken = name("h")
-        )
-    ->
-        ArgTokens = [],
-        Command = help
-    ;
-        ( CmdToken = name("cd")
-        ; CmdToken = (^)
-        )
-    ->
-        (
-            ArgTokens = [],
-            Command = cd_no_path
-        ;
-            ArgTokens = [_ | _],
-            parse_path(ArgTokens, Path),
-            Command = cd_path(Path)
-        )
-    ;
-        CmdToken = name("cdr")
-    ->
-        ArgTokens = [num(Repetitions) | TokenPath],
-        list.duplicate(Repetitions, TokenPath, DupTokenPath),
-        list.condense(DupTokenPath, RepeatedTokenPath),
-        parse_path(RepeatedTokenPath, RepeatedPath),
-        Command = cd_path(RepeatedPath)
-    ;
-        CmdToken = name("pwd")
-    ->
-        ArgTokens = [],
-        Command = pwd
-    ;
-        (
-            CmdToken = name("track"),
-            AssertInvalid = no_assert_invalid
-        ;
-            CmdToken = name("t"),
-            AssertInvalid = no_assert_invalid
-        ;
-            CmdToken = name("mark"),
-            AssertInvalid = assert_invalid
-        ;
-            CmdToken = name("m"),
-            AssertInvalid = assert_invalid
-        )
-    ->
-        (
-            ArgTokens = [],
-            HowTrack = track_fast,
-            MaybePath = no
-        ;
-            ArgTokens = [HeadArgToken | TailArgTokens],
-            (
-                ( HeadArgToken = arg("accurate")
-                ; HeadArgToken = arg("a")
-                )
-            ->
-                HowTrack = track_accurate,
-                (
-                    TailArgTokens = [],
-                    MaybePath = no
-                ;
-                    TailArgTokens = [_ | _],
-                    parse_path(TailArgTokens, Path),
-                    MaybePath = yes(Path)
-                )
-            ;
-                HowTrack = track_fast,
-                parse_path(ArgTokens, Path),
-                MaybePath = yes(Path)
-            )
-        ),
-        Command = track(HowTrack, AssertInvalid, MaybePath)
-    ;
-        CmdToken = name("mode")
-    ->
-        (
-            ArgTokens = [],
-            Command = mode_query
-        ;
-            ArgTokens = [_ | _],
-            parse_path(ArgTokens, Path),
-            Command = mode_query(Path)
-        )
-    ;
-        CmdToken = name("format")
-    ->
-        (
-            ArgTokens = [],
-            Command = param_command(print_params)
-        ;
-            ArgTokens = [_ | _],
-            MaybeArgWords = yes(ArgWords),
-            OptionOps = option_ops_multi(short_format_cmd_option,
-                long_format_cmd_option, format_cmd_option_defaults),
-            getopt.process_options(OptionOps, ArgWords,
-                RemainingWords, MaybeOptionTable),
-            lexer_words(RemainingWords, RemainingTokens),
-            parse_format(RemainingTokens, Setting),
-            Command = param_command(format(MaybeOptionTable, Setting))
-        )
-    ;
-        (
-            CmdToken = name("depth"),
-            ParamCmd = param_depth
-        ;
-            CmdToken = name("size"),
-            ParamCmd = param_size
-        ;
-            CmdToken = name("width"),
-            ParamCmd = param_width
-        ;
-            CmdToken = name("lines"),
-            ParamCmd = param_lines
-        )
-    ->
-        (
-            ArgTokens = [],
-            Command = param_command(print_params)
-        ;
-            ArgTokens = [_ | _],
-            MaybeArgWords = yes(ArgWords),
-            OptionOps = option_ops_multi(short_format_param_cmd_option,
-                long_format_param_cmd_option,
-                format_param_cmd_option_defaults),
-            getopt.process_options(OptionOps, ArgWords,
-                RemainingWords, MaybeOptionTable),
-            lexer_words(RemainingWords, RemainingTokens),
-            RemainingTokens = [num(N)],
-            param_cmd_to_setting(ParamCmd, N, Setting),
-            Command = param_command(format_param(MaybeOptionTable, Setting))
-        )
-    ;
-        CmdToken = name("params")
-    ->
-        Command = param_command(print_params)
-    ;
-        CmdToken = name("num_io_actions")
-    ->
-        ArgTokens = [num(N)],
-        Command = param_command(num_io_actions(N))
-    ;
-        CmdToken = name("quit")
-    ->
-        ArgTokens = [],
-        Command = quit
-    ;
-        ( CmdToken = name("display")
-        ; CmdToken = name("d")
-        )
-    ->
-        ArgTokens = [],
-        Command = display
-    ;
-        ( CmdToken = name("write")
-        ; CmdToken = name("w")
-        )
-    ->
-        ArgTokens = [],
-        Command = write
-    ;
-        ( CmdToken = name("print")
-        ; CmdToken = name("p")
-        ; CmdToken = name("ls")
+        ( CmdToken = token_name("print")
+        ; CmdToken = token_name("p")
+        ; CmdToken = token_name("ls")
         )
     ->
         (
@@ -561,16 +399,195 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             parse_path(RemainingTokens, Path),
             MaybePath = yes(Path)
         ),
-        Command = print(MaybeMaybeOptionTable, MaybePath)
+        Command = cmd_print(MaybeMaybeOptionTable, MaybePath)
     ;
-        CmdToken = (<)
+        ( CmdToken = token_name("display")
+        ; CmdToken = token_name("d")
+        )
     ->
-        ArgTokens = [num(Depth)],
+        ArgTokens = [],
+        Command = cmd_display
+    ;
+        ( CmdToken = token_name("write")
+        ; CmdToken = token_name("w")
+        )
+    ->
+        ArgTokens = [],
+        Command = cmd_write
+    ;
+        ( CmdToken = token_name("memory_addr")
+        ; CmdToken = token_name("addr")         % "m" and "a" are both taken.
+        )
+    ->
+        (
+            ArgTokens = [],
+            MaybePath = no
+        ;
+            ArgTokens = [_ | _],
+            parse_path(ArgTokens, Path),
+            MaybePath = yes(Path)
+        ),
+        Command = cmd_memory_addr(MaybePath)
+    ;
+        CmdToken = token_name("cdr")
+    ->
+        ArgTokens = [token_num(Repetitions) | TokenPath],
+        list.duplicate(Repetitions, TokenPath, DupTokenPath),
+        list.condense(DupTokenPath, RepeatedTokenPath),
+        parse_path(RepeatedTokenPath, RepeatedPath),
+        Command = cmd_cd_path(RepeatedPath)
+    ;
+        ( CmdToken = token_name("cd")
+        ; CmdToken = token_up
+        )
+    ->
+        (
+            ArgTokens = [_ | _],
+            parse_path(ArgTokens, Path),
+            Command = cmd_cd_path(Path)
+        ;
+            ArgTokens = [],
+            Command = cmd_cd_no_path
+        )
+    ;
+        CmdToken = token_name("pwd")
+    ->
+        ArgTokens = [],
+        Command = cmd_pwd
+    ;
+        (
+            CmdToken = token_name("track"),
+            AssertInvalid = no_assert_invalid
+        ;
+            CmdToken = token_name("t"),
+            AssertInvalid = no_assert_invalid
+        ;
+            CmdToken = token_name("mark"),
+            AssertInvalid = assert_invalid
+        ;
+            CmdToken = token_name("m"),
+            AssertInvalid = assert_invalid
+        )
+    ->
+        (
+            ArgTokens = [],
+            HowTrack = track_fast,
+            MaybePath = no
+        ;
+            ArgTokens = [HeadArgToken | TailArgTokens],
+            (
+                ( HeadArgToken = token_arg("accurate")
+                ; HeadArgToken = token_arg("a")
+                )
+            ->
+                HowTrack = track_accurate,
+                (
+                    TailArgTokens = [],
+                    MaybePath = no
+                ;
+                    TailArgTokens = [_ | _],
+                    parse_path(TailArgTokens, Path),
+                    MaybePath = yes(Path)
+                )
+            ;
+                HowTrack = track_fast,
+                parse_path(ArgTokens, Path),
+                MaybePath = yes(Path)
+            )
+        ),
+        Command = cmd_track(HowTrack, AssertInvalid, MaybePath)
+    ;
+        CmdToken = token_name("mode")
+    ->
+        (
+            ArgTokens = [_ | _],
+            parse_path(ArgTokens, Path),
+            Command = cmd_mode_query(Path)
+        ;
+            ArgTokens = [],
+            Command = cmd_mode_query_no_path
+        )
+    ;
+        CmdToken = token_name("format")
+    ->
+        (
+            ArgTokens = [],
+            FormatCmd = print_params
+        ;
+            ArgTokens = [_ | _],
+            MaybeArgWords = yes(ArgWords),
+            OptionOps = option_ops_multi(short_format_cmd_option,
+                long_format_cmd_option, format_cmd_option_defaults),
+            getopt.process_options(OptionOps, ArgWords,
+                RemainingWords, MaybeOptionTable),
+            lexer_words(RemainingWords, RemainingTokens),
+            parse_format(RemainingTokens, Setting),
+            FormatCmd = format(MaybeOptionTable, Setting)
+        ),
+        Command = cmd_param(FormatCmd)
+    ;
+        (
+            CmdToken = token_name("depth"),
+            ParamCmd = param_depth
+        ;
+            CmdToken = token_name("size"),
+            ParamCmd = param_size
+        ;
+            CmdToken = token_name("width"),
+            ParamCmd = param_width
+        ;
+            CmdToken = token_name("lines"),
+            ParamCmd = param_lines
+        )
+    ->
+        (
+            ArgTokens = [],
+            FormatCmd = print_params
+        ;
+            ArgTokens = [_ | _],
+            MaybeArgWords = yes(ArgWords),
+            OptionOps = option_ops_multi(short_format_param_cmd_option,
+                long_format_param_cmd_option,
+                format_param_cmd_option_defaults),
+            getopt.process_options(OptionOps, ArgWords,
+                RemainingWords, MaybeOptionTable),
+            lexer_words(RemainingWords, RemainingTokens),
+            RemainingTokens = [token_num(N)],
+            param_cmd_to_setting(ParamCmd, N, Setting),
+            FormatCmd = format_param(MaybeOptionTable, Setting)
+        ),
+        Command = cmd_param(FormatCmd)
+    ;
+        CmdToken = token_lessthan
+    ->
+        ArgTokens = [token_num(Depth)],
         OptionOps = option_ops_multi(short_format_param_cmd_option,
             long_format_param_cmd_option, format_param_cmd_option_defaults),
         getopt.process_options(OptionOps, [], _, MaybeOptionTable),
-        Command = param_command(format_param(MaybeOptionTable,
-            setting_depth(Depth)))
+        FormatCmd = format_param(MaybeOptionTable, setting_depth(Depth)),
+        Command = cmd_param(FormatCmd)
+    ;
+        CmdToken = token_name("params")
+    ->
+        Command = cmd_param(print_params)
+    ;
+        CmdToken = token_name("num_io_actions")
+    ->
+        ArgTokens = [token_num(N)],
+        Command = cmd_param(num_io_actions(N))
+    ;
+        ( CmdToken = token_name("help")
+        ; CmdToken = token_name("h")
+        ; CmdToken = token_question
+        )
+    ->
+        ArgTokens = [],
+        Command = cmd_help
+    ;
+        CmdToken = token_name("quit")
+    ->
+        ArgTokens = [],
+        Command = cmd_quit
     ;
         fail
     ).
@@ -588,7 +605,7 @@ param_cmd_to_setting(param_lines, N, setting_lines(N)).
     % SICStus is forgiving in the syntax of paths, hence so are we.
     % XXX: Be less forgiving?
 parse_path([Token | Tokens], Path) :-
-    ( Token = (/) ->
+    ( Token = token_slash ->
         Path = root_rel(Dirs),
         parse_dirs(Tokens, Dirs)
     ;
@@ -601,38 +618,39 @@ parse_path([Token | Tokens], Path) :-
 parse_dirs([], []).
 parse_dirs([Token | Tokens], Dirs) :-
     (
-        Token = num(Subdir),
+        Token = token_num(Subdir),
         Dirs = [child_num(Subdir) | RestDirs],
         parse_dirs(Tokens, RestDirs)
     ;
-        Token = name(NamedSubdir),
+        Token = token_name(NamedSubdir),
         Dirs = [child_name(NamedSubdir) | RestDirs],
         parse_dirs(Tokens, RestDirs)
     ;
-        Token = (..),
+        Token = token_dot_dot,
         Dirs = [parent | RestDirs],
         parse_dirs(Tokens, RestDirs)
     ;
         % We can effectively ignore slashes (for Unix-style
         % pathnames) and carets (for SICStus-style pathnames),
         % but anything else is not allowed.
-        Token = (/),
+        Token = token_slash,
         parse_dirs(Tokens, Dirs)
     ;
-        Token = (^),
+        Token = token_up,
         parse_dirs(Tokens, Dirs)
     ).
 
 :- pred parse_format(list(token)::in, setting::out) is semidet.
 
-parse_format([Fmt], Setting) :-
-    ( Fmt = name("flat") ->
+parse_format([Token], Setting) :-
+    Token = token_name(TokenName),
+    ( TokenName = "flat" ->
         Setting = setting_format(flat)
-    ; Fmt = name("raw_pretty") ->
+    ; TokenName = "raw_pretty" ->
         Setting = setting_format(raw_pretty)
-    ; Fmt = name("verbose") ->
+    ; TokenName = "verbose" ->
         Setting = setting_format(verbose)
-    ; Fmt = name("pretty") ->
+    ; TokenName = "pretty" ->
         Setting = setting_format(pretty)
     ;
         fail
@@ -641,17 +659,18 @@ parse_format([Fmt], Setting) :-
 :- pred parse_format_param(list(token)::in, setting::out) is semidet.
 
 parse_format_param([Token | Tokens], Setting) :-
-    ( Token = name("depth") ->
-        Tokens = [num(Depth)],
+    Token = token_name(TokenName),
+    ( TokenName = "depth" ->
+        Tokens = [token_num(Depth)],
         Setting = setting_depth(Depth)
-    ; Token = name("size") ->
-        Tokens = [num(Size)],
+    ; TokenName = "size" ->
+        Tokens = [token_num(Size)],
         Setting = setting_size(Size)
-    ; Token = name("width") ->
-        Tokens = [num(X)],
+    ; TokenName = "width" ->
+        Tokens = [token_num(X)],
         Setting = setting_width(X)
-    ; Token = name("lines") ->
-        Tokens = [num(Y)],
+    ; TokenName = "lines" ->
+        Tokens = [token_num(Y)],
         Setting = setting_lines(Y)
     ;
         fail

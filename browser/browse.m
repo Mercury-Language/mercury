@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2007 The University of Melbourne.
+% Copyright (C) 1998-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -488,7 +488,7 @@ print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State, !IO):-
     ;
         true
     ),
-    portray(internal, Caller, no, Info, !IO),
+    portray(debugger_internal, Caller, no, Info, !IO),
     io.set_output_stream(OldStream, _, !IO).
 
 %---------------------------------------------------------------------------%
@@ -498,30 +498,30 @@ print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State, !IO):-
 
 browse_browser_term_no_modes(Term, InputStream, OutputStream,
         MaybeTrack, !State, !IO) :-
-    browse_common(internal, Term, InputStream, OutputStream, no, no,
-        MaybeTrack, !State, !IO).
+    browse_common(debugger_internal, Term, InputStream, OutputStream,
+        no, no, MaybeTrack, !State, !IO).
 
 browse_browser_term(Term, InputStream, OutputStream, MaybeModeFunc,
         MaybeTrack, !State, !IO) :-
-    browse_common(internal, Term, InputStream, OutputStream, no,
-        MaybeModeFunc, MaybeTrack, !State, !IO).
+    browse_common(debugger_internal, Term, InputStream, OutputStream,
+        no, MaybeModeFunc, MaybeTrack, !State, !IO).
 
 browse_browser_term_format_no_modes(Term, InputStream, OutputStream,
         Format, !State, !IO) :-
-    browse_common(internal, Term, InputStream, OutputStream, yes(Format),
-        no, _, !State, !IO).
+    browse_common(debugger_internal, Term, InputStream, OutputStream,
+        yes(Format), no, _, !State, !IO).
 
 browse_browser_term_format(Term, InputStream, OutputStream,
         Format, MaybeModeFunc, !State, !IO) :-
-    browse_common(internal, Term, InputStream, OutputStream, yes(Format),
-        MaybeModeFunc, _, !State, !IO).
+    browse_common(debugger_internal, Term, InputStream, OutputStream,
+        yes(Format), MaybeModeFunc, _, !State, !IO).
 
 browse_external_no_modes(Term, InputStream, OutputStream, !State, !IO) :-
-    browse_common(external, plain_term(univ(Term)),
+    browse_common(debugger_external, plain_term(univ(Term)),
         InputStream, OutputStream, no, no, _, !State, !IO).
 
 browse_external(Term, InputStream, OutputStream, MaybeModeFunc, !State, !IO) :-
-    browse_common(external, plain_term(univ(Term)),
+    browse_common(debugger_external, plain_term(univ(Term)),
         InputStream, OutputStream, no, MaybeModeFunc, _, !State, !IO).
 
 :- pred browse_common(debugger::in, browser_term::in, io.input_stream::in,
@@ -548,10 +548,10 @@ browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
 
 browse_main_loop(Debugger, !Info, !IO) :-
     (
-        Debugger = internal,
+        Debugger = debugger_internal,
         parse.read_command(prompt, Command, !IO)
     ;
-        Debugger = external,
+        Debugger = debugger_external,
         parse.read_command_external(Command, !IO)
     ),
     run_command(Debugger, Command, Quit, !Info, !IO),
@@ -559,10 +559,10 @@ browse_main_loop(Debugger, !Info, !IO) :-
         Quit = yes,
         % write_string_debugger(Debugger, "quitting...\n", !IO)
         (
-            Debugger = external,
+            Debugger = debugger_external,
             send_term_to_socket(browser_quit, !IO)
         ;
-            Debugger = internal
+            Debugger = debugger_internal
         )
     ;
         Quit = no,
@@ -583,61 +583,59 @@ prompt = "browser> ".
     browser_info::in, browser_info::out, io::di, io::uo) is cc_multi.
 
 run_command(Debugger, Command, Quit, !Info, !IO) :-
+    % Please keep the code implementing commands in the same order
+    % as the definition of the command type.
+
     % XXX The commands `set', `ls' and `print' should allow the format
     % to be specified by an option. In each case we instead pass `no' to
     % the respective handler.
     (
-        Command = empty,
+        Command = cmd_print(PrintOption, MaybePath),
+        do_portray(Debugger, browse, PrintOption, !.Info, MaybePath, !IO),
         Quit = no
     ;
-        Command = unknown,
-        write_string_debugger(Debugger,
-            "Error: unknown command or syntax error.\n", !IO),
-        write_string_debugger(Debugger, "Type \"help\" for help.\n", !IO),
+        Command = cmd_display,
+        write_string_debugger(Debugger, "command not yet implemented\n", !IO),
         Quit = no
     ;
-        Command = help,
-        help(Debugger, !IO),
+        Command = cmd_write,
+        write_string_debugger(Debugger, "command not yet implemented\n", !IO),
         Quit = no
     ;
-        Command = param_command(ParamCmd),
-        run_param_command(Debugger, ParamCmd, yes, !Info, !IO),
+        Command = cmd_memory_addr(MaybePath),
+        do_print_memory_addr(Debugger, !.Info, MaybePath, !IO),
         Quit = no
     ;
-        Command = cd_no_path,
+        Command = cmd_cd_no_path,
         set_path(root_rel([]), !Info),
         Quit = no
     ;
-        Command = cd_path(Path),
+        Command = cmd_cd_path(Path),
         change_dir(!.Info ^ dirs, Path, NewPwd),
-        deref_subterm(!.Info ^ term, NewPwd, [], Result),
+        deref_subterm(!.Info ^ term, NewPwd, Result),
         (
             Result = deref_result(_),
-            !:Info = !.Info ^ dirs := NewPwd
+            !Info ^ dirs := NewPwd
         ;
             Result = deref_error(OKPath, ErrorDir),
             report_deref_error(Debugger, OKPath, ErrorDir, !IO)
         ),
         Quit = no
     ;
-        Command = print(PrintOption, MaybePath),
-        do_portray(Debugger, browse, PrintOption, !.Info, MaybePath, !IO),
-        Quit = no
-    ;
-        Command = pwd,
+        Command = cmd_pwd,
         write_path(Debugger, !.Info ^ dirs, !IO),
         nl_debugger(Debugger, !IO),
         Quit = no
     ;
-        Command = track(HowTrack, ShouldAssertInvalid, MaybePath),
+        Command = cmd_track(HowTrack, ShouldAssertInvalid, MaybePath),
         (
             MaybePath = yes(Path),
             change_dir(!.Info ^ dirs, Path, NewPwd),
-            deref_subterm(!.Info ^ term, NewPwd, [], SubResult),
+            deref_subterm(!.Info ^ term, NewPwd, SubResult),
             (
                 SubResult = deref_result(_),
-                !:Info = !.Info ^ maybe_track := track(HowTrack,
-                    ShouldAssertInvalid, NewPwd),
+                !Info ^ maybe_track :=
+                    track(HowTrack, ShouldAssertInvalid, NewPwd),
                 Quit = yes
             ;
                 SubResult = deref_error(_, _),
@@ -647,39 +645,47 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
             )
         ;
             MaybePath = no,
-            !:Info = !.Info ^ maybe_track :=
+            !Info ^ maybe_track :=
                 track(HowTrack, ShouldAssertInvalid, !.Info ^ dirs),
             Quit = yes
         )
     ;
-        Command = mode_query,
-        MaybeModeFunc = !.Info ^ maybe_mode_func,
-        write_term_mode_debugger(Debugger, MaybeModeFunc, !.Info ^ dirs, !IO),
-        Quit = no
-    ;
-        Command = mode_query(Path),
+        Command = cmd_mode_query(Path),
         change_dir(!.Info ^ dirs, Path, NewPwd),
         MaybeModeFunc = !.Info ^ maybe_mode_func,
         write_term_mode_debugger(Debugger, MaybeModeFunc, NewPwd, !IO),
         Quit = no
     ;
-        Command = quit,
-        Quit = yes
-    ;
-        Command = display,
-        write_string_debugger(Debugger, "command not yet implemented\n", !IO),
+        Command = cmd_mode_query_no_path,
+        MaybeModeFunc = !.Info ^ maybe_mode_func,
+        write_term_mode_debugger(Debugger, MaybeModeFunc, !.Info ^ dirs, !IO),
         Quit = no
     ;
-        Command = write,
+        Command = cmd_param(ParamCmd),
+        run_param_command(Debugger, ParamCmd, yes, !Info, !IO),
+        Quit = no
+    ;
+        Command = cmd_help,
+        help(Debugger, !IO),
+        Quit = no
+    ;
+        Command = cmd_quit,
+        Quit = yes
+    ;
+        Command = cmd_empty,
+        Quit = no
+    ;
+        Command = cmd_unknown,
         write_string_debugger(Debugger,
-            "command not yet implemented\n", !IO),
+            "Error: unknown command or syntax error.\n", !IO),
+        write_string_debugger(Debugger, "Type \"help\" for help.\n", !IO),
         Quit = no
     ),
     (
-        Debugger = external,
+        Debugger = debugger_external,
         send_term_to_socket(browser_end_command, !IO)
     ;
-        Debugger = internal
+        Debugger = debugger_internal
     ).
 
 :- pred do_portray(debugger::in, browse_caller_type::in,
@@ -709,6 +715,50 @@ do_portray(Debugger, CallerType, MaybeMaybeOptionTable, Info, MaybePath,
             write_string_debugger(Debugger, Msg, !IO)
         )
     ).
+
+:- pred do_print_memory_addr(debugger::in, browser_info::in, maybe(path)::in,
+    io::di, io::uo) is cc_multi.
+
+do_print_memory_addr(Debugger, Info, MaybePath, !IO) :-
+    Dirs0 = Info ^ dirs,
+    (
+        MaybePath = no,
+        Dirs = Dirs0
+    ;
+        MaybePath = yes(Path),
+        change_dir(Dirs0, Path, Dirs)
+    ),
+    deref_subterm(Info ^ term, Dirs, DerefResult),
+    (
+        DerefResult = deref_result(BrowserTerm),
+        (
+            BrowserTerm = plain_term(Univ),
+            Value = univ_value(Univ),
+            get_value_representation(Value, Addr),
+            string.format("addr = %x\n", [i(Addr)], Str)
+        ;
+            BrowserTerm = synthetic_term(_, _, _),
+            Str = "synthetic terms have no addresses\n"
+        ),
+        write_string_debugger(Debugger, Str, !IO)
+    ;
+        DerefResult = deref_error(OKPath, ErrorDir),
+        report_deref_error(Debugger, OKPath, ErrorDir, !IO),
+        nl_debugger(Debugger, !IO)
+    ).
+
+:- pred get_value_representation(T::in, int::out) is cc_multi.
+
+:- pragma foreign_proc("C",
+    get_value_representation(Value::in, Addr::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Addr = (MR_Integer) Value;
+").
+
+% The debugger does not yet work on non-C backends, so what we return
+% does not matter.
+get_value_representation(_Value, 0).
 
 :- pred interpret_format_options(option_table(format_option)::in,
     maybe_error(maybe(portray_format))::out) is det.
@@ -806,7 +856,7 @@ portray_maybe_path(Debugger, Caller, MaybeFormat, Info, MaybePath, !IO) :-
 portray(Debugger, Caller, MaybeFormat, Info, !IO) :-
     browser_info.get_format(Info, Caller, MaybeFormat, Format),
     browser_info.get_format_params(Info, Caller, Format, Params),
-    deref_subterm(Info ^ term, Info ^ dirs, [], SubResult),
+    deref_subterm(Info ^ term, Info ^ dirs, SubResult),
     (
         SubResult = deref_result(SubUniv),
         (
@@ -1327,14 +1377,15 @@ unlines([Line | Lines], Str) :-
 
     % We assume a root-relative path. We assume Term is the entire term
     % passed into browse/3, not a subterm.
-:- pred deref_subterm(browser_term::in, list(dir)::in, list(dir)::in,
+    %
+:- pred deref_subterm(browser_term::in, list(dir)::in,
     deref_result(browser_term)::out) is cc_multi.
 
-deref_subterm(BrowserTerm, Path, RevPath0, Result) :-
+deref_subterm(BrowserTerm, Path, Result) :-
     simplify_dirs(Path, SimplifiedPath),
     (
         BrowserTerm = plain_term(Univ),
-        deref_subterm_2(Univ, SimplifiedPath, RevPath0, SubResult),
+        deref_subterm_2(Univ, SimplifiedPath, [], SubResult),
         deref_result_univ_to_browser_term(SubResult, Result)
     ;
         BrowserTerm = synthetic_term(_Functor, Args, MaybeReturn),
@@ -1363,11 +1414,11 @@ deref_subterm(BrowserTerm, Path, RevPath0, Result) :-
                     MaybeReturn = yes(ArgUniv)
                 )
             ->
-                deref_subterm_2(ArgUniv, SimplifiedPathTail,
-                    [Step | RevPath0], SubResult),
+                deref_subterm_2(ArgUniv, SimplifiedPathTail, [Step],
+                    SubResult),
                 deref_result_univ_to_browser_term(SubResult, Result)
             ;
-                Result = deref_error(list.reverse(RevPath0), Step)
+                Result = deref_error([], Step)
             )
         )
     ).
