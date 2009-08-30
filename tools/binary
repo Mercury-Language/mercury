@@ -325,6 +325,7 @@ cp stage2.ok/library/*.optdate stage2/library
 cp stage2.ok/library/*.trans_opt stage2/library
 cp stage2.ok/library/*.trans_opt_date stage2/library
 cp stage2.ok/library/*.mh stage2/library
+cp stage2.ok/library/*.mih stage2/library
 # cp stage2.ok/mdbcomp/*.d stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.dep stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.dv stage2/mdbcomp
@@ -335,6 +336,7 @@ cp stage2.ok/mdbcomp/*.int stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.int2 stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.date stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.mh stage2/mdbcomp
+cp stage2.ok/mdbcomp/*.mih stage2/mdbcomp
 # cp stage2.ok/compiler/*.d stage2/compiler
 cp stage2.ok/compiler/*.dep stage2/compiler
 cp stage2.ok/compiler/*.dv stage2/compiler
@@ -345,6 +347,7 @@ cp stage2.ok/compiler/*.int stage2/compiler
 cp stage2.ok/compiler/*.int2 stage2/compiler
 cp stage2.ok/compiler/*.date stage2/compiler
 cp stage2.ok/compiler/*.mh stage2/compiler
+cp stage2.ok/compiler/*.mih stage2/compiler
 
 if test "$bootcheck" = ""
 then
