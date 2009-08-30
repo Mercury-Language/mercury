@@ -808,6 +808,11 @@ case $HOST in $ROTD_HOST)
     # need to do a `mmake realclean' before building the C files for the source
     # distribution. The extra compilation time for `--intermodule-optimization'
     # is probably not acceptable for the source distribution.
+    #
+    # We specify the base grade to be asm_fast in order to ensure that the C
+    # files in the distribution are built in a low-level C grade.
+    # We use asm_fast rather than none or reg because the configure script
+    # will prefer the use of the hlc grades if they are the base grade.
     { cd $DIR/mercury &&
     $MMAKE realclean MMAKEFLAGS=$PARALLEL &&
     (cd $DIR/tests &&
@@ -818,10 +823,6 @@ case $HOST in $ROTD_HOST)
     mercury_cv_low_tag_bits=2 \
     mercury_cv_bits_per_word=32 \
     mercury_cv_unboxed_floats=no \
-    # We specify the base grade to be asm_fast in order to ensure that the C
-    # files in the distribution are built in a low-level C grade.
-    # We use asm_fast rather than none or reg because the configure script
-    # will prefer the use of the hlc grades if they are the base grade.
     sh configure --with-llds-base-grade=asm_fast --prefix=$INSTALL_DIR &&
     $MMAKE MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling' $PARALLEL" tar &&
     cd .. &&
