@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2008 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1055,19 +1055,22 @@ apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
 
 %-----------------------------------------------------------------------------%
 
-apply_substitution(V @ variable(Var, _), Substitution, Term) :-
-    ( map.search(Substitution, Var, Replacement) ->
-        Term = Replacement
+apply_substitution(Term0, Substitution, Term) :-
+    (
+        Term0 = variable(Var, _),
+        ( map.search(Substitution, Var, Replacement) ->
+            Term = Replacement
+        ;
+            Term = Term0
+        )
     ;
-        Term = V
+        Term0 = functor(Name, Args0, Context),
+        apply_substitution_to_list(Args0, Substitution, Args),
+        Term = functor(Name, Args, Context)
     ).
-apply_substitution(functor(Name, Args0, Context), Substitution,
-         functor(Name, Args, Context)) :-
-    apply_substitution_to_list(Args0, Substitution, Args).
 
 apply_substitution_to_list([], _Substitution, []).
-apply_substitution_to_list([Term0 | Terms0], Substitution,
-        [Term | Terms]) :-
+apply_substitution_to_list([Term0 | Terms0], Substitution, [Term | Terms]) :-
     apply_substitution(Term0, Substitution, Term),
     apply_substitution_to_list(Terms0, Substitution, Terms).
 
@@ -1076,7 +1079,7 @@ apply_substitution_to_list([Term0 | Terms0], Substitution,
 init_var_supply(var_supply(0)).
 
 create_var(var_supply(V0), var(V), var_supply(V)) :-
-    % We number variables using sequential numbers,
+    % We number variables using sequential numbers.
     V = V0 + 1.
 
 %------------------------------------------------------------------------------%
