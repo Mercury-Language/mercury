@@ -1594,14 +1594,142 @@ string.all_match_2(I, P, String) :-
 string.is_all_alpha(S) :-
     string.all_match(char.is_alpha, S).
 
+    % The C version is faster than the Mercury version.
+:- pragma foreign_proc("C",
+    is_all_alpha(S::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_duplicate, no_sharing],
+"
+    const char  *p;
+
+    SUCCESS_INDICATOR = MR_TRUE;
+    for (p = S; *p != '\\0'; p++) {
+        switch (*p) {
+            case 'a': case 'b': case 'c': case 'd': case 'e':
+            case 'f': case 'g': case 'h': case 'i': case 'j':
+            case 'k': case 'l': case 'm': case 'n': case 'o':
+            case 'p': case 'q': case 'r': case 's': case 't':
+            case 'u': case 'v': case 'w': case 'x': case 'y':
+            case 'z':
+
+            case 'A': case 'B': case 'C': case 'D': case 'E':
+            case 'F': case 'G': case 'H': case 'I': case 'J':
+            case 'K': case 'L': case 'M': case 'N': case 'O':
+            case 'P': case 'Q': case 'R': case 'S': case 'T':
+            case 'U': case 'V': case 'W': case 'X': case 'Y':
+            case 'Z':
+                continue;
+
+            default:
+                SUCCESS_INDICATOR = MR_FALSE;
+                break;
+        }
+    }
+").
+
 string.is_all_alpha_or_underscore(S) :-
     string.all_match(char.is_alpha_or_underscore, S).
 
+    % The C version is faster than the Mercury version.
+:- pragma foreign_proc("C",
+    is_all_alpha_or_underscore(S::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_duplicate, no_sharing],
+"
+    const char  *p;
+
+    SUCCESS_INDICATOR = MR_TRUE;
+    for (p = S; *p != '\\0'; p++) {
+        switch (*p) {
+            case 'a': case 'b': case 'c': case 'd': case 'e':
+            case 'f': case 'g': case 'h': case 'i': case 'j':
+            case 'k': case 'l': case 'm': case 'n': case 'o':
+            case 'p': case 'q': case 'r': case 's': case 't':
+            case 'u': case 'v': case 'w': case 'x': case 'y':
+            case 'z':
+
+            case 'A': case 'B': case 'C': case 'D': case 'E':
+            case 'F': case 'G': case 'H': case 'I': case 'J':
+            case 'K': case 'L': case 'M': case 'N': case 'O':
+            case 'P': case 'Q': case 'R': case 'S': case 'T':
+            case 'U': case 'V': case 'W': case 'X': case 'Y':
+            case 'Z':
+
+            case '_':
+                continue;
+
+            default:
+                SUCCESS_INDICATOR = MR_FALSE;
+                break;
+        }
+    }
+").
+
 string.is_all_alnum_or_underscore(S) :-
     string.all_match(char.is_alnum_or_underscore, S).
+
+    % The C version is faster than the Mercury version.
+:- pragma foreign_proc("C",
+    is_all_alnum_or_underscore(S::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_duplicate, no_sharing],
+"
+    const char  *p;
+
+    SUCCESS_INDICATOR = MR_TRUE;
+    for (p = S; *p != '\\0'; p++) {
+        switch (*p) {
+            case '0': case '1': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8': case '9':
+
+            case 'a': case 'b': case 'c': case 'd': case 'e':
+            case 'f': case 'g': case 'h': case 'i': case 'j':
+            case 'k': case 'l': case 'm': case 'n': case 'o':
+            case 'p': case 'q': case 'r': case 's': case 't':
+            case 'u': case 'v': case 'w': case 'x': case 'y':
+            case 'z':
+
+            case 'A': case 'B': case 'C': case 'D': case 'E':
+            case 'F': case 'G': case 'H': case 'I': case 'J':
+            case 'K': case 'L': case 'M': case 'N': case 'O':
+            case 'P': case 'Q': case 'R': case 'S': case 'T':
+            case 'U': case 'V': case 'W': case 'X': case 'Y':
+            case 'Z':
+
+            case '_':
+                continue;
+
+            default:
+                SUCCESS_INDICATOR = MR_FALSE;
+                break;
+        }
+    }
+").
     
 string.is_all_digits(S) :-
     string.all_match(char.is_digit, S).
+
+    % The C version is faster than the Mercury version.
+:- pragma foreign_proc("C",
+    is_all_digits(S::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_duplicate, no_sharing],
+"
+    const char  *p;
+
+    SUCCESS_INDICATOR = MR_TRUE;
+    for (p = S; *p != '\\0'; p++) {
+        switch (*p) {
+            case '0': case '1': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8': case '9':
+                continue;
+
+            default:
+                SUCCESS_INDICATOR = MR_FALSE;
+                break;
+        }
+    }
+").
 
 string.pad_left(String0, PadChar, Width, String) :-
     string.length(String0, Length),
