@@ -671,9 +671,7 @@ display_report_module(Prefs, ModuleReport, Display) :-
         list.filter(active_proc, ProcRowDatas0, ProcRowDatas1)
     ),
 
-    SortPrefs = avoid_sort_self_and_desc(Prefs),
-    sort_proc_active_rows_by_preferences(SortPrefs,
-        ProcRowDatas1, ProcRowDatas),
+    sort_proc_active_rows_by_preferences(Prefs, ProcRowDatas1, ProcRowDatas),
 
     % Build the table of all modules.
     SortByNamePrefs = Prefs ^ pref_criteria := by_name,

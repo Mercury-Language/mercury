@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -287,7 +287,18 @@ html_header_text = "Content-type: text/html\n\n".
 :- pred process_query(cmd::in, string::in, maybe(preferences)::in,
     option_table::in, io::di, io::uo) is cc_multi.
 
-process_query(Cmd, DeepFileName0, MaybePref, Options0, !IO) :-
+process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
+    ( Cmd0 = deep_cmd_restart ->
+        % This process got started because there was no server, and this
+        % process will become the new server, so the user just got the freshly
+        % started server they asked for. There is no point in starting it
+        % again. As it is, create_report would throw an exception for
+        % deep_cmd_restart, expecting it to be filtered out by its usual caller
+        % server_loop. To avoid the exception, we have to filter it out too.
+        Cmd = deep_cmd_menu
+    ;
+        Cmd = Cmd0
+    ),
     (
         MaybePref = yes(Pref),
         PrefInd = given_pref(Pref)
