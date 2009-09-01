@@ -1,7 +1,7 @@
 #!@PERL@ -w
-# vim: ts=4 sw=4 et
+# vim: ts=4 sw=4 et ft=perl
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-2001, 2003, 2005-2007 The University of Melbourne.
+# Copyright (C) 1994-2001, 2003, 2005-2007, 2009 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -91,6 +91,20 @@ Options:
         Do not output extra commands to allow searching for
         definitions.
 
+    --all-module-qualified-names
+        Generate tags for all fully or partially qualified names. The default
+        is to generate tags only if they are reasonably short, which is
+        currently defined as being 30 characters or less using \`.' as
+        the module name separator.
+
+    --no-module-qualified-names
+        Generate tags only for unqualified names.
+
+    --underscore-qualified-names
+        When generating tags for fully or partially module qualified names,
+        generate tags using \`__' as well as \`.' as the module name separator.
+        The default is to use only \`.' as module name separator.
+
     --no-extended-attributes
         Do not output the extra tag attributes for vim/elvis.
 
@@ -135,6 +149,11 @@ $emacs = 0;
 $extended_attributes = "vim";
 $keep_dups = 1;
 $search_definitions = 1;
+$module_qualified_names = 1;
+$all_module_qualified_names = 0;
+# $all_module_qualified_names is meaningful
+# only if $module_qualified_names = 1.
+$underscore_qualified_names = 0;
 $debug = 0;
 
 OPTION:
@@ -189,6 +208,22 @@ while ($#ARGV >= 0 && $ARGV[0] =~ /^-/) {
     }
     if ($ARGV[0] eq "--search-definitions") {
         $search_definitions = 1;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--all-module-qualified-names") {
+        $module_qualified_names = 1;
+        $all_module_qualified_names = 1;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--no-module-qualified-names") {
+        $module_qualified_names = 0;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--underscore-qualified-names") {
+        $underscore_qualified_names = 1;
         shift(@ARGV);
         next OPTION;
     }
@@ -251,30 +286,51 @@ sub output_name() {
     $src_name = $name;
     $name =~ s|\.|__|g;     # replace `.' module qualifiers with `__'
 
-    # Output a tag for the fully-qualified name.
-    if (substr($name, 0, length($module)) ne $module) {
-        $name = "${module}__$name";
-    }
-    output_single_name();
+    if ($module_qualified_names) {
+        # Output a tag for the fully-qualified name.
+        if (substr($name, 0, length($module)) ne $module) {
+            $name = "${module}__$name";
+        }
+        output_single_module_qualified_name();
 
-    # Strip off the leading module qualifiers one by one, and output a tag
-    # for each partially qualified or unqualified name.
-    while ($name =~ /__/) {
-        $name =~ s/[^_]*(_[^_]+)*__//;
-        output_single_name();
+        # Strip off the leading module qualifiers one by one, and output a tag
+        # for each partially qualified or unqualified name.
+        while ($name =~ /__/) {
+            $name =~ s/[^_]*(_[^_]+)*__//;
+            output_single_module_qualified_name();
+        }
+    } else {
+        # Strip off any leading module qualifiers one by one, and output a tag
+        # only for the unqualified name.
+        while ($name =~ /__/) {
+            $name =~ s/[^_]*(_[^_]+)*__//;
+        }
+        output_single_tag();
     }
 }
 
-sub output_single_name() {
-    # Output tag using `__' as module qualifier.
-    output_single_tag();
-
-    # Output tag using `.' as module qualifier.
+sub output_single_module_qualified_name() {
     if ($name =~ /__/) {
-        $save_name = $name;
+        # $name is module qualified.
+
+        $underscore_name = $name;
         $name =~ s/__/./g;
+        $dot_name = $name;
+        if ($all_module_qualified_names || length($dot_name) < 31) {
+            # Output tag using `__' as module qualifier.
+            if ($underscore_qualified_names) {
+                $name = $underscore_name;
+                output_single_tag();
+            }
+
+            # Output tag using `.' as module qualifier.
+            $name = $dot_name;
+            output_single_tag();
+        }
+        $name = $underscore_name;
+    } else {
+        # $name is unqualified.
         output_single_tag();
-        $name = $save_name;
     }
 }
 
