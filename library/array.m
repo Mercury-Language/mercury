@@ -328,6 +328,9 @@
 %:- mode array.fetch_items(array_ui, in, in) = out is det.
 :- mode array.fetch_items(in, in, in) = out is det.
 
+    % XXX We prefer users to call the new array.binary_search predicate
+    % instead of array.bsearch, which may be deprecated in later releases.
+    %
     % array.bsearch takes an array, an element to be matched and a comparison
     % predicate and returns the position of the first occurrence in the array
     % of an element which is equivalent to the given one in the ordering
@@ -341,6 +344,32 @@
 :- func array.bsearch(array(T), T, comparison_func(T)) = maybe(int).
 %:- mode array.bsearch(array_ui, in, in(comparison_func)) = out is det.
 :- mode array.bsearch(in, in, in(comparison_func)) = out is det.
+
+    % array.approx_binary_search(A, X, I) performs a binary search for an
+    % approximate match for X in array A, computing I as the result.  More
+    % specifically, if the call succeeds, then either A ^ elem(I) = X or
+    % A ^ elem(I) @< X and either X @< A ^ elem(I + 1) or I is the last index
+    % in A.
+    %
+    % array.binary_search(A, X, I) performs a binary search for an
+    % exact match for X in array A (i.e., it succeeds iff X = A ^ elem(I)).
+    %
+    % A must be sorted into ascending order, but may contain duplicates
+    % (the ordering must be with respect to the supplied comparison predicate
+    % if one is supplied, otherwise with respect to the Mercury standard
+    % ordering).
+    %
+:- pred array.approx_binary_search(array(T), T, int).
+:- mode array.approx_binary_search(array_ui, in, out) is semidet.
+
+:- pred array.approx_binary_search(comparison_func(T), array(T), T, int).
+:- mode array.approx_binary_search(in, array_ui, in, out) is semidet.
+
+:- pred array.binary_search(array(T), T, int).
+:- mode array.binary_search(array_ui, in, out) is semidet.
+
+:- pred array.binary_search(comparison_func(T), array(T), T, int).
+:- mode array.binary_search(in, array_ui, in, out) is semidet.
 
     % array.map(Closure, OldArray, NewArray) applies `Closure' to
     % each of the elements of `OldArray' to create `NewArray'.
@@ -418,6 +447,7 @@
     % Convert an array to a pretty_printer.doc for formatting.
     %
 :- func array.array_to_doc(array(T)) = pretty_printer.doc.
+:- mode array.array_to_doc(array_ui) = out is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1500,6 +1530,45 @@ array.elem(Index, Array) = array.lookup(Array, Index).
 array.sort(A) = samsort_subarray(A, array.min(A), array.max(A)).
 
 %------------------------------------------------------------------------------%
+
+array.binary_search(A, X, I) :-
+    array.binary_search(ordering, A, X, I).
+
+array.binary_search(Cmp, A, X, I) :-
+    array.approx_binary_search(Cmp, A, X, I),
+    A ^ elem(I) = X.
+
+array.approx_binary_search(A, X, I) :-
+    array.approx_binary_search(ordering, A, X, I).
+
+array.approx_binary_search(Cmp, A, X, I) :-
+    Lo = 0,
+    Hi = array.size(A) - 1,
+    approx_binary_search_2(Cmp, A, X, Lo, Hi, I).
+
+:- pred approx_binary_search_2(comparison_func(T), array(T), T, int, int, int).
+:- mode approx_binary_search_2(in, array_ui, in, in, in, out) is semidet.
+
+approx_binary_search_2(Cmp, A, X, Lo, Hi, I) :-
+    Lo =< Hi,
+    Mid = (Lo + Hi) / 2,
+    O = Cmp(A ^ elem(Mid), X),
+    (
+        O = (>),
+        approx_binary_search_2(Cmp, A, X, Lo, Mid - 1, I)
+    ;
+        O = (=),
+        I = Mid
+    ;
+        O = (<),
+        ( if ( Mid < Hi, X @< A ^ elem(Mid + 1) ; Mid = Hi ) then
+            I = Mid
+          else
+            approx_binary_search_2(Cmp, A, X, Mid + 1, Hi, I)
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
 
 array.random_permutation(A0, A, RS0, RS) :-
     Lo = array.min(A0),

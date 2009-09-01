@@ -1,0 +1,9 @@
+searching array([1, 2, 4, 5, 5, 7]) for 0 - exact fails - approx fails
+searching array([1, 2, 4, 5, 5, 7]) for 1 - exact     0 - approx     0
+searching array([1, 2, 4, 5, 5, 7]) for 2 - exact     1 - approx     1
+searching array([1, 2, 4, 5, 5, 7]) for 3 - exact fails - approx     1
+searching array([1, 2, 4, 5, 5, 7]) for 4 - exact     2 - approx     2
+searching array([1, 2, 4, 5, 5, 7]) for 5 - exact     4 - approx     4
+searching array([1, 2, 4, 5, 5, 7]) for 6 - exact fails - approx     4
+searching array([1, 2, 4, 5, 5, 7]) for 7 - exact     5 - approx     5
+searching array([1, 2, 4, 5, 5, 7]) for 8 - exact fails - approx     5

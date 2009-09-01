@@ -8,6 +8,7 @@ THIS_DIR = general
 
 ORDINARY_PROGS=	\
 		arithmetic \
+		array_binsearch \
 		array_test \
 		base_string_to_int_test \
 		base_string_to_integer \
