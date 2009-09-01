@@ -81,7 +81,7 @@ EMACS_SCRIPTS = gud.el
 			$(MERCURY_DIR)/config.status --file=$* ; \
 			if grep -n '[^$$]@' $@ > /dev/null; \
 			then false; \
-			else true;
+			else true; \
 			fi \
 		fi \
 	done
