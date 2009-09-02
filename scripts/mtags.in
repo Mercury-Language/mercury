@@ -476,7 +476,7 @@ while ($#ARGV >= 0)
 
             # If it doesn't end in a `.' (i.e if it doesn't fit on one line),
             # then it's probably a definition.
-            ($body !~ /\.[ \t]*$/ && $body !~ /\.[ \t]*%.*$/) ||
+            ($body !~ /\.\s*$/ && $body !~ /\.[ \t]*%.*$/) ||
 
             # if it contains `--->', `=', or `::', it's probably a
             # definition.
@@ -503,8 +503,8 @@ while ($#ARGV >= 0)
             while ($body !~ /--->/) {
                 # Skip blank lines and comments but stop if we see the end of
                 # the term.
-                unless ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
-                    last if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
+                unless ($body =~ /^\s*$/ || $body =~ /^[ \t]*%.*$/) {
+                    last if $_ =~ /\.\s*$/ || $_ =~ /\.[ \t]*%.*$/;
                 }
                 $_ = <SRCFILE>;
                 chop;
@@ -524,7 +524,7 @@ while ($#ARGV >= 0)
                     $body =~ s/[^;]*;[ \t]*//;
 
                     # Skip blank lines and comments.
-                    while ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
+                    while ($body =~ /^\s*$/ || $body =~ /^[ \t]*%.*$/) {
                         $_ = <SRCFILE> || last;
                         chop;
                         $body = $_;
@@ -574,7 +574,7 @@ while ($#ARGV >= 0)
                     }
                 }
 
-                last if $_ =~ /^[^%]*\.[ \t\r]*$/ || $_ =~ /\.[ \t]*%.*$/;
+                last if $_ =~ /^[^%]*\.\s*$/ || $_ =~ /\.[ \t]*%.*$/;
                 $_ = <SRCFILE> || last;
                 chop;
                 $body = $_;
@@ -582,7 +582,7 @@ while ($#ARGV >= 0)
         } elsif ($decl eq "typeclass") {
             for(;;) {
                 # Skip blank lines and comments.
-                while ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
+                while ($body =~ /^\s*$/ || $body =~ /^[ \t]*%.*$/) {
                     $_ = <SRCFILE> || last;
                     chop;
                     $body = $_;
@@ -592,7 +592,7 @@ while ($#ARGV >= 0)
                 if ($body =~ /^.*\b(pred|func)[ \t]*/) {
                     $body =~ s/^.*\b(pred|func)[ \t]*//;
 
-                    if ($body =~ /^[ \t]*$/) {
+                    if ($body =~ /^\s*$/) {
                         $_ = <SRCFILE> || last;
                         chop;
                         $body = $_;
@@ -604,7 +604,7 @@ while ($#ARGV >= 0)
                     output_name();
                 }
 
-                last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
+                last if $_ =~ /\.\s*$/ || $_ =~ /\]/;
 
                 $_ = <SRCFILE> || last;
                 chop;
@@ -613,7 +613,7 @@ while ($#ARGV >= 0)
         } else { # instance declaration
             for(;;) {
                 # Skip blank lines and comments.
-                while ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
+                while ($body =~ /^\s*$/ || $body =~ /^[ \t]*%.*$/) {
                     $_ = <SRCFILE> || last;
                     chop;
                     $body = $_;
@@ -623,7 +623,7 @@ while ($#ARGV >= 0)
                 if ($body =~ /^.*\b(pred\(|func\()/) {
                     $body =~ s/.*\b(pred\(|func\()//;
 
-                    if ($body =~ /^[ \t]*$/) {
+                    if ($body =~ /^\s*$/) {
                         $_ = <SRCFILE> || last;
                         chop;
                         $body = $_;
@@ -635,7 +635,7 @@ while ($#ARGV >= 0)
                     output_name();
                 }
 
-                last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
+                last if $_ =~ /\.\s*$/ || $_ =~ /\]/;
 
                 $_ = <SRCFILE> || last;
                 chop;
