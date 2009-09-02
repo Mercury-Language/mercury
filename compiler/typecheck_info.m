@@ -689,7 +689,7 @@ typecheck_info_get_all_errors(Info, Errors) :-
 typecheck_info_add_pred_marker(Marker, !Info) :-
     Markers0 = !.Info ^ tc_info_sub_info ^ tc_sub_info_pred_markers,
     add_marker(Marker, Markers0, Markers),
-    !:Info = !.Info ^ tc_info_sub_info ^ tc_sub_info_pred_markers := Markers.
+    !Info ^ tc_info_sub_info ^ tc_sub_info_pred_markers := Markers.
 
 %-----------------------------------------------------------------------------%
 
