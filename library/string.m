@@ -2040,13 +2040,13 @@ string.format(FormatString, PolyList, String) :-
     ).
 
 :- type string.specifier
-    --->    conv(
+    --->    spec_conv(
                 flags       :: list(char),
                 width       :: maybe(list(char)),
                 precision   :: maybe(list(char)),
                 spec        :: spec
             )
-    ;       string(list(char)).
+    ;       spec_string(list(char)).
 
     % A format string is parsed into alternate sections. We alternate between
     % the list of characters which don't represent a conversion specifier
@@ -2060,10 +2060,10 @@ format_string_to_specifiers(Specifiers, !PolyTypes, !Chars) :-
     other(NonConversionSpecChars, !Chars),
     ( conversion_specification(ConversionSpec, !PolyTypes, !Chars) ->
         format_string_to_specifiers(Specifiers0, !PolyTypes, !Chars),
-        Specifiers = [string(NonConversionSpecChars), ConversionSpec
+        Specifiers = [spec_string(NonConversionSpecChars), ConversionSpec
             | Specifiers0]
     ;
-        Specifiers = [string(NonConversionSpecChars)]
+        Specifiers = [spec_string(NonConversionSpecChars)]
     ).
 
     % Parse a string which doesn't contain any conversion specifications.
@@ -2096,7 +2096,7 @@ conversion_specification(Specificier, !PolyTypes, !Chars) :-
     optional(width, MaybeWidth, !PolyTypes, !Chars),
     optional(prec, MaybePrec, !PolyTypes, !Chars),
     ( spec(Spec, !PolyTypes, !Chars) ->
-        Specificier = conv(Flags, MaybeWidth, MaybePrec, Spec)
+        Specificier = spec_conv(Flags, MaybeWidth, MaybePrec, Spec)
     ;
         error("string.format: invalid conversion specifier.")
     ).
@@ -2283,7 +2283,7 @@ zero_or_more_occurences(P, !Chars) :-
 
 :- func specifier_to_string(string.specifier) = string.
 
-specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
+specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
     (
         % Valid int conversion specifiers.
         Spec = d(Int),
@@ -2429,7 +2429,7 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
         Spec = percent,
         String = "%"
     ).
-specifier_to_string(string(Chars)) = from_char_list(Chars).
+specifier_to_string(spec_string(Chars)) = from_char_list(Chars).
 
 :- func conv(maybe(list(character))) = maybe(int).
 
