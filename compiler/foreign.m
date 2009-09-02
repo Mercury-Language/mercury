@@ -745,6 +745,8 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                 ; Type = type_variable(_, _)
                 ; Type = kinded_type(_, _)
                 ),
+                % This is here so we can share some code between C and Java
+                % backends.  This is not the correct type to use in general.
                 Result = "java.lang.Object"
             )
         ;

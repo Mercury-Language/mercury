@@ -2231,6 +2231,9 @@ inline_code_to_il_asm([T | Ts]) = Instrs ++ Rest :-
         T = target_code_output(_),
         Instrs = empty
     ;
+        T = target_code_type(_),
+        Instrs = empty
+    ;
         T = target_code_name(_),
         Instrs = empty
     ),

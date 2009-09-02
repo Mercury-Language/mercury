@@ -443,7 +443,7 @@ atomic_stmt_contains_var(trail_op(TrailOp), Name) :-
     trail_op_contains_var(TrailOp, Name).
 atomic_stmt_contains_var(inline_target_code(_Lang, Components), Name) :-
     list.member(Component, Components),
-    target_code_component_contains_var(Component, Name).
+    target_code_component_contains_var(Component, Name) = yes.
 
 :- pred trail_op_contains_var(trail_op::in, mlds_data::in) is semidet.
 
@@ -458,22 +458,34 @@ trail_op_contains_var(mark_ticket_stack(Lval), Name) :-
 trail_op_contains_var(prune_tickets_to(Rval), Name) :-
     rval_contains_var(Rval, Name).
 
-:- pred target_code_component_contains_var(target_code_component::in,
-    mlds_data::in) is semidet.
+:- func target_code_component_contains_var(target_code_component, mlds_data)
+    = bool.
 
-%target_code_component_contains_var(raw_target_code(_Code), _Name) :-
-%   fail.
-%target_code_component_contains_var(user_target_code(_Code, _Ctxt), _Name) :-
-%   fail.
-target_code_component_contains_var(target_code_input(Rval), Name) :-
-    rval_contains_var(Rval, Name).
-target_code_component_contains_var(target_code_output(Lval), Name) :-
-    lval_contains_var(Lval, Name).
-target_code_component_contains_var(target_code_name(EntityName), DataName) :-
-    EntityName = qual(ModuleName, QualKind, entity_data(UnqualDataName)),
-    DataName = qual(ModuleName, QualKind, UnqualDataName),
-    % This is a place where we can succeed.
-    true.
+target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
+    (
+        ( TargetCode = user_target_code(_, _, _)
+        ; TargetCode = raw_target_code(_, _)
+        ; TargetCode = target_code_type(_)
+        ),
+        ContainsVar = no
+    ;
+        TargetCode = target_code_input(Rval),
+        ContainsVar = pred_to_bool(rval_contains_var(Rval, DataName))
+    ;
+        TargetCode = target_code_output(Lval),
+        ContainsVar = pred_to_bool(lval_contains_var(Lval, DataName))
+    ;
+        TargetCode = target_code_name(EntityName),
+        (
+            EntityName = qual(ModuleName, QualKind,
+                entity_data(UnqualDataName)),
+            DataName = qual(ModuleName, QualKind, UnqualDataName)
+        ->
+            ContainsVar = yes
+        ;
+            ContainsVar = no
+        )
+    ).
 
 has_foreign_languages(Statement, Langs) :-
     GetTargetCode = (pred(Lang::out) is nondet :-

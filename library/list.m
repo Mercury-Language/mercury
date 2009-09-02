@@ -2820,7 +2820,7 @@ public static List_1 det_tail(List_1 lst)
 */
 
 public static class ListIterator<E>
-    implements java.lang.Iterable, java.util.Iterator<E>
+    implements java.lang.Iterable<E>, java.util.Iterator<E>
 {
     private List_1 lst;
 

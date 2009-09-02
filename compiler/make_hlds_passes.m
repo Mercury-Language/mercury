@@ -2311,12 +2311,8 @@ add_java_mutable_defn(TargetMutableName, Type, IsConstant,
 :- pred get_java_mutable_global_foreign_defn(module_info::in, mer_type::in,
     string::in, bool::in, prog_context::in, item::out) is det.
 
-get_java_mutable_global_foreign_defn(ModuleInfo, Type, TargetMutableName,
+get_java_mutable_global_foreign_defn(_ModuleInfo, _Type, TargetMutableName,
         IsConstant, Context, DefnItem) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
-    TypeName = global_foreign_type_name(AlwaysBoxed, lang_java, ModuleInfo,
-        Type),
     MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
 
     % Constant mutables do not require mutexes as their values are never
@@ -2331,7 +2327,7 @@ get_java_mutable_global_foreign_defn(ModuleInfo, Type, TargetMutableName,
     ),
 
     DefnBody = string.append_list([
-        "static ", TypeName, " ", TargetMutableName, ";\n" | LockDefn]),
+        "static java.lang.Object ", TargetMutableName, ";\n" | LockDefn]),
     DefnPragma = pragma_foreign_code(lang_java, DefnBody),
     DefnItemPragma = item_pragma_info(compiler(mutable_decl), DefnPragma,
         Context, -1),
@@ -2348,7 +2344,11 @@ add_java_mutable_preds(ItemMutable, TargetMutableName,
     ItemMutable = item_mutable_info(MercuryMutableName, _Type, InitTerm, Inst,
         MutAttrs, MutVarset, Context, _SeqNum),
     IsConstant = mutable_var_constant(MutAttrs),
-    Attrs = default_attributes(lang_java),
+    Attrs0 = default_attributes(lang_java),
+    % The mutable variable name is not module-qualified so cannot be exported
+    % to `.opt' files. We could add the qualification but it would be better
+    % to move the mutable code generation into the backends first.
+    set_may_duplicate(yes(proc_may_not_duplicate), Attrs0, Attrs),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
     (

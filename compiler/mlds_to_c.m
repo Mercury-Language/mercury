@@ -3545,6 +3545,10 @@ mlds_output_target_code_component(Opts, Context, TargetCode, !IO) :-
         mlds_output_lval(Opts, Lval, !IO),
         io.write_string(" ", !IO)
     ;
+        TargetCode = target_code_type(Type),
+        mlds_output_type(Opts, Type, !IO),
+        io.write_string(" ", !IO)
+    ;
         % Note: `target_code_name(Name)' target_code_components are used to
         % generate the #define for `MR_PROC_LABEL'.
         % The fact that they're used in a #define means that we can't do

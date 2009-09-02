@@ -805,48 +805,42 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Object res = P.call___0_0(new Object[] { X, Y });
-    succeeded = ((Boolean) res).booleanValue();
+    succeeded = (Boolean) P.call___0_0(new Object[] { X, Y });
 ").
 :- pragma foreign_proc("Java",
     semidet_call_4(Pred::in, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Object res = P.call___0_0(new Object[] { A, X, Y });
-    succeeded = ((Boolean) res).booleanValue();
+    succeeded = (Boolean) P.call___0_0(new Object[] { A, X, Y });
 ").
 :- pragma foreign_proc("Java",
     semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Object res = P.call___0_0(new Object[] { A, B, X, Y });
-    succeeded = ((Boolean) res).booleanValue();
+    succeeded = (Boolean) P.call___0_0(new Object[] { A, B, X, Y });
 ").
 :- pragma foreign_proc("Java",
     semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Object res = P.call___0_0(new Object[] { A, B, C, X, Y });
-    succeeded = ((Boolean) res).booleanValue();
+    succeeded = (Boolean) P.call___0_0(new Object[] { A, B, C, X, Y });
 ").
 :- pragma foreign_proc("Java",
     semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Object res = P.call___0_0(new Object[] { A, B, C, D, X, Y });
-    succeeded = ((Boolean) res).booleanValue();
+    succeeded = (Boolean) P.call___0_0(new Object[] { A, B, C, D, X, Y });
 ").
 :- pragma foreign_proc("Java",
     semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Object res = P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
-    succeeded = ((Boolean) res).booleanValue();
+    succeeded = (Boolean) P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
 ").
 
 :- pragma foreign_proc("Java",
@@ -854,7 +848,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = P.call___0_0(new Object[] { X, Y });
+    Res = (builtin.Comparison_result_0)
+        P.call___0_0(new Object[] { X, Y });
 ").
 
 :- pragma foreign_proc("Java",
@@ -862,28 +857,32 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = P.call___0_0(new Object[] { A, X, Y });
+    Res = (builtin.Comparison_result_0)
+        P.call___0_0(new Object[] { A, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = P.call___0_0(new Object[] { A, B, X, Y });
+    Res = (builtin.Comparison_result_0)
+        P.call___0_0(new Object[] { A, B, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = P.call___0_0(new Object[] { A, B, C, X, Y });
+    Res = (builtin.Comparison_result_0)
+        P.call___0_0(new Object[] { A, B, C, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = P.call___0_0(new Object[] { A, B, C, D, X, Y });
+    Res = (builtin.Comparison_result_0)
+        P.call___0_0(new Object[] { A, B, C, D, X, Y });
 ").
 :- pragma foreign_proc("Java",
     result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
@@ -891,7 +890,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
+    Res = (builtin.Comparison_result_0)
+        P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1447,9 +1447,9 @@ iterate(Start, Max, Func) = Results :-
     construct(TypeInfo::in, FunctorNumber::in, ArgList::in) = (Term::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
-    Object[] rc = ML_construct(TypeInfo, FunctorNumber, (list.List_1) ArgList);
+    Object[] rc = ML_construct(TypeInfo, FunctorNumber, ArgList);
     succeeded = (Boolean) rc[0];
-    Term = rc[1];
+    Term = (univ.Univ_0) rc[1];
 ").
 
 construct(_, _, _) = _ :-
@@ -1462,7 +1462,7 @@ construct(_, _, _) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe,
         may_not_duplicate],
 "
-    list.List_1 args_list = (list.List_1) Args;
+    list.List_1 args_list = Args;
     Object[] args_array = new Object[Arity];
 
     for (int i = 0; i < Arity; i++) {
@@ -1471,7 +1471,7 @@ construct(_, _, _) = _ :-
         args_list = list.det_tail(args_list);
     }
 
-    Object[] args = ML_list_to_array((list.List_1) ArgTypes, Arity);
+    Object[] args = ML_list_to_array(ArgTypes, Arity);
     TypeInfo_Struct ti = new TypeInfo_Struct();
     ti.init(builtin.builtin__type_ctor_info_tuple_0, args);
 

@@ -2655,17 +2655,24 @@ output_mlds_var_name(mlds_var_name(Name, yes(Num)), !IO) :-
 :- pred output_type(output_style::in, mlds_type::in, io::di, io::uo) is det.
 
 output_type(Style, mercury_type(Type, CtorCat, _), !IO) :-
-    ( Type = c_pointer_type ->
-        % The c_pointer type is used in the c back-end as a generic way
-        % to pass foreign types to automatically generated Compare and Unify
-        % code. When compiling to Java we must instead use java.lang.Object.
-        io.write_string("/* c_pointer */ java.lang.Object", !IO)
-    ;
+    (
         % We need to handle type_info (etc.) types specially -- they get mapped
         % to types in the runtime rather than in private_builtin.
         hand_defined_type(CtorCat, SubstituteName)
     ->
         io.write_string(SubstituteName, !IO)
+    ;
+        % io.state and store.store
+        CtorCat = ctor_cat_builtin_dummy
+    ->
+        io.write_string("/* builtin_dummy */ java.lang.Object", !IO)
+    ;
+        Type = c_pointer_type
+    ->
+        % The c_pointer type is used in the c back-end as a generic way
+        % to pass foreign types to automatically generated Compare and Unify
+        % code. When compiling to Java we must instead use java.lang.Object.
+        io.write_string("/* c_pointer */ java.lang.Object", !IO)
     ;
         output_mercury_type(Style, Type, CtorCat, !IO)
     ).
@@ -3723,9 +3730,13 @@ output_atomic_stmt(_Indent, _, _FuncInfo,
 output_target_code_component(ModuleInfo, ModuleName, _Context, TargetCode,
         !IO) :-
     (
-        TargetCode = user_target_code(CodeString, _MaybeUserContext, _Attrs),
-        % XXX Java does not have an equivalent of the C #line preprocessor
-        % directive. If it did, we should use it here.
+        TargetCode = user_target_code(CodeString, MaybeUserContext, _Attrs),
+        (
+            MaybeUserContext = yes(ProgContext),
+            output_context(mlds_make_context(ProgContext), !IO)
+        ;
+            MaybeUserContext = no
+        ),
         io.write_string(CodeString, !IO)
     ;
         TargetCode = raw_target_code(CodeString, _Attrs),
@@ -3736,6 +3747,9 @@ output_target_code_component(ModuleInfo, ModuleName, _Context, TargetCode,
     ;
         TargetCode = target_code_output(Lval),
         output_lval(ModuleInfo, Lval, ModuleName, !IO)
+    ;
+        TargetCode = target_code_type(Type),
+        output_type(normal_style, Type, !IO)
     ;
         TargetCode = target_code_name(Name),
         output_maybe_qualified_name(Name, ModuleName, !IO)

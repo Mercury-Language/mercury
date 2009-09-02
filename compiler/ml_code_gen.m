@@ -2528,10 +2528,10 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         ], HashUndefs),
 
     % Generate code to set the values of the input variables.
-    ml_gen_pragma_c_input_arg_list(Lang, Args, AssignInputsList, !Info),
+    ml_gen_pragma_c_java_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
     % Generate code to assign the values of the output variables.
-    ml_gen_pragma_c_output_arg_list(Lang, Args, Context,
+    ml_gen_pragma_c_output_arg_list(Args, Context,
         AssignOutputsList, ConvDecls, ConvStatements, !Info),
 
     % Generate code fragments to obtain and release the global lock.
@@ -2747,20 +2747,29 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
     prog_context::in, list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
+ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, PredId, _ProcId,
         Args, ExtraArgs, JavaCode, Context, Decls, Statements, !Info) :-
     Lang = get_foreign_language(Attributes),
 
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_markers(PredInfo, Markers),
+    ( check_marker(Markers, marker_mutable_access_pred) ->
+        MutableSpecial = mutable_special_case
+    ;
+        MutableSpecial = not_mutable_special_case
+    ),
+
     % Generate <declaration of one local variable for each arg>
-    ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
+    ml_gen_pragma_java_decls(!.Info, MutableSpecial, Args, ArgDeclsList),
     expect(unify(ExtraArgs, []), this_file,
         "ml_gen_ordinary_pragma_java_proc: extra args"),
 
     % Generate code to set the values of the input variables.
-    ml_gen_pragma_c_input_arg_list(Lang, Args, AssignInputsList, !Info),
+    ml_gen_pragma_c_java_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
     % Generate MLDS statements to assign the values of the output variables.
-    ml_gen_pragma_java_output_arg_list(Lang, Args, Context,
+    ml_gen_pragma_java_output_arg_list(MutableSpecial, Args, Context,
         AssignOutputsList, ConvDecls, ConvStatements, !Info),
 
     % Put it all together
@@ -3115,10 +3124,10 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
 
     % Generate code to set the values of the input variables.
-    ml_gen_pragma_c_input_arg_list(Lang, Args, AssignInputsList, !Info),
+    ml_gen_pragma_c_java_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
     % Generate code to assign the values of the output variables.
-    ml_gen_pragma_c_output_arg_list(Lang, Args, Context,
+    ml_gen_pragma_c_output_arg_list(Args, Context,
         AssignOutputsList, ConvDecls, ConvStatements, !Info),
 
     % Generate code fragments to obtain and release the global lock.
@@ -3286,9 +3295,6 @@ get_target_code_attributes(Lang, [ProcAttr | ProcAttrs]) = TargetAttrs :-
 :- pred ml_gen_pragma_c_decls(ml_gen_info::in, foreign_language::in,
     list(foreign_arg)::in, list(target_code_component)::out) is det.
 
-    % XXX Maybe this ought to be renamed as it works for, and
-    % is used by the Java back-end as well.
-    %
 ml_gen_pragma_c_decls(_, _, [], []).
 ml_gen_pragma_c_decls(Info, Lang, [Arg | Args], [Decl | Decls]) :-
     ml_gen_pragma_c_decl(Info, Lang, Arg, Decl),
@@ -3325,6 +3331,58 @@ ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
 
 %-----------------------------------------------------------------------------%
 
+    % The foreign code generated to implement mutable variables requires
+    % special case treatment, enabled by passing `mutable_special_case'.
+    %
+:- type mutable_special_case
+    --->    mutable_special_case
+    ;       not_mutable_special_case.
+
+    % ml_gen_pragma_java_decls generates Java code to declare the arguments
+    % for a `pragma foreign_proc' declaration.
+    %
+:- pred ml_gen_pragma_java_decls(ml_gen_info::in, mutable_special_case::in,
+    list(foreign_arg)::in, list(target_code_component)::out) is det.
+
+ml_gen_pragma_java_decls(_, _, [], []).
+ml_gen_pragma_java_decls(Info, MutableSpecial, [Arg | Args], Decl ++ Decls) :-
+    ml_gen_pragma_java_decl(Info, MutableSpecial, Arg, Decl),
+    ml_gen_pragma_java_decls(Info, MutableSpecial, Args, Decls).
+
+    % ml_gen_pragma_java_decl generates Java code to declare an argument
+    % of a `pragma foreign_proc' declaration.
+    %
+:- pred ml_gen_pragma_java_decl(ml_gen_info::in, mutable_special_case::in,
+    foreign_arg::in, list(target_code_component)::out) is det.
+
+ml_gen_pragma_java_decl(Info, MutableSpecial, Arg, Decl) :-
+    Arg = foreign_arg(_Var, MaybeNameAndMode, Type, _BoxPolicy),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    (
+        MaybeNameAndMode = yes(ArgName - _Mode),
+        not var_is_singleton(ArgName)
+    ->
+        (
+            MutableSpecial = not_mutable_special_case,
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)
+        ;
+            MutableSpecial = mutable_special_case,
+            % The code for mutables is generated in the frontend.
+            % All mutable variables have the type `java.lang.Object'.
+            MLDS_Type = mlds_generic_type
+        ),
+        TypeDecl = target_code_type(MLDS_Type),
+        string.format(" %s;\n", [s(ArgName)], VarDeclString),
+        VarDecl = raw_target_code(VarDeclString, []),
+        Decl = [TypeDecl, VarDecl]
+    ;
+        % If the variable doesn't occur in the ArgNames list,
+        % it can't be used, so we just ignore it.
+        Decl = []
+    ).
+
+%-----------------------------------------------------------------------------%
+
     % var_is_singleton determines whether or not a given foreign_proc variable
     % is singleton (i.e. starts with an underscore)
     %
@@ -3341,26 +3399,25 @@ var_is_singleton(Name) :-
 
 %-----------------------------------------------------------------------------%
 
-    % XXX Maybe this ought to be renamed as it works for, and is used
-    % by the Java back-end as well.
+    % For both C and Java.
     %
-:- pred ml_gen_pragma_c_input_arg_list(foreign_language::in,
+:- pred ml_gen_pragma_c_java_input_arg_list(foreign_language::in,
     list(foreign_arg)::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputs, !Info) :-
-    list.map_foldl(ml_gen_pragma_c_input_arg(Lang), ArgList,
+ml_gen_pragma_c_java_input_arg_list(Lang, ArgList, AssignInputs, !Info) :-
+    list.map_foldl(ml_gen_pragma_c_java_input_arg(Lang), ArgList,
         AssignInputsList, !Info),
     list.condense(AssignInputsList, AssignInputs).
 
-    % ml_gen_pragma_c_input_arg generates C code to assign the value of an
-    % input arg for a `pragma foreign_proc' declaration.
+    % ml_gen_pragma_c_input_arg generates C or Java code to assign the value of
+    % an input arg for a `pragma foreign_proc' declaration.
     %
-:- pred ml_gen_pragma_c_input_arg(foreign_language::in, foreign_arg::in,
+:- pred ml_gen_pragma_c_java_input_arg(foreign_language::in, foreign_arg::in,
     list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
+ml_gen_pragma_c_java_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     (
         ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
@@ -3368,7 +3425,7 @@ ml_gen_pragma_c_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
         not var_is_singleton(ArgName),
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_in)
     ->
-        ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType,
+        ml_gen_pragma_c_java_gen_input_arg(Lang, Var, ArgName, OrigType,
             BoxPolicy, AssignInput, !Info)
     ;
         % If the variable doesn't occur in the ArgNames list,
@@ -3376,11 +3433,11 @@ ml_gen_pragma_c_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
         AssignInput = []
     ).
 
-:- pred ml_gen_pragma_c_gen_input_arg(foreign_language::in, prog_var::in,
+:- pred ml_gen_pragma_c_java_gen_input_arg(foreign_language::in, prog_var::in,
     string::in, mer_type::in, box_policy::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
+ml_gen_pragma_c_java_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         AssignInput, !Info) :-
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
@@ -3389,10 +3446,10 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     (
         IsDummy = is_dummy_type,
         % The variable may not have been declared, so we need to generate
-        % a dummy value for it. Using `0' here is more efficient than using
-        % private_builtin.dummy_var, which is what ml_gen_var will have
+        % a dummy value for it. Using a constant here is more efficient than
+        % using private_builtin.dummy_var, which is what ml_gen_var will have
         % generated for this variable.
-        ArgRval = ml_const(mlconst_int(0))
+        ArgRval = dummy_arg_rval(Lang, ModuleInfo, VarType)
     ;
         IsDummy = is_not_dummy_type,
         ml_gen_box_or_unbox_rval(ModuleInfo, VarType, OrigType, BoxPolicy,
@@ -3403,47 +3460,13 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     % to convert this to the appropriate type to use for the C interface.
     ExportedType = foreign.to_exported_type(ModuleInfo, OrigType),
     TypeString = exported_type_to_string(Lang, ExportedType),
-    IsForeign = foreign.is_foreign_type(ExportedType),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
-        (
-            Lang = lang_java,
-            MaybeCast = no
-        ;
-            Lang = lang_c,
-            IsForeign = no,
-            MaybeCast = no
-        ;
-            Lang = lang_c,
-            IsForeign = yes(Assertions),
-            list.member(foreign_type_can_pass_as_mercury_type, Assertions),
-            MaybeCast = yes("(" ++ TypeString ++ ") ")
-        )
+        input_arg_assignable_with_cast(Lang, HighLevelData, OrigType,
+            ExportedType, TypeString, Cast)
     ->
         % In the usual case, we can just use an assignment and perhaps a cast.
-        ml_gen_info_get_high_level_data(!.Info, HighLevelData),
-        (
-            HighLevelData = yes,
-            % In general, the types used for the C interface are not the same
-            % as the types used by --high-level-data, so we always use a cast
-            % here. (Strictly speaking the cast is not needed for a few cases
-            % like `int', but it doesn't do any harm.)
-            Cast = "(" ++ TypeString ++ ")"
-        ;
-            HighLevelData = no,
-            % For --no-high-level-data, we only need to use a cast is for
-            % polymorphic types, which are `MR_Word' in the C interface but
-            % `MR_Box' in the MLDS back-end.
-            ( OrigType = type_variable(_, _) ->
-                Cast = "(MR_Word) "
-            ;
-                (
-                    MaybeCast = yes(Cast)
-                ;
-                    MaybeCast = no,
-                    Cast = ""
-                )
-            )
-        ),
         string.format("\t%s = %s ", [s(ArgName), s(Cast)], AssignToArgName),
         AssignInput = [
             raw_target_code(AssignToArgName, []),
@@ -3451,9 +3474,8 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
             raw_target_code(";\n", [])
         ]
     ;
-        % For foreign types,
-        % we need to call MR_MAYBE_UNBOX_FOREIGN_TYPE
-        % XXX not if can_pass_as_mercury_type is set
+        % For foreign types (without the `can_pass_as_mercury_type' assertion)
+        % we need to call MR_MAYBE_UNBOX_FOREIGN_TYPE.
         AssignInput = [
             raw_target_code("\tMR_MAYBE_UNBOX_FOREIGN_TYPE("
                 ++ TypeString ++ ", ", []),
@@ -3462,17 +3484,73 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         ]
     ).
 
-:- pred ml_gen_pragma_java_output_arg_list(foreign_language::in,
+:- func dummy_arg_rval(foreign_language, module_info, mer_type) = mlds_rval.
+
+dummy_arg_rval(Lang, ModuleInfo, Type) = Rval :-
+    MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+    ( Lang = lang_java ->
+        Rval = ml_const(mlconst_null(MLDS_Type))
+    ;
+        Rval = ml_const(mlconst_int(0))
+    ).
+
+:- pred input_arg_assignable_with_cast(foreign_language::in, bool::in,
+    mer_type::in, exported_type::in, string::in, string::out) is semidet.
+
+input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
+        TypeString, Cast) :-
+    (
+        Lang = lang_c,
+        HighLevelData = yes,
+        % In general, the types used for the C interface are not the same
+        % as the types used by --high-level-data, so we always use a cast
+        % here. (Strictly speaking the cast is not needed for a few cases
+        % like `int', but it doesn't do any harm.)
+        Cast = "(" ++ TypeString ++ ")"
+    ;
+        Lang = lang_c,
+        HighLevelData = no,
+        ( OrigType = type_variable(_, _) ->
+            % For --no-high-level-data, we only need to use a cast for
+            % polymorphic types, which are `MR_Word' in the C interface but
+            % `MR_Box' in the MLDS back-end.
+            Cast = "(MR_Word)"
+        ;
+            IsForeign = foreign.is_foreign_type(ExportedType),
+            (
+                IsForeign = yes(Assertions),
+                list.member(foreign_type_can_pass_as_mercury_type, Assertions),
+                Cast = "(" ++ TypeString ++ ")"
+            ;
+                IsForeign = no,
+                Cast = ""
+            )
+        )
+    ;
+        Lang = lang_java,
+        % There is no difference between types used by the foreign interface
+        % and the generated code.
+        Cast = ""
+    ;
+        ( Lang = lang_csharp
+        ; Lang = lang_il
+        ; Lang = lang_erlang
+        ),
+        unexpected(this_file,
+            "input_arg_assignable_with_cast: unexpected language")
+    ).
+
+:- pred ml_gen_pragma_java_output_arg_list(mutable_special_case::in,
     list(foreign_arg)::in, prog_context::in, list(statement)::out,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_java_output_arg_list(_, [], _, [], [], [], !Info).
-ml_gen_pragma_java_output_arg_list(Lang, [Java_Arg | Java_Args], Context,
-        Statements, ConvDecls, ConvStatements, !Info) :-
-    ml_gen_pragma_java_output_arg(Lang, Java_Arg, Context, Statements1,
-        ConvDecls1, ConvStatements1, !Info),
-    ml_gen_pragma_java_output_arg_list(Lang, Java_Args, Context,
+ml_gen_pragma_java_output_arg_list(MutableSpecial, [JavaArg | JavaArgs],
+        Context, Statements, ConvDecls, ConvStatements, !Info) :-
+    ml_gen_pragma_java_output_arg(MutableSpecial, JavaArg, Context,
+        Statements1, ConvDecls1, ConvStatements1, !Info),
+    ml_gen_pragma_java_output_arg_list(MutableSpecial, JavaArgs, Context,
         Statements2, ConvDecls2, ConvStatements2, !Info),
     Statements = Statements1 ++ Statements2,
     ConvDecls = ConvDecls1 ++ ConvDecls2,
@@ -3481,13 +3559,13 @@ ml_gen_pragma_java_output_arg_list(Lang, [Java_Arg | Java_Args], Context,
     % ml_gen_pragma_java_output_arg generates MLDS statements to assign the
     % value of an output arg for a `pragma foreign_proc' declaration.
     %
-:- pred ml_gen_pragma_java_output_arg(foreign_language::in,
+:- pred ml_gen_pragma_java_output_arg(mutable_special_case::in,
     foreign_arg::in, prog_context::in, list(statement)::out,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
-        ConvDecls, ConvOutputStatements, !Info) :-
+ml_gen_pragma_java_output_arg(MutableSpecial, ForeignArg, Context,
+        AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
     ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     (
@@ -3504,24 +3582,24 @@ ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
             VarLval, mlds_var_name(ArgName, no), Context, no, 0,
             ArgLval, ConvDecls, _ConvInputStatements,
             ConvOutputStatements, !Info),
-        % This is the MLDS type of the original argument, which we need to
-        % cast the local (Java) representation of the argument back to.
         MLDSType = mercury_type_to_mlds_type(ModuleInfo, OrigType),
-        % Construct an MLDS lval for the local Java representation
-        % of the argument.
         module_info_get_name(ModuleInfo, ModuleName),
         MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
         NonMangledVarName = mlds_var_name(ArgName, no),
         QualLocalVarName = qual(MLDSModuleName, module_qual,
             NonMangledVarName),
-        % XXX MLDSType is the incorrect type for this variable.
-        % It should have the Java foreign language representation
-        % of that type. Unfortunately this is not easily expressed
-        % as an mlds_type.
         LocalVarLval = ml_var(QualLocalVarName, MLDSType),
-        % We cast this variable back to the corresponding
-        % MLDS type before assigning it to the lval.
-        Rval = ml_unop(cast(MLDSType), ml_lval(LocalVarLval)),
+        (
+            MutableSpecial = not_mutable_special_case,
+            Rval = ml_lval(LocalVarLval)
+        ;
+            MutableSpecial = mutable_special_case,
+            % The code for mutables is generated in the frontend.
+            % All mutable variables have the type `java.lang.Object'
+            % so we need to cast the variable or extract the primitive
+            % value from the box.
+            Rval = ml_unop(unbox(MLDSType), ml_lval(LocalVarLval))
+        ),
         AssignOutput = [ml_gen_assign(ArgLval, Rval, Context)]
     ;
         % If the variable doesn't occur in the ArgNames list,
@@ -3531,18 +3609,17 @@ ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
         ConvOutputStatements = []
     ).
 
-:- pred ml_gen_pragma_c_output_arg_list(foreign_language::in,
-    list(foreign_arg)::in, prog_context::in,
-    list(target_code_component)::out,
+:- pred ml_gen_pragma_c_output_arg_list(list(foreign_arg)::in,
+    prog_context::in, list(target_code_component)::out,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_output_arg_list(_, [], _, [], [], [], !Info).
-ml_gen_pragma_c_output_arg_list(Lang, [ForeignArg | ForeignArgs], Context,
+ml_gen_pragma_c_output_arg_list([], _, [], [], [], !Info).
+ml_gen_pragma_c_output_arg_list([ForeignArg | ForeignArgs], Context,
         Components, ConvDecls, ConvStatements, !Info) :-
-    ml_gen_pragma_c_output_arg(Lang, ForeignArg, Context, Components1,
+    ml_gen_pragma_c_output_arg(ForeignArg, Context, Components1,
         ConvDecls1, ConvStatements1, !Info),
-    ml_gen_pragma_c_output_arg_list(Lang, ForeignArgs, Context,
+    ml_gen_pragma_c_output_arg_list(ForeignArgs, Context,
         Components2, ConvDecls2, ConvStatements2, !Info),
     Components = Components1 ++ Components2,
     ConvDecls = ConvDecls1 ++ ConvDecls2,
@@ -3551,12 +3628,12 @@ ml_gen_pragma_c_output_arg_list(Lang, [ForeignArg | ForeignArgs], Context,
     % ml_gen_pragma_c_output_arg generates C code to assign the value of
     % an output arg for a `pragma foreign_proc' declaration.
     %
-:- pred ml_gen_pragma_c_output_arg(foreign_language::in, foreign_arg::in,
+:- pred ml_gen_pragma_c_output_arg(foreign_arg::in,
     prog_context::in, list(target_code_component)::out,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_output_arg(Lang, Arg, Context, AssignOutput, ConvDecls,
+ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
         ConvOutputStatements, !Info) :-
     Arg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -3566,7 +3643,7 @@ ml_gen_pragma_c_output_arg(Lang, Arg, Context, AssignOutput, ConvDecls,
         check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_out)
     ->
-        ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
+        ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
             Context, AssignOutput, ConvDecls, ConvOutputStatements, !Info)
     ;
         % If the variable doesn't occur in the ArgNames list,
@@ -3576,13 +3653,13 @@ ml_gen_pragma_c_output_arg(Lang, Arg, Context, AssignOutput, ConvDecls,
         ConvOutputStatements = []
     ).
 
-:- pred ml_gen_pragma_c_gen_output_arg(foreign_language::in, prog_var::in,
+:- pred ml_gen_pragma_c_gen_output_arg(prog_var::in,
     string::in, mer_type::in, box_policy::in, prog_context::in,
     list(target_code_component)::out,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
+ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
         Context, AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
@@ -3594,19 +3671,13 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     % to convert this to the appropriate type to use for the C interface.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ExportedType = foreign.to_exported_type(ModuleInfo, OrigType),
-    TypeString = exported_type_to_string(Lang, ExportedType),
+    TypeString = exported_type_to_string(lang_c, ExportedType),
     IsForeign = foreign.is_foreign_type(ExportedType),
     (
         (
-            Lang = lang_java,
             IsForeign = no,
             Cast = no
         ;
-            Lang = lang_c,
-            IsForeign = no,
-            Cast = no
-        ;
-            Lang = lang_c,
             IsForeign = yes(Assertions),
             list.member(foreign_type_can_pass_as_mercury_type, Assertions),
             Cast = yes

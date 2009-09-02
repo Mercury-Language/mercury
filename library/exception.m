@@ -1654,12 +1654,12 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 "
     try {
         T = exception.ML_call_goal_det(
-            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            TypeInfo_for_T,
             (Object[]) Pred);
     }
     catch (jmercury.runtime.Exception ex) {
         T = exception.ML_call_handler_det(
-            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            TypeInfo_for_T,
             (Object[]) Handler,
             (univ.Univ_0) ex.exception);
     }
@@ -1670,12 +1670,12 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 "
     try {
         T = exception.ML_call_goal_semidet(
-            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            TypeInfo_for_T,
             (Object[]) Pred);
     }
     catch (jmercury.runtime.Exception ex) {
         T = exception.ML_call_handler_det(
-            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
+            TypeInfo_for_T,
             (Object[]) Handler,
             (univ.Univ_0) ex.exception);
     }
@@ -1722,8 +1722,7 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
         pred.call___0_0(new java.lang.Object[] { Pred, cont, cont_env_ptr });
     }
     catch (jmercury.runtime.Exception ex) {
-        Object T = exception.ML_call_handler_det(
-            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T, Handler,
+        Object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
         cont.call___0_0(new java.lang.Object[] { T, cont_env_ptr });
     }
@@ -1740,8 +1739,7 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
         pred.call___0_0(new java.lang.Object[] { Pred, cont, cont_env_ptr });
     }
     catch (jmercury.runtime.Exception ex) {
-        Object T = exception.ML_call_handler_det(
-            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T, Handler,
+        Object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
         cont.call___0_0(new java.lang.Object[] { T, cont_env_ptr });
     }

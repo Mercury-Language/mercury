@@ -1268,6 +1268,7 @@ eliminate_var_in_target_code_component(Component0, Component, !VarElimInfo) :-
     (
         ( Component0 = raw_target_code(_Code, _Attrs)
         ; Component0 = user_target_code(_Code, _Context, _Attrs)
+        ; Component0 = target_code_type(_Type)
         ; Component0 = target_code_name(_Name)
         ),
         Component = Component0

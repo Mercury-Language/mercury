@@ -1442,7 +1442,7 @@ string.from_char_list(Chars::in, Str::uo) :-
         does_not_affect_liveness],
 "
     java.lang.StringBuilder sb = new StringBuilder();
-    Iterable<Character> iterable = new list.ListIterator((list.List_1) CharList);
+    Iterable<Character> iterable = new list.ListIterator<Character>(CharList);
     for (char c : iterable) {
         sb.append(c);
     }
@@ -1798,7 +1798,7 @@ string.append_list(Lists, string.append_list(Lists)).
 "
     java.lang.StringBuilder sb = new java.lang.StringBuilder();
 
-    Iterable<String> iterable = new list.ListIterator((list.List_1) Strs);
+    Iterable<String> iterable = new list.ListIterator<String>(Strs);
     for (String s : iterable) {
         sb.append(s);
     }
@@ -1882,7 +1882,7 @@ string.append_list(Strs::in) = (Str::uo) :-
     java.lang.StringBuilder sb = new java.lang.StringBuilder();
     boolean add_sep = false;
 
-    Iterable<String> iterable = new list.ListIterator((list.List_1) Strs);
+    Iterable<String> iterable = new list.ListIterator<String>(Strs);
     for (String s : iterable) {
         if (add_sep) {
             sb.append(Sep);

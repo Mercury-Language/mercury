@@ -1421,6 +1421,7 @@
 
     ;       target_code_input(mlds_rval)
     ;       target_code_output(mlds_lval)
+    ;       target_code_type(mlds_type)
     ;       target_code_name(mlds_qualified_entity_name).
 
 :- type target_code_attributes == list(target_code_attribute).

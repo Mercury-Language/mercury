@@ -1805,8 +1805,7 @@
 "
     static tree234.Tree234_2 ML_io_stream_db =
         new tree234.Tree234_2.Empty_0();
-    static java.lang.Object ML_io_user_globals =
-        new tree234.Tree234_2.Empty_0();
+    static univ.Univ_0 ML_io_user_globals = null;
 ").
 
 :- type io.stream_putback ==  map(io.stream_id, list(char)).
@@ -2347,7 +2346,7 @@ io.read_file_as_string(Result, !IO) :-
     io.MR_TextInputFile File;
     StringBuilder sb;
 
-    File = (io.MR_TextInputFile) ((io.Input_stream_0) InputStream).F1;
+    File = (io.MR_TextInputFile) InputStream.F1;
     sb = new StringBuilder();
 
     try {
@@ -3393,11 +3392,11 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 "
     java.lang.String permissions = null;
 
-    if (ML_access_types_includes_read((list.List_1) AccessTypes)) {
+    if (ML_access_types_includes_read(AccessTypes)) {
         permissions = ""read"";
     }
 
-    if (ML_access_types_includes_write((list.List_1) AccessTypes)) {
+    if (ML_access_types_includes_write(AccessTypes)) {
         if (permissions == null) {
             permissions = ""write"";
         } else {
@@ -3405,7 +3404,7 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
         }
     }
 
-    if (ML_access_types_includes_execute((list.List_1) AccessTypes))
+    if (ML_access_types_includes_execute(AccessTypes))
     {
         if (permissions == null) {
             permissions = ""execute"";
@@ -5093,7 +5092,7 @@ io.unlock_stream_db(!IO).
     io.set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    io.ML_io_stream_db = (tree234.Tree234_2) StreamDb;
+    io.ML_io_stream_db = StreamDb;
 ").
 
 % XXX the following Erlang implementation doesn't work with multiple threads

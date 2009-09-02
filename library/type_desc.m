@@ -264,7 +264,7 @@ type_desc_to_type_info(TypeDesc, TypeInfo) :-
     type_desc_to_type_info(TypeDesc::in, TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo = ((type_desc.Type_desc_0) TypeDesc).type_info();
+    TypeInfo = TypeDesc.type_info();
 ").
 
 type_info_to_type_desc(TypeInfo, TypeDesc) :-
@@ -299,7 +299,7 @@ type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
     type_ctor_desc_to_type_ctor_info(TypeCtorDesc::in, TypeCtorInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeCtorInfo = ((type_desc.Type_ctor_desc_0) TypeCtorDesc).type_ctor_info();
+    TypeCtorInfo = TypeCtorDesc.type_ctor_info();
 ").
 
 type_ctor_info_to_type_ctor_desc(TypeCtorInfo, TypeCtorDesc) :-
@@ -526,7 +526,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
     ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc::in) = (TypeDesc::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    Pseudo_type_desc_0 ptd = (Pseudo_type_desc_0) PseudoTypeDesc;
+    Pseudo_type_desc_0 ptd = PseudoTypeDesc;
 
     if (ptd.struct instanceof jmercury.runtime.TypeInfo_Struct) {
         TypeDesc = new Type_desc_0(
@@ -543,7 +543,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
         = (TypeDesc::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    Pseudo_type_desc_0 ptd = (Pseudo_type_desc_0) PseudoTypeDesc;
+    Pseudo_type_desc_0 ptd = PseudoTypeDesc;
 
     if (ptd.struct instanceof jmercury.runtime.TypeInfo_Struct) {
         TypeDesc = new Type_desc_0(
@@ -615,7 +615,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
     has_type(_Arg::unused, TypeInfo::in),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    TypeInfo_for_T = ((type_desc.Type_desc_0) TypeInfo).type_info();
+    TypeInfo_for_T = TypeInfo.type_info();
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -797,15 +797,14 @@ type_ctor(TypeDesc) = TypeCtorDesc :-
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
     java.lang.Object [] result =
-        rtti_implementation.type_ctor_and_args_3_p_0(
-        ((type_desc.Type_desc_0) TypeDesc).type_info());
+        rtti_implementation.type_ctor_and_args_3_p_0(TypeDesc.type_info());
 
     TypeCtorDesc = new Type_ctor_desc_0(
         (jmercury.runtime.TypeCtorInfo_Struct) result[0]);
-    ArgTypes = result[1];
+    ArgTypes = (list.List_1) result[1];
 
     // Convert list from jmercury.runtime.TypeInfo_Struct to type_desc_0
-    list.List_1 type_list = (list.List_1) ArgTypes;
+    list.List_1 type_list = ArgTypes;
     while (type_list.data_tag == 1) {
         ((list.List_1.F_cons_2) type_list).F1 =
             new type_desc.Type_desc_0((jmercury.runtime.TypeInfo_Struct)
@@ -965,8 +964,7 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     Object[] result = rtti_implementation.
-        type_ctor_name_and_arity_4_p_0(
-            ((Type_ctor_desc_0) TypeCtorDesc).type_ctor_info());
+        type_ctor_name_and_arity_4_p_0(TypeCtorDesc.type_ctor_info());
 
     TypeCtorModuleName = (java.lang.String) result[0];
     TypeCtorName = (java.lang.String) result[1];
