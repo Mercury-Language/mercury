@@ -330,8 +330,9 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     % Find and build list of all methods which would have their addresses
     % taken to be used as a function pointer.
-    find_pointer_addressed_methods(Defns0, [], CodeAddrs0),
-    CodeAddrs = list.sort_and_remove_dups(CodeAddrs0),
+    find_pointer_addressed_methods(GlobalDefns, [], CodeAddrs0),
+    find_pointer_addressed_methods(Defns0, CodeAddrs0, CodeAddrs1),
+    CodeAddrs = list.sort_and_remove_dups(CodeAddrs1),
 
     % Create wrappers in MLDS for all pointer addressed methods.
     generate_code_addr_wrappers(Indent + 1, CodeAddrs, [], WrapperDefns),
@@ -735,10 +736,21 @@ method_ptrs_in_rval(ml_lval(Lval), !CodeAddrs) :-
 method_ptrs_in_rval(ml_mkword(_Tag, Rval), !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs).
 method_ptrs_in_rval(ml_const(RvalConst), !CodeAddrs) :-
-    ( RvalConst = mlconst_code_addr(CodeAddr) ->
-        !:CodeAddrs = !.CodeAddrs ++ [CodeAddr]
+    (
+        RvalConst = mlconst_code_addr(CodeAddr),
+        !:CodeAddrs = [CodeAddr | !.CodeAddrs]
     ;
-        true
+        ( RvalConst = mlconst_true
+        ; RvalConst = mlconst_false
+        ; RvalConst = mlconst_int(_)
+        ; RvalConst = mlconst_foreign(_, _, _)
+        ; RvalConst = mlconst_float(_)
+        ; RvalConst = mlconst_string(_)
+        ; RvalConst = mlconst_multi_string(_)
+        ; RvalConst = mlconst_named_const(_)
+        ; RvalConst = mlconst_data_addr(_)
+        ; RvalConst = mlconst_null(_)
+        )
     ).
 method_ptrs_in_rval(ml_unop(_UnaryOp, Rval), !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs).
