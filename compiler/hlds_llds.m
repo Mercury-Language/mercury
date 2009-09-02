@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 The University of Melbourne.
+% Copyright (C) 2002-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -532,11 +532,11 @@ goal_info_initialize_liveness_info(PreBirths, PostBirths,
     CodeGenInfo0 = goal_info_get_code_gen_info(!.GoalInfo),
     some [!LLDSInfo] (
         !:LLDSInfo = get_details(CodeGenInfo0),
-        !:LLDSInfo = !.LLDSInfo ^ pre_births := PreBirths,
-        !:LLDSInfo = !.LLDSInfo ^ post_births := PostBirths,
-        !:LLDSInfo = !.LLDSInfo ^ pre_deaths := PreDeaths,
-        !:LLDSInfo = !.LLDSInfo ^ post_deaths := PostDeaths,
-        !:LLDSInfo = !.LLDSInfo ^ resume_point := ResumePoint,
+        !LLDSInfo ^ pre_births := PreBirths,
+        !LLDSInfo ^ post_births := PostBirths,
+        !LLDSInfo ^ pre_deaths := PreDeaths,
+        !LLDSInfo ^ post_deaths := PostDeaths,
+        !LLDSInfo ^ resume_point := ResumePoint,
         CodeGenInfo = llds_code_gen_info(!.LLDSInfo)
     ),
     goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo).
