@@ -1665,8 +1665,9 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
             % Add foreign_code item that defines the global variable used to
             % implement the mutable.
+            IsThreadLocal = mutable_var_thread_local(MutAttrs),
             add_java_mutable_defn(TargetMutableName, Type, IsConstant,
-                Context, !ModuleInfo, !QualInfo, !Specs),
+                IsThreadLocal, Context, !ModuleInfo, !QualInfo, !Specs),
 
             % Add all the predicates related to mutables.
             add_java_mutable_preds(ItemMutable, TargetMutableName,
@@ -1940,7 +1941,7 @@ add_c_java_constant_mutable_access_preds(TargetMutableName,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
         InstVarSet,
-        fc_impl_ordinary("X = " ++ TargetMutableName ++ ";", yes(Context))
+        fc_impl_ordinary("X = " ++ TargetMutableName ++ ";\n", yes(Context))
     ),
     ConstantGetItemPragma = item_pragma_info(compiler(mutable_decl),
         ConstantGetForeignProc, Context, -1),
@@ -1956,7 +1957,7 @@ add_c_java_constant_mutable_access_preds(TargetMutableName,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
         InstVarSet,
-        fc_impl_ordinary(TargetMutableName ++ " = X;", yes(Context))
+        fc_impl_ordinary(TargetMutableName ++ " = X;\n", yes(Context))
     ),
     ConstantSetItemPragma = item_pragma_info(compiler(mutable_decl),
         ConstantSetForeignProc, Context, -1),
@@ -2044,11 +2045,11 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
     (
         IsThreadLocal = mutable_not_thread_local,
-        UnsafeGetCode = "X = " ++ TargetMutableName ++ ";"
+        UnsafeGetCode = "X = " ++ TargetMutableName ++ ";\n"
     ;
         IsThreadLocal = mutable_thread_local,
         UnsafeGetCode = "MR_get_thread_local_mutable(" ++
-            TypeName ++ ", X, " ++ TargetMutableName ++ ");"
+            TypeName ++ ", X, " ++ TargetMutableName ++ ");\n"
     ),
     UnsafeGetForeignProc = pragma_foreign_proc(UnsafeGetAttrs,
         mutable_unsafe_get_pred_sym_name(ModuleName, MutableName),
@@ -2095,11 +2096,11 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
     ),
     (
         IsThreadLocal = mutable_not_thread_local,
-        SetCode = TargetMutableName ++ "= X;"
+        SetCode = TargetMutableName ++ " = X;\n"
     ;
         IsThreadLocal = mutable_thread_local,
         SetCode = "MR_set_thread_local_mutable(" ++
-            TypeName ++ ", X, " ++ TargetMutableName ++ ");"
+            TypeName ++ ", X, " ++ TargetMutableName ++ ");\n"
     ),
     UnsafeSetForeignProc = pragma_foreign_proc(UnsafeSetAttrs,
         mutable_unsafe_set_pred_sym_name(ModuleName, MutableName),
@@ -2297,37 +2298,46 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
     % mutable.
     %
 :- pred add_java_mutable_defn(string::in, mer_type::in, bool::in,
-    prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, list(error_spec)::in, list(error_spec)::out)
-    is det.
+    mutable_thread_local::in, prog_context::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-add_java_mutable_defn(TargetMutableName, Type, IsConstant,
+add_java_mutable_defn(TargetMutableName, Type, IsConstant, IsThreadLocal,
         Context, !ModuleInfo, !QualInfo, !Specs) :-
     get_java_mutable_global_foreign_defn(!.ModuleInfo, Type,
-        TargetMutableName, IsConstant, Context, ForeignDefn),
+        TargetMutableName, IsConstant, IsThreadLocal, Context, ForeignDefn),
     ItemStatus0 = item_status(status_local, may_be_unqualified),
     add_item_decl_pass_2(ForeignDefn, ItemStatus0, _, !ModuleInfo, !Specs).
 
 :- pred get_java_mutable_global_foreign_defn(module_info::in, mer_type::in,
-    string::in, bool::in, prog_context::in, item::out) is det.
+    string::in, bool::in, mutable_thread_local::in, prog_context::in,
+    item::out) is det.
 
 get_java_mutable_global_foreign_defn(_ModuleInfo, _Type, TargetMutableName,
-        IsConstant, Context, DefnItem) :-
+        IsConstant, IsThreadLocal, Context, DefnItem) :-
     MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
 
-    % Constant mutables do not require mutexes as their values are never
-    % updated.
     (
-        IsConstant = yes,
-        LockDefn = []
+        IsThreadLocal = mutable_not_thread_local,
+        (
+            IsConstant = yes,
+            LockDefn = []
+        ;
+            IsConstant = no,
+            LockDefn = ["static final java.lang.Object ", MutableMutexVarName,
+                " = new java.lang.Object();\n"]
+        ),
+        DefnBody = string.append_list([
+            "static java.lang.Object ", TargetMutableName, ";\n" | LockDefn])
     ;
-        IsConstant = no,
-        LockDefn = ["static final java.lang.Object ", MutableMutexVarName,
-            " = new Object();\n"]
+        IsThreadLocal = mutable_thread_local,
+        DefnBody = string.append_list([
+            "static java.lang.ThreadLocal<java.lang.Object> ",
+            TargetMutableName,
+            " = new java.lang.InheritableThreadLocal<java.lang.Object>();\n"
+        ])
     ),
 
-    DefnBody = string.append_list([
-        "static java.lang.Object ", TargetMutableName, ";\n" | LockDefn]),
     DefnPragma = pragma_foreign_code(lang_java, DefnBody),
     DefnItemPragma = item_pragma_info(compiler(mutable_decl), DefnPragma,
         Context, -1),
@@ -2383,8 +2393,8 @@ add_java_mutable_preds(ItemMutable, TargetMutableName,
     % Add the foreign clauses for the mutable's primitive access and
     % locking predicates.
     %
-:- pred add_java_mutable_primitive_preds(string::in, module_name::in, string::in,
-    mutable_var_attributes::in, pragma_foreign_proc_attributes::in,
+:- pred add_java_mutable_primitive_preds(string::in, module_name::in,
+    string::in, mutable_var_attributes::in, pragma_foreign_proc_attributes::in,
     mer_inst::in, box_policy::in,
     prog_context::in, import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -2393,15 +2403,23 @@ add_java_mutable_preds(ItemMutable, TargetMutableName,
 add_java_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         MutAttrs, Attrs, Inst, BoxPolicy,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
+    IsThreadLocal = mutable_var_thread_local(MutAttrs),
+
     % Construct the semipure get predicate.
 
     set_purity(purity_semipure, Attrs, GetAttrs0),
     set_thread_safe(proc_thread_safe, GetAttrs0, GetAttrs),
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
     MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
-    GetCode =
-        "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
-        "\t\tX = " ++ TargetMutableName ++ ";\n\t}\n",
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        GetCode =
+            "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
+            "\t\tX = " ++ TargetMutableName ++ ";\n\t}\n"
+    ;
+        IsThreadLocal = mutable_thread_local,
+        GetCode = "\tX = " ++ TargetMutableName ++ ".get();\n"
+    ),
     GetForeignProc = pragma_foreign_proc(GetAttrs,
         mutable_unsafe_get_pred_sym_name(ModuleName, MutableName),
         pf_predicate,
@@ -2431,8 +2449,14 @@ add_java_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         % This is just a dummy value.
         TrailCode = ""
     ),
-    SetCode = "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
-        "\t\t" ++ TargetMutableName ++ "= X;\n\t}\n",
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        SetCode = "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
+            "\t\t" ++ TargetMutableName ++ " = X;\n\t}\n"
+    ;
+        IsThreadLocal = mutable_thread_local,
+        SetCode = "\t" ++ TargetMutableName ++ ".set(X);\n"
+    ),
     SetForeignProc = pragma_foreign_proc(SetAttrs,
         mutable_unsafe_set_pred_sym_name(ModuleName, MutableName),
         pf_predicate,

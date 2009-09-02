@@ -22,7 +22,7 @@ public class JavaInternal {
 	public static int			exit_status;
 
         private static java.util.List<Runnable> finalisers
-		= new java.util.ArrayList();
+		= new java.util.ArrayList<Runnable>();
 
 	public static void register_finaliser(Runnable hook) {
 		finalisers.add(hook);

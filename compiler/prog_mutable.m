@@ -222,7 +222,7 @@
 % ===>
 %
 %   :- pragma foreign_code("Java", "
-%       static <JavaType> mutable_<varname>;
+%       static java.lang.Object mutable_<varname>;
 %       static final java.lang.Object mutable_<varname>_lock = new Object();
 %   ").
 %
@@ -259,6 +259,35 @@
 %       }
 %   ").
 %
+% As mutable_<varname> has the type `java.lang.Object' a cast is required
+% after the code above, to cast X to the correct type.  This is handled by
+% the MLDS code generator.
+%
+% For thread-local mutables the transformation is as follows:
+%
+%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
+%
+% ===>
+%
+%   :- pragma foreign_code("Java", "
+%       static java.lang.ThreadLocal<java.lang.Object> mutable_<varname> =
+%           new java.lang.InheritableThreadLocal<java.lang.Object>();
+%   ").
+%
+%   :- pragma foreign_proc("Java",
+%       unsafe_set_<varname)(X::in(<varinst>)),
+%       [will_not_call_mercury, thread_safe],
+%   "
+%       mutable_<varname>.set(X);
+%   ").
+%
+%   :- pragma foreign_proc("Java",
+%       unsafe_get_varname(X::out(<varinst>)),
+%       [promise_semipure, will_not_call_mercury, thread_safe],
+%   "
+%       X = mutable_<varname>.get();
+%   ").
+%
 % The above prediates are called by these predicates, again to minimise
 % differences with the C backends:
 %
@@ -279,7 +308,7 @@
 % ===>
 %
 %   :- pragma foreign_code("Java", "
-%       static <JavaType> mutable_<varname>;
+%       static java.lang.Object mutable_<varname>;
 %   ").
 %
 %   :- pred get_<varname>(<vartype>::out(<varinst>)) is det.
