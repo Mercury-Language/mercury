@@ -63,14 +63,13 @@
 :- module ml_backend.mlds_to_il.
 :- interface.
 
-:- import_module hlds.hlds_pred. % for `pred_proc_id'.
-:- import_module libs.globals. % for `foreign_language'.
+:- import_module hlds.hlds_pred.    % for `pred_proc_id'.
+:- import_module libs.globals.      % for `foreign_language'.
 :- import_module ml_backend.ilasm.
 :- import_module ml_backend.ilds.
 :- import_module ml_backend.mlds.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
@@ -81,8 +80,8 @@
     %
     % This is where all the action is for the IL backend.
     %
-:- pred generate_il(mlds::in, list(ilasm.decl)::out,
-    set(foreign_language)::out, io::di, io::uo) is det.
+:- pred generate_il(globals::in, mlds::in, list(ilasm.decl)::out,
+    set(foreign_language)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -113,7 +112,7 @@
                                                 % mlds_generic_env_ptr_type?
             ).
 
-:- pred get_il_data_rep(il_data_rep::out, io::di, io::uo) is det.
+:- pred get_il_data_rep(globals::in, il_data_rep::out) is det.
 
     % Get the corresponding ILDS type for an MLDS type
     % (this depends on which representation you happen to be using).
@@ -154,6 +153,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.error_util.
@@ -236,73 +236,50 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-generate_il(MLDS, ILAsm, ForeignLangs, !IO) :-
-    maybe_get_dotnet_library_version(MaybeVersion, !IO),
+generate_il(Globals, MLDS, ILAsm, ForeignLangs) :-
+    globals.get_maybe_il_version_number(Globals, MaybeVersionNumber),
     (
-        MaybeVersion = yes(Version),
-        generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO)
+        MaybeVersionNumber = yes(VersionNumber),
+        VersionNumber = il_version_number(Major, Minor, Build, Revision),
+        Version = version(Major, Minor, Build, Revision),
+        generate_il(Globals, MLDS, Version, ILAsm, ForeignLangs)
     ;
-        MaybeVersion = no,
+        MaybeVersionNumber = no,
         ILAsm = [],
         ForeignLangs = set.init
     ).
 
-:- pred maybe_get_dotnet_library_version(maybe(assembly_decl)::out,
-    io::di, io::uo) is det.
-
-maybe_get_dotnet_library_version(MaybeVersion, !IO) :-
-    io_lookup_string_option(dotnet_library_version, VersionStr, !IO),
-    IsSep = (pred(('.')::in) is semidet),
-    (
-        string.words_separator(IsSep, VersionStr) = [Mj, Mn, Bu, Rv],
-        string.to_int(Mj, Major),
-        string.to_int(Mn, Minor),
-        string.to_int(Bu, Build),
-        string.to_int(Rv, Revision)
-    ->
-        Version = version(Major, Minor, Build, Revision),
-        MaybeVersion = yes(Version)
-    ;
-        MaybeVersion = no,
-        write_error_pieces_maybe_with_context(no, 0, [
-            words("Error: invalid version string"),
-            words("`" ++ VersionStr ++ "'"),
-            words("passed to `--dotnet-library-version'.")
-            ], !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
 %-----------------------------------------------------------------------------%
 
-:- pred generate_il(mlds::in, assembly_decl::in,
-    list(ilasm.decl)::out, set(foreign_language)::out,
-    io::di, io::uo) is det.
+:- pred generate_il(globals::in, mlds::in, assembly_decl::in,
+    list(ilasm.decl)::out, set(foreign_language)::out) is det.
 
-generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO) :-
+generate_il(Globals, MLDS0, Version, ILAsm, ForeignLangs) :-
     % XXX initialise declarations NYI for IL backend
-    mlds(MercuryModuleName, ForeignCode, Imports, Defns, _, _, _) =
-        transform_mlds(MLDS),
+    il_transform_mlds(MLDS0, MLDS),
+    MLDS = mlds(MercuryModuleName, ForeignCode, Imports, GlobalData, Defns0,
+        _, _, _),
+    ml_global_data_get_all_global_defns(GlobalData, GlobalDefns),
+    Defns = GlobalDefns ++ Defns0,
 
     ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
     AssemblyName =
         sym_name_to_string(mlds_module_name_to_sym_name(ModuleName)),
-    get_il_data_rep(ILDataRep, !IO),
-    globals.io_lookup_bool_option(debug_il_asm, DebugIlAsm, !IO),
-    globals.io_lookup_bool_option(verifiable_code,
-        VerifiableCode, !IO),
-    globals.io_lookup_bool_option(il_byref_tailcalls, ByRefTailCalls, !IO),
-    globals.io_lookup_bool_option(sign_assembly, SignAssembly, !IO),
-    globals.io_lookup_bool_option(separate_assemblies, SeparateAssemblies,
-        !IO),
-    globals.io_lookup_bool_option(support_ms_clr, MsCLR, !IO),
-    globals.io_lookup_bool_option(support_rotor_clr, RotorCLR, !IO),
+    get_il_data_rep(Globals, ILDataRep),
+    globals.lookup_bool_option(Globals, debug_il_asm, DebugIlAsm),
+    globals.lookup_bool_option(Globals, verifiable_code, VerifiableCode),
+    globals.lookup_bool_option(Globals, il_byref_tailcalls, ByRefTailCalls),
+    globals.lookup_bool_option(Globals, sign_assembly, SignAssembly),
+    globals.lookup_bool_option(Globals, separate_assemblies,
+        SeparateAssemblies),
+    globals.lookup_bool_option(Globals, support_ms_clr, MsCLR),
+    globals.lookup_bool_option(Globals, support_rotor_clr, RotorCLR),
 
     IlInfo0 = il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,
         DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR, RotorCLR),
 
     % Generate code for all the methods.
-    list.map_foldl(mlds_defn_to_ilasm_decl, Defns, ILDecls,
-        IlInfo0, IlInfo),
+    list.map_foldl(mlds_defn_to_ilasm_decl, Defns, ILDecls, IlInfo0, IlInfo),
 
     list.filter(has_foreign_code_defined(ForeignCode),
         [lang_csharp], ForeignCodeLangs),
@@ -317,9 +294,7 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO) :-
     % Standard library modules all go in the one assembly in a separate step
     % during the build (using AL.EXE).
     PackageName = mlds_module_name_to_package_name(ModuleName),
-    (
-        sym_name_prefix(PackageName) = "mercury"
-    ->
+    ( sym_name_prefix(PackageName) = "mercury" ->
         ThisAssembly = [],
         AssemblerRefs = Imports
     ;
@@ -354,8 +329,7 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO) :-
     Namespace = [namespace(NamespaceName, ILDecls)],
     ILAsm = list.condense([ThisAssembly, ExternAssemblies, Namespace]).
 
-get_il_data_rep(ILDataRep, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+get_il_data_rep(Globals, ILDataRep) :-
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     ILEnvPtrType = choose_il_envptr_type(Globals),
     ILDataRep = il_data_rep(HighLevelData, ILEnvPtrType).
@@ -379,30 +353,49 @@ has_foreign_code_defined(ForeignCodeMap, Lang) :-
     % class, and then fix all the references so that they refer to their new
     % names.
     %
-:- func transform_mlds(mlds) = mlds.
+:- pred il_transform_mlds(mlds::in, mlds::out) is det.
 
-transform_mlds(MLDS0) = MLDS :-
-    AllExports = list.condense(
-        list.map(
-            (func(mlds_foreign_code(_, _, _, Exports)) = Exports),
-            map.values(MLDS0 ^ mlds_foreign_code_map))
-        ),
+il_transform_mlds(MLDS0, MLDS) :-
+    MLDS0 = mlds(ModuleName, ForeignCodeMap, TopLevelImports,
+        GlobalData0, Defns0, InitPreds, FinalPreds, ExportedEnums),
+
+    map.values(ForeignCodeMap, ForeignCodes),
+    ForeignCodeExportLists =
+        list.map(project_foreign_code_export, ForeignCodes),
+    ForeignCodeExports = list.condense(ForeignCodeExportLists),
 
     % Generate the exports for this file, they will be placed into
     % class methods inside the wrapper class.
-    list.map(mlds_export_to_mlds_defn, AllExports, ExportDefns),
+    list.map(mlds_export_to_mlds_defn, ForeignCodeExports, ExportDefns),
 
-    list.filter(
+    % We take all the definitions out of the global data field of the MLDS.
+    ml_global_data_get_all_global_defns(GlobalData0, GlobalDefns),
+    Defns1 = GlobalDefns ++ Defns0 ++ ExportDefns,
+    GlobalData = ml_global_data_init,
+
+    IsFunctionOrData =
         (pred(D::in) is semidet :-
             ( D = mlds_defn(_, _, _, mlds_function(_, _, _, _, _))
             ; D = mlds_defn(_, _, _, mlds_data(_, _, _))
             )
-        ), MLDS0 ^ mlds_defns ++ ExportDefns, MercuryCodeMembers, Others),
-    WrapperClass = wrapper_class(list.map(rename_defn, MercuryCodeMembers)),
-    % Note that ILASM requires that the type definitions in Others
+        ),
+    list.filter(IsFunctionOrData, Defns1, MercuryCodeDefns, OtherDefns),
+
+    WrapperClass = wrapper_class(list.map(rename_defn, MercuryCodeDefns)),
+    % XXX We are we renaming OtherDefns? Its definitions are not being wrapped
+    % in a class.
+    WrappedOtherDefns = list.map(rename_defn, OtherDefns),
+    % Note that ILASM requires that the type definitions in WrappedOtherDefns
     % must precede the references to those types in WrapperClass.
-    MLDS = MLDS0 ^ mlds_defns :=
-        list.map(rename_defn, Others) ++ [WrapperClass].
+    Defns = WrappedOtherDefns ++ [WrapperClass],
+
+    MLDS = mlds(ModuleName, ForeignCodeMap, TopLevelImports,
+        GlobalData, Defns, InitPreds, FinalPreds, ExportedEnums).
+
+:- func project_foreign_code_export(mlds_foreign_code) =
+    list(mlds_pragma_export).
+
+project_foreign_code_export(mlds_foreign_code(_, _, _, Exports)) = Exports.
 
 :- func wrapper_class(list(mlds_defn)) = mlds_defn.
 
@@ -414,13 +407,20 @@ wrapper_class(Members) =
         mlds_class(mlds_class_defn(mlds_package, [], [], [], [], Members))
     ).
 
+%-----------------------------------------------------------------------------%
+%
+% Rename the relevant components of the definition (such as qualified var
+% names) to reflect the wrapper class we are adding around the definition.
+%
+
 :- func rename_defn(mlds_defn) = mlds_defn.
 
-rename_defn(mlds_defn(Name, Context, Flags, Entity0))
-        = mlds_defn(Name, Context, Flags, Entity) :-
+rename_defn(Defn0) = Defn :-
+    Defn0 = mlds_defn(Name, Context, Flags, Entity0),
     (
         Entity0 = mlds_data(Type, Initializer, GCStatement),
-        Entity = mlds_data(Type, rename_initializer(Initializer),
+        Entity = mlds_data(Type,
+            rename_initializer(Initializer),
             rename_gc_statement(GCStatement))
     ;
         Entity0 = mlds_function(MaybePredProcId, Params, FunctionBody0,
@@ -441,7 +441,8 @@ rename_defn(mlds_defn(Name, Context, Flags, Entity0))
         ClassDefn = mlds_class_defn(Kind, Imports, Inherits, Implements,
             list.map(rename_defn, Ctors), list.map(rename_defn, Members)),
         Entity = mlds_class(ClassDefn)
-    ).
+    ),
+    Defn = mlds_defn(Name, Context, Flags, Entity).
 
 :- func rename_maybe_statement(maybe(statement)) = maybe(statement).
 

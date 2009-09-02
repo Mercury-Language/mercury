@@ -149,6 +149,12 @@
     prog_varset::in, bool::in, list(prog_var)::in, pred_or_func::in,
     clause::in, maybe_vartypes::in, io::di, io::uo) is det.
 
+    % write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
+    %    ImportStatus, Proc, !IO).
+    %
+:- pred write_proc(int::in, bool::in, module_info::in, pred_id::in,
+    proc_id::in, import_status::in, proc_info::in, io::di, io::uo) is det.
+
     % Print out an HLDS goal. The module_info and prog_varset give
     % the context of the goal. The boolean says whether variables should
     % have their numbers appended to them. The integer gives the level
@@ -1014,9 +1020,13 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
             io.write_string("% special pred\n", !IO)
         ;
             Origin = origin_transformed(Transformation, _, OrigPredId),
-            io.write_string("% transformed from ", !IO),
+            OrigPredIdNum = pred_id_to_int(OrigPredId),
+            io.format("%% transformed from pred id %d\n",
+                [i(OrigPredIdNum)], !IO),
+            io.write_string("% ", !IO),
             write_pred_id(ModuleInfo, OrigPredId, !IO),
-            io.write_string(": ", !IO),
+            io.nl(!IO),
+            io.write_string("% transformation: ", !IO),
             io.write(Transformation, !IO),
             io.nl(!IO)
         ;
@@ -2637,11 +2647,9 @@ write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
         (
             ConstructHow = construct_dynamically
         ;
-            ConstructHow = construct_statically(StaticConsList),
+            ConstructHow = construct_statically,
             write_indent(Indent, !IO),
-            io.write_string("% construct statically\n", !IO),
-            list.foldl(write_static_cons(Indent, 1, ProgVarSet, AppendVarNums),
-                StaticConsList, !IO)
+            io.write_string("% construct statically\n", !IO)
         ;
             ConstructHow = reuse_cell(CellToReuse),
             CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds, _FieldAssigns),
@@ -2702,29 +2710,6 @@ write_unification(complicated_unify(Mode, CanFail, TypeInfoVars), _ModuleInfo,
     io.write_string("% type-info vars: ", !IO),
     mercury_output_vars(ProgVarSet, AppendVarNums, TypeInfoVars, !IO),
     io.write_string("\n", !IO).
-
-:- pred write_static_cons(int::in, int::in, prog_varset::in, bool::in,
-    static_cons::in, io::di, io::uo) is det.
-
-write_static_cons(Indent, Depth, VarSet, AppendVarNums, StaticCons, !IO) :-
-    StaticCons = static_cons(ConsId, ArgVars, ArgStaticConstList),
-    write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
-    write_indent(Depth, !IO),
-    write_cons_id_and_arity(ConsId, !IO),
-    io.write_string("\n", !IO),
-    (
-        ArgVars = []
-    ;
-        ArgVars = [_ | _],
-        write_indent(Indent, !IO),
-        io.write_string("% ", !IO),
-        write_indent(Depth, !IO),
-        mercury_output_vars(VarSet, AppendVarNums, ArgVars, !IO),
-        io.write_string("\n", !IO)
-    ),
-    list.foldl(write_static_cons(Indent, Depth + 1, VarSet, AppendVarNums),
-        ArgStaticConstList, !IO).
 
 :- pred write_functor_and_submodes(cons_id::in, list(prog_var)::in,
     list(uni_mode)::in, module_info::in, prog_varset::in, inst_varset::in,
@@ -4052,9 +4037,6 @@ write_procs_2([ProcId | ProcIds], AppendVarNums, ModuleInfo, Indent,
         ImportStatus, ProcInfo, !IO),
     write_procs_2(ProcIds, AppendVarNums, ModuleInfo, Indent,
         PredId, ImportStatus, ProcTable, !IO).
-
-:- pred write_proc(int::in, bool::in, module_info::in, pred_id::in,
-    proc_id::in, import_status::in, proc_info::in, io::di, io::uo) is det.
 
 write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         ImportStatus, Proc, !IO) :-

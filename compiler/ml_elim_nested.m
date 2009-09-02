@@ -9,17 +9,14 @@
 % File: ml_elim_nested.m.
 % Main author: fjh.
 %
-% This module is an MLDS-to-MLDS transformation
-% that has two functions:
-% (1) eliminating nested functions
-% (2) putting local variables that might contain pointers into
-%     structs, and chaining these structs together,
-%     for use with accurate garbage collection.
+% This module is an MLDS-to-MLDS transformation that has two functions:
 %
-% The two transformations are quite similar,
-% so they're both handled by the same code;
-% a flag is passed to say which transformation
-% should be done.
+% - eliminating nested functions
+% - putting local variables that might contain pointers into structs, and
+%   chaining these structs together, for use with accurate garbage collection.
+%
+% The two transformations are quite similar, so they're both handled by
+% the same code; a flag is passed to say which transformation should be done.
 %
 % The word "environment" (as in "environment struct" or "environment pointer")
 % is used to refer to both the environment structs used when eliminating
@@ -36,8 +33,8 @@
 % Note that this module does not attempt to handle arbitrary MLDS as input;
 % it will only work with the output of the current MLDS code generator.
 % In particular, it assumes that local variables in nested functions can be
-% hoisted into the outermost function's environment. That's not true
-% in general (e.g. if the nested functions are recursive), but it's true
+% hoisted into the outermost function's environment. That is not true
+% in general (e.g. if the nested functions are recursive), but it is true
 % for the code that ml_code_gen generates.
 %
 % As well as eliminating nested functions, this transformation also has
@@ -417,9 +414,8 @@
 :- module ml_backend.ml_elim_nested.
 :- interface.
 
+:- import_module libs.globals.
 :- import_module ml_backend.mlds.
-
-:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
@@ -435,9 +431,9 @@
 
     % Process the whole MLDS, performing the indicated action.
     %
-:- pred ml_elim_nested(action, mlds, mlds, io, io).
-:- mode ml_elim_nested(in(hoist), in, out, di, uo) is det.
-:- mode ml_elim_nested(in(chain), in, out, di, uo) is det.
+:- pred ml_elim_nested(action, globals, mlds, mlds).
+:- mode ml_elim_nested(in(hoist), in, in, out) is det.
+:- mode ml_elim_nested(in(chain), in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -447,7 +443,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
@@ -464,24 +459,29 @@
 
 %-----------------------------------------------------------------------------%
 
+:- import_module ml_backend.ml_global_data.
+
     % Perform the specified action on the whole MLDS.
     %
-ml_elim_nested(Action, MLDS0, MLDS, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
-        FinalPreds, ExportedEnums),
+ml_elim_nested(Action, Globals, MLDS0, MLDS) :-
+    MLDS0 = mlds(ModuleName, ForeignCode, Imports, GlobalData0, Defns0,
+        InitPreds, FinalPreds, ExportedEnums),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     OuterVars = [],
     ml_elim_nested_defns_list(Action, MLDS_ModuleName, Globals, OuterVars,
-        Defns0, Defns1),
-    % The MLDS code generator sometimes generates two definitions of the
-    % same RTTI constant as local constants in two different functions.
-    % When we hoist them out, that leads to duplicate definitions here.
-    % So we need to check for and eliminate any duplicate definitions
-    % of constants.
-    Defns = list.remove_dups(Defns1),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds,
-        FinalPreds, ExportedEnums).
+        Defns0, Defns),
+    % Flat global data structures do not need to be processed here; that is
+    % what makes them "flat".
+    ml_global_data_get_global_defns(GlobalData0,
+        _RevFlatCellDefns, _RevFlatRttiDefns, RevNonFlatDefns0),
+    list.reverse(RevNonFlatDefns0, NonFlatDefns0),
+    ml_elim_nested_defns_list(Action, MLDS_ModuleName, Globals, OuterVars,
+        NonFlatDefns0, NonFlatDefns),
+    list.reverse(NonFlatDefns, RevNonFlatDefns),
+    ml_global_data_set_rev_maybe_nonflat_defns(RevNonFlatDefns,
+        GlobalData0, GlobalData),
+    MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData, Defns,
+        InitPreds, FinalPreds, ExportedEnums).
 
 :- pred ml_elim_nested_defns_list(action, mlds_module_name, globals, outervars,
     list(mlds_defn), list(mlds_defn)).
@@ -548,7 +548,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
         elim_info_finish(ElimInfo, NestedFuncs0, Locals),
 
         % Split the locals that we need to process into local variables
-        % and local static constants.
+        % and local static constants. ZZZ
         list.filter(ml_decl_is_static_const, Locals, LocalStatics, LocalVars),
 
         % Fix up access flags on the statics that we're going to hoist:
@@ -733,7 +733,8 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassType,
         %
         QualVarName = qual(ModuleName, module_qual, VarName),
         Globals = elim_info_get_globals(Info),
-        EnvModuleName = ml_env_module_name(ClassType, Globals),
+        globals.get_target(Globals, Target),
+        EnvModuleName = ml_env_module_name(Target, ClassType),
         FieldNameString = ml_var_name_to_string(VarName),
         FieldName = ml_field_named(qual(EnvModuleName, type_qual,
             FieldNameString), EnvPtrTypeName),
@@ -2140,7 +2141,8 @@ fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
         EnvPtr = ml_lval(ml_var(qual(ModuleName, QualKind,
             mlds_var_name(env_name_base(Action) ++ "_ptr", no)),
             EnvPtrVarType)),
-        EnvModuleName = ml_env_module_name(ClassType, Globals),
+        globals.get_target(Globals, Target),
+        EnvModuleName = ml_env_module_name(Target, ClassType),
         ThisVarFieldName = ml_var_name_to_string(ThisVarName),
         FieldName = ml_field_named(
             qual(EnvModuleName, type_qual, ThisVarFieldName),
@@ -2230,13 +2232,13 @@ fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
 %       Lval = make_envptr_ref(Depth - 1, NewEnvPtr, EnvPtrVar, Var)
 %   ).
 
-:- func ml_env_module_name(mlds_type, globals) = mlds_module_name.
+:- func ml_env_module_name(compilation_target, mlds_type) = mlds_module_name.
 
-ml_env_module_name(ClassType, Globals) = EnvModuleName :-
+ml_env_module_name(Target, ClassType) = EnvModuleName :-
     ( ClassType = mlds_class_type(ClassModuleName, Arity, _Kind) ->
         ClassModuleName = qual(ClassModule, QualKind, ClassName),
-        EnvModuleName = mlds_append_class_qualifier(ClassModule,
-            QualKind, Globals, ClassName, Arity)
+        EnvModuleName = mlds_append_class_qualifier(Target, ClassModule,
+            QualKind, ClassName, Arity)
     ;
         unexpected(this_file, "ml_env_module_name: ClassType is not a class")
     ).

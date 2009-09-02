@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -378,6 +378,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module pair.
 :- import_module string.
@@ -434,7 +435,10 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
             ConstraintProofs = ConstraintProofs0,
             ConstraintMap1 = ConstraintMap0
         ;
-            expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
+            map.to_sorted_assoc_list(VarTypes0, VarTypesList0),
+            expand_types(VarTypesList0, TypeBindings, [], RevVarTypesList),
+            list.reverse(RevVarTypesList, VarTypesList),
+            map.from_sorted_assoc_list(VarTypesList, VarTypes),
             apply_rec_subst_to_constraint_proofs(TypeBindings,
                 ConstraintProofs0, ConstraintProofs),
             apply_rec_subst_to_constraint_map(TypeBindings,
@@ -501,7 +505,10 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         % Finally, rename the types and type class constraints to use
         % the new typevarset type variables.
         apply_variable_renaming_to_type_list(TSubst, Types, NewTypes),
-        map.from_corresponding_lists(Vars, NewTypes, NewVarTypes),
+        assoc_list.from_corresponding_lists(Vars, NewTypes, VarsNewTypes),
+        % Creating the NewVarTypes map from a list that map.m knows is sorted
+        % gives a speedup.
+        map.from_sorted_assoc_list(VarsNewTypes, NewVarTypes),
         map.apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
         retrieve_prog_constraints(HLDSTypeConstraints, TypeConstraints),
         apply_variable_renaming_to_prog_constraints(TSubst,
@@ -521,30 +528,36 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
     % Doug Auclair's training_cars program). The code below prevents stack
     % overflows in grades that do not permit tail recursion.
     %
-:- pred expand_types(list(prog_var)::in, tsubst::in,
-    vartypes::in, vartypes::out) is det.
+:- pred expand_types(assoc_list(prog_var, mer_type)::in, tsubst::in,
+    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out)
+    is det.
 
-expand_types(Vars, TypeSubst, !VarTypes) :-
-    expand_types_2(Vars, TypeSubst, 1000, LeftOverVars, !VarTypes),
+expand_types(VarTypes, TypeSubst, !RevVarTypes) :-
+    expand_types_2(VarTypes, TypeSubst, 1000, LeftOverVarTypes, !RevVarTypes),
     (
-        LeftOverVars = []
+        LeftOverVarTypes = []
     ;
-        LeftOverVars = [_ | _],
-        expand_types(LeftOverVars, TypeSubst, !VarTypes)
+        LeftOverVarTypes = [_ | _],
+        expand_types(LeftOverVarTypes, TypeSubst, !RevVarTypes)
     ).
 
-:- pred expand_types_2(list(prog_var)::in, tsubst::in, int::in,
-    list(prog_var)::out, vartypes::in, vartypes::out) is det.
+:- pred expand_types_2(assoc_list(prog_var, mer_type)::in, tsubst::in, int::in,
+    assoc_list(prog_var, mer_type)::out,
+    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out)
+    is det.
 
 expand_types_2([], _, _, [], !VarTypes).
-expand_types_2([Var | Vars], TypeSubst, VarsToDo, LeftOverVars, !VarTypes) :-
+expand_types_2([VarType0 | VarTypes0], TypeSubst, VarsToDo, LeftOverVarTypes,
+        !RevVarTypes) :-
     ( VarsToDo < 0 ->
-        LeftOverVars = [Var | Vars]
+        LeftOverVarTypes = [VarType0 | VarTypes0]
     ;
-        map.lookup(!.VarTypes, Var, Type0),
+        VarType0 = Var - Type0,
         apply_rec_subst_to_type(TypeSubst, Type0, Type),
-        map.det_update(!.VarTypes, Var, Type, !:VarTypes),
-        expand_types_2(Vars, TypeSubst, VarsToDo - 1, LeftOverVars, !VarTypes)
+        VarType = Var - Type,
+        !:RevVarTypes = [VarType | !.RevVarTypes],
+        expand_types_2(VarTypes0, TypeSubst, VarsToDo - 1, LeftOverVarTypes,
+            !RevVarTypes)
     ).
 
     % We rename any existentially quantified type variables which get mapped

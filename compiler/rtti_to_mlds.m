@@ -21,15 +21,20 @@
 
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_module.
+:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.mlds.
 
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-    % Return a list of MLDS definitions for the given rtti_data list.
+    % Add the MLDS definitions for the given rtti_data(s) to the
+    % ml_global_data structure.
     %
-:- func rtti_data_list_to_mlds(module_info, list(rtti_data)) = list(mlds_defn).
+:- pred add_rtti_datas_to_mlds(module_info::in, list(rtti_data)::in,
+    ml_global_data::in, ml_global_data::out) is det.
+:- pred add_rtti_data_to_mlds(module_info::in, rtti_data::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
     % Given a list of MLDS RTTI data definitions (only), return the definitions
     % such that if X appears in the initialiser for Y then X appears earlier in
@@ -74,62 +79,37 @@
 
 %-----------------------------------------------------------------------------%
 
-rtti_data_list_to_mlds(ModuleInfo, RttiDatas) = MLDS_Defns :-
-    RealRttiDatas = list.filter(real_rtti_data, RttiDatas),
-    MLDS_DefnLists0 = list.map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-    MLDS_Defns0 = list.condense(MLDS_DefnLists0),
-    list.filter(mlds_defn_is_potentially_duplicated, MLDS_Defns0,
-        MaybeDupDefns0, NoDupDefns),
-    list.sort_and_remove_dups(MaybeDupDefns0, MaybeDupDefns),
-    MLDS_Defns = MaybeDupDefns ++ NoDupDefns.
+add_rtti_datas_to_mlds(ModuleInfo, RttiDatas, !GlobalData) :-
+    list.foldl(add_rtti_data_to_mlds(ModuleInfo), RttiDatas, !GlobalData).
 
-:- pred mlds_defn_is_potentially_duplicated(mlds_defn::in) is semidet.
-
-mlds_defn_is_potentially_duplicated(MLDS_Defn) :-
-    MLDS_Defn = mlds_defn(EntityName, _, _, _),
-    EntityName = entity_data(DataName),
-    DataName = mlds_rtti(ctor_rtti_id(_, RttiName)),
-    ( RttiName = type_ctor_type_info(_)
-    ; RttiName = type_ctor_pseudo_type_info(_)
-    ).
-
-    % return a list of MLDS definitions for the given rtti_data.
-:- func rtti_data_to_mlds(module_info, rtti_data) = list(mlds_defn).
-
-rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
+add_rtti_data_to_mlds(ModuleInfo, RttiData, !GlobalData) :-
     ( RttiData = rtti_data_pseudo_type_info(type_var(_)) ->
         % These just get represented as integers, so we don't need to define
         % a structure for them; which is why rtti_data_to_id/3 does not
         % handle this case.
-        MLDS_Defns = []
+        true
     ;
-        rtti_data_to_id(RttiData, RttiId),
-        Name = entity_data(mlds_rtti(RttiId)),
-        gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo,
-            Initializer, ExtraDefns),
-        rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
-            MLDS_Defn),
-        MLDS_Defns = [MLDS_Defn | ExtraDefns]
+        gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData)
     ).
 
 :- pred rtti_name_and_init_to_defn(rtti_type_ctor::in, ctor_rtti_name::in,
-    mlds_initializer::in, mlds_defn::out) is det.
+    mlds_initializer::in, ml_global_data::in, ml_global_data::out) is det.
 
-rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer, MLDS_Defn) :-
+rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer, !GlobalData) :-
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    rtti_id_and_init_to_defn(RttiId, Initializer, MLDS_Defn).
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
 :- pred rtti_id_and_init_to_defn(rtti_id::in, mlds_initializer::in,
-    mlds_defn::out) is det.
+    ml_global_data::in, ml_global_data::out) is det.
 
-rtti_id_and_init_to_defn(RttiId, Initializer, MLDS_Defn) :-
+rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData) :-
     Name = entity_data(mlds_rtti(RttiId)),
-    rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, MLDS_Defn).
+    rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData).
 
 :- pred rtti_entity_name_and_init_to_defn(mlds_entity_name::in, rtti_id::in,
-    mlds_initializer::in, mlds_defn::out) is det.
+    mlds_initializer::in, ml_global_data::in, ml_global_data::out) is det.
 
-rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, MLDS_Defn) :-
+rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
     % Generate the context.
     %
     % XXX The rtti_data ought to include a prog_context (the context of the
@@ -148,7 +128,9 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, MLDS_Defn) :-
     % Generate the declaration body, i.e. the type and the initializer
     MLDS_Type = mlds_rtti_type(item_type(RttiId)),
     DefnBody = mlds_data(MLDS_Type, Initializer, GCStatement),
-    MLDS_Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody).
+    Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody),
+
+    ml_global_data_add_flat_rtti_defn(Defn, !GlobalData).
 
     % Return the declaration flags appropriate for an rtti_data.
     % Note that this must be the same as ml_static_const_decl_flags,
@@ -177,38 +159,44 @@ rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
     % Return an MLDS initializer for the given RTTI definition
     % occurring in the given module.
     %
-:- pred gen_init_rtti_data_defn(rtti_data::in, rtti_id::in, module_info::in,
-    mlds_initializer::out, list(mlds_defn)::out) is det.
+:- pred gen_init_rtti_data_defn(module_info::in, rtti_data::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, Defns) :-
+gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
+    rtti_data_to_id(RttiData, RttiId),
+    Name = entity_data(mlds_rtti(RttiId)),
     (
         RttiData = rtti_data_base_typeclass_info(_InstanceModule, _ClassId,
             _InstanceStr, BaseTypeClassInfo),
         BaseTypeClassInfo = base_typeclass_info(N1, N2, N3, N4, N5, Methods),
         NumExtra = BaseTypeClassInfo ^ num_extra,
         list.map_foldl(gen_init_method(ModuleInfo, NumExtra),
-            Methods, MethodInitializers, [], Defns),
-        Init = init_array([
+            Methods, MethodInitializers, !GlobalData),
+        Initializer = init_array([
             gen_init_boxed_int(N1),
             gen_init_boxed_int(N2),
             gen_init_boxed_int(N3),
             gen_init_boxed_int(N4),
             gen_init_boxed_int(N5)
             | MethodInitializers
-        ])
+        ]),
+        rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
+            !GlobalData)
     ;
         RttiData = rtti_data_type_info(TypeInfo),
-        gen_type_info_defn(ModuleInfo, TypeInfo, RttiId, Init, Defns)
+        gen_type_info_defn(ModuleInfo, TypeInfo, Name, RttiId, !GlobalData)
     ;
         RttiData = rtti_data_pseudo_type_info(PseudoTypeInfo),
-        gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, RttiId,
-            Init, Defns)
+        gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, Name, RttiId,
+            !GlobalData)
     ;
         RttiData = rtti_data_type_class_decl(TCDecl),
-        gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, Defns)
+        gen_type_class_decl_defn(ModuleInfo, TCDecl, Name, RttiId,
+            !GlobalData)
     ;
         RttiData = rtti_data_type_class_instance(Instance),
-        gen_type_class_instance_defn(Instance, RttiId, ModuleInfo, Init, Defns)
+        gen_type_class_instance_defn(ModuleInfo, Instance, Name, RttiId,
+            !GlobalData)
     ;
         RttiData = rtti_data_type_ctor_info(TypeCtorData),
         TypeCtorData = type_ctor_data(Version, TypeModule, TypeName,
@@ -220,29 +208,25 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, Defns) :-
         FunctorsRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_functors),
         LayoutRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_layout),
 
-        some [!Defns] (
-            gen_functors_layout_info(ModuleInfo, RttiTypeCtor,
-                TypeCtorDetails, FunctorsInfo, LayoutInfo, NumberMapInfo,
-                !:Defns),
+        gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
+            FunctorsInfo, LayoutInfo, NumberMapInfo, !GlobalData),
 
-            % Note that gen_init_special_pred will by necessity add an extra
-            % level of indirection to calling the special preds. However the
-            % backend compiler should be smart enough to ensure that this is
-            % inlined away.
-            gen_init_special_pred(ModuleInfo, UnifyUniv, UnifyInit, !Defns),
-            gen_init_special_pred(ModuleInfo, CompareUniv, CompareInit,
-                !Defns),
+        % Note that gen_init_special_pred will by necessity add an extra
+        % level of indirection to calling the special preds. However the
+        % backend compiler should be smart enough to ensure that this is
+        % inlined away.
+        gen_init_special_pred(ModuleInfo, UnifyUniv, UnifyInitializer,
+            !GlobalData),
+        gen_init_special_pred(ModuleInfo, CompareUniv, CompareInitializer,
+            !GlobalData),
 
-            Defns = !.Defns
-        ),
-
-        Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+        Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
             gen_init_int(TypeArity),
             gen_init_int(Version),
             gen_init_int(NumPtags),
             gen_init_type_ctor_rep(TypeCtorData),
-            UnifyInit,
-            CompareInit,
+            UnifyInitializer,
+            CompareInitializer,
             gen_init_string(TypeModuleName),
             gen_init_string(TypeName),
             % In the C back-end, these two "structs" are actually unions.
@@ -264,15 +248,18 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, Defns) :-
             % XXX this may need to change to call
             % gen_init_special_pred, if this is re-enabled.
             % gen_init_proc_id_from_univ(ModuleInfo, PrettyprinterProc)
-        ])
+        ]),
+        rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
+            !GlobalData)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_type_class_decl_defn(tc_decl::in, rtti_id::in, module_info::in,
-    mlds_initializer::out, list(mlds_defn)::out) is det.
+:- pred gen_type_class_decl_defn(module_info::in, tc_decl::in,
+    mlds_entity_name::in, rtti_id::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
+gen_type_class_decl_defn(ModuleInfo, TCDecl, Name, RttiId, !GlobalData) :-
     TCDecl = tc_decl(TCId, Version, Supers),
     TCId = tc_id(TCName, TVarNames, MethodIds),
     TCName = tc_name(ModuleSymName, ClassName, Arity),
@@ -280,97 +267,90 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
     TVarNamesRttiId = tc_rtti_id(TCName, type_class_id_var_names),
     (
         TVarNames = [],
-        TVarNameDefns = [],
-        TVarNamesInit = gen_init_null_pointer(
-            mlds_rtti_type(item_type(TVarNamesRttiId)))
+        TVarNamesInitType = mlds_rtti_type(item_type(TVarNamesRttiId)),
+        TVarNamesInitializer = gen_init_null_pointer(TVarNamesInitType)
     ;
         TVarNames = [_ | _],
-        gen_tc_id_var_names(TVarNamesRttiId, TVarNames, TVarNameDefn),
-        TVarNameDefns = [TVarNameDefn],
-        TVarNamesInit = gen_init_rtti_id(ModuleName, TVarNamesRttiId)
+        gen_tc_id_var_names(TVarNamesRttiId, TVarNames, !GlobalData),
+        TVarNamesInitializer = gen_init_rtti_id(ModuleName, TVarNamesRttiId)
     ),
     MethodIdsRttiId = tc_rtti_id(TCName, type_class_id_method_ids),
     (
         MethodIds = [],
-        MethodIdDefns = [],
-        MethodIdsInit = gen_init_null_pointer(
-            mlds_rtti_type(item_type(MethodIdsRttiId)))
+        MethodIdsInitType = mlds_rtti_type(item_type(MethodIdsRttiId)),
+        MethodIdsInitializer = gen_init_null_pointer(MethodIdsInitType)
     ;
         MethodIds = [_ | _],
-        gen_tc_id_method_ids(MethodIdsRttiId, TCName, MethodIds, MethodIdDefn),
-        MethodIdDefns = [MethodIdDefn],
-        MethodIdsInit = gen_init_rtti_id(ModuleName, MethodIdsRttiId)
+        gen_tc_id_method_ids(MethodIdsRttiId, TCName, MethodIds, !GlobalData),
+        MethodIdsInitializer = gen_init_rtti_id(ModuleName, MethodIdsRttiId)
     ),
     TCIdRttiId = tc_rtti_id(TCName, type_class_id),
     ModuleSymNameStr = sym_name_to_string(ModuleSymName),
     list.length(TVarNames, NumTVars),
     list.length(MethodIds, NumMethods),
-    TCIdInit = init_struct(mlds_rtti_type(item_type(TCIdRttiId)), [
+    TCIdInitializer = init_struct(mlds_rtti_type(item_type(TCIdRttiId)), [
         gen_init_string(ModuleSymNameStr),
         gen_init_string(ClassName),
         gen_init_int(Arity),
         gen_init_int(NumTVars),
         gen_init_int(NumMethods),
-        TVarNamesInit,
-        MethodIdsInit
+        TVarNamesInitializer,
+        MethodIdsInitializer
     ]),
-    rtti_id_and_init_to_defn(TCIdRttiId, TCIdInit, TCIdDefn),
+    rtti_id_and_init_to_defn(TCIdRttiId, TCIdInitializer, !GlobalData),
     (
-        Supers = [],
-        SuperDefns = [],
-        SupersInit = gen_init_null_pointer(
-            mlds_rtti_type(item_type(MethodIdsRttiId)))
+        Supers = []
     ;
         Supers = [_ | _],
-        list.map_foldl2(gen_tc_constraint(ModuleInfo,
-            make_decl_super_id(TCName)), Supers, SuperRttiIds,
-            counter.init(1), _, [], SuperConstrDefns),
+        list.map_foldl2(
+            gen_tc_constraint(ModuleInfo, make_decl_super_id(TCName)),
+            Supers, SuperRttiIds, counter.init(1), _, !GlobalData),
         SuperArrayRttiName = type_class_decl_supers,
         SuperArrayRttiId = tc_rtti_id(TCName, SuperArrayRttiName),
         ElementType = mlds_rtti_type(element_type(SuperArrayRttiId)),
-        SuperArrayInit = gen_init_array(
+        SuperArrayInitializer = gen_init_array(
             gen_init_cast_rtti_id(ElementType, ModuleName), SuperRttiIds),
-        rtti_id_and_init_to_defn(SuperArrayRttiId, SuperArrayInit, SuperDefn),
-        SuperDefns = [SuperDefn | SuperConstrDefns],
-        SupersInit = gen_init_null_pointer(
-            mlds_rtti_type(item_type(MethodIdsRttiId)))
+        rtti_id_and_init_to_defn(SuperArrayRttiId, SuperArrayInitializer,
+            !GlobalData)
     ),
+    % XXX Is MethodIdsRttiId the right thing to take the type from?
+    SupersInitType = mlds_rtti_type(item_type(MethodIdsRttiId)),
+    SupersInitializer = gen_init_null_pointer(SupersInitType),
     list.length(Supers, NumSupers),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_rtti_id(ModuleName, TCIdRttiId),
         gen_init_int(Version),
         gen_init_int(NumSupers),
-        SupersInit
+        SupersInitializer
     ]),
-    SubDefns = TVarNameDefns ++ MethodIdDefns ++ [TCIdDefn | SuperDefns].
+    rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData).
 
-:- pred make_decl_super_id(tc_name::in, int::in, int::in, rtti_id::out)
-    is det.
+:- pred make_decl_super_id(tc_name::in, int::in, int::in, rtti_id::out) is det.
 
 make_decl_super_id(TCName, TCNum, Arity, RttiId) :-
     TCRttiName = type_class_decl_super(TCNum, Arity),
     RttiId = tc_rtti_id(TCName, TCRttiName).
 
-:- pred gen_tc_id_var_names(rtti_id::in, list(string)::in, mlds_defn::out)
-    is det.
+:- pred gen_tc_id_var_names(rtti_id::in, list(string)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_tc_id_var_names(RttiId, Names, MLDS_Defn) :-
-    Init = gen_init_array(gen_init_string, Names),
-    rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
+gen_tc_id_var_names(RttiId, Names, !GlobalData) :-
+    Initializer = gen_init_array(gen_init_string, Names),
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
 :- pred gen_tc_id_method_ids(rtti_id::in, tc_name::in, list(tc_method_id)::in,
-    mlds_defn::out) is det.
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_tc_id_method_ids(RttiId, TCName, MethodIds, Defn) :-
-    Init = gen_init_array(gen_tc_id_method_id(TCName), MethodIds),
-    rtti_id_and_init_to_defn(RttiId, Init, Defn).
+gen_tc_id_method_ids(RttiId, TCName, MethodIds, !GlobalData) :-
+    Initializer = gen_init_array(gen_tc_id_method_id(TCName), MethodIds),
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
 :- func gen_tc_id_method_id(tc_name, tc_method_id) = mlds_initializer.
 
-gen_tc_id_method_id(TCName, MethodId) = Init :-
+gen_tc_id_method_id(TCName, MethodId) = Initializer :-
     MethodId = tc_method_id(MethodName, MethodArity, PredOrFunc),
     RttiId = tc_rtti_id(TCName, type_class_id_method_ids),
-    Init = init_struct(mlds_rtti_type(element_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(element_type(RttiId)), [
         gen_init_string(MethodName),
         gen_init_int(MethodArity),
         gen_init_pred_or_func(PredOrFunc)
@@ -378,10 +358,12 @@ gen_tc_id_method_id(TCName, MethodId) = Init :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_type_class_instance_defn(tc_instance::in, rtti_id::in,
-    module_info::in, mlds_initializer::out, list(mlds_defn)::out) is det.
+:- pred gen_type_class_instance_defn(module_info::in, tc_instance::in,
+    mlds_entity_name::in, rtti_id::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_type_class_instance_defn(Instance, RttiId, ModuleInfo, Init, SubDefns) :-
+gen_type_class_instance_defn(ModuleInfo, Instance, Name, RttiId,
+        !GlobalData) :-
     Instance = tc_instance(TCName, Types, NumTypeVars,
         InstanceConstraints, _Methods),
     TCDeclRttiId = tc_rtti_id(TCName, type_class_decl),
@@ -393,29 +375,28 @@ gen_type_class_instance_defn(Instance, RttiId, ModuleInfo, Init, SubDefns) :-
     module_info_get_name(ModuleInfo, ModuleName),
 
     TypeRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data, Types),
-    gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, TypesInit,
-        TypesDefns),
-    rtti_id_and_init_to_defn(InstanceTypesRttiId, TypesInit, TypesDefn),
+    gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, TypesInitializer,
+        !GlobalData),
+    rtti_id_and_init_to_defn(InstanceTypesRttiId, TypesInitializer,
+        !GlobalData),
 
-    list.map_foldl2(gen_tc_constraint(ModuleInfo,
-        make_instance_constr_id(TCName, Types)),
-        InstanceConstraints, TCConstrIds, counter.init(1), _,
-        [], TCConstrDefns),
+    list.map_foldl2(
+        gen_tc_constraint(ModuleInfo, make_instance_constr_id(TCName, Types)),
+        InstanceConstraints, TCConstrIds, counter.init(1), _, !GlobalData),
     ElementType = mlds_rtti_type(element_type(InstanceConstrsRttiId)),
-    InstanceConstrsInit = gen_init_array(
+    InstanceConstrsInitializer = gen_init_array(
         gen_init_cast_rtti_id(ElementType, ModuleName), TCConstrIds),
-    rtti_id_and_init_to_defn(InstanceConstrsRttiId, InstanceConstrsInit,
-        InstanceConstrsDefn),
+    rtti_id_and_init_to_defn(InstanceConstrsRttiId, InstanceConstrsInitializer,
+        !GlobalData),
 
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_rtti_id(ModuleName, TCDeclRttiId),
         gen_init_int(NumTypeVars),
         gen_init_int(NumInstanceConstraints),
         gen_init_rtti_id(ModuleName, InstanceTypesRttiId),
         gen_init_rtti_id(ModuleName, InstanceConstrsRttiId)
     ]),
-    SubDefns = TypesDefns ++ [TypesDefn | TCConstrDefns] ++
-        [InstanceConstrsDefn].
+    rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData).
 
 :- pred make_instance_constr_id(tc_name::in, list(tc_type)::in,
     int::in, int::in, rtti_id::out) is det.
@@ -426,80 +407,148 @@ make_instance_constr_id(TCName, Types, TCNum, Arity, RttiId) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_type_info_defn(module_info::in, rtti_type_info::in, rtti_id::in,
-    mlds_initializer::out, list(mlds_defn)::out) is det.
+:- pred gen_type_info_defn(module_info::in, rtti_type_info::in,
+    mlds_entity_name::in, rtti_id::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_type_info_defn(ModuleInfo, RttiTypeInfo, RttiId, Init, Defns) :-
+gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
     (
         RttiTypeInfo = plain_arity_zero_type_info(_),
         unexpected(this_file, "gen_type_info_defn: plain_arity_zero_type_info")
     ;
         RttiTypeInfo = plain_type_info(RttiTypeCtor, ArgTypes),
-        ArgRttiDatas = list.map(type_info_to_rtti_data, ArgTypes),
-        RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
-        DefnsList = list.map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-        Defns = list.condense(DefnsList),
-        module_info_get_name(ModuleInfo, ModuleName),
-        Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
-            gen_init_rtti_name(ModuleName, RttiTypeCtor,
-                type_ctor_type_ctor_info),
-            gen_init_cast_rtti_datas_array(mlds_type_info_type,
-                ModuleName, ArgRttiDatas)
-        ])
+        ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
+        ( map.search(PDupRvalTypeMap, RttiId, _) ->
+            % We have already generated the required global data structures.
+            true
+        ;
+            ArgRttiDatas = list.map(type_info_to_rtti_data, ArgTypes),
+            RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
+            list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas,
+                !GlobalData),
+            module_info_get_name(ModuleInfo, ModuleName),
+            Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
+                gen_init_rtti_name(ModuleName, RttiTypeCtor,
+                    type_ctor_type_ctor_info),
+                gen_init_cast_rtti_datas_array(mlds_type_info_type,
+                    ModuleName, ArgRttiDatas)
+            ]),
+            rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
+                !GlobalData),
+
+            MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
+            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Type = mlds_rtti_type(item_type(RttiId)),
+            RvalType = ml_rval_and_type(Rval, Type),
+
+            ml_global_data_add_pdup_rtti_id(RttiId, RvalType, !GlobalData)
+        )
     ;
         RttiTypeInfo = var_arity_type_info(VarArityId, ArgTypes),
-        ArgRttiDatas = list.map(type_info_to_rtti_data, ArgTypes),
-        RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
-        DefnsList = list.map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-        Defns = list.condense(DefnsList),
-        RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
-        module_info_get_name(ModuleInfo, ModuleName),
-        Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
-            gen_init_rtti_name(ModuleName, RttiTypeCtor,
-                type_ctor_type_ctor_info),
-            gen_init_int(list.length(ArgTypes)),
-            gen_init_cast_rtti_datas_array(mlds_type_info_type,
-                ModuleName, ArgRttiDatas)
-        ])
+        ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
+        ( map.search(PDupRvalTypeMap, RttiId, _) ->
+            % We have already generated the required global data structures.
+            true
+        ;
+            ArgRttiDatas = list.map(type_info_to_rtti_data, ArgTypes),
+            RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
+            list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas,
+                !GlobalData),
+            RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
+            module_info_get_name(ModuleInfo, ModuleName),
+            Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
+                gen_init_rtti_name(ModuleName, RttiTypeCtor,
+                    type_ctor_type_ctor_info),
+                gen_init_int(list.length(ArgTypes)),
+                gen_init_cast_rtti_datas_array(mlds_type_info_type,
+                    ModuleName, ArgRttiDatas)
+            ]),
+            rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
+                !GlobalData),
+
+            MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
+            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Type = mlds_rtti_type(item_type(RttiId)),
+            RvalType = ml_rval_and_type(Rval, Type),
+
+            ml_global_data_add_pdup_rtti_id(RttiId, RvalType, !GlobalData)
+        )
     ).
 
 :- pred gen_pseudo_type_info_defn(module_info::in, rtti_pseudo_type_info::in,
-    rtti_id::in, mlds_initializer::out, list(mlds_defn)::out) is det.
+    mlds_entity_name::in, rtti_id::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, RttiId,
-        Init, Defns) :-
+gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
+        !GlobalData) :-
     (
         RttiPseudoTypeInfo = plain_arity_zero_pseudo_type_info(_),
         unexpected(this_file,
             "gen_pseudo_type_info_defn: plain_arity_zero_pseudo_type_info")
     ;
         RttiPseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, ArgTypes),
-        ArgRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data, ArgTypes),
-        RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
-        DefnsList = list.map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-        Defns = list.condense(DefnsList),
-        module_info_get_name(ModuleInfo, ModuleName),
-        Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
-            gen_init_rtti_name(ModuleName, RttiTypeCtor,
-                type_ctor_type_ctor_info),
-            gen_init_cast_rtti_datas_array(mlds_pseudo_type_info_type,
-                ModuleName, ArgRttiDatas)
-        ])
+        ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
+        ( map.search(PDupRvalTypeMap, RttiId, _) ->
+            % We have already generated the required global data structures.
+            true
+        ;
+            ArgRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data,
+                ArgTypes),
+            RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
+            list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas,
+                !GlobalData),
+            module_info_get_name(ModuleInfo, ModuleName),
+            Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
+                gen_init_rtti_name(ModuleName, RttiTypeCtor,
+                    type_ctor_type_ctor_info),
+                gen_init_cast_rtti_datas_array(mlds_pseudo_type_info_type,
+                    ModuleName, ArgRttiDatas)
+            ]),
+            rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
+                !GlobalData),
+
+            MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
+            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Type = mlds_rtti_type(item_type(RttiId)),
+            RvalType = ml_rval_and_type(Rval, Type),
+
+            ml_global_data_add_pdup_rtti_id(RttiId, RvalType, !GlobalData)
+        )
     ;
         RttiPseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, ArgTypes),
-        ArgRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data, ArgTypes),
-        RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
-        DefnsList = list.map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-        Defns = list.condense(DefnsList),
-        RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
-        module_info_get_name(ModuleInfo, ModuleName),
-        Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
-            gen_init_rtti_name(ModuleName, RttiTypeCtor,
-                type_ctor_type_ctor_info),
-            gen_init_int(list.length(ArgTypes)),
-            gen_init_cast_rtti_datas_array(mlds_pseudo_type_info_type,
-                ModuleName, ArgRttiDatas)
-        ])
+        ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
+        ( map.search(PDupRvalTypeMap, RttiId, _) ->
+            % We have already generated the required global data structures.
+            true
+        ;
+            ArgRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data,
+                ArgTypes),
+            RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
+            list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas,
+                !GlobalData),
+            RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
+            module_info_get_name(ModuleInfo, ModuleName),
+            Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
+                gen_init_rtti_name(ModuleName, RttiTypeCtor,
+                    type_ctor_type_ctor_info),
+                gen_init_int(list.length(ArgTypes)),
+                gen_init_cast_rtti_datas_array(mlds_pseudo_type_info_type,
+                    ModuleName, ArgRttiDatas)
+            ]),
+            rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
+                !GlobalData),
+
+            MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
+            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Type = mlds_rtti_type(item_type(RttiId)),
+            RvalType = ml_rval_and_type(Rval, Type),
+
+            ml_global_data_add_pdup_rtti_id(RttiId, RvalType, !GlobalData)
+        )
     ;
         RttiPseudoTypeInfo = type_var(_),
         unexpected(this_file, "gen_pseudo_type_info_defn: type_var")
@@ -509,168 +558,161 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, RttiId,
 
 :- pred gen_functors_layout_info(module_info::in, rtti_type_ctor::in,
     type_ctor_details::in, mlds_initializer::out, mlds_initializer::out,
-    mlds_initializer::out, list(mlds_defn)::out) is det.
+    mlds_initializer::out, ml_global_data::in, ml_global_data::out) is det.
 
 gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
-        FunctorInit, LayoutInit, NumberMapInit, Defns) :-
+        FunctorInitializer, LayoutInitializer, NumberMapInitializer,
+        !GlobalData) :-
     module_info_get_name(ModuleInfo, ModuleName),
     (
         TypeCtorDetails = tcd_enum(_, EnumFunctors, EnumByValue, EnumByName,
             _IsDummy, FunctorNumberMap),
-        EnumFunctorDescs = list.map(
-            gen_enum_functor_desc(ModuleInfo, RttiTypeCtor), EnumFunctors),
-        ByValueDefn = gen_enum_value_ordered_table(ModuleInfo,
-            RttiTypeCtor, EnumByValue),
-        ByNameDefn = gen_enum_name_ordered_table(ModuleInfo,
-            RttiTypeCtor, EnumByName),
-        NumberMapDefn = gen_functor_number_map(RttiTypeCtor, FunctorNumberMap),
-        LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        list.foldl(gen_enum_functor_desc(ModuleInfo, RttiTypeCtor),
+            EnumFunctors, !GlobalData),
+        gen_enum_value_ordered_table(ModuleInfo, RttiTypeCtor,
+            EnumByValue, !GlobalData),
+        gen_enum_name_ordered_table(ModuleInfo, RttiTypeCtor,
+            EnumByName, !GlobalData),
+        gen_functor_number_map(RttiTypeCtor, FunctorNumberMap, !GlobalData),
+        LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_enum_value_ordered_table),
-        FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_enum_name_ordered_table),
-        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_functor_number_map),
-        Defns = [ByValueDefn, ByNameDefn, NumberMapDefn | EnumFunctorDescs]
+        NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_functor_number_map)
     ;
         TypeCtorDetails = tcd_foreign_enum(ForeignEnumLang, _,
             ForeignEnumFunctors, ForeignEnumByOrdinal, ForeignEnumByName,
             FunctorNumberMap),
-        ForeignEnumFunctorDescs = list.map(
+        list.foldl(
             gen_foreign_enum_functor_desc(ModuleInfo, ForeignEnumLang,
                 RttiTypeCtor),
-            ForeignEnumFunctors),
-        ByOrdinalDefn = gen_foreign_enum_ordinal_ordered_table(ModuleInfo,
-            RttiTypeCtor, ForeignEnumByOrdinal),
-        ByNameDefn = gen_foreign_enum_name_ordered_table(ModuleInfo,
-            RttiTypeCtor, ForeignEnumByName),
-        NumberMapDefn = gen_functor_number_map(RttiTypeCtor, FunctorNumberMap),
-        LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            ForeignEnumFunctors, !GlobalData),
+        gen_foreign_enum_ordinal_ordered_table(ModuleInfo, RttiTypeCtor,
+            ForeignEnumByOrdinal, !GlobalData),
+        gen_foreign_enum_name_ordered_table(ModuleInfo, RttiTypeCtor,
+            ForeignEnumByName, !GlobalData),
+        gen_functor_number_map(RttiTypeCtor, FunctorNumberMap, !GlobalData),
+        LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_foreign_enum_ordinal_ordered_table),
-        FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_foreign_enum_name_ordered_table),
-        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_functor_number_map),
-        Defns = [ByOrdinalDefn, ByNameDefn, NumberMapDefn |
-            ForeignEnumFunctorDescs]
+        NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_functor_number_map)
     ;
         TypeCtorDetails = tcd_du(_, DuFunctors, DuByPtag, DuByName,
             FunctorNumberMap),
-        DuFunctorDefns = list.map(
-            gen_du_functor_desc(ModuleInfo, RttiTypeCtor), DuFunctors),
-        ByPtagDefns = gen_du_ptag_ordered_table(ModuleInfo,
-            RttiTypeCtor, DuByPtag),
-        ByNameDefn = gen_du_name_ordered_table(ModuleInfo,
-            RttiTypeCtor, DuByName),
-        NumberMapDefn = gen_functor_number_map(RttiTypeCtor, FunctorNumberMap),
-        LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        list.foldl(gen_du_functor_desc(ModuleInfo, RttiTypeCtor), DuFunctors,
+            !GlobalData),
+        gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor,
+            DuByPtag, !GlobalData),
+        gen_du_name_ordered_table(ModuleInfo, RttiTypeCtor,
+            DuByName, !GlobalData),
+        gen_functor_number_map(RttiTypeCtor, FunctorNumberMap, !GlobalData),
+        LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_ptag_ordered_table),
-        FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_name_ordered_table),
-        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_functor_number_map),
-        Defns = list.condense(DuFunctorDefns) ++
-            [ByNameDefn, NumberMapDefn | ByPtagDefns]
+        NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_functor_number_map)
     ;
         TypeCtorDetails = tcd_reserved(_, MaybeResFunctors, ResFunctors,
             DuByPtag, MaybeResByName, FunctorNumberMap),
-        MaybeResFunctorDefns = list.map(
-            gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor),
-            MaybeResFunctors),
-        ByValueDefns = gen_maybe_res_value_ordered_table(ModuleInfo,
-            RttiTypeCtor, ResFunctors, DuByPtag),
-        ByNameDefn = gen_maybe_res_name_ordered_table(ModuleInfo,
-            RttiTypeCtor, MaybeResByName),
-        NumberMapDefn = gen_functor_number_map(RttiTypeCtor, FunctorNumberMap),
-        LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        list.foldl(gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor),
+            MaybeResFunctors, !GlobalData),
+        gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor,
+            ResFunctors, DuByPtag, !GlobalData),
+        gen_maybe_res_name_ordered_table(ModuleInfo, RttiTypeCtor,
+            MaybeResByName, !GlobalData),
+        gen_functor_number_map(RttiTypeCtor, FunctorNumberMap, !GlobalData),
+        LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_res_value_ordered_table),
-        FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_res_name_ordered_table),
-        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_functor_number_map),
-        Defns = [ByNameDefn, NumberMapDefn | ByValueDefns] ++
-            list.condense(MaybeResFunctorDefns)
+        NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_functor_number_map)
     ;
         TypeCtorDetails = tcd_notag(_, NotagFunctor),
-        NumberMapDefn = gen_functor_number_map(RttiTypeCtor, [0]),
-        LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        gen_functor_number_map(RttiTypeCtor, [0], !GlobalData),
+        LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_notag_functor_desc),
-        FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_notag_functor_desc),
-        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_functor_number_map),
-        FunctorDefn = gen_notag_functor_desc(ModuleInfo, RttiTypeCtor,
-            NotagFunctor),
-        Defns = [NumberMapDefn | FunctorDefn]
+        gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctor,
+            !GlobalData)
     ;
         TypeCtorDetails = tcd_eqv(EqvType),
         TypeRttiData = maybe_pseudo_type_info_to_rtti_data(EqvType),
-        gen_pseudo_type_info(ModuleInfo, TypeRttiData, LayoutInit, Defns),
+        gen_pseudo_type_info(ModuleInfo, TypeRttiData, LayoutInitializer,
+            !GlobalData),
         % The type is a lie, but a safe one.
-        FunctorInit = gen_init_null_pointer(mlds_generic_type),
-        NumberMapInit = gen_init_null_pointer(mlds_generic_type)
+        FunctorInitializer = gen_init_null_pointer(mlds_generic_type),
+        NumberMapInitializer = gen_init_null_pointer(mlds_generic_type)
     ;
         ( TypeCtorDetails = tcd_builtin(_)
         ; TypeCtorDetails = tcd_impl_artifact(_)
         ; TypeCtorDetails = tcd_foreign(_)
         ),
-        Defns = [],
-        LayoutInit = gen_init_null_pointer(mlds_generic_type),
-        FunctorInit = gen_init_null_pointer(mlds_generic_type),
-        NumberMapInit = gen_init_null_pointer(mlds_generic_type)
+        LayoutInitializer = gen_init_null_pointer(mlds_generic_type),
+        FunctorInitializer = gen_init_null_pointer(mlds_generic_type),
+        NumberMapInitializer = gen_init_null_pointer(mlds_generic_type)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- func gen_enum_functor_desc(module_info, rtti_type_ctor, enum_functor)
-    = mlds_defn.
+:- pred gen_enum_functor_desc(module_info::in, rtti_type_ctor::in,
+    enum_functor::in, ml_global_data::in, ml_global_data::out) is det.
 
-gen_enum_functor_desc(_ModuleInfo, RttiTypeCtor, EnumFunctor) = MLDS_Defn :-
+gen_enum_functor_desc(_ModuleInfo, RttiTypeCtor, EnumFunctor, !GlobalData) :-
     EnumFunctor = enum_functor(FunctorName, Ordinal),
     RttiName = type_ctor_enum_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_string(FunctorName),
         gen_init_int(Ordinal)
     ]),
-    rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- func gen_foreign_enum_functor_desc(module_info, foreign_language,
-    rtti_type_ctor, foreign_enum_functor) = mlds_defn.
+:- pred gen_foreign_enum_functor_desc(module_info::in, foreign_language::in,
+    rtti_type_ctor::in, foreign_enum_functor::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_foreign_enum_functor_desc(_ModuleInfo, Lang,
-        RttiTypeCtor, ForeignEnumFunctor) = MLDS_Defn :-
+gen_foreign_enum_functor_desc(_ModuleInfo, Lang, RttiTypeCtor,
+        ForeignEnumFunctor, !GlobalData) :-
     ForeignEnumFunctor = foreign_enum_functor(FunctorName, Ordinal, Value),
     RttiName = type_ctor_foreign_enum_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_string(FunctorName),
         gen_init_int(Ordinal),
         gen_init_foreign(Lang, Value)
     ]),
-    rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- func gen_notag_functor_desc(module_info, rtti_type_ctor, notag_functor)
-    = list(mlds_defn).
+:- pred gen_notag_functor_desc(module_info::in, rtti_type_ctor::in,
+    notag_functor::in, ml_global_data::in, ml_global_data::out) is det.
 
-gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc)
-        = MLDS_Defns :-
+gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc,
+        !GlobalData) :-
     NotagFunctorDesc = notag_functor(FunctorName, ArgType, MaybeArgName),
     ArgTypeRttiData = maybe_pseudo_type_info_to_rtti_data(ArgType),
-    gen_pseudo_type_info(ModuleInfo, ArgTypeRttiData, PTIInit, SubDefns),
+    gen_pseudo_type_info(ModuleInfo, ArgTypeRttiData, PTIInitializer,
+        !GlobalData),
     RttiName = type_ctor_notag_functor_desc,
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_string(FunctorName),
-        PTIInit,
+        PTIInitializer,
         gen_init_maybe(ml_string_type, gen_init_string, MaybeArgName)
     ]),
-    rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-    MLDS_Defns = [MLDS_Defn | SubDefns].
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- func gen_du_functor_desc(module_info, rtti_type_ctor, du_functor)
-    = list(mlds_defn).
+:- pred gen_du_functor_desc(module_info::in, rtti_type_ctor::in,
+    du_functor::in, ml_global_data::in, ml_global_data::out) is det.
 
-gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
+gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
     DuFunctor = du_functor(FunctorName, Arity, Ordinal, Rep, ArgInfos,
         MaybeExistInfo),
     ArgTypes = list.map(du_arg_info_type, ArgInfos),
@@ -680,44 +722,40 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
     module_info_get_name(ModuleInfo, ModuleName),
     (
         ArgInfos = [_ | _],
-        ArgTypeDefns = gen_field_types(ModuleInfo, RttiTypeCtor,
-            Ordinal, ArgTypes),
-        ArgTypeInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        gen_field_types(ModuleInfo, RttiTypeCtor, Ordinal, ArgTypes,
+            !GlobalData),
+        ArgTypeInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_field_types(Ordinal))
     ;
         ArgInfos = [],
-        ArgTypeDefns = [],
-        ArgTypeInit = gen_init_null_pointer(
+        ArgTypeInitializer = gen_init_null_pointer(
             mlds_rtti_type(item_type(
                 ctor_rtti_id(RttiTypeCtor, type_ctor_field_types(0)))))
     ),
     (
         ArgNames = [_ | _],
-        ArgNameDefns = [gen_field_names(ModuleInfo, RttiTypeCtor,
-            Ordinal, MaybeArgNames)],
-        ArgNameInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        gen_field_names(ModuleInfo, RttiTypeCtor, Ordinal,
+            MaybeArgNames, !GlobalData),
+        ArgNameInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_field_names(Ordinal))
     ;
         ArgNames = [],
-        ArgNameDefns = [],
-        ArgNameInit = gen_init_null_pointer(
+        ArgNameInitializer = gen_init_null_pointer(
             mlds_rtti_type(item_type(
                 ctor_rtti_id(RttiTypeCtor, type_ctor_field_names(0)))))
     ),
     (
         MaybeExistInfo = yes(ExistInfo),
-        ExistInfoDefns = gen_exist_info(ModuleInfo, RttiTypeCtor,
-            Ordinal, ExistInfo),
-        ExistInfoInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo,
+            !GlobalData),
+        ExistInfoInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_exist_info(Ordinal))
     ;
         MaybeExistInfo = no,
-        ExistInfoDefns = [],
-        ExistInfoInit = gen_init_null_pointer(
+        ExistInfoInitializer = gen_init_null_pointer(
             mlds_rtti_type(item_type(
                 ctor_rtti_id(RttiTypeCtor, type_ctor_exist_info(0)))))
     ),
-    SubDefns = ArgTypeDefns ++ ArgNameDefns ++ ExistInfoDefns,
     (
         Rep = du_ll_rep(Ptag, SectagAndLocn)
     ;
@@ -737,7 +775,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
     ),
     RttiName = type_ctor_du_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_string(FunctorName),
         gen_init_int(Arity),
         gen_init_int(ContainsVarBitVector),
@@ -745,40 +783,39 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
         gen_init_int(Ptag),
         gen_init_int(Stag),
         gen_init_int(Ordinal),
-        ArgTypeInit,
-        ArgNameInit,
-        ExistInfoInit
+        ArgTypeInitializer,
+        ArgNameInitializer,
+        ExistInfoInitializer
     ]),
-    rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-    MLDS_Defns = [MLDS_Defn | SubDefns].
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- func gen_res_addr_functor_desc(module_info, rtti_type_ctor,
-    reserved_functor) = mlds_defn.
+:- pred gen_res_addr_functor_desc(module_info::in, rtti_type_ctor::in,
+    reserved_functor::in, ml_global_data::in, ml_global_data::out) is det.
 
-gen_res_addr_functor_desc(ModuleInfo, RttiTypeCtor, ResFunctor) = MLDS_Defn :-
+gen_res_addr_functor_desc(ModuleInfo, RttiTypeCtor, ResFunctor, !GlobalData) :-
     ResFunctor = reserved_functor(FunctorName, Ordinal, ReservedAddress),
     RttiName = type_ctor_res_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_string(FunctorName),
         gen_init_int(Ordinal),
         gen_init_reserved_address(ModuleInfo, ReservedAddress)
     ]),
-    rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- func gen_maybe_res_functor_desc(module_info, rtti_type_ctor,
-    maybe_reserved_functor) = list(mlds_defn).
+:- pred gen_maybe_res_functor_desc(module_info::in, rtti_type_ctor::in,
+    maybe_reserved_functor::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor, MaybeResFunctor)
-        = MLDS_Defns :-
+gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor, MaybeResFunctor,
+        !GlobalData) :-
     (
         MaybeResFunctor = res_func(ResFunctor),
-        MLDS_Defn = gen_res_addr_functor_desc(ModuleInfo, RttiTypeCtor,
-            ResFunctor),
-        MLDS_Defns = [MLDS_Defn]
+        gen_res_addr_functor_desc(ModuleInfo, RttiTypeCtor, ResFunctor,
+            !GlobalData)
     ;
         MaybeResFunctor = du_func(DuFunctor),
-        MLDS_Defns = gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor)
+        gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -786,7 +823,7 @@ gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor, MaybeResFunctor)
 :- func gen_init_exist_locn(rtti_type_ctor, exist_typeinfo_locn) =
     mlds_initializer.
 
-gen_init_exist_locn(RttiTypeCtor, ExistTypeInfoLocn) = Init :-
+gen_init_exist_locn(RttiTypeCtor, ExistTypeInfoLocn) = Initializer :-
     (
         ExistTypeInfoLocn = typeinfo_in_tci(SlotInCell, SlotInTci)
     ;
@@ -794,26 +831,29 @@ gen_init_exist_locn(RttiTypeCtor, ExistTypeInfoLocn) = Init :-
         SlotInTci = -1
     ),
     RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_exist_locn),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_int(SlotInCell),
         gen_init_int(SlotInTci)
     ]).
 
-:- func gen_exist_locns_array(module_info, rtti_type_ctor, int,
-    list(exist_typeinfo_locn)) = mlds_defn.
+:- pred gen_exist_locns_array(module_info::in, rtti_type_ctor::in, int::in,
+    list(exist_typeinfo_locn)::in, ml_global_data::in, ml_global_data::out)
+    is det.
 
-gen_exist_locns_array(_ModuleInfo, RttiTypeCtor, Ordinal, Locns) = MLDS_Defn :-
-    Init = gen_init_array(gen_init_exist_locn(RttiTypeCtor), Locns),
+gen_exist_locns_array(_ModuleInfo, RttiTypeCtor, Ordinal, Locns,
+        !GlobalData) :-
+    Initializer = gen_init_array(gen_init_exist_locn(RttiTypeCtor), Locns),
     RttiName = type_ctor_exist_locns(Ordinal),
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
 :- pred gen_tc_constraint(module_info::in,
     pred(int, int, rtti_id)::in(pred(in, in, out) is det),
     tc_constraint::in, rtti_id::out, counter::in, counter::out,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
+    ml_global_data::in, ml_global_data::out) is det.
 
 gen_tc_constraint(ModuleInfo, MakeRttiId, Constraint, RttiId, !Counter,
-        !Defns) :-
+        !GlobalData) :-
     Constraint = tc_constraint(TCName, Types),
     list.length(Types, Arity),
     counter.allocate(TCNum, !Counter),
@@ -821,13 +861,13 @@ gen_tc_constraint(ModuleInfo, MakeRttiId, Constraint, RttiId, !Counter,
     TCDeclRttiName = type_class_decl,
     module_info_get_name(ModuleInfo, ModuleName),
     TypeRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data, Types),
-    gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, PTIInits, PTIDefns),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, PTIInitializers,
+        !GlobalData),
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_tc_rtti_name(ModuleName, TCName, TCDeclRttiName),
-        PTIInits
+        PTIInitializers
     ]),
-    rtti_id_and_init_to_defn(RttiId, Init, ConstrDefn),
-    !:Defns = !.Defns ++ [ConstrDefn | PTIDefns].
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
 :- pred make_exist_tc_constr_id(rtti_type_ctor::in, int::in, int::in, int::in,
     rtti_id::out) is det.
@@ -836,10 +876,10 @@ make_exist_tc_constr_id(RttiTypeCtor, Ordinal, TCNum, Arity, RttiId) :-
     RttiName = type_ctor_exist_tc_constr(Ordinal, TCNum, Arity),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName).
 
-:- func gen_exist_info(module_info, rtti_type_ctor, int, exist_info)
-    = list(mlds_defn).
+:- pred gen_exist_info(module_info::in, rtti_type_ctor::in, int::in,
+    exist_info::in, ml_global_data::in, ml_global_data::out) is det.
 
-gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo) = MLDS_Defns :-
+gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo, !GlobalData) :-
     ExistInfo = exist_info(Plain, InTci, Constraints, Locns),
     module_info_get_name(ModuleInfo, ModuleName),
     RttiName = type_ctor_exist_info(Ordinal),
@@ -847,128 +887,137 @@ gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo) = MLDS_Defns :-
     list.length(Constraints, Tci),
     (
         Constraints = [],
-        ConstrInit = gen_init_null_pointer(
+        ConstrInitializer = gen_init_null_pointer(
             mlds_rtti_type(item_type(ctor_rtti_id(RttiTypeCtor,
-                type_ctor_exist_tc_constrs(Ordinal))))),
-        ConstrDefns = []
+                type_ctor_exist_tc_constrs(Ordinal)))))
     ;
         Constraints = [_ | _],
-        ConstrInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        ConstrInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_exist_tc_constrs(Ordinal)),
-        list.map_foldl2(gen_tc_constraint(ModuleInfo,
-            make_exist_tc_constr_id(RttiTypeCtor, Ordinal)),
-            Constraints, TCConstrIds, counter.init(1), _,
-            [], TCConstrDefns),
+        list.map_foldl2(
+            gen_tc_constraint(ModuleInfo,
+                make_exist_tc_constr_id(RttiTypeCtor, Ordinal)),
+            Constraints, TCConstrIds, counter.init(1), _, !GlobalData),
         TCConstrArrayRttiName = type_ctor_exist_tc_constrs(Ordinal),
         TCConstrArrayRttiId = ctor_rtti_id(RttiTypeCtor,
             TCConstrArrayRttiName),
         ElementType = mlds_rtti_type(element_type(TCConstrArrayRttiId)),
-        TCConstrArrayInit = gen_init_array(
+        TCConstrArrayInitializer = gen_init_array(
             gen_init_cast_rtti_id(ElementType, ModuleName), TCConstrIds),
         rtti_name_and_init_to_defn(RttiTypeCtor, TCConstrArrayRttiName,
-            TCConstrArrayInit, TCConstrArrayDefn),
-        ConstrDefns = [TCConstrArrayDefn | TCConstrDefns]
+            TCConstrArrayInitializer, !GlobalData)
     ),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    gen_exist_locns_array(ModuleInfo, RttiTypeCtor, Ordinal, Locns,
+        !GlobalData),
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_int(Plain),
         gen_init_int(InTci),
         gen_init_int(Tci),
         gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_exist_locns(Ordinal)),
-        ConstrInit
+        ConstrInitializer
     ]),
-    rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-    LocnsDefn = gen_exist_locns_array(ModuleInfo, RttiTypeCtor, Ordinal,
-        Locns),
-    MLDS_Defns = [MLDS_Defn, LocnsDefn | ConstrDefns].
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- func gen_field_names(module_info, rtti_type_ctor, int, list(maybe(string)))
-    = mlds_defn.
+:- pred gen_field_types(module_info::in, rtti_type_ctor::in, int::in,
+    list(rtti_maybe_pseudo_type_info_or_self)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_field_names(_ModuleInfo, RttiTypeCtor, Ordinal, MaybeNames) = MLDS_Defn :-
+gen_field_types(ModuleInfo, RttiTypeCtor, Ordinal, Types, !GlobalData) :-
+    TypeRttiDatas = list.map(maybe_pseudo_type_info_or_self_to_rtti_data,
+        Types),
+    gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, Initializer,
+        !GlobalData),
+    RttiName = type_ctor_field_types(Ordinal),
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
+
+:- pred gen_field_names(module_info::in, rtti_type_ctor::in, int::in,
+    list(maybe(string))::in, ml_global_data::in, ml_global_data::out) is det.
+
+gen_field_names(_ModuleInfo, RttiTypeCtor, Ordinal, MaybeNames, !GlobalData) :-
     StrType = builtin_type(builtin_type_string),
-    Init = gen_init_array(
+    Initializer = gen_init_array(
         gen_init_maybe(
             mercury_type(StrType, ctor_cat_builtin(cat_builtin_string),
                 non_foreign_type(StrType)),
             gen_init_string),
         MaybeNames),
     RttiName = type_ctor_field_names(Ordinal),
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
-
-:- func gen_field_types(module_info, rtti_type_ctor, int,
-    list(rtti_maybe_pseudo_type_info_or_self)) = list(mlds_defn).
-
-gen_field_types(ModuleInfo, RttiTypeCtor, Ordinal, Types) = MLDS_Defns :-
-    TypeRttiDatas = list.map(maybe_pseudo_type_info_or_self_to_rtti_data,
-        Types),
-    gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, Init, SubDefns),
-    RttiName = type_ctor_field_types(Ordinal),
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn),
-    MLDS_Defns = [MLDS_Defn | SubDefns].
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
 %-----------------------------------------------------------------------------%
 
-:- func gen_enum_value_ordered_table(module_info, rtti_type_ctor,
-    map(int, enum_functor)) = mlds_defn.
+:- pred gen_enum_value_ordered_table(module_info::in, rtti_type_ctor::in,
+    map(int, enum_functor)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_enum_value_ordered_table(ModuleInfo, RttiTypeCtor, EnumByValue)
-        = MLDS_Defn :-
+gen_enum_value_ordered_table(ModuleInfo, RttiTypeCtor, EnumByValue,
+        !GlobalData) :-
     map.values(EnumByValue, Functors),
     module_info_get_name(ModuleInfo, ModuleName),
     FunctorRttiNames = list.map(enum_functor_rtti_name, Functors),
-    Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
+    Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
     RttiName = type_ctor_enum_value_ordered_table,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
-:- func gen_enum_name_ordered_table(module_info, rtti_type_ctor,
-    map(string, enum_functor)) = mlds_defn.
+:- pred gen_enum_name_ordered_table(module_info::in, rtti_type_ctor::in,
+    map(string, enum_functor)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_enum_name_ordered_table(ModuleInfo, RttiTypeCtor, EnumByName)
-        = MLDS_Defn :-
+gen_enum_name_ordered_table(ModuleInfo, RttiTypeCtor, EnumByName,
+        !GlobalData) :-
     map.values(EnumByName, Functors),
     module_info_get_name(ModuleInfo, ModuleName),
     FunctorRttiNames = list.map(enum_functor_rtti_name, Functors),
-    Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
+    Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
     RttiName = type_ctor_enum_name_ordered_table,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
-:- func gen_foreign_enum_ordinal_ordered_table(module_info, rtti_type_ctor,
-    map(int, foreign_enum_functor)) = mlds_defn.
+:- pred gen_foreign_enum_ordinal_ordered_table(module_info::in,
+    rtti_type_ctor::in, map(int, foreign_enum_functor)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
 gen_foreign_enum_ordinal_ordered_table(ModuleInfo, RttiTypeCtor,
-        ForeignEnumByOrdinal) = MLDS_Defn :-
+        ForeignEnumByOrdinal, !GlobalData) :-
     map.values(ForeignEnumByOrdinal, Functors),
     module_info_get_name(ModuleInfo, ModuleName),
     FunctorRttiNames = list.map(foreign_enum_functor_rtti_name, Functors),
-    Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
+    Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
     RttiName = type_ctor_foreign_enum_ordinal_ordered_table,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
-:- func gen_foreign_enum_name_ordered_table(module_info, rtti_type_ctor,
-    map(string, foreign_enum_functor)) = mlds_defn.
+:- pred gen_foreign_enum_name_ordered_table(module_info::in,
+    rtti_type_ctor::in, map(string, foreign_enum_functor)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
 gen_foreign_enum_name_ordered_table(ModuleInfo, RttiTypeCtor,
-        ForeignEnumByName) = MLDS_Defn :-
+        ForeignEnumByName, !GlobalData) :-
     map.values(ForeignEnumByName, Functors),
     module_info_get_name(ModuleInfo, ModuleName),
     FunctorRttiNames = list.map(foreign_enum_functor_rtti_name, Functors),
-    Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
+    Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
     RttiName = type_ctor_foreign_enum_name_ordered_table,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
-:- func gen_du_ptag_ordered_table(module_info, rtti_type_ctor,
-    map(int, sectag_table)) = list(mlds_defn).
+:- pred gen_du_ptag_ordered_table(module_info::in, rtti_type_ctor::in,
+    map(int, sectag_table)::in, ml_global_data::in, ml_global_data::out)
+    is det.
 
-gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
+gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap, !GlobalData) :-
     module_info_get_name(ModuleInfo, ModuleName),
     map.to_assoc_list(PtagMap, PtagList),
-    SubDefns = list.map(gen_du_stag_ordered_table(ModuleName, RttiTypeCtor),
-        PtagList),
+    list.foldl(gen_du_stag_ordered_table(ModuleName, RttiTypeCtor), PtagList,
+        !GlobalData),
     (
         PtagList = [],
         PtagInitPrefix = [],
@@ -996,145 +1045,155 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
             unexpected(this_file, "gen_du_ptag_ordered_table: bad ptag list")
         )
     ),
-    PtagInits = gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
+    PtagInitializers = gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
         PtagList, FirstPtag),
     RttiName = type_ctor_du_ptag_ordered_table,
-    Init = init_array(PtagInitPrefix ++ PtagInits),
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn),
-    MLDS_Defns = [MLDS_Defn | SubDefns].
+    Initializer = init_array(PtagInitPrefix ++ PtagInitializers),
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
 :- func gen_du_ptag_ordered_table_body(module_name, rtti_type_ctor,
     assoc_list(int, sectag_table), int) = list(mlds_initializer).
 
 gen_du_ptag_ordered_table_body(_, _, [], _) = [].
 gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
-        [Ptag - SectagTable | PtagTail], CurPtag) = [Init | Inits] :-
+        [Ptag - SectagTable | PtagTail], CurPtag)
+        = [Initializer | Initializers] :-
     expect(unify(Ptag, CurPtag), this_file,
         "gen_du_ptag_ordered_table_body: ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
     RttiName = type_ctor_du_ptag_layout(Ptag),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_int(NumSharers),
         gen_init_sectag_locn(SectagLocn),
         gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_stag_ordered_table(Ptag))
     ]),
-    Inits = gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
+    Initializers = gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
         PtagTail, CurPtag + 1).
 
-:- func gen_du_stag_ordered_table(module_name, rtti_type_ctor,
-    pair(int, sectag_table)) = mlds_defn.
+:- pred gen_du_stag_ordered_table(module_name::in, rtti_type_ctor::in,
+    pair(int, sectag_table)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_du_stag_ordered_table(ModuleName, RttiTypeCtor, Ptag - SectagTable)
-        = MLDS_Defn :-
+gen_du_stag_ordered_table(ModuleName, RttiTypeCtor, Ptag - SectagTable,
+        !GlobalData) :-
     SectagTable = sectag_table(_SectagLocn, _NumSharers, SectagMap),
     map.values(SectagMap, SectagFunctors),
     FunctorRttiNames = list.map(du_functor_rtti_name, SectagFunctors),
-    Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
+    Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
     RttiName = type_ctor_du_stag_ordered_table(Ptag),
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
-:- func gen_du_name_ordered_table(module_info, rtti_type_ctor,
-    map(string, map(int, du_functor))) = mlds_defn.
+:- pred gen_du_name_ordered_table(module_info::in, rtti_type_ctor::in,
+    map(string, map(int, du_functor))::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_du_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap)
-        = MLDS_Defn :-
+gen_du_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap,
+        !GlobalData) :-
     map.values(NameArityMap, ArityMaps),
     list.map(map.values, ArityMaps, FunctorLists),
     list.condense(FunctorLists, Functors),
     module_info_get_name(ModuleInfo, ModuleName),
     FunctorRttiNames = list.map(du_functor_rtti_name, Functors),
-    Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
+    Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
     RttiName = type_ctor_du_name_ordered_table,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
-:- func gen_maybe_res_value_ordered_table(module_info, rtti_type_ctor,
-    list(reserved_functor), map(int, sectag_table)) = list(mlds_defn).
+:- pred gen_maybe_res_value_ordered_table(module_info::in, rtti_type_ctor::in,
+    list(reserved_functor)::in, map(int, sectag_table)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
 gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor, ResFunctors,
-        DuByPtag) = MLDS_Defns :-
+        DuByPtag, !GlobalData) :-
     ResFunctorReps = list.map(res_addr_rep, ResFunctors),
     list.filter(res_addr_is_numeric, ResFunctorReps,
         NumericResFunctorReps, SymbolicResFunctorReps),
     list.length(NumericResFunctorReps, NumNumericResFunctorReps),
     list.length(SymbolicResFunctorReps, NumSymbolicResFunctorReps),
     module_info_get_name(ModuleInfo, ModuleName),
-    ResDefns = [gen_res_addr_functor_table(ModuleName, RttiTypeCtor,
-        ResFunctors)],
+    gen_res_addr_functor_table(ModuleName, RttiTypeCtor, ResFunctors,
+        !GlobalData),
     ( NumSymbolicResFunctorReps = 0 ->
-        ResAddrDefns = [],
-        ResAddrInit = gen_init_null_pointer(mlds_generic_type)
+        ResAddrInitializer = gen_init_null_pointer(mlds_generic_type)
     ;
-        ResAddrDefns = [gen_res_addrs_list(ModuleInfo, RttiTypeCtor,
-            SymbolicResFunctorReps)],
-        ResAddrInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+        gen_res_addrs_list(ModuleInfo, RttiTypeCtor,
+            SymbolicResFunctorReps, !GlobalData),
+        ResAddrInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_res_addrs)
     ),
-    DuDefns = gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, DuByPtag),
-    SubDefns = ResDefns ++ ResAddrDefns ++ DuDefns,
+    gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, DuByPtag, !GlobalData),
     RttiName = type_ctor_res_value_ordered_table,
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Init = init_struct(mlds_rtti_type(item_type(RttiId)), [
+    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_int(NumNumericResFunctorReps),
         gen_init_int(NumSymbolicResFunctorReps),
-        ResAddrInit,
+        ResAddrInitializer,
         gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_res_addr_functors),
         gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_ptag_ordered_table)
     ]),
-    rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-    MLDS_Defns = [MLDS_Defn | SubDefns].
+    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- func gen_res_addr_functor_table(module_name, rtti_type_ctor,
-    list(reserved_functor)) = mlds_defn.
+:- pred gen_res_addr_functor_table(module_name::in, rtti_type_ctor::in,
+    list(reserved_functor)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_res_addr_functor_table(ModuleName, RttiTypeCtor, ResFunctors)
-        = MLDS_Defn :-
+gen_res_addr_functor_table(ModuleName, RttiTypeCtor, ResFunctors,
+        !GlobalData) :-
     FunctorRttiNames = list.map(res_functor_rtti_name, ResFunctors),
-    Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
+    Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
     RttiName = type_ctor_res_addr_functors,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
-:- func gen_res_addrs_list(module_info, rtti_type_ctor, list(reserved_address))
-    = mlds_defn.
+:- pred gen_res_addrs_list(module_info::in, rtti_type_ctor::in,
+    list(reserved_address)::in, ml_global_data::in, ml_global_data::out)
+    is det.
 
-gen_res_addrs_list(ModuleInfo, RttiTypeCtor, ResAddrs) = MLDS_Defn :-
-    Init = gen_init_array(gen_init_reserved_address(ModuleInfo), ResAddrs),
+gen_res_addrs_list(ModuleInfo, RttiTypeCtor, ResAddrs, !GlobalData) :-
+    Initializer =
+        gen_init_array(gen_init_reserved_address(ModuleInfo), ResAddrs),
     RttiName = type_ctor_res_addrs,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
-:- func gen_maybe_res_name_ordered_table(module_info, rtti_type_ctor,
-    map(string, map(int, maybe_reserved_functor))) = mlds_defn.
+:- pred gen_maybe_res_name_ordered_table(module_info::in, rtti_type_ctor::in,
+    map(string, map(int, maybe_reserved_functor))::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_maybe_res_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap)
-        = MLDS_Defn :-
+gen_maybe_res_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap,
+        !GlobalData) :-
     map.values(NameArityMap, ArityMaps),
     list.map(map.values, ArityMaps, FunctorLists),
     list.condense(FunctorLists, Functors),
     module_info_get_name(ModuleInfo, ModuleName),
-    Init = gen_init_array(
+    Initializer = gen_init_array(
         gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor),
         Functors),
     RttiName = type_ctor_res_name_ordered_table,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
 :- func gen_maybe_res_name_ordered_table_element(module_name, rtti_type_ctor,
     maybe_reserved_functor) = mlds_initializer.
 
 gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
-        MaybeResFunctor) = Init :-
+        MaybeResFunctor) = Initializer :-
     RttiName = type_ctor_maybe_res_addr_functor_desc,
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     Type = mlds_rtti_type(item_type(RttiId)),
     (
         MaybeResFunctor = res_func(ResFunctor),
         Name = ResFunctor ^ res_name,
-        Init = init_struct(Type, [
+        Initializer = init_struct(Type, [
             gen_init_string(Name),
             gen_init_int(0),    % arity=0
             gen_init_bool(yes), % is_reserved = true
@@ -1144,7 +1203,7 @@ gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
     ;
         MaybeResFunctor = du_func(DuFunctor),
         Name = DuFunctor ^ du_name,
-        Init = init_struct(Type, [
+        Initializer = init_struct(Type, [
             gen_init_string(Name),
             gen_init_int(DuFunctor ^ du_orig_arity),
             gen_init_bool(no), % is_reserved = false
@@ -1153,13 +1212,14 @@ gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
         ])
     ).
 
-:- func gen_functor_number_map(rtti_type_ctor, list(int)) = mlds_defn.
+:- pred gen_functor_number_map(rtti_type_ctor::in, list(int)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_functor_number_map(RttiTypeCtor, FunctorNumberMap) =
-        MLDS_Defn :-
-    Init = gen_init_array(gen_init_int, FunctorNumberMap),
+gen_functor_number_map(RttiTypeCtor, FunctorNumberMap, !GlobalData) :-
+    Initializer = gen_init_array(gen_init_int, FunctorNumberMap),
     RttiName = type_ctor_functor_number_map,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
+        !GlobalData).
 
 %-----------------------------------------------------------------------------%
 
@@ -1375,45 +1435,51 @@ mlds_module_name_from_tc_name(TCName) = MLDS_ModuleName :-
 %-----------------------------------------------------------------------------%
 
 :- pred gen_pseudo_type_info(module_info::in, rtti_data::in,
-    mlds_initializer::out, list(mlds_defn)::out) is det.
+    mlds_initializer::out, ml_global_data::in, ml_global_data::out) is det.
 
-gen_pseudo_type_info(ModuleInfo, PTIRttiData, Init, Defns) :-
-    RealRttiDatas = list.filter(real_rtti_data, [PTIRttiData]),
-    DefnLists = list.map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-    Defns = list.condense(DefnLists),
+gen_pseudo_type_info(ModuleInfo, PTIRttiData, Initializer, !GlobalData) :-
+    ( real_rtti_data(PTIRttiData) ->
+        add_rtti_data_to_mlds(ModuleInfo, PTIRttiData, !GlobalData)
+    ;
+        % Since PTIRttiData does not correspond to a global data definition,
+        % we have nothing to do.
+        true
+    ),
     module_info_get_name(ModuleInfo, ModuleName),
-    Init = gen_init_cast_rtti_data(mlds_pseudo_type_info_type,
+    Initializer = gen_init_cast_rtti_data(mlds_pseudo_type_info_type,
         ModuleName, PTIRttiData).
 
 :- pred gen_pseudo_type_info_array(module_info::in, list(rtti_data)::in,
-    mlds_initializer::out, list(mlds_defn)::out) is det.
+    mlds_initializer::out, ml_global_data::in, ml_global_data::out) is det.
 
-gen_pseudo_type_info_array(ModuleInfo, PTIRttiDatas, Init, Defns) :-
+gen_pseudo_type_info_array(ModuleInfo, PTIRttiDatas, Initializer,
+        !GlobalData) :-
     RealRttiDatas = list.filter(real_rtti_data, PTIRttiDatas),
-    DefnLists = list.map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-    Defns = list.condense(DefnLists),
+    list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas, !GlobalData),
     module_info_get_name(ModuleInfo, ModuleName),
-    Init = gen_init_cast_rtti_datas_array(mlds_pseudo_type_info_type,
+    Initializer = gen_init_cast_rtti_datas_array(mlds_pseudo_type_info_type,
         ModuleName, PTIRttiDatas).
 
 :- pred gen_pseudo_type_info_list(module_info::in, list(rtti_data)::in,
-    list(mlds_initializer)::out, list(mlds_defn)::out) is det.
+    list(mlds_initializer)::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_pseudo_type_info_list(ModuleInfo, PTIRttiDatas, Inits, Defns) :-
+gen_pseudo_type_info_list(ModuleInfo, PTIRttiDatas, Initializers,
+        !GlobalData) :-
     RealRttiDatas = list.filter(real_rtti_data, PTIRttiDatas),
-    DefnLists = list.map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-    Defns = list.condense(DefnLists),
+    list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas, !GlobalData),
     module_info_get_name(ModuleInfo, ModuleName),
-    Inits = list.map(
+    Initializers = list.map(
         gen_init_cast_rtti_data(mlds_pseudo_type_info_type, ModuleName),
         PTIRttiDatas).
 
 %-----------------------------------------------------------------------------%
 
 :- pred gen_init_method(module_info::in, int::in, rtti_proc_label::in,
-    mlds_initializer::out, list(mlds_defn)::in, list(mlds_defn)::out) is det.
+    mlds_initializer::out, ml_global_data::in, ml_global_data::out) is det.
 
-gen_init_method(ModuleInfo, NumExtra, RttiProcLabel, Init, !ExtraDefns) :-
+gen_init_method(ModuleInfo, NumExtra, RttiProcLabel, Initializer,
+        !GlobalData) :-
     % We can't store the address of the typeclass method directly in the
     % base_typeclass_info; instead, we need to generate a wrapper function
     % that extracts the NumExtra parameters it needs from the typeclass_info,
@@ -1427,15 +1493,15 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcLabel, Init, !ExtraDefns) :-
     % to optimize this...
     %
     gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcLabel,
-        typeclass_info_closure, Init, !ExtraDefns).
+        typeclass_info_closure, Initializer, !GlobalData).
 
 :- pred gen_init_special_pred(module_info::in, univ::in, mlds_initializer::out,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
+gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Initializer, !GlobalData) :-
     % We can't store the address of the special pred procedure directly in the
     % type_ctor_info because when the special pred is called by looking up
-    % its address in the type_ctor_info its always called with its arguments
+    % its address in the type_ctor_info it is always called with its arguments
     % boxed, but the generated special pred may operate on unboxed values,
     % hence we need to generate a wrapper function which unboxes the arguments
     % if necessary.
@@ -1445,11 +1511,11 @@ gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
             % so we don't need a wrapper. (This case can occur with
             % --no-special-preds, where the procedure will be
             % private_builtin.unused/0.)
-            Init = gen_init_proc_id(ModuleInfo, RttiProcId)
+            Initializer = gen_init_proc_id(ModuleInfo, RttiProcId)
         ;
             NumExtra = 0,
-            gen_wrapper_func_and_initializer(ModuleInfo, NumExtra,
-                RttiProcId, special_pred_closure, Init, !ExtraDefns)
+            gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
+                special_pred_closure, Initializer, !GlobalData)
         )
     ;
         unexpected(this_file,
@@ -1458,35 +1524,41 @@ gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
 
 :- pred gen_wrapper_func_and_initializer(module_info::in, int::in,
     rtti_proc_label::in, closure_kind::in, mlds_initializer::out,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
+    ml_global_data::in, ml_global_data::out) is det.
 
 gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
-        ClosureKind, Init, !ExtraDefns) :-
-    % We start off by creating a fresh MLGenInfo here, using the pred_id and
-    % proc_id of the wrapped procedure. This requires considerable care.
-    % We need to call ml_gen_info_bump_counters to ensure that the function
-    % label allocated for the wrapper func does not overlap with any function
-    % labels used when generating code for the wrapped procedure.
-    %
-    PredId = RttiProcId ^ pred_id,
-    ProcId = RttiProcId ^ proc_id,
-    MLGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
-    ml_gen_info_bump_counters(MLGenInfo0, MLGenInfo1),
+        ClosureKind, Initializer, !GlobalData) :-
+    some [!Info] (
+        % We start off by creating a fresh MLGenInfo here, using the pred_id
+        % and proc_id of the wrapped procedure. This requires considerable
+        % care. We need to call ml_gen_info_bump_counters to ensure that
+        % the function label allocated for the wrapper func does not overlap
+        % with any function labels used when generating code for the wrapped
+        % procedure.
 
-    % Now we can safely go ahead and generate the wrapper function.
-    term.context_init(Context),
-    ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumExtra, Context,
-        WrapperFuncRval, WrapperFuncType, MLGenInfo1, MLGenInfo),
-    ml_gen_info_get_extra_defns(MLGenInfo, ExtraDefns),
-    !:ExtraDefns = ExtraDefns ++ !.ExtraDefns,
+        PredId = RttiProcId ^ pred_id,
+        ProcId = RttiProcId ^ proc_id,
+        module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
+        !:Info = ml_gen_info_init(ModuleInfo, PredId, ProcId, ProcInfo,
+            !.GlobalData),
+        ml_gen_info_bump_counters(!Info),
 
-    % The initializer for the wrapper is just the wrapper function's address,
-    % converted to mlds_generic_type (by boxing).
-    Init = init_obj(ml_unop(box(WrapperFuncType), WrapperFuncRval)).
+        % Now we can safely go ahead and generate the wrapper function.
+        term.context_init(Context),
+        ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumExtra, Context,
+            WrapperFuncRval, WrapperFuncType, !Info),
+        ml_gen_info_get_closure_wrapper_defns(!.Info, ExtraDefns),
+        ml_gen_info_get_global_data(!.Info, !:GlobalData),
+        ml_global_data_add_maybe_nonflat_defns(ExtraDefns, !GlobalData),
+
+        % The initializer for the wrapper is just the wrapper function's
+        % address, converted to mlds_generic_type (by boxing).
+        Initializer = init_obj(ml_unop(box(WrapperFuncType), WrapperFuncRval))
+    ).
 
 :- func gen_init_proc_id(module_info, rtti_proc_label) = mlds_initializer.
 
-gen_init_proc_id(ModuleInfo, RttiProcId) = Init :-
+gen_init_proc_id(ModuleInfo, RttiProcId) = Initializer :-
     % Construct an rval for the address of this procedure
     % (this is similar to ml_gen_proc_addr_rval).
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcId, PredLabel, PredModule),
@@ -1503,14 +1575,14 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Init :-
     % depend on how many type_info parameters it takes, which will depend
     % on the type's arity.
     ProcAddrArg = ml_unop(box(mlds_func_type(Params)), ProcAddrRval),
-    Init = init_obj(ProcAddrArg).
+    Initializer = init_obj(ProcAddrArg).
 
 :- func gen_init_proc_id_from_univ(module_info, univ) =
     mlds_initializer.
 
-gen_init_proc_id_from_univ(ModuleInfo, ProcLabelUniv) = Init :-
+gen_init_proc_id_from_univ(ModuleInfo, ProcLabelUniv) = Initializer :-
     ( univ_to_type(ProcLabelUniv, ProcLabel) ->
-        Init = gen_init_proc_id(ModuleInfo, ProcLabel)
+        Initializer = gen_init_proc_id(ModuleInfo, ProcLabel)
     ;
         unexpected(this_file,
             "gen_init_proc_id_from_univ: cannot extract univ value")
@@ -1559,7 +1631,7 @@ gen_init_type_ctor_rep(TypeCtorData) = gen_init_builtin_const(Name) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Ordering RTTI definitions
+% Ordering RTTI definitions.
 %
 
 order_mlds_rtti_defns(Defns) = OrdDefns :-
@@ -1579,7 +1651,7 @@ order_mlds_rtti_defns(Defns) = OrdDefns :-
     is det.
 
 add_rtti_defn_nodes(Defn, !Graph, !NameMap) :-
-    Name = Defn ^ mlds_entity_name,
+    Name = Defn ^ md_entity_name,
     (
         Name = entity_data(DataName),
         digraph.add_vertex(DataName, _, !Graph),
@@ -1607,7 +1679,8 @@ add_rtti_defn_arcs(Defn, !Graph) :-
         unexpected(this_file, "add_rtti_defn_arcs: expected rtti entity_data")
     ).
 
-:- pred add_rtti_defn_arcs_initializer(mlds_data_name::in, mlds_initializer::in,
+:- pred add_rtti_defn_arcs_initializer(mlds_data_name::in,
+    mlds_initializer::in,
     digraph(mlds_data_name)::in, digraph(mlds_data_name)::out) is det.
 
 add_rtti_defn_arcs_initializer(DefnDataName, Initializer, !Graph) :-

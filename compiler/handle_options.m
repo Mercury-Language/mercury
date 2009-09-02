@@ -115,7 +115,8 @@ handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
     postprocess_options(Result, Errors, !IO),
     (
         Errors = [_ | _],
-        Link = no
+        Link = no,
+        io.set_exit_status(1, !IO)
     ;
         Errors = [],
         globals.io_lookup_bool_option(generate_dependencies,
@@ -194,13 +195,14 @@ postprocess_options(error(ErrorMessage), [ErrorMessage], !IO).
 postprocess_options(ok(OptionTable0), Errors, !IO) :-
     check_option_values(OptionTable0, OptionTable, Target, GC_Method,
         TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, C_CompilerType, FeedbackInfo, [], CheckErrors, !IO),
+        MaybeThreadSafe, C_CompilerType, MaybeILVersion, FeedbackInfo,
+        [], CheckErrors, !IO),
     (
         CheckErrors = [],
         postprocess_options_2(OptionTable, Target, GC_Method,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
-            TraceSuppress, MaybeThreadSafe, C_CompilerType, FeedbackInfo,
-            [], Errors, !IO)
+            TraceSuppress, MaybeThreadSafe, C_CompilerType, MaybeILVersion,
+            FeedbackInfo, [], Errors, !IO)
     ;
         CheckErrors = [_ | _],
         Errors = CheckErrors
@@ -210,12 +212,12 @@ postprocess_options(ok(OptionTable0), Errors, !IO) :-
     compilation_target::out, gc_method::out, tags_method::out,
     termination_norm::out, termination_norm::out, trace_level::out,
     trace_suppress_items::out, may_be_thread_safe::out,
-    c_compiler_type::out, feedback_info::out,
+    c_compiler_type::out, maybe(il_version_number)::out, feedback_info::out,
     list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, FeedbackInfo, !Errors, !IO) :-
+        C_CompilerType, MaybeILVersion, FeedbackInfo, !Errors, !IO) :-
     map.lookup(!.OptionTable, target, Target0),
     (
         Target0 = string(TargetStr),
@@ -358,10 +360,35 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         C_CompilerType = C_CompilerTypePrime
     ;
         C_CompilerType = cc_unknown,   % dummy
-        add_error("Invalid argument to option " ++
-            "`--c-compiler-type'\n\t(must be" ++
-            "`gcc', `lcc', `cl, or `unknown').", !Errors)
+        add_error("Invalid argument to " ++
+            "option `--c-compiler-type'\n" ++
+            "\t(must be `gcc', `lcc', `cl', or `unknown').",
+            !Errors)
     ),
+
+    map.lookup(!.OptionTable, dotnet_library_version, DotNetLibVersionOpt),
+    (
+        DotNetLibVersionOpt = string(DotNetLibVersionStr),
+        IsSep = (pred(('.')::in) is semidet),
+        string.words_separator(IsSep, DotNetLibVersionStr) = [Mj, Mn, Bu, Rv],
+        string.to_int(Mj, Major),
+        string.to_int(Mn, Minor),
+        string.to_int(Bu, Build),
+        string.to_int(Rv, Revision)
+    ->
+        ILVersion = il_version_number(Major, Minor, Build, Revision),
+        MaybeILVersion = yes(ILVersion)
+    ;
+        MaybeILVersion = no,
+        add_error("Invalid argument to " ++
+            "option `--dotnet-library-version'\n" ++
+            "\t(must be of the form " ++
+            "`MajorNum.MinorNum.BuildNum.RevisionNum').",
+            !Errors),
+        % The IL code generator cannot handle the IL version being unknown.
+        svmap.det_update(errorcheck_only, bool(yes), !OptionTable)
+    ),
+
     map.lookup(!.OptionTable, feedback_file, FeedbackFile0),
     (
         FeedbackFile0 = string(FeedbackFile),
@@ -393,15 +420,16 @@ add_error(Error, Errors0, Errors) :-
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
     termination_norm::in, trace_level::in, trace_suppress_items::in,
-    may_be_thread_safe::in, c_compiler_type::in, feedback_info::in,
-    list(string)::in, list(string)::out, io::di, io::uo) is det.
+    may_be_thread_safe::in, c_compiler_type::in, maybe(il_version_number)::in,
+    feedback_info::in, list(string)::in, list(string)::out,
+    io::di, io::uo) is det.
 
 postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, FeedbackInfo, !Errors, !IO) :-
+        C_CompilerType, MaybeILVersion, FeedbackInfo, !Errors, !IO) :-
     globals_io_init(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, FeedbackInfo, !IO),
+        C_CompilerType, MaybeILVersion, FeedbackInfo, !IO),
 
     some [!Globals] (
         globals.io_get_globals(!:Globals, !IO),

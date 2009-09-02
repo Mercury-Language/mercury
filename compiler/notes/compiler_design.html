@@ -1564,9 +1564,10 @@ Thus we have a pass which transforms the HLDS to handle trailing:
 			     since it is also used by LLDS back-end)
 			</ul>
 		</ul>
-	  The module ml_code_util.m provides utility routines for
-	  MLDS code generation.  The module ml_util.m provides some
-	  general utility routines for the MLDS.
+	  The main data structure used by the MLDS code generator is defined
+	  in ml_code_util.m, while global data structures (those created at
+	  module scope) are handled in ml_global_data.m.
+	  The module ml_util.m provides some general utility routines.
 <li> ml_type_gen.m converts HLDS types to MLDS.
 <li> type_ctor_info.m and base_typeclass_info.m generate
      the RTTI data structures defined in rtti.m and pseudo_type_info.m
@@ -1851,6 +1852,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2009-06-11 07:00:35 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2009-09-02 00:30:31 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

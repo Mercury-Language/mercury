@@ -66,21 +66,18 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     VarRval = ml_lval(VarLval),
 
     % Generate the following local variable declarations:
-    %   int slot;
-    %   MR_String str;
+    %   int slot_N;
+    %   MR_String str_M;
 
-    ml_gen_info_new_cond_var(SlotVarSeq, !Info),
-    SlotVarName = mlds_var_name(
-        string.format("slot_%d", [i(SlotVarSeq)]), no),
+    ml_gen_info_new_aux_var_name("slot", SlotVarName, !Info),
     SlotVarType = mlds_native_int_type,
-    SlotVarGCStatement = gc_no_stmt, % never need to trace ints
+    % We never need to trace ints.
+    SlotVarGCStatement = gc_no_stmt,
     SlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(SlotVarName), SlotVarType,
         SlotVarGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, SlotVarName, SlotVarType, SlotVarLval),
 
-    ml_gen_info_new_cond_var(StringVarSeq, !Info),
-    StringVarName = mlds_var_name(
-        string.format("str_%d", [i(StringVarSeq)]), no),
+    ml_gen_info_new_aux_var_name("str", StringVarName, !Info),
     StringVarType = ml_string_type,
     % This variable always points to an element of the string_table array,
     % which are all static constants; it can never point into the heap.
@@ -138,25 +135,27 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     list.sort(SlotsCases0, SlotsCases),
 
     % Generate the following local constant declarations:
-    %   static const int next_slots_table = { <NextSlots> };
-    %   static const MR_String string_table[] = { <Strings> };
+    %   static const int next_slots_table_N = { <NextSlots> };
+    %   static const MR_String string_table_M[] = { <Strings> };
 
-    ml_gen_info_new_const(NextSlotsSeq, !Info),
-    ml_format_static_const_name(!.Info, "next_slots_table", NextSlotsSeq,
-        NextSlotsName),
-    NextSlotsType = mlds_array_type(SlotVarType),
-    NextSlotsDefn = ml_gen_static_const_defn(NextSlotsName,
-        NextSlotsType, acc_local, init_array(NextSlots), Context),
-    ml_gen_var_lval(!.Info, NextSlotsName, NextSlotsType, NextSlotsLval),
+    some [!GlobalData] (
+        ml_gen_info_get_global_data(!.Info, !:GlobalData),
 
-    ml_gen_info_new_const(StringTableSeq, !Info),
-    ml_format_static_const_name(!.Info, "string_table", StringTableSeq,
-        StringTableName),
-    StringTableType = mlds_array_type(StringVarType),
-    StringTableDefn = ml_gen_static_const_defn(StringTableName,
-        StringTableType, acc_local, init_array(Strings), Context),
-    ml_gen_var_lval(!.Info, StringTableName, StringTableType,
-        StringTableLval),
+        NextSlotsType = mlds_array_type(SlotVarType),
+        ml_gen_static_const_defn("next_slots_table", NextSlotsType,
+            acc_private, init_array(NextSlots), Context, NextSlotsName,
+            !GlobalData),
+        ml_gen_var_lval(!.Info, NextSlotsName, NextSlotsType, NextSlotsLval),
+
+        StringTableType = mlds_array_type(StringVarType),
+        ml_gen_static_const_defn("string_table", StringTableType,
+            acc_private, init_array(Strings), Context, StringTableName,
+            !GlobalData),
+        ml_gen_var_lval(!.Info, StringTableName, StringTableType,
+            StringTableLval),
+
+        ml_gen_info_set_global_data(!.GlobalData, !Info)
+    ),
 
     % Generate code which does the hash table lookup.
     SwitchStmt0 = ml_stmt_switch(SlotVarType, ml_lval(SlotVarLval),
@@ -235,7 +234,7 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
 
     % Collect all the generated variable/constant declarations
     % and code fragments together.
-    Decls = [NextSlotsDefn, StringTableDefn, SlotVarDefn, StringVarDefn],
+    Decls = [SlotVarDefn, StringVarDefn],
     Statements =
         HashLookupStatements ++
         [FailComment | FailStatements] ++
@@ -252,7 +251,7 @@ gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase, CaseNum,
         !CodeMap, !Unit, !Info) :-
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds,
         CaseNum, Goal),
-    ml_gen_goal_as_block(CodeModel, Goal, GoalStatement, !Info),
+    ml_gen_goal_as_branch_block(CodeModel, Goal, GoalStatement, !Info),
     MainString = gen_string_switch_case_comment(MainTaggedConsId),
     OtherStrings = list.map(gen_string_switch_case_comment,
         OtherTaggedConsIds),

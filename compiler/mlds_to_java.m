@@ -74,7 +74,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_mlds(module_info::in, mlds::in, io::di, io::uo) is det.
+:- pred output_java_mlds(module_info::in, mlds::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -96,6 +96,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.java_util.
 :- import_module ml_backend.ml_code_util.  % for ml_gen_local_var_decl_flags.
+:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
 :- import_module ml_backend.rtti_to_mlds.
@@ -124,7 +125,7 @@
 
 %-----------------------------------------------------------------------------%
 
-output_mlds(ModuleInfo, MLDS, !IO) :-
+output_java_mlds(ModuleInfo, MLDS, !IO) :-
     % Note that the Java file name that we use for modules in the
     % Mercury standard library do not include a "mercury." prefix;
     % that's why we don't call mercury_module_name_to_mlds here.
@@ -318,8 +319,9 @@ output_import(Import, !IO) :-
 
 output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
-    MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0,
+    MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData, Defns0,
         InitPreds, FinalPreds, ExportedEnums),
+    ml_global_data_get_all_global_defns(GlobalData, GlobalDefns),
 
     % Do NOT enforce the outermost "mercury" qualifier here.  This module
     % name is compared with other module names in the MLDS, to avoid
@@ -333,7 +335,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     % Create wrappers in MLDS for all pointer addressed methods.
     generate_code_addr_wrappers(Indent + 1, CodeAddrs, [], WrapperDefns),
-    Defns1 = WrapperDefns ++ Defns0,
+    Defns1 = GlobalDefns ++ WrapperDefns ++ Defns0,
 
     % Rename classes with excessively long names.
     shorten_long_class_names(MLDS_ModuleName, Defns1, Defns),
@@ -1057,17 +1059,17 @@ shorten_long_class_names(ModuleName, Defns0, Defns) :-
     map(mlds_class_name, mlds_class_name)::out) is det.
 
 maybe_shorten_long_class_name(!Defn, !Renaming) :-
-    Access = access(!.Defn ^ mlds_decl_flags),
+    Access = access(!.Defn ^ md_decl_flags),
     (
         % We only rename private classes for now.
         Access = acc_private,
-        EntityName0 = !.Defn ^ mlds_entity_name,
+        EntityName0 = !.Defn ^ md_entity_name,
         (
             EntityName0 = entity_type(ClassName0, Arity),
             ClassName = shorten_class_name(ClassName0),
             ( ClassName \= ClassName0 ->
                 EntityName = entity_type(ClassName, Arity),
-                !Defn ^ mlds_entity_name := EntityName,
+                !Defn ^ md_entity_name := EntityName,
                 svmap.det_insert(ClassName0, ClassName, !Renaming)
             ;
                 true
@@ -1119,7 +1121,7 @@ replace_non_alphanum_underscore(Char) =
     mlds_defn::in, mlds_defn::out) is det.
 
 rename_class_names_defn(Renaming, !Defn) :-
-    EntityDefn0 = !.Defn ^ mlds_entity_defn,
+    EntityDefn0 = !.Defn ^ md_entity_defn,
     (
         EntityDefn0 = mlds_data(Type0, Initializer0, GCStatement),
         rename_class_names_type(Renaming, Type0, Type),
@@ -1147,7 +1149,7 @@ rename_class_names_defn(Renaming, !Defn) :-
         EntityDefn = mlds_class(mlds_class_defn(ClassKind, Imports, Inherits,
             Implements, Ctors, Members))
     ),
-    !Defn ^ mlds_entity_defn := EntityDefn.
+    !Defn ^ md_entity_defn := EntityDefn.
 
 :- pred rename_class_names_type(class_name_renaming::in,
     mlds_type::in, mlds_type::out) is det.

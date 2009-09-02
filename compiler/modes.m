@@ -1945,7 +1945,7 @@ modecheck_ground_term_construct(TermVar, ConjGoals0, !.SubGoalInfo, VarSet,
     modecheck_ground_term_construct_goal_loop(VarSet, ConjGoals0, ConjGoals,
         LocalVarMap0, LocalVarMap),
     map.lookup(LocalVarMap, TermVar, TermVarInfo),
-    TermVarInfo = construct_var_info(TermVarInst, _),
+    TermVarInfo = construct_var_info(TermVarInst),
     instmap_delta_from_assoc_list([TermVar - TermVarInst], InstMapDelta),
     goal_info_set_instmap_delta(InstMapDelta, !SubGoalInfo),
     % We present the determinism, so that the determinism analysis pass
@@ -1959,7 +1959,7 @@ modecheck_ground_term_construct(TermVar, ConjGoals0, !.SubGoalInfo, VarSet,
     mode_info_set_instmap(InstMap, !ModeInfo).
 
 :- type construct_var_info
-    --->    construct_var_info(mer_inst, static_cons).
+    --->    construct_var_info(mer_inst).
 
 :- type construct_var_info_map == map(prog_var, construct_var_info).
 
@@ -1983,13 +1983,13 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         % requirements of these bound insts are only linear in the size of the
         % term.
         modecheck_ground_term_construct_arg_loop(RHSVars, ArgInsts, UniModes,
-            StaticConss, !LocalVarMap),
+            !LocalVarMap),
         BoundInst = bound_functor(ConsId, ArgInsts),
         TermInst = bound(shared, [BoundInst]),
         LHSMode = (free -> TermInst),
         RHSMode = (TermInst -> TermInst),
         UnifyMode = LHSMode - RHSMode,
-        ConstructHow = construct_statically(StaticConss),
+        ConstructHow = construct_statically,
         Uniqueness = cell_is_shared,
         Unification = construct(LHSVar, ConsId, RHSVars, UniModes,
             ConstructHow, Uniqueness, no_construct_sub_info),
@@ -2001,8 +2001,7 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         goal_info_set_determinism(detism_det, GoalInfo1, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
 
-        LHSVarStaticCons = static_cons(ConsId, RHSVars, StaticConss),
-        LHSVarInfo = construct_var_info(TermInst, LHSVarStaticCons),
+        LHSVarInfo = construct_var_info(TermInst),
         svmap.det_insert(LHSVar, LHSVarInfo, !LocalVarMap)
     ;
         unexpected(this_file,
@@ -2012,12 +2011,12 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         !LocalVarMap).
 
 :- pred modecheck_ground_term_construct_arg_loop(list(prog_var)::in,
-    list(mer_inst)::out, list(uni_mode)::out, list(static_cons)::out,
+    list(mer_inst)::out, list(uni_mode)::out,
     construct_var_info_map::in, construct_var_info_map::out) is det.
 
-modecheck_ground_term_construct_arg_loop([], [], [], [], !LocalVarMap).
+modecheck_ground_term_construct_arg_loop([], [], [], !LocalVarMap).
 modecheck_ground_term_construct_arg_loop([Var | Vars], [VarInst | VarInsts],
-        [UniMode | UniModes], [StaticCons | StaticConss], !LocalVarMap) :-
+        [UniMode | UniModes], !LocalVarMap) :-
     % Each variable introduced by the superhomogeneous transformation
     % for a ground term appears in the from_ground_term scope exactly twice.
     % Once when it is produced (which is handled in the goal loop predicate),
@@ -2026,14 +2025,14 @@ modecheck_ground_term_construct_arg_loop([Var | Vars], [VarInst | VarInsts],
     % Since there will be no more appearances of this variable, we remove it
     % from LocalVarMap. This greatly reduces the size of LocalVarMap.
     svmap.det_remove(Var, VarInfo, !LocalVarMap),
-    VarInfo = construct_var_info(VarInst, StaticCons),
+    VarInfo = construct_var_info(VarInst),
     LHSOldInst = free,
     RHSOldInst = VarInst,
     LHSNewInst = VarInst,
     RHSNewInst = VarInst,
     UniMode = ((LHSOldInst - RHSOldInst) -> (LHSNewInst - RHSNewInst)),
     modecheck_ground_term_construct_arg_loop(Vars, VarInsts, UniModes,
-        StaticConss, !LocalVarMap).
+        !LocalVarMap).
 
 :- pred modecheck_goal_plain_call(pred_id::in, proc_id::in,
     list(prog_var)::in, maybe(call_unify_context)::in, sym_name::in,
@@ -4049,7 +4048,23 @@ construct_initialisation_call(Var, VarType, Inst, Context,
             InstmapDelta, Context, MaybeCallUnifyContext,
             hlds_goal(GoalExpr, GoalInfo), !ModeInfo)
     ->
-        InitVarGoal = hlds_goal(GoalExpr, GoalInfo)
+        InitVarGoal = hlds_goal(GoalExpr, GoalInfo),
+        % If Var was ignored, i.e. it occurred in only one atomic goal
+        % and was not in that atomic goal's nonlocals set, then creating
+        % the call to the initialisation predicate and adding it to the
+        % procedure body requires the addition of Var to the original goal's
+        % nonlocals set. This *should* be done by looking at all the places
+        % in the compiler that decide to call construct_initialisation_call
+        % directly or indirectly, and modifying that code to add Var to
+        % the relevant nonlocals set, or possibly by avoiding the call
+        % to construct_initialisation_call altogether (after all, if
+        % a variable is ignored, it should not need initialization).
+        %
+        % However, getting a requantify pass to do it for us is less work.
+        %
+        % An example of code that needs this fix for the correctness of the
+        % HLDS is tests/hard_coded/solver_construction_init_test.m.
+        mode_info_set_need_to_requantify(need_to_requantify, !ModeInfo)
     ;
         unexpected(this_file, "construct_initialisation_call")
     ).

@@ -149,18 +149,37 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
             ( Reason = exist_quant(Vars)
             ; Reason = promise_solutions(Vars, _)
             ),
-            Vars = [_ | _]
-        ->
-            SubGoalVars = free_goal_vars(SubGoal),
-            set.init(EmptySet),
-            warn_singletons_goal_vars(Vars, GoalInfo, EmptySet, SubGoalVars,
-                VarSet, PredCallId, !Specs),
-            set.insert_list(QuantVars, Vars, SubQuantVars)
+            (
+                Vars = [_ | _],
+                SubGoalVars = free_goal_vars(SubGoal),
+                set.init(EmptySet),
+                warn_singletons_goal_vars(Vars, GoalInfo, EmptySet, SubGoalVars,
+                    VarSet, PredCallId, !Specs),
+                set.insert_list(QuantVars, Vars, SubQuantVars)
+            ;
+                Vars = [],
+                SubQuantVars = QuantVars
+            ),
+            warn_singletons_in_goal(SubGoal, SubQuantVars, VarSet, PredCallId,
+                ModuleInfo, !Specs)
         ;
-            SubQuantVars = QuantVars
-        ),
-        warn_singletons_in_goal(SubGoal, SubQuantVars, VarSet, PredCallId,
-            ModuleInfo, !Specs)
+            ( Reason = promise_purity(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = trace_goal(_, _, _, _, _)
+            ),
+            warn_singletons_in_goal(SubGoal, QuantVars, VarSet, PredCallId,
+                ModuleInfo, !Specs)
+        ;
+            Reason = from_ground_term(TermVar, _Kind),
+            % There can be no singleton variables inside the scopes by
+            % construction. The only variable involved in the scope
+            % that can possibly be singleton is the one representing the entire
+            % ground term.
+            NonLocals = goal_info_get_nonlocals(GoalInfo),
+            warn_singletons_goal_vars([TermVar], GoalInfo, NonLocals,
+                QuantVars, VarSet, PredCallId, !Specs)
+        )
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
 

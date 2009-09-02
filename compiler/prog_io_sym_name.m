@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,7 +31,7 @@
     % top function symbol, and a list of its argument terms. It fails
     % if the input is not valid syntax for a QualifiedTerm.
     %
-:- pred sym_name_and_args(term(T)::in, sym_name::out, list(term(T))::out)
+:- pred parse_sym_name_and_args(term(T)::in, sym_name::out, list(term(T))::out)
     is semidet.
 
     % parse_qualified_term(Term, _ContainingTerm, VarSet, ContextPieces,
@@ -116,7 +116,7 @@
 
 :- import_module int.
 
-sym_name_and_args(Term, SymName, Args) :-
+parse_sym_name_and_args(Term, SymName, Args) :-
     % The values of VarSet and ContextPieces do not matter here, since
     % we succeed only if they aren't used.
     VarSet = varset.init,

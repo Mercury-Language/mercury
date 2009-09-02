@@ -920,7 +920,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     ;
         % XXX  We should probably throw an exception if we find
         % construct_statically here.
-        HowToConstruct = construct_statically(_),
+        HowToConstruct = construct_statically,
         RegionVarCode = empty,
         MaybeRegionRval = no,
         LldsComment = "Allocating heap for ",

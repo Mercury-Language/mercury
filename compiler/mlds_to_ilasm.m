@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2008 The University of Melbourne.
+% Copyright (C) 1999-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,6 +18,7 @@
 :- module ml_backend.mlds_to_ilasm.
 :- interface.
 
+:- import_module libs.globals.
 :- import_module ml_backend.mlds.
 
 :- import_module io.
@@ -26,7 +27,7 @@
 
     % Convert the MLDS to IL and write it to a file.
     %
-:- pred mlds_to_ilasm.output_mlds(mlds::in, io::di, io::uo) is det.
+:- pred output_mlds_via_ilasm(globals::in, mlds::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -36,7 +37,6 @@
 % :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ilasm.
 :- import_module ml_backend.il_peephole.
@@ -53,18 +53,18 @@
 
 %-----------------------------------------------------------------------------%
 
-output_mlds(MLDS, !IO) :-
+output_mlds_via_ilasm(Globals, MLDS, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(ModuleName, ".il", do_create_dirs,
-        ILAsmFile, !IO),
-    output_to_file_return_result(ILAsmFile, output_assembler(MLDS), Result,
+    module_name_to_file_name(ModuleName, ".il", do_create_dirs, ILAsmFile,
         !IO),
+    output_to_file_return_result(ILAsmFile, output_assembler(Globals, MLDS),
+        Result, !IO),
 
     (
         Result = yes(ForeignLangs),
         % Output any outline foreign_code to the appropriate foreign
         % language file.
-        list.foldl(output_foreign_file(MLDS),
+        list.foldl(output_foreign_file(Globals, MLDS),
             set.to_sorted_list(ForeignLangs), !IO)
     ;
         % An I/O error occurred; output_to_file has already reported
@@ -72,60 +72,58 @@ output_mlds(MLDS, !IO) :-
         Result = no
     ).
 
-:- pred output_foreign_file(mlds::in, foreign_language::in,
+:- pred output_foreign_file(globals::in, mlds::in, foreign_language::in,
     io::di, io::uo) is det.
 
-output_foreign_file(MLDS, ForeignLang, !IO) :-
+output_foreign_file(Globals, MLDS, ForeignLang, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     (
         ForeignModuleName = foreign_language_module_name(ModuleName,
             ForeignLang),
         Extension = foreign_language_file_extension(ForeignLang)
     ->
-        handle_foreign_lang(ForeignLang, CodeGenerator),
-        module_name_to_file_name(ForeignModuleName, Extension,
-            do_create_dirs, File, !IO),
-        output_to_file(File,
-            (pred(di, uo) is det --> CodeGenerator(MLDS)), !IO)
+        (
+            ForeignLang = lang_csharp,
+            module_name_to_file_name(ForeignModuleName, Extension,
+                do_create_dirs, File, !IO),
+            output_to_file(File, output_csharp_code(Globals, MLDS), !IO)
+        ;
+            ForeignLang = lang_c,
+            sorry(this_file, "language C foreign code not supported")
+        ;
+            ForeignLang = lang_il,
+            sorry(this_file, "language IL foreign code not supported")
+        ;
+            ForeignLang = lang_java,
+            sorry(this_file, "language Java foreign code not supported")
+        ;
+            ForeignLang = lang_erlang,
+            sorry(this_file, "language Erlang foreign code not supported")
+        )
     ;
-        unexpected(this_file, "output_foreign_file: " ++
-            "unexpected language")
+        unexpected(this_file, "output_foreign_file: unexpected language")
     ).
-
-:- pred handle_foreign_lang(foreign_language::in,
-    pred(mlds, io, io)::out(pred(in, di, uo) is det)) is det.
-
-handle_foreign_lang(lang_csharp, output_csharp_code).
-handle_foreign_lang(lang_c, _) :-
-    sorry(this_file, "language C foreign code not supported").
-handle_foreign_lang(lang_il, _) :-
-    sorry(this_file, "language IL foreign code not supported").
-handle_foreign_lang(lang_java, _) :-
-    sorry(this_file, "language Java foreign code not supported").
-handle_foreign_lang(lang_erlang, _) :-
-    sorry(this_file, "language Erlang foreign code not supported").
 
     % Generate the `.il' file.
     % Returns the set of foreign language
     %
-:- pred output_assembler(mlds::in, set(foreign_language)::out,
+:- pred output_assembler(globals::in, mlds::in, set(foreign_language)::out,
     io::di, io::uo) is det.
 
-output_assembler(MLDS, ForeignLangs, !IO) :-
-    MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns,
+output_assembler(Globals, MLDS, ForeignLangs, !IO) :-
+    MLDS = mlds(ModuleName, _ForeignCode, _Imports, _GlobalData, _Defns,
         _InitPreds, _FinalPreds, _ExportedEnums),
     output_src_start(ModuleName, !IO),
     io.nl(!IO),
 
-    generate_il(MLDS, ILAsm0, ForeignLangs, !IO),
+    generate_il(Globals, MLDS, ILAsm0, ForeignLangs),
 
-        % Perform peephole optimization if requested.  If peephole
-        % optimization was not requested, we may still need to invoke
-        % the peephole optimization pass, because some of the peephole
-        % optimizations are actually needed for verifiability of the
-        % generated IL.
-    globals.io_lookup_bool_option(optimize_peep, Peephole, !IO),
-    globals.io_lookup_bool_option(verifiable_code, Verifiable, !IO),
+    % Perform peephole optimization if requested. If peephole optimization
+    % was not requested, we may still need to invoke the peephole optimization
+    % pass, because some of the peephole optimizations are actually needed
+    % for verifiability of the generated IL.
+    globals.lookup_bool_option(Globals, optimize_peep, Peephole),
+    globals.lookup_bool_option(Globals, verifiable_code, Verifiable),
     ( Peephole = yes ->
         VerifyOnly = no,
         il_peephole_optimize(VerifyOnly, ILAsm0, ILAsm)
@@ -136,7 +134,7 @@ output_assembler(MLDS, ForeignLangs, !IO) :-
         ILAsm0 = ILAsm
     ),
 
-        % Output the assembly.
+    % Output the assembly.
     ilasm.output(ILAsm, !IO),
     output_src_end(ModuleName, !IO).
 

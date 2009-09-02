@@ -690,6 +690,10 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             % from_ground_term_construct and other kinds, which is a pity,
             % since from_ground_term_construct scopes do not need purity
             % checking.
+            % XXX However, from_ground_term scopes *are* guaranteed to be
+            % conjunctions of unifications, and we could take advantage of
+            % that, e.g. by avoiding repeatedly taking the varset and vartypes
+            % out of !Info and just as repeatedly putting it back again.
             ( Reason = promise_solutions(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)

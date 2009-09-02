@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ml_call_gen.m.
 % Main author: fjh.
-% 
+%
 % This module is part of the MLDS code generator.  It handles code generation
 % of procedures calls, calls to builtins, and other closely related stuff.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_call_gen.
@@ -19,6 +19,7 @@
 
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.mlds.
@@ -77,8 +78,8 @@
     % holding a value of the source type, produce an rval that converts
     % the source rval to the destination type.
     %
-:- pred ml_gen_box_or_unbox_rval(mer_type::in, mer_type::in, box_policy::in,
-    mlds_rval::in, mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_box_or_unbox_rval(module_info::in, mer_type::in, mer_type::in,
+    box_policy::in, mlds_rval::in, mlds_rval::out) is det.
 
     % ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName,
     %   Context, ForClosureWrapper, ArgNum,
@@ -123,7 +124,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_module.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -140,7 +140,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Code for procedure calls
+% Code for procedure calls.
 %
 
 ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
@@ -247,7 +247,8 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % since GNU C (2.95.2) ignores the function attributes on function
     % pointer types in casts.
     %
-    ml_gen_info_new_conv_var(ConvVarNum, !Info),
+    ml_gen_info_new_conv_var(ConvVarSeq, !Info),
+    ConvVarSeq = conv_seq(ConvVarNum),
     FuncVarName = mlds_var_name(string.format("func_%d", [i(ConvVarNum)]), no),
     % The function address is always a pointer to code,
     % not to the heap, so the GC doesn't need to trace it.
@@ -268,23 +269,27 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         InputRvals, OutputLvals, OutputTypes,
         ConvArgDecls, ConvOutputStatements, !Info),
     ClosureRval = ml_unop(unbox(ClosureArgType), ml_lval(ClosureLval)),
-
-    % Prepare to generate the call, passing the closure as the first argument.
-    % (We can't actually generate the call yet, since it might be nondet,
-    % and we don't yet know what its success continuation will be; instead
-    % for now we just construct a higher-order term `DoGenCall', which when
-    % called will generate it.)
     ObjectRval = no,
-    DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncVarRval,
-        [ClosureRval | InputRvals], OutputLvals, OutputTypes,
-        Determinism, Context),
 
     (
         ConvArgDecls = [],
         ConvOutputStatements = []
     ->
-        DoGenCall(Decls0, Statements0, !Info)
+        % Generate the call directly (as opposed to via DoGenCall)
+        % in the common case.
+        ml_gen_mlds_call(Signature, ObjectRval, FuncVarRval,
+            [ClosureRval | InputRvals], OutputLvals, OutputTypes,
+            Determinism, Context, Decls0, Statements0, !Info)
     ;
+        % Prepare to generate the call, passing the closure as the first
+        % argument. We can't actually generate the call yet, since it might be
+        % nondet, and we don't yet know what its success continuation will be.
+        % Instead we construct a higher-order term `DoGenCall', which, when
+        % called by ml_combine_conj, will generate it.
+        DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncVarRval,
+            [ClosureRval | InputRvals], OutputLvals, OutputTypes,
+            Determinism, Context),
+
         % Construct a closure to generate code to convert the output arguments
         % and then succeed.
         DoGenConvOutputAndSucceed = (
@@ -322,8 +327,8 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
             Statements = []
         ;
             IsDummy = is_not_dummy_type,
-            ml_gen_box_or_unbox_rval(SrcType, DestType, native_if_possible,
-                ml_lval(SrcLval), CastRval, !Info),
+            ml_gen_box_or_unbox_rval(ModuleInfo, SrcType, DestType,
+                native_if_possible, ml_lval(SrcLval), CastRval),
             Assign = ml_gen_assign(DestLval, CastRval, Context),
             Statements = [Assign]
         ),
@@ -389,21 +394,27 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
         InputRvals, OutputLvals, OutputTypes,
         ConvArgDecls, ConvOutputStatements, !Info),
 
-    % Construct a closure to generate the call (We can't actually generate
-    % the call yet, since it might be nondet, and we don't yet know what its
-    % success continuation will be; that's why for now we just construct
-    % a closure `DoGenCall' to generate it.)
     ObjectRval = no,
     proc_info_interface_determinism(ProcInfo, Detism),
-    DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
-        InputRvals, OutputLvals, OutputTypes, Detism, Context),
 
     (
         ConvArgDecls = [],
         ConvOutputStatements = []
     ->
-        DoGenCall(Decls, Statements, !Info)
+        % Generate the call directly (as opposed to via DoGenCall)
+        % in the common case.
+        ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
+            InputRvals, OutputLvals, OutputTypes, Detism, Context,
+            Decls, Statements, !Info)
     ;
+        % Construct a closure to generate the call. We can't actually generate
+        % the call yet, since it might be nondet, and we don't yet know
+        % what its success continuation will be. That is why we construct
+        % a closure `DoGenCall', which, when called by ml_combine_conj, will
+        % generate it.
+        DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
+            InputRvals, OutputLvals, OutputTypes, Detism, Context),
+
         % Construct a closure to generate code to convert the output arguments
         % and then succeed.
         DoGenConvOutputAndSucceed = (
@@ -675,8 +686,8 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
                     CallerIsDummy = is_not_dummy_type,
                     VarRval = ml_lval(VarLval)
                 ),
-                ml_gen_box_or_unbox_rval(CallerType, CalleeType,
-                    native_if_possible, VarRval, ArgRval, !Info),
+                ml_gen_box_or_unbox_rval(ModuleInfo, CallerType, CalleeType,
+                    native_if_possible, VarRval, ArgRval),
                 !:InputRvals = [ArgRval | !.InputRvals]
             ;
                 ArgMode = top_out,
@@ -729,8 +740,8 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 ml_gen_mem_addr(Lval) =
     (if Lval = ml_mem_ref(Rval, _) then Rval else ml_mem_addr(Lval)).
 
-ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
-        !Info) :-
+ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
+        ArgRval) :-
     % Convert VarRval, of type SourceType, to ArgRval, of type DestType.
     (
         BoxPolicy = always_boxed,
@@ -742,21 +753,22 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
             SourceType = type_variable(_, _),
             DestType \= type_variable(_, _)
         ->
-            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(unbox(MLDS_DestType), VarRval)
         ;
             % If converting from concrete type to polymorphic type, then box.
             SourceType \= type_variable(_, _),
             DestType = type_variable(_, _)
         ->
-            ml_gen_type(!.Info, SourceType, MLDS_SourceType),
+            MLDS_SourceType =
+                mercury_type_to_mlds_type(ModuleInfo, SourceType),
             ArgRval = ml_unop(box(MLDS_SourceType), VarRval)
         ;
             % If converting to float, cast to mlds_generic_type and then unbox.
             DestType = builtin_type(builtin_type_float),
             SourceType \= builtin_type(builtin_type_float)
         ->
-            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(unbox(MLDS_DestType),
                 ml_unop(cast(mlds_generic_type), VarRval))
         ;
@@ -764,8 +776,9 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
             SourceType = builtin_type(builtin_type_float),
             DestType \= builtin_type(builtin_type_float)
         ->
-            ml_gen_type(!.Info, SourceType, MLDS_SourceType),
-            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            MLDS_SourceType =
+                mercury_type_to_mlds_type(ModuleInfo, SourceType),
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(cast(MLDS_DestType),
                 ml_unop(box(MLDS_SourceType), VarRval))
         ;
@@ -787,7 +800,7 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
             % optimisation.
             SourceType \= DestType
         ->
-            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
         ;
             % If converting from one concrete type to a different one, then
@@ -796,7 +809,7 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
             %
             \+ type_unify(SourceType, DestType, [], map.init, _)
         ->
-            ml_gen_type(!.Info, DestType, MLDS_DestType),
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
         ;
             % Otherwise leave unchanged.
@@ -810,8 +823,9 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
     % First see if we can just convert the lval as an rval;
     % if no boxing/unboxing is required, then ml_box_or_unbox_rval
     % will return its argument unchanged, and so we're done.
-    ml_gen_box_or_unbox_rval(CalleeType, CallerType, BoxPolicy,
-        ml_lval(VarLval), BoxedRval, !Info),
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ml_gen_box_or_unbox_rval(ModuleInfo, CalleeType, CallerType, BoxPolicy,
+        ml_lval(VarLval), BoxedRval),
     ( BoxedRval = ml_lval(VarLval) ->
         ArgLval = VarLval,
         ConvDecls = [],
@@ -835,11 +849,12 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         % temporary variable declaration, but the CallerType is
         % used to construct the type_info.
 
-        ml_gen_info_new_conv_var(ConvVarNum, !Info),
+        ml_gen_info_new_conv_var(ConvVarSeq, !Info),
         VarName = mlds_var_name(VarNameStr, MaybeNum),
-        ArgVarName = mlds_var_name(
-            string.format("conv%d_%s", [i(ConvVarNum), s(VarNameStr)]),
-            MaybeNum),
+        ConvVarSeq = conv_seq(ConvVarNum),
+        string.format("conv%d_%s", [i(ConvVarNum), s(VarNameStr)],
+            ConvVarName),
+        ArgVarName = mlds_var_name(ConvVarName, MaybeNum),
         ml_gen_type(!.Info, CalleeType, MLDS_CalleeType),
         (
             ForClosureWrapper = yes,
@@ -854,7 +869,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             )
         ;
             ForClosureWrapper = no,
-            ml_gen_gc_statement(ArgVarName, CalleeType, CallerType,
+            ml_gen_gc_statement_poly(ArgVarName, CalleeType, CallerType,
                 Context, GC_Statements, !Info),
             ArgVarDecl = ml_gen_mlds_var_decl(mlds_data_var(ArgVarName),
                 MLDS_CalleeType, GC_Statements, mlds_make_context(Context))
@@ -864,7 +879,6 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         % Create the lval for the variable and use it for the argument lval.
         ml_gen_var_lval(!.Info, ArgVarName, MLDS_CalleeType, ArgLval),
 
-        ml_gen_info_get_module_info(!.Info, ModuleInfo),
         CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
         (
             CallerIsDummy = is_dummy_type,
@@ -878,15 +892,15 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             % to/from the output argument whose address we were passed.
 
             % Assign to the freshly generated arg variable.
-            ml_gen_box_or_unbox_rval(CallerType, CalleeType, BoxPolicy,
-                ml_lval(VarLval), ConvertedVarRval, !Info),
+            ml_gen_box_or_unbox_rval(ModuleInfo, CallerType, CalleeType,
+                BoxPolicy, ml_lval(VarLval), ConvertedVarRval),
             AssignInputStatement = ml_gen_assign(ArgLval, ConvertedVarRval,
                 Context),
             ConvInputStatements = [AssignInputStatement],
 
             % Assign from the freshly generated arg variable.
-            ml_gen_box_or_unbox_rval(CalleeType, CallerType, BoxPolicy,
-                ml_lval(ArgLval), ConvertedArgRval, !Info),
+            ml_gen_box_or_unbox_rval(ModuleInfo, CalleeType, CallerType,
+                BoxPolicy, ml_lval(ArgLval), ConvertedArgRval),
             AssignOutputStatement = ml_gen_assign(VarLval, ConvertedArgRval,
                 Context),
             ConvOutputStatements = [AssignOutputStatement]
@@ -895,7 +909,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
 
 %-----------------------------------------------------------------------------%
 %
-% Code for builtins
+% Code for builtins.
 %
 
     %

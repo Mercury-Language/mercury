@@ -116,7 +116,7 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
 gen_tagged_case_code(CodeModel, TaggedCase, CaseNum, !CodeMap, !Unit, !Info) :-
     TaggedCase = tagged_case(_MainTaggedConsId, _OtherTaggedConsIds,
         CaseNum, Goal),
-    ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info),
+    ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info),
     svmap.det_insert(CaseNum, Statement, !CodeMap).
 
 :- type is_a_case_split_between_ptags
@@ -281,7 +281,7 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
         STagRval = ml_unop(std_unop(unmkbody), VarRval)
     ;
         StagLocn = sectag_remote,
-        STagRval = ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo,
+        STagRval = ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTag, VarType,
             VarRval)
     ;
         StagLocn = sectag_none,

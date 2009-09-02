@@ -384,7 +384,7 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
             % We do not need to test whether we are in the first tagged case;
             % previous tests have implied that we must be, by eliminating all
             % other cons_ids that Var could be bound to.
-            ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info)
+            ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info)
         ;
             CanFail = can_fail,
             % We handle this case as if we still had later cases, cases
@@ -395,7 +395,7 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
             ml_switch_generate_if_then_else_cond(TaggedCase, Var, Cond, !Info),
 
             % Generate code for the first tagged case.
-            ml_gen_goal_as_block(CodeModel, Goal, GoalBlock, !Info),
+            ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock, !Info),
 
             % Generate code for the non-covered tagged cases.
             ml_gen_failure(CodeModel, Context, FailStatements, !Info),
@@ -414,7 +414,7 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
         ml_switch_generate_if_then_else_cond(TaggedCase, Var, Cond, !Info),
 
         % Generate code for the first tagged case.
-        ml_gen_goal_as_block(CodeModel, Goal, GoalBlock, !Info),
+        ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock, !Info),
 
         % Generate code for the later tagged cases.
         ml_switch_generate_if_then_else_chain_ites(LaterTaggedCase,
@@ -514,7 +514,7 @@ ml_switch_generate_mlds_case(TaggedCase, CodeModel, MLDS_Case, !Info) :-
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
     ml_tagged_cons_id_to_match_cond(TaggedMainConsId, MainCond),
     list.map(ml_tagged_cons_id_to_match_cond, TaggedOtherConsIds, OtherConds),
-    ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info),
+    ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info),
     MLDS_Case = mlds_switch_case(MainCond, OtherConds, Statement).
 
 :- pred ml_tagged_cons_id_to_match_cond(tagged_cons_id::in,

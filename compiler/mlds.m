@@ -339,9 +339,10 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
+:- import_module ml_backend.ml_global_data.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module list.
@@ -372,7 +373,10 @@
                 % Packages/classes to import
                 mlds_toplevel_imports   :: mlds_imports,
 
-                % Definitions of code and data
+                mlds_global_defns       :: ml_global_data,
+
+                % Definitions of code and non-global data.
+                % XXX Is there any non-global data?
                 mlds_defns              :: list(mlds_defn),
 
                 % The names of init and final preds.
@@ -464,8 +468,8 @@
     % The qual_kind argument specifies the qualifier kind of the module_name
     % argument.
     %
-:- func mlds_append_class_qualifier(mlds_module_name, mlds_qual_kind,
-    globals, mlds_class_name, arity) = mlds_module_name.
+:- func mlds_append_class_qualifier(compilation_target, mlds_module_name,
+    mlds_qual_kind, mlds_class_name, arity) = mlds_module_name.
 
     % Append a wrapper class qualifier to the module name and leave the
     % package name unchanged.
@@ -487,10 +491,10 @@
 :- type mlds_defn
     --->    mlds_defn(
                 % The name of the entity being declared.
-                mlds_entity_name        :: mlds_entity_name,
+                md_entity_name          :: mlds_entity_name,
 
                 % The source location.
-                mlds_context            :: mlds_context,
+                md_context              :: mlds_context,
 
                 % these contain the following:
                 % access,               % public/private/protected
@@ -500,9 +504,9 @@
                 % constness,            % const/modifiable  (data only)
                 % is_abstract,          % abstract/concrete
                 % etc.
-                mlds_decl_flags         :: mlds_decl_flags,
+                md_decl_flags           :: mlds_decl_flags,
 
-                mlds_entity_defn        :: mlds_entity_defn
+                md_entity_defn          :: mlds_entity_defn
             ).
 
     % An mlds name may contain arbitrary characters.
@@ -1474,9 +1478,9 @@
     %
 :- type mlds_var == mlds_fully_qualified_name(mlds_var_name).
 :- type mlds_var_name
-            --->    mlds_var_name(string, maybe(int)).
-                    % Var name and perhaps a unique number to be added as a
-            % suffix where necessary.
+        --->    mlds_var_name(string, maybe(int)).
+                % Var name and perhaps a unique number to be added as a
+                % suffix where necessary.
 
     % An lval represents a data location or variable that can be used
     % as the target of an assignment.
@@ -1931,53 +1935,51 @@ mlds_get_arg_types(Parameters) = ArgTypes :-
 
 % :- type mlds_module_name == prim_data.module_name.
 :- type mlds_module_name
-    --->    name(
-                package_name    :: prim_data.module_name,
-                module_name     :: prim_data.module_name
+    --->    mlds_module_name(
+                mmn_package_name    :: prim_data.module_name,
+                mmn_module_name     :: prim_data.module_name
             ).
 
 mercury_module_and_package_name_to_mlds(MLDS_Package, MercuryModule)
-    = name(MLDS_Package, MercuryModule).
+    = mlds_module_name(MLDS_Package, MercuryModule).
 
-mercury_module_name_to_mlds(MercuryModule)
-        = name(MLDS_Package, MLDS_Package) :-
-    (
-        mercury_std_library_module_name(MercuryModule)
-    ->
+mercury_module_name_to_mlds(MercuryModule) = Name :-
+    ( mercury_std_library_module_name(MercuryModule) ->
         MLDS_Package = add_outermost_qualifier("mercury", MercuryModule)
     ;
         MLDS_Package = MercuryModule
-    ).
+    ),
+    Name = mlds_module_name(MLDS_Package, MLDS_Package).
 
 is_std_lib_module(Module, Name) :-
-    Name0 = Module ^ module_name,
+    Name0 = Module ^ mmn_module_name,
     strip_outermost_qualifier(Name0, "mercury", Name),
     mercury_std_library_module_name(Name).
 
-mlds_module_name_to_sym_name(Module) = Module ^ module_name.
+mlds_module_name_to_sym_name(Module) = Module ^ mmn_module_name.
 
-mlds_module_name_to_package_name(Module) = Module ^ package_name.
+mlds_module_name_to_package_name(Module) = Module ^ mmn_package_name.
 
-mlds_append_class_qualifier(name(Package, Module), QualKind, Globals,
-            ClassName, ClassArity) =
-        name(Package, qualified(AdjustedModule, ClassQualifier)) :-
+mlds_append_class_qualifier(Target, mlds_module_name(Package, Module),
+        QualKind, ClassName, ClassArity) = Name :-
     % For the Java back-end, we flip the initial case of an type qualifiers,
     % in order to match the usual Java conventions.
     (
-        globals.get_target(Globals, CompilationTarget),
-        CompilationTarget = target_java,
+        Target = target_java,
         QualKind = type_qual
     ->
         AdjustedModule = flip_initial_case_of_final_part(Module)
     ;
         AdjustedModule = Module
     ),
-    string.format("%s_%d", [s(ClassName), i(ClassArity)], ClassQualifier).
+    string.format("%s_%d", [s(ClassName), i(ClassArity)], ClassQualifier),
+    Name = mlds_module_name(Package,
+        qualified(AdjustedModule, ClassQualifier)).
 
 mlds_append_wrapper_class(Name) = mlds_append_name(Name, wrapper_class_name).
 
-mlds_append_name(name(Package, Module), Name)
-    = name(Package, qualified(Module, Name)).
+mlds_append_name(mlds_module_name(Package, Module), Name)
+    = mlds_module_name(Package, qualified(Module, Name)).
 
 wrapper_class_name = "mercury_code".
 
@@ -2076,7 +2078,7 @@ constness_mask = constness_bits(const).
 :- func abstractness_bits(abstractness) = int.
 :- mode abstractness_bits(in) = out is det.
 :- mode abstractness_bits(out) = in is semidet.
-abstractness_bits(abstract)  = 0x00.
+abstractness_bits(abstract) = 0x00.
 abstractness_bits(concrete) = 0x80.
 
 :- func abstractness_mask = int.
@@ -2086,31 +2088,46 @@ abstractness_mask = abstractness_bits(concrete).
 % Here we define the functions to lookup a member of the set.
 %
 
-access(Flags) = promise_det(pred(Access::out) is semidet :-
-    Flags /\ access_mask = access_bits(Access)).
+access(Flags) = Access :-
+    ( Flags /\ access_mask = access_bits(AccessPrime) ->
+        Access = AccessPrime
+    ;
+        unexpected(this_file, "access: unknown bits")
+    ).
 
-per_instance(Flags) = promise_det(pred(PerInstance::out) is semidet :-
-    Flags /\ per_instance_mask = per_instance_bits(PerInstance)).
+per_instance(Flags) = PerInstance :-
+    ( Flags /\ per_instance_mask = per_instance_bits(PerInstancePrime) ->
+        PerInstance = PerInstancePrime
+    ;
+        unexpected(this_file, "per_instance: unknown bits")
+    ).
 
-virtuality(Flags) = promise_det(pred(Virtuality::out) is semidet :-
-    Flags /\ virtuality_mask = virtuality_bits(Virtuality)).
+virtuality(Flags) = Virtuality :-
+    ( Flags /\ virtuality_mask = virtuality_bits(VirtualityPrime) ->
+        Virtuality = VirtualityPrime
+    ;
+        unexpected(this_file, "virtuality: unknown bits")
+    ).
 
-finality(Flags) = promise_det(pred(Finality::out) is semidet :-
-    Flags /\ finality_mask = finality_bits(Finality)).
+finality(Flags) = Finality :-
+    ( Flags /\ finality_mask = finality_bits(FinalityPrime) ->
+        Finality = FinalityPrime
+    ;
+        unexpected(this_file, "per_instance: unknown bits")
+    ).
 
-constness(Flags) = promise_det(pred(Constness::out) is semidet :-
-    Flags /\ constness_mask = constness_bits(Constness)).
+constness(Flags) = Constness :-
+    ( Flags /\ constness_mask = constness_bits(ConstnessPrime) ->
+        Constness = ConstnessPrime
+    ;
+        unexpected(this_file, "per_instance: unknown bits")
+    ).
 
-abstractness(Flags) = promise_det(pred(Abstractness::out) is semidet :-
-    Flags /\ abstractness_mask = abstractness_bits(Abstractness)).
-
-:- func promise_det(pred(T)) = T.
-:- mode promise_det(pred(out) is semidet) = out is det.
-
-promise_det(Pred) = X :-
-    ( if    Pred(X0)
-      then  X = X0
-      else  unexpected(this_file, "promise_det failed")
+abstractness(Flags) = Abstractness :-
+    ( Flags /\ abstractness_mask = abstractness_bits(AbstractnessPrime) ->
+        Abstractness = AbstractnessPrime
+    ;
+        unexpected(this_file, "per_instance: unknown bits")
     ).
 
 %

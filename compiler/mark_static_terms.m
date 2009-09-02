@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2008 The University of Melbourne.
+% Copyright (C) 2000-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,20 +42,20 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
+:- import_module set_tree234.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
     % As we traverse the goal, we keep track of which variables are static at
-    % the current program point, and for each such variable, we keep
-    % information on how to construct it.
+    % the current program point.
     %
-:- type static_info == map(prog_var, static_cons).
+:- type static_info == set_tree234(prog_var).
 
 mark_static_terms(_ModuleInfo, !Proc) :-
     % The ModuleInfo argument is there just for passes_aux.
     proc_info_get_goal(!.Proc, Goal0),
-    map.init(StaticInfo0),
+    StaticInfo0 = set_tree234.init,
     goal_mark_static_terms(Goal0, Goal, StaticInfo0, _StaticInfo),
     proc_info_set_goal(Goal, !Proc).
 
@@ -154,14 +154,11 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
     (
         Unification0 = construct(Var, ConsId, ArgVars, D, HowToConstruct0,
             F, G),
-        (
-            % If all the arguments are static, then the newly constructed
-            % variable is static too.
-            list.map(map.search(!.StaticVars), ArgVars, StaticArgs)
-        ->
-            HowToConstruct = construct_statically(StaticArgs),
-            svmap.det_insert(Var, static_cons(ConsId, ArgVars, StaticArgs),
-                !StaticVars)
+        % If all the arguments are static, then the newly constructed variable
+        % is static too.
+        ( list.all_true(set_tree234.contains(!.StaticVars), ArgVars) ->
+            HowToConstruct = construct_statically,
+            set_tree234.insert(Var, !StaticVars)
         ;
             HowToConstruct = HowToConstruct0
         ),
@@ -193,12 +190,10 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
     ;
         Unification0 = assign(TargetVar, SourceVar),
         Unification = Unification0,
-        (
-            % If the variable being assign from is static,
-            % then the variable being assigned to is static too.
-            map.search(!.StaticVars, SourceVar, Data)
-        ->
-            svmap.det_insert(TargetVar, Data, !StaticVars)
+        % If the variable being assigned from is static, then the variable
+        % being assigned to is static too.
+        ( set_tree234.contains(!.StaticVars, SourceVar) ->
+            set_tree234.insert(TargetVar, !StaticVars)
         ;
             true
         )

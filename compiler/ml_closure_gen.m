@@ -37,8 +37,7 @@
     %
 :- pred ml_gen_closure(pred_id::in, proc_id::in, prog_var::in, prog_vars::in,
     list(uni_mode)::in, how_to_construct::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
     %   Context, WrapperFuncRval, WrapperFuncType):
@@ -101,6 +100,7 @@
 :- import_module ll_backend.stack_layout.      % for `represent_locn_as_int'
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_call_gen.
+:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.builtin_lib_types.
@@ -113,13 +113,15 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
 
 ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
-        Decls, Statements, !Info) :-
+        Statements, !Info) :-
     % This constructs a closure.
     % The representation of closures for the LLDS backend is defined in
     % runtime/mercury_ho_call.h.
@@ -127,9 +129,9 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     % in the MLDS backend?
 
     % Generate a value for the closure layout; this is a static constant
-    % that holds information about how the structure of this closure.
-    ml_gen_closure_layout(PredId, ProcId, Context, ClosureLayoutRval0,
-        ClosureLayoutType0, ClosureLayoutDecls, !Info),
+    % that holds information about the structure of this closure.
+    ml_gen_closure_layout(PredId, ProcId, Context,
+        ClosureLayoutRval0, ClosureLayoutType0, !Info),
 
     % Generate a wrapper function which just unboxes the arguments and then
     % calls the specified procedure, and put the address of the wrapper
@@ -161,19 +163,13 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     % The pointer will not be tagged (i.e. the tag will be zero).
     MaybeConsId = no,
     MaybeConsName = no,
-    PrimaryTag = 0,
-    MaybeSecondaryTag = no,
+    PTag = 0,
+    MaybeSTag = no,
 
     % Generate a `new_object' statement (or static constant) for the closure.
-    ml_gen_new_object(MaybeConsId, PrimaryTag, MaybeSecondaryTag,
-        MaybeConsName, Var, ExtraArgRvals, ExtraArgTypes, ArgVars,
-        ArgModes, [], HowToConstruct, Context, Decls0, Statements, !Info),
-    Decls1 = ClosureLayoutDecls ++ Decls0,
-    % We sometimes generates two definitions of the same RTTI constant
-    % in ml_gen_closure_layout (e.g. two definitions of the same
-    % pseudo_type_info).  To avoid generating invalid MLDS code,
-    % we need to check for and eliminate any duplicate definitions here.
-    Decls = list.remove_dups(Decls1).
+    ml_gen_new_object(MaybeConsId, MaybeConsName, PTag, MaybeSTag,
+        Var, ExtraArgRvals, ExtraArgTypes, ArgVars, ArgModes, [],
+        HowToConstruct, Context, Statements, !Info).
 
     % Generate a value for the closure layout struct.
     % See MR_Closure_Layout in ../runtime/mercury_ho_call.h.
@@ -182,56 +178,59 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     % any changes here may need to be reflected there, and vice versa.
     %
 :- pred ml_gen_closure_layout(pred_id::in, proc_id::in, prog_context::in,
-    mlds_rval::out, mlds_type::out, list(mlds_defn)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    mlds_rval::out, mlds_type::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_closure_layout(PredId, ProcId, Context,
-        ClosureLayoutRval, ClosureLayoutType, ClosureLayoutDefns, !Info) :-
+        ClosureLayoutRval, ClosureLayoutType, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     continuation_info.generate_closure_layout(ModuleInfo, PredId, ProcId,
         ClosureLayoutInfo),
 
-    ml_gen_closure_proc_id(ModuleInfo, Context, InitProcId, ProcIdType,
-        ClosureProcIdDefns),
+    some [!GlobalData] (
+        ml_gen_info_get_global_data(!.Info, !:GlobalData),
 
-    ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
-    ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
-        InitClosureArgs, ClosureArgTypes, ClosureArgDefns),
-    ml_gen_info_new_const(TvarVectorSeqNum, !Info),
-    ml_format_static_const_name(!.Info, "typevar_vector", TvarVectorSeqNum,
-        TvarVectorName),
-    ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName,
-        Context, TVarLocnMap, TVarVectorRval, TVarVectorType, TVarDefns),
-    InitTVarVector = init_obj(ml_unop(box(TVarVectorType), TVarVectorRval)),
-    Inits = [InitProcId, InitTVarVector | InitClosureArgs],
-    _ArgTypes = [ProcIdType, TVarVectorType | ClosureArgTypes],
+        ml_gen_closure_proc_id(ModuleInfo, Context, InitProcId, _ProcIdType,
+            !GlobalData),
 
-    ml_gen_info_new_const(LayoutSeqNum, !Info),
-    ml_format_static_const_name(!.Info, "closure_layout", LayoutSeqNum, Name),
-    Access = acc_local,
-    Initializer = init_array(Inits),
-    % XXX There's no way in C to properly represent this type,
-    % since it is a struct that ends with a variable-length array.
-    % For now we just treat the whole struct as an array.
-    ClosureLayoutType = mlds_array_type(mlds_generic_type),
-    ClosureLayoutDefn = ml_gen_static_const_defn(Name, ClosureLayoutType,
-        Access, Initializer, Context),
-    ClosureLayoutDefns = ClosureProcIdDefns ++ TVarDefns ++
-        ClosureArgDefns ++ [ClosureLayoutDefn],
+        ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
+        ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
+            ClosureArgInitsAndTypes, !GlobalData),
+        assoc_list.keys(ClosureArgInitsAndTypes, ClosureArgInits), 
+
+        ml_stack_layout_construct_tvar_vector(ModuleInfo, "typevar_vector",
+            Context, TVarLocnMap, TVarVectorRval, TVarVectorType, !GlobalData),
+        InitTVarVector =
+            init_obj(ml_unop(box(TVarVectorType), TVarVectorRval)),
+        Inits = [InitProcId, InitTVarVector | ClosureArgInits],
+        % _ArgTypes = [ProcIdType, TVarVectorType | ClosureArgTypes],
+
+        % XXX There's no way in C to properly represent this type,
+        % since it is a struct that ends with a variable-length array.
+        % For now we just treat the whole struct as an array.
+        ClosureLayoutType = mlds_array_type(mlds_generic_type),
+        ml_gen_static_const_defn("closure_layout", ClosureLayoutType,
+            acc_private, init_array(Inits), Context, ClosureLayoutVarName,
+            !GlobalData),
+
+        ml_gen_info_set_global_data(!.GlobalData, !Info)
+    ),
+
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ClosureLayoutRval = ml_lval(
-        ml_var(qual(MLDS_ModuleName, module_qual, Name), ClosureLayoutType)).
+    ClosureLayoutVar =
+        qual(MLDS_ModuleName, module_qual, ClosureLayoutVarName),
+    ClosureLayoutRval = ml_lval(ml_var(ClosureLayoutVar, ClosureLayoutType)).
 
 :- pred ml_gen_closure_proc_id(module_info::in, prog_context::in,
-    mlds_initializer::out, mlds_type::out, list(mlds_defn)::out) is det.
+    mlds_initializer::out, mlds_type::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_closure_proc_id(_ModuleInfo, _Context, InitProcId, ProcIdType,
-        ClosureProcIdDefns) :-
+        !GlobalData) :-
     % XXX currently we don't fill in the ProcId field!
     InitProcId = init_obj(ml_const(mlconst_null(ProcIdType))),
-    ProcIdType = mlds_generic_type,
-    ClosureProcIdDefns = [].
+    ProcIdType = mlds_generic_type.
+
 %   module_info_get_name(ModuleInfo, ModuleName),
 %   term.context_file(Context, FileName),
 %   term.context_line(Context, LineNumber),
@@ -248,28 +247,26 @@ ml_gen_closure_proc_id(_ModuleInfo, _Context, InitProcId, ProcIdType,
 %   % ProcIdType = ...
 
 :- pred ml_stack_layout_construct_closure_args(module_info::in,
-    list(closure_arg_info)::in, list(mlds_initializer)::out,
-    list(mlds_type)::out, list(mlds_defn)::out) is det.
+    list(closure_arg_info)::in, assoc_list(mlds_initializer, mlds_type)::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
 ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
-        ClosureArgInits, ClosureArgTypes, Defns) :-
+        ClosureArgInits, !GlobalData) :-
     list.map_foldl(ml_stack_layout_construct_closure_arg_rval(ModuleInfo),
-        ClosureArgs, ArgInitsAndTypes, [], Defns),
-    assoc_list.keys(ArgInitsAndTypes, ArgInits),
-    assoc_list.values(ArgInitsAndTypes, ArgTypes),
-    Length = list.length(ArgInits),
+        ClosureArgs, ArgInitsAndTypes, !GlobalData),
+    Length = list.length(ArgInitsAndTypes),
     LengthRval = ml_const(mlconst_int(Length)),
-    LengthType = mlds_native_int_type,
     CastLengthRval = ml_unop(box(LengthType), LengthRval),
-    ClosureArgInits = [init_obj(CastLengthRval) | ArgInits],
-    ClosureArgTypes = [LengthType | ArgTypes].
+    LengthType = mlds_native_int_type,
+    LengthInitAndType = init_obj(CastLengthRval) - LengthType,
+    ClosureArgInits = [LengthInitAndType | ArgInitsAndTypes].
 
 :- pred ml_stack_layout_construct_closure_arg_rval(module_info::in,
     closure_arg_info::in, pair(mlds_initializer, mlds_type)::out,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
+    ml_global_data::in, ml_global_data::out) is det.
 
 ml_stack_layout_construct_closure_arg_rval(ModuleInfo, ClosureArg,
-        ArgInit - ArgType, !Defns) :-
+        ArgInit - ArgType, !GlobalData) :-
     ClosureArg = closure_arg_info(Type, _Inst),
 
     % For a stack layout, we can treat all type variables as universally
@@ -278,53 +275,55 @@ ml_stack_layout_construct_closure_arg_rval(ModuleInfo, ClosureArg,
     % we can take the variable number directly from the procedure's tvar set.
     ExistQTvars = [],
     NumUnivQTvars = -1,
-
     pseudo_type_info.construct_pseudo_type_info(Type, NumUnivQTvars,
         ExistQTvars, PseudoTypeInfo),
     ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, ArgRval, ArgType,
-        !Defns),
+        !GlobalData),
     CastArgRval = ml_unop(box(ArgType), ArgRval),
     ArgInit = init_obj(CastArgRval).
 
 :- pred ml_gen_maybe_pseudo_type_info_defn(module_info::in,
-    rtti_maybe_pseudo_type_info::in, list(mlds_defn)::in, list(mlds_defn)::out)
-    is det.
+    rtti_maybe_pseudo_type_info::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, MaybePTI, !Defns) :-
-    ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePTI, _Rval, _Type, !Defns).
+ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, MaybePTI,
+        !GlobalData) :-
+    ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePTI, _Rval, _Type,
+        !GlobalData).
 
 :- pred ml_gen_pseudo_type_info_defn(module_info::in,
-    rtti_pseudo_type_info::in, list(mlds_defn)::in, list(mlds_defn)::out)
-    is det.
+    rtti_pseudo_type_info::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_pseudo_type_info_defn(ModuleInfo, PTI, !Defns) :-
-    ml_gen_pseudo_type_info(ModuleInfo, PTI, _Rval, _Type, !Defns).
+ml_gen_pseudo_type_info_defn(ModuleInfo, PTI, !GlobalData) :-
+    ml_gen_pseudo_type_info(ModuleInfo, PTI, _Rval, _Type, !GlobalData).
 
 :- pred ml_gen_type_info_defn(module_info::in, rtti_type_info::in,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_type_info_defn(ModuleInfo, TI, !Defns) :-
-    ml_gen_type_info(ModuleInfo, TI, _Rval, _Type, !Defns).
+ml_gen_type_info_defn(ModuleInfo, TI, !GlobalData) :-
+    ml_gen_type_info(ModuleInfo, TI, _Rval, _Type, !GlobalData).
 
 :- pred ml_gen_maybe_pseudo_type_info(module_info::in,
     rtti_maybe_pseudo_type_info::in, mlds_rval::out, mlds_type::out,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
+    ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePseudoTypeInfo, Rval, Type,
-        !Defns) :-
+        !GlobalData) :-
     (
         MaybePseudoTypeInfo = pseudo(PseudoTypeInfo),
-        ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns)
+        ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type,
+            !GlobalData)
     ;
         MaybePseudoTypeInfo = plain(TypeInfo),
-        ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns)
+        ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !GlobalData)
     ).
 
 :- pred ml_gen_pseudo_type_info(module_info::in, rtti_pseudo_type_info::in,
-    mlds_rval::out, mlds_type::out, list(mlds_defn)::in, list(mlds_defn)::out)
-    is det.
+    mlds_rval::out, mlds_type::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
+ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !GlobalData) :-
     (
         PseudoTypeInfo = type_var(N),
         % Type variables are represented just as integers.
@@ -338,43 +337,55 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
         (
             PseudoTypeInfo = plain_arity_zero_pseudo_type_info(RttiTypeCtor0),
             % For zero-arity types, we just generate a reference to the
-            % already-existing type_ctor_info.
+            % type_ctor_info, which will always be generated by other code.
+            % (mercury_compile.m has code to generate type_ctor_infos for
+            % all type definitions in the module.)
             RttiName = type_ctor_type_ctor_info,
             RttiTypeCtor0 = rtti_type_ctor(ModuleName0, _, _),
             ModuleName = fixup_builtin_module(ModuleName0),
             RttiTypeCtor = RttiTypeCtor0,
-            RttiId = ctor_rtti_id(RttiTypeCtor, RttiName)
+            RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
+
+            MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
+            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Type = mlds_rtti_type(item_type(RttiId))
         ;
             ( PseudoTypeInfo = plain_pseudo_type_info(_, _)
             ; PseudoTypeInfo = var_arity_pseudo_type_info(_, _)
             ),
             % For other types, we need to generate a definition of the
-            % pseudo_type_info for that type, in the the current module.
-            module_info_get_name(ModuleInfo, ModuleName),
+            % pseudo_type_info for that type, in the current module.
             RttiData = rtti_data_pseudo_type_info(PseudoTypeInfo),
             rtti_data_to_id(RttiData, RttiId),
-            RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo, [RttiData]),
-            % rtti_data_list_to_mlds assumes that the result will be
-            % at file scope, but here we're generating it as a local,
-            % so we need to convert the access to `local'.
-            RttiDefns = list.map(convert_to_local, RttiDefns0),
-            !:Defns = RttiDefns ++ !.Defns,
-            % Generate definitions of any type_infos and pseudo_type_infos
-            % referenced by this pseudo_type_info.
-            list.foldl(ml_gen_maybe_pseudo_type_info_defn(ModuleInfo),
-                arg_maybe_pseudo_type_infos(PseudoTypeInfo), !Defns)
-        ),
-        MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        Rval = ml_const(mlconst_data_addr(data_addr(MLDS_ModuleName,
-            mlds_rtti(RttiId)))),
-        Type = mlds_rtti_type(item_type(RttiId))
+
+            ml_global_data_get_pdup_rval_type_map(!.GlobalData,
+                PDupRvalTypeMap),
+            ( map.search(PDupRvalTypeMap,  RttiId, OldRvalType) ->
+                OldRvalType = ml_rval_and_type(Rval, Type)
+            ;
+                module_info_get_name(ModuleInfo, ModuleName),
+                MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+                DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
+                Rval = ml_const(mlconst_data_addr(DataAddr)),
+                Type = mlds_rtti_type(item_type(RttiId)),
+
+                add_rtti_data_to_mlds(ModuleInfo, RttiData, !GlobalData),
+
+                % Generate definitions of any type_infos and pseudo_type_infos
+                % referenced by this pseudo_type_info.
+                % ZZZ is this guaranteed to add nothing?
+                list.foldl(ml_gen_maybe_pseudo_type_info_defn(ModuleInfo),
+                    arg_maybe_pseudo_type_infos(PseudoTypeInfo), !GlobalData)
+            )
+        )
     ).
 
 :- pred ml_gen_type_info(module_info::in, rtti_type_info::in,
-    mlds_rval::out, mlds_type::out, list(mlds_defn)::in, list(mlds_defn)::out)
-    is det.
+    mlds_rval::out, mlds_type::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
+ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !GlobalData) :-
     (
         TypeInfo = plain_arity_zero_type_info(RttiTypeCtor0),
         % For zero-arity types, we just generate a reference to the
@@ -382,30 +393,40 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
         RttiName = type_ctor_type_ctor_info,
         RttiTypeCtor0 = rtti_type_ctor(ModuleName0, _, _),
         ModuleName = fixup_builtin_module(ModuleName0),
-        RttiId = ctor_rtti_id(RttiTypeCtor0, RttiName)
+        RttiId = ctor_rtti_id(RttiTypeCtor0, RttiName),
+
+        MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+        DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
+        Rval = ml_const(mlconst_data_addr(DataAddr)),
+        Type = mlds_rtti_type(item_type(RttiId))
     ;
         ( TypeInfo = plain_type_info(_, _)
         ; TypeInfo = var_arity_type_info(_, _)
         ),
         % For other types, we need to generate a definition of the type_info
         % for that type, in the the current module.
-        module_info_get_name(ModuleInfo, ModuleName),
         RttiData = rtti_data_type_info(TypeInfo),
         rtti_data_to_id(RttiData, RttiId),
-        RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo, [RttiData]),
-        % rtti_data_list_to_mlds assumes that the result will be at file scope,
-        % but here we're generating it as a local, so we need to convert
-        % the access to `local'.
-        RttiDefns = list.map(convert_to_local, RttiDefns0),
-        !:Defns = RttiDefns ++ !.Defns,
-        % Generate definitions of any type_infos referenced by this type_info.
-        list.foldl(ml_gen_type_info_defn(ModuleInfo),
-            arg_type_infos(TypeInfo), !Defns)
-    ),
-    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    Rval = ml_const(mlconst_data_addr(data_addr(MLDS_ModuleName,
-        mlds_rtti(RttiId)))),
-    Type = mlds_rtti_type(item_type(RttiId)).
+
+        ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
+        ( map.search(PDupRvalTypeMap,  RttiId, OldRvalType) ->
+            OldRvalType = ml_rval_and_type(Rval, Type)
+        ;
+            module_info_get_name(ModuleInfo, ModuleName),
+            MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+            DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
+            Rval = ml_const(mlconst_data_addr(DataAddr)),
+            Type = mlds_rtti_type(item_type(RttiId)),
+
+            add_rtti_data_to_mlds(ModuleInfo, RttiData, !GlobalData),
+
+            % Generate definitions of any type_infos referenced
+            % by this type_info.
+            % ZZZ is this guaranteed to add nothing?
+            list.foldl(ml_gen_type_info_defn(ModuleInfo),
+                arg_type_infos(TypeInfo), !GlobalData)
+        )
+    ).
 
 :- func arg_maybe_pseudo_type_infos(rtti_pseudo_type_info)
     = list(rtti_maybe_pseudo_type_info).
@@ -423,35 +444,27 @@ arg_type_infos(plain_arity_zero_type_info(_)) = [].
 arg_type_infos(plain_type_info(_TypeCtor, ArgTIs)) = ArgTIs.
 arg_type_infos(var_arity_type_info(_VarArityId, ArgTIs)) = ArgTIs.
 
-:- func convert_to_local(mlds_defn) = mlds_defn.
-
-convert_to_local(mlds_defn(Name, Context, Flags0, Body)) =
-        mlds_defn(Name, Context, Flags, Body) :-
-    Flags = set_access(Flags0, acc_local).
-
 :- pred ml_stack_layout_construct_tvar_vector(module_info::in,
-    mlds_var_name::in, prog_context::in, map(tvar, set(layout_locn))::in,
-    mlds_rval::out, mlds_type::out, list(mlds_defn)::out) is det.
+    string::in, prog_context::in, map(tvar, set(layout_locn))::in,
+    mlds_rval::out, mlds_type::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
-        TVarLocnMap, MLDS_Rval, ArrayType, Defns) :-
+ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorNameStr, Context,
+        TVarLocnMap, MLDS_Rval, ArrayType, !GlobalData) :-
     ArrayType = mlds_array_type(mlds_native_int_type),
     ( map.is_empty(TVarLocnMap) ->
-        MLDS_Rval = ml_const(mlconst_null(ArrayType)),
-        Defns = []
+        MLDS_Rval = ml_const(mlconst_null(ArrayType))
     ;
-        Access = acc_local,
         ml_stack_layout_construct_tvar_rvals(TVarLocnMap, Vector,
             _VectorTypes),
         Initializer = init_array(Vector),
-        Defn = ml_gen_static_const_defn(TvarVectorName, ArrayType,
-            Access, Initializer, Context),
-        Defns = [Defn],
+        ml_gen_static_const_defn(TvarVectorNameStr, ArrayType, acc_private,
+            Initializer, Context, TvarVectorName, !GlobalData),
         module_info_get_name(ModuleInfo, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        MLDS_Rval = ml_lval(ml_var(
+        QualTvarVectorName =
             qual(MLDS_ModuleName, module_qual, TvarVectorName),
-            ArrayType))
+        MLDS_Rval = ml_lval(ml_var(QualTvarVectorName, ArrayType))
     ).
 
 :- pred ml_stack_layout_construct_tvar_rvals(map(tvar, set(layout_locn))::in,
@@ -931,7 +944,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ml_gen_wrapper_func(WrapperFuncName, WrapperParams, Context,
         WrapperFuncBody, WrapperFunc, !Info),
     WrapperFuncType = mlds_func_type(WrapperParams),
-    ml_gen_info_add_extra_defn(WrapperFunc, !Info).
+    ml_gen_info_add_closure_wrapper_defn(WrapperFunc, !Info).
 
 :- func arg_delete_gc_statement(mlds_argument) = mlds_argument.
 
@@ -968,8 +981,8 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
         ClosureKind = special_pred_closure,
         unexpected(this_file, "gen_closure_gc_statement: special_pred_closure")
     ),
-    ml_gen_gc_statement(ClosureName, ClosureDeclType,
-        ClosureActualType, Context, ClosureGCStatement, !Info).
+    ml_gen_gc_statement_poly(ClosureName, ClosureDeclType, ClosureActualType,
+        Context, ClosureGCStatement, !Info).
 
 :- pred ml_gen_wrapper_func(ml_label_func::in, mlds_func_params::in,
     prog_context::in, statement::in, mlds_defn::out,
@@ -1151,16 +1164,12 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
     ;
         ClosureKind = typeclass_info_closure,
         ml_gen_closure_layout(PredId, ProcId, Context,
-            ClosureLayoutRval, ClosureLayoutType,
-            ClosureLayoutDefns, !Info),
+            ClosureLayoutRval, ClosureLayoutType, !Info),
         ClosureLayoutPtrGCInit = statement(
-            ml_stmt_block(
-                ClosureLayoutDefns,
-                [statement(ml_stmt_atomic(
-                    assign(ClosureLayoutPtrLval,
-                        ml_unop(box(ClosureLayoutType), ClosureLayoutRval)
-                    )), MLDS_Context)]
-            ), MLDS_Context),
+            ml_stmt_atomic(
+                assign(ClosureLayoutPtrLval,
+                    ml_unop(box(ClosureLayoutType), ClosureLayoutRval))),
+            MLDS_Context),
         TypeParamsGCInitFragments = [
             target_code_output(TypeParamsLval),
             raw_target_code(" = (MR_Box) " ++

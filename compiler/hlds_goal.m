@@ -470,8 +470,8 @@
             % superhomogeneous form. The variable specifies what the
             % compiler calls that ground term.
             %
-            % This kind of scope is not intended to be meaningful after
-            % mode analysis, and should be removed after mode analysis.
+            % This kind of scope is intended to be meaningful after
+            % mode analysis only if Kind = from_ground_term_construct.
 
     ;       trace_goal(
                 trace_compiletime   :: maybe(trace_expr(trace_compiletime)),
@@ -650,29 +650,33 @@
     --->    rhs_var(prog_var)
     ;       rhs_functor(
                 rhs_functor         :: cons_id,
+                % The `is_existential_construction' field is only used
+                % after polymorphism.m strips off the `new ' prefix from
+                % existentially typed constructions.
                 rhs_is_exist_constr :: is_existential_construction,
-                                    % The `is_existential_construction' field
-                                    % is only used after polymorphism.m strips
-                                    % off the `new ' prefix from existentially
-                                    % typed constructions.
                 rhs_args            :: list(prog_var)
             )
     ;       rhs_lambda_goal(
                 rhs_purity          :: purity,
+
+                % Whether this closure is `ground' or `any'.
                 rhs_groundness      :: ho_groundness,
-                                    % Whether this closure is `ground' or
-                                    % `any'.
+
                 rhs_p_or_f          :: pred_or_func,
+
+                % Currently, we don't support any other value than `normal'.
                 rhs_eval_method     :: lambda_eval_method,
-                                    % Currently, we don't support any other
-                                    % value than `normal'.
+
+                % Non-locals of the goal excluding the lambda quantified
+                % variables.
                 rhs_nonlocals       :: list(prog_var),
-                                    % Non-locals of the goal excluding
-                                    % the lambda quantified variables.
+
+                % Lambda quantified variables.
                 rhs_lambda_quant_vars :: list(prog_var),
-                                    % Lambda quantified variables.
+
+                % Modes of the lambda quantified variables.
                 rhs_lambda_modes    :: list(mer_mode),
-                                    % Modes of the lambda quantified variables.
+
                 rhs_detism          :: determinism,
                 rhs_lambda_goal     :: hlds_goal
             ).
@@ -716,42 +720,31 @@
                 % e.g. Y = f(X) where the top node of Y is output,
                 % Constructions are written using `:=', e.g. Y := f(X).
 
+                % The variable being constructed, e.g. Y in above example.
                 construct_cell_var      :: prog_var,
-                                        % The variable being constructed,
-                                        % e.g. Y in above example.
 
+                % The cons_id of the functor f/1 in the above example.
                 construct_cons_id       :: cons_id,
-                                        % The cons_id of the functor
-                                        % f/1 in the above example.
 
+                % The list of argument variables; [X] in the above example.
+                % For a unification with a lambda expression, this is the list
+                % of the non-local variables of the lambda expression.
                 construct_args          :: list(prog_var),
-                                        % The list of argument variables
-                                        % [X] in the above example
-                                        % For a unification with a lambda
-                                        % expression, this is the list of
-                                        % the non-local variables of the
-                                        % lambda expression.
 
+                % The list of modes of the arguments sub-unifications.
+                % For a unification with a lambda expression, this is the list
+                % of modes of the non-local variables of the lambda expression.
                 construct_arg_modes     :: list(uni_mode),
-                                        % The list of modes of the arguments
-                                        % sub-unifications.
-                                        % For a unification with a lambda
-                                        % expression, this is the list of
-                                        % modes of the non-local variables
-                                        % of the lambda expression.
 
+                % Specify whether to allocate statically, to allocate
+                % dynamically (and if so, on the heap or in a region),
+                % or to reuse an existing cell (and if so, which cell).
+                % Constructions for which this field is `reuse_cell(_)'
+                % are described as "reconstructions".
                 construct_how           :: how_to_construct,
-                                        % Specify whether to allocate
-                                        % statically, to allocate dynamically,
-                                        % or to reuse an existing cell
-                                        % (and if so, which cell).
-                                        % Constructions for which this
-                                        % field is `reuse_cell(_)' are
-                                        % described as "reconstructions".
 
+                % Can the cell be allocated in shared data.
                 construct_is_unique     :: cell_is_unique,
-                                        % Can the cell be allocated
-                                        % in shared data.
 
                 construct_sub_info      :: construct_sub_info
             )
@@ -764,30 +757,24 @@
                 % Note that deconstruction of lambda expressions is
                 % a mode error.
 
+                % The variable being deconstructed, e.g. Y in the example.
                 deconstruct_cell_var    :: prog_var,
-                                        % The variable being deconstructed
-                                        % e.g. Y in the above example.
 
+                % The cons_id of the functor, e.g. f/1 in the example.
                 deconstruct_cons_id     :: cons_id,
-                                        % The cons_id of the functor,
-                                        % e.g. f/1 in the above example
 
+                % The list of argument variables, e.g. [X] in the example.
                 deconstruct_args        :: list(prog_var),
-                                        % The list of argument variables,
-                                        % e.g. [X] in the above example.
 
+                % The lists of modes of the argument sub-unifications.
                 deconstruct_arg_modes   :: list(uni_mode),
-                                        % The lists of modes of the argument
-                                        % sub-unifications.
 
+                % Whether or not the unification could possibly fail.
                 deconstruct_can_fail    :: can_fail,
-                                        % Whether or not the unification
-                                        % could possibly fail.
 
+                % Can compile time GC this cell, i.e. explicitly deallocate it
+                % after the deconstruction.
                 deconstruct_can_cgc     :: can_cgc
-                                        % Can compile time GC this cell,
-                                        % i.e. explicitly deallocate it
-                                        % after the deconstruction.
             )
 
     ;       assign(
@@ -800,7 +787,7 @@
     ;       simple_test(
                 % Y = X where the type of X and Y is an atomic type and
                 % they are both input, written Y == X.
-                %
+
                 test_var1               :: prog_var,
                 test_var2               :: prog_var
             )
@@ -812,12 +799,11 @@
                 % out-of-line call to a compiler generated unification
                 % predicate for that type & mode.
 
+                % The mode of the unification.
                 compl_unify_mode        :: uni_mode,
-                                        % The mode of the unification.
 
+                % Whether or not it could possibly fail.
                 compl_unify_can_fail    :: can_fail,
-                                        % Whether or not it could possibly
-                                        % fail.
 
                 % When unifying polymorphic types such as map/2, we need to
                 % pass type_info variables to the unification procedure for
@@ -831,10 +817,9 @@
                 % It is also checked by simplify.m when it converts
                 % complicated unifications into procedure calls.
 
+                % The type_info variables needed by this unification,
+                % if it ends up being a complicated unify.
                 compl_unify_typeinfos   :: list(prog_var)
-                                        % The type_info variables needed
-                                        % by this unification, if it ends up
-                                        % being a complicated unify.
             ).
 
 :- type term_size_value
@@ -924,10 +909,8 @@
     % back-end, the same optimization is handled by var_locn.m).
     %
 :- type how_to_construct
-    --->    construct_statically(
-                % Use a statically initialized constant.
-                args :: list(static_cons)
-            )
+    --->    construct_statically
+            % Create a static constant in the target language.
 
     ;       construct_dynamically
             % Allocate a new term on the heap.
@@ -937,18 +920,6 @@
 
     ;       reuse_cell(cell_to_reuse).
             % Reuse an existing heap cell.
-
-    % Information on how to construct an argument for a static construction
-    % unification. Each such argument must itself have been constructed
-    % statically; we store here a subset of the fields of the original
-    % `construct' unification for the arg. This is used by the MLDS back-end.
-    %
-:- type static_cons
-    --->    static_cons(
-                cons_id,       % The cons_id of the functor.
-                list(prog_var),     % The list of arg variables.
-                list(static_cons)   % How to construct the args.
-            ).
 
     % Information used to perform structure reuse on a cell.
     %
@@ -2537,17 +2508,8 @@ rename_unify(Must, Subn, Unify0, Unify) :-
             How0 = construct_dynamically,
             How = How0
         ;
-            How0 = construct_statically(StaticConss0),
-            % XXX This is a potential performance bug. The code that constructs
-            % a ground term with N function symbols will have N construct
-            % unifications with their How0 set to construct_statically, and
-            % they will have an average of N/2 static_cons terms. The cost of
-            % renaming all the variables in them is thus proportional to N^2.
-            % We should look into removing the variables from static_cons
-            % terms, to avoid the need for this renaming.
-            list.map(rename_var_in_static_cons(Must, Subn),
-                StaticConss0, StaticConss),
-            How = construct_statically(StaticConss)
+            How0 = construct_statically,
+            How = How0
         ;
             How0 = construct_in_region(RegVar0),
             rename_var(Must, Subn, RegVar0, RegVar),
@@ -2596,15 +2558,6 @@ rename_unify(Must, Subn, Unify0, Unify) :-
         rename_var_list(Must, Subn, TypeInfoVars0, TypeInfoVars),
         Unify = complicated_unify(Modes, Cat, TypeInfoVars)
     ).
-
-:- pred rename_var_in_static_cons(must_rename::in, prog_var_renaming::in,
-    static_cons::in, static_cons::out) is det.
-
-rename_var_in_static_cons(Must, Subn, StaticCons0, StaticCons) :-
-    StaticCons0 = static_cons(ConsId, ArgVars0, ArgConss0),
-    list.map(rename_var(Must, Subn), ArgVars0, ArgVars),
-    list.map(rename_var_in_static_cons(Must, Subn), ArgConss0, ArgConss),
-    StaticCons = static_cons(ConsId, ArgVars, ArgConss).
 
 :- pred rename_generic_call(must_rename::in, prog_var_renaming::in,
     generic_call::in, generic_call::out) is det.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,7 +122,7 @@ parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !Var) :-
     % Next, parse it.
     (
         term.coerce(Term, ProgTerm),
-        sym_name_and_args(ProgTerm, SymName, Args0)
+        parse_sym_name_and_args(ProgTerm, SymName, Args0)
     ->
         % First check for the special cases:
         (

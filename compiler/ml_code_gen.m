@@ -96,7 +96,7 @@
 %
 % means that in the situation described by [situation],
 % for the the specified [construct] we will generate the specified [code].
-
+%
 % There is one other important thing which can be considered part of the
 % calling convention for the code that we generate for each goal.
 % If static ground term optimization is enabled, then for the terms
@@ -714,7 +714,6 @@
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -722,7 +721,7 @@
 
     % Generate MLDS code for an entire module.
     %
-:- pred ml_code_gen(module_info::in, mlds::out, io::di, io::uo) is det.
+:- pred ml_code_gen(module_info::in, module_info::out, mlds::out) is det.
 
     % Generate MLDS code for the specified goal in the specified code model.
     % Return the result as a single statement (which may be a block statement
@@ -739,8 +738,21 @@
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % ml_gen_wrap_goal(OuterCodeModel, InnerCodeModel, Context,
-    %   Statements0, Statements):
+    % Generate code for a goal that is one branch of a branched control
+    % structure. At the end of the branch, we need to forget what we learned
+    % during the branch about which variables are bound to constants,
+    % since those variables may not be bound to constants (at least not the
+    % same constants) in parallel branches, or in code after the branched
+    % control if control did not go through this branch.
+    %
+:- pred ml_gen_goal_as_branch(code_model::in, hlds_goal::in,
+    list(mlds_defn)::out, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_goal_as_branch_block(code_model::in, hlds_goal::in,
+    statement::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+    % ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel,
+    %   Context, Statements0, Statements, !Info):
     %
     % OuterCodeModel is the code model expected by the context in which a goal
     % is called. InnerCodeModel is the code model which the goal actually has.
@@ -748,8 +760,8 @@
     % InnerCodeModel into code that uses the calling convention appropriate
     % for OuterCodeModel.
     %
-:- pred ml_gen_wrap_goal(code_model::in, code_model::in, prog_context::in,
-    list(statement)::in, list(statement)::out,
+:- pred ml_gen_maybe_convert_goal_code_model(code_model::in, code_model::in,
+    prog_context::in, list(statement)::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate declarations for a list of local variables.
@@ -774,12 +786,14 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
+:- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_switch_gen.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_unify_gen.
@@ -793,6 +807,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
 :- import_module std_util.
@@ -801,27 +816,27 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-ml_code_gen(ModuleInfo, MLDS, !IO) :-
-    module_info_get_name(ModuleInfo, ModuleName),
-    ml_gen_foreign_code(ModuleInfo, ForeignCode, !IO),
-    ml_gen_imports(ModuleInfo, Imports),
-    ml_gen_defns(ModuleInfo, Defns, !IO),
-    ml_gen_exported_enums(ModuleInfo, ExportedEnums, !IO),
-    module_info_user_init_pred_c_names(ModuleInfo, InitPreds),
-    module_info_user_final_pred_c_names(ModuleInfo, FinalPreds),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns,
+ml_code_gen(!ModuleInfo, MLDS) :-
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    ml_gen_foreign_code(!.ModuleInfo, ForeignCode),
+    ml_gen_imports(!.ModuleInfo, Imports),
+    ml_gen_defns(!ModuleInfo, Defns, GlobalData),
+    ml_gen_exported_enums(!.ModuleInfo, ExportedEnums),
+    module_info_user_init_pred_c_names(!.ModuleInfo, InitPreds),
+    module_info_user_final_pred_c_names(!.ModuleInfo, FinalPreds),
+    MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData, Defns,
         InitPreds, FinalPreds, ExportedEnums).
 
 :- pred ml_gen_foreign_code(module_info::in,
-    map(foreign_language, mlds_foreign_code)::out,
-    io::di, io::uo) is det.
+    map(foreign_language, mlds_foreign_code)::out) is det.
 
-ml_gen_foreign_code(ModuleInfo, AllForeignCode, !IO) :-
+ml_gen_foreign_code(ModuleInfo, AllForeignCode) :-
     module_info_get_foreign_decl(ModuleInfo, ForeignDecls),
     module_info_get_foreign_import_module(ModuleInfo, ForeignImports),
     module_info_get_foreign_body_code(ModuleInfo, ForeignBodys),
     module_info_get_pragma_exported_procs(ModuleInfo, ForeignExports),
-    globals.io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
 
     WantedForeignImports = list.condense(
         list.map((func(L) = Imports :-
@@ -922,13 +937,13 @@ foreign_type_required_imports(Target, TypeDefn) = Imports :-
         unexpected(this_file, "foreign_type_required_imports: target erlang")
     ).
 
-:- pred ml_gen_defns(module_info::in, list(mlds_defn)::out, io::di, io::uo)
-    is det.
+:- pred ml_gen_defns(module_info::in, module_info::out,
+    list(mlds_defn)::out, ml_global_data::out) is det.
 
-ml_gen_defns(ModuleInfo, Defns, !IO) :-
-    ml_gen_types(ModuleInfo, TypeDefns, !IO),
-    ml_gen_table_structs(ModuleInfo, TableStructDefns),
-    ml_gen_preds(ModuleInfo, PredDefns, !IO),
+ml_gen_defns(!ModuleInfo, Defns, GlobalData) :-
+    ml_gen_types(!.ModuleInfo, TypeDefns),
+    ml_gen_table_structs(!.ModuleInfo, TableStructDefns),
+    ml_gen_preds(!ModuleInfo, PredDefns, GlobalData),
     Defns = TypeDefns ++ TableStructDefns ++ PredDefns.
 
 %-----------------------------------------------------------------------------%
@@ -956,20 +971,23 @@ ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
     % Generate MLDS definitions for all the non-imported predicates
     % (and functions) in the HLDS.
     %
-:- pred ml_gen_preds(module_info::in, list(mlds_defn)::out, io::di, io::uo)
-    is det.
+:- pred ml_gen_preds(module_info::in, module_info::out,
+    list(mlds_defn)::out, ml_global_data::out) is det.
 
-ml_gen_preds(ModuleInfo, PredDefns, !IO) :-
-    module_info_preds(ModuleInfo, PredTable),
+ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
+    module_info_preds(!.ModuleInfo, PredTable),
     map.keys(PredTable, PredIds),
-    ml_gen_preds_2(ModuleInfo, PredIds, PredTable, [], PredDefns, !IO).
+    ml_gen_preds_2(!ModuleInfo, PredIds, [], PredDefns,
+         ml_global_data_init, GlobalData).
 
-:- pred ml_gen_preds_2(module_info::in, list(pred_id)::in, pred_table::in,
-    list(mlds_defn)::in, list(mlds_defn)::out, io::di, io::uo) is det.
+:- pred ml_gen_preds_2(module_info::in, module_info::out, list(pred_id)::in,
+    list(mlds_defn)::in, list(mlds_defn)::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, !Defns, !IO) :-
+ml_gen_preds_2(!ModuleInfo, PredIds0, !Defns, !GlobalDefns) :-
     (
         PredIds0 = [PredId | PredIds],
+        module_info_preds(!.ModuleInfo, PredTable),
         map.lookup(PredTable, PredId, PredInfo),
         pred_info_get_import_status(PredInfo, ImportStatus),
         (
@@ -984,10 +1002,10 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, !Defns, !IO) :-
         ->
             true
         ;
-            ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus,
-                !Defns, !IO)
+            ml_gen_pred(!ModuleInfo, PredId, PredInfo, ImportStatus, !Defns,
+                !GlobalDefns)
         ),
-        ml_gen_preds_2(ModuleInfo, PredIds, PredTable, !Defns, !IO)
+        ml_gen_preds_2(!ModuleInfo, PredIds, !Defns, !GlobalDefns)
     ;
         PredIds0 = []
     ).
@@ -995,11 +1013,13 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, !Defns, !IO) :-
     % Generate MLDS definitions for all the non-imported procedures
     % of a given predicate (or function).
     %
-:- pred ml_gen_pred(module_info::in, pred_id::in, pred_info::in,
-    import_status::in, list(mlds_defn)::in, list(mlds_defn)::out,
-    io::di, io::uo) is det.
+:- pred ml_gen_pred(module_info::in, module_info::out, pred_id::in,
+    pred_info::in, import_status::in,
+    list(mlds_defn)::in, list(mlds_defn)::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus, !Defns, !IO) :-
+ml_gen_pred(!ModuleInfo, PredId, PredInfo, ImportStatus, !Defns,
+        !GlobalData) :-
     ( ImportStatus = status_external(_) ->
         ProcIds = pred_info_procids(PredInfo)
     ;
@@ -1009,45 +1029,26 @@ ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus, !Defns, !IO) :-
         ProcIds = []
     ;
         ProcIds = [_ | _],
-        write_pred_progress_message("% Generating MLDS code for ",
-            PredId, ModuleInfo, !IO),
-        pred_info_get_procedures(PredInfo, ProcTable),
-        ml_gen_procs(ProcIds, ModuleInfo, PredId, PredInfo, ProcTable, !Defns)
+        trace [io(!IO)] (
+            write_pred_progress_message("% Generating MLDS code for ",
+                PredId, !.ModuleInfo, !IO)
+        ),
+        ml_gen_procs(!ModuleInfo, PredId, ProcIds, !Defns, !GlobalData)
     ).
 
-:- pred ml_gen_procs(list(proc_id)::in, module_info::in, pred_id::in,
-    pred_info::in, proc_table::in, list(mlds_defn)::in,
-    list(mlds_defn)::out) is det.
+:- pred ml_gen_procs(module_info::in, module_info::out,
+    pred_id::in, list(proc_id)::in, 
+    list(mlds_defn)::in, list(mlds_defn)::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_procs([], _, _, _, _, !Defns).
-ml_gen_procs([ProcId | ProcIds], ModuleInfo, PredId, PredInfo, ProcTable,
-        !Defns) :-
-    map.lookup(ProcTable, ProcId, ProcInfo),
-    ml_gen_proc(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, !Defns),
-    ml_gen_procs(ProcIds, ModuleInfo, PredId, PredInfo, ProcTable, !Defns).
-
-%-----------------------------------------------------------------------------%
-%
-% Code for handling individual procedures
-%
-
-    % Generate MLDS code for the specified procedure.
-    %
-:- pred ml_gen_proc(module_info::in, pred_id::in, proc_id::in, pred_info::in,
-    proc_info::in, list(mlds_defn)::in, list(mlds_defn)::out) is det.
-
-ml_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, ProcInfo, !Defns) :-
-    proc_info_get_context(ProcInfo, Context),
-    ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, _ModuleName),
-    MLDS_Context = mlds_make_context(Context),
-    DeclFlags = ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId),
-    ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns),
-    ProcDefn = mlds_defn(Name, MLDS_Context, DeclFlags, ProcDefnBody),
-    !:Defns = ExtraDefns ++ [ProcDefn | !.Defns].
+ml_gen_procs(!ModuleInfo, _, [], !Defns, !GlobalData).
+ml_gen_procs(!ModuleInfo, PredId, [ProcId | ProcIds], !Defns, !GlobalData) :-
+    ml_gen_proc(!ModuleInfo, PredId, ProcId, !Defns, !GlobalData),
+    ml_gen_procs(!ModuleInfo, PredId, ProcIds, !Defns, !GlobalData).
 
 %-----------------------------------------------------------------------------%
 %
-% Code for handling tabling structures
+% Code for handling tabling structures.
 %
 
 :- pred ml_gen_table_structs(module_info::in, list(mlds_defn)::out) is det.
@@ -1300,60 +1301,47 @@ tabling_data_decl_flags(Constness) = MLDS_DeclFlags :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for handling individual procedures (continued)
+% Code for handling individual procedures.
+% ZZZ reorder
 %
 
-    % Return the declaration flags appropriate for a procedure definition.
+:- pred ml_gen_proc(module_info::in, module_info::out,
+    pred_id::in, proc_id::in, list(mlds_defn)::in, list(mlds_defn)::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_proc(!ModuleInfo, PredId, ProcId, !Defns, !GlobalData) :-
+    % The specification of the HLDS allows goal_infos to overestimate
+    % the set of non-locals. Such overestimates are bad for us for two reasons:
     %
-:- func ml_gen_proc_decl_flags(module_info, pred_id, proc_id)
-    = mlds_decl_flags.
-
-ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ( procedure_is_exported(ModuleInfo, PredInfo, ProcId) ->
-        Access = acc_public
-    ;
-        Access = acc_private
-    ),
-    PerInstance = one_copy,
-    Virtuality = non_virtual,
-    Finality = overridable,
-    Constness = modifiable,
-    Abstractness = concrete,
-    DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
-
-    % Generate an MLDS definition for the specified procedure.
+    % - If the non-locals of the top-level goal contained any variables other
+    %   than head vars, those variables would not be declared.
     %
-:- pred ml_gen_proc_defn(module_info::in, pred_id::in, proc_id::in,
-    mlds_entity_defn::out, list(mlds_defn)::out) is det.
+    % - The code of goal_expr_find_subgoal_nonlocals depends on the nonlocals
+    %   sets of goals being exactly correct, since this is the only way it can
+    %   avoid traversing the entirety of the goals themselves. Such traversals
+    %   can be very expensive on large goals, since it would have to be done
+    %   repeatedly, once for each containing goal. Quantification does just one
+    %   traversal.
 
-ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+        PredInfo, ProcInfo0),
+    requantify_proc(ProcInfo0, ProcInfo),
+    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+        !ModuleInfo),
+
     pred_info_get_import_status(PredInfo, ImportStatus),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_get_goal(ProcInfo, Goal0),
+    proc_info_get_goal(ProcInfo, Goal),
 
-    % The HLDS front-end sometimes over-estimates the set of non-locals.
-    % We need to restrict the set of non-locals for the top-level goal
-    % to just the headvars, because otherwise variables which occur in the
-    % top-level non-locals but which are not really non-local will not be
-    % declared.
-
-    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    NonLocals0 = goal_info_get_code_gen_nonlocals(GoalInfo0),
-    set.list_to_set(HeadVars, HeadVarsSet),
-    set.intersect(HeadVarsSet, NonLocals0, NonLocals),
-    goal_info_set_code_gen_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
 
     some [!Info] (
-        !:Info = ml_gen_info_init(ModuleInfo, PredId, ProcId),
+        !:Info = ml_gen_info_init(!.ModuleInfo, PredId, ProcId, ProcInfo,
+            !.GlobalData),
 
         ( ImportStatus = status_external(_) ->
             % For Mercury procedures declared `:- external', we generate an
@@ -1375,10 +1363,10 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
                 ( CodeModel = model_det
                 ; CodeModel = model_semi
                 ),
-                ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info)
+                ml_det_copy_out_vars(!.ModuleInfo, CopiedOutputVars, !Info)
             ;
                 CodeModel = model_non,
-                ml_set_up_initial_succ_cont(ModuleInfo, CopiedOutputVars,
+                ml_set_up_initial_succ_cont(!.ModuleInfo, CopiedOutputVars,
                     !Info)
             ),
 
@@ -1399,8 +1387,8 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
                 CopiedOutputVars = [_ | _],
                 proc_info_get_varset(ProcInfo, VarSet),
                 proc_info_get_vartypes(ProcInfo, VarTypes),
-                % note that for headvars we must use the types from
-                % the procedure interface, not from the procedure body
+                % Note that for headvars we must use the types from
+                % the procedure interface, not from the procedure body.
                 HeadVarTypes = map.from_corresponding_lists(HeadVars,
                     ArgTypes),
                 ml_gen_local_var_decls(VarSet,
@@ -1410,25 +1398,56 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
             MLDS_Context = mlds_make_context(Context),
             MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
                 OutputVarLocals],
-            modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
+            modes_to_arg_modes(!.ModuleInfo, Modes, ArgTypes, ArgModes),
             ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes,
-                CopiedOutputVars, Goal, Decls0, Statements, !Info),
+                CopiedOutputVars, Goal, Defns0, Statements, !Info),
             ml_gen_proc_params(PredId, ProcId, MLDS_Params, !Info),
-            ml_gen_info_get_extra_defns(!.Info, ExtraDefns),
-            Decls = MLDS_LocalVars ++ Decls0,
-            Statement = ml_gen_block(Decls, Statements, Context),
+            ml_gen_info_get_closure_wrapper_defns(!.Info, ExtraDefns),
+            ml_gen_info_get_global_data(!.Info, !:GlobalData),
+            Defns = MLDS_LocalVars ++ Defns0,
+            Statement = ml_gen_block(Defns, Statements, Context),
             FunctionBody = body_defined_here(Statement)
+
         ),
-        ml_gen_info_get_env_vars(!.Info, EnvVarNames)
+        % XXX Can env_var_names be affected by body_external?
+        % If, as I (zs) suspect, it cannot, this should be inside the previous
+        % scope.
+        ml_gen_info_get_env_var_names(!.Info, EnvVarNames)
     ),
 
+    proc_info_get_context(ProcInfo0, ProcContext),
+    ml_gen_proc_label(!.ModuleInfo, PredId, ProcId, EntityName, _ModuleName),
+    MLDS_ProcContext = mlds_make_context(ProcContext),
+    DeclFlags = ml_gen_proc_decl_flags(!.ModuleInfo, PredId, ProcId),
+    MaybePredProcId = yes(proc(PredId, ProcId)),
     pred_info_get_attributes(PredInfo, Attributes),
     attributes_to_attribute_list(Attributes, AttributeList),
+    MLDS_Attributes =
+        attributes_to_mlds_attributes(!.ModuleInfo, AttributeList),
+    EntityBody = mlds_function(MaybePredProcId, MLDS_Params,
+        FunctionBody, MLDS_Attributes, EnvVarNames),
+    ProcDefn = mlds_defn(EntityName, MLDS_ProcContext, DeclFlags, EntityBody),
+    !:Defns = ExtraDefns ++ [ProcDefn | !.Defns].
 
-    MLDS_Attributes = attributes_to_mlds_attributes(ModuleInfo, AttributeList),
+    % Return the declaration flags appropriate for a procedure definition.
+    %
+:- func ml_gen_proc_decl_flags(module_info, pred_id, proc_id)
+    = mlds_decl_flags.
 
-    ProcDefnBody = mlds_function(yes(proc(PredId, ProcId)), MLDS_Params,
-        FunctionBody, MLDS_Attributes, EnvVarNames).
+ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ( procedure_is_exported(ModuleInfo, PredInfo, ProcId) ->
+        Access = acc_public
+    ;
+        Access = acc_private
+    ),
+    PerInstance = one_copy,
+    Virtuality = non_virtual,
+    Finality = overridable,
+    Constness = modifiable,
+    Abstractness = concrete,
+    DeclFlags = init_decl_flags(Access, PerInstance,
+        Virtuality, Finality, Constness, Abstractness).
 
     % For model_det and model_semi procedures, figure out which output
     % variables are returned by value (rather than being passed by reference)
@@ -1554,7 +1573,6 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
     Context = goal_info_get_context(GoalInfo),
 
     % First just generate the code for the procedure's goal.
-    DoGenGoal = ml_gen_goal(CodeModel, Goal),
 
     % In certain cases -- for example existentially typed procedures,
     % or unification/compare procedures for equivalence types --
@@ -1573,8 +1591,10 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
         ConvOutputStatements = []
     ->
         % No boxing/unboxing/casting required.
-        DoGenGoal(Decls, Statements1, !Info)
+        ml_gen_goal(CodeModel, Goal, Decls, Statements1, !Info)
     ;
+        DoGenGoal = ml_gen_goal(CodeModel, Goal),
+
         % Boxing/unboxing/casting required. We need to convert the input
         % arguments, generate the goal, convert the output arguments,
         % and then succeeed.
@@ -1683,6 +1703,11 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
 % Stuff to generate code for goals.
 %
 
+ml_gen_goal_as_branch(CodeModel, Goal, Decls, Statements, !Info) :-
+    ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
+    ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info),
+    ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
+
     % Generate MLDS code for the specified goal in the specified code model.
     % Return the result as a single statement (which may be a block statement
     % containing nested declarations).
@@ -1693,6 +1718,11 @@ ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info) :-
     Context = goal_info_get_context(GoalInfo),
     Statement = ml_gen_block(Decls, Statements, Context).
 
+ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info) :-
+    ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
+    ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info),
+    ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
+
     % Generate MLDS code for the specified goal in the specified code model.
     % Return the result as two lists, one containing the necessary declarations
     % and the other containing the generated statements.
@@ -1700,6 +1730,7 @@ ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info) :-
 ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
+
     % Generate the local variables for this goal. We need to declare any
     % variables which are local to this goal (including its subgoals),
     % but which are not local to a subgoal. (If they're local to a subgoal,
@@ -1709,15 +1740,29 @@ ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info) :-
     % variables *before* any other variables, since the GC tracing code
     % for the other variables may refer to the type_info variables, so they
     % need to be in scope.
+    %
+    % However, in the common case that the number of variables to declare is
+    % zero or one, such reordering is guaranteed to be a no-op, so avoid the
+    % expense.
 
-    Locals = goal_local_vars(Goal),
-    SubGoalLocals = union_of_direct_subgoal_locals(Goal),
-    set.difference(Locals, SubGoalLocals, VarsToDeclareHere),
-    set.to_sorted_list(VarsToDeclareHere, VarsList0),
-    ml_gen_info_get_varset(!.Info, VarSet),
+    goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    set.difference(SubGoalNonLocals, NonLocals, VarsToDeclareSet),
+    set.to_sorted_list(VarsToDeclareSet, VarsToDeclare0),
+
     ml_gen_info_get_var_types(!.Info, VarTypes),
-    VarsList = put_typeinfo_vars_first(VarsList0, VarTypes),
-    ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsList, VarDecls,
+    (
+        ( VarsToDeclare0 = []
+        ; VarsToDeclare0 = [_]
+        ),
+        VarsToDeclare = VarsToDeclare0
+    ;
+        VarsToDeclare0 = [_, _ | _],
+        VarsToDeclare = put_typeinfo_vars_first(VarsToDeclare0, VarTypes)
+    ),
+
+    ml_gen_info_get_varset(!.Info, VarSet),
+    ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsToDeclare, VarDecls,
         !Info),
 
     % Generate code for the goal in its own code model.
@@ -1727,78 +1772,195 @@ ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info) :-
 
     % Add whatever wrapper is needed to convert the goal's code model
     % to the desired code model.
-    ml_gen_wrap_goal(CodeModel, GoalCodeModel, Context,
+    ml_gen_maybe_convert_goal_code_model(CodeModel, GoalCodeModel, Context,
         GoalStatements0, GoalStatements, !Info),
 
-    ml_join_decls(VarDecls, [], GoalDecls, GoalStatements, Context,
-        Decls, Statements).
+    Decls = VarDecls ++ GoalDecls,
+    Statements = GoalStatements.
 
-    % Return the set of variables which occur in the specified goal
-    % (including in its subgoals) and which are local to that goal.
+    % The task of this predicate is to help compute the set of MLDS variables
+    % that should be declared at the scope of GoalExpr. This should be the
+    % set of variables that
     %
-:- func goal_local_vars(hlds_goal) = set(prog_var).
-
-goal_local_vars(Goal) = LocalVars :-
-    % Find all the variables in the goal.
-    goal_util.goal_vars(Goal, GoalVars),
-    % Delete the non-locals.
-    Goal = hlds_goal(_, GoalInfo),
-    NonLocalVars = goal_info_get_code_gen_nonlocals(GoalInfo),
-    set.difference(GoalVars, NonLocalVars, LocalVars).
-
-:- func union_of_direct_subgoal_locals(hlds_goal) = set(prog_var).
-
-union_of_direct_subgoal_locals(hlds_goal(GoalExpr, _))
-        = UnionOfSubGoalLocals :-
-    promise_equivalent_solutions [UnionOfSubGoalLocals] (
-        set.init(EmptySet),
-        solutions.unsorted_aggregate(direct_subgoal(GoalExpr),
-            union_subgoal_locals, EmptySet, UnionOfSubGoalLocals)
-    ).
-
-:- pred union_subgoal_locals(hlds_goal::in, set(prog_var)::in,
+    % - do not occur outside GoalExpr, since if they did, they would have to be
+    %   declared in a larger scope containing GoalExpr; and
+    %
+    % - need to be declared at the scope of GoalExpr, since they cannot be
+    %   declared in a scope inside GoalExpr.
+    %
+    % Our caller will take care of the first point by deleting the nonlocals
+    % set of GoalExpr from the SubGoalNonLocals we return, which means that
+    % we can include any variable from GoalExpr's nonlocals set in
+    % SubGoalNonLocals without affecting the final outcome.
+    %
+    % If GoalExpr is a compound goal, a variable that occurs in GoalExpr
+    % can be declared in a smaller scope that GoalExpr if it occurs inside
+    % a single one of GoalExpr's subgoals. In this case, we therefore return
+    % the union of the nonlocals sets of GoalExpr's direct subgoals.
+    %
+    % If GoalExpr is an atomic goal, there is no smaller scope, but we do have
+    % to declare at GoalExpr's scope any MLDS variables that GoalExpr refers to
+    % but are not visible GoalExpr. This can happen e.g. with ignored output
+    % arguments from calls and unifications.
+    %
+:- pred goal_expr_find_subgoal_nonlocals(hlds_goal_expr::in,
     set(prog_var)::out) is det.
 
-union_subgoal_locals(SubGoal, UnionOfSubGoalLocals0, UnionOfSubGoalLocals) :-
-    SubGoalLocals = goal_local_vars(SubGoal),
-    set.union(UnionOfSubGoalLocals0, SubGoalLocals, UnionOfSubGoalLocals).
+goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
+    (
+        GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
+        (
+            Unification = construct(LHSVar, _ConsId, ArgVars, _ArgModes,
+                _HowToConstruct, _Unique, _SubInfo),
+            % _HowToConstruct can contain a var specifying to a cell to reuse
+            % or a region to construct the term in, but both of those require
+            % that variable to be nonlocal to GoalExpr, which means that they
+            % would be subtracted from SubGoalNonLocals by our caller anyway.
+            SubGoalNonLocals = set.list_to_set([LHSVar | ArgVars])
+        ;
+            Unification = deconstruct(LHSVar, _ConsId, ArgVars, _ArgModes,
+                _CanFail, _CanCGC),
+            SubGoalNonLocals = set.list_to_set([LHSVar | ArgVars])
+        ;
+            Unification = assign(LHSVar, RHSVar),
+            SubGoalNonLocals = set.list_to_set([LHSVar, RHSVar])
+        ;
+            Unification = simple_test(LHSVar, RHSVar),
+            SubGoalNonLocals = set.list_to_set([LHSVar, RHSVar])
+        ;
+            Unification = complicated_unify(_, _, _),
+            unexpected(this_file, "goal_expr_find_subgoal_nonlocals")
+        )
+    ;
+        GoalExpr = plain_call(_PredId, _ProcId, ArgVars, _Builtin,
+            _Unify_context, _SymName),
+        SubGoalNonLocals = set.list_to_set(ArgVars)
+    ;
+        GoalExpr = generic_call(GenericCall, ArgVars, _Modes, _Detism),
+        (
+            GenericCall = higher_order(HOVar, _Purity, _Kind, _Arity),
+            SubGoalNonLocals = set.list_to_set([HOVar | ArgVars])
+        ;
+            GenericCall = class_method(MethodVar, _MethodNum, _MethodClassId,
+                _Name),
+            SubGoalNonLocals = set.list_to_set([MethodVar | ArgVars])
+        ;
+            GenericCall = event_call(_Eventname),
+            SubGoalNonLocals = set.list_to_set(ArgVars)
+        ;
+            GenericCall = cast(_CastKind),
+            SubGoalNonLocals = set.list_to_set(ArgVars)
+        )
+    ;
+        GoalExpr = call_foreign_proc(_Attr, _PredId, _ProcId, Args, ExtraArgs,
+            _TraceCond, _Impl),
+        ArgVars = list.map(foreign_arg_var, Args),
+        ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+        SubGoalNonLocals = set.list_to_set(ExtraVars ++ ArgVars)
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_Reason, SubGoal)
+        ),
+        % If _Reason = from_ground_term, the TermVar in it is guaranteed by
+        % construction to be nonlocal, so there is no need to add it
+        % separately.
+        % If _Reason = exist_quant(Vars), the variables in Vars are ignored by
+        % the code generator.
+        SubGoalNonLocals = goal_get_nonlocals(SubGoal)
+    ;
+        ( GoalExpr = conj(_, SubGoals)
+        ; GoalExpr = disj(SubGoals)
+        ),
+        goals_find_subgoal_nonlocals(SubGoals, set.init, SubGoalNonLocals)
+    ;
+        GoalExpr = if_then_else(_Vars, Cond, Then, Else),
+        % The value of _Vars is not guaranteed to contain the set of variables
+        % shared between only Cond and Then.
+        goals_find_subgoal_nonlocals([Cond, Then, Else],
+            set.init, SubGoalNonLocals)
+    ;
+        GoalExpr = switch(_Var, _CanFail, Cases),
+        % _Var must be nonlocal; if it weren't, there would have been a mode
+        % error (no producer for _Var before a consumer, namely this switch).
+        cases_find_subgoal_nonlocals(Cases, set.init, SubGoalNonLocals)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "goal_expr_find_subgoal_nonlocals: shorthand")
+    ).
+
+:- pred goals_find_subgoal_nonlocals(list(hlds_goal)::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+goals_find_subgoal_nonlocals([], !SubGoalNonLocals).
+goals_find_subgoal_nonlocals([SubGoal | SubGoals], !SubGoalNonLocals) :-
+    NonLocals = goal_get_nonlocals(SubGoal),
+    set.union(!.SubGoalNonLocals, NonLocals, !:SubGoalNonLocals),
+    goals_find_subgoal_nonlocals(SubGoals, !SubGoalNonLocals).
+
+:- pred cases_find_subgoal_nonlocals(list(case)::in,
+    set(prog_var)::in, set(prog_var)::out) is det.
+
+cases_find_subgoal_nonlocals([], !SubGoalNonLocals).
+cases_find_subgoal_nonlocals([Case | Cases], !SubGoalNonLocals) :-
+    Case = case(_, _, SubGoal),
+    NonLocals = goal_get_nonlocals(SubGoal),
+    set.union(!.SubGoalNonLocals, NonLocals, !:SubGoalNonLocals),
+    cases_find_subgoal_nonlocals(Cases, !SubGoalNonLocals).
 
     % If the inner and outer code models are equal, we don't need to do
-    % anything special.
-
-ml_gen_wrap_goal(model_det, model_det, _, !Statements, !Info).
-ml_gen_wrap_goal(model_semi, model_semi, _, !Statements, !Info).
-ml_gen_wrap_goal(model_non, model_non, _, !Statements, !Info).
-
+    % anything.
+    %
+    % If the inner code model is less precise than the outer code model,
+    % then that is either a determinism error, or a situation in which
+    % simplify.m is supposed to wrap the goal inside a `some' to indicate that
+    % a commit is needed.
+    %
     % If the inner code model is more precise than the outer code model,
     % then we need to append some statements to convert the calling convention
     % for the inner code model to that of the outer code model.
 
-ml_gen_wrap_goal(model_semi, model_det, Context, !Statements, !Info) :-
-    %
+ml_gen_maybe_convert_goal_code_model(model_det, model_det, _,
+        !Statements, !Info).
+ml_gen_maybe_convert_goal_code_model(model_semi, model_semi, _,
+        !Statements, !Info).
+ml_gen_maybe_convert_goal_code_model(model_non, model_non, _,
+        !Statements, !Info).
+
+ml_gen_maybe_convert_goal_code_model(model_det, model_semi, _, _, _, !Info) :-
+    unexpected(this_file,
+        "ml_gen_maybe_convert_goal_code_model: semi in det").
+ml_gen_maybe_convert_goal_code_model(model_det, model_non, _, _, _, !Info) :-
+    unexpected(this_file,
+        "ml_gen_maybe_convert_goal_code_model: nondet in det").
+ml_gen_maybe_convert_goal_code_model(model_semi, model_non, _, _, _, !Info) :-
+    unexpected(this_file,
+        "ml_gen_maybe_convert_goal_code_model: nondet in semi").
+
+ml_gen_maybe_convert_goal_code_model(model_semi, model_det, Context,
+        !Statements, !Info) :-
     % det goal in semidet context:
     %   <succeeded = Goal>
     % ===>
     %   <do Goal>
     %   succeeded = MR_TRUE
-    %
+
     ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
         SetSuccessTrue),
     !:Statements = !.Statements ++ [SetSuccessTrue].
 
-ml_gen_wrap_goal(model_non, model_det, Context, !Statements, !Info) :-
-    %
+ml_gen_maybe_convert_goal_code_model(model_non, model_det, Context,
+        !Statements, !Info) :-
     % det goal in nondet context:
     %   <Goal && SUCCEED()>
     % ===>
     %   <do Goal>
     %   SUCCEED()
-    %
+
     ml_gen_call_current_success_cont(Context, CallCont, !Info),
     !:Statements = !.Statements ++ [CallCont].
 
-ml_gen_wrap_goal(model_non, model_semi, Context, !Statements, !Info) :-
-    %
+ml_gen_maybe_convert_goal_code_model(model_non, model_semi, Context,
+        !Statements, !Info) :-
     % semi goal in nondet context:
     %   <Goal && SUCCEED()>
     % ===>
@@ -1806,26 +1968,12 @@ ml_gen_wrap_goal(model_non, model_semi, Context, !Statements, !Info) :-
     %
     %   <succeeded = Goal>
     %   if (succeeded) SUCCEED()
-    %
+
     ml_gen_test_success(!.Info, Succeeded),
     ml_gen_call_current_success_cont(Context, CallCont, !Info),
     IfStmt = ml_stmt_if_then_else(Succeeded, CallCont, no),
     IfStatement = statement(IfStmt, mlds_make_context(Context)),
     !:Statements = !.Statements ++ [IfStatement].
-
-    % If the inner code model is less precise than the outer code model,
-    % then simplify.m is supposed to wrap the goal inside a `some'
-    % to indicate that a commit is needed.
-
-ml_gen_wrap_goal(model_det, model_semi, _, _, _, !Info) :-
-    unexpected(this_file,
-        "ml_gen_wrap_goal: code model mismatch -- semi in det").
-ml_gen_wrap_goal(model_det, model_non, _, _, _, !Info) :-
-    unexpected(this_file,
-        "ml_gen_wrap_goal: code model mismatch -- nondet in det").
-ml_gen_wrap_goal(model_semi, model_non, _, _, _, !Info) :-
-    unexpected(this_file,
-        "ml_gen_wrap_goal: code model mismatch -- nondet in semi").
 
     % Generate code for a commit.
     %
@@ -1887,9 +2035,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             !Info),
         % push nesting level
         MLDS_Context = mlds_make_context(Context),
-        ml_gen_info_new_commit_label(CommitLabelNum, !Info),
-        CommitRef = mlds_var_name(string.format("commit_%d",
-            [i(CommitLabelNum)]), no),
+        ml_gen_info_new_aux_var_name("commit", CommitRef, !Info),
         ml_gen_var_lval(!.Info, CommitRef, mlds_commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval)),
@@ -1967,9 +2113,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             !Info),
         % push nesting level
         MLDS_Context = mlds_make_context(Context),
-        ml_gen_info_new_commit_label(CommitLabelNum, !Info),
-        CommitRef = mlds_var_name(
-            string.format("commit_%d", [i(CommitLabelNum)]), no),
+        ml_gen_info_new_aux_var_name("commit", CommitRef, !Info),
         ml_gen_var_lval(!.Info, CommitRef, mlds_commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval)),
@@ -2277,10 +2421,14 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, Decls, Statements, !Info) :-
         GoalExpr = negation(SubGoal),
         ml_gen_negation(SubGoal, CodeModel, Context, Decls, Statements, !Info)
     ;
-        GoalExpr = scope(_, SubGoal),
-        % XXX We could special-case the handling of from_ground_term_construct
-        % scopes.
-        ml_gen_commit(SubGoal, CodeModel, Context, Decls, Statements, !Info)
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+            ml_gen_ground_term(TermVar, SubGoal, Statements, !Info),
+            Decls = []
+        ;
+            ml_gen_commit(SubGoal, CodeModel, Context, Decls, Statements,
+                !Info)
+        )
     ;
         GoalExpr = shorthand(_),
         % these should have been expanded out by now
@@ -2353,7 +2501,6 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         Args, Context, LocalVarsDecls, LocalVarsContext,
         FirstCode, FirstContext, LaterCode, LaterContext,
         SharedCode, SharedContext, Decls, Statements, !Info) :-
-
     Lang = get_foreign_language(Attributes),
     ( Lang = lang_csharp ->
         sorry(this_file, "nondet pragma foreign_proc for C#")
@@ -2364,10 +2511,9 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
     % Generate <declaration of one local variable for each arg>
     ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
 
-    %
     % Generate definitions of the FAIL, SUCCEED, SUCCEED_LAST,
-    % and LOCALS macros
-    %
+    % and LOCALS macros.
+
     string.append_list([
 "   #define FAIL        (MR_done = MR_TRUE)\n",
 "   #define SUCCEED     (MR_succeeded = MR_TRUE)\n",
@@ -2603,7 +2749,6 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
 
 ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
         Args, ExtraArgs, JavaCode, Context, Decls, Statements, !Info) :-
-
     Lang = get_foreign_language(Attributes),
 
     % Generate <declaration of one local variable for each arg>
@@ -2785,9 +2930,9 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
     ArgVars = list.map(foreign_arg_var, Args),
     % Generate declarations for all the variables, and initializers for
     % input variables.
-    list.map(ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo,
-            MLDSModuleName, ArgMap, VarSet, MLDSContext,
-            ByRefOutputVars, CopiedOutputVars),
+    list.map(
+        ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName,
+            ArgMap, VarSet, MLDSContext, ByRefOutputVars, CopiedOutputVars),
         ArgVars, VarLocals),
 
     OutlineStmt = inline_target_code(ml_target_il, [
@@ -2963,7 +3108,6 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
 
 ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         OrigArgs, ExtraArgs, C_Code, Context, Decls, Statements, !Info) :-
-
     Lang = get_foreign_language(Attributes),
 
     % Generate <declaration of one local variable for each arg>
@@ -3251,8 +3395,8 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         ArgRval = ml_const(mlconst_int(0))
     ;
         IsDummy = is_not_dummy_type,
-        ml_gen_box_or_unbox_rval(VarType, OrigType, BoxPolicy,
-            ml_lval(VarLval), ArgRval, !Info)
+        ml_gen_box_or_unbox_rval(ModuleInfo, VarType, OrigType, BoxPolicy,
+            ml_lval(VarLval), ArgRval)
     ),
     % At this point we have an rval with the right type for *internal* use
     % in the code generated by the Mercury compiler's MLDS back-end. We need
@@ -3276,15 +3420,14 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         )
     ->
         % In the usual case, we can just use an assignment and perhaps a cast.
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+        ml_gen_info_get_high_level_data(!.Info, HighLevelData),
         (
             HighLevelData = yes,
             % In general, the types used for the C interface are not the same
             % as the types used by --high-level-data, so we always use a cast
             % here. (Strictly speaking the cast is not needed for a few cases
             % like `int', but it doesn't do any harm.)
-            string.format("(%s)", [s(TypeString)], Cast)
+            Cast = "(" ++ TypeString ++ ")"
         ;
             HighLevelData = no,
             % For --no-high-level-data, we only need to use a cast is for
@@ -3471,9 +3614,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     ->
         % In the usual case, we can just use an assignment,
         % perhaps with a cast.
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, highlevel_data,
-            HighLevelData),
+        ml_gen_info_get_high_level_data(!.Info, HighLevelData),
         (
             HighLevelData = yes,
             % In general, the types used for the C interface are not the same
@@ -3482,7 +3623,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
             % like `int', but it doesn't do any harm.) Note that we can't
             % easily obtain the type string for the RHS of the assignment,
             % so instead we cast the LHS.
-            string.format("*(%s *)&", [s(TypeString)], LHS_Cast),
+            LHS_Cast = "* (" ++ TypeString ++ " *) &",
             RHS_Cast = ""
         ;
             HighLevelData = no,
@@ -3520,7 +3661,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
 
 %-----------------------------------------------------------------------------%
 %
-% Code for if-then-else
+% Code for if-then-else.
 %
 
 :- pred ml_gen_ite(code_model::in, hlds_goal::in, hlds_goal::in, hlds_goal::in,
@@ -3556,10 +3697,13 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         %       }
 
         CondCodeModel = model_semi,
+        ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
         ml_gen_goal(model_semi, Cond, CondDecls, CondStatements, !Info),
         ml_gen_test_success(!.Info, Succeeded),
         ml_gen_goal_as_block(CodeModel, Then, ThenStatement, !Info),
+        ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
         ml_gen_goal_as_block(CodeModel, Else, ElseStatement, !Info),
+        ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
         IfStmt = ml_stmt_if_then_else(Succeeded, ThenStatement,
             yes(ElseStatement)),
         IfStatement = statement(IfStmt, mlds_make_context(Context)),
@@ -3592,6 +3736,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         % is needed for declarations of static consts)
 
         CondCodeModel = model_non,
+        ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
 
         % Generate the `cond_<N>' var and the code to initialize it to false.
         ml_gen_info_new_cond_var(CondVar, !Info),
@@ -3625,7 +3770,9 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
 
         % Generate `if (!cond_<N>) { <Else> }'.
         ml_gen_test_cond_var(!.Info, CondVar, CondSucceeded),
+        ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
         ml_gen_goal_as_block(CodeModel, Else, ElseStatement, !Info),
+        ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
         IfStmt = ml_stmt_if_then_else(
             ml_unop(std_unop(logical_not), CondSucceeded),
             ElseStatement, no),
@@ -3638,7 +3785,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for negation
+% Code for negation.
 %
 
 :- pred ml_gen_negation(hlds_goal::in, code_model::in, prog_context::in,
@@ -3660,7 +3807,7 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
         %   }
 
         CodeModel = model_det,
-        ml_gen_goal(model_semi, Cond, Decls, Statements, !Info)
+        ml_gen_goal_as_branch(model_semi, Cond, Decls, Statements, !Info)
     ;
         % model_semi negation, model_det goal:
         %       <succeeded = not(Goal)>
@@ -3669,7 +3816,8 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
         %       succeeded = MR_FALSE;
 
         CodeModel = model_semi, CondCodeModel = model_det,
-        ml_gen_goal(model_det, Cond, CondDecls, CondStatements, !Info),
+        ml_gen_goal_as_branch(model_det, Cond, CondDecls, CondStatements,
+            !Info),
         ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
             SetSuccessFalse),
         Decls = CondDecls,
@@ -3682,7 +3830,8 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
         %       succeeded = !succeeded;
 
         CodeModel = model_semi, CondCodeModel = model_semi,
-        ml_gen_goal(model_semi, Cond, CondDecls, CondStatements, !Info),
+        ml_gen_goal_as_branch(model_semi, Cond, CondDecls, CondStatements,
+            !Info),
         ml_gen_test_success(!.Info, Succeeded),
         ml_gen_set_success(!.Info, ml_unop(std_unop(logical_not), Succeeded),
             Context, InvertSuccess),
@@ -3698,7 +3847,7 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for conjunctions
+% Code for conjunctions.
 %
 
 :- pred ml_gen_conj(hlds_goals::in, code_model::in, prog_context::in,
@@ -3732,7 +3881,7 @@ ml_gen_conj(Conjuncts, CodeModel, Context, Decls, Statements, !Info) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for disjunctions
+% Code for disjunctions.
 %
 
 :- pred ml_gen_disj(hlds_goals::in, code_model::in, prog_context::in,
@@ -3751,16 +3900,18 @@ ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info) :-
         % (The HLDS should not contain singleton disjunctions, but this code
         % is needed to handle recursive calls to ml_gen_disj).
         % Note that each arm of the model_non disjunction is placed into
-        % a block. This avoids a problem where ml_join_decls can create block
-        % nesting proportional to the size of the disjunction. The nesting
-        % can hit fixed limit problems in some C compilers.
-        ml_gen_goal(CodeModel, SingleGoal, Goal_Decls, Goal_Statements, !Info),
+        % a block. This used to avoid a problem where ml_join_decls could
+        % create block nesting proportional to the size of the disjunction,
+        % which could exceed nesting limits in some C compilers.
+        % ZZZ Now, we generate it just so the code looks neater.
+        ml_gen_goal_as_branch(CodeModel, SingleGoal,
+            Goal_Decls, Goal_Statements, !Info),
         Statement = ml_gen_block(Goal_Decls, Goal_Statements, Context),
         Statements = [Statement],
         Decls = []
     ;
-        Goals = [First | Rest],
-        Rest = [_ | _],
+        Goals = [FirstGoal | LaterGoals],
+        LaterGoals = [_ | _],
         (
             CodeModel = model_non,
             % model_non disj:
@@ -3770,18 +3921,19 @@ ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info) :-
             %       <Goal && SUCCEED()>
             %       <Goals && SUCCEED()>
 
-            ml_gen_goal(model_non, First, FirstDecls, FirstStatements, !Info),
-            ml_gen_disj(Rest, model_non, Context, RestDecls, RestStatements,
-                !Info),
+            ml_gen_goal_as_branch(model_non, FirstGoal,
+                FirstDecls, FirstStatements, !Info),
+            ml_gen_disj(LaterGoals, model_non, Context,
+                LaterDecls, LaterStatements, !Info),
             (
-                RestDecls = [],
+                LaterDecls = [],
                 FirstBlock = ml_gen_block(FirstDecls, FirstStatements,
                     Context),
                 Decls = [],
-                Statements = [FirstBlock | RestStatements]
+                Statements = [FirstBlock | LaterStatements]
             ;
-                RestDecls = [_ | _],
-                unexpected(this_file, "ml_gen_disj: RestDecls not empty.")
+                LaterDecls = [_ | _],
+                unexpected(this_file, "ml_gen_disj: LaterDecls not empty.")
             )
         ;
             ( CodeModel = model_det
@@ -3807,23 +3959,23 @@ ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info) :-
             %       }
             %   }
 
-            First = hlds_goal(_, FirstGoalInfo),
+            FirstGoal = hlds_goal(_, FirstGoalInfo),
             FirstCodeModel = goal_info_get_code_model(FirstGoalInfo),
             (
                 FirstCodeModel = model_det,
-                ml_gen_goal(model_det, First, Decls, Statements, !Info)
+                ml_gen_goal(model_det, FirstGoal, Decls, Statements, !Info)
             ;
                 FirstCodeModel = model_semi,
-                ml_gen_goal(model_semi, First, FirstDecls, FirstStatements,
-                    !Info),
+                ml_gen_goal_as_branch(model_semi, FirstGoal,
+                    FirstDecls, FirstStatements, !Info),
                 ml_gen_test_success(!.Info, Succeeded),
-                ml_gen_disj(Rest, CodeModel, Context,
-                    RestDecls, RestStatements, !Info),
-                RestStatement = ml_gen_block(RestDecls, RestStatements,
+                ml_gen_disj(LaterGoals, CodeModel, Context,
+                    LaterDecls, LaterStatements, !Info),
+                LaterStatement = ml_gen_block(LaterDecls, LaterStatements,
                     Context),
                 IfStmt = ml_stmt_if_then_else(
                     ml_unop(std_unop(logical_not), Succeeded),
-                    RestStatement, no),
+                    LaterStatement, no),
                 IfStatement = statement(IfStmt, mlds_make_context(Context)),
                 Decls = FirstDecls,
                 Statements = FirstStatements ++ [IfStatement]
@@ -3838,7 +3990,7 @@ ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for handling attributes
+% Code for handling attributes.
 %
 
 :- func attributes_to_mlds_attributes(module_info, list(hlds_pred.attribute))

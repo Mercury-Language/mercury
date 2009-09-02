@@ -296,7 +296,7 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
             SubModuleTerms, _),
         list.map(
             (pred(Term::in, SubModule::out) is semidet :-
-                sym_name_and_args(Term, SubModule, [])
+                parse_sym_name_and_args(Term, SubModule, [])
             ),
             SubModuleTerms, SubModules)
     ->
@@ -366,7 +366,7 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
     conjunction_to_list(Term, Args),
     (
         Args = [ModuleNameTerm, SuffixTerm, TimestampTerm | MaybeOtherTerms],
-        sym_name_and_args(ModuleNameTerm, ModuleName0, []),
+        parse_sym_name_and_args(ModuleNameTerm, ModuleName0, []),
         SuffixTerm = term.functor(term.string(Suffix), [], _),
         Timestamp = term_to_timestamp(TimestampTerm),
         (
@@ -462,10 +462,10 @@ parse_simple_item_match(Info, Term, Items0, Items) :-
             Term = term.functor(term.atom("=>"),
                 [QualifierTerm, ModuleNameTerm], _)
         ->
-            sym_name_and_args(QualifierTerm, Qualifier, []),
-            sym_name_and_args(ModuleNameTerm, ModuleName, [])
+            parse_sym_name_and_args(QualifierTerm, Qualifier, []),
+            parse_sym_name_and_args(ModuleNameTerm, ModuleName, [])
         ;
-            sym_name_and_args(Term, ModuleName, []),
+            parse_sym_name_and_args(Term, ModuleName, []),
             Qualifier = ModuleName
         )
     ->
@@ -492,16 +492,16 @@ parse_pred_or_func_item_match(Info, Term, !Items) :-
             Term = term.functor(term.atom("=>"),
                 [QualifierTerm, MatchesTerm], _)
         ->
-            sym_name_and_args(QualifierTerm, Qualifier, []),
+            parse_sym_name_and_args(QualifierTerm, Qualifier, []),
             conjunction_to_list(MatchesTerm, MatchesList),
             list.map(
                 (pred(MatchTerm::in, Match::out) is semidet :-
-                    sym_name_and_args(MatchTerm, MatchName, []),
+                    parse_sym_name_and_args(MatchTerm, MatchName, []),
                     Match = PredId - MatchName
                 ),
                 MatchesList, Matches)
         ;
-            sym_name_and_args(Term, Qualifier, []),
+            parse_sym_name_and_args(Term, Qualifier, []),
             Matches = [PredId - Qualifier]
         )
     ->
@@ -525,7 +525,7 @@ parse_functor_matches(Info, Term, !Map) :-
     (
         Term = term.functor(term.atom("=>"),
             [QualifierTerm, MatchesTerm], _),
-        sym_name_and_args(QualifierTerm, Qualifier, [])
+        parse_sym_name_and_args(QualifierTerm, Qualifier, [])
     ->
         conjunction_to_list(MatchesTerm, MatchesList),
         list.map(parse_resolved_functor(Info), MatchesList, Matches),
@@ -546,7 +546,7 @@ parse_resolved_functor(Info, Term, Ctor) :-
         ( PredOrFuncStr = "predicate", PredOrFunc = pf_predicate
         ; PredOrFuncStr = "function", PredOrFunc = pf_function
         ),
-        sym_name_and_args(ModuleTerm, ModuleName, []),
+        parse_sym_name_and_args(ModuleTerm, ModuleName, []),
         ArityTerm = term.functor(term.integer(Arity), [], _)
     ->
         PredId = invalid_pred_id,

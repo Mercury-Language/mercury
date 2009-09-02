@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -588,7 +588,7 @@ detect_liveness_in_construct_goal_loop([Goal0 | Goals0], [Goal | Goals],
     (
         GoalExpr = unify(_, _, _, Unification, _),
         Unification = construct(LHSVar, _ConsId, RHSVars, _ArgModes,
-            construct_statically(_), cell_is_shared, no_construct_sub_info)
+            construct_statically, cell_is_shared, no_construct_sub_info)
     ->
         ( set.remove_list(!.LocalLiveVars, RHSVars, !:LocalLiveVars) ->
             set.insert(!.LocalLiveVars, LHSVar, !:LocalLiveVars),

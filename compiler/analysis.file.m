@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2008 The University of Melbourne.
+% Copyright (C) 2003, 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -519,7 +519,7 @@ parse_func_id(Term, FuncId) :-
 :- pred parse_module_name(term::in, module_name::out) is semidet.
 
 parse_module_name(Term, ModuleName) :-
-    sym_name_and_args(Term, ModuleName, []).
+    parse_sym_name_and_args(Term, ModuleName, []).
 
 %-----------------------------------------------------------------------------%
 

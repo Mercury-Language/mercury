@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 University of Melbourne.
+% Copyright (C) 1997-2009 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -559,7 +559,7 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
     ->
         Result = Result0
     ;
-        sym_name_and_args(ConstraintTerm, ClassName, Args0)
+        parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
     ->
         % XXX ArgsResultContextPieces = [words("In typeclass constraint:")]
         ArgsResultContextPieces = [],
@@ -827,9 +827,10 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 [PredNameTerm, ArityTerm], _)
         ->
             (
-                sym_name_and_args(PredNameTerm, PredName, []),
+                parse_sym_name_and_args(PredNameTerm, PredName, []),
                 ArityTerm = term.functor(term.integer(ArityInt), [], _),
-                sym_name_and_args(InstanceMethodTerm, InstanceMethodName, [])
+                parse_sym_name_and_args(InstanceMethodTerm, InstanceMethodName,
+                    [])
             ->
                 InstanceMethod = instance_method(pf_predicate, PredName,
                     instance_proc_def_name(InstanceMethodName), ArityInt,
@@ -852,9 +853,10 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 [FuncNameTerm, ArityTerm], _)
         ->
             (
-                sym_name_and_args(FuncNameTerm, FuncName, []),
+                parse_sym_name_and_args(FuncNameTerm, FuncName, []),
                 ArityTerm = term.functor(term.integer(ArityInt), [], _),
-                sym_name_and_args(InstanceMethodTerm, InstanceMethodName, [])
+                parse_sym_name_and_args(InstanceMethodTerm, InstanceMethodName,
+                    [])
             ->
                 InstanceMethod = instance_method(pf_function, FuncName,
                     instance_proc_def_name(InstanceMethodName), ArityInt,

@@ -157,14 +157,22 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Access predicates for the `globals' structure
+% Access predicates for the `globals' structure.
 %
+
+:- type il_version_number
+    --->    il_version_number(
+                ivn_major               :: int,
+                ivn_minor               :: int,
+                ivn_build               :: int,
+                ivn_revision            :: int
+            ).
 
 :- pred globals_init(option_table::in, compilation_target::in, gc_method::in,
     tags_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in,
-    may_be_thread_safe::in, c_compiler_type::in, feedback_info::in, 
-    globals::out) is det.
+    may_be_thread_safe::in, c_compiler_type::in, maybe(il_version_number)::in,
+    feedback_info::in, globals::out) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
@@ -179,6 +187,8 @@
 :- pred get_source_file_map(globals::in, maybe(source_file_map)::out) is det.
 :- pred get_maybe_thread_safe(globals::in, may_be_thread_safe::out) is det.
 :- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
+:- pred get_maybe_il_version_number(globals::in, maybe(il_version_number)::out)
+    is det.
 :- pred get_feedback_info(globals::in, feedback_info::out) is det.
 
 :- pred set_option(option::in, option_data::in, globals::in, globals::out)
@@ -239,8 +249,8 @@
 :- pred globals_io_init(option_table::in, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
     termination_norm::in, trace_level::in, trace_suppress_items::in,
-    may_be_thread_safe::in, c_compiler_type::in, feedback_info::in, 
-    io::di, io::uo) is det.
+    may_be_thread_safe::in, c_compiler_type::in, maybe(il_version_number)::in,
+    feedback_info::in, io::di, io::uo) is det.
 
 :- pred io_get_target(compilation_target::out, io::di, io::uo) is det.
 :- pred io_get_backend_foreign_languages(list(foreign_language)::out,
@@ -490,6 +500,7 @@ gc_is_conservative(gc_automatic) = no.
                 have_printed_usage      :: bool,
                 may_be_thread_safe      :: bool,
                 c_compiler_type         :: c_compiler_type,
+                maybe_il_version_number :: maybe(il_version_number),
                 feedback                :: feedback_info
             ).
 
@@ -517,10 +528,10 @@ gc_is_conservative(gc_automatic) = no.
 
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, C_CompilerType, Feedback, Globals) :-
+        MaybeThreadSafe, C_CompilerType, MaybeILVersion, Feedback, Globals) :-
     Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        no, no, MaybeThreadSafe, C_CompilerType, Feedback).
+        no, no, MaybeThreadSafe, C_CompilerType, MaybeILVersion, Feedback).
 
 get_options(Globals, Globals ^ options).
 get_target(Globals, Globals ^ target).
@@ -533,6 +544,7 @@ get_trace_suppress(Globals, Globals ^ trace_suppress_items).
 get_source_file_map(Globals, Globals ^ source_file_map).
 get_maybe_thread_safe(Globals, Globals ^ may_be_thread_safe).
 get_c_compiler_type(Globals, Globals ^ c_compiler_type).
+get_maybe_il_version_number(Globals, Globals ^ maybe_il_version_number).
 get_feedback_info(Globals, Globals ^ feedback).
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
@@ -702,10 +714,11 @@ want_return_var_layouts(Globals, WantReturnLayouts) :-
 
 globals_io_init(Options, Target, GC_Method, TagsMethod, TerminationNorm,
         Termination2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, Feedback, !IO) :-
+        C_CompilerType, MaybeILVersion, Feedback, !IO) :-
     globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel,
-        TraceSuppress, MaybeThreadSafe, C_CompilerType, Feedback, Globals),
+        TraceSuppress, MaybeThreadSafe, C_CompilerType, MaybeILVersion,
+        Feedback, Globals),
     io_set_globals(Globals, !IO),
     getopt_io.lookup_bool_option(Options, solver_type_auto_init,
         AutoInitSupported),

@@ -16,6 +16,7 @@
 :- module ml_backend.mlds_to_managed.
 :- interface.
 
+:- import_module libs.globals.
 :- import_module ml_backend.mlds.
 
 :- import_module io.
@@ -24,7 +25,7 @@
 
     % Convert the MLDS to C# and write it to a file.
     %
-:- pred output_csharp_code(mlds::in, io::di, io::uo) is det.
+:- pred output_csharp_code(globals::in, mlds::in, io::di, io::uo) is det.
 
     % Print the header comments of the output module.
     %
@@ -41,12 +42,12 @@
 
 :- import_module backend_libs.c_util.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ilds.
-:- import_module ml_backend.mlds_to_il.
+:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
+:- import_module ml_backend.mlds_to_il.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
@@ -64,12 +65,51 @@
 
 %-----------------------------------------------------------------------------%
 
-output_csharp_code(MLDS, !IO) :-
-    MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns,
+output_csharp_code(Globals, MLDS, !IO) :-
+    MLDS = mlds(ModuleName, AllForeignCode, _Imports, GlobalData, Defns0,
         _InitPreds, _FinalPreds, _ExportedEnums),
+    ml_global_data_get_all_global_defns(GlobalData, GlobalDefns),
+    Defns = GlobalDefns ++ Defns0,
+
     output_src_start(ModuleName, !IO),
+
+    ClassName = class_name(mercury_module_name_to_mlds(ModuleName),
+        wrapper_class_name),
+
+    output_csharp_header_code(Globals, !IO),
+
+    % Get the foreign code for the required language.
+    ForeignCode = map.lookup(AllForeignCode, lang_csharp),
+    generate_foreign_header_code(ForeignCode, !IO),
+
+    % Output the namespace.
+    generate_namespace_details(ClassName, NameSpaceFmtStr, Namespace),
+    io.write_list(Namespace, "\n",
+        (pred(N::in, !.IO::di, !:IO::uo) is det :-
+            io.format(NameSpaceFmtStr, [s(N)], !IO)
+    ), !IO),
+
+    io.write_strings(["\npublic class " ++ wrapper_class_name, "{\n"], !IO),
+
+    % Output the contents of pragma foreign_code declarations.
+    generate_foreign_code(ForeignCode, !IO),
+
     io.nl(!IO),
-    generate_code(MLDS, !IO),
+
+    % Output the contents of foreign_proc declarations.
+    % Put each one inside a method.
+    get_il_data_rep(Globals, DataRep),
+    list.foldl(generate_method_code(DataRep), Defns, !IO),
+
+    io.write_string("};\n", !IO),
+
+    % Close the namespace braces.
+    io.write_list(Namespace, "\n",
+        (pred(_N::in, !.IO::di, !:IO::uo) is det :-
+            io.write_string("}", !IO)
+    ), !IO),
+    io.nl(!IO),
+
     output_src_end(ModuleName, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -93,52 +133,10 @@ output_src_end(ModuleName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_code(mlds::in, io::di, io::uo) is det.
+:- pred output_csharp_header_code(globals::in, io::di, io::uo) is det.
 
-generate_code(MLDS, !IO) :-
-    MLDS = mlds(ModuleName, AllForeignCode, _Imports, Defns,
-        _InitPreds, _FinalPreds, _ExportedEnums),
-    ClassName = class_name(mercury_module_name_to_mlds(ModuleName),
-        wrapper_class_name),
-    io.nl(!IO),
-
-    output_csharp_header_code(!IO),
-
-    % Get the foreign code for the required language.
-    ForeignCode = map.lookup(AllForeignCode, lang_csharp),
-    generate_foreign_header_code(ForeignCode, !IO),
-
-    % Output the namespace.
-    generate_namespace_details(ClassName, NameSpaceFmtStr, Namespace),
-    io.write_list(Namespace, "\n",
-        (pred(N::in, !.IO::di, !:IO::uo) is det :-
-            io.format(NameSpaceFmtStr, [s(N)], !IO)
-    ), !IO),
-
-    io.write_strings(["\npublic class " ++ wrapper_class_name, "{\n"], !IO),
-
-    % Output the contents of pragma foreign_code declarations.
-    generate_foreign_code(ForeignCode, !IO),
-
-    io.nl(!IO),
-
-    % Output the contents of foreign_proc declarations.
-    % Put each one inside a method.
-    list.foldl(generate_method_code, Defns, !IO),
-
-    io.write_string("};\n", !IO),
-
-    % Close the namespace braces.
-    io.write_list(Namespace, "\n",
-        (pred(_N::in, !.IO::di, !:IO::uo) is det :-
-            io.write_string("}", !IO)
-    ), !IO),
-    io.nl(!IO).
-
-:- pred output_csharp_header_code(io::di, io::uo) is det.
-
-output_csharp_header_code(!IO) :-
-    get_il_data_rep(DataRep, !IO),
+output_csharp_header_code(Globals, !IO) :-
+    get_il_data_rep(Globals, DataRep),
     ( DataRep = il_data_rep(yes, _) ->
         io.write_string("#define MR_HIGHLEVEL_DATA\n", !IO)
     ;
@@ -150,7 +148,7 @@ output_csharp_header_code(!IO) :-
     % in the C# code anymore.
     io.write_string("using mercury;\n\n", !IO),
 
-    globals.io_lookup_bool_option(sign_assembly, SignAssembly, !IO),
+    globals.lookup_bool_option(Globals, sign_assembly, SignAssembly),
     (
         SignAssembly = yes,
         io.write_string("[assembly:System.Reflection." ++
@@ -187,6 +185,9 @@ generate_foreign_header_code(ForeignCode, !IO) :-
 generate_namespace_details(ClassName, NameSpaceFmtStr, Namespace) :-
     % XXX We should consider what happens if we need to mangle
     % the namespace name.
+    %
+    % XXX Generating the left brace here and the right brace somewhere else
+    % seems bad design. -zs
     NameSpaceFmtStr = "namespace @%s {",
 
     Namespace0 = get_class_namespace(ClassName),
@@ -215,87 +216,91 @@ generate_foreign_code(ForeignCode, !IO) :-
             output_reset_context(!IO)
     ), !IO).
 
-:- pred generate_method_code(mlds_defn::in, io::di, io::uo) is det.
+:- pred generate_method_code(il_data_rep::in, mlds_defn::in, io::di, io::uo)
+    is det.
 
-generate_method_code(mlds_defn(entity_export(_), _, _, _), !IO).
-generate_method_code(mlds_defn(entity_data(_), _, _, _), !IO).
-generate_method_code(mlds_defn(entity_type(_, _), _, _, _), !IO).
-generate_method_code(Defn, !IO) :-
-    Defn = mlds_defn(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
-        _Context, _DeclFlags, Entity),
+generate_method_code(DataRep, Defn, !IO) :-
+    Defn = mlds_defn(EntityName, _Context, _DeclFlags, Entity),
     (
-        % XXX we ignore the attributes
-        Entity = mlds_function(_, Params, body_defined_here(Statement),
-            _Attributes, EnvVarNames),
-        has_foreign_languages(Statement, Langs),
-        list.member(lang_csharp, Langs)
-    ->
-        expect(set.empty(EnvVarNames), this_file,
-            "generate_method_code: EnvVarNames"),
-        get_il_data_rep(DataRep, !IO),
-        Params = mlds_func_params(Inputs, Outputs),
-        (
-            Outputs = [],
-            ReturnType = void
-        ;
-            Outputs = [MLDSReturnType],
-            mlds_type_to_ilds_type(DataRep, MLDSReturnType) =
-                il_type(_, SimpleType),
-            ReturnType = simple_type(SimpleType)
-        ;
-            Outputs = [_, _ | _],
-            % C# doesn't support multiple return values
-            sorry(this_file, "multiple return values")
-        ),
-
-        predlabel_to_csharp_id(PredLabel, ProcId, MaybeSeqNum, Id),
-        io.write_string("public static ", !IO),
-        write_il_ret_type_as_foreign_type(ReturnType, !IO),
-
-        io.write_string(" ", !IO),
-
-        io.write_string(Id, !IO),
-        io.write_string("(", !IO),
-        io.write_list(Inputs, ", ",
-            write_input_arg_as_foreign_type, !IO),
-        io.write_string(")", !IO),
-        io.nl(!IO),
-
-        io.write_string("{\n", !IO),
-        write_statement(Inputs, Statement, !IO),
-        io.write_string("}\n", !IO)
+        ( EntityName = entity_export(_)
+        ; EntityName = entity_data(_)
+        ; EntityName = entity_type(_, _)
+        )
     ;
-        true
+        EntityName = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+        (
+            % XXX we ignore the attributes
+            Entity = mlds_function(_, Params, body_defined_here(Statement),
+                _Attributes, EnvVarNames),
+            has_foreign_languages(Statement, Langs),
+            list.member(lang_csharp, Langs)
+        ->
+            expect(set.empty(EnvVarNames), this_file,
+                "generate_method_code: EnvVarNames"),
+            Params = mlds_func_params(Inputs, Outputs),
+            (
+                Outputs = [],
+                ReturnType = void
+            ;
+                Outputs = [MLDSReturnType],
+                mlds_type_to_ilds_type(DataRep, MLDSReturnType) =
+                    il_type(_, SimpleType),
+                ReturnType = simple_type(SimpleType)
+            ;
+                Outputs = [_, _ | _],
+                % C# doesn't support multiple return values
+                sorry(this_file, "multiple return values")
+            ),
+
+            predlabel_to_csharp_id(PredLabel, ProcId, MaybeSeqNum, Id),
+            io.write_string("public static ", !IO),
+            write_il_ret_type_as_foreign_type(ReturnType, !IO),
+
+            io.write_string(" ", !IO),
+
+            io.write_string(Id, !IO),
+            io.write_string("(", !IO),
+            io.write_list(Inputs, ", ",
+                write_input_arg_as_foreign_type(DataRep), !IO),
+            io.write_string(")", !IO),
+            io.nl(!IO),
+
+            io.write_string("{\n", !IO),
+            write_statement(DataRep, Inputs, Statement, !IO),
+            io.write_string("}\n", !IO)
+        ;
+            true
+        )
     ).
 
-:- pred write_statement(mlds_arguments::in, statement::in,
+:- pred write_statement(il_data_rep::in, mlds_arguments::in, statement::in,
     io::di, io::uo) is det.
 
-write_statement(Args, statement(Statement, Context), !IO) :-
+write_statement(DataRep, Args, statement(Statement, Context), !IO) :-
     (
         % XXX petdr
         Statement = ml_stmt_atomic(ForeignProc),
         ForeignProc = outline_foreign_proc(lang_csharp, OutlineArgs, _, Code)
     ->
-        list.foldl(write_outline_arg_init, OutlineArgs, !IO),
+        list.foldl(write_outline_arg_init(DataRep), OutlineArgs, !IO),
         output_context(mlds_get_prog_context(Context), !IO),
         io.write_string(Code, !IO),
         io.nl(!IO),
         output_reset_context(!IO),
-        list.foldl(write_outline_arg_final, OutlineArgs, !IO)
+        list.foldl(write_outline_arg_final(DataRep), OutlineArgs, !IO)
     ;
         Statement = ml_stmt_block(Defns, Statements)
     ->
-        io.write_list(Defns, "", write_defn_decl, !IO),
+        io.write_list(Defns, "", write_defn_decl(DataRep), !IO),
         io.write_string("{\n", !IO),
-        io.write_list(Statements, "", write_statement(Args), !IO),
+        io.write_list(Statements, "", write_statement(DataRep, Args), !IO),
         io.write_string("\n}\n", !IO)
     ;
         Statement = ml_stmt_return(Rvals)
     ->
         ( Rvals = [Rval] ->
             io.write_string("return ", !IO),
-            write_rval(Rval, !IO),
+            write_rval(DataRep, Rval, !IO),
             io.write_string(";\n", !IO)
         ;
             sorry(this_file, "multiple return values")
@@ -303,75 +308,54 @@ write_statement(Args, statement(Statement, Context), !IO) :-
     ;
         Statement = ml_stmt_atomic(assign(LVal, RVal))
     ->
-        write_lval(LVal, !IO),
+        write_lval(DataRep, LVal, !IO),
         io.write_string(" = ", !IO),
-        write_rval(RVal, !IO),
+        write_rval(DataRep, RVal, !IO),
         io.write_string(";\n", !IO)
     ;
         functor(Statement, canonicalize, SFunctor, _Arity),
         sorry(this_file, "foreign code output for " ++ SFunctor)
     ).
 
-:- pred write_outline_arg_init(outline_arg::in, io::di, io::uo) is det.
-
-write_outline_arg_init(in(Type, VarName, Rval), !IO) :-
-    write_parameter_type(Type, !IO),
-    io.write_string(" ", !IO),
-    io.write_string(VarName, !IO),
-    io.write_string(" = ", !IO),
-    write_rval(Rval, !IO),
-    io.write_string(";\n", !IO).
-write_outline_arg_init(out(Type, VarName, _Lval), !IO) :-
-    write_parameter_type(Type, !IO),
-    io.write_string(" ", !IO),
-    io.write_string(VarName, !IO),
-    % In C# give output variables a default value to avoid warnings.
-    io.write_string(" = ", !IO),
-    write_parameter_initializer(Type, !IO),
-    io.write_string(";\n", !IO).
-write_outline_arg_init(unused, !IO).
-
-:- pred write_outline_arg_final(outline_arg::in, io::di, io::uo) is det.
-
-write_outline_arg_final(in(_, _, _), !IO).
-write_outline_arg_final(out(_Type, VarName, Lval), !IO) :-
-    write_lval(Lval, !IO),
-    io.write_string(" = ", !IO),
-    io.write_string(VarName, !IO),
-    io.write_string(";\n", !IO).
-write_outline_arg_final(unused, !IO).
-
-:- pred write_declare_and_assign_local(mlds_argument::in,
+:- pred write_outline_arg_init(il_data_rep::in, outline_arg::in,
     io::di, io::uo) is det.
 
-write_declare_and_assign_local(mlds_argument(Name, Type, _GcCode), !IO) :-
-    ( Name = entity_data(mlds_data_var(VarName0)) ->
-        VarName = VarName0
-    ;
-        unexpected(this_file, "not a variable name")
-    ),
-
-    % A pointer type is an output type.
-    ( Type = mlds_ptr_type(OutputType) ->
-        ( is_anonymous_variable(VarName) ->
-            true
-        ;
-            write_parameter_type(OutputType, !IO),
-            io.write_string(" ", !IO),
-            write_mlds_var_name_for_local(VarName, !IO),
-
-            % In C# give output types a default value to avoid warnings.
-            io.write_string(" = ", !IO),
-            write_parameter_initializer(OutputType, !IO),
-            io.write_string(";\n", !IO)
-        )
-    ;
-        write_parameter_type(Type, !IO),
+write_outline_arg_init(DataRep, OutlineArg, !IO) :-
+    (
+        OutlineArg = in(Type, VarName, Rval),
+        write_parameter_type(DataRep, Type, !IO),
         io.write_string(" ", !IO),
-        write_mlds_var_name_for_local(VarName, !IO),
+        io.write_string(VarName, !IO),
         io.write_string(" = ", !IO),
-        write_mlds_var_name_for_parameter(VarName, !IO),
+        write_rval(DataRep, Rval, !IO),
         io.write_string(";\n", !IO)
+    ;
+        OutlineArg = out(Type, VarName, _Lval),
+        write_parameter_type(DataRep, Type, !IO),
+        io.write_string(" ", !IO),
+        io.write_string(VarName, !IO),
+        % In C# give output variables a default value to avoid warnings.
+        io.write_string(" = ", !IO),
+        write_parameter_initializer(DataRep, Type, !IO),
+        io.write_string(";\n", !IO)
+    ;
+        OutlineArg = unused
+    ).
+
+:- pred write_outline_arg_final(il_data_rep::in, outline_arg::in,
+    io::di, io::uo) is det.
+
+write_outline_arg_final(DataRep, OutlineArg, !IO) :-
+    (
+        OutlineArg = in(_, _, _)
+    ;
+        OutlineArg = out(_Type, VarName, Lval),
+        write_lval(DataRep, Lval, !IO),
+        io.write_string(" = ", !IO),
+        io.write_string(VarName, !IO),
+        io.write_string(";\n", !IO)
+    ;
+        OutlineArg = unused
     ).
 
 :- pred write_assign_local_to_output(mlds_argument::in, io::di, io::uo) is det.
@@ -415,50 +399,59 @@ output_context(Context, !IO) :-
 output_reset_context(!IO) :-
     c_util.reset_line_num(!IO).
 
-:- pred write_rval(mlds_rval::in, io::di, io::uo) is det.
+:- pred write_rval(il_data_rep::in, mlds_rval::in, io::di, io::uo) is det.
 
-write_rval(ml_lval(Lval), !IO) :-
-    write_lval(Lval, !IO).
-write_rval(ml_mkword(_Tag, _Rval), !IO) :-
-    sorry(this_file, "mkword rval").
-write_rval(ml_const(RvalConst), !IO) :-
-    write_rval_const(RvalConst, !IO).
-write_rval(ml_unop(Unop, Rval), !IO) :-
+write_rval(DataRep, Rval, !IO) :-
     (
-        Unop = std_unop(StdUnop),
-        c_util.unary_prefix_op(StdUnop, UnopStr)
-    ->
-        io.write_string(UnopStr, !IO),
-        io.write_string("(", !IO),
-        write_rval(Rval, !IO),
-        io.write_string(")", !IO)
+        Rval = ml_lval(Lval),
+        write_lval(DataRep, Lval, !IO)
     ;
-        Unop = cast(Type)
-    ->
-        io.write_string("(", !IO),
-        write_parameter_type(Type, !IO),
-        io.write_string(") ", !IO),
-        write_rval(Rval, !IO)
+        Rval = ml_mkword(_Tag, _Rval),
+        sorry(this_file, "mkword rval")
     ;
-        sorry(this_file, "box or unbox unop")
+        Rval = ml_const(RvalConst),
+        write_rval_const(RvalConst, !IO)
+    ;
+        Rval = ml_unop(Unop, RvalA),
+        (
+            Unop = std_unop(StdUnop),
+            c_util.unary_prefix_op(StdUnop, UnopStr)
+        ->
+            io.write_string(UnopStr, !IO),
+            io.write_string("(", !IO),
+            write_rval(DataRep, RvalA, !IO),
+            io.write_string(")", !IO)
+        ;
+            Unop = cast(Type)
+        ->
+            io.write_string("(", !IO),
+            write_parameter_type(DataRep, Type, !IO),
+            io.write_string(") ", !IO),
+            write_rval(DataRep, RvalA, !IO)
+        ;
+            sorry(this_file, "box or unbox unop")
+        )
+    ;
+        Rval = ml_binop(Binop, RvalA, RvalB),
+        c_util.binop_category_string(Binop, Category, BinopStr),
+        ( Category = int_or_bool_binary_infix_binop ->
+            io.write_string("(", !IO),
+            write_rval(DataRep, RvalA, !IO),
+            io.write_string(") ", !IO),
+            io.write_string(BinopStr, !IO),
+            io.write_string(" (", !IO),
+            write_rval(DataRep, RvalB, !IO),
+            io.write_string(")", !IO)
+        ;
+            sorry(this_file, "binop rval")
+        )
+    ;
+        Rval = ml_mem_addr(_),
+        sorry(this_file, "mem_addr rval")
+    ;
+        Rval = ml_self(_),
+        sorry(this_file, "self rval")
     ).
-write_rval(ml_binop(Binop, Rval1, Rval2), !IO) :-
-    c_util.binop_category_string(Binop, Category, BinopStr),
-    ( Category = int_or_bool_binary_infix_binop ->
-        io.write_string("(", !IO),
-        write_rval(Rval1, !IO),
-        io.write_string(") ", !IO),
-        io.write_string(BinopStr, !IO),
-        io.write_string(" (", !IO),
-        write_rval(Rval2, !IO),
-        io.write_string(")", !IO)
-    ;
-        sorry(this_file, "binop rval")
-    ).
-write_rval(ml_mem_addr(_), !IO) :-
-    sorry(this_file, "mem_addr rval").
-write_rval(ml_self(_), !IO) :-
-    sorry(this_file, "self rval").
 
 :- pred write_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
 
@@ -502,23 +495,23 @@ write_rval_const(mlconst_data_addr(_), !IO) :-
 write_rval_const(mlconst_null(_), !IO) :-
     io.write_string("null", !IO).
 
-:- pred write_lval(mlds_lval::in, io::di, io::uo) is det.
+:- pred write_lval(il_data_rep::in, mlds_lval::in, io::di, io::uo) is det.
 
-write_lval(Lval, !IO) :-
+write_lval(DataRep, Lval, !IO) :-
     (
         Lval = ml_field(_, Rval, FieldId, _, _),
         (
             FieldId = ml_field_offset(OffSet),
             io.write_string("(", !IO),
-            write_rval(Rval, !IO),
+            write_rval(DataRep, Rval, !IO),
             io.write_string(")", !IO),
             io.write_string("[", !IO),
-            write_rval(OffSet, !IO),
+            write_rval(DataRep, OffSet, !IO),
             io.write_string("]", !IO)
         ;
             FieldId = ml_field_named(FQFieldName, _Type),
             io.write_string("(", !IO),
-            write_rval(Rval, !IO),
+            write_rval(DataRep, Rval, !IO),
             io.write_string(")", !IO),
             io.write_string(".", !IO),
             FQFieldName = qual(_, _, FieldName),
@@ -526,7 +519,7 @@ write_lval(Lval, !IO) :-
         )
     ;
         Lval = ml_mem_ref(Rval, _),
-        write_rval(Rval, !IO)
+        write_rval(DataRep, Rval, !IO)
     ;
         Lval = ml_global_var_ref(_),
         sorry(this_file, "write_lval: global_var_ref NYI")
@@ -536,15 +529,15 @@ write_lval(Lval, !IO) :-
         write_mlds_var_name_for_parameter(VarName, !IO)
     ).
 
-:- pred write_defn_decl(mlds_defn::in, io::di, io::uo) is det.
+:- pred write_defn_decl(il_data_rep::in, mlds_defn::in, io::di, io::uo) is det.
 
-write_defn_decl(Defn, !IO) :-
+write_defn_decl(DataRep, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
         DefnBody = mlds_data(Type, _Initializer, _GCStatement),
         Name = entity_data(mlds_data_var(VarName))
     ->
-        write_parameter_type(Type, !IO),
+        write_parameter_type(DataRep, Type, !IO),
         io.write_string(" ", !IO),
         write_mlds_var_name_for_parameter(VarName, !IO),
         io.write_string(";\n", !IO)
@@ -553,21 +546,19 @@ write_defn_decl(Defn, !IO) :-
         sorry(this_file, "data_addr_const rval")
     ).
 
-:- pred write_parameter_type(mlds_type::in, io::di, io::uo) is det.
+:- pred write_parameter_type(il_data_rep::in, mlds_type::in, io::di, io::uo)
+    is det.
 
-write_parameter_type(Type, !IO) :-
-    get_il_data_rep(DataRep, !IO),
+write_parameter_type(DataRep, Type, !IO) :-
     ILType = mlds_type_to_ilds_type(DataRep, Type),
     write_il_type_as_foreign_type(ILType, !IO).
 
-:- pred write_input_arg_as_foreign_type(mlds_argument::in,
+:- pred write_input_arg_as_foreign_type(il_data_rep::in, mlds_argument::in,
     io::di, io::uo) is det.
 
-write_input_arg_as_foreign_type(Arg, !IO) :-
+write_input_arg_as_foreign_type(DataRep, Arg, !IO) :-
     Arg = mlds_argument(EntityName, Type, _GCStatement),
-    get_il_data_rep(DataRep, !IO),
-    write_il_type_as_foreign_type(mlds_type_to_ilds_type(DataRep, Type),
-        !IO),
+    write_il_type_as_foreign_type(mlds_type_to_ilds_type(DataRep, Type), !IO),
     io.write_string(" ", !IO),
     ( EntityName = entity_data(mlds_data_var(VarName)) ->
         write_mlds_var_name_for_parameter(VarName, !IO)
@@ -575,10 +566,10 @@ write_input_arg_as_foreign_type(Arg, !IO) :-
         unexpected(this_file, "found a variable in a list")
     ).
 
-:- pred write_parameter_initializer(mlds_type::in, io::di, io::uo) is det.
+:- pred write_parameter_initializer(il_data_rep::in, mlds_type::in,
+    io::di, io::uo) is det.
 
-write_parameter_initializer(Type, !IO) :-
-    get_il_data_rep(DataRep, !IO),
+write_parameter_initializer(DataRep, Type, !IO) :-
     ILType = mlds_type_to_ilds_type(DataRep, Type),
     ILType = il_type(_, ILSimpleType),
     write_csharp_initializer(ILSimpleType, !IO).

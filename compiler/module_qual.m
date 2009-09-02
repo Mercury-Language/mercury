@@ -675,7 +675,7 @@ process_assert_list(ExprList, Symbols, Success) :-
 :- pred term_qualified_symbols(term::in, list(sym_name)::out) is semidet.
 
 term_qualified_symbols(Term, Symbols) :-
-    ( sym_name_and_args(Term, SymName, Args) ->
+    ( parse_sym_name_and_args(Term, SymName, Args) ->
         SymName = qualified(_, _),
         term_qualified_symbols_list(Args, Symbols0),
         Symbols = [SymName | Symbols0]

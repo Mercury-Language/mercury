@@ -426,7 +426,7 @@ collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
                 set.make_singleton_set(AllocatedIntoRegion), set.init),
             goal_info_set_maybe_rbmm(yes(RbmmInfo), !Info)
         ;
-            ( HowToConstruct = construct_statically(_)
+            ( HowToConstruct = construct_statically
             ; HowToConstruct = construct_dynamically
             ; HowToConstruct = reuse_cell(_)
             ),

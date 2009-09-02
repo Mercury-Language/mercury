@@ -303,7 +303,7 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
             [FieldNameTerm, OtherFieldNamesTerm], _)
     ->
         (
-            sym_name_and_args(FieldNameTerm, FieldName, Args)
+            parse_sym_name_and_args(FieldNameTerm, FieldName, Args)
         ->
             parse_field_list(OtherFieldNamesTerm, VarSet, ContextPieces,
                 MaybeFieldNamesTail),
@@ -320,7 +320,7 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
             MaybeFieldNames = error1([Spec])
         )
     ;
-        ( sym_name_and_args(Term, FieldName, Args) ->
+        ( parse_sym_name_and_args(Term, FieldName, Args) ->
             MaybeFieldNames = ok1([FieldName - Args])
         ;
             Spec = make_field_list_error(VarSet, get_term_context(Term), Term,

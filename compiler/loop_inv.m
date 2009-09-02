@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et tw=0 wm=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -606,7 +606,7 @@ dont_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
 const_construction(hlds_goal(GoalExpr, _GoalInfo)) :-
     Construction = GoalExpr ^ unify_kind,
     ( Construction ^ construct_args = []
-    ; Construction ^ construct_how  = construct_statically(_)
+    ; Construction ^ construct_how  = construct_statically
     ).
 
 %-----------------------------------------------------------------------------%

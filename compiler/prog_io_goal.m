@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -132,7 +132,7 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
         % It's not a builtin.
         term.coerce(Term, ArgsTerm),
         % Check for predicate calls.
-        ( sym_name_and_args(ArgsTerm, SymName, Args) ->
+        ( parse_sym_name_and_args(ArgsTerm, SymName, Args) ->
             GoalExpr = call_expr(SymName, Args, purity_pure)
         ;
             % A call to a free variable, or to a number or string.

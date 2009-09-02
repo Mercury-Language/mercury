@@ -25,6 +25,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.mlds.
+:- import_module ml_backend.ml_global_data.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -35,7 +36,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Various utility routines used for MLDS code generation
+% Various utility routines used for MLDS code generation.
 %
 
     % Generate an MLDS assignment statement.
@@ -57,19 +58,6 @@
     = statement.
 :- func ml_gen_block_mlds(list(mlds_defn), list(statement), mlds_context)
     = statement.
-
-    % Join two statement lists and their corresponding declaration lists
-    % in sequence.
-    %
-    % If the statements have no declarations in common, then their
-    % corresponding declaration lists will be concatenated together into
-    % a single list of declarations. But if they have any declarations
-    % in common, then we put each statement list and its declarations into
-    % a block, so that the declarations remain local to each statement list.
-    %
-:- pred ml_join_decls(list(mlds_defn)::in, list(statement)::in,
-    list(mlds_defn)::in, list(statement)::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out) is det.
 
 :- type gen_pred == pred(list(mlds_defn), list(statement),
     ml_gen_info, ml_gen_info).
@@ -109,7 +97,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for generating expressions
+% Routines for generating expressions.
 %
 
     % conjunction: ml_gen_and(X,Y) = binop((and), X, Y),
@@ -122,7 +110,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for generating types
+% Routines for generating types.
 %
 
     % Convert a Mercury type to an MLDS type.
@@ -184,7 +172,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for generating labels and entity names
+% Routines for generating labels and entity names.
 %
 
     % Generate the mlds_entity_name and module name for the entry point
@@ -223,7 +211,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for dealing with variables
+% Routines for dealing with variables.
 %
 
     % Generate a list of the mlds_lvals corresponding to a given list
@@ -297,7 +285,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for dealing with static constants
+% Routines for dealing with static constants.
 %
 
     % ml_format_reserved_object_name(CtorName, CtorArity, ReservedObjName):
@@ -308,16 +296,12 @@
     %
 :- func ml_format_reserved_object_name(string, arity) = mlds_var_name.
 
-    % Generate a name for a local static constant.
-    %
-:- pred ml_format_static_const_name(ml_gen_info::in, string::in, const_seq::in,
-    mlds_var_name::out) is det.
-
     % Generate a definition of a static constant, given the constant's name,
     % type, accessibility, and initializer.
     %
-:- func ml_gen_static_const_defn(mlds_var_name, mlds_type, access,
-    mlds_initializer, prog_context) = mlds_defn.
+:- pred ml_gen_static_const_defn(string::in, mlds_type::in, access::in,
+    mlds_initializer::in, prog_context::in, mlds_var_name::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
     % Return the declaration flags appropriate for an initialized
     % local static constant.
@@ -330,7 +314,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for dealing with fields
+% Routines for dealing with fields.
 %
 
     % Given the user-specified field name, if any, and the argument number
@@ -343,11 +327,11 @@
     % are not word-sized, because the code for `arg' etc. in std_util.m
     % relies on all arguments being word-sized.
     %
-:- pred ml_must_box_field_type(mer_type::in, module_info::in) is semidet.
+:- pred ml_must_box_field_type(module_info::in, mer_type::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for handling success and failure
+% Routines for handling success and failure.
 %
 
     % Generate code to succeed in the given code_model.
@@ -437,7 +421,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for dealing with the environment pointer used for nested functions
+% Routines for dealing with the environment pointer used for nested functions.
 %
 
     % Return an rval for a pointer to the current environment (the set of local
@@ -455,7 +439,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Code to handle accurate GC
+% Code to handle accurate GC.
 %
 
     % ml_gen_gc_statement(Var, Type, Context, Code):
@@ -468,9 +452,9 @@
     prog_context::in, mlds_gc_statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % ml_gen_gc_statement(Var, DeclType, ActualType, Context, Code):
+    % ml_gen_gc_statement_poly(Var, DeclType, ActualType, Context, Code):
     %
-    % This is the same as the //4 version (above), except that it takes two
+    % This is the same as ml_gen_gc_statement, except that it takes two
     % type arguments, rather than one. The first (DeclType) is the type that
     % the variable was declared with, while the second (ActualType) is that
     % type that the variable is known to have. This is used to generate GC
@@ -486,15 +470,15 @@
     % doesn't (e.g. because DeclType may be a boxed float). So we need to pass
     % both.
     %
-:- pred ml_gen_gc_statement(mlds_var_name::in,
+:- pred ml_gen_gc_statement_poly(mlds_var_name::in,
     mer_type::in, mer_type::in, prog_context::in,
     mlds_gc_statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_gc_statement_with_typeinfo(Var, DeclType, TypeInfoRval,
     %   Context, Code):
     %
-    % This is the same as ml_gen_gc_statement//5, except that rather
-    % than passing ActualType, the caller constructs the type-info itself,
+    % This is the same as ml_gen_gc_statement_poly, except that rather
+    % than passing ActualType, the caller constructs the typeinfo itself,
     % and just passes the rval for it to this routine.
     %
     % This is used by ml_closure_gen.m to generate GC tracing code
@@ -527,7 +511,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Miscellaneous routines
+% Miscellaneous routines.
 %
 
     % Get the value of the appropriate --det-copy-out or --nondet-copy-out
@@ -555,12 +539,16 @@
 :- type ml_gen_info.
 
     % Initialize the ml_gen_info, so that it is ready for generating code
-    % for the given procedure.
+    % for the given procedure. The last argument records the persistent
+    % information accumulated by the code generator so far during the
+    % processing of previous procedures.
     %
-:- func ml_gen_info_init(module_info, pred_id, proc_id) = ml_gen_info.
+:- func ml_gen_info_init(module_info, pred_id, proc_id, proc_info,
+    ml_global_data) = ml_gen_info.
 
 :- pred ml_gen_info_get_module_info(ml_gen_info::in, module_info::out) is det.
-:- pred ml_gen_info_get_module_name(ml_gen_info::in, mercury_module_name::out)
+:- pred ml_gen_info_get_high_level_data(ml_gen_info::in, bool::out) is det.
+:- pred ml_gen_info_get_target(ml_gen_info::in, compilation_target::out)
     is det.
 :- pred ml_gen_info_get_pred_id(ml_gen_info::in, pred_id::out) is det.
 :- pred ml_gen_info_get_proc_id(ml_gen_info::in, proc_id::out) is det.
@@ -570,12 +558,19 @@
     is det.
 :- pred ml_gen_info_get_value_output_vars(ml_gen_info::in, list(prog_var)::out)
     is det.
-:- pred ml_gen_info_get_globals(ml_gen_info::in, globals::out) is det.
+:- pred ml_gen_info_get_global_data(ml_gen_info::in, ml_global_data::out)
+    is det.
 
 :- pred ml_gen_info_set_byref_output_vars(list(prog_var)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_value_output_vars(list(prog_var)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_global_data(ml_global_data::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+:- pred ml_gen_info_get_globals(ml_gen_info::in, globals::out) is det.
+:- pred ml_gen_info_get_module_name(ml_gen_info::in, mercury_module_name::out)
+    is det.
 
     % Lookup the --gcc-nested-functions option.
     %
@@ -613,18 +608,19 @@
     %
 :- pred ml_gen_info_bump_counters(ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Generate a new commit label number. This is used to give unique names
-    % to the labels used when generating code for commits.
+    % Generate a new auxiliary variable name. The name of the variable
+    % will start with the given prefix and end with a sequence number
+    % that differentiates this aux var from all others.
     %
-:- type commit_sequence_num == int.
-:- pred ml_gen_info_new_commit_label(commit_sequence_num::out,
+    % Auxiliary variables are used for purposes such as commit label numbers
+    % and holding table indexes in switches.
+    %
+:- pred ml_gen_info_new_aux_var_name(string::in, mlds_var_name::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Generate a new `cond' variable number. This is used to give unique names
-    % to the local variables used to hold the results of nondet conditions
-    % of if-then-elses.
+    % Generate a new `cond' variable number.
     %
-:- type cond_seq == int.
+:- type cond_seq ---> cond_seq(int).
 :- pred ml_gen_info_new_cond_var(cond_seq::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -632,30 +628,34 @@
     % to the local variables generated by ml_gen_box_or_unbox_lval, which are
     % used to handle boxing/unboxing argument conversions.
     %
-:- type conv_seq == int.
+:- type conv_seq ---> conv_seq(int).
 :- pred ml_gen_info_new_conv_var(conv_seq::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Generate a new `const' sequence number. This is used to give unique names
-    % to the local constants generated for --static-ground-terms, closure
-    % layouts, string switch hash tables, etc.
-    %
-:- type const_seq == int.
-:- pred ml_gen_info_new_const(const_seq::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- type ml_ground_term
+    --->    ml_ground_term(
+                % The value of the ground term.
+                mlds_rval,
+
+                % The type of the ground term (actually, the type of the
+                % variable the ground term was constructed for).
+                mer_type
+            ).
+
+:- type ml_ground_term_map == map(prog_var, ml_ground_term).
 
     % Set the `const' variable name corresponding to the given HLDS variable.
     %
-:- pred ml_gen_info_set_const_var_name(prog_var::in, mlds_var_name::in,
+:- pred ml_gen_info_set_const_var(prog_var::in, ml_ground_term::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Lookup the `const' sequence number corresponding to a given HLDS
     % variable.
     %
-:- pred ml_gen_info_lookup_const_var_name(ml_gen_info::in, prog_var::in,
-    mlds_var_name::out) is det.
-:- pred ml_gen_info_search_const_var_name(ml_gen_info::in, prog_var::in,
-    mlds_var_name::out) is semidet.
+:- pred ml_gen_info_lookup_const_var(ml_gen_info::in, prog_var::in,
+    ml_ground_term::out) is det.
+:- pred ml_gen_info_search_const_var(ml_gen_info::in, prog_var::in,
+    ml_ground_term::out) is semidet.
 
     % A success continuation specifies the (rval for the variable holding
     % the address of the) function that a nondet procedure should call
@@ -709,6 +709,21 @@
 :- pred ml_gen_info_set_var_lvals(map(prog_var, mlds_lval)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
+    % A variable can be bound to a constant in one branch of a control
+    % structure and to a non-constant term in another branch. We remember
+    % information about variables bound to constants in the map these two
+    % predicates are the getter and setter of. Branched control structures
+    % should reset the map to its original value at the start of every branch
+    % after the first (to prevent a later branch from using information that is
+    % applicable only in a previous branch), and at the end of the branched
+    % control structure (to prevent the code after it using information whose
+    % correctness depends on the exact route execution took to there).
+    %
+:- pred ml_gen_info_get_const_var_map(ml_gen_info::in,
+    map(prog_var, ml_ground_term)::out) is det.
+:- pred ml_gen_info_set_const_var_map(map(prog_var, ml_ground_term)::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
     % The ml_gen_info contains a list of extra definitions of functions or
     % global constants which should be inserted before the definition of the
     % function for the current procedure. This is used for the definitions
@@ -719,13 +734,13 @@
     % Insert an extra definition at the start of the list of extra
     % definitions.
     %
-:- pred ml_gen_info_add_extra_defn(mlds_defn::in,
+:- pred ml_gen_info_add_closure_wrapper_defn(mlds_defn::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Get the list of extra definitions.
     %
-:- pred ml_gen_info_get_extra_defns(ml_gen_info::in, list(mlds_defn)::out)
-    is det.
+:- pred ml_gen_info_get_closure_wrapper_defns(ml_gen_info::in,
+    list(mlds_defn)::out) is det.
 
     % Add the given string as the name of an environment variable used by
     % the function being generated.
@@ -735,7 +750,8 @@
 
     % Get the names of the used environment variables.
     %
-:- pred ml_gen_info_get_env_vars(ml_gen_info::in, set(string)::out) is det.
+:- pred ml_gen_info_get_env_var_names(ml_gen_info::in, set(string)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -743,7 +759,6 @@
 :- implementation.
 
 :- import_module backend_libs.foreign.
-:- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
@@ -770,7 +785,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Code for various utility routines
+% Code for various utility routines.
 %
 
 ml_gen_assign(Lval, Rval, Context) = Statement :-
@@ -828,23 +843,6 @@ ml_gen_block_mlds(VarDecls, Statements, Context) = Block :-
             Context)
     ).
 
-ml_join_decls(FirstDecls, FirstStatements, RestDecls, RestStatements, Context,
-        Decls, Statements) :-
-    (
-        some [Name] (
-            list.member(mlds_defn(Name, _, _, _), FirstDecls),
-            list.member(mlds_defn(Name, _, _, _), RestDecls)
-        )
-    ->
-        First = ml_gen_block(FirstDecls, FirstStatements, Context),
-        Rest = ml_gen_block(RestDecls, RestStatements, Context),
-        Decls = [],
-        Statements = [First, Rest]
-    ;
-        Decls = FirstDecls ++ RestDecls,
-        Statements = FirstStatements ++ RestStatements
-    ).
-
 ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         Decls, Statements, !Info) :-
     (
@@ -857,8 +855,8 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         FirstCodeModel = model_det,
         DoGenFirst(FirstDecls, FirstStatements, !Info),
         DoGenRest(RestDecls, RestStatements, !Info),
-        ml_join_decls(FirstDecls, FirstStatements, RestDecls, RestStatements,
-            Context, Decls, Statements)
+        Decls = FirstDecls ++ RestDecls,
+        Statements = FirstStatements ++ RestStatements
     ;
         % model_semi goal:
         %     <Goal, Goals>
@@ -1037,7 +1035,7 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
         HeadModes, PredOrFunc, CodeModel).
 
 ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
-    ModuleInfo = !.Info ^ mgi_module_info,
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -1083,7 +1081,7 @@ ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
 
 ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         CodeModel, FuncParams, !Info) :-
-    ModuleInfo = !.Info ^ mgi_module_info,
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
     modes_to_arg_modes(ModuleInfo, HeadModes, HeadTypes, ArgModes),
     ml_gen_params_base(ModuleInfo, HeadVarNames,
         HeadTypes, ArgModes, PredOrFunc, CodeModel, FuncParams,
@@ -1252,8 +1250,7 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg, !MaybeInfo) :-
         !.MaybeInfo = yes(Info0),
         % XXX We should fill in this Context properly.
         term.context_init(Context),
-        ml_gen_gc_statement(Var, Type, Context, GCStatement,
-            Info0, Info),
+        ml_gen_gc_statement(Var, Type, Context, GCStatement, Info0, Info),
         !:MaybeInfo = yes(Info)
     ;
         !.MaybeInfo = no,
@@ -1421,11 +1418,11 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 
 ml_gen_new_label(Label, !Info) :-
     ml_gen_info_new_label(LabelNum, !Info),
-    string.format("label_%d", [i(LabelNum)], Label).
+    Label = "label_" ++ string.int_to_string(LabelNum).
 
 %-----------------------------------------------------------------------------%
 %
-% Code for dealing with variables
+% Code for dealing with variables.
 %
 
 ml_gen_var_list(_Info, [], []).
@@ -1495,28 +1492,14 @@ ml_gen_var_name(VarSet, Var) = UniqueVarName :-
 
 ml_format_reserved_object_name(CtorName, CtorArity) = ReservedObjName :-
     % We add the "obj_" prefix to avoid any potential name clashes.
-
-    Name = string.format("obj_%s_%d", [s(CtorName), i(CtorArity)]),
+    Name = "obj_" ++ CtorName ++ "_" ++ string.int_to_string(CtorArity),
     ReservedObjName = mlds_var_name(Name, no).
-
-ml_format_static_const_name(Info, BaseName, SequenceNum, ConstName) :-
-    % To ensure that the names are unique, we qualify them with the pred_id
-    % and proc_id numbers, as well as a sequence number. This is needed to
-    % allow ml_elim_nested.m to hoist such constants out to top level.
-
-    ml_gen_info_get_pred_id(Info, PredId),
-    ml_gen_info_get_proc_id(Info, ProcId),
-    pred_id_to_int(PredId, PredIdNum),
-    proc_id_to_int(ProcId, ProcIdNum),
-    ConstName = mlds_var_name(
-        string.format("const_%d_%d_%d_%s", [i(PredIdNum),
-            i(ProcIdNum), i(SequenceNum), s(BaseName)]), no).
 
 ml_gen_var_lval(Info, VarName, VarType, QualifiedVarLval) :-
     ml_gen_info_get_module_name(Info, ModuleName),
     MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-    QualifiedVarLval = ml_var(qual(MLDS_Module, module_qual, VarName),
-        VarType).
+    MLDS_Var = qual(MLDS_Module, module_qual, VarName),
+    QualifiedVarLval = ml_var(MLDS_Var, VarType).
 
 ml_gen_var_decl(VarName, Type, Context, Defn, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -1530,23 +1513,25 @@ ml_gen_mlds_var_decl(DataName, MLDS_Type, GCStatement, Context) =
         Context).
 
 ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
-        Context) = MLDS_Defn :-
+        Context) = Defn :-
     Name = entity_data(DataName),
-    Defn = mlds_data(MLDS_Type, Initializer, GCStatement),
+    EntityDefn = mlds_data(MLDS_Type, Initializer, GCStatement),
     DeclFlags = ml_gen_local_var_decl_flags,
-    MLDS_Defn = mlds_defn(Name, Context, DeclFlags, Defn).
+    Defn = mlds_defn(Name, Context, DeclFlags, EntityDefn).
 
-ml_gen_static_const_defn(ConstName, ConstType, Access, Initializer, Context) =
-        MLDS_Defn :-
-    Name = entity_data(mlds_data_var(ConstName)),
-    % The GC never needs to trace static constants,
-    % because they can never point into the heap
-    % (only to other static constants).
+ml_gen_static_const_defn(ConstName, ConstType, Access, Initializer, Context,
+        VarName, !GlobalData) :-
+    ml_global_data_get_unique_const_num(ConstNum, !GlobalData),
+    VarName = mlds_var_name(ConstName, yes(ConstNum)),
+    EntityName = entity_data(mlds_data_var(VarName)),
+    % The GC never needs to trace static constants, because they can never
+    % point into the heap; they can point only to other static constants.
     GCStatement = gc_no_stmt,
-    Defn = mlds_data(ConstType, Initializer, GCStatement),
+    EntityDefn = mlds_data(ConstType, Initializer, GCStatement),
     DeclFlags = mlds.set_access(ml_static_const_decl_flags, Access),
     MLDS_Context = mlds_make_context(Context),
-    MLDS_Defn = mlds_defn(Name, MLDS_Context, DeclFlags, Defn).
+    Defn = mlds_defn(EntityName, MLDS_Context, DeclFlags, EntityDefn),
+    ml_global_data_add_flat_cell_defn(Defn, !GlobalData).
 
 ml_gen_public_field_decl_flags = DeclFlags :-
     Access = acc_public,
@@ -1581,12 +1566,12 @@ ml_static_const_decl_flags = DeclFlags :-
         Virtuality, Finality, Constness, Abstractness).
 
 ml_var_name_to_string(mlds_var_name(Var, yes(Num))) =
-    string.format("%s_%d", [s(Var), i(Num)]).
+    Var ++ "_" ++ string.int_to_string(Num).
 ml_var_name_to_string(mlds_var_name(Var, no)) = Var.
 
 %-----------------------------------------------------------------------------%
 %
-% Code for dealing with fields
+% Code for dealing with fields.
 %
 
     % Given the user-specified field name, if any, and the argument number
@@ -1600,7 +1585,7 @@ ml_gen_field_name(MaybeFieldName, ArgNum) = FieldName :-
         FieldName = unqualify_name(QualifiedFieldName)
     ;
         MaybeFieldName = no,
-        FieldName = string.format("F%d", [i(ArgNum)])
+        FieldName = "F" ++ string.int_to_string(ArgNum)
     ).
 
     % Succeed iff the specified type must be boxed when used as a field.
@@ -1611,7 +1596,7 @@ ml_gen_field_name(MaybeFieldName, ArgNum) = FieldName :-
     % that don't need it, e.g. the .NET and Java back-ends. This routine should
     % be modified to check the target.
     %
-ml_must_box_field_type(Type, ModuleInfo) :-
+ml_must_box_field_type(ModuleInfo, Type) :-
     classify_type(ModuleInfo, Type) = Category,
     ml_must_box_field_type_category(Category) = yes.
 
@@ -1640,7 +1625,7 @@ ml_must_box_field_type_category(CtorCat) = MustBox :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for handling success and failure
+% Code for handling success and failure.
 %
 
 ml_gen_success(model_det, _, Statements, !Info) :-
@@ -1713,8 +1698,10 @@ ml_gen_set_success(Info, Value, Context, Statement) :-
     %
 :- func ml_gen_cond_var_name(cond_seq) = mlds_var_name.
 
-ml_gen_cond_var_name(CondVar) =
-    mlds_var_name(string.append("cond_", string.int_to_string(CondVar)), no).
+ml_gen_cond_var_name(CondVar) = VarName :-
+    CondVar = cond_seq(CondNum),
+    CondName = string.append("cond_", string.int_to_string(CondNum)),
+    VarName = mlds_var_name(CondName, no).
 
 ml_gen_cond_var_decl(CondVar, Context) =
     ml_gen_mlds_var_decl(mlds_data_var(ml_gen_cond_var_name(CondVar)),
@@ -1893,13 +1880,12 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for dealing with the environment pointer
-% used for nested functions.
+% Routines for dealing with the environment pointer used for nested functions.
 %
 
 ml_get_env_ptr(Info, ml_lval(EnvPtrLval)) :-
-    ml_gen_var_lval(Info, mlds_var_name("env_ptr", no),
-        mlds_unknown_type, EnvPtrLval).
+    ml_gen_var_lval(Info, mlds_var_name("env_ptr", no), mlds_unknown_type,
+        EnvPtrLval).
 
 ml_declare_env_ptr_arg(mlds_argument(Name, Type, GCStatement)) :-
     Name = entity_data(mlds_data_var(mlds_var_name("env_ptr_arg", no))),
@@ -1913,13 +1899,13 @@ ml_declare_env_ptr_arg(mlds_argument(Name, Type, GCStatement)) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code to handle accurate GC
+% Code to handle accurate GC.
 %
 
 ml_gen_gc_statement(VarName, Type, Context, GCStatement, !Info) :-
-    ml_gen_gc_statement(VarName, Type, Type, Context, GCStatement, !Info).
+    ml_gen_gc_statement_poly(VarName, Type, Type, Context, GCStatement, !Info).
 
-ml_gen_gc_statement(VarName, DeclType, ActualType, Context,
+ml_gen_gc_statement_poly(VarName, DeclType, ActualType, Context,
         GCStatement, !Info) :-
     HowToGetTypeInfo = construct_from_type(ActualType),
     ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo, Context,
@@ -2140,10 +2126,10 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     ml_gen_info_get_var_types(!.Info, VarTypes),
     MLDS_Context = mlds_make_context(Context),
     GenLocalVarDecl =
-        (func(Var) = MLDS_Defn :-
+        (func(Var) = VarDefn :-
             LocalVarName = ml_gen_var_name(VarSet, Var),
             map.lookup(VarTypes, Var, LocalVarType),
-            MLDS_Defn = ml_gen_mlds_var_decl(mlds_data_var(LocalVarName),
+            VarDefn = ml_gen_mlds_var_decl(mlds_data_var(LocalVarName),
                 mercury_type_to_mlds_type(ModuleInfo, LocalVarType),
                 gc_no_stmt, MLDS_Context)
         ),
@@ -2155,9 +2141,9 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
         [MLDS_TypeInfoStatement, MLDS_TraceStatement], Context).
 
     % ml_gen_trace_var(VarName, DeclType, TypeInfo, Context, Code):
-    % Generate a call to `private_builtin.gc_trace'
-    % for the specified variable, given the variable's name, type,
-    % and the already-constructed type_info for that type.
+    % Generate a call to `private_builtin.gc_trace' for the specified variable,
+    % given the variable's name, type, and the already-constructed type_info
+    % for that type.
     %
 :- pred ml_gen_trace_var(ml_gen_info::in, mlds_var_name::in, mer_type::in,
     mlds_rval::in, prog_context::in, statement::out) is det.
@@ -2188,10 +2174,9 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     % Generate the call
     % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
     CastVarAddr = ml_unop(cast(CPointerType), ml_mem_addr(VarLval)),
-    TraceStatement = statement(
-        ml_stmt_call(Signature, FuncAddr, no,
-            [TypeInfoRval, CastVarAddr], [], ordinary_call
-        ), mlds_make_context(Context)).
+    TraceStmt = ml_stmt_call(Signature, FuncAddr, no,
+        [TypeInfoRval, CastVarAddr], [], ordinary_call),
+    TraceStatement = statement(TraceStmt, mlds_make_context(Context)).
 
     % Generate HLDS code to construct the type_info for this type.
     %
@@ -2200,9 +2185,9 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
-    ModuleInfo0 = !.Info ^ mgi_module_info,
-    PredId = !.Info ^ mgi_pred_id,
-    ProcId = !.Info ^ mgi_proc_id,
+    ml_gen_info_get_module_info(!.Info, ModuleInfo0),
+    ml_gen_info_get_pred_id(!.Info, PredId),
+    ml_gen_info_get_proc_id(!.Info, ProcId),
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
         PredInfo0, ProcInfo0),
 
@@ -2218,9 +2203,9 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
         ModuleInfo1, ModuleInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    !:Info = !.Info ^ mgi_module_info := ModuleInfo,
-    !:Info = !.Info ^ mgi_varset := VarSet,
-    !:Info = !.Info ^ mgi_var_types := VarTypes.
+    ml_gen_info_set_module_info(ModuleInfo, !Info),
+    ml_gen_info_set_varset(VarSet, !Info),
+    ml_gen_info_set_var_types(VarTypes, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -2424,61 +2409,73 @@ maybe_tag_rval(yes(Tag), Type, Rval) = TaggedRval :-
 % The definition of the `ml_gen_info' ADT.
 %
 
-% The `ml_gen_info' type holds information used during MLDS code generation
-% for a given procedure.
-%
-% Only the `func_label', `commit_label', `cond_var', `conv_var', `const_num',
-% `var_lvals', `success_cont_stack', and `extra_defns' fields are mutable;
-% the others are set when the `ml_gen_info' is created and then never
-% modified.
-
+    % The `ml_gen_info' type holds information used during MLDS code generation
+    % for a given procedure.
+    %
 :- type ml_gen_info
     --->    ml_gen_info(
-                % These fields remain constant for each procedure
-                % (unless accurate GC is enabled, in which case the
-                % varset and var_types may get updated if we create
-                % fresh variables for type_info variables needed
-                % for calls to private_builtin.gc_trace).
+/*  1 */        mgi_module_info         :: module_info,
 
-                mgi_module_info         :: module_info,
-                mgi_pred_id             :: pred_id,
-                mgi_proc_id             :: proc_id,
-                mgi_varset              :: prog_varset,
-                mgi_var_types           :: vartypes,
+                % These fields remain constant for each procedure unless
+                % accurate GC is enabled, in which case they may get updated
+                % if we create fresh variables for the type_info variables
+                % needed for calls to private_builtin.gc_trace.
+/*  2 */        mgi_varset              :: prog_varset,
+/*  3 */        mgi_var_types           :: vartypes,
 
                 % Output arguments that are passed by reference.
-                mgi_byref_output_vars   :: list(prog_var),
+/*  4 */        mgi_byref_output_vars   :: list(prog_var),
 
                 % Output arguments that are returned as values.
-                mgi_value_output_vars   :: list(prog_var),
-
-                % These fields get updated as we traverse each procedure.
-
-                mgi_func_label          :: counter,
-                mgi_commit_label        :: counter,
-                mgi_label               :: counter,
-                mgi_cond_var            :: counter,
-                mgi_conv_var            :: counter,
-                mgi_const_num           :: counter,
-
-                mgi_const_var_name_map  :: map(prog_var, mlds_var_name),
-
-                % A partial mapping from vars to lvals, used to override
-                % the normal lval that we use for a variable.
-                mgi_success_cont_stack  :: stack(success_cont),
+/*  5 */        mgi_value_output_vars   :: list(prog_var),
 
                 % Definitions of functions or global constants which should be
                 % inserted before the definition of the function for the
                 % current procedure.
-                mgi_var_lvals           :: map(prog_var, mlds_lval),
+/*  6 */        mgi_var_lvals           :: map(prog_var, mlds_lval),
 
-                mgi_extra_defns         :: list(mlds_defn),
-                mgi_env_var_names       :: set(string)
+/*  7 */        mgi_global_data         :: ml_global_data,
+
+                % All of the other pieces of information that are not among
+                % the most frequently read and/or written fields. Limiting
+                % ml_gen_info to eight fields make updating the structure
+                % quicker and less wasteful of memory.
+/*  8 */        mgi_sub_info            :: ml_gen_sub_info
             ).
 
-ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        _PredInfo, ProcInfo),
+:- type ml_gen_sub_info
+    --->    ml_gen_sub_info(
+                % Quick-access read-only copies of parts of the globals
+                % structure taken from the module_info.
+/*  1 */        mgsi_high_level_data    :: bool,
+/*  2 */        mgsi_target             :: compilation_target,
+
+                % The identity of the procedure we are generating code for.
+/*  3 */        mgsi_pred_id            :: pred_id,
+/*  4 */        mgsi_proc_id            :: proc_id,
+
+/*  5 */        mgsi_func_counter       :: counter,
+/*  6 */        mgsi_label_counter      :: counter,
+/*  7 */        mgsi_aux_var_counter    :: counter,
+/*  8 */        mgsi_cond_var_counter   :: counter,
+/*  9 */        mgsi_conv_var_counter   :: counter,
+
+/* 10 */        mgsi_const_var_map      :: map(prog_var, ml_ground_term),
+
+/* 11 */        mgsi_closure_wrapper_defns :: list(mlds_defn),
+
+                % A partial mapping from vars to lvals, used to override
+                % the normal lval that we use for a variable.
+/* 12 */        mgsi_success_cont_stack :: stack(success_cont),
+
+/* 13 */        mgsi_env_var_names      :: set(string)
+            ).
+
+ml_gen_info_init(ModuleInfo, PredId, ProcId, ProcInfo, GlobalData) = Info :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    globals.get_target(Globals, CompilationTarget),
+
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -2493,54 +2490,157 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
     % name (see ml_elim_nested.gen_gc_trace_func/8 for details).
     %
     counter.init(1, FuncLabelCounter),
-    counter.init(0, CommitLabelCounter),
     counter.init(0, LabelCounter),
+    counter.init(0, AuxVarCounter),
     counter.init(0, CondVarCounter),
     counter.init(0, ConvVarCounter),
-    counter.init(0, ConstCounter),
-    map.init(ConstNumMap),
+    map.init(ConstVarMap),
     stack.init(SuccContStack),
     map.init(VarLvals),
-    ExtraDefns = [],
+    ClosureWrapperDefns = [],
     EnvVarNames = set.init,
 
-    Info = ml_gen_info(
-        ModuleInfo,
+    SubInfo = ml_gen_sub_info(
+        HighLevelData,
+        CompilationTarget,
         PredId,
         ProcId,
+        FuncLabelCounter,
+        LabelCounter,
+        AuxVarCounter,
+        CondVarCounter,
+        ConvVarCounter,
+        ConstVarMap,
+        ClosureWrapperDefns,
+        SuccContStack,
+        EnvVarNames
+    ),
+    Info = ml_gen_info(
+        ModuleInfo,
         VarSet,
         VarTypes,
         ByRefOutputVars,
         ValueOutputVars,
-        FuncLabelCounter,
-        CommitLabelCounter,
-        LabelCounter,
-        CondVarCounter,
-        ConvVarCounter,
-        ConstCounter,
-        ConstNumMap,
-        SuccContStack,
         VarLvals,
-        ExtraDefns,
-        EnvVarNames
+        GlobalData,
+        SubInfo
     ).
 
+:- pred ml_gen_info_get_func_counter(ml_gen_info::in, counter::out) is det.
+:- pred ml_gen_info_get_label_counter(ml_gen_info::in, counter::out) is det.
+:- pred ml_gen_info_get_aux_var_counter(ml_gen_info::in, counter::out) is det.
+:- pred ml_gen_info_get_cond_var_counter(ml_gen_info::in, counter::out) is det.
+:- pred ml_gen_info_get_conv_var_counter(ml_gen_info::in, counter::out) is det.
+:- pred ml_gen_info_get_success_cont_stack(ml_gen_info::in,
+    stack(success_cont)::out) is det.
+
 ml_gen_info_get_module_info(Info, Info ^ mgi_module_info).
-
-ml_gen_info_get_module_name(Info, ModuleName) :-
-    ml_gen_info_get_module_info(Info, ModuleInfo),
-    module_info_get_name(ModuleInfo, ModuleName).
-
-ml_gen_info_get_pred_id(Info, Info ^ mgi_pred_id).
-ml_gen_info_get_proc_id(Info, Info ^ mgi_proc_id).
+ml_gen_info_get_high_level_data(Info,
+    Info ^ mgi_sub_info ^ mgsi_high_level_data).
+ml_gen_info_get_target(Info, Info ^ mgi_sub_info ^ mgsi_target).
+ml_gen_info_get_pred_id(Info, Info ^ mgi_sub_info ^ mgsi_pred_id).
+ml_gen_info_get_proc_id(Info, Info ^ mgi_sub_info ^ mgsi_proc_id).
 ml_gen_info_get_varset(Info, Info ^ mgi_varset).
 ml_gen_info_get_var_types(Info, Info ^ mgi_var_types).
 ml_gen_info_get_byref_output_vars(Info, Info ^ mgi_byref_output_vars).
 ml_gen_info_get_value_output_vars(Info, Info ^ mgi_value_output_vars).
-ml_gen_info_set_byref_output_vars(OutputVars, Info,
-        Info ^ mgi_byref_output_vars := OutputVars).
-ml_gen_info_set_value_output_vars(OutputVars, Info,
-        Info ^ mgi_value_output_vars := OutputVars).
+ml_gen_info_get_var_lvals(Info, Info ^ mgi_var_lvals).
+ml_gen_info_get_global_data(Info, Info ^ mgi_global_data).
+
+ml_gen_info_get_func_counter(Info, Info ^ mgi_sub_info ^ mgsi_func_counter).
+ml_gen_info_get_label_counter(Info, Info ^ mgi_sub_info ^ mgsi_label_counter).
+ml_gen_info_get_aux_var_counter(Info,
+    Info ^ mgi_sub_info ^ mgsi_aux_var_counter).
+ml_gen_info_get_cond_var_counter(Info,
+    Info ^ mgi_sub_info ^ mgsi_cond_var_counter).
+ml_gen_info_get_conv_var_counter(Info,
+    Info ^ mgi_sub_info ^ mgsi_conv_var_counter).
+ml_gen_info_get_const_var_map(Info,
+    Info ^ mgi_sub_info ^ mgsi_const_var_map).
+ml_gen_info_get_success_cont_stack(Info,
+    Info ^ mgi_sub_info ^ mgsi_success_cont_stack).
+ml_gen_info_get_closure_wrapper_defns(Info,
+    Info ^ mgi_sub_info ^ mgsi_closure_wrapper_defns).
+ml_gen_info_get_env_var_names(Info, Info ^ mgi_sub_info ^ mgsi_env_var_names).
+
+:- pred ml_gen_info_set_module_info(module_info::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_varset(prog_varset::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_var_types(vartypes::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_func_counter(counter::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_label_counter(counter::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_aux_var_counter(counter::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_cond_var_counter(counter::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_conv_var_counter(counter::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_success_cont_stack(stack(success_cont)::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_closure_wrapper_defns(list(mlds_defn)::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_env_var_names(set(string)::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_info_set_module_info(ModuleInfo, !Info) :-
+    !Info ^ mgi_module_info := ModuleInfo.
+ml_gen_info_set_varset(VarSet, !Info) :-
+    !Info ^ mgi_varset := VarSet.
+ml_gen_info_set_var_types(VarTypes, !Info) :-
+    !Info ^ mgi_var_types := VarTypes.
+ml_gen_info_set_byref_output_vars(OutputVars, !Info) :-
+    !Info ^ mgi_byref_output_vars := OutputVars.
+ml_gen_info_set_value_output_vars(OutputVars, !Info) :-
+    !Info ^ mgi_value_output_vars := OutputVars.
+ml_gen_info_set_var_lvals(VarLvals, !Info) :-
+    !Info ^ mgi_var_lvals := VarLvals.
+ml_gen_info_set_global_data(GlobalData, !Info) :-
+    !Info ^ mgi_global_data := GlobalData.
+
+ml_gen_info_set_func_counter(FuncCounter, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_func_counter := FuncCounter,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_label_counter(LabelCounter, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_label_counter := LabelCounter,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_aux_var_counter(AuxVarCounter, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_aux_var_counter := AuxVarCounter,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_cond_var_counter(CondVarCounter, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_cond_var_counter := CondVarCounter,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_conv_var_counter(ConvVarCounter, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_conv_var_counter := ConvVarCounter,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_const_var_map(ConstVarMap, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_const_var_map := ConstVarMap,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_success_cont_stack(SuccessContStack, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_success_cont_stack := SuccessContStack,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_closure_wrapper_defns(ClosureWrapperDefns, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_closure_wrapper_defns := ClosureWrapperDefns,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_env_var_names(EnvVarNames, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_env_var_names := EnvVarNames,
+    !Info ^ mgi_sub_info := SubInfo.
+
+ml_gen_info_get_module_name(Info, ModuleName) :-
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    module_info_get_name(ModuleInfo, ModuleName).
 
 ml_gen_info_use_gcc_nested_functions(Info, UseNestedFuncs) :-
     ml_gen_info_get_globals(Info, Globals),
@@ -2556,86 +2656,86 @@ ml_gen_info_get_globals(Info, Globals) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals).
 
-ml_gen_info_new_label(Label, !Info) :-
-    Counter0 = !.Info ^ mgi_label,
-    counter.allocate(Label, Counter0, Counter),
-    !Info ^ mgi_label := Counter.
-
 ml_gen_info_new_func_label(Label, !Info) :-
-    Counter0 = !.Info ^ mgi_func_label,
+    ml_gen_info_get_func_counter(!.Info, Counter0),
     counter.allocate(Label, Counter0, Counter),
-    !Info ^ mgi_func_label := Counter.
+    ml_gen_info_set_func_counter(Counter, !Info).
+
+ml_gen_info_new_label(Label, !Info) :-
+    ml_gen_info_get_label_counter(!.Info, Counter0),
+    counter.allocate(Label, Counter0, Counter),
+    ml_gen_info_set_label_counter(Counter, !Info).
 
 ml_gen_info_bump_counters(!Info) :-
-    FuncLabelCounter0 = !.Info ^ mgi_func_label,
-    ConstNumCounter0 = !.Info ^ mgi_const_num,
+    ml_gen_info_get_func_counter(!.Info, FuncLabelCounter0),
     counter.allocate(FuncLabel, FuncLabelCounter0, _),
-    counter.allocate(ConstNum, ConstNumCounter0, _),
     FuncLabelCounter = counter.init(FuncLabel + 10000),
-    ConstNumCounter = counter.init(ConstNum + 10000),
-    !Info ^ mgi_func_label := FuncLabelCounter,
-    !Info ^ mgi_const_num := ConstNumCounter.
+    ml_gen_info_set_func_counter(FuncLabelCounter, !Info).
 
-ml_gen_info_new_commit_label(CommitLabel, !Info) :-
-    Counter0 = !.Info ^ mgi_commit_label,
-    counter.allocate(CommitLabel, Counter0, Counter),
-    !Info ^ mgi_commit_label := Counter.
+ml_gen_info_new_aux_var_name(Prefix, VarName, !Info) :-
+    ml_gen_info_get_aux_var_counter(!.Info, AuxVarCounter0),
+    counter.allocate(AuxVarNum, AuxVarCounter0, AuxVarCounter),
+    ml_gen_info_set_aux_var_counter(AuxVarCounter, !Info),
 
-ml_gen_info_new_cond_var(CondVar, !Info) :-
-    Counter0 = !.Info ^ mgi_cond_var,
-    counter.allocate(CondVar, Counter0, Counter),
-    !Info ^ mgi_cond_var := Counter.
+    Name = Prefix ++ "_" ++ string.int_to_string(AuxVarNum),
+    VarName = mlds_var_name(Name, no).
 
-ml_gen_info_new_conv_var(ConvVar, !Info) :-
-    Counter0 = !.Info ^ mgi_conv_var,
-    counter.allocate(ConvVar, Counter0, Counter),
-    !Info ^ mgi_conv_var := Counter.
+ml_gen_info_new_cond_var(cond_seq(CondNum), !Info) :-
+    ml_gen_info_get_cond_var_counter(!.Info, CondCounter0),
+    counter.allocate(CondNum, CondCounter0, CondCounter),
+    ml_gen_info_set_cond_var_counter(CondCounter, !Info).
 
-ml_gen_info_new_const(ConstVar, !Info) :-
-    Counter0 = !.Info ^ mgi_const_num,
-    counter.allocate(ConstVar, Counter0, Counter),
-    !Info ^ mgi_const_num := Counter.
+ml_gen_info_new_conv_var(conv_seq(ConvNum), !Info) :-
+    ml_gen_info_get_conv_var_counter(!.Info, ConvCounter0),
+    counter.allocate(ConvNum, ConvCounter0, ConvCounter),
+    ml_gen_info_set_conv_var_counter(ConvCounter, !Info).
 
-ml_gen_info_set_const_var_name(Var, Name, !Info) :-
-    !Info ^ mgi_const_var_name_map :=
-        map.set(!.Info ^ mgi_const_var_name_map, Var, Name).
+ml_gen_info_set_const_var(Var, GroundTerm, !Info) :-
+    ml_gen_info_get_const_var_map(!.Info, ConstVarMap0),
+    % We cannot call map.det_insert, because we do not (yet) clean up the
+    % const_var_map at the start of later branches of a branched goal,
+    % and thus when generating code for a later branch, we may come across
+    % an entry left by an earlier branch. Using map.set instead throws away
+    % such obsolete entries.
+    map.set(ConstVarMap0, Var, GroundTerm, ConstVarMap),
+    ml_gen_info_set_const_var_map(ConstVarMap, !Info).
 
-ml_gen_info_lookup_const_var_name(Info, Var, Name) :-
-    Name = map.lookup(Info ^ mgi_const_var_name_map, Var).
+ml_gen_info_lookup_const_var(Info, Var, GroundTerm) :-
+    ml_gen_info_get_const_var_map(Info, ConstVarMap),
+    map.lookup(ConstVarMap, Var, GroundTerm).
 
-ml_gen_info_search_const_var_name(Info, Var, Name) :-
-    Name = map.search(Info ^ mgi_const_var_name_map, Var).
+ml_gen_info_search_const_var(Info, Var, GroundTerm) :-
+    ml_gen_info_get_const_var_map(Info, ConstVarMap),
+    map.search(ConstVarMap, Var, GroundTerm).
 
 ml_gen_info_push_success_cont(SuccCont, !Info) :-
-    !Info ^ mgi_success_cont_stack :=
-        stack.push(!.Info ^ mgi_success_cont_stack, SuccCont).
+    ml_gen_info_get_success_cont_stack(!.Info, Stack0),
+    stack.push(Stack0, SuccCont, Stack),
+    ml_gen_info_set_success_cont_stack(Stack, !Info).
 
 ml_gen_info_pop_success_cont(!Info) :-
-    Stack0 = !.Info ^ mgi_success_cont_stack,
+    ml_gen_info_get_success_cont_stack(!.Info, Stack0),
     stack.pop_det(Stack0, _SuccCont, Stack),
-    !Info ^ mgi_success_cont_stack := Stack.
+    ml_gen_info_set_success_cont_stack(Stack, !Info).
 
 ml_gen_info_current_success_cont(Info, SuccCont) :-
-    stack.top_det(Info ^ mgi_success_cont_stack, SuccCont).
+    ml_gen_info_get_success_cont_stack(Info, Stack),
+    stack.top_det(Stack, SuccCont).
 
 ml_gen_info_set_var_lval(Var, Lval, !Info) :-
-    !Info ^ mgi_var_lvals := map.set(!.Info ^ mgi_var_lvals, Var, Lval).
+    ml_gen_info_get_var_lvals(!.Info, VarLvals0),
+    map.set(VarLvals0, Var, Lval, VarLvals),
+    ml_gen_info_set_var_lvals(VarLvals, !Info).
 
-ml_gen_info_get_var_lvals(Info, Info ^ mgi_var_lvals).
-ml_gen_info_set_var_lvals(VarLvals, !Info) :-
-    !Info ^ mgi_var_lvals := VarLvals.
-
-ml_gen_info_add_extra_defn(ExtraDefn, !Info) :-
-    !Info ^ mgi_extra_defns := [ExtraDefn | !.Info ^ mgi_extra_defns].
-
-ml_gen_info_get_extra_defns(Info, Info ^ mgi_extra_defns).
+ml_gen_info_add_closure_wrapper_defn(ClosureWrapperDefn, !Info) :-
+    ml_gen_info_get_closure_wrapper_defns(!.Info, ClosureWrapperDefns0),
+    ClosureWrapperDefns = [ClosureWrapperDefn | ClosureWrapperDefns0],
+    ml_gen_info_set_closure_wrapper_defns(ClosureWrapperDefns, !Info).
 
 ml_gen_info_add_env_var_name(Name, !Info) :-
-    EnvVarNames0 = !.Info ^ mgi_env_var_names,
+    ml_gen_info_get_env_var_names(!.Info, EnvVarNames0),
     set.insert(EnvVarNames0, Name, EnvVarNames),
-    !Info ^ mgi_env_var_names := EnvVarNames.
-
-ml_gen_info_get_env_vars(Info, Info ^ mgi_env_var_names).
+    ml_gen_info_set_env_var_names(EnvVarNames, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -2709,7 +2809,7 @@ ml_base_typeclass_info_method_offset = 4.
 
 %-----------------------------------------------------------------------------%
 %
-% Miscellaneous routines
+% Miscellaneous routines.
 %
 
 get_copy_out_option(Globals, CodeModel) = CopyOut :-

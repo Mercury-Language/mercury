@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -806,7 +806,7 @@ parse_pragma_c_import_module(PragmaTerms, ErrorTerm, Context, SeqNum,
         MaybeItem) :-
     (
         PragmaTerms = [ImportTerm],
-        sym_name_and_args(ImportTerm, Import, [])
+        parse_sym_name_and_args(ImportTerm, Import, [])
     ->
         Pragma = pragma_foreign_import_module(lang_c, Import),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
@@ -828,7 +828,7 @@ parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm, Context, SeqNum,
         MaybeItem) :-
     (
         PragmaTerms = [LangTerm, ImportTerm],
-        sym_name_and_args(ImportTerm, Import, [])
+        parse_sym_name_and_args(ImportTerm, Import, [])
     ->
         ( parse_foreign_language(LangTerm, Language) ->
             Pragma = pragma_foreign_import_module(Language, Import),

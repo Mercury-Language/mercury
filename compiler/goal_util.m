@@ -89,15 +89,19 @@
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
-    % Return all the variables in the goal.
+    % Return all the variables in the goal or goal expression.
     % Unlike quantification.goal_vars, this predicate returns
     % even the explicitly quantified variables.
     %
+    % Warning: the complexity of this predicate is proportionial to the
+    % size of the goal. Goals can be pretty big. Whatever you want to do,
+    % if you have a way to do it *without* calling the predicate, you will
+    % probably want to it that way.
+    %
 :- pred goal_vars(hlds_goal::in, set(prog_var)::out) is det.
 
-    % Return all the variables in the list of goals.
-    % Unlike quantification.goal_vars, this predicate returns
-    % even the explicitly quantified variables.
+    % Do the same job as goal_vars, but for a list of goals, and adding
+    % the goal's variables to the accumulator.
     %
 :- pred goals_goal_vars(list(hlds_goal)::in,
     set(prog_var)::in, set(prog_var)::out) is det.

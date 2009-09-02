@@ -285,11 +285,11 @@ parse_pred_or_func_and_args(PredAndArgsTerm, PredOrFunc, SymName, ArgTerms) :-
         PredAndArgsTerm = term.functor(term.atom("="),
             [FuncAndArgsTerm, FuncResultTerm], _)
     ->
-        sym_name_and_args(FuncAndArgsTerm, SymName, ArgTerms0),
+        parse_sym_name_and_args(FuncAndArgsTerm, SymName, ArgTerms0),
         PredOrFunc = pf_function,
         ArgTerms = ArgTerms0 ++ [FuncResultTerm]
     ;
-        sym_name_and_args(PredAndArgsTerm, SymName, ArgTerms),
+        parse_sym_name_and_args(PredAndArgsTerm, SymName, ArgTerms),
         PredOrFunc = pf_predicate
     ).
 
@@ -612,7 +612,7 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
     ;
         % If the sym_name_and_args fails, we should report the error
         % (we would need to call parse_qualified_term instead).
-        sym_name_and_args(Term, Name, Args),
+        parse_sym_name_and_args(Term, Name, Args),
         convert_inst_list(AllowConstrainedInstVar, Args, ConvertedArgs),
         Mode = user_defined_mode(Name, ConvertedArgs)
     ).
@@ -721,7 +721,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
             term.coerce_var(Var)), Inst)
     ;
         % Anything else must be a user-defined inst.
-        sym_name_and_args(Term, QualifiedName, Args1),
+        parse_sym_name_and_args(Term, QualifiedName, Args1),
         (
             BuiltinModule = mercury_public_builtin_module,
             sym_name_get_module_name_default(QualifiedName, unqualified(""),
@@ -818,7 +818,7 @@ convert_bound_inst(AllowConstrainedInstVar, InstTerm, BoundInst) :-
     InstTerm = term.functor(Functor, Args0, _),
     (
         Functor = term.atom(_),
-        sym_name_and_args(InstTerm, SymName, Args1),
+        parse_sym_name_and_args(InstTerm, SymName, Args1),
         list.length(Args1, Arity),
         ConsId = cons(SymName, Arity, cons_id_dummy_type_ctor)
     ;

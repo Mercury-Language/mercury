@@ -1871,7 +1871,7 @@ mercury_compile_asm_c_code(ModuleName, !IO) :-
 
 mlds_has_main(MLDS) =
     (
-        MLDS = mlds(_, _, _, Defns, _, _, _),
+        Defns = MLDS ^ mlds_defns,
         defns_contain_main(Defns)
     ->
         has_main
@@ -5196,12 +5196,11 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     map_args_to_regs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 425, "args_to_regs", !DumpInfo, !IO),
 
-    maybe_dump_hlds(!.HLDS, 499, "final", !DumpInfo, !IO),
-
     maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n", !IO),
-    ml_code_gen(!.HLDS, !:MLDS, !IO),
+    ml_code_gen(!HLDS, !:MLDS),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO),
+    maybe_dump_hlds(!.HLDS, 499, "final", !DumpInfo, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 0, "initial", !IO),
 
     maybe_write_string(Verbose, "% Generating RTTI data...\n", !IO),
@@ -5279,7 +5278,7 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
         GC = gc_accurate,
         maybe_write_string(Verbose,
             "% Threading GC stack frames...\n", !IO),
-        ml_elim_nested(chain_gc_stack_frames, !MLDS, !IO),
+        ml_elim_nested(chain_gc_stack_frames, Globals, !MLDS),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         ( GC = gc_automatic
@@ -5296,7 +5295,7 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     (
         NestedFuncs = no,
         maybe_write_string(Verbose, "% Flattening nested functions...\n", !IO),
-        ml_elim_nested(hoist_nested_funcs, !MLDS, !IO),
+        ml_elim_nested(hoist_nested_funcs, Globals, !MLDS),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         NestedFuncs = yes
@@ -5328,18 +5327,15 @@ mlds_gen_rtti_data(HLDS, !MLDS) :-
     generate_base_typeclass_info_rtti(HLDS, TypeClassInfoRtti),
 
     module_info_get_globals(HLDS, Globals),
-    globals.lookup_bool_option(Globals, new_type_class_rtti,
-        NewTypeClassRtti),
+    globals.lookup_bool_option(Globals, new_type_class_rtti, NewTypeClassRtti),
     generate_type_class_info_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
-    list.condense([TypeCtorRtti, TypeClassInfoRtti,
-        NewTypeClassInfoRttiData], RttiData),
-    RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
-    !.MLDS = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
-        FinalPreds, ExportedEnums),
-    Defns = RttiDefns ++ Defns0,
-    !:MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds,
-        FinalPreds, ExportedEnums).
+    RttiDatas = TypeCtorRtti ++ TypeClassInfoRtti ++ NewTypeClassInfoRttiData,
+    !.MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData0, Defns,
+        InitPreds, FinalPreds, ExportedEnums),
+    add_rtti_datas_to_mlds(HLDS, RttiDatas, GlobalData0, GlobalData),
+    !:MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData, Defns,
+        InitPreds, FinalPreds, ExportedEnums).
 
 %-----------------------------------------------------------------------------%
 %
@@ -5353,7 +5349,7 @@ mlds_to_high_level_c(Globals, MLDS, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to C...\n", !IO),
-    mlds_to_c.output_mlds(MLDS, "", !IO),
+    output_c_mlds(MLDS, Globals, "", !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to C.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -5365,7 +5361,7 @@ mlds_to_java(HLDS, MLDS, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to Java...\n", !IO),
-    mlds_to_java.output_mlds(HLDS, MLDS, !IO),
+    output_java_mlds(HLDS, MLDS, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to Java.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -5389,7 +5385,7 @@ mlds_to_il_assembler(Globals, MLDS, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to IL...\n", !IO),
-    mlds_to_ilasm.output_mlds(MLDS, !IO),
+    output_mlds_via_ilasm(Globals, MLDS, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to IL.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -5559,7 +5555,7 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
         maybe_write_string(Verbose, "% Dumping out MLDS as C...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         DumpSuffix = "_dump." ++ StageNumStr ++ "-" ++ StageName,
-        mlds_to_c.output_mlds(MLDS, DumpSuffix, !IO),
+        output_c_mlds(MLDS, Globals, DumpSuffix, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         true

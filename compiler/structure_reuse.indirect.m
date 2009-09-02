@@ -1,7 +1,7 @@
 %------------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -476,7 +476,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
         (
             Unification = construct(Var, _, _, _, HowToConstruct, _, _),
             (
-                HowToConstruct = construct_statically(_),
+                HowToConstruct = construct_statically,
                 !IrInfo ^ static_vars :=
                     set.insert(!.IrInfo ^ static_vars, Var)
             ;

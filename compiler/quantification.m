@@ -487,7 +487,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
                 MaybeReuseVar = no,
                 MaybeRegionVar = yes(RegionVar0)
             ;
-                ( How = construct_statically(_)
+                ( How = construct_statically
                 ; How = construct_dynamically
                 ),
                 MaybeSetArgs = no,
@@ -1341,7 +1341,7 @@ goal_expr_vars_2(NonLocalsToRecompute, GoalExpr, !Set, !LambdaSet) :-
                 MaybeSetArgs = no,
                 insert(!.Set, RegionVar, !:Set)
             ;
-                ( How = construct_statically(_)
+                ( How = construct_statically
                 ; How = construct_dynamically
                 ),
                 MaybeSetArgs = no

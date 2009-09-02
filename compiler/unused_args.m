@@ -302,7 +302,7 @@ unused_args_process_module(!ModuleInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, optimize_unused_args, DoFixup),
     (
         DoFixup = yes,
-        list.foldl2(create_new_pred(UnusedArgInfo), PredProcsToFix,
+        list.foldl2(unused_args_create_new_pred(UnusedArgInfo), PredProcsToFix,
             ProcCallInfo0, ProcCallInfo, !ModuleInfo),
         % maybe_write_string(VeryVerbose, "% Finished new preds.\n",
         %   !IO),
@@ -984,11 +984,11 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
     % calling interface. The other is that the next proc_id for a predicate is
     % chosen based on the length of the list of proc_ids.
     %
-:- pred create_new_pred(unused_arg_info::in, pred_proc_id::in,
+:- pred unused_args_create_new_pred(unused_arg_info::in, pred_proc_id::in,
     proc_call_info::in, proc_call_info::out,
     module_info::in, module_info::out) is det.
 
-create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
+unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         !ModuleInfo) :-
     map.lookup(UnusedArgInfo, proc(PredId, ProcId), UnusedArgs),
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,

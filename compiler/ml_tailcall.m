@@ -590,8 +590,8 @@ ml_warn_tailcalls(Globals, MLDS, !IO) :-
 :- pred nontailcall_in_mlds(mlds::in, tailcall_warning::out) is nondet.
 
 nontailcall_in_mlds(MLDS, Warning) :-
-    MLDS = mlds(ModuleName, _ForeignCode, _Imports, Defns, _InitPreds,
-        _FinalPreds, _ExportedEnums),
+    MLDS = mlds(ModuleName, _ForeignCode, _Imports, _GlobalData, Defns,
+        _InitPreds, _FinalPreds, _ExportedEnums),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     nontailcall_in_defns(MLDS_ModuleName, Defns, Warning).
 

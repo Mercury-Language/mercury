@@ -1738,7 +1738,7 @@ generate_unify(ConsId, Var, Goal) :-
     goal_info_set_mdprof_inst(goal_is_mdprof_inst, GoalInfo1, GoalInfo),
     GoalExpr = unify(Var, rhs_functor(ConsId, no, []),
         (free -> Ground) - (Ground -> Ground),
-        construct(Var, ConsId, [], [], construct_statically([]),
+        construct(Var, ConsId, [], [], construct_statically,
             cell_is_shared, no_construct_sub_info),
         unify_context(umc_explicit, [])),
     Goal = hlds_goal(GoalExpr, GoalInfo).
@@ -1758,7 +1758,7 @@ generate_cell_unify(Length, ConsId, Args, Var, Goal) :-
     GoalExpr = unify(Var, rhs_functor(ConsId, no, Args),
         (free -> Ground) - (Ground -> Ground),
         construct(Var, ConsId, Args, ArgModes,
-            construct_statically([]), cell_is_shared, no_construct_sub_info),
+            construct_statically, cell_is_shared, no_construct_sub_info),
         unify_context(umc_explicit, [])),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 

@@ -418,8 +418,8 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
                 term.integer(module_dependencies_version_number), [], _),
             SourceFileTerm = term.functor(
                 term.string(SourceFileName), [], _),
-            sym_name_and_args(SourceFileModuleNameTerm, SourceFileModuleName,
-                []),
+            parse_sym_name_and_args(SourceFileModuleNameTerm,
+                SourceFileModuleName, []),
             parse_sym_name_list(ParentsTerm, Parents),
             parse_sym_name_list(IntDepsTerm, IntDeps),
             parse_sym_name_list(ImplDepsTerm, ImplDeps),
@@ -449,8 +449,8 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
                         term.string(LanguageString), [], _),
                     globals.convert_foreign_language(LanguageString,
                         Language),
-                    sym_name_and_args(ImportedModuleTerm, ImportedModuleName,
-                        []),
+                    parse_sym_name_and_args(ImportedModuleTerm,
+                        ImportedModuleName, []),
                     ForeignImportModule = foreign_import_module_info(Language,
                         ImportedModuleName, term.context_init)
                 ), ForeignImportTerms, ForeignImports),
@@ -558,7 +558,7 @@ read_module_dependencies_remake_msg(ModuleName, Msg, !IO) :-
 parse_sym_name_list(term.functor(term.atom("{}"), Args, _), SymNames) :-
     list.map(
         (pred(Arg::in, SymName::out) is semidet :-
-            sym_name_and_args(Arg, SymName, [])
+            parse_sym_name_and_args(Arg, SymName, [])
         ), Args, SymNames).
 
     % The module_name given must be the top level module in the source file.
