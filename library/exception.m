@@ -1718,13 +1718,14 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     Object[] Handler = (Object[]) Handler0;
 
     try {
-        jmercury.runtime.MethodPtr pred = (jmercury.runtime.MethodPtr) Pred[1];
-        pred.call___0_0(new java.lang.Object[] { Pred, cont, cont_env_ptr });
+        jmercury.runtime.MethodPtr3 pred =
+            (jmercury.runtime.MethodPtr3) Pred[1];
+        pred.call___0_0(Pred, cont, cont_env_ptr);
     }
     catch (jmercury.runtime.Exception ex) {
         Object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
-        cont.call___0_0(new java.lang.Object[] { T, cont_env_ptr });
+        ((jmercury.runtime.MethodPtr2) cont).call___0_0(T, cont_env_ptr);
     }
 ").
 :- pragma foreign_proc("Java",
@@ -1735,13 +1736,14 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     Object[] Handler = (Object[]) Handler0;
 
     try {
-        jmercury.runtime.MethodPtr pred = (jmercury.runtime.MethodPtr) Pred[1];
-        pred.call___0_0(new java.lang.Object[] { Pred, cont, cont_env_ptr });
+        jmercury.runtime.MethodPtr3 pred =
+            (jmercury.runtime.MethodPtr3) Pred[1];
+        pred.call___0_0(Pred, cont, cont_env_ptr);
     }
     catch (jmercury.runtime.Exception ex) {
         Object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
-        cont.call___0_0(new java.lang.Object[] { T, cont_env_ptr });
+        ((jmercury.runtime.MethodPtr2) cont).call___0_0(T, cont_env_ptr);
     }
 ").
 
@@ -2814,10 +2816,9 @@ set_get_message_hook(!IO).
         may_not_duplicate],
 "
     jmercury.runtime.Exception.getMessageHook =
-        new jmercury.runtime.MethodPtr() {
-            public java.lang.Object call___0_0(java.lang.Object[] args) {
-                univ.Univ_0 univ = (univ.Univ_0) args[0];
-                return ML_exception_to_string(univ);
+        new jmercury.runtime.MethodPtr1() {
+            public java.lang.Object call___0_0(java.lang.Object arg1) {
+                return ML_exception_to_string((univ.Univ_0) arg1);
             }
         };
     IO = IO0;

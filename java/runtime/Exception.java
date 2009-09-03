@@ -9,7 +9,7 @@ package jmercury.runtime;
 public class Exception extends java.lang.Error {
     // This is to be set when the exception module is initialised, to avoid
     // having the runtime depend on the standard library.
-    public static MethodPtr getMessageHook = null;
+    public static MethodPtr1 getMessageHook = null;
 
     // Should be univ.Univ_0 but we don't want to depend on the standard
     // library.
@@ -21,8 +21,7 @@ public class Exception extends java.lang.Error {
 
     public String getMessage() {
         if (getMessageHook != null) {
-            Object[] args = new Object[] { exception };
-            return (String) getMessageHook.call___0_0(args);
+            return (String) getMessageHook.call___0_0(exception);
         } else {
             return null;
         }

@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: mlds_to_java.m.
-% Main authors: juliensf, mjwybrow, fjh.
+% Main authors: juliensf, mjwybrow, fjh, wangp.
 %
 % Convert MLDS to Java code.
 %
@@ -26,7 +26,8 @@
 %   generate optimized tailcalls
 %   RTTI generation
 %   handle foreign code written in Java
-%   Support for Java in Mmake and mmc --make (except for nested modules)
+%   Support for Java in mmc --make
+%   Support for nested modules
 %
 % TODO:
 % - Support nested modules
@@ -36,8 +37,7 @@
 %   That should work now, but javac doesn't like the filenames
 %   we give for submodules.)
 %
-% - Support for Java in Mmake and mmc --make, for Mercury code using
-%   nested modules.
+% - Support for Java in Mmake.
 %
 % - Generate names of classes etc. correctly (mostly same as IL backend)
 %
@@ -234,6 +234,22 @@ rval_is_enum_object(Rval) :-
 interface_is_special("MercuryEnum").
 interface_is_special("MercuryType").
 interface_is_special("MethodPtr").
+interface_is_special("MethodPtr1").
+interface_is_special("MethodPtr2").
+interface_is_special("MethodPtr3").
+interface_is_special("MethodPtr4").
+interface_is_special("MethodPtr5").
+interface_is_special("MethodPtr6").
+interface_is_special("MethodPtr7").
+interface_is_special("MethodPtr8").
+interface_is_special("MethodPtr9").
+interface_is_special("MethodPtr10").
+interface_is_special("MethodPtr11").
+interface_is_special("MethodPtr12").
+interface_is_special("MethodPtr13").
+interface_is_special("MethodPtr14").
+interface_is_special("MethodPtr15").
+interface_is_special("MethodPtrN").
 
 %-----------------------------------------------------------------------------%
 %
@@ -335,7 +351,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     CodeAddrs = list.sort_and_remove_dups(CodeAddrs1),
 
     % Create wrappers in MLDS for all pointer addressed methods.
-    generate_code_addr_wrappers(Indent + 1, CodeAddrs, [], WrapperDefns),
+    list.map(generate_addr_wrapper_class, CodeAddrs, WrapperDefns),
     Defns1 = GlobalDefns ++ WrapperDefns ++ Defns0,
 
     % Rename classes with excessively long names.
@@ -791,30 +807,23 @@ method_ptrs_in_lval(ml_global_var_ref(_), !CodeAddrs).
 % module. This is due to the fact that the names of the generated wrapper
 % classes are based purely on the method name.
 
-    % Generates the MLDS to output the required wrapper classes
-    %
-:- pred generate_code_addr_wrappers(indent::in, list(mlds_code_addr)::in,
-    list(mlds_defn)::in, list(mlds_defn)::out) is det.
-
-generate_code_addr_wrappers(_, [], !Defns).
-generate_code_addr_wrappers(Indent, [CodeAddr | CodeAddrs], !Defns) :-
-    % XXX We should fill in the Context properly. This would probably involve
-    % also returning context information for each "code_addr" returned by the
-    % "method_ptrs_*" predicates above.
-    Context = mlds_make_context(term.context_init),
-    InterfaceModuleName = mercury_module_name_to_mlds(
-        mercury_runtime_package_name),
-    Interface = qual(InterfaceModuleName, module_qual, "MethodPtr"),
-    generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn),
-    !:Defns = [ ClassDefn | !.Defns ],
-    generate_code_addr_wrappers(Indent, CodeAddrs, !Defns).
-
     % Generate the MLDS wrapper class for a given code_addr.
     %
-:- pred generate_addr_wrapper_class(mlds_class::in,
-    mlds_context::in, mlds_code_addr::in, mlds_defn::out) is det.
+:- pred generate_addr_wrapper_class(mlds_code_addr::in, mlds_defn::out) is det.
 
-generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
+generate_addr_wrapper_class(CodeAddr, ClassDefn) :-
+    % Create a method that calls the original predicate.
+    generate_call_method(CodeAddr, MethodDefn, Arity),
+
+    ( Arity =< max_specialised_method_ptr_arity ->
+        InterfaceName = "MethodPtr" ++ string.from_int(Arity)
+    ;
+        InterfaceName = "MethodPtrN"
+    ),
+    InterfaceModuleName = mercury_module_name_to_mlds(
+        mercury_runtime_package_name),
+    Interface = qual(InterfaceModuleName, module_qual, InterfaceName),
+
     % Create class components.
     ClassImports = [],
     ClassExtends = [],
@@ -825,8 +834,10 @@ generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
     % (predicate) name.
     create_addr_wrapper_name(CodeAddr, MangledClassEntityName),
 
-    % Create a method that calls the original predicate.
-    generate_call_method(CodeAddr, MethodDefn),
+    % XXX We should fill in the Context properly. This would probably involve
+    % also returning context information for each "code_addr" returned by the
+    % "method_ptrs_*" predicates above.
+    Context = mlds_make_context(term.context_init),
 
     % Put it all together.
     ClassMembers  = [MethodDefn],
@@ -861,12 +872,19 @@ create_addr_wrapper_name(CodeAddr, MangledClassEntityName) :-
     ClassEntityName = "addrOf__" ++ ModuleNameStr ++ "__" ++ PredName,
     MangledClassEntityName = name_mangle_no_leading_digit(ClassEntityName).
 
+    % The highest arity for which there is a specialised MethodPtr<n> interface.
+    %
+:- func max_specialised_method_ptr_arity = int.
+
+max_specialised_method_ptr_arity = 15.
+
     % Generates a call methods which calls the original method we have
     % created the wrapper for.
     %
-:- pred generate_call_method(mlds_code_addr::in, mlds_defn::out) is det.
+:- pred generate_call_method(mlds_code_addr::in, mlds_defn::out, int::out)
+    is det.
 
-generate_call_method(CodeAddr, MethodDefn) :-
+generate_call_method(CodeAddr, MethodDefn, Arity) :-
     (
         CodeAddr = code_addr_proc(ProcLabel, OrigFuncSignature)
     ;
@@ -883,15 +901,28 @@ generate_call_method(CodeAddr, MethodDefn) :-
     Label = mlds_special_pred_label("call", no, "", 0),
     MethodName = entity_function(Label, ProcID, no, PredID),
 
-    % Create method argument and return type.
-    % It will have the argument type java.lang.Object[]
-    % It will have the return type java.lang.Object
-    MethodArgVariable = mlds_var_name("args", no),
-    MethodArgType = mlds_argument(
-        entity_data(mlds_data_var(MethodArgVariable)),
-        mlds_array_type(mlds_generic_type), gc_no_stmt),
+    list.length(OrigArgTypes, Arity),
+
+    % Create method arguments and call arguments.  For low arities we have
+    % specialised MethodPtr interfaces which contain a method which takes n
+    % arguments directly.  For higher arities the arguments are passed in as an
+    % array.
+    ( Arity =< max_specialised_method_ptr_arity ->
+        list.map2_foldl(generate_call_method_nth_arg(ModuleName),
+            OrigArgTypes, MethodArgs, CallArgs, 1, _Arity)
+    ;
+        MethodArgVariable = mlds_var_name("args", no),
+        MethodArgType = mlds_argument(
+            entity_data(mlds_data_var(MethodArgVariable)),
+            mlds_array_type(mlds_generic_type), gc_no_stmt),
+        MethodArgs = [MethodArgType],
+        CallArgLabel = qual(ModuleName, module_qual, MethodArgVariable),
+        generate_call_method_array_args(OrigArgTypes, CallArgLabel, 0, [],
+            CallArgs)
+    ),
+
+    % Create return type.
     MethodRetType = mlds_generic_type,
-    MethodArgs = [MethodArgType],
     MethodRets = [MethodRetType],
 
     % Create a temporary variable to store the result of the call to the
@@ -921,8 +952,6 @@ generate_call_method(CodeAddr, MethodDefn) :-
     MethodDefns = [ReturnVarDefn],
 
     % Create the call to the original method.
-    CallArgLabel = qual(ModuleName, module_qual, MethodArgVariable),
-    generate_call_method_args(OrigArgTypes, CallArgLabel, 0, [], CallArgs),
     CallRval = ml_const(mlconst_code_addr(CodeAddr)),
 
     % If the original method has a return type of void, then we obviously
@@ -959,17 +988,29 @@ generate_call_method(CodeAddr, MethodDefn) :-
     MethodFlags  = ml_gen_special_member_decl_flags,
     MethodDefn   = mlds_defn(MethodName, Context, MethodFlags, MethodBody).
 
-:- pred generate_call_method_args(list(mlds_type)::in, mlds_var::in, int::in,
-    list(mlds_rval)::in, list(mlds_rval)::out) is det.
+:- pred generate_call_method_nth_arg(mlds_module_name::in, mlds_type::in,
+    mlds_argument::out, mlds_rval::out, int::in, int::out) is det.
 
-generate_call_method_args([], _, _, Args, Args).
-generate_call_method_args([Type | Types], Variable, Counter, Args0, Args) :-
-    ArrayRval = ml_lval(ml_var(Variable, mlds_native_int_type)),
+generate_call_method_nth_arg(ModuleName, Type, MethodArg, CallArg, I, I + 1) :-
+    MethodArgVariable = mlds_var_name("arg" ++ string.from_int(I), no),
+    MethodArg = mlds_argument(entity_data(mlds_data_var(MethodArgVariable)),
+        mlds_generic_type, gc_no_stmt),
+    CallArgLabel = qual(ModuleName, module_qual, MethodArgVariable),
+    Rval = ml_lval(ml_var(CallArgLabel, mlds_generic_type)),
+    CallArg = ml_unop(unbox(Type), Rval).
+
+:- pred generate_call_method_array_args(list(mlds_type)::in, mlds_var::in,
+    int::in, list(mlds_rval)::in, list(mlds_rval)::out) is det.
+
+generate_call_method_array_args([], _, _, Args, Args).
+generate_call_method_array_args([Type | Types], ArrayVar, Counter,
+        Args0, Args) :-
+    ArrayRval = ml_lval(ml_var(ArrayVar, mlds_native_int_type)),
     IndexRval = ml_const(mlconst_int(Counter)),
     Rval = ml_binop(array_index(elem_type_generic), ArrayRval, IndexRval),
     UnBoxedRval = ml_unop(unbox(Type), Rval),
     Args1 = Args0 ++ [UnBoxedRval],
-    generate_call_method_args(Types, Variable, Counter + 1, Args1, Args).
+    generate_call_method_array_args(Types, ArrayVar, Counter + 1, Args1, Args).
 
 :- func make_pred_name_string(mlds_pred_label, proc_id,
     maybe(mlds_func_sequence_num)) = string.
@@ -3258,11 +3299,22 @@ output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
         ;
             MaybeObject = no
         ),
-        output_bracketed_rval(ModuleInfo, FuncRval, ModuleName, !IO),
-        io.write_string(".call___0_0(", !IO),
 
-        % We need to pass the arguments as a single array of java.lang.Object.
-        output_args_as_array(ModuleInfo, CallArgs, ArgTypes, ModuleName, !IO),
+        list.length(CallArgs, Arity),
+        ( Arity =< max_specialised_method_ptr_arity ->
+            io.write_string("((jmercury.runtime.MethodPtr", !IO),
+            io.write_int(Arity, !IO),
+            io.write_string(") ", !IO),
+            output_bracketed_rval(ModuleInfo, FuncRval, ModuleName, !IO),
+            io.write_string(").call___0_0(", !IO),
+            output_boxed_args(ModuleInfo, CallArgs, ArgTypes, ModuleName, !IO)
+        ;
+            io.write_string("((jmercury.runtime.MethodPtrN) ", !IO),
+            output_bracketed_rval(ModuleInfo, FuncRval, ModuleName, !IO),
+            io.write_string(").call___0_0(", !IO),
+            output_args_as_array(ModuleInfo, CallArgs, ArgTypes, ModuleName,
+                !IO)
+        ),
 
         % Closes brackets, and calls unbox methods for downcasting.
         % XXX This is a hack, see the above comment.

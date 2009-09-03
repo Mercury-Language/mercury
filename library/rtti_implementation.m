@@ -804,94 +804,88 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     semidet_call_3(Pred::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    succeeded = (Boolean) P.call___0_0(new Object[] { X, Y });
+    jmercury.runtime.MethodPtr2 P = (jmercury.runtime.MethodPtr2) Pred;
+    succeeded = (Boolean) P.call___0_0(X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_4(Pred::in, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    succeeded = (Boolean) P.call___0_0(new Object[] { A, X, Y });
+    jmercury.runtime.MethodPtr3 P = (jmercury.runtime.MethodPtr3) Pred;
+    succeeded = (Boolean) P.call___0_0(A, X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    succeeded = (Boolean) P.call___0_0(new Object[] { A, B, X, Y });
+    jmercury.runtime.MethodPtr4 P = (jmercury.runtime.MethodPtr4) Pred;
+    succeeded = (Boolean) P.call___0_0(A, B, X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    succeeded = (Boolean) P.call___0_0(new Object[] { A, B, C, X, Y });
+    jmercury.runtime.MethodPtr5 P = (jmercury.runtime.MethodPtr5) Pred;
+    succeeded = (Boolean) P.call___0_0(A, B, C, X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    succeeded = (Boolean) P.call___0_0(new Object[] { A, B, C, D, X, Y });
+    jmercury.runtime.MethodPtr6 P = (jmercury.runtime.MethodPtr6) Pred;
+    succeeded = (Boolean) P.call___0_0(A, B, C, D, X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    succeeded = (Boolean) P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
+    jmercury.runtime.MethodPtr7 P = (jmercury.runtime.MethodPtr7) Pred;
+    succeeded = (Boolean) P.call___0_0(A, B, C, D, E, X, Y);
 ").
 
 :- pragma foreign_proc("Java",
     result_call_4(Pred::in, Res::out, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = (builtin.Comparison_result_0)
-        P.call___0_0(new Object[] { X, Y });
+    jmercury.runtime.MethodPtr2 P = (jmercury.runtime.MethodPtr2) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(X, Y);
 ").
 
 :- pragma foreign_proc("Java",
     result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = (builtin.Comparison_result_0)
-        P.call___0_0(new Object[] { A, X, Y });
+    jmercury.runtime.MethodPtr3 P = (jmercury.runtime.MethodPtr3) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(A, X, Y);
 ").
 :- pragma foreign_proc("Java",
     result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = (builtin.Comparison_result_0)
-        P.call___0_0(new Object[] { A, B, X, Y });
+    jmercury.runtime.MethodPtr4 P = (jmercury.runtime.MethodPtr4) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, X, Y);
 ").
 :- pragma foreign_proc("Java",
     result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = (builtin.Comparison_result_0)
-        P.call___0_0(new Object[] { A, B, C, X, Y });
+    jmercury.runtime.MethodPtr5 P = (jmercury.runtime.MethodPtr5) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, X, Y);
 ").
 :- pragma foreign_proc("Java",
     result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = (builtin.Comparison_result_0)
-        P.call___0_0(new Object[] { A, B, C, D, X, Y });
+    jmercury.runtime.MethodPtr6 P = (jmercury.runtime.MethodPtr6) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, D, X, Y);
 ").
 :- pragma foreign_proc("Java",
     result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
         X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    jmercury.runtime.MethodPtr P = (jmercury.runtime.MethodPtr) Pred;
-    Res = (builtin.Comparison_result_0)
-        P.call___0_0(new Object[] { A, B, C, D, E, X, Y });
+    jmercury.runtime.MethodPtr7 P = (jmercury.runtime.MethodPtr7) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, D, E, X, Y);
 ").
 
 %-----------------------------------------------------------------------------%

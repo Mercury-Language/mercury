@@ -246,6 +246,7 @@ endif
 # avoid keywords.  Instead of replicating that logic here we just use a
 # wildcard to find the file names.
 JAVAS = $(wildcard jmercury/*.java)
+RUNTIME_JAVAS = $(wildcard jmercury/runtime/*.java)
 
 # We need to invoke javac on all of the classes at the same time,
 # rather than compiling them separately.  This is needed because
@@ -253,6 +254,7 @@ JAVAS = $(wildcard jmercury/*.java)
 # modules.
 classes: javas java_symlinks
 	$(JAVAC) $(ALL_JAVACFLAGS) $(JAVAS)
+	$(JAVAC) $(ALL_JAVACFLAGS) $(RUNTIME_JAVAS)
 
 # javac expects to find the sources for symbols named mercury.runtime.* in
 # mercury/runtime/*, but in our sources those symbols actually come from
