@@ -824,31 +824,31 @@ nth_member_lookup0(List, Elem) = Pos-1 :-
 remap_static_cell_info(Remap, !SCI) :-
     ScalarMap0 = !.SCI ^ scalar_cell_group_map,
     VectorMap0 = !.SCI ^ vector_cell_group_map,
-    map.map_values(remap_scalar_cell_group(Remap), ScalarMap0, ScalarMap),
-    map.map_values(remap_vector_cell_group(Remap), VectorMap0, VectorMap),
+    map.map_values_only(remap_scalar_cell_group(Remap), ScalarMap0, ScalarMap),
+    map.map_values_only(remap_vector_cell_group(Remap), VectorMap0, VectorMap),
     !SCI ^ scalar_cell_group_map := ScalarMap,
     !SCI ^ vector_cell_group_map := VectorMap.
 
-:- pred remap_scalar_cell_group(static_cell_remap_info::in, type_num::in,
+:- pred remap_scalar_cell_group(static_cell_remap_info::in,
     scalar_cell_group::in, scalar_cell_group::out) is det.
 
-remap_scalar_cell_group(Remap, _, !ScalarCellGroup) :-
+remap_scalar_cell_group(Remap, !ScalarCellGroup) :-
     Array0 = !.ScalarCellGroup ^ scalar_cell_rev_array,
     list.map(remap_common_cell_value(Remap), Array0, Array),
     !ScalarCellGroup ^ scalar_cell_rev_array := Array.
 
-:- pred remap_vector_cell_group(static_cell_remap_info::in, type_num::in,
+:- pred remap_vector_cell_group(static_cell_remap_info::in,
     vector_cell_group::in, vector_cell_group::out) is det.
 
-remap_vector_cell_group(Remap, _, !VectorCellGroup) :-
+remap_vector_cell_group(Remap, !VectorCellGroup) :-
     !.VectorCellGroup = vector_cell_group(Counter, Map0),
-    map.map_values(remap_vector_contents(Remap), Map0, Map),
+    map.map_values_only(remap_vector_contents(Remap), Map0, Map),
     !:VectorCellGroup = vector_cell_group(Counter, Map).
 
-:- pred remap_vector_contents(static_cell_remap_info::in, int::in,
+:- pred remap_vector_contents(static_cell_remap_info::in,
     vector_contents::in, vector_contents::out) is det.
 
-remap_vector_contents(Remap, _, !Contents) :-
+remap_vector_contents(Remap, !Contents) :-
     !.Contents = vector_contents(Values0),
     list.map(remap_common_cell_value(Remap), Values0, Values),
     !:Contents = vector_contents(Values).

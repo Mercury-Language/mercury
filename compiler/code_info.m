@@ -1243,7 +1243,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
     set_follow_vars(abs_follow_vars(StoreMap, MaxMentionedReg + 1), !CI),
     get_instmap(!.CI, InstMap),
     ( instmap_is_reachable(InstMap) ->
-        VarLocs = assoc_list.map_values(key_abs_locn_to_lval, AbsVarLocs),
+        VarLocs = assoc_list.map_values_only(abs_locn_to_lval, AbsVarLocs),
         place_vars(VarLocs, Code, !CI)
     ;
         % With --opt-no-return-call, the variables that we would have
@@ -1332,7 +1332,7 @@ after_all_branches(StoreMap, MaybeEnd, !CI) :-
 
 remake_with_store_map(StoreMap, !CI) :-
     map.to_assoc_list(StoreMap, VarLocns),
-    VarLvals = assoc_list.map_values(key_abs_locn_to_lval, VarLocns),
+    VarLvals = assoc_list.map_values_only(abs_locn_to_lval, VarLocns),
     get_var_locn_info(!.CI, VarLocnInfo0),
     reinit_var_locn_state(VarLvals, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
@@ -2845,7 +2845,7 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
         get_stack_slots(!.CI, StackSlots),
         map.select(StackSlots, FailVars, AbsStackMap),
         map.to_assoc_list(AbsStackMap, AbsStackList),
-        StackList0 = assoc_list.map_values(key_stack_slot_to_lval,
+        StackList0 = assoc_list.map_values_only(stack_slot_to_lval,
             AbsStackList),
         make_singleton_sets(StackList0, StackList),
         map.from_sorted_assoc_list(StackList, StackMap)
@@ -2948,7 +2948,7 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
 make_stack_resume_map(ResumeVars, StackSlots, StackMap) :-
     map.select(StackSlots, ResumeVars, StackMap0),
     map.to_assoc_list(StackMap0, AbsStackList),
-    StackList0 = assoc_list.map_values(key_stack_slot_to_lval, AbsStackList),
+    StackList0 = assoc_list.map_values_only(stack_slot_to_lval, AbsStackList),
     make_singleton_sets(StackList0, StackList),
     map.from_sorted_assoc_list(StackList, StackMap).
 

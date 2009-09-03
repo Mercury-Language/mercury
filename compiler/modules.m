@@ -725,7 +725,8 @@ strip_unnecessary_impl_defns(Items0, Items) :-
 
         % If a type in the implementation section isn't dummy and doesn't have
         % foreign type alternatives, make it abstract.
-        map.map_values(make_impl_type_abstract(BothTypesMap), !ImplTypesMap),
+        map.map_values_only(make_impl_type_abstract(BothTypesMap),
+            !ImplTypesMap),
 
         % If there is an exported type declaration for a type with an abstract
         % declaration in the implementation (usually it will originally
@@ -926,11 +927,11 @@ insert_type_defn(New, [Head | Tail], Result) :-
         Result = [Head | NewTail]
     ).
 
-:- pred make_impl_type_abstract(type_defn_map::in, type_ctor::in,
+:- pred make_impl_type_abstract(type_defn_map::in,
     assoc_list(type_defn, item_type_defn_info)::in,
     assoc_list(type_defn, item_type_defn_info)::out) is det.
 
-make_impl_type_abstract(TypeDefnMap, _TypeCtor, !TypeDefnPairs) :-
+make_impl_type_abstract(TypeDefnMap, !TypeDefnPairs) :-
     (
         !.TypeDefnPairs =
             [parse_tree_du_type(Ctors, MaybeEqCmp) - ItemTypeDefn0],

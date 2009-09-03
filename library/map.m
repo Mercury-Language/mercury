@@ -426,6 +426,13 @@
 :- mode map.map_values(pred(in, in, out) is det, in, out) is det.
 :- mode map.map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
+    % Same as map.map_values, but do not pass the key to the given predicate.
+    %
+:- func map.map_values_only(func(V) = W, map(K, V)) = map(K, W).
+:- pred map.map_values_only(pred(V, W), map(K, V), map(K, W)).
+:- mode map.map_values_only(pred(in, out) is det, in, out) is det.
+:- mode map.map_values_only(pred(in, out) is semidet, in, out) is semidet.
+
     % Apply a transformation predicate to all the values in a map,
     % while continuously updating an accumulator.
     %
@@ -909,6 +916,9 @@ map.foldr4(Pred, Map, !A, !B, !C, !D) :-
 map.map_values(Pred, Map0, Map) :-
     tree234.map_values(Pred, Map0, Map).
 
+map.map_values_only(Pred, Map0, Map) :-
+    tree234.map_values_only(Pred, Map0, Map).
+
 map.map_foldl(Pred, !Map, !Acc) :-
     tree234.map_foldl(Pred, !Map, !Acc).
 
@@ -1171,6 +1181,10 @@ map.foldr(F, M, A) = B :-
 map.map_values(F, M1) = M2 :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     map.map_values(P, M1, M2).
+
+map.map_values_only(F, M1) = M2 :-
+    P = (pred(Y::in, Z::out) is det :- Z = F(Y) ),
+    map.map_values_only(P, M1, M2).
 
 map.intersect(F, M1, M2) = M3 :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),

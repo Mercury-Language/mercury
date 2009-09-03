@@ -515,8 +515,8 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
 
 polymorphism_introduce_exists_casts_pred(ModuleInfo, !PredInfo) :-
     pred_info_get_procedures(!.PredInfo, Procs0),
-    map.map_values(
-        (pred(_::in, !.ProcInfo::in, !:ProcInfo::out) is det :-
+    map.map_values_only(
+        (pred(!.ProcInfo::in, !:ProcInfo::out) is det :-
             % Add the extra goals to each procedure.
             introduce_exists_casts_proc(ModuleInfo, !.PredInfo, !ProcInfo)
         ), Procs0, Procs),

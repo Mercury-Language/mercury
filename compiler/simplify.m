@@ -3113,10 +3113,8 @@ find_renamed_var(Subn, Var0, Var) :-
     is det.
 
 renaming_transitive_closure(VarRenaming0, VarRenaming) :-
-    map.map_values(
-        (pred(_::in, Value0::in, Value::out) is det :-
-            find_renamed_var(VarRenaming0, Value0, Value)
-        ), VarRenaming0, VarRenaming).
+    map.map_values_only(find_renamed_var(VarRenaming0),
+        VarRenaming0, VarRenaming).
 
 %-----------------------------------------------------------------------------%
 
@@ -3807,10 +3805,7 @@ simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
         !Info) :-
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    ApplyTSubst = (pred(_::in, T0::in, T::out) is det :-
-            apply_rec_subst_to_type(TSubst, T0, T)
-        ),
-    map.map_values(ApplyTSubst, VarTypes0, VarTypes),
+    map.map_values_only(apply_rec_subst_to_type(TSubst), VarTypes0, VarTypes),
     map.det_insert(map.init, ToVar, FromVar, Renaming),
     apply_substitutions_to_rtti_varmaps(map.init, TSubst, Renaming,
         RttiVarMaps0, RttiVarMaps1),

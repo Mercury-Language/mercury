@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 University of Melbourne.
+% Copyright (C) 1997-2009 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1466,13 +1466,12 @@ convert_table_arg_info(TableArgInfos, NumPTIs,
         !StaticCellInfo),
     add_scalar_static_cell(PTIRvalsTypes, PTIVectorAddr, !StaticCellInfo),
     PTIVectorRval = const(llconst_data_addr(PTIVectorAddr, no)),
-    map.map_values(convert_slot_to_locn_map, TVarSlotMap, TVarLocnMap),
+    map.map_values_only(convert_slot_to_locn_map, TVarSlotMap, TVarLocnMap),
     construct_tvar_vector(TVarLocnMap, TVarVectorRval, !StaticCellInfo).
 
-:- pred convert_slot_to_locn_map(tvar::in, table_locn::in,
-    set(layout_locn)::out) is det.
+:- pred convert_slot_to_locn_map(table_locn::in, set(layout_locn)::out) is det.
 
-convert_slot_to_locn_map(_TVar, SlotLocn, LvalLocns) :-
+convert_slot_to_locn_map(SlotLocn, LvalLocns) :-
     (
         SlotLocn = table_locn_direct(SlotNum),
         LvalLocn = locn_direct(reg(reg_r, SlotNum))

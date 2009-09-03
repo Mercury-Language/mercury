@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -295,31 +295,13 @@ apply_rec_subst_to_type_list(Subst, Types0, Types) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_vartypes(Renaming, !Map) :-
-    map.map_values(apply_variable_renaming_to_vartypes_2(Renaming), !Map).
-
-:- pred apply_variable_renaming_to_vartypes_2(tvar_renaming::in, prog_var::in,
-    mer_type::in, mer_type::out) is det.
-
-apply_variable_renaming_to_vartypes_2(Renaming, _, !Type) :-
-    apply_variable_renaming_to_type(Renaming, !Type).
+    map.map_values_only(apply_variable_renaming_to_type(Renaming), !Map).
 
 apply_subst_to_vartypes(Subst, !VarTypes) :-
-    map.map_values(apply_subst_to_vartypes_2(Subst), !VarTypes).
-
-:- pred apply_subst_to_vartypes_2(tsubst::in, prog_var::in,
-    mer_type::in, mer_type::out) is det.
-
-apply_subst_to_vartypes_2(Subst, _, !Type) :-
-    apply_subst_to_type(Subst, !Type).
+    map.map_values_only(apply_subst_to_type(Subst), !VarTypes).
 
 apply_rec_subst_to_vartypes(Subst, !VarTypes) :-
-    map.map_values(apply_rec_subst_to_vartypes_2(Subst), !VarTypes).
-
-:- pred apply_rec_subst_to_vartypes_2(tsubst::in, prog_var::in,
-    mer_type::in, mer_type::out) is det.
-
-apply_rec_subst_to_vartypes_2(Subst, _, !Type) :-
-    apply_rec_subst_to_type(Subst, !Type).
+    map.map_values_only(apply_rec_subst_to_type(Subst), !VarTypes).
 
 %-----------------------------------------------------------------------------%
 

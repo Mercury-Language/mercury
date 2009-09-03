@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2008 The University of Melbourne.
+% Copyright (C) 2000-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -423,7 +423,7 @@ unneeded_process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         %
         % This code requires compound goals containing impure code
         % to also be marked impure.
-        map.map_values(demand_var_everywhere, !WhereNeededMap)
+        map.map_values_only(demand_var_everywhere, !WhereNeededMap)
     ;
         true
     ).
@@ -615,10 +615,9 @@ undemand_var(Var, WhereNeededMap0, WhereNeededMap) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred demand_var_everywhere(prog_var::in, where_needed::in,
-    where_needed::out) is det.
+:- pred demand_var_everywhere(where_needed::in, where_needed::out) is det.
 
-demand_var_everywhere(_Var, _WhereNeeded0, everywhere).
+demand_var_everywhere(_WhereNeeded0, everywhere).
 
 %---------------------------------------------------------------------------%
 
@@ -681,7 +680,7 @@ unneeded_process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap,
         ),
         GoalPath = goal_info_get_goal_path(GoalInfo0),
         BranchPoint = branch_point(GoalPath, alt_switch(MaybeNumAlt)),
-        map.map_values(demand_var_everywhere, !WhereNeededMap),
+        map.map_values_only(demand_var_everywhere, !WhereNeededMap),
         map.init(BranchNeededMap0),
         unneeded_process_cases(Cases0, Cases, BranchPoint, 1,
             InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options, GoalPath,
@@ -695,7 +694,7 @@ unneeded_process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap,
     ;
         GoalExpr0 = disj(Disjuncts0),
         GoalPath = goal_info_get_goal_path(GoalInfo0),
-        map.map_values(demand_var_everywhere, !WhereNeededMap),
+        map.map_values_only(demand_var_everywhere, !WhereNeededMap),
         unneeded_process_disj(Disjuncts0, Disjuncts, InitInstMap, FinalInstMap,
             VarTypes, ModuleInfo, Options, GoalPath,
             !.WhereNeededMap, !.WhereNeededMap, !:WhereNeededMap,
@@ -706,7 +705,7 @@ unneeded_process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap,
         GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
         GoalPath = goal_info_get_goal_path(GoalInfo0),
         BranchPoint = branch_point(GoalPath, alt_ite),
-        map.map_values(demand_var_everywhere, !WhereNeededMap),
+        map.map_values_only(demand_var_everywhere, !WhereNeededMap),
         unneeded_process_ite(Cond0, Cond, Then0, Then, Else0, Else,
             BranchPoint, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
             Options, GoalPath, !WhereNeededMap, !RefinedGoals, !Changed),

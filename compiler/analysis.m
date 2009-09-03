@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2004, 2006-2008 The University of Melbourne.
+% Copyright (C) 2003-2004, 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1150,20 +1150,21 @@ write_clearing_entries(ModuleName, ImportedModuleName, !IO) :-
     module_analysis_map(imdg_arc)::out) is det.
 
 clear_imdg_entries_pointing_at(ModuleName, Map0, Map) :-
-    map.map_values(clear_imdg_entries_pointing_at_2(ModuleName), Map0, Map).
+    map.map_values_only(clear_imdg_entries_pointing_at_2(ModuleName),
+        Map0, Map).
 
-:- pred clear_imdg_entries_pointing_at_2(module_name::in, analysis_name::in,
+:- pred clear_imdg_entries_pointing_at_2(module_name::in,
     func_analysis_map(imdg_arc)::in,
     func_analysis_map(imdg_arc)::out) is det.
 
-clear_imdg_entries_pointing_at_2(ModuleName, _, FuncMap0, FuncMap) :-
-    map.map_values(clear_imdg_entries_pointing_at_3(ModuleName),
+clear_imdg_entries_pointing_at_2(ModuleName, FuncMap0, FuncMap) :-
+    map.map_values_only(clear_imdg_entries_pointing_at_3(ModuleName),
         FuncMap0, FuncMap).
 
-:- pred clear_imdg_entries_pointing_at_3(module_name::in, func_id::in,
+:- pred clear_imdg_entries_pointing_at_3(module_name::in,
     list(imdg_arc)::in, list(imdg_arc)::out) is det.
 
-clear_imdg_entries_pointing_at_3(ModuleName, _, Arcs0, Arcs) :-
+clear_imdg_entries_pointing_at_3(ModuleName, Arcs0, Arcs) :-
     list.filter((pred(Arc::in) is semidet :- Arc ^ imdg_caller \= ModuleName),
         Arcs0, Arcs).
 

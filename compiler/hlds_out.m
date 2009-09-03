@@ -3407,7 +3407,7 @@ write_rtti_var_info(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, Var,
 
 write_stack_slots(Indent, StackSlots, VarSet, AppendVarNums, !IO) :-
     map.to_assoc_list(StackSlots, VarSlotList0),
-    VarSlotList = assoc_list.map_values(key_stack_slot_to_abs_locn,
+    VarSlotList = assoc_list.map_values_only(stack_slot_to_abs_locn,
         VarSlotList0),
     write_var_to_abs_locns(VarSlotList, VarSet, AppendVarNums, Indent, !IO).
 

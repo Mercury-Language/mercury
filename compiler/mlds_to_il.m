@@ -4579,7 +4579,7 @@ il_info_get_instructions(Info, Instrs) :-
 
 il_info_get_locals_list(Info, Locals) :-
     DataRep = Info ^ il_data_rep,
-    map.map_values((pred(_K::in, V::in, W::out) is det :-
+    map.map_values_only((pred(V::in, W::out) is det :-
         W = mlds_type_to_ilds_type(DataRep, V)),
         Info ^ locals, LocalsMap),
     map.to_assoc_list(LocalsMap, Locals).

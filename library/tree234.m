@@ -254,6 +254,12 @@
 :- mode tree234.map_values(pred(in, in, out) is det, in, out) is det.
 :- mode tree234.map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
+:- func tree234.map_values_only(func(V) = W, tree234(K, V)) = tree234(K, W).
+
+:- pred tree234.map_values_only(pred(V, W), tree234(K, V), tree234(K, W)).
+:- mode tree234.map_values_only(pred(in, out) is det, in, out) is det.
+:- mode tree234.map_values_only(pred(in, out) is semidet, in, out) is semidet.
+
 :- pred tree234.map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
     A, A).
 :- mode tree234.map_foldl(pred(in, in, out, di, uo) is det,
@@ -2732,6 +2738,32 @@ tree234.map_values(Pred, Tree0, Tree) :-
     tree234.map_values(Pred, Right0, Right),
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
+tree234.map_values_only(_Pred, empty, empty).
+tree234.map_values_only(Pred, Tree0, Tree) :-
+    Tree0 = two(K0, V0, Left0, Right0),
+    Pred(V0, W0),
+    tree234.map_values_only(Pred, Left0, Left),
+    tree234.map_values_only(Pred, Right0, Right),
+    Tree = two(K0, W0, Left, Right).
+tree234.map_values_only(Pred, Tree0, Tree) :-
+    Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+    Pred(V0, W0),
+    Pred(V1, W1),
+    tree234.map_values_only(Pred, Left0, Left),
+    tree234.map_values_only(Pred, Middle0, Middle),
+    tree234.map_values_only(Pred, Right0, Right),
+    Tree = three(K0, W0, K1, W1, Left, Middle, Right).
+tree234.map_values_only(Pred, Tree0, Tree) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+    Pred(V0, W0),
+    Pred(V1, W1),
+    Pred(V2, W2),
+    tree234.map_values_only(Pred, Left0, Left),
+    tree234.map_values_only(Pred, LMid0, LMid),
+    tree234.map_values_only(Pred, RMid0, RMid),
+    tree234.map_values_only(Pred, Right0, Right),
+    Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
+
 %------------------------------------------------------------------------------%
 
 tree234.map_foldl(_Pred, empty, empty, !A).
@@ -2848,6 +2880,10 @@ tree234.foldr(F, T, A) = B :-
 tree234.map_values(F, T1) = T2 :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     tree234.map_values(P, T1, T2).
+
+tree234.map_values_only(F, T1) = T2 :-
+    P = (pred(Y::in, Z::out) is det :- Z = F(Y) ),
+    tree234.map_values_only(P, T1, T2).
 
 %-----------------------------------------------------------------------------%
 

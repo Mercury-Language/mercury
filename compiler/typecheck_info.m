@@ -382,6 +382,7 @@
 :- import_module int.
 :- import_module pair.
 :- import_module string.
+:- import_module set.
 :- import_module svmap.
 :- import_module term.
 :- import_module varset.
@@ -429,16 +430,16 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         type_assign_get_constraint_proofs(TypeAssign, ConstraintProofs0),
         type_assign_get_constraint_map(TypeAssign, ConstraintMap0),
 
-        map.keys(VarTypes0, Vars),
         ( map.is_empty(TypeBindings) ->
-            VarTypes = VarTypes0,
+            VarTypes1 = VarTypes0,
             ConstraintProofs = ConstraintProofs0,
-            ConstraintMap1 = ConstraintMap0
+            ConstraintMap1 = ConstraintMap0,
+            map.values(VarTypes1, Types1),
+            type_vars_list(Types1, TypeVars1)
         ;
-            map.to_sorted_assoc_list(VarTypes0, VarTypesList0),
-            expand_types(VarTypesList0, TypeBindings, [], RevVarTypesList),
-            list.reverse(RevVarTypesList, VarTypesList),
-            map.from_sorted_assoc_list(VarTypesList, VarTypes),
+            map.map_foldl(expand_types(TypeBindings), VarTypes0, VarTypes1,
+                set.init, TypeVarsSet1),
+            set.to_sorted_list(TypeVarsSet1, TypeVars1),
             apply_rec_subst_to_constraint_proofs(TypeBindings,
                 ConstraintProofs0, ConstraintProofs),
             apply_rec_subst_to_constraint_map(TypeBindings,
@@ -488,77 +489,54 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         % (XXX should we do the same for TypeConstraints and ConstraintProofs
         % too?)
 
-        map.values(VarTypes, Types),
-        type_vars_list(Types, TypeVars0),
         map.values(OldExplicitVarTypes, ExplicitTypes),
         type_vars_list(ExplicitTypes, ExplicitTypeVars0),
         map.keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
         list.delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
             ExistQVarsToRemain),
         list.condense([ExistQVarsToRemain, HeadTypeParams,
-            TypeVars0, ExplicitTypeVars0], TypeVars1),
-        list.sort_and_remove_dups(TypeVars1, TypeVars),
+            TypeVars1, ExplicitTypeVars0], TypeVars2),
+        list.sort_and_remove_dups(TypeVars2, TypeVars),
 
         % Next, create a new typevarset with the same number of variables.
         varset.squash(OldTypeVarSet, TypeVars, NewTypeVarSet, TSubst),
 
-        % Finally, rename the types and type class constraints to use
-        % the new typevarset type variables.
-        apply_variable_renaming_to_type_list(TSubst, Types, NewTypes),
-        assoc_list.from_corresponding_lists(Vars, NewTypes, VarsNewTypes),
-        % Creating the NewVarTypes map from a list that map.m knows is sorted
-        % gives a speedup.
-        map.from_sorted_assoc_list(VarsNewTypes, NewVarTypes),
-        map.apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
+        % Finally, if necessary, rename the types and type class constraints
+        % to use the new typevarset type variables.
         retrieve_prog_constraints(HLDSTypeConstraints, TypeConstraints),
-        apply_variable_renaming_to_prog_constraints(TSubst,
-            TypeConstraints, NewTypeConstraints),
-        apply_variable_renaming_to_constraint_proofs(TSubst,
-            ConstraintProofs, NewConstraintProofs),
-        apply_variable_renaming_to_constraint_map(TSubst,
-            ConstraintMap, NewConstraintMap)
+        ( map.is_empty(TSubst) ->
+            NewVarTypes = VarTypes1,
+            NewHeadTypeParams = HeadTypeParams,
+            NewTypeConstraints = TypeConstraints,
+            NewConstraintProofs = ConstraintProofs,
+            NewConstraintMap = ConstraintMap
+        ;
+            map.map_values_only(apply_variable_renaming_to_type(TSubst),
+                VarTypes1, NewVarTypes),
+            map.apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
+            apply_variable_renaming_to_prog_constraints(TSubst,
+                TypeConstraints, NewTypeConstraints),
+            apply_variable_renaming_to_constraint_proofs(TSubst,
+                ConstraintProofs, NewConstraintProofs),
+            apply_variable_renaming_to_constraint_map(TSubst,
+                ConstraintMap, NewConstraintMap)
+        )
     ;
         TypeAssignSet = [],
         unexpected(this_file, "internal error in typecheck_info_get_vartypes")
     ).
 
     % Fully expand the types of the variables by applying the type bindings.
+    % We also accumulate the set of type variables we have seen so far,
+    % since doing so saves having to do a separate traversal for that.
     %
-    % The number of variables can be huge here (hundred of thousands for
-    % Doug Auclair's training_cars program). The code below prevents stack
-    % overflows in grades that do not permit tail recursion.
-    %
-:- pred expand_types(assoc_list(prog_var, mer_type)::in, tsubst::in,
-    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out)
-    is det.
+:- pred expand_types(tsubst::in, prog_var::in, mer_type::in, mer_type::out,
+    set(tvar)::in, set(tvar)::out) is det.
 
-expand_types(VarTypes, TypeSubst, !RevVarTypes) :-
-    expand_types_2(VarTypes, TypeSubst, 1000, LeftOverVarTypes, !RevVarTypes),
-    (
-        LeftOverVarTypes = []
-    ;
-        LeftOverVarTypes = [_ | _],
-        expand_types(LeftOverVarTypes, TypeSubst, !RevVarTypes)
-    ).
-
-:- pred expand_types_2(assoc_list(prog_var, mer_type)::in, tsubst::in, int::in,
-    assoc_list(prog_var, mer_type)::out,
-    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out)
-    is det.
-
-expand_types_2([], _, _, [], !VarTypes).
-expand_types_2([VarType0 | VarTypes0], TypeSubst, VarsToDo, LeftOverVarTypes,
-        !RevVarTypes) :-
-    ( VarsToDo < 0 ->
-        LeftOverVarTypes = [VarType0 | VarTypes0]
-    ;
-        VarType0 = Var - Type0,
-        apply_rec_subst_to_type(TypeSubst, Type0, Type),
-        VarType = Var - Type,
-        !:RevVarTypes = [VarType | !.RevVarTypes],
-        expand_types_2(VarTypes0, TypeSubst, VarsToDo - 1, LeftOverVarTypes,
-            !RevVarTypes)
-    ).
+expand_types(TypeSubst, _Var, Type0, Type, !TypeVarsSet) :-
+    apply_rec_subst_to_type(TypeSubst, Type0, Type),
+    type_vars(Type, TypeVars),
+    set.insert_list(!.TypeVarsSet, TypeVars, !:TypeVarsSet).
 
     % We rename any existentially quantified type variables which get mapped
     % to other type variables, unless they are mapped to universally quantified

@@ -363,7 +363,7 @@ corresponding_members([_ | As], [_ | Bs], A, B) :-
 merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
     varset.merge_subst_without_names(VarSet0, NewVarSet, VarSet, Sub0),
     (
-        map.map_values(pred(_::in, term.variable(V, _)::in, V::out) is semidet,
+        map.map_values_only(pred(term.variable(V, _)::in, V::out) is semidet,
             Sub0, Sub1)
     ->
         Sub = Sub1
@@ -372,8 +372,8 @@ merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
     ),
     map.foldl((pred(Var0::in, Node0::in, IG0::in, IG::out) is det :-
         Node0 = node(Functors0, MaybeParent),
-        map.map_values(
-            (pred(_::in, Args0::in, Args::out) is det :-
+        map.map_values_only(
+            (pred(Args0::in, Args::out) is det :-
                 map.apply_to_list(Args0, Sub, Args)),
             Functors0, Functors),
         Node = node(Functors, MaybeParent),

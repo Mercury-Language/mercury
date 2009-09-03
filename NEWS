@@ -258,6 +258,10 @@ Changes to the Mercury standard library:
   map.from_sorted_assoc_list now also constructs the tree directly, so now
   it requires its input list to be duplicate-free.
 
+* We have added tree234.map_values_only and map.map_values_only, which are
+  versions of tree234.map_values and map.map_values which do not give the
+  higher order argument the key associated with the value being transformed.
+
 * We have replaced the hash_table and version_hash_table implementations
   with separate chaining schemes.  Consequently delete works, and double
   hashing predicates are not required.

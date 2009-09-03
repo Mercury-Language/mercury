@@ -89,11 +89,14 @@ goal_mark_static_terms(Goal0, Goal, !SI) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        % We should special-case the handling of from_ground_term_construct
-        % scopes, since these already have all their unifications marked
-        % as construct_statically.
-        goal_mark_static_terms(SubGoal0, SubGoal, !SI),
-        GoalExpr = scope(Reason, SubGoal)
+        ( Reason = from_ground_term(_TermVar, from_ground_term_construct) ->
+            % These scopes already have all their unifications marked
+            % as construct_statically.
+            GoalExpr = GoalExpr0
+        ;
+            goal_mark_static_terms(SubGoal0, SubGoal, !SI),
+            GoalExpr = scope(Reason, SubGoal)
+        )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         SI0 = !.SI,
@@ -152,23 +155,23 @@ cases_mark_static_terms([Case0 | Cases0], [Case | Cases], SI0) :-
 
 unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
     (
-        Unification0 = construct(Var, ConsId, ArgVars, D, HowToConstruct0,
-            F, G),
+        Unification0 = construct(Var, ConsId, ArgVars, ArgModes,
+            HowToConstruct0, Unique, SubInfo),
         % If all the arguments are static, then the newly constructed variable
         % is static too.
         ( list.all_true(set_tree234.contains(!.StaticVars), ArgVars) ->
             HowToConstruct = construct_statically,
-            set_tree234.insert(Var, !StaticVars)
-        ;
-            HowToConstruct = HowToConstruct0
-        ),
-        ( HowToConstruct = HowToConstruct0 ->
+            set_tree234.insert(Var, !StaticVars),
             % This is a minor optimization to improve the efficiency of the
             % compiler: don't bother allocating memory if we don't need to.
-            Unification = Unification0
+            ( HowToConstruct = HowToConstruct0 ->
+                Unification = Unification0
+            ;
+                Unification = construct(Var, ConsId, ArgVars, ArgModes,
+                    HowToConstruct, Unique, SubInfo)
+            )
         ;
-            Unification = construct(Var, ConsId, ArgVars, D, HowToConstruct,
-                F, G)
+            Unification = Unification0
         )
     ;
         Unification0 = deconstruct(_Var, _ConsId, _ArgVars, _UniModes,
@@ -198,10 +201,9 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
             true
         )
     ;
-        Unification0 = simple_test(_, _),
-        Unification = Unification0
-    ;
-        Unification0 = complicated_unify(_, _, _),
+        ( Unification0 = simple_test(_, _)
+        ; Unification0 = complicated_unify(_, _, _)
+        ),
         Unification = Unification0
     ).
 

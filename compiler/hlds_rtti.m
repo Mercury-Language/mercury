@@ -695,10 +695,7 @@ rtti_varmaps_transform_types(Pred, !RttiVarMaps) :-
     ConstraintMap0 = !.RttiVarMaps ^ tci_constraint_map,
     map.foldl(apply_constraint_key_transformation(Pred), TciMap0,
         map.init, TciMap),
-    Pred2 = (pred(_::in, V::in, W::out) is det :-
-            Pred(V, W)
-    ),
-    map.map_values(Pred2, TypeMap0, TypeMap),
+    map.map_values_only(Pred, TypeMap0, TypeMap),
     map.map_values(apply_constraint_value_transformation(Pred),
         ConstraintMap0, ConstraintMap),
     !:RttiVarMaps = !.RttiVarMaps ^ tci_varmap := TciMap,

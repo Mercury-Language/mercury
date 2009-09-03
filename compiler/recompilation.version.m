@@ -208,18 +208,18 @@ distribute_pragma_items({ItemId, Item, Section}, !GatheredItems) :-
     ),
 
     % Pragmas can apply to typeclass methods.
-    map.map_values(distribute_pragma_items_class_items(MaybePredOrFunc,
+    map.map_values_only(distribute_pragma_items_class_items(MaybePredOrFunc,
         SymName, Arity, Item, Section),
         extract_ids(!.GatheredItems, typeclass_item), GatheredTypeClasses),
     !:GatheredItems = update_ids(!.GatheredItems, typeclass_item,
         GatheredTypeClasses).
 
 :- pred distribute_pragma_items_class_items(maybe(pred_or_func)::in,
-    sym_name::in, arity::in, item::in, section::in, pair(string, int)::in,
+    sym_name::in, arity::in, item::in, section::in,
     assoc_list(section, item)::in, assoc_list(section, item)::out) is det.
 
 distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
-        Item, Section, _, !ClassItems) :-
+        Item, Section, !ClassItems) :-
     (
         % Does this pragma match any of the methods of this class.
         list.member(_ - ClassItem, !.ClassItems),

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000,2002-2007 The University of Melbourne.
+% Copyright (C) 1993-2000,2002-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -459,21 +459,18 @@ varset.set_bindings(VarSet, Values, VarSet ^ var_values := Values).
 
 %-----------------------------------------------------------------------------%
 
-    % We scan through the second varset, introducing a fresh
-    % variable into the first varset for each var in the
-    % second, and building up a substitution which maps
-    % the variables in the second varset into the corresponding
-    % fresh variable in the first varset.  We then apply
+    % We scan through the second varset, introducing a fresh variable
+    % into the first varset for each var in the second, and building up
+    % a substitution which maps the variables in the second varset into
+    % the corresponding fresh variable in the first varset. We then apply
     % this substitution to the list of terms.
 
 varset.merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
-    IncludeNames = yes,
-    varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst),
+    varset.merge_subst(VarSetA, VarSetB, VarSet, Subst),
     term.apply_substitution_to_list(TermList0, Subst, TermList).
 
 varset.merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
-    IncludeNames = no,
-    varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst),
+    varset.merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst),
     term.apply_substitution_to_list(TermList0, Subst, TermList).
 
 %-----------------------------------------------------------------------------%
@@ -482,46 +479,59 @@ varset.merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
 % in the next block.
 
 varset.merge_renaming(VarSetA, VarSetB, VarSet, Subst) :-
-    IncludeNames = yes,
-    varset.merge_renaming_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
+    VarSetB = varset(SupplyB, NamesB, _ValuesB),
+    term.init_var_supply(SupplyB0),
+    VarSetA = varset(SupplyA, NamesA, ValuesA),
+    map.init(Subst0),
+    varset.merge_renaming_2(SupplyB0, SupplyB, NamesB,
+        SupplyA, Supply, NamesA, Names, Subst0, Subst),
+    VarSet = varset(Supply, Names, ValuesA).
 
-varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Subst) :-
-    IncludeNames = no,
-    varset.merge_renaming_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
-
-:- pred varset.merge_renaming_inc(bool::in, varset(T)::in, varset(T)::in,
-    varset(T)::out, map(var(T), var(T))::out) is det.
-
-varset.merge_renaming_inc(IncludeNames, VarSetA, VarSetB, VarSet, Renaming) :-
-    VarSetB = varset(MaxId, Names, Values),
-    term.init_var_supply(N),
-    map.init(Renaming0),
-    varset.merge_renaming_inc_2(IncludeNames, N, MaxId, Names, Values,
-        VarSetA, VarSet, Renaming0, Renaming).
-
-:- pred varset.merge_renaming_inc_2(bool::in, var_supply(T)::in,
-    var_supply(T)::in, map(var(T), string)::in,
-    map(var(T), term(T))::in, varset(T)::in, varset(T)::out,
+:- pred varset.merge_renaming_2(var_supply(T)::in, var_supply(T)::in,
+    map(var(T), string)::in,
+    var_supply(T)::in, var_supply(T)::out,
+    map(var(T), string)::in, map(var(T), string)::out,
     map(var(T), var(T))::in, map(var(T), var(T))::out) is det.
 
-varset.merge_renaming_inc_2(IncludeNames, N, Max, Names, Values, !VarSet,
-        !Renaming) :-
-    ( N = Max ->
+varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
+        !Supply, !Names, !Subst) :-
+    ( !.SupplyB = MaxSupplyB ->
         true
     ;
-        varset.new_var(!.VarSet, VarId, !:VarSet),
-        term.create_var(N, VarN, N1),
-        (
-            IncludeNames = yes,
-            map.search(Names, VarN, Name)
-        ->
-            varset.name_var(!.VarSet, VarId, Name, !:VarSet)
+        term.create_var(!.Supply, Var, !:Supply),
+        term.create_var(!.SupplyB, VarB, !:SupplyB),
+        ( map.search(NamesB, VarB, NameB) ->
+            map.det_insert(!.Names, Var, NameB, !:Names)
         ;
             true
         ),
-        map.set(!.Renaming, VarN, VarId, !:Renaming),
-        varset.merge_renaming_inc_2(IncludeNames, N1, Max, Names, Values,
-            !VarSet, !Renaming)
+        map.det_insert(!.Subst, VarB, Var, !:Subst),
+        varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
+            !Supply, !Names, !Subst)
+    ).
+
+varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Subst) :-
+    VarSetB = varset(SupplyB, _NamesB, _ValuesB),
+    term.init_var_supply(SupplyB0),
+    VarSetA = varset(SupplyA, NamesA, ValuesA),
+    map.init(Subst0),
+    varset.merge_renaming_without_names_2(SupplyB0, SupplyB,
+        SupplyA, Supply, Subst0, Subst),
+    VarSet = varset(Supply, NamesA, ValuesA).
+
+:- pred varset.merge_renaming_without_names_2(var_supply(T)::in,
+    var_supply(T)::in, var_supply(T)::in, var_supply(T)::out,
+    map(var(T), var(T))::in, map(var(T), var(T))::out) is det.
+
+varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB, !Supply, !Subst) :-
+    ( !.SupplyB = MaxSupplyB ->
+        true
+    ;
+        term.create_var(!.Supply, Var, !:Supply),
+        term.create_var(!.SupplyB, VarB, !:SupplyB),
+        map.det_insert(!.Subst, VarB, Var, !:Subst),
+        varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB,
+            !Supply, !Subst)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -530,46 +540,61 @@ varset.merge_renaming_inc_2(IncludeNames, N, Max, Names, Values, !VarSet,
 % in the previous block.
 
 varset.merge_subst(VarSetA, VarSetB, VarSet, Subst) :-
-    IncludeNames = yes,
-    varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
-
-varset.merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst) :-
-    IncludeNames = no,
-    varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
-
-:- pred varset.merge_subst_inc(bool::in, varset(T)::in, varset(T)::in,
-    varset(T)::out, substitution(T)::out) is det.
-
-varset.merge_subst_inc(IncludeNames, VarSetA, VarSetB, VarSet, Subst) :-
-    VarSetB = varset(MaxId, Names, Values),
-    term.init_var_supply(N),
+    VarSetB = varset(SupplyB, NamesB, _ValuesB),
+    term.init_var_supply(SupplyB0),
+    VarSetA = varset(SupplyA, NamesA, ValuesA),
     map.init(Subst0),
-    varset.merge_subst_inc_2(IncludeNames, N, MaxId, Names, Values,
-        VarSetA, VarSet, Subst0, Subst).
+    varset.merge_subst_2(SupplyB0, SupplyB, NamesB,
+        SupplyA, Supply, NamesA, Names, Subst0, Subst),
+    VarSet = varset(Supply, Names, ValuesA).
 
-:- pred varset.merge_subst_inc_2(bool::in, var_supply(T)::in,
-    var_supply(T)::in, map(var(T), string)::in,
-    map(var(T), term(T))::in, varset(T)::in, varset(T)::out,
+:- pred varset.merge_subst_2(var_supply(T)::in, var_supply(T)::in,
+    map(var(T), string)::in,
+    var_supply(T)::in, var_supply(T)::out,
+    map(var(T), string)::in, map(var(T), string)::out,
     substitution(T)::in, substitution(T)::out) is det.
 
-varset.merge_subst_inc_2(IncludeNames, N, Max, Names, Values, !VarSet,
-        !Subst) :-
-    ( N = Max ->
+varset.merge_subst_2(!.SupplyB, MaxSupplyB, NamesB,
+        !Supply, !Names, !Subst) :-
+    ( !.SupplyB = MaxSupplyB ->
         true
     ;
-        varset.new_var(!.VarSet, VarId, !:VarSet),
-        term.create_var(N, VarN, N1),
-        (
-            IncludeNames = yes,
-            map.search(Names, VarN, Name)
-        ->
-            varset.name_var(!.VarSet, VarId, Name, !:VarSet)
+        term.create_var(!.Supply, Var, !:Supply),
+        term.create_var(!.SupplyB, VarB, !:SupplyB),
+        ( map.search(NamesB, VarB, NameB) ->
+            map.det_insert(!.Names, Var, NameB, !:Names)
         ;
             true
         ),
-        map.set(!.Subst, VarN, term.variable(VarId, context_init), !:Subst),
-        varset.merge_subst_inc_2(IncludeNames, N1, Max, Names, Values,
-            !VarSet, !Subst)
+        Replacement = term.variable(Var, context_init),
+        map.det_insert(!.Subst, VarB, Replacement, !:Subst),
+        varset.merge_subst_2(!.SupplyB, MaxSupplyB, NamesB,
+            !Supply, !Names, !Subst)
+    ).
+
+varset.merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst) :-
+    VarSetB = varset(SupplyB, _NamesB, _ValuesB),
+    term.init_var_supply(SupplyB0),
+    VarSetA = varset(SupplyA, NamesA, ValuesA),
+    map.init(Subst0),
+    varset.merge_subst_without_names_2(SupplyB0, SupplyB,
+        SupplyA, Supply, Subst0, Subst),
+    VarSet = varset(Supply, NamesA, ValuesA).
+
+:- pred varset.merge_subst_without_names_2( var_supply(T)::in,
+    var_supply(T)::in, var_supply(T)::in, var_supply(T)::out,
+    substitution(T)::in, substitution(T)::out) is det.
+
+varset.merge_subst_without_names_2(!.SupplyB, MaxSupplyB, !Supply, !Subst) :-
+    ( !.SupplyB = MaxSupplyB ->
+        true
+    ;
+        term.create_var(!.Supply, Var, !:Supply),
+        term.create_var(!.SupplyB, VarB, !:SupplyB),
+        Replacement = term.variable(Var, context_init),
+        map.det_insert(!.Subst, VarB, Replacement, !:Subst),
+        varset.merge_subst_without_names_2(!.SupplyB, MaxSupplyB,
+            !Supply, !Subst)
     ).
 
 %-----------------------------------------------------------------------------%

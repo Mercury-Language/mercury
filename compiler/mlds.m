@@ -1819,86 +1819,93 @@ mlds_get_prog_context(mlds_context(Context)) = Context.
 % and instead fully convert all Mercury types to MLDS types.
 
 mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
-    (
-        type_to_ctor_and_args(Type, TypeCtor, [ElemType]),
-        TypeCtor = type_ctor(qualified(unqualified("array"), "array"), 1)
-    ->
-        MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
-        MLDSType = mlds_mercury_array_type(MLDSElemType)
-    ;
-        type_to_ctor_and_args(Type, TypeCtor, [RefType]),
-        TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
-            "store_at_ref_type"), 1)
-    ->
-        MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
-        MLDSType = mlds_ptr_type(MLDSRefType)
-    ;
-        type_to_ctor_and_args(Type, TypeCtor, _),
-        module_info_get_type_table(ModuleInfo, Types),
-        map.search(Types, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_body(TypeDefn, Body),
-        Body = hlds_foreign_type(foreign_type_body(MaybeIL, MaybeC, MaybeJava,
-            _MaybeErlang))
-    ->
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.get_target(Globals, Target),
+    ( type_to_ctor_and_args(Type, TypeCtor, TypeArgs) ->
         (
-            Target = target_c,
+            TypeCtor = type_ctor(qualified(unqualified("array"), "array"), 1),
+            TypeArgs = [ElemType]
+        ->
+            MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
+            MLDSType = mlds_mercury_array_type(MLDSElemType)
+        ;
+            TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
+                "store_at_ref_type"), 1),
+            TypeArgs = [RefType]
+        ->
+            MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
+            MLDSType = mlds_ptr_type(MLDSRefType)
+        ;
+            module_info_get_type_table(ModuleInfo, Types),
+            map.search(Types, TypeCtor, TypeDefn),
+            hlds_data.get_type_defn_body(TypeDefn, Body),
+            Body = hlds_foreign_type(ForeignTypeBody),
+            ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
+                _MaybeErlang)
+        ->
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.get_target(Globals, Target),
             (
-                MaybeC = yes(Data),
-                Data = foreign_type_lang_data(CForeignType, _, _),
-                ForeignType = c(CForeignType)
+                Target = target_c,
+                (
+                    MaybeC = yes(Data),
+                    Data = foreign_type_lang_data(CForeignType, _, _),
+                    ForeignType = c(CForeignType)
+                ;
+                    MaybeC = no,
+                    % This is checked by check_foreign_type in make_hlds.
+                    unexpected(this_file,
+                        "mercury_type_to_mlds_type: No C foreign type")
+                )
             ;
-                MaybeC = no,
-                % This is checked by check_foreign_type in make_hlds.
+                Target = target_il,
+                (
+                    MaybeIL = yes(Data),
+                    Data = foreign_type_lang_data(ILForeignType, _, _),
+                    ForeignType = il(ILForeignType)
+                ;
+                    MaybeIL = no,
+                    % This is checked by check_foreign_type in make_hlds.
+                    unexpected(this_file,
+                        "mercury_type_to_mlds_type: No IL foreign type")
+                )
+            ;
+                Target = target_java,
+                (
+                    MaybeJava = yes(Data),
+                    Data = foreign_type_lang_data(JavaForeignType, _, _),
+                    ForeignType = java(JavaForeignType)
+                ;
+                    MaybeJava = no,
+                    % This is checked by check_foreign_type in make_hlds.
+                    unexpected(this_file,
+                        "mercury_type_to_mlds_type: no Java foreign type")
+                )
+            ;
+                Target = target_asm,
+                (
+                    MaybeC = yes(Data),
+                    Data = foreign_type_lang_data(CForeignType, _, _),
+                    ForeignType = c(CForeignType)
+                ;
+                    MaybeC = no,
+                    % XXX This ought to be checked by the front-end, e.g.
+                    % check_foreign_type in make_hlds.
+                    sorry(this_file,
+                        "mercury_type_to_mlds_type: No C foreign type")
+                )
+            ;
+                Target = target_x86_64,
+                unexpected(this_file, "target x86_64 with --high-level-code")
+            ;
+                Target = target_erlang,
                 unexpected(this_file,
-                    "mercury_type_to_mlds_type: No C foreign type")
-            )
+                    "mercury_type_to_mlds_type: target erlang")
+            ),
+            MLDSType = mlds_foreign_type(ForeignType)
         ;
-            Target = target_il,
-            (
-                MaybeIL = yes(Data),
-                Data = foreign_type_lang_data(ILForeignType, _, _),
-                ForeignType = il(ILForeignType)
-            ;
-                MaybeIL = no,
-                % This is checked by check_foreign_type in make_hlds.
-                unexpected(this_file,
-                    "mercury_type_to_mlds_type: No IL foreign type")
-            )
-        ;
-            Target = target_java,
-            (
-                MaybeJava = yes(Data),
-                Data = foreign_type_lang_data(JavaForeignType, _, _),
-                ForeignType = java(JavaForeignType)
-            ;
-                MaybeJava = no,
-                % This is checked by check_foreign_type in make_hlds.
-                unexpected(this_file,
-                    "mercury_type_to_mlds_type: no Java foreign type")
-            )
-        ;
-            Target = target_asm,
-            (
-                MaybeC = yes(Data),
-                Data = foreign_type_lang_data(CForeignType, _, _),
-                ForeignType = c(CForeignType)
-            ;
-                MaybeC = no,
-                % XXX This ought to be checked by the front-end, e.g.
-                % check_foreign_type in make_hlds.
-                sorry(this_file,
-                    "mercury_type_to_mlds_type: No C foreign type")
-            )
-        ;
-            Target = target_x86_64,
-            unexpected(this_file, "target x86_64 with --high-level-code")
-        ;
-            Target = target_erlang,
-            unexpected(this_file, "mercury_type_to_mlds_type: target erlang")
-        ),
-        MLDSType = mlds_foreign_type(ForeignType)
+            classify_type(ModuleInfo, Type) = Category,
+            ExportedType = to_exported_type(ModuleInfo, Type),
+            MLDSType = mercury_type(Type, Category, ExportedType)
+        )
     ;
         classify_type(ModuleInfo, Type) = Category,
         ExportedType = to_exported_type(ModuleInfo, Type),

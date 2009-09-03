@@ -2231,24 +2231,18 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
         ConsArgTypes = ArgTypes
     ),
     assoc_list.from_corresponding_lists(Args, ConsArgTypes, ArgConsArgTypes),
-
     (
         HighLevelData = yes,
-        list.map_foldl2(
-            construct_ground_term_initializer_hld(ModuleInfo, Context),
+        construct_ground_term_initializers_hld(ModuleInfo, Context,
             ArgConsArgTypes, ArgInitializers, !GlobalData, !GroundTermMap)
     ;
         HighLevelData = no,
-        list.map_foldl2(
-            construct_ground_term_initializer_lld(ModuleInfo, Context),
+        construct_ground_term_initializers_lld(ModuleInfo, Context,
             ArgConsArgTypes, ArgInitializers, !GlobalData, !GroundTermMap)
     ),
 
     % By construction, boxing the rvals in ExtraInitializers would be a no-op.
     SubInitializers = ExtraInitializers ++ ArgInitializers,
-
-    % EntityDefn = mlds_data(MLDS_Type, Initializer, gc_no_stmt),
-    % Defn = mlds_defn(EntityName, MLDS_Context, Flags, EntityDefn),
 
     % Generate a local static constant for this term.
     ConstType = get_type_for_cons_id(Target, HighLevelData, MLDS_Type,
@@ -2281,6 +2275,42 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     Rval = ml_unop(cast(MLDS_Type), TaggedRval),
     GroundTerm = ml_ground_term(Rval, VarType),
     svmap.det_insert(Var, GroundTerm, !GroundTermMap).
+
+%-----------------------------------------------------------------------------%
+
+:- pred construct_ground_term_initializers_hld(module_info::in,
+    prog_context::in,
+    assoc_list(prog_var, mer_type) ::in, list(mlds_initializer)::out,
+    ml_global_data::in, ml_global_data::out,
+    ml_ground_term_map::in, ml_ground_term_map::out) is det.
+
+construct_ground_term_initializers_hld(_, _, [], [],
+        !GlobalData, !GroundTermMap).
+construct_ground_term_initializers_hld(ModuleInfo, Context,
+        [ArgConsArgType | ArgConsArgTypes], [ArgInitializer | ArgInitializers],
+        !GlobalData, !GroundTermMap) :-
+    construct_ground_term_initializer_hld(ModuleInfo, Context,
+        ArgConsArgType, ArgInitializer, !GlobalData, !GroundTermMap),
+    construct_ground_term_initializers_hld(ModuleInfo, Context,
+        ArgConsArgTypes, ArgInitializers, !GlobalData, !GroundTermMap).
+
+:- pred construct_ground_term_initializers_lld(module_info::in,
+    prog_context::in,
+    assoc_list(prog_var, mer_type) ::in, list(mlds_initializer)::out,
+    ml_global_data::in, ml_global_data::out,
+    ml_ground_term_map::in, ml_ground_term_map::out) is det.
+
+construct_ground_term_initializers_lld(_, _, [], [],
+        !GlobalData, !GroundTermMap).
+construct_ground_term_initializers_lld(ModuleInfo, Context,
+        [ArgConsArgType | ArgConsArgTypes], [ArgInitializer | ArgInitializers],
+        !GlobalData, !GroundTermMap) :-
+    construct_ground_term_initializer_lld(ModuleInfo, Context,
+        ArgConsArgType, ArgInitializer, !GlobalData, !GroundTermMap),
+    construct_ground_term_initializers_lld(ModuleInfo, Context,
+        ArgConsArgTypes, ArgInitializers, !GlobalData, !GroundTermMap).
+
+%-----------------------------------------------------------------------------%
 
 :- pred construct_ground_term_initializer_hld(module_info::in,
     prog_context::in, pair(prog_var, mer_type) ::in, mlds_initializer::out,

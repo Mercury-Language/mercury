@@ -1862,17 +1862,17 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
 
 tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
     varset.merge_subst(TVarSetA, TVarSetB, TVarSet, Subst),
-    map.map_values(convert_subst_term_to_tvar, Subst, Renaming).
+    map.map_values_only(convert_subst_term_to_tvar, Subst, Renaming).
 
 tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
     varset.merge_subst_without_names(TVarSetA, TVarSetB, TVarSet, Subst),
-    map.map_values(convert_subst_term_to_tvar, Subst, Renaming).
+    map.map_values_only(convert_subst_term_to_tvar, Subst, Renaming).
 
-:- pred convert_subst_term_to_tvar(tvar::in, term(tvar_type)::in, tvar::out)
+:- pred convert_subst_term_to_tvar(term(tvar_type)::in, tvar::out)
     is det.
 
-convert_subst_term_to_tvar(_, variable(TVar, _), TVar).
-convert_subst_term_to_tvar(_, functor(_, _, _), _) :-
+convert_subst_term_to_tvar(variable(TVar, _), TVar).
+convert_subst_term_to_tvar(functor(_, _, _), _) :-
     unexpected(this_file, "non-variable found in renaming").
 
 %-----------------------------------------------------------------------------%

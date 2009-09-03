@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002, 2005-2007 The University of Melbourne.
+% Copyright (C) 1997-2002, 2005-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -902,7 +902,7 @@ negate_constraint(gte(Terms, Const)) = lte(negate_lp_terms(Terms), -Const).
 
 :- func negate_lp_terms(lp_terms) = lp_terms.
 
-negate_lp_terms(Terms) = assoc_list.map_values((func(_, X) = (-X)), Terms).
+negate_lp_terms(Terms) = assoc_list.map_values_only((func(X) = (-X)), Terms).
 
 :- func add_var(map(lp_var, rat), lp_var, rat) = map(lp_var, rat).
 
@@ -2039,7 +2039,7 @@ normalize_vector(Var, !.Terms, !.Constant, !:Terms, !:Constant) :-
           else  true
         ),
         DivVal = rat.abs(Coefficient),
-        !:Terms = map.map_values((func(_, C) = C / DivVal), !.Terms),
+        !:Terms = map.map_values_only((func(C) = C / DivVal), !.Terms),
         !:Constant = !.Constant / DivVal
     ;
         % In this case the the coefficient of the variable was zero

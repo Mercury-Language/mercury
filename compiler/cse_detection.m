@@ -871,16 +871,11 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     map.from_assoc_list(OldNew, OldNewMap),
     apply_substitutions_to_rtti_varmaps(Renaming, map.init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
-    map.map_values(apply_tvar_rename(Renaming), VarTypes0, VarTypes),
+    map.map_values_only(apply_variable_renaming_to_type(Renaming),
+        VarTypes0, VarTypes),
 
     !:CseInfo = !.CseInfo ^ csei_rtti_varmaps := RttiVarMaps,
     !:CseInfo = !.CseInfo ^ csei_vartypes := VarTypes.
-
-:- pred apply_tvar_rename(tvar_renaming::in, prog_var::in,
-    mer_type::in, mer_type::out) is det.
-
-apply_tvar_rename(Renaming, _Var, Type0, Type) :-
-    apply_variable_renaming_to_type(Renaming, Type0, Type).
 
 :- pred find_type_info_locn_tvar_map(rtti_varmaps::in,
     map(prog_var, prog_var)::in, tvar::in,

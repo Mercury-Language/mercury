@@ -1167,12 +1167,12 @@ apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
     !.Constraints = constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
     apply_variable_renaming_to_constraint_list(Renaming, Unproven0, Unproven),
     apply_variable_renaming_to_constraint_list(Renaming, Assumed0, Assumed),
-    Pred = (pred(_::in, C0::in, C::out) is det :-
+    Pred = (pred(C0::in, C::out) is det :-
         set.to_sorted_list(C0, L0),
         apply_variable_renaming_to_constraint_list(Renaming, L0, L),
         set.list_to_set(L, C)
     ),
-    map.map_values(Pred, Redundant0, Redundant),
+    map.map_values_only(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
     map.values(Ancestors0, AncestorsValues0),
     apply_variable_renaming_to_prog_constraint_list(Renaming, AncestorsKeys0,
@@ -1186,12 +1186,12 @@ apply_subst_to_constraints(Subst, !Constraints) :-
     !.Constraints = constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
     apply_subst_to_constraint_list(Subst, Unproven0, Unproven),
     apply_subst_to_constraint_list(Subst, Assumed0, Assumed),
-    Pred = (pred(_::in, C0::in, C::out) is det :-
+    Pred = (pred(C0::in, C::out) is det :-
         set.to_sorted_list(C0, L0),
         apply_subst_to_constraint_list(Subst, L0, L),
         set.list_to_set(L, C)
     ),
-    map.map_values(Pred, Redundant0, Redundant),
+    map.map_values_only(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
     map.values(Ancestors0, AncestorsValues0),
     apply_subst_to_prog_constraint_list(Subst, AncestorsKeys0,
@@ -1205,12 +1205,12 @@ apply_rec_subst_to_constraints(Subst, !Constraints) :-
     !.Constraints = constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
     apply_rec_subst_to_constraint_list(Subst, Unproven0, Unproven),
     apply_rec_subst_to_constraint_list(Subst, Assumed0, Assumed),
-    Pred = (pred(_::in, C0::in, C::out) is det :-
+    Pred = (pred(C0::in, C::out) is det :-
         set.to_sorted_list(C0, L0),
         apply_rec_subst_to_constraint_list(Subst, L0, L),
         set.list_to_set(L, C)
     ),
-    map.map_values(Pred, Redundant0, Redundant),
+    map.map_values_only(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
     map.values(Ancestors0, AncestorsValues0),
     apply_rec_subst_to_prog_constraint_list(Subst, AncestorsKeys0,
@@ -1288,33 +1288,15 @@ apply_rec_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, !Map) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_constraint_map(Renaming, !ConstraintMap) :-
-    map.map_values(apply_variable_renaming_to_constraint_map_2(Renaming),
+    map.map_values_only(apply_variable_renaming_to_prog_constraint(Renaming),
         !ConstraintMap).
-
-:- pred apply_variable_renaming_to_constraint_map_2(tvar_renaming::in,
-    constraint_id::in, prog_constraint::in, prog_constraint::out) is det.
-
-apply_variable_renaming_to_constraint_map_2(Renaming, _Key, !Value) :-
-    apply_variable_renaming_to_prog_constraint(Renaming, !Value).
 
 apply_subst_to_constraint_map(Subst, !ConstraintMap) :-
-    map.map_values(apply_subst_to_constraint_map_2(Subst), !ConstraintMap).
-
-:- pred apply_subst_to_constraint_map_2(tsubst::in, constraint_id::in,
-    prog_constraint::in, prog_constraint::out) is det.
-
-apply_subst_to_constraint_map_2(Subst, _Key, !Value) :-
-    apply_subst_to_prog_constraint(Subst, !Value).
+    map.map_values_only(apply_subst_to_prog_constraint(Subst), !ConstraintMap).
 
 apply_rec_subst_to_constraint_map(Subst, !ConstraintMap) :-
-    map.map_values(apply_rec_subst_to_constraint_map_2(Subst),
+    map.map_values_only(apply_rec_subst_to_prog_constraint(Subst),
         !ConstraintMap).
-
-:- pred apply_rec_subst_to_constraint_map_2(tsubst::in, constraint_id::in,
-    prog_constraint::in, prog_constraint::out) is det.
-
-apply_rec_subst_to_constraint_map_2(Subst, _Key, !Value) :-
-    apply_rec_subst_to_prog_constraint(Subst, !Value).
 
 %-----------------------------------------------------------------------------%
 
