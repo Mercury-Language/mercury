@@ -3970,14 +3970,11 @@ ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info) :-
         % Handle singleton disjunctions.
         % (The HLDS should not contain singleton disjunctions, but this code
         % is needed to handle recursive calls to ml_gen_disj).
-        % Note that each arm of the model_non disjunction is placed into
-        % a block. This used to avoid a problem where ml_join_decls could
-        % create block nesting proportional to the size of the disjunction,
-        % which could exceed nesting limits in some C compilers.
-        % ZZZ Now, we generate it just so the code looks neater.
-        ml_gen_goal_as_branch(CodeModel, SingleGoal,
-            Goal_Decls, Goal_Statements, !Info),
-        Statement = ml_gen_block(Goal_Decls, Goal_Statements, Context),
+        % Note that we place each non-first arm of a model_non disjunction
+        % into a block. This is so that we can avoid having to figure out
+        % how to merge their declarations with the declarations of the first
+        % disjunct.
+        ml_gen_goal_as_branch_block(CodeModel, SingleGoal, Statement, !Info),
         Statements = [Statement],
         Decls = []
     ;
@@ -3992,16 +3989,14 @@ ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info) :-
             %       <Goal && SUCCEED()>
             %       <Goals && SUCCEED()>
 
-            ml_gen_goal_as_branch(model_non, FirstGoal,
-                FirstDecls, FirstStatements, !Info),
+            ml_gen_goal_as_branch_block(model_non, FirstGoal, FirstStatement,
+                !Info),
             ml_gen_disj(LaterGoals, model_non, Context,
                 LaterDecls, LaterStatements, !Info),
             (
                 LaterDecls = [],
-                FirstBlock = ml_gen_block(FirstDecls, FirstStatements,
-                    Context),
-                Decls = [],
-                Statements = [FirstBlock | LaterStatements]
+                Statements = [FirstStatement | LaterStatements],
+                Decls = []
             ;
                 LaterDecls = [_ | _],
                 unexpected(this_file, "ml_gen_disj: LaterDecls not empty.")
