@@ -498,7 +498,7 @@ complexity_generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
     MaybeTraceRuntimeCond = no,
     goal_util.generate_foreign_proc(BuiltinModule, PredName, pf_predicate,
         only_mode, Detism, purity_impure, Attrs, Args, ExtraArgs,
-        MaybeTraceRuntimeCond, Code, [], ground_vars(BoundVars),
+        MaybeTraceRuntimeCond, Code, [], instmap_delta_bind_vars(BoundVars),
         ModuleInfo, Context, Goal).
 
 %-----------------------------------------------------------------------------%
@@ -551,15 +551,6 @@ allocate_slot_numbers_cl([Var - Info | VarInfos], Offset,
         ),
         allocate_slot_numbers_cl(VarInfos, Offset, NumberedProfiledVars)
     ).
-
-:- func ground_vars(list(prog_var)) = assoc_list(prog_var, mer_inst).
-
-ground_vars(Vars) = VarsAndGround :-
-    VarsAndGround = list.map(pair_with_ground, Vars).
-
-:- func pair_with_ground(prog_var) = pair(prog_var, mer_inst).
-
-pair_with_ground(Var) = Var - ground(shared, none).
 
 %-----------------------------------------------------------------------------%
 

@@ -2427,8 +2427,9 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
     % to superclass_from_typeclass_info in private_builtin.
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "superclass_from_typeclass_info", pf_predicate, only_mode,
-        detism_det, purity_pure, [SubClassVar, IndexVar, Var], [], [],
-        ModuleInfo, term.context_init, SuperClassGoal),
+        detism_det, purity_pure, [SubClassVar, IndexVar, Var], [],
+        instmap_delta_bind_no_var, ModuleInfo, term.context_init,
+        SuperClassGoal),
     !:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals].
 
 :- pred construct_typeclass_info(list(prog_var)::in, list(prog_var)::in,
@@ -2477,8 +2478,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
 
     % Create a goal_info for the unification.
     set.list_to_set([BaseVar], NonLocals),
-    instmap_delta_from_assoc_list([BaseVar - ground(shared, none)],
-        InstmapDelta),
+    InstmapDelta = instmap_delta_bind_var(BaseVar),
     goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
         BaseGoalInfo),
 
@@ -2513,9 +2513,8 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
     % Note that we could perhaps be more accurate than `ground(shared)',
     % but it shouldn't make any difference.
     InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgVars),
-    instmap_delta_from_assoc_list(
-        [NewVar - bound(unique, [bound_functor(InstConsId, ArgInsts)])],
-        InstMapDelta),
+    InstMapDelta = instmap_delta_from_assoc_list(
+        [NewVar - bound(unique, [bound_functor(InstConsId, ArgInsts)])]),
     goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
     goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
 
@@ -2930,9 +2929,8 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
     % note that we could perhaps be more accurate than `ground(shared)',
     % but it shouldn't make any difference.
     InstConsId = cell_inst_cons_id(Cell, NumArgVars),
-    instmap_delta_from_assoc_list(
-        [TypeInfoVar - bound(unique, [bound_functor(InstConsId, ArgInsts)])],
-        InstMapDelta),
+    InstMapDelta = instmap_delta_from_assoc_list(
+        [TypeInfoVar - bound(unique, [bound_functor(InstConsId, ArgInsts)])]),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     TypeInfoGoal = hlds_goal(Unify, GoalInfo).
 
@@ -2960,8 +2958,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
 
     % Create a goal_info for the unification.
     set.list_to_set([TypeCtorInfoVar], NonLocals),
-    instmap_delta_from_assoc_list([TypeCtorInfoVar - ground(shared, none)],
-        InstmapDelta),
+    InstmapDelta = instmap_delta_bind_var(TypeCtorInfoVar),
     goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure, GoalInfo),
     TypeCtorInfoGoal = hlds_goal(Unify, GoalInfo).
 
@@ -3074,8 +3071,8 @@ gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "type_info_from_typeclass_info", pf_predicate, only_mode,
         detism_det, purity_pure, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
-        [TypeInfoVar - ground(shared, none)], ModuleInfo,
-        term.context_init, CallGoal),
+        instmap_delta_bind_var(TypeInfoVar), ModuleInfo, term.context_init,
+        CallGoal),
     Goals = [IndexGoal, CallGoal].
 
 %-----------------------------------------------------------------------------%

@@ -47,6 +47,7 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
@@ -175,8 +176,8 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             % need to make sure that it can't fail. So we use a call to
             % `private_builtin.unused' (which will call error/1) rather than
             % `fail' for the "then" part.
-            heap_generate_call("unused", detism_det, purity_pure, [], [],
-                ModuleInfo, Context, ThenGoal)
+            heap_generate_call("unused", detism_det, purity_pure, [],
+                instmap_delta_bind_no_var, ModuleInfo, Context, ThenGoal)
         ;
             ( NumSolns = at_most_one
             ; NumSolns = at_most_many
@@ -244,8 +245,8 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             ModuleInfo = !.Info ^ heap_module_info,
             Context = goal_info_get_context(GoalInfo0),
             heap_generate_call("reclaim_heap_nondet_pragma_foreign_code",
-                detism_erroneous, purity_pure, [], [], ModuleInfo, Context,
-                SorryNotImplementedCode),
+                detism_erroneous, purity_pure, [], instmap_delta_bind_no_var,
+                ModuleInfo, Context, SorryNotImplementedCode),
             Goal = SorryNotImplementedCode
         ;
             ( Impl = fc_impl_ordinary(_, _)
@@ -334,7 +335,7 @@ cases_add_heap_ops([Case0 | Cases0], [Case | Cases], !Info) :-
 
 gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
     heap_generate_call("mark_hp", detism_det, purity_impure,
-        [SavedHeapPointerVar], [SavedHeapPointerVar - ground_inst],
+        [SavedHeapPointerVar], instmap_delta_bind_var(SavedHeapPointerVar),
         !.Info ^ heap_module_info, Context, MarkHeapPointerGoal).
 
 :- pred gen_restore_hp(prog_var::in, prog_context::in, hlds_goal::out,
@@ -342,8 +343,8 @@ gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
 
 gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal, !Info) :-
     heap_generate_call("restore_hp", detism_det, purity_impure,
-        [SavedHeapPointerVar], [], !.Info ^ heap_module_info, Context,
-        RestoreHeapPointerGoal).
+        [SavedHeapPointerVar], instmap_delta_bind_no_var,
+        !.Info ^ heap_module_info, Context, RestoreHeapPointerGoal).
 
 :- func ground_inst = mer_inst.
 
@@ -371,14 +372,14 @@ new_var(Name, Type, Var, !Info) :-
 %-----------------------------------------------------------------------------%
 
 :- pred heap_generate_call(string::in, determinism::in, purity::in,
-    list(prog_var)::in, assoc_list(prog_var, mer_inst)::in, module_info::in,
+    list(prog_var)::in, instmap_delta::in, module_info::in,
     term.context::in, hlds_goal::out) is det.
 
-heap_generate_call(PredName, Detism, Purity, Args, InstMap, ModuleInfo,
+heap_generate_call(PredName, Detism, Purity, Args, InstMapDelta, ModuleInfo,
         Context, CallGoal) :-
     goal_util.generate_simple_call(mercury_private_builtin_module, PredName,
-        pf_predicate, only_mode, Detism, Purity, Args, [], InstMap, ModuleInfo,
-        Context, CallGoal).
+        pf_predicate, only_mode, Detism, Purity, Args, [], InstMapDelta,
+        ModuleInfo, Context, CallGoal).
 
 %-----------------------------------------------------------------------------%
 

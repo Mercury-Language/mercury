@@ -2578,15 +2578,15 @@ allocate_future(ModuleInfo, SharedVar, AllocGoal, !VarSet, !VarTypes,
     ModuleName = mercury_par_builtin_module,
     PredName = new_future_pred_name,
     Features = [],
-    InstMapSrc = [FutureVar - ground(shared, none)],
+    InstMapDelta = instmap_delta_bind_var(FutureVar),
     Context = term.context_init,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
         ShouldInline = no,
         ArgVars = [FutureVar],
         generate_simple_call(ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_pure, ArgVars, Features, InstMapSrc,
-            ModuleInfo, Context, AllocGoal)
+            only_mode, detism_det, purity_pure, ArgVars, Features,
+            InstMapDelta, ModuleInfo, Context, AllocGoal)
     ;
         ShouldInline = yes,
         ForeignAttrs = par_builtin_foreign_proc_attributes(purity_pure, no),
@@ -2597,7 +2597,7 @@ allocate_future(ModuleInfo, SharedVar, AllocGoal, !VarSet, !VarTypes,
         Code = "MR_par_builtin_new_future(Future);",
         generate_foreign_proc(ModuleName, PredName, pf_predicate,
             only_mode, detism_det, purity_pure, ForeignAttrs, Args, ExtraArgs,
-            no, Code, Features, InstMapSrc, ModuleInfo, Context, AllocGoal)
+            no, Code, Features, InstMapDelta, ModuleInfo, Context, AllocGoal)
     ).
 
     % Given a variable SharedVar of type SharedVarType, add a new variable
@@ -2649,15 +2649,15 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
         Code = "MR_par_builtin_get_future(Future, Value);"
     ),
     Features = [],
-    InstMapSrc = [ConsumedVar - ground(shared, none)],
+    InstMapDelta = instmap_delta_bind_var(ConsumedVar),
     Context = term.context_init,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
         ShouldInline = no,
         ArgVars = [FutureVar, ConsumedVar],
         generate_simple_call(ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_pure, ArgVars, Features, InstMapSrc,
-            ModuleInfo, Context, WaitGoal)
+            only_mode, detism_det, purity_pure, ArgVars, Features,
+            InstMapDelta, ModuleInfo, Context, WaitGoal)
     ;
         ShouldInline = yes,
         ForeignAttrs = par_builtin_foreign_proc_attributes(purity_pure, no),
@@ -2669,7 +2669,7 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
         ExtraArgs = [],
         generate_foreign_proc(ModuleName, PredName, pf_predicate,
             only_mode, detism_det, purity_pure, ForeignAttrs, Args, ExtraArgs,
-            no, Code, Features, InstMapSrc, ModuleInfo, Context, WaitGoal)
+            no, Code, Features, InstMapDelta, ModuleInfo, Context, WaitGoal)
     ).
 
 :- pred make_signal_goal(module_info::in, future_map::in, prog_var::in,
@@ -2680,7 +2680,7 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, VarTypes, SignalGoal) :-
     ModuleName = mercury_par_builtin_module,
     PredName = signal_future_pred_name,
     Features = [],
-    InstMapSrc = [],
+    InstMapDelta = instmap_delta_bind_no_var,
     Context = term.context_init,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
@@ -2688,7 +2688,7 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, VarTypes, SignalGoal) :-
         ArgVars = [FutureVar, ProducedVar],
         generate_simple_call(ModuleName, PredName, pf_predicate,
             only_mode, detism_det, purity_impure, ArgVars, Features,
-            InstMapSrc, ModuleInfo, Context, SignalGoal)
+            InstMapDelta, ModuleInfo, Context, SignalGoal)
     ;
         ShouldInline = yes,
         ForeignAttrs = par_builtin_foreign_proc_attributes(purity_impure,
@@ -2702,7 +2702,7 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, VarTypes, SignalGoal) :-
         Code = "MR_par_builtin_signal_future(Future, Value);",
         generate_foreign_proc(ModuleName, PredName, pf_predicate,
             only_mode, detism_det, purity_impure, ForeignAttrs,
-            Args, ExtraArgs, no, Code, Features, InstMapSrc, ModuleInfo,
+            Args, ExtraArgs, no, Code, Features, InstMapDelta, ModuleInfo,
             Context, SignalGoal)
     ).
 

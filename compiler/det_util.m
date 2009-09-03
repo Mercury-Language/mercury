@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2008 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,6 +25,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -72,10 +73,11 @@
 :- pred interpret_unify(prog_var::in, unify_rhs::in,
     prog_substitution::in, prog_substitution::out) is semidet.
 
-    % Look up the determinism of a procedure.
+    % Look up the determinism of a procedure, and also return the pred_info
+    % containing the procedure. Doing both at once allows a small speedup.
     %
-:- pred det_lookup_detism(det_info::in, pred_id::in, proc_id::in,
-    determinism::out) is det.
+:- pred det_lookup_pred_info_and_detism(det_info::in, pred_id::in, proc_id::in,
+    pred_info::out, determinism::out) is det.
 
 :- pred det_get_proc_info(det_info::in, proc_info::out) is det.
 
@@ -85,8 +87,11 @@
 :- pred det_no_output_vars(set(prog_var)::in, instmap::in, instmap_delta::in,
     det_info::in) is semidet.
 
+:- pred det_info_add_error_spec(error_spec::in, det_info::in, det_info::out)
+    is det.
+
 :- pred det_info_init(module_info::in, vartypes::in, pred_id::in, proc_id::in,
-    report_pess_extra_vars::in, det_info::out) is det.
+    report_pess_extra_vars::in, list(error_spec)::in, det_info::out) is det.
 
 :- pred det_info_get_module_info(det_info::in, module_info::out) is det.
 :- pred det_info_get_pred_id(det_info::in, pred_id::out) is det.
@@ -97,10 +102,14 @@
 :- pred det_info_get_vartypes(det_info::in, vartypes::out) is det.
 :- pred det_info_get_pess_extra_vars(det_info::in,
     report_pess_extra_vars::out) is det.
+:- pred det_info_get_error_specs(det_info::in, list(error_spec)::out) is det.
+:- pred det_info_get_has_format_call(det_info::in, bool::out) is det.
 
 :- pred det_info_set_module_info(module_info::in, det_info::in, det_info::out)
     is det.
 :- pred det_info_set_vartypes(vartypes::in, det_info::in, det_info::out)
+    is det.
+:- pred det_info_set_has_format_call(bool::in, det_info::in, det_info::out)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -164,7 +173,7 @@ interpret_unify(_X, rhs_lambda_goal(_, _, _, _, _, _, _, _, _), !Subst).
     % This is a safe approximation, it just prevents us from optimizing them
     % as well as we would like.
 
-det_lookup_detism(DetInfo, PredId, ModeId, Detism) :-
+det_lookup_pred_info_and_detism(DetInfo, PredId, ModeId, PredInfo, Detism) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
@@ -196,28 +205,35 @@ det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
     instmap_delta_no_output_vars(InstMap, InstMapDelta, Vars,
         DetInfo ^ di_vartypes, ModuleInfo).
 
+det_info_add_error_spec(Spec, !DetInfo) :-
+    det_info_get_error_specs(!.DetInfo, Specs0),
+    Specs = [Spec | Specs0],
+    det_info_set_error_specs(Specs, !DetInfo).
+
 %-----------------------------------------------------------------------------%
 
 :- type det_info
     --->    det_info(
-                di_module_info     :: module_info,
-                di_vartypes        :: vartypes,
-                di_pred_id         :: pred_id,     % the id of the proc
-                di_proc_id         :: proc_id,     % currently processed
-                di_reorder_conj    :: bool,        % --reorder-conj
-                di_reorder_disj    :: bool,        % --reorder-disj
-                di_fully_strict    :: bool,        % --fully-strict
-                di_pess_extra_vars :: report_pess_extra_vars
+                di_module_info      :: module_info,
+                di_vartypes         :: vartypes,
+                di_pred_id          :: pred_id,     % the id of the proc
+                di_proc_id          :: proc_id,     % currently processed
+                di_reorder_conj     :: bool,        % --reorder-conj
+                di_reorder_disj     :: bool,        % --reorder-disj
+                di_fully_strict     :: bool,        % --fully-strict
+                di_pess_extra_vars  :: report_pess_extra_vars,
+                di_error_specs      :: list(error_spec),
+                di_has_format_call  :: bool
             ).
 
 det_info_init(ModuleInfo, VarTypes, PredId, ProcId, PessExtraVars,
-        DetInfo) :-
+        Specs, DetInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, reorder_conj, ReorderConj),
     globals.lookup_bool_option(Globals, reorder_disj, ReorderDisj),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     DetInfo = det_info(ModuleInfo, VarTypes, PredId, ProcId,
-        ReorderConj, ReorderDisj, FullyStrict, PessExtraVars).
+        ReorderConj, ReorderDisj, FullyStrict, PessExtraVars, Specs, no).
 
 det_info_get_module_info(DI, DI ^ di_module_info).
 det_info_get_pred_id(DI, DI ^ di_pred_id).
@@ -227,9 +243,20 @@ det_info_get_reorder_disj(DI, DI ^ di_reorder_disj).
 det_info_get_fully_strict(DI, DI ^ di_fully_strict).
 det_info_get_vartypes(DI, DI ^ di_vartypes).
 det_info_get_pess_extra_vars(DI, DI ^ di_pess_extra_vars).
+det_info_get_error_specs(DI, DI ^ di_error_specs).
+det_info_get_has_format_call(DI, DI ^ di_has_format_call).
 
-det_info_set_module_info(ModuleInfo, DI, DI ^ di_module_info := ModuleInfo).
-det_info_set_vartypes(VarTypes, DI, DI ^ di_vartypes := VarTypes).
+:- pred det_info_set_error_specs(list(error_spec)::in,
+    det_info::in, det_info::out) is det.
+
+det_info_set_module_info(ModuleInfo, !DetInfo) :-
+    !DetInfo ^ di_module_info := ModuleInfo.
+det_info_set_vartypes(VarTypes, !DetInfo) :-
+    !DetInfo ^ di_vartypes := VarTypes.
+det_info_set_error_specs(Specs, !DetInfo) :-
+    !DetInfo ^ di_error_specs := Specs.
+det_info_set_has_format_call(HasFormatCall, !DetInfo) :-
+    !DetInfo ^ di_has_format_call := HasFormatCall.
 
 %-----------------------------------------------------------------------------%
 

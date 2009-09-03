@@ -150,11 +150,11 @@ comparison_result_type = defined_type(Name, [], kind_star) :-
     Name = qualified(BuiltinModule, "comparison_result").
 
 io_state_type = defined_type(Name, [], kind_star) :-
-    Module = mercury_std_lib_module_name(unqualified("io")),
+    Module = mercury_io_module,
     Name = qualified(Module, "state").
 
 io_io_type = defined_type(Name, [], kind_star) :-
-    Module = mercury_std_lib_module_name(unqualified("io")),
+    Module = mercury_io_module,
     Name = qualified(Module, "io").
 
 univ_type = defined_type(Name, [], kind_star) :-

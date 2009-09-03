@@ -1633,6 +1633,13 @@
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
     hlds_goal::out) is det.
 
+    % Create the hlds_goal for a unification that assigns the second variable
+    % to the first. The initial inst of the second variable should be
+    % ground_inst. The resulting goal has all its fields filled in.
+    %
+:- pred make_simple_assign(prog_var::in, prog_var::in,
+    unify_main_context::in, unify_sub_contexts::in, hlds_goal::out) is det.
+
     % Create the hlds_goal for a unification that tests the equality of two
     % values of atomic types. The resulting goal has all its fields filled in.
     %
@@ -3062,14 +3069,23 @@ create_atomic_complicated_unification(LHS, RHS, Context,
 
 %-----------------------------------------------------------------------------%
 
+make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
+    Ground = ground(shared, none),
+    Mode = ((free -> Ground) - (Ground -> Ground)),
+    Unification = assign(X, Y),
+    UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
+    goal_info_init(set.list_to_set([X, Y]), instmap_delta_bind_var(X),
+        detism_semi, purity_pure, GoalInfo),
+    GoalExpr = unify(X, rhs_var(Y), Mode, Unification, UnifyContext),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
 make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Ground = ground(shared, none),
     Mode = ((Ground -> Ground) - (Ground -> Ground)),
     Unification = simple_test(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
-    instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(list_to_set([X, Y]), InstMapDelta, detism_semi, purity_pure,
-        GoalInfo),
+    goal_info_init(set.list_to_set([X, Y]), instmap_delta_bind_no_var,
+        detism_semi, purity_pure, GoalInfo),
     GoalExpr = unify(X, rhs_var(Y), Mode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -3166,7 +3182,7 @@ construct_functor(Var, ConsId, Args, Goal) :-
     UnifyContext = unify_context(umc_explicit, []),
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
     set.list_to_set([Var | Args], NonLocals),
-    instmap_delta_from_assoc_list([Var - ground_inst], InstMapDelta),
+    InstMapDelta = instmap_delta_bind_var(Var),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     Goal = hlds_goal(Unify, GoalInfo).
 
@@ -3181,9 +3197,7 @@ deconstruct_functor(Var, ConsId, Args, Goal) :-
         cannot_cgc),
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
     set.list_to_set([Var | Args], NonLocals),
-    list.duplicate(Arity, ground_inst, DeltaValues),
-    assoc_list.from_corresponding_lists(Args, DeltaValues, DeltaAL),
-    instmap_delta_from_assoc_list(DeltaAL, InstMapDelta),
+    InstMapDelta = instmap_delta_bind_vars(Args),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     Goal = hlds_goal(Unify, GoalInfo).
 

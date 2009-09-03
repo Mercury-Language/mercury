@@ -1529,12 +1529,10 @@ generate_du_linear_compare_proc_body(Type, Ctors, Res, X, Y, Context, Goal,
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
 
-    instmap_delta_from_assoc_list([X_Index - ground(shared, none)],
-        X_InstmapDelta),
+    X_InstmapDelta = instmap_delta_bind_var(X_Index),
     build_specific_call(Type, spec_pred_index, [X, X_Index],
         X_InstmapDelta, detism_det, Context, Call_X_Index, !Info),
-    instmap_delta_from_assoc_list([Y_Index - ground(shared, none)],
-        Y_InstmapDelta),
+    Y_InstmapDelta = instmap_delta_bind_var(Y_Index),
     build_specific_call(Type, spec_pred_index, [Y, Y_Index],
         Y_InstmapDelta, detism_det, Context, Call_Y_Index, !Info),
 
@@ -1811,8 +1809,8 @@ build_call(Name, ArgVars, Context, Goal, !Info) :-
         MercuryBuiltin = mercury_private_builtin_module
     ),
     goal_util.generate_simple_call(MercuryBuiltin, Name, pf_predicate,
-        mode_no(0), detism_erroneous, purity_pure, ArgVars, [], [],
-        ModuleInfo, Context, Goal).
+        mode_no(0), detism_erroneous, purity_pure, ArgVars, [],
+        instmap_delta_bind_no_var, ModuleInfo, Context, Goal).
 
 :- pred build_specific_call(mer_type::in, special_pred_id::in,
     list(prog_var)::in, instmap_delta::in, determinism::in,

@@ -8351,6 +8351,13 @@ Enable dead procedure elimination.
 Remove excess assignment unifications.
 
 @sp 1
+@item --no-optimize-format-calls
+@findex --no-optimize-format-calls
+Do not attempt to interpret the format string in calls to
+string.format and related predicates at compile time;
+always leave this to be done at runtime.
+
+@sp 1
 @item --optimize-duplicate-calls
 @findex --optimize-duplicate-calls
 @cindex Duplicate call optimization

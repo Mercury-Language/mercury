@@ -28,6 +28,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
@@ -120,7 +121,6 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                 ExtraArgs = [],
                 MaybeRuntimeCond = no,
                 Features = [],
-                InstMapDeltaSrc = [],
                 Context = goal_info_get_context(GoalInfo),
                 some [!Attributes] (
                     !:Attributes = default_attributes(lang_c),
@@ -139,7 +139,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                 generate_foreign_proc(ModuleName, ProcName, pf_predicate,
                     only_mode, detism_semi, purity_impure, Attributes,
                     Args, ExtraArgs, MaybeRuntimeCond, Code, Features,
-                    InstMapDeltaSrc, ModuleInfo, Context, Cond),
+                    instmap_delta_bind_no_var, ModuleInfo, Context, Cond),
 
                 Then = hlds_goal(conj(parallel_conj, Goals), GoalInfo),
                 Else = hlds_goal(conj(plain_conj, Goals), GoalInfo),

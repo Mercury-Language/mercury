@@ -353,6 +353,10 @@
     %
 :- func mercury_string_module = sym_name.
 
+    % Returns the name of the I/O module.
+    %
+:- func mercury_io_module = sym_name.
+
     % Returns the sym_name of the module with the given name in the
     % Mercury standard library.
     %
@@ -573,6 +577,7 @@ mercury_par_builtin_module = unqualified("par_builtin").
 mercury_ssdb_builtin_module = unqualified("ssdb").
 mercury_list_module = unqualified("list").
 mercury_string_module = unqualified("string").
+mercury_io_module = unqualified("io").
 
 is_std_lib_module_name(ModuleName, Name) :-
     % -- not yet:

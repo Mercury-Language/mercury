@@ -116,6 +116,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
@@ -748,8 +749,8 @@ generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     ),
     pred_info_get_context(!.PredInfo, Context),
     generate_simple_call(mercury_private_builtin_module, CalleeName,
-        pf_predicate, only_mode, detism_det, purity_pure, [PredNameVar], [], [],
-        ModuleInfo, Context, CallGoal),
+        pf_predicate, only_mode, detism_det, purity_pure, [PredNameVar], [],
+        instmap_delta_bind_no_var, ModuleInfo, Context, CallGoal),
 
     % Combine the unification and call into a conjunction.
     goal_info_init(Context, GoalInfo),

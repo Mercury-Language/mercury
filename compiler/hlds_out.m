@@ -1106,6 +1106,7 @@ marker_name(marker_does_not_terminate, "does_not_terminate").
 marker_name(marker_calls_are_fully_qualified, "calls_are_fully_qualified").
 marker_name(marker_mode_check_clauses, "mode_check_clauses").
 marker_name(marker_mutable_access_pred, "mutable_access_pred").
+marker_name(marker_has_format_call, "has_format_call").
 
 write_marker(Marker, !IO) :-
     marker_name(Marker, Name),

@@ -1709,13 +1709,9 @@ generate_deep_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
         Goal) :-
     get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId),
     NonLocals = list_to_set(ArgVars),
-    Ground = ground(shared, none),
     (
         MaybeOutputVars = yes(OutputVars),
-        map((pred(V::in, P::out) is det :-
-            P = V - Ground
-        ), OutputVars, OutputInsts),
-        instmap_delta_from_assoc_list(OutputInsts, InstMapDelta)
+        InstMapDelta = instmap_delta_bind_vars(OutputVars)
     ;
         MaybeOutputVars = no,
         instmap_delta_init_unreachable(InstMapDelta)
@@ -1731,7 +1727,7 @@ generate_deep_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
 generate_unify(ConsId, Var, Goal) :-
     Ground = ground(shared, none),
     NonLocals = set.make_singleton_set(Var),
-    instmap_delta_from_assoc_list([Var - ground(shared, none)], InstMapDelta),
+    InstMapDelta = instmap_delta_bind_var(Var),
     Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
         GoalInfo1),
@@ -1749,7 +1745,7 @@ generate_unify(ConsId, Var, Goal) :-
 generate_cell_unify(Length, ConsId, Args, Var, Goal) :-
     Ground = ground(shared, none),
     NonLocals = set.list_to_set([Var | Args]),
-    instmap_delta_from_assoc_list([Var - Ground], InstMapDelta),
+    InstMapDelta = instmap_delta_bind_var(Var),
     Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
         GoalInfo),
@@ -3016,7 +3012,7 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         CallGoalExpr = call_foreign_proc(ForeignCallAttrs, PredId, ProcId,
             ForeignArgVars, [], no, ForeignCode),
         NonLocals = list_to_set(ArgVars),
-        instmap_delta_from_assoc_list([], InstMapDelta),
+        InstMapDelta = instmap_delta_from_assoc_list([]),
         CallGoalInfo = impure_init_goal_info(NonLocals, InstMapDelta,
             detism_det),
         CallGoal = hlds_goal(CallGoalExpr, CallGoalInfo)

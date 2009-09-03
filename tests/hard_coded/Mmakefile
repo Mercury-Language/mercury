@@ -170,6 +170,7 @@ ORDINARY_PROGS=	\
 	nullary_ho_func \
 	one_member \
 	opt_dup_bug \
+	opt_format \
 	ppc_bug \
 	pprint_test \
 	pprint_test2 \

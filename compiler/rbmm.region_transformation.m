@@ -882,14 +882,16 @@ region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
         generate_simple_call(mercury_region_builtin_module,
             create_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [RegionVar], [], [], ModuleInfo, Context, CallGoal)
+            purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
+            ModuleInfo, Context, CallGoal)
     ;
         RegionInstruction = remove_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
         generate_simple_call(mercury_region_builtin_module,
             remove_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [RegionVar], [], [], ModuleInfo, Context, CallGoal)
+            purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
+            ModuleInfo, Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),
         unexpected(this_file, "region_instruction_to_conj: " ++
@@ -915,7 +917,8 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
         generate_simple_call(mercury_region_builtin_module,
             create_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [RegionVar], [], [], ModuleInfo, Context, CallGoal)
+            purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
+            ModuleInfo, Context, CallGoal)
     ;
         RegionInstruction = remove_region(RegionName),
         region_name_to_var_with_both_renamings_before(RegionName,
@@ -923,7 +926,8 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
             !VarTypes),
         generate_simple_call(mercury_region_builtin_module,
             remove_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [RegionVar], [], [], ModuleInfo, Context, CallGoal)
+            purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
+            ModuleInfo, Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),
         unexpected(this_file, "region_instruction_to_conj: " ++
@@ -1008,7 +1012,7 @@ make_assignment_goal(LeftRegVar, RightRegVar, Context, AssignmentGoal) :-
     % It should be able to be recomputed from the modes in the assigment.
     % Maybe I am missing or doing something wrong here.
     NonLocals = set.init,
-    instmap_delta_from_assoc_list([LeftRegVar - ground_inst], InstmapDelta),
+    InstmapDelta = instmap_delta_bind_var(LeftRegVar),
     goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
         AssignmentInfo),
     AssignmentGoal = hlds_goal(AssignmentExpr, AssignmentInfo).

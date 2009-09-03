@@ -74,8 +74,7 @@
     % determinisms.
     %
 :- pred det_check_lambda(determinism::in, determinism::in, hlds_goal::in,
-    hlds_goal_info::in, instmap::in, det_info::in, det_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    hlds_goal_info::in, instmap::in, det_info::in, det_info::out) is det.
 
     % det_diagnose_conj(Goals, InstMap0, Desired, FailingContexts, DetInfo,
     %   Msgs):
@@ -257,7 +256,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
             proc_info_get_vartypes(ProcInfo0, VarTypes),
             proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap0),
             det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId, 
-                pess_extra_vars_report, DetInfo0),
+                pess_extra_vars_report, [], DetInfo0),
             det_diagnose_goal(Goal, InstMap0, DeclaredDetism, [],
                 DetInfo0, DetInfo, GoalMsgs0),
             det_info_get_module_info(DetInfo, !:ModuleInfo),
@@ -406,7 +405,7 @@ func_primary_mode_det_msg = [
     ].
 
 det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
-        !DetInfo, !Specs) :-
+        !DetInfo) :-
     compare_determinisms(DeclaredDetism, InferredDetism, Cmp),
     (
         Cmp = tighter,
@@ -428,7 +427,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         sort_error_msgs(GoalMsgs, SortedGoalMsgs),
         Spec = error_spec(severity_error, phase_detism_check,
             [simple_msg(Context, [always(Pieces)])] ++ SortedGoalMsgs),
-        !:Specs = [Spec | !.Specs]
+        det_info_add_error_spec(Spec, !DetInfo)
     ;
         ( Cmp = sameas
         ; Cmp = looser

@@ -860,11 +860,10 @@ make_handle_event(HandleTypeString, Arguments, HandleEventGoal, !ModuleInfo,
         !Varset, !Vartypes) :-
     SSDBModule = mercury_ssdb_builtin_module,
     Features = [],
-    InstMapSrc = [],
     Context = term.context_init,
     goal_util.generate_simple_call(SSDBModule, HandleTypeString,
-        pf_predicate, only_mode, detism_det, purity_impure,
-        Arguments, Features, InstMapSrc, !.ModuleInfo, Context,
+        pf_predicate, only_mode, detism_det, purity_impure, Arguments,
+        Features, instmap_delta_bind_no_var, !.ModuleInfo, Context,
         HandleEventGoal).
 
     % make_proc_id_construction(PredInfo, Goals, Var, !Varset, !Vartypes)
@@ -908,11 +907,10 @@ make_proc_id_construction(PredInfo, Goals, ProcIdVar, !Varset, !Vartypes) :-
 
 make_fail_call(FailGoal, ModuleInfo) :-
     Features = [],
-    InstMapSrc = [],
     Context = term.context_init,
     goal_util.generate_simple_call(mercury_public_builtin_module,
-        "false", pf_predicate, only_mode, detism_failure, purity_pure,
-        [], Features, InstMapSrc, ModuleInfo, Context, FailGoal).
+        "false", pf_predicate, only_mode, detism_failure, purity_pure, [],
+        Features, instmap_delta_bind_no_var, ModuleInfo, Context, FailGoal).
 
     % Detect if all argument's mode are fully input or output.
     % XXX Other mode than fully input or output are not handled for the

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -799,7 +799,7 @@ generate_assign(ToVar, FromVar, UniMode, OldGoalInfo, GoalExpr, GoalInfo,
 
     % `ToVar' may not appear in the original instmap_delta, so we can't just
     % use instmap_delta_restrict on the original instmap_delta here.
-    instmap_delta_from_assoc_list([ToVar - ToVarInst], InstMapDelta),
+    InstMapDelta = instmap_delta_from_assoc_list([ToVar - ToVarInst]),
 
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         GoalInfo0),

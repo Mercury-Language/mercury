@@ -1793,16 +1793,6 @@ add_deadness_before_goal(Residue, Goal0, Goal) :-
     goal_info_set_pre_deaths(PreDeaths, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred add_deadness_after_goal(set(prog_var)::in,
-    hlds_goal::in, hlds_goal::out) is det.
-
-add_deadness_after_goal(Residue, Goal0, Goal) :-
-    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
-    set.union(PostDeaths0, Residue, PostDeaths),
-    goal_info_set_post_deaths(PostDeaths, GoalInfo0, GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

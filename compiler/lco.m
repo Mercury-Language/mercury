@@ -1032,7 +1032,7 @@ is_grounding(ModuleInfo, InstMap0, InstMap, Var - _AddrVar) :-
 make_store_goal(ModuleInfo, Var - AddrVar, Goal) :-
     generate_simple_call(mercury_private_builtin_module, "store_at_ref_impure",
         pf_predicate, only_mode, detism_det, purity_impure, [AddrVar, Var],
-        [], [], ModuleInfo, term.context_init, Goal).
+        [], instmap_delta_bind_vars([]), ModuleInfo, term.context_init, Goal).
 
 %-----------------------------------------------------------------------------%
 

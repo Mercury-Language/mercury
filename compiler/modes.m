@@ -865,7 +865,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         % Construct the initial instmap.
         mode_list_get_initial_insts(!.ModuleInfo, ArgModes0, ArgInitialInsts),
         assoc_list.from_corresponding_lists(HeadVars, ArgInitialInsts, InstAL),
-        instmap_from_assoc_list(InstAL, InstMap0),
+        InstMap0 = instmap_from_assoc_list(InstAL),
 
         % Construct the initial set of live vars:
         % initially, only the non-clobbered head variables are live.
@@ -971,7 +971,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             % Manufacture an instmap_delta for the disjunction as a whole.
             assoc_list.from_corresponding_lists(HeadVars, ArgFinalInsts0,
                 HeadVarFinalInsts),
-            instmap_from_assoc_list(HeadVarFinalInsts, FinalInstMap),
+            FinalInstMap = instmap_from_assoc_list(HeadVarFinalInsts),
             compute_instmap_delta(InstMap0, FinalInstMap, BodyNonLocals,
                 DeltaInstMap),
             goal_info_set_instmap_delta(DeltaInstMap,
@@ -1946,7 +1946,7 @@ modecheck_ground_term_construct(TermVar, ConjGoals0, !.SubGoalInfo, VarSet,
         LocalVarMap0, LocalVarMap),
     map.lookup(LocalVarMap, TermVar, TermVarInfo),
     TermVarInfo = construct_var_info(TermVarInst),
-    instmap_delta_from_assoc_list([TermVar - TermVarInst], InstMapDelta),
+    InstMapDelta = instmap_delta_from_assoc_list([TermVar - TermVarInst]),
     goal_info_set_instmap_delta(InstMapDelta, !SubGoalInfo),
     % We present the determinism, so that the determinism analysis pass
     % does not have to traverse the goals inside the scope.
@@ -1994,7 +1994,7 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         Unification = construct(LHSVar, ConsId, RHSVars, UniModes,
             ConstructHow, Uniqueness, no_construct_sub_info),
         GoalExpr = unify(LHSVar, RHS, UnifyMode, Unification, UnifyContext),
-        instmap_delta_from_assoc_list([LHSVar - TermInst], InstMapDelta),
+        InstMapDelta = instmap_delta_from_assoc_list([LHSVar - TermInst]),
         goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo1),
         % We preset the determinism, so that the determinism analysis pass
         % does not have to traverse the goals inside the scope.
@@ -4043,7 +4043,7 @@ construct_initialisation_call(Var, VarType, Inst, Context,
         ),
         NonLocals = set.make_singleton_set(Var),
         InstmapDeltaAL = [Var - Inst],
-        instmap_delta_from_assoc_list(InstmapDeltaAL, InstmapDelta),
+        InstmapDelta = instmap_delta_from_assoc_list(InstmapDeltaAL),
         build_call(ModuleName, PredName, [Var], [VarType], NonLocals,
             InstmapDelta, Context, MaybeCallUnifyContext,
             hlds_goal(GoalExpr, GoalInfo), !ModeInfo)

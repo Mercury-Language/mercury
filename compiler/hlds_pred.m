@@ -414,10 +414,19 @@
             % (in inst_match.bound_inst_list_contains_instname and
             % instmap.merge) would be unacceptable.
 
-    ;       marker_mutable_access_pred.
+    ;       marker_mutable_access_pred
             % This predicate is part of the machinery used to access mutables.
             % This marker is used to inform inlining that we should _always_
             % attempt to inline this predicate across module boundaries.
+
+    ;       marker_has_format_call.
+            % The body of this predicate contains calls to predicates
+            % recognized by format_call.is_format_call. This marker is set
+            % if applicable during typechecking, when the predicate body
+            % has to be traversed anyway. It is used by later passes
+            % that optimize correct format calls and/or warn about incorrect
+            % (or at least not verifiably correct) format calls, which
+            % would be no-ops on predicates that do not have this marker.
 
     % An abstract set of attributes.
 :- type pred_attributes.
@@ -2619,7 +2628,7 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
     proc_info_get_argmodes(ProcInfo, ArgModes),
     mode_list_get_initial_insts(ModuleInfo, ArgModes, InitialInsts),
     assoc_list.from_corresponding_lists(HeadVars, InitialInsts, InstAL),
-    instmap_from_assoc_list(InstAL, InstMap).
+    InstMap = instmap_from_assoc_list(InstAL).
 
 proc_info_declared_argmodes(ProcInfo, ArgModes) :-
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),

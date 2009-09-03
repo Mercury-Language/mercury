@@ -711,8 +711,8 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     VarResultDelta = VarResult - ground(unique, none),
                     VarDelta = Var - bound(shared, [bound_functor(int_const(1),
                         [])]),
-                    instmap_delta_from_assoc_list([VarDelta, VarResultDelta],
-                        InstMapDeltaDecrement),
+                    InstMapDeltaDecrement = instmap_delta_from_assoc_list(
+                        [VarDelta, VarResultDelta]),
                     Detism = detism_det,
                     Purity = purity_pure,
                     % Take the context of the first goal of the conjunction.

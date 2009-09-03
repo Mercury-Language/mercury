@@ -118,6 +118,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
@@ -795,8 +796,8 @@ size_prof_process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr,
         TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
         goal_util.generate_simple_call(TermSizeProfBuiltin,
             "increment_size", pf_predicate, only_mode, detism_det,
-            purity_impure, [Var, SizeVar], [], [], !.Info ^ spi_module_info,
-            Context, UpdateGoal),
+            purity_impure, [Var, SizeVar], [], instmap_delta_bind_no_var,
+            !.Info ^ spi_module_info, Context, UpdateGoal),
         % Put UnifyGoal first in case it fails.
         Goals = [UnifyGoal] ++ ArgGoals ++ SizeGoals ++ [UpdateGoal],
         GoalExpr = conj(plain_conj, Goals)
@@ -863,7 +864,7 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
         goal_util.generate_simple_call(TermSizeProfModule,
             "term_size_plus", pf_function, mode_no(0), detism_det, purity_pure,
             [SizeVar0, KnownSizeVar, SizeVar], [],
-            [SizeVar - ground(shared, none)],
+            instmap_delta_bind_var(SizeVar),
             !.Info ^ spi_module_info, Context, AddGoal),
         Goals = [KnownSizeGoal, AddGoal]
     ).
@@ -927,7 +928,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
                 "type_info_from_typeclass_info", pf_predicate, only_mode,
                 detism_det, purity_pure,
                 [TypeClassInfoVar, SlotVar, TypeInfoVar], [],
-                [TypeInfoVar - ground(shared, none)],
+                instmap_delta_bind_var(TypeInfoVar),
                 !.Info ^ spi_module_info, Context, ExtractGoal),
             record_type_info_var(Type, TypeInfoVar, !Info),
             TypeInfoGoals = [SlotGoal, ExtractGoal]
@@ -1051,7 +1052,7 @@ make_size_goal(TypeInfoVar, Arg, Context, SizeGoal,
     TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
     goal_util.generate_simple_call(TermSizeProfBuiltin, Pred, pf_predicate,
         only_mode, detism_det, purity_pure, Args,
-        [], [SizeVar - ground(shared, none)],
+        [], instmap_delta_bind_var(SizeVar),
         !.Info ^ spi_module_info, Context, SizeGoal),
     MaybeSizeVar = yes(SizeVar).
 

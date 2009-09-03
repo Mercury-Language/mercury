@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000,2002-2007 The University of Melbourne.
+% Copyright (C) 1999-2000,2002-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1668,8 +1668,8 @@ acc_unification(Out - Acc, Goal) :-
     UniMode = LHSMode - RHSMode,
     Context = unify_context(umc_explicit, []),
     Expr = unify(Out, rhs_var(Acc), UniMode, assign(Out,Acc), Context),
-    set.list_to_set([Out,Acc], NonLocalVars),
-    instmap_delta_from_assoc_list([Out - ground(shared, none)], InstMapDelta),
+    set.list_to_set([Out, Acc], NonLocalVars),
+    InstMapDelta = instmap_delta_bind_var(Out),
     goal_info_init(NonLocalVars, InstMapDelta, detism_det, purity_pure, Info),
     Goal = hlds_goal(Expr, Info).
 

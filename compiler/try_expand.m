@@ -864,10 +864,10 @@ make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
     Mode = mode_no(0),
     Args = [TypeInfoVar, LambdaVar, ResultVar] ++ ExtraArgs,
     Features = [],
-    InstMapSrc = [],
     generate_simple_call(mercury_exception_module, PredName,
         pf_predicate, Mode, detism_cc_multi, purity_pure, Args, Features,
-        InstMapSrc, !.ModuleInfo, term.context_init, CallGoal0),
+        instmap_delta_bind_no_var, !.ModuleInfo, term.context_init,
+        CallGoal0),
 
     goal_info_init(GoalInfo),
 
@@ -892,7 +892,8 @@ make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
 make_unreachable_call(ModuleInfo, Goal) :-
     generate_simple_call(mercury_exception_module, "unreachable",
         pf_predicate, only_mode, detism_erroneous, purity_pure,
-        [], [], [], ModuleInfo, term.context_init, Goal).
+        [], [], instmap_delta_bind_no_var, ModuleInfo, term.context_init,
+        Goal).
 
 :- pred make_output_tuple_inst_cast(prog_var::in, prog_var::in,
     list(mer_inst)::in, hlds_goal::out) is det.

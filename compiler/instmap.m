@@ -74,14 +74,18 @@
     %
 :- pred instmap_delta_is_unreachable(instmap_delta::in) is semidet.
 
-:- pred instmap_from_assoc_list(assoc_list(prog_var, mer_inst)::in,
-    instmap::out) is det.
+:- func instmap_from_assoc_list(assoc_list(prog_var, mer_inst)) =
+    instmap.
 
-:- pred instmap_delta_from_assoc_list(assoc_list(prog_var, mer_inst)::in,
-    instmap_delta::out) is det.
+:- func instmap_delta_from_assoc_list(assoc_list(prog_var, mer_inst)) =
+    instmap_delta.
 
 :- pred instmap_delta_from_mode_list(list(prog_var)::in, list(mer_mode)::in,
     module_info::in, instmap_delta::out) is det.
+
+:- func instmap_delta_bind_no_var = instmap_delta.
+:- func instmap_delta_bind_var(prog_var) = instmap_delta.
+:- func instmap_delta_bind_vars(list(prog_var)) = instmap_delta.
 
 %-----------------------------------------------------------------------------%
 
@@ -397,10 +401,10 @@ instmap_delta_is_unreachable(unreachable).
 
 %-----------------------------------------------------------------------------%
 
-instmap_from_assoc_list(AL, reachable(Instmapping)) :-
+instmap_from_assoc_list(AL) = reachable(Instmapping) :-
     map.from_assoc_list(AL, Instmapping).
 
-instmap_delta_from_assoc_list(AL, reachable(Instmapping)) :-
+instmap_delta_from_assoc_list(AL) = reachable(Instmapping) :-
     map.from_assoc_list(AL, Instmapping).
 
 instmap_delta_map_foldl(_, unreachable, unreachable, !T).
@@ -432,6 +436,25 @@ instmap_delta_from_mode_list_2([Var | Vars], [Mode | Modes], ModuleInfo,
         instmap_delta_set_var(Var, Inst2, !InstMapDelta),
         instmap_delta_from_mode_list_2(Vars, Modes, ModuleInfo, !InstMapDelta)
     ).
+
+instmap_delta_bind_no_var = InstMapDelta :-
+    InstMapDelta = instmap_delta_from_assoc_list([]).
+
+instmap_delta_bind_var(Var) = InstMapDelta :-
+    InstMapDelta = instmap_delta_from_assoc_list([Var - ground(shared, none)]).
+
+instmap_delta_bind_vars(Vars) = InstMapDelta :-
+    VarsAndGround = ground_vars(Vars),
+    InstMapDelta = instmap_delta_from_assoc_list(VarsAndGround).
+
+:- func ground_vars(list(prog_var)) = assoc_list(prog_var, mer_inst).
+
+ground_vars(Vars) = VarsAndGround :-
+    VarsAndGround = list.map(pair_with_ground, Vars).
+
+:- func pair_with_ground(prog_var) = pair(prog_var, mer_inst).
+
+pair_with_ground(Var) = Var - ground(shared, none).
 
 %-----------------------------------------------------------------------------%
 
@@ -745,7 +768,7 @@ bind_inst_to_functors_others(Type, [ConsId | ConsIds], InitInst,
 pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap) :-
     mode_list_get_initial_insts(ModuleInfo, Modes, Insts),
     assoc_list.from_corresponding_lists(Vars, Insts, VarInsts),
-    instmap_delta_from_assoc_list(VarInsts, InstMapDelta),
+    InstMapDelta = instmap_delta_from_assoc_list(VarInsts),
     apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
 %-----------------------------------------------------------------------------%

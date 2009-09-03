@@ -764,7 +764,7 @@ check_builtin_dummy_type_ctor(TypeCtor) = IsBuiltinDummy :-
     TypeCtor = type_ctor(CtorSymName, TypeArity),
     (
         CtorSymName = qualified(ModuleName, TypeName),
-        ModuleName = mercury_std_lib_module_name(unqualified("io")),
+        ModuleName = mercury_io_module,
         TypeName = "state",
         TypeArity = 0
     ->
@@ -782,7 +782,7 @@ check_builtin_dummy_type_ctor(TypeCtor) = IsBuiltinDummy :-
 
 type_is_io_state(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, []),
-    ModuleName = mercury_std_lib_module_name(unqualified("io")),
+    ModuleName = mercury_io_module,
     TypeCtor = type_ctor(qualified(ModuleName, "state"), 0).
 
 type_ctor_is_array(type_ctor(qualified(unqualified("array"), "array"), 1)).

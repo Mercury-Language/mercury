@@ -1971,6 +1971,7 @@ should_output_marker(marker_check_termination, no).
 should_output_marker(marker_calls_are_fully_qualified, no).
 should_output_marker(marker_mode_check_clauses, yes).
 should_output_marker(marker_mutable_access_pred, no).
+should_output_marker(marker_has_format_call, no).
 
 :- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mer_mode)::in,
     prog_varset::in, prog_varset::out, list(pragma_var)::out) is det.

@@ -81,8 +81,7 @@
 :- type simplification
     --->    simp_warn_simple_code       % --warn-simple-code
     ;       simp_warn_duplicate_calls   % --warn-duplicate-calls
-    ;       simp_warn_known_bad_format  % --warn-known-bad-format-calls
-    ;       simp_warn_unknown_format    % --warn-unknown-format-calls
+    ;       simp_format_calls           % invoke format_call.m
     ;       simp_warn_obsolete          % --warn-obsolete
     ;       simp_do_once                % run things that should be done once
     ;       simp_after_front_end        % run things that should be done
@@ -108,8 +107,7 @@
 
 :- pred simplify_do_warn_simple_code(simplify_info::in) is semidet.
 :- pred simplify_do_warn_duplicate_calls(simplify_info::in) is semidet.
-:- pred simplify_do_warn_known_bad_format(simplify_info::in) is semidet.
-:- pred simplify_do_warn_unknown_format(simplify_info::in) is semidet.
+:- pred simplify_do_format_calls(simplify_info::in) is semidet.
 :- pred simplify_do_warn_obsolete(simplify_info::in) is semidet.
 :- pred simplify_do_once(simplify_info::in) is semidet.
 :- pred simplify_do_after_front_end(simplify_info::in) is semidet.
@@ -175,8 +173,7 @@
     --->    simplifications(
                 do_warn_simple_code         :: bool,
                 do_warn_duplicate_calls     :: bool,
-                do_warn_known_bad_format    :: bool,
-                do_warn_unknown_format      :: bool,
+                do_format_calls             :: bool,
                 do_warn_obsolete            :: bool,
                 do_do_once                  :: bool,
                 do_after_front_end          :: bool,
@@ -190,14 +187,13 @@
 
 simplifications_to_list(Simplifications) = List :-
     Simplifications = simplifications(WarnSimpleCode, WarnDupCalls,
-        WarnKnownBadFormat, WarnUnknownFormat, WarnObsolete, DoOnce,
+        DoFormatCalls, WarnObsolete, DoOnce,
         AfterFrontEnd, ExcessAssign, ElimRemovableScopes, OptDuplicateCalls,
         ConstantProp, CommonStruct, ExtraCommonStruct),
     List =
         ( WarnSimpleCode = yes -> [simp_warn_simple_code] ; [] ) ++
         ( WarnDupCalls = yes -> [simp_warn_duplicate_calls] ; [] ) ++
-        ( WarnKnownBadFormat = yes -> [simp_warn_known_bad_format] ; [] ) ++
-        ( WarnUnknownFormat = yes -> [simp_warn_unknown_format] ; [] ) ++
+        ( DoFormatCalls = yes -> [simp_format_calls] ; [] ) ++
         ( WarnObsolete = yes -> [simp_warn_obsolete] ; [] ) ++
         ( DoOnce = yes -> [simp_do_once] ; [] ) ++
         ( AfterFrontEnd = yes -> [simp_after_front_end] ; [] ) ++
@@ -212,8 +208,7 @@ list_to_simplifications(List) =
     simplifications(
         ( list.member(simp_warn_simple_code, List) -> yes ; no ),
         ( list.member(simp_warn_duplicate_calls, List) -> yes ; no ),
-        ( list.member(simp_warn_known_bad_format, List) -> yes ; no ),
-        ( list.member(simp_warn_unknown_format, List) -> yes ; no ),
+        ( list.member(simp_format_calls, List) -> yes ; no ),
         ( list.member(simp_warn_obsolete, List) -> yes ; no ),
         ( list.member(simp_do_once, List) -> yes ; no ),
         ( list.member(simp_after_front_end, List) -> yes ; no ),
@@ -232,6 +227,20 @@ find_simplifications(WarnThisPass, Globals, Simplifications) :-
         WarnKnownBadFormat),
     globals.lookup_bool_option(Globals, warn_unknown_format_calls,
         WarnUnknownFormat),
+    globals.lookup_bool_option(Globals, optimize_format_calls,
+        OptFormatCalls),
+    (
+        (
+            WarnThisPass = yes,
+            ( WarnKnownBadFormat = yes ; WarnUnknownFormat = yes  )
+        ;
+            OptFormatCalls = yes
+        )
+    ->
+        DoFormatCalls = yes
+    ;
+        DoFormatCalls = no
+    ),
     globals.lookup_bool_option(Globals, warn_obsolete, WarnObsolete),
     globals.lookup_bool_option(Globals, excess_assign, ExcessAssign),
     globals.lookup_bool_option(Globals, common_struct, CommonStruct),
@@ -246,8 +255,7 @@ find_simplifications(WarnThisPass, Globals, Simplifications) :-
     Simplifications = simplifications(
         ( WarnSimple = yes, WarnThisPass = yes -> yes ; no),
         ( WarnDupCalls = yes, WarnThisPass = yes -> yes ; no),
-        ( WarnKnownBadFormat = yes, WarnThisPass = yes -> yes ; no),
-        ( WarnUnknownFormat = yes, WarnThisPass = yes -> yes ; no),
+        DoFormatCalls,
         ( WarnObsolete = yes, WarnThisPass = yes -> yes ; no),
         DoOnce,
         AfterFrontEnd,
@@ -265,12 +273,9 @@ simplify_do_warn_simple_code(Info) :-
 simplify_do_warn_duplicate_calls(Info) :-
     simplify_info_get_simplifications(Info, Simplifications),
     Simplifications ^ do_warn_duplicate_calls = yes.
-simplify_do_warn_known_bad_format(Info) :-
+simplify_do_format_calls(Info) :-
     simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_warn_known_bad_format = yes.
-simplify_do_warn_unknown_format(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_warn_unknown_format = yes.
+    Simplifications ^ do_format_calls = yes.
 simplify_do_warn_obsolete(Info) :-
     simplify_info_get_simplifications(Info, Simplifications),
     Simplifications ^ do_warn_obsolete = yes.
@@ -383,7 +388,7 @@ simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo)  :-
 turn_off_common_struct_threshold = 1000.
 
 simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
-        !ProcInfo, !:ErrorSpecs) :-
+        !ProcInfo, !:Specs) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     NumVars = map.count(VarTypes0),
     ( NumVars > turn_off_common_struct_threshold ->
@@ -415,16 +420,13 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
             Simplifications = Simplifications1
         )
     ),
-    det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId,
-        pess_extra_vars_report, DetInfo0),
-    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
-    simplify_info_init(DetInfo0, Simplifications, InstMap0, !.ProcInfo, Info0),
-    proc_info_get_goal(!.ProcInfo, Goal0),
 
-    simplify_info_get_pred_info(Info0, PredInfo),
-    pred_info_get_markers(PredInfo, Markers),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_get_markers(PredInfo0, Markers0),
+    pred_info_get_import_status(PredInfo0, Status),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     (
-        check_marker(Markers, marker_mode_check_clauses),
+        check_marker(Markers0, marker_mode_check_clauses),
         Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         ( GoalExpr0 = disj(_)
         ; GoalExpr0 = switch(_, _, _)
@@ -437,15 +439,98 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         Goal1 = Goal0
     ),
 
-    simplify_process_clause_body_goal(Goal1, Goal, Info0, Info),
+    (
+        check_marker(Markers0, marker_has_format_call),
+        Simplifications ^ do_format_calls = yes
+    ->
+        % We must invoke analyze_and_optimize_format_calls before
+        % simplify_process_clause_body_goal, for two reasons.
+        %
+        % First, excess assignment optimization may delete some of the
+        % unifications that build the format strings or values,
+        % which means that the goal it generates may not contain the
+        % information that analyze_and_optimize_format_calls needs to avoid
+        % spurious messages about unknown format strings or values.
+        %
+        % Second, analyze_and_optimize_format_calls generates nested
+        % conjunctions, which simplify_process_clause_body_goal can eliminate.
+        proc_info_get_varset(!.ProcInfo, VarSet0),
+        analyze_and_optimize_format_calls(!.ModuleInfo, Goal1, MaybeGoal2,
+            FormatSpecs, VarSet0, VarSet1, VarTypes0, VarTypes1),
+        (
+            MaybeGoal2 = yes(Goal2),
+            proc_info_set_goal(Goal2, !ProcInfo),
+            proc_info_set_varset(VarSet1, !ProcInfo),
+            proc_info_set_vartypes(VarTypes1, !ProcInfo),
 
-    simplify_info_get_varset(Info, VarSet1),
+            % The goals we replace format calls with are created with the
+            % correct nonlocals, but analyze_and_optimize_format_calls can
+            % take code for building a list of string.poly_types out of one
+            % scope (e.g. the condition of an if-then-else) and replace it
+            % with code to build the string directly in another scope
+            % (such as the then part of that if-then-else, if that is where
+            % the format call is). This can leave variables missing from
+            % the nonlocal fields of the original scopes. And since
+            % instmap_deltas are restricted to the goal's nonlocals,
+            % they need to be recomputed as well.
+            requantify_proc(!ProcInfo),
+            recompute_instmap_delta_proc(
+                do_not_recompute_atomic_instmap_deltas,
+                !ProcInfo, !ModuleInfo),
+            proc_info_get_goal(!.ProcInfo, Goal3),
+            proc_info_get_vartypes(!.ProcInfo, VarTypes3),
+
+            % Put the new proc_info back into !ModuleInfo, since some of the
+            % following code could otherwise find obsolete information in
+            % there.
+
+            % Remove the has_format_call marker from the pred_info before
+            % putting it back, since any optimizable format calls will already
+            % have been optimized. Since currently there is no program
+            % transformation that inserts calls to these predicates,
+            % there is no point in invoking find_format_call again later.
+
+            module_info_preds(!.ModuleInfo, PredTable1),
+            map.lookup(PredTable1, PredId, PredInfo1),
+            pred_info_get_procedures(PredInfo1, ProcTable1),
+            map.det_update(ProcTable1, ProcId, !.ProcInfo, ProcTable),
+
+            pred_info_set_procedures(ProcTable, PredInfo1, PredInfo2),
+            remove_marker(marker_has_format_call, Markers0, Markers),
+            pred_info_set_markers(Markers, PredInfo2, PredInfo),
+
+            map.det_update(PredTable1, PredId, PredInfo, PredTable),
+            module_info_set_preds(PredTable, !ModuleInfo)
+        ;
+            MaybeGoal2 = no,
+            Markers = Markers0,
+            Goal3 = Goal1,
+            % Throw away VarTypes1.
+            VarTypes3 = VarTypes0
+        )
+    ;
+        % Either there are no format calls to check, or we don't want to
+        % optimize them and would ignore the added messages anyway.
+        Goal3 = Goal1,
+        Markers = Markers0,
+        FormatSpecs = [],
+        VarTypes3 = VarTypes0
+    ),
+
+    det_info_init(!.ModuleInfo, VarTypes3, PredId, ProcId,
+        pess_extra_vars_report, [], DetInfo0),
+    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+    simplify_info_init(DetInfo0, Simplifications, InstMap0, !.ProcInfo, Info0),
+
+    simplify_process_clause_body_goal(Goal3, Goal, Info0, Info),
+
+    simplify_info_get_varset(Info, VarSet3),
     ( simplify_do_after_front_end(Info) ->
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
-        map.foldl(svvarset.name_var, VarNameRemap, VarSet1, VarSet),
+        map.foldl(svvarset.name_var, VarNameRemap, VarSet3, VarSet),
         proc_info_set_var_name_remap(map.init, !ProcInfo)
     ;
-        VarSet = VarSet1
+        VarSet = VarSet3
     ),
     simplify_info_get_var_types(Info, VarTypes),
     simplify_info_get_rtti_varmaps(Info, RttiVarMaps),
@@ -461,24 +546,8 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     proc_info_set_has_user_event(HasUserEvent, !ProcInfo),
 
     simplify_info_get_module_info(Info, !:ModuleInfo),
-    simplify_info_get_error_specs(Info, !:ErrorSpecs),
-    (
-        Info ^ simp_format_calls = yes,
-        ( Simplifications ^ do_warn_known_bad_format = yes
-        ; Simplifications ^ do_warn_unknown_format = yes
-        )
-    ->
-        % We must use the original goal, Goal0, here. This is because excess
-        % assignment optimization may delete some of the unifications that
-        % build the format strings or values, which means that the new version
-        % in Goal may not contain the information find_format_call_errors needs
-        % to avoid spurious messages about unknown format strings or values.
-        find_format_call_errors(!.ModuleInfo, Goal0, !ErrorSpecs)
-    ;
-        % Either there are no calls to check or we would ignore the added
-        % messages anyway.
-        true
-    ),
+    simplify_info_get_error_specs(Info, !:Specs),
+    !:Specs = FormatSpecs ++ !.Specs,
 
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
@@ -498,7 +567,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
                 Severity = severity_error,
                 Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
                     [Msg]),
-                !:ErrorSpecs = [Spec | !.ErrorSpecs]
+                !:Specs = [Spec | !.Specs]
             ;
                 true
             )
@@ -514,7 +583,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
                 Severity = severity_error,
                 Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
                     [Msg]),
-                !:ErrorSpecs = [Spec | !.ErrorSpecs]
+                !:Specs = [Spec | !.Specs]
             ;
                 true
             )
@@ -523,14 +592,13 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         true
     ),
 
-    pred_info_get_import_status(PredInfo, Status),
     IsDefinedHere = status_defined_in_this_module(Status),
     (
         IsDefinedHere = no,
         % Don't generate any warnings or even errors if the predicate isn't
         % defined here; any such messages will be generated when we compile
         % the module the predicate comes from.
-        !:ErrorSpecs = []
+        !:Specs = []
     ;
         IsDefinedHere = yes
     ).
@@ -635,7 +703,7 @@ do_process_clause_body_goal(!Goal, !Info) :-
 
             simplify_info_get_det_info(!.Info, !:DetInfo),
             det_infer_goal(!Goal, InstMap0, SolnContext, [], no,
-                _, _, !DetInfo, [], _),
+                _, _, !DetInfo),
             simplify_info_set_det_info(!.DetInfo, !Info)
         )
     ;
@@ -1231,11 +1299,6 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = hlds_pred.pred_info_module(PredInfo),
     Name = hlds_pred.pred_info_name(PredInfo),
-    ( is_format_call(ModuleName, Name, Args, _, _) ->
-        simplify_info_set_format_calls(yes, !Info)
-    ;
-        true
-    ),
 
     % Convert calls to builtin @=<, @<, @>=, @> into the corresponding
     % calls to builtin.compare/3.
@@ -1978,13 +2041,12 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
         % The code field of the call_foreign_proc goal is ignored when
         % its foreign_trace_cond field is set to `yes', as we do here.
         EvalCode = "",
-        EvalInstMapDeltaSrc = [],
         Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
         Context = goal_info_get_context(GoalInfo0),
         generate_foreign_proc(PrivateBuiltin, EvalPredName,
             pf_predicate, only_mode, detism_semi, purity_semipure,
             EvalAttributes, [], [], yes(RuntimeExpr), EvalCode,
-            EvalFeatures, EvalInstMapDeltaSrc, ModuleInfo,
+            EvalFeatures, instmap_delta_bind_no_var, ModuleInfo,
             Context, CondGoal),
         GoalExpr = if_then_else([], CondGoal, SubGoal, true_goal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -2161,8 +2223,9 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     ArgInsts = [R - Unique],
     BuiltinModule = mercury_public_builtin_module,
     goal_util.generate_simple_call(BuiltinModule, "compare", pf_predicate,
-        mode_no(ModeNo), detism_det, purity_pure, Args, [], ArgInsts,
-        ModuleInfo, Context, CmpGoal0),
+        mode_no(ModeNo), detism_det, purity_pure, Args, [],
+        instmap_delta_from_assoc_list(ArgInsts), ModuleInfo, Context,
+        CmpGoal0),
     CmpGoal0 = hlds_goal(CmpExpr, CmpInfo0),
     CmpNonLocals0 = goal_info_get_nonlocals(CmpInfo0),
     goal_info_set_nonlocals(set.insert(CmpNonLocals0, R), CmpInfo0, CmpInfo),
@@ -2424,10 +2487,12 @@ simplify_library_call("builtin", "compare", _ModeNum, _CrossCompiling,
     Context = goal_info_get_context(!.GoalInfo),
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
-        purity_pure, [X, Y], [], [], ModuleInfo, Context, CondEq),
+        purity_pure, [X, Y], [], instmap_delta_bind_no_var, ModuleInfo,
+        Context, CondEq),
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "builtin_compound_lt", pf_predicate, only_mode, detism_semi,
-        purity_pure, [X, Y], [], [], ModuleInfo, Context, CondLt),
+        purity_pure, [X, Y], [], instmap_delta_bind_no_var, ModuleInfo,
+        Context, CondLt),
 
     Builtin = mercury_public_builtin_module,
     TypeCtor = type_ctor(
@@ -2507,7 +2572,7 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
     ConstGoalExpr = unify(ConstVar, ConstRHS, ConstMode, ConstUnification,
         ConstUnifyContext),
     ConstNonLocals = set.make_singleton_set(ConstVar),
-    instmap_delta_from_assoc_list([ConstVar - ground_inst], InstMapDelta),
+    InstMapDelta = instmap_delta_bind_var(ConstVar),
     goal_info_init(ConstNonLocals, InstMapDelta,
         detism_det, purity_pure, ConstGoalInfo),
     ConstGoal = hlds_goal(ConstGoalExpr, ConstGoalInfo),
@@ -2543,6 +2608,11 @@ simplify_may_introduce_calls("private_builtin", "builtin_compound_lt", _).
 simplify_may_introduce_calls("int", "unchecked_quotient", _).
 simplify_may_introduce_calls("int", "unchecked_rem", _).
 simplify_may_introduce_calls("int", "*", _).
+simplify_may_introduce_calls("io", "write_string", _).
+simplify_may_introduce_calls("string", "int_to_string", _).
+simplify_may_introduce_calls("string", "char_to_string", _).
+simplify_may_introduce_calls("string", "float_to_string", _).
+simplify_may_introduce_calls("string", "++", _).
 
 %-----------------------------------------------------------------------------%
 
@@ -2572,8 +2642,8 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         GContext = goal_info_get_context(GoalInfo0),
         generate_simple_call(mercury_private_builtin_module,
             "builtin_unify_pred", pf_predicate, mode_no(0), detism_semi,
-            purity_pure, [XVar, YVar], [], [], ModuleInfo, GContext,
-            hlds_goal(Call0, _)),
+            purity_pure, [XVar, YVar], [], instmap_delta_bind_no_var,
+            ModuleInfo, GContext, hlds_goal(Call0, _)),
         simplify_goal_expr(Call0, Call1, GoalInfo0, GoalInfo, !Info),
         Call = hlds_goal(Call1, GoalInfo),
         ExtraGoals = []
@@ -2652,7 +2722,7 @@ call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, _, _, GoalInfo,
     Context = goal_info_get_context(GoalInfo),
     goal_util.generate_simple_call(mercury_public_builtin_module,
         "unify", pf_predicate, mode_no(0), detism_semi, purity_pure, ArgVars,
-        [], [], ModuleInfo, Context, Call).
+        [], instmap_delta_bind_no_var, ModuleInfo, Context, Call).
 
 :- pred call_specific_unify(type_ctor::in, list(prog_var)::in,
     prog_var::in, prog_var::in, proc_id::in,
@@ -2685,7 +2755,8 @@ call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo, Call) :-
     Context = goal_info_get_context(GoalInfo),
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
-        purity_pure, [XVar, YVar], [], [], ModuleInfo, Context, Call).
+        purity_pure, [XVar, YVar], [], instmap_delta_bind_no_var, ModuleInfo,
+        Context, Call).
 
 %-----------------------------------------------------------------------------%
 
@@ -3059,8 +3130,10 @@ goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
     CanElimLeft = ( set.member(LeftVar, ConjNonLocals) -> no ; yes ),
     CanElimRight = ( set.member(RightVar, ConjNonLocals) -> no ; yes ),
 
-    % If we have a choice, eliminate an unnamed variable.
-    ( CanElimLeft = yes, CanElimRight = yes ->
+    (
+        CanElimLeft = yes,
+        CanElimRight = yes,
+        % If we have a choice, try to eliminate an unnamed variable.
         ( var_is_named(VarSet, LeftVar) ->
             ElimVar = RightVar,
             ReplacementVar = LeftVar
@@ -3068,13 +3141,19 @@ goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
             ElimVar = LeftVar,
             ReplacementVar = RightVar
         )
-    ; CanElimLeft = yes ->
+    ;
+        CanElimLeft = yes,
+        CanElimRight = no,
         ElimVar = LeftVar,
         ReplacementVar = RightVar
-    ; CanElimRight = yes ->
+    ;
+        CanElimLeft = no,
+        CanElimRight = yes,
         ElimVar = RightVar,
         ReplacementVar = LeftVar
     ;
+        CanElimLeft = no,
+        CanElimRight = no,
         fail
     ),
     map.det_insert(!.Subn, ElimVar, ReplacementVar, !:Subn),
@@ -3547,10 +3626,6 @@ case_list_contains_trace([Case0 | Cases0], [Case | Cases], !ContainsTrace) :-
                 % Information about type_infos and typeclass_infos.
                 simp_rtti_varmaps            :: rtti_varmaps,
 
-                % Do we have any calls to string.format, stream.format and
-                % io.format?
-                simp_format_calls            :: bool,
-
                 % Are we currently inside a goal that was duplicated
                 % for a switch?
                 simp_inside_dupl_for_switch  :: bool,
@@ -3572,7 +3647,7 @@ simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     Info = simplify_info(DetInfo, [], Simplifications,
         common_info_init, InstMap, VarSet, InstVarSet,
-        no, no, no, 0, 0, RttiVarMaps, no, no, no, no, no).
+        no, no, no, 0, 0, RttiVarMaps, no, no, no, no).
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
@@ -3617,7 +3692,6 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
 
 :- pred simplify_info_get_module_info(simplify_info::in, module_info::out)
     is det.
-:- pred simplify_info_get_pred_info(simplify_info::in, pred_info::out) is det.
 :- pred simplify_info_get_pred_proc_info(simplify_info::in, pred_info::out,
     proc_info::out) is det.
 
@@ -3640,7 +3714,6 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
 
 :- implementation.
 
-:- pred simplify_info_get_format_calls(simplify_info::in, bool::out) is det.
 :- pred simplify_info_get_inside_duplicated_for_switch(simplify_info::in,
     bool::out) is det.
 :- pred simplify_info_get_has_parallel_conj(simplify_info::in, bool::out)
@@ -3665,7 +3738,6 @@ simplify_info_rerun_det(Info) :-
     Info ^ simp_rerun_det = yes.
 simplify_info_get_cost_delta(Info, Info ^ simp_cost_delta).
 simplify_info_get_rtti_varmaps(Info, Info ^ simp_rtti_varmaps).
-simplify_info_get_format_calls(Info, Info ^ simp_format_calls).
 simplify_info_get_inside_duplicated_for_switch(Info,
     Info ^ simp_inside_dupl_for_switch).
 simplify_info_get_has_parallel_conj(Info, Info ^ simp_has_parallel_conj).
@@ -3675,12 +3747,6 @@ simplify_info_get_has_user_event(Info, Info ^ simp_has_user_event).
 simplify_info_get_module_info(Info, ModuleInfo) :-
     simplify_info_get_det_info(Info, DetInfo),
     det_info_get_module_info(DetInfo, ModuleInfo).
-
-simplify_info_get_pred_info(Info, PredInfo) :-
-    simplify_info_get_det_info(Info, DetInfo),
-    det_info_get_module_info(DetInfo, ModuleInfo),
-    det_info_get_pred_id(DetInfo, PredId),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo).
 
 simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
     simplify_info_get_det_info(Info, DetInfo),
@@ -3703,8 +3769,6 @@ simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
 :- pred simplify_info_set_var_types(vartypes::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_recompute_atomic(
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_format_calls(bool::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_inside_duplicated_for_switch(bool::in,
     simplify_info::in, simplify_info::out) is det.
@@ -3755,8 +3819,6 @@ simplify_info_set_cost_delta(Delta, !Info) :-
     !Info ^ simp_cost_delta := Delta.
 simplify_info_set_rtti_varmaps(Rtti, !Info) :-
     !Info ^ simp_rtti_varmaps := Rtti.
-simplify_info_set_format_calls(FC, !Info) :-
-    !Info ^ simp_format_calls := FC.
 simplify_info_set_inside_duplicated_for_switch(IDFS, !Info) :-
     !Info ^ simp_inside_dupl_for_switch := IDFS.
 simplify_info_set_has_parallel_conj(MHPC, !Info) :-

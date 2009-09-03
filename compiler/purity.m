@@ -176,6 +176,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
@@ -877,14 +878,14 @@ wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
     generate_simple_call(mercury_stm_builtin_module,
         OuterToInnerPred, pf_predicate, only_mode,
         detism_det, purity_pure, [OuterDI, InnerDI], [],
-        [OuterDI - ground(clobbered, none),
-            InnerDI - ground(unique, none)],
+        instmap_delta_from_assoc_list([OuterDI - ground(clobbered, none),
+            InnerDI - ground(unique, none)]),
         ModuleInfo, Context, OuterToInnerGoal),
     generate_simple_call(mercury_stm_builtin_module,
         InnerToOuterPred, pf_predicate, only_mode,
         detism_det, purity_pure, [InnerUO, OuterUO], [],
-        [InnerUO - ground(clobbered, none),
-            OuterUO - ground(unique, none)],
+        instmap_delta_from_assoc_list([InnerUO - ground(clobbered, none),
+            OuterUO - ground(unique, none)]),
         ModuleInfo, Context, InnerToOuterGoal),
 
     WrapExpr = conj(plain_conj, [OuterToInnerGoal, Goal0, InnerToOuterGoal]),

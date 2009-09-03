@@ -29,7 +29,6 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
@@ -337,7 +336,7 @@
     hlds_goal::in, bool::out, module_info::in, module_info::out) is det.
 
     % generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
-    %   Purity, Args, Features, InstMapDeltaSrc, ModuleInfo, Context,
+    %   Purity, Args, Features, InstMapDelta, ModuleInfo, Context,
     %   CallGoal):
     %
     % Generate a call to a builtin procedure (e.g. from the private_builtin
@@ -352,12 +351,12 @@
     %
 :- pred generate_simple_call(module_name::in, string::in, pred_or_func::in,
     mode_no::in, determinism::in, purity::in, list(prog_var)::in,
-    list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
+    list(goal_feature)::in, instmap_delta::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
     % generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
     %   Purity, Attributes, Args, ExtraArgs, MaybeTraceRuntimeCond, Code,
-    %   Features, InstMapDeltaSrc, ModuleInfo, Context, CallGoal):
+    %   Features, InstMapDelta, ModuleInfo, Context, CallGoal):
     %
     % generate_foreign_proc is similar to generate_simple_call,
     % but also assumes that the called predicate is defined via a
@@ -372,7 +371,7 @@
     pragma_foreign_proc_attributes::in,
     list(foreign_arg)::in, list(foreign_arg)::in,
     maybe(trace_expr(trace_runtime))::in, string::in,
-    list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
+    list(goal_feature)::in, instmap_delta::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
     % Generate a cast goal.  The input and output insts are just ground.
@@ -479,7 +478,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
     UnifyContext = unify_context(umc_explicit, []),
     GoalExpr = unify(OrigVar, rhs_var(NewVar), Mode, UnifyInfo, UnifyContext),
     set.list_to_set([OrigVar, NewVar], NonLocals),
-    instmap_delta_from_assoc_list([OrigVar - NewInst], UnifyInstMapDelta),
+    UnifyInstMapDelta = instmap_delta_from_assoc_list([OrigVar - NewInst]),
     goal_info_init(NonLocals, UnifyInstMapDelta, detism_det, purity_pure,
         term.context_init, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -1680,7 +1679,7 @@ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal,
 %-----------------------------------------------------------------------------%
 
 generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
-        Args, Features, InstMap, ModuleInfo, Context, Goal) :-
+        Args, Features, InstMapDelta0, ModuleInfo, Context, Goal) :-
     list.length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
@@ -1693,8 +1692,7 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
 
     GoalExpr = plain_call(PredId, ProcId, Args, BuiltinState, no,
         qualified(ModuleName, ProcName)),
-    set.init(NonLocals0),
-    set.insert_list(NonLocals0, Args, NonLocals),
+    set.list_to_set(Args, NonLocals),
     determinism_components(Detism, _CanFail, NumSolns),
     (
         NumSolns = at_most_zero,
@@ -1704,7 +1702,7 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
         ; NumSolns = at_most_many
         ; NumSolns = at_most_many_cc
         ),
-        instmap_delta_from_assoc_list(InstMap, InstMapDelta)
+        InstMapDelta = InstMapDelta0
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_purity(PredInfo, PredPurity),
@@ -1717,7 +1715,7 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
 
 generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
         Purity, Attributes, Args, ExtraArgs, MaybeTraceRuntimeCond, Code,
-        Features, InstMap, ModuleInfo, Context, Goal) :-
+        Features, InstMapDelta0, ModuleInfo, Context, Goal) :-
     list.length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
@@ -1737,7 +1735,7 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
         ; NumSolns = at_most_many
         ; NumSolns = at_most_many_cc
         ),
-        instmap_delta_from_assoc_list(InstMap, InstMapDelta)
+        InstMapDelta = InstMapDelta0
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_purity(PredInfo, PredPurity),
@@ -1756,7 +1754,7 @@ generate_cast(CastType, InArg, OutArg, Context, Goal) :-
 generate_cast_with_insts(CastType, InArg, OutArg, InInst, OutInst, Context,
         Goal) :-
     set.list_to_set([InArg, OutArg], NonLocals),
-    instmap_delta_from_assoc_list([OutArg - OutInst], InstMapDelta),
+    InstMapDelta = instmap_delta_from_assoc_list([OutArg - OutInst]),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
         GoalInfo),
     GoalExpr = generic_call(cast(CastType), [InArg, OutArg],
