@@ -155,7 +155,6 @@ OTHER_PROGS= \
 	lazy_list \
 	liveness_nonlocals \
 	livevals_seq \
-	livevars_shallow \
 	long_name \
 	loop \
 	loop_in_disj \
@@ -263,6 +262,7 @@ DEEP_PROF_CAPABLE_PROGS = \
 LLDS_PROGS= \
 	exists_cast_bug \
 	fzn_debug_abort \
+	livevars_shallow \
 	untuple_bug
 
 # These tests only work in grades that support tabling.

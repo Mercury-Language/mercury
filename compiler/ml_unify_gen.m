@@ -295,8 +295,13 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ( ml_gen_info_search_const_var(!.Info, ArgVar, ArgGroundTerm) ->
                 ArgGroundTerm = ml_ground_term(ArgRval, ArgType),
-                ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, Type,
-                    native_if_possible, ArgRval, Rval),
+                MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+                ml_gen_info_get_global_data(!.Info, GlobalData0),
+                ml_gen_box_const_rval(ModuleInfo, MLDS_ArgType,
+                    ArgRval, Context, Rval0, GlobalData0, GlobalData),
+                ml_gen_info_set_global_data(GlobalData, !Info),
+                MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+                Rval = ml_unop(cast(MLDS_Type), Rval0),
                 GroundTerm = ml_ground_term(Rval, Type),
                 ml_gen_info_set_const_var(Var, GroundTerm, !Info)
             ;
@@ -361,8 +366,8 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         )
     ).
 
-:- pred ml_gen_static_const_arg_list(ml_gen_info::in, list(prog_var)::in,
-    list(mlds_rval)::out) is det.
+:- pred ml_gen_static_const_arg_list(ml_gen_info::in,
+    list(prog_var)::in, list(mlds_rval)::out) is det.
 
 ml_gen_static_const_arg_list(_, [], []).
 ml_gen_static_const_arg_list(Info, [Var | Vars], [Rval | Rvals]) :-
@@ -374,7 +379,7 @@ ml_gen_static_const_arg_list(Info, [Var | Vars], [Rval | Rvals]) :-
 
 ml_gen_static_const_arg(Info, Var, Rval) :-
     ml_gen_info_lookup_const_var(Info, Var, GroundTerm),
-    GroundTerm = ml_ground_term(Rval, _).
+    GroundTerm = ml_ground_term(Rval, _Type).
 
     % Generate the rval for a given constant.
     %
@@ -1193,8 +1198,6 @@ ml_gen_box_const_rval(ModuleInfo, Type, Rval, Context, BoxedRval,
 
         % Return as the boxed rval the address of that constant,
         % cast to mlds_generic_type.
-        % ml_gen_var_lval(!.Info, ConstName, Type, ConstLval),
-
         module_info_get_name(ModuleInfo, ModuleName),
         MLDS_Module = mercury_module_name_to_mlds(ModuleName),
         MLDS_ConstVar = qual(MLDS_Module, module_qual, ConstName),
@@ -2135,7 +2138,13 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         (
             Args = [Arg],
             svmap.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
-            svmap.det_insert(Var, ArgGroundTerm, !GroundTermMap)
+            ArgGroundTerm = ml_ground_term(ArgRval, ArgType),
+            MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+            ml_gen_box_const_rval(ModuleInfo, MLDS_ArgType,
+                ArgRval, Context, Rval0, !GlobalData),
+            Rval = ml_unop(cast(MLDS_Type), Rval0),
+            GroundTerm = ml_ground_term(Rval, VarType),
+            svmap.det_insert(Var, GroundTerm, !GroundTermMap)
         ;
             ( Args = []
             ; Args = [_, _ | _]
