@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2003, 2005-2008 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2003, 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: psuedo_type_info.m.
+% File: pseudo_type_info.m.
 % Authors: trd, zs.
 
 % This module generates representations for pseudo-type-infos.
