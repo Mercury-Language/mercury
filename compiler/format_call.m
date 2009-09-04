@@ -1148,6 +1148,34 @@ create_string_format_replacement(ModuleInfo, FormatStringChars, ResultVar,
         term.context_init, GoalInfo),
     conj_list_to_goal(AllGoals, GoalInfo, Goal).
 
+% For optimizing e.g. io.format("%d_%d", [i(X), i(Y), !IO), this diff currently
+% generates
+% 
+%         V1 = int_to_string(X),
+%         V2 = "_"
+%         V3 = V2 ++ V1
+%         V4 = int_to_string(Y),
+%         V5 = V4 ++ V3
+%         io.write_string(V5, !IO)
+% 
+% It could instead generate
+% 
+%         V1 = int_to_string(X),
+%         io.write_string(V1, !IO),
+%         V2 = "_"
+%         io.write_string(V2, !IO),
+%         V3 = int_to_string(Y),
+%         io.write_string(V3, !IO)
+%
+% The latter avoid allocating memory for the results of concatenation,
+% but those concatenations could be done at compile-time is the values
+% of X and Y were known statically. The latter also retrieves the current
+% stream more than once, but this could be factored out, and is in any case
+% not an issue for io.format/5.
+%
+% For the time being, we always generate the first form. Later, we could
+% try to switch to the second form in cases where this seems profitable.
+
 :- pred create_io_format_replacement(module_info::in, list(char)::in,
     maybe(prog_var)::in, prog_var::in, prog_var::in, list(prog_var)::in,
     hlds_goal::out,
