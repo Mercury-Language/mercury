@@ -280,6 +280,20 @@
 :- mode tree234.map_foldl2(pred(in, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out) is semidet.
 
+:- pred tree234.map_foldl3(pred(K, V, W, A, A, B, B, C, C),
+    tree234(K, V), tree234(K, W), A, A, B, B, C, C).
+:- mode tree234.map_foldl3(pred(in, in, out, di, uo, di, uo, di, uo) is det,
+    in, out, di, uo, di, uo, di, uo) is det.
+:- mode tree234.map_foldl3(pred(in, in, out, in, out, di, uo, di, uo) is det,
+    in, out, in, out, di, uo, di, uo) is det.
+:- mode tree234.map_foldl3(pred(in, in, out, in, out, in, out, di, uo) is det,
+    in, out, in, out, in, out, di, uo) is det.
+:- mode tree234.map_foldl3(pred(in, in, out, in, out, in, out, in, out) is det,
+    in, out, in, out, in, out, in, out) is det.
+:- mode tree234.map_foldl3(pred(in, in, out, in, out, in, out, in, out)
+    is semidet,
+    in, out, in, out, in, out, in, out) is semidet.
+
     % Convert a tree234 into a pretty_printer.doc.  A tree mapping
     % K1 to V1, K2 to V2, ... is formatted as
     % "map([K1 -> V1, K2 -> V2, ...])".  The functor "map" is used
@@ -2816,6 +2830,32 @@ tree234.map_foldl2(Pred, Tree0, Tree, !A, !B) :-
     tree234.map_foldl2(Pred, RMid0, RMid, !A, !B),
     Pred(K2, V2, W2, !A, !B),
     tree234.map_foldl2(Pred, Right0, Right, !A, !B),
+    Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
+
+tree234.map_foldl3(_Pred, empty, empty, !A, !B, !C).
+tree234.map_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
+    Tree0 = two(K0, V0, Left0, Right0),
+    tree234.map_foldl3(Pred, Left0, Left, !A, !B, !C),
+    Pred(K0, V0, W0, !A, !B, !C),
+    tree234.map_foldl3(Pred, Right0, Right, !A, !B, !C),
+    Tree = two(K0, W0, Left, Right).
+tree234.map_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
+    Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+    tree234.map_foldl3(Pred, Left0, Left, !A, !B, !C),
+    Pred(K0, V0, W0, !A, !B, !C),
+    tree234.map_foldl3(Pred, Middle0, Middle, !A, !B, !C),
+    Pred(K1, V1, W1, !A, !B, !C),
+    tree234.map_foldl3(Pred, Right0, Right, !A, !B, !C),
+    Tree = three(K0, W0, K1, W1, Left, Middle, Right).
+tree234.map_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+    tree234.map_foldl3(Pred, Left0, Left, !A, !B, !C),
+    Pred(K0, V0, W0, !A, !B, !C),
+    tree234.map_foldl3(Pred, LMid0, LMid, !A, !B, !C),
+    Pred(K1, V1, W1, !A, !B, !C),
+    tree234.map_foldl3(Pred, RMid0, RMid, !A, !B, !C),
+    Pred(K2, V2, W2, !A, !B, !C),
+    tree234.map_foldl3(Pred, Right0, Right, !A, !B, !C),
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
 %------------------------------------------------------------------------------%

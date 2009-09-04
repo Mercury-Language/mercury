@@ -57,7 +57,8 @@ Changes to the Mercury standard library:
   deprecated.
 
 * The foldr family of functions and predicates has been added to the map
-  and tree234 modules.
+  and tree234 modules. We have also extended the arities for map_foldl
+  to map_foldl3 in both modules.
 
 * The following functions have been added to the integer module:
 	integer.from_base_string/2

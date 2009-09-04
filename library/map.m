@@ -457,6 +457,21 @@
 :- mode map.map_foldl2(pred(in, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out) is semidet.
 
+    % As map.map_foldl, but with three accumulators.
+    %
+:- pred map.map_foldl3(pred(K, V, W, A, A, B, B, C, C), map(K, V), map(K, W),
+    A, A, B, B, C, C).
+:- mode map.map_foldl3(pred(in, in, out, di, uo, di, uo, di, uo) is det,
+    in, out, di, uo, di, uo, di, uo) is det.
+:- mode map.map_foldl3(pred(in, in, out, in, out, di, uo, di, uo) is det,
+    in, out, in, out, di, uo, di, uo) is det.
+:- mode map.map_foldl3(pred(in, in, out, in, out, in, out, di, uo) is det,
+    in, out, in, out, in, out, di, uo) is det.
+:- mode map.map_foldl3(pred(in, in, out, in, out, in, out, in, out) is det,
+    in, out, in, out, in, out, in, out) is det.
+:- mode map.map_foldl3(pred(in, in, out, in, out, in, out, in, out) is semidet,
+    in, out, in, out, in, out, in, out) is semidet.
+
     % Given two maps M1 and M2, create a third map M3 that has only the
     % keys that occur in both M1 and M2. For keys that occur in both M1
     % and M2, compute the value in the final map by applying the supplied
@@ -924,6 +939,9 @@ map.map_foldl(Pred, !Map, !Acc) :-
 
 map.map_foldl2(Pred, !Map, !Acc1, !Acc2) :-
     tree234.map_foldl2(Pred, !Map, !Acc1, !Acc2).
+
+map.map_foldl3(Pred, !Map, !Acc1, !Acc2, !Acc3) :-
+    tree234.map_foldl3(Pred, !Map, !Acc1, !Acc2, !Acc3).
 
 %-----------------------------------------------------------------------------%
 
