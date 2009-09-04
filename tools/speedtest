@@ -4,7 +4,9 @@
 
 usage="Usage: speedtest [-c cmd] [-dns] batchname"
 limit=6
-cmd="mmc -C -O2 --grade asm_fast.gc llds_out.m typecheck.m mercury_compile.m modules.m code_info.m polymorphism.m"
+cmd_llds="mmc -C -O2 --grade asm_fast.gc llds_out.m typecheck.m mercury_compile.m modules.m code_info.m polymorphism.m"
+cmd_mlds="mmc -C -O2 --grade hlc.gc llds_out.m typecheck.m mercury_compile.m modules.m code_info.m polymorphism.m"
+cmd="$cmd_llds"
 debug=false
 table_io=false
 size=false
@@ -22,6 +24,9 @@ do
 
 	-d)
 		debug=true ;;
+
+	-h)
+		cmd="$cmd_mlds" ;;
 
 	-t)
 		table_io=true ;;
