@@ -116,7 +116,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
     ;
         ConsId = cons(_Name, _Arity, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map.lookup(TypeTable, TypeCtor, TypeDefn),
+        lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
             TypeBody = hlds_du_type(_, ConsTagTable, _, _, _, _, _, _),

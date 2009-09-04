@@ -393,7 +393,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
             type_to_ctor_and_args(Type, TypeCtor, _),
             ModuleInfo = IntParams ^ ip_module_info,
             module_info_get_type_table(ModuleInfo, TypeTable),
-            map.lookup(TypeTable, TypeCtor, TypeDefn),
+            lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             ConsTable = TypeBody ^ du_type_cons_tag_values
         ->

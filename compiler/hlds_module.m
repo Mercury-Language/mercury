@@ -894,7 +894,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     predicate_table_init(PredicateTable),
     unify_proc.init_requests(Requests),
     map.init(UnifyPredMap),
-    map.init(Types),
+    TypeTable = init_type_table,
     inst_table_init(Insts),
     mode_table_init(Modes),
     map.init(Ctors),
@@ -905,7 +905,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     map.init(FieldNameTable),
 
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
-        UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
+        UnifyPredMap, QualifierInfo, TypeTable, Insts, Modes, Ctors,
         ClassTable, InstanceTable, AssertionTable, ExclusiveTable,
         FieldNameTable, RecompInfo).
 
@@ -1299,9 +1299,7 @@ module_info_optimize(!ModuleInfo) :-
     predicate_table_optimize(Preds0, Preds),
     module_info_set_predicate_table(Preds, !ModuleInfo),
 
-    module_info_get_type_table(!.ModuleInfo, Types0),
-    map.optimize(Types0, Types),
-    module_info_set_type_table(Types, !ModuleInfo),
+    % We could optimize the type table, but now that would a no-op.
 
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_user_insts(InstTable0, Insts0),

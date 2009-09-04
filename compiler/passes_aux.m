@@ -160,6 +160,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
@@ -380,21 +381,15 @@ maybe_report_sizes(HLDS, !IO) :-
 :- pred report_sizes(module_info::in, io::di, io::uo) is det.
 
 report_sizes(ModuleInfo, !IO) :-
-    module_info_preds(ModuleInfo, Preds),
-    tree_stats("Pred table", Preds, !IO),
-    module_info_get_type_table(ModuleInfo, Types),
-    tree_stats("Type table", Types, !IO),
-    module_info_get_cons_table(ModuleInfo, Ctors),
-    tree_stats("Constructor table", Ctors, !IO).
+    module_info_preds(ModuleInfo, PredTable),
+    io.format("Pred table size = %d\n", [i(map.count(PredTable))], !IO),
 
-:- pred tree_stats(string::in, map(_K, _V)::in, io::di, io::uo) is det.
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    get_all_type_ctor_defns(TypeTable, TypeCtorDefns),
+    io.format("Type table size = %d\n", [i(list.length(TypeCtorDefns))], !IO),
 
-tree_stats(Description, Tree, !IO) :-
-    map.count(Tree, Count),
-    io.write_string(Description, !IO),
-    io.write_string(": count = ", !IO),
-    io.write_int(Count, !IO),
-    io.write_string("\n", !IO).
+    module_info_get_cons_table(ModuleInfo, CtorTable),
+    io.format("Constructor table size = %d\n", [i(map.count(CtorTable))], !IO).
 
 %-----------------------------------------------------------------------------%
 

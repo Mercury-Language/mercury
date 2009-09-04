@@ -502,7 +502,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
         Min = 0,
         type_to_ctor_det(Type, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map.lookup(TypeTable, TypeCtor, TypeDefn),
+        lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
             TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _),
@@ -643,7 +643,7 @@ next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
 get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
     type_to_ctor_det(Type, TypeCtor),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map.lookup(TypeTable, TypeCtor, TypeDefn),
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
         TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _),

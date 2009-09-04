@@ -86,17 +86,15 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
     list.length(Args, Arity),
     TypeCtor = type_ctor(Name, Arity),
     convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
-    module_info_get_type_table(!.ModuleInfo, Types0),
     (
         (
             Body0 = hlds_abstract_type(_)
         ;
             Body0 = hlds_du_type(_, _, _, _, _, _, _, _),
             string.suffix(term.context_file(Context), ".int2")
-            % If the type definition comes from a .int2 file then
-            % we need to treat it as abstract.  The constructors
-            % may only be used by the mode system for comparing
-            % `bound' insts to `ground'.
+            % If the type definition comes from a .int2 file then we must
+            % treat it as abstract. The constructors may only be used
+            % by the mode system for comparing `bound' insts to `ground'.
         )
     ->
         make_status_abstract(Status0, Status1)
@@ -107,7 +105,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         % Discriminated unions whose definition consists of a single
         % zero-arity constructor are dummy types. Dummy types are not allowed
         % to have user-defined equality or comparison.
-        %
+
         TypeDefn = parse_tree_du_type(Ctors, MaybeUserUC),
         Ctors = [Constructor],
         list.length(Constructor ^ cons_args, 0),
@@ -115,17 +113,13 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         % Only report errors for types defined in this module.
         status_defined_in_this_module(Status0) = yes
     ->
-        DummyMainPieces = [
-            words("Error: the type"),
+        DummyMainPieces = [words("Error: the type"),
             sym_name_and_arity(Name / Arity),
             words("is not allowed to have user-defined equality"),
-            words("or comparison.")
-        ],
-        DummyVerbosePieces = [
-            words("Discriminated unions whose body consists of a single"),
-            words("zero-arity constructor cannot have user-defined"),
-            words("equality or comparison.")
-        ],
+            words("or comparison.")],
+        DummyVerbosePieces = [words("Discriminated unions whose body"),
+            words("consists of a single zero-arity constructor"),
+            words("cannot have user-defined equality or comparison.")],
         DummyMsg = simple_msg(Context,
             [always(DummyMainPieces), verbose_only(DummyVerbosePieces)]),
         DummySpec = error_spec(severity_error, phase_parse_tree_to_hlds,
@@ -134,10 +128,11 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
     ;
         true
     ),
+    module_info_get_type_table(!.ModuleInfo, TypeTable0),
     (
         % The type is exported if *any* occurrence is exported,
         % even a previous abstract occurrence.
-        map.search(Types0, TypeCtor, OldDefn0)
+        search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn0)
     ->
         hlds_data.get_type_defn_status(OldDefn0, OldStatus),
         combine_status(Status1, OldStatus, Status),
@@ -169,15 +164,14 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
     % kind system.
     map.init(KindMap),
     hlds_data.set_type_defn(TVarSet, Args, KindMap, Body, Status, no,
-        NeedQual, Context, T),
+        NeedQual, Context, TypeDefn1),
     (
         MaybeOldDefn = no,
         Body = hlds_foreign_type(_)
     ->
-        ForeignDeclPieces = [
-            words("Error: type "), sym_name_and_arity(Name / Arity),
-            words("defined as foreign_type without being declared.")
-        ],
+        ForeignDeclPieces = [words("Error: type "),
+            sym_name_and_arity(Name / Arity),
+            words("defined as foreign_type without being declared.")],
         ForeignDeclMsg = simple_msg(Context, [always(ForeignDeclPieces)]),
         ForeignDeclSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [ForeignDeclMsg]),
@@ -191,26 +185,24 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         status_is_exported_to_non_submodules(OldStatus1) = no,
         status_is_exported_to_non_submodules(Status0) = yes
     ->
-        ForeignVisPieces = [
-            words("Error: pragma foreign_type "),
+        ForeignVisPieces = [words("Error: pragma foreign_type "),
             sym_name_and_arity(Name / Arity),
-            words("must have the same visibility as the type declaration.")
-        ],
+            words("must have the same visibility as the type declaration.")],
         ForeignVisMsg = simple_msg(Context, [always(ForeignVisPieces)]),
         ForeignVisSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [ForeignVisMsg]),
         !:Specs = [ForeignVisSpec | !.Specs]
     ;
         % If there was an existing non-abstract definition for the type, ...
-        MaybeOldDefn = yes(T2),
-        hlds_data.get_type_defn_tvarset(T2, TVarSet_2),
-        hlds_data.get_type_defn_tparams(T2, Params_2),
-        hlds_data.get_type_defn_kind_map(T2, KindMap_2),
-        hlds_data.get_type_defn_body(T2, Body_2),
-        hlds_data.get_type_defn_context(T2, OrigContext),
-        hlds_data.get_type_defn_status(T2, OrigStatus),
-        hlds_data.get_type_defn_in_exported_eqv(T2, OrigInExportedEqv),
-        hlds_data.get_type_defn_need_qualifier(T2, OrigNeedQual),
+        MaybeOldDefn = yes(OldDefn2),
+        hlds_data.get_type_defn_tvarset(OldDefn2, TVarSet_2),
+        hlds_data.get_type_defn_tparams(OldDefn2, Params_2),
+        hlds_data.get_type_defn_kind_map(OldDefn2, KindMap_2),
+        hlds_data.get_type_defn_body(OldDefn2, Body_2),
+        hlds_data.get_type_defn_context(OldDefn2, OrigContext),
+        hlds_data.get_type_defn_status(OldDefn2, OrigStatus),
+        hlds_data.get_type_defn_in_exported_eqv(OldDefn2, OrigInExportedEqv),
+        hlds_data.get_type_defn_need_qualifier(OldDefn2, OrigNeedQual),
         Body_2 \= hlds_abstract_type(_)
     ->
         globals.get_target(Globals, Target),
@@ -231,9 +223,10 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             ;
                 hlds_data.set_type_defn(TVarSet_2, Params_2, KindMap_2,
                     Body_2, Status, OrigInExportedEqv, OrigNeedQual,
-                    OrigContext, T3),
-                map.det_update(Types0, TypeCtor, T3, Types),
-                module_info_set_type_table(Types, !ModuleInfo)
+                    OrigContext, TypeDefn3),
+                replace_type_ctor_defn(TypeCtor, TypeDefn3,
+                    TypeTable0, TypeTable),
+                module_info_set_type_table(TypeTable, !ModuleInfo)
             )
         ;
             merge_foreign_type_bodies(Target, MakeOptInt, Body, Body_2,
@@ -241,9 +234,11 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         ->
             ( check_foreign_type_visibility(OrigStatus, Status1) ->
                 hlds_data.set_type_defn(TVarSet_2, Params_2, KindMap_2,
-                    NewBody, Status, OrigInExportedEqv, NeedQual, Context, T3),
-                map.det_update(Types0, TypeCtor, T3, Types),
-                module_info_set_type_table(Types, !ModuleInfo)
+                    NewBody, Status, OrigInExportedEqv, NeedQual, Context,
+                    TypeDefn3),
+                replace_type_ctor_defn(TypeCtor, TypeDefn3,
+                    TypeTable0, TypeTable),
+                module_info_set_type_table(TypeTable, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
                 DiffVisPieces = [words("In definition of type"),
@@ -267,8 +262,9 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 OrigContext, [], !Specs)
         )
     ;
-        map.set(Types0, TypeCtor, T, Types),
-        module_info_set_type_table(Types, !ModuleInfo),
+        add_or_replace_type_ctor_defn(TypeCtor, TypeDefn1,
+            TypeTable0, TypeTable),
+        module_info_set_type_table(TypeTable, !ModuleInfo),
         (
             % XXX We can't handle abstract exported polymorphic equivalence
             % types with monomorphic bodies, because the compiler stuffs up

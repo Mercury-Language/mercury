@@ -887,17 +887,18 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 
     % For every foreign type determine the import needed to find
     % the declaration for that type.
-    module_info_get_type_table(ModuleInfo, Types),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
     ForeignTypeImports = list.condense(
-        list.map(foreign_type_required_imports(Target), map.values(Types))),
+        list.map(foreign_type_required_imports(Target), TypeCtorsDefns)),
 
     MLDS_ImportList = ForeignTypeImports ++
         list.map(P, set.to_sorted_list(AllImports)).
 
-:- func foreign_type_required_imports(compilation_target, hlds_type_defn)
-    = list(mlds_import).
+:- func foreign_type_required_imports(compilation_target,
+    pair(type_ctor, hlds_type_defn)) = list(mlds_import).
 
-foreign_type_required_imports(Target, TypeDefn) = Imports :-
+foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
     (
         ( Target = target_c
         ; Target = target_java

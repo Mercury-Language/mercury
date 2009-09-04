@@ -196,8 +196,8 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
         ; CtorCat = ctor_cat_enum(_)
         ; is_introduced_type_info_type_category(CtorCat) = yes
         ),
-        module_info_get_type_table(ModuleInfo, Types),
-        map.search(Types, TypeCtor, TypeDefn),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, Body),
         hlds_data.get_type_defn_status(TypeDefn, Status),
         special_pred_is_generated_lazily_2(ModuleInfo, TypeCtor, Body, Status)

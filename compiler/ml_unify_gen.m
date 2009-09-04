@@ -1916,7 +1916,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
     % "tag_type" that is derived from the base class for this type,
     % rather than in the base class itself.
     module_info_get_type_table(ModuleInfo, TypeTable),
-    TypeDefn = map.lookup(TypeTable, TypeCtor),
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     (
         TypeDefnBody =

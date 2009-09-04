@@ -862,7 +862,7 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
         type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
         TypeCtor = type_ctor(qualified(TypeModule, _), _),
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map.search(TypeTable, TypeCtor, TypeDefn),
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         Constructors = TypeBody ^ du_type_ctors

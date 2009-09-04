@@ -749,6 +749,8 @@ get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 
 %-----------------------------------------------------------------------------%
 
+    % Every element of this list must be reflected in the code of
+    % builtin_type_ctor in type_ctor_info.m.
 builtin_type_ctors_with_no_hlds_type_defn =
     [ type_ctor(qualified(mercury_public_builtin_module, "int"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "string"), 0),

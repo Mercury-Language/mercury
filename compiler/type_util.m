@@ -402,7 +402,7 @@ type_ctor_category_is_atomic(CtorCat) = IsAtomic :-
 type_to_type_defn(ModuleInfo, Type, TypeDefn) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
-    map.search(TypeTable, TypeCtor, TypeDefn).
+    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
 
 type_to_type_defn_body(ModuleInfo, Type, TypeBody) :-
     type_to_type_defn(ModuleInfo, Type, TypeDefn),
@@ -629,7 +629,7 @@ check_dummy_type_2(ModuleInfo, Type, CoveredTypes) = IsDummy :-
             module_info_get_type_table(ModuleInfo, TypeTable),
             % This can fail for some builtin type constructors such as func,
             % pred, and tuple, none of which are dummy types.
-            ( map.search(TypeTable, TypeCtor, TypeDefn) ->
+            ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)->
                 get_type_defn_body(TypeDefn, TypeBody),
                 (
                     TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _),
@@ -764,8 +764,8 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
     ->
         TypeCategory = ctor_cat_tuple
     ;
-        module_info_get_type_table(ModuleInfo, TypeDefnTable),
-        map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
             TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _),
@@ -858,7 +858,7 @@ type_constructors(ModuleInfo, Type, Constructors) :-
             CtorArgs, Context)]
     ;
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map.search(TypeTable, TypeCtor, TypeDefn),
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         substitute_type_args(TypeParams, TypeArgs, TypeBody ^ du_type_ctors,
@@ -920,7 +920,7 @@ switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
         NumFunctors = 1
     ;
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map.search(TypeTable, TypeCtor, TypeDefn),
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         map.count(TypeBody ^ du_type_cons_tag_values, NumFunctors)
     ).
@@ -987,8 +987,8 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
 
 cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     type_to_ctor_and_args(VarType, TypeCtor, TypeArgs),
-    module_info_get_type_table(ModuleInfo, Types),
-    map.search(Types, TypeCtor, TypeDefn),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     map.member(TypeDefnBody ^ du_type_cons_tag_values, ConsId, _),
 

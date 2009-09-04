@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -112,17 +112,16 @@ warn_non_term_user_special_preds(ModuleInfo, !IO) :-
 
 warn_non_term_user_special_pred(ModuleInfo, TypeTable,
         SpecialPredId - TypeCtor, PredId, !IO) :-
-    %
-    % index predicates cannot be defined by the user and should
-    % always terminate by design.  Do not perform this
-    % check for builtin types that don't have hlds_type_defns.
-    %
+    % Index predicates cannot be defined by the user and should always
+    % terminate by design. Do not perform this check for builtin types
+    % that don't have hlds_type_defns.
+
     BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
     (
         SpecialPredId \= spec_pred_index,
         not list.member(TypeCtor, BuiltinTypeCtors)
     ->
-        map.lookup(TypeTable, TypeCtor, TypeDefn),
+        lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_status(TypeDefn, ImportStatus),
         DefinedThisModule = status_defined_in_this_module(ImportStatus),
         (

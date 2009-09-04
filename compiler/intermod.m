@@ -1027,8 +1027,8 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
 
 gather_types(!Info) :-
     intermod_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_type_table(ModuleInfo, Types),
-    map.foldl(gather_types_2, Types, !Info).
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    foldl_over_type_ctor_defns(gather_types_2, TypeTable, !Info).
 
 :- pred gather_types_2(type_ctor::in, hlds_type_defn::in,
     intermod_info::in, intermod_info::out) is det.
@@ -1247,9 +1247,10 @@ write_intermod_info(IntermodInfo, !IO) :-
         set.empty(Preds),
         set.empty(PredDecls),
         Instances = [],
-        module_info_get_type_table(ModuleInfo, Types),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
         \+ (
-            map.member(Types, _, TypeDefn),
+            list.member(_TypeCtor - TypeDefn, TypeCtorsDefns),
             hlds_data.get_type_defn_status(TypeDefn, Status),
             ( Status = status_abstract_exported
             ; Status = status_exported_to_submodules
@@ -2155,17 +2156,16 @@ do_adjust_pred_import_status(Info, !ModuleInfo) :-
 :- pred adjust_type_status(module_info::in, module_info::out) is det.
 
 adjust_type_status(!ModuleInfo) :-
-    module_info_get_type_table(!.ModuleInfo, Types0),
-    map.to_assoc_list(Types0, TypesAL0),
-    list.map_foldl(adjust_type_status_2, TypesAL0, TypesAL, !ModuleInfo),
-    map.from_sorted_assoc_list(TypesAL, Types),
-    module_info_set_type_table(Types, !ModuleInfo).
+    module_info_get_type_table(!.ModuleInfo, TypeTable0),
+    map_foldl_over_type_ctor_defns(adjust_type_status_2, TypeTable0, TypeTable,
+        !ModuleInfo),
+    module_info_set_type_table(TypeTable, !ModuleInfo).
 
-:- pred adjust_type_status_2(pair(type_ctor, hlds_type_defn)::in,
-    pair(type_ctor, hlds_type_defn)::out,
+:- pred adjust_type_status_2(type_ctor::in,
+    hlds_type_defn::in, hlds_type_defn::out,
     module_info::in, module_info::out) is det.
 
-adjust_type_status_2(TypeCtor - TypeDefn0, TypeCtor - TypeDefn, !ModuleInfo) :-
+adjust_type_status_2(TypeCtor, TypeDefn0, TypeDefn, !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ( should_write_type(ModuleName, TypeCtor, TypeDefn0) ->
         hlds_data.set_type_defn_status(status_exported, TypeDefn0, TypeDefn),

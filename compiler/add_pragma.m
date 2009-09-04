@@ -564,12 +564,12 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
 add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
         !Specs) :-
     TypeCtor = type_ctor(TypeName, TypeArity),
-    module_info_get_type_table(!.ModuleInfo, Types0),
+    module_info_get_type_table(!.ModuleInfo, TypeTable0),
     ContextPieces = [
         words("In"), quote("pragma reserve_tag"), words("declaration for"),
         sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl
     ],
-    ( map.search(Types0, TypeCtor, TypeDefn0) ->
+    ( search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0) ->
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         hlds_data.get_type_defn_status(TypeDefn0, TypeStatus),
         (
@@ -620,8 +620,9 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
                     EnumDummy, MaybeUserEqComp, ReservedTag, ReservedAddr,
                     IsForeign),
                 hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
-                map.set(Types0, TypeCtor, TypeDefn, Types),
-                module_info_set_type_table(Types, !ModuleInfo)
+                replace_type_ctor_defn(TypeCtor, TypeDefn,
+                    TypeTable0, TypeTable),
+                module_info_set_type_table(TypeTable, !ModuleInfo)
             ;
                 ( TypeBody0 = hlds_eqv_type(_)
                 ; TypeBody0 = hlds_foreign_type(_)
@@ -662,7 +663,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
 add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
         Overrides, _ImportStatus, Context, !ModuleInfo, !Specs) :-
     TypeCtor = type_ctor(TypeName, TypeArity),
-    module_info_get_type_table(!.ModuleInfo, TypeDefnTable),
+    module_info_get_type_table(!.ModuleInfo, TypeTable),
     ContextPieces = [
         words("In"), fixed("`pragma foreign_export_enum'"),
         words("declaration for"),
@@ -686,7 +687,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
             suffix(".")
         ]
     ;
-        ( map.search(TypeDefnTable, TypeCtor, TypeDefn) ->
+        ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) ->
             get_type_defn_body(TypeDefn, TypeBody),
             (
                 ( TypeBody = hlds_eqv_type(_)
@@ -1039,13 +1040,12 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
         )
     ->
         MaybeSeverity = yes(severity_error),
-        ErrorPieces = [
-            words("error: "),
+        ErrorPieces = [words("error: "),
             sym_name_and_arity(TypeName / TypeArity),
-            words("is an atomic type"),
-            suffix(".")
-        ]
-    ; map.search(TypeTable0, TypeCtor, TypeDefn0) ->
+            words("is an atomic type"), suffix(".")]
+    ;
+        search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0)
+    ->
         get_type_defn_body(TypeDefn0, TypeBody0),
         (
             ( TypeBody0 = hlds_eqv_type(_)
@@ -1054,12 +1054,9 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
             ; TypeBody0 = hlds_foreign_type(_)
             ),
             MaybeSeverity = yes(severity_error),
-            ErrorPieces = [
-                words("error: "),
+            ErrorPieces = [words("error: "),
                 sym_name_and_arity(TypeName / TypeArity),
-                words("is not an enumeration type"),
-                suffix(".")
-            ]
+                words("is not an enumeration type"), suffix(".")]
         ;
             TypeBody0 = hlds_du_type(Ctors, OldTagValues, CheaperTagTest,
                 DuTypeKind0, MaybeUserEq, ReservedTag, ReservedAddr,
@@ -1109,8 +1106,8 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                                 CheaperTagTest, DuTypeKind, MaybeUserEq,
                                 ReservedTag, ReservedAddr, IsForeignType),
                             set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
-                            svmap.set(TypeCtor, TypeDefn, TypeTable0,
-                                TypeTable),
+                            replace_type_ctor_defn(TypeCtor, TypeDefn,
+                                TypeTable0, TypeTable),
                             module_info_set_type_table(TypeTable, !ModuleInfo)
                         ;
                             UnmappedCtors = [_ | _],
@@ -1133,11 +1130,9 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                     ErrorPieces = []
                 ;
                     MaybeSeverity = yes(severity_error),
-                    ErrorPieces = [
-                        words("error: "),
+                    ErrorPieces = [words("error: "),
                         sym_name_and_arity(TypeName / TypeArity),
-                        words("is not defined in this module.")
-                    ]
+                        words("is not defined in this module.")]
                 )
             ;
                 DuTypeKind0 = du_type_kind_foreign_enum(_),
@@ -1146,23 +1141,18 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                      ErrorPieces = []
                 ;
                      MaybeSeverity = yes(severity_error),
-                     ErrorPieces = [
-                        words("error: "),
+                     ErrorPieces = [words("error: "),
                         sym_name_and_arity(TypeName / TypeArity),
-                        words("has multiple foreign_enum pragmas.")
-                    ]
+                        words("has multiple foreign_enum pragmas.")]
                 )
             ;
                 ( DuTypeKind0 = du_type_kind_general
                 ; DuTypeKind0 = du_type_kind_notag(_, _, _)
                 ),
                 MaybeSeverity = yes(severity_error),
-                ErrorPieces = [
-                    words("error: "),
+                ErrorPieces = [words("error: "),
                     sym_name_and_arity(TypeName / TypeArity),
-                    words("is not an enumeration type"),
-                    suffix(".")
-                ]
+                    words("is not an enumeration type"), suffix(".")]
             )
         )
     ;

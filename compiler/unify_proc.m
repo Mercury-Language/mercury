@@ -273,7 +273,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
             search_mode_num(!.ModuleInfo, TypeCtor, UnifyMode, Determinism, _)
         ;
             module_info_get_type_table(!.ModuleInfo, TypeTable),
-            map.search(TypeTable, TypeCtor, TypeDefn),
+            search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             (
                 TypeCtor = type_ctor(TypeName, _TypeArity),
@@ -497,8 +497,8 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
     tvarset::out, hlds_type_body::out, prog_context::out) is det.
 
 collect_type_defn(ModuleInfo, TypeCtor, Type, TVarSet, TypeBody, Context) :-
-    module_info_get_type_table(ModuleInfo, Types),
-    map.lookup(Types, TypeCtor, TypeDefn),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
     hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     hlds_data.get_type_defn_kind_map(TypeDefn, KindMap),

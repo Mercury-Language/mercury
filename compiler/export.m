@@ -820,7 +820,7 @@ output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
     ExportedEnumInfo = exported_enum_info(_Lang, Context, TypeCtor,
         NameMapping),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map.lookup(TypeTable, TypeCtor, TypeDefn),
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
     (
         ( TypeBody = hlds_eqv_type(_)

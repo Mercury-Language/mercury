@@ -1451,7 +1451,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         % If the search fails, then TypeCtor must be a builtin type
         % constructor, such as the tuple constructor.
-        map.search(TypeTable, TypeCtor, TypeDefn),
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_in_exported_eqv(TypeDefn, yes),
         (
             SpecialId = spec_pred_unify,

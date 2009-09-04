@@ -151,7 +151,8 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, Decls, Statements,
             % reserved addresses.
             % The search will fail for builtin types.
             module_info_get_type_table(ModuleInfo, TypeTable),
-            map.search(TypeTable, SwitchVarTypeCtor, SwitchVarTypeDefn),
+            search_type_ctor_defn(TypeTable, SwitchVarTypeCtor,
+                SwitchVarTypeDefn),
             hlds_data.get_type_defn_body(SwitchVarTypeDefn, SwitchVarTypeBody),
             SwitchVarTypeBody ^ du_type_reserved_addr = uses_reserved_address
         )

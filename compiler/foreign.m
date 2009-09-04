@@ -539,10 +539,10 @@ have_foreign_type_for_backend(target_x86_64, ForeignTypeBody, Result) :-
 non_foreign_type(Type) = exported_type_mercury(Type).
 
 to_exported_type(ModuleInfo, Type) = ExportType :-
-    module_info_get_type_table(ModuleInfo, Types),
+    module_info_get_type_table(ModuleInfo, TypeTable),
     (
-        type_to_ctor_and_args(Type, TypeCtor, _),
-        map.search(Types, TypeCtor, TypeDefn)
+        type_to_ctor(Type, TypeCtor),
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)
     ->
         hlds_data.get_type_defn_body(TypeDefn, Body),
         (

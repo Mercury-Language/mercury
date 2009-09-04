@@ -127,43 +127,43 @@
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_types(ModuleInfo, MLDS_TypeDefns) :-
+ml_gen_types(ModuleInfo, Defns) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     globals.get_target(Globals, Target),
     (
         HighLevelData = yes,
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map.keys(TypeTable, TypeCtors0),
-        list.filter((pred(TypeCtor::in) is semidet :-
+        get_all_type_ctor_defns(TypeTable, TypeCtorsDefns0),
+        list.filter(
+            (pred(TypeCtorDefn::in) is semidet :-
+                TypeCtorDefn = TypeCtor - _TypeDefn,
                 \+ type_ctor_needs_lowlevel_rep(Target, TypeCtor)
-            ), TypeCtors0, TypeCtors),
-        list.foldl(ml_gen_type_defn(ModuleInfo, TypeTable), TypeCtors,
-            [], MLDS_TypeDefns)
+            ), TypeCtorsDefns0, TypeCtorDefns),
+        list.foldl(ml_gen_type_defn(ModuleInfo), TypeCtorDefns, [], Defns)
     ;
         HighLevelData = no,
-        MLDS_TypeDefns = []
+        Defns = []
     ).
 
-:- pred ml_gen_type_defn(module_info::in, type_table::in, type_ctor::in,
+:- pred ml_gen_type_defn(module_info::in, pair(type_ctor, hlds_type_defn)::in,
     list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
-ml_gen_type_defn(ModuleInfo, TypeTable, TypeCtor, !Defns) :-
-    map.lookup(TypeTable, TypeCtor, TypeDefn),
+ml_gen_type_defn(ModuleInfo, TypeCtor - TypeDefn, !Defns) :-
     hlds_data.get_type_defn_status(TypeDefn, Status),
     DefinedThisModule = status_defined_in_this_module(Status),
     (
         DefinedThisModule = yes,
-        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        ml_gen_type_2(ModuleInfo, TypeCtor, TypeDefn, TypeBody, !Defns)
+        ml_gen_type_defn_2(ModuleInfo, TypeCtor, TypeDefn, !Defns)
     ;
         DefinedThisModule = no
     ).
 
-:- pred ml_gen_type_2(module_info::in, type_ctor::in, hlds_type_defn::in,
-    hlds_type_body::in, list(mlds_defn)::in, list(mlds_defn)::out) is det.
+:- pred ml_gen_type_defn_2(module_info::in, type_ctor::in, hlds_type_defn::in,
+    list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
-ml_gen_type_2(ModuleInfo, TypeCtor, TypeDefn, TypeBody, !Defns) :-
+ml_gen_type_defn_2(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
         TypeBody = hlds_abstract_type(_)
     ;
@@ -1183,7 +1183,7 @@ ml_gen_exported_enums(ModuleInfo, MLDS_ExportedEnums) :-
 ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
         MLDS_ExportedEnum) :-
     ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor, Mapping),
-    map.lookup(TypeTable, TypeCtor, TypeDefn),
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
     (
         ( TypeBody = hlds_eqv_type(_)

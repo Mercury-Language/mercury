@@ -781,8 +781,8 @@ in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
         map.lookup(VarTypes, Var, Type),
         type_to_ctor_det(Type, TypeCtor),
-        module_info_get_type_table(ModuleInfo, Types),
-        map.lookup(Types, TypeCtor, TypeDefn),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_status(TypeDefn, TypeStatus),
         DefinedInImpl = status_defined_in_impl_section(TypeStatus),
         (
@@ -1242,8 +1242,8 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
         ConsArgs, _),
     ConsTypeCtor = TypeCtor,
 
-    module_info_get_type_table(ModuleInfo, Types),
-    map.search(Types, TypeCtor, TypeDefn),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_tvarset(TypeDefn, TypeTVarSet),
     hlds_data.get_type_defn_kind_map(TypeDefn, TypeKindMap),
 
@@ -1520,8 +1520,8 @@ split_list_at_index(Index, List, Before, At, After) :-
 get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId, FieldNumber) :-
     type_to_ctor_det(TermType, TermTypeCtor),
-    module_info_get_type_table(ModuleInfo, Types),
-    map.lookup(Types, TermTypeCtor, TermTypeDefn),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    lookup_type_ctor_defn(TypeTable, TermTypeCtor, TermTypeDefn),
     hlds_data.get_type_defn_body(TermTypeDefn, TermTypeBody),
     (
         TermTypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _),
@@ -1626,7 +1626,8 @@ make_new_var(Type, Var, !VarTypes, !VarSet) :-
 
 check_for_missing_definitions(ModuleInfo, !Specs) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map.foldl(check_for_missing_definitions_2, TypeTable, !Specs).
+    foldl_over_type_ctor_defns(check_for_missing_definitions_2, TypeTable,
+        !Specs).
 
 :- pred check_for_missing_definitions_2(type_ctor::in, hlds_type_defn::in,
     list(error_spec)::in, list(error_spec)::out) is det.

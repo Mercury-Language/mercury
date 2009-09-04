@@ -2390,8 +2390,8 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
         (
             CtorCat = ctor_cat_enum(cat_enum_mercury),
             type_to_ctor_det(Type, TypeCtor),
-            module_info_get_type_table(ModuleInfo, TypeDefnTable),
-            map.lookup(TypeDefnTable, TypeCtor, TypeDefn),
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             (
                 Ctors = TypeBody ^ du_type_ctors,

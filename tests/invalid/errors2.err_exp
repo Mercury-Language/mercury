@@ -88,17 +88,17 @@ errors2.m:072:     B_4: character
 errors2.m:072:     C_5: string
 errors2.m:072:     
 errors2.m:072:     Type assignment 2:
-errors2.m:072:     Y_1: errors2.foo
-errors2.m:072:     Z_2: errors2.bar_2_type
-errors2.m:072:     A_3: character
-errors2.m:072:     B_4: int
-errors2.m:072:     C_5: string
-errors2.m:072:     
-errors2.m:072:     Type assignment 3:
 errors2.m:072:     Y_1: character
 errors2.m:072:     Z_2: errors2.bar_1_type
 errors2.m:072:     A_3: int
 errors2.m:072:     B_4: character
+errors2.m:072:     C_5: string
+errors2.m:072:     
+errors2.m:072:     Type assignment 3:
+errors2.m:072:     Y_1: errors2.foo
+errors2.m:072:     Z_2: errors2.bar_2_type
+errors2.m:072:     A_3: character
+errors2.m:072:     B_4: int
 errors2.m:072:     C_5: string
 errors2.m:072:     
 errors2.m:072:     Type assignment 4:

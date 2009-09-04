@@ -5,9 +5,9 @@ ambiguous_overloading_error.m:043:   following contexts.
 ambiguous_overloading_error.m:041:   The function symbol `f'/0.
 ambiguous_overloading_error.m:041:   The possible matches are:
 ambiguous_overloading_error.m:041:     the type constructor
-ambiguous_overloading_error.m:041:     `ambiguous_overloading_error.foo'/0,
-ambiguous_overloading_error.m:041:     the type constructor
 ambiguous_overloading_error.m:041:     `ambiguous_overloading_error.bar'/0,
+ambiguous_overloading_error.m:041:     the type constructor
+ambiguous_overloading_error.m:041:     `ambiguous_overloading_error.foo'/0,
 ambiguous_overloading_error.m:041:     the builtin type constructor
 ambiguous_overloading_error.m:041:     `character'.
 ambiguous_overloading_error.m:042:   The function symbol `f'/0 is also
@@ -19,15 +19,15 @@ ambiguous_overloading_error.m:046:   the following contexts.
 ambiguous_overloading_error.m:046:   The function symbol `a1'/0.
 ambiguous_overloading_error.m:046:   The possible matches are:
 ambiguous_overloading_error.m:046:     the type constructor
-ambiguous_overloading_error.m:046:     `ambiguous_overloading_error.qux'/0,
+ambiguous_overloading_error.m:046:     `ambiguous_overloading_error.baz'/0,
 ambiguous_overloading_error.m:046:     the type constructor
-ambiguous_overloading_error.m:046:     `ambiguous_overloading_error.baz'/0.
+ambiguous_overloading_error.m:046:     `ambiguous_overloading_error.qux'/0.
 ambiguous_overloading_error.m:046:   The function symbol `a2'/0.
 ambiguous_overloading_error.m:046:   The possible matches are:
 ambiguous_overloading_error.m:046:     the type constructor
-ambiguous_overloading_error.m:046:     `ambiguous_overloading_error.qux'/0,
+ambiguous_overloading_error.m:046:     `ambiguous_overloading_error.baz'/0,
 ambiguous_overloading_error.m:046:     the type constructor
-ambiguous_overloading_error.m:046:     `ambiguous_overloading_error.baz'/0.
+ambiguous_overloading_error.m:046:     `ambiguous_overloading_error.qux'/0.
 ambiguous_overloading_error.m:100: In clause for predicate `test_lt'/1:
 ambiguous_overloading_error.m:100:   error: excessively ambiguous overloading.
 ambiguous_overloading_error.m:100:   The following symbol was overloaded in the

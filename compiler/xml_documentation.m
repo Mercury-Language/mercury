@@ -298,13 +298,15 @@ get_comment_backwards(Comments, Line) = Comment :-
             InterfaceImports),
         module_info_get_imported_module_specifiers(ModuleInfo,
             ImportedModules0),
-        ImportedModules = ImportedModules0 `difference` set(all_builtin_modules),
+        ImportedModules =
+            ImportedModules0 `difference` set(all_builtin_modules),
         set.fold(import_documentation(InterfaceImports),
             ImportedModules, [], ImportsXml),
         ImportXml = elem("imports", [], ImportsXml),
 
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map.foldl(type_documentation(Comments), TypeTable, [], TypeXmls),
+        foldl_over_type_ctor_defns(type_documentation(Comments), TypeTable,
+            [], TypeXmls),
         TypeXml = elem("types", [], TypeXmls),
 
         module_info_preds(ModuleInfo, PredTable),
@@ -349,8 +351,9 @@ import_documentation(InterfaceImportedModules, ImportedModule, !Xmls) :-
 
 type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
     get_type_defn_status(TypeDefn, ImportStatus),
-
-    ( status_defined_in_this_module(ImportStatus) = yes ->
+    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    (
+        DefinedInThisModule = yes,
         get_type_defn_body(TypeDefn, TypeBody),
         get_type_defn_tvarset(TypeDefn, TVarset),
         get_type_defn_context(TypeDefn, Context),
@@ -369,7 +372,7 @@ type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
 
         !:Xmls = [Xml | !.Xmls]
     ;
-        true
+        DefinedInThisModule = no
     ).
 
 :- func type_xml_tag(hlds_type_body) = string.
@@ -669,7 +672,9 @@ determinism(detism_failure) = tagged_string("determinism", "failure").
 
 class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
     ImportStatus = ClassDefn ^ class_status,
-    ( status_defined_in_this_module(ImportStatus) = yes ->
+    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    (
+        DefinedInThisModule = yes,
         Id = sym_name_and_arity_to_id("class", Name, Arity),
 
         Context = ClassDefn ^ class_context,
@@ -695,7 +700,7 @@ class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
 
         !:Xml = [Xml | !.Xml]
     ;
-        true
+        DefinedInThisModule = no
     ).
 
 :- func fundep(tvarset, list(tvar), hlds_class_fundep) = xml.

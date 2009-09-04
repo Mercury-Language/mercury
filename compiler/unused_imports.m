@@ -164,7 +164,7 @@ wrap_module_name(SymName) = sym_name(SymName).
 
 used_modules(ModuleInfo, !UsedModules) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map.foldl(type_used_modules, TypeTable, !UsedModules),
+    foldl_over_type_ctor_defns(type_used_modules, TypeTable, !UsedModules),
 
     module_info_get_inst_table(ModuleInfo, InstTable),
     inst_table_get_user_insts(InstTable, UserInstTable),
@@ -194,7 +194,9 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
     get_type_defn_status(TypeDefn, ImportStatus),
     get_type_defn_body(TypeDefn, TypeBody),
 
-    ( status_defined_in_this_module(ImportStatus) = yes ->
+    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    (
+        DefinedInThisModule = yes,
         Visibility = item_visibility(ImportStatus),
         (
             TypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _),
@@ -209,7 +211,7 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
             )
         )
     ;
-        true
+        DefinedInThisModule = no
     ).
 
 :- pred ctor_used_modules(item_visibility::in, constructor::in,
@@ -240,7 +242,9 @@ prog_constraint_used_module(Visibility, constraint(ClassName, Args),
 
 user_inst_used_modules(_InstId, InstDefn, !UsedModules) :-
     ImportStatus = InstDefn ^ inst_status,
-    ( status_defined_in_this_module(ImportStatus) = yes ->
+    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    (
+        DefinedInThisModule = yes,
         Visibility = item_visibility(ImportStatus),
         InstBody = InstDefn ^ inst_body,
         (
@@ -250,7 +254,7 @@ user_inst_used_modules(_InstId, InstDefn, !UsedModules) :-
             InstBody = abstract_inst
         )
     ;
-        true
+        DefinedInThisModule = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -261,14 +265,16 @@ user_inst_used_modules(_InstId, InstDefn, !UsedModules) :-
 
 mode_used_modules(mode_id(Name, _Arity), ModeDefn, !UsedModules) :-
     ImportStatus = ModeDefn ^ mode_status,
-    ( status_defined_in_this_module(ImportStatus) = yes ->
+    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    (
+        DefinedInThisModule = yes,
         Visibility = item_visibility(ImportStatus),
         add_sym_name_module(Visibility, Name, !UsedModules),
         ModeBody = ModeDefn ^ mody_body,
         ModeBody = eqv_mode(Mode),
         mer_mode_used_modules(Visibility, Mode, !UsedModules)
     ;
-        true
+        DefinedInThisModule = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -279,13 +285,15 @@ mode_used_modules(mode_id(Name, _Arity), ModeDefn, !UsedModules) :-
 
 class_used_modules(class_id(Name, _Arity), ClassDefn, !UsedModules) :-
     ImportStatus = ClassDefn ^ class_status,
-    ( status_defined_in_this_module(ImportStatus) = yes ->
+    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    (
+        DefinedInThisModule = yes,
         Visibility = item_visibility(ImportStatus),
         add_sym_name_module(Visibility, Name, !UsedModules),
         list.foldl(prog_constraint_used_module(Visibility),
             ClassDefn ^ class_supers, !UsedModules)
     ;
-        true
+        DefinedInThisModule = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -302,7 +310,9 @@ instance_used_modules(ClassId, InstanceDefns, !UsedModules) :-
 
 instance_used_modules_2(class_id(Name, _Arity), InstanceDefn, !UsedModules) :-
     ImportStatus = InstanceDefn ^ instance_status,
-    ( status_defined_in_this_module(ImportStatus) = yes ->
+    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    (
+        DefinedInThisModule = yes,
         % The methods of the class are stored in the pred_table and hence
         % will be processed by pred_info_used_modules.
         % XXX is this true?
@@ -313,7 +323,7 @@ instance_used_modules_2(class_id(Name, _Arity), InstanceDefn, !UsedModules) :-
         list.foldl(mer_type_used_modules(Visibility),
             InstanceDefn ^ instance_types, !UsedModules)
     ;
-        true
+        DefinedInThisModule = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -324,7 +334,9 @@ instance_used_modules_2(class_id(Name, _Arity), InstanceDefn, !UsedModules) :-
 
 pred_info_used_modules(_PredId, PredInfo, !UsedModules) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ( status_defined_in_this_module(ImportStatus) = yes ->
+    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    (
+        DefinedInThisModule = yes,
         Visibility = item_visibility(ImportStatus),
 
         pred_info_get_arg_types(PredInfo, Args),
@@ -343,7 +355,7 @@ pred_info_used_modules(_PredId, PredInfo, !UsedModules) :-
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_used_modules(ClausesInfo, !UsedModules)
     ;
-        true
+        DefinedInThisModule = no
     ).
 
 :- pred proc_info_used_modules(item_visibility::in, proc_id::in, proc_info::in,

@@ -168,9 +168,9 @@ do_parse_tree_to_hlds(Globals, unit_module(Name, Items), MQInfo0, EqvMap,
     % may cause a compiler abort.
     (
         InvalidTypes1 = no,
-        module_info_get_type_table(!.ModuleInfo, Types),
-        map.foldl3(process_type_defn, Types, no, InvalidTypes2,
-            !ModuleInfo, !Specs)
+        module_info_get_type_table(!.ModuleInfo, TypeTable),
+        foldl3_over_type_ctor_defns(process_type_defn, TypeTable,
+            no, InvalidTypes2, !ModuleInfo, !Specs)
     ;
         InvalidTypes1 = yes,
         InvalidTypes2 = yes

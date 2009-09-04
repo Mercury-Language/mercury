@@ -23,6 +23,7 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module map.
@@ -129,9 +130,52 @@
 
 :- interface.
 
-    % The symbol table for types.
+    % The symbol table for types. Conceptually, it is a map from type_ctors
+    % to hlds_type_defns, but the implementation may be different for
+    % efficiency.
     %
-:- type type_table  ==  map(type_ctor, hlds_type_defn).
+:- type type_table.
+
+:- func init_type_table = type_table.
+
+:- pred add_type_ctor_defn(type_ctor::in, hlds_type_defn::in,
+    type_table::in, type_table::out) is det.
+
+:- pred replace_type_ctor_defn(type_ctor::in, hlds_type_defn::in,
+    type_table::in, type_table::out) is det.
+
+:- pred add_or_replace_type_ctor_defn(type_ctor::in, hlds_type_defn::in,
+    type_table::in, type_table::out) is det.
+
+:- pred search_type_ctor_defn(type_table::in, type_ctor::in,
+    hlds_type_defn::out) is semidet.
+:- pred lookup_type_ctor_defn(type_table::in, type_ctor::in,
+    hlds_type_defn::out) is det.
+
+:- pred get_all_type_ctor_defns(type_table::in,
+    assoc_list(type_ctor, hlds_type_defn)::out) is det.
+
+:- pred foldl_over_type_ctor_defns(
+    pred(type_ctor, hlds_type_defn, T, T)::
+        in(pred(in, in, in, out) is det),
+    type_table::in, T::in, T::out) is det.
+
+:- pred foldl2_over_type_ctor_defns(
+    pred(type_ctor, hlds_type_defn, T, T, U, U)::
+        in(pred(in, in, in, out, in, out) is det),
+    type_table::in, T::in, T::out, U::in, U::out) is det.
+
+:- pred foldl3_over_type_ctor_defns(
+    pred(type_ctor, hlds_type_defn, T, T, U, U, V, V)::
+        in(pred(in, in, in, out, in, out, in, out) is det),
+    type_table::in, T::in, T::out, U::in, U::out, V::in, V::out) is det.
+
+:- pred map_foldl_over_type_ctor_defns(
+    pred(type_ctor, hlds_type_defn, hlds_type_defn, T, T)::
+        in(pred(in, in, out, in, out) is det),
+    type_table::in, type_table::out, T::in, T::out) is det.
+
+%-----------------------------------------------------------------------------%
 
     % This is how type, modes and constructors are represented. The parts that
     % are not defined here (i.e. type_param, constructor, type, inst and mode)
@@ -513,6 +557,116 @@ get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
         ),
         CheaperTagTest = no_cheaper_tag_test
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- type type_table == map(string, type_ctor_table).
+
+:- type type_ctor_table == map(type_ctor, hlds_type_defn).
+
+init_type_table = map.init.
+
+add_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
+    TypeCtor = type_ctor(SymName, _Arity),
+    Name = unqualify_name(SymName),
+    ( map.search(!.TypeTable, Name, TypeCtorTable0) ->
+        svmap.det_insert(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
+        svmap.det_update(Name, TypeCtorTable, !TypeTable)
+    ;
+        svmap.det_insert(TypeCtor, TypeDefn, map.init, TypeCtorTable),
+        svmap.det_insert(Name, TypeCtorTable, !TypeTable)
+    ).
+
+replace_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
+    TypeCtor = type_ctor(SymName, _Arity),
+    Name = unqualify_name(SymName),
+    map.lookup(!.TypeTable, Name, TypeCtorTable0),
+    svmap.det_update(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
+    svmap.det_update(Name, TypeCtorTable, !TypeTable).
+
+add_or_replace_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
+    TypeCtor = type_ctor(SymName, _Arity),
+    Name = unqualify_name(SymName),
+    ( map.search(!.TypeTable, Name, TypeCtorTable0) ->
+        svmap.set(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
+        svmap.det_update(Name, TypeCtorTable, !TypeTable)
+    ;
+        svmap.det_insert(TypeCtor, TypeDefn, map.init, TypeCtorTable),
+        svmap.det_insert(Name, TypeCtorTable, !TypeTable)
+    ).
+
+search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) :-
+    TypeCtor = type_ctor(SymName, _Arity),
+    Name = unqualify_name(SymName),
+    map.search(TypeTable, Name, TypeCtorTable),
+    map.search(TypeCtorTable, TypeCtor, TypeDefn).
+
+lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) :-
+    TypeCtor = type_ctor(SymName, _Arity),
+    Name = unqualify_name(SymName),
+    map.lookup(TypeTable, Name, TypeCtorTable),
+    map.lookup(TypeCtorTable, TypeCtor, TypeDefn).
+
+get_all_type_ctor_defns(TypeTable, TypeCtorsDefns) :-
+    map.foldl(get_all_type_ctor_defns_2, TypeTable, [], TypeCtorsDefns).
+
+:- pred get_all_type_ctor_defns_2(string::in, type_ctor_table::in,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    assoc_list(type_ctor, hlds_type_defn)::out) is det.
+
+get_all_type_ctor_defns_2(_Name, TypeCtorTable, !TypeCtorsDefns) :-
+    map.to_assoc_list(TypeCtorTable, NameTypeCtorsDefns),
+    !:TypeCtorsDefns = NameTypeCtorsDefns ++ !.TypeCtorsDefns.
+
+foldl_over_type_ctor_defns(Pred, TypeTable, !Acc) :-
+    map.foldl(foldl_over_type_ctor_defns_2(Pred), TypeTable, !Acc).
+
+:- pred foldl_over_type_ctor_defns_2(
+    pred(type_ctor, hlds_type_defn, T, T)::
+        in(pred(in, in, in, out) is det),
+    string::in, type_ctor_table::in, T::in, T::out) is det.
+
+foldl_over_type_ctor_defns_2(Pred, _Name, TypeCtorTable, !Acc) :-
+    map.foldl(Pred, TypeCtorTable, !Acc).
+
+foldl2_over_type_ctor_defns(Pred, TypeTable, !AccA, !AccB) :-
+    map.foldl2(foldl2_over_type_ctor_defns_2(Pred), TypeTable, !AccA, !AccB).
+
+:- pred foldl2_over_type_ctor_defns_2(
+    pred(type_ctor, hlds_type_defn, T, T, U, U)::
+        in(pred(in, in, in, out, in, out) is det),
+    string::in, type_ctor_table::in, T::in, T::out, U::in, U::out) is det.
+
+foldl2_over_type_ctor_defns_2(Pred, _Name, TypeCtorTable, !AccA, !AccB) :-
+    map.foldl2(Pred, TypeCtorTable, !AccA, !AccB).
+
+foldl3_over_type_ctor_defns(Pred, TypeTable, !AccA, !AccB, !AccC) :-
+    map.foldl3(foldl3_over_type_ctor_defns_2(Pred), TypeTable, !AccA, !AccB,
+        !AccC).
+
+:- pred foldl3_over_type_ctor_defns_2(
+    pred(type_ctor, hlds_type_defn, T, T, U, U, V, V)::
+        in(pred(in, in, in, out, in, out, in, out) is det),
+    string::in, type_ctor_table::in, T::in, T::out, U::in, U::out,
+        V::in, V::out) is det.
+
+foldl3_over_type_ctor_defns_2(Pred, _Name, TypeCtorTable, !AccA, !AccB,
+        !AccC) :-
+    map.foldl3(Pred, TypeCtorTable, !AccA, !AccB, !AccC).
+
+map_foldl_over_type_ctor_defns(Pred, !TypeTable, !Acc) :-
+    map.map_foldl(map_foldl_over_type_ctor_defns_2(Pred), !TypeTable, !Acc).
+
+:- pred map_foldl_over_type_ctor_defns_2(
+    pred(type_ctor, hlds_type_defn, hlds_type_defn, T, T)::
+        in(pred(in, in, out, in, out) is det),
+    string::in, type_ctor_table::in, type_ctor_table::out,
+    T::in, T::out) is det.
+
+map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
+    map.map_foldl(Pred, !TypeCtorTable, !Acc).
+
+%-----------------------------------------------------------------------------%
 
 :- type hlds_type_defn
     --->    hlds_type_defn(

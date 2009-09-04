@@ -924,9 +924,9 @@ record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
 
 find_items_used_by_item(type_abstract_item, TypeCtorItem, !Info) :-
     ModuleInfo = !.Info ^ module_info,
-    module_info_get_type_table(ModuleInfo, Types),
+    module_info_get_type_table(ModuleInfo, TypeTable),
     TypeCtor = item_name_to_type_ctor(TypeCtorItem),
-    map.lookup(Types, TypeCtor, TypeDefn),
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     ( TypeBody = hlds_eqv_type(Type) ->
         % If we use an equivalence type we also use the type
@@ -937,9 +937,9 @@ find_items_used_by_item(type_abstract_item, TypeCtorItem, !Info) :-
     ).
 find_items_used_by_item(type_body_item, TypeCtorItem, !Info) :-
     ModuleInfo = !.Info ^ module_info,
-    module_info_get_type_table(ModuleInfo, Types),
+    module_info_get_type_table(ModuleInfo, TypeTable),
     TypeCtor = item_name_to_type_ctor(TypeCtorItem),
-    map.lookup(Types, TypeCtor, TypeDefn),
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     find_items_used_by_type_body(TypeBody, !Info).
 find_items_used_by_item(mode_item, ModeIdItem, !Info):-

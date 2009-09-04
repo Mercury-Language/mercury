@@ -981,7 +981,7 @@ search_type_defn(CI, Type, TypeDefn) :-
     get_module_info(CI, ModuleInfo),
     type_to_ctor_and_args_det(Type, TypeCtor, _),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map.search(TypeTable, TypeCtor, TypeDefn).
+    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
 
 lookup_type_defn(CI, Type) = TypeDefn :-
     ( search_type_defn(CI, Type, TypeDefnPrime) ->

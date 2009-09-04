@@ -3471,7 +3471,7 @@ write_var_name_remap(Head, Tail, VarSet, !IO) :-
 write_types(Indent, TypeTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Types --------\n", !IO),
-    map.to_assoc_list(TypeTable, TypeAssocList),
+    get_all_type_ctor_defns(TypeTable, TypeAssocList),
     write_types_2(Indent, TypeAssocList, !IO).
 
 :- pred write_types_2(int::in, assoc_list(type_ctor, hlds_type_defn)::in,

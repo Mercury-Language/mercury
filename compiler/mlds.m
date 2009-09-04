@@ -1834,8 +1834,8 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
             MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
             MLDSType = mlds_ptr_type(MLDSRefType)
         ;
-            module_info_get_type_table(ModuleInfo, Types),
-            map.search(Types, TypeCtor, TypeDefn),
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, Body),
             Body = hlds_foreign_type(ForeignTypeBody),
             ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,

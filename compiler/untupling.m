@@ -751,7 +751,7 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
         % Expand a discriminated union type if it has only a
         % single functor and the type has no parameters.
         type_to_ctor_and_args(Type, TypeCtor, []),
-        map.search(TypeTable, TypeCtor, TypeDefn),
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_tparams(TypeDefn, []),
         get_type_defn_body(TypeDefn, TypeBody),
         TypeBody ^ du_type_ctors = [SingleCtor],

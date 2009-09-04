@@ -1438,12 +1438,12 @@ get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
 
 get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
     get_module_info(CI, Module),
-    module_info_get_type_table(Module, Types),
+    module_info_get_type_table(Module, TypeTable),
     (
-        type_to_ctor_and_args(Type, TypeId, _SubTypes),
-        map.search(Types, TypeId, Defn),
-        hlds_data.get_type_defn_body(Defn, Body),
-        Body = hlds_foreign_type(
+        type_to_ctor(Type, TypeCtor),
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        TypeBody = hlds_foreign_type(
             foreign_type_body(_MaybeIL, MaybeC, _MaybeJava, _MaybeErlang))
     ->
         (

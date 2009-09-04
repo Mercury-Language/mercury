@@ -124,6 +124,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.
@@ -1530,9 +1531,8 @@ check_typeclass_constraints(!ModuleInfo, !Specs) :-
     module_info_predids(PredIds, !ModuleInfo),
     list.foldl2(check_pred_constraints, PredIds, !ModuleInfo, !Specs),
     module_info_get_type_table(!.ModuleInfo, TypeTable),
-    map.keys(TypeTable, TypeCtors),
-    list.foldl2(check_ctor_constraints(TypeTable), TypeCtors,
-        !ModuleInfo, !Specs).
+    get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
+    list.foldl2(check_ctor_constraints, TypeCtorsDefns, !ModuleInfo, !Specs).
 
 :- pred check_pred_constraints(pred_id::in,
     module_info::in, module_info::out,
@@ -1589,12 +1589,11 @@ check_pred_type_ambiguities(PredInfo, !ModuleInfo, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred check_ctor_constraints(type_table::in, type_ctor::in,
+:- pred check_ctor_constraints(pair(type_ctor, hlds_type_defn)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_ctor_constraints(TypeTable, TypeCtor, !ModuleInfo, !Specs) :-
-    map.lookup(TypeTable, TypeCtor, TypeDefn),
+check_ctor_constraints(TypeCtor - TypeDefn, !ModuleInfo, !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
         Body = hlds_du_type(Ctors, _, _, _, _, _, _, _),

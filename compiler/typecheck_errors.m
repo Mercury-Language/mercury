@@ -515,7 +515,8 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
             LaterPieces = [words("The predicate symbol"),
                 simple_call(CallId), words("is also overloaded here.")]
         ;
-            Symbol = overloaded_func(ConsId, Sources),
+            Symbol = overloaded_func(ConsId, Sources0),
+            list.sort(Sources0, Sources),
             ( ConsId = cons(SymName, Arity, _) ->
                 ConsIdPiece = sym_name_and_arity(SymName / Arity)
             ;
@@ -1577,14 +1578,15 @@ cons_type_list_to_pieces([ConsDefn | ConsDefns], Functor, Arity) = Pieces :-
 :- func type_assign_set_msg_to_pieces(type_assign_set, prog_varset)
     = list(format_component).
 
-type_assign_set_msg_to_pieces(TypeAssignSet, VarSet) = Pieces :-
-    ( TypeAssignSet = [_] ->
+type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet) = Pieces :-
+    ( TypeAssignSet0 = [_] ->
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
     ;
         FirstWords = "The possible partial type assignments were:",
         MaybeSeq = yes(1)
     ),
+    list.sort(TypeAssignSet0, TypeAssignSet),
     LaterPieces = type_assign_set_to_pieces(TypeAssignSet, MaybeSeq, VarSet),
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++
         [nl_indent_delta(-1)].
@@ -1599,14 +1601,15 @@ type_assign_set_msg_to_pieces(TypeAssignSet, VarSet) = Pieces :-
 :- func args_type_assign_set_msg_to_pieces(args_type_assign_set, prog_varset)
     = list(format_component).
 
-args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet) = Pieces :-
-    ( ArgTypeAssignSet = [_] ->
+args_type_assign_set_msg_to_pieces(ArgTypeAssignSet0, VarSet) = Pieces :-
+    ( ArgTypeAssignSet0 = [_] ->
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
     ;
         FirstWords = "The possible partial type assignments were:",
         MaybeSeq = yes(1)
     ),
+    list.sort(ArgTypeAssignSet0, ArgTypeAssignSet),
     LaterPieces = args_type_assign_set_to_pieces(ArgTypeAssignSet, MaybeSeq,
         VarSet),
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++

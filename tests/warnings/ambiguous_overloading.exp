@@ -5,9 +5,9 @@ ambiguous_overloading.m:041:   following context.
 ambiguous_overloading.m:041:   The function symbol `f'/0.
 ambiguous_overloading.m:041:   The possible matches are:
 ambiguous_overloading.m:041:     the type constructor
-ambiguous_overloading.m:041:     `ambiguous_overloading.foo'/0,
-ambiguous_overloading.m:041:     the type constructor
 ambiguous_overloading.m:041:     `ambiguous_overloading.bar'/0,
+ambiguous_overloading.m:041:     the type constructor
+ambiguous_overloading.m:041:     `ambiguous_overloading.foo'/0,
 ambiguous_overloading.m:041:     the builtin type constructor `character'.
 ambiguous_overloading.m:045: In clause for predicate `ambig_overload2'/1:
 ambiguous_overloading.m:045:   warning: highly ambiguous overloading.
@@ -16,15 +16,15 @@ ambiguous_overloading.m:045:   following contexts.
 ambiguous_overloading.m:045:   The function symbol `a1'/0.
 ambiguous_overloading.m:045:   The possible matches are:
 ambiguous_overloading.m:045:     the type constructor
-ambiguous_overloading.m:045:     `ambiguous_overloading.qux'/0,
+ambiguous_overloading.m:045:     `ambiguous_overloading.baz'/0,
 ambiguous_overloading.m:045:     the type constructor
-ambiguous_overloading.m:045:     `ambiguous_overloading.baz'/0.
+ambiguous_overloading.m:045:     `ambiguous_overloading.qux'/0.
 ambiguous_overloading.m:045:   The function symbol `a2'/0.
 ambiguous_overloading.m:045:   The possible matches are:
 ambiguous_overloading.m:045:     the type constructor
-ambiguous_overloading.m:045:     `ambiguous_overloading.qux'/0,
+ambiguous_overloading.m:045:     `ambiguous_overloading.baz'/0,
 ambiguous_overloading.m:045:     the type constructor
-ambiguous_overloading.m:045:     `ambiguous_overloading.baz'/0.
+ambiguous_overloading.m:045:     `ambiguous_overloading.qux'/0.
 ambiguous_overloading.m:056: In clause for predicate `test_lt'/1:
 ambiguous_overloading.m:056:   warning: highly ambiguous overloading.
 ambiguous_overloading.m:056:   The following symbol was overloaded in the

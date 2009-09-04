@@ -378,7 +378,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
     % Check whether that type is a type for which there is a user-defined
     % equality predicate or which is existentially typed.
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map.lookup(TypeTable, TypeCtor, TypeDefn),
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, Body),
     special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body).
 

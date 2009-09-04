@@ -137,9 +137,9 @@
 
 find_weights(ModuleInfo, Weights) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map.to_assoc_list(TypeTable, TypeList),
+    get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
     map.init(Weights0),
-    list.foldl(find_weights_for_type, TypeList, Weights0, Weights).
+    list.foldl(find_weights_for_type, TypeCtorsDefns, Weights0, Weights).
 
 :- pred find_weights_for_type(pair(type_ctor, hlds_type_defn)::in,
     weight_table::in, weight_table::out) is det.

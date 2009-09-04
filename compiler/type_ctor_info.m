@@ -106,43 +106,48 @@
 generate_hlds(!ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     module_info_get_type_table(!.ModuleInfo, TypeTable),
-    map.keys(TypeTable, TypeCtors0),
+    get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
+    gen_type_ctor_gen_infos(!.ModuleInfo, ModuleName, TypeCtorsDefns,
+        LocalTypeCtorGenInfos),
     (
         ModuleName = mercury_public_builtin_module,
         compiler_generated_rtti_for_builtins(!.ModuleInfo)
     ->
-        TypeCtors = builtin_type_ctors_with_no_hlds_type_defn ++ TypeCtors0
+        gen_builtin_type_ctor_gen_infos(!.ModuleInfo, ModuleName,
+            builtin_type_ctors_with_no_hlds_type_defn,
+            BuiltinTypeCtorGenInfos),
+        AllTypeCtorGenInfos = BuiltinTypeCtorGenInfos ++ LocalTypeCtorGenInfos
     ;
-        TypeCtors = TypeCtors0
+        AllTypeCtorGenInfos = LocalTypeCtorGenInfos
     ),
-    gen_type_ctor_gen_infos(TypeCtors, TypeTable, ModuleName, !.ModuleInfo,
-        TypeCtorGenInfos),
-    module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo).
+    module_info_set_type_ctor_gen_infos(AllTypeCtorGenInfos, !ModuleInfo).
 
     % Given a list of the ids of all the types in the type table, find the
     % types defined in this module, and return a type_ctor_gen_info for each.
     %
-:- pred gen_type_ctor_gen_infos(list(type_ctor)::in, type_table::in,
-    module_name::in, module_info::in, list(type_ctor_gen_info)::out) is det.
+:- pred gen_type_ctor_gen_infos(module_info::in, module_name::in,
+    assoc_list(type_ctor, hlds_type_defn)::in, list(type_ctor_gen_info)::out)
+    is det.
 
-gen_type_ctor_gen_infos([], _, _, _, []).
-gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable, ModuleName,
-        ModuleInfo, TypeCtorGenInfos) :-
-    gen_type_ctor_gen_infos(TypeCtors, TypeTable, ModuleName, ModuleInfo,
-        TypeCtorGenInfos1),
+gen_type_ctor_gen_infos(_, _, [], []).
+gen_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtorDefn | TypeCtorDefns],
+        TypeCtorGenInfos) :-
+    gen_type_ctor_gen_infos(ModuleInfo, ModuleName, TypeCtorDefns,
+        TypeCtorGenInfosTail),
+    TypeCtorDefn = TypeCtor - TypeDefn,
     TypeCtor = type_ctor(SymName, TypeArity),
     (
         SymName = qualified(TypeModuleName, TypeName),
         (
             TypeModuleName = ModuleName,
-            create_type_ctor_gen(ModuleInfo, TypeTable, TypeCtor,
+            create_type_ctor_gen(ModuleInfo, TypeCtorDefn,
                 TypeModuleName, TypeName, TypeArity, TypeDefn)
         ->
-            gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
-                ModuleName, ModuleInfo, TypeCtorGenInfo),
-            TypeCtorGenInfos = [TypeCtorGenInfo | TypeCtorGenInfos1]
+            gen_type_ctor_gen_info(ModuleInfo, TypeCtor, TypeModuleName,
+                TypeName, TypeArity, TypeDefn, TypeCtorGenInfo),
+            TypeCtorGenInfos = [TypeCtorGenInfo | TypeCtorGenInfosTail]
         ;
-            TypeCtorGenInfos = TypeCtorGenInfos1
+            TypeCtorGenInfos = TypeCtorGenInfosTail
         )
     ;
         SymName = unqualified(TypeName),
@@ -151,7 +156,7 @@ gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable, ModuleName,
     ).
 
     % Check if we should generate a type_ctor_info for this type.
-    % These are the cases that we have to check:
+    % These are four cases;
     %
     % - The builtin types which have no hlds_type_defn
     %   (i.e. no declaration and no definition).
@@ -164,37 +169,53 @@ gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable, ModuleName,
     %
     % - All the rest of the types.
     %
-:- pred create_type_ctor_gen(module_info::in, type_table::in, type_ctor::in,
-    module_name::in, string::in, int::in, hlds_type_defn::out) is semidet.
+    % The first category are handled by gen_builtin_type_ctor_gen_infos;
+    % this predicate handles the other three.
+    %
+:- pred create_type_ctor_gen(module_info::in,
+    pair(type_ctor, hlds_type_defn)::in, module_name::in, string::in, int::in,
+    hlds_type_defn::out) is semidet.
 
-create_type_ctor_gen(ModuleInfo, TypeTable, TypeCtor, TypeModuleName,
+create_type_ctor_gen(ModuleInfo, TypeCtor - TypeDefn, TypeModuleName,
         TypeName, TypeArity, TypeDefn) :-
-    ( list.member(TypeCtor, builtin_type_ctors_with_no_hlds_type_defn) ->
-        % The builtin types with no type definition.
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    (
+        ( TypeBody = hlds_abstract_type(_)
+        ; type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody)
+        )
+    ->
+        % The builtin types which are declared abstract or which have
+        % hand defined rtti due to having a fake type body.
         compiler_generated_rtti_for_builtins(ModuleInfo),
         TypeModuleName = unqualified(ModuleNameString),
-        builtin_type_ctor(ModuleNameString, TypeName, TypeArity, _),
-        TypeDefn = builtin_type_defn
-    ;
-        map.lookup(TypeTable, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            ( TypeBody = hlds_abstract_type(_)
-            ; type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody)
-            )
-        ->
-            % The builtin types which are declared abstract or which have
-            % hand defined rtti due to having a fake type body.
-            compiler_generated_rtti_for_builtins(ModuleInfo),
-            TypeModuleName = unqualified(ModuleNameString),
-            (
-                builtin_type_ctor(ModuleNameString, TypeName, TypeArity, _)
-            ;
-                impl_type_ctor(ModuleNameString, TypeName, TypeArity, _)
-            )
+            builtin_type_ctor(ModuleNameString, TypeName, TypeArity, _)
         ;
-            true
+            impl_type_ctor(ModuleNameString, TypeName, TypeArity, _)
         )
+    ;
+        true
+    ).
+
+:- pred gen_builtin_type_ctor_gen_infos(module_info::in, module_name::in,
+    list(type_ctor)::in, list(type_ctor_gen_info)::out) is det.
+
+gen_builtin_type_ctor_gen_infos(_ModuleInfo, _ModuleName, [], []).
+gen_builtin_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtor | TypeCtors],
+        [TypeCtorGenInfo | TypeCtorGenInfos]) :-
+    gen_builtin_type_ctor_gen_infos(ModuleInfo, ModuleName, TypeCtors,
+        TypeCtorGenInfos),
+    TypeCtor = type_ctor(SymName, TypeArity),
+    (
+        SymName = qualified(TypeModuleName, TypeName),
+        expect(unify(TypeModuleName, ModuleName), this_file,
+            "gen_builtin_type_ctor_gen_infos: module mismatch"),
+        gen_type_ctor_gen_info(ModuleInfo, TypeCtor, TypeModuleName,
+            TypeName, TypeArity, builtin_type_defn, TypeCtorGenInfo)
+    ;
+        SymName = unqualified(TypeName),
+        Msg = "unqualified type " ++ TypeName ++ " in builtin type list",
+        unexpected(this_file, Msg)
     ).
 
     % Generate a type_defn for the builtin types which don't have one.
@@ -212,12 +233,12 @@ builtin_type_defn = TypeDefn :-
     hlds_data.set_type_defn(TVarSet, Params, Kinds, Body, ImportStatus, no,
         NeedQualifier, Context, TypeDefn).
 
-:- pred gen_type_ctor_gen_info(type_ctor::in, string::in, int::in,
-    hlds_type_defn::in, module_name::in, module_info::in,
+:- pred gen_type_ctor_gen_info( module_info::in, type_ctor::in,
+    module_name::in, string::in, int::in, hlds_type_defn::in,
     type_ctor_gen_info::out) is det.
 
-gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn, ModuleName,
-        ModuleInfo, TypeCtorGenInfo) :-
+gen_type_ctor_gen_info(ModuleInfo, TypeCtor, ModuleName, TypeName, TypeArity,
+        TypeDefn, TypeCtorGenInfo) :-
     hlds_data.get_type_defn_status(TypeDefn, Status),
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_special_pred_map(ModuleInfo, SpecMap),
@@ -415,6 +436,9 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
 :- pred builtin_type_ctor(string::in, string::in, int::in, builtin_ctor::out)
     is semidet.
 
+% Some of these type_ctors are listed in prog_type.m in the function
+% builtin_type_ctors_with_no_hlds_type_defn; any changes here may need
+% to be done there as well.
 builtin_type_ctor("builtin", "int", 0, builtin_ctor_int).
 builtin_type_ctor("builtin", "string", 0, builtin_ctor_string).
 builtin_type_ctor("builtin", "float", 0, builtin_ctor_float).

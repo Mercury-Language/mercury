@@ -118,7 +118,7 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
         ;
             module_info_get_type_table(ModuleInfo, TypeTable),
             % The search will fail for builtin types.
-            map.search(TypeTable, VarTypeCtor, VarTypeDefn),
+            search_type_ctor_defn(TypeTable, VarTypeCtor, VarTypeDefn),
             hlds_data.get_type_defn_body(VarTypeDefn, VarTypeBody),
             VarTypeBody ^ du_type_reserved_addr = uses_reserved_address
         )
@@ -258,7 +258,7 @@ order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
     type_to_ctor_det(VarType, TypeCtor),
     get_module_info(!.CI, ModuleInfo),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    ( map.search(TypeTable, TypeCtor, TypeDefn) ->
+    ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) ->
         get_type_defn_body(TypeDefn, TypeBody),
         CheaperTagTest = get_maybe_cheaper_tag_test(TypeBody)
     ;
