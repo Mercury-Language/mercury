@@ -372,6 +372,9 @@ parse(Words, Command) :-
 parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
     % Please keep the code recognizing commands in the same order
     % as the definition of the command type.
+
+    % If you add more commands, please update the documention printed
+    % by the help predicate in browse.m.
     (
         ( CmdToken = token_name("print")
         ; CmdToken = token_name("p")
@@ -567,14 +570,14 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         FormatCmd = format_param(MaybeOptionTable, setting_depth(Depth)),
         Command = cmd_param(FormatCmd)
     ;
-        CmdToken = token_name("params")
-    ->
-        Command = cmd_param(print_params)
-    ;
         CmdToken = token_name("num_io_actions")
     ->
         ArgTokens = [token_num(N)],
         Command = cmd_param(num_io_actions(N))
+    ;
+        CmdToken = token_name("params")
+    ->
+        Command = cmd_param(print_params)
     ;
         ( CmdToken = token_name("help")
         ; CmdToken = token_name("h")
