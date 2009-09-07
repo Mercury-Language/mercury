@@ -6,7 +6,9 @@
 
 package jmercury.runtime;
 
-public class TypeInfo_Struct extends PseudoTypeInfo {
+public class TypeInfo_Struct extends PseudoTypeInfo
+	implements java.io.Serializable
+{
 
 	public TypeCtorInfo_Struct type_ctor;
 	public PseudoTypeInfo args[];

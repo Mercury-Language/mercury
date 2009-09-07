@@ -9,7 +9,7 @@ package jmercury.runtime;
 // This corresponds to the C type MR_TypeClassId
 // in runtime/mercury_typeclass_info.h.
 
-public class TypeClassId {
+public class TypeClassId implements java.io.Serializable {
 	public String			tc_id_module_name;
 	public String			tc_id_name;
 	public int			tc_id_arity;

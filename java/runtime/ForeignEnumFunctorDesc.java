@@ -6,7 +6,7 @@
 
 package jmercury.runtime;
 
-public class ForeignEnumFunctorDesc {
+public class ForeignEnumFunctorDesc implements java.io.Serializable {
 
 	public java.lang.String		foreign_enum_functor_name;
 	public int			foreign_enum_functor_ordinal;

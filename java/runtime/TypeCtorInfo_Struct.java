@@ -9,8 +9,9 @@ package jmercury.runtime;
 // This corresponds to the C type "struct MR_TypeCtorInfo_Struct"
 // in runtime/mercury_type_info.h.
 
-public class TypeCtorInfo_Struct extends PseudoTypeInfo {
-    
+public class TypeCtorInfo_Struct extends PseudoTypeInfo
+	implements java.io.Serializable
+{
 	public int                  arity;
 	public int                  type_ctor_version;
 	public int                  type_ctor_num_ptags; // if DU
@@ -57,11 +58,11 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo {
 
 		// XXX this should be renamed `equals'
 	public boolean unify(TypeCtorInfo_Struct tci) {
-		return this == tci;
-		/*
+		if (this == tci) {
+			return true;
+		}
 		return type_ctor_module_name.equals(tci.type_ctor_module_name)
 				&& type_ctor_name.equals(tci.type_ctor_name)
 				&& arity == tci.arity;
-		*/
 	}
 }

@@ -21,7 +21,7 @@ package jmercury.runtime;
 //     which extends PseudoTypeInfo, and uses the protected constructor
 //     which sets variable_number to -1.
 //
-public class PseudoTypeInfo {
+public class PseudoTypeInfo implements java.io.Serializable {
 	public int variable_number;
 	public    PseudoTypeInfo(int n) { variable_number = n; }
 	protected PseudoTypeInfo()      { variable_number = -1; }

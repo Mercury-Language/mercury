@@ -8,7 +8,7 @@ package jmercury.runtime;
 
 // Corresponds to MR_DuExistLocn in runtime/mercury_type_info.h
 
-public class DuExistLocn {
+public class DuExistLocn implements java.io.Serializable {
 	public int exist_arg_num;
 	public int exist_offset_in_tci;
 

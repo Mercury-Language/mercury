@@ -6,7 +6,7 @@
 
 package jmercury.runtime;
 
-public class DuExistInfo {
+public class DuExistInfo implements java.io.Serializable {
 	
 	public int exist_typeinfos_plain;
 	public int exist_typeinfos_in_tci;

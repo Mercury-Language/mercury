@@ -6,7 +6,7 @@
 
 package jmercury.runtime;
 
-public class EnumFunctorDesc {
+public class EnumFunctorDesc implements java.io.Serializable {
 	
 	public java.lang.String enum_functor_name;
 	public int              enum_functor_ordinal;

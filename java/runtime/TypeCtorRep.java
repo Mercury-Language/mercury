@@ -6,7 +6,7 @@
 
 package jmercury.runtime;
 
-public class TypeCtorRep {
+public class TypeCtorRep implements java.io.Serializable {
 	
 	// Constants
 	

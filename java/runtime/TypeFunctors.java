@@ -13,7 +13,7 @@ package jmercury.runtime;
 //   mercury compiler.  That way we can just use the `instanceof' operator
 //   to work out what each instance is.
 
-public class TypeFunctors {
+public class TypeFunctors implements java.io.Serializable {
 	public java.lang.Object functors_init;
 	// the above field should contain one of the following types:
 	public DuFunctorDesc[] functors_du() {

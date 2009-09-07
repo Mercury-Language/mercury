@@ -6,7 +6,7 @@
 
 package jmercury.runtime;
 
-public class NotagFunctorDesc {
+public class NotagFunctorDesc implements java.io.Serializable {
 	
 	public java.lang.String no_tag_functor_name;
 	public PseudoTypeInfo no_tag_functor_arg_type;

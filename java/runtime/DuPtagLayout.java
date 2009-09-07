@@ -6,7 +6,7 @@
 
 package jmercury.runtime;
 
-public class DuPtagLayout {
+public class DuPtagLayout implements java.io.Serializable {
 	
 	public int sectag_sharers;
 	public Sectag_Locn sectag_locn;

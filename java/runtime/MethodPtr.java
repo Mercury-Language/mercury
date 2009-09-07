@@ -9,6 +9,6 @@
 
 package jmercury.runtime;
 
-public interface MethodPtr {
+public interface MethodPtr extends java.io.Serializable {
 }
 

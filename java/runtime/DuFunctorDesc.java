@@ -6,7 +6,7 @@
 
 package jmercury.runtime;
 
-public class DuFunctorDesc {
+public class DuFunctorDesc implements java.io.Serializable {
     
 	public java.lang.String du_functor_name;
 	public int du_functor_orig_arity;

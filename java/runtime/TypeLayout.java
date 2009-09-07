@@ -6,7 +6,7 @@
 	
 package jmercury.runtime;
 
-public class TypeLayout {
+public class TypeLayout implements java.io.Serializable {
 		// This should hold a value of one of the types
 		// accessible by the access functions that follow.
 	public java.lang.Object layout_init;

@@ -9,7 +9,7 @@ package jmercury.runtime;
 // This corresponds to the C type MR_TypeClassConstraint
 // in runtime/mercury_type_info.h.
 
-public class TypeClassConstraint {
+public class TypeClassConstraint implements java.io.Serializable {
 	public TypeClassDeclStruct	tc_constr_type_class;
 	public PseudoTypeInfo		tc_constr_arg_ptis[];
 

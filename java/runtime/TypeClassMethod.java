@@ -9,7 +9,7 @@ package jmercury.runtime;
 // This corresponds to the C type MR_TypeClassMethod
 // in runtime/mercury_typeclass_info.h.
 
-public class TypeClassMethod {
+public class TypeClassMethod implements java.io.Serializable {
 	public /* final */ java.lang.String		tc_method_name;
 	public /* final */ int				tc_method_arity;
 	public /* final */ int /* PredFunc */		tc_method_pred_func;

@@ -10,7 +10,7 @@ package jmercury.runtime;
 // in runtime/mercury_types.h, i.e. the C struct
 // "struct MR_TypeClassDecl_Struct" in runtime/mercury_typeclass_info.h.
 
-public class TypeClassDeclStruct {
+public class TypeClassDeclStruct implements java.io.Serializable {
 	public TypeClassId		tc_decl_id;
 	public int			tc_decl_version_number;
 	public int			tc_decl_num_supers; // redundant

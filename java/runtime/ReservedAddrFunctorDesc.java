@@ -9,7 +9,7 @@
 
 package jmercury.runtime;
 
-public class ReservedAddrFunctorDesc {
+public class ReservedAddrFunctorDesc implements java.io.Serializable {
 	public java.lang.String		ra_functor_name;
 	public int			ra_ordinal;
 	public java.lang.Object		ra_reserved_addr;
