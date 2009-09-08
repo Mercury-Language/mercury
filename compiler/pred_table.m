@@ -165,8 +165,8 @@
     % could only be one matching pred_id, since each predicate or function
     % could be uniquely identified by its module, name, arity, and category
     % (function/predicate). However this is no longer true, due to nested
-    % modules. (For example, `pred foo:bar/2' might match both
-    % `pred mod1:foo:bar/2' and `pred mod2:foo:bar/2'). I hope it doesn't
+    % modules. (For example, `pred foo.bar/2' might match both
+    % `pred mod1.foo.bar/2' and `pred mod2.foo.bar/2'). I hope it doesn't
     % break anything too badly...
     %
     % (`m_n_a' here is short for "module, name, arity".)

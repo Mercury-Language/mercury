@@ -38,6 +38,8 @@ ERRORCHECK_PROGS= \
 	warn_non_contiguous \
 	warn_non_contiguous_foreign \
 	warn_non_contiguous_foreign_group \
+	warn_return \
+	warn_succ_ind \
 	warn_stubs
 
 # We don't yet pass (or even have a .exp file for) this test.

@@ -61,3 +61,6 @@ MCFLAGS-warn_non_contiguous_foreign = \
 MCFLAGS-warn_non_contiguous_foreign_group = \
 				--warn-non-contiguous-clauses \
 				--no-warn-non-contiguous-foreign-procs
+
+MCFLAGS-warn_return   = --warn-suspicious-foreign-procs
+MCFLAGS-warn_succ_ind = --warn-suspicious-foreign-procs

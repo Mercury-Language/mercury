@@ -135,6 +135,7 @@
     ;       warn_unused_imports
     ;       inform_ite_instead_of_switch
     ;       warn_unresolved_polymorphism
+    ;       warn_suspicious_foreign_procs
 
     % Verbosity options
     ;       verbose
@@ -1042,7 +1043,8 @@ option_defaults_2(warning_option, [
         % with --halt-at-warn by default.
     warn_unused_imports                 -   bool(no),
     inform_ite_instead_of_switch        -   bool(no),
-    warn_unresolved_polymorphism        -   bool(yes)
+    warn_unresolved_polymorphism        -   bool(yes),
+    warn_suspicious_foreign_procs       -   bool(no)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1863,6 +1865,7 @@ long_option("warn-insts-without-matching-type",
 long_option("warn-unused-imports",      warn_unused_imports).
 long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
 long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
+long_option("warn-suspicious-foreign-procs", warn_suspicious_foreign_procs).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -3359,7 +3362,10 @@ options_help_warning -->
         "\tGenerate informational messages for if-then-elses that could be",
         "\treplaced by switches.",
         "--no-warn-unresolved-polymorphism",
-        "\tDo not warn about unresolved polymorphism."
+        "\tDo not warn about unresolved polymorphism.",
+        "--warn-suspicious-foreign-procs",
+        "\tWarn about possible errors in the bodies of foreign",
+        "\tprocedures."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.

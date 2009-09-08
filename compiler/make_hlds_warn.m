@@ -50,8 +50,8 @@
     %
 :- pred warn_singletons_in_pragma_foreign_proc(pragma_foreign_code_impl::in,
     foreign_language::in, list(maybe(pair(string, mer_mode)))::in,
-    prog_context::in, simple_call_id::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, simple_call_id::in, pred_id::in, proc_id::in,
+    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
     % This predicate performs the following checks on promise ex declarations
     % (see notes/promise_ex.html).
@@ -220,12 +220,13 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
         warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
             PredCallId, ModuleInfo, !Specs)
     ;
-        GoalExpr = call_foreign_proc(Attrs, _, _, Args, _, _, PragmaImpl),
+        GoalExpr = call_foreign_proc(Attrs, PredId, ProcId, Args, _, _,
+            PragmaImpl),
         Context = goal_info_get_context(GoalInfo),
         Lang = get_foreign_language(Attrs),
         NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
         warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
-            NamesModes, Context, PredCallId, ModuleInfo, !Specs)
+            NamesModes, Context, PredCallId, PredId, ProcId, ModuleInfo, !Specs)
     ;
         GoalExpr = shorthand(ShortHand),
         (
@@ -400,7 +401,7 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
 %-----------------------------------------------------------------------------%
 
 warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
-        PredOrFuncCallId, ModuleInfo, !Specs) :-
+        PredOrFuncCallId, PredId, ProcId, ModuleInfo, !Specs) :-
     LangStr = foreign_language_string(Lang),
     (
         PragmaImpl = fc_impl_ordinary(C_Code, _),
@@ -422,7 +423,9 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             Spec1 = error_spec(Severity1, phase_parse_tree_to_hlds,
                 [Msg1]),
             !:Specs = [Spec1 | !.Specs]
-        )
+        ),
+        pragma_foreign_proc_body_checks(Lang, Context, PredOrFuncCallId,
+            PredId, ProcId, ModuleInfo, C_CodeList, !Specs)
     ;
         PragmaImpl = fc_impl_model_non(_, _, FirstCode, _, LaterCode,
             _, _, SharedCode, _),
@@ -529,7 +532,7 @@ variable_warning_start(UnmentionedVars) = Pieces :-
     ( UnmentionedVars = [Var] ->
         Pieces = [words("warning: variable"), quote(Var), words("does")]
     ;
-        Pieces = [words("warning: variables)"),
+        Pieces = [words("warning: variables"),
             words(add_quotes(string.join_list(", ", UnmentionedVars))),
             words("do")]
     ).
@@ -608,9 +611,178 @@ is_multi_var(NonLocals, VarSet, Var) :-
     varset.search_name(VarSet, Var, Name),
     string.prefix(Name, "_").
 
+:- pred pragma_foreign_proc_body_checks(foreign_language::in,
+    prog_context::in, simple_call_id::in, pred_id::in, proc_id::in,
+    module_info::in, list(string)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+pragma_foreign_proc_body_checks(Lang, Context, PredOrFuncCallId, PredId, ProcId,
+        ModuleInfo, BodyPieces, !Specs) :-
+    check_fp_body_for_success_indicator(Lang, Context, PredOrFuncCallId,
+        PredId, ProcId, ModuleInfo, BodyPieces, !Specs),
+    check_fp_body_for_return(Lang, Context, PredOrFuncCallId, BodyPieces,
+        !Specs).
+
+:- pred check_fp_body_for_success_indicator(foreign_language::in,
+    prog_context::in, simple_call_id::in, pred_id::in, proc_id::in,
+    module_info::in, list(string)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_fp_body_for_success_indicator(Lang, Context, CallId, PredId, ProcId,
+        ModuleInfo, BodyPieces, !Specs) :-
+    module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDeclDetism),
+    (
+        MaybeDeclDetism = yes(Detism),
+        (
+            (
+                Lang = lang_c,
+                SuccIndStr = "SUCCESS_INDICATOR"
+            ;
+                Lang = lang_csharp,
+                SuccIndStr = "SUCCESS_INDICATOR"
+            ;
+                Lang = lang_erlang,
+                SuccIndStr = "SUCCESS_INDICATOR"
+            ;
+                Lang = lang_java,
+                SuccIndStr = "succeeded"
+            ),
+            ( if    list.member(SuccIndStr, BodyPieces)
+              then
+                    LangStr = foreign_language_string(Lang),
+                    (
+                        ( Detism = detism_det
+                        ; Detism = detism_cc_multi
+                        ; Detism = detism_erroneous
+                        ),
+                        Pieces = [
+                            words("warning: the "), fixed(LangStr),
+                            words("code for"), simple_call(CallId),
+                            words("may set"), quote(SuccIndStr),
+                            words(", but it cannot fail.")
+                        ],
+                        Msg = simple_msg(Context,
+                            [option_is_set(warn_suspicious_foreign_procs, yes,
+                                [always(Pieces)])]),
+                        Severity = severity_conditional(
+                            warn_suspicious_foreign_procs, yes,
+                            severity_warning, no),
+                        Spec = error_spec(Severity, phase_parse_tree_to_hlds,
+                            [Msg]),
+                        !:Specs = [Spec | !.Specs]
+                    ;
+                        ( Detism = detism_semi
+                        ; Detism = detism_multi
+                        ; Detism = detism_non
+                        ; Detism = detism_cc_non
+                        ; Detism = detism_failure
+                        )
+                    )
+              else
+                    (
+                        ( Detism = detism_semi
+                        ; Detism = detism_cc_non
+                        ),
+                        LangStr = foreign_language_string(Lang),
+                        Pieces = [
+                            words("warning: the "), fixed(LangStr),
+                            words("code for"), simple_call(CallId),
+                            words("does not appear to set"),
+                            quote(SuccIndStr),
+                            words(", but it can fail.")
+                        ],
+                        Msg = simple_msg(Context,
+                            [option_is_set(warn_suspicious_foreign_procs, yes,
+                                [always(Pieces)])]),
+                        Severity = severity_conditional(
+                            warn_suspicious_foreign_procs, yes,
+                            severity_warning, no),
+                        Spec = error_spec(Severity, phase_parse_tree_to_hlds,
+                            [Msg]),
+                        !:Specs = [Spec | !.Specs]
+                    ;
+                        ( Detism = detism_det
+                        ; Detism = detism_cc_multi
+                        ; Detism = detism_failure
+                        ; Detism = detism_non
+                        ; Detism = detism_multi
+                        ; Detism = detism_erroneous
+                        )
+                    )
+            )
+        ;
+            Lang = lang_il
+        )
+    ;
+        MaybeDeclDetism = no
+    ).
+
+    % Check to see if a foreign_proc body contains a return statement
+    % (or whatever the foreign language equivalent is).
+    %
+:- pred check_fp_body_for_return(foreign_language::in,
+    prog_context::in, simple_call_id::in, list(string)::in, 
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_fp_body_for_return(Lang, Context, Id, BodyPieces, !Specs) :-
+    (
+        ( Lang = lang_c
+        ; Lang = lang_csharp
+        ; Lang = lang_java
+        ),
+        ( if    list.member("return", BodyPieces)
+          then
+                LangStr = foreign_language_string(Lang),
+                Pieces = [
+                    words("warning: the "), fixed(LangStr), words("code for"),
+                    simple_call(Id),
+                    words("may contain a"), quote("return"),
+                    words("statement.")
+                ],
+                Msg = simple_msg(Context,
+                    [option_is_set(warn_suspicious_foreign_procs, yes,
+                        [always(Pieces)])]
+                ),
+                Severity = severity_conditional(
+                    warn_suspicious_foreign_procs, yes, severity_warning, no),
+                Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+                !:Specs = [Spec | !.Specs]
+          else
+                true
+        )
+    ;
+        Lang = lang_il,
+        ( if    ( list.member("ret", BodyPieces)
+                ; list.member("jmp", BodyPieces)
+                )
+          then
+                Pieces = [
+                    words("warning: the IL code for"),
+                    simple_call(Id),
+                    words("may contain a"), quote("ret"),
+                    words("or"), quote("jmp"),
+                    words("instruction.")
+                ],
+                Msg = simple_msg(Context,
+                    [option_is_set(warn_suspicious_foreign_procs, yes,
+                        [always(Pieces)])]
+                ),
+                Severity = severity_conditional(
+                    warn_suspicious_foreign_procs, yes, severity_warning, no),
+                Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+                !:Specs = [Spec | !.Specs]
+          else
+                true
+        )
+    ;
+        Lang = lang_erlang
+    ).
+
 %-----------------------------------------------------------------------------%
 %
 % Promise_ex error checking.
+%
 
 check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !Specs) :-
     % Are universally quantified variables present?
