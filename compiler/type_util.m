@@ -161,6 +161,10 @@
     %
 :- func classify_type_ctor(module_info, type_ctor) = type_ctor_category.
 
+    % Given a type_ctor's type_ctor_defn's body, determine what sort it is.
+    %
+:- func classify_type_defn_body(hlds_type_body) = type_ctor_category.
+
     % Report whether it is OK to include a value of the given time
     % in a heap cell allocated with GC_malloc_atomic.
     %
@@ -684,13 +688,16 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
 %-----------------------------------------------------------------------------%
 
 classify_type(ModuleInfo, VarType) = TypeCategory :-
-    ( type_to_ctor_and_args(VarType, TypeCtor, _) ->
+    ( type_to_ctor(VarType, TypeCtor) ->
         TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor)
     ;
         TypeCategory = ctor_cat_variable
     ).
 
 classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
+    % Please keep the code of this predicate in sync with the code of
+    % classify_type_ctor_and_defn.
+
     TypeCtor = type_ctor(TypeSymName, Arity),
     (
         TypeSymName = unqualified(TypeName),
@@ -795,6 +802,43 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
             ),
             TypeCategory = ctor_cat_user(cat_user_general)
         )
+    ).
+
+classify_type_defn_body(TypeBody) = TypeCategory :-
+    % Please keep the code of this predicate in sync with the code of
+    % classify_type_ctor.
+    %
+    % Unlike classify_type_ctor, we don't have to (a) test for types that do
+    % not have definitions, or (b) look up the definition, since our caller has
+    % already done that.
+
+    (
+        TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _),
+        (
+            DuTypeKind = du_type_kind_mercury_enum,
+            TypeCategory = ctor_cat_enum(cat_enum_mercury)
+        ;
+            DuTypeKind = du_type_kind_foreign_enum(_),
+            TypeCategory = ctor_cat_enum(cat_enum_foreign)
+        ;
+            DuTypeKind = du_type_kind_direct_dummy,
+            TypeCategory = ctor_cat_user(cat_user_direct_dummy)
+        ;
+            DuTypeKind = du_type_kind_notag(_, _, _),
+            TypeCategory = ctor_cat_user(cat_user_notag)
+        ;
+            DuTypeKind = du_type_kind_general,
+            TypeCategory = ctor_cat_user(cat_user_general)
+        )
+    ;
+        % XXX We should be able to return more precise descriptions
+        % than this.
+        ( TypeBody = hlds_eqv_type(_)
+        ; TypeBody = hlds_foreign_type(_)
+        ; TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_abstract_type(_)
+        ),
+        TypeCategory = ctor_cat_user(cat_user_general)
     ).
 
 %-----------------------------------------------------------------------------%

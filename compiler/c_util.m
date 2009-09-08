@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,19 +30,31 @@
 %
 % Line numbering
 %
-    % set_line_num(FileName, LineNum):
+    % set_line_num(FileName, LineNum, !IO):
     %
-    % Emit a #line directive to set the specified filename and linenumber
-    % so that C compiler error messages etc. will refer to the correct location
-    % in the original source file location.
+    % If the line_numbers option is set, emit a #line directive to set the
+    % specified filename and linenumber so that C compiler error messages
+    % will refer to the correct location in the original source file location.
     %
 :- pred set_line_num(string::in, int::in, io::di, io::uo) is det.
 
-    % Emit a #line directive to cancel the effect of any previous #line
-    % directives, so that C compiler error messages etc. will refer to the
-    % appropriate location in the generated .c file.
+    % always_set_line_num(FileName, LineNum):
+    %
+    % As set_line_num, but always generate a #line directive, regardless of
+    % the setting of the line_numbers option.
+    %
+:- pred always_set_line_num(string::in, int::in, io::di, io::uo) is det.
+
+    % If the line_numbers option is set, emit a #line directive to cancel
+    % the effect of any previous #line directives, so that C compiler error
+    % messages will refer to the appropriate location in the generated .c file.
     %
 :- pred reset_line_num(io::di, io::uo) is det.
+
+    % As reset_line_num, but always generate a #line directive, regardless of
+    % the setting of the line_numbers option.
+    %
+:- pred always_reset_line_num(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -175,50 +187,119 @@
 %-----------------------------------------------------------------------------%
 %
 % Line numbering.
+%
 
 set_line_num(File, Line, !IO) :-
     globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
     (
         LineNumbers = yes,
-        (
-            Line > 0,
-            File \= ""
-        ->
-            io.write_string("#line ", !IO),
-            io.write_int(Line, !IO),
-            io.write_string(" """, !IO),
-            output_quoted_string(File, !IO),
-            io.write_string("""\n", !IO)
-        ;
-            reset_line_num(!IO)
-        )
+        always_set_line_num(File, Line, !IO)
     ;
         LineNumbers = no
     ).
 
+always_set_line_num(File, Line, !IO) :-
+    (
+        Line > 0,
+        File \= ""
+    ->
+        io.write_string("#line ", !IO),
+        io.write_int(Line, !IO),
+        io.write_string(" """, !IO),
+        can_print_directly(File, CanPrint, !IO),
+        (
+            CanPrint = yes,
+            io.write_string(File, !IO)
+        ;
+            CanPrint = no,
+            output_quoted_string(File, !IO)
+        ),
+        io.write_string("""\n", !IO)
+    ;
+        reset_line_num(!IO)
+    ).
+
 reset_line_num(!IO) :-
+    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+    (
+        LineNumbers = yes,
+        always_reset_line_num(!IO)
+    ;
+        LineNumbers = no
+    ).
+
+always_reset_line_num(!IO) :-
     % We want to generate another #line directive to reset the C compiler's
     % idea of what it is processing back to the file we are generating.
     io.get_output_line_number(Line, !IO),
-    io.output_stream_name(FileName, !IO),
-    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+    io.output_stream_name(File, !IO),
     (
         Line > 0,
-        FileName \= "",
-        LineNumbers = yes
+        File \= ""
     ->
         io.write_string("#line ", !IO),
         io.write_int(Line + 1, !IO),
         io.write_string(" """, !IO),
-        output_quoted_string(FileName, !IO),
+        can_print_directly(File, CanPrint, !IO),
+        (
+            CanPrint = yes,
+            io.write_string(File, !IO)
+        ;
+            CanPrint = no,
+            output_quoted_string(File, !IO)
+        ),
         io.write_string("""\n", !IO)
     ;
         true
     ).
 
+    % Decide whether the given string can be printed directly, using
+    % io.write_string, rather than output_quoted_string. The latter can take
+    % more than 7% of the compiler's runtime!
+    %
+:- pred can_print_directly(string::in, bool::out, io::di, io::uo) is det.
+
+can_print_directly(_, no, !IO).
+
+:- pragma foreign_proc("C",
+    can_print_directly(Str::in, CanPrintDirectly::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"{
+    static  MR_String   last_string;
+    static  MR_bool     last_can_print_directly;
+    MR_bool             can_print_directly;
+    const char          *s;
+    int                 len;
+
+    /* We cache the result of the last decision. */
+    if (Str == last_string) {
+        CanPrintDirectly = last_can_print_directly;
+    } else {
+        can_print_directly = MR_TRUE;
+
+        for (s = Str; *s != '\\0'; s++) {
+            if (! (isalnum(*s) || *s == '_' || *s == '/' || *s == '.')) {
+                can_print_directly = MR_FALSE;
+                printf(""XXX %d XXX\\n"", *s);
+                break;
+            }
+        }
+
+        len = s - Str;
+        if (len >= 512) {
+            can_print_directly = MR_FALSE;
+        }
+
+        CanPrintDirectly = can_print_directly;
+
+        last_string = Str;
+        last_can_print_directly = CanPrintDirectly;
+    }
+}").
+
 %-----------------------------------------------------------------------------%
 %
-% String and character handling
+% String and character handling.
 %
 
 output_quoted_string(S, !IO) :-

@@ -544,17 +544,17 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
         type_to_ctor(Type, TypeCtor),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)
     ->
-        hlds_data.get_type_defn_body(TypeDefn, Body),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            Body = hlds_foreign_type(ForeignTypeBody),
+            TypeBody = hlds_foreign_type(ForeignTypeBody),
             foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody,
                 ForeignTypeName, _, Assertions),
             ExportType = exported_type_foreign(ForeignTypeName, Assertions)
         ;
-            ( Body = hlds_du_type(_, _, _, _, _, _, _, _)
-            ; Body = hlds_eqv_type(_)
-            ; Body = hlds_solver_type(_, _)
-            ; Body = hlds_abstract_type(_)
+            ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _)
+            ; TypeBody = hlds_eqv_type(_)
+            ; TypeBody = hlds_solver_type(_, _)
+            ; TypeBody = hlds_abstract_type(_)
             ),
             ExportType = exported_type_mercury(Type)
         )
@@ -570,6 +570,10 @@ foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body,
 
 foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         MaybeUserEqComp, Assertions) :-
+    % The body of this function is very similar to the function
+    % foreign_type_to_mlds_type in mlds.m.
+    % Any changes here may require changes there as well.
+
     ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
         MaybeErlang),
     module_info_get_globals(ModuleInfo, Globals),
