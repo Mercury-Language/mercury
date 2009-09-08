@@ -281,6 +281,7 @@
 :- func ml_gen_public_field_decl_flags = mlds_decl_flags.
 
     % Apply the usual %s_%d formatting to a MLDS variable name.
+    %
 :- func ml_var_name_to_string(mlds_var_name) = string.
 
 %-----------------------------------------------------------------------------%
@@ -639,7 +640,12 @@
 
                 % The type of the ground term (actually, the type of the
                 % variable the ground term was constructed for).
-                mer_type
+                mer_type,
+
+                % The corresponding MLDS type. It could be computed from the
+                % Mercury type, but there is no point in doing so when using
+                % the ground term as well when constructing it.
+                mlds_type
             ).
 
 :- type ml_ground_term_map == map(prog_var, ml_ground_term).
