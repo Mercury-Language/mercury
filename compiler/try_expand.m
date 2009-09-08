@@ -312,7 +312,7 @@ expand_try_goals_in_proc(PredId, ProcId, !ModuleInfo, !Specs) :-
 update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
         !Specs) :-
     proc_info_set_goal(Goal, !ProcInfo),
-    requantify_proc(!ProcInfo),
+    requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, !.ProcInfo,
         !ModuleInfo),
 

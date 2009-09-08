@@ -277,16 +277,16 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
             VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "exceptions",
-        parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, VarSet,
+        parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm,
             Context, SeqNum, MaybeItem)
     ;
         PragmaName = "trailing_info",
-        parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
+        parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm,
             Context, SeqNum, MaybeItem)
     ;
         PragmaName = "mm_tabling_info",
         parse_pragma_mm_tabling_info(ModuleName, PragmaTerms, ErrorTerm,
-            VarSet, Context, SeqNum, MaybeItem)
+            Context, SeqNum, MaybeItem)
     ;
         PragmaName = "require_feature_set",
         parse_pragma_require_feature_set(PragmaTerms, VarSet, ErrorTerm,
@@ -533,7 +533,7 @@ parse_sym_name_string_pair(VarSet, ContextPieces, PairTerm, MaybePair) :-
     Functor = term.atom("-"),
     Args = [SymNameTerm, StringTerm],
     StringTerm = functor(term.string(String), _, _),
-    parse_qualified_term(SymNameTerm, SymNameTerm, VarSet, ContextPieces,
+    parse_sym_name_and_args(SymNameTerm, VarSet, ContextPieces,
         MaybeSymNameResult),
     (
         MaybeSymNameResult = ok2(SymName, []),
@@ -806,7 +806,7 @@ parse_pragma_c_import_module(PragmaTerms, ErrorTerm, Context, SeqNum,
         MaybeItem) :-
     (
         PragmaTerms = [ImportTerm],
-        parse_sym_name_and_args(ImportTerm, Import, [])
+        try_parse_sym_name_and_no_args(ImportTerm, Import)
     ->
         Pragma = pragma_foreign_import_module(lang_c, Import),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
@@ -828,7 +828,7 @@ parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm, Context, SeqNum,
         MaybeItem) :-
     (
         PragmaTerms = [LangTerm, ImportTerm],
-        parse_sym_name_and_args(ImportTerm, Import, [])
+        try_parse_sym_name_and_no_args(ImportTerm, Import)
     ->
         ( parse_foreign_language(LangTerm, Language) ->
             Pragma = pragma_foreign_import_module(Language, Import),
@@ -970,11 +970,8 @@ parse_pragma_unused_args(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
         ArityTerm = term.functor(term.integer(Arity), [], _),
         ModeNumTerm = term.functor(term.integer(ModeNum), [], _),
         parse_predicate_or_function(PredOrFuncTerm, PredOrFunc),
-        ContextPieces = [words("In"), quote(":- pragma unused_args"),
-            words("declaration:")],
-        parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
-            VarSet, ContextPieces, MaybePredName),
-        MaybePredName = ok2(PredName, []),
+        try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
+            PredNameTerm, PredName),
         convert_int_list(VarSet, UnusedArgsTerm, MaybeUnusedArgs),
         MaybeUnusedArgs = ok1(UnusedArgs)
     ->
@@ -1009,12 +1006,8 @@ parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
             term.context_file(SpecContext, FileName),
             \+ string.remove_suffix(FileName, ".m", _),
 
-            % The value of ContextPieces does not matter here since we succeed
-            % only if it isn't used.
-            NameContextPieces = [],
-            parse_implicitly_qualified_term(ModuleName, SpecNameTerm,
-                ErrorTerm, VarSet, NameContextPieces, NameResult),
-            NameResult = ok2(SpecName, []),
+            try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
+                SpecNameTerm, SpecName),
             MaybeName = yes(SpecName)
         )
     ->
@@ -1298,9 +1291,9 @@ parse_pragma_structure_reuse(ModuleName, PragmaTerms, ErrorTerm, VarSet,
     ).
 
 :- pred parse_pragma_exceptions(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
+parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, Context,
         SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
@@ -1308,11 +1301,8 @@ parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
         parse_predicate_or_function(PredOrFuncTerm, PredOrFunc),
         ArityTerm = term.functor(term.integer(Arity), [], _),
         ModeNumTerm = term.functor(term.integer(ModeNum), [], _),
-        ContextPieces = [words("In"), quote(":- pragma exceptions"),
-            words("declaration:")],
-        parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
-            VarSet, ContextPieces, MaybePredNameAndArgs),
-        MaybePredNameAndArgs = ok2(PredName, []),
+        try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
+            PredNameTerm, PredName),
         ThrowStatusTerm = term.functor(term.atom(ThrowStatusFunctor),
             ThrowStatusArgTerms, _),
         (
@@ -1352,9 +1342,9 @@ parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
     ).
 
 :- pred parse_pragma_trailing_info(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
+parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, Context,
         SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
@@ -1362,11 +1352,8 @@ parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
         parse_predicate_or_function(PredOrFuncTerm, PredOrFunc),
         ArityTerm = term.functor(term.integer(Arity), [], _),
         ModeNumTerm = term.functor(term.integer(ModeNum), [], _),
-        ContextPieces = [words("In"), quote(":- pragma trailing_info"),
-            words("declaration:")],
-        parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
-            VarSet, ContextPieces, MaybePredNameAndArgs),
-        MaybePredNameAndArgs = ok2(PredName, []),
+        try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
+            PredNameTerm, PredName),
         TrailingStatusTerm = term.functor(term.atom(TrailingStatusFunctor),
             [], _),
         (
@@ -1394,9 +1381,9 @@ parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
     ).
 
 :- pred parse_pragma_mm_tabling_info(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_mm_tabling_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
+parse_pragma_mm_tabling_info(ModuleName, PragmaTerms, ErrorTerm,
         Context, SeqNum, MaybeItem) :-
     (
         PragmaTerms = [PredOrFuncTerm, PredNameTerm, ArityTerm, ModeNumTerm,
@@ -1404,11 +1391,8 @@ parse_pragma_mm_tabling_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         parse_predicate_or_function(PredOrFuncTerm, PredOrFunc),
         ArityTerm = term.functor(term.integer(Arity), [], _),
         ModeNumTerm = term.functor(term.integer(ModeNum), [], _),
-        ContextPieces = [words("In"), quote(":- pragma mm_tabling_info"),
-            words("declaration:")],
-        parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
-            VarSet, ContextPieces, MaybePredNameAndArgs),
-        MaybePredNameAndArgs = ok2(PredName, []),
+        try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
+            PredNameTerm, PredName),
         MM_TablingStatusTerm = term.functor(term.atom(MM_TablingStatusFunctor),
             [], _),
         (
@@ -2624,7 +2608,7 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
     ContextPieces = [words("In"), quote(":- pragma c_code"),
         words("declaration:")],
     parse_pred_or_func_and_args_general(yes(ModuleName), PredAndVarsTerm0,
-        PredAndVarsTerm0, VarSet, ContextPieces, MaybePredAndArgs),
+        VarSet, ContextPieces, MaybePredAndArgs),
     (
         MaybePredAndArgs = ok2(PredName, VarList0 - MaybeRetTerm),
         % Is this a function or a predicate?
@@ -3013,12 +2997,8 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
             [PredNameTerm, ArityTerm], _)
     ->
         (
-            % The value of ContextPieces does not matter here since we succeed
-            % only if it isn't used.
-            PredNameContextPieces = [],
-            parse_implicitly_qualified_term(ModuleName, PredNameTerm,
-                PredAndModesTerm0, VarSet, PredNameContextPieces,
-                ok2(PredName, [])),
+            try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
+                PredNameTerm, PredName),
             ArityTerm = term.functor(term.integer(Arity), [], _)
         ->
             MaybeArityOrModes = ok1(arity_or_modes(PredName, Arity, no, no))
@@ -3062,7 +3042,7 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
 parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
         ErrorTerm, VarSet, ContextPieces, MaybeNameAndModes) :-
     parse_pred_or_func_and_args_general(MaybeModuleName, PredAndModesTerm,
-        ErrorTerm, VarSet, ContextPieces, MaybePredAndArgs),
+        VarSet, ContextPieces, MaybePredAndArgs),
     (
         MaybePredAndArgs = ok2(PredName, ArgModeTerms - MaybeRetModeTerm),
         (

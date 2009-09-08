@@ -1376,10 +1376,10 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
 
     (
         % Check if variable has a higher order type.
-        type_is_higher_order_details(TypeOfX, Purity, _PredOrFunc, EvalMethod,
-            CalleeArgTypes),
         ConsId0 = closure_cons(ShroudedPredProcId, _),
-        proc(PredId, ProcId0) = unshroud_pred_proc_id(ShroudedPredProcId)
+        proc(PredId, ProcId0) = unshroud_pred_proc_id(ShroudedPredProcId),
+        type_is_higher_order_details(TypeOfX, Purity, _PredOrFunc, EvalMethod,
+            CalleeArgTypes)
     ->
         % An `invalid_proc_id' means the predicate is multi-moded. We can't
         % pick the right mode yet. Perform the rest of the transformation with
@@ -2127,7 +2127,8 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
         poly_info_get_var_types(!.Info, VarTypes0),
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         OutsideVars = proc_arg_vector_to_set(HeadVars),
-        implicitly_quantify_goal(OutsideVars, _Warnings, Goal0, Goal,
+        implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
+            OutsideVars, _Warnings, Goal0, Goal,
             VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
@@ -2162,7 +2163,8 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         goal_util.extra_nonlocal_typeinfos(RttiVarMaps0, VarTypes0,
             ExistQVars, NonLocalsPlusArgs, NewOutsideVars),
         set.union(NonLocals, NewOutsideVars, OutsideVars),
-        implicitly_quantify_goal(OutsideVars, _Warnings, !Goal,
+        implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
+            OutsideVars, _Warnings, !Goal,
             VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)

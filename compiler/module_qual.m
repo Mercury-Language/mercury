@@ -294,7 +294,7 @@ collect_mq_info_item(Item, !Info) :-
             mq_info_set_types(Types, !Info),
             mq_info_set_impl_types(ImplTypes, !Info)
         )
-    ;   
+    ;
         Item = item_inst_defn(ItemInstDefn),
         ItemInstDefn = item_inst_defn_info(_, SymName, Params, _, _, _, _),
         ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
@@ -669,13 +669,13 @@ process_assert_list(ExprList, Symbols, Success) :-
 
     % term_qualified_symbols(T, S)
     %
-    % Given a term, T, return the list of all the sym_names, S, in the
-    % term.  The predicate fails if any sub-term of T is unqualified.
+    % Given a term, T, return the list of all the sym_names, S, in the term.
+    % The predicate fails if any sub-term of T is unqualified.
     %
 :- pred term_qualified_symbols(term::in, list(sym_name)::out) is semidet.
 
 term_qualified_symbols(Term, Symbols) :-
-    ( parse_sym_name_and_args(Term, SymName, Args) ->
+    ( try_parse_sym_name_and_args(Term, SymName, Args) ->
         SymName = qualified(_, _),
         term_qualified_symbols_list(Args, Symbols0),
         Symbols = [SymName | Symbols0]
@@ -752,7 +752,7 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         Continue = yes
     ;
         Item0 = item_mode_defn(ItemModeDefn0),
-        ItemModeDefn0 = item_mode_defn_info(A, SymName, Params, ModeDefn0, C,   
+        ItemModeDefn0 = item_mode_defn_info(A, SymName, Params, ModeDefn0, C,
             Context, SeqNum),
         list.length(Params, Arity),
         mq_info_set_error_context(mqec_mode(mq_id(SymName, Arity)) - Context,

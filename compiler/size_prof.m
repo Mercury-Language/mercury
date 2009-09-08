@@ -265,11 +265,12 @@ size_prof_process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         Info0, Info1),
     size_prof_process_goal(Goal0, Goal1, Info1, Info),
 
-        % We need to fix up goal_infos by recalculating
-        % the nonlocal vars and the non-atomic instmap deltas.
+    % We need to fix up goal_infos by recalculating
+    % the nonlocal vars and the non-atomic instmap deltas.
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-    implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
+    implicitly_quantify_clause_body_general(ordinary_nonlocals_no_lambda,
+        HeadVars, _Warnings, Goal1, Goal2,
         Info ^ spi_varset, VarSet, Info ^ spi_vartypes, VarTypes,
         Info ^ spi_rtti_varmaps, RttiVarMaps),
     recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,

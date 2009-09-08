@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 2003, 2005-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -429,10 +429,10 @@ transform_polyhedron(Poly, Polys0, Polys, !PolyInfo) :-
 
 transform_constraint(Sigma, !Constraint, !VarMap, !Varset) :-
     some [!Terms] (
-        constraint(!.Constraint, !:Terms, Op, Const),
+        deconstruct_constraint(!.Constraint, !:Terms, Op, Const),
         list.map_foldl2(change_var, !Terms, !VarMap, !Varset),
-        list.cons( Sigma - (-Const), !Terms),
-        !:Constraint = constraint(!.Terms, Op, zero)
+        list.cons(Sigma - (-Const), !Terms),
+        !:Constraint = construct_constraint(!.Terms, Op, zero)
     ).
 
     % change_var: takes a Var-Num pair with an old variable and returns one
@@ -445,10 +445,9 @@ transform_constraint(Sigma, !Constraint, !VarMap, !Varset) :-
 change_var(!Term, !VarMap, !Varset) :-
     some [!Var] (
         !.Term = !:Var - Coefficient,
-        %
+
         % Have we already mapped this original variable to a new one?
-        %
-        ( !:Var = !.VarMap ^ elem(!.Var) ->
+        ( map.search(!.VarMap, !.Var, !:Var) ->
             true
         ;
             svvarset.new_var(NewVar, !Varset),
@@ -462,16 +461,13 @@ change_var(!Term, !VarMap, !Varset) :-
     constraints::in, constraints::out) is det.
 
 add_sigma_constraints(Sigmas, !Constraints) :-
-    %
     % Add non-negativity constraints for each sigma variable.
-    %
     SigmaConstraints = list.map(make_nonneg_constr, Sigmas),
     list.append(SigmaConstraints, !Constraints),
-    %
+
     % The sum of all the sigma variables is one.
-    %
     SigmaTerms = list.map(lp_term, Sigmas),
-    list.cons(constraint(SigmaTerms, (=), one), !Constraints).
+    list.cons(construct_constraint(SigmaTerms, lp_eq, one), !Constraints).
 
     % Add a constraint specifying that each variable is the sum of the
     % temporary variables to which it has been mapped.
@@ -497,13 +493,14 @@ get_keys_from_map(Map, KeySet) = set.insert_list(KeySet, map.keys(Map)).
 
 make_last_constraint(VarMaps, OriginalVar) = Constraint :-
     list.foldl(make_last_terms(OriginalVar), VarMaps, [], LastTerms),
-    Constraint = constraint([OriginalVar - one | LastTerms], (=), zero).
+    AllTerms = [OriginalVar - one | LastTerms],
+    Constraint = construct_constraint(AllTerms, lp_eq, zero).
 
 :- pred make_last_terms(lp_var::in, var_map::in, lp_terms::in, lp_terms::out)
     is semidet.
 
 make_last_terms(OriginalVar, VarMap, !Terms) :-
-    NewVar = VarMap ^ elem(OriginalVar),
+    map.search(VarMap, OriginalVar, NewVar),
     list.cons(NewVar - (-one), !Terms).
 
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2008 The University of Melbourne.
+% Copyright (C) 2002, 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -523,7 +523,7 @@ strict_decrease_around_loop(AbstractSCC, SizeVarSet, PPId, Loop) :-
     % NOTE: If you examine the condition it may contain fewer variables
     % than you expect. This is because if the same argument occurs in the head
     % and the call they will cancel each other out.
-    Condition = constraint(Terms, (=<), -one),
+    Condition = construct_constraint(Terms, lp_lt_eq, -one),
     Label = polyhedron.non_false_constraints(Loop ^ tcge_label),
     entailed(SizeVarSet, Label, Condition).
 
@@ -630,9 +630,9 @@ build_edge_map([Edge | Edges]) =
     = constraint.
 
 subst_size_var_eqn(Map, Eqn0) = Eqn :-
-    constraint(Eqn0, Coeffs0, Operator, Constant),
+    deconstruct_constraint(Eqn0, Coeffs0, Operator, Constant),
     Coeffs = list.map(subst_size_var_coeff(Map), Coeffs0),
-    Eqn = constraint(Coeffs, Operator, Constant).
+    Eqn = construct_constraint(Coeffs, Operator, Constant).
 
 :- func subst_size_var_coeff(bimap(size_var, size_var), lp_term) = lp_term.
 

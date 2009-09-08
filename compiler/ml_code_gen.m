@@ -1326,7 +1326,7 @@ ml_gen_proc(!ModuleInfo, PredId, ProcId, !Defns, !GlobalData) :-
 
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo0),
-    requantify_proc(ProcInfo0, ProcInfo),
+    requantify_proc_general(ordinary_nonlocals_no_lambda, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         !ModuleInfo),
 

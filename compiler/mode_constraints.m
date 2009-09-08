@@ -254,9 +254,11 @@ correct_nonlocals_in_pred(PredId, !ModuleInfo) :-
 
 correct_nonlocals_in_clause_body(Headvars, !Goals, !Varset, !Vartypes,
         !RttiVarMaps) :-
-    implicitly_quantify_clause_body(Headvars, Warnings, !Goals, !Varset,
+    implicitly_quantify_clause_body_general(ordinary_nonlocals_maybe_lambda,
+        Headvars, Warnings, !Goals, !Varset,
         !Vartypes, !RttiVarMaps),
-    (   Warnings = []
+    (
+        Warnings = []
     ;
         Warnings = [_|_],
         unexpected(this_file, "Quantification error during constraints" ++

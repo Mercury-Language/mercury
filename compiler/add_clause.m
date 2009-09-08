@@ -600,7 +600,11 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
         % The RTTI varmaps here are just a dummy value, because the real ones
         % are not introduced until polymorphism.
         rtti_varmaps_init(EmptyRttiVarmaps),
-        implicitly_quantify_clause_body(HeadVarList, Warnings, Goal0, Goal,
+        % XXX It should be possible to exploit the fact that lambda expressions
+        % are not yet recognized as such inside from_ground_term scopes.
+        implicitly_quantify_clause_body_general(
+            ordinary_nonlocals_maybe_lambda,
+            HeadVarList, Warnings, Goal0, Goal,
             !VarSet, VarTypes0, VarTypes, EmptyRttiVarmaps, _),
         qual_info_set_var_types(VarTypes, !QualInfo)
     ).

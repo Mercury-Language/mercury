@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -82,7 +82,9 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
             % We need to fix up the goal_info by recalculating the nonlocal
             % vars and the non-atomic instmap deltas.
             proc_info_get_headvars(!.ProcInfo, HeadVars),
-            implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
+            implicitly_quantify_clause_body_general(
+                ordinary_nonlocals_no_lambda,
+                HeadVars, _Warnings, Goal1, Goal2,
                 Varset0, Varset, VarTypes0, VarTypes,
                 RttiVarMaps0, RttiVarMaps),
             proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),

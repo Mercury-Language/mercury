@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 1997-2001, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -91,7 +91,7 @@
 
 analyse_termination_in_module(!ModuleInfo, !IO) :-
     globals.io_get_termination_norm(TermNorm, !IO),
-    FunctorInfo = set_functor_info(TermNorm, !.ModuleInfo),
+    FunctorInfo = set_functor_info(!.ModuleInfo, TermNorm),
     globals.io_lookup_int_option(termination_error_limit, MaxErrors, !IO),
     globals.io_lookup_int_option(termination_path_limit, MaxPaths, !IO),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),

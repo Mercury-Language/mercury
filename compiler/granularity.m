@@ -78,7 +78,8 @@ runtime_granularity_test_in_proc(SCC, proc(PredId, ProcId), !ModuleInfo) :-
         ;
             Changed = yes,
             proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
-            requantify_proc(ProcInfo1, ProcInfo),
+            requantify_proc_general(ordinary_nonlocals_no_lambda,
+                ProcInfo1, ProcInfo),
             map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
             pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
             map.det_update(PredTable0, PredId, PredInfo, PredTable),

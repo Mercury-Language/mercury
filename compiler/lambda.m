@@ -191,7 +191,8 @@ lambda_process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     % Check if we need to requantify.
     (
         MustRecomputeNonLocals = yes,
-        implicitly_quantify_clause_body(HeadVars, _Warnings,
+        implicitly_quantify_clause_body_general(
+            ordinary_nonlocals_maybe_lambda, HeadVars, _Warnings,
             Goal1, Goal2, VarSet1, VarSet, VarTypes1, VarTypes,
             RttiVarMaps1, RttiVarMaps),
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
@@ -541,7 +542,9 @@ lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         % that we just created.
         (
             MustRecomputeNonLocals0 = yes,
-            requantify_proc(ProcInfo2, ProcInfo)
+            % ZZZ
+            requantify_proc_general(ordinary_nonlocals_maybe_lambda,
+                ProcInfo2, ProcInfo)
         ;
             MustRecomputeNonLocals0 = no,
             ProcInfo = ProcInfo2

@@ -288,7 +288,7 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     %   - which norm we are using.
     %   - whether we are propagating failure constraints.
     globals.io_get_termination2_norm(Norm, !IO),
-    FunctorInfo = set_functor_info(Norm, !.ModuleInfo),
+    FunctorInfo = set_functor_info(!.ModuleInfo, Norm),
     globals.io_lookup_bool_option(propagate_failure_constrs, Fail, !IO),
     globals.io_lookup_bool_option(arg_size_analysis_only, ArgSizeOnly, !IO),
     BuildOptions = term_build_options_init(FunctorInfo, Fail, ArgSizeOnly),

@@ -487,7 +487,7 @@ ho_fixup_proc_info(MustRecompute, Goal0, !Info) :-
             !:ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
             !:ProcInfo   = !.Info ^ hoi_proc_info,
             proc_info_set_goal(Goal0, !ProcInfo),
-            requantify_proc(!ProcInfo),
+            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, Goal2),
             proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap),
             proc_info_get_vartypes(!.ProcInfo, VarTypes),

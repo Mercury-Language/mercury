@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,7 +215,7 @@ parse_constructor(ModuleName, VarSet, Term) = MaybeConstructor :-
         ( parse_list_of_vars(VarsTerm, ExistQVars) ->
             list.map(term.coerce_var, ExistQVars, ExistQTVars),
             MaybeConstructor = parse_constructor_2(ModuleName, VarSet,
-                ExistQTVars, Term, SubTerm)
+                ExistQTVars, SubTerm)
         ;
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: syntax error in variable list at"),
@@ -227,14 +227,13 @@ parse_constructor(ModuleName, VarSet, Term) = MaybeConstructor :-
     ;
         ExistQVars = [],
         MaybeConstructor = parse_constructor_2(ModuleName, VarSet, ExistQVars,
-            Term, Term)
+            Term)
     ).
 
-:- func parse_constructor_2(module_name, varset, list(tvar), term, term) =
+:- func parse_constructor_2(module_name, varset, list(tvar), term) =
     maybe1(constructor).
 
-parse_constructor_2(ModuleName, VarSet, ExistQVars, ContainingTerm, Term)
-        = MaybeConstructor :-
+parse_constructor_2(ModuleName, VarSet, ExistQVars, Term) = MaybeConstructor :-
     get_existential_constraints_from_term(ModuleName, VarSet, Term,
         BeforeConstraintsTerm, MaybeConstraints),
     (
@@ -254,7 +253,7 @@ parse_constructor_2(ModuleName, VarSet, ExistQVars, ContainingTerm, Term)
             MainTerm = BeforeConstraintsTerm
         ),
         ContextPieces = [words("In constructor definition:")],
-        parse_implicitly_qualified_term(ModuleName, MainTerm, ContainingTerm,
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, MainTerm,
             VarSet, ContextPieces, MaybeFunctorAndArgTerms),
         (
             MaybeFunctorAndArgTerms = error2(Specs),
@@ -298,7 +297,7 @@ convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms])
         = MaybeConstructorArgs :-
     ( Term = term.functor(term.atom("::"), [NameTerm, TypeTerm], _) ->
         ContextPieces = [words("In field name:")],
-        parse_implicitly_qualified_term(ModuleName, NameTerm, Term,
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
             VarSet, ContextPieces, MaybeSymNameAndArgs),
         (
             MaybeSymNameAndArgs = error2(Specs),
@@ -1089,7 +1088,7 @@ parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeTypeCtorAndArgs) :-
     ;
         HeadTerm = term.functor(_, _, HeadContext),
         ContextPieces = [words("In type definition:")],
-        parse_implicitly_qualified_term(ModuleName, HeadTerm, HeadTerm,
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
             VarSet, ContextPieces, HeadResult),
         (
             HeadResult = error2(Specs),

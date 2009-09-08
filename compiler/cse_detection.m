@@ -215,7 +215,9 @@ detect_cse_in_proc_pass(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
         CseInfo = cse_info(VarSet1, VarTypes1, RttiVarMaps1, _),
         proc_info_get_headvars(ProcInfo0, HeadVars),
 
-        implicitly_quantify_clause_body(HeadVars, _Warnings,
+        implicitly_quantify_clause_body_general(
+            ordinary_nonlocals_maybe_lambda,
+            HeadVars, _Warnings,
             Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes,
             RttiVarMaps1, RttiVarMaps),
 

@@ -443,7 +443,7 @@ replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
         ),
         (
             Recompute = yes,
-            requantify_proc(!ProcInfo),
+            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             recompute_instmap_delta_proc(
                 do_not_recompute_atomic_instmap_deltas, !ProcInfo, !ModuleInfo)
         ;

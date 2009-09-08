@@ -414,7 +414,7 @@ parse_request_entry(Compiler, Term, Requests0, Requests) :-
         analysis_type(_ : unit(Call), _ : unit(Answer)) =
             analyses(Compiler, AnalysisName),
 
-        parse_module_name(CallerModuleTerm, CallerModule),
+        try_parse_module_name(CallerModuleTerm, CallerModule),
         parse_func_id(FuncIdTerm, FuncId),
         from_term(CallPatternTerm, CallPattern : Call)
     ->
@@ -464,7 +464,7 @@ parse_imdg_arc(Compiler, Term, Arcs0, Arcs) :-
         analysis_type(_ : unit(Call), _ : unit(Answer))
             = analyses(Compiler, AnalysisName),
 
-        parse_module_name(DependentModuleTerm, DependentModule),
+        try_parse_module_name(DependentModuleTerm, DependentModule),
         parse_func_id(FuncIdTerm, FuncId),
         from_term(CallPatternTerm, CallPattern : Call)
     ->
@@ -516,10 +516,10 @@ parse_func_id(Term, FuncId) :-
     proc_id_to_int(ProcId, ProcInt),
     FuncId = func_id(PredOrFunc, Name, Arity, ProcId).
 
-:- pred parse_module_name(term::in, module_name::out) is semidet.
+:- pred try_parse_module_name(term::in, module_name::out) is semidet.
 
-parse_module_name(Term, ModuleName) :-
-    parse_sym_name_and_args(Term, ModuleName, []).
+try_parse_module_name(Term, ModuleName) :-
+    try_parse_sym_name_and_no_args(Term, ModuleName).
 
 %-----------------------------------------------------------------------------%
 

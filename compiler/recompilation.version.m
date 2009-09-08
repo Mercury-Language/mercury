@@ -1273,12 +1273,8 @@ parse_item_type_version_numbers(Term, Result) :-
     ;
         Term = term.functor(term.atom("instance"), InstanceVNsTerms, _)
     ->
-        ParseName =
-            (pred(NameTerm::in, Name::out) is semidet :-
-                parse_sym_name_and_args(NameTerm, Name, [])
-            ),
-        map_parser(parse_item_version_number(ParseName), InstanceVNsTerms,
-            Result1),
+        map_parser(parse_item_version_number(try_parse_sym_name_and_no_args),
+            InstanceVNsTerms, Result1),
         (
             Result1 = ok1(VNsAL),
             map.from_assoc_list(VNsAL, VNsMap),

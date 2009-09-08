@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,7 +83,7 @@ parse_inst_defn(ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
 parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Condition,
         Context, SeqNum, MaybeItem) :-
     ContextPieces = [words("In inst definition:")],
-    parse_implicitly_qualified_term(ModuleName, HeadTerm, BodyTerm,
+    parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
         VarSet, ContextPieces, MaybeNameAndArgs),
     (
         MaybeNameAndArgs = error2(Specs),
@@ -171,7 +171,7 @@ parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Condition,
 parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Condition, Context,
         SeqNum, MaybeItem) :-
     ContextPieces = [words("In inst definition:")],
-    parse_implicitly_qualified_term(ModuleName, HeadTerm, HeadTerm,
+    parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
         VarSet, ContextPieces, MaybeNameAndArgs),
     (
         MaybeNameAndArgs = error2(Specs),
@@ -225,7 +225,7 @@ parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Condition, Context,
 parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Condition, Context,
         SeqNum, MaybeItem) :-
     ContextPieces = [words("In mode definition:")],
-    parse_implicitly_qualified_term(ModuleName, HeadTerm, HeadTerm,
+    parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
         VarSet, ContextPieces, MaybeModeNameAndArgs),
     (
         MaybeModeNameAndArgs = error2(Specs),

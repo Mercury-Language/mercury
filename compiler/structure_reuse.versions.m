@@ -1,7 +1,7 @@
 %------------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -314,7 +314,7 @@ process_proc(ConvertPotentialReuse, ReuseTable, PPId, !ModuleInfo) :-
             % construction unification in which its space is reused, so we
             % requantify.  Then we recompute instmap deltas with the updated
             % non-local sets.
-            requantify_proc(!ProcInfo),
+            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             recompute_instmap_delta_proc(
                 do_not_recompute_atomic_instmap_deltas,
                 !ProcInfo, !ModuleInfo),

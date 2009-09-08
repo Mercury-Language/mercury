@@ -755,7 +755,7 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         % Handle the usual case.
         % XXX Why do we use Args1 instead of Args here?
         RHS = term.functor(F, Args1, FunctorContext),
-        ( parse_sym_name_and_args(RHS, FunctorName, FunctorArgsPrime) ->
+        ( try_parse_sym_name_and_args(RHS, FunctorName, FunctorArgsPrime) ->
             FunctorArgs = FunctorArgsPrime,
             list.length(FunctorArgs, Arity),
             ConsId = cons(FunctorName, Arity, cons_id_dummy_type_ctor)

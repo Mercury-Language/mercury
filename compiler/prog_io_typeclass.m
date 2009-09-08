@@ -309,7 +309,7 @@ parse_unconstrained_class(ModuleName, NameTerm, TVarSet, Context, SeqNum,
         MaybeTypeClassInfo) :-
     ContextPieces = [words("In typeclass declaration:")],
     varset.coerce(TVarSet, VarSet),
-    parse_implicitly_qualified_term(ModuleName, NameTerm, NameTerm,
+    parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
         VarSet, ContextPieces, MaybeClassName),
     (
         MaybeClassName = ok2(ClassName, TermVars0),
@@ -559,7 +559,7 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
     ->
         Result = Result0
     ;
-        parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
+        try_parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
     ->
         % XXX ArgsResultContextPieces = [words("In typeclass constraint:")]
         ArgsResultContextPieces = [],
@@ -703,7 +703,7 @@ parse_underived_instance(ModuleName, NameTerm, TVarSet, Context, SeqNum,
     % could well be for a typeclass defined in another module.
     NameContextPieces = [words("In instance declaration:")],
     varset.coerce(TVarSet, VarSet),
-    parse_qualified_term(NameTerm, NameTerm, VarSet, NameContextPieces,
+    parse_sym_name_and_args(NameTerm, VarSet, NameContextPieces,
         MaybeClassName),
     (
         MaybeClassName = ok2(ClassName, TermTypes),
@@ -827,10 +827,10 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 [PredNameTerm, ArityTerm], _)
         ->
             (
-                parse_sym_name_and_args(PredNameTerm, PredName, []),
+                try_parse_sym_name_and_no_args(PredNameTerm, PredName),
                 ArityTerm = term.functor(term.integer(ArityInt), [], _),
-                parse_sym_name_and_args(InstanceMethodTerm, InstanceMethodName,
-                    [])
+                try_parse_sym_name_and_no_args(InstanceMethodTerm,
+                    InstanceMethodName)
             ->
                 InstanceMethod = instance_method(pf_predicate, PredName,
                     instance_proc_def_name(InstanceMethodName), ArityInt,
@@ -853,10 +853,10 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 [FuncNameTerm, ArityTerm], _)
         ->
             (
-                parse_sym_name_and_args(FuncNameTerm, FuncName, []),
+                try_parse_sym_name_and_no_args(FuncNameTerm, FuncName),
                 ArityTerm = term.functor(term.integer(ArityInt), [], _),
-                parse_sym_name_and_args(InstanceMethodTerm, InstanceMethodName,
-                    [])
+                try_parse_sym_name_and_no_args(InstanceMethodTerm,
+                    InstanceMethodName)
             ->
                 InstanceMethod = instance_method(pf_function, FuncName,
                     instance_proc_def_name(InstanceMethodName), ArityInt,

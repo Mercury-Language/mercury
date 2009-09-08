@@ -254,7 +254,7 @@ region_transform_proc(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
         RegionInstructionProc, ResurRenamingAnnoProc, IteRenamingAnnoProc,
         VarSet0, _, VarTypes0, _, HeadVars0, _, ActualArgModes0, _,
         Goal0, _, NameToVar0, NameToVar, ProcInfo1, ProcInfo2),
-    requantify_proc(ProcInfo2, ProcInfo),
+    requantify_proc_general(ordinary_nonlocals_no_lambda, ProcInfo2, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo),
     svmap.det_insert(PPId, NameToVar, !NameToVarTable).
 

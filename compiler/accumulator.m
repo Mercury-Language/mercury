@@ -1423,7 +1423,7 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
     proc_info_set_varset(VarSet, !OrigProcInfo),
     proc_info_set_vartypes(VarTypes, !OrigProcInfo),
 
-    requantify_proc(!OrigProcInfo),
+    requantify_proc_general(ordinary_nonlocals_no_lambda, !OrigProcInfo),
     update_accumulator_pred(AccPredId, AccProcId, AccGoal, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1771,7 +1771,7 @@ update_accumulator_pred(NewPredId, NewProcId, AccGoal, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, NewPredId, NewProcId,
         PredInfo, ProcInfo0),
     proc_info_set_goal(AccGoal, ProcInfo0, ProcInfo1),
-    requantify_proc(ProcInfo1, ProcInfo),
+    requantify_proc_general(ordinary_nonlocals_no_lambda, ProcInfo1, ProcInfo),
     module_info_set_pred_proc_info(NewPredId, NewProcId,
         PredInfo, ProcInfo, !ModuleInfo).
 

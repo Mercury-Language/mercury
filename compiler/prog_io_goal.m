@@ -132,7 +132,7 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
         % It's not a builtin.
         term.coerce(Term, ArgsTerm),
         % Check for predicate calls.
-        ( parse_sym_name_and_args(ArgsTerm, SymName, Args) ->
+        ( try_parse_sym_name_and_args(ArgsTerm, SymName, Args) ->
             GoalExpr = call_expr(SymName, Args, purity_pure)
         ;
             % A call to a free variable, or to a number or string.

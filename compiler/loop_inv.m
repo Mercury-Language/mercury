@@ -816,7 +816,7 @@ gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
     AuxPredProcId = proc(AuxPredId, AuxProcId),
     hlds_pred.proc_info_set_goal(AuxBody, !AuxProcInfo),
 
-    requantify_proc(!AuxProcInfo),
+    requantify_proc_general(ordinary_nonlocals_no_lambda, !AuxProcInfo),
     recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
         !AuxProcInfo, !ModuleInfo),
 
@@ -925,7 +925,8 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
     proc_info_set_body(VarSet, VarTypes, HeadVars, Body,
         RttiVarMaps, ProcInfo0, ProcInfo1),
 
-    quantification.requantify_proc(ProcInfo1, ProcInfo2),
+    requantify_proc_general(ordinary_nonlocals_no_lambda,
+        ProcInfo1, ProcInfo2),
     recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
         ProcInfo2, ProcInfo, ModuleInfo0, ModuleInfo1),
 

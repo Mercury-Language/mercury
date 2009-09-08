@@ -509,7 +509,7 @@ inline_in_proc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
 
         (
             Requantify = yes,
-            requantify_proc(!ProcInfo)
+            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo)
         ;
             Requantify = no
         ),

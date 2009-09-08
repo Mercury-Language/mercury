@@ -198,7 +198,7 @@ stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         Changed = yes,
         maybe_write_progress_message("\nafter stack opt transformation",
             DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO),
-        requantify_proc(!ProcInfo),
+        requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
         maybe_write_progress_message("\nafter stack opt requantify",
             DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO),
         recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,

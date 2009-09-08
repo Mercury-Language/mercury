@@ -284,7 +284,7 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     <= debug_liveness_io(IO).
 
 detect_liveness_proc_2(PredId, ModuleInfo, !ProcInfo, !IO) :-
-    requantify_proc(!ProcInfo),
+    requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, VarSet),

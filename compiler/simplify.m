@@ -473,7 +473,8 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
             % the nonlocal fields of the original scopes. And since
             % instmap_deltas are restricted to the goal's nonlocals,
             % they need to be recomputed as well.
-            requantify_proc(!ProcInfo),
+            requantify_proc_general(ordinary_nonlocals_maybe_lambda,
+                !ProcInfo),
             recompute_instmap_delta_proc(
                 do_not_recompute_atomic_instmap_deltas,
                 !ProcInfo, !ModuleInfo),
@@ -656,8 +657,8 @@ do_process_clause_body_goal(!Goal, !Info) :-
             simplify_info_get_varset(!.Info, !:VarSet),
             simplify_info_get_var_types(!.Info, !:VarTypes),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
-            implicitly_quantify_goal(NonLocals, _, !Goal,
-                !VarSet, !VarTypes, !RttiVarMaps),
+            implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
+                NonLocals, _, !Goal, !VarSet, !VarTypes, !RttiVarMaps),
 
             simplify_info_set_varset(!.VarSet, !Info),
             simplify_info_set_var_types(!.VarTypes, !Info),

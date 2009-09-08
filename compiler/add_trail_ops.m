@@ -127,7 +127,7 @@ add_trail_ops(OptTrailUsage, GenerateInline, ModuleInfo0, !Proc) :-
     % so we need to requantify.
     % XXX it would be more efficient to maintain them rather than
     % recomputing them every time.
-    requantify_proc(!Proc).
+    requantify_proc_general(ordinary_nonlocals_no_lambda, !Proc).
 
 :- pred goal_add_trail_ops(hlds_goal::in, hlds_goal::out,
     trail_ops_info::in, trail_ops_info::out) is det.

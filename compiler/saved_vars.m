@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,7 +90,8 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
     % hlds_out.write_goal(Goal1, !.ModuleInfo, Varset1, 0, "\n"),
 
     % Recompute the nonlocals for each goal.
-    implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
+    implicitly_quantify_clause_body_general(ordinary_nonlocals_no_lambda,
+        HeadVars, _Warnings, Goal1, Goal2,
         Varset1, Varset, VarTypes1, VarTypes, RttiVarMaps1, RttiVarMaps),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),

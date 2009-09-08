@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -702,7 +702,7 @@ make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
-    requantify_proc(!ProcInfo).
+    requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo).
 
 :- pred insert_proc_start_deconstruction(hlds_goal::in, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
@@ -1685,7 +1685,7 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
             proc_info_set_varset(VarSet, !ProcInfo),
             proc_info_set_vartypes(VarTypes, !ProcInfo),
             proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
-            requantify_proc(!ProcInfo),
+            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
                 !ProcInfo, !ModuleInfo),
             module_info_set_pred_proc_info(PredId, ProcId,
@@ -1734,7 +1734,8 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
             ),
             conj_list_to_goal([ConstructGoal, CallGoal], GoalInfo0, Goal1),
             RequantifyVars = set.from_list([CellVar | Args0]),
-            implicitly_quantify_goal(RequantifyVars, _, Goal1, Goal,
+            implicitly_quantify_goal_general(ordinary_nonlocals_no_lambda,
+                RequantifyVars, _, Goal1, Goal,
                 !VarSet, !VarTypes, !RttiVarMaps)
         ;
             Goal = hlds_goal(GoalExpr0, GoalInfo0)

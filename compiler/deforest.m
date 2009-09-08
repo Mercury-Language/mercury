@@ -223,7 +223,7 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
         (
             Changed = yes,
             pd_info_get_module_info(!.PDInfo, !:ModuleInfo),
-            requantify_proc(!ProcInfo),
+            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, !:Goal),
             proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
             proc_info_get_vartypes(!.ProcInfo, VarTypes),

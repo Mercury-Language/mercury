@@ -241,7 +241,7 @@ delay_partial_inst_proc_2(ModuleInfo, !.ProcInfo, MaybeProcInfo) :-
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(DelayInfo ^ dpi_varset, !ProcInfo),
         proc_info_set_vartypes(DelayInfo ^ dpi_vartypes, !ProcInfo),
-        requantify_proc(!ProcInfo),
+        requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo),
         MaybeProcInfo = yes(!.ProcInfo)
     ;
         Changed = no,

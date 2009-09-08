@@ -182,7 +182,8 @@ detect_switches_in_proc_allow(ProcId, PredId, AllowMulti, !ModuleInfo) :-
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
     (
         Requant = need_to_requantify,
-        requantify_proc(ProcInfo1, ProcInfo)
+        requantify_proc_general(ordinary_nonlocals_maybe_lambda,
+            ProcInfo1, ProcInfo)
     ;
         Requant = do_not_need_to_requantify,
         ProcInfo = ProcInfo1

@@ -642,9 +642,8 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
     % of the special "root" module (so that any `:- module' declaration
     % is taken to be a non-nested module unless explicitly qualified).
     parser.read_term_filename(!.SourceFileName, MaybeFirstTerm, !IO),
-    root_module_name(RootModuleName),
-    read_term_to_item_result(RootModuleName, !.SourceFileName, MaybeFirstTerm,
-        !SeqNumCounter, MaybeFirstItem),
+    read_term_to_item_result(root_module_name, !.SourceFileName,
+        MaybeFirstTerm, !SeqNumCounter, MaybeFirstItem),
     (
         % Apply and then skip `pragma source_file' decls, by calling ourselves
         % recursively with the new source file name.
@@ -842,9 +841,8 @@ read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Items,
             !:ModuleName = NestedModuleName,
             !:Items = [Item | !.Items]
         ; ModuleDefn = md_end_module(NestedModuleName) ->
-            root_module_name(RootModuleName),
-            sym_name_get_module_name_default(NestedModuleName, RootModuleName,
-                ParentModuleName),
+            sym_name_get_module_name_default(NestedModuleName,
+                root_module_name, ParentModuleName),
             !:ModuleName = ParentModuleName,
             !:Items = [Item | !.Items]
         ; ModuleDefn = md_import(Modules) ->
@@ -942,14 +940,14 @@ parse_item(ModuleName, VarSet, Term, SeqNum, Result) :-
             BodyTerm = term.functor(term.atom("true"), [], ClauseContext)
         ),
         varset.coerce(VarSet, ProgVarSet),
-        parse_clause(ModuleName, Term, HeadTerm, BodyTerm, ProgVarSet,
+        parse_clause(ModuleName, HeadTerm, BodyTerm, ProgVarSet,
             ClauseContext, SeqNum, Result)
     ).
 
-:- pred parse_clause(module_name::in, term::in, term::in, term::in,
+:- pred parse_clause(module_name::in, term::in, term::in,
     prog_varset::in, term.context::in, int::in, maybe1(item)::out) is det.
 
-parse_clause(ModuleName, Term, HeadTerm, BodyTerm0, ProgVarSet0, Context,
+parse_clause(ModuleName, HeadTerm, BodyTerm0, ProgVarSet0, Context,
         SeqNum, MaybeItem) :-
     GoalContextPieces = [],
     parse_goal(BodyTerm0, GoalContextPieces, MaybeBodyGoal,
@@ -963,8 +961,8 @@ parse_clause(ModuleName, Term, HeadTerm, BodyTerm0, ProgVarSet0, Context,
             FuncHeadTerm = desugar_field_access(FuncHeadTerm0)
         ->
             HeadContextPieces = [words("In equation head:")],
-            parse_implicitly_qualified_term(ModuleName, FuncHeadTerm, HeadTerm,
-                VarSet, HeadContextPieces, MaybeFunctor),
+            parse_implicitly_qualified_sym_name_and_args(ModuleName,
+                FuncHeadTerm, VarSet, HeadContextPieces, MaybeFunctor),
             (
                 MaybeFunctor = ok2(Name, ArgTerms0),
                 list.map(term.coerce, ArgTerms0 ++ [FuncResultTerm],
@@ -979,7 +977,7 @@ parse_clause(ModuleName, Term, HeadTerm, BodyTerm0, ProgVarSet0, Context,
             )
         ;
             HeadContextPieces = [words("In clause head:")],
-            parse_implicitly_qualified_term(ModuleName, HeadTerm, Term,
+            parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
                 VarSet, HeadContextPieces, MaybeFunctor),
             (
                 MaybeFunctor = ok2(Name, ArgTerms),
@@ -1181,8 +1179,7 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
         % module being ended, so the default module name here (ModuleName)
         % is the parent of the previous default module name.
 
-        root_module_name(RootModuleName),
-        sym_name_get_module_name_default(ModuleName, RootModuleName,
+        sym_name_get_module_name_default(ModuleName, root_module_name,
             ParentOfModuleName),
         parse_module_name(ParentOfModuleName, VarSet, ModuleNameTerm,
             MaybeModuleNameSym),
@@ -1285,16 +1282,14 @@ parse_symlist_decl(ParserPred, MakeModuleDefnPred, Term, Attributes, Context,
 :- pred process_version_numbers(module_name::in, varset::in, list(term)::in,
     decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is semidet.
 
-process_version_numbers(ModuleName, VarSet, ArgTerms, Attributes, Context,
+process_version_numbers(ModuleName, _VarSet, ArgTerms, Attributes, Context,
         SeqNum, MaybeItem) :-
     ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
-    parse_module_specifier(VarSet, ModuleNameTerm, MaybeModuleName),
     (
         VersionNumberTerm = term.functor(term.integer(VersionNumber), [], _),
         VersionNumber = version_numbers_version_number
     ->
-        (
-            MaybeModuleName = ok1(ModuleName),
+        ( try_parse_symbol_name(ModuleNameTerm, ModuleName) ->
             recompilation.version.parse_version_numbers(VersionNumbersTerm,
                 MaybeItem0),
             (
@@ -1310,8 +1305,6 @@ process_version_numbers(ModuleName, VarSet, ArgTerms, Attributes, Context,
                 MaybeItem = error1(Specs)
             )
         ;
-            % XXX _Spec
-            MaybeModuleName = error1(_Spec),
             Pieces = [words("Error: invalid module name in"),
                 quote(":- version_numbers"), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -1427,7 +1420,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm, Condition,
             ok3(ExistQVars, Constraints, InstConstraints),
         ContextPieces = [words("In")] ++ pred_or_func_decl_pieces(PredOrFunc)
             ++ [suffix(":")],
-        parse_implicitly_qualified_term(ModuleName, PredTypeTerm, PredTypeTerm,
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, PredTypeTerm,
             VarSet, ContextPieces, MaybePredNameAndArgs),
         (
             MaybePredNameAndArgs = error2(Specs),
@@ -1530,7 +1523,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, Condition, MaybeDet,
             FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
             ContextPieces = [words("In"), quote(":- func"),
                 words("declaration")],
-            parse_implicitly_qualified_term(ModuleName, FuncTerm, Term,
+            parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
                 VarSet, ContextPieces, MaybeFuncNameAndArgs),
             (
                 MaybeFuncNameAndArgs = error2(Specs),
@@ -1767,7 +1760,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Condition, Attributes, WithInst,
         FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
         ContextPieces = [words("In function"), quote(":- mode"),
             words("declaration")],
-        parse_implicitly_qualified_term(ModuleName, FuncTerm, Term,
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
             VarSet, ContextPieces, MaybeFunctorArgs),
         (
             MaybeFunctorArgs = error2(Specs),
@@ -1780,7 +1773,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Condition, Attributes, WithInst,
         )
     ;
         ContextPieces = [words("In"), quote(":- mode"), words("declaration")],
-        parse_implicitly_qualified_term(ModuleName, Term, Term,
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
             VarSet, ContextPieces, MaybeFunctorArgs),
         (
             MaybeFunctorArgs = error2(Specs),

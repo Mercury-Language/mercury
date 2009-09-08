@@ -327,7 +327,8 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
                     proc_info_set_varset(VarSet, !ProcInfo),
                     proc_info_set_vartypes(VarTypes, !ProcInfo),
                     proc_info_set_goal(Goal, !ProcInfo),
-                    requantify_proc(!ProcInfo),
+                    requantify_proc_general(ordinary_nonlocals_no_lambda,
+                        !ProcInfo),
                     svmap.det_insert(CurProc, !.ProcInfo, !CurSCCUpdates)
                 )
             ;
@@ -833,7 +834,7 @@ transform_variant_proc(ModuleInfo, AddrOutArgPosns, ProcInfo,
     transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal, _),
     proc_info_set_goal(Goal, !VariantProcInfo),
     % We changed the scopes of the headvars we now return via pointers.
-    requantify_proc(!VariantProcInfo).
+    requantify_proc_general(ordinary_nonlocals_no_lambda, !VariantProcInfo).
 
 :- pred make_addr_vars(list(prog_var)::in, list(mer_mode)::in,
     list(prog_var)::out, list(mer_mode)::out, list(int)::in,

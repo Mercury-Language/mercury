@@ -240,7 +240,7 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
-        requantify_proc(!ProcInfo),
+        requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
         recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
             !ProcInfo, !ModuleInfo),
 
@@ -489,7 +489,7 @@ fix_calls_in_proc(TransformMap, PredId, ProcId, !ModuleInfo) :-
             proc_info_set_goal(Goal, !ProcInfo),
             proc_info_set_varset(VarSet, !ProcInfo),
             proc_info_set_vartypes(VarTypes, !ProcInfo),
-            requantify_proc(!ProcInfo),
+            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
                 !ProcInfo, !ModuleInfo),
             module_info_set_pred_proc_info(PredId, ProcId,

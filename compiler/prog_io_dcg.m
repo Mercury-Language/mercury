@@ -73,7 +73,7 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
     (
         MaybeBody = ok1(Body),
         HeadContextPieces = [words("In DCG clause head:")],
-        parse_implicitly_qualified_term(ModuleName, DCG_Head, DCG_Body,
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, DCG_Head,
             VarSet0, HeadContextPieces, HeadResult),
         process_dcg_clause(HeadResult, ProgVarSet, DCG_0_Var, DCG_Var, Body,
             DCG_Context, SeqNum, MaybeItem)
@@ -122,7 +122,7 @@ parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !Var) :-
     % Next, parse it.
     (
         term.coerce(Term, ProgTerm),
-        parse_sym_name_and_args(ProgTerm, SymName, Args0)
+        try_parse_sym_name_and_args(ProgTerm, SymName, Args0)
     ->
         % First check for the special cases:
         (

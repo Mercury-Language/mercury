@@ -1040,7 +1040,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             NeedToRequantify = do_not_need_to_requantify
         ;
             NeedToRequantify = need_to_requantify,
-            requantify_proc(!ProcInfo)
+            requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo)
         )
     ).
 

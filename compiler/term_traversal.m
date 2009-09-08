@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -532,8 +532,8 @@ unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
     \+ type_is_higher_order(Type),
     type_to_ctor_and_args_det(Type, TypeCtor, _),
     filter_args_and_modes(VarTypes, Args0, Args1, Modes0, Modes1),
-    functor_norm(FunctorInfo, TypeCtor, ConsId, ModuleInfo,
-        Gamma, Args1, Args, Modes1, Modes),
+    functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
+        Args1, Args, Modes1, Modes),
     split_unification_vars(Args, Modes, ModuleInfo, InVars, OutVars).
 
 :- pred filter_args_and_modes(vartypes::in,

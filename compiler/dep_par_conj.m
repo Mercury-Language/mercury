@@ -2861,7 +2861,7 @@ changed_var(ModuleInfo, InstMapDeltas, UnboundVar) :-
     pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
 
 fixup_and_reinsert_proc(PredId, ProcId, !.PredInfo, !.ProcInfo, !ModuleInfo) :-
-    requantify_proc(!ProcInfo),
+    requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
     recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
         !ProcInfo, !ModuleInfo),
     pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo),

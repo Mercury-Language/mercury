@@ -203,7 +203,7 @@ parse_unit_selector(Term) = UnitSelector :-
             Args = [ConsTerm, ArityTerm, PosTerm]
         ->
             (
-                parse_sym_name_and_args(ConsTerm, ConsIdName, []),
+                try_parse_sym_name_and_no_args(ConsTerm, ConsIdName),
                 ArityTerm = term.functor(term.integer(Arity), _, _),
                 PosTerm = term.functor(term.integer(Pos), _, _)
             ->

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2008 The University of Melbourne.
+% Copyright (C) 2003, 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -236,10 +236,10 @@ create_arg_size_polyhedron(SubstMap, yes(PragmaArgSizeInfo),
 
 create_arg_size_constraint(SubstMap, le(Terms0, Constant), Constraint) :-
     list.map(create_lp_term(SubstMap), Terms0, Terms),
-    Constraint = constraint(Terms, (=<), Constant).
+    Constraint = construct_constraint(Terms, lp_lt_eq, Constant).
 create_arg_size_constraint(SubstMap, eq(Terms0, Constant), Constraint) :-
     list.map(create_lp_term(SubstMap), Terms0, Terms),
-    Constraint = constraint(Terms, (=), Constant).
+    Constraint = construct_constraint(Terms, lp_eq, Constant).
 
 :- pred create_lp_term(map(int, var)::in, arg_size_term::in, lp_term::out)
     is det.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 1997-2003, 2005-2008 The University of Melbourne.
+% Copyright (C) 1997-2003, 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -270,9 +270,8 @@ find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes) = Zeros :-
     ProgVars = map.keys(SizeVarMap),
     ZeroProgVars = list.filter(is_zero_size_prog_var(ModuleInfo, VarTypes),
         ProgVars),
-    %
+
     % Build zeros from corresponding size_vars.
-    %
     ZerosList = prog_vars_to_size_vars(SizeVarMap, ZeroProgVars),
     Zeros = set.from_list(ZerosList).
 
@@ -299,11 +298,12 @@ add_context_to_constr_termination_info(yes(can_loop(_)), Context,
 
 substitute_size_vars(Constraints0, SubstMap) = Constraints :-
     SubVarInCoeff = (func(OldVar - Rat) = NewVar - Rat :-
-        NewVar = SubstMap ^ det_elem(OldVar)
+        map.lookup(SubstMap, OldVar, NewVar)
     ),
-    SubVarInEqn = (func(Constr) = constraint(Coeffs, Op, Rat) :-
-        constraint(Constr, Coeffs0, Op, Rat),
-        Coeffs = list.map(SubVarInCoeff, Coeffs0)
+    SubVarInEqn = (func(Constr0) = Constr :-
+        deconstruct_constraint(Constr0, Coeffs0, Op, Rat),
+        Coeffs = list.map(SubVarInCoeff, Coeffs0),
+        Constr = construct_constraint(Coeffs, Op, Rat)
     ),
     Constraints = list.map(SubVarInEqn, Constraints0).
 
@@ -341,10 +341,11 @@ create_var_substitution_2([Arg | Args], [HeadVar | HeadVars],  !Subst) :-
 make_arg_constraints([], _) = [].
 make_arg_constraints([Var | Vars], Zeros) = Constraints :-
     Constraints0 = make_arg_constraints(Vars, Zeros),
-    ( if    set.member(Var, Zeros)
-      then  Constraints = Constraints0
-      else  Constraints =
-                [ constraint([Var - one], (>=), zero) | Constraints0 ]
+    ( set.member(Var, Zeros) ->
+        Constraints = Constraints0
+    ;
+        NewConstraint = construct_constraint([Var - one], lp_gt_eq, zero),
+        Constraints = [NewConstraint | Constraints0]
     ).
 
 is_zero_size_var(Zeros, SizeVar) :- set.member(SizeVar, Zeros).

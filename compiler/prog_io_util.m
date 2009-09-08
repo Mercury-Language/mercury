@@ -117,7 +117,7 @@
     pred_or_func::out, sym_name::out, list(term(_T))::out) is semidet.
 
 :- pred parse_pred_or_func_and_args_general(maybe(module_name)::in,
-    term(_T)::in, term(_T)::in, varset(_T)::in, list(format_component)::in,
+    term(_T)::in, varset(_T)::in, list(format_component)::in,
     maybe_pred_or_func(term(_T))::out) is det.
 
 :- pred maybe_parse_type(term::in, mer_type::out) is semidet.
@@ -258,12 +258,8 @@ get_any_errors4(error4(Specs)) = Specs.
 parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
     PredAndArityTerm = term.functor(term.atom("/"),
         [PredNameTerm, ArityTerm], _),
-    % The values of VarSet and ContextPieces do not matter here since
-    % we succeed only if they aren't needed.
-    VarSet = varset.init,
-    ContextPieces = [],
-    parse_implicitly_qualified_term(ModuleName, PredNameTerm, PredNameTerm,
-        VarSet, ContextPieces, ok2(SymName, [])),
+    try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
+        PredNameTerm, SymName),
     ArityTerm = term.functor(term.integer(Arity), [], _).
 
 parse_name_and_arity(PredAndArityTerm, SymName, Arity) :-
@@ -285,16 +281,16 @@ parse_pred_or_func_and_args(PredAndArgsTerm, PredOrFunc, SymName, ArgTerms) :-
         PredAndArgsTerm = term.functor(term.atom("="),
             [FuncAndArgsTerm, FuncResultTerm], _)
     ->
-        parse_sym_name_and_args(FuncAndArgsTerm, SymName, ArgTerms0),
+        try_parse_sym_name_and_args(FuncAndArgsTerm, SymName, ArgTerms0),
         PredOrFunc = pf_function,
         ArgTerms = ArgTerms0 ++ [FuncResultTerm]
     ;
-        parse_sym_name_and_args(PredAndArgsTerm, SymName, ArgTerms),
+        try_parse_sym_name_and_args(PredAndArgsTerm, SymName, ArgTerms),
         PredOrFunc = pf_predicate
     ).
 
 parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
-        ErrorTerm, VarSet, ContextPieces, PredAndArgsResult) :-
+        VarSet, ContextPieces, PredAndArgsResult) :-
     (
         PredAndArgsTerm = term.functor(term.atom("="),
             [FuncAndArgsTerm, FuncResultTerm], _)
@@ -308,12 +304,12 @@ parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
     varset.coerce(VarSet, GenericVarSet),
     (
         MaybeModuleName = yes(ModuleName),
-        parse_implicitly_qualified_term(ModuleName, FunctorTerm,
-            ErrorTerm, GenericVarSet, ContextPieces, Result)
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, FunctorTerm,
+            GenericVarSet, ContextPieces, Result)
     ;
         MaybeModuleName = no,
-        parse_qualified_term(FunctorTerm,
-            ErrorTerm, GenericVarSet, ContextPieces, Result)
+        parse_sym_name_and_args(FunctorTerm, GenericVarSet, ContextPieces,
+            Result)
     ),
     (
         Result = ok2(SymName, Args),
@@ -372,7 +368,7 @@ parse_type(Term, VarSet, ContextPieces, Result) :-
     ;
         % We don't support kind annotations yet, and we don't report
         % an error either. Perhaps we should?
-        parse_qualified_term(Term, Term, VarSet, ContextPieces, NameResult),
+        parse_sym_name_and_args(Term, VarSet, ContextPieces, NameResult),
         (
             NameResult = ok2(SymName, ArgTerms),
             parse_types(ArgTerms, VarSet, ContextPieces, ArgsResult),
@@ -612,7 +608,7 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
     ;
         % If the sym_name_and_args fails, we should report the error
         % (we would need to call parse_qualified_term instead).
-        parse_sym_name_and_args(Term, Name, Args),
+        try_parse_sym_name_and_args(Term, Name, Args),
         convert_inst_list(AllowConstrainedInstVar, Args, ConvertedArgs),
         Mode = user_defined_mode(Name, ConvertedArgs)
     ).
@@ -721,7 +717,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
             term.coerce_var(Var)), Inst)
     ;
         % Anything else must be a user-defined inst.
-        parse_sym_name_and_args(Term, QualifiedName, Args1),
+        try_parse_sym_name_and_args(Term, QualifiedName, Args1),
         (
             BuiltinModule = mercury_public_builtin_module,
             sym_name_get_module_name_default(QualifiedName, unqualified(""),
@@ -818,7 +814,7 @@ convert_bound_inst(AllowConstrainedInstVar, InstTerm, BoundInst) :-
     InstTerm = term.functor(Functor, Args0, _),
     (
         Functor = term.atom(_),
-        parse_sym_name_and_args(InstTerm, SymName, Args1),
+        try_parse_sym_name_and_args(InstTerm, SymName, Args1),
         list.length(Args1, Arity),
         ConsId = cons(SymName, Arity, cons_id_dummy_type_ctor)
     ;

@@ -314,11 +314,11 @@ check_var_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
         type_vars(Type, TVars),
         set.list_to_set(TVars, TVarsSet0),
         set.delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
-        ( \+ set.empty(TVarsSet1) ->
+        ( set.empty(TVarsSet1) ->
+            true
+        ;
             !:UnresolvedVarsTypes = [Var - Type | !.UnresolvedVarsTypes],
             set.union(!.Set, TVarsSet1, !:Set)
-        ;
-            true
         ),
         check_var_type_bindings_2(VarTypes, HeadTypeParams,
             VarsToDo - 1, LeftOverVarTypes, !UnresolvedVarsTypes, !Set)

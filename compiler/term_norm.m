@@ -33,14 +33,14 @@
     % This predicate sets the functor_info depending on the value of the
     % termination_norm or termination2_norm option.
     %
-:- func set_functor_info(globals.termination_norm, module_info) = functor_info.
+:- func set_functor_info(module_info, globals.termination_norm) = functor_info.
 
     % This predicate computes the weight of a functor and the set of arguments
     % of that functor whose sizes should be counted towards the size of the
     % whole term.
     %
     % NOTE: the list of arguments and the list of modes must be the same
-    % length.  They must also *not* contain any typeinfo related arguments as
+    % length. They must also *not* contain any typeinfo related arguments as
     % this may cause an exception to be thrown when using the
     % `--num-data-elems' norm.  (This is because the weight table doesn't keep
     % track of typeinfo related variables - it used to but intervening
@@ -48,8 +48,8 @@
     % whole lot becomes inconsistent - in the end it's just easier to ignore
     % them).
     %
-:- pred functor_norm(functor_info::in, type_ctor::in, cons_id::in,
-    module_info::in, int::out, list(prog_var)::in, list(prog_var)::out,
+:- pred functor_norm(module_info::in, functor_info::in, type_ctor::in,
+    cons_id::in, int::out, list(prog_var)::in, list(prog_var)::out,
     list(uni_mode)::in, list(uni_mode)::out) is det.
 
     % This function computes a lower bound on the weight of a fuctor.  If the
@@ -58,7 +58,7 @@
     % of the functor.  (And if there were this function wouldn't tell you about
     % it anyhow).
     %
-:- func functor_lower_bound(functor_info, type_ctor, cons_id, module_info)
+:- func functor_lower_bound(module_info, functor_info, type_ctor, cons_id)
     = int.
 
     % Succeeds if all values of the given type are zero size (for all norms).
@@ -241,20 +241,20 @@ search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-set_functor_info(norm_total, _ModuleInfo) = total.
-set_functor_info(norm_simple, _ModuleInfo) = simple.
-set_functor_info(norm_num_data_elems, ModuleInfo) =
-        use_map_and_args(WeightMap) :-
-    find_weights(ModuleInfo, WeightMap).
-set_functor_info(norm_size_data_elems, ModuleInfo) = use_map(WeightMap) :-
-    find_weights(ModuleInfo, WeightMap).
+set_functor_info(_ModuleInfo, norm_total) = total.
+set_functor_info(_ModuleInfo, norm_simple) = simple.
+set_functor_info(ModuleInfo, norm_num_data_elems) = FunctorInfo :-
+    find_weights(ModuleInfo, WeightMap),
+    FunctorInfo = use_map_and_args(WeightMap).
+set_functor_info(ModuleInfo, norm_size_data_elems) = FunctorInfo :-
+    find_weights(ModuleInfo, WeightMap),
+    FunctorInfo = use_map(WeightMap).
 
 %-----------------------------------------------------------------------------%
 
-% Although the module info is not used in any of these norms, it could
-% be needed for other norms, so it should not be removed.
-
-functor_norm(FunctorInfo, TypeCtor, ConsId, _ModuleInfo, Int, !Args, !Modes) :-
+functor_norm(_ModuleInfo, FunctorInfo, TypeCtor, ConsId, Int, !Args, !Modes) :-
+    % Although the module info is not used in any of these norms, it could
+    % be needed for other norms, so it should not be removed.
     (
         FunctorInfo = simple,
         (
@@ -283,9 +283,7 @@ functor_norm(FunctorInfo, TypeCtor, ConsId, _ModuleInfo, Int, !Args, !Modes) :-
         FunctorInfo = use_map_and_args(WeightMap),
         ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
             WeightInfo = weight(Int, UseArgList),
-            (
-                functor_norm_filter_args(UseArgList, !Args, !Modes)
-            ->
+            ( functor_norm_filter_args(UseArgList, !Args, !Modes) ->
                 true
             ;
                 unexpected(this_file,
@@ -313,7 +311,7 @@ functor_norm_filter_args([no | Bools], [_Arg0 | Args0], Args,
 
 %-----------------------------------------------------------------------------%
 
-functor_lower_bound(FunctorInfo, TypeCtor, ConsId, _ModuleInfo) = Weight :-
+functor_lower_bound(_ModuleInfo, FunctorInfo, TypeCtor, ConsId) = Weight :-
     (
         FunctorInfo = simple,
         Weight = ( if ConsId = cons(_, Arity, _), Arity \= 0 then 1 else 0 )
@@ -336,8 +334,8 @@ functor_lower_bound(FunctorInfo, TypeCtor, ConsId, _ModuleInfo) = Weight :-
 
 %-----------------------------------------------------------------------------%
 
-zero_size_type(Module, Type) :-
-    CtorCat = classify_type(Module, Type),
+zero_size_type(ModuleInfo, Type) :-
+    CtorCat = classify_type(ModuleInfo, Type),
     zero_size_type_category(CtorCat, yes).
 
 :- pred zero_size_type_category(type_ctor_category::in, bool::out) is det.

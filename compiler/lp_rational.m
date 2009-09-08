@@ -36,7 +36,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Linear constraints over Q^n
+% Linear constraints over Q^n.
 %
 
 :- type constant == rat.
@@ -54,7 +54,10 @@
     %
 :- func lp_rational.lp_term(lp_var) = lp_term.
 
-:- type operator ---> (=<) ; (=) ; (>=).
+:- type lp_operator
+    --->    lp_lt_eq
+    ;       lp_eq
+    ;       lp_gt_eq.
 
     % A primitive linear arithmetic constraint.
     %
@@ -66,23 +69,24 @@
 
     % Create a constraint from the given components.
     %
-:- func lp_rational.constraint(lp_terms, operator, constant) = constraint.
+:- func lp_rational.construct_constraint(lp_terms, lp_operator, constant)
+    = constraint.
 
     % Create a constraint from the given components.
     % Throws an exception if the resulting constraint is trivially false.
     %
-:- func lp_rational.non_false_constraint(lp_terms, operator, constant)
-    = constraint.
+:- func lp_rational.construct_non_false_constraint(lp_terms, lp_operator,
+    constant) = constraint.
 
     % Deconstruct the given constraint.
     %
-:- pred lp_rational.constraint(constraint::in, lp_terms::out, operator::out,
-    constant::out) is det.
+:- pred lp_rational.deconstruct_constraint(constraint::in,
+    lp_terms::out, lp_operator::out, constant::out) is det.
 
     % As above but throws an exception if the constraint is false.
     %
-:- pred lp_rational.non_false_constraint(constraint::in, lp_terms::out,
-    operator::out, constant::out) is det.
+:- pred lp_rational.deconstruct_non_false_constraint(constraint::in,
+    lp_terms::out, lp_operator::out, constant::out) is det.
 
     % Succeeds iff the given constraint contains a single variable and
     % that variable is constrained to be a nonnegative value.
@@ -359,32 +363,52 @@
 
 lp_term(Var) = Var - one.
 
-constraint([], (=<), Const) = lte([], Const).
-constraint([], (=),  Const) = eq([], Const).
-constraint([], (>=), Const) = lte([], -Const).
-constraint(Terms0 @ [_ | _], (=<), Const0) = Constraint :-
-    Terms1 = sum_like_terms(Terms0),
-    normalize_terms_and_const(yes, Terms1, Const0, Terms, Const),
-    Constraint = lte(Terms, Const).
-constraint(Terms0 @ [_ | _], (=), Const0) = Constraint :-
-    Terms1 = sum_like_terms(Terms0),
-    normalize_terms_and_const(no, Terms1, Const0, Terms, Const),
-    Constraint = eq(Terms, Const).
-constraint(Terms0 @ [_ | _], (>=), Const0) = Constraint :-
-    Terms1 = sum_like_terms(Terms0),
-    normalize_terms_and_const(yes, Terms1, Const0, Terms, Const),
-    Constraint = lte(negate_lp_terms(Terms), -Const).
+construct_constraint(Terms0, Op, Const0) = Constraint :-
+    (
+        Terms0 = [],
+        (
+            Op = lp_lt_eq,
+            Constraint = lte([], Const0)
+        ;
+            Op = lp_eq,
+            Constraint = eq([], Const0)
+        ;
+            Op = lp_gt_eq,
+            Constraint = lte([], -Const0)
+        )
+    ;
+        Terms0 = [_ | _],
+        (
+            Op = lp_lt_eq,
+            Terms1 = sum_like_terms(Terms0),
+            normalize_terms_and_const(yes, Terms1, Const0, Terms, Const),
+            Constraint = lte(Terms, Const)
+        ;
+            Op = lp_eq,
+            Terms1 = sum_like_terms(Terms0),
+            normalize_terms_and_const(no, Terms1, Const0, Terms, Const),
+            Constraint = eq(Terms, Const)
+        ;
+            Op = lp_gt_eq,
+            Terms1 = sum_like_terms(Terms0),
+            normalize_terms_and_const(yes, Terms1, Const0, Terms, Const),
+            Constraint = lte(negate_lp_terms(Terms), -Const)
+        )
+    ).
 
-    % This is for internal use only - it builds a constraint out
-    % of the parts but does *not* attempt to perform any
-    % standardization.  It is intended for use in operations
-    % such as normalization.
+    % This is for internal use only - it builds a constraint out of the parts
+    % but does *not* attempt to perform any standardization. It is intended for
+    % use in operations such as normalization.
     %
-:- func unchecked_constraint(lp_terms, operator, constant) = constraint.
+:- func unchecked_construct_constraint(lp_terms, lp_operator, constant) =
+    constraint.
 
-unchecked_constraint(Terms, (=<), Constant) = lte(Terms, Constant).
-unchecked_constraint(Terms, (=),  Constant) = eq(Terms, Constant).
-unchecked_constraint(Terms, (>=), Constant) = gte(Terms, Constant).
+unchecked_construct_constraint(Terms, lp_lt_eq, Constant) =
+    lte(Terms, Constant).
+unchecked_construct_constraint(Terms, lp_eq,    Constant) =
+    eq(Terms, Constant).
+unchecked_construct_constraint(Terms, lp_gt_eq, Constant) =
+    gte(Terms, Constant).
 
 :- func sum_like_terms(lp_terms) = lp_terms.
 
@@ -419,33 +443,34 @@ lp_terms_to_map_2(Var - Coeff0, !Map) :-
         )
     ).
 
-non_false_constraint(Terms, Op, Constant) = Constraint :-
-    Constraint = constraint(Terms, Op, Constant),
+construct_non_false_constraint(Terms, Op, Constant) = Constraint :-
+    Constraint = construct_constraint(Terms, Op, Constant),
     ( if    is_false(Constraint)
       then  unexpected(this_file,
                 "non_false_constraints/3: false constraint.")
       else  true
     ).
 
-constraint(lte(Terms, Constant), Terms, (=<), Constant).
-constraint(eq(Terms,  Constant), Terms, (=),  Constant).
-constraint(gte(Terms, Constant), Terms, (>=), Constant).
+deconstruct_constraint(lte(Terms, Constant), Terms, lp_lt_eq, Constant).
+deconstruct_constraint(eq(Terms,  Constant), Terms, lp_eq,    Constant).
+deconstruct_constraint(gte(Terms, Constant), Terms, lp_gt_eq, Constant).
 
-non_false_constraint(Constraint, Terms, Operator, Constant) :-
+deconstruct_non_false_constraint(Constraint, Terms, Operator, Constant) :-
     ( if    is_false(Constraint)
       then  unexpected(this_file,
-                "non_false_constraint/4: false_constraint.")
+                "deconstruct_non_false_constraint/4: false_constraint.")
       else  true
     ),
     (
         Constraint = lte(Terms, Constant),
-        Operator   = (=<)
+        Operator   = lp_lt_eq
     ;
         Constraint = eq(Terms, Constant),
-        Operator   = (=)
+        Operator   = lp_eq
     ;
         Constraint = gte(_, _),
-        unexpected(this_file, "non_false_constraint/4: gte encountered.")
+        unexpected(this_file,
+            "deconstruct_non_false_constraint/4: gte encountered.")
     ).
 
 :- func lp_terms(constraint) = lp_terms.
@@ -460,31 +485,32 @@ constant(lte(_, Constant)) = Constant.
 constant(eq(_,  Constant)) = Constant.
 constant(gte(_, Constant)) = Constant.
 
-:- func operator(constraint) = operator.
+:- func operator(constraint) = lp_operator.
 
-operator(lte(_, _)) = (=<).
-operator(eq(_,  _)) = (=).
+operator(lte(_, _)) = lp_lt_eq.
+operator(eq(_,  _)) = lp_eq.
 operator(gte(_,_))  = unexpected(this_file, "operator/1: gte.").
 
-:- func negate_operator(operator) = operator.
+:- func negate_operator(lp_operator) = lp_operator.
 
-negate_operator((=<)) = (>=).
-negate_operator((=))  = (=).
-negate_operator((>=)) = (=<).
+negate_operator(lp_lt_eq) = lp_gt_eq.
+negate_operator(lp_eq)    = lp_eq.
+negate_operator(lp_gt_eq) = lp_lt_eq.
 
 nonneg_constr(lte([_ - (-rat.one)], rat.zero)).
 nonneg_constr(gte(_, _)) :-
     unexpected(this_file, "nonneg_constr/1: gte.").
 
-make_nonneg_constr(Var) = constraint([Var - (-rat.one)], (=<), rat.zero).
+make_nonneg_constr(Var) =
+    construct_constraint([Var - (-rat.one)], lp_lt_eq, rat.zero).
 
 make_vars_eq_constraint(Var1, Var2) =
-    constraint([Var1 - rat.one, Var2 - (-rat.one)], (=), rat.zero).
+    construct_constraint([Var1 - rat.one, Var2 - (-rat.one)], lp_eq, rat.zero).
 
 make_var_const_eq_constraint(Var, Constant) =
-    constraint([Var - rat.one], (=), Constant).
+    construct_constraint([Var - rat.one], lp_eq, Constant).
 make_var_const_gte_constraint(Var, Constant) =
-    constraint([Var - rat.one], (>=), Constant).
+    construct_constraint([Var - rat.one], lp_gt_eq, Constant).
 
 true_constraint = eq([], rat.zero).
 
@@ -1580,7 +1606,7 @@ find_target_equality(Var, Eqns) = find_target_equality_2(Var, Eqns, []).
 
 find_target_equality_2(_, [], _) = no.
 find_target_equality_2(Var, [Eqn | Eqns], Acc) = MaybeTargetEqn :-
-    ( if    operator(Eqn) \= (=)
+    ( if    operator(Eqn) \= lp_eq
       then  unexpected(this_file,
                 "find_target_equality_2/3: inequality encountered.")
       else  true
@@ -1605,15 +1631,9 @@ find_target_equality_2(Var, [Eqn | Eqns], Acc) = MaybeTargetEqn :-
 
 substitute_variable(Target0, Var, !Equations, !Inequations, Flag) :-
     normalize_constraint(Var, Target0, Target),
-    constraint(Target, TargetCoeffs, Op, TargetConst),
-    (
-        Op = (=)
-    ;
-        ( Op = (=<)
-        ; Op = (>=)
-        ),
-        unexpected(this_file, "substitute_variable/7: inequality encountered.")
-    ),
+    deconstruct_constraint(Target, TargetCoeffs, Op, TargetConst),
+    expect(unify(Op, lp_eq), this_file,
+        "substitute_variable/7: inequality encountered."),
     fix_coeff_and_const(Var, TargetCoeffs, TargetConst, Coeffs, Const),
     substitute_into_constraints(Var, Coeffs, Const, !Equations, EqlFlag),
     substitute_into_constraints(Var, Coeffs, Const, !Inequations, IneqlFlag),
@@ -1661,7 +1681,7 @@ substitute_into_constraints(Var, Coeffs, Const, [Constr0 | Constrs0], Result,
 
 substitute_into_constraint(Var, SubCoeffs, SubConst, !Constraint, Flag) :-
     normalize_constraint(Var, !Constraint),
-    constraint(!.Constraint, TargetCoeffs, Op, TargetConst),
+    deconstruct_constraint(!.Constraint, TargetCoeffs, Op, TargetConst),
     ( list.member(Var - one, TargetCoeffs) ->
         FinalCoeffs0 = lp_terms_to_map(TargetCoeffs ++ SubCoeffs),
         %
@@ -1670,7 +1690,7 @@ substitute_into_constraint(Var, SubCoeffs, SubConst, !Constraint, Flag) :-
         FinalCoeffs1 = map.delete(FinalCoeffs0, Var),
         FinalCoeffs = map.to_assoc_list(FinalCoeffs1),
         FinalConst = TargetConst + SubConst,
-        !:Constraint = constraint(FinalCoeffs, Op, FinalConst),
+        !:Constraint = construct_constraint(FinalCoeffs, Op, FinalConst),
         Flag = yes
     ;
         Flag = no
@@ -2058,7 +2078,7 @@ normalize_vector(Var, !.Terms, !.Constant, !:Terms, !:Constant) :-
     is det.
 
 normalize_constraint(Var, Constraint0, Constraint) :-
-    lp_rational.constraint(Constraint0, Terms0, Op0, Constant0),
+    lp_rational.deconstruct_constraint(Constraint0, Terms0, Op0, Constant0),
     ( assoc_list.search(Terms0, Var, Coefficient) ->
         ( if    Coefficient = zero
           then  unexpected(this_file,
@@ -2078,7 +2098,7 @@ normalize_constraint(Var, Constraint0, Constraint) :-
         Op       = Op0,
         Constant = Constant0
     ),
-    Constraint = lp_rational.unchecked_constraint(Terms, Op, Constant).
+    Constraint = unchecked_construct_constraint(Terms, Op, Constant).
 
 :- pred add_vectors(map(lp_var, coefficient)::in, constant::in,
     map(lp_var, coefficient)::in, constant::in,
@@ -2286,7 +2306,7 @@ write_constraints(Constraints, Varset, !IO) :-
 :- pred write_constraint(lp_varset::in, constraint::in, io::di, io::uo) is det.
 
 write_constraint(Varset, Constr, !IO) :-
-    constraint(Constr, Coeffs, Operator, Constant),
+    deconstruct_constraint(Constr, Coeffs, Operator, Constant),
     io.write_char('\t', !IO),
     list.foldl(write_constr_term(Varset), Coeffs, !IO),
     io.format("%s %s\n", [s(operator_to_string(Operator)),
@@ -2298,11 +2318,11 @@ write_constr_term(Varset, Var - Coeff, !IO) :-
     VarName = varset.lookup_name(Varset, Var),
     io.format("%s%s ", [s(rat.to_string(Coeff)), s(VarName)], !IO).
 
-:- func operator_to_string(operator) = string.
+:- func operator_to_string(lp_operator) = string.
 
-operator_to_string((=<)) = "=<".
-operator_to_string((=) ) = "=".
-operator_to_string((>=)) = ">=".
+operator_to_string(lp_lt_eq) = "=<".
+operator_to_string(lp_eq )   = "=".
+operator_to_string(lp_gt_eq) = ">=".
 
 :- pred write_vars(varset::in, lp_vars::in, io::di, io::uo) is det.
 
