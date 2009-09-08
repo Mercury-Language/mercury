@@ -1867,7 +1867,8 @@ merge_subarrays(A, B0, Lo1, Hi1, Lo2, Hi2, I) = B :-
 
 %------------------------------------------------------------------------------%
 
-    % throw an exception indicating an array bounds error
+    % Throw an exception indicating an array bounds error.
+    %
 :- pred out_of_bounds_error(array(T), int, string).
 %:- mode out_of_bounds_error(array_ui, in, in) is erroneous.
 :- mode out_of_bounds_error(in, in, in) is erroneous.
