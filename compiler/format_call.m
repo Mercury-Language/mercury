@@ -742,9 +742,8 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
             set_tree234.insert(SourceVar, !RelevantVars),
             ConjMap0 = get_conj_map(!.ConjMaps, CurId),
             ConjMap0 = conj_map(StringMap, ListMap, ElementMap, EqvMap0),
-            map.set(EqvMap0, TargetVar, SourceVar, EqvMap),
+            map.det_insert(EqvMap0, TargetVar, SourceVar, EqvMap),
             ConjMap = conj_map(StringMap, ListMap, ElementMap, EqvMap),
-            % ZZZ map.det_insert?
             svmap.set(CurId, ConjMap, !ConjMaps)
         ;
             true
@@ -758,8 +757,7 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
                 ConsId = string_const(StringConst)
             ->
                 set_tree234.delete(CellVar, !RelevantVars),
-                % ZZZ map.det_insert?
-                map.set(StringMap0, CellVar, StringConst, StringMap),
+                map.det_insert(StringMap0, CellVar, StringConst, StringMap),
                 ConjMap = conj_map(StringMap, ListMap0, ElementMap0, EqvMap0)
             ;
                 ConsId = cons(SymName, Arity, TypeCtor),
@@ -779,8 +777,7 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
             ->
                 set_tree234.delete(CellVar, !RelevantVars),
                 set_tree234.insert_list(ArgVars, !RelevantVars),
-                % ZZZ map.det_insert?
-                map.set(ListMap0, CellVar, List, ListMap),
+                map.det_insert(ListMap0, CellVar, List, ListMap),
                 ConjMap = conj_map(StringMap0, ListMap, ElementMap0, EqvMap0)
             ;
                 ConsId = cons(SymName, Arity, TypeCtor),
@@ -808,23 +805,20 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
                     unexpected(this_file,
                         "format_call_traverse_unify: arity mismatch")
                 ),
-                % ZZZ map.det_insert?
-                map.set(ElementMap0, CellVar, WhatToPrint, ElementMap),
+                map.det_insert(ElementMap0, CellVar, WhatToPrint, ElementMap),
                 ConjMap = conj_map(StringMap0, ListMap0, ElementMap, EqvMap0)
             ;
                 ConjMap = ConjMap0
             ),
-            % ZZZ svmap.det_update?
             svmap.set(CurId, ConjMap, !ConjMaps)
         ;
             true
         )
     ;
-        Unification = deconstruct(_, _, _, _, _, _)
-    ;
-        Unification = simple_test(_, _)
-    ;
-        Unification = complicated_unify(_, _, _)
+        ( Unification = deconstruct(_, _, _, _, _, _)
+        ; Unification = simple_test(_, _)
+        ; Unification = complicated_unify(_, _, _)
+        )
     ).
 
 :- func project_case_goal(case) = hlds_goal.
