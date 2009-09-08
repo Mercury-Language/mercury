@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2008 The University of Melbourne.
+% Copyright (C) 2001, 2004-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -218,7 +218,7 @@ init_deep(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
                 normal_call_and_callee(make_dummy_psptr, ""), -1, ""
             )),
         array.init(MaxPS + 1,
-            proc_static(dummy_proc_id, "", "", "", "", -1, no,
+            proc_static(dummy_proc_id, "", "", "", "", "", -1, no,
                 array([]), array([]), not_zeroed))
     ).
 
@@ -363,7 +363,7 @@ read_proc_static(MaybePS, !IO) :-
                 MaybeCoveragePoints = ok(CoveragePoints),
                 CSSPtrs = list.map(make_cssptr, CSSIs),
                 DeclModule = decl_module(Id),
-                RefinedStr = refined_proc_id_to_string(Id),
+                create_refined_proc_ids(Id, UnQualRefinedStr, QualRefinedStr),
                 RawStr = raw_proc_id_to_string(Id),
                 ( Interface = 0 ->
                     IsInInterface = no
@@ -374,9 +374,9 @@ read_proc_static(MaybePS, !IO) :-
                 % is ever zeroed is the default. The startup phase will set it
                 % to `zeroed' in the proc_statics which are ever zeroed.
                 ProcStatic = proc_static(Id, DeclModule,
-                    RefinedStr, RawStr, FileName, LineNumber,
-                    IsInInterface, array(CSSPtrs), array(CoveragePoints),
-                    not_zeroed),
+                    UnQualRefinedStr, QualRefinedStr, RawStr,
+                    FileName, LineNumber, IsInInterface,
+                    array(CSSPtrs), array(CoveragePoints), not_zeroed),
                 MaybePS = ok2(ProcStatic, PSI),
                 trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                     io.write_string("read proc_static ", !IO),
@@ -490,78 +490,93 @@ raw_proc_id_to_string(str_ordinary_proc_label(PredOrFunc, DeclModule,
         add_plus_one_for_function(PredOrFunc),
         "-", string.int_to_string(Mode)]).
 
-:- func refined_proc_id_to_string(string_proc_label) = string.
+:- pred create_refined_proc_ids(string_proc_label::in,
+    string::out, string::out) is det.
 
-refined_proc_id_to_string(str_special_proc_label(TypeName, TypeModule,
-        _DefModule, RawPredName, Arity, Mode)) = Name :-
-    ( RawPredName = "__Unify__" ->
-        PredName = "Unify"
-    ; RawPredName = "__Compare__" ->
-        PredName = "Compare"
-    ; RawPredName = "__CompareRep__" ->
-        PredName = "CompareRep"
-    ; RawPredName = "__Index__" ->
-        PredName = "Index"
-    ; RawPredName = "__Initialise__" ->
-        PredName = "Initialise"
-    ;
-        string.append("unknown special predicate name ", RawPredName, Msg),
-        error(Msg)
-    ),
-    Name0 = string.append_list([PredName, " for ", TypeModule, ".", TypeName,
-        "/", string.int_to_string(Arity)]),
-    ( Mode = 0 ->
-        Name = Name0
-    ;
-        Name = string.append_list([Name0, " mode ", int_to_string(Mode)])
-    ).
-refined_proc_id_to_string(str_ordinary_proc_label(PredOrFunc, DeclModule,
-        _DefModule, ProcName, Arity, Mode)) = Name :-
+create_refined_proc_ids(ProcLabel, UnQualName, QualName) :-
     (
-        string.append("TypeSpecOf__", ProcName1, ProcName),
-        ( string.append("pred__", ProcName2A, ProcName1) ->
-            ProcName2 = ProcName2A
-        ; string.append("func__", ProcName2B, ProcName1) ->
-            ProcName2 = ProcName2B
-        ; string.append("pred_or_func__", ProcName2C, ProcName1) ->
-            ProcName2 = ProcName2C
+        ProcLabel = str_special_proc_label(TypeName, TypeModule,
+            _DefModule, RawPredName, Arity, Mode),
+        ( RawPredName = "__Unify__" ->
+            PredName = "Unify"
+        ; RawPredName = "__Compare__" ->
+            PredName = "Compare"
+        ; RawPredName = "__CompareRep__" ->
+            PredName = "CompareRep"
+        ; RawPredName = "__Index__" ->
+            PredName = "Index"
+        ; RawPredName = "__Initialise__" ->
+            PredName = "Initialise"
         ;
-            error("typespec: neither pred nor func")
+            Msg = "unknown special predicate name " ++ RawPredName,
+            error(Msg)
         ),
-        string.to_char_list(ProcName2, ProcName2Chars),
-        fix_type_spec_suffix(ProcName2Chars, ProcNameChars, SpecInfo)
-    ->
-        RefinedProcName = string.from_char_list(ProcNameChars),
-        Name = string.append_list([DeclModule, ".", RefinedProcName,
-            "/", string.int_to_string(Arity),
-            add_plus_one_for_function(PredOrFunc),
-            "-", string.int_to_string(Mode),
-            " [", SpecInfo, "]"])
-    ;
-        string.append("IntroducedFrom__", ProcName1, ProcName),
-        ( string.append("pred__", ProcName2A, ProcName1) ->
-            ProcName2 = ProcName2A
-        ; string.append("func__", ProcName2B, ProcName1) ->
-            ProcName2 = ProcName2B
+        Prefix = PredName ++ " for ",
+        AritySuffix = "/" ++ string.int_to_string(Arity),
+        UnQualName0 = Prefix ++ TypeName ++ AritySuffix,
+        QualName0 = Prefix ++ TypeModule ++ "." ++ TypeName ++ AritySuffix,
+        ( Mode = 0 ->
+            UnQualName = UnQualName0,
+            QualName = QualName0
         ;
-            error("lambda: neither pred nor func")
-        ),
-        string.to_char_list(ProcName2, ProcName2Chars),
-        split_lambda_name(ProcName2Chars, Segments),
-        glue_lambda_name(Segments, ContainingNameChars,
-            LineNumberChars)
-    ->
-        string.from_char_list(ContainingNameChars, ContainingName),
-        string.from_char_list(LineNumberChars, LineNumber),
-        Name = string.append_list([DeclModule, ".", ContainingName,
-            " lambda line ", LineNumber,
-            "/", string.int_to_string(Arity),
-            add_plus_one_for_function(PredOrFunc)])
+            ModeSuffix = " mode " ++ int_to_string(Mode),
+            UnQualName = UnQualName0 ++ ModeSuffix,
+            QualName = QualName0 ++ ModeSuffix
+        )
     ;
-        Name = string.append_list([DeclModule, ".", ProcName,
-            "/", string.int_to_string(Arity),
-            add_plus_one_for_function(PredOrFunc),
-            "-", string.int_to_string(Mode)])
+        ProcLabel = str_ordinary_proc_label(PredOrFunc, DeclModule,
+            _DefModule, ProcName, Arity, Mode),
+        (
+            string.append("TypeSpecOf__", ProcName1, ProcName),
+            ( string.append("pred__", ProcName2A, ProcName1) ->
+                ProcName2 = ProcName2A
+            ; string.append("func__", ProcName2B, ProcName1) ->
+                ProcName2 = ProcName2B
+            ; string.append("pred_or_func__", ProcName2C, ProcName1) ->
+                ProcName2 = ProcName2C
+            ;
+                error("typespec: neither pred nor func")
+            ),
+            string.to_char_list(ProcName2, ProcName2Chars),
+            fix_type_spec_suffix(ProcName2Chars, ProcNameChars, SpecInfo)
+        ->
+            RefinedProcName = string.from_char_list(ProcNameChars),
+            Suffix = "/" ++ string.int_to_string(Arity) ++
+                add_plus_one_for_function(PredOrFunc) ++
+                "-" ++ string.int_to_string(Mode) ++
+                " [" ++ SpecInfo ++ "]",
+            UnQualName = RefinedProcName ++ Suffix,
+            QualName = DeclModule ++ "." ++ RefinedProcName ++ Suffix
+        ;
+            string.append("IntroducedFrom__", ProcName1, ProcName),
+            ( string.append("pred__", ProcName2A, ProcName1) ->
+                ProcName2 = ProcName2A
+            ; string.append("func__", ProcName2B, ProcName1) ->
+                ProcName2 = ProcName2B
+            ;
+                error("lambda: neither pred nor func")
+            ),
+            string.to_char_list(ProcName2, ProcName2Chars),
+            split_lambda_name(ProcName2Chars, Segments),
+            glue_lambda_name(Segments, ContainingNameChars,
+                LineNumberChars)
+        ->
+            string.from_char_list(ContainingNameChars, ContainingName),
+            string.from_char_list(LineNumberChars, LineNumber),
+            Suffix =
+                " lambda line " ++ LineNumber ++
+                "/" ++ string.int_to_string(Arity) ++
+                add_plus_one_for_function(PredOrFunc),
+            UnQualName = ContainingName ++ Suffix,
+            QualName = DeclModule ++ "." ++ ContainingName ++ Suffix
+        ;
+            Suffix =
+                "/" ++ string.int_to_string(Arity) ++
+                add_plus_one_for_function(PredOrFunc) ++
+                "-" ++ string.int_to_string(Mode),
+            UnQualName = ProcName ++ Suffix,
+            QualName = DeclModule ++ "." ++ ProcName ++ Suffix
+        )
     ).
 
 :- func add_plus_one_for_function(pred_or_func) = string.

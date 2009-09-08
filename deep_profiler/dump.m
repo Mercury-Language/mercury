@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -438,13 +438,14 @@ dump_proc_dynamic(ProcStatics, Index, ProcDynamic, !IO) :-
     ProcDynamic = proc_dynamic(PSPtr, Sites),
     PSPtr = proc_static_ptr(PSI),
     lookup_proc_statics(ProcStatics, PSPtr, PS),
-    ( PS ^ ps_refined_id = "" ->
-        RefinedPSId = "UNKNOWN_PS"
+    ( PS ^ ps_q_refined_id = "" ->
+        QualRefinedPSId = "UNKNOWN_PS"
     ;
-        RefinedPSId = PS ^ ps_refined_id
+        QualRefinedPSId = PS ^ ps_q_refined_id
     ),
     io.format("pd%d:\n", [i(Index)], !IO),
-    io.format("\tpd_proc_static = %d (%s)\n", [i(PSI), s(RefinedPSId)], !IO),
+    io.format("\tpd_proc_static = %d (%s)\n",
+        [i(PSI), s(QualRefinedPSId)], !IO),
     array_foldl_from_0(dump_call_site_array_slot, Sites, !IO),
     io.nl(!IO).
 
@@ -520,22 +521,22 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
             set.member(proc_static_ptr(Index), UsedProcStatics)
         )
     ->
-        ProcStatic = proc_static(Id, DeclModule, RefinedId, RawId,
-            FileName, LineNumber, InInterface, Sites, CoveragePoints,
-            IsZeroed),
+        ProcStatic = proc_static(Id, DeclModule,
+            _UnQualRefinedId, QualRefinedId, RawId, FileName, LineNumber,
+            InInterface, Sites, CoveragePoints, IsZeroed),
         IdStr = dump_proc_id(Id),
         io.format("ps%d:\n", [i(Index)], !IO),
         io.format("\tps_id\t\t= %s", [s(IdStr)], !IO),
         io.nl(!IO),
         io.format("\tps_decl_module\t= %s\n", [s(DeclModule)], !IO),
-        ( RefinedId = string.append_list([DeclModule, ":", IdStr]) ->
+        ( QualRefinedId = DeclModule ++ "." ++ IdStr ->
             % The output is too big already; don't include
             % redundant information.
             true
         ;
-            io.format("\tps_refined_id\t= %s\n", [s(RefinedId)], !IO)
+            io.format("\tps_q_refined_id\t= %s\n", [s(QualRefinedId)], !IO)
         ),
-        ( RefinedId \= RawId ->
+        ( QualRefinedId \= RawId ->
             % The output is too big already; don't include
             % redundant information.
             true

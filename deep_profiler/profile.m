@@ -182,7 +182,8 @@
     --->    proc_static(
                 ps_id               :: string_proc_label, % procedure ID
                 ps_decl_module      :: string,      % declaring module
-                ps_refined_id       :: string,      % refined procedure id
+                ps_uq_refined_id    :: string,      % unqualified refined id
+                ps_q_refined_id     :: string,      % qualied refined id
                 ps_raw_id           :: string,      % raw procedure id
                 ps_file_name        :: string,      % file name of proc
                 ps_line_number      :: int,         % line number of proc

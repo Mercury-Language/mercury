@@ -736,12 +736,12 @@ footer_colour_toggle(Cmd, Pref, Deep) = HTML :-
 
 footer_summarize_toggle(Cmd, Pref, Deep) = HTML :-
     (
-        Pref ^ pref_summarize = summarize,
-        Pref1 = Pref ^ pref_summarize := do_not_summarize,
+        Pref ^ pref_summarize = summarize_ho_call_sites,
+        Pref1 = Pref ^ pref_summarize := do_not_summarize_ho_call_sites,
         Msg1 = "[Expand higher order calls]"
     ;
-        Pref ^ pref_summarize = do_not_summarize,
-        Pref1 = Pref ^ pref_summarize := summarize,
+        Pref ^ pref_summarize = do_not_summarize_ho_call_sites,
+        Pref1 = Pref ^ pref_summarize := summarize_ho_call_sites,
         Msg1 = "[Summarize higher order calls]"
     ),
     HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -999,15 +999,17 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
 :- func footer_inactive_modules_toggle(cmd, preferences, deep) = string.
 
 footer_inactive_modules_toggle(Cmd, Pref0, Deep) = HTML :-
-    Pref0 ^ pref_inactive = inactive_items(Procs, Modules),
+    Pref0 ^ pref_inactive = inactive_items(CallsSites, Procs, Modules),
     (
         Modules = inactive_show,
         Msg  = "[Hide inactive modules]",
-        Pref = Pref0 ^ pref_inactive := inactive_items(Procs, inactive_hide)
+        Pref = Pref0 ^ pref_inactive :=
+            inactive_items(CallsSites, Procs, inactive_hide)
     ;
         Modules = inactive_hide,
         Msg  = "[Show inactive modules]",
-        Pref = Pref0 ^ pref_inactive := inactive_items(Procs, inactive_show)
+        Pref = Pref0 ^ pref_inactive :=
+            inactive_items(CallsSites, Procs, inactive_show)
     ),
     HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, Cmd)), s(Msg)]).
@@ -1015,15 +1017,17 @@ footer_inactive_modules_toggle(Cmd, Pref0, Deep) = HTML :-
 :- func footer_inactive_procs_toggle(cmd, preferences, deep) = string.
 
 footer_inactive_procs_toggle(Cmd, Pref0, Deep) = HTML :-
-    Pref0 ^ pref_inactive = inactive_items(Procs, Modules),
+    Pref0 ^ pref_inactive = inactive_items(CallsSites, Procs, Modules),
     (
         Procs = inactive_show,
         Msg = "[Hide inactive procedures]",
-        Pref = Pref0 ^ pref_inactive := inactive_items(inactive_hide, Modules)
+        Pref = Pref0 ^ pref_inactive :=
+            inactive_items(CallsSites, inactive_hide, Modules)
     ;
         Procs = inactive_hide,
         Msg = "[Show inactive procedures]",
-        Pref = Pref0 ^ pref_inactive := inactive_items(inactive_show, Modules)
+        Pref = Pref0 ^ pref_inactive :=
+            inactive_items(CallsSites, inactive_show, Modules)
     ),
     HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, Cmd)), s(Msg)]).
@@ -2152,11 +2156,11 @@ proc_dynamic_name(Deep, PDPtr) = Name :-
     deep_lookup_proc_dynamics(Deep, PDPtr, PD),
     PSPtr = PD ^ pd_proc_static,
     deep_lookup_proc_statics(Deep, PSPtr, PS),
-    Name = PS ^ ps_refined_id.
+    Name = PS ^ ps_q_refined_id.
 
 proc_static_name(Deep, PSPtr) = Name :-
     deep_lookup_proc_statics(Deep, PSPtr, PS),
-    Name = PS ^ ps_refined_id.
+    Name = PS ^ ps_q_refined_id.
 
 %-----------------------------------------------------------------------------%
 
@@ -2186,7 +2190,7 @@ proc_static_to_line_group_info(Pref, Deep, PSPtr, FileName, LineNumber,
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         FileName = PS ^ ps_file_name,
         LineNumber = PS ^ ps_line_number,
-        Name = PS ^ ps_refined_id,
+        Name = PS ^ ps_q_refined_id,
         HTML = proc_static_to_html_ref(Pref, Deep, PSPtr)
     ;
         FileName = "",
@@ -2198,7 +2202,7 @@ proc_static_to_line_group_info(Pref, Deep, PSPtr, FileName, LineNumber,
 proc_static_to_html_ref(Pref, Deep, PSPtr) = HTML :-
     URL = deep_cmd_pref_to_url(Pref, Deep, deep_cmd_proc(PSPtr)),
     deep_lookup_proc_statics(Deep, PSPtr, PS),
-    ProcName = PS ^ ps_refined_id,
+    ProcName = PS ^ ps_q_refined_id,
     HTML = string.format("<A HREF=""%s"">%s</A>",
         [s(URL), s(escape_break_html_string(ProcName))]).
 

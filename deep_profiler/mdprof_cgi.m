@@ -313,34 +313,45 @@ process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
         DeepFileName = DeepFileName0,
         Options = Options0
     ),
-    ToServerPipe = to_server_pipe_name(DeepFileName),
-    FromServerPipe = from_server_pipe_name(DeepFileName),
-    StartupFile = server_startup_name(DeepFileName),
-    MutexFile = mutex_file_name(DeepFileName),
-    lookup_bool_option(Options, debug, Debug),
-    WantFile = want_file_name,
-    make_want_file(WantFile, !IO),
-    get_lock(Debug, MutexFile, !IO),
-    (
-        Debug = yes
-        % Do not set up any cleanups; leave all files around,
-        % since they may be needed for postmortem examination.
+    ( remove_suffix(DeepFileName, ".data", _BaseFileName) ->
+        ToServerPipe = to_server_pipe_name(DeepFileName),
+        FromServerPipe = from_server_pipe_name(DeepFileName),
+        StartupFile = server_startup_name(DeepFileName),
+        MutexFile = mutex_file_name(DeepFileName),
+        lookup_bool_option(Options, debug, Debug),
+        WantFile = want_file_name,
+        make_want_file(WantFile, !IO),
+        get_lock(Debug, MutexFile, !IO),
+        (
+            Debug = yes
+            % Do not set up any cleanups; leave all files around,
+            % since they may be needed for postmortem examination.
+        ;
+            Debug = no,
+            setup_signals(MutexFile, want_dir, want_prefix, !IO)
+        ),
+        check_for_existing_fifos(ToServerPipe, FromServerPipe, FifoCount, !IO),
+        ( FifoCount = 0 ->
+            handle_query_from_new_server(Cmd, PrefInd, DeepFileName,
+                ToServerPipe, FromServerPipe, StartupFile, MutexFile, WantFile,
+                Options, !IO)
+        ; FifoCount = 2 ->
+            handle_query_from_existing_server(Cmd, PrefInd,
+                ToServerPipe, FromServerPipe, MutexFile, WantFile, Options,
+                !IO)
+        ;
+            release_lock(Debug, MutexFile, !IO),
+            remove_want_file(WantFile, !IO),
+            io.set_exit_status(1, !IO),
+            io.write_string("mdprof internal error: bad fifo count", !IO)
+        )
     ;
-        Debug = no,
-        setup_signals(MutexFile, want_dir, want_prefix, !IO)
-    ),
-    check_for_existing_fifos(ToServerPipe, FromServerPipe, FifoCount, !IO),
-    ( FifoCount = 0 ->
-        handle_query_from_new_server(Cmd, PrefInd, DeepFileName, ToServerPipe,
-            FromServerPipe, StartupFile, MutexFile, WantFile, Options, !IO)
-    ; FifoCount = 2 ->
-        handle_query_from_existing_server(Cmd, PrefInd,
-            ToServerPipe, FromServerPipe, MutexFile, WantFile, Options, !IO)
-    ;
-        release_lock(Debug, MutexFile, !IO),
-        remove_want_file(WantFile, !IO),
         io.set_exit_status(1, !IO),
-        io.write_string("mdprof internal error: bad fifo count", !IO)
+        io.format("<h3> Invalid file name %s.<h3>\n\n",
+            [s(DeepFileName)], !IO),
+        io.write_string(
+            "Deep profiling data files must have a .data suffix, " ++
+            "to allow the deep profiler to locate any related files.\n", !IO)
     ).
 
     % This type is used to pass queries between the two servers.

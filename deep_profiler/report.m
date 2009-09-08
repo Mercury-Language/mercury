@@ -351,7 +351,8 @@
     --->    proc_static_dump_info(
                 psdi_psptr                  :: proc_static_ptr,
                 psdi_raw_name               :: string,
-                psdi_refined_name           :: string,
+                psdi_uq_refined_name        :: string,
+                psdi_q_refined_name         :: string,
                 psdi_filename               :: string,
                 psdi_linenumber             :: int,
                 % Should we list the call_site_statics and coverage points
@@ -365,7 +366,9 @@
                 pddi_pdptr                  :: proc_dynamic_ptr,
                 pddi_psptr                  :: proc_static_ptr,
                 pddi_ps_raw_name            :: string,
-                pddi_ps_refined_name        :: string,
+                pddi_ps_module_name         :: string,
+                pddi_ps_uq_refined_name     :: string,
+                pddi_ps_q_refined_name      :: string,
                 pddi_call_sites             :: list(call_site_array_slot)
             ).
 
@@ -497,10 +500,12 @@
     %
 :- type proc_desc
     --->    proc_desc(
-                pdesc_ps_ptr                :: proc_static_ptr,
-                pdesc_file_name             :: string,
-                pdesc_line_number           :: int,
-                pdesc_refined_name          :: string
+                pdesc_ps_ptr                    :: proc_static_ptr,
+                pdesc_file_name                 :: string,
+                pdesc_line_number               :: int,
+                pdesc_module_name               :: string,
+                pdesc_uq_refined_name           :: string,
+                pdesc_q_refined_name            :: string
             ).
 
     % The representation of a call site in a report structure, including
@@ -508,37 +513,39 @@
     %
 :- type call_site_desc
     --->    call_site_desc(
-                csdesc_css_ptr              :: call_site_static_ptr,
-                csdesc_container            :: proc_static_ptr,
-                csdesc_file_name            :: string,
-                csdesc_line_number          :: int,
-                csdesc_caller_refined_name  :: string,
-                csdesc_slot_number          :: int,
-                csdesc_goal_path            :: goal_path,
-                csdesc_maybe_callee         :: maybe(proc_desc)
+                csdesc_css_ptr                  :: call_site_static_ptr,
+                csdesc_container                :: proc_static_ptr,
+                csdesc_file_name                :: string,
+                csdesc_line_number              :: int,
+                csdesc_caller_module_name       :: string,
+                csdesc_caller_uq_refined_name   :: string,
+                csdesc_caller_q_refined_name    :: string,
+                csdesc_slot_number              :: int,
+                csdesc_goal_path                :: goal_path,
+                csdesc_maybe_callee             :: maybe(proc_desc)
             ).
 
 :- type ancestor_desc
     --->    ancestor_desc(
                 % The caller and callee cliques.
-                ad_caller_clique_ptr        :: clique_ptr,
-                ad_callee_clique_ptr        :: clique_ptr,
+                ad_caller_clique_ptr            :: clique_ptr,
+                ad_callee_clique_ptr            :: clique_ptr,
 
                 % The callee procedure.
-                ad_callee_pdesc             :: proc_desc,
+                ad_callee_pdesc                 :: proc_desc,
 
                 % The description of the call site. This includes a description
                 % of the caller procedure.
-                ad_call_site_desc           :: call_site_desc
+                ad_call_site_desc               :: call_site_desc
             ).
 
     % The description of a clique in a report structure.
     %
 :- type clique_desc
     --->    clique_desc(
-                cdesc_clique_ptr            :: clique_ptr,
-                cdesc_entry_member          :: proc_desc,
-                cdesc_other_members         :: list(proc_desc)
+                cdesc_clique_ptr                :: clique_ptr,
+                cdesc_entry_member              :: proc_desc,
+                cdesc_other_members             :: list(proc_desc)
             ).
 
 %-----------------------------------------------------------------------------%

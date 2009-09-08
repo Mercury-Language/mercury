@@ -154,7 +154,7 @@ old_exec(deep_cmd_module_getter_setters(_), _, _, HTML, !IO) :-
 generate_proc_static_debug_page(PSPtr, Deep) = HTML :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         deep_lookup_proc_statics(Deep, PSPtr, PS),
-        Refined = PS ^ ps_refined_id,
+        Refined = PS ^ ps_q_refined_id,
         Raw = PS ^ ps_raw_id,
         FileName = PS ^ ps_file_name,
         HTML =
@@ -1096,11 +1096,11 @@ multi_call_site_clique_to_html(Pref, Deep, FileName, LineNumber, Kind,
         % 'CallSiteName' because it has already been done.
         string.format("<TD CLASS=id>%s</TD>\n", [s(CallSiteName)]),
     (
-        Pref ^ pref_summarize = summarize,
+        Pref ^ pref_summarize = summarize_ho_call_sites,
         LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
             Own, Desc, SummaryHTML, sub_lines(two_id, []))
     ;
-        Pref ^ pref_summarize = do_not_summarize,
+        Pref ^ pref_summarize = do_not_summarize_ho_call_sites,
         LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
             Own, Desc, SummaryHTML, sub_lines(two_id, SubLines))
     ),
@@ -1137,7 +1137,7 @@ call_site_summary_to_html(Pref, Deep, CSSPtr) = LineGroup :-
 normal_call_site_summary_to_html(Pref, Deep, FileName, LineNumber,
         CallerPSPtr, CalleePSPtr, CallSiteCallList) = LineGroup :-
     deep_lookup_proc_statics(Deep, CalleePSPtr, CalleePS),
-    ProcName = CalleePS ^ ps_refined_id,
+    ProcName = CalleePS ^ ps_q_refined_id,
     (
         CallSiteCallList = [],
         Own = zero_own_prof_info,
@@ -1181,11 +1181,11 @@ multi_call_site_summary_to_html(Pref, Deep, FileName, LineNumber, Kind,
     SummaryHTML =
         string.format("<TD CLASS=id>%s</TD>\n", [s(CallSiteName)]),
     (
-        Pref ^ pref_summarize = summarize,
+        Pref ^ pref_summarize = summarize_ho_call_sites,
         LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
             Own, Desc, SummaryHTML, sub_lines(two_id, []))
     ;
-        Pref ^ pref_summarize = do_not_summarize,
+        Pref ^ pref_summarize = do_not_summarize_ho_call_sites,
         ContextSubLines = list.map(add_context(""), SubLines),
         LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
             Own, Desc, SummaryHTML, sub_lines(two_id, ContextSubLines))
@@ -1217,10 +1217,10 @@ multi_call_site_add_suffix(Pref, RawCallSiteName, CallList) = CallSiteName :-
         CallList = [_ | _],
         Summarize = Pref ^ pref_summarize,
         (
-            Summarize = summarize,
+            Summarize = summarize_ho_call_sites,
             CallSiteName = RawCallSiteName ++ " (summary)"
         ;
-            Summarize = do_not_summarize,
+            Summarize = do_not_summarize_ho_call_sites,
             CallSiteName = RawCallSiteName
         )
     ).
@@ -1695,7 +1695,7 @@ proc_callers_call_site_to_html(Pref, Deep, CalleePSPtr, CSSPtr - CSDPtrs)
     deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
     CallerPSPtr = CSS ^ css_container,
     deep_lookup_proc_statics(Deep, CallerPSPtr, CallerPS),
-    CallerProcName = CallerPS ^ ps_refined_id,
+    CallerProcName = CallerPS ^ ps_q_refined_id,
     compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
     HTML =
         string.format("<TD CLASS=id>%s:%d</TD>\n",
@@ -1712,7 +1712,7 @@ proc_callers_proc_to_html(Pref, Deep, CalleePSPtr, CallerPSPtr - CSDPtrs)
         = LineGroup :-
     proc_static_context(Deep, CallerPSPtr, FileName, LineNumber),
     deep_lookup_proc_statics(Deep, CallerPSPtr, CallerPS),
-    CallerProcName = CallerPS ^ ps_refined_id,
+    CallerProcName = CallerPS ^ ps_q_refined_id,
     compute_parent_csd_prof_info(Deep, CalleePSPtr, CSDPtrs, Own, Desc),
     HTML =
         string.format("<TD CLASS=id>%s:%d</TD>\n",

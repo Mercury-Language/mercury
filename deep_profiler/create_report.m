@@ -1137,14 +1137,15 @@ create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDumpInfo) :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         % Should we dump some other fields?
-        PS = proc_static(_ProcId, _DeclModule, RefinedName, RawName,
-            FileName, LineNumber, _InInterface, CallSites, CoveragePoints,
-            _IsZeroed),
+        PS = proc_static(_ProcId, _DeclModule,
+            UnQualRefinedName, QualRefinedName, RawName, FileName, LineNumber,
+            _InInterface, CallSites, CoveragePoints, _IsZeroed),
         array.max(CallSites, MaxCallSiteIdx),
         NumCallSites = MaxCallSiteIdx + 1,
         array.max(CoveragePoints, MaxCoveragePointIdx),
         NumCoveragePoints = MaxCoveragePointIdx + 1,
-        ProcStaticDumpInfo = proc_static_dump_info(PSPtr, RawName, RefinedName,
+        ProcStaticDumpInfo = proc_static_dump_info(PSPtr, RawName,
+            UnQualRefinedName, QualRefinedName,
             FileName, LineNumber, NumCallSites, NumCoveragePoints),
         MaybeProcStaticDumpInfo = ok(ProcStaticDumpInfo)
     ;
@@ -1160,10 +1161,13 @@ create_proc_dynamic_dump_report(Deep, PDPtr, MaybeProcDynamicDumpInfo) :-
         PD = proc_dynamic(PSPtr, CallSiteArray),
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         RawName = PS ^ ps_raw_id,
-        RefinedName = PS ^ ps_refined_id,
+        ModuleName = PS ^ ps_decl_module,
+        UnQualRefinedName = PS ^ ps_uq_refined_id,
+        QualRefinedName = PS ^ ps_q_refined_id,
         array.to_list(CallSiteArray, CallSites),
         ProcDynamicDumpInfo = proc_dynamic_dump_info(PDPtr, PSPtr,
-            RawName, RefinedName, CallSites),
+            RawName, ModuleName, UnQualRefinedName, QualRefinedName,
+            CallSites),
         MaybeProcDynamicDumpInfo = ok(ProcDynamicDumpInfo)
     ;
         MaybeProcDynamicDumpInfo = error("invalid proc_dynamic index")
@@ -1374,13 +1378,18 @@ describe_proc(Deep, PSPtr) = ProcDesc :-
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         FileName = PS ^ ps_file_name,
         LineNumber = PS ^ ps_line_number,
-        RefinedName = PS ^ ps_refined_id
+        ModuleName = PS ^ ps_decl_module,
+        UnQualRefinedName = PS ^ ps_uq_refined_id,
+        QualRefinedName = PS ^ ps_q_refined_id
     ;
         FileName = "",
         LineNumber = 0,
-        RefinedName = "mercury_runtime"
+        ModuleName = "",
+        UnQualRefinedName = "mercury_runtime",
+        QualRefinedName = "mercury_runtime"
     ),
-    ProcDesc = proc_desc(PSPtr, FileName, LineNumber, RefinedName).
+    ProcDesc = proc_desc(PSPtr, FileName, LineNumber, ModuleName,
+        UnQualRefinedName, QualRefinedName).
 
     % Create a call_site_desc structure for a given call site static pointer.
     %
@@ -1393,7 +1402,9 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
             GoalPathString),
         deep_lookup_proc_statics(Deep, ContainingPSPtr, ContainingPS),
         FileName = ContainingPS ^ ps_file_name,
-        RefinedName = ContainingPS ^ ps_refined_id,
+        ModuleName = ContainingPS ^ ps_decl_module,
+        UnQualRefinedName = ContainingPS ^ ps_uq_refined_id,
+        QualRefinedName = ContainingPS ^ ps_q_refined_id,
         goal_path_from_string_det(GoalPathString, GoalPath),
         (
             Kind = normal_call_and_callee(CalleePSPtr, _TypeSubst),
@@ -1411,14 +1422,16 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
         ContainingPSPtr = dummy_proc_static_ptr,
         FileName = "",
         LineNumber = 0,
-        RefinedName = "mercury_runtime",
+        ModuleName = "",
+        UnQualRefinedName = "mercury_runtime",
+        QualRefinedName = "mercury_runtime",
         SlotNumber = -1,
         GoalPath = empty_goal_path,
         MaybeCalleeDesc = no
     ),
     CallSiteDesc = call_site_desc(CSSPtr, ContainingPSPtr,
-        FileName, LineNumber, RefinedName, SlotNumber, GoalPath,
-        MaybeCalleeDesc).
+        FileName, LineNumber, ModuleName, UnQualRefinedName, QualRefinedName,
+        SlotNumber, GoalPath, MaybeCalleeDesc).
 
     % describe_clique(Deep, CliquePtr, MaybeEntryPDPtr) = CliqueDesc
     %

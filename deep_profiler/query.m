@@ -185,7 +185,7 @@
                 pref_anc            :: maybe(int),
 
                 % Whether pages should summarize at higher order call sites.
-                pref_summarize      :: summarize,
+                pref_summarize      :: summarize_ho_call_sites,
 
                 % The criteria for ordering lines in pages, if the command
                 % doesn't specify otherwise.
@@ -202,6 +202,8 @@
                 pref_contour        :: contour_exclusion,
 
                 pref_time           :: time_format,
+
+                pref_module_qual    :: module_qual,
 
                 % Whether we should show modules/procs that haven't been
                 % called.
@@ -257,9 +259,9 @@
     --->    colour_column_groups
     ;       do_not_colour_column_groups.
 
-:- type summarize
-    --->    summarize
-    ;       do_not_summarize.
+:- type summarize_ho_call_sites
+    --->    summarize_ho_call_sites
+    ;       do_not_summarize_ho_call_sites.
 
 :- type order_criteria
     --->    by_context
@@ -283,14 +285,20 @@
     ;       scale_by_millions
     ;       scale_by_thousands.
 
+:- type module_qual
+    --->    module_qual_always
+    ;       module_qual_when_diff
+    ;       module_qual_never.
+
 :- type inactive_status
     --->    inactive_hide
     ;       inactive_show.
 
 :- type inactive_items
     --->    inactive_items(
-                inactive_procs   :: inactive_status,
-                inactive_modules :: inactive_status
+                inactive_call_sites :: inactive_status,
+                inactive_procs      :: inactive_status,
+                inactive_modules    :: inactive_status
             ).
 
 %-----------------------------------------------------------------------------%
@@ -310,13 +318,14 @@
 :- func default_box_tables = box_tables.
 :- func default_colour_column_groups = colour_column_groups.
 :- func default_ancestor_limit = maybe(int).
-:- func default_summarize = summarize.
+:- func default_summarize_ho_call_sites = summarize_ho_call_sites.
 :- func default_order_criteria = order_criteria.
 :- func default_cost_kind = cost_kind.
 :- func default_incl_desc = include_descendants.
 :- func default_scope = measurement_scope.
 :- func default_contour_exclusion = contour_exclusion.
 :- func default_time_format = time_format.
+:- func default_module_qual = module_qual.
 :- func default_inactive_items = inactive_items.
 
 %-----------------------------------------------------------------------------%
@@ -472,10 +481,11 @@ default_preferences(Deep) =
         default_box_tables,
         default_colour_column_groups,
         default_ancestor_limit,
-        default_summarize,
+        default_summarize_ho_call_sites,
         default_order_criteria,
         default_contour_exclusion,
         default_time_format,
+        default_module_qual,
         default_inactive_items
     ).
 
@@ -496,14 +506,16 @@ all_fields = fields(port, ticks_and_time_and_percall, callseqs_and_percall,
 default_box_tables = box_tables.
 default_colour_column_groups = colour_column_groups.
 default_ancestor_limit = yes(5).
-default_summarize = do_not_summarize.
+default_summarize_ho_call_sites = do_not_summarize_ho_call_sites.
 default_order_criteria = by_context.
 default_cost_kind = cost_callseqs.
 default_incl_desc = self_and_desc.
 default_scope = overall.
 default_contour_exclusion = do_not_apply_contour_exclusion.
 default_time_format = scale_by_thousands.
-default_inactive_items = inactive_items(inactive_hide, inactive_hide).
+default_module_qual = module_qual_when_diff.
+default_inactive_items =
+    inactive_items(inactive_hide, inactive_hide, inactive_hide).
 
 %-----------------------------------------------------------------------------%
 
@@ -636,7 +648,7 @@ cmd_to_string(Cmd) = CmdStr :-
 
 preferences_to_string(Pref) = PrefStr :-
     Pref = preferences(Fields, Box, Colour, MaybeAncestorLimit,
-        Summarize, Order, Contour, Time, InactiveItems),
+        SummarizeHoCallSites, Order, Contour, Time, ModuleQual, InactiveItems),
     (
         MaybeAncestorLimit = yes(AncestorLimit),
         MaybeAncestorLimitStr =
@@ -645,15 +657,16 @@ preferences_to_string(Pref) = PrefStr :-
         MaybeAncestorLimit = no,
         MaybeAncestorLimitStr = "no"
     ),
-    PrefStr = string.format("%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s",
+    PrefStr = string.format("%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s",
         [s(fields_to_string(Fields)),
         c(pref_separator_char), s(box_to_string(Box)),
         c(pref_separator_char), s(colour_scheme_to_string(Colour)),
         c(pref_separator_char), s(MaybeAncestorLimitStr),
-        c(pref_separator_char), s(summarize_to_string(Summarize)),
+        c(pref_separator_char), s(summarize_to_string(SummarizeHoCallSites)),
         c(pref_separator_char), s(order_criteria_to_string(Order)),
         c(pref_separator_char), s(contour_exclusion_to_string(Contour)),
         c(pref_separator_char), s(time_format_to_string(Time)),
+        c(pref_separator_char), s(module_qual_to_string(ModuleQual)),
         c(pref_separator_char), s(inactive_items_to_string(InactiveItems))
     ]).
 
@@ -809,7 +822,8 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
     split(QueryString, pref_separator_char, Pieces),
     (
         Pieces = [FieldsStr, BoxStr, ColourStr, MaybeAncestorLimitStr,
-            SummarizeStr, OrderStr, ContourStr, TimeStr, InactiveItemsStr],
+            SummarizeHoCallSitesStr, OrderStr, ContourStr, TimeStr,
+            ModuleQualStr, InactiveItemsStr],
         string_to_fields(FieldsStr, Fields),
         string_to_box(BoxStr, Box),
         string_to_colour_scheme(ColourStr, Colour),
@@ -820,14 +834,16 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
         ;
             fail
         ),
-        string_to_summarize(SummarizeStr, Summarize),
+        string_to_summarize(SummarizeHoCallSitesStr, SummarizeHoCallSites),
         string_to_order_criteria(OrderStr, Order),
         string_to_contour_exclusion(ContourStr, Contour),
         string_to_time_format(TimeStr, Time),
+        string_to_module_qual(ModuleQualStr, ModuleQual),
         string_to_inactive_items(InactiveItemsStr, InactiveItems)
     ->
         Preferences = preferences(Fields, Box, Colour, MaybeAncestorLimit,
-            Summarize, Order, Contour, Time, InactiveItems),
+            SummarizeHoCallSites, Order, Contour, Time, ModuleQual,
+            InactiveItems),
         MaybePreferences = yes(Preferences)
     ;
         MaybePreferences = no
@@ -1068,15 +1084,28 @@ string_to_limit(LimitStr, Limit) :-
         fail
     ).
 
-:- func summarize_to_string(summarize) = string.
+:- func summarize_to_string(summarize_ho_call_sites) = string.
 
-summarize_to_string(summarize)      = "sum".
-summarize_to_string(do_not_summarize) = "nosum".
+summarize_to_string(summarize_ho_call_sites) = "sum".
+summarize_to_string(do_not_summarize_ho_call_sites) = "nosum".
 
-:- pred string_to_summarize(string::in, summarize::out) is semidet.
+:- pred string_to_summarize(string::in, summarize_ho_call_sites::out)
+    is semidet.
 
-string_to_summarize("sum",   summarize).
-string_to_summarize("nosum", do_not_summarize).
+string_to_summarize("sum",   summarize_ho_call_sites).
+string_to_summarize("nosum", do_not_summarize_ho_call_sites).
+
+:- func module_qual_to_string(module_qual) = string.
+
+module_qual_to_string(module_qual_always) = "mqa".
+module_qual_to_string(module_qual_when_diff) = "mqwd".
+module_qual_to_string(module_qual_never) = "mqn".
+
+:- pred string_to_module_qual(string::in, module_qual::out) is semidet.
+
+string_to_module_qual("mqa",  module_qual_always).
+string_to_module_qual("mqwd", module_qual_when_diff).
+string_to_module_qual("mqn",  module_qual_never).
 
 :- func order_criteria_to_string(order_criteria) = string.
 
@@ -1161,10 +1190,22 @@ inactive_items_to_string(Items) = String :-
 :- mode string_to_inactive_items(in, out) is semidet.
 :- mode string_to_inactive_items(out, in) is det.
 
-string_to_inactive_items("hh", inactive_items(inactive_hide, inactive_hide)).
-string_to_inactive_items("sh", inactive_items(inactive_show, inactive_hide)).
-string_to_inactive_items("hs", inactive_items(inactive_hide, inactive_show)).
-string_to_inactive_items("ss", inactive_items(inactive_show, inactive_show)).
+string_to_inactive_items("hhh",
+    inactive_items(inactive_hide, inactive_hide, inactive_hide)).
+string_to_inactive_items("hhs",
+    inactive_items(inactive_hide, inactive_hide, inactive_show)).
+string_to_inactive_items("hsh",
+    inactive_items(inactive_hide, inactive_show, inactive_hide)).
+string_to_inactive_items("hss",
+    inactive_items(inactive_hide, inactive_show, inactive_show)).
+string_to_inactive_items("shh",
+    inactive_items(inactive_show, inactive_hide, inactive_hide)).
+string_to_inactive_items("shs",
+    inactive_items(inactive_show, inactive_hide, inactive_show)).
+string_to_inactive_items("ssh",
+    inactive_items(inactive_show, inactive_show, inactive_hide)).
+string_to_inactive_items("sss",
+    inactive_items(inactive_show, inactive_show, inactive_show)).
 
 :- func colour_scheme_to_string(colour_column_groups) = string.
 
