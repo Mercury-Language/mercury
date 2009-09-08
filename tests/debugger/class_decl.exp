@@ -3,9 +3,9 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> all_type_ctors class_decl
-type constructor class_decl.t2/1
-
 type constructor class_decl.t1/0
+
+type constructor class_decl.t2/1
 
 number of type constructors in module class_decl: 2
 mdb> type_ctor class_decl t1 0
