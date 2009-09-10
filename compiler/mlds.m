@@ -1840,6 +1840,10 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                 ( TypeBody = hlds_foreign_type(ForeignTypeBody) ->
                     MLDSType = foreign_type_to_mlds_type(ModuleInfo,
                         ForeignTypeBody)
+                ; TypeBody = hlds_abstract_type(_) ->
+                    Category = classify_type_ctor(ModuleInfo, TypeCtor),
+                    ExportedType = non_foreign_type(Type),
+                    MLDSType = mercury_type(Type, Category, ExportedType)
                 ;
                     Category = classify_type_defn_body(TypeBody),
                     ExportedType = non_foreign_type(Type),
