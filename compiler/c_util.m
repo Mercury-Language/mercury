@@ -280,7 +280,6 @@ can_print_directly(_, no, !IO).
         for (s = Str; *s != '\\0'; s++) {
             if (! (isalnum(*s) || *s == '_' || *s == '/' || *s == '.')) {
                 can_print_directly = MR_FALSE;
-                printf(""XXX %d XXX\\n"", *s);
                 break;
             }
         }
