@@ -423,6 +423,8 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+:- import_module svmap.
+:- import_module svvarset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -612,7 +614,10 @@ polymorphism_process_clause(PredInfo0, OldHeadVars, NewHeadVars,
         true
     ;
         Goal0 = !.Clause ^ clause_body,
+
         % Process any polymorphic calls inside the goal.
+        poly_info_set_type_info_var_map(map.init, !Info),
+        poly_info_set_num_reuses(0, !Info),
         polymorphism_process_goal(Goal0, Goal1, !Info),
 
         % Generate code to construct the typeclass_infos and type_infos
@@ -635,7 +640,7 @@ polymorphism_process_proc_in_table(PredInfo, ClausesInfo, ExtraArgModes,
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     polymorphism_process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
         ProcInfo0, ProcInfo),
-    map.det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable).
+    svmap.det_update(ProcId, ProcInfo, !ProcTable).
 
 :- pred polymorphism_process_proc(pred_info::in, clauses_info::in,
     poly_arg_vector(mer_mode)::in, proc_id::in, proc_info::in, proc_info::out)
@@ -1093,112 +1098,205 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
         % The rest of the cases just process goals recursively.
         (
             GoalExpr0 = conj(ConjType, Goals0),
-            polymorphism_process_goal_list(Goals0, Goals, !Info),
+            polymorphism_process_conj(Goals0, Goals, !Info),
             GoalExpr = conj(ConjType, Goals)
         ;
             GoalExpr0 = disj(Goals0),
-            polymorphism_process_goal_list(Goals0, Goals, !Info),
+            poly_info_get_type_info_var_map(!.Info, InitialTypeInfoVarMap),
+            polymorphism_process_disj(Goals0, Goals, InitialTypeInfoVarMap,
+                !Info),
+            poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
             GoalExpr = disj(Goals)
         ;
+            GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+            poly_info_get_type_info_var_map(!.Info, InitialTypeInfoVarMap),
+            polymorphism_process_goal(Cond0, Cond, !Info),
+            % If we allowed a type_info created inside Cond to be reused
+            % in Then, then we are adding an output variable to Cond.
+            % If Cond scope had no outputs to begin with, this would change
+            % its determinism.
+            poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
+            polymorphism_process_goal(Then0, Then, !Info),
+            poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
+            polymorphism_process_goal(Else0, Else, !Info),
+            poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
+            GoalExpr = if_then_else(Vars, Cond, Then, Else)
+        ;
             GoalExpr0 = negation(SubGoal0),
+            poly_info_get_type_info_var_map(!.Info, InitialTypeInfoVarMap),
             polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+            poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
             GoalExpr = negation(SubGoal)
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
-            polymorphism_process_case_list(Cases0, Cases, !Info),
+            poly_info_get_type_info_var_map(!.Info, InitialTypeInfoVarMap),
+            polymorphism_process_cases(Cases0, Cases, InitialTypeInfoVarMap,
+                !Info),
+            poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
             GoalExpr = switch(Var, CanFail, Cases)
         ;
             GoalExpr0 = scope(Reason0, SubGoal0),
             (
-                Reason0 =
-                    from_ground_term(TermVar, from_ground_term_construct)
-            ->
-                poly_info_get_varset(!.Info, VarSetBefore),
-                MaxVarBefore = varset.max_var(VarSetBefore),
-                polymorphism_process_goal(SubGoal0, SubGoal1, !Info),
-                poly_info_get_varset(!.Info, VarSetAfter),
-                MaxVarAfter = varset.max_var(VarSetAfter),
-
-                ( not MaxVarAfter = MaxVarBefore ->
-                    % We did introduced some variables into the scope,
-                    % so we cannot guarantee that the scope still satisfies
-                    % the invariants of from_ground_term_construct scopes.
-                    Reason = from_ground_term(TermVar, from_ground_term_other),
-                    ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
-                        attach_features_to_all_goals([feature_from_head],
-                            attach_in_from_ground_term, SubGoal1, SubGoal)
-                    ;
-                        SubGoal = SubGoal1
-                    )
+                Reason0 = from_ground_term(TermVar, Kind),
+                (
+                    Kind = from_ground_term_construct,
+                    polymorphism_process_from_ground_term(TermVar, Reason,
+                        GoalInfo0, SubGoal0, SubGoal, !Info)
                 ;
-                    poly_info_get_var_types(!.Info, VarTypes),
-                    map.lookup(VarTypes, TermVar, TermVarType),
-                    type_vars(TermVarType, TermVarTypeVars),
-                    (
-                        TermVarTypeVars = [_ | _],
-                        % We may have (and probably did) modified the code in
-                        % the scope by adding a reference to typeinfo variables
-                        % representing TermVarTypeVars.
-                        Reason = from_ground_term(TermVar,
-                            from_ground_term_other),
-                        (
-                            goal_info_has_feature(GoalInfo0, feature_from_head)
-                        ->
-                            attach_features_to_all_goals([feature_from_head],
-                                attach_in_from_ground_term, SubGoal1, SubGoal)
-                        ;
-                            SubGoal = SubGoal1
-                        )
-                    ;
-                        TermVarTypeVars = [],
-                        % TermVarTypeVars = [] says that there is no
-                        % polymorphism imposed from the outside via TermVar,
-                        % and MaxVarAfter = MaxVarBefore says that there was no
-                        % polymorphism added by the goals inside the scope
-                        % (since those would have required the creation of
-                        % new typeinfo variables).
-                        % XXX zs: I am only 90% sure of the statement in the
-                        % parentheses. If it turns out to be wrong, we would
-                        % have to add a flag to poly_infos that is set whenever
-                        % this pass modifies a goal, at least in ways that
-                        % would invalidate the from_ground_term_construct
-                        % invariant.
-                        Reason = Reason0,
-                        SubGoal = SubGoal1
-                    )
+                    ( Kind = from_ground_term_deconstruct
+                    ; Kind = from_ground_term_other
+                    ),
+                    polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+                    Reason = Reason0
                 )
             ;
+                ( Reason0 = promise_solutions(_, _)
+                ; Reason0 = promise_purity(_)
+                ; Reason0 = commit(_)
+                ; Reason0 = barrier(_)
+                ),
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+                Reason = Reason0
+            ;
+                Reason0 = exist_quant(_),
+                % If we allowed a type_info created inside SubGoal to be reused
+                % outside GoalExpr, then we are adding an output variable to
+                % the scope. If the scope had no outputs to begin with, this
+                % would change the determinism of the scope.
+                %
+                % However, using a type_info from before the scope in SubGoal
+                % is perfectly ok.
+
+                poly_info_get_type_info_var_map(!.Info, InitialTypeInfoVarMap),
+                polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+                poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
+                Reason = Reason0
+            ;
+                Reason0 = trace_goal(_, _, _, _, _),
+                % Trace goal scopes will be deleted after semantic analysis
+                % if their compile-time condition turns out to be false.
+                % If we let later code use type_infos introduced inside the
+                % scope, the deletion of the scope would leave those variables
+                % undefined.
+                %
+                % We *could* evaluate the compile-time condition here to know
+                % whether the deletion will happen or not, but doing so would
+                % require breaching the separation between compiler passes.
+
+                poly_info_get_type_info_var_map(!.Info, InitialTypeInfoVarMap),
+                polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+                poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
                 Reason = Reason0
             ),
             GoalExpr = scope(Reason, SubGoal)
-        ;
-            GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-            polymorphism_process_goal(Cond0, Cond, !Info),
-            polymorphism_process_goal(Then0, Then, !Info),
-            polymorphism_process_goal(Else0, Else, !Info),
-            GoalExpr = if_then_else(Vars, Cond, Then, Else)
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
-            ShortHand0 = atomic_goal(GoalType, Outer, Inner, Vars, 
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, Vars,
                 MainGoal0, OrElseGoals0, OrElseInners),
+            poly_info_get_type_info_var_map(!.Info, InitialTypeInfoVarMap),
             polymorphism_process_goal(MainGoal0, MainGoal, !Info),
-            polymorphism_process_goal_list(OrElseGoals0, OrElseGoals, !Info),
-            ShortHand = atomic_goal(GoalType, Outer, Inner, Vars, 
+            polymorphism_process_disj(OrElseGoals0, OrElseGoals,
+                InitialTypeInfoVarMap, !Info),
+            poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, Vars,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+            % We don't let the code inside and outside the try goal share
+            % type_info variables for the same reason as with lambda
+            % expressions; because those pieces of code will end up
+            % in different procedures. However, for try goals, this is true
+            % even for the first and second conjuncts.
+            poly_info_get_type_info_var_map(!.Info, InitialTypeInfoVarMap),
+            (
+                SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo),
+                SubGoalExpr0 = conj(plain_conj, Conjuncts0),
+                Conjuncts0 = [ConjunctA0, ConjunctB0]
+            ->
+                poly_info_set_type_info_var_map(map.init, !Info),
+                polymorphism_process_goal(ConjunctA0, ConjunctA, !Info),
+                poly_info_set_type_info_var_map(map.init, !Info),
+                polymorphism_process_goal(ConjunctB0, ConjunctB, !Info),
+                Conjuncts = [ConjunctA, ConjunctB],
+                SubGoalExpr = conj(plain_conj, Conjuncts),
+                SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo)
+            ;
+                unexpected(this_file,
+                    "polymorphism_process_goal_expr: malformed try goal")
+            ),
+            poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected(this_file, "process_goal_expr: bi_implication")
+            unexpected(this_file,
+                "polymorphism_process_goal_expr: bi_implication")
         ),
         GoalExpr = shorthand(ShortHand),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ).
+
+:- pred polymorphism_process_from_ground_term(prog_var::in, scope_reason::out,
+    hlds_goal_info::in, hlds_goal::in, hlds_goal::out,
+    poly_info::in, poly_info::out) is det.
+
+polymorphism_process_from_ground_term(TermVar, Reason, GoalInfo0,
+        SubGoal0, SubGoal, !Info) :-
+    poly_info_get_varset(!.Info, VarSetBefore),
+    MaxVarBefore = varset.max_var(VarSetBefore),
+    poly_info_get_num_reuses(!.Info, NumReusesBefore),
+    polymorphism_process_goal(SubGoal0, SubGoal1, !Info),
+    poly_info_get_varset(!.Info, VarSetAfter),
+    MaxVarAfter = varset.max_var(VarSetAfter),
+    poly_info_get_num_reuses(!.Info, NumReusesAfter),
+
+    (
+        MaxVarAfter = MaxVarBefore,
+        NumReusesAfter = NumReusesBefore
+    ->
+        poly_info_get_var_types(!.Info, VarTypes),
+        map.lookup(VarTypes, TermVar, TermVarType),
+        type_vars(TermVarType, TermVarTypeVars),
+        (
+            TermVarTypeVars = [_ | _],
+            % We may have modified (and probably did modify) the code in the
+            % scope by adding a reference to typeinfo variables representing
+            % TermVarTypeVars.
+            Reason = from_ground_term(TermVar, from_ground_term_other),
+            ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
+                attach_features_to_all_goals([feature_from_head],
+                    attach_in_from_ground_term, SubGoal1, SubGoal)
+            ;
+                SubGoal = SubGoal1
+            )
+        ;
+            TermVarTypeVars = [],
+            % TermVarTypeVars = [] says that there is no polymorphism imposed
+            % from the outside via TermVar, and MaxVarAfter = MaxVarBefore
+            % and NumReusesAfter = NumReusesBefore together say that there was
+            % no polymorphism added by the goals inside the scope (since those
+            % would have required the creation or reuse of typeinfo variables).
+            % XXX zs: I am only 90% sure of the statement in the parentheses.
+            % If it turns out to be wrong, we would have to add a flag to
+            % poly_infos that is set whenever this pass modifies a goal,
+            % at least in ways that would invalidate the
+            % from_ground_term_construct invariant.
+            Reason = from_ground_term(TermVar, from_ground_term_construct),
+            SubGoal = SubGoal1
+        )
+    ;
+        % We did introduced some variables into the scope, so we cannot
+        % guarantee that the scope still satisfies the invariants of
+        % from_ground_term_construct scopes.
+        Reason = from_ground_term(TermVar, from_ground_term_other),
+        ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
+            attach_features_to_all_goals([feature_from_head],
+                attach_in_from_ground_term, SubGoal1, SubGoal)
+        ;
+            SubGoal = SubGoal1
+        )
     ).
 
     % type_info_vars prepends a comma separated list of variables
@@ -1265,9 +1363,18 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
             ArgVars0, LambdaVars, Modes, Det, LambdaGoal0),
 
         % For lambda expressions, we must recursively traverse the lambda goal.
+        % Any type_info variables needed by the lambda goal are created in the
+        % lambda goal (not imported from the outside), and any type_info
+        % variables created by the lambda goal are not available outside.
+        % This is because, after lambda expansion, the code inside and outside
+        % the lambda goal will end up in different procedures.
+
+        poly_info_get_type_info_var_map(!.Info, InitialTypeInfoVarMap),
+        poly_info_set_type_info_var_map(map.init, !Info),
         polymorphism_process_goal(LambdaGoal0, LambdaGoal1, !Info),
-        % Currently we don't allow lambda goals to be
-        % existentially typed
+        poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
+
+        % Currently we don't allow lambda goals to be existentially typed.
         ExistQVars = [],
         fixup_lambda_quantification(ArgVars0, LambdaVars, ExistQVars,
             LambdaGoal1, LambdaGoal, NonLocalTypeInfos, !Info),
@@ -1585,7 +1692,7 @@ lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet) :-
 create_fresh_vars([], [], !VarSet, !VarTypes).
 create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
     varset.new_var(!.VarSet, Var, !:VarSet),
-    map.det_insert(!.VarTypes, Var, Type, !:VarTypes),
+    svmap.det_insert(Var, Type, !VarTypes),
     create_fresh_vars(Types, Vars, !VarSet, !VarTypes).
 
 %-----------------------------------------------------------------------------%
@@ -1835,23 +1942,35 @@ underscore_and_tvar_name(TypeVarSet, TVar) = TVarName :-
     varset.lookup_name(TypeVarSet, TVar, TVarName0),
     TVarName = "_" ++ TVarName0.
 
-:- pred polymorphism_process_goal_list(list(hlds_goal)::in,
+:- pred polymorphism_process_conj(list(hlds_goal)::in,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-polymorphism_process_goal_list([], [], !Info).
-polymorphism_process_goal_list([Goal0 | Goals0], [Goal | Goals], !Info) :-
+polymorphism_process_conj([], [], !Info).
+polymorphism_process_conj([Goal0 | Goals0], [Goal | Goals], !Info) :-
     polymorphism_process_goal(Goal0, Goal, !Info),
-    polymorphism_process_goal_list(Goals0, Goals, !Info).
+    polymorphism_process_conj(Goals0, Goals, !Info).
 
-:- pred polymorphism_process_case_list(list(case)::in, list(case)::out,
-    poly_info::in, poly_info::out) is det.
+:- pred polymorphism_process_disj(list(hlds_goal)::in, list(hlds_goal)::out,
+    type_info_var_map::in, poly_info::in, poly_info::out) is det.
 
-polymorphism_process_case_list([], [], !Info).
-polymorphism_process_case_list([Case0 | Cases0], [Case | Cases], !Info) :-
+polymorphism_process_disj([], [], _, !Info).
+polymorphism_process_disj([Goal0 | Goals0], [Goal | Goals],
+        InitialTypeInfoVarMap, !Info) :-
+    poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
+    polymorphism_process_goal(Goal0, Goal, !Info),
+    polymorphism_process_disj(Goals0, Goals, InitialTypeInfoVarMap, !Info).
+
+:- pred polymorphism_process_cases(list(case)::in, list(case)::out,
+    type_info_var_map::in, poly_info::in, poly_info::out) is det.
+
+polymorphism_process_cases([], [], _, !Info).
+polymorphism_process_cases([Case0 | Cases0], [Case | Cases],
+        InitialTypeInfoVarMap, !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
+    poly_info_set_type_info_var_map(InitialTypeInfoVarMap, !Info),
     polymorphism_process_goal(Goal0, Goal, !Info),
     Case = case(MainConsId, OtherConsIds, Goal),
-    polymorphism_process_case_list(Cases0, Cases, !Info).
+    polymorphism_process_cases(Cases0, Cases, InitialTypeInfoVarMap, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -2104,12 +2223,13 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
     % or the arguments of existentially typed predicate calls, function calls
     % and deconstruction unifications.
     %
-    % Type(class)-infos for ground types added to predicate calls, function
-    % calls and existentially typed construction unifications do not require
-    % requantification because they are local to the conjunction containing
-    % the type(class)-info construction and the goal which uses the
+    % Type(class)-infos added for ground types added to predicate calls,
+    % function calls and existentially typed construction unifications
+    % do not require requantification because they are local to the conjunction
+    % containing the type(class)-info construction and the goal which uses the
     % type(class)-info. The nonlocals for those goals are adjusted by
-    % the code which creates/alters them.
+    % the code which creates/alters them. However, reusing a type_info changes
+    % it from being local to nonlocal.
     %
 :- pred fixup_quantification(proc_arg_vector(prog_var)::in,
     existq_tvars::in, hlds_goal::in, hlds_goal::out,
@@ -2119,7 +2239,9 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
     (
         % Optimize common case.
         ExistQVars = [],
-        rtti_varmaps_no_tvars(!.Info ^ poly_rtti_varmaps)
+        rtti_varmaps_no_tvars(!.Info ^ poly_rtti_varmaps),
+        poly_info_get_num_reuses(!.Info, NumReuses),
+        NumReuses = 0
     ->
         Goal = Goal0
     ;
@@ -2653,7 +2775,7 @@ polymorphism_make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
         % XXX FIXME (RTTI for higher order impure code)
         % we should not ignore the purity of higher order procs;
         % it should get included in the RTTI.
-        polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, yes,
+        polymorphism_make_type_info(Type, TypeCtor, TypeArgs, yes,
             Context, Var, ExtraGoals, !Info)
     ;
         (
@@ -2669,7 +2791,7 @@ polymorphism_make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
             % predicate with a known value of the type variable. The
             % transformation we perform is shown in the comment at the top
             % of the module.
-            polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, no,
+            polymorphism_make_type_info(Type, TypeCtor, TypeArgs, no,
                 Context, Var, ExtraGoals, !Info)
         ;
             % Now handle the cases of types which are not known statically
@@ -2710,6 +2832,36 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
         rtti_det_insert_type_info_locn(TypeVar, TypeInfoLocn,
             RttiVarMaps0, RttiVarMaps),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
+    ).
+
+:- pred polymorphism_make_type_info(mer_type::in, type_ctor::in,
+    list(mer_type)::in, bool::in, prog_context::in, prog_var::out,
+    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
+
+polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
+        Context, Var, ExtraGoals, !Info) :-
+    poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap0),
+    ( map.search(TypeInfoVarMap0, TypeCtor, TypeCtorVarMap0) ->
+        ( map.search(TypeCtorVarMap0, TypeArgs, OldVar) ->
+            poly_info_get_num_reuses(!.Info, NumReuses),
+            poly_info_set_num_reuses(NumReuses + 1, !Info),
+            Var = OldVar,
+            ExtraGoals = []
+        ;
+            polymorphism_construct_type_info(Type, TypeCtor, TypeArgs,
+                TypeCtorIsVarArity, Context, Var, ExtraGoals, !Info),
+            map.det_insert(TypeCtorVarMap0, TypeArgs, Var, TypeCtorVarMap),
+            map.det_update(TypeInfoVarMap0, TypeCtor, TypeCtorVarMap,
+                TypeInfoVarMap),
+            poly_info_set_type_info_var_map(TypeInfoVarMap, !Info)
+        )
+    ;
+        polymorphism_construct_type_info(Type, TypeCtor, TypeArgs,
+            TypeCtorIsVarArity, Context, Var, ExtraGoals, !Info),
+        map.det_insert(map.init, TypeArgs, Var, TypeCtorVarMap),
+        map.det_insert(TypeInfoVarMap0, TypeCtor, TypeCtorVarMap,
+            TypeInfoVarMap),
+        poly_info_set_type_info_var_map(TypeInfoVarMap, !Info)
     ).
 
 :- pred polymorphism_construct_type_info(mer_type::in, type_ctor::in,
@@ -2894,8 +3046,8 @@ get_category_name(CtorCat) = MaybeName :-
 
 init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
         !VarSet, !VarTypes, !RttiVarMaps) :-
-    ( type_to_ctor_and_args(Type, Ctor, _) ->
-        Cell = type_info_cell(Ctor)
+    ( type_to_ctor(Type, TypeCtor) ->
+        Cell = type_info_cell(TypeCtor)
     ;
         unexpected(this_file,
             "init_type_info_var: type_to_ctor_and_args failed")
@@ -3014,8 +3166,8 @@ new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
         % type_ctor_infos in the rtti_varmaps somewhere.
     ),
     Name = Prefix ++ VarNumStr,
-    varset.name_var(!.VarSet, Var, Name, !:VarSet),
-    map.set(!.VarTypes, Var, type_info_type, !:VarTypes).
+    svvarset.name_var(Var, Name, !VarSet),
+    svmap.det_insert(Var, type_info_type, !VarTypes).
 
 :- func typeinfo_prefix = string.
 
@@ -3425,6 +3577,8 @@ get_constrained_vars(Constraint) = CVars :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+:- type type_info_var_map == map(type_ctor, map(list(mer_type), prog_var)).
+
 :- type poly_info
     --->    poly_info(
                 % The first two fields are from the proc_info.
@@ -3451,6 +3605,9 @@ get_constrained_vars(Constraint) = CVars :-
                 % Specifies the constraints at each location in the goal.
                 poly_constraint_map     :: constraint_map,
 
+                poly_type_info_var_map  :: type_info_var_map,
+                poly_num_reuses         :: int,
+
                 poly_pred_info          :: pred_info,
                 poly_module_info        :: module_info
             ).
@@ -3471,8 +3628,11 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     pred_info_get_constraint_proofs(PredInfo, Proofs),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     rtti_varmaps_init(RttiVarMaps),
+    map.init(TypeInfoVarMap),
+    NumReuses = 0,
     PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
-        RttiVarMaps, Proofs, ConstraintMap, PredInfo, ModuleInfo).
+        RttiVarMaps, Proofs, ConstraintMap, TypeInfoVarMap, NumReuses,
+        PredInfo, ModuleInfo).
 
     % Create_poly_info creates a poly_info for an existing procedure.
     % (See also init_poly_info.)
@@ -3485,12 +3645,16 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    map.init(TypeInfoVarMap),
+    NumReuses = 0,
     PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
-        RttiVarMaps, Proofs, ConstraintMap, PredInfo, ModuleInfo).
+        RttiVarMaps, Proofs, ConstraintMap, TypeInfoVarMap, NumReuses,
+        PredInfo, ModuleInfo).
 
 poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
     Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
-        RttiVarMaps, _Proofs, _ConstraintMap, _OldPredInfo, ModuleInfo),
+        RttiVarMaps, _Proofs, _ConstraintMap, _TypeInfoVarMap, _NumReuses,
+        _OldPredInfo, ModuleInfo),
 
     % Set the new values of the fields in proc_info and pred_info.
     proc_info_set_varset(VarSet, !ProcInfo),
@@ -3509,6 +3673,9 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
 :- pred poly_info_get_proofs(poly_info::in, constraint_proof_map::out) is det.
 :- pred poly_info_get_constraint_map(poly_info::in, constraint_map::out)
     is det.
+:- pred poly_info_get_type_info_var_map(poly_info::in, type_info_var_map::out)
+    is det.
+:- pred poly_info_get_num_reuses(poly_info::in, int::out) is det.
 :- pred poly_info_get_pred_info(poly_info::in, pred_info::out) is det.
 :- pred poly_info_get_module_info(poly_info::in, module_info::out) is det.
 
@@ -3519,6 +3686,8 @@ poly_info_get_tvar_kinds(PolyInfo, PolyInfo ^ poly_tvar_kinds).
 poly_info_get_rtti_varmaps(PolyInfo, PolyInfo ^ poly_rtti_varmaps).
 poly_info_get_proofs(PolyInfo, PolyInfo ^ poly_proof_map).
 poly_info_get_constraint_map(PolyInfo, PolyInfo ^ poly_constraint_map).
+poly_info_get_type_info_var_map(PolyInfo, PolyInfo ^ poly_type_info_var_map).
+poly_info_get_num_reuses(PolyInfo, PolyInfo ^ poly_num_reuses).
 poly_info_get_pred_info(PolyInfo, PolyInfo ^ poly_pred_info).
 poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
 
@@ -3534,6 +3703,10 @@ poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_proofs(constraint_proof_map::in,
     poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_type_info_var_map(type_info_var_map::in,
+    poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_num_reuses(int::in,
+    poly_info::in, poly_info::out) is det.
 
 poly_info_set_varset(VarSet, !PI) :-
     !PI ^ poly_varset := VarSet.
@@ -3548,6 +3721,10 @@ poly_info_set_rtti_varmaps(RttiVarMaps, !PI) :-
     !PI ^ poly_rtti_varmaps := RttiVarMaps.
 poly_info_set_proofs(Proofs, !PI) :-
     !PI ^ poly_proof_map := Proofs.
+poly_info_set_type_info_var_map(TypeInfoVarMap, !PI) :-
+    !PI ^ poly_type_info_var_map := TypeInfoVarMap.
+poly_info_set_num_reuses(NumReuses, !PI) :-
+    !PI ^ poly_num_reuses := NumReuses.
 
 %---------------------------------------------------------------------------%
 
