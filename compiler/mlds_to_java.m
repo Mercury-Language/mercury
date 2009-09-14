@@ -1703,6 +1703,8 @@ output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
     io.write_string(ClassName, !IO),
     io.write_string(" {\n", !IO),
 
+    output_debug_class_init(MercuryModuleName, "start", !IO),
+
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting Java class that calls the `main'
     % predicate.
@@ -1760,11 +1762,25 @@ write_indented_line(Indent, Line, !IO) :-
     is det.
 
 output_src_end(Indent, ModuleName, !IO) :-
+    output_debug_class_init(ModuleName, "end", !IO),
     io.write_string("}\n", !IO),
     indent_line(Indent, !IO),
     io.write_string("// :- end_module ", !IO),
     prog_out.write_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO).
+
+:- pred output_debug_class_init(mercury_module_name::in, string::in,
+    io::di, io::uo) is det.
+
+output_debug_class_init(ModuleName, State, !IO) :-
+    list.foldl(io.write_string, [
+        "  static {\n",
+        "    if (System.getenv(""MERCURY_DEBUG_CLASS_INIT"") != null) {\n",
+        "      System.out.println(""[", sym_name_mangle(ModuleName),
+        " ", State, " init]"");\n",
+        "    }\n",
+        "  }\n"
+    ], !IO).
 
     % Output a Java comment saying that the file was automatically
     % generated and give details such as the compiler version.
