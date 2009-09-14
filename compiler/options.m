@@ -3403,9 +3403,12 @@ options_help_verbosity -->
 % is implemented automatically in handle_options, so users shouldn't need to be
 % aware of it.
 %       "--detailed-statistics",
-%       "\tOutput more detailed messages about the compiler's time/space usage.",
-        "-T, --debug-types",
-        "\tOutput detailed debugging traces of the type checking.",
+%       "\tOutput more detailed messages about the compiler's",
+%       "\ttime/space usage.",
+% --debug-types works only if the compiler was compiled with
+% "--trace-flags type_checkpoint".
+%       "-T, --debug-types",
+%       "\tOutput detailed debugging traces of the type checking.",
         "-N, --debug-modes",
         "\tOutput debugging traces of the mode checking.",
         "--debug-modes-statistics",

@@ -1027,11 +1027,11 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !Info) :-
     % Typecheck the clause - first the head unification, and then the body.
     typecheck_var_has_type_list(HeadVars, ArgTypes, 1, !Info),
     typecheck_goal(Body0, Body, !Info),
-    trace [io(!IO)] (
+    trace [compiletime(flag("type_checkpoint")), io(!IO)] (
         type_checkpoint("end of clause", !.Info, !IO)
     ),
-    !:Clause = !.Clause ^ clause_body := Body,
-    !:Info = !.Info ^ tc_info_context := Context,
+    !Clause ^ clause_body := Body,
+    !Info ^ tc_info_context := Context,
     typecheck_check_for_ambiguity(clause_only, HeadVars, !Info).
 
 %-----------------------------------------------------------------------------%
@@ -1179,29 +1179,29 @@ typecheck_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
 typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
     (
         GoalExpr0 = conj(ConjType, List0),
-        trace [io(!IO)] (
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("conj", !.Info, !IO)
         ),
         typecheck_goal_list(List0, List, !Info),
         GoalExpr = conj(ConjType, List)
     ;
         GoalExpr0 = disj(List0),
-        trace [io(!IO)] (
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("disj", !.Info, !IO)
         ),
         typecheck_goal_list(List0, List, !Info),
         GoalExpr = disj(List)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        trace [io(!IO)] (
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("if", !.Info, !IO)
         ),
         typecheck_goal(Cond0, Cond, !Info),
-        trace [io(!IO)] (
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("then", !.Info, !IO)
         ),
         typecheck_goal(Then0, Then, !Info),
-        trace [io(!IO)] (
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("else", !.Info, !IO)
         ),
         typecheck_goal(Else0, Else, !Info),
@@ -1209,14 +1209,14 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = negation(SubGoal0),
-        trace [io(!IO)] (
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("not", !.Info, !IO)
         ),
         typecheck_goal(SubGoal0, SubGoal, !Info),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        trace [io(!IO)] (
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("scope", !.Info, !IO)
         ),
         typecheck_goal(SubGoal0, SubGoal, !Info),
@@ -1240,7 +1240,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = plain_call(_, ProcId, Args, BI, UC, Name),
-        trace [io(!IO)] (
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("call", !.Info, !IO)
         ),
         list.length(Args, Arity),
@@ -1256,7 +1256,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         (
             GenericCall0 = higher_order(PredVar, Purity, _, _),
             GenericCall = GenericCall0,
-            trace [io(!IO)] (
+            trace [compiletime(flag("type_checkpoint")), io(!IO)] (
                 type_checkpoint("higher-order call", !.Info, !IO)
             ),
             typecheck_higher_order_call(PredVar, Purity, Args, !Info)
@@ -1267,7 +1267,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         ;
             GenericCall0 = event_call(EventName),
             GenericCall = GenericCall0,
-            trace [io(!IO)] (
+            trace [compiletime(flag("type_checkpoint")), io(!IO)] (
                 type_checkpoint("event call", !.Info, !IO)
             ),
             typecheck_event_call(EventName, Args, !Info)
@@ -1280,7 +1280,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         GoalExpr = generic_call(GenericCall, Args, Modes, Detism)
     ;
         GoalExpr0 = unify(LHS, RHS0, UnifyMode, Unification, UnifyContext),
-        trace [io(!IO)] (
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("unify", !.Info, !IO)
         ),
         !:Info = !.Info ^ tc_info_arg_num := 0,
@@ -1307,7 +1307,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = bi_implication(LHS0, RHS0),
-            trace [io(!IO)] (
+            trace [compiletime(flag("type_checkpoint")), io(!IO)] (
                 type_checkpoint("<=>", !.Info, !IO)
             ),
             typecheck_goal(LHS0, LHS, !Info),
@@ -1316,7 +1316,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         ;
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners),
-            trace [io(!IO)] (
+            trace [compiletime(flag("type_checkpoint")), io(!IO)] (
                 type_checkpoint("atomic_goal", !.Info, !IO)
             ),
             (
@@ -1350,7 +1350,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
                 MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            trace [io(!IO)] (
+            trace [compiletime(flag("type_checkpoint")), io(!IO)] (
                 type_checkpoint("try_goal", !.Info, !IO)
             ),
             typecheck_goal(SubGoal0, SubGoal, !Info),
@@ -1935,84 +1935,134 @@ typecheck_unify_var_var(X, Y, !Info) :-
         !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet
     ).
 
+:- pred cons_id_must_be_builtin_type(cons_id::in, mer_type::out, string::out)
+    is semidet.
+
+cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) :-
+    (
+        ConsId = int_const(_),
+        BuiltinTypeName = "int",
+        BuiltinType = builtin_type_int
+    ;
+        ConsId = float_const(_),
+        BuiltinTypeName = "float",
+        BuiltinType = builtin_type_float
+    ;
+        ConsId = string_const(_),
+        BuiltinTypeName = "string",
+        BuiltinType = builtin_type_string
+    ),
+    ConsType = builtin_type(BuiltinType).
+
 :- pred typecheck_unify_var_functor(prog_var::in, cons_id::in,
     list(prog_var)::in, goal_path::in,
     typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_unify_var_functor(Var, ConsId, Args, GoalPath, !Info) :-
-    % Get the list of possible constructors that match this functor/arity.
-    % If there aren't any, report an undefined constructor error.
-    list.length(Args, Arity),
-    typecheck_info_get_ctor_list(!.Info, ConsId, Arity, GoalPath,
-        ConsDefns, ConsErrors),
-    (
-        ConsDefns = [],
-        Spec = report_error_undef_cons(!.Info, ConsErrors, ConsId, Arity),
-        typecheck_info_add_error(Spec, !Info)
-    ;
-        (
-            ConsDefns = [_]
-        ;
-            ConsDefns = [_, _ | _],
-            Context = !.Info ^ tc_info_context,
-            Sources = list.map(project_cons_type_info_source, ConsDefns),
-            Symbol = overloaded_func(ConsId, Sources),
-            typecheck_info_add_overloaded_symbol(Symbol, Context, !Info)
-        ),
-
-        % Produce the ConsTypeAssignSet, which is essentially the
-        % cross-product of the TypeAssignSet0 and the ConsDefnList.
+    ( cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) ->
         TypeAssignSet0 = !.Info ^ tc_info_type_assign_set,
-        typecheck_unify_var_functor_get_ctors(TypeAssignSet0,
-            !.Info, ConsDefns, [], ConsTypeAssignSet),
+        list.foldl(
+            type_assign_check_functor_type_builtin(ConsType, Var),
+            TypeAssignSet0, [], TypeAssignSet),
         (
-            ConsTypeAssignSet = [],
-            TypeAssignSet0 = [_ | _]
-        ->
-            % This should never happen, since undefined ctors
-            % should be caught by the check just above.
-            unexpected(this_file,
-                "typecheck_unify_var_functor: undefined cons?")
-        ;
-            true
-        ),
-
-        % Check that the type of the functor matches the type of the variable.
-        typecheck_functor_type(ConsTypeAssignSet, Var, [], ArgsTypeAssignSet),
-        (
-            ArgsTypeAssignSet = [],
-            ConsTypeAssignSet = [_ | _]
-        ->
-            ConsIdSpec = report_error_functor_type(!.Info, Var, ConsDefns,
-                ConsId, Arity, TypeAssignSet0),
-            typecheck_info_add_error(ConsIdSpec, !Info)
-        ;
-            true
-        ),
-
-        % Check that the type of the arguments of the functor matches
-        % their expected type for this functor.
-        typecheck_functor_arg_types(ArgsTypeAssignSet, Args, !.Info,
-            [], TypeAssignSet),
-        (
-            TypeAssignSet = [],
-            ArgsTypeAssignSet = [_ | _]
-        ->
-            ArgSpec = report_error_functor_arg_types(!.Info, Var, ConsDefns,
-                ConsId, Args, ArgsTypeAssignSet),
-            typecheck_info_add_error(ArgSpec, !Info)
-        ;
-            true
-        ),
-
-        % If we encountered an error, continue checking with the
-        % original type assign set.
-        (
-            TypeAssignSet = [],
-            !Info ^ tc_info_type_assign_set := TypeAssignSet0
-        ;
             TypeAssignSet = [_ | _],
             !Info ^ tc_info_type_assign_set := TypeAssignSet
+        ;
+            TypeAssignSet = [],
+            % If we encountered an error, continue checking with the
+            % original type assign set.
+            !Info ^ tc_info_type_assign_set := TypeAssignSet0,
+            (
+                TypeAssignSet0 = []
+                % The error did not originate here, so generating an error
+                % message here would be misleading.
+            ;
+                TypeAssignSet0 = [_ | _],
+                varset.init(ConsTypeVarSet),
+                empty_hlds_constraints(EmptyConstraints),
+                ConsDefn = cons_type_info(ConsTypeVarSet, [], ConsType, [],
+                    EmptyConstraints, source_builtin_type(BuiltinTypeName)),
+                ConsIdSpec = report_error_functor_type(!.Info, Var, [ConsDefn],
+                    ConsId, 0, TypeAssignSet0),
+                typecheck_info_add_error(ConsIdSpec, !Info)
+            )
+        )
+    ;
+        % Get the list of possible constructors that match this functor/arity.
+        % If there aren't any, report an undefined constructor error.
+        list.length(Args, Arity),
+        typecheck_info_get_ctor_list(!.Info, ConsId, Arity, GoalPath,
+            ConsDefns, ConsErrors),
+        (
+            ConsDefns = [],
+            Spec = report_error_undef_cons(!.Info, ConsErrors, ConsId, Arity),
+            typecheck_info_add_error(Spec, !Info)
+        ;
+            (
+                ConsDefns = [_]
+            ;
+                ConsDefns = [_, _ | _],
+                Context = !.Info ^ tc_info_context,
+                Sources = list.map(project_cons_type_info_source, ConsDefns),
+                Symbol = overloaded_func(ConsId, Sources),
+                typecheck_info_add_overloaded_symbol(Symbol, Context, !Info)
+            ),
+
+            % Produce the ConsTypeAssignSet, which is essentially the
+            % cross-product of the TypeAssignSet0 and the ConsDefnList.
+            TypeAssignSet0 = !.Info ^ tc_info_type_assign_set,
+            typecheck_unify_var_functor_get_ctors(TypeAssignSet0,
+                !.Info, ConsDefns, [], ConsTypeAssignSet),
+            (
+                ConsTypeAssignSet = [],
+                TypeAssignSet0 = [_ | _]
+            ->
+                % This should never happen, since undefined ctors
+                % should be caught by the check just above.
+                unexpected(this_file,
+                    "typecheck_unify_var_functor: undefined cons?")
+            ;
+                true
+            ),
+
+            % Check that the type of the functor matches the type of the
+            % variable.
+            typecheck_functor_type(ConsTypeAssignSet, Var,
+                [], ArgsTypeAssignSet),
+            (
+                ArgsTypeAssignSet = [],
+                ConsTypeAssignSet = [_ | _]
+            ->
+                ConsIdSpec = report_error_functor_type(!.Info, Var, ConsDefns,
+                    ConsId, Arity, TypeAssignSet0),
+                typecheck_info_add_error(ConsIdSpec, !Info)
+            ;
+                true
+            ),
+
+            % Check that the type of the arguments of the functor matches
+            % their expected type for this functor.
+            typecheck_functor_arg_types(ArgsTypeAssignSet, Args, !.Info,
+                [], TypeAssignSet),
+            (
+                TypeAssignSet = [_ | _],
+                !Info ^ tc_info_type_assign_set := TypeAssignSet
+            ;
+                TypeAssignSet = [],
+                % If we encountered an error, continue checking with the
+                % original type assign set.
+                !Info ^ tc_info_type_assign_set := TypeAssignSet0,
+                (
+                    ArgsTypeAssignSet = []
+                    % The error did not originate here, so generating an error
+                    % message here would be misleading.
+                ;
+                    ArgsTypeAssignSet = [_ | _],
+                    ArgSpec = report_error_functor_arg_types(!.Info, Var,
+                        ConsDefns, ConsId, Args, ArgsTypeAssignSet),
+                    typecheck_info_add_error(ArgSpec, !Info)
+                )
+            )
         )
     ).
 
@@ -2040,13 +2090,13 @@ typecheck_unify_var_functor(Var, ConsId, Args, GoalPath, !Info) :-
 
     % Iterate over the type assign sets.
     %
-typecheck_unify_var_functor_get_ctors([], _, _, !TypeAssignSet).
+typecheck_unify_var_functor_get_ctors([], _, _, !ConsTypeAssignSet).
 typecheck_unify_var_functor_get_ctors([TypeAssign | TypeAssigns], Info,
-        ConsDefns, !TypeAssignSet) :-
+        ConsDefns, !ConsTypeAssignSet) :-
     typecheck_unify_var_functor_get_ctors_2(ConsDefns, Info, TypeAssign,
-        !TypeAssignSet),
+        !ConsTypeAssignSet),
     typecheck_unify_var_functor_get_ctors(TypeAssigns, Info, ConsDefns,
-        !TypeAssignSet).
+        !ConsTypeAssignSet).
 
     % Iterate over all the different cons defns.
     %
@@ -2170,17 +2220,17 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
     prog_var::in, type_assign::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
 
-type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign1,
-        !TypeAssignSet) :-
+type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign0,
+        !ArgsTypeAssignSet) :-
     % Unify the type of Var with the type of the constructor.
-    type_assign_get_var_types(TypeAssign1, VarTypes0),
+    type_assign_get_var_types(TypeAssign0, VarTypes0),
     ( map.search(VarTypes0, Y, TypeY) ->
-        ( type_assign_unify_type(TypeAssign1, ConsType, TypeY, TypeAssign2) ->
+        ( type_assign_unify_type(TypeAssign0, ConsType, TypeY, TypeAssign) ->
             % The constraints are empty here because none are added by
             % unification with a functor.
             empty_hlds_constraints(EmptyConstraints),
-            ArgsTypeAssign = args(TypeAssign2, ArgTypes, EmptyConstraints),
-            !:TypeAssignSet = [ArgsTypeAssign | !.TypeAssignSet]
+            ArgsTypeAssign = args(TypeAssign, ArgTypes, EmptyConstraints),
+            !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
         ;
             true
         )
@@ -2188,10 +2238,34 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign1,
         % The constraints are empty here because none are added by
         % unification with a functor.
         map.det_insert(VarTypes0, Y, ConsType, VarTypes),
-        type_assign_set_var_types(VarTypes, TypeAssign1, TypeAssign3),
+        type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         empty_hlds_constraints(EmptyConstraints),
-        ArgsTypeAssign = args(TypeAssign3, ArgTypes, EmptyConstraints),
-        !:TypeAssignSet = [ArgsTypeAssign | !.TypeAssignSet]
+        ArgsTypeAssign = args(TypeAssign, ArgTypes, EmptyConstraints),
+        !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
+    ).
+
+:- pred type_assign_check_functor_type_builtin(mer_type::in,
+    prog_var::in, type_assign::in,
+    type_assign_set::in, type_assign_set::out) is det.
+
+type_assign_check_functor_type_builtin(ConsType, Y, TypeAssign0,
+        !TypeAssignSet) :-
+    % Unify the type of Var with the type of the constructor.
+    type_assign_get_var_types(TypeAssign0, VarTypes0),
+    ( map.search(VarTypes0, Y, TypeY) ->
+        ( type_assign_unify_type(TypeAssign0, ConsType, TypeY, TypeAssign) ->
+            % The constraints are empty here because none are added by
+            % unification with a functor.
+            !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+        ;
+            true
+        )
+    ;
+        % The constraints are empty here because none are added by
+        % unification with a functor.
+        map.det_insert(VarTypes0, Y, ConsType, VarTypes),
+        type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
+        !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2987,22 +3061,23 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
         ++ PredConsInfos ++ ApplyConsInfos,
     ConsInfos = DataConsInfos ++ OtherConsInfos.
 
+    % Filter out the errors (they aren't actually reported as errors
+    % unless there was no other matching constructor).
+    %
 :- pred split_cons_errors(list(maybe_cons_type_info)::in,
     list(cons_type_info)::out, list(cons_error)::out) is det.
 
-split_cons_errors(MaybeConsInfoList, ConsInfoList, ConsErrors) :-
-    % Filter out the errors (they aren't actually reported as errors
-    % unless there was no other matching constructor).
-    list.filter_map(
-        (pred(ok(ConsInfo)::in, ConsInfo::out) is semidet),
-        MaybeConsInfoList, ConsInfoList, ConsErrors0),
+split_cons_errors([], [], []).
+split_cons_errors([MaybeConsInfo | MaybeConsInfos], Infos, Errors) :-
+    split_cons_errors(MaybeConsInfos, InfosTail, ErrorsTail),
     (
-        list.map((pred(error(ConsError)::in, ConsError::out) is semidet),
-            ConsErrors0, ConsErrors1)
-    ->
-        ConsErrors = ConsErrors1
+        MaybeConsInfo = ok(ConsInfo),
+        Infos = [ConsInfo | InfosTail],
+        Errors = ErrorsTail
     ;
-        unexpected(this_file, "typecheck_info_get_ctor_list")
+        MaybeConsInfo = error(ConsError),
+        Infos = InfosTail,
+        Errors = [ConsError | ErrorsTail]
     ).
 
 %-----------------------------------------------------------------------------%

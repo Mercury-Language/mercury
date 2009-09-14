@@ -6395,12 +6395,12 @@ so you get information at the boundaries between phases of the compiler.
 @findex --no-trad-passes
 @findex --trad-passes
 
-@sp 1
-@item -T
-@itemx --debug-types
-@findex -T
-@findex --debug-types
-Output detailed debugging traces of the type checking.
+@c @sp 1
+@c @item -T
+@c @itemx --debug-types
+@c @findex -T
+@c @findex --debug-types
+@c Output detailed debugging traces of the type checking.
 
 @sp 1
 @item -N
