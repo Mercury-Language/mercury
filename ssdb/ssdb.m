@@ -953,6 +953,7 @@ ssdb_cmd_name("exit",       ssdb_exit).
 read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO) :-
     % XXX use stdout_stream
     io.write_string("ssdb> ", !IO),
+    io.flush_output(!IO),
     % Read a string in input and return a string.
     io.read_line_as_string(io.stdin_stream, Result, !IO),
     (
@@ -1713,6 +1714,13 @@ find_breakpoint_with_num(Num, [BP|ListBreakPoint], BreakPointFound) :-
 "
     exit(0);
     IO = IO0;
+").
+
+:- pragma foreign_proc("Java",
+    exit_debugger(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    System.exit(0);
 ").
 
 %----------------------------------------------------------------------------%

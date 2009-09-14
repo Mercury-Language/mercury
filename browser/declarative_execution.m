@@ -516,7 +516,7 @@ call_node_maybe_proc_defn_rep(CallNode, MaybeProcDefnRep) :-
 :- pred call_node_bytecode_layout(label_layout::in, proc_layout::out)
     is semidet.
 
-    % Default version for non-C backends.
+    % Default version for backends other than C or Java.
 call_node_bytecode_layout(_, _) :-
     semidet_fail.
 
@@ -538,10 +538,17 @@ call_node_bytecode_layout(_, _) :-
     }
 ").
 
+:- pragma foreign_proc("Java",
+    call_node_bytecode_layout(_CallLabelLayout::in, _ProcLayout::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    if (1 == 1) throw new Error(\"not supported in java grade\");
+").
+
 :- semipure pred have_cached_proc_defn_rep(proc_layout::in, proc_defn_rep::out)
     is semidet.
 
-    % Default version for non-C backends.
+    % Default version for backends other than C or Java.
 have_cached_proc_defn_rep(_, _) :-
     semidet_fail.
 
@@ -561,6 +568,13 @@ have_cached_proc_defn_rep(_, _) :-
 #endif
         SUCCESS_INDICATOR = MR_FALSE;
     }
+").
+
+:- pragma foreign_proc("Java",
+    have_cached_proc_defn_rep(_ProcLayout::in, _ProcDefnRep::out),
+    [will_not_call_mercury, thread_safe, promise_semipure],
+"
+    if (1 == 1) throw new Error(\"not supported in java grade\");
 ").
 
 :- impure pred cache_proc_defn_rep(proc_layout::in, proc_defn_rep::in) is det.

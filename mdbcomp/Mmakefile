@@ -120,7 +120,12 @@ endif
 all:	library all-ints $(TAGS_FILE_EXISTS)
 
 .PHONY: library
+
+ifeq ("$(findstring java,$(GRADE))","java")
+library: jars
+else
 library: $(LIBS)
+endif
 
 .PHONY: all-ints
 all-ints: $(MDBCOMP_LIB_NAME).int3s $(MDBCOMP_LIB_NAME).ints
@@ -174,31 +179,23 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-#
-# Some Java compilers require the Java source files to be put in directories
-# which match their package names.  But the Mercury compiler generates them
-# with the package name prefixed to the file name with a ".", not a "/".
-# So we copy the Java source files to where the Java compiler expects them
-# to be.
-#
-# XXX This is a hack.  We ought to change the Mercury compiler so that it
-# generates the Java files with the right names in the first place.
-#
+JARS = $(MDBCOMP_LIB_NAME).jar
 
-mdbcomp/%.java: mdbcomp.%.java
-	[ -d mdbcomp ] || mkdir mdbcomp
-	cp $< $@
+.PHONY:	jars
+jars:	classes
+	echo jmercury/*.class > $(MDBCOMP_LIB_NAME).classes
+	$(JAR) $(JAR_CREATE_FLAGS) $(MDBCOMP_LIB_NAME).jar @$(MDBCOMP_LIB_NAME).classes
+	$(JAR) i $(MDBCOMP_LIB_NAME).jar
+	$(RM) $(MDBCOMP_LIB_NAME).classes
 
-RENAMED_JAVAS = $($(MDBCOMP_LIB_NAME).javas:mdbcomp.%.java=mdbcomp/%.java)
+JAVAS = $(wildcard jmercury/*.java)
 
-RENAMED_CLASSES = $($(MDBCOMP_LIB_NAME).classes:mdbcomp.%.class=mdbcomp/%.class)
+.PHONY:
+classes: javas
+	$(JAVAC) $(ALL_JAVACFLAGS) $(JAVAS)
 
 .PHONY: javas
-javas: $(RENAMED_JAVAS)
-
-.PHONY: classes
-classes: $(RENAMED_JAVAS)
-	$(JAVAC) $(ALL_JAVACFLAGS) -d $(classes_subdir) $(RENAMED_JAVAS)
+javas: $(MDBCOMP_LIB_NAME).javas
 
 #-----------------------------------------------------------------------------#
 
@@ -232,7 +229,13 @@ realclean_local:
 # Installation targets
 
 .PHONY: install
+
+# The ssdebug grade requires the interface files.
+ifeq ("$(findstring ssdebug,$(GRADE))","ssdebug")
+install: install_library install_ints
+else
 install: install_library
+endif
 
 .PHONY: install_dirs
 install_dirs:
@@ -241,9 +244,12 @@ install_dirs:
 		mkdir -p $(INSTALL_GRADE_MODULE_DIR)
 	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 
-ifneq ("$(filter il% java% erlang%,$(GRADE))","")
+ifneq ("$(filter il% erlang%,$(GRADE))","")
 
-# there is no debugger in the .NET, Java, Erlang backends
+# there is no debugger in the .NET or Erlang backends
+
+.PHONY: install_ints
+install_ints: 
 
 .PHONY: install_init
 install_init: 
@@ -251,7 +257,23 @@ install_init:
 .PHONY: install_library
 install_library:
 
-else 
+else ifneq (,$(findstring java,$(GRADE)))
+
+.PHONY: install_ints
+install_ints: lib$(MDBCOMP_LIB_NAME).install_ints
+
+.PHONY: install_init
+install_init: 
+
+.PHONY: install_library
+install_library: jars
+	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
+	cp $(JARS) $(INSTALL_JAVA_LIBRARY_DIR)
+
+else
+
+.PHONY: install_ints
+install_ints: 
 
 .PHONY: install_init
 install_init: $(MDBCOMP_LIB_NAME).init install_dirs

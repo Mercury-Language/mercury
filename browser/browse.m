@@ -756,9 +756,11 @@ do_print_memory_addr(Debugger, Info, MaybePath, !IO) :-
     Addr = (MR_Integer) Value;
 ").
 
-% The debugger does not yet work on non-C backends, so what we return
-% does not matter.
-get_value_representation(_Value, 0).
+% Java doesn't support converting addresses to integers, so we
+% just return zero.  For other backends the debugger doesn't yet
+% work, so it doesn't matter what we return.
+get_value_representation(_Value, X) :-
+    cc_multi_equal(0, X).
 
 :- pred interpret_format_options(option_table(format_option)::in,
     maybe_error(maybe(portray_format))::out) is det.

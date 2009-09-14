@@ -59,6 +59,10 @@
 :- pragma foreign_export("C", match_with_cterm(in, in, out),
     "ML_BROWSE_match_with_cterm").
 
+% Dummy types form non-C backends.
+:- type cterm ---> cterm.
+:- type cargs ---> cargs.
+
 %---------------------------------------------------------------------------%
 
 % Uncomment these and the unsafe_perform_ios below to debug match_with_cterm
@@ -123,6 +127,13 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
     Args = Term->MR_term_args;
 ").
 
+:- pragma foreign_proc("Java",
+    cterm_deconstruct(_Term::in, _Functor::out, _Args::out),
+    [will_not_call_mercury, promise_pure],
+"
+    if (1 == 1) throw new Error(\"not supported in java grade\");
+").
+
 :- pragma foreign_proc(c,
     cterm_head_tail(Args::in, Head::out, Tail::out),
     [will_not_call_mercury, promise_pure],
@@ -135,3 +146,11 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
         SUCCESS_INDICATOR = MR_TRUE;
     }
 ").
+
+:- pragma foreign_proc("Java",
+    cterm_head_tail(_Args::in, _Head::out, _Tail::out),
+    [will_not_call_mercury, promise_pure],
+"
+    if (1 == 1) throw new Error(\"not supported in java grade\");
+").
+

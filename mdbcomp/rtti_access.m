@@ -546,6 +546,13 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
 #endif
 ").
 
+:- pragma foreign_proc("Java",
+    proc_bytecode_bytes(_ProcLayout::in) = (_ByteCodeBytes::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    if (1 == 1) throw new Error(\"not supported in java grade\");
+").
+
     % Default version for non-C backends.
 proc_bytecode_bytes(_) = dummy_bytecode_bytes.
 

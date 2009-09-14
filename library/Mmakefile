@@ -533,7 +533,10 @@ ifneq (,$(findstring java,$(GRADE)))
 
 # Copy the jars and NATIVE_SO to INSTALL_JAVA_LIBRARY_DIR.  Ignore the exit
 # status of last command, since NATIVE_SO may not be available and is not
-# essential.
+# essential.  Note that in the java.ssdebug grade the library will still
+# be copied to INSTALL_JAVA_LIBRARY_DIR.  That's okay for now, because
+# we turn off the ssdebug transformations for the library, so it is equivalent
+# to the non-ssdebug grade.
 
 .PHONY: install_library
 install_library: jars

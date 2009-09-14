@@ -6,6 +6,7 @@
 --no-shlib-linker-use-install-name
 --force-disable-tracing
 --no-ssdb
+--generate-mmc-deps
 -I../library
 -I../mdbcomp
 -I../browser
