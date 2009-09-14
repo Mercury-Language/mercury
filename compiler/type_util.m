@@ -374,7 +374,7 @@ type_ctor_name(_ModuleInfo, type_ctor(TypeSymName, _Arity)) =
 type_ctor_arity(_ModuleInfo, type_ctor(_Name, Arity)) = Arity.
 
 type_is_atomic(ModuleInfo, Type) :-
-    type_to_ctor_and_args(Type, TypeCtor, _),
+    type_to_ctor(Type, TypeCtor),
     type_ctor_is_atomic(ModuleInfo, TypeCtor).
 
 type_ctor_is_atomic(ModuleInfo, TypeCtor) :-
@@ -1238,8 +1238,7 @@ apply_subst_to_constraints(Subst, !Constraints) :-
     map.map_values_only(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
     map.values(Ancestors0, AncestorsValues0),
-    apply_subst_to_prog_constraint_list(Subst, AncestorsKeys0,
-        AncestorsKeys),
+    apply_subst_to_prog_constraint_list(Subst, AncestorsKeys0, AncestorsKeys),
     list.map(apply_subst_to_prog_constraint_list(Subst),
         AncestorsValues0, AncestorsValues),
     map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
@@ -1257,8 +1256,8 @@ apply_rec_subst_to_constraints(Subst, !Constraints) :-
     map.map_values_only(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
     map.values(Ancestors0, AncestorsValues0),
-    apply_rec_subst_to_prog_constraint_list(Subst, AncestorsKeys0,
-        AncestorsKeys),
+    apply_rec_subst_to_prog_constraint_list(Subst,
+        AncestorsKeys0, AncestorsKeys),
     list.map(apply_rec_subst_to_prog_constraint_list(Subst),
         AncestorsValues0, AncestorsValues),
     map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
