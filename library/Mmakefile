@@ -537,9 +537,11 @@ ifneq (,$(findstring java,$(GRADE)))
 # be copied to INSTALL_JAVA_LIBRARY_DIR.  That's okay for now, because
 # we turn off the ssdebug transformations for the library, so it is equivalent
 # to the non-ssdebug grade.
+# The int3s target is there because some modules in the browser directory need
+# the library.int3 file.
 
 .PHONY: install_library
-install_library: jars
+install_library: int3s jars
 	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
 	cp $(JARS) $(INSTALL_JAVA_LIBRARY_DIR)
 	# -cp $(NATIVE_SO) $(INSTALL_JAVA_LIBRARY_DIR)
