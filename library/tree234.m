@@ -189,6 +189,23 @@
 :- mode tree234.foldl4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
 	in, di, uo, di, uo, di, uo, di, uo) is det.
 
+:- pred tree234.foldl_values(pred(V, A, A), tree234(K, V), A, A).
+:- mode tree234.foldl_values(pred(in, in, out) is det, in, in, out) is det.
+:- mode tree234.foldl_values(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode tree234.foldl_values(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode tree234.foldl_values(pred(in, in, out) is semidet, in, in, out)
+    is semidet.
+:- mode tree234.foldl_values(pred(in, mdi, muo) is semidet, in, mdi, muo)
+    is semidet.
+:- mode tree234.foldl_values(pred(in, di, uo) is semidet, in, di, uo)
+    is semidet.
+:- mode tree234.foldl_values(pred(in, in, out) is cc_multi, in, in, out)
+    is cc_multi.
+:- mode tree234.foldl_values(pred(in, di, uo) is cc_multi, in, di, uo)
+    is cc_multi.
+:- mode tree234.foldl_values(pred(in, mdi, muo) is cc_multi, in, mdi, muo)
+    is cc_multi.
+
 :- func tree234.foldr(func(K, V, A) = A, tree234(K, V), A) = A.
 
 :- pred tree234.foldr(pred(K, V, A, A), tree234(K, V), A, A).
@@ -292,6 +309,44 @@
     in, out, in, out, in, out, in, out) is det.
 :- mode tree234.map_foldl3(pred(in, in, out, in, out, in, out, in, out)
     is semidet,
+    in, out, in, out, in, out, in, out) is semidet.
+
+:- pred tree234.map_values_foldl(pred(V, W, A, A),
+    tree234(K, V), tree234(K, W), A, A).
+:- mode tree234.map_values_foldl(pred(in, out, di, uo) is det,
+    in, out, di, uo) is det.
+:- mode tree234.map_values_foldl(pred(in, out, in, out) is det,
+    in, out, in, out) is det.
+:- mode tree234.map_values_foldl(pred(in, out, in, out) is semidet,
+    in, out, in, out) is semidet.
+
+:- pred tree234.map_values_foldl2(pred(V, W, A, A, B, B),
+    tree234(K, V), tree234(K, W), A, A, B, B).
+:- mode tree234.map_values_foldl2(pred(in, out, di, uo, di, uo) is det,
+    in, out, di, uo, di, uo) is det.
+:- mode tree234.map_values_foldl2(pred(in, out, in, out, di, uo) is det,
+    in, out, in, out, di, uo) is det.
+:- mode tree234.map_values_foldl2(pred(in, out, in, out, in, out) is det,
+    in, out, in, out, in, out) is det.
+:- mode tree234.map_values_foldl2(pred(in, out, in, out, in, out) is semidet,
+    in, out, in, out, in, out) is semidet.
+
+:- pred tree234.map_values_foldl3(pred(V, W, A, A, B, B, C, C),
+    tree234(K, V), tree234(K, W), A, A, B, B, C, C).
+:- mode tree234.map_values_foldl3(
+    pred(in, out, di, uo, di, uo, di, uo) is det,
+    in, out, di, uo, di, uo, di, uo) is det.
+:- mode tree234.map_values_foldl3(
+    pred(in, out, in, out, di, uo, di, uo) is det,
+    in, out, in, out, di, uo, di, uo) is det.
+:- mode tree234.map_values_foldl3(
+    pred(in, out, in, out, in, out, di, uo) is det,
+    in, out, in, out, in, out, di, uo) is det.
+:- mode tree234.map_values_foldl3(
+    pred(in, out, in, out, in, out, in, out) is det,
+    in, out, in, out, in, out, in, out) is det.
+:- mode tree234.map_values_foldl3(
+    pred(in, out, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out, in, out) is semidet.
 
     % Convert a tree234 into a pretty_printer.doc.  A tree mapping
@@ -2640,6 +2695,27 @@ tree234.foldl4(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 	Pred(K2, V2, !A, !B, !C, !D),
 	tree234.foldl4(Pred, T3, !A, !B, !C, !D).
 
+tree234.foldl_values(_Pred, empty, !A).
+tree234.foldl_values(Pred, two(_K, V, T0, T1), !A) :-
+    tree234.foldl_values(Pred, T0, !A),
+    Pred(V, !A),
+    tree234.foldl_values(Pred, T1, !A).
+tree234.foldl_values(Pred, three(_K0, V0, _K1, V1, T0, T1, T2), !A) :-
+    tree234.foldl_values(Pred, T0, !A),
+    Pred(V0, !A),
+    tree234.foldl_values(Pred, T1, !A),
+    Pred(V1, !A),
+    tree234.foldl_values(Pred, T2, !A).
+tree234.foldl_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
+        !A) :-
+    tree234.foldl_values(Pred, T0, !A),
+    Pred(V0, !A),
+    tree234.foldl_values(Pred, T1, !A),
+    Pred(V1, !A),
+    tree234.foldl_values(Pred, T2, !A),
+    Pred(V2, !A),
+    tree234.foldl_values(Pred, T3, !A).
+
 %------------------------------------------------------------------------------%
 
 tree234.foldr(_Pred, empty, !A).
@@ -2856,6 +2932,84 @@ tree234.map_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
     tree234.map_foldl3(Pred, RMid0, RMid, !A, !B, !C),
     Pred(K2, V2, W2, !A, !B, !C),
     tree234.map_foldl3(Pred, Right0, Right, !A, !B, !C),
+    Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
+
+tree234.map_values_foldl(_Pred, empty, empty, !A).
+tree234.map_values_foldl(Pred, Tree0, Tree, !A) :-
+    Tree0 = two(K0, V0, Left0, Right0),
+    tree234.map_values_foldl(Pred, Left0, Left, !A),
+    Pred(V0, W0, !A),
+    tree234.map_values_foldl(Pred, Right0, Right, !A),
+    Tree = two(K0, W0, Left, Right).
+tree234.map_values_foldl(Pred, Tree0, Tree, !A) :-
+    Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+    tree234.map_values_foldl(Pred, Left0, Left, !A),
+    Pred(V0, W0, !A),
+    tree234.map_values_foldl(Pred, Middle0, Middle, !A),
+    Pred(V1, W1, !A),
+    tree234.map_values_foldl(Pred, Right0, Right, !A),
+    Tree = three(K0, W0, K1, W1, Left, Middle, Right).
+tree234.map_values_foldl(Pred, Tree0, Tree, !A) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+    tree234.map_values_foldl(Pred, Left0, Left, !A),
+    Pred(V0, W0, !A),
+    tree234.map_values_foldl(Pred, LMid0, LMid, !A),
+    Pred(V1, W1, !A),
+    tree234.map_values_foldl(Pred, RMid0, RMid, !A),
+    Pred(V2, W2, !A),
+    tree234.map_values_foldl(Pred, Right0, Right, !A),
+    Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
+
+tree234.map_values_foldl2(_Pred, empty, empty, !A, !B).
+tree234.map_values_foldl2(Pred, Tree0, Tree, !A, !B) :-
+    Tree0 = two(K0, V0, Left0, Right0),
+    tree234.map_values_foldl2(Pred, Left0, Left, !A, !B),
+    Pred(V0, W0, !A, !B),
+    tree234.map_values_foldl2(Pred, Right0, Right, !A, !B),
+    Tree = two(K0, W0, Left, Right).
+tree234.map_values_foldl2(Pred, Tree0, Tree, !A, !B) :-
+    Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+    tree234.map_values_foldl2(Pred, Left0, Left, !A, !B),
+    Pred(V0, W0, !A, !B),
+    tree234.map_values_foldl2(Pred, Middle0, Middle, !A, !B),
+    Pred(V1, W1, !A, !B),
+    tree234.map_values_foldl2(Pred, Right0, Right, !A, !B),
+    Tree = three(K0, W0, K1, W1, Left, Middle, Right).
+tree234.map_values_foldl2(Pred, Tree0, Tree, !A, !B) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+    tree234.map_values_foldl2(Pred, Left0, Left, !A, !B),
+    Pred(V0, W0, !A, !B),
+    tree234.map_values_foldl2(Pred, LMid0, LMid, !A, !B),
+    Pred(V1, W1, !A, !B),
+    tree234.map_values_foldl2(Pred, RMid0, RMid, !A, !B),
+    Pred(V2, W2, !A, !B),
+    tree234.map_values_foldl2(Pred, Right0, Right, !A, !B),
+    Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
+
+tree234.map_values_foldl3(_Pred, empty, empty, !A, !B, !C).
+tree234.map_values_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
+    Tree0 = two(K0, V0, Left0, Right0),
+    tree234.map_values_foldl3(Pred, Left0, Left, !A, !B, !C),
+    Pred(V0, W0, !A, !B, !C),
+    tree234.map_values_foldl3(Pred, Right0, Right, !A, !B, !C),
+    Tree = two(K0, W0, Left, Right).
+tree234.map_values_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
+    Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+    tree234.map_values_foldl3(Pred, Left0, Left, !A, !B, !C),
+    Pred(V0, W0, !A, !B, !C),
+    tree234.map_values_foldl3(Pred, Middle0, Middle, !A, !B, !C),
+    Pred(V1, W1, !A, !B, !C),
+    tree234.map_values_foldl3(Pred, Right0, Right, !A, !B, !C),
+    Tree = three(K0, W0, K1, W1, Left, Middle, Right).
+tree234.map_values_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+    tree234.map_values_foldl3(Pred, Left0, Left, !A, !B, !C),
+    Pred(V0, W0, !A, !B, !C),
+    tree234.map_values_foldl3(Pred, LMid0, LMid, !A, !B, !C),
+    Pred(V1, W1, !A, !B, !C),
+    tree234.map_values_foldl3(Pred, RMid0, RMid, !A, !B, !C),
+    Pred(V2, W2, !A, !B, !C),
+    tree234.map_values_foldl3(Pred, Right0, Right, !A, !B, !C),
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
 %------------------------------------------------------------------------------%

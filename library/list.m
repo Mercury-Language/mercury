@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: list.m.
 % Authors: fjh, conway, trd, zs, philip, warwick, ...
 % Stability: medium to high.
-% 
+%
 % This module defines the list type, and various utility predicates that
 % operate on lists.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -511,7 +511,7 @@
 
     % list.map4(T, L, M1, M2, M3, M4) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3 and M4.
-    % 
+    %
 :- pred list.map4(pred(A, B, C, D, E), list(A), list(B), list(C), list(D),
     list(E)).
 :- mode list.map4(pred(in, out, out, out, out) is det, in, out, out, out, out)
@@ -530,7 +530,7 @@
     % list.map5(T, L, M1, M2, M3, M4, M5) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4
     % and M5.
-    % 
+    %
 :- pred list.map5(pred(A, B, C, D, E, F), list(A), list(B), list(C), list(D),
     list(E), list(F)).
 :- mode list.map5(pred(in, out, out, out, out, out) is det, in, out, out, out,
@@ -549,7 +549,7 @@
     % list.map6(T, L, M1, M2, M3, M4, M5, M6) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5 and M6.
-    % 
+    %
 :- pred list.map6(pred(A, B, C, D, E, F, G), list(A), list(B), list(C),
     list(D), list(E), list(F), list(G)).
 :- mode list.map6(pred(in, out, out, out, out, out, out) is det, in, out, out,
@@ -568,7 +568,7 @@
     % list.map7(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5, M6 and M7.
-    % 
+    %
 :- pred list.map7(pred(A, B, C, D, E, F, G, H), list(A), list(B), list(C),
     list(D), list(E), list(F), list(G), list(H)).
 :- mode list.map7(pred(in, out, out, out, out, out, out, out) is det,
@@ -622,7 +622,7 @@
     %
 :- func list.map_corresponding3(func(A, B, C) = D, list(A), list(B), list(C))
     = list(D).
-    
+
     % list.filter_map_corresponding/3 is like list.map_corresponding/3
     % except the function argument is semidet and the output list
     % consists of only those applications of the function argument that
@@ -672,7 +672,7 @@
 :- mode list.map_corresponding_foldl2(
     pred(in, in, out, in, out, di, uo) is det, in, in, out, in, out, di, uo)
     is det.
-    
+
     % Like list.map_corresponding_foldl/6 except that it has three
     % accumulators.
     %
@@ -1006,7 +1006,7 @@
 :- mode list.foldl3_corresponding3(
     pred(in, in, in, in, out, in, out, in, out) is semidet,
     in, in, in, in, out, in, out, in, out) is semidet.
-    
+
     % list.foldl4_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3, !Acc4):
     % like list.foldl_corresponding3 but with four accumulators.
     %
@@ -1053,7 +1053,7 @@
     is cc_multi.
 :- mode list.map_foldl(pred(in, out, di, uo) is cc_multi, in, out, di, uo)
     is cc_multi.
-    
+
     % Same as list.map_foldl, but with two mapped outputs.
     %
 :- pred list.map2_foldl(pred(L, M, N, A, A), list(L), list(M), list(N),
@@ -1259,6 +1259,13 @@
 :- pred list.all_false(pred(X)::in(pred(in) is semidet), list(X)::in)
     is semidet.
 
+    % list.find_first_match(Pred, List, FirstMatch) takes a closure with one
+    % input argument. It returns the element X of the list (if any) for which
+    % Pred(X) is true.
+    %
+:- pred list.find_first_match(pred(X)::in(pred(in) is semidet), list(X)::in,
+    X::out) is semidet.
+
     % list.filter(Pred, List, TrueList) takes a closure with one
     % input argument and for each member of List `X', calls the closure.
     % Iff Pred(X) is true, then X is included in TrueList.
@@ -1310,7 +1317,7 @@
     %   find_first_map(X, Y, Z) <=> list.filter_map(X, Y, [Z | _])
     %
 :- pred list.find_first_map(pred(X, Y)::in(pred(in, out) is semidet),
-        list(X)::in, Y::out) is semidet.
+    list(X)::in, Y::out) is semidet.
 
     % Same as list.find_first_map, except with two outputs.
     %
@@ -1322,7 +1329,7 @@
 :- pred list.find_first_map3(
     pred(X, A, B, C)::in(pred(in, out, out, out) is semidet),
     list(X)::in, A::out, B::out, C::out) is semidet.
-    
+
     % find_index_of_match(Match, List, Index0, Index)
     %
     % Find the index of an item in the list for which Match is true where the
@@ -1776,20 +1783,40 @@ list.sort(L0, L) :-
     list.merge_sort(L0, L).
 
 list.sort_and_remove_dups(L0, L) :-
-    list.merge_sort(L0, L1),
-    list.remove_adjacent_dups(L1, L).
-
-%-----------------------------------------------------------------------------%
+    list.merge_sort_and_remove_dups_2(list.length(L0), L0, L).
 
 :- pred list.merge_sort(list(T)::in, list(T)::out) is det.
-
 :- pragma type_spec(list.merge_sort(in, out), T = var(_)).
 
 list.merge_sort(List, SortedList) :-
     list.merge_sort_2(list.length(List), List, SortedList).
 
-:- pred list.merge_sort_2(int::in, list(T)::in, list(T)::out) is det.
+%-----------------------------------------------------------------------------%
 
+:- pred list.merge_sort_and_remove_dups_2(int::in, list(T)::in, list(T)::out)
+    is det.
+:- pragma type_spec(list.merge_sort_and_remove_dups_2(in, in, out),
+    T = var(_)).
+
+list.merge_sort_and_remove_dups_2(Length, List, SortedList) :-
+    ( Length > 1 ->
+        HalfLength = Length // 2,
+        ( list.split_list(HalfLength, List, Front, Back) ->
+            list.merge_sort_and_remove_dups_2(HalfLength,
+                Front, SortedFront),
+            list.merge_sort_and_remove_dups_2(Length - HalfLength,
+                Back, SortedBack),
+            list.merge_and_remove_dups(SortedFront, SortedBack, SortedList)
+        ;
+            error("list.merge_sort_and_remove_dups_2")
+        )
+    ;
+        SortedList = List
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred list.merge_sort_2(int::in, list(T)::in, list(T)::out) is det.
 :- pragma type_spec(list.merge_sort_2(in, in, out), T = var(_)).
 
 list.merge_sort_2(Length, List, SortedList) :-
@@ -1797,8 +1824,7 @@ list.merge_sort_2(Length, List, SortedList) :-
         HalfLength = Length // 2,
         ( list.split_list(HalfLength, List, Front, Back) ->
             list.merge_sort_2(HalfLength, Front, SortedFront),
-            list.merge_sort_2(Length - HalfLength,
-                Back, SortedBack),
+            list.merge_sort_2(Length - HalfLength, Back, SortedBack),
             list.merge(SortedFront, SortedBack, SortedList)
         ;
             error("list.merge_sort_2")
@@ -1870,12 +1896,10 @@ list.split_list(N, List, Start, End) :-
     ).
 
 list.det_split_list(N, List, Start, End) :-
-    ( if
-        list.split_list(N, List, Start0, End0)
-    then
+    ( list.split_list(N, List, Start0, End0) ->
         Start = Start0,
         End = End0
-    else
+    ;
         error("list.det_split_list: index out of range")
     ).
 
@@ -2176,17 +2200,17 @@ list.map_corresponding_foldl3(P, [A | As], [B | Bs], [C | Cs], !Acc1,
 
 list.map_corresponding3_foldl(_, [], [], [], [], !Acc).
 list.map_corresponding3_foldl(_, [], [_ | _], [_ | _], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+    error("list.map_corresponding3_foldl: mismatched list arguments").
 list.map_corresponding3_foldl(_, [_ | _], [], [_ | _], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+    error("list.map_corresponding3_foldl: mismatched list arguments").
 list.map_corresponding3_foldl(_, [_ | _], [_ | _], [], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+    error("list.map_corresponding3_foldl: mismatched list arguments").
 list.map_corresponding3_foldl(_, [], [], [_ | _], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+    error("list.map_corresponding3_foldl: mismatched list arguments").
 list.map_corresponding3_foldl(_, [], [_ | _], [], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+    error("list.map_corresponding3_foldl: mismatched list arguments").
 list.map_corresponding3_foldl(_, [_ | _], [], [], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+    error("list.map_corresponding3_foldl: mismatched list arguments").
 list.map_corresponding3_foldl(P, [A | As], [B | Bs], [C | Cs], [D | Ds],
         !Acc) :-
     P(A, B, C, D, !Acc),
@@ -2389,6 +2413,13 @@ list.all_false(P, [X | Xs]) :-
     not P(X),
     list.all_false(P, Xs).
 
+list.find_first_match(P, [H | T], FirstMatch) :-
+    ( P(H) ->
+        FirstMatch = H
+    ;
+        list.find_first_match(P, T, FirstMatch)
+    ).
+
 list.filter(_, [],  []).
 list.filter(P, [H | T], True) :-
     list.filter(P, T, TrueTail),
@@ -2511,18 +2542,19 @@ list.sort(P, L0, L) :-
         error("hosort failed")
     ).
 
-    % list.hosort is actually det but the compiler can't confirm it.
+    % list.hosort is a Mercury implementation of the mergesort described
+    % in The Craft of Prolog.
+    %
+    % N denotes the length of the part of L0 that this call is sorting.
+    % (require((length(L0, M), M >= N)))
+    % Since we have redundant information about the list (N, and the length
+    % implicit in the list itself), we get a semidet unification when we
+    % deconstruct the list. list.hosort is therefore actually det but the
+    % compiler can't confirm it.
     %
 :- pred list.hosort(comparison_pred(X)::in(comparison_pred), int::in,
     list(X)::in, list(X)::out, list(X)::out) is semidet.
 
-    % list.hosort is a Mercury implementation of the mergesort
-    % described in The Craft of Prolog.
-    % N denotes the length of the part of L0 that this call is sorting.
-    % (require((length(L0, M), M >= N)))
-    % Since we have redundant information about the list (N, and the
-    % length implicit in the list itself), we get a semidet unification
-    % when we deconstruct the list.
 list.hosort(P, N, L0, L, Rest) :-
     ( N = 1 ->
         L0 = [X | Rest],
@@ -2553,11 +2585,11 @@ list.merge(_P, [], [Y | Ys], [Y | Ys]).
 list.merge(_P, [X | Xs], [], [X | Xs]).
 list.merge(P, [H1 | T1], [H2 | T2], L) :-
     ( P(H1, H2, (>)) ->
-        L = [H2 | T],
-        list.merge(P, [H1 | T1], T2, T)
+        list.merge(P, [H1 | T1], T2, T),
+        L = [H2 | T]
     ;
-        L = [H1 | T],
-        list.merge(P, T1, [H2 | T2], T)
+        list.merge(P, T1, [H2 | T2], T),
+        L = [H1 | T]
     ).
 
 list.merge_and_remove_dups(_P, [], [], []).
@@ -2567,16 +2599,16 @@ list.merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
     P(H1, H2, C),
     (
         C = (<),
-        L = [H1 | T],
-        list.merge_and_remove_dups(P, T1, [H2 | T2], T)
+        list.merge_and_remove_dups(P, T1, [H2 | T2], T),
+        L = [H1 | T]
     ;
         C = (=),
-        L = [H1  |  T],
-        list.merge_and_remove_dups(P, T1, T2, T)
+        list.merge_and_remove_dups(P, T1, T2, T),
+        L = [H1 | T]
     ;
         C = (>),
-        L = [H2 | T],
-        list.merge_and_remove_dups(P, [H1 | T1], T2, T)
+        list.merge_and_remove_dups(P, [H1 | T1], T2, T),
+        L = [H2 | T]
     ).
 
 %-----------------------------------------------------------------------------%

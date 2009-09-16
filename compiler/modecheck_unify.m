@@ -1392,8 +1392,11 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 
         % For existentially quantified data types, check that any type_info
         % or type_class_info variables in the construction are ground.
-        check_type_info_args_are_ground(ArgVars, VarTypes,
-            UnifyContext, !ModeInfo)
+        mode_info_set_call_context(call_context_unify(UnifyContext),
+            !ModeInfo),
+        check_type_info_args_are_ground(ArgVars, VarTypes, UnifyContext,
+            !ModeInfo),
+        mode_info_unset_call_context(!ModeInfo)
     ;
         % It is a deconstruction.
         (
@@ -1442,8 +1445,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
     % in the argument list are ground.
     %
 :- pred check_type_info_args_are_ground(list(prog_var)::in,
-    vartypes::in, unify_context::in,
-    mode_info::in, mode_info::out) is det.
+    vartypes::in, unify_context::in, mode_info::in, mode_info::out) is det.
 
 check_type_info_args_are_ground([], _VarTypes, _UnifyContext, !ModeInfo).
 check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
@@ -1452,14 +1454,11 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
         map.lookup(VarTypes, ArgVar, ArgType),
         is_introduced_type_info_type(ArgType)
     ->
-        mode_info_set_call_context(call_context_unify(UnifyContext),
-            !ModeInfo),
-        InitialArgNum = 0,
-        modecheck_var_has_inst_list_no_exact_match([ArgVar],
-            [ground(shared, none)], InitialArgNum, _InstVarSub, !ModeInfo),
+        mode_info_set_call_arg_context(1, !ModeInfo),
+        modecheck_introduced_type_info_var_has_inst_no_exact_match(ArgVar,
+            ArgType, ground(shared, none), !ModeInfo),
         check_type_info_args_are_ground(ArgVars, VarTypes, UnifyContext,
-            !ModeInfo),
-        mode_info_unset_call_context(!ModeInfo)
+            !ModeInfo)
     ;
         true
     ).

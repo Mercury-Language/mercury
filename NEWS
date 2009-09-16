@@ -40,9 +40,6 @@ Changes to the Mercury standard library:
   Numbers not in base 10 are assumed to denote bit patterns and are not
   checked for overflow.
 
-* We have added extra modes to many of the fold style predicates in the
-  library in order to better support (mostly-)unique accumulators.
-
 * A module for handling directed graphs, digraph.m, has been added.  This
   supersedes relation.m and svrelation.m in that has a more consistent
   interface (which supports state variable notation), provides more type
@@ -56,9 +53,14 @@ Changes to the Mercury standard library:
   user-specifiable formatting for arbitrary types.  Further use of pprint is
   deprecated.
 
+* We have added extra modes to many of the fold style predicates in the
+  library in order to better support (mostly-)unique accumulators.
+
 * The foldr family of functions and predicates has been added to the map
   and tree234 modules. We have also extended the arities for map_foldl
-  to map_foldl3 in both modules.
+  to map_foldl3 in both modules, and added versions of both map_foldl*
+  and just plain foldl* in which the higher order argument does not take
+  the key as an argument.
 
 * The following functions have been added to the integer module:
 	integer.from_base_string/2
@@ -118,6 +120,7 @@ Changes to the Mercury standard library:
 	list.split_upto/4
 	list.contains/2
 	list.find_index_of_match/4
+	list.find_first_match/3
 
    We have also added versions of list.foldl/4 and list.foldr/4 that have
    determinism multi.

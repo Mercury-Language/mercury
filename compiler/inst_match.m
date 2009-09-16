@@ -1362,21 +1362,21 @@ inst_is_ground(ModuleInfo, Inst) :-
     is semidet.
 
 inst_is_ground(ModuleInfo, MaybeType, Inst) :-
-    set.init(Expansions0),
+    Expansions0 = set_tree234.init,
     inst_is_ground_1(ModuleInfo, MaybeType, Inst, Expansions0, _Expansions).
 
     % The third arg is the set of insts which have already been expanded;
     % we use this to avoid going into an infinite loop.
     %
 :- pred inst_is_ground_1(module_info::in, maybe(mer_type)::in, mer_inst::in,
-    set(mer_inst)::in, set(mer_inst)::out) is semidet.
+    set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
 inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
-    ( set.member(Inst, !.Expansions) ->
+    ( set_tree234.member(!.Expansions, Inst) ->
         true
     ;
         ( Inst \= any(_, _) ->
-            svset.insert(Inst, !Expansions)
+            set_tree234.insert(Inst, !Expansions)
         ;
             true
         ),
@@ -1384,7 +1384,7 @@ inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
     ).
 
 :- pred inst_is_ground_2(module_info::in, maybe(mer_type)::in, mer_inst::in,
-    set(mer_inst)::in, set(mer_inst)::out) is semidet.
+    set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
 inst_is_ground_2(_, _, not_reached, !Expansions).
 inst_is_ground_2(ModuleInfo, MaybeType, bound(_, List), !Expansions) :-
@@ -1634,7 +1634,8 @@ bound_inst_list_is_not_fully_unique([bound_functor(_Name, Args) | BoundInsts],
 %-----------------------------------------------------------------------------%
 
 :- pred bound_inst_list_is_ground_2(list(bound_inst)::in, maybe(mer_type)::in,
-    module_info::in, set(mer_inst)::in, set(mer_inst)::out) is semidet.
+    module_info::in, set_tree234(mer_inst)::in, set_tree234(mer_inst)::out)
+    is semidet.
 
 bound_inst_list_is_ground_2([], _, _, !Expansions).
 bound_inst_list_is_ground_2([bound_functor(Name, Args) | BoundInsts],
@@ -1735,7 +1736,8 @@ inst_list_is_not_fully_unique([Inst | Insts], ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- pred inst_list_is_ground_2(list(mer_inst)::in, list(maybe(mer_type))::in,
-    module_info::in, set(mer_inst)::in, set(mer_inst)::out) is semidet.
+    module_info::in, set_tree234(mer_inst)::in, set_tree234(mer_inst)::out)
+    is semidet.
 
 inst_list_is_ground_2([], [], _, !Expansions).
 inst_list_is_ground_2([], [_ | _], _, !Expansions) :-

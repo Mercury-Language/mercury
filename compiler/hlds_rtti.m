@@ -22,6 +22,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
+:- import_module array.
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
@@ -167,6 +168,13 @@
     % Returns an empty rtti_varmaps structure.
     %
 :- pred rtti_varmaps_init(rtti_varmaps::out) is det.
+
+    % Given an array in which the entry for a variable's integer form is true
+    % iff the variable is actually used in a procedure body, restrict the
+    % rtti_varmaps for that procedure to the variables needed.
+    %
+:- pred restrict_rtti_varmaps(array(bool)::in,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % Succeeds iff the rtti_varmaps contain no information about any
     % type variables.
@@ -333,7 +341,7 @@
 
 :- import_module map.
 :- import_module pair.
-:- import_module solutions.
+:- import_module set_tree234.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
@@ -394,42 +402,40 @@ type_info_locn_set_var(Var, typeclass_info(_, Num), typeclass_info(Var, Num)).
 
 :- type rtti_varmaps
     --->    rtti_varmaps(
-                tci_varmap          :: typeclass_info_varmap,
-                ti_varmap           :: type_info_varmap,
-                ti_type_map         :: type_info_type_map,
-                tci_constraint_map  :: typeclass_info_constraint_map
+                rv_tci_varmap           :: typeclass_info_varmap,
+                rv_ti_varmap            :: type_info_varmap,
+                rv_ti_type_map          :: type_info_type_map,
+                rv_tci_constraint_map   :: typeclass_info_constraint_map
             ).
 
     % A typeclass_info_varmap is a map which for each type class constraint
-    % records which variable contains the typeclass_info for that
-    % constraint.  The constraints covered by this map are those which
-    % are passed in as head arguments and those which are produced as
-    % existential constraints from calls or deconstructions.  These are
-    % the constraints for which it is safe to reuse the variable associated
-    % with the constraint.
+    % records which variable contains the typeclass_info for that constraint.
+    % The constraints covered by this map are those which are passed in
+    % as head arguments and those which are produced as existential constraints
+    % from calls or deconstructions. These are constraints for which it is safe
+    % to reuse the variable associated with the constraint.
     %
 :- type typeclass_info_varmap == map(prog_constraint, prog_var).
 
-    % A type_info_varmap is a map which for each type variable
-    % records where the type_info for that type variable is stored.
+    % A type_info_varmap is a map which for each type variable records
+    % where the type_info for that type variable is stored.
     %
-    % XXX this doesn't record the information that we want.  For a
-    % constraint such as foo(list(T)) we can't properly record the
-    % location of the type_info for T, since it does not occupy a slot
-    % in the typeclass_info directly, but is inside the type_info for
-    % list(T).
+    % XXX This doesn't record the information that we want. For a constraint
+    % such as foo(list(T)) we can't properly record the location of the
+    % type_info for T, since it does not occupy a slot in the typeclass_info
+    % directly, but is inside the type_info for list(T).
     %
 :- type type_info_varmap == map(tvar, type_info_locn).
 
-    % Every program variable which holds a type_info is a key in this
-    % map.  The value associated with a given key is the type that the
-    % type_info is for.
+    % Every program variable which holds a type_info is a key in this map.
+    % The value associated with a given key is the type that the type_info
+    % is for.
     %
 :- type type_info_type_map == map(prog_var, mer_type).
 
-    % Every program variable which holds a typeclass_info is a key in this
-    % map.  The value associated with a given key is the prog_constraint
-    % that the typeclass_info is for.
+    % Every program variable which holds a typeclass_info is a key in this map.
+    % The value associated with a given key is the prog_constraint that
+    % the typeclass_info is for.
     %
 :- type typeclass_info_constraint_map == map(prog_var, prog_constraint).
 
@@ -439,47 +445,133 @@ rtti_varmaps_init(rtti_varmaps(TCIMap, TIMap, TypeMap, ConstraintMap)) :-
     map.init(TypeMap),
     map.init(ConstraintMap).
 
-rtti_varmaps_no_tvars(VarMaps) :-
-    map.is_empty(VarMaps ^ ti_varmap).
+restrict_rtti_varmaps(VarUses, !RttiVarMaps) :-
+    % This code makes the assumption that if a type_ctor_info, type_info,
+    % base_typeclass_info or typeclass_info variable is not needed, then
+    % any code that refers to the constraints reachable from those variables
+    % has also been removed from the procedure. (This would happen by being
+    % moved to a procedure of its own by lambda.m.)
+    !.RttiVarMaps = rtti_varmaps(TCIMap0, TIMap0, TypeMap0, ConstraintMap0),
 
-rtti_lookup_type_info_locn(VarMaps, TVar, Locn) :-
-    map.lookup(VarMaps ^ ti_varmap, TVar, Locn).
+    map.to_assoc_list(TIMap0, TIList0),
+    filter_type_info_varmap(TIList0, [], RevTIList, VarUses),
+    list.reverse(RevTIList, TIList),
+    map.from_sorted_assoc_list(TIList, TIMap),
 
-rtti_search_type_info_locn(VarMaps, TVar, Locn) :-
-    map.search(VarMaps ^ ti_varmap, TVar, Locn).
+    map.to_assoc_list(TypeMap0, TypeList0),
+    filter_type_info_map(TypeList0, [], RevTypeList, VarUses),
+    list.reverse(RevTypeList, TypeList),
+    map.from_sorted_assoc_list(TypeList, TypeMap),
 
-rtti_lookup_typeclass_info_var(VarMaps, Constraint, ProgVar) :-
-    map.lookup(VarMaps ^ tci_varmap, Constraint, ProgVar).
+    map.to_assoc_list(ConstraintMap0, ConstraintList0),
+    filter_constraint_map(ConstraintList0, [], RevConstraintList,
+        TCIMap0, TCIMap, VarUses),
+    list.reverse(RevConstraintList, ConstraintList),
+    map.from_sorted_assoc_list(ConstraintList, ConstraintMap),
 
-rtti_search_typeclass_info_var(VarMaps, Constraint, ProgVar) :-
-    map.search(VarMaps ^ tci_varmap, Constraint, ProgVar).
+    !:RttiVarMaps = rtti_varmaps(TCIMap, TIMap, TypeMap, ConstraintMap).
 
-rtti_varmaps_var_info(VarMaps, Var, VarInfo) :-
-    ( map.search(VarMaps ^ ti_type_map, Var, Type) ->
+:- pred filter_type_info_varmap(assoc_list(tvar, type_info_locn)::in,
+    assoc_list(tvar, type_info_locn)::in,
+    assoc_list(tvar, type_info_locn)::out,
+    array(bool)::in) is det.
+
+filter_type_info_varmap([], !RevTVarLocns, _VarUses).
+filter_type_info_varmap([TVarLocn | TVarLocns], !RevTVarLocns, VarUses) :-
+    TVarLocn = _TVar - Locn,
+    ( Locn = type_info(Var)
+    ; Locn = typeclass_info(Var, _)
+    ),
+    VarNum = var_to_int(Var),
+    array.unsafe_lookup(VarUses, VarNum, Used),
+    (
+        Used = yes,
+        !:RevTVarLocns = [TVarLocn | !.RevTVarLocns]
+    ;
+        Used = no
+    ),
+    filter_type_info_varmap(TVarLocns, !RevTVarLocns, VarUses).
+
+:- pred filter_type_info_map(assoc_list(prog_var, mer_type)::in,
+    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
+    array(bool)::in) is det.
+
+filter_type_info_map([], !RevVarTypes, _VarUses).
+filter_type_info_map([VarType | VarTypes], !RevVarTypes, VarUses) :-
+    VarType = Var - _Type,
+    VarNum = var_to_int(Var),
+    array.unsafe_lookup(VarUses, VarNum, Used),
+    (
+        Used = yes,
+        !:RevVarTypes = [VarType | !.RevVarTypes]
+    ;
+        Used = no
+    ),
+    filter_type_info_map(VarTypes, !RevVarTypes, VarUses).
+
+:- pred filter_constraint_map(assoc_list(prog_var, prog_constraint)::in,
+    assoc_list(prog_var, prog_constraint)::in,
+    assoc_list(prog_var, prog_constraint)::out,
+    typeclass_info_varmap::in, typeclass_info_varmap::out,
+    array(bool)::in) is det.
+
+filter_constraint_map([], !RevVarConstraints, !TCIMap, _VarUses).
+filter_constraint_map([VarConstraint | VarConstraints], !RevVarConstraints,
+        !TCIMap, VarUses) :-
+    VarConstraint = Var - Constraint,
+    VarNum = var_to_int(Var),
+    array.unsafe_lookup(VarUses, VarNum, Used),
+    (
+        Used = yes,
+        !:RevVarConstraints = [VarConstraint | !.RevVarConstraints]
+    ;
+        Used = no,
+        map.delete(!.TCIMap, Constraint, !:TCIMap)
+    ),
+    filter_constraint_map(VarConstraints, !RevVarConstraints,
+        !TCIMap, VarUses).
+
+rtti_varmaps_no_tvars(RttiVarMaps) :-
+    map.is_empty(RttiVarMaps ^ rv_ti_varmap).
+
+rtti_lookup_type_info_locn(RttiVarMaps, TVar, Locn) :-
+    map.lookup(RttiVarMaps ^ rv_ti_varmap, TVar, Locn).
+
+rtti_search_type_info_locn(RttiVarMaps, TVar, Locn) :-
+    map.search(RttiVarMaps ^ rv_ti_varmap, TVar, Locn).
+
+rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint, ProgVar) :-
+    map.lookup(RttiVarMaps ^ rv_tci_varmap, Constraint, ProgVar).
+
+rtti_search_typeclass_info_var(RttiVarMaps, Constraint, ProgVar) :-
+    map.search(RttiVarMaps ^ rv_tci_varmap, Constraint, ProgVar).
+
+rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo) :-
+    ( map.search(RttiVarMaps ^ rv_ti_type_map, Var, Type) ->
         VarInfo = type_info_var(Type)
-    ; map.search(VarMaps ^ tci_constraint_map, Var, Constraint) ->
+    ; map.search(RttiVarMaps ^ rv_tci_constraint_map, Var, Constraint) ->
         VarInfo = typeclass_info_var(Constraint)
     ;
         VarInfo = non_rtti_var
     ).
 
-rtti_det_insert_type_info_locn(TVar, Locn, !VarMaps) :-
-    Map0 = !.VarMaps ^ ti_varmap,
+rtti_det_insert_type_info_locn(TVar, Locn, !RttiVarMaps) :-
+    Map0 = !.RttiVarMaps ^ rv_ti_varmap,
     map.det_insert(Map0, TVar, Locn, Map),
-    !:VarMaps = !.VarMaps ^ ti_varmap := Map,
-    maybe_check_type_info_var(Locn, TVar, !VarMaps).
+    !RttiVarMaps ^ rv_ti_varmap := Map,
+    maybe_check_type_info_var(Locn, TVar, !RttiVarMaps).
 
-rtti_set_type_info_locn(TVar, Locn, !VarMaps) :-
-    Map0 = !.VarMaps ^ ti_varmap,
+rtti_set_type_info_locn(TVar, Locn, !RttiVarMaps) :-
+    Map0 = !.RttiVarMaps ^ rv_ti_varmap,
     map.set(Map0, TVar, Locn, Map),
-    !:VarMaps = !.VarMaps ^ ti_varmap := Map,
-    maybe_check_type_info_var(Locn, TVar, !VarMaps).
+    !:RttiVarMaps = !.RttiVarMaps ^ rv_ti_varmap := Map,
+    maybe_check_type_info_var(Locn, TVar, !RttiVarMaps).
 
 :- pred maybe_check_type_info_var(type_info_locn::in, tvar::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
-maybe_check_type_info_var(type_info(Var), TVar, !VarMaps) :-
-    ( map.search(!.VarMaps ^ ti_type_map, Var, Type) ->
+maybe_check_type_info_var(type_info(Var), TVar, !RttiVarMaps) :-
+    ( map.search(!.RttiVarMaps ^ rv_ti_type_map, Var, Type) ->
         ( Type = type_variable(TVar, _) ->
             true
         ;
@@ -488,84 +580,87 @@ maybe_check_type_info_var(type_info(Var), TVar, !VarMaps) :-
     ;
         unexpected(this_file, "missing info in rtti_varmaps")
     ).
-maybe_check_type_info_var(typeclass_info(_, _), _, !VarMaps).
+maybe_check_type_info_var(typeclass_info(_, _), _, !RttiVarMaps).
 
-rtti_det_insert_typeclass_info_var(Constraint, ProgVar, !VarMaps) :-
-    Map0 = !.VarMaps ^ tci_constraint_map,
+rtti_det_insert_typeclass_info_var(Constraint, ProgVar, !RttiVarMaps) :-
+    Map0 = !.RttiVarMaps ^ rv_tci_constraint_map,
     map.det_insert(Map0, ProgVar, Constraint, Map),
-    !:VarMaps = !.VarMaps ^ tci_constraint_map := Map.
+    !RttiVarMaps ^ rv_tci_constraint_map := Map.
 
-rtti_set_typeclass_info_var(Constraint, ProgVar, !VarMaps) :-
-    Map0 = !.VarMaps ^ tci_constraint_map,
+rtti_set_typeclass_info_var(Constraint, ProgVar, !RttiVarMaps) :-
+    Map0 = !.RttiVarMaps ^ rv_tci_constraint_map,
     map.set(Map0, ProgVar, Constraint, Map),
-    !:VarMaps = !.VarMaps ^ tci_constraint_map := Map.
+    !RttiVarMaps ^ rv_tci_constraint_map := Map.
 
-rtti_reuse_typeclass_info_var(ProgVar, !VarMaps) :-
-    ( map.search(!.VarMaps ^ tci_constraint_map, ProgVar, Constraint) ->
-        Map0 = !.VarMaps ^ tci_varmap,
+rtti_reuse_typeclass_info_var(ProgVar, !RttiVarMaps) :-
+    ( map.search(!.RttiVarMaps ^ rv_tci_constraint_map, ProgVar, Constraint) ->
+        Map0 = !.RttiVarMaps ^ rv_tci_varmap,
         map.set(Map0, Constraint, ProgVar, Map),
-        !:VarMaps = !.VarMaps ^ tci_varmap := Map
+        !RttiVarMaps ^ rv_tci_varmap := Map
     ;
         unexpected(this_file,
             "rtti_reuse_typeclass_info_var: variable not known")
     ).
 
-rtti_det_insert_type_info_type(ProgVar, Type, !VarMaps) :-
-    Map0 = !.VarMaps ^ ti_type_map,
+rtti_det_insert_type_info_type(ProgVar, Type, !RttiVarMaps) :-
+    Map0 = !.RttiVarMaps ^ rv_ti_type_map,
     map.det_insert(Map0, ProgVar, Type, Map),
-    !:VarMaps = !.VarMaps ^ ti_type_map := Map.
+    !RttiVarMaps ^ rv_ti_type_map := Map.
 
-rtti_set_type_info_type(ProgVar, Type, !VarMaps) :-
-    Map0 = !.VarMaps ^ ti_type_map,
+rtti_set_type_info_type(ProgVar, Type, !RttiVarMaps) :-
+    Map0 = !.RttiVarMaps ^ rv_ti_type_map,
     map.set(Map0, ProgVar, Type, Map),
-    !:VarMaps = !.VarMaps ^ ti_type_map := Map.
+    !RttiVarMaps ^ rv_ti_type_map := Map.
 
-rtti_var_info_duplicate(Var, NewVar, !VarMaps) :-
-    rtti_varmaps_var_info(!.VarMaps, Var, VarInfo),
+rtti_var_info_duplicate(Var, NewVar, !RttiVarMaps) :-
+    rtti_varmaps_var_info(!.RttiVarMaps, Var, VarInfo),
     (
         VarInfo = type_info_var(Type),
-        rtti_det_insert_type_info_type(NewVar, Type, !VarMaps)
+        rtti_det_insert_type_info_type(NewVar, Type, !RttiVarMaps)
     ;
         VarInfo = typeclass_info_var(Constraint),
-        rtti_det_insert_typeclass_info_var(Constraint, NewVar, !VarMaps)
+        rtti_det_insert_typeclass_info_var(Constraint, NewVar, !RttiVarMaps)
     ;
         VarInfo = non_rtti_var
     ).
 
-rtti_var_info_duplicate_replace(Var, NewVar, !VarMaps) :-
-    rtti_varmaps_var_info(!.VarMaps, Var, VarInfo),
+rtti_var_info_duplicate_replace(Var, NewVar, !RttiVarMaps) :-
+    rtti_varmaps_var_info(!.RttiVarMaps, Var, VarInfo),
     (
         VarInfo = type_info_var(Type),
-        rtti_set_type_info_type(NewVar, Type, !VarMaps)
+        rtti_set_type_info_type(NewVar, Type, !RttiVarMaps)
     ;
         VarInfo = typeclass_info_var(Constraint),
-        rtti_set_typeclass_info_var(Constraint, NewVar, !VarMaps)
+        rtti_set_typeclass_info_var(Constraint, NewVar, !RttiVarMaps)
     ;
         VarInfo = non_rtti_var
     ).
 
-rtti_varmaps_tvars(VarMaps, TVars) :-
-    map.keys(VarMaps ^ ti_varmap, TVars).
+rtti_varmaps_tvars(RttiVarMaps, TVars) :-
+    map.keys(RttiVarMaps ^ rv_ti_varmap, TVars).
 
-rtti_varmaps_types(VarMaps, Types) :-
-    solutions.solutions(rtti_varmaps_is_known_type(VarMaps), Types).
+rtti_varmaps_types(RttiVarMaps, Types) :-
+    TypeMap = RttiVarMaps ^ rv_ti_type_map,
+    ConstraintMap = RttiVarMaps ^ rv_tci_constraint_map,
+    TypeSet0 = set_tree234.init,
+    map.foldl_values(set_tree234.insert, TypeMap, TypeSet0, TypeSet1),
+    map.foldl_values(accumulate_types_in_prog_constraint, ConstraintMap,
+        TypeSet1, TypeSet),
+    Types = set_tree234.to_sorted_list(TypeSet).
 
-:- pred rtti_varmaps_is_known_type(rtti_varmaps::in, mer_type::out) is nondet.
+:- pred accumulate_types_in_prog_constraint(prog_constraint::in,
+    set_tree234(mer_type)::in, set_tree234(mer_type)::out) is det.
 
-rtti_varmaps_is_known_type(VarMaps, Type) :-
-    map.values(VarMaps ^ ti_type_map, Types),
-    list.member(Type, Types).
-rtti_varmaps_is_known_type(VarMaps, Type) :-
-    map.values(VarMaps ^ tci_constraint_map, Constraints),
-    list.member(constraint(_, Types), Constraints),
-    list.member(Type, Types).
+accumulate_types_in_prog_constraint(Constraint, !TypeSet) :-
+    Constraint = constraint(_, ArgTypes),
+    set_tree234.insert_list(ArgTypes, !TypeSet).
 
-rtti_varmaps_reusable_constraints(VarMaps, Constraints) :-
-    map.keys(VarMaps ^ tci_varmap, Constraints).
+rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints) :-
+    map.keys(RttiVarMaps ^ rv_tci_varmap, Constraints).
 
-rtti_varmaps_rtti_prog_vars(VarMaps, Vars) :-
-    map.keys(VarMaps ^ ti_type_map, TIVars),
-    map.keys(VarMaps ^ tci_constraint_map, TCIVars),
+rtti_varmaps_rtti_prog_vars(RttiVarMaps, Vars) :-
+    map.keys(RttiVarMaps ^ rv_ti_type_map, TIVars),
+    map.keys(RttiVarMaps ^ rv_tci_constraint_map, TCIVars),
     list.append(TIVars, TCIVars, Vars).
 
 apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
@@ -690,17 +785,17 @@ apply_substs_to_constraint_map(TRenaming, TSubst, Subst, Var0, Constraint0,
     ).
 
 rtti_varmaps_transform_types(Pred, !RttiVarMaps) :-
-    TciMap0 = !.RttiVarMaps ^ tci_varmap,
-    TypeMap0 = !.RttiVarMaps ^ ti_type_map,
-    ConstraintMap0 = !.RttiVarMaps ^ tci_constraint_map,
+    TciMap0 = !.RttiVarMaps ^ rv_tci_varmap,
+    TypeMap0 = !.RttiVarMaps ^ rv_ti_type_map,
+    ConstraintMap0 = !.RttiVarMaps ^ rv_tci_constraint_map,
     map.foldl(apply_constraint_key_transformation(Pred), TciMap0,
         map.init, TciMap),
     map.map_values_only(Pred, TypeMap0, TypeMap),
     map.map_values(apply_constraint_value_transformation(Pred),
         ConstraintMap0, ConstraintMap),
-    !:RttiVarMaps = !.RttiVarMaps ^ tci_varmap := TciMap,
-    !:RttiVarMaps = !.RttiVarMaps ^ ti_type_map := TypeMap,
-    !:RttiVarMaps = !.RttiVarMaps ^ tci_constraint_map := ConstraintMap.
+    !RttiVarMaps ^ rv_tci_varmap := TciMap,
+    !RttiVarMaps ^ rv_ti_type_map := TypeMap,
+    !RttiVarMaps ^ rv_tci_constraint_map := ConstraintMap.
 
 :- pred apply_constraint_key_transformation(
     pred(mer_type, mer_type)::in(pred(in, out) is det),
@@ -741,7 +836,7 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 %-----------------------------------------------------------------------------%
 
 get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
-    TVarMap = RttiVarMaps ^ ti_varmap,
+    TVarMap = RttiVarMaps ^ rv_ti_varmap,
     set.to_sorted_list(Vars, VarList),
     get_typeinfo_vars_2(VarList, VarTypes, TVarMap, TypeInfoVarList),
     set.list_to_set(TypeInfoVarList, TypeInfoVars).

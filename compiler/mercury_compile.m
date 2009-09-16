@@ -3928,7 +3928,7 @@ tabling(Verbose, Stats, !HLDS, !IO) :-
 process_lambdas(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Transforming lambda expressions...", !IO),
     maybe_flush_output(Verbose, !IO),
-    lambda_process_module(!HLDS),
+    expand_lambdas_in_module(!HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

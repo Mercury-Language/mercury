@@ -42,7 +42,7 @@
     %
 :- pred set_tree234.empty(set_tree234(_T)::in) is semidet.
 
-    % `set_tree234.member(X, Set)' is true iff `X' is a member of `Set'.
+    % `set_tree234.member(Set, X)' is true iff `X' is a member of `Set'.
     %
 :- pred set_tree234.member(set_tree234(T), T).
 :- mode set_tree234.member(in, in) is semidet.

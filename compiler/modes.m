@@ -233,6 +233,14 @@
     list(mer_inst)::in, int::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
+    % This is a special-cased, cut-down version of
+    % modecheck_var_has_inst_list_no_exact_match for use specifically
+    % on introduced type_info_type variables.
+    %
+:- pred modecheck_introduced_type_info_var_has_inst_no_exact_match(
+    prog_var::in, mer_type::in, mer_inst::in,
+    mode_info::in, mode_info::out) is det.
+
     % modecheck_set_var_inst(Var, Inst, MaybeUInst, !ModeInfo):
     %
     % Assign the given Inst to the given Var, after checking that it is
@@ -3739,11 +3747,11 @@ modecheck_var_has_inst_list_no_exact_match_2([Var | Vars], [Inst | Insts],
     inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst_exact_match(VarId, Inst, !Subst, !ModeInfo) :-
+modecheck_var_has_inst_exact_match(Var, Inst, !Subst, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    instmap_lookup_var(InstMap, VarId, VarInst),
+    instmap_lookup_var(InstMap, Var, VarInst),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
-    map.lookup(VarTypes, VarId, Type),
+    map.lookup(VarTypes, Var, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
         inst_matches_initial_no_implied_modes_sub(VarInst, Inst, Type,
@@ -3751,20 +3759,20 @@ modecheck_var_has_inst_exact_match(VarId, Inst, !Subst, !ModeInfo) :-
     ->
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;
-        set.singleton_set(WaitingVars, VarId),
+        set.singleton_set(WaitingVars, Var),
         mode_info_error(WaitingVars,
-            mode_error_var_has_inst(VarId, VarInst, Inst), !ModeInfo)
+            mode_error_var_has_inst(Var, VarInst, Inst), !ModeInfo)
     ).
 
 :- pred modecheck_var_has_inst_no_exact_match(prog_var::in, mer_inst::in,
     inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst_no_exact_match(VarId, Inst, !Subst, !ModeInfo) :-
+modecheck_var_has_inst_no_exact_match(Var, Inst, !Subst, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    instmap_lookup_var(InstMap, VarId, VarInst),
+    instmap_lookup_var(InstMap, Var, VarInst),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
-    map.lookup(VarTypes, VarId, Type),
+    map.lookup(VarTypes, Var, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
         inst_matches_initial_sub(VarInst, Inst, Type, ModuleInfo0, ModuleInfo,
@@ -3772,9 +3780,25 @@ modecheck_var_has_inst_no_exact_match(VarId, Inst, !Subst, !ModeInfo) :-
     ->
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;
-        set.singleton_set(WaitingVars, VarId),
+        set.singleton_set(WaitingVars, Var),
         mode_info_error(WaitingVars,
-            mode_error_var_has_inst(VarId, VarInst, Inst), !ModeInfo)
+            mode_error_var_has_inst(Var, VarInst, Inst), !ModeInfo)
+    ).
+
+modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
+        !ModeInfo) :-
+    mode_info_get_instmap(!.ModeInfo, InstMap),
+    instmap_lookup_var(InstMap, Var, VarInst),
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+    (
+        inst_matches_initial_sub(VarInst, Inst, Type, ModuleInfo0, ModuleInfo,
+            map.init, _Subst)
+    ->
+        mode_info_set_module_info(ModuleInfo, !ModeInfo)
+    ;
+        set.singleton_set(WaitingVars, Var),
+        mode_info_error(WaitingVars,
+            mode_error_var_has_inst(Var, VarInst, Inst), !ModeInfo)
     ).
 
 %-----------------------------------------------------------------------------%

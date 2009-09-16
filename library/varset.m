@@ -406,19 +406,7 @@ varset.lookup_name(VarSet, Id, Prefix, Name) :-
     ).
 
 varset.search_name(varset(_, Names, _), Id, Name) :-
-    map.search(Names, Id, Name0),
-    Name = Name0.
-% This part is useful during debugging when you need to
-% be able to distinguish different variables with the same name.
-%   (
-%       map.member(Names, Id1, Name0),
-%       Id1 \= Id
-%   ->
-%       term.var_to_int(Id, Int),
-%       string.format("%s.%d",[s(Name0),i(Int)], Name)
-%   ;
-%       Name = Name0
-%   ).
+    map.search(Names, Id, Name).
 
 %-----------------------------------------------------------------------------%
 
@@ -659,10 +647,11 @@ append_suffix_until_unique(Trial0, Suffix, UsedNames, Final) :-
 
 %-----------------------------------------------------------------------------%
 
-varset.select(varset(Supply, VarNameMap0, Values0), Vars,
-        varset(Supply, VarNameMap, Values)) :-
+varset.select(VarSet0, Vars, VarSet) :-
+    VarSet0 = varset(Supply, VarNameMap0, Values0),
     map.select(VarNameMap0, Vars, VarNameMap),
-    map.select(Values0, Vars, Values).
+    map.select(Values0, Vars, Values),
+    VarSet = varset(Supply, VarNameMap, Values).
 
 %-----------------------------------------------------------------------------%
 

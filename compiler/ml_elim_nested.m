@@ -1677,16 +1677,6 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
         % For local variable definitions, if they are referenced by any nested
         % functions, then strip them out and store them in the elim_info.
         (
-            % For IL and Java, we need to hoist all static constants out
-            % to the top level, so that they can be initialized in the
-            % class constructor. To keep things consistent (and reduce
-            % the testing burden), we do the same for the other back-ends too.
-            ml_decl_is_static_const(Defn0)
-        ->
-            elim_info_add_local_data(Defn0, !Info),
-            Defns = [],
-            InitStatements = []
-        ;
             % Hoist ordinary local variables.
             Name = entity_data(DataName),
             DataName = mlds_data_var(VarName),
@@ -1700,14 +1690,14 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
             ( Init0 = init_obj(Rval) ->
                 % XXX Bug! Converting the initializer to an assignment doesn't
                 % work, because it doesn't handle the case when initializers in
-                % FollowingDefns reference this variable
+                % FollowingDefns reference this variable.
                 Init1 = no_initializer,
                 DefnBody1 = mlds_data(Type, Init1, GCStatement0),
                 Defn1 = mlds_defn(Name, Context, Flags0, DefnBody1),
                 ModuleName = elim_info_get_module_name(!.Info),
                 VarLval = ml_var(qual(ModuleName, module_qual, VarName), Type),
-                InitStatements = [statement(
-                    ml_stmt_atomic(assign(VarLval, Rval)), Context)]
+                InitStmt = ml_stmt_atomic(assign(VarLval, Rval)),
+                InitStatements = [statement(InitStmt, Context)]
             ;
                 Defn1 = Defn0,
                 InitStatements = []
@@ -1758,15 +1748,7 @@ ml_should_add_local_data(Action, Info, DataName, GCStatement,
             FollowingDefns, FollowingStatements)
     ).
 
-    % This checks for a nested function definition or static initializer
-    % that references the variable. This is conservative; for the MLDS->C
-    % and MLDS->GCC back-ends, we only need to hoist out static variables
-    % if they are referenced by static initializers which themselves need to be
-    % hoisted because they are referenced from a nested function. But checking
-    % the last part of that is tricky, and for the Java and IL back-ends we
-    % need to hoist out all static constants anyway, so to keep things simple
-    % we do the same for the C back-end to, i.e. we always hoist all static
-    % constants.
+    % This checks for a nested function definition.
     %
     % XXX Do we need to check for references from the GCStatement
     % fields here?
@@ -1777,22 +1759,21 @@ ml_should_add_local_data(Action, Info, DataName, GCStatement,
 :- pred ml_need_to_hoist(mlds_module_name::in, mlds_data_name::in,
     list(mlds_defn)::in, list(statement)::in) is semidet.
 
-ml_need_to_hoist(ModuleName, DataName,
-        FollowingDefns, FollowingStatements) :-
+ml_need_to_hoist(ModuleName, DataName, FollowingDefns, FollowingStatements) :-
     QualDataName = qual(ModuleName, module_qual, DataName),
+    Filter = ml_need_to_hoist_defn(QualDataName),
     (
-        list.member(FollowingDefn, FollowingDefns)
+        list.find_first_match(Filter, FollowingDefns, _)
     ;
-        statements_contains_defn(FollowingStatements, FollowingDefn)
-    ),
-    (
-        FollowingDefn = mlds_defn(_, _, _, mlds_function(_, _, _, _, _)),
-        defn_contains_var(FollowingDefn, QualDataName)
-    ;
-        FollowingDefn = mlds_defn(_, _, _, mlds_data(_, Initializer, _)),
-        ml_decl_is_static_const(FollowingDefn),
-        initializer_contains_var(Initializer, QualDataName)
+        statements_contains_matching_defn(Filter, FollowingStatements)
     ).
+
+:- pred ml_need_to_hoist_defn(mlds_fully_qualified_name(mlds_data_name)::in,
+    mlds_defn::in) is semidet.
+
+ml_need_to_hoist_defn(QualDataName, FollowingDefn) :-
+    FollowingDefn = mlds_defn(_, _, _, mlds_function(_, _, _, _, _)),
+    defn_contains_var(FollowingDefn, QualDataName).
 
 %-----------------------------------------------------------------------------%
 
@@ -2246,94 +2227,59 @@ ml_env_module_name(Target, ClassType) = EnvModuleName :-
 
 %-----------------------------------------------------------------------------%
 %
-% defns_contains_defn:
-% defn_contains_defn:
-% defn_body_contains_defn:
-% maybe_statement_contains_defn:
-% function_body_contains_defn:
-% statements_contains_defn:
-% statement_contains_defn:
+% Succeed if the specified construct contains a definition for which the
+% given filter predicate succeeds.
 %
-% Nondeterministically return all the definitions contained
-% in the specified construct.
 
-:- pred defns_contains_defn(list(mlds_defn)::in, mlds_defn::out) is nondet.
+:- pred statements_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), list(statement)::in) is semidet.
 
-defns_contains_defn(Defns, Name) :-
-    list.member(Defn, Defns),
-    defn_contains_defn(Defn, Name).
-
-:- pred defn_contains_defn(mlds_defn::in, mlds_defn::out) is multi.
-
-defn_contains_defn(Defn, Defn). /* this is where we succeed! */
-defn_contains_defn(mlds_defn(_Name, _Context, _Flags, DefnBody), Defn) :-
-    defn_body_contains_defn(DefnBody, Defn).
-
-:- pred defn_body_contains_defn(mlds_entity_defn::in, mlds_defn::out)
-    is nondet.
-
-% defn_body_contains_defn(mlds_data(_Type, _Initializer, _), _Defn) :- fail.
-defn_body_contains_defn(mlds_function(_PredProcId, _Params, FunctionBody,
-        _Attrs, _EnvVarNames), Name) :-
-    function_body_contains_defn(FunctionBody, Name).
-defn_body_contains_defn(mlds_class(ClassDefn), Name) :-
-    ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits, _Implements,
-        CtorDefns, FieldDefns),
-    ( defns_contains_defn(FieldDefns, Name)
-    ; defns_contains_defn(CtorDefns, Name)
+statements_contains_matching_defn(Filter, [Statement | Statements]) :-
+    (
+        statement_contains_matching_defn(Filter, Statement)
+    ;
+        statements_contains_matching_defn(Filter, Statements)
     ).
 
-:- pred statements_contains_defn(list(statement)::in, mlds_defn::out) is nondet.
+:- pred maybe_statement_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), maybe(statement)::in) is semidet.
 
-statements_contains_defn(Statements, Defn) :-
-    list.member(Statement, Statements),
-    statement_contains_defn(Statement, Defn).
+maybe_statement_contains_matching_defn(Filter, yes(Statement)) :-
+    statement_contains_matching_defn(Filter, Statement).
 
-:- pred maybe_statement_contains_defn(maybe(statement)::in,
-    mlds_defn::out) is nondet.
+:- pred statement_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), statement::in) is semidet.
 
-% maybe_statement_contains_defn(no, _Defn) :- fail.
-maybe_statement_contains_defn(yes(Statement), Defn) :-
-    statement_contains_defn(Statement, Defn).
-
-:- pred function_body_contains_defn(mlds_function_body::in, mlds_defn::out)
-    is nondet.
-
-% function_body_contains_defn(body_external, _Defn) :- fail.
-function_body_contains_defn(body_defined_here(Statement), Defn) :-
-    statement_contains_defn(Statement, Defn).
-
-:- pred statement_contains_defn(statement::in, mlds_defn::out) is nondet.
-
-statement_contains_defn(Statement, Defn) :-
+statement_contains_matching_defn(Filter, Statement) :-
     Statement = statement(Stmt, _Context),
-    stmt_contains_defn(Stmt, Defn).
+    stmt_contains_matching_defn(Filter, Stmt).
 
-:- pred stmt_contains_defn(mlds_stmt::in, mlds_defn::out) is nondet.
+:- pred stmt_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), mlds_stmt::in) is semidet.
 
-stmt_contains_defn(Stmt, Defn) :-
+stmt_contains_matching_defn(Filter, Stmt) :-
     (
         Stmt = ml_stmt_block(Defns, Statements),
-        ( defns_contains_defn(Defns, Defn)
-        ; statements_contains_defn(Statements, Defn)
+        ( defns_contains_matching_defn(Filter, Defns)
+        ; statements_contains_matching_defn(Filter, Statements)
         )
     ;
         Stmt = ml_stmt_while(_Rval, Statement, _Once),
-        statement_contains_defn(Statement, Defn)
+        statement_contains_matching_defn(Filter, Statement)
     ;
         Stmt = ml_stmt_if_then_else(_Cond, Then, MaybeElse),
-        ( statement_contains_defn(Then, Defn)
-        ; maybe_statement_contains_defn(MaybeElse, Defn)
+        ( statement_contains_matching_defn(Filter, Then)
+        ; maybe_statement_contains_matching_defn(Filter, MaybeElse)
         )
     ;
         Stmt = ml_stmt_switch(_Type, _Val, _Range, Cases, Default),
-        ( cases_contains_defn(Cases, Defn)
-        ; default_contains_defn(Default, Defn)
+        ( cases_contains_matching_defn(Filter, Cases)
+        ; default_contains_matching_defn(Filter, Default)
         )
     ;
         Stmt = ml_stmt_try_commit(_Ref, Statement, Handler),
-        ( statement_contains_defn(Statement, Defn)
-        ; statement_contains_defn(Handler, Defn)
+        ( statement_contains_matching_defn(Filter, Statement)
+        ; statement_contains_matching_defn(Filter, Handler)
         )
     ;
         ( Stmt = ml_stmt_label(_Label)
@@ -2347,21 +2293,67 @@ stmt_contains_defn(Stmt, Defn) :-
         fail
     ).
 
-:- pred cases_contains_defn(list(mlds_switch_case)::in, mlds_defn::out)
-    is nondet.
+:- pred cases_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), list(mlds_switch_case)::in)
+    is semidet.
 
-cases_contains_defn(Cases, Defn) :-
-    list.member(Case, Cases),
+cases_contains_matching_defn(Filter, [Case | Cases]) :-
+    (
+        case_contains_matching_defn(Filter, Case)
+    ;
+        cases_contains_matching_defn(Filter, Cases)
+    ).
+
+:- pred case_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), mlds_switch_case::in) is semidet.
+
+case_contains_matching_defn(Filter, Case) :-
     Case = mlds_switch_case(_FirstMatchCond, _LaterMatchConds, Statement),
-    statement_contains_defn(Statement, Defn).
+    statement_contains_matching_defn(Filter, Statement).
 
-:- pred default_contains_defn(mlds_switch_default::in, mlds_defn::out)
-    is nondet.
+:- pred default_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), mlds_switch_default::in)
+    is semidet.
 
-% default_contains_defn(default_do_nothing, _) :- fail.
-% default_contains_defn(default_is_unreachable, _) :- fail.
-default_contains_defn(default_case(Statement), Defn) :-
-    statement_contains_defn(Statement, Defn).
+% default_contains_matching_defn(_, default_do_nothing) :- fail.
+% default_contains_matching_defn(_, default_is_unreachable) :- fail.
+default_contains_matching_defn(Filter, default_case(Statement)) :-
+    statement_contains_matching_defn(Filter, Statement).
+
+:- pred defns_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), list(mlds_defn)::in) is semidet.
+
+defns_contains_matching_defn(Filter, [Defn | Defns]) :-
+    (
+        defn_contains_matching_defn(Filter, Defn)
+    ;
+        defns_contains_matching_defn(Filter, Defns)
+    ).
+
+:- pred defn_contains_matching_defn(
+    pred(mlds_defn)::in(pred(in) is semidet), mlds_defn::in) is semidet.
+
+defn_contains_matching_defn(Filter, Defn) :-
+    (
+        Filter(Defn)    % This is where we succeed!
+    ;
+        Defn = mlds_defn(_Name, _Context, _Flags, DefnBody),
+        (
+            DefnBody = mlds_function(_PredProcId, _Params, FunctionBody,
+                _Attrs, _EnvVarNames),
+            FunctionBody = body_defined_here(Statement),
+            statement_contains_matching_defn(Filter, Statement)
+        ;
+            DefnBody = mlds_class(ClassDefn),
+            ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits,
+                _Implements, CtorDefns, FieldDefns),
+            (
+                defns_contains_matching_defn(Filter, FieldDefns)
+            ;
+                defns_contains_matching_defn(Filter, CtorDefns)
+            )
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 

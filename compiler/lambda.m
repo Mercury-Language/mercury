@@ -74,9 +74,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred lambda_process_module(module_info::in, module_info::out) is det.
+:- pred expand_lambdas_in_module(module_info::in, module_info::out) is det.
 
-:- pred lambda_process_pred(pred_id::in, module_info::in, module_info::out)
+:- pred expand_lambdas_in_pred(pred_id::in, module_info::in, module_info::out)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -101,9 +101,13 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
+:- import_module array.
 :- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module term.
@@ -123,8 +127,10 @@
                 pred_or_func,
                 string,                 % pred/func name
                 module_info,
-                bool                    % true iff we need to recompute
+                bool,                   % true iff we need to recompute
                                         % the nonlocals
+                bool                    % true if we expanded some lambda
+                                        % expressions
             ).
 
 %-----------------------------------------------------------------------------%
@@ -132,27 +138,27 @@
 % This whole section just traverses the module structure
 %
 
-lambda_process_module(!ModuleInfo) :-
+expand_lambdas_in_module(!ModuleInfo) :-
     module_info_predids(PredIds, !ModuleInfo),
-    list.foldl(lambda_process_pred, PredIds, !ModuleInfo),
+    list.foldl(expand_lambdas_in_pred, PredIds, !ModuleInfo),
     % Need update the dependency graph to include the lambda predicates.
     module_info_clobber_dependency_info(!ModuleInfo).
 
-lambda_process_pred(PredId, !ModuleInfo) :-
+expand_lambdas_in_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_procids(PredInfo),
-    list.foldl(lambda_process_proc(PredId), ProcIds, !ModuleInfo).
+    list.foldl(expand_lambdas_in_proc(PredId), ProcIds, !ModuleInfo).
 
-:- pred lambda_process_proc(pred_id::in, proc_id::in,
+:- pred expand_lambdas_in_proc(pred_id::in, proc_id::in,
     module_info::in, module_info::out) is det.
 
-lambda_process_proc(PredId, ProcId, !ModuleInfo) :-
+expand_lambdas_in_proc(PredId, ProcId, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
-    lambda_process_proc_2(ProcInfo0, ProcInfo, PredInfo0, PredInfo1,
+    expand_lambdas_in_proc_2(ProcInfo0, ProcInfo, PredInfo0, PredInfo1,
         !ModuleInfo),
 
     pred_info_get_procedures(PredInfo1, ProcTable1),
@@ -162,10 +168,10 @@ lambda_process_proc(PredId, ProcId, !ModuleInfo) :-
     map.det_update(PredTable1, PredId, PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
-:- pred lambda_process_proc_2(proc_info::in, proc_info::out,
+:- pred expand_lambdas_in_proc_2(proc_info::in, proc_info::out,
     pred_info::in, pred_info::out, module_info::in, module_info::out) is det.
 
-lambda_process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
+expand_lambdas_in_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     % Grab the appropriate fields from the pred_info and proc_info.
     PredName = pred_info_name(!.PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
@@ -179,31 +185,43 @@ lambda_process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet0),
     proc_info_get_has_parallel_conj(!.ProcInfo, HasParallelConj),
     MustRecomputeNonLocals0 = no,
+    HaveExpandedLambdas0 = no,
 
     % Process the goal.
-    Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0,
-        InstVarSet0, RttiVarMaps0, Markers, HasParallelConj, PredOrFunc,
-        PredName, !.ModuleInfo, MustRecomputeNonLocals0),
-    lambda_process_goal(Goal0, Goal1, Info0, Info1),
-    Info1 = lambda_info(VarSet1, VarTypes1, TypeVarSet,
-        _, RttiVarMaps1, _, _, _, _, !:ModuleInfo, MustRecomputeNonLocals),
+    Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0, InstVarSet0,
+        RttiVarMaps0, Markers, HasParallelConj, PredOrFunc,
+        PredName, !.ModuleInfo, MustRecomputeNonLocals0, HaveExpandedLambdas0),
+    expand_lambdas_in_goal(Goal0, Goal1, Info0, Info1),
+    Info1 = lambda_info(VarSet1, VarTypes1, TypeVarSet, _InstVarSet,
+        RttiVarMaps1, _, _, _, _, !:ModuleInfo, MustRecomputeNonLocals,
+        HaveExpandedLambdas),
 
     % Check if we need to requantify.
     (
         MustRecomputeNonLocals = yes,
         implicitly_quantify_clause_body_general(
-            ordinary_nonlocals_maybe_lambda, HeadVars, _Warnings,
-            Goal1, Goal2, VarSet1, VarSet, VarTypes1, VarTypes,
-            RttiVarMaps1, RttiVarMaps),
+            ordinary_nonlocals_no_lambda, HeadVars, _Warnings,
+            Goal1, Goal2, VarSet1, VarSet2, VarTypes1, VarTypes2,
+            RttiVarMaps1, RttiVarMaps2),
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
         recompute_instmap_delta(recompute_atomic_instmap_deltas,
-            Goal2, Goal, VarTypes, InstVarSet0, InstMap0, !ModuleInfo)
+            Goal2, Goal, VarTypes2, InstVarSet0, InstMap0, !ModuleInfo)
     ;
         MustRecomputeNonLocals = no,
         Goal = Goal1,
-        VarSet = VarSet1,
-        VarTypes = VarTypes1,
-        RttiVarMaps = RttiVarMaps1
+        VarSet2 = VarSet1,
+        VarTypes2 = VarTypes1,
+        RttiVarMaps2 = RttiVarMaps1
+    ),
+    (
+        HaveExpandedLambdas = yes,
+        restrict_var_maps(HeadVars, Goal, VarSet2, VarSet, VarTypes2, VarTypes,
+            RttiVarMaps2, RttiVarMaps)
+    ;
+        HaveExpandedLambdas = no,
+        VarSet = VarSet2,
+        VarTypes = VarTypes2,
+        RttiVarMaps = RttiVarMaps2
     ),
 
     % Set the new values of the fields in proc_info and pred_info.
@@ -213,33 +231,30 @@ lambda_process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
     pred_info_set_typevarset(TypeVarSet, !PredInfo).
 
-    % The job of lambda_process_goal is to traverse the goal, processing each
-    % unification with lambda_process_unify_goal.
-    %
-:- pred lambda_process_goal(hlds_goal::in, hlds_goal::out,
+:- pred expand_lambdas_in_goal(hlds_goal::in, hlds_goal::out,
     lambda_info::in, lambda_info::out) is det.
 
-lambda_process_goal(Goal0, Goal, !Info) :-
+expand_lambdas_in_goal(Goal0, Goal, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = unify(LHS, RHS, Mode, Unification, Context),
-        lambda_process_unify_goal(LHS, RHS, Mode, Unification, Context,
+        expand_lambdas_in_unify_goal(LHS, RHS, Mode, Unification, Context,
             GoalExpr, !Info)
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        lambda_process_goal_list(Goals0, Goals, !Info),
+        expand_lambdas_in_goal_list(Goals0, Goals, !Info),
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
-        lambda_process_goal_list(Goals0, Goals, !Info),
+        expand_lambdas_in_goal_list(Goals0, Goals, !Info),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        lambda_process_cases(Cases0, Cases, !Info),
+        expand_lambdas_in_cases(Cases0, Cases, !Info),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = negation(SubGoal0),
-        lambda_process_goal(SubGoal0, SubGoal, !Info),
+        expand_lambdas_in_goal(SubGoal0, SubGoal, !Info),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
@@ -248,14 +263,14 @@ lambda_process_goal(Goal0, Goal, !Info) :-
             % left its kind field as from_ground_term_construct.
             GoalExpr = GoalExpr0
         ;
-            lambda_process_goal(SubGoal0, SubGoal, !Info),
+            expand_lambdas_in_goal(SubGoal0, SubGoal, !Info),
             GoalExpr = scope(Reason, SubGoal)
         )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        lambda_process_goal(Cond0, Cond, !Info),
-        lambda_process_goal(Then0, Then, !Info),
-        lambda_process_goal(Else0, Else, !Info),
+        expand_lambdas_in_goal(Cond0, Cond, !Info),
+        expand_lambdas_in_goal(Then0, Then, !Info),
+        expand_lambdas_in_goal(Else0, Else, !Info),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         ( GoalExpr0 = generic_call(_, _, _, _)
@@ -268,56 +283,56 @@ lambda_process_goal(Goal0, Goal, !Info) :-
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners),
-            lambda_process_goal(MainGoal0, MainGoal, !Info),
-            lambda_process_goal_list(OrElseGoals0, OrElseGoals, !Info),
-            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars, 
+            expand_lambdas_in_goal(MainGoal0, MainGoal, !Info),
+            expand_lambdas_in_goal_list(OrElseGoals0, OrElseGoals, !Info),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            lambda_process_goal(SubGoal0, SubGoal, !Info),
+            expand_lambdas_in_goal(SubGoal0, SubGoal, !Info),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "lambda_process_goal_2: bi_implication")
+            unexpected(this_file, "expand_lambdas_in_goal_2: bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred lambda_process_goal_list(list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred expand_lambdas_in_goal_list(list(hlds_goal)::in, list(hlds_goal)::out,
     lambda_info::in, lambda_info::out) is det.
 
-lambda_process_goal_list([], [], !Info).
-lambda_process_goal_list([Goal0 | Goals0], [Goal | Goals], !Info) :-
-    lambda_process_goal(Goal0, Goal, !Info),
-    lambda_process_goal_list(Goals0, Goals, !Info).
+expand_lambdas_in_goal_list([], [], !Info).
+expand_lambdas_in_goal_list([Goal0 | Goals0], [Goal | Goals], !Info) :-
+    expand_lambdas_in_goal(Goal0, Goal, !Info),
+    expand_lambdas_in_goal_list(Goals0, Goals, !Info).
 
-:- pred lambda_process_cases(list(case)::in, list(case)::out,
+:- pred expand_lambdas_in_cases(list(case)::in, list(case)::out,
     lambda_info::in, lambda_info::out) is det.
 
-lambda_process_cases([], [], !Info).
-lambda_process_cases([Case0 | Cases0], [Case | Cases], !Info) :-
+expand_lambdas_in_cases([], [], !Info).
+expand_lambdas_in_cases([Case0 | Cases0], [Case | Cases], !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    lambda_process_goal(Goal0, Goal, !Info),
+    expand_lambdas_in_goal(Goal0, Goal, !Info),
     Case = case(MainConsId, OtherConsIds, Goal),
-    lambda_process_cases(Cases0, Cases, !Info).
+    expand_lambdas_in_cases(Cases0, Cases, !Info).
 
-:- pred lambda_process_unify_goal(prog_var::in, unify_rhs::in, unify_mode::in,
-    unification::in, unify_context::in, hlds_goal_expr::out,
+:- pred expand_lambdas_in_unify_goal(prog_var::in, unify_rhs::in,
+    unify_mode::in, unification::in, unify_context::in, hlds_goal_expr::out,
     lambda_info::in, lambda_info::out) is det.
 
-lambda_process_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
+expand_lambdas_in_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
         !Info) :-
     (
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocalVars, Vars, Modes, Det, LambdaGoal0),
         % First, process the lambda goal recursively, in case it contains
         % some nested lambda expressions.
-        lambda_process_goal(LambdaGoal0, LambdaGoal, !Info),
+        expand_lambdas_in_goal(LambdaGoal0, LambdaGoal, !Info),
 
         % Then, convert the lambda expression into a new predicate.
-        lambda_process_lambda(Purity, Groundness, PredOrFunc, EvalMethod, Vars,
+        expand_lambda(Purity, Groundness, PredOrFunc, EvalMethod, Vars,
             Modes, Det, NonLocalVars, LambdaGoal, Unification0, Y, Unification,
             !Info),
         GoalExpr = unify(LHS, Y, Mode, Unification, Context)
@@ -329,25 +344,25 @@ lambda_process_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
         GoalExpr = unify(LHS, RHS0, Mode, Unification0, Context)
     ).
 
-:- pred lambda_process_lambda(purity::in, ho_groundness::in,
+:- pred expand_lambda(purity::in, ho_groundness::in,
     pred_or_func::in, lambda_eval_method::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
     list(prog_var)::in, hlds_goal::in, unification::in, unify_rhs::out,
     unification::out, lambda_info::in, lambda_info::out) is det.
 
-lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
+expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         Detism, OrigNonLocals0, LambdaGoal, Unification0, Functor, Unification,
         LambdaInfo0, LambdaInfo) :-
     LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet,
         InstVarSet, RttiVarMaps, Markers, HasParallelConj, POF, OrigPredName,
-        ModuleInfo0, MustRecomputeNonLocals0),
+        ModuleInfo0, MustRecomputeNonLocals0, _HaveExpandedLambdas),
 
     % Calculate the constraints which apply to this lambda expression.
     % Note currently we only allow lambda expressions to have universally
     % quantified constraints.
     rtti_varmaps_reusable_constraints(RttiVarMaps, AllConstraints),
-    map.apply_to_list(Vars, VarTypes, LambdaVarTypes),
-    list.map(type_vars, LambdaVarTypes, LambdaTypeVarsList),
+    map.apply_to_list(Vars, VarTypes, LambdaVarTypeList),
+    list.map(type_vars, LambdaVarTypeList, LambdaTypeVarsList),
     list.condense(LambdaTypeVarsList, LambdaTypeVars),
     list.filter(constraint_contains_vars(LambdaTypeVars),
         AllConstraints, UnivConstraints),
@@ -371,7 +386,7 @@ lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         ; Unification0 = simple_test(_, _)
         ; Unification0 = complicated_unify(_, _, _)
         ),
-        unexpected(this_file, "transform_lambda: weird unification")
+        unexpected(this_file, "expand_lambda: unexpected unification")
     ),
 
     set.delete_list(LambdaGoalNonLocals, Vars, NonLocals1),
@@ -381,12 +396,12 @@ lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
     set.difference(ExtraTypeInfos, NonLocals1, NewTypeInfos),
     set.union(NonLocals1, NewTypeInfos, NonLocals),
 
-    % If we added variables to the nonlocals of the lambda goal, then
-    % we need to recompute the nonlocals for the procedure that contains it.
-    ( \+ set.empty(NewTypeInfos) ->
-        MustRecomputeNonLocals = yes
-    ;
+    ( set.empty(NewTypeInfos) ->
         MustRecomputeNonLocals = MustRecomputeNonLocals0
+    ;
+        % If we added variables to the nonlocals of the lambda goal, then
+        % we must recompute the nonlocals for the procedure that contains it.
+        MustRecomputeNonLocals = yes
     ),
 
     set.to_sorted_list(NonLocals, ArgVars1),
@@ -403,14 +418,14 @@ lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         % if all the inputs in the Yi precede the outputs. It's also not valid
         % if any of the Xi are in the Yi.
 
-        LambdaGoal = hlds_goal(plain_call(PredId0, ProcId0, CallVars, _, _, _),
-            _),
+        LambdaGoal = hlds_goal(LambdaGoalExpr, _),
+        LambdaGoalExpr = plain_call(PredId0, ProcId0, CallVars, _, _, _),
         module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0,
             Call_PredInfo, Call_ProcInfo),
         list.remove_suffix(CallVars, Vars, InitialVars),
 
-        % check that none of the variables that we're trying to
-        % use as curried arguments are lambda-bound variables
+        % Check that none of the variables that we're trying to use
+        % as curried arguments are lambda-bound variables.
         \+ (
             list.member(InitialVar, InitialVars),
             list.member(InitialVar, Vars)
@@ -472,8 +487,7 @@ lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         proc_info_set_address_taken(address_is_taken,
             Call_ProcInfo, Call_NewProcInfo),
         module_info_set_pred_proc_info(PredId, ProcId,
-            Call_PredInfo, Call_NewProcInfo,
-            ModuleInfo0, ModuleInfo)
+            Call_PredInfo, Call_NewProcInfo, ModuleInfo0, ModuleInfo)
     ;
         % Prepare to create a new predicate for the lambda expression:
         % work out the arguments, module name, predicate name, arity,
@@ -524,9 +538,11 @@ lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         % Now construct the proc_info and pred_info for the new single-mode
         % predicate, using the information computed above.
         map.init(VarNameRemap),
-        proc_info_create(LambdaContext, VarSet, VarTypes, AllArgVars,
-            InstVarSet, AllArgModes, Detism, LambdaGoal, RttiVarMaps,
-            address_is_taken, VarNameRemap, ProcInfo0),
+        restrict_var_maps(AllArgVars, LambdaGoal, VarSet, LambdaVarSet,
+            VarTypes, LambdaVarTypes, RttiVarMaps, LambdaRttiVarMaps),
+        proc_info_create(LambdaContext, LambdaVarSet, LambdaVarTypes,
+            AllArgVars, InstVarSet, AllArgModes, Detism, LambdaGoal,
+            LambdaRttiVarMaps, address_is_taken, VarNameRemap, ProcInfo0),
 
         % The debugger ignores unnamed variables.
         ensure_all_headvars_are_named(ProcInfo0, ProcInfo1),
@@ -568,9 +584,10 @@ lambda_process_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
 
     Unification = construct(Var, ConsId, ArgVars, UniModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
+    HaveExpandedLambdas = yes,
     LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet,
         InstVarSet, RttiVarMaps, Markers, HasParallelConj, POF, OrigPredName,
-        ModuleInfo, MustRecomputeNonLocals).
+        ModuleInfo, MustRecomputeNonLocals, HaveExpandedLambdas).
 
 :- pred constraint_contains_vars(list(tvar)::in, prog_constraint::in)
     is semidet.
@@ -596,6 +613,223 @@ uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-
     UniMode = ((_Initial0 - Initial1) -> (_Final0 - _Final1)),
     Mode = (Initial1 -> Initial1),
     uni_modes_to_modes(UniModes, Modes).
+
+%---------------------------------------------------------------------------%
+
+    % The proc_info has several maps that refer to variables. After lambda
+    % expansion, both the newly created procedures and the original procedure
+    % that they were carved out of have duplicate copies of these maps.
+    % This duplication is a problem because later passes (in particular,
+    % the equiv_types_hlds pass) iterate over the entries in these maps,
+    % and if an entry is duplicated N times, they have to process it N times.
+    % The task of this predicate is to eliminate unnecessary entries
+    % from the vartypes map, and this requires also eliminating them from
+    % the rtti_varmaps.
+    %
+    % We could in theory restrict the varsets in the proc_info as well
+    % both the main prog_varset and the other varsets, e.g. the tvarset),
+    % but since we don't iterate over those sets, there is (as yet) no need
+    % for this.
+    %
+:- pred restrict_var_maps(list(prog_var)::in, hlds_goal::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
+
+restrict_var_maps(HeadVars, Goal, !VarSet, !VarTypes, !RttiVarMaps) :-
+    MaxVar = varset.max_var(!.VarSet),
+    MaxVarNum = var_to_int(MaxVar),
+    % Variable numbers go from 1 to MaxVarNum. Reserve array slots
+    % from 0 to MaxVarNum, since wasting the space of one array element
+    % is preferable to having to always to do a subtraction on every array
+    % lookup.
+    array.init(MaxVarNum + 1, no, VarUses0),
+    mark_vars_as_used(HeadVars, VarUses0, VarUses1),
+    find_used_vars_in_goal(Goal, VarUses1, VarUses),
+
+    map.to_assoc_list(!.VarTypes, VarTypesList0),
+    filter_vartypes(VarTypesList0, [], RevVarTypesList, VarUses),
+    list.reverse(RevVarTypesList, VarTypesList),
+    map.from_sorted_assoc_list(VarTypesList, !:VarTypes),
+
+    restrict_rtti_varmaps(VarUses, !RttiVarMaps).
+
+:- pred filter_vartypes(assoc_list(prog_var, mer_type)::in,
+    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
+    array(bool)::in) is det.
+
+filter_vartypes([], !RevVarTypes, _VarUses).
+filter_vartypes([VarType | VarTypes], !RevVarTypes, VarUses) :-
+    VarType = Var - _Type,
+    VarNum = var_to_int(Var),
+    array.unsafe_lookup(VarUses, VarNum, Used),
+    (
+        Used = yes,
+        !:RevVarTypes = [VarType | !.RevVarTypes]
+    ;
+        Used = no
+    ),
+    filter_vartypes(VarTypes, !RevVarTypes, VarUses).
+
+:- pred find_used_vars_in_goal(hlds_goal::in,
+    array(bool)::array_di, array(bool)::array_uo) is det.
+
+find_used_vars_in_goal(Goal, !VarUses) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    (
+        GoalExpr = unify(LHSVar, RHS, _, Unif, _),
+        mark_var_as_used(LHSVar, !VarUses),
+        (
+            Unif = construct(_, _, _, _, CellToReuse, _, _),
+            ( CellToReuse = reuse_cell(cell_to_reuse(ReuseVar, _, _)) ->
+                mark_var_as_used(ReuseVar, !VarUses)
+            ;
+                true
+            )
+        ;
+            Unif = deconstruct(_, _, _, _, _, _)
+        ;
+            Unif = assign(_, _)
+        ;
+            Unif = simple_test(_, _)
+        ;
+            Unif = complicated_unify(_, _, _)
+        ),
+        (
+            RHS = rhs_var(RHSVar),
+            mark_var_as_used(RHSVar, !VarUses)
+        ;
+            RHS = rhs_functor(_, _, ArgVars),
+            mark_vars_as_used(ArgVars, !VarUses)
+        ;
+            RHS = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars,
+                _, _, LambdaGoal),
+            mark_vars_as_used(NonLocals, !VarUses),
+            mark_vars_as_used(LambdaVars, !VarUses),
+            find_used_vars_in_goal(LambdaGoal, !VarUses)
+        )
+    ;
+        GoalExpr = generic_call(GenericCall, ArgVars, _, _),
+        (
+            GenericCall = higher_order(Var, _, _, _),
+            mark_var_as_used(Var, !VarUses)
+        ;
+            GenericCall = class_method(Var, _, _, _),
+            mark_var_as_used(Var, !VarUses)
+        ;
+            GenericCall = event_call(_)
+        ;
+            GenericCall = cast(_)
+        ),
+        mark_vars_as_used(ArgVars, !VarUses)
+    ;
+        GoalExpr = plain_call(_, _, ArgVars, _, _, _),
+        mark_vars_as_used(ArgVars, !VarUses)
+    ;
+        ( GoalExpr = conj(_, Goals)
+        ; GoalExpr = disj(Goals)
+        ),
+        find_used_vars_in_goals(Goals, !VarUses)
+    ;
+        GoalExpr = switch(Var, _Det, Cases),
+        mark_var_as_used(Var, !VarUses),
+        find_used_vars_in_cases(Cases, !VarUses)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        (
+            Reason = exist_quant(Vars),
+            mark_vars_as_used(Vars, !VarUses)
+        ;
+            Reason = promise_purity(_)
+        ;
+            Reason = promise_solutions(Vars, _),
+            mark_vars_as_used(Vars, !VarUses)
+        ;
+            Reason = barrier(_)
+        ;
+            Reason = commit(_)
+        ;
+            Reason = from_ground_term(Var, _),
+            mark_var_as_used(Var, !VarUses)
+        ;
+            Reason = trace_goal(_, _, _, _, _)
+        ),
+        find_used_vars_in_goal(SubGoal, !VarUses)
+    ;
+        GoalExpr = negation(SubGoal),
+        find_used_vars_in_goal(SubGoal, !VarUses)
+    ;
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        mark_vars_as_used(Vars, !VarUses),
+        find_used_vars_in_goal(Cond, !VarUses),
+        find_used_vars_in_goal(Then, !VarUses),
+        find_used_vars_in_goal(Else, !VarUses)
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
+        ArgVars = list.map(foreign_arg_var, Args),
+        ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+        mark_vars_as_used(ArgVars, !VarUses),
+        mark_vars_as_used(ExtraVars, !VarUses)
+    ;
+        GoalExpr = shorthand(Shorthand),
+        (
+            Shorthand = atomic_goal(_, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals, _),
+            Outer = atomic_interface_vars(OuterDI, OuterUO),
+            mark_var_as_used(OuterDI, !VarUses),
+            mark_var_as_used(OuterUO, !VarUses),
+            Inner = atomic_interface_vars(InnerDI, InnerUO),
+            mark_var_as_used(InnerDI, !VarUses),
+            mark_var_as_used(InnerUO, !VarUses),
+            (
+                MaybeOutputVars = no
+            ;
+                MaybeOutputVars = yes(OutputVars),
+                mark_vars_as_used(OutputVars, !VarUses)
+            ),
+            find_used_vars_in_goal(MainGoal, !VarUses),
+            find_used_vars_in_goals(OrElseGoals, !VarUses)
+        ;
+            Shorthand = try_goal(_, _, SubGoal),
+            % The IO and Result variables would be in SubGoal.
+            find_used_vars_in_goal(SubGoal, !VarUses)
+        ;
+            Shorthand = bi_implication(LeftGoal, RightGoal),
+            find_used_vars_in_goal(LeftGoal, !VarUses),
+            find_used_vars_in_goal(RightGoal, !VarUses)
+        )
+    ).
+
+:- pred find_used_vars_in_goals(list(hlds_goal)::in,
+    array(bool)::array_di, array(bool)::array_uo) is det.
+
+find_used_vars_in_goals([], !VarUses).
+find_used_vars_in_goals([Goal | Goals], !VarUses) :-
+    find_used_vars_in_goal(Goal, !VarUses),
+    find_used_vars_in_goals(Goals, !VarUses).
+
+:- pred find_used_vars_in_cases(list(case)::in,
+    array(bool)::array_di, array(bool)::array_uo) is det.
+
+find_used_vars_in_cases([], !VarUses).
+find_used_vars_in_cases([Case | Cases], !VarUses) :-
+    Case = case(_, _, Goal),
+    find_used_vars_in_goal(Goal, !VarUses),
+    find_used_vars_in_cases(Cases, !VarUses).
+
+:- pred mark_var_as_used(prog_var::in,
+    array(bool)::array_di, array(bool)::array_uo) is det.
+:- pragma inline(mark_var_as_used/3).
+
+mark_var_as_used(Var, !VarUses) :-
+    array.set(!.VarUses, var_to_int(Var), yes, !:VarUses).
+
+:- pred mark_vars_as_used(list(prog_var)::in,
+    array(bool)::array_di, array(bool)::array_uo) is det.
+
+mark_vars_as_used([], !VarUses).
+mark_vars_as_used([Var | Vars], !VarUses) :-
+    mark_var_as_used(Var, !VarUses),
+    mark_vars_as_used(Vars, !VarUses).
 
 %---------------------------------------------------------------------------%
 

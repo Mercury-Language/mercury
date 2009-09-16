@@ -620,17 +620,19 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
         LHS = ml_var(ThisVar, _ThisType),
         ThisVar = qual(Qualifier, QualKind, VarName),
         ThisData = qual(Qualifier, QualKind, mlds_data_var(VarName)),
+
+        % We must check that the value being assigned doesn't refer to the
+        % variable itself.
+        \+ rval_contains_var(RHS, ThisData),
+
+        % We must check that the value being assign doesn't refer to any
+        % of the variables which are declared after this one. We must also
+        % check that the initializers (if any) of the variables that follow
+        % this one don't refer to this variable.
         Qualifier = OptInfo ^ oi_module_name,
         list.takewhile(isnt(var_defn(VarName)), !.Defns,
             _PrecedingDefns, [_VarDefn | FollowingDefns]),
-
-        % We must check that the value being assigned doesn't refer to the
-        % variable itself, or to any of the variables which are declared
-        % after this one. We must also check that the initializers (if any)
-        % of the variables that follow this one don't refer to this variable.
-        \+ rval_contains_var(RHS, ThisData),
-        \+ (
-            list.member(OtherDefn, FollowingDefns),
+        Filter = (pred(OtherDefn::in) is semidet :-
             OtherDefn = mlds_defn(entity_data(OtherVarName),
                 _, _, mlds_data(_Type, OtherInitializer, _GC)),
             (
@@ -638,7 +640,8 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
             ;
                 initializer_contains_var(OtherInitializer, ThisData)
             )
-        )
+        ),
+        \+ list.find_first_match(Filter, FollowingDefns, _)
     ->
         % Replace the assignment statement with an initializer
         % on the variable declaration.
