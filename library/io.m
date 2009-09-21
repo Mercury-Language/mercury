@@ -5713,10 +5713,6 @@ namespace mercury {
 }
 ").
 
-:- pragma foreign_decl("Java", local, "
-    import java.util.concurrent.atomic.AtomicInteger;
-").
-
 :- pragma foreign_code("Java",
 "
     /* All text files (including stdin/stdout/stderr) are run through
@@ -5739,12 +5735,15 @@ namespace mercury {
     */
 
     public abstract static class MR_MercuryFileStruct {
-        public  static final AtomicInteger  ML_next_stream_id
-                                                = new AtomicInteger();
+        public  static int                  ML_next_stream_id = 0;
         public  int                         id;
 
         protected MR_MercuryFileStruct() {
-            id = ML_next_stream_id.getAndAdd(1);
+            assign_id();
+        }
+
+        private synchronized void assign_id() {
+            id = ML_next_stream_id++;
         }
 
         abstract public void close() throws java.io.IOException;
@@ -6398,13 +6397,28 @@ static MR_TextOutputFile mercury_stdout =
 static MR_TextOutputFile mercury_stderr =
     new MR_TextOutputFile(java.lang.System.err);
 
-static MR_BinaryInputFile mercury_stdin_binary =
-    new MR_BinaryInputFile(
-        new java.io.FileInputStream(java.io.FileDescriptor.in));
+/**
+ * We initialize mercury_stdin_binary and mercury_stdout_binary
+ * only when they are needed,  because the initialization code
+ * does not work on Google's App Engine.
+ */
+static MR_BinaryInputFile mercury_stdin_binary = null;
 
-static MR_BinaryOutputFile mercury_stdout_binary =
-    new MR_BinaryOutputFile(
-        new java.io.FileOutputStream(java.io.FileDescriptor.out));
+static MR_BinaryOutputFile mercury_stdout_binary = null;
+
+static void ensure_init_mercury_stdin_binary() {
+    if (mercury_stdin_binary == null) {
+        mercury_stdin_binary = new MR_BinaryInputFile(
+            new java.io.FileInputStream(java.io.FileDescriptor.in));
+    }
+}
+
+static void ensure_init_mercury_stdout_binary() {
+    if (mercury_stdout_binary == null) {
+        mercury_stdout_binary = new MR_BinaryOutputFile(
+            new java.io.FileOutputStream(java.io.FileDescriptor.out));
+    }
+}
 
 // Note: these are also set in io.init_state.
 
@@ -6425,6 +6439,7 @@ static ThreadLocal<MR_TextOutputFile> mercury_current_text_output =
 static ThreadLocal<MR_BinaryInputFile> mercury_current_binary_input =
     new InheritableThreadLocal<MR_BinaryInputFile>() {
         protected MR_BinaryInputFile initialValue() {
+            ensure_init_mercury_stdin_binary();
             return mercury_stdin_binary;
         }
     };
@@ -6432,6 +6447,7 @@ static ThreadLocal<MR_BinaryInputFile> mercury_current_binary_input =
 static ThreadLocal<MR_BinaryOutputFile> mercury_current_binary_output =
     new InheritableThreadLocal<MR_BinaryOutputFile>() {
         protected MR_BinaryOutputFile initialValue() {
+            ensure_init_mercury_stdout_binary();
             return mercury_stdout_binary;
         }
     };
@@ -8876,6 +8892,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
+    ensure_init_mercury_stdin_binary();
     Stream = io.mercury_stdin_binary;
 ").
 
@@ -8883,6 +8900,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
+    ensure_init_mercury_stdout_binary();
     Stream = io.mercury_stdout_binary;
 ").
 
