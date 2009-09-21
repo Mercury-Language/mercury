@@ -1087,7 +1087,7 @@ construct_user_data_array(VarNumMap, [MaybeAttr | MaybeAttrs],
         MaybeVarNum = yes(VarNum)
     ;
         MaybeAttr = no,
-        LocnRvalAndType = const(llconst_int(0)) - unsigned,
+        LocnRvalAndType = const(llconst_int(0)) - lt_unsigned,
         MaybeVarNum = no
     ),
     construct_user_data_array(VarNumMap, MaybeAttrs, LocnRvalAndTypes,
@@ -1131,7 +1131,7 @@ construct_tvar_rvals(TVarLocnMap, Vector) :-
     construct_type_param_locn_vector(TVarLocns, 1, TypeParamLocs),
     list.length(TypeParamLocs, TypeParamsLength),
     LengthRval = const(llconst_int(TypeParamsLength)),
-    Vector = [LengthRval - unsigned | TypeParamLocs].
+    Vector = [LengthRval - lt_unsigned | TypeParamLocs].
 
 %---------------------------------------------------------------------------%
 
@@ -1229,12 +1229,12 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         ),
         represent_locn_as_int_rval(Locn, Rval),
         construct_type_param_locn_vector(TVarLocns, NextSlot, VectorTail),
-        Vector = [Rval - unsigned | VectorTail]
+        Vector = [Rval - lt_unsigned | VectorTail]
     ; TVarNum > CurSlot ->
         construct_type_param_locn_vector([TVar - Locns | TVarLocns], NextSlot,
             VectorTail),
         % This slot will never be referred to.
-        Vector = [const(llconst_int(0)) - unsigned | VectorTail]
+        Vector = [const(llconst_int(0)) - lt_unsigned | VectorTail]
     ;
         unexpected(this_file,
             "unsorted tvars in construct_type_param_locn_vector")
@@ -1290,9 +1290,9 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
 
     list.map(SelectTypes, AllArrayInfo, AllTypeRvalsTypes),
     list.map(SelectLocns, IntArrayInfo, IntLocns),
-    list.map(associate_type(unsigned), IntLocns, IntLocnsTypes),
+    list.map(associate_type(lt_unsigned), IntLocns, IntLocnsTypes),
     list.map(SelectLocns, ByteArrayInfo, ByteLocns),
-    list.map(associate_type(uint_least8), ByteLocns, ByteLocnsTypes),
+    list.map(associate_type(lt_uint_least8), ByteLocns, ByteLocnsTypes),
     list.append(IntLocnsTypes, ByteLocnsTypes, AllLocnsTypes),
     list.append(AllTypeRvalsTypes, AllLocnsTypes, TypeLocnVectorRvalsTypes),
     get_layout_static_cell_info(!.Info, StaticCellInfo0),
@@ -1306,7 +1306,8 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
         TraceStackLayout = yes,
         list.foldl(AddRevNums, AllArrayInfo, [], RevVarNumRvals),
         list.reverse(RevVarNumRvals, VarNumRvals),
-        list.map(associate_type(uint_least16), VarNumRvals, VarNumRvalsTypes),
+        list.map(associate_type(lt_uint_least16), VarNumRvals,
+            VarNumRvalsTypes),
         get_layout_static_cell_info(!.Info, StaticCellInfo2),
         add_scalar_static_cell(VarNumRvalsTypes, NumVectorAddr,
             StaticCellInfo2, StaticCellInfo),
@@ -1400,12 +1401,12 @@ construct_closure_layout(CallerProcLabel, SeqNo,
         closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)),
     Data = closure_proc_id_data(CallerProcLabel, SeqNo, ClosureProcLabel,
         ModuleName, FileName, LineNumber, Origin, GoalPath),
-    ProcIdRvalType = const(llconst_data_addr(DataAddr, no)) - data_ptr,
+    ProcIdRvalType = const(llconst_data_addr(DataAddr, no)) - lt_data_ptr,
     ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
     construct_closure_arg_rvals(ClosureArgs,
         ClosureArgRvalsTypes, !StaticCellInfo),
     construct_tvar_vector(TVarLocnMap, TVarVectorRval, !StaticCellInfo),
-    RvalsTypes = [ProcIdRvalType, TVarVectorRval - data_ptr |
+    RvalsTypes = [ProcIdRvalType, TVarVectorRval - lt_data_ptr |
         ClosureArgRvalsTypes].
 
 :- pred construct_closure_arg_rvals(list(closure_arg_info)::in,
@@ -1418,7 +1419,7 @@ construct_closure_arg_rvals(ClosureArgs, ClosureArgRvalsTypes,
         !StaticCellInfo),
     list.length(ArgRvalsTypes, Length),
     ClosureArgRvalsTypes =
-        [const(llconst_int(Length)) - integer | ArgRvalsTypes].
+        [const(llconst_int(Length)) - lt_integer | ArgRvalsTypes].
 
 :- pred construct_closure_arg_rval(closure_arg_info::in,
     pair(rval, llds_type)::out,
@@ -1508,23 +1509,23 @@ construct_table_arg_pti_rval(ClosureArg, ArgRval - ArgRvalType,
 :- pred represent_live_value_type(live_value_type::in, rval::out,
     llds_type::out, stack_layout_info::in, stack_layout_info::out) is det.
 
-represent_live_value_type(live_value_succip, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_succip, Rval, lt_data_ptr, !Info) :-
     represent_special_live_value_type("succip", Rval).
-represent_live_value_type(live_value_hp, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_hp, Rval, lt_data_ptr, !Info) :-
     represent_special_live_value_type("hp", Rval).
-represent_live_value_type(live_value_curfr, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_curfr, Rval, lt_data_ptr, !Info) :-
     represent_special_live_value_type("curfr", Rval).
-represent_live_value_type(live_value_maxfr, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_maxfr, Rval, lt_data_ptr, !Info) :-
     represent_special_live_value_type("maxfr", Rval).
-represent_live_value_type(live_value_redofr, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_redofr, Rval, lt_data_ptr, !Info) :-
     represent_special_live_value_type("redofr", Rval).
-represent_live_value_type(live_value_redoip, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_redoip, Rval, lt_data_ptr, !Info) :-
     represent_special_live_value_type("redoip", Rval).
-represent_live_value_type(live_value_trail_ptr, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_trail_ptr, Rval, lt_data_ptr, !Info) :-
     represent_special_live_value_type("trail_ptr", Rval).
-represent_live_value_type(live_value_ticket, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_ticket, Rval, lt_data_ptr, !Info) :-
     represent_special_live_value_type("ticket", Rval).
-represent_live_value_type(RegionType, Rval, data_ptr, !Info) :-
+represent_live_value_type(RegionType, Rval, lt_data_ptr, !Info) :-
     ( RegionType = live_value_region_ite
     ; RegionType = live_value_region_disj
     ; RegionType = live_value_region_commit
@@ -1532,7 +1533,7 @@ represent_live_value_type(RegionType, Rval, data_ptr, !Info) :-
     % Neither the garbage collector nor the debugger need info about
     % regions.
     represent_special_live_value_type("unwanted", Rval).
-represent_live_value_type(live_value_unwanted, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_unwanted, Rval, lt_data_ptr, !Info) :-
     represent_special_live_value_type("unwanted", Rval).
 represent_live_value_type(live_value_var(_, _, Type, _), Rval, LldsType,
         !Info) :-
@@ -1564,7 +1565,7 @@ represent_locn_or_const_as_int_rval(LvalOrConst, Rval, Type, !Info) :-
     (
         LvalOrConst = lval(Lval),
         represent_locn_as_int_rval(locn_direct(Lval), Rval),
-        Type = unsigned
+        Type = lt_unsigned
     ;
         LvalOrConst = const(_Const),
         get_unboxed_floats(!.Info, UnboxedFloats),
@@ -1575,7 +1576,7 @@ represent_locn_or_const_as_int_rval(LvalOrConst, Rval, Type, !Info) :-
             StaticCellInfo0, StaticCellInfo),
         set_layout_static_cell_info(StaticCellInfo, !Info),
         Rval = const(llconst_data_addr(DataAddr, no)),
-        Type = data_ptr
+        Type = lt_data_ptr
     ;
         LvalOrConst = mkword(Tag, LvalOrConstBase),
         represent_locn_or_const_as_int_rval(LvalOrConstBase, BaseRval, Type,

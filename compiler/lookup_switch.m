@@ -42,12 +42,11 @@
 :- module ll_backend.lookup_switch.
 :- interface.
 
-:- import_module hlds.code_model.
+:- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
-:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -57,16 +56,16 @@
 
     % Decide whether we can generate code for this switch using a lookup table.
     %
-:- pred is_lookup_switch(mer_type::in, list(tagged_case)::in,
-    int::in, int::in, int::in, hlds_goal_info::in, can_fail::in, int::in,
-    abs_store_map::in, branch_end::in, branch_end::out, code_model::in,
+:- pred is_lookup_switch(list(tagged_case)::in, hlds_goal_info::in,
+    abs_store_map::in, branch_end::in, branch_end::out,
     lookup_switch_info::out, code_info::in, code_info::out) is semidet.
 
     % Generate code for the switch that the lookup_switch_info came from.
     %
 :- pred generate_lookup_switch(rval::in, abs_store_map::in, branch_end::in,
-    lookup_switch_info::in, llds_code::out, code_info::in, code_info::out)
-    is det.
+    lookup_switch_info::in, int::in, int::in,
+    need_bit_vec_check::in, need_range_check::in, llds_code::out,
+    code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -74,8 +73,8 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.switch_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.code_model.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
@@ -100,52 +99,19 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type case_consts
-    --->    all_one_soln(
-                assoc_list(int, list(rval))
-            )
-    ;       some_several_solns(
-                assoc_list(int, soln_consts),
-                set(prog_var),          % The resume vars.
-                bool                    % The Boolean "or" of the result
-                                        % of invoking goal_may_modify_trail
-                                        % on the goal_infos of the switch arms
-                                        % that are disjunctions.
-            ).
-
-:- type soln_consts
-    --->    one_soln(list(rval))
-    ;       several_solns(list(list(rval))).
-
-:- type need_range_check
-    --->    need_range_check
-    ;       dont_need_range_check.
-
-:- type need_bit_vec_check
-    --->    need_bit_vec_check
-    ;       dont_need_bit_vec_check.
-
 :- type lookup_switch_info
     --->    lookup_switch_info(
-                lsi_first               :: int,
-                lsi_last                :: int,
-                                        % The first and last values of the
-                                        % switched-on rval covered by the
-                                        % switch.
-                lsi_cases               :: case_consts,
-                                        % The map from the switched-on value
-                                        % to the values of the variables
-                                        % in each solution.
+                % The map from the switched-on value to the values of the
+                % variables in each solution.
+                lsi_cases               :: case_consts(rval),
+
+                % The output variables.
                 lsi_variables           :: list(prog_var),
-                                        % The output variables.
+
+                % The types of the fields in the C structure we generate
+                % for each case.
                 lsi_field_types         :: list(llds_type),
-                                        % The types of the fields in the C
-                                        % structure we generate for each case.
-                lsi_need_range_check    :: need_range_check,
-                lsi_need_bit_vec_check  :: need_bit_vec_check,
-                                        % Do we need a range check and/or a
-                                        % bit vector check on the switched-on
-                                        % variable?
+
                 lsi_liveness            :: set(prog_var)
             ).
 
@@ -153,88 +119,12 @@
 
     % Most of this predicate is taken from dense_switch.m.
     %
-is_lookup_switch(Type, TaggedCases0, LowerLimit, UpperLimit, NumValues,
-        GoalInfo, SwitchCanFail0, ReqDensity, StoreMap, !MaybeEnd, CodeModel,
-        LookupSwitchInfo, !CI) :-
+is_lookup_switch(TaggedCases, GoalInfo, StoreMap, !MaybeEnd, LookupSwitchInfo,
+        !CI) :-
     % We need the code_info structure to generate code for the cases to
     % get the constants (if they exist). We can't throw it away at the
     % end because we may have allocated some new static ground terms.
 
-    % Since lookup switches rely on static ground terms to work efficiently,
-    % there is no point in using a lookup switch if static ground terms are
-    % not enabled. Well, actually, it is possible that they might be a win in
-    % some circumstances, but it would take a pretty complex heuristic to get
-    % it right, so, lets just use a simple one - no static ground terms,
-    % no lookup switch.
-    get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, static_ground_cells, yes),
-
-    CodeModel = goal_info_get_code_model(GoalInfo),
-    (
-        ( CodeModel = model_non
-        ; CodeModel = model_semi
-        ),
-        % We build up the list in reverse because that is linear and uses
-        % constant stack space, whereas building it up in the right order
-        % would either use linear stack space or require a quadratic algorithm.
-        % This doesn't matter if TaggedCases0 is short, but does matter if it
-        % contains thousands of elements.
-        filter_out_failing_cases(TaggedCases0, [], RevTaggedCases,
-            SwitchCanFail0, SwitchCanFail),
-        list.reverse(RevTaggedCases, TaggedCases)
-    ;
-        CodeModel = model_det,
-        TaggedCases = TaggedCases0,
-        SwitchCanFail = SwitchCanFail0
-    ),
-
-    % We want to generate a lookup switch for any switch that is dense enough
-    % - we don't care how many cases it has. A memory lookup tends to be
-    % cheaper than a branch.
-
-    Span = UpperLimit - LowerLimit,
-    Range = Span + 1,
-    Density = switch_density(NumValues, Range),
-    Density > ReqDensity,
-
-    % If there are going to be no gaps in the lookup table then we won't need
-    % a bitvector test to see if this switch has a value for this case.
-    ( NumValues = Range ->
-        NeedBitVecCheck0 = dont_need_bit_vec_check
-    ;
-        NeedBitVecCheck0 = need_bit_vec_check
-    ),
-    (
-        SwitchCanFail = can_fail,
-        % For can_fail switches, we normally need to check that the variable
-        % is in range before we index into the jump table. However, if the
-        % range of the type is sufficiently small, we can make the jump table
-        % large enough to hold all of the values for the type, but then we
-        % will need to do the bitvector test.
-        get_module_info(!.CI, ModuleInfo),
-        classify_type(ModuleInfo, Type) = TypeCategory,
-        (
-            type_range(ModuleInfo, TypeCategory, Type, _, _, TypeRange),
-            DetDensity = switch_density(NumValues, TypeRange),
-            DetDensity > ReqDensity
-        ->
-            NeedRangeCheck = dont_need_range_check,
-            NeedBitVecCheck = need_bit_vec_check,
-            FirstVal = 0,
-            LastVal = TypeRange - 1
-        ;
-            NeedRangeCheck = need_range_check,
-            NeedBitVecCheck = NeedBitVecCheck0,
-            FirstVal = LowerLimit,
-            LastVal = UpperLimit
-        )
-    ;
-        SwitchCanFail = cannot_fail,
-        NeedRangeCheck = dont_need_range_check,
-        NeedBitVecCheck = NeedBitVecCheck0,
-        FirstVal = LowerLimit,
-        LastVal = UpperLimit
-    ),
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
     remember_position(!.CI, CurPos),
     generate_constants_for_lookup_switch(TaggedCases, OutVars, StoreMap,
@@ -264,61 +154,19 @@ is_lookup_switch(Type, TaggedCases0, LowerLimit, UpperLimit, NumValues,
     get_exprn_opts(!.CI, ExprnOpts),
     UnboxFloats = get_unboxed_floats(ExprnOpts),
     find_general_llds_types(UnboxFloats, OutTypes, CaseValues, LLDSTypes),
-    LookupSwitchInfo = lookup_switch_info(FirstVal, LastVal, CaseConsts,
-        OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, Liveness).
-
-:- pred project_all_to_one_solution(assoc_list(int, soln_consts)::in,
-    assoc_list(int, list(rval))::in, assoc_list(int, list(rval))::out)
-    is semidet.
-
-project_all_to_one_solution([], !RevCaseValuePairs).
-project_all_to_one_solution([Case - Solns | CaseSolns], !RevCaseValuePairs) :-
-    Solns = one_soln(Values),
-    !:RevCaseValuePairs = [Case - Values | !.RevCaseValuePairs],
-    project_all_to_one_solution(CaseSolns, !RevCaseValuePairs).
-
-:- pred project_solns_to_rval_lists(assoc_list(int, soln_consts)::in,
-    list(list(rval))::in, list(list(rval))::out) is det.
-
-project_solns_to_rval_lists([], !RvalsList).
-project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
-    Case = _Index - Soln,
-    (
-        Soln = one_soln(Rvals),
-        !:RvalsList = [Rvals | !.RvalsList]
-    ;
-        Soln = several_solns(SolnRvalsList),
-        !:RvalsList = SolnRvalsList ++ !.RvalsList
-    ),
-    project_solns_to_rval_lists(Cases, !RvalsList).
-
-%---------------------------------------------------------------------------%
-
-:- pred filter_out_failing_cases(list(tagged_case)::in,
-    list(tagged_case)::in, list(tagged_case)::out,
-    can_fail::in, can_fail::out) is det.
-
-filter_out_failing_cases([], !RevTaggedCases, !SwitchCanFail).
-filter_out_failing_cases([Case | Cases], !RevTaggedCases, !SwitchCanFail) :-
-    Case = tagged_case(_, _, _, Goal),
-    Goal = hlds_goal(GoalExpr, _),
-    ( GoalExpr = disj([]) ->
-        !:SwitchCanFail = can_fail
-    ;
-        !:RevTaggedCases = [Case | !.RevTaggedCases]
-    ),
-    filter_out_failing_cases(Cases, !RevTaggedCases, !SwitchCanFail).
+    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, LLDSTypes,
+        Liveness).
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_constants_for_lookup_switch(list(tagged_case)::in,
     list(prog_var)::in, abs_store_map::in, maybe(set(prog_var))::out,
-    map(int, soln_consts)::in, map(int, soln_consts)::out,
+    map(int, soln_consts(rval))::in, map(int, soln_consts(rval))::out,
     branch_end::in, branch_end::out, set(prog_var)::in, set(prog_var)::out,
     bool::in, bool::out, code_info::in, code_info::out) is semidet.
 
 generate_constants_for_lookup_switch([], _Vars, _StoreMap, no, !IndexMap,
-        !MaybeEnd, !ResumeVars, !GoalTrailOps, !CI).
+        !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
 generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
         StoreMap, MaybeLiveness, !IndexMap, !MaybeEnd, !ResumeVars,
         !GoalsMayModifyTrail, !CI) :-
@@ -335,7 +183,7 @@ generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
         (
             Disjuncts = [],
             % Cases like this should have been filtered out by
-            % filter_out_failing_cases above.
+            % filter_out_failing_cases.
             unexpected(this_file, "generate_constants: disj([])")
         ;
             Disjuncts = [FirstDisjunct | _],
@@ -378,8 +226,9 @@ generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
         StoreMap, _MaybeLivenessRest, !IndexMap, !MaybeEnd, !ResumeVars,
         !GoalsMayModifyTrail, !CI).
 
-:- pred record_lookup_for_tagged_cons_id(soln_consts::in, tagged_cons_id::in,
-    map(int, soln_consts)::in, map(int, soln_consts)::out) is det.
+:- pred record_lookup_for_tagged_cons_id(soln_consts(rval)::in,
+    tagged_cons_id::in,
+    map(int, soln_consts(rval))::in, map(int, soln_consts(rval))::out) is det.
 
 record_lookup_for_tagged_cons_id(SolnConsts, TaggedConsId, !IndexMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
@@ -391,10 +240,10 @@ record_lookup_for_tagged_cons_id(SolnConsts, TaggedConsId, !IndexMap) :-
 
 %---------------------------------------------------------------------------%
 
-generate_lookup_switch(VarRval, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
-        !CI) :-
-    LookupSwitchInfo = lookup_switch_info(StartVal, EndVal, CaseConsts,
-        OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, Liveness),
+generate_lookup_switch(VarRval, StoreMap, MaybeEnd0, LookupSwitchInfo,
+        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, Code, !CI) :-
+    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, LLDSTypes,
+        Liveness),
 
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
@@ -497,7 +346,7 @@ generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0, StartVal, EndVal,
 
     % Add an expression to the expression cache in the code_info structure
     % for each of the output variables of the lookup switch. This is done by
-    % creating a `create' term for the array, and caching an expression
+    % creating a static term for the array, and generating an expression
     % for the variable to get the IndexRval'th field of that term.
     %
 :- pred generate_simple_terms(rval::in, list(prog_var)::in,
@@ -544,7 +393,7 @@ construct_simple_vector(CurIndex, LLDSTypes, [Index - Rvals | Rest],
 %-----------------------------------------------------------------------------%
 
 :- pred generate_several_soln_lookup_switch(rval::in, abs_store_map::in,
-    branch_end::in, int::in, int::in, assoc_list(int, soln_consts)::in,
+    branch_end::in, int::in, int::in, assoc_list(int, soln_consts(rval))::in,
     set(prog_var)::in, add_trail_ops::in, list(prog_var)::in,
     list(llds_type)::in, need_bit_vec_check::in, set(prog_var)::in,
     llds_code::out, code_info::in, code_info::out) is det.
@@ -587,7 +436,7 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     ),
 
     list.reverse(RevLaterSolnArray, LaterSolnArray),
-    MainRowTypes = [integer, integer | LLDSTypes],
+    MainRowTypes = [lt_integer, lt_integer | LLDSTypes],
     list.length(MainRowTypes, MainRowWidth),
     add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
     MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
@@ -827,7 +676,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
     % in order to make this predicate tail recursive.
     %
 :- pred construct_several_soln_vector(int::in, int::in, int::in,
-    list(llds_type)::in, int::in, assoc_list(int, soln_consts)::in,
+    list(llds_type)::in, int::in, assoc_list(int, soln_consts(rval))::in,
     list(list(rval))::out,
     list(list(rval))::in, list(list(rval))::out,
     int::in, int::out, int::in, int::out, int::in, int::out) is det.
@@ -908,7 +757,8 @@ construct_fail_row(LLDSTypes, MainRow, !FailCaseCount) :-
     int::in, int::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode, !CI) :-
-    get_word_bits(!.CI, WordBits, Log2WordBits),
+    get_globals(!.CI, Globals),
+    get_word_bits(Globals, WordBits, Log2WordBits),
     generate_bit_vec(CaseVals, Start, WordBits, BitVecArgs, BitVecRval, !CI),
 
     % Optimize the single-word case: if all the cases fit into a single word,
@@ -937,39 +787,16 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode, !CI) :-
         binop(unchecked_left_shift, const(llconst_int(1)), BitNum), Word),
     fail_if_rval_is_false(HasBit, CheckCode, !CI).
 
-    % Prevent cross-compilation errors by making sure that the bitvector
-    % uses a number of bits that will fit both on this machine (so that
-    % we can correctly generate it), and on the target machine (so that
-    % it can be executed correctly). Also make sure that the number of bits
-    % that we use is a power of 2, so that we implement division as
-    % right-shift (see above).
-    %
-:- pred get_word_bits(code_info::in, int::out, int::out) is det.
-
-get_word_bits(CI, WordBits, Log2WordBits) :-
-    int.bits_per_int(HostWordBits),
-    get_globals(CI, Globals),
-    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
-    int.min(HostWordBits, TargetWordBits, WordBits0),
-    % round down to the nearest power of 2
-    Log2WordBits = log2_rounded_down(WordBits0),
-    int.pow(2, Log2WordBits, WordBits).
-
-:- func log2_rounded_down(int) = int.
-
-log2_rounded_down(X) = Log :-
-    int.log2(X + 1, Log + 1).  % int.log2 rounds up
-
     % We generate the bitvector by iterating through the cases marking the bit
-    % for each case. (We represent the bitvector here as a map from the word
+    % for each case. We represent the bitvector here as a map from the word
     % number in the vector to the bits for that word.
     %
 :- pred generate_bit_vec(assoc_list(int, T)::in, int::in, int::in,
     list(rval)::out, rval::out, code_info::in, code_info::out) is det.
 
 generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CI) :-
-    map.init(Empty),
-    generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap),
+    map.init(BitMap0),
+    generate_bit_vec_2(CaseVals, Start, WordBits, BitMap0, BitMap),
     map.to_assoc_list(BitMap, WordVals),
     generate_bit_vec_args(WordVals, 0, Args),
     add_scalar_static_cell_natural_types(Args, DataAddr, !CI),
@@ -978,18 +805,18 @@ generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CI) :-
 :- pred generate_bit_vec_2(assoc_list(int, T)::in, int::in, int::in,
     map(int, int)::in, map(int, int)::out) is det.
 
-generate_bit_vec_2([], _, _, Bits, Bits).
-generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, Bits0, Bits) :-
+generate_bit_vec_2([], _, _, !BitMap).
+generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
     Val = Tag - Start,
     Word = Val // WordBits,
     Offset = Val mod WordBits,
-    ( map.search(Bits0, Word, X0) ->
+    ( map.search(!.BitMap, Word, X0) ->
         X1 = X0 \/ (1 << Offset)
     ;
         X1 = (1 << Offset)
     ),
-    map.set(Bits0, Word, X1, Bits1),
-    generate_bit_vec_2(Rest, Start, WordBits, Bits1, Bits).
+    svmap.set(Word, X1, !BitMap),
+    generate_bit_vec_2(Rest, Start, WordBits, !BitMap).
 
 :- pred generate_bit_vec_args(list(pair(int))::in, int::in,
     list(rval)::out) is det.
@@ -1011,20 +838,20 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
 
 :- func default_value_for_type(llds_type) = rval.
 
-default_value_for_type(bool) = const(llconst_int(0)).
-default_value_for_type(int_least8) = const(llconst_int(0)).
-default_value_for_type(uint_least8) = const(llconst_int(0)).
-default_value_for_type(int_least16) = const(llconst_int(0)).
-default_value_for_type(uint_least16) = const(llconst_int(0)).
-default_value_for_type(int_least32) = const(llconst_int(0)).
-default_value_for_type(uint_least32) = const(llconst_int(0)).
-default_value_for_type(integer) = const(llconst_int(0)).
-default_value_for_type(unsigned) = const(llconst_int(0)).
-default_value_for_type(float) = const(llconst_float(0.0)).
-default_value_for_type(string) = const(llconst_string("")).
-default_value_for_type(data_ptr) = const(llconst_int(0)).
-default_value_for_type(code_ptr) = const(llconst_int(0)).
-default_value_for_type(word) = const(llconst_int(0)).
+default_value_for_type(lt_bool) = const(llconst_int(0)).
+default_value_for_type(lt_int_least8) = const(llconst_int(0)).
+default_value_for_type(lt_uint_least8) = const(llconst_int(0)).
+default_value_for_type(lt_int_least16) = const(llconst_int(0)).
+default_value_for_type(lt_uint_least16) = const(llconst_int(0)).
+default_value_for_type(lt_int_least32) = const(llconst_int(0)).
+default_value_for_type(lt_uint_least32) = const(llconst_int(0)).
+default_value_for_type(lt_integer) = const(llconst_int(0)).
+default_value_for_type(lt_unsigned) = const(llconst_int(0)).
+default_value_for_type(lt_float) = const(llconst_float(0.0)).
+default_value_for_type(lt_string) = const(llconst_string("")).
+default_value_for_type(lt_data_ptr) = const(llconst_int(0)).
+default_value_for_type(lt_code_ptr) = const(llconst_int(0)).
+default_value_for_type(lt_word) = const(llconst_int(0)).
 
 %-----------------------------------------------------------------------------%
 

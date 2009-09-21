@@ -695,7 +695,6 @@
 %       - apply the reverse tag test optimization
 %         for types with two functors (see unify_gen.m)
 %       - binary search switches
-%       - lookup switches
 %   - generate local declarations for the `succeeded' variable;
 %     this would help in nondet code, because it would avoid
 %     the need to access the outermost function's `succeeded'
@@ -978,8 +977,23 @@ ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
 ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
     module_info_preds(!.ModuleInfo, PredTable),
     map.keys(PredTable, PredIds),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        UseCommonCells = use_common_cells
+    ;
+        ( Target = target_asm
+        ; Target = target_java
+        ; Target = target_il
+        ; Target = target_erlang
+        ; Target = target_x86_64
+        ),
+        UseCommonCells = do_not_use_common_cells
+    ),
+    GlobalData0 = ml_global_data_init(UseCommonCells),
     ml_gen_preds_2(!ModuleInfo, PredIds, [], PredDefns,
-         ml_global_data_init, GlobalData).
+         GlobalData0, GlobalData).
 
 :- pred ml_gen_preds_2(module_info::in, module_info::out, list(pred_id)::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
@@ -1038,7 +1052,7 @@ ml_gen_pred(!ModuleInfo, PredId, PredInfo, ImportStatus, !Defns,
     ).
 
 :- pred ml_gen_procs(module_info::in, module_info::out,
-    pred_id::in, list(proc_id)::in, 
+    pred_id::in, list(proc_id)::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
@@ -1732,35 +1746,9 @@ ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
 
-    % Generate the local variables for this goal. We need to declare any
-    % variables which are local to this goal (including its subgoals),
-    % but which are not local to a subgoal. (If they're local to a subgoal,
-    % they'll be declared when we generate code for that subgoal.)
-    %
-    % We need to make sure that we declare any type_info or type_classinfo
-    % variables *before* any other variables, since the GC tracing code
-    % for the other variables may refer to the type_info variables, so they
-    % need to be in scope.
-    %
-    % However, in the common case that the number of variables to declare is
-    % zero or one, such reordering is guaranteed to be a no-op, so avoid the
-    % expense.
-
-    goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals),
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set.difference(SubGoalNonLocals, NonLocals, VarsToDeclareSet),
-    set.to_sorted_list(VarsToDeclareSet, VarsToDeclare0),
-
+    % Generate the local variables for this goal.
     ml_gen_info_get_var_types(!.Info, VarTypes),
-    (
-        ( VarsToDeclare0 = []
-        ; VarsToDeclare0 = [_]
-        ),
-        VarsToDeclare = VarsToDeclare0
-    ;
-        VarsToDeclare0 = [_, _ | _],
-        VarsToDeclare = put_typeinfo_vars_first(VarsToDeclare0, VarTypes)
-    ),
+    find_vars_to_declare(VarTypes, GoalExpr, GoalInfo, VarsToDeclare),
 
     ml_gen_info_get_varset(!.Info, VarSet),
     ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsToDeclare, VarDecls,
@@ -1768,7 +1756,7 @@ ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info) :-
 
     % Generate code for the goal in its own code model.
     GoalCodeModel = goal_info_get_code_model(GoalInfo),
-    ml_gen_goal_expr(GoalExpr, GoalCodeModel, Context,
+    ml_gen_goal_expr(GoalExpr, GoalCodeModel, Context, GoalInfo,
         GoalDecls, GoalStatements0, !Info),
 
     % Add whatever wrapper is needed to convert the goal's code model
@@ -1778,6 +1766,38 @@ ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info) :-
 
     Decls = VarDecls ++ GoalDecls,
     Statements = GoalStatements.
+
+    % For any given goal, we need to declare any variables which are local
+    % to this goal (including its subgoals), but which are not local to
+    % a subgoal. If they're local to a subgoal, they will be declared when
+    % we generate code for that subgoal.
+    %
+    % We need to make sure that we declare any type_info or type_classinfo
+    % variables *before* any other variables, since the GC tracing code
+    % for the other variables may refer to the type_info variables, so they
+    % need to be in scope.
+    %
+    % However, in the common case that the number of variables to declare is
+    % zero or one, such reordering is guaranteed to be a no-op, so avoid the
+    % expense.
+    %
+:- pred find_vars_to_declare(vartypes::in,
+    hlds_goal_expr::in, hlds_goal_info::in, list(prog_var)::out) is det.
+
+find_vars_to_declare(VarTypes, GoalExpr, GoalInfo, VarsToDeclare) :-
+    goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    set.difference(SubGoalNonLocals, NonLocals, VarsToDeclareSet),
+    set.to_sorted_list(VarsToDeclareSet, VarsToDeclare0),
+    (
+        ( VarsToDeclare0 = []
+        ; VarsToDeclare0 = [_]
+        ),
+        VarsToDeclare = VarsToDeclare0
+    ;
+        VarsToDeclare0 = [_, _ | _],
+        VarsToDeclare = put_typeinfo_vars_first(VarsToDeclare0, VarTypes)
+    ).
 
     % The task of this predicate is to help compute the set of MLDS variables
     % that should be declared at the scope of GoalExpr. This should be the
@@ -2324,10 +2344,11 @@ ml_gen_commit_var_decl(Context, VarName) =
     % Generate MLDS code for the different kinds of HLDS goals.
     %
 :- pred ml_gen_goal_expr(hlds_goal_expr::in, code_model::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    hlds_goal_info::in, list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_goal_expr(GoalExpr, CodeModel, Context, Decls, Statements, !Info) :-
+ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
+        Decls, Statements, !Info) :-
     (
         GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
         ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
@@ -2412,7 +2433,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, Decls, Statements, !Info) :-
         ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info)
     ;
         GoalExpr = switch(Var, CanFail, CasesList),
-        ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context,
+        ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context, GoalInfo,
             Decls, Statements, !Info)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
@@ -2875,16 +2896,16 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, ArgMode),
         (
             ArgMode = top_in,
-            OutlineArg = in(MldsType, ArgName, ml_lval(VarLval))
+            OutlineArg = ola_in(MldsType, ArgName, ml_lval(VarLval))
         ;
             ArgMode = top_out,
-            OutlineArg = out(MldsType, ArgName, VarLval)
+            OutlineArg = ola_out(MldsType, ArgName, VarLval)
         ;
             ArgMode = top_unused,
-            OutlineArg = unused
+            OutlineArg = ola_unused
         )
     ;
-        OutlineArg = unused
+        OutlineArg = ola_unused
     ).
 
 :- pred ml_gen_ordinary_pragma_il_proc(code_model::in,

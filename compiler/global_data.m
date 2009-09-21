@@ -155,21 +155,21 @@
     --->    global_data(
                 % Information about the global variables defined by
                 % each procedure.
-                proc_var_map        :: proc_var_map,
+                gd_proc_var_map         :: proc_var_map,
 
                 % Information about the layout structures defined by
                 % each procedure.
-                proc_layout_map     :: proc_layout_map,
+                gd_proc_layout_map      :: proc_layout_map,
 
                 % The list of all closure layouts generated in this module.
                 % While all closure layouts are different from all other
                 % layout_data, it is possible, although unlikely, for
                 % two closures to have the same layout.
-                closure_layouts     :: list(layout_data),
+                gd_closure_layouts      :: list(layout_data),
 
                 % Information about all the statically allocated cells
                 % created so far.
-                static_cell_info    :: static_cell_info
+                gd_static_cell_info     :: static_cell_info
             ).
 
 global_data_init(StaticCellInfo, GlobalData) :-
@@ -178,49 +178,49 @@ global_data_init(StaticCellInfo, GlobalData) :-
     GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [], StaticCellInfo).
 
 global_data_add_new_proc_var(PredProcId, ProcVar, !GlobalData) :-
-    ProcVarMap0 = !.GlobalData ^ proc_var_map,
+    ProcVarMap0 = !.GlobalData ^ gd_proc_var_map,
     map.det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
-    !GlobalData ^ proc_var_map := ProcVarMap.
+    !GlobalData ^ gd_proc_var_map := ProcVarMap.
 
 global_data_add_new_proc_layout(PredProcId, ProcLayout, !GlobalData) :-
-    ProcLayoutMap0 = !.GlobalData ^ proc_layout_map,
+    ProcLayoutMap0 = !.GlobalData ^ gd_proc_layout_map,
     map.det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-    !GlobalData ^ proc_layout_map := ProcLayoutMap.
+    !GlobalData ^ gd_proc_layout_map := ProcLayoutMap.
 
 global_data_update_proc_layout(PredProcId, ProcLayout, !GlobalData) :-
-    ProcLayoutMap0 = !.GlobalData ^ proc_layout_map,
+    ProcLayoutMap0 = !.GlobalData ^ gd_proc_layout_map,
     map.det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-    !GlobalData ^ proc_layout_map := ProcLayoutMap.
+    !GlobalData ^ gd_proc_layout_map := ProcLayoutMap.
 
 global_data_add_new_closure_layouts(NewClosureLayouts, !GlobalData) :-
-    ClosureLayouts0 = !.GlobalData ^ closure_layouts,
+    ClosureLayouts0 = !.GlobalData ^ gd_closure_layouts,
     list.append(NewClosureLayouts, ClosureLayouts0, ClosureLayouts),
-    !GlobalData ^ closure_layouts := ClosureLayouts.
+    !GlobalData ^ gd_closure_layouts := ClosureLayouts.
 
 global_data_maybe_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
-    ProcLayoutMap = GlobalData ^ proc_layout_map,
+    ProcLayoutMap = GlobalData ^ gd_proc_layout_map,
     map.search(ProcLayoutMap, PredProcId, ProcLayout).
 
 global_data_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
-    ProcLayoutMap = GlobalData ^ proc_layout_map,
+    ProcLayoutMap = GlobalData ^ gd_proc_layout_map,
     map.lookup(ProcLayoutMap, PredProcId, ProcLayout).
 
 global_data_get_all_proc_vars(GlobalData, ProcVars) :-
-    ProcVarMap = GlobalData ^ proc_var_map,
+    ProcVarMap = GlobalData ^ gd_proc_var_map,
     map.values(ProcVarMap, ProcVars).
 
 global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
-    ProcLayoutMap = GlobalData ^ proc_layout_map,
+    ProcLayoutMap = GlobalData ^ gd_proc_layout_map,
     map.values(ProcLayoutMap, ProcLayouts).
 
 global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) :-
-    ClosureLayouts = GlobalData ^ closure_layouts.
+    ClosureLayouts = GlobalData ^ gd_closure_layouts.
 
 global_data_get_static_cell_info(GlobalData, StaticCellInfo) :-
-    StaticCellInfo = GlobalData ^ static_cell_info.
+    StaticCellInfo = GlobalData ^ gd_static_cell_info.
 
 global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
-    !GlobalData ^ static_cell_info := StaticCellInfo.
+    !GlobalData ^ gd_static_cell_info := StaticCellInfo.
 
 %-----------------------------------------------------------------------------%
 
@@ -263,24 +263,30 @@ global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
 
 :- type static_cell_sub_info
     --->    static_cell_sub_info(
-                module_name                 :: module_name, % base file name
-                unbox_float                 :: have_unboxed_floats,
-                common_data                 :: bool
+                scsi_module_name            :: module_name, % base file name
+                scsi_unbox_float            :: have_unboxed_floats,
+                scsi_common_data            :: bool
             ).
+
+:- type cell_type_bimap == bimap(common_cell_type, type_num).
+:- type scalar_type_cell_map == map(type_num, scalar_cell_group).
+:- type vector_type_cell_map == map(type_num, vector_cell_group).
 
 :- type static_cell_info
     --->    static_cell_info(
-                sub_info                :: static_cell_sub_info,
-                type_counter            :: counter, % next type number
+                sci_sub_info                :: static_cell_sub_info,
+                sci_type_counter            :: counter, % next type number
 
                 % Maps types to type numbers and vice versa.
-                cell_type_num_map       :: bimap(common_cell_type, type_num),
+                sci_cell_type_num_map       :: cell_type_bimap,
 
                 % Maps the cell type number to the information we have
                 % for all scalar cells of that type.
-                scalar_cell_group_map   :: map(type_num, scalar_cell_group),
+                sci_scalar_cell_group_map   :: scalar_type_cell_map,
 
-                vector_cell_group_map   :: map(type_num, vector_cell_group)
+                % Maps the cell type number to the information we have
+                % for all vector cells of that type.
+                sci_vector_cell_group_map   :: vector_type_cell_map
             ).
 
 init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
@@ -291,7 +297,7 @@ init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
 %-----------------------------------------------------------------------------%
 
 add_scalar_static_cell_natural_types(Args, DataAddr, !Info) :-
-    list.map(associate_natural_type(!.Info ^ sub_info ^ unbox_float),
+    list.map(associate_natural_type(!.Info ^ sci_sub_info ^ scsi_unbox_float),
         Args, ArgsTypes),
     add_scalar_static_cell(ArgsTypes, DataAddr, !Info).
 
@@ -300,7 +306,7 @@ add_scalar_static_cell(ArgsTypes0, DataAddr, !Info) :-
     % so that the generated C structure isn't empty.
     (
         ArgsTypes0 = [],
-        ArgsTypes = [const(llconst_int(-1)) - integer]
+        ArgsTypes = [const(llconst_int(-1)) - lt_integer]
     ;
         ArgsTypes0 = [_ | _],
         ArgsTypes = ArgsTypes0
@@ -316,23 +322,23 @@ add_scalar_static_cell(ArgsTypes0, DataAddr, !Info) :-
 do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
     assoc_list.keys(ArgsTypes, Args),
     some [!CellGroup] (
-        TypeNumMap0 = !.Info ^ cell_type_num_map,
-        CellGroupMap0 = !.Info ^ scalar_cell_group_map,
-        ( bimap.search(TypeNumMap0, CellType, TypeNumPrime) ->
-            TypeNum = TypeNumPrime,
+        TypeNumMap0 = !.Info ^ sci_cell_type_num_map,
+        CellGroupMap0 = !.Info ^ sci_scalar_cell_group_map,
+        ( bimap.search(TypeNumMap0, CellType, OldTypeNum) ->
+            TypeNum = OldTypeNum,
             ( map.search(CellGroupMap0, TypeNum, !:CellGroup) ->
                 true
             ;
                 !:CellGroup = init_scalar_cell_group
             )
         ;
-            TypeNumCounter0 = !.Info ^ type_counter,
-            counter.allocate(TypeNum0, TypeNumCounter0, TypeNumCounter),
-            TypeNum = type_num(TypeNum0),
-            !Info ^ type_counter := TypeNumCounter,
+            TypeNumCounter0 = !.Info ^ sci_type_counter,
+            counter.allocate(TypeRawNum, TypeNumCounter0, TypeNumCounter),
+            TypeNum = type_num(TypeRawNum),
+            !Info ^ sci_type_counter := TypeNumCounter,
 
             bimap.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
-            !Info ^ cell_type_num_map := TypeNumMap,
+            !Info ^ sci_cell_type_num_map := TypeNumMap,
 
             !:CellGroup = init_scalar_cell_group
         ),
@@ -347,7 +353,7 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
             RevArray0 = !.CellGroup ^ scalar_cell_rev_array,
             RevArray = [CellValue | RevArray0],
             !CellGroup ^ scalar_cell_rev_array := RevArray,
-            InsertCommonData = !.Info ^ sub_info ^ common_data,
+            InsertCommonData = !.Info ^ sci_sub_info ^ scsi_common_data,
             (
                 InsertCommonData = yes,
                 bimap.det_insert(MembersMap0, Args, DataName, MembersMap),
@@ -359,10 +365,10 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
                 % be useful when comparing the LLDS and MLDS backends.
             ),
             map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
-            !Info ^ scalar_cell_group_map := CellGroupMap
+            !Info ^ sci_scalar_cell_group_map := CellGroupMap
         )
     ),
-    ModuleName = !.Info ^ sub_info ^ module_name,
+    ModuleName = !.Info ^ sci_sub_info ^ scsi_module_name,
     DataAddr = data_addr(ModuleName, DataName).
 
 :- func init_scalar_cell_group = scalar_cell_group.
@@ -370,9 +376,9 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
 init_scalar_cell_group = scalar_cell_group(counter.init(0), bimap.init, []).
 
 search_scalar_static_cell_offset(Info, DataAddr, Offset, Rval) :-
-    DataAddr = data_addr(Info ^ sub_info ^ module_name, DataName),
+    DataAddr = data_addr(Info ^ sci_sub_info ^ scsi_module_name, DataName),
     DataName = scalar_common_ref(TypeNum, _CellNum),
-    CellGroupMap = Info ^ scalar_cell_group_map,
+    CellGroupMap = Info ^ sci_scalar_cell_group_map,
     map.lookup(CellGroupMap, TypeNum, CellGroup),
     CellGroupMembers = CellGroup ^ scalar_cell_group_members,
     bimap.reverse_lookup(CellGroupMembers, Rvals, DataName),
@@ -417,15 +423,15 @@ find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
     ->
         LLDSType = LLDSType0
     ;
-        NaturalType = integer,
-        LLDSType0 = data_ptr
+        NaturalType = lt_integer,
+        LLDSType0 = lt_data_ptr
     ->
-        LLDSType = data_ptr
+        LLDSType = lt_data_ptr
     ;
-        NaturalType = data_ptr,
-        LLDSType0 = integer
+        NaturalType = lt_data_ptr,
+        LLDSType0 = lt_integer
     ->
-        LLDSType = data_ptr
+        LLDSType = lt_data_ptr
     ;
         fail
     ),
@@ -446,8 +452,8 @@ add_vector_static_cell(LLDSTypes, VectorData, DataAddr, !Info) :-
     CellType = plain_type(LLDSTypes),
     VectorCells = list.map(pair_vector_element(LLDSTypes), VectorData),
     some [!CellGroup] (
-        TypeNumMap0 = !.Info ^ cell_type_num_map,
-        CellGroupMap0 = !.Info ^ vector_cell_group_map,
+        TypeNumMap0 = !.Info ^ sci_cell_type_num_map,
+        CellGroupMap0 = !.Info ^ sci_vector_cell_group_map,
         ( bimap.search(TypeNumMap0, CellType, TypeNumPrime) ->
             TypeNum = TypeNumPrime,
             ( map.search(CellGroupMap0, TypeNum, !:CellGroup) ->
@@ -456,13 +462,13 @@ add_vector_static_cell(LLDSTypes, VectorData, DataAddr, !Info) :-
                 !:CellGroup = init_vector_cell_group
             )
         ;
-            TypeNumCounter0 = !.Info ^ type_counter,
+            TypeNumCounter0 = !.Info ^ sci_type_counter,
             counter.allocate(TypeNum0, TypeNumCounter0, TypeNumCounter),
             TypeNum = type_num(TypeNum0),
-            !Info ^ type_counter := TypeNumCounter,
+            !Info ^ sci_type_counter := TypeNumCounter,
 
             bimap.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
-            !Info ^ cell_type_num_map := TypeNumMap,
+            !Info ^ sci_cell_type_num_map := TypeNumMap,
 
             !:CellGroup = init_vector_cell_group
         ),
@@ -475,9 +481,9 @@ add_vector_static_cell(LLDSTypes, VectorData, DataAddr, !Info) :-
         map.det_insert(CellMap0, CellNum, VectorContents, CellMap),
         !CellGroup ^ vector_cell_map := CellMap,
         map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
-        !Info ^ vector_cell_group_map := CellGroupMap
+        !Info ^ sci_vector_cell_group_map := CellGroupMap
     ),
-    ModuleName = !.Info ^ sub_info ^ module_name,
+    ModuleName = !.Info ^ sci_sub_info ^ scsi_module_name,
     DataAddr = data_addr(ModuleName, DataName).
 
 :- func init_vector_cell_group = vector_cell_group.
@@ -492,17 +498,17 @@ pair_vector_element(Types, Args) = plain_value(ArgsTypes) :-
 %-----------------------------------------------------------------------------%
 
 get_static_cells(Info, ScalarDatas, VectorDatas) :-
-    ModuleName = Info ^ sub_info ^ module_name,
-    TypeNumMap = Info ^ cell_type_num_map,
+    ModuleName = Info ^ sci_sub_info ^ scsi_module_name,
+    TypeNumMap = Info ^ sci_cell_type_num_map,
     map.foldl(add_scalar_static_cell_for_type(ModuleName, TypeNumMap),
-        Info ^ scalar_cell_group_map, [], RevScalarDatas),
+        Info ^ sci_scalar_cell_group_map, [], RevScalarDatas),
     list.reverse(RevScalarDatas, ScalarDatas),
     map.foldl(add_all_vector_static_cells_for_type(ModuleName, TypeNumMap),
-        Info ^ vector_cell_group_map, [], RevVectorDatas),
+        Info ^ sci_vector_cell_group_map, [], RevVectorDatas),
     list.reverse(RevVectorDatas, VectorDatas).
 
 :- pred add_scalar_static_cell_for_type(module_name::in,
-    bimap(common_cell_type, type_num)::in, type_num::in, scalar_cell_group::in,
+    cell_type_bimap::in, type_num::in, scalar_cell_group::in,
     list(scalar_common_data_array)::in, list(scalar_common_data_array)::out)
     is det.
 
@@ -515,7 +521,7 @@ add_scalar_static_cell_for_type(ModuleName, TypeNumMap, TypeNum, CellGroup,
     !:Arrays = [Array | !.Arrays].
 
 :- pred add_all_vector_static_cells_for_type(module_name::in,
-    bimap(common_cell_type, type_num)::in, type_num::in, vector_cell_group::in,
+    cell_type_bimap::in, type_num::in, vector_cell_group::in,
     list(vector_common_data_array)::in, list(vector_common_data_array)::out)
     is det.
 
@@ -606,10 +612,10 @@ rval_type_as_arg(UnboxedFloat, Rval) = Type :-
 natural_type(UnboxFloat, Rval, Type) :-
     llds.rval_type(Rval, Type0),
     (
-        Type0 = float,
+        Type0 = lt_float,
         UnboxFloat = do_not_have_unboxed_floats
     ->
-        Type = data_ptr
+        Type = lt_data_ptr
     ;
         Type = Type0
     ).
@@ -638,10 +644,10 @@ associate_natural_type(UnboxFloat, Rval, Rval - Type) :-
                                     % Mapping of old to new data_names.
 
 bump_type_num_counter(Increment, !GlobalData) :-
-    Counter0 = !.GlobalData ^ static_cell_info ^ type_counter,
+    Counter0 = !.GlobalData ^ gd_static_cell_info ^ sci_type_counter,
     counter.allocate(N, Counter0, _),
     Counter = counter.init(N + Increment),
-    !GlobalData ^ static_cell_info ^ type_counter := Counter.
+    !GlobalData ^ gd_static_cell_info ^ sci_type_counter := Counter.
 
 merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, Remap) :-
     GlobalDataA = global_data(ProcVarMapA, ProcLayoutMapA, ClosureLayoutsA,
@@ -687,8 +693,7 @@ merge_static_cell_infos(SCIa, SCIb, SCI, Remap) :-
     remap_static_cell_info(Remap, SCI0, SCI).
 
 :- pred merge_cell_type_num_maps(common_cell_type::in, type_num::in,
-    counter::in, counter::out, bimap(common_cell_type, type_num)::in,
-    bimap(common_cell_type, type_num)::out,
+    counter::in, counter::out, cell_type_bimap::in, cell_type_bimap::out,
     cell_type_num_remap::in, cell_type_num_remap::out) is det.
 
 merge_cell_type_num_maps(CellType, BTypeNum,
@@ -705,8 +710,8 @@ merge_cell_type_num_maps(CellType, BTypeNum,
     ).
 
 :- pred merge_scalar_cell_group_maps(cell_type_num_remap::in,
-    map(type_num, scalar_cell_group)::in, map(type_num, scalar_cell_group)::in,
-    map(type_num, scalar_cell_group)::out,
+    scalar_type_cell_map::in, scalar_type_cell_map::in,
+    scalar_type_cell_map::out,
     map(type_num, scalar_cell_group_remap)::out) is det.
 
 merge_scalar_cell_group_maps(TypeNumRemap,
@@ -719,8 +724,8 @@ merge_scalar_cell_group_maps(TypeNumRemap,
 
 :- pred merge_scalar_cell_group_maps_2(cell_type_num_remap::in,
     type_num::in, scalar_cell_group::in,
-    map(type_num, scalar_cell_group)::in,
-    map(type_num, scalar_cell_group)::out,
+    scalar_type_cell_map::in,
+    scalar_type_cell_map::out,
     map(type_num, scalar_cell_group_remap)::in,
     map(type_num, scalar_cell_group_remap)::out) is det.
 
@@ -790,8 +795,8 @@ merge_scalar_cell_groups_2(TypeNum, ArrayB, ArrayAB,
     ).
 
 :- pred merge_vector_cell_group_maps(cell_type_num_remap::in,
-    map(type_num, vector_cell_group)::in, map(type_num, vector_cell_group)::in,
-    map(type_num, vector_cell_group)::out) is det.
+    vector_type_cell_map::in, vector_type_cell_map::in,
+    vector_type_cell_map::out) is det.
 
 merge_vector_cell_group_maps(TypeNumRemap, VectorCellGroupMapA,
         VectorCellGroupMapB, VectorCellGroupMap) :-
@@ -800,12 +805,12 @@ merge_vector_cell_group_maps(TypeNumRemap, VectorCellGroupMapA,
         VectorCellGroupMapA, VectorCellGroupMap).
 
 :- pred merge_vector_cell_group_maps_2(cell_type_num_remap::in,
-    type_num::in, vector_cell_group::in, map(type_num, vector_cell_group)::in,
-    map(type_num, vector_cell_group)::out) is det.
+    type_num::in, vector_cell_group::in,
+    vector_type_cell_map::in, vector_type_cell_map::out) is det.
 
 merge_vector_cell_group_maps_2(TypeNumRemap, OldTypeNum, VectorCellGroup,
         !VectorCellGroupMap) :-
-    NewTypeNum = TypeNumRemap ^ det_elem(OldTypeNum),
+    map.lookup(TypeNumRemap, OldTypeNum, NewTypeNum),
     svmap.det_insert(NewTypeNum, VectorCellGroup, !VectorCellGroupMap).
 
 :- func nth_member_lookup0(list(T), T) = int.
@@ -822,12 +827,12 @@ nth_member_lookup0(List, Elem) = Pos-1 :-
     static_cell_info::in, static_cell_info::out) is det.
 
 remap_static_cell_info(Remap, !SCI) :-
-    ScalarMap0 = !.SCI ^ scalar_cell_group_map,
-    VectorMap0 = !.SCI ^ vector_cell_group_map,
+    ScalarMap0 = !.SCI ^ sci_scalar_cell_group_map,
+    VectorMap0 = !.SCI ^ sci_vector_cell_group_map,
     map.map_values_only(remap_scalar_cell_group(Remap), ScalarMap0, ScalarMap),
     map.map_values_only(remap_vector_cell_group(Remap), VectorMap0, VectorMap),
-    !SCI ^ scalar_cell_group_map := ScalarMap,
-    !SCI ^ vector_cell_group_map := VectorMap.
+    !SCI ^ sci_scalar_cell_group_map := ScalarMap,
+    !SCI ^ sci_vector_cell_group_map := VectorMap.
 
 :- pred remap_scalar_cell_group(static_cell_remap_info::in,
     scalar_cell_group::in, scalar_cell_group::out) is det.
@@ -926,9 +931,9 @@ remap_instr(Remap, Instr0, Instr) :-
         list.map(remap_foreign_proc_component(Remap), Comps0, Comps),
         Instr  = foreign_proc_code(A, Comps,  B, C, D, E, F, G, H)
     ;
-        Instr0 = computed_goto(Rval0, CodeAddrs),
+        Instr0 = computed_goto(Rval0, MaybeLabels),
         remap_rval(Remap, Rval0, Rval),
-        Instr = computed_goto(Rval, CodeAddrs)
+        Instr = computed_goto(Rval, MaybeLabels)
     ;
         Instr0 = save_maxfr(Lval0),
         remap_lval(Remap, Lval0, Lval),

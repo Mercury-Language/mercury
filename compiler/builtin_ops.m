@@ -98,9 +98,13 @@
     % rather than just putting the MLDS type here, avoids the need
     % for this module to depend on back-end specific stuff like MLDS types.
 :- type array_elem_type
-    --->    elem_type_string    % ml_string_type
-    ;       elem_type_int       % mlds_native_int_type
-    ;       elem_type_generic.  % mlds_generic_type
+    --->    array_elem_scalar(scalar_array_elem_type)
+    ;       array_elem_struct(list(scalar_array_elem_type)).
+
+:- type scalar_array_elem_type
+    --->    scalar_elem_string    % ml_string_type
+    ;       scalar_elem_int       % mlds_native_int_type
+    ;       scalar_elem_generic.  % mlds_generic_type
 
     % translate_builtin:
     %

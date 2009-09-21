@@ -297,7 +297,8 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
         % them from the asm file!) and pass that to mlds_to_c.m
         % to create the .mih file, and if necessary the .c file.
         { ForeignMLDS = mlds(ModuleName, AllForeignCode, Imports,
-            ml_global_data_init, list__map(make_public, ForeignDefns),
+            ml_global_data_init(do_not_use_common_cells),
+            list__map(make_public, ForeignDefns),
             InitPreds, FinalPreds, ExportedEnums) },
         mlds_to_c__output_c_file(ForeignMLDS, Globals, "")
     ),
@@ -814,7 +815,7 @@ gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
         { DefnInfo = defn_info(GlobalInfo0, Name, LocalVars,
             LabelTable) },
         { GCC_Name = build_qualified_name(Name) },
-        build_type(Type, initializer_array_size(Initializer),
+        build_type(Type, get_initializer_array_size(Initializer),
             GlobalInfo0, GCC_Type),
         build_initializer(Initializer, GCC_Type, DefnInfo,
             GCC_Initializer),
@@ -1152,7 +1153,7 @@ add_func_abstractness_flag(concrete, _GCC_Defn) -->
 :- mode build_local_data_defn(in, in, in, in, in, out, di, uo) is det.
 
 build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
-    build_type(Type, initializer_array_size(Initializer),
+    build_type(Type, get_initializer_array_size(Initializer),
         DefnInfo ^ global_info, GCC_Type),
     { Name = qual(_ModuleName, _QualKind, UnqualName) },
     ( { UnqualName = entity_data(mlds_data_var(VarName0)) } ->
@@ -1200,7 +1201,7 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 :- mode build_field_data_defn(in, in, in, in, out, di, uo) is det.
 
 build_field_data_defn(Name, Type, Initializer, GlobalInfo, GCC_Defn) -->
-    build_type(Type, initializer_array_size(Initializer),
+    build_type(Type, get_initializer_array_size(Initializer),
         GlobalInfo, GCC_Type),
     { Name = qual(_ModuleName, _QualKind, UnqualName) },
     ( { UnqualName = entity_data(mlds_data_var(VarName)) } ->
@@ -1958,19 +1959,6 @@ build_sized_array_type(GCC_Type, ArraySize, GCC_ArrayType) -->
     gcc__build_array_type(GCC_Type, Size, GCC_ArrayType).
 
 %-----------------------------------------------------------------------------%
-
-:- type initializer_array_size
-    --->    array_size(int)
-    ;   no_size.    % either the size is unknown,
-                % or the data is not an array
-
-:- func initializer_array_size(mlds_initializer) = initializer_array_size.
-initializer_array_size(no_initializer) = no_size.
-initializer_array_size(init_obj(_)) = no_size.
-initializer_array_size(init_struct(_, _)) = no_size.
-initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
-
-%-----------------------------------------------------------------------------%
 %
 % Code to build RTTI types
 %
@@ -2609,8 +2597,8 @@ build_name(entity_export(Name)) = Name.
 
 build_data_name(mlds_data_var(Name)) =
     name_mangle(ml_var_name_to_string(Name)).
-build_data_name(mlds_common(Num)) =
-    string__format("common_%d", [i(Num)]).
+build_data_name(mlds_scalar_common_ref(_)) =
+    sorry(this_file, "mlds_scalar_common_ref").
 build_data_name(mlds_rtti(RttiId0)) = RttiAddrName :-
     RttiId = fixup_rtti_id(RttiId0),
     rtti__id_to_c_identifier(RttiId, RttiAddrName).
@@ -2625,8 +2613,7 @@ build_data_name(mlds_tabling_ref(ProcLabel, Id)) = TablingPointerName :-
     % so we can use get_func_name below
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     MaybeSeqNum = no,
-    Name = entity_function(PredLabel, ProcId, MaybeSeqNum,
-        invalid_pred_id),
+    Name = entity_function(PredLabel, ProcId, MaybeSeqNum, invalid_pred_id),
     get_func_name(Name, _FuncName, AsmFuncName),
     TablingPointerName = tabling_info_id_str(Id) ++ "_" ++ AsmFuncName.
 
@@ -3393,26 +3380,24 @@ get_class_type_name(Type) = Name :-
 
 build_rval(ml_lval(Lval), DefnInfo, Expr) -->
     build_lval(Lval, DefnInfo, Expr).
-
 build_rval(ml_mkword(Tag, Arg), DefnInfo, Expr) -->
     gcc__build_int(Tag, GCC_Tag),
     build_rval(Arg, DefnInfo, GCC_Arg),
     gcc__build_binop(gcc__plus_expr, gcc__ptr_type_node,
         GCC_Arg, GCC_Tag, Expr).
-
 build_rval(ml_const(Const), DefnInfo, Expr) -->
     build_rval_const(Const, DefnInfo ^ global_info, Expr).
-
 build_rval(ml_unop(Op, Rval), DefnInfo, Expr) -->
     build_unop(Op, Rval, DefnInfo, Expr).
-
 build_rval(ml_binop(Op, Rval1, Rval2), DefnInfo, Expr) -->
     build_std_binop(Op, Rval1, Rval2, DefnInfo, Expr).
-
 build_rval(ml_mem_addr(Lval), DefnInfo, AddrExpr) -->
     build_lval(Lval, DefnInfo, Expr),
     gcc__build_addr_expr(Expr, AddrExpr).
-
+build_rval(ml_scalar_common(_), _DefnInfo, _Expr) -->
+    { unexpected(this_file, "scalar_common rval") }.
+build_rval(ml_vector_common_row(_, _), _DefnInfo, _Expr) -->
+    { unexpected(this_file, "vector_common rval") }.
 build_rval(ml_self(_), _DefnInfo, _Expr) -->
     { unexpected(this_file, "self rval") }.
 
@@ -3423,14 +3408,10 @@ build_rval(ml_self(_), _DefnInfo, _Expr) -->
 build_unop(cast(Type), Rval, DefnInfo, GCC_Expr) -->
     build_cast_rval(Type, Rval, DefnInfo, GCC_Expr).
 build_unop(box(Type), Rval, DefnInfo, GCC_Expr) -->
-    (
-        { type_is_float(Type) }
-    ->
+    ( { type_is_float(Type) } ->
         build_call(gcc__box_float_func_decl, [Rval], DefnInfo,
             GCC_Expr)
-    ;
-        { Type = mlds_array_type(_) }
-    ->
+    ; { Type = mlds_array_type(_) } ->
         % When boxing arrays, we need to take the address of the array.
         % This implies that the array must be an lval.
         % But we also allow null arrays as a special case;
@@ -3450,9 +3431,7 @@ build_unop(box(Type), Rval, DefnInfo, GCC_Expr) -->
         build_cast_rval(mlds_generic_type, Rval, DefnInfo, GCC_Expr)
     ).
 build_unop(unbox(Type), Rval, DefnInfo, GCC_Expr) -->
-    (
-        { type_is_float(Type) }
-    ->
+    ( { type_is_float(Type) } ->
         % Generate `*(MR_Float *)<Rval>'
         build_rval(Rval, DefnInfo, GCC_Pointer),
         gcc__build_pointer_type('MR_Float', FloatPointerType),

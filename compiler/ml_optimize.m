@@ -623,7 +623,7 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
 
         % We must check that the value being assigned doesn't refer to the
         % variable itself.
-        \+ rval_contains_var(RHS, ThisData),
+        rval_contains_var(RHS, ThisData) = no,
 
         % We must check that the value being assign doesn't refer to any
         % of the variables which are declared after this one. We must also
@@ -636,9 +636,10 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
             OtherDefn = mlds_defn(entity_data(OtherVarName),
                 _, _, mlds_data(_Type, OtherInitializer, _GC)),
             (
-                rval_contains_var(RHS, qual(Qualifier, QualKind, OtherVarName))
+                QualOtherVar = qual(Qualifier, QualKind, OtherVarName),
+                rval_contains_var(RHS, QualOtherVar) = yes
             ;
-                initializer_contains_var(OtherInitializer, ThisData)
+                initializer_contains_var(OtherInitializer, ThisData) = yes
             )
         ),
         \+ list.find_first_match(Filter, FollowingDefns, _)
@@ -869,7 +870,7 @@ find_initial_val_in_statements(VarName, Rval, [Statement0 | Statements0],
         % on and look for the initial value in Statements0.
         VarName = qual(Mod, QualKind, UnqualVarName),
         DataName = qual(Mod, QualKind, mlds_data_var(UnqualVarName)),
-        \+ statement_contains_var(Statement0, DataName),
+        statement_contains_var(Statement0, DataName) = no,
         \+ (
             statement_contains_statement(Statement0, Label),
             Label = statement(ml_stmt_label(_), _)
@@ -892,7 +893,7 @@ find_initial_val_in_statement(Var, Rval, Statement0, Statement) :-
     ; Stmt0 = ml_stmt_block(Defns0, SubStatements0) ->
         Var = qual(Mod, QualKind, UnqualVarName),
         Data = qual(Mod, QualKind, mlds_data_var(UnqualVarName)),
-        \+ defns_contains_var(Defns0, Data),
+        defns_contains_var(Defns0, Data) = no,
         find_initial_val_in_statements(Var, Rval,
             SubStatements0, SubStatements),
         Stmt = ml_stmt_block(Defns0, SubStatements)
@@ -1024,9 +1025,6 @@ eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
         eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
         Rval = ml_mkword(Tag, ArgRval)
     ;
-        Rval0 = ml_const(_),
-        Rval = Rval0
-    ;
         Rval0 = ml_unop(Op, ArgRval0),
         eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
         Rval = ml_unop(Op, ArgRval)
@@ -1040,7 +1038,14 @@ eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
         eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
         Rval = ml_mem_addr(Lval)
     ;
-        Rval0 = ml_self(_Type),
+        Rval0 = ml_vector_common_row(VectorCommon, RowRval0),
+        eliminate_var_in_rval(RowRval0, RowRval, !VarElimInfo),
+        Rval = ml_vector_common_row(VectorCommon, RowRval)
+    ;
+        ( Rval0 = ml_const(_)
+        ; Rval0 = ml_scalar_common(_)
+        ; Rval0 = ml_self(_)
+        ),
         Rval = Rval0
     ).
 

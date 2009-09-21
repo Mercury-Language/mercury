@@ -456,7 +456,12 @@ check_rval(Rval, Locals) = MayYieldDanglingStackRef :-
         % if that lval names a local variable.
         MayYieldDanglingStackRef = check_lval(Lval, Locals)
     ;
-        Rval = ml_self(_),
+        Rval = ml_vector_common_row(_VectorCommon, RowRval),
+        MayYieldDanglingStackRef = check_rval(RowRval, Locals)
+    ;
+        ( Rval = ml_scalar_common(_)
+        ; Rval = ml_self(_)
+        ),
         MayYieldDanglingStackRef = may_yield_dangling_stack_ref
     ).
 
@@ -497,13 +502,15 @@ check_lval(Lval, Locals) = MayYieldDanglingStackRef :-
 :- func check_const(mlds_rval_const, locals) = may_yield_dangling_stack_ref.
 
 check_const(Const, Locals) = MayYieldDanglingStackRef :-
-    ( Const = mlconst_code_addr(CodeAddr) ->
+    (
+        Const = mlconst_code_addr(CodeAddr),
         ( function_is_local(CodeAddr, Locals) ->
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
         ;
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
-    ; Const = mlconst_data_addr(DataAddr) ->
+    ;
+        Const = mlconst_data_addr(DataAddr),
         DataAddr = data_addr(ModuleName, DataName),
         ( DataName = mlds_data_var(VarName) ->
             ( var_is_local(qual(ModuleName, module_qual, VarName), Locals) ->
@@ -515,6 +522,16 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
     ;
+        ( Const = mlconst_true
+        ; Const = mlconst_false
+        ; Const = mlconst_int(_)
+        ; Const = mlconst_foreign(_, _, _)
+        ; Const = mlconst_float(_)
+        ; Const = mlconst_string(_)
+        ; Const = mlconst_multi_string(_)
+        ; Const = mlconst_named_const(_)
+        ; Const = mlconst_null(_)
+        ),
         MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
     ).
 

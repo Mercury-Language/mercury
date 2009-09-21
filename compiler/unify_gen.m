@@ -361,7 +361,8 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ConsTag = foreign_tag(ForeignLang, ForeignVal),
         expect(unify(ForeignLang, lang_c), this_file,
             "foreign tag for language other than C"),
-        TestRval = binop(eq, Rval, const(llconst_foreign(ForeignVal, integer)))
+        TestRval = binop(eq, Rval,
+            const(llconst_foreign(ForeignVal, lt_integer)))
     ;
         ConsTag = closure_tag(_, _, _),
         % This should never happen, since the error will be detected
@@ -474,7 +475,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         ConsTag = foreign_tag(Lang, Val),
         expect(unify(Lang, lang_c), this_file,
             "foreign_tag for language other than C"),
-        ForeignConst = const(llconst_foreign(Val, integer)),
+        ForeignConst = const(llconst_foreign(Val, lt_integer)),
         assign_const_to_var(Var, ForeignConst, !CI),
         Code = empty
     ;
@@ -1340,26 +1341,26 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
         (
             ConsTag = string_tag(String),
             Const = llconst_string(String),
-            Type = string
+            Type = lt_string
         ;
             ConsTag = int_tag(Int),
             Const = llconst_int(Int),
-            Type = integer
+            Type = lt_integer
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), this_file,
                 "foreign_tag for language other than C"),
-            Const = llconst_foreign(Val, integer),
-            Type = integer
+            Const = llconst_foreign(Val, lt_integer),
+            Type = lt_integer
         ;
             ConsTag = float_tag(Float),
             Const = llconst_float(Float),
             (
                 UnboxedFloats = have_unboxed_floats,
-                Type = float
+                Type = lt_float
             ;
                 UnboxedFloats = do_not_have_unboxed_floats,
-                Type = data_ptr
+                Type = lt_data_ptr
             )
         ),
         ActiveGroundTerm = const(Const) - Type,
@@ -1367,7 +1368,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
     ;
         ConsTag = shared_local_tag(Ptag, Stag),
         Rval = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
-        ActiveGroundTerm = Rval - data_ptr,
+        ActiveGroundTerm = Rval - lt_data_ptr,
         svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = reserved_address_tag(RA),
@@ -1406,18 +1407,18 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
         MaybeOffset = no,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         Rval = mkword(Ptag, CellPtrConst),
-        ActiveGroundTerm = Rval - data_ptr,
+        ActiveGroundTerm = Rval - lt_data_ptr,
         svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = shared_remote_tag(Ptag, Stag),
         generate_ground_term_args(Args, ArgRvalsTypes, !ActiveMap),
-        StagRvalType = const(llconst_int(Stag)) - integer,
+        StagRvalType = const(llconst_int(Stag)) - lt_integer,
         AllRvalsTypes = [StagRvalType | ArgRvalsTypes],
         add_scalar_static_cell(AllRvalsTypes, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         Rval = mkword(Ptag, CellPtrConst),
-        ActiveGroundTerm = Rval - data_ptr,
+        ActiveGroundTerm = Rval - lt_data_ptr,
         svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ( ConsTag = closure_tag(_, _, _)

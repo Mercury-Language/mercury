@@ -24,11 +24,9 @@
 %   several possibilities.
 %
 %   a)  If all the alternative goals for a switch on an atomic data type
-%       contain only construction unifications of constants, then we
-%       should generate a dense lookup table (an array) for each output
-%       variable of the switch, rather than computed goto, so that
-%       executing the switch becomes a matter of doing an array index for
-%       each output variable. (NYI)
+%       contain only construction unifications of constants, then we should
+%       generate a dense lookup table (an array) in which we can look up
+%       the values of the output variables.
 %   b)  If the cases are not sparse, and the target supports computed
 %       gotos, we should use a computed_goto, unless the target supports
 %       switch statements and the `--prefer-switch' option is set. (NYI)
@@ -79,7 +77,7 @@
     % Generate MLDS code for a switch.
     %
 :- pred ml_gen_switch(prog_var::in, can_fail::in, list(case)::in,
-    code_model::in, prog_context::in,
+    code_model::in, prog_context::in, hlds_goal_info::in,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -111,6 +109,7 @@
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_lookup_switch.
 :- import_module ml_backend.ml_simplify_switch.
 :- import_module ml_backend.ml_string_switch.
 :- import_module ml_backend.ml_tag_switch.
@@ -126,8 +125,8 @@
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, Decls, Statements,
-        !Info) :-
+ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
+        Decls, Statements, !Info) :-
     % Lookup the representation of the constructors for the tag tests.
     % Note that you cannot have a switch on a variable whose type's main
     % type constructor is not known.
@@ -135,12 +134,11 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, Decls, Statements,
     ml_variable_type(!.Info, SwitchVar, SwitchVarType),
     type_to_ctor_det(SwitchVarType, SwitchVarTypeCtor),
     tag_cases(ModuleInfo, SwitchVarType, Cases, TaggedCases,
-        _MaybeIntSwitchInfo),
-    % We will need MaybeIntSwitchInfo when we implement lookup switches.
+        MaybeIntSwitchInfo),
 
     % Figure out what kind of switch this is.
-    type_util.classify_type(ModuleInfo, SwitchVarType) = TypeCtorCategory,
-    SwitchCategory = switch_util.type_ctor_cat_to_switch_cat(TypeCtorCategory),
+    TypeCtorCategory = classify_type(ModuleInfo, SwitchVarType),
+    SwitchCategory = type_ctor_cat_to_switch_cat(TypeCtorCategory),
     ml_gen_info_get_globals(!.Info, Globals),
     globals.lookup_bool_option(Globals, smart_indexing, Indexing),
     (
@@ -161,7 +159,8 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, Decls, Statements,
         % for and handled the reserved addresses, and then used one of the
         % smart indexing schemes for the other cases.
         ml_switch_generate_if_then_else_chain(TaggedCases, SwitchVar,
-            CodeModel, CanFail, Context, Decls, Statements, !Info)
+            CodeModel, CanFail, Context, Statements, !Info),
+        Decls = []
     ;
         (
             SwitchCategory = string_switch,
@@ -193,8 +192,8 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, Decls, Statements,
                     CodeModel, CanFail, Context, Decls, Statements, !Info)
             ;
                 ml_switch_generate_if_then_else_chain(TaggedCases,
-                    SwitchVar, CodeModel, CanFail, Context, Decls, Statements,
-                    !Info)
+                    SwitchVar, CodeModel, CanFail, Context, Statements, !Info),
+                Decls = []
             )
         ;
             SwitchCategory = tag_switch,
@@ -206,38 +205,62 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, Decls, Statements,
                 target_supports_int_switch(Globals)
             ->
                 ml_generate_tag_switch(TaggedCases, SwitchVar, CodeModel,
-                    CanFail, Context, Decls, Statements, !Info)
+                    CanFail, Context, Statements, !Info)
             ;
                 ml_switch_generate_if_then_else_chain(TaggedCases,
-                    SwitchVar, CodeModel, CanFail, Context, Decls, Statements,
-                    !Info)
-            )
-        ;
-            % For atomic switches that are suitable for lookup switches or
-            % sense switches, we could do better than the code we generate
-            % below.
-            ( SwitchCategory = atomic_switch
-            ; SwitchCategory = other_switch
+                    SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
             ),
+            Decls = []
+        ;
+            SwitchCategory = atomic_switch,
+            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
+            (
+                ml_gen_info_get_high_level_data(!.Info, no),
+                MaybeIntSwitchInfo = int_switch(LowerLimit, UpperLimit,
+                    NumValues),
+                globals.lookup_bool_option(Globals, static_ground_cells, yes),
+                globals.lookup_int_option(Globals, lookup_switch_size,
+                    LookupSize),
+                NumConsIds >= LookupSize,
+                NumArms > 1,
+                globals.lookup_int_option(Globals, lookup_switch_req_density,
+                    ReqDensity),
+                find_lookup_switch_params(ModuleInfo, SwitchVarType, CodeModel,
+                    CanFail, TaggedCases, FilteredTaggedCases,
+                    LowerLimit, UpperLimit, NumValues, ReqDensity,
+                    NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal),
+                NonLocals = goal_info_get_nonlocals(GoalInfo),
+                ml_gen_lookup_switch(SwitchVar, FilteredTaggedCases,
+                    NonLocals, CodeModel, Context, FirstVal, LastVal,
+                    NeedBitVecCheck, NeedRangeCheck, StatementsPrime, !Info)
+            ->
+                Statements = StatementsPrime
+            ;
+                target_supports_computed_goto(Globals)
+            ->
+                ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
+                    CodeModel, CanFail, Context, Statements, !Info)
+            ;
+                ml_switch_generate_if_then_else_chain(TaggedCases,
+                    SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
+            ),
+            Decls = []
+        ;
+            SwitchCategory = other_switch,
             (
                 % Try using a "direct-mapped" switch. This also handles dense
                 % (computed goto) switches -- for those, we first generate a
                 % direct-mapped switch, and then convert it into a computed
                 % goto switch in ml_simplify_switch.
-                (
-                    target_supports_switch(SwitchCategory, Globals)
-                ;
-                    SwitchCategory = atomic_switch,
-                    target_supports_computed_goto(Globals)
-                )
+                target_supports_switch(SwitchCategory, Globals)
             ->
                 ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
-                    CodeModel, CanFail, Context, Decls, Statements, !Info)
+                    CodeModel, CanFail, Context, Statements, !Info)
             ;
                 ml_switch_generate_if_then_else_chain(TaggedCases,
-                    SwitchVar, CodeModel, CanFail, Context, Decls, Statements,
-                    !Info)
-            )
+                    SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
+            ),
+            Decls = []
         )
     ).
 
@@ -346,11 +369,10 @@ estimate_cons_id_tag_test_cost(TaggedConsId, !CaseCost) :-
     %
 :- pred ml_switch_generate_if_then_else_chain(list(tagged_case)::in,
     prog_var::in, code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_if_then_else_chain(TaggedCases0, Var,
-        CodeModel, CanFail, Context, Decls, Statements, !Info) :-
+        CodeModel, CanFail, Context, Statements, !Info) :-
     % Associate each tagged case with the estimated cost of its tag tests.
     list.map(mark_tag_test_cost, TaggedCases0, CostTaggedCases0),
 
@@ -366,8 +388,7 @@ ml_switch_generate_if_then_else_chain(TaggedCases0, Var,
         TaggedCases = [FirstTaggedCase | LaterTaggedCases],
         ml_switch_generate_if_then_else_chain_ites(FirstTaggedCase,
             LaterTaggedCases, Var, CodeModel, CanFail, Context, Statements,
-            !Info),
-        Decls = []
+            !Info)
     ).
 
 :- pred ml_switch_generate_if_then_else_chain_ites(tagged_case::in,
@@ -464,11 +485,10 @@ chain_ors(FirstExpr, LaterExprs, Expr) :-
     %
 :- pred ml_switch_generate_mlds_switch(list(tagged_case)::in,
     prog_var::in, code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail, Context,
-        Decls, Statements, !Info) :-
+        Statements, !Info) :-
     ml_variable_type(!.Info, Var, Type),
     ml_gen_type(!.Info, Type, MLDS_Type),
     ml_gen_var(!.Info, Var, Lval),
@@ -479,7 +499,6 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail, Context,
     SwitchStmt0 = ml_stmt_switch(MLDS_Type, Rval, Range, MLDS_Cases, Default),
     MLDS_Context = mlds_make_context(Context),
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
-    Decls = [],
     Statements = [SwitchStatement].
 
 :- pred ml_switch_gen_range(ml_gen_info::in, mlds_type::in,

@@ -630,6 +630,13 @@
     ;       init_array(list(mlds_initializer))
     ;       no_initializer.
 
+:- type initializer_array_size
+    --->    array_size(int)
+    ;       no_size.            % Either the size is unknown,
+                                % or the data is not an array.
+
+:- func get_initializer_array_size(mlds_initializer) = initializer_array_size.
+
 :- type mlds_func_params
     --->    mlds_func_params(
                 mlds_arguments,    % names and types of arguments (inputs)
@@ -683,7 +690,7 @@
 :- type mlds_class_name == string.
 :- type mlds_class == mlds_fully_qualified_name(mlds_class_name).
 
-    % Note that standard C doesn't support empty structs, so when targetting C,
+    % Note that standard C doesn't support empty structs, so when targeting C,
     % it is the MLDS code generator's responsibility to ensure that each
     % generated MLDS class has at least one base class or non-static
     % data member.
@@ -917,6 +924,11 @@
 
 :- func init_decl_flags(access, per_instance, virtuality, finality,
     constness, abstractness) = mlds_decl_flags.
+
+    % Return the declaration flags appropriate for an initialized
+    % local static constant.
+    %
+:- func ml_static_const_decl_flags = mlds_decl_flags.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1372,19 +1384,19 @@
     % Stores information about each argument to an outline_foreign_proc.
     %
 :- type outline_arg
-    --->    in(
+    --->    ola_in(
                 mlds_type,      % The type of the argument.
                 string,         % The name of the argument in the foreign code.
                 mlds_rval       % The rval which holds the value of this
                                 % argument.
             )
-    ;       out(
+    ;       ola_out(
                 mlds_type,      % The type of the argument.
                 string,         % The name of the argument in the foreign code.
                 mlds_lval       % The lval where we are to place the result
                                 % calculated by the foreign code into.
             )
-    ;       unused.
+    ;       ola_unused.
 
     % This is just a random selection of possible languages
     % that we might want to target...
@@ -1462,16 +1474,21 @@
     --->    ml_field_offset(mlds_rval)
             % offset(N) represents the field at offset N Words.
 
-    ;       ml_field_named(mlds_fully_qualified_name(mlds_field_name),
-                mlds_type).
-            % named_field(Name, CtorType) represents the field with the
-            % specified name. The CtorType gives the MLDS type for this
-            % particular constructor. The type of the object is given by
-            % the PtrType in the field(..) lval; CtorType may either be
-            % the same as PtrType, or it may be a pointer to a derived class.
-            % In the latter case, the MLDS->target code back-end is responsible
-            % for inserting a downcast from PtrType to CtorType before
-            % accessing the field.
+    ;       ml_field_named(
+                % ml_field_named(Name, MaybeCtorType) represents the field with
+                % the specified name.
+                %
+                % CtorType gives the MLDS type for this particular constructor.
+                % The type of the object is given by the PtrType in the
+                % field(..) lval. CtorType may either be the same as PtrType,
+                % or it may be a pointer to a derived class. In the latter
+                % case, the MLDS->target code back-end is responsible for
+                % inserting a downcast from PtrType to CtorType before
+                % accessing the field.
+
+                mlds_fully_qualified_name(mlds_field_name),
+                mlds_type
+            ).
 
 :- type mlds_field_name == string.
 
@@ -1559,6 +1576,22 @@
 % Expressions
 %
 
+:- type ml_scalar_common_type_num
+    --->    ml_scalar_common_type_num(int).
+:- type ml_vector_common_type_num
+    --->    ml_vector_common_type_num(int).
+
+:- type mlds_scalar_common
+    --->    ml_scalar_common(mlds_module_name, mlds_type,
+                ml_scalar_common_type_num, int).
+            % module name, type, type number, row number
+
+:- type mlds_vector_common
+    --->    ml_vector_common(mlds_module_name, mlds_type,
+                ml_vector_common_type_num, int, int).
+            % module name, type, type number,
+            % starting row number, number of rows
+
     % An rval is an expression that represents a value.
     %
 :- type mlds_rval
@@ -1581,6 +1614,26 @@
 
     ;       ml_mem_addr(mlds_lval)
             % The address of a variable, etc.
+
+    ;       ml_scalar_common(mlds_scalar_common)
+            % A reference to the given common structure. The reference is NOT
+            % the address; that can be represented using a mlds_data_addr
+            % const. This rval is intended to be used as the name of an
+            % array to be indexed into. This is possible because the elements
+            % of a scalar common cell are all boxed and thus of the same size.
+
+    ;       ml_vector_common_row(mlds_vector_common, mlds_rval)
+            % ml_vector_common_row(VectorCommon, Index),
+            % A reference to a selected row (selected by the second argument)
+            % of the given common structure. If VectorCommon is equal e.g.
+            % to ml_vector_common(ModuleName, Type, TypeNum, StartRow, NumRows)
+            % then Index must be between 0 and NumRows-1 (both inclusive),
+            % and the reference will be row StartRow + Index in the 2D table
+            % represented by the 2D table holding all the vector static data of
+            % this type.
+            %
+            % The selected row should be a struct holding unboxed values,
+            % which can be retrieved using field names (not field offsets).
 
     ;       ml_self(mlds_type).
             % The equivalent of the `this' pointer in C++ with the type of the
@@ -1608,12 +1661,13 @@
     --->    mlconst_true
     ;       mlconst_false
     ;       mlconst_int(int)
-    ;       mlconst_foreign(foreign_language, string, mlds_type)
     ;       mlconst_float(float)
     ;       mlconst_string(string)
     ;       mlconst_multi_string(list(string))
             % A multi_string_const is a string containing embedded NULs
             % between each substring in the list.
+
+    ;       mlconst_foreign(foreign_language, string, mlds_type)
 
     ;       mlconst_named_const(string)
             % A constant with the given name, such as a value of an enum type
@@ -1657,10 +1711,8 @@
     --->    mlds_data_var(mlds_var_name)
             % Ordinary variables.
 
-    ;       mlds_common(int)
-            % Compiler-introduced constants representing global constants.
-            % These are called "common" because they may be common
-            % subexpressions.
+    ;       mlds_scalar_common_ref(mlds_scalar_common)
+            % The address of the given scalar common cell.
 
     % Stuff for handling polymorphism/RTTI and type classes.
 
@@ -1926,12 +1978,16 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         unexpected(this_file, "target x86_64 with --high-level-code")
     ;
         Target = target_erlang,
-        unexpected(this_file,
-            "mercury_type_to_mlds_type: target erlang")
+        unexpected(this_file, "mercury_type_to_mlds_type: target erlang")
     ),
     MLDSType = mlds_foreign_type(ForeignType).
 
 %-----------------------------------------------------------------------------%
+
+get_initializer_array_size(no_initializer) = no_size.
+get_initializer_array_size(init_obj(_)) = no_size.
+get_initializer_array_size(init_struct(_, _)) = no_size.
+get_initializer_array_size(init_array(Elems)) = array_size(list.length(Elems)).
 
 mlds_get_func_signature(mlds_func_params(Parameters, RetTypes)) =
         mlds_func_signature(ParamTypes, RetTypes) :-
@@ -2187,6 +2243,18 @@ init_decl_flags(Access, PerInstance, Virtuality, Finality, Constness,
     finality_bits(Finality) \/
     constness_bits(Constness) \/
     abstractness_bits(Abstractness).
+
+ml_static_const_decl_flags = DeclFlags :-
+    % Note that rtti_decl_flags, in rtti_to_mlds.m,
+    % must be the same as this apart from the access.
+    Access = acc_local,
+    PerInstance = one_copy,
+    Virtuality = non_virtual,
+    Finality = final,
+    Constness = const,
+    Abstractness = concrete,
+    DeclFlags = init_decl_flags(Access, PerInstance,
+        Virtuality, Finality, Constness, Abstractness).
 
 %-----------------------------------------------------------------------------%
 

@@ -41,9 +41,12 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
 :- import_module libs.compiler_util.
 :- import_module ml_backend.ml_code_gen.
+:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_simplify_switch.
+:- import_module parse_tree.builtin_lib_types.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -60,8 +63,6 @@
 ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         Decls, Statements, !Info) :-
     MLDS_Context = mlds_make_context(Context),
-    % Compute the value we're going to switch on.
-
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
 
@@ -69,23 +70,24 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     %   int slot_N;
     %   MR_String str_M;
 
-    ml_gen_info_new_aux_var_name("slot", SlotVarName, !Info),
+    ml_gen_info_new_aux_var_name("slot", SlotVar, !Info),
     SlotVarType = mlds_native_int_type,
     % We never need to trace ints.
     SlotVarGCStatement = gc_no_stmt,
-    SlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(SlotVarName), SlotVarType,
+    SlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(SlotVar), SlotVarType,
         SlotVarGCStatement, MLDS_Context),
-    ml_gen_var_lval(!.Info, SlotVarName, SlotVarType, SlotVarLval),
+    ml_gen_var_lval(!.Info, SlotVar, SlotVarType, SlotVarLval),
+    SlotVarRval = ml_lval(SlotVarLval),
 
-    ml_gen_info_new_aux_var_name("str", StringVarName, !Info),
+    ml_gen_info_new_aux_var_name("str", StringVar, !Info),
     StringVarType = ml_string_type,
     % This variable always points to an element of the string_table array,
     % which are all static constants; it can never point into the heap.
     % So the GC never needs to trace it
     StringVarGCStatement = gc_no_stmt,
-    StringVarDefn = ml_gen_mlds_var_decl(mlds_data_var(StringVarName),
+    StringVarDefn = ml_gen_mlds_var_decl(mlds_data_var(StringVar),
         StringVarType, StringVarGCStatement, MLDS_Context),
-    ml_gen_var_lval(!.Info, StringVarName, StringVarType, StringVarLval),
+    ml_gen_var_lval(!.Info, StringVar, StringVarType, StringVarLval),
 
     % Generate new labels.
     ml_gen_new_label(EndLabel, !Info),
@@ -127,37 +129,42 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         ml_gen_failure(CodeModel, Context, FailStatements, !Info)
     ),
 
-    % Generate the code etc. for the hash table.
-    ml_gen_string_hash_slots(0, TableSize, HashSlotsMap,
-        Strings, NextSlots, map.init, RevMap),
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_name(ModuleInfo, ModuleName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    ml_gen_info_get_target(!.Info, Target),
+
+    MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
+    MLDS_NextSlotType = mlds_native_int_type,
+    MLDS_ArgTypes = [MLDS_StringType, MLDS_NextSlotType],
+
+    ml_gen_info_get_global_data(!.Info, GlobalData0),
+    ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
+        MLDS_ArgTypes, StructTypeNum, StructType, FieldIds,
+        GlobalData0, GlobalData1),
+
+    ( FieldIds = [StringFieldIdPrime, NextSlotFieldIdPrime] ->
+        StringFieldId = StringFieldIdPrime,
+        NextSlotFieldId = NextSlotFieldIdPrime
+    ;
+        unexpected(this_file, "ml_generate_string_switch: bad FieldIds")
+    ),
+
+    % Generate the rows of the hash table.
+    ml_gen_string_hash_slots(0, TableSize, StructType, HashSlotsMap,
+        RowInitializers, map.init, RevMap),
+
+    % Generate the hash table. The hash table is indexed by slot number,
+    % and each element has two fields: the matched string, and the next slot
+    % indication.
+    ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum, RowInitializers,
+        VectorCommon, GlobalData1, GlobalData),
+    ml_gen_info_set_global_data(GlobalData, !Info),
+
+    % Generate code which does the hash table lookup.
     map.to_assoc_list(RevMap, RevList),
     generate_string_switch_arms(CodeMap, RevList, [], SlotsCases0),
     list.sort(SlotsCases0, SlotsCases),
-
-    % Generate the following local constant declarations:
-    %   static const int next_slots_table_N = { <NextSlots> };
-    %   static const MR_String string_table_M[] = { <Strings> };
-
-    some [!GlobalData] (
-        ml_gen_info_get_global_data(!.Info, !:GlobalData),
-
-        NextSlotsType = mlds_array_type(SlotVarType),
-        ml_gen_static_const_defn("next_slots_table", NextSlotsType,
-            acc_private, init_array(NextSlots), Context, NextSlotsName,
-            !GlobalData),
-        ml_gen_var_lval(!.Info, NextSlotsName, NextSlotsType, NextSlotsLval),
-
-        StringTableType = mlds_array_type(StringVarType),
-        ml_gen_static_const_defn("string_table", StringTableType,
-            acc_private, init_array(Strings), Context, StringTableName,
-            !GlobalData),
-        ml_gen_var_lval(!.Info, StringTableName, StringTableType,
-            StringTableLval),
-
-        ml_gen_info_set_global_data(!.GlobalData, !Info)
-    ),
-
-    % Generate code which does the hash table lookup.
     SwitchStmt0 = ml_stmt_switch(SlotVarType, ml_lval(SlotVarLval),
         mlds_switch_range(0, TableSize - 1), SlotsCases,
         default_is_unreachable),
@@ -188,9 +195,9 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
             "lookup the string for this hash slot")), MLDS_Context),
         statement(
             ml_stmt_atomic(assign(StringVarLval,
-                ml_binop(array_index(elem_type_string),
-                    ml_lval(StringTableLval),
-                    ml_lval(SlotVarLval)))),
+                ml_lval(ml_field(yes(0),
+                    ml_vector_common_row(VectorCommon, SlotVarRval),
+                    StringFieldId, MLDS_StringType, StructType)))),
             MLDS_Context),
         statement(ml_stmt_atomic(comment("did we find a match?")),
             MLDS_Context),
@@ -200,9 +207,9 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
             "no match yet, so get next slot in hash chain")), MLDS_Context),
         statement(
             ml_stmt_atomic(assign(SlotVarLval,
-                ml_binop(array_index(elem_type_int),
-                    ml_lval(NextSlotsLval),
-                    ml_lval(SlotVarLval)))),
+                ml_lval(ml_field(yes(0),
+                    ml_vector_common_row(VectorCommon, SlotVarRval),
+                    NextSlotFieldId, MLDS_NextSlotType, StructType)))),
             MLDS_Context)
         ],
         Context),
@@ -296,31 +303,27 @@ gen_string_switch_case_comment(TaggedConsId) = String :-
     %
 :- type hash_slot_rev_map == map(int, hash_slots).
 
-:- pred ml_gen_string_hash_slots(int::in, int::in,
-    map(int, string_hash_slot(int))::in,
-    list(mlds_initializer)::out, list(mlds_initializer)::out,
+:- pred ml_gen_string_hash_slots(int::in, int::in, mlds_type::in,
+    map(int, string_hash_slot(int))::in, list(mlds_initializer)::out,
     hash_slot_rev_map::in, hash_slot_rev_map::out) is det.
 
-ml_gen_string_hash_slots(Slot, TableSize, HashSlotMap,
-        StringInits, NextSlotInits, !RevMap) :-
+ml_gen_string_hash_slots(Slot, TableSize, RowType, HashSlotMap,
+        RowInitializers, !RevMap) :-
     ( Slot = TableSize ->
-        StringInits = [],
-        NextSlotInits = []
+        RowInitializers = []
     ;
-        ml_gen_string_hash_slot(Slot, HashSlotMap,
-            StringInit, NextSlotInit, !RevMap),
-        ml_gen_string_hash_slots(Slot + 1, TableSize, HashSlotMap,
-            LaterStringInits, LaterNextSlotInits, !RevMap),
-        StringInits = [StringInit | LaterStringInits],
-        NextSlotInits = [NextSlotInit | LaterNextSlotInits]
+        ml_gen_string_hash_slot(Slot, RowType, HashSlotMap, HeadRowInitializer,
+            !RevMap),
+        ml_gen_string_hash_slots(Slot + 1, TableSize, RowType, HashSlotMap,
+            TailRowInitializers, !RevMap),
+        RowInitializers = [HeadRowInitializer | TailRowInitializers]
     ).
 
-:- pred ml_gen_string_hash_slot(int::in,
-    map(int, string_hash_slot(int))::in,
-    mlds_initializer::out, mlds_initializer::out,
+:- pred ml_gen_string_hash_slot(int::in, mlds_type::in,
+    map(int, string_hash_slot(int))::in, mlds_initializer::out,
     hash_slot_rev_map::in, hash_slot_rev_map::out) is det.
 
-ml_gen_string_hash_slot(Slot, HashSlotMap, StringInit, NextSlotInit,
+ml_gen_string_hash_slot(Slot, StructType, HashSlotMap, RowInitializer,
         !RevMap) :-
     ( map.search(HashSlotMap, Slot, string_hash_slot(Next, String, CaseNum)) ->
         StringRval = ml_const(mlconst_string(String)),
@@ -337,8 +340,8 @@ ml_gen_string_hash_slot(Slot, HashSlotMap, StringInit, NextSlotInit,
         StringRval = ml_const(mlconst_null(ml_string_type)),
         NextSlotRval = ml_const(mlconst_int(-2))
     ),
-    StringInit = init_obj(StringRval),
-    NextSlotInit = init_obj(NextSlotRval).
+    RowInitializer = init_struct(StructType,
+        [init_obj(StringRval), init_obj(NextSlotRval)]).
 
 :- pred generate_string_switch_arms(map(int, statement)::in,
     assoc_list(int, hash_slots)::in,

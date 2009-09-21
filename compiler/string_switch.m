@@ -66,8 +66,10 @@ generate_string_switch(Cases, VarRval, VarName, CodeModel, _CanFail,
     % allows the code of the cases to make use of them.
 
     acquire_reg(reg_r, SlotReg, !CI),
+    acquire_reg(reg_r, RowReg, !CI),
     acquire_reg(reg_r, StringReg, !CI),
     release_reg(SlotReg, !CI),
+    release_reg(RowReg, !CI),
     release_reg(StringReg, !CI),
 
     get_next_label(LoopLabel, !CI),
@@ -104,7 +106,7 @@ generate_string_switch(Cases, VarRval, VarName, CodeModel, _CanFail,
 
     % Generate the data structures for the hash table.
     gen_string_hash_slots(0, TableSize, HashSlotsMap, FailLabel,
-        Strings, NextSlots, Targets),
+        TableRows, Targets),
 
     % Generate the code for the cases.
     map.foldl(add_remaining_case, CaseLabelMap, empty, CasesCode),
@@ -113,11 +115,11 @@ generate_string_switch(Cases, VarRval, VarName, CodeModel, _CanFail,
     ),
 
     % Generate the code for the hash table lookup.
-    % XXX We should be using one vector cell, not two scalar cells.
-    add_scalar_static_cell_natural_types(NextSlots, NextSlotsTableAddr, !CI),
-    add_scalar_static_cell_natural_types(Strings, StringTableAddr, !CI),
-    NextSlotsTable = const(llconst_data_addr(NextSlotsTableAddr, no)),
-    StringTable = const(llconst_data_addr(StringTableAddr, no)),
+    RowElemTypes = [lt_string, lt_integer],
+    add_vector_static_cell(RowElemTypes, TableRows, TableAddr, !CI),
+    ArrayElemTypes = [scalar_elem_string, scalar_elem_int],
+    ArrayElemType = array_elem_struct(ArrayElemTypes),
+    TableAddrRval = const(llconst_data_addr(TableAddr, no)),
     HashLookupCode = from_list([
         llds_instr(comment("hashed string switch"), ""),
         llds_instr(assign(SlotReg,
@@ -125,17 +127,21 @@ generate_string_switch(Cases, VarRval, VarName, CodeModel, _CanFail,
                 const(llconst_int(HashMask)))),
             "compute the hash value of the input string"),
         llds_instr(label(LoopLabel), "begin hash chain loop"),
+        llds_instr(assign(RowReg,
+            binop(int_mul, lval(SlotReg), const(llconst_int(2)))),
+            "find the start of the row"),
         llds_instr(assign(StringReg,
-            binop(array_index(elem_type_string),
-                StringTable, lval(SlotReg))),
+            binop(array_index(ArrayElemType),
+                TableAddrRval, lval(RowReg))),
             "lookup the string for this hash slot"),
         llds_instr(if_val(binop(logical_and, lval(StringReg),
             binop(str_eq, lval(StringReg), VarRval)),
                 code_label(JumpLabel)),
             "did we find a match?"),
         llds_instr(assign(SlotReg,
-            binop(array_index(elem_type_int),
-                NextSlotsTable, lval(SlotReg))),
+            binop(array_index(ArrayElemType),
+                TableAddrRval,
+                    binop(int_add, lval(RowReg), const(llconst_int(1))))),
             "not yet, so get next slot in hash chain"),
         llds_instr(
             if_val(binop(int_ge, lval(SlotReg), const(llconst_int(0))),
@@ -144,6 +150,19 @@ generate_string_switch(Cases, VarRval, VarName, CodeModel, _CanFail,
         llds_instr(label(FailLabel), "no match, so fail")
     ]),
 
+    % XXX The generated code would be faster (due to better locality)
+    % if we included the target addresses in the main table. Unfortunately,
+    % that would require two extensions to the LLDS. The first and relatively
+    % easy change would be a new LLDS instruction that represents a goto
+    % to an arbitrary rval (in this case, the rval taken from the selected
+    % table row). The second and substantially harder change would be making
+    % the internal labels of the switch arms actually storable in static data.
+    % We do not currently have any way to refer to internal labels from data,
+    % and optimizations that manipulate labels (such as frameopt, which can
+    % duplicate them, and dupelim, which can replace them with other labels)
+    % would have to be taught to reflect any changes they make in the global
+    % data. It is the last step that is the killer in the terms of difficulty
+    % of implementation.
     JumpCode = from_list([
         llds_instr(label(JumpLabel), "we found a match"),
         llds_instr(computed_goto(lval(SlotReg), Targets),
@@ -154,26 +173,25 @@ generate_string_switch(Cases, VarRval, VarName, CodeModel, _CanFail,
 
 :- pred gen_string_hash_slots(int::in, int::in,
     map(int, string_hash_slot(label))::in, label::in,
-    list(rval)::out, list(rval)::out, list(maybe(label))::out) is det.
+    list(list(rval))::out, list(maybe(label))::out) is det.
 
 gen_string_hash_slots(Slot, TableSize, HashSlotMap, FailLabel,
-        Strings, NextSlots, Targets) :-
+        TableRows, MaybeTargets) :-
     ( Slot = TableSize ->
-        Strings = [],
-        NextSlots = [],
-        Targets = []
+        TableRows = [],
+        MaybeTargets = []
     ;
         gen_string_hash_slot(Slot, HashSlotMap, FailLabel,
-            String, NextSlot, Target),
+            StringRval, NextSlotRval, Target),
         gen_string_hash_slots(Slot + 1, TableSize, HashSlotMap, FailLabel,
-            TailStrings, TailNextSlots, TailTargets),
-        Strings = [String | TailStrings],
-        NextSlots = [NextSlot | TailNextSlots],
-        Targets = [Target | TailTargets]
+            TailTableRows, TailMaybeTargets),
+        HeadTableRow = [StringRval, NextSlotRval],
+        TableRows = [HeadTableRow | TailTableRows],
+        MaybeTargets = [yes(Target) | TailMaybeTargets]
     ).
 
 :- pred gen_string_hash_slot(int::in, map(int, string_hash_slot(label))::in,
-    label::in, rval::out, rval::out, maybe(label)::out) is det.
+    label::in, rval::out, rval::out, label::out) is det.
 
 gen_string_hash_slot(Slot, HashSlotMap, FailLabel,
         StringRval, NextSlotRval, Target) :-
@@ -181,11 +199,11 @@ gen_string_hash_slot(Slot, HashSlotMap, FailLabel,
         SlotInfo = string_hash_slot(Next, String, CaseLabel),
         NextSlotRval = const(llconst_int(Next)),
         StringRval = const(llconst_string(String)),
-        Target = yes(CaseLabel)
+        Target = CaseLabel
     ;
         StringRval = const(llconst_int(0)),
         NextSlotRval = const(llconst_int(-2)),
-        Target = yes(FailLabel)
+        Target = FailLabel
     ).
 
 :- pred this_is_last_case(int::in, int::in,

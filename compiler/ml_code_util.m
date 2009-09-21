@@ -119,11 +119,15 @@
 
     % Convert the element type for an array_index operator to an MLDS type.
     %
-:- func ml_gen_array_elem_type(builtin_ops.array_elem_type) = mlds_type.
+:- func ml_gen_array_elem_type(array_elem_type) = mlds_type.
 
     % Return the MLDS type corresponding to a Mercury string type.
     %
 :- func ml_string_type = mlds_type.
+
+    % Return the MLDS type corresponding to a Mercury int type.
+    %
+:- func ml_int_type = mlds_type.
 
     % Allocate some fresh type variables, with kind `star',  to use as
     % the Mercury types of boxed objects (e.g. to get the argument types
@@ -296,18 +300,6 @@
     % the specified constructor.
     %
 :- func ml_format_reserved_object_name(string, arity) = mlds_var_name.
-
-    % Generate a definition of a static constant, given the constant's name,
-    % type, accessibility, and initializer.
-    %
-:- pred ml_gen_static_const_defn(string::in, mlds_type::in, access::in,
-    mlds_initializer::in, prog_context::in, mlds_var_name::out,
-    ml_global_data::in, ml_global_data::out) is det.
-
-    % Return the declaration flags appropriate for an initialized
-    % local static constant.
-    %
-:- func ml_static_const_decl_flags = mlds_decl_flags.
 
     % Succeed iff the specified mlds_defn defines a local static constant.
     %
@@ -527,6 +519,14 @@
     % qualifier before converting such names to MLDS.
     %
 :- func fixup_builtin_module(module_name) = module_name.
+
+:- pred ml_gen_box_const_rvals(module_info::in, prog_context::in,
+    list(mlds_type)::in, list(mlds_rval)::in, list(mlds_rval)::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
+:- pred ml_gen_box_const_rval(module_info::in, prog_context::in,
+    mlds_type::in, mlds_rval::in, mlds_rval::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1010,13 +1010,28 @@ ml_gen_type(Info, Type, MLDS_Type) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type).
 
-ml_gen_array_elem_type(elem_type_string) = ml_string_type.
-ml_gen_array_elem_type(elem_type_int) = mlds_native_int_type.
-ml_gen_array_elem_type(elem_type_generic) = mlds_generic_type.
+ml_gen_array_elem_type(ElemType) = MLDS_Type :-
+    (
+        ElemType = array_elem_scalar(ScalarElem),
+        MLDS_Type = ml_gen_scalar_array_elem_type(ScalarElem)
+    ;
+        ElemType = array_elem_struct(_ScalarElems),
+        unexpected(this_file, "ml_gen_array_elem_type: struct")
+    ).
+
+:- func ml_gen_scalar_array_elem_type(scalar_array_elem_type) = mlds_type.
+
+ml_gen_scalar_array_elem_type(scalar_elem_string) = ml_string_type.
+ml_gen_scalar_array_elem_type(scalar_elem_int) = mlds_native_int_type.
+ml_gen_scalar_array_elem_type(scalar_elem_generic) = mlds_generic_type.
 
 ml_string_type =
     mercury_type(string_type, ctor_cat_builtin(cat_builtin_string),
         non_foreign_type(string_type)).
+
+ml_int_type =
+    mercury_type(int_type, ctor_cat_builtin(cat_builtin_int),
+        non_foreign_type(int_type)).
 
 ml_make_boxed_types(Arity) = BoxedTypes :-
     varset.init(TypeVarSet0),
@@ -1503,8 +1518,8 @@ ml_format_reserved_object_name(CtorName, CtorArity) = ReservedObjName :-
 
 ml_gen_var_lval(Info, VarName, VarType, QualifiedVarLval) :-
     ml_gen_info_get_module_name(Info, ModuleName),
-    MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-    MLDS_Var = qual(MLDS_Module, module_qual, VarName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    MLDS_Var = qual(MLDS_ModuleName, module_qual, VarName),
     QualifiedVarLval = ml_var(MLDS_Var, VarType).
 
 ml_gen_var_decl(VarName, Type, Context, Defn, !Info) :-
@@ -1525,20 +1540,6 @@ ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStatement,
     DeclFlags = ml_gen_local_var_decl_flags,
     Defn = mlds_defn(Name, Context, DeclFlags, EntityDefn).
 
-ml_gen_static_const_defn(ConstName, ConstType, Access, Initializer, Context,
-        VarName, !GlobalData) :-
-    ml_global_data_get_unique_const_num(ConstNum, !GlobalData),
-    VarName = mlds_var_name(ConstName, yes(ConstNum)),
-    EntityName = entity_data(mlds_data_var(VarName)),
-    % The GC never needs to trace static constants, because they can never
-    % point into the heap; they can point only to other static constants.
-    GCStatement = gc_no_stmt,
-    EntityDefn = mlds_data(ConstType, Initializer, GCStatement),
-    DeclFlags = mlds.set_access(ml_static_const_decl_flags, Access),
-    MLDS_Context = mlds_make_context(Context),
-    Defn = mlds_defn(EntityName, MLDS_Context, DeclFlags, EntityDefn),
-    ml_global_data_add_flat_cell_defn(Defn, !GlobalData).
-
 ml_gen_public_field_decl_flags = DeclFlags :-
     Access = acc_public,
     PerInstance = per_instance,
@@ -1555,18 +1556,6 @@ ml_gen_local_var_decl_flags = DeclFlags :-
     Virtuality = non_virtual,
     Finality = overridable,
     Constness = modifiable,
-    Abstractness = concrete,
-    DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
-
-ml_static_const_decl_flags = DeclFlags :-
-    % Note that rtti_decl_flags, in rtti_to_mlds.m,
-    % must be the same as this apart from the access.
-    Access = acc_local,
-    PerInstance = one_copy,
-    Virtuality = non_virtual,
-    Finality = final,
-    Constness = const,
     Abstractness = concrete,
     DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Finality, Constness, Abstractness).
@@ -2833,6 +2822,54 @@ fixup_builtin_module(ModuleName0) = ModuleName :-
         ModuleName = mercury_public_builtin_module
     ;
         ModuleName = ModuleName0
+    ).
+
+ml_gen_box_const_rvals(_, _, [], [], [], !GlobalData).
+ml_gen_box_const_rvals(_, _, [], [_ | _], _, !GlobalData) :-
+    unexpected(this_file, "ml_gen_box_const_rvals: list length mismatch").
+ml_gen_box_const_rvals(_, _, [_ | _], [], _, !GlobalData) :-
+    unexpected(this_file, "ml_gen_box_const_rvals: list length mismatch").
+ml_gen_box_const_rvals(ModuleInfo, Context, [Type | Types], [Rval | Rvals],
+        [BoxedRval | BoxedRvals], !GlobalData) :-
+    ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval, BoxedRval,
+        !GlobalData),
+    ml_gen_box_const_rvals(ModuleInfo, Context, Types, Rvals, BoxedRvals,
+        !GlobalData).
+
+ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval, BoxedRval,
+        !GlobalData) :-
+    (
+        ( Type = mercury_type(type_variable(_, _), _, _)
+        ; Type = mlds_generic_type
+        )
+    ->
+        BoxedRval = Rval
+    ;
+        % For the MLDS->C and MLDS->asm back-ends, we need to handle floats
+        % specially, since boxed floats normally get heap allocated, whereas
+        % for other types boxing is just a cast (casts are OK in static
+        % initializers, but calls to malloc() are not).
+        %
+        % [For the .NET and Java back-ends, this code currently never gets
+        % called, since currently we don't support static ground term
+        % optimization for those back-ends.]
+
+        ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
+        ; Type = mlds_native_float_type
+        )
+    ->
+        % Generate a local static constant for this float.
+        module_info_get_name(ModuleInfo, ModuleName),
+        MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+        Initializer = init_obj(Rval),
+        ml_gen_static_scalar_const_addr(MLDS_ModuleName, "float", Type,
+            Initializer, Context, ConstAddrRval, !GlobalData),
+
+        % Return as the boxed rval the address of that constant,
+        % cast to mlds_generic_type.
+        BoxedRval = ml_unop(cast(mlds_generic_type), ConstAddrRval)
+    ;
+        BoxedRval = ml_unop(box(Type), Rval)
     ).
 
 %-----------------------------------------------------------------------------%

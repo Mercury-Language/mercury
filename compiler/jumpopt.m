@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,7 +105,8 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
         Recjump, PessimizeTailCalls, CheckedNondetTailCall, !C, !Instrs,
         Mod) :-
     some [!Instrmap, !Blockmap, !Lvalmap, !Procmap, !Sdprocmap, !Succmap,
-            !Forkmap] (
+        !Forkmap]
+    (
         Instrs0 = !.Instrs,
         map.init(!:Instrmap),
         map.init(!:Blockmap),
@@ -512,14 +513,15 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = usual_case
         )
     ;
-        Uinstr0 = computed_goto(Index, Targets0),
+        Uinstr0 = computed_goto(Index, MaybeTargets0),
         % Short-circuit all the destination labels.
-        short_maybe_labels(Instrmap, Targets0, Targets),
-        ( Targets = Targets0 ->
+        short_maybe_labels(Instrmap, MaybeTargets0, MaybeTargets),
+        ( MaybeTargets = MaybeTargets0 ->
             NewRemain = usual_case
         ;
             Shorted = Comment0 ++ " (some shortcircuits)",
-            NewInstrs = [llds_instr(computed_goto(Index, Targets), Shorted)],
+            NewInstrs =
+                [llds_instr(computed_goto(Index, MaybeTargets), Shorted)],
             NewRemain = specified(NewInstrs, Instrs0)
         )
     ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000,2002-2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2000,2002-2003, 2005-2006, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,13 +87,13 @@ convert_pseudo_type_info(Pseudo, !StaticCellInfo, Rval, LldsType) :-
     (
         Pseudo = type_var(Int),
         Rval = const(llconst_int(Int)),
-        LldsType = integer
+        LldsType = lt_integer
     ;
         Pseudo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
         DataAddr = rtti_addr(
             ctor_rtti_id(RttiTypeCtor, type_ctor_pseudo_type_info(Pseudo))),
         Rval = const(llconst_data_addr(DataAddr, no)),
-        LldsType = data_ptr
+        LldsType = lt_data_ptr
     ;
         Pseudo = plain_pseudo_type_info(RttiTypeCtor, Args),
         convert_compound_pseudo_type_info(RttiTypeCtor, [], Args,
@@ -117,7 +117,7 @@ convert_plain_type_info(TypeInfo, !StaticCellInfo, Rval, LldsType) :-
         DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor,
             type_ctor_type_info(TypeInfo))),
         Rval = const(llconst_data_addr(DataAddr, no)),
-        LldsType = data_ptr
+        LldsType = lt_data_ptr
     ;
         TypeInfo = plain_type_info(RttiTypeCtor, Args),
         convert_compound_type_info(RttiTypeCtor, [], Args,
@@ -141,7 +141,7 @@ convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
     TypeCtorInfoDataAddr = rtti_addr(
         ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info)),
     TypeCtorInfoRval = const(llconst_data_addr(TypeCtorInfoDataAddr, no)),
-    LldsType = data_ptr,
+    LldsType = lt_data_ptr,
     list.map_foldl((pred(A::in, AR::out, SCI0::in, SCI::out) is det :-
         (
             A = pseudo(PTI),
@@ -167,7 +167,7 @@ convert_compound_type_info(RttiTypeCtor, ArgRvals0, Args, !StaticCellInfo,
     TypeCtorInfoDataAddr = rtti_addr(
         ctor_rtti_id(RttiTypeCtor, TypeCtorInfoData)),
     TypeCtorInfoRval = const(llconst_data_addr(TypeCtorInfoDataAddr, no)),
-    LldsType = data_ptr,
+    LldsType = lt_data_ptr,
     list.map_foldl((pred(A::in, AR::out, SCI0::in, SCI::out) is det :-
         convert_plain_type_info(A, SCI0, SCI, AR, _LldsType)
     ), Args, ArgRvals1, !StaticCellInfo),

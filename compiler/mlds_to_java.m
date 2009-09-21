@@ -337,7 +337,12 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData, Defns0,
         InitPreds, FinalPreds, ExportedEnums),
-    ml_global_data_get_all_global_defns(GlobalData, GlobalDefns),
+    ml_global_data_get_all_global_defns(GlobalData,
+        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+    expect(map.is_empty(ScalarCellGroupMap), this_file,
+        "output_java_src_file: nonempty ScalarCellGroupMap"),
+    expect(map.is_empty(VectorCellGroupMap), this_file,
+        "output_java_src_file: nonempty VectorCellGroupMap"),
 
     % Do NOT enforce the outermost "mercury" qualifier here.  This module
     % name is compared with other module names in the MLDS, to avoid
@@ -770,9 +775,12 @@ method_ptrs_in_rval(ml_const(RvalConst), !CodeAddrs) :-
     ).
 method_ptrs_in_rval(ml_unop(_UnaryOp, Rval), !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs).
-method_ptrs_in_rval(ml_binop(_BinaryOp, Rval1, Rval2), !CodeAddrs) :-
-    method_ptrs_in_rval(Rval1, !CodeAddrs),
-    method_ptrs_in_rval(Rval2, !CodeAddrs).
+method_ptrs_in_rval(ml_binop(_BinaryOp, RvalA, RvalB), !CodeAddrs) :-
+    method_ptrs_in_rval(RvalA, !CodeAddrs),
+    method_ptrs_in_rval(RvalB, !CodeAddrs).
+method_ptrs_in_rval(ml_scalar_common(_), !CodeAddrs).
+method_ptrs_in_rval(ml_vector_common_row(_, RowRval), !CodeAddrs) :-
+    method_ptrs_in_rval(RowRval, !CodeAddrs).
 method_ptrs_in_rval(ml_mem_addr(_Address), !CodeAddrs).
 method_ptrs_in_rval(ml_self(_Type), !CodeAddrs).
 
@@ -1007,7 +1015,8 @@ generate_call_method_array_args([Type | Types], ArrayVar, Counter,
         Args0, Args) :-
     ArrayRval = ml_lval(ml_var(ArrayVar, mlds_native_int_type)),
     IndexRval = ml_const(mlconst_int(Counter)),
-    Rval = ml_binop(array_index(elem_type_generic), ArrayRval, IndexRval),
+    ElemType = array_elem_scalar(scalar_elem_generic),
+    Rval = ml_binop(array_index(ElemType), ArrayRval, IndexRval),
     UnBoxedRval = ml_unop(unbox(Type), Rval),
     Args1 = Args0 ++ [UnBoxedRval],
     generate_call_method_array_args(Types, ArrayVar, Counter + 1, Args1, Args).
@@ -1510,6 +1519,12 @@ rename_class_names_rval(Renaming, !Rval) :-
         !.Rval = ml_mem_addr(Lval0),
         rename_class_names_lval(Renaming, Lval0, Lval),
         !:Rval = ml_mem_addr(Lval)
+    ;
+        !.Rval = ml_scalar_common(_)
+    ;
+        !.Rval = ml_vector_common_row(VectorCommon, RowRval0),
+        rename_class_names_rval(Renaming, RowRval0, RowRval),
+        !:Rval = ml_vector_common_row(VectorCommon, RowRval)
     ;
         !.Rval = ml_self(Type0),
         rename_class_names_type(Renaming, Type0, Type),
@@ -2674,9 +2689,8 @@ output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
 
 output_data_name(mlds_data_var(VarName), !IO) :-
     output_mlds_var_name(VarName, !IO).
-output_data_name(mlds_common(Num), !IO) :-
-    io.write_string("common_", !IO),
-    io.write_int(Num, !IO).
+output_data_name(mlds_scalar_common_ref(_), !IO) :-
+    unexpected(this_file, "NYI: mlds_scalar_common_ref").
 output_data_name(mlds_rtti(RttiId), !IO) :-
     rtti.id_to_c_identifier(RttiId, RttiAddrName),
     io.write_string(RttiAddrName, !IO).
@@ -3980,6 +3994,12 @@ output_rval(ModuleInfo, Rval, ModuleName, !IO) :-
     (
         Rval = ml_lval(Lval),
         output_lval(ModuleInfo, Lval, ModuleName, !IO)
+    ;
+        Rval = ml_scalar_common(_),
+        unexpected(this_file, "output_rval: ml_scalar_common")
+    ;
+        Rval = ml_vector_common_row(_, _),
+        unexpected(this_file, "output_rval: ml_vector_common_row")
     ;
         Rval = ml_mkword(_, _),
         unexpected(this_file, "output_rval: tags not supported in Java")

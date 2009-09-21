@@ -1889,149 +1889,172 @@ output_instruction_decls(StackLayoutLabels, Instr, !DeclSet, !IO) :-
 :- pred output_instr_decls(map(label, data_addr)::in, instr::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_instr_decls(_, comment(_), !DeclSet, !IO).
-output_instr_decls(_, livevals(_), !DeclSet, !IO).
-output_instr_decls( StackLayoutLabels, block(_TempR, _TempF, Instrs),
-        !DeclSet, !IO) :-
-    list.foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
-        !DeclSet, !IO).
-output_instr_decls(_, assign(Lval, Rval), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO),
-    output_rval_decls(Rval, !DeclSet, !IO).
-output_instr_decls(_, keep_assign(Lval, Rval), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO),
-    output_rval_decls(Rval, !DeclSet, !IO).
-output_instr_decls(_, llcall(Target, ContLabel, _, _, _, _), !DeclSet, !IO) :-
-    output_code_addr_decls(Target, !DeclSet, !IO),
-    output_code_addr_decls(ContLabel, !DeclSet, !IO).
-output_instr_decls(_, arbitrary_c_code(_, _, _), !DeclSet, !IO).
-output_instr_decls(_, mkframe(FrameInfo, MaybeFailureContinuation),
-        !DeclSet, !IO) :-
+output_instr_decls(StackLayoutLabels, Instr, !DeclSet, !IO) :-
     (
-        FrameInfo = ordinary_frame(_, _, yes(Struct)),
-        Struct = foreign_proc_struct(StructName, StructFields,
-            MaybeStructFieldsContext)
-    ->
-        DeclId = decl_foreign_proc_struct(StructName),
-        ( decl_set_is_member(DeclId, !.DeclSet) ->
-            Msg = "struct " ++ StructName ++ " has been declared already",
-            unexpected(this_file, Msg)
+        ( Instr = comment(_)
+        ; Instr = livevals(_)
+        ; Instr = arbitrary_c_code(_, _, _)
+        ; Instr = label(_)
+        ; Instr = push_region_frame(_, _)
+        ; Instr = use_and_maybe_pop_region_frame(_, _)
+        ; Instr = discard_ticket
+        ; Instr = prune_ticket
+        ; Instr = incr_sp(_, _, _)
+        ; Instr = decr_sp(_)
+        ; Instr = decr_sp_and_return(_)
+        )
+    ;
+        Instr = block(_TempR, _TempF, Instrs),
+        list.foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
+            !DeclSet, !IO)
+    ;
+        Instr = assign(Lval, Rval),
+        output_lval_decls(Lval, !DeclSet, !IO),
+        output_rval_decls(Rval, !DeclSet, !IO)
+    ;
+        Instr = keep_assign(Lval, Rval),
+        output_lval_decls(Lval, !DeclSet, !IO),
+        output_rval_decls(Rval, !DeclSet, !IO)
+    ;
+        Instr = llcall(Target, ContLabel, _, _, _, _),
+        output_code_addr_decls(Target, !DeclSet, !IO),
+        output_code_addr_decls(ContLabel, !DeclSet, !IO)
+    ;
+        Instr = mkframe(FrameInfo, MaybeFailureContinuation),
+        (
+            FrameInfo = ordinary_frame(_, _, yes(Struct)),
+            Struct = foreign_proc_struct(StructName, StructFields,
+                MaybeStructFieldsContext)
+        ->
+            DeclId = decl_foreign_proc_struct(StructName),
+            ( decl_set_is_member(DeclId, !.DeclSet) ->
+                Msg = "struct " ++ StructName ++ " has been declared already",
+                unexpected(this_file, Msg)
+            ;
+                true
+            ),
+            io.write_string("struct ", !IO),
+            io.write_string(StructName, !IO),
+            io.write_string(" {\n", !IO),
+            (
+                MaybeStructFieldsContext = yes(StructFieldsContext),
+                output_set_line_num(StructFieldsContext, !IO),
+                io.write_string(StructFields, !IO),
+                output_reset_line_num(!IO)
+            ;
+                MaybeStructFieldsContext = no,
+                io.write_string(StructFields, !IO)
+            ),
+            io.write_string("\n};\n", !IO),
+            decl_set_insert(DeclId, !DeclSet)
         ;
             true
         ),
-        io.write_string("struct ", !IO),
-        io.write_string(StructName, !IO),
-        io.write_string(" {\n", !IO),
         (
-            MaybeStructFieldsContext = yes(StructFieldsContext),
-            output_set_line_num(StructFieldsContext, !IO),
-            io.write_string(StructFields, !IO),
-            output_reset_line_num(!IO)
+            MaybeFailureContinuation = yes(FailureContinuation),
+            output_code_addr_decls(FailureContinuation, !DeclSet, !IO)
         ;
-            MaybeStructFieldsContext = no,
-            io.write_string(StructFields, !IO)
-        ),
-        io.write_string("\n};\n", !IO),
-        decl_set_insert(DeclId, !DeclSet)
-    ;
-        true
-    ),
-    (
-        MaybeFailureContinuation = yes(FailureContinuation),
-        output_code_addr_decls(FailureContinuation, !DeclSet, !IO)
-    ;
-        MaybeFailureContinuation = no
-    ).
-output_instr_decls(_, label(_), !DeclSet, !IO).
-output_instr_decls(_, goto(CodeAddr), !DeclSet, !IO) :-
-    output_code_addr_decls(CodeAddr, !DeclSet, !IO).
-output_instr_decls(_, computed_goto(Rval, _Labels), !DeclSet, !IO) :-
-    output_rval_decls(Rval, !DeclSet, !IO).
-output_instr_decls(_, if_val(Rval, Target), !DeclSet, !IO) :-
-    output_rval_decls(Rval, !DeclSet, !IO),
-    output_code_addr_decls(Target, !DeclSet, !IO).
-output_instr_decls(_, save_maxfr(Lval), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, restore_maxfr(Lval), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, incr_hp(Lval, _Tag, _, Rval, _, _, MaybeRegionRval,
-        MaybeReuse), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO),
-    output_rval_decls(Rval, !DeclSet, !IO),
-    (
-        MaybeRegionRval = yes(RegionRval),
-        output_rval_decls(RegionRval, !DeclSet, !IO)
-    ;
-        MaybeRegionRval = no
-    ),
-    (
-        MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
-        output_rval_decls(ReuseRval, !DeclSet, !IO),
-        (
-            MaybeFlagLval = yes(FlagLval),
-            output_lval_decls(FlagLval, !DeclSet, !IO)
-        ;
-            MaybeFlagLval = no
+            MaybeFailureContinuation = no
         )
     ;
-        MaybeReuse = no_llds_reuse
+        Instr = goto(CodeAddr),
+        output_code_addr_decls(CodeAddr, !DeclSet, !IO)
+    ;
+        Instr = computed_goto(Rval, _MaybeLabels),
+        output_rval_decls(Rval, !DeclSet, !IO)
+    ;
+        Instr = if_val(Rval, Target),
+        output_rval_decls(Rval, !DeclSet, !IO),
+        output_code_addr_decls(Target, !DeclSet, !IO)
+    ;
+        Instr = save_maxfr(Lval),
+        output_lval_decls(Lval, !DeclSet, !IO)
+    ;
+        Instr = restore_maxfr(Lval),
+        output_lval_decls(Lval, !DeclSet, !IO)
+    ;
+        Instr = incr_hp(Lval, _Tag, _, Rval, _, _, MaybeRegionRval,
+            MaybeReuse),
+        output_lval_decls(Lval, !DeclSet, !IO),
+        output_rval_decls(Rval, !DeclSet, !IO),
+        (
+            MaybeRegionRval = yes(RegionRval),
+            output_rval_decls(RegionRval, !DeclSet, !IO)
+        ;
+            MaybeRegionRval = no
+        ),
+        (
+            MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+            output_rval_decls(ReuseRval, !DeclSet, !IO),
+            (
+                MaybeFlagLval = yes(FlagLval),
+                output_lval_decls(FlagLval, !DeclSet, !IO)
+            ;
+                MaybeFlagLval = no
+            )
+        ;
+            MaybeReuse = no_llds_reuse
+        )
+    ;
+        Instr = mark_hp(Lval),
+        output_lval_decls(Lval, !DeclSet, !IO)
+    ;
+        Instr = restore_hp(Rval),
+        output_rval_decls(Rval, !DeclSet, !IO)
+    ;
+        Instr = free_heap(Rval),
+        output_rval_decls(Rval, !DeclSet, !IO)
+    ;
+        Instr = region_fill_frame(_FillOp, _EmbeddedFrame, IdRval,
+            NumLval, AddrLval),
+        output_rval_decls(IdRval, !DeclSet, !IO),
+        output_lval_decls(NumLval, !DeclSet, !IO),
+        output_lval_decls(AddrLval, !DeclSet, !IO)
+    ;
+        Instr = region_set_fixed_slot(_SetOp, _EmbeddedFrame, ValueRval),
+        output_rval_decls(ValueRval, !DeclSet, !IO)
+    ;
+        Instr = store_ticket(Lval),
+        output_lval_decls(Lval, !DeclSet, !IO)
+    ;
+        Instr = reset_ticket(Rval, _Reason),
+        output_rval_decls(Rval, !DeclSet, !IO)
+    ;
+        Instr =   mark_ticket_stack(Lval),
+        output_lval_decls(Lval, !DeclSet, !IO)
+    ;
+        Instr = prune_tickets_to(Rval),
+        output_rval_decls(Rval, !DeclSet, !IO)
+    ;
+        Instr = foreign_proc_code(_, Comps, _, _,
+            MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _, _),
+        (
+            MaybeLayoutLabel = yes(Label),
+            map.lookup(StackLayoutLabels, Label, DataAddr),
+            output_stack_layout_decl(DataAddr, !DeclSet, !IO)
+        ;
+            MaybeLayoutLabel = no
+        ),
+        (
+            MaybeOnlyLayoutLabel = yes(OnlyLabel),
+            map.lookup(StackLayoutLabels, OnlyLabel, OnlyDataAddr),
+            output_stack_layout_decl(OnlyDataAddr, !DeclSet, !IO)
+        ;
+            MaybeOnlyLayoutLabel = no
+        ),
+        list.foldl2(output_foreign_proc_component_decls, Comps, !DeclSet, !IO)
+    ;
+        Instr = init_sync_term(Lval, _),
+        output_lval_decls(Lval, !DeclSet, !IO)
+    ;
+        Instr = fork_new_child(Lval, Child),
+        output_lval_decls(Lval, !DeclSet, !IO),
+        output_code_addr_decls(code_label(Child), !DeclSet, !IO)
+    ;
+        Instr = join_and_continue(Lval, Label),
+        output_lval_decls(Lval, !DeclSet, !IO),
+        output_code_addr_decls(code_label(Label), !DeclSet, !IO)
     ).
-output_instr_decls(_, mark_hp(Lval), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, restore_hp(Rval), !DeclSet, !IO) :-
-    output_rval_decls(Rval, !DeclSet, !IO).
-output_instr_decls(_, free_heap(Rval), !DeclSet, !IO) :-
-    output_rval_decls(Rval, !DeclSet, !IO).
-output_instr_decls(_, push_region_frame(_StackId, _EmbeddedFrame),
-        !DeclSet, !IO).
-output_instr_decls(_, region_fill_frame(_FillOp, _EmbeddedFrame, IdRval,
-        NumLval, AddrLval), !DeclSet, !IO) :-
-    output_rval_decls(IdRval, !DeclSet, !IO),
-    output_lval_decls(NumLval, !DeclSet, !IO),
-    output_lval_decls(AddrLval, !DeclSet, !IO).
-output_instr_decls(_, region_set_fixed_slot(_SetOp, _EmbeddedFrame, ValueRval),
-        !DeclSet, !IO) :-
-    output_rval_decls(ValueRval, !DeclSet, !IO).
-output_instr_decls(_, use_and_maybe_pop_region_frame(_UseOp, _EmbeddedFrame),
-        !DeclSet, !IO).
-output_instr_decls(_, store_ticket(Lval), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, reset_ticket(Rval, _Reason), !DeclSet, !IO) :-
-    output_rval_decls(Rval, !DeclSet, !IO).
-output_instr_decls(_, discard_ticket, !DeclSet, !IO).
-output_instr_decls(_, prune_ticket, !DeclSet, !IO).
-output_instr_decls(_, mark_ticket_stack(Lval), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, prune_tickets_to(Rval), !DeclSet, !IO) :-
-    output_rval_decls(Rval, !DeclSet, !IO).
-output_instr_decls(_, incr_sp(_, _, _), !DeclSet, !IO).
-output_instr_decls(_, decr_sp(_), !DeclSet, !IO).
-output_instr_decls(_, decr_sp_and_return(_), !DeclSet, !IO).
-output_instr_decls(StackLayoutLabels, foreign_proc_code(_, Comps, _, _,
-        MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _, _), !DeclSet, !IO) :-
-    (
-        MaybeLayoutLabel = yes(Label),
-        map.lookup(StackLayoutLabels, Label, DataAddr),
-        output_stack_layout_decl(DataAddr, !DeclSet, !IO)
-    ;
-        MaybeLayoutLabel = no
-    ),
-    (
-        MaybeOnlyLayoutLabel = yes(OnlyLabel),
-        map.lookup(StackLayoutLabels, OnlyLabel, OnlyDataAddr),
-        output_stack_layout_decl(OnlyDataAddr, !DeclSet, !IO)
-    ;
-        MaybeOnlyLayoutLabel = no
-    ),
-    list.foldl2(output_foreign_proc_component_decls, Comps, !DeclSet, !IO).
-output_instr_decls(_, init_sync_term(Lval, _), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, fork_new_child(Lval, Child), !DeclSet, !IO) :-
-    output_code_addr_decls(code_label(Child), !DeclSet, !IO),
-    output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, join_and_continue(Lval, Label), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO),
-    output_code_addr_decls(code_label(Label), !DeclSet, !IO).
 
 :- pred output_foreign_proc_component_decls(foreign_proc_component::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -2261,437 +2284,436 @@ output_comment_chars(PrevChar, [Char | Chars], !IO) :-
 :- pred output_instruction(instr::in, pair(label, set_tree234(label))::in,
     io::di, io::uo) is det.
 
-output_instruction(comment(Comment), _, !IO) :-
-    % Ensure that any comments embedded inside Comment are made safe, i.e.
-    % prevent the closing of embedded comments from closing the outer comment.
-    % The fact that the code here is not very efficient doesn't matter since
-    % we write out comments only with --auto-comments, which we enable only
-    % when we want to debug the generated C code.
-    io.write_string("/*", !IO),
-    string.to_char_list(Comment, CommentChars),
-    output_comment_chars('*', CommentChars, !IO),
-    io.write_string("*/\n", !IO).
-
-output_instruction(livevals(LiveVals), _, !IO) :-
-    io.write_string("/*\n* Live lvalues:\n", !IO),
-    set.to_sorted_list(LiveVals, LiveValsList),
-    output_livevals(LiveValsList, !IO),
-    io.write_string("*/\n", !IO).
-
-output_instruction(block(TempR, TempF, Instrs), ProfInfo, !IO) :-
-    output_block_start(TempR, TempF, !IO),
-    globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
-    output_instruction_list(Instrs, PrintComments, ProfInfo,
-        set_tree234.init, !IO),
-    output_block_end(!IO).
-
-output_instruction(assign(Lval, Rval), _, !IO) :-
-    io.write_string("\t", !IO),
-    output_lval_for_assign(Lval, Type, !IO),
-    io.write_string(" = ", !IO),
-    output_rval_as_type(Rval, Type, !IO),
-    io.write_string(";\n", !IO).
-
-output_instruction(keep_assign(Lval, Rval), _, !IO) :-
-    io.write_string("\t", !IO),
-    output_lval_for_assign(Lval, Type, !IO),
-    io.write_string(" = ", !IO),
-    output_rval_as_type(Rval, Type, !IO),
-    io.write_string(";\n", !IO).
-
-output_instruction(llcall(Target, ContLabel, LiveVals, _, _, _), ProfInfo,
-        !IO) :-
-    ProfInfo = CallerLabel - _,
-    output_call(Target, ContLabel, CallerLabel, !IO),
-    output_gc_livevals(LiveVals, !IO).
-
-output_instruction(arbitrary_c_code(_, _, C_Code), _, !IO) :-
-    io.write_string("\t", !IO),
-    io.write_string(C_Code, !IO).
-
-output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
+output_instruction(Instr, ProfInfo, !IO) :-
     (
-        FrameInfo = ordinary_frame(Msg, Num, MaybeStruct),
+        Instr = comment(Comment),
+        % Ensure that any comments embedded inside Comment are made safe, i.e.
+        % prevent the closing of embedded comments from closing the outer
+        % comment. The fact that the code here is not very efficient doesn't
+        % matter since we write out comments only with --auto-comments,
+        % which we enable only when we want to debug the generated C code.
+        io.write_string("/*", !IO),
+        string.to_char_list(Comment, CommentChars),
+        output_comment_chars('*', CommentChars, !IO),
+        io.write_string("*/\n", !IO)
+    ;
+        Instr = livevals(LiveVals),
+        io.write_string("/*\n* Live lvalues:\n", !IO),
+        set.to_sorted_list(LiveVals, LiveValsList),
+        output_livevals(LiveValsList, !IO),
+        io.write_string("*/\n", !IO)
+    ;
+        Instr = block(TempR, TempF, Instrs),
+        output_block_start(TempR, TempF, !IO),
+        globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
+        output_instruction_list(Instrs, PrintComments, ProfInfo,
+            set_tree234.init, !IO),
+        output_block_end(!IO)
+    ;
+        Instr = assign(Lval, Rval),
+        io.write_string("\t", !IO),
+        output_lval_for_assign(Lval, Type, !IO),
+        io.write_string(" = ", !IO),
+        output_rval_as_type(Rval, Type, !IO),
+        io.write_string(";\n", !IO)
+    ;
+        Instr = keep_assign(Lval, Rval),
+        io.write_string("\t", !IO),
+        output_lval_for_assign(Lval, Type, !IO),
+        io.write_string(" = ", !IO),
+        output_rval_as_type(Rval, Type, !IO),
+        io.write_string(";\n", !IO)
+    ;
+        Instr = llcall(Target, ContLabel, LiveVals, _, _, _),
+        ProfInfo = CallerLabel - _,
+        output_call(Target, ContLabel, CallerLabel, !IO),
+        output_gc_livevals(LiveVals, !IO)
+    ;
+        Instr = arbitrary_c_code(_, _, C_Code),
+        io.write_string("\t", !IO),
+        io.write_string(C_Code, !IO)
+    ;
+        Instr = mkframe(FrameInfo, MaybeFailCont),
         (
-            MaybeStruct = yes(foreign_proc_struct(StructName, _, _)),
+            FrameInfo = ordinary_frame(Msg, Num, MaybeStruct),
             (
-                MaybeFailCont = yes(FailCont),
-                io.write_string("\tMR_mkpragmaframe(""", !IO),
-                c_util.output_quoted_string(Msg, !IO),
-                io.write_string(""", ", !IO),
-                io.write_int(Num, !IO),
-                io.write_string(",\n\t\t", !IO),
-                io.write_string(StructName, !IO),
-                io.write_string(", ", !IO),
-                output_code_addr(FailCont, !IO),
-                io.write_string(");\n", !IO)
+                MaybeStruct = yes(foreign_proc_struct(StructName, _, _)),
+                (
+                    MaybeFailCont = yes(FailCont),
+                    io.write_string("\tMR_mkpragmaframe(""", !IO),
+                    c_util.output_quoted_string(Msg, !IO),
+                    io.write_string(""", ", !IO),
+                    io.write_int(Num, !IO),
+                    io.write_string(",\n\t\t", !IO),
+                    io.write_string(StructName, !IO),
+                    io.write_string(", ", !IO),
+                    output_code_addr(FailCont, !IO),
+                    io.write_string(");\n", !IO)
+                ;
+                    MaybeFailCont = no,
+                    io.write_string("\tMR_mkpragmaframe_no_redoip(""", !IO),
+                    c_util.output_quoted_string(Msg, !IO),
+                    io.write_string(""", ", !IO),
+                    io.write_int(Num, !IO),
+                    io.write_string(",\n\t\t", !IO),
+                    io.write_string(StructName, !IO),
+                    io.write_string(");\n", !IO)
+                )
             ;
-                MaybeFailCont = no,
-                io.write_string("\tMR_mkpragmaframe_no_redoip(""", !IO),
-                c_util.output_quoted_string(Msg, !IO),
-                io.write_string(""", ", !IO),
-                io.write_int(Num, !IO),
-                io.write_string(",\n\t\t", !IO),
-                io.write_string(StructName, !IO),
-                io.write_string(");\n", !IO)
+                MaybeStruct = no,
+                (
+                    MaybeFailCont = yes(FailCont),
+                    io.write_string("\tMR_mkframe(""", !IO),
+                    c_util.output_quoted_string(Msg, !IO),
+                    io.write_string(""", ", !IO),
+                    io.write_int(Num, !IO),
+                    io.write_string(",\n\t\t", !IO),
+                    output_code_addr(FailCont, !IO),
+                    io.write_string(");\n", !IO)
+                ;
+                    MaybeFailCont = no,
+                    io.write_string("\tMR_mkframe_no_redoip(""",
+                        !IO),
+                    c_util.output_quoted_string(Msg, !IO),
+                    io.write_string(""", ", !IO),
+                    io.write_int(Num, !IO),
+                    io.write_string(");\n", !IO)
+                )
             )
         ;
-            MaybeStruct = no,
+            FrameInfo = temp_frame(Kind),
             (
-                MaybeFailCont = yes(FailCont),
-                io.write_string("\tMR_mkframe(""", !IO),
-                c_util.output_quoted_string(Msg, !IO),
-                io.write_string(""", ", !IO),
-                io.write_int(Num, !IO),
-                io.write_string(",\n\t\t", !IO),
-                output_code_addr(FailCont, !IO),
+                Kind = det_stack_proc,
+                io.write_string("\tMR_mkdettempframe(", !IO),
+                (
+                    MaybeFailCont = yes(FailCont),
+                    output_code_addr(FailCont, !IO)
+                ;
+                    MaybeFailCont = no,
+                    unexpected(this_file, "output_instruction: no failcont")
+                ),
                 io.write_string(");\n", !IO)
             ;
-                MaybeFailCont = no,
-                io.write_string("\tMR_mkframe_no_redoip(""",
-                    !IO),
-                c_util.output_quoted_string(Msg, !IO),
-                io.write_string(""", ", !IO),
-                io.write_int(Num, !IO),
+                Kind = nondet_stack_proc,
+                io.write_string("\tMR_mktempframe(", !IO),
+                (
+                    MaybeFailCont = yes(FailCont),
+                    output_code_addr(FailCont, !IO)
+                ;
+                    MaybeFailCont = no,
+                    unexpected(this_file, "output_instruction: no failcont")
+                ),
                 io.write_string(");\n", !IO)
             )
         )
     ;
-        FrameInfo = temp_frame(Kind),
+        Instr = label(Label),
+        output_label_defn(Label, !IO),
+        globals.io_lookup_bool_option(local_thread_engine_base,
+            LocalThreadEngineBase, !IO),
         (
-            Kind = det_stack_proc,
-            io.write_string("\tMR_mkdettempframe(", !IO),
-            (
-                MaybeFailCont = yes(FailCont),
-                output_code_addr(FailCont, !IO)
-            ;
-                MaybeFailCont = no,
-                unexpected(this_file, "output_instruction: no failcont")
-            ),
-            io.write_string(");\n", !IO)
+            LocalThreadEngineBase = yes,
+            io.write_string("\tMR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE\n", !IO)
         ;
-            Kind = nondet_stack_proc,
-            io.write_string("\tMR_mktempframe(", !IO),
-            (
-                MaybeFailCont = yes(FailCont),
-                output_code_addr(FailCont, !IO)
-            ;
-                MaybeFailCont = no,
-                unexpected(this_file, "output_instruction: no failcont")
-            ),
-            io.write_string(");\n", !IO)
-        )
-    ).
-
-output_instruction(label(Label), ProfInfo, !IO) :-
-    output_label_defn(Label, !IO),
-    globals.io_lookup_bool_option(local_thread_engine_base,
-        LocalThreadEngineBase, !IO),
-    (
-        LocalThreadEngineBase = yes,
-        io.write_string("\tMR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE\n", !IO)
-    ;
-        LocalThreadEngineBase = no
-    ),
-    maybe_output_update_prof_counter(Label, ProfInfo, !IO).
-
-output_instruction(goto(CodeAddr), ProfInfo, !IO) :-
-    ProfInfo = CallerLabel - _,
-    io.write_string("\t", !IO),
-    output_goto(CodeAddr, CallerLabel, !IO).
-
-output_instruction(computed_goto(Rval, Labels), _, !IO) :-
-    io.write_string("\tMR_COMPUTED_GOTO(", !IO),
-    output_rval_as_type(Rval, unsigned, !IO),
-    io.write_string(",\n\t\t", !IO),
-    output_label_list_or_not_reached(Labels, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(if_val(Rval, Target), ProfInfo, !IO) :-
-    ProfInfo = CallerLabel - _,
-    io.write_string("\tif (", !IO),
-    output_test_rval(Rval, !IO),
-    io.write_string(") {\n\t\t", !IO),
-    output_goto(Target, CallerLabel, !IO),
-    io.write_string("\t}\n", !IO).
-
-output_instruction(save_maxfr(Lval), _, !IO) :-
-    io.write_string("\tMR_save_maxfr(", !IO),
-    output_lval(Lval, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(restore_maxfr(Lval), _, !IO) :-
-    io.write_string("\tMR_restore_maxfr(", !IO),
-    output_lval(Lval, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(incr_hp(Lval, MaybeTag, MaybeOffset, SizeRval, TypeMsg,
-        MayUseAtomicAlloc, MaybeRegionRval, MaybeReuse), ProfInfo, !IO) :-
-    io.write_string("\t", !IO),
-    (
-        MaybeReuse = no_llds_reuse,
-        output_incr_hp_no_reuse(Lval, MaybeTag, MaybeOffset, SizeRval,
-            TypeMsg, MayUseAtomicAlloc, MaybeRegionRval, ProfInfo, !IO)
-    ;
-        MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
-        (
-            MaybeTag = no,
-            (
-                MaybeFlagLval = yes(FlagLval),
-                io.write_string("MR_reuse_or_alloc_heap_flag(", !IO),
-                output_lval_as_word(Lval, !IO),
-                io.write_string(", ", !IO),
-                output_lval_as_word(FlagLval, !IO)
-            ;
-                MaybeFlagLval = no,
-                io.write_string("MR_reuse_or_alloc_heap(", !IO),
-                output_lval_as_word(Lval, !IO)
-            )
-        ;
-            MaybeTag = yes(Tag),
-            (
-                MaybeFlagLval = yes(FlagLval),
-                io.write_string("MR_tag_reuse_or_alloc_heap_flag(", !IO),
-                output_lval_as_word(Lval, !IO),
-                io.write_string(", ", !IO),
-                output_tag(Tag, !IO),
-                io.write_string(", ", !IO),
-                output_lval_as_word(FlagLval, !IO)
-            ;
-                MaybeFlagLval = no,
-                io.write_string("MR_tag_reuse_or_alloc_heap(", !IO),
-                output_lval_as_word(Lval, !IO),
-                io.write_string(", ", !IO),
-                output_tag(Tag, !IO)
-            )
+            LocalThreadEngineBase = no
         ),
-        io.write_string(", ", !IO),
-        output_rval(ReuseRval, !IO),
-        io.write_string(", ", !IO),
-        output_incr_hp_no_reuse(Lval, MaybeTag, MaybeOffset, SizeRval,
-            TypeMsg, MayUseAtomicAlloc, MaybeRegionRval, ProfInfo, !IO),
-        io.write_string(")", !IO)
-    ),
-    io.write_string(";\n", !IO).
-
-output_instruction(mark_hp(Lval), _, !IO) :-
-    io.write_string("\tMR_mark_hp(", !IO),
-    output_lval_as_word(Lval, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(restore_hp(Rval), _, !IO) :-
-    io.write_string("\tMR_restore_hp(", !IO),
-    output_rval_as_type(Rval, word, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(free_heap(Rval), _, !IO) :-
-    io.write_string("\tMR_free_heap(", !IO),
-    output_rval_as_type(Rval, data_ptr, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(push_region_frame(StackId, EmbeddedFrame), _, !IO) :-
-    (
-        StackId = region_stack_ite,
-        io.write_string("\tMR_push_region_ite_frame", !IO)
+        maybe_output_update_prof_counter(Label, ProfInfo, !IO)
     ;
-        StackId = region_stack_disj,
-        io.write_string("\tMR_push_region_disj_frame", !IO)
+        Instr = goto(CodeAddr),
+        ProfInfo = CallerLabel - _,
+        io.write_string("\t", !IO),
+        output_goto(CodeAddr, CallerLabel, !IO)
     ;
-        StackId = region_stack_commit,
-        io.write_string("\tMR_push_region_commit_frame", !IO)
-    ),
-    io.write_string("(", !IO),
-    output_embedded_frame_addr(EmbeddedFrame, !IO),
-    io.write_string(");", !IO),
-
-    % The comment is to make the code easier to debug;
-    % we can stop printing it out once that has been done.
-    EmbeddedFrame = embedded_stack_frame_id(_StackId, FirstSlot, LastSlot),
-    Comment = " /* " ++ int_to_string(FirstSlot) ++ ".." ++
-        int_to_string(LastSlot) ++ " */",
-    io.write_string(Comment, !IO),
-
-    io.write_string("\n", !IO).
-
-output_instruction(region_fill_frame(FillOp, EmbeddedFrame, IdRval,
-        NumLval, AddrLval), _, !IO) :-
-    (
-        FillOp = region_fill_ite_protect,
-        io.write_string("\tMR_region_fill_ite_protect", !IO)
+        Instr = computed_goto(Rval, MaybeLabels),
+        io.write_string("\tMR_COMPUTED_GOTO(", !IO),
+        output_rval_as_type(Rval, lt_unsigned, !IO),
+        io.write_string(",\n\t\t", !IO),
+        output_label_list_or_not_reached(MaybeLabels, !IO),
+        io.write_string(");\n", !IO)
     ;
-        FillOp = region_fill_ite_snapshot(removed_at_start_of_else),
-        io.write_string("\tMR_region_fill_ite_snapshot_removed", !IO)
+        Instr = if_val(Rval, Target),
+        ProfInfo = CallerLabel - _,
+        io.write_string("\tif (", !IO),
+        output_test_rval(Rval, !IO),
+        io.write_string(") {\n\t\t", !IO),
+        output_goto(Target, CallerLabel, !IO),
+        io.write_string("\t}\n", !IO)
     ;
-        FillOp = region_fill_ite_snapshot(not_removed_at_start_of_else),
-        io.write_string("\tMR_region_fill_ite_snapshot_not_removed", !IO)
+        Instr = save_maxfr(Lval),
+        io.write_string("\tMR_save_maxfr(", !IO),
+        output_lval(Lval, !IO),
+        io.write_string(");\n", !IO)
     ;
-        FillOp = region_fill_semi_disj_protect,
-        io.write_string("\tMR_region_fill_semi_disj_protect", !IO)
+        Instr = restore_maxfr(Lval),
+        io.write_string("\tMR_restore_maxfr(", !IO),
+        output_lval(Lval, !IO),
+        io.write_string(");\n", !IO)
     ;
-        FillOp = region_fill_disj_snapshot,
-        io.write_string("\tMR_region_fill_disj_snapshot", !IO)
-    ;
-        FillOp = region_fill_commit,
-        io.write_string("\tMR_region_fill_commit", !IO)
-    ),
-    io.write_string("(", !IO),
-    output_embedded_frame_addr(EmbeddedFrame, !IO),
-    io.write_string(", ", !IO),
-    output_rval(IdRval, !IO),
-    io.write_string(", ", !IO),
-    output_lval(NumLval, !IO),
-    io.write_string(", ", !IO),
-    output_lval(AddrLval, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(region_set_fixed_slot(SetOp, EmbeddedFrame, ValueRval),
-        _, !IO) :-
-    (
-        SetOp = region_set_ite_num_protects,
-        io.write_string("\tMR_region_set_ite_num_protects", !IO)
-    ;
-        SetOp = region_set_ite_num_snapshots,
-        io.write_string("\tMR_region_set_ite_num_snapshots", !IO)
-    ;
-        SetOp = region_set_disj_num_protects,
-        io.write_string("\tMR_region_set_disj_num_protects", !IO)
-    ;
-        SetOp = region_set_disj_num_snapshots,
-        io.write_string("\tMR_region_set_disj_num_snapshots", !IO)
-    ;
-        SetOp = region_set_commit_num_entries,
-        io.write_string("\tMR_region_set_commit_num_entries", !IO)
-    ),
-    io.write_string("(", !IO),
-    output_embedded_frame_addr(EmbeddedFrame, !IO),
-    io.write_string(", ", !IO),
-    output_rval(ValueRval, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(use_and_maybe_pop_region_frame(UseOp, EmbeddedFrame),
-        _, !IO) :-
-    (
-        UseOp = region_ite_then(region_ite_semidet_cond),
-        io.write_string("\tMR_use_region_ite_then_semidet", !IO)
-    ;
-        UseOp = region_ite_then(region_ite_nondet_cond),
-        io.write_string("\tMR_use_region_ite_then_nondet", !IO)
-    ;
-        UseOp = region_ite_else(region_ite_semidet_cond),
-        io.write_string("\tMR_use_region_ite_else_semidet", !IO)
-    ;
-        UseOp = region_ite_else(region_ite_nondet_cond),
-        io.write_string("\tMR_use_region_ite_else_nondet", !IO)
-    ;
-        UseOp = region_ite_nondet_cond_fail,
-        io.write_string("\tMR_use_region_ite_nondet_cond_fail", !IO)
-    ;
-        UseOp = region_disj_later,
-        io.write_string("\tMR_use_region_disj_later", !IO)
-    ;
-        UseOp = region_disj_last,
-        io.write_string("\tMR_use_region_disj_last", !IO)
-    ;
-        UseOp = region_disj_nonlast_semi_commit,
-        io.write_string("\tMR_use_region_disj_nonlast_semi_commit", !IO)
-    ;
-        UseOp = region_commit_success,
-        io.write_string("\tMR_use_region_commit_success", !IO)
-    ;
-        UseOp = region_commit_failure,
-        io.write_string("\tMR_use_region_commit_failure", !IO)
-    ),
-    io.write_string("(", !IO),
-    output_embedded_frame_addr(EmbeddedFrame, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(store_ticket(Lval), _, !IO) :-
-    io.write_string("\tMR_store_ticket(", !IO),
-    output_lval_as_word(Lval, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(reset_ticket(Rval, Reason), _, !IO) :-
-    io.write_string("\tMR_reset_ticket(", !IO),
-    output_rval_as_type(Rval, word, !IO),
-    io.write_string(", ", !IO),
-    output_reset_trail_reason(Reason, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(discard_ticket, _, !IO) :-
-    io.write_string("\tMR_discard_ticket();\n", !IO).
-
-output_instruction(prune_ticket, _, !IO) :-
-    io.write_string("\tMR_prune_ticket();\n", !IO).
-
-output_instruction(mark_ticket_stack(Lval), _, !IO) :-
-    io.write_string("\tMR_mark_ticket_stack(", !IO),
-    output_lval_as_word(Lval, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(prune_tickets_to(Rval), _, !IO) :-
-    io.write_string("\tMR_prune_tickets_to(", !IO),
-    output_rval_as_type(Rval, word, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(incr_sp(N, _Msg, Kind), _, !IO) :-
-    (
-        Kind = stack_incr_leaf,
-        ( N < max_leaf_stack_frame_size ->
-            io.write_string("\tMR_incr_sp_leaf(", !IO)
+        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, SizeRval, TypeMsg,
+            MayUseAtomicAlloc, MaybeRegionRval, MaybeReuse),
+        io.write_string("\t", !IO),
+        (
+            MaybeReuse = no_llds_reuse,
+            output_incr_hp_no_reuse(Lval, MaybeTag, MaybeOffset, SizeRval,
+                TypeMsg, MayUseAtomicAlloc, MaybeRegionRval, ProfInfo, !IO)
         ;
-            io.write_string("\tMR_incr_sp(", !IO)
-        )
+            MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+            (
+                MaybeTag = no,
+                (
+                    MaybeFlagLval = yes(FlagLval),
+                    io.write_string("MR_reuse_or_alloc_heap_flag(", !IO),
+                    output_lval_as_word(Lval, !IO),
+                    io.write_string(", ", !IO),
+                    output_lval_as_word(FlagLval, !IO)
+                ;
+                    MaybeFlagLval = no,
+                    io.write_string("MR_reuse_or_alloc_heap(", !IO),
+                    output_lval_as_word(Lval, !IO)
+                )
+            ;
+                MaybeTag = yes(Tag),
+                (
+                    MaybeFlagLval = yes(FlagLval),
+                    io.write_string("MR_tag_reuse_or_alloc_heap_flag(", !IO),
+                    output_lval_as_word(Lval, !IO),
+                    io.write_string(", ", !IO),
+                    output_tag(Tag, !IO),
+                    io.write_string(", ", !IO),
+                    output_lval_as_word(FlagLval, !IO)
+                ;
+                    MaybeFlagLval = no,
+                    io.write_string("MR_tag_reuse_or_alloc_heap(", !IO),
+                    output_lval_as_word(Lval, !IO),
+                    io.write_string(", ", !IO),
+                    output_tag(Tag, !IO)
+                )
+            ),
+            io.write_string(", ", !IO),
+            output_rval(ReuseRval, !IO),
+            io.write_string(", ", !IO),
+            output_incr_hp_no_reuse(Lval, MaybeTag, MaybeOffset, SizeRval,
+                TypeMsg, MayUseAtomicAlloc, MaybeRegionRval, ProfInfo, !IO),
+            io.write_string(")", !IO)
+        ),
+        io.write_string(";\n", !IO)
     ;
-        Kind = stack_incr_nonleaf,
-        io.write_string("\tMR_incr_sp(", !IO)
-    ),
-    io.write_int(N, !IO),
-    io.write_string(");\n", !IO).
-    % Use the code below instead of the code above if you want to run
-    % tools/framesize on the output of the compiler.
-    % io.write_string("\tMR_incr_sp_push_msg(", !IO),
-    % io.write_int(N, !IO),
-    % io.write_string(", """, !IO),
-    % c_util.output_quoted_string(Msg, !IO),
-    % io.write_string(""");\n", !IO).
+        Instr = mark_hp(Lval),
+        io.write_string("\tMR_mark_hp(", !IO),
+        output_lval_as_word(Lval, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = restore_hp(Rval),
+        io.write_string("\tMR_restore_hp(", !IO),
+        output_rval_as_type(Rval, lt_word, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = free_heap(Rval),
+        io.write_string("\tMR_free_heap(", !IO),
+        output_rval_as_type(Rval, lt_data_ptr, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = push_region_frame(StackId, EmbeddedFrame),
+        (
+            StackId = region_stack_ite,
+            io.write_string("\tMR_push_region_ite_frame", !IO)
+        ;
+            StackId = region_stack_disj,
+            io.write_string("\tMR_push_region_disj_frame", !IO)
+        ;
+            StackId = region_stack_commit,
+            io.write_string("\tMR_push_region_commit_frame", !IO)
+        ),
+        io.write_string("(", !IO),
+        output_embedded_frame_addr(EmbeddedFrame, !IO),
+        io.write_string(");", !IO),
 
-output_instruction(decr_sp(N), _, !IO) :-
-    io.write_string("\tMR_decr_sp(", !IO),
-    io.write_int(N, !IO),
-    io.write_string(");\n", !IO).
+        % The comment is to make the code easier to debug;
+        % we can stop printing it out once that has been done.
+        EmbeddedFrame = embedded_stack_frame_id(_StackId, FirstSlot, LastSlot),
+        Comment = " /* " ++ int_to_string(FirstSlot) ++ ".." ++
+            int_to_string(LastSlot) ++ " */",
+        io.write_string(Comment, !IO),
 
-output_instruction(decr_sp_and_return(N), _, !IO) :-
-    io.write_string("\tMR_decr_sp_and_return(", !IO),
-    io.write_int(N, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(foreign_proc_code(Decls, Components, _, _, _, _, _, _, _),
-        _, !IO) :-
-    io.write_string("\t{\n", !IO),
-    output_foreign_proc_decls(Decls, !IO),
-    list.foldl(output_foreign_proc_component, Components, !IO),
-    io.write_string("\t}\n", !IO).
-
-output_instruction(init_sync_term(Lval, N), _, !IO) :-
-    io.write_string("\tMR_init_sync_term(", !IO),
-    output_lval_as_word(Lval, !IO),
-    io.write_string(", ", !IO),
-    io.write_int(N, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(fork_new_child(Lval, Child), _, !IO) :-
-    io.write_string("\tMR_fork_new_child(", !IO),
-    output_lval_as_word(Lval, !IO),
-    io.write_string(", ", !IO),
-    output_label_as_code_addr(Child, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(join_and_continue(Lval, Label), _, !IO) :-
-    io.write_string("\tMR_join_and_continue(", !IO),
-    output_lval(Lval, !IO),
-    io.write_string(", ", !IO),
-    output_label_as_code_addr(Label, !IO),
-    io.write_string(");\n", !IO).
+        io.write_string("\n", !IO)
+    ;
+        Instr = region_fill_frame(FillOp, EmbeddedFrame, IdRval,
+            NumLval, AddrLval),
+        (
+            FillOp = region_fill_ite_protect,
+            io.write_string("\tMR_region_fill_ite_protect", !IO)
+        ;
+            FillOp = region_fill_ite_snapshot(removed_at_start_of_else),
+            io.write_string("\tMR_region_fill_ite_snapshot_removed", !IO)
+        ;
+            FillOp = region_fill_ite_snapshot(not_removed_at_start_of_else),
+            io.write_string("\tMR_region_fill_ite_snapshot_not_removed", !IO)
+        ;
+            FillOp = region_fill_semi_disj_protect,
+            io.write_string("\tMR_region_fill_semi_disj_protect", !IO)
+        ;
+            FillOp = region_fill_disj_snapshot,
+            io.write_string("\tMR_region_fill_disj_snapshot", !IO)
+        ;
+            FillOp = region_fill_commit,
+            io.write_string("\tMR_region_fill_commit", !IO)
+        ),
+        io.write_string("(", !IO),
+        output_embedded_frame_addr(EmbeddedFrame, !IO),
+        io.write_string(", ", !IO),
+        output_rval(IdRval, !IO),
+        io.write_string(", ", !IO),
+        output_lval(NumLval, !IO),
+        io.write_string(", ", !IO),
+        output_lval(AddrLval, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = region_set_fixed_slot(SetOp, EmbeddedFrame, ValueRval),
+        (
+            SetOp = region_set_ite_num_protects,
+            io.write_string("\tMR_region_set_ite_num_protects", !IO)
+        ;
+            SetOp = region_set_ite_num_snapshots,
+            io.write_string("\tMR_region_set_ite_num_snapshots", !IO)
+        ;
+            SetOp = region_set_disj_num_protects,
+            io.write_string("\tMR_region_set_disj_num_protects", !IO)
+        ;
+            SetOp = region_set_disj_num_snapshots,
+            io.write_string("\tMR_region_set_disj_num_snapshots", !IO)
+        ;
+            SetOp = region_set_commit_num_entries,
+            io.write_string("\tMR_region_set_commit_num_entries", !IO)
+        ),
+        io.write_string("(", !IO),
+        output_embedded_frame_addr(EmbeddedFrame, !IO),
+        io.write_string(", ", !IO),
+        output_rval(ValueRval, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = use_and_maybe_pop_region_frame(UseOp, EmbeddedFrame),
+        (
+            UseOp = region_ite_then(region_ite_semidet_cond),
+            io.write_string("\tMR_use_region_ite_then_semidet", !IO)
+        ;
+            UseOp = region_ite_then(region_ite_nondet_cond),
+            io.write_string("\tMR_use_region_ite_then_nondet", !IO)
+        ;
+            UseOp = region_ite_else(region_ite_semidet_cond),
+            io.write_string("\tMR_use_region_ite_else_semidet", !IO)
+        ;
+            UseOp = region_ite_else(region_ite_nondet_cond),
+            io.write_string("\tMR_use_region_ite_else_nondet", !IO)
+        ;
+            UseOp = region_ite_nondet_cond_fail,
+            io.write_string("\tMR_use_region_ite_nondet_cond_fail", !IO)
+        ;
+            UseOp = region_disj_later,
+            io.write_string("\tMR_use_region_disj_later", !IO)
+        ;
+            UseOp = region_disj_last,
+            io.write_string("\tMR_use_region_disj_last", !IO)
+        ;
+            UseOp = region_disj_nonlast_semi_commit,
+            io.write_string("\tMR_use_region_disj_nonlast_semi_commit", !IO)
+        ;
+            UseOp = region_commit_success,
+            io.write_string("\tMR_use_region_commit_success", !IO)
+        ;
+            UseOp = region_commit_failure,
+            io.write_string("\tMR_use_region_commit_failure", !IO)
+        ),
+        io.write_string("(", !IO),
+        output_embedded_frame_addr(EmbeddedFrame, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = store_ticket(Lval),
+        io.write_string("\tMR_store_ticket(", !IO),
+        output_lval_as_word(Lval, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = reset_ticket(Rval, Reason),
+        io.write_string("\tMR_reset_ticket(", !IO),
+        output_rval_as_type(Rval, lt_word, !IO),
+        io.write_string(", ", !IO),
+        output_reset_trail_reason(Reason, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = discard_ticket,
+        io.write_string("\tMR_discard_ticket();\n", !IO)
+    ;
+        Instr = prune_ticket,
+        io.write_string("\tMR_prune_ticket();\n", !IO)
+    ;
+        Instr = mark_ticket_stack(Lval),
+        io.write_string("\tMR_mark_ticket_stack(", !IO),
+        output_lval_as_word(Lval, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = prune_tickets_to(Rval),
+        io.write_string("\tMR_prune_tickets_to(", !IO),
+        output_rval_as_type(Rval, lt_word, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = incr_sp(N, _Msg, Kind),
+        (
+            Kind = stack_incr_leaf,
+            ( N < max_leaf_stack_frame_size ->
+                io.write_string("\tMR_incr_sp_leaf(", !IO)
+            ;
+                io.write_string("\tMR_incr_sp(", !IO)
+            )
+        ;
+            Kind = stack_incr_nonleaf,
+            io.write_string("\tMR_incr_sp(", !IO)
+        ),
+        io.write_int(N, !IO),
+        io.write_string(");\n", !IO)
+        % Use the code below instead of the code above if you want to run
+        % tools/framesize on the output of the compiler.
+        % io.write_string("\tMR_incr_sp_push_msg(", !IO),
+        % io.write_int(N, !IO),
+        % io.write_string(", """, !IO),
+        % c_util.output_quoted_string(Msg, !IO),
+        % io.write_string(""");\n", !IO)
+    ;
+        Instr = decr_sp(N),
+        io.write_string("\tMR_decr_sp(", !IO),
+        io.write_int(N, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = decr_sp_and_return(N),
+        io.write_string("\tMR_decr_sp_and_return(", !IO),
+        io.write_int(N, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = foreign_proc_code(Decls, Components, _, _, _, _, _, _, _),
+        io.write_string("\t{\n", !IO),
+        output_foreign_proc_decls(Decls, !IO),
+        list.foldl(output_foreign_proc_component, Components, !IO),
+        io.write_string("\t}\n", !IO)
+    ;
+        Instr = init_sync_term(Lval, N),
+        io.write_string("\tMR_init_sync_term(", !IO),
+        output_lval_as_word(Lval, !IO),
+        io.write_string(", ", !IO),
+        io.write_int(N, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = fork_new_child(Lval, Child),
+        io.write_string("\tMR_fork_new_child(", !IO),
+        output_lval_as_word(Lval, !IO),
+        io.write_string(", ", !IO),
+        output_label_as_code_addr(Child, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = join_and_continue(Lval, Label),
+        io.write_string("\tMR_join_and_continue(", !IO),
+        output_lval(Lval, !IO),
+        io.write_string(", ", !IO),
+        output_label_as_code_addr(Label, !IO),
+        io.write_string(");\n", !IO)
+    ).
 
 :- pred output_incr_hp_no_reuse(lval::in, maybe(tag)::in, maybe(int)::in,
     rval::in, string::in, may_use_atomic_alloc::in, maybe(rval)::in,
@@ -2715,7 +2737,7 @@ output_incr_hp_no_reuse(Lval, MaybeTag, MaybeOffset, Rval, TypeMsg,
         io.write_string(", ", !IO),
         output_rval(RegionRval, !IO),
         io.write_string(", ", !IO),
-        output_rval_as_type(Rval, word, !IO),
+        output_rval_as_type(Rval, lt_word, !IO),
         io.write_string(")", !IO)
     ;
         MaybeRegionRval = no,
@@ -2755,7 +2777,7 @@ output_incr_hp_no_reuse(Lval, MaybeTag, MaybeOffset, Rval, TypeMsg,
                 io.write_int(Offset, !IO),
                 io.write_string(", ", !IO)
             ),
-            output_rval_as_type(Rval, word, !IO),
+            output_rval_as_type(Rval, lt_word, !IO),
             io.write_string(", ", !IO),
             ProfInfo = CallerLabel - _,
             output_label(CallerLabel, !IO),
@@ -2823,7 +2845,7 @@ output_incr_hp_no_reuse(Lval, MaybeTag, MaybeOffset, Rval, TypeMsg,
             ;
                 MaybeOffset = no
             ),
-            output_rval_as_type(Rval, word, !IO),
+            output_rval_as_type(Rval, lt_word, !IO),
             io.write_string(")", !IO)
         )
     ).
@@ -2843,7 +2865,7 @@ output_incr_hp_no_reuse(Lval, MaybeTag, MaybeOffset, Rval, TypeMsg,
 output_embedded_frame_addr(EmbeddedFrame, !IO) :-
     EmbeddedFrame = embedded_stack_frame_id(MainStackId, _FirstSlot, LastSlot),
     FrameStartRval = stack_slot_num_to_lval_ref(MainStackId, LastSlot),
-    output_rval_as_type(FrameStartRval, data_ptr, !IO).
+    output_rval_as_type(FrameStartRval, lt_data_ptr, !IO).
 
 :- func max_leaf_stack_frame_size = int.
 
@@ -2969,7 +2991,7 @@ output_foreign_proc_input(Input, !IO) :-
         BoxPolicy = always_boxed,
         io.write_string(VarName, !IO),
         io.write_string(" = ", !IO),
-        output_rval_as_type(Rval, word, !IO)
+        output_rval_as_type(Rval, lt_word, !IO)
     ;
         BoxPolicy = native_if_possible,
         (
@@ -2993,12 +3015,12 @@ output_foreign_proc_input(Input, !IO) :-
                 io.write_string(VarName, !IO),
                 io.write_string(" = ", !IO),
                 io.write_string("(" ++ ForeignType ++ ") ", !IO),
-                output_rval_as_type(Rval, word, !IO)
+                output_rval_as_type(Rval, lt_word, !IO)
             ;
                 io.write_string("MR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
                 io.write_string(ForeignType, !IO),
                 io.write_string(", ", !IO),
-                output_rval_as_type(Rval, word, !IO),
+                output_rval_as_type(Rval, lt_word, !IO),
                 io.write_string(", ", !IO),
                 io.write_string(VarName, !IO),
                 io.write_string(")", !IO)
@@ -3008,12 +3030,12 @@ output_foreign_proc_input(Input, !IO) :-
             io.write_string(VarName, !IO),
             io.write_string(" = ", !IO),
             ( OrigType = builtin_type(builtin_type_string) ->
-                output_llds_type_cast(string, !IO),
-                output_rval_as_type(Rval, word, !IO)
+                output_llds_type_cast(lt_string, !IO),
+                output_rval_as_type(Rval, lt_word, !IO)
             ; OrigType = builtin_type(builtin_type_float) ->
-                output_rval_as_type(Rval, float, !IO)
+                output_rval_as_type(Rval, lt_float, !IO)
             ;
-                output_rval_as_type(Rval, word, !IO)
+                output_rval_as_type(Rval, lt_word, !IO)
             )
         )
     ),
@@ -3072,7 +3094,7 @@ output_foreign_proc_output(Output, !IO) :-
             ( list.member(foreign_type_can_pass_as_mercury_type, Assertions) ->
                 output_lval_as_word(Lval, !IO),
                 io.write_string(" = ", !IO),
-                output_llds_type_cast(word, !IO),
+                output_llds_type_cast(lt_word, !IO),
                 io.write_string(VarName, !IO)
             ;
                 io.write_string("MR_MAYBE_BOX_FOREIGN_TYPE(", !IO),
@@ -3090,7 +3112,7 @@ output_foreign_proc_output(Output, !IO) :-
             (
                 OrigType = builtin_type(builtin_type_string)
             ->
-                output_llds_type_cast(word, !IO),
+                output_llds_type_cast(lt_word, !IO),
                 io.write_string(VarName, !IO)
             ;
                 OrigType = builtin_type(builtin_type_float)
@@ -3370,7 +3392,7 @@ output_rval_decls_format(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
                 output_indent(FirstIndent, LaterIndent, !.N, !IO),
                 !:N = !.N + 1,
                 io.write_string("static const ", !IO),
-                output_llds_type(float, !IO),
+                output_llds_type(lt_float, !IO),
                 io.write_string(" mercury_float_const_", !IO),
                 io.write_string(FloatName, !IO),
                 io.write_string(" = ", !IO),
@@ -3378,11 +3400,11 @@ output_rval_decls_format(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
                 % compiler evaluate it, rather than evaluating it ourselves.
                 % This avoids having to deal with some nasty issues regarding
                 % floating point accuracy when doing cross-compilation.
-                output_rval_as_type(Rval1, float, !IO),
+                output_rval_as_type(Rval1, lt_float, !IO),
                 io.write_string(" ", !IO),
                 io.write_string(OpStr, !IO),
                 io.write_string(" ", !IO),
-                output_rval_as_type(Rval2, float, !IO),
+                output_rval_as_type(Rval2, lt_float, !IO),
                 io.write_string(";\n", !IO)
             )
         ;
@@ -3584,33 +3606,33 @@ output_llds_type_cast(LLDSType, !IO) :-
 
 :- pred output_llds_type(llds_type::in, io::di, io::uo) is det.
 
-output_llds_type(int_least8, !IO) :-
+output_llds_type(lt_int_least8, !IO) :-
     io.write_string("MR_int_least8_t", !IO).
-output_llds_type(uint_least8, !IO) :-
+output_llds_type(lt_uint_least8, !IO) :-
     io.write_string("MR_uint_least8_t", !IO).
-output_llds_type(int_least16, !IO) :-
+output_llds_type(lt_int_least16, !IO) :-
     io.write_string("MR_int_least16_t", !IO).
-output_llds_type(uint_least16, !IO) :-
+output_llds_type(lt_uint_least16, !IO) :-
     io.write_string("MR_uint_least16_t", !IO).
-output_llds_type(int_least32, !IO) :-
+output_llds_type(lt_int_least32, !IO) :-
     io.write_string("MR_int_least32_t", !IO).
-output_llds_type(uint_least32, !IO) :-
+output_llds_type(lt_uint_least32, !IO) :-
     io.write_string("MR_uint_least32_t", !IO).
-output_llds_type(bool, !IO) :-
+output_llds_type(lt_bool, !IO) :-
     io.write_string("MR_Integer", !IO).
-output_llds_type(integer, !IO) :-
+output_llds_type(lt_integer, !IO) :-
     io.write_string("MR_Integer", !IO).
-output_llds_type(unsigned, !IO) :-
+output_llds_type(lt_unsigned, !IO) :-
     io.write_string("MR_Unsigned", !IO).
-output_llds_type(float, !IO) :-
+output_llds_type(lt_float, !IO) :-
     io.write_string("MR_Float", !IO).
-output_llds_type(word, !IO) :-
+output_llds_type(lt_word, !IO) :-
     io.write_string("MR_Word", !IO).
-output_llds_type(string, !IO) :-
+output_llds_type(lt_string, !IO) :-
     io.write_string("MR_String", !IO).
-output_llds_type(data_ptr, !IO) :-
+output_llds_type(lt_data_ptr, !IO) :-
     io.write_string("MR_Word *", !IO).
-output_llds_type(code_ptr, !IO) :-
+output_llds_type(lt_code_ptr, !IO) :-
     io.write_string("MR_Code *", !IO).
 
 :- pred output_common_cell_value(common_cell_value::in, io::di, io::uo) is det.
@@ -3772,29 +3794,29 @@ output_int_const(N, Type, !IO) :-
 :- pred ok_int_const(int::in, llds_type::in) is semidet.
 :- pragma inline(ok_int_const/2).
 
-ok_int_const(N, int_least8) :-
+ok_int_const(N, lt_int_least8) :-
     -128 =< N, N < 128.
-ok_int_const(N, uint_least8) :-
+ok_int_const(N, lt_uint_least8) :-
     0 =< N, N < 256.
-ok_int_const(N, int_least16) :-
+ok_int_const(N, lt_int_least16) :-
     -32768 =< N, N < 32768.
-ok_int_const(N, uint_least16) :-
+ok_int_const(N, lt_uint_least16) :-
     0 =< N, N < 65536.
-ok_int_const(_N, int_least32).
-ok_int_const(_N, uint_least32).
-ok_int_const(_N, bool) :-
+ok_int_const(_N, lt_int_least32).
+ok_int_const(_N, lt_uint_least32).
+ok_int_const(_N, lt_bool) :-
     unexpected(this_file, "ok_int_const: not integer constant").
-ok_int_const(_N, integer).
-ok_int_const(_N, unsigned).
-ok_int_const(_, float) :-
+ok_int_const(_N, lt_integer).
+ok_int_const(_N, lt_unsigned).
+ok_int_const(_, lt_float) :-
     unexpected(this_file, "ok_int_const: not integer constant").
-ok_int_const(_, word) :-
+ok_int_const(_, lt_word) :-
     unexpected(this_file, "ok_int_const: not integer constant").
-ok_int_const(_, string) :-
+ok_int_const(_, lt_string) :-
     unexpected(this_file, "ok_int_const: not integer constant").
-ok_int_const(_, data_ptr) :-
+ok_int_const(_, lt_data_ptr) :-
     unexpected(this_file, "ok_int_const: not integer constant").
-ok_int_const(_, code_ptr) :-
+ok_int_const(_, lt_code_ptr) :-
     unexpected(this_file, "ok_int_const: not integer constant").
 
 %-----------------------------------------------------------------------------%
@@ -4743,14 +4765,14 @@ output_rval_as_type(Rval, DesiredType, !IO) :-
         % We need to convert to the right type first.
         % Convertions to/from float must be treated specially;
         % for the others, we can just use a cast.
-        ( DesiredType = float ->
+        ( DesiredType = lt_float ->
             io.write_string("MR_word_to_float(", !IO),
             output_rval(Rval, !IO),
             io.write_string(")", !IO)
-        ; ActualType = float ->
-            ( DesiredType = word ->
+        ; ActualType = lt_float ->
+            ( DesiredType = lt_word ->
                 output_float_rval_as_word(Rval, !IO)
-            ; DesiredType = data_ptr ->
+            ; DesiredType = lt_data_ptr ->
                 output_float_rval_as_data_ptr(Rval, !IO)
             ;
                 unexpected(this_file, "output_rval_as_type: type error")
@@ -4783,13 +4805,13 @@ output_rval_as_type(Rval, DesiredType, !IO) :-
 :- pred types_match(llds_type::in, llds_type::in) is semidet.
 
 types_match(Type, Type).
-types_match(word, unsigned).
-types_match(word, integer).
-types_match(word, bool).
-types_match(bool, integer).
-types_match(bool, unsigned).
-types_match(bool, word).
-types_match(integer, bool).
+types_match(lt_word, lt_unsigned).
+types_match(lt_word, lt_integer).
+types_match(lt_word, lt_bool).
+types_match(lt_bool, lt_integer).
+types_match(lt_bool, lt_unsigned).
+types_match(lt_bool, lt_word).
+types_match(lt_integer, lt_bool).
 
     % Return true iff an integer constant can be used directly as a value
     % in a structure field of the given type, instead of being cast to
@@ -4801,20 +4823,20 @@ types_match(integer, bool).
     %
 :- func direct_field_int_constant(llds_type) = bool.
 
-direct_field_int_constant(bool) = no.
-direct_field_int_constant(int_least8) = yes.
-direct_field_int_constant(uint_least8) = yes.
-direct_field_int_constant(int_least16) = yes.
-direct_field_int_constant(uint_least16) = yes.
-direct_field_int_constant(int_least32) = yes.
-direct_field_int_constant(uint_least32) = yes.
-direct_field_int_constant(integer) = yes.
-direct_field_int_constant(unsigned) = yes.
-direct_field_int_constant(float) = no.
-direct_field_int_constant(string) = no.
-direct_field_int_constant(data_ptr) = no.
-direct_field_int_constant(code_ptr) = no.
-direct_field_int_constant(word) = no.
+direct_field_int_constant(lt_bool) = no.
+direct_field_int_constant(lt_int_least8) = yes.
+direct_field_int_constant(lt_uint_least8) = yes.
+direct_field_int_constant(lt_int_least16) = yes.
+direct_field_int_constant(lt_uint_least16) = yes.
+direct_field_int_constant(lt_int_least32) = yes.
+direct_field_int_constant(lt_uint_least32) = yes.
+direct_field_int_constant(lt_integer) = yes.
+direct_field_int_constant(lt_unsigned) = yes.
+direct_field_int_constant(lt_float) = no.
+direct_field_int_constant(lt_string) = no.
+direct_field_int_constant(lt_data_ptr) = no.
+direct_field_int_constant(lt_code_ptr) = no.
+direct_field_int_constant(lt_word) = no.
 
     % Output a float rval, converted to type `MR_Word *'
     %
@@ -4848,10 +4870,10 @@ output_float_rval(Rval, IsPtr, !IO) :-
     ->
         (
             IsPtr = yes,
-            Cast = data_ptr
+            Cast = lt_data_ptr
         ;
             IsPtr = no,
-            Cast = word
+            Cast = lt_word
         ),
         output_llds_type_cast(Cast, !IO),
         io.write_string("&mercury_float_const_", !IO),
@@ -4859,7 +4881,7 @@ output_float_rval(Rval, IsPtr, !IO) :-
     ;
         (
             IsPtr = yes,
-            output_llds_type_cast(data_ptr, !IO)
+            output_llds_type_cast(lt_data_ptr, !IO)
         ;
             IsPtr = no
         ),
@@ -4978,7 +5000,7 @@ output_test_rval(Test, !IO) :-
         io.write_int(Stag, !IO),
         io.write_string(")", !IO)
     ;
-        output_rval_as_type(Test, bool, !IO)
+        output_rval_as_type(Test, lt_bool, !IO)
     ).
 
 :- pred is_int_cmp(rval::in, rval::out, int::out, string::out, string::out)
@@ -5063,9 +5085,9 @@ output_rval(binop(Op, X, Y), !IO) :-
     (
         Category = array_index_binop,
         io.write_string("(", !IO),
-        output_rval_as_type(X, data_ptr, !IO),
+        output_rval_as_type(X, lt_data_ptr, !IO),
         io.write_string(")[", !IO),
-        output_rval_as_type(Y, integer, !IO),
+        output_rval_as_type(Y, lt_integer, !IO),
         io.write_string("]", !IO)
     ;
         Category = compound_compare_binop,
@@ -5079,14 +5101,14 @@ output_rval(binop(Op, X, Y), !IO) :-
             output_rval_const(llconst_string(XConst), !IO)
         ;
             io.write_string("(char *) ", !IO),
-            output_rval_as_type(X, data_ptr, !IO)
+            output_rval_as_type(X, lt_data_ptr, !IO)
         ),
         io.write_string(", ", !IO),
         ( Y = const(llconst_string(YConst)) ->
             output_rval_const(llconst_string(YConst), !IO)
         ;
             io.write_string("(char *) ", !IO),
-            output_rval_as_type(Y, data_ptr, !IO)
+            output_rval_as_type(Y, lt_data_ptr, !IO)
         ),
         io.write_string(")", !IO),
         io.write_string(" ", !IO),
@@ -5098,20 +5120,20 @@ output_rval(binop(Op, X, Y), !IO) :-
         ; Category = float_arith_binop
         ),
         io.write_string("(", !IO),
-        output_rval_as_type(X, float, !IO),
+        output_rval_as_type(X, lt_float, !IO),
         io.write_string(" ", !IO),
         io.write_string(OpStr, !IO),
         io.write_string(" ", !IO),
-        output_rval_as_type(Y, float, !IO),
+        output_rval_as_type(Y, lt_float, !IO),
         io.write_string(")", !IO)
     ;
         Category = unsigned_compare_binop,
         io.write_string("(", !IO),
-        output_rval_as_type(X, unsigned, !IO),
+        output_rval_as_type(X, lt_unsigned, !IO),
         io.write_string(" ", !IO),
         io.write_string(OpStr, !IO),
         io.write_string(" ", !IO),
-        output_rval_as_type(Y, unsigned, !IO),
+        output_rval_as_type(Y, lt_unsigned, !IO),
         io.write_string(")", !IO)
     ;
         Category = int_or_bool_binary_infix_binop,
@@ -5122,9 +5144,9 @@ output_rval(binop(Op, X, Y), !IO) :-
             % MR_Integer.
             ( Op = eq ; Op = ne ),
             llds.rval_type(X, XType),
-            ( XType = word ; XType = unsigned ),
+            ( XType = lt_word ; XType = lt_unsigned ),
             llds.rval_type(Y, YType),
-            ( YType = word ; YType = unsigned )
+            ( YType = lt_word ; YType = lt_unsigned )
         ->
             io.write_string("(", !IO),
             output_rval(X, !IO),
@@ -5152,20 +5174,20 @@ output_rval(binop(Op, X, Y), !IO) :-
     %       io.write_string(")")
         ;
             io.write_string("(", !IO),
-            output_rval_as_type(X, integer, !IO),
+            output_rval_as_type(X, lt_integer, !IO),
             io.write_string(" ", !IO),
             io.write_string(OpStr, !IO),
             io.write_string(" ", !IO),
-            output_rval_as_type(Y, integer, !IO),
+            output_rval_as_type(Y, lt_integer, !IO),
             io.write_string(")", !IO)
         )
     ;
         Category = macro_binop,
         io.write_string(OpStr, !IO),
         io.write_string("(", !IO),
-        output_rval_as_type(X, integer, !IO),
+        output_rval_as_type(X, lt_integer, !IO),
         io.write_string(", ", !IO),
-        output_rval_as_type(Y, integer, !IO),
+        output_rval_as_type(Y, lt_integer, !IO),
         io.write_string(")", !IO)
     ).
 output_rval(mkword(Tag, Exprn), !IO) :-
@@ -5193,7 +5215,7 @@ output_rval(mkword(Tag, Exprn), !IO) :-
         io.write_string("MR_tmkword(", !IO),
         io.write_int(Tag, !IO),
         io.write_string(", ", !IO),
-        output_rval_as_type(Exprn, data_ptr, !IO),
+        output_rval_as_type(Exprn, lt_data_ptr, !IO),
         io.write_string(")", !IO)
     ).
 output_rval(lval(Lval), !IO) :-
@@ -5232,7 +5254,7 @@ output_rval(mem_addr(MemRef), !IO) :-
         ( Rval = const(llconst_int(SlotNum)) ->
             io.write_int(SlotNum, !IO)
         ;
-            output_rval_as_type(Rval, integer, !IO)
+            output_rval_as_type(Rval, lt_integer, !IO)
         ),
         io.write_string(")", !IO)
     ;
@@ -5242,7 +5264,7 @@ output_rval(mem_addr(MemRef), !IO) :-
         ( Rval = const(llconst_int(SlotNum)) ->
             io.write_int(SlotNum, !IO)
         ;
-            output_rval_as_type(Rval, integer, !IO)
+            output_rval_as_type(Rval, lt_integer, !IO)
         ),
         io.write_string(")", !IO)
     ;
@@ -5256,7 +5278,7 @@ output_rval(mem_addr(MemRef), !IO) :-
         ( FieldNumRval = const(llconst_int(FieldNum)) ->
             io.write_int(FieldNum, !IO)
         ;
-            output_rval_as_type(FieldNumRval, integer, !IO)
+            output_rval_as_type(FieldNumRval, lt_integer, !IO)
         ),
         io.write_string(")", !IO)
     ).
@@ -5270,7 +5292,7 @@ output_rval_const(llconst_false, !IO) :-
 output_rval_const(llconst_int(N), !IO) :-
     % We need to cast to (MR_Integer) to ensure things like 1 << 32 work
     % when `MR_Integer' is 64 bits but `int' is 32 bits.
-    output_llds_type_cast(integer, !IO),
+    output_llds_type_cast(lt_integer, !IO),
     io.write_int(N, !IO).
 output_rval_const(llconst_foreign(Value, Type), !IO) :-
     io.write_char('(', !IO),
@@ -5280,7 +5302,7 @@ output_rval_const(llconst_foreign(Value, Type), !IO) :-
 output_rval_const(llconst_float(FloatVal), !IO) :-
     % The cast to (MR_Float) here lets the C compiler do arithmetic in `float'
     % rather than `double' if `MR_Float' is `float' not `double'.
-    output_llds_type_cast(float, !IO),
+    output_llds_type_cast(lt_float, !IO),
     c_util.output_float_literal(FloatVal, !IO).
 output_rval_const(llconst_string(String), !IO) :-
     io.write_string("MR_string_const(""", !IO),
@@ -5328,14 +5350,14 @@ output_rval_const(llconst_data_addr(DataAddr, MaybeOffset), !IO) :-
         ->
             output_type_ctor_addr(Module, Name, Arity, !IO)
         ;
-            output_llds_type_cast(data_ptr, !IO),
+            output_llds_type_cast(lt_data_ptr, !IO),
             io.write_string("&", !IO),
             output_data_addr(DataAddr, !IO)
         )
     ;
         MaybeOffset = yes(Offset),
         io.write_string("((", !IO),
-        output_llds_type_cast(data_ptr, !IO),
+        output_llds_type_cast(lt_data_ptr, !IO),
         output_data_addr(DataAddr, !IO),
         io.write_string(") + ", !IO),
         io.write_int(Offset, !IO),
@@ -5408,9 +5430,9 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
 
 output_lval_as_word(Lval, !IO) :-
     llds.lval_type(Lval, ActualType),
-    ( types_match(word, ActualType) ->
+    ( types_match(lt_word, ActualType) ->
         output_lval(Lval, !IO)
-    ; ActualType = float ->
+    ; ActualType = lt_float ->
         % Sanity check -- if this happens, the LLDS is ill-typed.
         unexpected(this_file, "output_lval_as_word: got float")
     ;
@@ -5523,11 +5545,11 @@ output_lval(global_var_ref(GlobalVar), !IO) :-
 :- pred output_lval_for_assign(lval::in, llds_type::out, io::di, io::uo)
     is det.
 
-output_lval_for_assign(reg(RegType, Num), word, !IO) :-
+output_lval_for_assign(reg(RegType, Num), lt_word, !IO) :-
     expect(unify(RegType, reg_r), this_file,
         "output_lval_for_assign: float reg"),
     output_reg(RegType, Num, !IO).
-output_lval_for_assign(stackvar(N), word, !IO) :-
+output_lval_for_assign(stackvar(N), lt_word, !IO) :-
     ( N < 0 ->
         unexpected(this_file, "stack var out of range")
     ;
@@ -5536,7 +5558,7 @@ output_lval_for_assign(stackvar(N), word, !IO) :-
     io.write_string("MR_sv(", !IO),
     io.write_int(N, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(parent_stackvar(N), word, !IO) :-
+output_lval_for_assign(parent_stackvar(N), lt_word, !IO) :-
     ( N < 0 ->
         unexpected(this_file, "parent stack var out of range")
     ;
@@ -5545,7 +5567,7 @@ output_lval_for_assign(parent_stackvar(N), word, !IO) :-
     io.write_string("MR_parent_sv(", !IO),
     io.write_int(N, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(framevar(N), word, !IO) :-
+output_lval_for_assign(framevar(N), lt_word, !IO) :-
     ( N =< 0 ->
         unexpected(this_file, "frame var out of range")
     ;
@@ -5554,39 +5576,39 @@ output_lval_for_assign(framevar(N), word, !IO) :-
     io.write_string("MR_fv(", !IO),
     io.write_int(N, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(succip, word, !IO) :-
+output_lval_for_assign(succip, lt_word, !IO) :-
     io.write_string("MR_succip_word", !IO).
-output_lval_for_assign(sp, word, !IO) :-
+output_lval_for_assign(sp, lt_word, !IO) :-
     io.write_string("MR_sp_word", !IO).
-output_lval_for_assign(parent_sp, data_ptr, !IO) :-
+output_lval_for_assign(parent_sp, lt_data_ptr, !IO) :-
     io.write_string("MR_parent_sp", !IO).
-output_lval_for_assign(hp, word, !IO) :-
+output_lval_for_assign(hp, lt_word, !IO) :-
     io.write_string("MR_hp_word", !IO).
-output_lval_for_assign(maxfr, word, !IO) :-
+output_lval_for_assign(maxfr, lt_word, !IO) :-
     io.write_string("MR_maxfr_word", !IO).
-output_lval_for_assign(curfr, word, !IO) :-
+output_lval_for_assign(curfr, lt_word, !IO) :-
     io.write_string("MR_curfr_word", !IO).
-output_lval_for_assign(succfr_slot(Rval), word, !IO) :-
+output_lval_for_assign(succfr_slot(Rval), lt_word, !IO) :-
     io.write_string("MR_succfr_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(prevfr_slot(Rval), word, !IO) :-
+output_lval_for_assign(prevfr_slot(Rval), lt_word, !IO) :-
     io.write_string("MR_prevfr_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(redofr_slot(Rval), word, !IO) :-
+output_lval_for_assign(redofr_slot(Rval), lt_word, !IO) :-
     io.write_string("MR_redofr_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(redoip_slot(Rval), word, !IO) :-
+output_lval_for_assign(redoip_slot(Rval), lt_word, !IO) :-
     io.write_string("MR_redoip_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(succip_slot(Rval), word, !IO) :-
+output_lval_for_assign(succip_slot(Rval), lt_word, !IO) :-
     io.write_string("MR_succip_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(field(MaybeTag, Rval, FieldNumRval), word, !IO) :-
+output_lval_for_assign(field(MaybeTag, Rval, FieldNumRval), lt_word, !IO) :-
     (
         MaybeTag = yes(Tag),
         io.write_string("MR_tfield(", !IO),
@@ -5610,18 +5632,18 @@ output_lval_for_assign(lvar(_), _, !IO) :-
 output_lval_for_assign(temp(RegType, Num), Type, !IO) :-
     (
         RegType = reg_r,
-        Type = word,
+        Type = lt_word,
         io.write_string("MR_tempr", !IO),
         io.write_int(Num, !IO)
     ;
         RegType = reg_f,
-        Type = float,
+        Type = lt_float,
         io.write_string("MR_tempf", !IO),
         io.write_int(Num, !IO)
     ).
-output_lval_for_assign(mem_ref(MemRef), word, !IO) :-
+output_lval_for_assign(mem_ref(MemRef), lt_word, !IO) :-
     output_lval(mem_ref(MemRef), !IO).
-output_lval_for_assign(global_var_ref(GlobalVar), word, !IO) :-
+output_lval_for_assign(global_var_ref(GlobalVar), lt_word, !IO) :-
     io.write_string(c_global_var_name(GlobalVar), !IO).
 
 :- func c_global_var_name(c_global_var_ref) = string.

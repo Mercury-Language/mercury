@@ -259,7 +259,12 @@ generate_il(Globals, MLDS0, Version, ILAsm, ForeignLangs) :-
     il_transform_mlds(MLDS0, MLDS),
     MLDS = mlds(MercuryModuleName, ForeignCode, Imports, GlobalData, Defns0,
         _, _, _),
-    ml_global_data_get_all_global_defns(GlobalData, GlobalDefns),
+    ml_global_data_get_all_global_defns(GlobalData,
+        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+    expect(map.is_empty(ScalarCellGroupMap), this_file,
+        "generate_il: nonempty ScalarCellGroupMap"),
+    expect(map.is_empty(VectorCellGroupMap), this_file,
+        "generate_il: nonempty VectorCellGroupMap"),
     Defns = GlobalDefns ++ Defns0,
 
     ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
@@ -369,9 +374,14 @@ il_transform_mlds(MLDS0, MLDS) :-
     list.map(mlds_export_to_mlds_defn, ForeignCodeExports, ExportDefns),
 
     % We take all the definitions out of the global data field of the MLDS.
-    ml_global_data_get_all_global_defns(GlobalData0, GlobalDefns),
+    ml_global_data_get_all_global_defns(GlobalData0,
+        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+    expect(map.is_empty(ScalarCellGroupMap), this_file,
+        "il_transform_mlds: nonempty ScalarCellGroupMap"),
+    expect(map.is_empty(VectorCellGroupMap), this_file,
+        "il_transform_mlds: nonempty VectorCellGroupMap"),
     Defns1 = GlobalDefns ++ Defns0 ++ ExportDefns,
-    GlobalData = ml_global_data_init,
+    GlobalData = ml_global_data_init(do_not_use_common_cells),
 
     IsFunctionOrData =
         (pred(D::in) is semidet :-
@@ -554,9 +564,12 @@ rename_rval(ml_lval(Lval)) = ml_lval(rename_lval(Lval)).
 rename_rval(ml_mkword(Tag, Rval)) = ml_mkword(Tag, rename_rval(Rval)).
 rename_rval(ml_const(Const)) = ml_const(rename_const(Const)).
 rename_rval(ml_unop(Op, Rval)) = ml_unop(Op, rename_rval(Rval)).
-rename_rval(ml_binop(Op, RvalA, RvalB))
-    = ml_binop(Op, rename_rval(RvalA), rename_rval(RvalB)).
+rename_rval(ml_binop(Op, RvalA, RvalB)) =
+    ml_binop(Op, rename_rval(RvalA), rename_rval(RvalB)).
 rename_rval(ml_mem_addr(Lval)) = ml_mem_addr(rename_lval(Lval)).
+rename_rval(ml_scalar_common(ScalarCommon)) = ml_scalar_common(ScalarCommon).
+rename_rval(ml_vector_common_row(VectorCommon, RowRval)) =
+    ml_vector_common_row(VectorCommon, rename_rval(RowRval)).
 rename_rval(ml_self(Type)) = ml_self(Type).
 
 :- func rename_const(mlds_rval_const) = mlds_rval_const.
@@ -947,8 +960,8 @@ entity_name_to_ilds_id(entity_function(PredLabel, ProcId, MaybeSeqNum, _))
     predlabel_to_ilds_id(PredLabel, ProcId, MaybeSeqNum, Name).
 entity_name_to_ilds_id(entity_type(Name, Arity))
     = string.format("%s_%d", [s(Name), i(Arity)]).
-entity_name_to_ilds_id(entity_data(DataName))
-    = mangle_dataname(DataName).
+entity_name_to_ilds_id(entity_data(DataName)) = Name :-
+    mangle_dataname(DataName, Name).
 
 :- func interface_id_to_class_name(mlds_interface_id) = ilds.class_name.
 
@@ -1343,25 +1356,6 @@ attribute_to_custom_attribute(DataRep, custom(MLDSType))
     ClassName = mlds_type_to_ilds_class_name(DataRep, MLDSType),
     MethodRef = get_constructor_methoddef(ClassName, []),
     CustomDecl = custom_decl(methodref(MethodRef), no, no_initalizer).
-
-%-----------------------------------------------------------------------------%
-
-:- func mangle_dataname(mlds_data_name) = string.
-
-mangle_dataname(mlds_data_var(MLDSVarName))
-    = mangle_mlds_var_name(MLDSVarName).
-mangle_dataname(mlds_common(Int))
-    = string.format("common_%d", [i(Int)]).
-mangle_dataname(mlds_rtti(RttiId)) = MangledName :-
-    rtti.id_to_c_identifier(RttiId, MangledName).
-mangle_dataname(mlds_module_layout) = _MangledName :-
-    unexpected(this_file, "unimplemented: mangling mlds_module_layout").
-mangle_dataname(mlds_proc_layout(_)) = _MangledName :-
-    unexpected(this_file, "unimplemented: mangling mlds_proc_layout").
-mangle_dataname(mlds_internal_layout(_, _)) = _MangledName :-
-    unexpected(this_file, "unimplemented: mangling mlds_internal_layout").
-mangle_dataname(mlds_tabling_ref(_, _)) = _MangledName :-
-    unexpected(this_file, "unimplemented: mangling mlds_tabling_ref").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2313,180 +2307,194 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs, StoreLvalInstrs, !Info) :-
 
 :- pred load(mlds_rval::in, instr_tree::out, il_info::in, il_info::out) is det.
 
-load(ml_lval(Lval), Instrs, !Info) :-
-    DataRep = !.Info ^ il_data_rep,
+load(Rval, Instrs, !Info) :-
     (
-        Lval = ml_var(Var, VarType),
-        mangle_mlds_var(Var, MangledVarStr),
-        ( is_local(MangledVarStr, !.Info) ->
-            Instrs = singleton(ldloc(name(MangledVarStr)))
-        ; is_argument(MangledVarStr, !.Info) ->
-            Instrs = singleton(ldarg(name(MangledVarStr)))
-        ; is_local_field(Var, VarType, !.Info, FieldRef) ->
-            Instrs = singleton(ldsfld(FieldRef))
+        Rval = ml_lval(Lval),
+        DataRep = !.Info ^ il_data_rep,
+        (
+            Lval = ml_var(Var, VarType),
+            mangle_mlds_var(Var, MangledVarStr),
+            ( is_local(MangledVarStr, !.Info) ->
+                Instrs = singleton(ldloc(name(MangledVarStr)))
+            ; is_argument(MangledVarStr, !.Info) ->
+                Instrs = singleton(ldarg(name(MangledVarStr)))
+            ; is_local_field(Var, VarType, !.Info, FieldRef) ->
+                Instrs = singleton(ldsfld(FieldRef))
+            ;
+                FieldRef = make_static_fieldref(DataRep, Var, VarType),
+                Instrs = singleton(ldsfld(FieldRef))
+            )
         ;
-            FieldRef = make_static_fieldref(DataRep, Var, VarType),
-            Instrs = singleton(ldsfld(FieldRef))
+            Lval = ml_field(_MaybeTag, BaseRval, FieldNum, FieldType,
+                ClassType),
+            load(BaseRval, BaseRvalLoadInstrs, !Info),
+            ( FieldNum = ml_field_offset(OffSet) ->
+                SimpleFieldType = mlds_type_to_ilds_simple_type(DataRep,
+                    FieldType),
+                load(OffSet, OffSetLoadInstrs, !Info),
+                CastClassInstrs = empty,
+                LoadInstruction = ldelem(SimpleFieldType)
+            ;
+                get_fieldref(DataRep, FieldNum, FieldType, ClassType, FieldRef,
+                    CastClassInstrs),
+                LoadInstruction = ldfld(FieldRef),
+                OffSetLoadInstrs = empty
+            ),
+            Instrs =
+                BaseRvalLoadInstrs ++
+                CastClassInstrs ++
+                OffSetLoadInstrs ++
+                singleton(LoadInstruction)
+        ;
+            Lval = ml_mem_ref(BaseRval, MLDS_Type),
+            SimpleType = mlds_type_to_ilds_simple_type(DataRep, MLDS_Type),
+            load(BaseRval, BaseRvalLoadInstrs, !Info),
+            Instrs = BaseRvalLoadInstrs ++ singleton(ldind(SimpleType))
+        ;
+            Lval = ml_global_var_ref(_),
+            Instrs = throw_unimplemented("load lval mem_ref")
         )
     ;
-        Lval = ml_field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
-        load(Rval, RvalLoadInstrs, !Info),
-        ( FieldNum = ml_field_offset(OffSet) ->
-            SimpleFieldType = mlds_type_to_ilds_simple_type(DataRep,
-                FieldType),
-            load(OffSet, OffSetLoadInstrs, !Info),
-            CastClassInstrs = empty,
-            LoadInstruction = ldelem(SimpleFieldType)
+        Rval = ml_mkword(_Tag, _Rval),
+        Instrs = comment_node("unimplemented load rval mkword")
+    ;
+        Rval = ml_const(Const),
+        % XXX check these, what should we do about multi strings,
+        % characters, etc.
+        DataRep = !.Info ^ il_data_rep,
+        % True and false are just the integers 1 and 0.
+        (
+            Const = mlconst_true,
+            Instrs = singleton(ldc(bool, i(1)))
         ;
-            get_fieldref(DataRep, FieldNum, FieldType, ClassType, FieldRef,
-                CastClassInstrs),
-            LoadInstruction = ldfld(FieldRef),
-            OffSetLoadInstrs = empty
-        ),
-        Instrs =
-            RvalLoadInstrs ++
-            CastClassInstrs ++
-            OffSetLoadInstrs ++
-            singleton(LoadInstruction)
-    ;
-        Lval = ml_mem_ref(Rval, MLDS_Type),
-        SimpleType = mlds_type_to_ilds_simple_type(DataRep, MLDS_Type),
-        load(Rval, RvalLoadInstrs, !Info),
-        Instrs = RvalLoadInstrs ++ singleton(ldind(SimpleType))
-    ;
-        Lval = ml_global_var_ref(_),
-        Instrs = throw_unimplemented("load lval mem_ref")
-    ).
-
-load(ml_mkword(_Tag, _Rval), Instrs, !Info) :-
-    Instrs = comment_node("unimplemented load rval mkword").
-
-    % XXX check these, what should we do about multi strings,
-    % characters, etc.
-load(ml_const(Const), Instrs, !Info) :-
-    DataRep = !.Info ^ il_data_rep,
-    % True and false are just the integers 1 and 0.
-    (
-        Const = mlconst_true,
-        Instrs = singleton(ldc(bool, i(1)))
-    ;
-        Const = mlconst_false,
-        Instrs = singleton(ldc(bool, i(0)))
-    ;
-        Const = mlconst_string(Str),
-        Instrs = singleton(ldstr(Str))
-    ;
-        Const = mlconst_int(Int),
-        Instrs = singleton(ldc(int32, i(Int)))
-    ;
-        Const = mlconst_foreign(_Lang, _F, _T),
-        sorry(this_file, "NYI IL backend and foreign tags.")
-    ;
-        Const = mlconst_float(Float),
-        Instrs = singleton(ldc(float64, f(Float)))
-    ;
-        Const = mlconst_multi_string(_MultiString),
-        Instrs = throw_unimplemented("load multi_string_const")
-    ;
-        Const = mlconst_named_const(_NamedConst),
-        Instrs = throw_unimplemented("load named_const")
-    ;
-        Const = mlconst_code_addr(CodeAddr),
-        MethodRef = code_addr_constant_to_methodref(DataRep, CodeAddr),
-        Instrs = singleton(ldftn(MethodRef))
-    ;
-        Const = mlconst_data_addr(DataAddr),
-        data_addr_constant_to_fieldref(DataAddr, FieldRef),
-        Instrs = singleton(ldsfld(FieldRef))
-    ;
-        Const = mlconst_null(_MLDSType),
-        % We might consider loading an integer for null function types.
-        Instrs = singleton(ldnull)
-    ).
-
-load(ml_unop(Unop, Rval), Instrs, !Info) :-
-    load(Rval, RvalLoadInstrs, !Info),
-    unaryop_to_il(Unop, Rval, UnOpInstrs, !Info),
-    Instrs = RvalLoadInstrs ++ UnOpInstrs.
-
-load(ml_binop(BinOp, R1, R2), Instrs, !Info) :-
-    load(R1, R1LoadInstrs, !Info),
-    load(R2, R2LoadInstrs, !Info),
-    binaryop_to_il(BinOp, BinaryOpInstrs, !Info),
-    Instrs = R1LoadInstrs ++ R2LoadInstrs ++ BinaryOpInstrs.
-
-load(ml_mem_addr(Lval), Instrs, !Info) :-
-    DataRep = !.Info ^ il_data_rep,
-    (
-        Lval = ml_var(Var, VarType),
-        mangle_mlds_var(Var, MangledVarStr),
-        ( is_local(MangledVarStr, !.Info) ->
-            Instrs = singleton(ldloca(name(MangledVarStr)))
-        ; is_argument(MangledVarStr, !.Info) ->
-            Instrs = singleton(ldarga(name(MangledVarStr)))
-        ; is_local_field(Var, VarType, !.Info, FieldRef) ->
+            Const = mlconst_false,
+            Instrs = singleton(ldc(bool, i(0)))
+        ;
+            Const = mlconst_string(Str),
+            Instrs = singleton(ldstr(Str))
+        ;
+            Const = mlconst_int(Int),
+            Instrs = singleton(ldc(int32, i(Int)))
+        ;
+            Const = mlconst_foreign(_Lang, _F, _T),
+            sorry(this_file, "NYI IL backend and foreign tags.")
+        ;
+            Const = mlconst_float(Float),
+            Instrs = singleton(ldc(float64, f(Float)))
+        ;
+            Const = mlconst_multi_string(_MultiString),
+            Instrs = throw_unimplemented("load multi_string_const")
+        ;
+            Const = mlconst_named_const(_NamedConst),
+            Instrs = throw_unimplemented("load named_const")
+        ;
+            Const = mlconst_code_addr(CodeAddr),
+            MethodRef = code_addr_constant_to_methodref(DataRep, CodeAddr),
+            Instrs = singleton(ldftn(MethodRef))
+        ;
+            Const = mlconst_data_addr(DataAddr),
+            data_addr_constant_to_fieldref(DataAddr, FieldRef),
             Instrs = singleton(ldsfld(FieldRef))
         ;
-            FieldRef = make_static_fieldref(DataRep, Var, VarType),
-            Instrs = singleton(ldsfld(FieldRef))
+            Const = mlconst_null(_MLDSType),
+            % We might consider loading an integer for null function types.
+            Instrs = singleton(ldnull)
         )
     ;
-        Lval = ml_field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
-        get_fieldref(DataRep, FieldNum, FieldType, ClassType,
-            FieldRef, CastClassInstrs),
-        load(Rval, RvalLoadInstrs, !Info),
-        Instrs =
-            RvalLoadInstrs ++
-            CastClassInstrs ++
-            singleton(ldflda(FieldRef))
+        Rval = ml_unop(Unop, RvalA),
+        load(RvalA, RvalALoadInstrs, !Info),
+        unaryop_to_il(Unop, RvalA, UnOpInstrs, !Info),
+        Instrs = RvalALoadInstrs ++ UnOpInstrs
     ;
-        Lval = ml_mem_ref(_, _),
-        % XXX Implement this.
-        Instrs = throw_unimplemented("load mem_addr lval mem_ref")
+        Rval = ml_binop(BinOp, RvalA, RvalB),
+        load(RvalA, RvalALoadInstrs, !Info),
+        load(RvalB, RvalBLoadInstrs, !Info),
+        binaryop_to_il(BinOp, BinaryOpInstrs, !Info),
+        Instrs = RvalALoadInstrs ++ RvalBLoadInstrs ++ BinaryOpInstrs
     ;
-        Lval = ml_global_var_ref(_),
-        Instrs = throw_unimplemented("load mem_addr lval global_var_ref")
+        Rval = ml_mem_addr(Lval),
+        DataRep = !.Info ^ il_data_rep,
+        (
+            Lval = ml_var(Var, VarType),
+            mangle_mlds_var(Var, MangledVarStr),
+            ( is_local(MangledVarStr, !.Info) ->
+                Instrs = singleton(ldloca(name(MangledVarStr)))
+            ; is_argument(MangledVarStr, !.Info) ->
+                Instrs = singleton(ldarga(name(MangledVarStr)))
+            ; is_local_field(Var, VarType, !.Info, FieldRef) ->
+                Instrs = singleton(ldsfld(FieldRef))
+            ;
+                FieldRef = make_static_fieldref(DataRep, Var, VarType),
+                Instrs = singleton(ldsfld(FieldRef))
+            )
+        ;
+            Lval = ml_field(_MaybeTag, BaseRval, FieldNum, FieldType,
+                ClassType),
+            get_fieldref(DataRep, FieldNum, FieldType, ClassType,
+                FieldRef, CastClassInstrs),
+            load(BaseRval, BaseRvalLoadInstrs, !Info),
+            Instrs =
+                BaseRvalLoadInstrs ++
+                CastClassInstrs ++
+                singleton(ldflda(FieldRef))
+        ;
+            Lval = ml_mem_ref(_, _),
+            % XXX Implement this.
+            Instrs = throw_unimplemented("load mem_addr lval mem_ref")
+        ;
+            Lval = ml_global_var_ref(_),
+            Instrs = throw_unimplemented("load mem_addr lval global_var_ref")
+        )
+    ;
+        Rval = ml_scalar_common(_),
+        Instrs = throw_unimplemented("load scalar_common")
+    ;
+        Rval = ml_vector_common_row(_, _),
+        Instrs = throw_unimplemented("load vector_common_row")
+    ;
+        Rval = ml_self(_),
+        Instrs = singleton(ldarg(index(0)))
     ).
-
-load(ml_self(_), singleton(ldarg(index(0))), !Info).
 
 :- pred store(mlds_lval::in, instr_tree::out, il_info::in, il_info::out)
     is det.
 
-store(ml_field(_MaybeTag, Rval, FieldNum, FieldType, ClassType), Instrs,
-        !Info) :-
-    DataRep = !.Info ^ il_data_rep,
-    get_fieldref(DataRep, FieldNum, FieldType, ClassType,
-        FieldRef, CastClassInstrs),
-    load(Rval, RvalLoadInstrs, !Info),
-    Instrs =
-        CastClassInstrs ++
-        RvalLoadInstrs ++
-        singleton(stfld(FieldRef)).
-
-store(ml_mem_ref(_Rval, _Type), _Instrs, !Info) :-
-    % You always need load the reference first, then the value, then stind it.
-    % There's no swap instruction. Annoying, eh?
-    unexpected(this_file, "store into mem_ref").
-
-store(ml_global_var_ref(_), _Instrs, !Info) :-
-    unexpected(this_file, "store into global_var_ref").
-
-store(ml_var(Var, VarType), Instrs, !Info) :-
-    DataRep = !.Info ^ il_data_rep,
-    mangle_mlds_var(Var, MangledVarStr),
-    ( is_local(MangledVarStr, !.Info) ->
-        Instrs = singleton(stloc(name(MangledVarStr)))
-    ; is_argument(MangledVarStr, !.Info) ->
-        Instrs = singleton(starg(name(MangledVarStr)))
+store(Lval, Instrs, !Info) :-
+    (
+        Lval = ml_field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
+        DataRep = !.Info ^ il_data_rep,
+        get_fieldref(DataRep, FieldNum, FieldType, ClassType,
+            FieldRef, CastClassInstrs),
+        load(Rval, RvalLoadInstrs, !Info),
+        Instrs =
+            CastClassInstrs ++
+            RvalLoadInstrs ++
+            singleton(stfld(FieldRef))
     ;
-        FieldRef = make_static_fieldref(DataRep, Var, VarType),
-        Instrs = singleton(stsfld(FieldRef))
+        Lval = ml_mem_ref(_Rval, _Type),
+        % You always need load the reference first, then the value,
+        % then stind it. There's no swap instruction. Annoying, eh?
+        unexpected(this_file, "store into mem_ref")
+    ;
+        Lval = ml_global_var_ref(_),
+        unexpected(this_file, "store into global_var_ref")
+    ;
+        Lval = ml_var(Var, VarType),
+        DataRep = !.Info ^ il_data_rep,
+        mangle_mlds_var(Var, MangledVarStr),
+        ( is_local(MangledVarStr, !.Info) ->
+            Instrs = singleton(stloc(name(MangledVarStr)))
+        ; is_argument(MangledVarStr, !.Info) ->
+            Instrs = singleton(starg(name(MangledVarStr)))
+        ;
+            FieldRef = make_static_fieldref(DataRep, Var, VarType),
+            Instrs = singleton(stsfld(FieldRef))
+        )
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Convert binary and unary operations to IL
+% Convert binary and unary operations to IL.
 %
 
 :- pred unaryop_to_il(mlds_unary_op::in, mlds_rval::in, instr_tree::out,
@@ -3521,20 +3529,29 @@ mangle_dataname_module(yes(DataName), !ModuleName) :-
 
 :- pred mangle_dataname(mlds_data_name::in, string::out) is det.
 
-mangle_dataname(mlds_data_var(MLDSVarName), Name) :-
-    Name = mangle_mlds_var_name(MLDSVarName).
-mangle_dataname(mlds_common(Int), MangledName) :-
-    string.format("common_%d", [i(Int)], MangledName).
-mangle_dataname(mlds_rtti(RttiId), MangledName) :-
-    rtti.id_to_c_identifier(RttiId, MangledName).
-mangle_dataname(mlds_module_layout, _MangledName) :-
-    sorry(this_file, "unimplemented: mangling mlds_module_layout").
-mangle_dataname(mlds_proc_layout(_), _MangledName) :-
-    sorry(this_file, "unimplemented: mangling mlds_proc_layout").
-mangle_dataname(mlds_internal_layout(_, _), _MangledName) :-
-    sorry(this_file, "unimplemented: mangling mlds_internal_layout").
-mangle_dataname(mlds_tabling_ref(_, _), _MangledName) :-
-    sorry(this_file, "unimplemented: mangling mlds_tabling_ref").
+mangle_dataname(DataName, Name) :-
+    (
+        DataName = mlds_data_var(MLDSVarName),
+        Name = mangle_mlds_var_name(MLDSVarName)
+    ;
+        DataName = mlds_scalar_common_ref(_),
+        sorry(this_file, "unimplemented: mangling mlds_scalar_common_ref")
+    ;
+        DataName = mlds_rtti(RttiId),
+        rtti.id_to_c_identifier(RttiId, Name)
+    ;
+        DataName = mlds_module_layout,
+        sorry(this_file, "unimplemented: mangling mlds_module_layout")
+    ;
+        DataName = mlds_proc_layout(_),
+        sorry(this_file, "unimplemented: mangling mlds_proc_layout")
+    ;
+        DataName = mlds_internal_layout(_, _),
+        sorry(this_file, "unimplemented: mangling mlds_internal_layout")
+    ;
+        DataName = mlds_tabling_ref(_, _),
+        sorry(this_file, "unimplemented: mangling mlds_tabling_ref")
+    ).
 
     % We turn procedures into methods of classes.
 mangle_mlds_proc_label(qual(ModuleName, _, mlds_proc_label(PredLabel, ProcId)),
@@ -3711,6 +3728,10 @@ rval_to_type(ml_binop(_, _, _), _) :-
     sorry(this_file, "rval_to_type: binop").
 rval_to_type(ml_mem_addr(_), _) :-
     sorry(this_file, "rval_to_type: mem_addr").
+rval_to_type(ml_scalar_common(ScalarCommon), Type) :-
+    ScalarCommon = ml_scalar_common(_, Type, _, _).
+rval_to_type(ml_vector_common_row(VectorCommon, _), Type) :-
+    VectorCommon = ml_vector_common(_, Type, _, _, _).
 rval_to_type(ml_self(Type), Type).
 rval_to_type(ml_const(Const), Type) :-
     Type = rval_const_to_type(Const).

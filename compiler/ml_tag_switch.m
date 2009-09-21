@@ -30,8 +30,7 @@
     % Generate efficient indexing code for tag based switches.
     %
 :- pred ml_generate_tag_switch(list(tagged_case)::in, prog_var::in,
-    code_model::in, can_fail::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
+    code_model::in, can_fail::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -60,7 +59,7 @@
 %-----------------------------------------------------------------------------%
 
 ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
-        Decls, Statements, !Info) :-
+        Statements, !Info) :-
     % Generate the rval for the primary tag.
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
@@ -106,7 +105,6 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
         PtagCases, Default),
     MLDS_Context = mlds_make_context(Context),
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
-    Decls = [],
     Statements = [SwitchStatement].
 
 :- pred gen_tagged_case_code(code_model::in, tagged_case::in, int::out,

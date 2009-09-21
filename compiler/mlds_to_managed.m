@@ -68,7 +68,12 @@
 output_csharp_code(Globals, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, _Imports, GlobalData, Defns0,
         _InitPreds, _FinalPreds, _ExportedEnums),
-    ml_global_data_get_all_global_defns(GlobalData, GlobalDefns),
+    ml_global_data_get_all_global_defns(GlobalData,
+        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+    expect(map.is_empty(ScalarCellGroupMap), this_file,
+        "output_csharp_code: nonempty ScalarCellGroupMap"),
+    expect(map.is_empty(VectorCellGroupMap), this_file,
+        "output_csharp_code: nonempty VectorCellGroupMap"),
     Defns = GlobalDefns ++ Defns0,
 
     output_src_start(ModuleName, !IO),
@@ -322,7 +327,7 @@ write_statement(DataRep, Args, statement(Statement, Context), !IO) :-
 
 write_outline_arg_init(DataRep, OutlineArg, !IO) :-
     (
-        OutlineArg = in(Type, VarName, Rval),
+        OutlineArg = ola_in(Type, VarName, Rval),
         write_parameter_type(DataRep, Type, !IO),
         io.write_string(" ", !IO),
         io.write_string(VarName, !IO),
@@ -330,7 +335,7 @@ write_outline_arg_init(DataRep, OutlineArg, !IO) :-
         write_rval(DataRep, Rval, !IO),
         io.write_string(";\n", !IO)
     ;
-        OutlineArg = out(Type, VarName, _Lval),
+        OutlineArg = ola_out(Type, VarName, _Lval),
         write_parameter_type(DataRep, Type, !IO),
         io.write_string(" ", !IO),
         io.write_string(VarName, !IO),
@@ -339,7 +344,7 @@ write_outline_arg_init(DataRep, OutlineArg, !IO) :-
         write_parameter_initializer(DataRep, Type, !IO),
         io.write_string(";\n", !IO)
     ;
-        OutlineArg = unused
+        OutlineArg = ola_unused
     ).
 
 :- pred write_outline_arg_final(il_data_rep::in, outline_arg::in,
@@ -347,15 +352,15 @@ write_outline_arg_init(DataRep, OutlineArg, !IO) :-
 
 write_outline_arg_final(DataRep, OutlineArg, !IO) :-
     (
-        OutlineArg = in(_, _, _)
+        OutlineArg = ola_in(_, _, _)
     ;
-        OutlineArg = out(_Type, VarName, Lval),
+        OutlineArg = ola_out(_Type, VarName, Lval),
         write_lval(DataRep, Lval, !IO),
         io.write_string(" = ", !IO),
         io.write_string(VarName, !IO),
         io.write_string(";\n", !IO)
     ;
-        OutlineArg = unused
+        OutlineArg = ola_unused
     ).
 
 :- pred write_assign_local_to_output(mlds_argument::in, io::di, io::uo) is det.
@@ -445,6 +450,12 @@ write_rval(DataRep, Rval, !IO) :-
         ;
             sorry(this_file, "binop rval")
         )
+    ;
+        Rval = ml_scalar_common(_),
+        sorry(this_file, "scalar_common rval")
+    ;
+        Rval = ml_vector_common_row(_, _),
+        sorry(this_file, "vector_common_row rval")
     ;
         Rval = ml_mem_addr(_),
         sorry(this_file, "mem_addr rval")

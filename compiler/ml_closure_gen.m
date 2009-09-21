@@ -181,7 +181,7 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     mlds_rval::out, mlds_type::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_closure_layout(PredId, ProcId, Context,
-        ClosureLayoutRval, ClosureLayoutType, !Info) :-
+        ClosureLayoutAddrRval, ClosureLayoutType, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     continuation_info.generate_closure_layout(ModuleInfo, PredId, ProcId,
         ClosureLayoutInfo),
@@ -207,19 +207,14 @@ ml_gen_closure_layout(PredId, ProcId, Context,
         % XXX There's no way in C to properly represent this type,
         % since it is a struct that ends with a variable-length array.
         % For now we just treat the whole struct as an array.
+        module_info_get_name(ModuleInfo, ModuleName),
+        MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
         ClosureLayoutType = mlds_array_type(mlds_generic_type),
-        ml_gen_static_const_defn("closure_layout", ClosureLayoutType,
-            acc_private, init_array(Inits), Context, ClosureLayoutVarName,
-            !GlobalData),
-
+        ml_gen_static_scalar_const_addr(MLDS_ModuleName, "closure_layout",
+            ClosureLayoutType, init_array(Inits), Context,
+            ClosureLayoutAddrRval, !GlobalData),
         ml_gen_info_set_global_data(!.GlobalData, !Info)
-    ),
-
-    module_info_get_name(ModuleInfo, ModuleName),
-    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ClosureLayoutVar =
-        qual(MLDS_ModuleName, module_qual, ClosureLayoutVarName),
-    ClosureLayoutRval = ml_lval(ml_var(ClosureLayoutVar, ClosureLayoutType)).
+    ).
 
 :- pred ml_gen_closure_proc_id(module_info::in, prog_context::in,
     mlds_initializer::out, mlds_type::out,
@@ -449,22 +444,19 @@ arg_type_infos(var_arity_type_info(_VarArityId, ArgTIs)) = ArgTIs.
     mlds_rval::out, mlds_type::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorNameStr, Context,
-        TVarLocnMap, MLDS_Rval, ArrayType, !GlobalData) :-
+ml_stack_layout_construct_tvar_vector(ModuleInfo, TVarVectorNameStr, Context,
+        TVarLocnMap, TVarVectorAddrRval, ArrayType, !GlobalData) :-
     ArrayType = mlds_array_type(mlds_native_int_type),
     ( map.is_empty(TVarLocnMap) ->
-        MLDS_Rval = ml_const(mlconst_null(ArrayType))
+        TVarVectorAddrRval = ml_const(mlconst_null(ArrayType))
     ;
         ml_stack_layout_construct_tvar_rvals(TVarLocnMap, Vector,
             _VectorTypes),
         Initializer = init_array(Vector),
-        ml_gen_static_const_defn(TvarVectorNameStr, ArrayType, acc_private,
-            Initializer, Context, TvarVectorName, !GlobalData),
         module_info_get_name(ModuleInfo, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        QualTvarVectorName =
-            qual(MLDS_ModuleName, module_qual, TvarVectorName),
-        MLDS_Rval = ml_lval(ml_var(QualTvarVectorName, ArrayType))
+        ml_gen_static_scalar_const_addr(MLDS_ModuleName, TVarVectorNameStr,
+            ArrayType, Initializer, Context, TVarVectorAddrRval, !GlobalData)
     ).
 
 :- pred ml_stack_layout_construct_tvar_rvals(map(tvar, set(layout_locn))::in,

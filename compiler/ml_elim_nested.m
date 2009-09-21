@@ -473,6 +473,7 @@ ml_elim_nested(Action, Globals, MLDS0, MLDS) :-
     % Flat global data structures do not need to be processed here; that is
     % what makes them "flat".
     ml_global_data_get_global_defns(GlobalData0,
+        _ScalarCellGroupMap, _VectorCellGroupMap,
         _RevFlatCellDefns, _RevFlatRttiDefns, RevNonFlatDefns0),
     list.reverse(RevNonFlatDefns0, NonFlatDefns0),
     ml_elim_nested_defns_list(Action, MLDS_ModuleName, Globals, OuterVars,
@@ -1151,7 +1152,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
         DefnBody0 = mlds_function(PredProcId, Params,
             body_defined_here(FuncBody0), Attributes, EnvVarNames),
         statement_contains_var(FuncBody0, qual(ModuleName, module_qual,
-            mlds_data_var(mlds_var_name("env_ptr", no))))
+            mlds_data_var(mlds_var_name("env_ptr", no)))) = yes
     ->
         EnvPtrVal = ml_lval(ml_var(qual(ModuleName, module_qual,
             mlds_var_name("env_ptr_arg", no)),
@@ -1773,7 +1774,7 @@ ml_need_to_hoist(ModuleName, DataName, FollowingDefns, FollowingStatements) :-
 
 ml_need_to_hoist_defn(QualDataName, FollowingDefn) :-
     FollowingDefn = mlds_defn(_, _, _, mlds_function(_, _, _, _, _)),
-    defn_contains_var(FollowingDefn, QualDataName).
+    defn_contains_var(FollowingDefn, QualDataName) = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -2016,7 +2017,12 @@ fixup_rval(Action, Info, Rval0, Rval) :-
         fixup_rval(Action, Info, YRval0, YRval),
         Rval = ml_binop(BinOp, XRval, YRval)
     ;
+        Rval0 = ml_vector_common_row(VectorCommon, RowRval0),
+        fixup_rval(Action, Info, RowRval0, RowRval),
+        Rval = ml_vector_common_row(VectorCommon, RowRval)
+    ;
         ( Rval0 = ml_const(_)
+        ; Rval0 = ml_scalar_common(_)
         ; Rval0 = ml_self(_)
         ),
         Rval = Rval0

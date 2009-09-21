@@ -1088,7 +1088,7 @@ read_module_or_file(FileOrModuleName, ReturnTimestamp,
         ),
         globals.lookup_bool_option(!.Globals, detailed_statistics, Stats),
         maybe_report_stats(Stats, !IO),
-        string.append(FileName, ".m", SourceFileName)
+        SourceFileName = FileName ++ ".m"
     ).
 
 :- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
@@ -5007,7 +5007,7 @@ construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, TablingInfoStructs,
     C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
         C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
     MangledModuleName = sym_name_mangle(ModuleSymName),
-    string.append(MangledModuleName, "_module", ModuleName),
+    ModuleName = MangledModuleName ++ "_module",
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
     get_c_body_code(C_BodyCode0, C_BodyCode),
@@ -5109,7 +5109,7 @@ combine_chunks(ChunkList, ModName, Modules) :-
 combine_chunks_2([], _ModName, _N, []).
 combine_chunks_2([Chunk | Chunks], ModuleName, Num, [Module | Modules]) :-
     string.int_to_string(Num, NumString),
-    string.append(ModuleName, NumString, ThisModuleName),
+    ThisModuleName = ModuleName ++ NumString,
     Module = comp_gen_c_module(ThisModuleName, Chunk),
     Num1 = Num + 1,
     combine_chunks_2(Chunks, ModuleName, Num1, Modules).
@@ -5151,8 +5151,8 @@ compile_fact_table_file(ErrorStream, BaseName, O_File, Succeeded, !IO) :-
     get_linked_target_type(LinkedTargetType, !IO),
     get_object_code_type(LinkedTargetType, PIC, !IO),
     maybe_pic_object_file_extension(PIC, Obj, !IO),
-    string.append(BaseName, ".c", C_File),
-    string.append(BaseName, Obj, O_File),
+    C_File = BaseName ++ ".c",
+    O_File = BaseName ++ Obj,
     compile_target_code.compile_c_file(ErrorStream, PIC, C_File, O_File,
         Succeeded, !IO).
 
@@ -5565,8 +5565,7 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
         ModuleName = mlds_get_module_name(MLDS),
         module_name_to_file_name(ModuleName, ".mlds_dump", do_create_dirs,
             BaseFileName, !IO),
-        string.append_list([BaseFileName, ".", StageNumStr, "-", StageName],
-            DumpFile),
+        DumpFile = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName,
         dump_mlds(Globals, DumpFile, MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;

@@ -1721,6 +1721,11 @@ add_rtti_defn_arcs_rval(DefnDataName, Rval, !Graph) :-
         Rval = ml_mem_addr(Lval),
         add_rtti_defn_arcs_lval(DefnDataName, Lval, !Graph)
     ;
+        Rval = ml_scalar_common(_)
+    ;
+        Rval = ml_vector_common_row(_, RowRval),
+        add_rtti_defn_arcs_rval(DefnDataName, RowRval, !Graph)
+    ;
         Rval = ml_self(_)
     ).
 
@@ -1751,7 +1756,7 @@ add_rtti_defn_arcs_const(DefnDataName, Const, !Graph) :-
             digraph.add_vertices_and_edge(DefnDataName, DataName, !Graph)
         ;
             ( DataName = mlds_data_var(_)
-            ; DataName = mlds_common(_)
+            ; DataName = mlds_scalar_common_ref(_)
             ; DataName = mlds_module_layout
             ; DataName = mlds_proc_layout(_)
             ; DataName = mlds_internal_layout(_, _)

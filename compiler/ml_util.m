@@ -48,16 +48,14 @@
 
     % Nondeterministically generates sub-statements from statements.
     %
-:- pred statement_contains_statement(statement::in, statement::out)
-    is multi.
+:- pred statement_contains_statement(statement::in, statement::out) is multi.
 
-:- pred stmt_contains_statement(mlds_stmt::in, statement::out)
-    is nondet.
+:- pred stmt_contains_statement(mlds_stmt::in, statement::out) is nondet.
 
     % Succeeds iff this statement contains a reference to the
     % specified variable.
     %
-:- pred statement_contains_var(statement::in, mlds_data::in) is semidet.
+:- func statement_contains_var(statement, mlds_data) = bool.
 
 :- pred has_foreign_languages(statement::in, list(foreign_language)::out)
     is det.
@@ -111,15 +109,15 @@
     %
 :- pred defn_is_public(mlds_defn::in) is semidet.
 
-    % Succeeds iff these definitions contains a reference to
+    % Says whether these definitions contains a reference to
     % the specified variable.
     %
-:- pred defns_contains_var(list(mlds_defn)::in, mlds_data::in) is semidet.
+:- func defns_contains_var(list(mlds_defn), mlds_data) = bool.
 
-    % Succeeds iff this definition contains a reference to
+    % Says whether this definition contains a reference to
     % the specified variable.
     %
-:- pred defn_contains_var(mlds_defn::in, mlds_data::in) is semidet.
+:- func defn_contains_var(mlds_defn, mlds_data) = bool.
 
 %-----------------------------------------------------------------------------%
 %
@@ -136,19 +134,17 @@
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-:- pred initializer_contains_var(mlds_initializer::in, mlds_data::in)
-    is semidet.
+:- func initializer_contains_var(mlds_initializer, mlds_data) = bool.
 
-:- pred rvals_contains_var(list(mlds_rval)::in, mlds_data::in) is semidet.
+:- func rvals_contains_var(list(mlds_rval), mlds_data) = bool.
 
-:- pred maybe_rval_contains_var(maybe(mlds_rval)::in, mlds_data::in)
-    is semidet.
+:- func maybe_rval_contains_var(maybe(mlds_rval), mlds_data) = bool.
 
-:- pred rval_contains_var(mlds_rval::in, mlds_data::in) is semidet.
+:- func rval_contains_var(mlds_rval, mlds_data) = bool.
 
-:- pred lvals_contains_var(list(mlds_lval)::in, mlds_data::in) is semidet.
+:- func lvals_contains_var(list(mlds_lval), mlds_data) = bool.
 
-:- pred lval_contains_var(mlds_lval::in, mlds_data::in) is semidet.
+:- func lval_contains_var(mlds_lval, mlds_data) = bool.
 
 %-----------------------------------------------------------------------------%
 
@@ -321,6 +317,8 @@ default_contains_statement(default_is_unreachable, _) :- fail.
 default_contains_statement(default_case(Statement), SubStatement) :-
     statement_contains_statement(Statement, SubStatement).
 
+%-----------------------------------------------------------------------------%
+%
 % statements_contains_var:
 % maybe_statement_contains_var:
 % statement_contains_var:
@@ -330,133 +328,209 @@ default_contains_statement(default_case(Statement), SubStatement) :-
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-:- pred statements_contains_var(list(statement)::in, mlds_data::in)
-    is semidet.
+:- func statements_contains_var(list(statement), mlds_data) = bool.
 
-statements_contains_var(Statements, Name) :-
-    list.member(Statement, Statements),
-    statement_contains_var(Statement, Name).
+statements_contains_var([], _DataName) = no.
+statements_contains_var([Statement | Statements], DataName) = ContainsVar :-
+    ( statement_contains_var(Statement, DataName) = yes ->
+        ContainsVar = yes
+    ;
+        ContainsVar = statements_contains_var(Statements, DataName)
+    ).
 
-:- pred maybe_statement_contains_var(maybe(statement)::in,
-    mlds_data::in) is semidet.
+:- func maybe_statement_contains_var(maybe(statement), mlds_data) = bool.
 
-% maybe_statement_contains_var(no, _) :- fail.
-maybe_statement_contains_var(yes(Statement), Name) :-
-    statement_contains_var(Statement, Name).
+maybe_statement_contains_var(no, _) = no.
+maybe_statement_contains_var(yes(Statement), DataName) = ContainsVar :-
+    ContainsVar = statement_contains_var(Statement, DataName).
 
-statement_contains_var(Statement, Name) :-
+statement_contains_var(Statement, DataName) = ContainsVar :-
     Statement = statement(Stmt, _Context),
-    stmt_contains_var(Stmt, Name).
+    ContainsVar = stmt_contains_var(Stmt, DataName).
 
-:- pred stmt_contains_var(mlds_stmt::in, mlds_data::in) is semidet.
+:- func stmt_contains_var(mlds_stmt, mlds_data) = bool.
 
-stmt_contains_var(Stmt, Name) :-
+stmt_contains_var(Stmt, DataName) = ContainsVar :-
     (
         Stmt = ml_stmt_block(Defns, Statements),
-        ( defns_contains_var(Defns, Name)
-        ; statements_contains_var(Statements, Name)
+        ( defns_contains_var(Defns, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = statements_contains_var(Statements, DataName)
         )
     ;
         Stmt = ml_stmt_while(Rval, Statement, _Once),
-        ( rval_contains_var(Rval, Name)
-        ; statement_contains_var(Statement, Name)
+        ( rval_contains_var(Rval, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = statement_contains_var(Statement, DataName)
         )
     ;
         Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse),
-        ( rval_contains_var(Cond, Name)
-        ; statement_contains_var(Then, Name)
-        ; maybe_statement_contains_var(MaybeElse, Name)
+        ( rval_contains_var(Cond, DataName) = yes ->
+            ContainsVar = yes
+        ; statement_contains_var(Then, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = maybe_statement_contains_var(MaybeElse, DataName)
         )
     ;
         Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        ( rval_contains_var(Val, Name)
-        ; cases_contains_var(Cases, Name)
-        ; default_contains_var(Default, Name)
+        ( rval_contains_var(Val, DataName) = yes ->
+            ContainsVar = yes
+        ; cases_contains_var(Cases, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = default_contains_var(Default, DataName)
         )
     ;
         ( Stmt = ml_stmt_label(_Label)
         ; Stmt = ml_stmt_goto(_)
         ),
-        fail
+        ContainsVar = no
     ;
         Stmt = ml_stmt_computed_goto(Rval, _Labels),
-        rval_contains_var(Rval, Name)
+        ContainsVar = rval_contains_var(Rval, DataName)
     ;
         Stmt = ml_stmt_call(_Sig, Func, Obj, Args, RetLvals, _TailCall),
-        ( rval_contains_var(Func, Name)
-        ; maybe_rval_contains_var(Obj, Name)
-        ; rvals_contains_var(Args, Name)
-        ; lvals_contains_var(RetLvals, Name)
+        ( rval_contains_var(Func, DataName) = yes ->
+            ContainsVar = yes
+        ; maybe_rval_contains_var(Obj, DataName) = yes ->
+            ContainsVar = yes
+        ; rvals_contains_var(Args, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = lvals_contains_var(RetLvals, DataName)
         )
     ;
         Stmt = ml_stmt_return(Rvals),
-        rvals_contains_var(Rvals, Name)
+        ContainsVar = rvals_contains_var(Rvals, DataName)
     ;
         Stmt = ml_stmt_do_commit(Ref),
-        rval_contains_var(Ref, Name)
+        ContainsVar = rval_contains_var(Ref, DataName)
     ;
         Stmt = ml_stmt_try_commit(Ref, Statement, Handler),
-        ( lval_contains_var(Ref, Name)
-        ; statement_contains_var(Statement, Name)
-        ; statement_contains_var(Handler, Name)
+        ( lval_contains_var(Ref, DataName) = yes ->
+            ContainsVar = yes
+        ; statement_contains_var(Statement, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = statement_contains_var(Handler, DataName)
         )
     ;
         Stmt = ml_stmt_atomic(AtomicStmt),
-        atomic_stmt_contains_var(AtomicStmt, Name)
+        ContainsVar = atomic_stmt_contains_var(AtomicStmt, DataName)
     ).
 
-:- pred cases_contains_var(list(mlds_switch_case)::in, mlds_data::in)
-    is semidet.
+:- func cases_contains_var(list(mlds_switch_case), mlds_data) = bool.
 
-cases_contains_var(Cases, Name) :-
-    list.member(Case, Cases),
+cases_contains_var([], _DataName) = no.
+cases_contains_var([Case | Cases], DataName) = ContainsVar :-
     Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
-    statement_contains_var(Statement, Name).
-
-:- pred default_contains_var(mlds_switch_default::in, mlds_data::in)
-    is semidet.
-
-% default_contains_var(default_do_nothing, _) :- fail.
-% default_contains_var(default_is_unreachable, _) :- fail.
-default_contains_var(default_case(Statement), Name) :-
-    statement_contains_var(Statement, Name).
-
-:- pred atomic_stmt_contains_var(mlds_atomic_statement::in, mlds_data::in)
-    is semidet.
-
-% atomic_stmt_contains_var(comment(_), _Name) :- fail.
-atomic_stmt_contains_var(assign(Lval, Rval), Name) :-
-    ( lval_contains_var(Lval, Name)
-    ; rval_contains_var(Rval, Name)
+    ( statement_contains_var(Statement, DataName) = yes ->
+        ContainsVar = yes
+    ;
+        ContainsVar = cases_contains_var(Cases, DataName)
     ).
-atomic_stmt_contains_var(new_object(Target, _MaybeTag, _HasSecTag, _Type,
-        _MaybeSize, _MaybeCtorName, Args, _ArgTypes, _MayUseAtomic), Name) :-
-    ( lval_contains_var(Target, Name)
-    ; rvals_contains_var(Args, Name)
+
+:- func default_contains_var(mlds_switch_default, mlds_data) = bool.
+
+default_contains_var(Default, DataName) = ContainsVar :-
+    (
+        ( Default = default_do_nothing
+        ; Default = default_is_unreachable
+        ),
+        ContainsVar = no
+    ;
+        Default = default_case(Statement),
+        ContainsVar = statement_contains_var(Statement, DataName)
     ).
-% atomic_stmt_contains_var(gc_check, _) :- fail.
-atomic_stmt_contains_var(mark_hp(Lval), Name) :-
-    lval_contains_var(Lval, Name).
-atomic_stmt_contains_var(restore_hp(Rval), Name) :-
-    rval_contains_var(Rval, Name).
-atomic_stmt_contains_var(trail_op(TrailOp), Name) :-
-    trail_op_contains_var(TrailOp, Name).
-atomic_stmt_contains_var(inline_target_code(_Lang, Components), Name) :-
-    list.member(Component, Components),
-    target_code_component_contains_var(Component, Name) = yes.
 
-:- pred trail_op_contains_var(trail_op::in, mlds_data::in) is semidet.
+:- func atomic_stmt_contains_var(mlds_atomic_statement, mlds_data) = bool.
 
-trail_op_contains_var(store_ticket(Lval), Name) :-
-    lval_contains_var(Lval, Name).
-trail_op_contains_var(reset_ticket(Rval, _Reason), Name) :-
-    rval_contains_var(Rval, Name).
-% trail_op_contains_var(discard_ticket, _Name) :- fail.
-% trail_op_contains_var(prune_ticket, _Name) :- fail.
-trail_op_contains_var(mark_ticket_stack(Lval), Name) :-
-    lval_contains_var(Lval, Name).
-trail_op_contains_var(prune_tickets_to(Rval), Name) :-
-    rval_contains_var(Rval, Name).
+atomic_stmt_contains_var(AtomicStmt, DataName) = ContainsVar :-
+    (
+        AtomicStmt = comment(_),
+        ContainsVar = no
+    ;
+        ( AtomicStmt = assign(Lval, Rval)
+        ; AtomicStmt = assign_if_in_heap(Lval, Rval)
+        ),
+        ( lval_contains_var(Lval, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = rval_contains_var(Rval, DataName)
+        )
+    ;
+        AtomicStmt = delete_object(Rval),
+        ContainsVar = rval_contains_var(Rval, DataName)
+    ;
+        AtomicStmt = new_object(Target, _MaybeTag, _HasSecTag, _Type,
+            _MaybeSize, _MaybeCtorName, Args, _ArgTypes, _MayUseAtomic),
+        ( lval_contains_var(Target, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = rvals_contains_var(Args, DataName)
+        )
+    ;
+        AtomicStmt = gc_check,
+        ContainsVar = no
+    ;
+        AtomicStmt = mark_hp(Lval),
+        ContainsVar = lval_contains_var(Lval, DataName)
+    ;
+        AtomicStmt = restore_hp(Rval),
+        ContainsVar = rval_contains_var(Rval, DataName)
+    ;
+        AtomicStmt = trail_op(TrailOp),
+        ContainsVar = trail_op_contains_var(TrailOp, DataName)
+    ;
+        AtomicStmt = inline_target_code(_Lang, Components),
+        ContainsVar = target_code_components_contains_var(Components, DataName)
+    ;
+        AtomicStmt = outline_foreign_proc(_Lang, OutlineArgs, ReturnLvals,
+            _Code),
+        ( outline_args_contains_var(OutlineArgs, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = lvals_contains_var(ReturnLvals, DataName)
+        )
+    ).
+
+:- func trail_op_contains_var(trail_op, mlds_data) = bool.
+
+trail_op_contains_var(TrailOp, DataName) = ContainsVar :-
+    (
+        TrailOp = store_ticket(Lval),
+        ContainsVar = lval_contains_var(Lval, DataName)
+    ;
+        TrailOp = reset_ticket(Rval, _Reason),
+        ContainsVar = rval_contains_var(Rval, DataName)
+    ;
+        ( TrailOp = discard_ticket
+        ; TrailOp = prune_ticket
+        ),
+        ContainsVar = no
+    ;
+        TrailOp = mark_ticket_stack(Lval),
+        ContainsVar = lval_contains_var(Lval, DataName)
+    ;
+        TrailOp = prune_tickets_to(Rval),
+        ContainsVar = rval_contains_var(Rval, DataName)
+    ).
+
+:- func target_code_components_contains_var(list(target_code_component),
+    mlds_data) = bool.
+
+target_code_components_contains_var([], _DataName) = no.
+target_code_components_contains_var([TargetCode | TargetCodes], DataName)
+        = ContainsVar :-
+    ( target_code_component_contains_var(TargetCode, DataName) = yes ->
+        ContainsVar = yes
+    ;
+        ContainsVar =
+            target_code_components_contains_var(TargetCodes, DataName)
+    ).
 
 :- func target_code_component_contains_var(target_code_component, mlds_data)
     = bool.
@@ -470,10 +544,10 @@ target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
         ContainsVar = no
     ;
         TargetCode = target_code_input(Rval),
-        ContainsVar = pred_to_bool(rval_contains_var(Rval, DataName))
+        ContainsVar = rval_contains_var(Rval, DataName)
     ;
         TargetCode = target_code_output(Lval),
-        ContainsVar = pred_to_bool(lval_contains_var(Lval, DataName))
+        ContainsVar = lval_contains_var(Lval, DataName)
     ;
         TargetCode = target_code_name(EntityName),
         (
@@ -486,6 +560,33 @@ target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
             ContainsVar = no
         )
     ).
+
+:- func outline_args_contains_var(list(outline_arg), mlds_data) = bool.
+
+outline_args_contains_var([], _DataName) = no.
+outline_args_contains_var([OutlineArg | OutlineArgs], DataName) =
+        ContainsVar :-
+    ( outline_arg_contains_var(OutlineArg, DataName) = yes ->
+        ContainsVar = yes
+    ;
+        ContainsVar = outline_args_contains_var(OutlineArgs, DataName)
+    ).
+
+:- func outline_arg_contains_var(outline_arg, mlds_data) = bool.
+
+outline_arg_contains_var(OutlineArg, DataName) = ContainsVar :-
+    (
+        OutlineArg = ola_in(_Type, _Str, Rval),
+        ContainsVar = rval_contains_var(Rval, DataName)
+    ;
+        OutlineArg = ola_out(_Type, _Str, Lval),
+        ContainsVar = lval_contains_var(Lval, DataName)
+    ;
+        OutlineArg = ola_unused,
+        ContainsVar = no
+    ).
+
+%-----------------------------------------------------------------------------%
 
 has_foreign_languages(Statement, Langs) :-
     GetTargetCode = (pred(Lang::out) is nondet :-
@@ -543,6 +644,8 @@ defn_is_public(Defn) :-
     Defn = mlds_defn(_Name, _Context, Flags, _Body),
     access(Flags) = acc_public.
 
+%-----------------------------------------------------------------------------%
+%
 % defns_contains_var:
 % defn_contains_var:
 % defn_body_contains_var:
@@ -551,35 +654,50 @@ defn_is_public(Defn) :-
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-defns_contains_var(Defns, Name) :-
-    list.member(Defn, Defns),
-    defn_contains_var(Defn, Name).
-
-defn_contains_var(mlds_defn(_Name, _Context, _Flags, DefnBody), Name) :-
-    defn_body_contains_var(DefnBody, Name).
-
-:- pred defn_body_contains_var(mlds_entity_defn::in, mlds_data::in)
-    is semidet.
-
-    % XXX Should we include variables in the GCStatement field here?
-defn_body_contains_var(mlds_data(_Type, Initializer, _GCStatement), Name) :-
-    initializer_contains_var(Initializer, Name).
-defn_body_contains_var(mlds_function(_PredProcId, _Params, FunctionBody,
-        _Attrs, _EnvVarNames), Name) :-
-    function_body_contains_var(FunctionBody, Name).
-defn_body_contains_var(mlds_class(ClassDefn), Name) :-
-    ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits, _Implements,
-        CtorDefns, FieldDefns),
-    ( defns_contains_var(FieldDefns, Name)
-    ; defns_contains_var(CtorDefns, Name)
+defns_contains_var([], _DataName) = no.
+defns_contains_var([Defn | Defns], DataName) = ContainsVar :-
+    ( defn_contains_var(Defn, DataName) = yes ->
+        ContainsVar = yes
+    ;
+        ContainsVar = defns_contains_var(Defns, DataName)
     ).
 
-:- pred function_body_contains_var(mlds_function_body::in, mlds_data::in)
-    is semidet.
+defn_contains_var(Defn, DataName) = ContainsVar :-
+    Defn = mlds_defn(_Name, _Context, _Flags, DefnBody),
+    ContainsVar = defn_body_contains_var(DefnBody, DataName).
 
-% function_body_contains_var(body_external, _) :- fail.
-function_body_contains_var(body_defined_here(Statement), Name) :-
-    statement_contains_var(Statement, Name).
+:- func defn_body_contains_var(mlds_entity_defn, mlds_data) = bool.
+
+defn_body_contains_var(DefnBody, DataName) = ContainsVar :-
+    (
+        DefnBody = mlds_data(_Type, Initializer, _GCStatement),
+        % XXX Should we include variables in the GCStatement field here?
+        ContainsVar = initializer_contains_var(Initializer, DataName)
+    ;
+        DefnBody = mlds_function(_PredProcId, _Params, FunctionBody,
+            _Attrs, _EnvVarNames),
+        ContainsVar = function_body_contains_var(FunctionBody, DataName)
+    ;
+        DefnBody = mlds_class(ClassDefn),
+        ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits, _Implements,
+            CtorDefns, FieldDefns),
+        ( defns_contains_var(FieldDefns, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = defns_contains_var(CtorDefns, DataName)
+        )
+    ).
+
+:- func function_body_contains_var(mlds_function_body, mlds_data) = bool.
+
+function_body_contains_var(Body, DataName) = ContainsVar :-
+    (
+        Body = body_external,
+        ContainsVar = no
+    ;
+        Body = body_defined_here(Statement),
+        ContainsVar = statement_contains_var(Statement, DataName)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -587,64 +705,137 @@ function_body_contains_var(body_defined_here(Statement), Name) :-
 %
 
 % initializer_contains_var:
+% initializers_contains_var:
 % rvals_contains_var:
 % maybe_rval_contains_var:
 % rval_contains_var:
 % lvals_contains_var:
 % lval_contains_var:
 %
-% Succeed iff the specified construct contains a reference to
+% Say whether the specified construct contains a reference to
 % the specified variable.
 
-% initializer_contains_var(no_initializer, _) :- fail.
-initializer_contains_var(init_obj(Rval), Name) :-
-    rval_contains_var(Rval, Name).
-initializer_contains_var(init_struct(_Type, Inits), Name) :-
-    list.member(Init, Inits),
-    initializer_contains_var(Init, Name).
-initializer_contains_var(init_array(Inits), Name) :-
-    list.member(Init, Inits),
-    initializer_contains_var(Init, Name).
-
-rvals_contains_var(Rvals, Name) :-
-    list.member(Rval, Rvals),
-    rval_contains_var(Rval, Name).
-
-% maybe_rval_contains_var(no, _Name) :- fail.
-maybe_rval_contains_var(yes(Rval), Name) :-
-    rval_contains_var(Rval, Name).
-
-rval_contains_var(ml_lval(Lval), Name) :-
-    lval_contains_var(Lval, Name).
-rval_contains_var(ml_mkword(_Tag, Rval), Name) :-
-    rval_contains_var(Rval, Name).
-rval_contains_var(ml_const(Const), QualDataName) :-
-    Const = mlconst_data_addr(DataAddr),
-    DataAddr = data_addr(ModuleName, DataName),
-    QualDataName = qual(ModuleName, _QualKind, DataName),
-    % this is a place where we can succeed
-    true.
-rval_contains_var(ml_unop(_Op, Rval), Name) :-
-    rval_contains_var(Rval, Name).
-rval_contains_var(ml_binop(_Op, X, Y), Name) :-
-    ( rval_contains_var(X, Name)
-    ; rval_contains_var(Y, Name)
+initializer_contains_var(Initializer, DataName) = ContainsVar :-
+    (
+        Initializer = no_initializer,
+        ContainsVar = no
+    ;
+        Initializer = init_obj(Rval),
+        ContainsVar = rval_contains_var(Rval, DataName)
+    ;
+        Initializer = init_struct(_Type, FieldInitializers),
+        ContainsVar = initializers_contains_var(FieldInitializers, DataName)
+    ;
+        Initializer = init_array(ElementInitializers),
+        ContainsVar = initializers_contains_var(ElementInitializers, DataName)
     ).
-rval_contains_var(ml_mem_addr(Lval), Name) :-
-    lval_contains_var(Lval, Name).
 
-lvals_contains_var(Lvals, Name) :-
-    list.member(Lval, Lvals),
-    lval_contains_var(Lval, Name).
+:- func initializers_contains_var(list(mlds_initializer), mlds_data) = bool.
 
-lval_contains_var(ml_field(_MaybeTag, Rval, _FieldId, _, _), Name) :-
-    rval_contains_var(Rval, Name).
-lval_contains_var(ml_mem_ref(Rval, _Type), Name) :-
-    rval_contains_var(Rval, Name).
-lval_contains_var(ml_var(qual(ModuleName, QualKind, Name), _Type),
-        qual(ModuleName, QualKind, mlds_data_var(Name))) :-
-    % This is another place where we can succeed.
-    true.
+initializers_contains_var([], _DataName) = no.
+initializers_contains_var([Initializer | Initializers], DataName) =
+        ContainsVar :-
+    ( initializer_contains_var(Initializer, DataName) = yes ->
+        ContainsVar = yes
+    ;
+        ContainsVar = initializers_contains_var(Initializers, DataName)
+    ).
+
+rvals_contains_var([], _DataName) = no.
+rvals_contains_var([Rval | Rvals], DataName) = ContainsVar :-
+    ( rval_contains_var(Rval, DataName) = yes ->
+        ContainsVar = yes
+    ;
+        ContainsVar = rvals_contains_var(Rvals, DataName)
+    ).
+
+maybe_rval_contains_var(no, _DataName) = no.
+maybe_rval_contains_var(yes(Rval), DataName) =
+    rval_contains_var(Rval, DataName).
+
+rval_contains_var(Rval, DataName) = ContainsVar :-
+    (
+        Rval = ml_lval(Lval),
+        ContainsVar = lval_contains_var(Lval, DataName)
+    ;
+        Rval = ml_mkword(_Tag, SubRval),
+        ContainsVar = rval_contains_var(SubRval, DataName)
+    ;
+        Rval = ml_const(Const),
+        (
+            Const = mlconst_data_addr(DataAddr),
+            DataAddr = data_addr(ModuleName, RawDataName),
+            ( DataName = qual(ModuleName, _QualKind, RawDataName) ->
+                % This is a place where we can succeed.
+                ContainsVar = yes
+            ;
+                ContainsVar = no
+            )
+        ;
+            ( Const = mlconst_true
+            ; Const = mlconst_false
+            ; Const = mlconst_int(_)
+            ; Const = mlconst_float(_)
+            ; Const = mlconst_string(_)
+            ; Const = mlconst_multi_string(_)
+            ; Const = mlconst_foreign(_, _, _)
+            ; Const = mlconst_named_const(_)
+            ; Const = mlconst_code_addr(_)
+            ; Const = mlconst_null(_)
+            ),
+            ContainsVar = no
+        )
+    ;
+        Rval = ml_unop(_Op, RvalA),
+        ContainsVar = rval_contains_var(RvalA, DataName)
+    ;
+        Rval = ml_binop(_Op, RvalA, RvalB),
+        ( rval_contains_var(RvalA, DataName) = yes ->
+            ContainsVar = yes
+        ;
+            ContainsVar = rval_contains_var(RvalB, DataName)
+        )
+    ;
+        Rval = ml_mem_addr(Lval),
+        ContainsVar = lval_contains_var(Lval, DataName)
+    ;
+        Rval = ml_scalar_common(_ScalarCommon),
+        ContainsVar = no
+    ;
+        Rval = ml_vector_common_row(_VectorCommon, IndexRval),
+        ContainsVar = rval_contains_var(IndexRval, DataName)
+    ;
+        Rval = ml_self(_),
+        ContainsVar = no
+    ).
+
+lvals_contains_var([], _DataName) = no.
+lvals_contains_var([Lval | Lvals], DataName) = ContainsVar :-
+    ( lval_contains_var(Lval, DataName) = yes ->
+        ContainsVar = yes
+    ;
+        ContainsVar = lvals_contains_var(Lvals, DataName)
+    ).
+
+lval_contains_var(Lval, DataName) = ContainsVar :-
+    (
+        Lval = ml_field(_MaybeTag, Rval, _FieldId, _, _),
+        ContainsVar = rval_contains_var(Rval, DataName)
+    ;
+        Lval = ml_mem_ref(Rval, _Type),
+        ContainsVar = rval_contains_var(Rval, DataName)
+    ;
+        Lval = ml_global_var_ref(_),
+        ContainsVar = no
+    ;
+        Lval = ml_var(qual(ModuleName, QualKind, Name), _Type),
+        % This is another place where we can succeed.
+        ( DataName = qual(ModuleName, QualKind, mlds_data_var(Name)) ->
+            ContainsVar = yes
+        ;
+            ContainsVar =no
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 

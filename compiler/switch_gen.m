@@ -133,20 +133,35 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
             (
                 MaybeIntSwitchInfo =
                     int_switch(LowerLimit, UpperLimit, NumValues),
+                % Since lookup switches rely on static ground terms to work
+                % efficiently, there is no point in using a lookup switch
+                % if static ground terms are not enabled. Well, actually,
+                % it is possible that they might be a win in some
+                % circumstances, but it would take a pretty complex heuristic
+                % to get it right, so, lets just use a simple one - no static
+                % ground terms, no lookup switch.
+                globals.lookup_bool_option(Globals, static_ground_cells, yes),
+
+                % Lookup switches do not generate trace events.
                 get_maybe_trace_info(!.CI, MaybeTraceInfo),
                 MaybeTraceInfo = no,
+
                 globals.lookup_int_option(Globals, lookup_switch_size,
                     LookupSize),
                 NumConsIds >= LookupSize,
                 NumArms > 1,
                 globals.lookup_int_option(Globals, lookup_switch_req_density,
                     ReqDensity),
-                is_lookup_switch(VarType, TaggedCases, LowerLimit, UpperLimit,
-                    NumValues, GoalInfo, CanFail, ReqDensity, StoreMap,
-                    no, MaybeEndPrime, CodeModel, LookupSwitchInfo, !CI)
+                find_lookup_switch_params(ModuleInfo, VarType, CodeModel,
+                    CanFail, TaggedCases, FilteredTaggedCases,
+                    LowerLimit, UpperLimit, NumValues, ReqDensity,
+                    NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal),
+                is_lookup_switch(FilteredTaggedCases, GoalInfo, StoreMap,
+                    no, MaybeEndPrime, LookupSwitchInfo, !CI)
             ->
                 MaybeEnd = MaybeEndPrime,
                 generate_lookup_switch(VarRval, StoreMap, no, LookupSwitchInfo,
+                    FirstVal, LastVal, NeedBitVecCheck, NeedRangeCheck,
                     SwitchCode, !CI)
             ;
                 MaybeIntSwitchInfo =

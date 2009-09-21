@@ -45,6 +45,7 @@
       :- include_module ml_simplify_switch.
       :- include_module ml_string_switch.
       :- include_module ml_tag_switch.
+      :- include_module ml_lookup_switch.
    :- include_module ml_type_gen.
    :- include_module ml_unify_gen.
 :- include_module ml_code_util.

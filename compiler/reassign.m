@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -193,14 +193,9 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init
     ;
-        Uinstr0 = goto(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % The value of !:KnownContentsMap doesn't really matter since the next
-        % instruction (which must be a label) will reset it to empty anyway.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        Uinstr0 = computed_goto(_, _),
+        ( Uinstr0 = goto(_)
+        ; Uinstr0 = computed_goto(_, _)
+        ),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The value of !:KnownContentsMap doesn't really matter since the next
         % instruction (which must be a label) will reset it to empty anyway.

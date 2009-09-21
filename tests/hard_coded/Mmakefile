@@ -144,6 +144,10 @@ ORDINARY_PROGS=	\
 	join_list \
 	lco_no_inline \
 	list_series_int \
+	lookup_switch_simple \
+	lookup_switch_simple_bitvec \
+	lookup_switch_simple_non \
+	lookup_switch_simple_opt \
 	loop_inv_test \
 	loop_inv_test1 \
 	map_fold \

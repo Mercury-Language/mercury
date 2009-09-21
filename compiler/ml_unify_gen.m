@@ -297,8 +297,8 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
                 ArgGroundTerm = ml_ground_term(ArgRval, _ArgType,
                     MLDS_ArgType),
                 ml_gen_info_get_global_data(!.Info, GlobalData0),
-                ml_gen_box_const_rval(ModuleInfo, MLDS_ArgType,
-                    ArgRval, Context, Rval0, GlobalData0, GlobalData),
+                ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
+                    ArgRval, Rval0, GlobalData0, GlobalData),
                 ml_gen_info_set_global_data(GlobalData, !Info),
                 MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
                 Rval = ml_unop(cast(MLDS_Type), Rval0),
@@ -722,10 +722,10 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
             % Box *all* the arguments, including the ExtraRvals.
             list.map(ml_gen_info_lookup_const_var(!.Info), ArgVars,
                 ArgGroundTerms),
-            ml_gen_box_extra_const_rval_list(ModuleInfo,
-                ExtraTypes, ExtraRvals, Context, ExtraArgRvals, !GlobalData),
-            ml_gen_box_const_rval_list(ModuleInfo, ArgGroundTerms,
-                Context, ArgRvals1, !GlobalData),
+            ml_gen_box_extra_const_rval_list(ModuleInfo, Context, ExtraTypes,
+                ExtraRvals, ExtraArgRvals, !GlobalData),
+            ml_gen_box_const_rval_list(ModuleInfo, Context, ArgGroundTerms,
+                ArgRvals1, !GlobalData),
             ArgRvals = ExtraArgRvals ++ ArgRvals1
         ;
             HighLevelData = yes,
@@ -762,8 +762,10 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
         ;
             Initializer = init_struct(ConstType, ArgInits)
         ),
-        ml_gen_static_const_defn("const_var", ConstType, acc_private,
-            Initializer, Context, ConstVarName, !GlobalData),
+        module_info_get_name(ModuleInfo, ModuleName),
+        MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+        ml_gen_static_scalar_const_addr(MLDS_ModuleName, "const_var",
+            ConstType, Initializer, Context, ConstAddrRval, !GlobalData),
         ml_gen_info_set_global_data(!.GlobalData, !Info)
     ),
 
@@ -771,15 +773,11 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     %
     % Any later references to Var in later code on the right hand side of
     % another construct_statically construction unification will refer to
-    % ConstDefn, not to VarLval. If the only later references to Var
+    % ConstAddrRval, not to VarLval. If the only later references to Var
     % are in such places, then the definition of VarLval and AssignStatement
     % are both useless, and can be deleted without harm. Unfortunately,
     % at this point in the code generation process, we do not know if
     % there are any other kinds of references to Var later on.
-    % ZZZ above comment needs updating
-
-    ml_gen_var_lval(!.Info, ConstVarName, ConstType, ConstLval),
-    ConstAddrRval = ml_mem_addr(ConstLval),
     (
         MaybeTag = no,
         TaggedRval = ConstAddrRval
@@ -1127,7 +1125,7 @@ ml_gen_box_or_unbox_const_rval(ModuleInfo, ArgType, FieldType, ArgRval,
         % -- in that case, we can just box the argument type.
         FieldType = type_variable(_, _),
         MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-        ml_gen_box_const_rval(ModuleInfo, MLDS_ArgType, ArgRval, Context,
+        ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, ArgRval,
             FieldRval, !GlobalData)
     ;
         ( FieldType = defined_type(_, _, _)
@@ -1144,78 +1142,34 @@ ml_gen_box_or_unbox_const_rval(ModuleInfo, ArgType, FieldType, ArgRval,
             native_if_possible, ArgRval, FieldRval)
     ).
 
-:- pred ml_gen_box_const_rval_list(module_info::in, list(ml_ground_term)::in,
-    prog_context::in, list(mlds_rval)::out,
+:- pred ml_gen_box_const_rval_list(module_info::in, prog_context::in,
+    list(ml_ground_term)::in, list(mlds_rval)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_box_const_rval_list(_, [], _, [], !GlobalData).
-ml_gen_box_const_rval_list(ModuleInfo, [GroundTerm | GroundTerms],
-        Context, [BoxedRval | BoxedRvals], !GlobalData) :-
+ml_gen_box_const_rval_list(_, _, [], [], !GlobalData).
+ml_gen_box_const_rval_list(ModuleInfo, Context, [GroundTerm | GroundTerms],
+        [BoxedRval | BoxedRvals], !GlobalData) :-
     GroundTerm = ml_ground_term(Rval, _MercuryType, Type),
-    ml_gen_box_const_rval(ModuleInfo, Type, Rval,
-        Context, BoxedRval, !GlobalData),
-    ml_gen_box_const_rval_list(ModuleInfo, GroundTerms,
-        Context, BoxedRvals, !GlobalData).
+    ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval,
+        BoxedRval, !GlobalData),
+    ml_gen_box_const_rval_list(ModuleInfo, Context, GroundTerms,
+        BoxedRvals, !GlobalData).
 
-:- pred ml_gen_box_extra_const_rval_list(module_info::in, list(mlds_type)::in,
-    list(mlds_rval)::in, prog_context::in, list(mlds_rval)::out,
+:- pred ml_gen_box_extra_const_rval_list(module_info::in, prog_context::in,
+    list(mlds_type)::in, list(mlds_rval)::in, list(mlds_rval)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_box_extra_const_rval_list(_, [], [], _, [], !GlobalData).
-ml_gen_box_extra_const_rval_list(ModuleInfo, [Type | Types], [Rval | Rvals],
-        Context, [BoxedRval | BoxedRvals], !GlobalData) :-
-    ml_gen_box_const_rval(ModuleInfo, Type, Rval,
-        Context, BoxedRval, !GlobalData),
-    ml_gen_box_extra_const_rval_list(ModuleInfo, Types, Rvals,
-        Context, BoxedRvals, !GlobalData).
-ml_gen_box_extra_const_rval_list(_, [], [_ | _], _, _, !GlobalData) :-
+ml_gen_box_extra_const_rval_list(_, _, [], [], [], !GlobalData).
+ml_gen_box_extra_const_rval_list(ModuleInfo, Context, [Type | Types],
+        [Rval | Rvals], [BoxedRval | BoxedRvals], !GlobalData) :-
+    ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval,
+        BoxedRval, !GlobalData),
+    ml_gen_box_extra_const_rval_list(ModuleInfo, Context, Types, Rvals,
+        BoxedRvals, !GlobalData).
+ml_gen_box_extra_const_rval_list(_, _, [], [_ | _], _, !GlobalData) :-
     unexpected(this_file, "ml_gen_box_extra_const_rval_list: length mismatch").
-ml_gen_box_extra_const_rval_list(_, [_ | _], [], _, _, !GlobalData) :-
+ml_gen_box_extra_const_rval_list(_, _, [_ | _], [], _, !GlobalData) :-
     unexpected(this_file, "ml_gen_box_extra_const_rval_list: length mismatch").
-
-:- pred ml_gen_box_const_rval(module_info::in, mlds_type::in, mlds_rval::in,
-    prog_context::in, mlds_rval::out,
-    ml_global_data::in, ml_global_data::out) is det.
-
-ml_gen_box_const_rval(ModuleInfo, Type, Rval, Context, BoxedRval,
-        !GlobalData) :-
-    (
-        ( Type = mercury_type(type_variable(_, _), _, _)
-        ; Type = mlds_generic_type
-        )
-    ->
-        BoxedRval = Rval
-    ;
-        % For the MLDS->C and MLDS->asm back-ends, we need to handle floats
-        % specially, since boxed floats normally get heap allocated, whereas
-        % for other types boxing is just a cast (casts are OK in static
-        % initializers, but calls to malloc() are not).
-        %
-        % [For the .NET and Java back-ends, this code currently never gets
-        % called, since currently we don't support static ground term
-        % optimization for those back-ends.]
-
-        ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
-        ; Type = mlds_native_float_type
-        )
-    ->
-        % Generate a local static constant for this float.
-        Initializer = init_obj(Rval),
-        ml_gen_static_const_defn("float", Type, acc_private, Initializer,
-            Context, ConstName, !GlobalData),
-
-        % Return as the boxed rval the address of that constant,
-        % cast to mlds_generic_type.
-        module_info_get_name(ModuleInfo, ModuleName),
-        MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-        MLDS_ConstVar = qual(MLDS_Module, module_qual, ConstName),
-        ConstLval = ml_var(MLDS_ConstVar, Type),
-
-        ConstAddrRval = ml_mem_addr(ConstLval),
-        BoxedRval = ml_unop(cast(mlds_generic_type), ConstAddrRval)
-    ;
-        BoxedRval = ml_unop(box(Type), Rval)
-    ).
 
 :- pred ml_cons_name(compilation_target::in, cons_id::in, ctor_name::out)
     is det.
@@ -2147,8 +2101,8 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             Args = [Arg],
             svmap.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
             ArgGroundTerm = ml_ground_term(ArgRval, _ArgType, MLDS_ArgType),
-            ml_gen_box_const_rval(ModuleInfo, MLDS_ArgType,
-                ArgRval, Context, Rval0, !GlobalData),
+            ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
+                ArgRval, Rval0, !GlobalData),
             Rval = ml_unop(cast(MLDS_Type), Rval0),
             GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
             svmap.det_insert(Var, GroundTerm, !GroundTermMap)
@@ -2272,21 +2226,17 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     ;
         Initializer = init_struct(ConstType, SubInitializers)
     ),
-    ml_gen_static_const_defn("const_var", ConstType, acc_private, Initializer,
-        Context, ConstVarName, !GlobalData),
+    module_info_get_name(ModuleInfo, ModuleName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    ml_gen_static_scalar_const_addr(MLDS_ModuleName, "const_var", ConstType,
+        Initializer, Context, ConstDataAddrRval, !GlobalData),
 
     % Assign the (possibly tagged) address of the local static constant
     % to the variable.
-    module_info_get_name(ModuleInfo, ModuleName),
-    MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-    MLDS_ConstVar = qual(MLDS_Module, module_qual, ConstVarName),
-    ConstVarLval = ml_var(MLDS_ConstVar, MLDS_Type),
-
-    ConstAddrRval = ml_mem_addr(ConstVarLval),
     ( Ptag = 0 ->
-        TaggedRval = ConstAddrRval
+        TaggedRval = ConstDataAddrRval
     ;
-        TaggedRval = ml_mkword(Ptag, ConstAddrRval)
+        TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
     ),
     Rval = ml_unop(cast(MLDS_Type), TaggedRval),
     GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
@@ -2351,8 +2301,8 @@ construct_ground_term_initializer_lld(ModuleInfo, Context,
         Arg - _ConsArgType, ArgInitializer, !GlobalData, !GroundTermMap) :-
     svmap.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, _ArgType, MLDS_ArgType),
-    ml_gen_box_const_rval(ModuleInfo, MLDS_ArgType,
-        ArgRval0, Context, ArgRval, !GlobalData),
+    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
+        ArgRval0, ArgRval, !GlobalData),
     ArgInitializer = init_obj(ArgRval).
 
 %-----------------------------------------------------------------------------%

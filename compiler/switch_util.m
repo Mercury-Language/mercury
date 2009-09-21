@@ -19,14 +19,18 @@
 
 :- import_module backend_libs.rtti.         % for sectag_locn
 :- import_module hlds.
+:- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -103,6 +107,68 @@
     % Calculate the percentage density given the range and the number of cases.
     %
 :- func switch_density(int, int) = int.
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff for lookup switches.
+%
+
+:- type case_consts(Rval)
+    --->    all_one_soln(
+                assoc_list(int, list(Rval))
+            )
+    ;       some_several_solns(
+                assoc_list(int, soln_consts(Rval)),
+                set(prog_var),          % The resume vars.
+                bool                    % The Boolean "or" of the result
+                                        % of invoking goal_may_modify_trail
+                                        % on the goal_infos of the switch arms
+                                        % that are disjunctions.
+            ).
+
+:- type soln_consts(Rval)
+    --->    one_soln(list(Rval))
+    ;       several_solns(list(list(Rval))).
+
+:- type need_range_check
+    --->    need_range_check
+    ;       dont_need_range_check.
+
+:- type need_bit_vec_check
+    --->    need_bit_vec_check
+    ;       dont_need_bit_vec_check.
+
+:- pred find_lookup_switch_params(module_info::in, mer_type::in,
+    code_model::in, can_fail::in,
+    list(tagged_case)::in, list(tagged_case)::out,
+    int::in, int::in, int::in, int::in, 
+    need_bit_vec_check::out, need_range_check::out, int::out, int::out)
+    is semidet.
+
+:- pred project_all_to_one_solution(assoc_list(int, soln_consts(Rval))::in,
+    assoc_list(int, list(Rval))::in, assoc_list(int, list(Rval))::out)
+    is semidet.
+
+:- pred project_solns_to_rval_lists(assoc_list(int, soln_consts(Rval))::in,
+    list(list(Rval))::in, list(list(Rval))::out) is det.
+
+    % get_word_bits(Globals, WordBits, Log2WordBits):
+    % 
+    % Return in WordBits the largest number of bits that
+    % - fits into a word on the host machine
+    % - fits into a word on the target machine
+    % - is a power of 2.
+    %
+    % WordBits will be 2^Log2WordBits.
+    %
+    % We use this predicate to prevent cross-compilation errors when generating
+    % bit vector tests for lookup switches by making sure that the bitvector
+    % uses a number of bits that will fit both on this machine (so that
+    % we can correctly generate it), and on the target machine (so that
+    % it can be executed correctly). We require the number of bits to be
+    % a power of 2, so that we implement division as right-shift.
+    %
+:- pred get_word_bits(globals::in, int::out, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -262,11 +328,13 @@
 
 :- implementation.
 
+:- import_module check_hlds.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_out.
-:- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module libs.options.
 :- import_module parse_tree.prog_type.
 
 :- import_module char.
@@ -521,6 +589,125 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
 
 switch_density(NumCases, Range) = Density :-
     Density = (NumCases * 100) // Range.
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff for lookup switches.
+%
+
+find_lookup_switch_params(ModuleInfo, SwitchVarType, CodeModel,
+        !.SwitchCanFail, !TaggedCases, LowerLimit, UpperLimit, NumValues,
+        ReqDensity, NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal) :-
+    (
+        ( CodeModel = model_non
+        ; CodeModel = model_semi
+        ),
+        filter_out_failing_cases(!TaggedCases, !SwitchCanFail)
+    ;
+        CodeModel = model_det
+    ),
+
+    % We want to generate a lookup switch for any switch that is dense enough
+    % - we don't care how many cases it has. A memory lookup tends to be
+    % cheaper than a branch.
+    Span = UpperLimit - LowerLimit,
+    Range = Span + 1,
+    Density = switch_density(NumValues, Range),
+    Density > ReqDensity,
+
+    % If there are going to be no gaps in the lookup table then we won't need
+    % a bitvector test to see if this switch has a value for this case.
+    ( NumValues = Range ->
+        NeedBitVecCheck0 = dont_need_bit_vec_check
+    ;
+        NeedBitVecCheck0 = need_bit_vec_check
+    ),
+    (
+        !.SwitchCanFail = can_fail,
+        % For can_fail switches, we normally need to check that the variable
+        % is in range before we index into the jump table. However, if the
+        % range of the type is sufficiently small, we can make the jump table
+        % large enough to hold all of the values for the type, but then we
+        % will need to do the bitvector test.
+        classify_type(ModuleInfo, SwitchVarType) = TypeCategory,
+        (
+            type_range(ModuleInfo, TypeCategory, SwitchVarType, _, _,
+                TypeRange),
+            DetDensity = switch_density(NumValues, TypeRange),
+            DetDensity > ReqDensity
+        ->
+            NeedRangeCheck = dont_need_range_check,
+            NeedBitVecCheck = need_bit_vec_check,
+            FirstVal = 0,
+            LastVal = TypeRange - 1
+        ;
+            NeedRangeCheck = need_range_check,
+            NeedBitVecCheck = NeedBitVecCheck0,
+            FirstVal = LowerLimit,
+            LastVal = UpperLimit
+        )
+    ;
+        !.SwitchCanFail = cannot_fail,
+        NeedRangeCheck = dont_need_range_check,
+        NeedBitVecCheck = NeedBitVecCheck0,
+        FirstVal = LowerLimit,
+        LastVal = UpperLimit
+    ).
+
+:- pred filter_out_failing_cases(list(tagged_case)::in, list(tagged_case)::out,
+    can_fail::in, can_fail::out) is det.
+
+filter_out_failing_cases(TaggedCases0, TaggedCases, !SwitchCanFail) :-
+    filter_out_failing_cases_2(TaggedCases0, [], RevTaggedCases,
+        !SwitchCanFail),
+    list.reverse(RevTaggedCases, TaggedCases).
+
+:- pred filter_out_failing_cases_2(list(tagged_case)::in,
+    list(tagged_case)::in, list(tagged_case)::out,
+    can_fail::in, can_fail::out) is det.
+
+filter_out_failing_cases_2([], !RevTaggedCases, !SwitchCanFail).
+filter_out_failing_cases_2([TaggedCase | TaggedCases], !RevTaggedCases,
+        !SwitchCanFail) :-
+    TaggedCase = tagged_case(_, _, _, Goal),
+    Goal = hlds_goal(GoalExpr, _),
+    ( GoalExpr = disj([]) ->
+        !:SwitchCanFail = can_fail
+    ;
+        !:RevTaggedCases = [TaggedCase | !.RevTaggedCases]
+    ),
+    filter_out_failing_cases_2(TaggedCases, !RevTaggedCases, !SwitchCanFail).
+
+project_all_to_one_solution([], !RevCaseValuePairs).
+project_all_to_one_solution([Case - Solns | CaseSolns], !RevCaseValuePairs) :-
+    Solns = one_soln(Values),
+    !:RevCaseValuePairs = [Case - Values | !.RevCaseValuePairs],
+    project_all_to_one_solution(CaseSolns, !RevCaseValuePairs).
+
+project_solns_to_rval_lists([], !RvalsList).
+project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
+    Case = _Index - Soln,
+    (
+        Soln = one_soln(Rvals),
+        !:RvalsList = [Rvals | !.RvalsList]
+    ;
+        Soln = several_solns(SolnRvalsList),
+        !:RvalsList = SolnRvalsList ++ !.RvalsList
+    ),
+    project_solns_to_rval_lists(Cases, !RvalsList).
+
+get_word_bits(Globals, WordBits, Log2WordBits) :-
+    int.bits_per_int(HostWordBits),
+    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
+    int.min(HostWordBits, TargetWordBits, WordBits0),
+    % Round down to the nearest power of 2.
+    Log2WordBits = log2_rounded_down(WordBits0),
+    int.pow(2, Log2WordBits, WordBits).
+
+:- func log2_rounded_down(int) = int.
+
+log2_rounded_down(X) = Log :-
+    int.log2(X + 1, Log + 1).  % int.log2 rounds up
 
 %-----------------------------------------------------------------------------%
 %

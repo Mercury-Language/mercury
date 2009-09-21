@@ -79,6 +79,7 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -89,7 +90,6 @@
 :- import_module cord.
 :- import_module int.
 :- import_module pair.
-:- import_module solutions.
 
 figure_out_output_vars(CI, GoalInfo, OutVars) :-
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
@@ -101,16 +101,19 @@ figure_out_output_vars(CI, GoalInfo, OutVars) :-
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
         instmap.apply_instmap_delta(CurrentInstMap, InstMapDelta,
             InstMapAfter),
-        Lambda = (pred(Var::out) is nondet :-
-            % If a variable has a final inst, then it changed
-            % instantiatedness during the switch.
-            set.member(Var, ChangedVars),
-            instmap_lookup_var(CurrentInstMap, Var, Initial),
-            instmap_lookup_var(InstMapAfter, Var, Final),
-            mode_is_output(ModuleInfo, (Initial -> Final))
-        ),
-        solutions.solutions(Lambda, OutVars)
+        list.filter(is_output_var(ModuleInfo, CurrentInstMap, InstMapAfter),
+            set.to_sorted_list(ChangedVars), OutVars)
     ).
+
+:- pred is_output_var(module_info::in, instmap::in, instmap::in, prog_var::in)
+    is semidet.
+
+is_output_var(ModuleInfo, CurrentInstMap, InstMapAfter, Var) :-
+    % If a variable has a final inst, then it changed
+    % instantiatedness during the switch.
+    instmap_lookup_var(CurrentInstMap, Var, Initial),
+    instmap_lookup_var(InstMapAfter, Var, Final),
+    mode_is_output(ModuleInfo, (Initial -> Final)).
 
 goal_is_conj_of_unify(Goal) :-
     Goal = hlds_goal(_GoalExpr, GoalInfo),

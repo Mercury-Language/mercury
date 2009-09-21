@@ -792,9 +792,9 @@ dump_instr(MaybeProcLabel, PrintComments, Instr) = Str :-
         Instr = goto(CodeAddr),
         Str = "goto " ++ dump_code_addr(MaybeProcLabel, CodeAddr)
     ;
-        Instr = computed_goto(Rval, Labels),
+        Instr = computed_goto(Rval, MaybeLabels),
         Str = "computed_goto " ++ dump_rval(MaybeProcLabel, Rval) ++ ":"
-            ++ dump_labels_or_not_reached(MaybeProcLabel, Labels)
+            ++ dump_labels_or_not_reached(MaybeProcLabel, MaybeLabels)
     ;
         Instr = arbitrary_c_code(AL, _, Code),
         Str = "arbitrary_c_code(" ++ dump_affects_liveness(AL) ++ "\n" ++

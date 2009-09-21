@@ -1163,42 +1163,45 @@
     ;       entry_label(entry_label_type, proc_label).
 
 :- type code_addr
-    --->    code_label(label)       % A label defined in this Mercury module.
+    --->    code_label(label)
+            % A label defined in this Mercury module.
+
     ;       code_imported_proc(proc_label)
-                                    % A label for a procedure from another
-                                    % Mercury module.
-    ;       code_succip             % The address in the `succip' register.
-    ;       do_succeed(bool)        % The bool is `yes' if there are any
-                                    % alternatives left. If the bool is `no',
-                                    % we do a succeed_discard() rather than
-                                    % a succeed().
+            % A label for a procedure from another Mercury module.
+
+    ;       code_succip
+            % The address in the `succip' register.
+
+    ;       do_succeed(bool)
+            % The bool is `yes' if there are any alternatives left.
+            % If the bool is `no', we do a succeed_discard() rather than
+            % a succeed().
+
     ;       do_redo
     ;       do_fail
 
     ;       do_trace_redo_fail_shallow
     ;       do_trace_redo_fail_deep
-                                    % Labels in the runtime, the code at which
-                                    % calls MR_trace with a REDO event and
-                                    % then fails. The shallow variety only does
-                                    % this if the from_full flag was set on
-                                    % entry to the given procedure.
+            % Labels in the runtime, the code at which calls MR_trace with
+            % a REDO event and then fails. The shallow variety only does this
+            % if the from_full flag was set on entry to the given procedure.
+
     ;       do_call_closure(ho_call_variant)
     ;       do_call_class_method(ho_call_variant)
 
-    ;       do_not_reached.         % We should never jump to this address.
+    ;       do_not_reached.
+            % We should never jump to this address.
 
 :- type ho_call_variant
-    --->    generic                 % This calls for the use of one of
-                                    % do_call_closure_compact and
-                                    % do_call_class_method_compact,
-                                    % which work for any number of visible
-                                    % input arguments.
+    --->    generic
+            % This calls for the use of one of do_call_closure_compact and
+            % do_call_class_method_compact, which work for any number of
+            % visible input arguments.
 
-    ;       specialized_known(int). % If the integer is N, this calls for
-                                    % the use of do_call_closure_N or
-                                    % do_call_class_method_N. These are
-                                    % specialized to assume N visible
-                                    % input arguments.
+    ;       specialized_known(int).
+            % If the integer is N, this calls for the use of do_call_closure_N
+            % or do_call_class_method_N. These are specialized to assume N
+            % visible input arguments.
 
     % A tag (used in mkword, create and field expressions and in incr_hp
     % instructions) is a small integer.
@@ -1210,65 +1213,65 @@
     % for a given value to avoid unnecessary boxing/unboxing of floats.
     %
 :- type llds_type
-    --->    bool
+    --->    lt_bool
             % A boolean value represented using the C type `MR_Integer'.
 
-    ;       int_least8
+    ;       lt_int_least8
             % A signed value that fits that contains at least eight bits,
             % represented using the C type MR_int_least8_t. Intended for use
             % in static data declarations, not for data that gets stored in
             % registers, stack slots etc.
 
-    ;       uint_least8
+    ;       lt_uint_least8
             % An unsigned version of int_least8, represented using the C type
             % MR_uint_least8_t.
 
-    ;       int_least16
+    ;       lt_int_least16
             % A signed value that fits that contains at least sixteen bits,
             % represented using the C type MR_int_least16_t. Intended for use
             % in static data declarations, not for data that gets stored in
             % registers, stack slots etc.
 
-    ;       uint_least16
+    ;       lt_uint_least16
             % An unsigned version of int_least16, represented using the C type
             % MR_uint_least16_t.
 
-    ;       int_least32
+    ;       lt_int_least32
             % A signed value that fits that contains at least 32 bits,
             % represented using the C type MR_int_least32_t. Intended for use
             % in static data declarations, not for data that gets stored in
             % registers, stack slots etc.
 
-    ;       uint_least32
+    ;       lt_uint_least32
             % An unsigned version of intleast_32, represented using the C type
             % uint_least32_t.
 
-    ;       integer
+    ;       lt_integer
             % A Mercury `int', represented in C as a value of type `MR_Integer'
             % (which is a signed integral type of the same size as a pointer).
 
-    ;       unsigned
+    ;       lt_unsigned
             % Something whose C type is `MR_Unsigned' (the unsigned equivalent
             % of `MR_Integer').
 
-    ;       float
+    ;       lt_float
             % A Mercury `float', represented in C as a value of type `MR_Float'
             % (which may be either `float' or `double', but is usually
             % `double').
 
-    ;       string
+    ;       lt_string
             % A Mercury string; represented in C as a value of type
             % `MR_String'.
 
-    ;       data_ptr
+    ;       lt_data_ptr
             % A pointer to data; represented in C as a value of C type
             % `MR_Word *'.
 
-    ;       code_ptr
+    ;       lt_code_ptr
             % A pointer to code; represented in C as a value of C type
             % `MR_Code *'.
 
-    ;       word.
+    ;       lt_word.
             % Something that can be assigned to a value of C type `MR_Word',
             % i.e., something whose size is a word but which may be either
             % signed or unsigned (used for registers, stack slots, etc).
@@ -1420,27 +1423,27 @@ break_up_local_label(Label, ProcLabel, LabelNum) :-
 
 lval_type(reg(RegType, _), Type) :-
     register_type(RegType, Type).
-lval_type(succip, code_ptr).
-lval_type(maxfr, data_ptr).
-lval_type(curfr, data_ptr).
-lval_type(hp, data_ptr).
-lval_type(sp, data_ptr).
-lval_type(parent_sp, data_ptr).
+lval_type(succip, lt_code_ptr).
+lval_type(maxfr, lt_data_ptr).
+lval_type(curfr, lt_data_ptr).
+lval_type(hp, lt_data_ptr).
+lval_type(sp, lt_data_ptr).
+lval_type(parent_sp, lt_data_ptr).
 lval_type(temp(RegType, _), Type) :-
     register_type(RegType, Type).
-lval_type(stackvar(_), word).
-lval_type(parent_stackvar(_), word).
-lval_type(framevar(_), word).
-lval_type(succip_slot(_), code_ptr).
-lval_type(redoip_slot(_), code_ptr).
-lval_type(redofr_slot(_), data_ptr).
-lval_type(succfr_slot(_), data_ptr).
-lval_type(prevfr_slot(_), data_ptr).
-lval_type(field(_, _, _), word).
+lval_type(stackvar(_), lt_word).
+lval_type(parent_stackvar(_), lt_word).
+lval_type(framevar(_), lt_word).
+lval_type(succip_slot(_), lt_code_ptr).
+lval_type(redoip_slot(_), lt_code_ptr).
+lval_type(redofr_slot(_), lt_data_ptr).
+lval_type(succfr_slot(_), lt_data_ptr).
+lval_type(prevfr_slot(_), lt_data_ptr).
+lval_type(field(_, _, _), lt_word).
 lval_type(lvar(_), _) :-
     unexpected(this_file, "lvar unexpected in llds.lval_type").
-lval_type(mem_ref(_), word).
-lval_type(global_var_ref(_), word).
+lval_type(mem_ref(_), lt_word).
+lval_type(global_var_ref(_), lt_word).
 
 rval_type(lval(Lval), Type) :-
     lval_type(Lval, Type).
@@ -1458,87 +1461,87 @@ rval_type(var(_), _) :-
     % to a pointer, but casts from integer to pointer are OK, it's
     % only the reverse direction we need to avoid.
     %
-rval_type(mkword(_, _), data_ptr).
+rval_type(mkword(_, _), lt_data_ptr).
 rval_type(const(Const), Type) :-
     const_type(Const, Type).
 rval_type(unop(UnOp, _), Type) :-
     unop_return_type(UnOp, Type).
 rval_type(binop(BinOp, _, _), Type) :-
     binop_return_type(BinOp, Type).
-rval_type(mem_addr(_), data_ptr).
+rval_type(mem_addr(_), lt_data_ptr).
 
-const_type(llconst_true, bool).
-const_type(llconst_false, bool).
-const_type(llconst_int(_), integer).
+const_type(llconst_true, lt_bool).
+const_type(llconst_false, lt_bool).
+const_type(llconst_int(_), lt_integer).
 const_type(llconst_foreign(_, Type), Type).
-const_type(llconst_float(_), float).
-const_type(llconst_string(_), string).
-const_type(llconst_multi_string(_), string).
-const_type(llconst_code_addr(_), code_ptr).
-const_type(llconst_data_addr(_, _), data_ptr).
+const_type(llconst_float(_), lt_float).
+const_type(llconst_string(_), lt_string).
+const_type(llconst_multi_string(_), lt_string).
+const_type(llconst_code_addr(_), lt_code_ptr).
+const_type(llconst_data_addr(_, _), lt_data_ptr).
 
-unop_return_type(mktag, word).
-unop_return_type(tag, word).
-unop_return_type(unmktag, word).
-unop_return_type(strip_tag, word).
-unop_return_type(mkbody, word).
-unop_return_type(unmkbody, word).
-unop_return_type(hash_string, integer).
-unop_return_type(bitwise_complement, integer).
-unop_return_type(logical_not, bool).
+unop_return_type(mktag, lt_word).
+unop_return_type(tag, lt_word).
+unop_return_type(unmktag, lt_word).
+unop_return_type(strip_tag, lt_word).
+unop_return_type(mkbody, lt_word).
+unop_return_type(unmkbody, lt_word).
+unop_return_type(hash_string, lt_integer).
+unop_return_type(bitwise_complement, lt_integer).
+unop_return_type(logical_not, lt_bool).
 
-unop_arg_type(mktag, word).
-unop_arg_type(tag, word).
-unop_arg_type(unmktag, word).
-unop_arg_type(strip_tag, word).
-unop_arg_type(mkbody, word).
-unop_arg_type(unmkbody, word).
-unop_arg_type(hash_string, string).
-unop_arg_type(bitwise_complement, integer).
-unop_arg_type(logical_not, bool).
+unop_arg_type(mktag, lt_word).
+unop_arg_type(tag, lt_word).
+unop_arg_type(unmktag, lt_word).
+unop_arg_type(strip_tag, lt_word).
+unop_arg_type(mkbody, lt_word).
+unop_arg_type(unmkbody, lt_word).
+unop_arg_type(hash_string, lt_string).
+unop_arg_type(bitwise_complement, lt_integer).
+unop_arg_type(logical_not, lt_bool).
 
-binop_return_type(int_add, integer).
-binop_return_type(int_sub, integer).
-binop_return_type(int_mul, integer).
-binop_return_type(int_div, integer).
-binop_return_type(int_mod, integer).
-binop_return_type(unchecked_left_shift, integer).
-binop_return_type(unchecked_right_shift, integer).
-binop_return_type(bitwise_and, integer).
-binop_return_type(bitwise_or, integer).
-binop_return_type(bitwise_xor, integer).
-binop_return_type(logical_and, bool).
-binop_return_type(logical_or, bool).
-binop_return_type(eq, bool).
-binop_return_type(ne, bool).
-binop_return_type(array_index(_Type), word).
-binop_return_type(str_eq, bool).
-binop_return_type(str_ne, bool).
-binop_return_type(str_lt, bool).
-binop_return_type(str_gt, bool).
-binop_return_type(str_le, bool).
-binop_return_type(str_ge, bool).
-binop_return_type(int_lt, bool).
-binop_return_type(int_gt, bool).
-binop_return_type(int_le, bool).
-binop_return_type(int_ge, bool).
-binop_return_type(unsigned_le, bool).
-binop_return_type(float_plus, float).
-binop_return_type(float_minus, float).
-binop_return_type(float_times, float).
-binop_return_type(float_divide, float).
-binop_return_type(float_eq, bool).
-binop_return_type(float_ne, bool).
-binop_return_type(float_lt, bool).
-binop_return_type(float_gt, bool).
-binop_return_type(float_le, bool).
-binop_return_type(float_ge, bool).
-binop_return_type(body, word).
-binop_return_type(compound_eq, bool).
-binop_return_type(compound_lt, bool).
+binop_return_type(int_add, lt_integer).
+binop_return_type(int_sub, lt_integer).
+binop_return_type(int_mul, lt_integer).
+binop_return_type(int_div, lt_integer).
+binop_return_type(int_mod, lt_integer).
+binop_return_type(unchecked_left_shift, lt_integer).
+binop_return_type(unchecked_right_shift, lt_integer).
+binop_return_type(bitwise_and, lt_integer).
+binop_return_type(bitwise_or, lt_integer).
+binop_return_type(bitwise_xor, lt_integer).
+binop_return_type(logical_and, lt_bool).
+binop_return_type(logical_or, lt_bool).
+binop_return_type(eq, lt_bool).
+binop_return_type(ne, lt_bool).
+binop_return_type(array_index(_Type), lt_word).
+binop_return_type(str_eq, lt_bool).
+binop_return_type(str_ne, lt_bool).
+binop_return_type(str_lt, lt_bool).
+binop_return_type(str_gt, lt_bool).
+binop_return_type(str_le, lt_bool).
+binop_return_type(str_ge, lt_bool).
+binop_return_type(int_lt, lt_bool).
+binop_return_type(int_gt, lt_bool).
+binop_return_type(int_le, lt_bool).
+binop_return_type(int_ge, lt_bool).
+binop_return_type(unsigned_le, lt_bool).
+binop_return_type(float_plus, lt_float).
+binop_return_type(float_minus, lt_float).
+binop_return_type(float_times, lt_float).
+binop_return_type(float_divide, lt_float).
+binop_return_type(float_eq, lt_bool).
+binop_return_type(float_ne, lt_bool).
+binop_return_type(float_lt, lt_bool).
+binop_return_type(float_gt, lt_bool).
+binop_return_type(float_le, lt_bool).
+binop_return_type(float_ge, lt_bool).
+binop_return_type(body, lt_word).
+binop_return_type(compound_eq, lt_bool).
+binop_return_type(compound_lt, lt_bool).
 
-register_type(reg_r, word).
-register_type(reg_f, float).
+register_type(reg_r, lt_word).
+register_type(reg_f, lt_float).
 
 get_proc_label(entry_label(_, ProcLabel)) = ProcLabel.
 get_proc_label(internal_label(_, ProcLabel)) = ProcLabel.

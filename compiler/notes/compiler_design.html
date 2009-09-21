@@ -1555,11 +1555,12 @@ Thus we have a pass which transforms the HLDS to handle trailing:
 		<li> ml_unify_gen.m
 		<li> ml_closure_gen.m
 		<li> ml_call_gen.m
-		<li> ml_switch_gen.m, which in turn has sub-modules
+		<li> ml_switch_gen.m, which calls upon:
 			<ul>
-			<li> ml_dense_switch.m
+			<li> ml_lookup_switch.m
 			<li> ml_string_switch.m
 			<li> ml_tag_switch.m
+			<li> ml_simplify_switch.m
 			<li> switch_util.m (in the backend_libs.m package,
 			     since it is also used by LLDS back-end)
 			</ul>
@@ -1852,6 +1853,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2009-09-02 00:30:31 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2009-09-21 04:09:05 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
