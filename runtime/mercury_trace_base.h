@@ -460,8 +460,8 @@ extern  MR_bool     MR_trace_have_unhid_events;
 ** only when MR_trace_tailrec_have_reused_frames is true.
 */
 
-MR_bool             MR_trace_tailrec_have_reused_frames;
-MR_Unsigned         MR_trace_tailrec_num_reused_frames;
+extern  MR_bool      MR_trace_tailrec_have_reused_frames;
+extern  MR_Unsigned  MR_trace_tailrec_num_reused_frames;
 
 /*
 ** The details of I/O tabling are documented in library/table_builtin.m.
