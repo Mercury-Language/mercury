@@ -148,7 +148,8 @@
                 m2co_profile_memory         :: bool,
                 m2co_profile_time           :: bool,
                 m2co_need_to_init           :: bool,
-                m2co_target                 :: compilation_target
+                m2co_target                 :: compilation_target,
+                m2co_std_func_decl          :: bool
             ).
 
 :- func init_mlds_to_c_opts(globals) = mlds_to_c_opts.
@@ -173,9 +174,10 @@ init_mlds_to_c_opts(Globals) = Opts :-
         ProfileAny = no
     ),
     globals.get_target(Globals, Target),
+    StdFuncDecls = no,
     Opts = mlds_to_c_opts(LineNumbers, Comments, GccLabels, GccNested,
         HighLevelData, ProfileCalls, ProfileMemory, ProfileTime, ProfileAny,
-        Target).
+        Target, StdFuncDecls).
 
 output_c_mlds(MLDS, Globals, Suffix, !IO) :-
     % We output the source file before outputting the header, since the Mmake
@@ -263,7 +265,9 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     mlds_output_defns(Opts, Indent, yes, MLDS_ModuleName, PublicTypeDefns, !IO),
     io.nl(!IO),
-    mlds_output_decls(Opts, Indent, MLDS_ModuleName, PublicNonTypeDefns, !IO),
+    StdOpts = Opts ^ m2co_std_func_decl := yes,
+    mlds_output_decls(StdOpts, Indent, MLDS_ModuleName, PublicNonTypeDefns,
+        !IO),
     io.nl(!IO),
     mlds_output_init_fn_decls(MLDS_ModuleName, InitPreds, FinalPreds, !IO),
     io.nl(!IO),
@@ -2148,7 +2152,7 @@ mlds_output_func_decl(Opts, Indent, QualifiedName, Context, Signature, !IO) :-
 
 mlds_output_func_decl_ho(Opts, Indent, QualifiedName, Context,
         CallingConvention, Signature, OutputPrefix, OutputSuffix, !IO) :-
-    Signature = mlds_func_params(Parameters, RetTypes),
+    Signature = mlds_func_params(Parameters0, RetTypes),
     (
         RetTypes = [],
         io.write_string("void", !IO)
@@ -2165,6 +2169,14 @@ mlds_output_func_decl_ho(Opts, Indent, QualifiedName, Context,
     io.nl(!IO),
     mlds_output_fully_qualified_name(QualifiedName, !IO),
     QualifiedName = qual(ModuleName, _, _),
+    StdDecl = Opts ^ m2co_std_func_decl,
+    (
+        StdDecl = no,
+        Parameters = Parameters0
+    ;
+        StdDecl = yes,
+        list.map_foldl(standardize_param_names, Parameters0, Parameters, 1, _)
+    ),
     mlds_output_params(Opts, OutputPrefix, OutputSuffix, Indent,
         ModuleName, Context, Parameters, !IO),
     (
@@ -2175,6 +2187,43 @@ mlds_output_func_decl_ho(Opts, Indent, QualifiedName, Context,
     ;
         RetTypes = [_, _ | _]
     ).
+
+:- pred standardize_param_names(mlds_argument::in, mlds_argument::out,
+    int::in, int::out) is det.
+
+standardize_param_names(!Argument, !ArgNum) :-
+    !.Argument = mlds_argument(EntityName0, Type, GCStmt),
+    (
+        EntityName0 = entity_data(DataName0),
+        (
+            DataName0 = mlds_data_var(VarName0),
+            VarName0 = mlds_var_name(_Name, _MaybeNum),
+            Name = "param",
+            MaybeNum = yes(!.ArgNum),
+            VarName = mlds_var_name(Name, MaybeNum),
+            DataName = mlds_data_var(VarName)
+        ;
+            ( DataName0 = mlds_scalar_common_ref(_)
+            ; DataName0 = mlds_rtti(_)
+            ; DataName0 = mlds_module_layout
+            ; DataName0 = mlds_proc_layout(_)
+            ; DataName0 = mlds_internal_layout(_, _)
+            ; DataName0 = mlds_tabling_ref(_, _)
+            ),
+            unexpected(this_file,
+                "standardize_param_names: unexpected data name")
+        ),
+        EntityName = entity_data(DataName)
+    ;
+        ( EntityName0 = entity_type(_, _)
+        ; EntityName0 = entity_function(_, _, _, _)
+        ; EntityName0 = entity_export(_)
+        ),
+        unexpected(this_file,
+            "standardize_param_names: unexpected entity name")
+    ),
+    !:Argument = mlds_argument(EntityName, Type, GCStmt),
+    !:ArgNum = !.ArgNum + 1.
 
 :- pred mlds_output_prefix_suffix(mlds_to_c_opts::in,
     output_type::in(output_type), output_type::in(output_type), mlds_type::in,
