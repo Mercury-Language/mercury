@@ -455,13 +455,11 @@ restrict_rtti_varmaps(VarUses, !RttiVarMaps) :-
 
     map.to_assoc_list(TIMap0, TIList0),
     filter_type_info_varmap(TIList0, [], RevTIList, VarUses),
-    list.reverse(RevTIList, TIList),
-    map.from_sorted_assoc_list(TIList, TIMap),
+    map.from_rev_sorted_assoc_list(RevTIList, TIMap),
 
     map.to_assoc_list(TypeMap0, TypeList0),
     filter_type_info_map(TypeList0, [], RevTypeList, VarUses),
-    list.reverse(RevTypeList, TypeList),
-    map.from_sorted_assoc_list(TypeList, TypeMap),
+    map.from_rev_sorted_assoc_list(RevTypeList, TypeMap),
 
     map.to_assoc_list(ConstraintMap0, ConstraintList0),
     filter_constraint_map(ConstraintList0, [], RevConstraintList,
