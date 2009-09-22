@@ -99,6 +99,7 @@
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
+:- import_module ml_backend.mlds.
 :- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.    % for mercury_std_library_name.
@@ -231,7 +232,6 @@ rval_is_enum_object(Rval) :-
     %
 :- pred interface_is_special(string::in) is semidet.
 
-interface_is_special("MercuryEnum").
 interface_is_special("MercuryType").
 interface_is_special("MethodPtr").
 interface_is_special("MethodPtr1").
@@ -2015,8 +2015,7 @@ output_class_body(Indent, ModuleInfo, mlds_enum, Name, AllMembers, _, !IO) :-
     Name = qual(ModuleName, _QualKind, UnqualName),
     output_enum_constants(Indent + 1, ModuleInfo, ModuleName, UnqualName,
         EnumConsts, !IO),
-    indent_line(Indent + 1, !IO),
-    io.write_string("public final int MR_value;\n\n", !IO),
+    io.nl(!IO),
     output_enum_ctor(Indent + 1, UnqualName, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -2045,12 +2044,8 @@ output_enum_ctor(Indent, UnqualName, !IO) :-
     output_name(UnqualName, !IO),
     io.write_string("(int val) {\n", !IO),
     indent_line(Indent + 1, !IO),
-
-    % The use of `MR_value' is hardcoded into ml_type_gen.m. Any changes there
-    % should probably be reflected here.
-    io.write_string("this.MR_value = val;\n", !IO),
-    indent_line(Indent + 1, !IO),
-    io.write_string("return;\n", !IO),
+    % Call the MercuryEnum constructor, which will set the MR_value field.
+    io.write_string("super(val);\n", !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO).
 
@@ -2795,10 +2790,20 @@ output_type(_, mlds_foreign_type(ForeignType), !IO) :-
         unexpected(this_file, "output_type: erlang foreign_type")
     ).
 output_type(_, mlds_class_type(Name, Arity, _ClassKind), !IO) :-
-    % We used to treat enumerations specially here, outputting
-    % them as "int", but now we do the same for all classes.
-    output_fully_qualified_thing(Name, output_class_name, !IO),
-    io.format("_%d", [i(Arity)], !IO).
+    (
+        Name = qual(ModuleName, _, ClassName),
+        SymName = mlds_module_name_to_sym_name(ModuleName),
+        SymName = mercury_runtime_package_name
+    ->
+        % Don't mangle runtime class names.
+        io.write_string("jmercury.runtime.", !IO),
+        io.write_string(ClassName, !IO)
+    ;
+        % We used to treat enumerations specially here, outputting
+        % them as "int", but now we do the same for all classes.
+        output_fully_qualified_thing(Name, output_class_name, !IO),
+        io.format("_%d", [i(Arity)], !IO)
+    ).
 output_type(Style, mlds_ptr_type(Type), !IO) :-
     % XXX should we report an error here, if the type pointed to
     % is not a class type?

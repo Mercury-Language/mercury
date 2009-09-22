@@ -8143,6 +8143,9 @@ must form valid Java identifiers.
 These identifiers are used as the names of static class members
 which are assigned instances of the enumeration class.
 
+The @samp{equals} method should be used for equality testing of enumeration
+values in Java code.
+
 The default mapping used by @samp{pragma foreign_export_enum}
 declarations for Java is to use the Mercury constructor name as the
 base of the symbolic name.  For example, the symbolic name for

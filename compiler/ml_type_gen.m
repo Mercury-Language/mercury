@@ -224,6 +224,9 @@ ml_gen_type_defn_2(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     % generator can treat it specially if need be (e.g. generating
     % a C enum rather than a class).
     %
+    % Note that for Java the MR_value field is inherited from the
+    % MercuryEnum class.
+    %
 :- pred ml_gen_enum_type(compilation_target::in, type_ctor::in,
     hlds_type_defn::in, list(constructor)::in, cons_tag_values::in,
     list(mlds_defn)::in, list(mlds_defn)::in, list(mlds_defn)::out) is det.
@@ -245,21 +248,21 @@ ml_gen_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
     Members = MaybeEqualityMembers ++
         [ValueMember | EnumConstMembers],
 
-    % Enums don't import or inherit anything.
+    % Enums don't import anything.
     Imports = [],
-    Inherits = [],
 
     % Make all Java classes corresponding to types implement the MercuryType
-    % and MercuryEnum interfaces.
+    % interface and extend the MercuryEnum class.
     (
         Target = target_java,
         InterfaceModuleName = mercury_module_name_to_mlds(
             java_names.mercury_runtime_package_name),
         TypeInterface = qual(InterfaceModuleName, module_qual, "MercuryType"),
         TypeInterfaceDefn = mlds_class_type(TypeInterface, 0, mlds_interface),
-        EnumInterface = qual(InterfaceModuleName, module_qual, "MercuryEnum"),
-        EnumInterfaceDefn = mlds_class_type(EnumInterface, 0, mlds_interface),
-        Implements = [TypeInterfaceDefn, EnumInterfaceDefn]
+        EnumClass = qual(InterfaceModuleName, module_qual, "MercuryEnum"),
+        EnumClassDefn = mlds_class_type(EnumClass, 0, mlds_class),
+        Implements = [TypeInterfaceDefn],
+        Inherits = [EnumClassDefn]
     ;
         ( Target = target_c
         ; Target = target_il
@@ -267,7 +270,8 @@ ml_gen_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
-        Implements = []
+        Implements = [],
+        Inherits = []
     ),
 
     % Put it all together.
