@@ -2347,12 +2347,12 @@ ml_gen_commit_var_decl(Context, VarName) =
     hlds_goal_info::in, list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
-        Decls, Statements, !Info) :-
+ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
+        !Info) :-
     (
         GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
-        ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
-            !Info)
+        ml_gen_unification(Unification, CodeModel, Context, Statements, !Info),
+        Decls = []
     ;
         GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         (
