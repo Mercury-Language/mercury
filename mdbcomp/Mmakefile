@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2005-2007 The University of Melbourne.
+# Copyright (C) 2005-2007, 2009 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -158,13 +158,19 @@ int3s:	$(INT3S_TARGETS)
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MTAGS) $($(MDBCOMP_LIB_NAME).ms)
+tags:	.mdbcomp_tags
+
+.mdbcomp_tags: $(MTAGS) $($(MDBCOMP_LIB_NAME).ms) \
+		$(wildcard $(LIBRARY_DIR)/*.m)
 	$(MTAGS) $($(MDBCOMP_LIB_NAME).ms) ../library/*.m
+	@touch .mdbcomp_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $($(MDBCOMP_LIB_NAME).ms) ../library/*.m ; fi
+	$(MTAGS) $($(MDBCOMP_LIB_NAME).ms) ../library/*.m ; \
+	touch .mdbcomp_tags ; \
+	fi
 
 $(MDBCOMP_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
 		$($(MDBCOMP_LIB_NAME).ms)

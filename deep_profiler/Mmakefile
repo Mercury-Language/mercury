@@ -153,13 +153,14 @@ DEEP_MS = \
 		$(wildcard $(MDBCOMP_DIR)/*.m) \
 		$(wildcard $(LIBRARY_DIR)/*.m)
 	$(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m
-	touch .deep_tags
+	@touch .deep_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
 	$(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m; \
-	touch .deep_tags; fi
+	touch .deep_tags; \
+	fi
 
 #-----------------------------------------------------------------------------#
 

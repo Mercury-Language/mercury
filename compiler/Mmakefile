@@ -281,18 +281,19 @@ ints:	$(MC_PROG).ints
 .PHONY: tags
 tags:	.compiler_tags
 
-.compiler_tags:	$(PREPROCESSED_M_FILES) \
+.compiler_tags:	$(MTAGS) $(PREPROCESSED_M_FILES) \
 		$(wildcard *.m) \
 		$(wildcard $(LIBRARY_DIR)/*.m) \
 		$(wildcard $(MDBCOMP_DIR)/*.m)
 	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
-	touch .compiler_tags
+	@touch .compiler_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
-	@if test ! -f tags; then echo making tags ; \
-	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m ; fi
-	touch .compiler_tags
+	@if test ! -f tags; then echo making tags; \
+	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m; \
+	touch .compiler_tags; \
+	fi
 
 $(MC_PROG).stats: source_stats.awk $($(MC_PROG).ms)
 	awk -f `vpath_find source_stats.awk` \

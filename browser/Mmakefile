@@ -194,13 +194,20 @@ int3s:	$(INT3S_TARGETS)
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MTAGS) $($(BROWSER_LIB_NAME).ms)
+tags:	.browser_tags
+
+.browser_tags: 	$(MTAGS) $($(BROWSER_LIB_NAME).ms) \
+		$(wildcard $(LIBRARY_DIR)/*.m) \
+                $(wildcard $(MDBCOMP_DIR)/*.m)
 	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m
+	@touch .browser_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m ; fi
+	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m; \
+	touch .browser_tags; \
+	fi
 
 $(BROWSER_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
 		$($(BROWSER_LIB_NAME).ms)

@@ -58,13 +58,18 @@ ints:	mercury_profile.ints
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m
+tags:	.profiler_tags
+
+.profiler_tags: $(MTAGS) $(mercury_profile.ms) $(wildcard $(LIBRARY_DIR)/*.m)
 	$(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m
+	@touch .profiler_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m ; fi
+	$(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m ; \
+	touch .profiler_tags ; \
+	fi
 
 #-----------------------------------------------------------------------------#
 

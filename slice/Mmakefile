@@ -127,16 +127,20 @@ ints:	$(INTS)
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
+tags:	.slice_tags
+
+.slice_tags: $(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
 		$(mtc_diff.ms) $(wildcard $(LIBRARY_DIR)/*.m)
 	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
 		$(mtc_diff.ms) $(LIBRARY_DIR)/*.m
+	@touch .slice_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
 	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) \
-	$(mcov.ms) $(mtc_union.ms) $(LIBRARY_DIR)/*.m; \
+		$(mcov.ms) $(mtc_union.ms) $(LIBRARY_DIR)/*.m; \
+	touch .slice_tags; \
 	fi
 
 #-----------------------------------------------------------------------------#

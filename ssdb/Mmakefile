@@ -193,13 +193,19 @@ int3s:	$(INT3S_TARGETS)
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MTAGS) $($(SSDB_LIB_NAME).ms)
+tags:	.ssdb_tags
+
+.ssdb_tags: $(MTAGS) $($(SSDB_LIB_NAME).ms) \
+		$(wildcard $(MDBCOMP_DIR)/*.m) $(wildcard $(LIBRARY_DIR)/*.m)
 	$(MTAGS) $($(SSDB_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m
+	@touch .ssdb_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $($(SSDB_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m ; fi
+	$(MTAGS) $($(SSDB_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m; \
+	touch .ssdb_tags; \
+	fi
 
 $(SSDB_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
 		$($(SSDB_LIB_NAME).ms)
