@@ -431,8 +431,10 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
             GoalExpr = scope(from_ground_term(LHSVar, Kind), SubGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo)
         ;
-            unexpected(this_file,
-                "do_unravel_unification: from_ground_term not conj")
+            % This can happen if we unravel large ground term that happens to
+            % be a lambda expression; the conjunction will then be *inside*
+            % the rhs_lambda_goal.
+            Goal = Goal0
         )
     ;
         Goal = Goal0

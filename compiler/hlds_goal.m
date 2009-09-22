@@ -243,6 +243,8 @@
                 % the HLDS.  We cannot do that for bi-implications, because
                 % if expansion of bi-implications is done before implicit
                 % quantification, then the quantification would be wrong.
+                %
+                % bi_implications are expanded out by quantification.m.
 
                 hlds_goal,
                 hlds_goal

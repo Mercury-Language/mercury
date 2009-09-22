@@ -893,114 +893,9 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         ),
         mode_list_get_final_insts(!.ModuleInfo, ArgModes0, ArgFinalInsts0),
 
-        (
-            InferModes = no,
-            check_marker(Markers, marker_mode_check_clauses),
-            Body0 = hlds_goal(BodyGoalExpr0, BodyGoalInfo0),
-            (
-                BodyGoalExpr0 = disj(Disjuncts0),
-                Disjuncts0 = [_ | _],
-                ClausesForm0 = clause_disj(Disjuncts0)
-            ;
-                BodyGoalExpr0 = switch(SwitchVar0, CanFail0, Cases0),
-                Cases0 = [_ | _],
-                ClausesForm0 = clause_switch(SwitchVar0, CanFail0, Cases0)
-            ),
-            BodyNonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
-            mode_info_get_var_types(!.ModeInfo, VarTypes0),
-            SolverNonLocals = list.filter(
-                is_solver_var(VarTypes0, !.ModuleInfo),
-                set.to_sorted_list(BodyNonLocals)),
-            SolverNonLocals = []
-        ->
-            BodyContext = goal_info_get_context(BodyGoalInfo0),
-            term.context_init(EmptyContext),
-            ( BodyContext = EmptyContext ->
-                true
-            ;
-                mode_info_set_context(BodyContext, !ModeInfo)
-            ),
-
-            % Modecheck each clause of the procedure body separately.
-            (
-                WhatToCheck = check_modes,
-                (
-                    ClausesForm0 = clause_disj(Disjuncts1),
-                    Disjuncts2 = flatten_disjs(Disjuncts1),
-                    list.map_foldl(
-                        modecheck_clause_disj(HeadVars, InstMap0,
-                            ArgFinalInsts0),
-                        Disjuncts2, Disjuncts, !ModeInfo),
-                    NewGoalExpr = disj(Disjuncts)
-                ;
-                    ClausesForm0 = clause_switch(SwitchVar, CanFail, Cases1),
-                    list.map_foldl(
-                        modecheck_clause_switch(HeadVars, InstMap0,
-                            ArgFinalInsts0, SwitchVar),
-                        Cases1, Cases, !ModeInfo),
-                    NewGoalExpr = switch(SwitchVar, CanFail, Cases)
-                )
-            ;
-                WhatToCheck = check_unique_modes,
-                mode_info_get_nondet_live_vars(!.ModeInfo, NondetLiveVars0),
-                Detism = goal_info_get_determinism(BodyGoalInfo0),
-                NonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
-                ( determinism_components(Detism, _, at_most_many) ->
-                    true
-                ;
-                    mode_info_set_nondet_live_vars(bag.init, !ModeInfo)
-                ),
-                (
-                    ClausesForm0 = clause_disj(Disjuncts1),
-                    Disjuncts2 = flatten_disjs(Disjuncts1),
-                    ( determinism_components(Detism, _, at_most_many) ->
-                        mode_info_add_live_vars(NonLocals, !ModeInfo),
-                        make_all_nondet_live_vars_mostly_uniq(!ModeInfo),
-                        mode_info_remove_live_vars(NonLocals, !ModeInfo)
-                    ;
-                        true
-                    ),
-                    list.map_foldl(
-                        unique_modecheck_clause_disj(HeadVars, InstMap0,
-                            ArgFinalInsts0, Detism, NonLocals,
-                            NondetLiveVars0),
-                        Disjuncts2, Disjuncts, !ModeInfo),
-                    NewGoalExpr = disj(Disjuncts)
-                ;
-                    ClausesForm0 = clause_switch(SwitchVar, CanFail, Cases1),
-                    list.map_foldl(
-                        unique_modecheck_clause_switch(HeadVars, InstMap0,
-                            ArgFinalInsts0, SwitchVar),
-                        Cases1, Cases, !ModeInfo),
-                    NewGoalExpr = switch(SwitchVar, CanFail, Cases)
-                )
-            ),
-
-            % Manufacture an instmap_delta for the disjunction as a whole.
-            assoc_list.from_corresponding_lists(HeadVars, ArgFinalInsts0,
-                HeadVarFinalInsts),
-            FinalInstMap = instmap_from_assoc_list(HeadVarFinalInsts),
-            compute_instmap_delta(InstMap0, FinalInstMap, BodyNonLocals,
-                DeltaInstMap),
-            goal_info_set_instmap_delta(DeltaInstMap,
-                BodyGoalInfo0, BodyGoalInfo),
-            Body = hlds_goal(NewGoalExpr, BodyGoalInfo),
-            ArgFinalInsts = ArgFinalInsts0
-        ;
-            % Modecheck the procedure body as a single goal.
-            (
-                WhatToCheck = check_modes,
-                modecheck_goal(Body0, Body1, !ModeInfo)
-            ;
-                WhatToCheck = check_unique_modes,
-                unique_modes_check_goal(Body0, Body1, !ModeInfo)
-            ),
-
-            % Check that final insts match those specified in the
-            % mode declaration.
-            modecheck_final_insts(HeadVars, InferModes, ArgFinalInsts0,
-                ArgFinalInsts, Body1, Body, !ModeInfo)
-        ),
+        modecheck_proc_body(!.ModuleInfo, WhatToCheck, InferModes,
+            Markers, Body0, Body, HeadVars, InstMap0,
+            ArgFinalInsts0, ArgFinalInsts, !ModeInfo),
 
         mode_info_get_errors(!.ModeInfo, ModeErrors),
         (
@@ -1031,6 +926,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
                 ModeWarnings),
             ErrorAndWarningSpecs = ErrorSpecs ++ WarningSpecs
         ),
+
         % Save away the results.
         inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
         mode_info_get_changed_flag(!.ModeInfo, !:Changed),
@@ -1050,6 +946,166 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             NeedToRequantify = need_to_requantify,
             requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo)
         )
+    ).
+
+:- pred modecheck_proc_body(module_info::in, how_to_check_goal::in,
+    bool::in, pred_markers::in, hlds_goal::in, hlds_goal::out,
+    list(prog_var)::in, instmap::in, list(mer_inst)::in, list(mer_inst)::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
+        Body0, Body, HeadVars, InstMap0, ArgFinalInsts0, ArgFinalInsts,
+        ModeInfo0, ModeInfo) :-
+    do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
+        Body0, Body1, HeadVars, InstMap0, ArgFinalInsts0, ArgFinalInsts1,
+        ModeInfo0, ModeInfo1),
+    mode_info_get_errors(ModeInfo1, ModeErrors1),
+    (
+        ModeErrors1 = [],
+        Body = Body1,
+        ArgFinalInsts = ArgFinalInsts1,
+        ModeInfo = ModeInfo1
+    ;
+        ModeErrors1 = [_ | _],
+        mode_info_get_had_from_ground_term(ModeInfo1, HadFromGroundTerm),
+        (
+            HadFromGroundTerm = had_from_ground_term_scope,
+            % The error could have been due a ground term that we marked down
+            % as ground instead of unique. We therefore try again from the
+            % beginning, but this time, we tell the code that handles
+            % from_ground_term scopes to create unique terms.
+            %
+            % Note that this may be overkill. Even if e.g. the procedure has
+            % three from_ground_term_construct scopes, only one of which needs
+            % to be unique for mode analysis to succeed, we will call copy
+            % after all three. Fixing this would require a significantly more
+            % complicated approach.
+
+            mode_info_set_make_ground_terms_unique(make_ground_terms_unique,
+                ModeInfo0, ModeInfo2),
+            do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes,
+                Markers, Body0, Body, HeadVars, InstMap0,
+                ArgFinalInsts0, ArgFinalInsts, ModeInfo2, ModeInfo)
+        ;
+            HadFromGroundTerm = did_not_have_from_ground_term_scope,
+            % The error could not have been due a ground term, so the results
+            % of the first analysis must stand.
+            Body = Body1,
+            ArgFinalInsts = ArgFinalInsts1,
+            ModeInfo = ModeInfo1
+        )
+    ).
+
+:- pred do_modecheck_proc_body(module_info::in, how_to_check_goal::in,
+    bool::in, pred_markers::in, hlds_goal::in, hlds_goal::out,
+    list(prog_var)::in, instmap::in, list(mer_inst)::in, list(mer_inst)::out,
+    mode_info::in, mode_info::out) is det.
+
+do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
+        Body0, Body, HeadVars, InstMap0, ArgFinalInsts0, ArgFinalInsts,
+        !ModeInfo) :-
+    (
+        InferModes = no,
+        check_marker(Markers, marker_mode_check_clauses),
+        Body0 = hlds_goal(BodyGoalExpr0, BodyGoalInfo0),
+        (
+            BodyGoalExpr0 = disj(Disjuncts0),
+            Disjuncts0 = [_ | _],
+            ClausesForm0 = clause_disj(Disjuncts0)
+        ;
+            BodyGoalExpr0 = switch(SwitchVar0, CanFail0, Cases0),
+            Cases0 = [_ | _],
+            ClausesForm0 = clause_switch(SwitchVar0, CanFail0, Cases0)
+        ),
+        BodyNonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
+        mode_info_get_var_types(!.ModeInfo, VarTypes0),
+        SolverNonLocals = list.filter(is_solver_var(VarTypes0, ModuleInfo),
+            set.to_sorted_list(BodyNonLocals)),
+        SolverNonLocals = []
+    ->
+        BodyContext = goal_info_get_context(BodyGoalInfo0),
+        term.context_init(EmptyContext),
+        ( BodyContext = EmptyContext ->
+            true
+        ;
+            mode_info_set_context(BodyContext, !ModeInfo)
+        ),
+
+        % Modecheck each clause of the procedure body separately.
+        (
+            WhatToCheck = check_modes,
+            (
+                ClausesForm0 = clause_disj(Disjuncts1),
+                Disjuncts2 = flatten_disjs(Disjuncts1),
+                list.map_foldl(
+                    modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0),
+                    Disjuncts2, Disjuncts, !ModeInfo),
+                NewGoalExpr = disj(Disjuncts)
+            ;
+                ClausesForm0 = clause_switch(SwitchVar, CanFail, Cases1),
+                list.map_foldl(
+                    modecheck_clause_switch(HeadVars, InstMap0,
+                        ArgFinalInsts0, SwitchVar),
+                    Cases1, Cases, !ModeInfo),
+                NewGoalExpr = switch(SwitchVar, CanFail, Cases)
+            )
+        ;
+            WhatToCheck = check_unique_modes,
+            mode_info_get_nondet_live_vars(!.ModeInfo, NondetLiveVars0),
+            Detism = goal_info_get_determinism(BodyGoalInfo0),
+            NonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
+            ( determinism_components(Detism, _, at_most_many) ->
+                true
+            ;
+                mode_info_set_nondet_live_vars(bag.init, !ModeInfo)
+            ),
+            (
+                ClausesForm0 = clause_disj(Disjuncts1),
+                Disjuncts2 = flatten_disjs(Disjuncts1),
+                ( determinism_components(Detism, _, at_most_many) ->
+                    mode_info_add_live_vars(NonLocals, !ModeInfo),
+                    make_all_nondet_live_vars_mostly_uniq(!ModeInfo),
+                    mode_info_remove_live_vars(NonLocals, !ModeInfo)
+                ;
+                    true
+                ),
+                list.map_foldl(
+                    unique_modecheck_clause_disj(HeadVars, InstMap0,
+                        ArgFinalInsts0, Detism, NonLocals, NondetLiveVars0),
+                    Disjuncts2, Disjuncts, !ModeInfo),
+                NewGoalExpr = disj(Disjuncts)
+            ;
+                ClausesForm0 = clause_switch(SwitchVar, CanFail, Cases1),
+                list.map_foldl(
+                    unique_modecheck_clause_switch(HeadVars, InstMap0,
+                        ArgFinalInsts0, SwitchVar),
+                    Cases1, Cases, !ModeInfo),
+                NewGoalExpr = switch(SwitchVar, CanFail, Cases)
+            )
+        ),
+
+        % Manufacture an instmap_delta for the disjunction as a whole.
+        assoc_list.from_corresponding_lists(HeadVars, ArgFinalInsts0,
+            HeadVarFinalInsts),
+        FinalInstMap = instmap_from_assoc_list(HeadVarFinalInsts),
+        compute_instmap_delta(InstMap0, FinalInstMap, BodyNonLocals,
+            DeltaInstMap),
+        goal_info_set_instmap_delta(DeltaInstMap, BodyGoalInfo0, BodyGoalInfo),
+        Body = hlds_goal(NewGoalExpr, BodyGoalInfo),
+        ArgFinalInsts = ArgFinalInsts0
+    ;
+        % Modecheck the procedure body as a single goal.
+        (
+            WhatToCheck = check_modes,
+            modecheck_goal(Body0, Body1, !ModeInfo)
+        ;
+            WhatToCheck = check_unique_modes,
+            unique_modes_check_goal(Body0, Body1, !ModeInfo)
+        ),
+
+        % Check that final insts match those specified in the mode declaration.
+        modecheck_final_insts(HeadVars, InferModes,
+            ArgFinalInsts0, ArgFinalInsts, Body1, Body, !ModeInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1438,10 +1494,9 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
                         Reason = wrongly_instantiated
                     ),
                     set.init(WaitingVars),
-                    mode_info_error(WaitingVars,
-                        mode_error_final_inst(ArgNum, Var, VarInst, Inst,
-                            Reason),
-                        !ModeInfo)
+                    ModeError = mode_error_final_inst(ArgNum, Var, VarInst,
+                        Inst, Reason),
+                    mode_info_error(WaitingVars, ModeError, !ModeInfo)
                 )
             )
         ),
@@ -1655,7 +1710,7 @@ merge_disj_branches(NonLocals, LargeFlatConstructs, Disjuncts0, Disjuncts,
         % time on those variables and add lots of big insts to the merge_inst
         % table. That in turn will cause the later equiv_type_hlds pass
         % to take a long time processing the merge_inst table. All this
-        % expensse is for nothing, since the chances that the following code
+        % expense is for nothing, since the chances that the following code
         % wants to know the precise set of possible bindings of variables
         % constructed in what are effectively fact tables is astronomically
         % small.
@@ -1823,60 +1878,34 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         GoalExpr = scope(Reason, SubGoal),
         mode_checkpoint(exit, "scope", !ModeInfo)
     ;
-        Reason = from_ground_term(TermVar, _OldKind),
-        % The original goal does no quantification, so deleting the `scope'
-        % would be OK. However, deleting it during mode analysis would mean
-        % we don't have it during unique mode analysis.
-        mode_info_get_instmap(!.ModeInfo, InstMap0),
-        instmap_lookup_var(InstMap0, TermVar, TermVarInst),
-        mode_info_get_varset(!.ModeInfo, VarSet),
-        modecheck_specializable_ground_term(SubGoal0, TermVar, TermVarInst,
-            MaybeGroundTermMode),
+        Reason = from_ground_term(TermVar, _),
+        mode_checkpoint(enter, "scope", !ModeInfo),
+        modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
+            Kind1, SubGoal1, !ModeInfo),
+        mode_checkpoint(exit, "scope", !ModeInfo),
+        mode_info_set_had_from_ground_term(had_from_ground_term_scope,
+            !ModeInfo),
+
+        mode_info_get_make_ground_terms_unique(!.ModeInfo,
+            MakeGroundTermsUnique),
         (
-            MaybeGroundTermMode = yes(construct_ground_term(RevConj0)),
-            SubGoal0 = hlds_goal(_, SubGoalInfo0),
-            modecheck_ground_term_construct(TermVar, RevConj0,
-                SubGoalInfo0, VarSet, SubGoal, !ModeInfo),
-            Kind = from_ground_term_construct,
-            UpdatedReason = from_ground_term(TermVar, Kind),
-            GoalExpr = scope(UpdatedReason, SubGoal)
+            MakeGroundTermsUnique = do_not_make_ground_terms_unique,
+            UpdatedReason1 = from_ground_term(TermVar, Kind1),
+            GoalExpr = scope(UpdatedReason1, SubGoal1)
         ;
+            MakeGroundTermsUnique = make_ground_terms_unique,
             (
-                MaybeGroundTermMode = yes(deconstruct_ground_term(_)),
-                % We should specialize the handling of these scopes as well as
-                % scopes that construct ground terms, but we don't yet have
-                % a compelling motivating example.
-                SubGoal1 = SubGoal0,
-                Kind = from_ground_term_deconstruct
+                Kind1 = from_ground_term_construct,
+                modecheck_goal_make_ground_term_unique(TermVar,
+                    SubGoal1, GoalInfo0, GoalExpr, !ModeInfo)
             ;
-                MaybeGroundTermMode = no,
-                (
-                    TermVarInst = free,
-                    SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo0),
-                    SubGoalExpr0 = conj(plain_conj, SubGoalConjuncts0)
-                ->
-                    % We reverse the list here for the same reason
-                    % modecheck_specializable_ground_term does in the
-                    % corresponding case.
-                    list.reverse(SubGoalConjuncts0, SubGoalConjuncts1),
-                    SubGoalExpr1 = conj(plain_conj, SubGoalConjuncts1),
-                    SubGoal1 = hlds_goal(SubGoalExpr1, SubGoalInfo0)
-                ;
-                    SubGoal1 = SubGoal0
+                ( Kind1 = from_ground_term_deconstruct
+                ; Kind1 = from_ground_term_other
                 ),
-                Kind = from_ground_term_other
-            ),
-            ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
-                attach_features_to_all_goals([feature_from_head],
-                    attach_in_from_ground_term, SubGoal1, SubGoal2)
-            ;
-                SubGoal2 = SubGoal1
-            ),
-            mode_checkpoint(enter, "scope", !ModeInfo),
-            modecheck_goal(SubGoal2, SubGoal, !ModeInfo),
-            UpdatedReason = from_ground_term(TermVar, Kind),
-            GoalExpr = scope(UpdatedReason, SubGoal),
-            mode_checkpoint(exit, "scope", !ModeInfo)
+                % Do not wrap the subgoal up in a scope, since these scopes
+                % do not get useful any special treatment.
+                SubGoal1 = hlds_goal(GoalExpr, _)
+            )
         )
     ;
         Reason = promise_purity(_Purity),
@@ -1888,6 +1917,198 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         GoalExpr = scope(Reason, SubGoal),
         mode_checkpoint(exit, "scope", !ModeInfo),
         mode_info_set_in_promise_purity_scope(InPPScope, !ModeInfo)
+    ).
+
+    % This predicate transforms
+    %
+    %   scope(TermVar,
+    %       conj(plain_conj,
+    %           X1 = ...
+    %           X2 = ...
+    %           ...
+    %           TermVar = ...
+    %       )
+    %   )
+    %
+    % into
+    %
+    %   conj(plain_conj,
+    %       scope(TermVar,
+    %           conj(plain_conj,
+    %               X1 = ...
+    %               X2 = ...
+    %               ...
+    %               CloneVar = ...
+    %           )
+    %       ),
+    %       builtin.copy(CloneVar, TermVar)
+    %   )
+    %
+    % We could transform it instead into a plain conjunction that directly
+    % builds a unique term, but that could have a significant detrimental
+    % effect on compile time.
+    %
+    % The performance of the generated code is unlikely to be of too much
+    % importance, since we expect programs will rarely need a unique copy
+    % of a ground term.
+    %
+:- pred modecheck_goal_make_ground_term_unique(prog_var::in,
+    hlds_goal::in, hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_goal_make_ground_term_unique(TermVar, SubGoal0, GoalInfo0, GoalExpr,
+        !ModeInfo) :-
+    mode_info_get_var_types(!.ModeInfo, VarTypes0),
+    mode_info_get_varset(!.ModeInfo, VarSet0),
+    varset.new_var(VarSet0, CloneVar, VarSet),
+    map.lookup(VarTypes0, TermVar, TermVarType),
+    map.det_insert(VarTypes0, CloneVar, TermVarType, VarTypes),
+    mode_info_set_varset(VarSet, !ModeInfo),
+    mode_info_set_var_types(VarTypes, !ModeInfo),
+    map.det_insert(map.init, TermVar, CloneVar, Rename),
+    % By construction, TermVar can appear only in (a) SubGoal0's goal_info,
+    % and (b) in the last conjunct in SubGoal0's goal_expr; it cannot appear
+    % in any of the other conjuncts. We could make this code more efficient
+    % by exploiting this fact, but there is not yet any evidence of any need
+    % for this.
+    rename_some_vars_in_goal(Rename, SubGoal0, SubGoal),
+    rename_vars_in_goal_info(need_not_rename, Rename, GoalInfo0,
+        ScopeGoalInfo1),
+
+    % We must put the instmaps into the goal_infos of all the subgoals of the
+    % final GoalExpr we return, since modecheck_goal will not get a chance to
+    % do so.
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
+    instmap_lookup_var(InstMap0, TermVar, TermVarOldInst),
+    ScopeInstMapDelta =
+        instmap_delta_from_assoc_list([CloneVar - TermVarOldInst]),
+    goal_info_set_instmap_delta(ScopeInstMapDelta,
+        ScopeGoalInfo1, ScopeGoalInfo),
+
+    Reason = from_ground_term(CloneVar, from_ground_term_construct),
+    ScopeGoalExpr = scope(Reason, SubGoal),
+    ScopeGoal = hlds_goal(ScopeGoalExpr, ScopeGoalInfo),
+
+    % We could get a more accurate new inst for TermVar by replacing
+    % all the "shared" functors in TermVarOldInst with "unique".
+    % However, this should be good enough. XXX wangp, is this right?
+    TermVarUniqueInst = ground(unique, none),
+
+    instmap_set_var(CloneVar, TermVarOldInst, InstMap0, InstMap1),
+    mode_info_set_instmap(InstMap1, !ModeInfo),
+
+    Context = goal_info_get_context(GoalInfo0),
+    modecheck_make_type_info_var_for_type(TermVarType, Context, TypeInfoVar,
+        TypeInfoGoals, !ModeInfo),
+
+    InstMapDelta =
+        instmap_delta_from_assoc_list([TermVar - TermVarUniqueInst]),
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+    generate_simple_call(mercury_public_builtin_module, "copy", pf_predicate,
+        mode_no(1), detism_det, purity_pure, [TypeInfoVar, CloneVar, TermVar],
+        [], InstMapDelta, ModuleInfo, Context, CopyGoal),
+    mode_info_get_instmap(!.ModeInfo, InstMap2),
+    instmap_set_var(TermVar, TermVarUniqueInst, InstMap2, InstMap),
+    mode_info_set_instmap(InstMap, !ModeInfo),
+
+    GoalExpr = conj(plain_conj, [ScopeGoal | TypeInfoGoals] ++ [CopyGoal]).
+
+:- pred modecheck_make_type_info_var_for_type(mer_type::in, prog_context::in,
+    prog_var::out, list(hlds_goal)::out, mode_info::in, mode_info::out) is det.
+
+modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
+        TypeInfoGoals, !ModeInfo) :-
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+
+    % Get the relevant information for the current procedure.
+    mode_info_get_pred_id(!.ModeInfo, PredId),
+    mode_info_get_proc_id(!.ModeInfo, ProcId),
+    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo0,
+        ProcInfo0),
+
+    % Create a poly_info for the current procedure. We have to set the varset
+    % and vartypes from the mode_info, not the proc_info, because new vars may
+    % have been introduced during mode analysis, e.g. when adding
+    % unifications to handle implied modes.
+    mode_info_get_var_types(!.ModeInfo, VarTypes0),
+    mode_info_get_varset(!.ModeInfo, VarSet0),
+    proc_info_set_varset(VarSet0, ProcInfo0, ProcInfo1),
+    proc_info_set_vartypes(VarTypes0, ProcInfo1, ProcInfo2),
+    polymorphism.create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2,
+        PolyInfo0),
+
+    polymorphism_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals,
+        PolyInfo0, PolyInfo),
+
+    % Update the information in the predicate table.
+    polymorphism.poly_info_extract(PolyInfo, PredInfo0, PredInfo,
+        ProcInfo2, ProcInfo, ModuleInfo1),
+    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+        ModuleInfo1, ModuleInfo),
+
+    % Update the information in the mode_info.
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    mode_info_set_varset(VarSet, !ModeInfo),
+    mode_info_set_var_types(VarTypes, !ModeInfo),
+    mode_info_set_module_info(ModuleInfo, !ModeInfo).
+
+:- pred modecheck_goal_from_ground_term_scope(prog_var::in,
+    hlds_goal::in, hlds_goal_info::in, from_ground_term_kind::out,
+    hlds_goal::out, mode_info::in, mode_info::out) is det.
+
+modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
+        Kind, SubGoal, !ModeInfo) :-
+    % The original goal does no quantification, so deleting the `scope'
+    % would be OK. However, deleting it during mode analysis would mean
+    % we don't have it during unique mode analysis and other later compiler
+    % passes.
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
+    instmap_lookup_var(InstMap0, TermVar, TermVarInst),
+    mode_info_get_varset(!.ModeInfo, VarSet),
+    modecheck_specializable_ground_term(SubGoal0, TermVar, TermVarInst,
+        MaybeGroundTermMode),
+    (
+        MaybeGroundTermMode = yes(construct_ground_term(RevConj0)),
+        SubGoal0 = hlds_goal(_, SubGoalInfo0),
+        modecheck_ground_term_construct(TermVar, RevConj0,
+            SubGoalInfo0, VarSet, SubGoal, !ModeInfo),
+        Kind = from_ground_term_construct
+    ;
+        (
+            MaybeGroundTermMode = yes(deconstruct_ground_term(_)),
+            % We should specialize the handling of these scopes as well as
+            % scopes that construct ground terms, but we don't yet have
+            % a compelling motivating example.
+            SubGoal1 = SubGoal0,
+            Kind = from_ground_term_deconstruct
+        ;
+            MaybeGroundTermMode = no,
+            (
+                TermVarInst = free,
+                SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo0),
+                SubGoalExpr0 = conj(plain_conj, SubGoalConjuncts0)
+            ->
+                % We reverse the list here for the same reason
+                % modecheck_specializable_ground_term does in the
+                % corresponding case.
+                list.reverse(SubGoalConjuncts0, SubGoalConjuncts1),
+                SubGoalExpr1 = conj(plain_conj, SubGoalConjuncts1),
+                SubGoal1 = hlds_goal(SubGoalExpr1, SubGoalInfo0)
+            ;
+                SubGoal1 = SubGoal0
+            ),
+            Kind = from_ground_term_other
+        ),
+        ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
+            attach_features_to_all_goals([feature_from_head],
+                attach_in_from_ground_term, SubGoal1, SubGoal2)
+        ;
+            SubGoal2 = SubGoal1
+        ),
+        mode_checkpoint(enter, "scope", !ModeInfo),
+        modecheck_goal(SubGoal2, SubGoal, !ModeInfo),
+        mode_checkpoint(exit, "scope", !ModeInfo)
     ).
 
 :- type ground_term_mode
@@ -2326,9 +2547,9 @@ check_no_inst_any_vars(NegCtxtDesc, [NonLocal | NonLocals], InstMap0, InstMap,
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         inst_contains_any(ModuleInfo, Inst)
     ->
-        mode_info_error(make_singleton_set(NonLocal),
-            purity_error_should_be_in_promise_purity_scope(NegCtxtDesc,
-            NonLocal), !ModeInfo)
+        ModeError = purity_error_should_be_in_promise_purity_scope(NegCtxtDesc,
+            NonLocal),
+        mode_info_error(make_singleton_set(NonLocal), ModeError, !ModeInfo)
     ;
         check_no_inst_any_vars(NegCtxtDesc, NonLocals, InstMap0, InstMap,
             !ModeInfo)
@@ -2649,8 +2870,8 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
         ;
             MoreDelayedGoals = [_ | _],
             get_all_waiting_vars(DelayedGoals, Vars),
-            mode_info_error(Vars,
-                mode_error_conj(DelayedGoals, conj_floundered), !ModeInfo)
+            ModeError = mode_error_conj(DelayedGoals, conj_floundered),
+            mode_info_error(Vars, ModeError, !ModeInfo)
         )
     ),
     % Restore the value of the may_initialise_solver_vars flag.
@@ -3668,7 +3889,8 @@ modecheck_var_is_live_no_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
         VarIsLive = is_live
     ->
         set.singleton_set(WaitingVars, VarId),
-        mode_info_error(WaitingVars, mode_error_var_is_live(VarId), !ModeInfo)
+        ModeError = mode_error_var_is_live(VarId),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
         true
     ).
@@ -3684,7 +3906,8 @@ modecheck_var_is_live_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
         true
     ;
         set.singleton_set(WaitingVars, VarId),
-        mode_info_error(WaitingVars, mode_error_var_is_live(VarId), !ModeInfo)
+        ModeError = mode_error_var_is_live(VarId),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3760,8 +3983,8 @@ modecheck_var_has_inst_exact_match(Var, Inst, !Subst, !ModeInfo) :-
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;
         set.singleton_set(WaitingVars, Var),
-        mode_info_error(WaitingVars,
-            mode_error_var_has_inst(Var, VarInst, Inst), !ModeInfo)
+        ModeError = mode_error_var_has_inst(Var, VarInst, Inst),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
 :- pred modecheck_var_has_inst_no_exact_match(prog_var::in, mer_inst::in,
@@ -3781,8 +4004,8 @@ modecheck_var_has_inst_no_exact_match(Var, Inst, !Subst, !ModeInfo) :-
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;
         set.singleton_set(WaitingVars, Var),
-        mode_info_error(WaitingVars,
-            mode_error_var_has_inst(Var, VarInst, Inst), !ModeInfo)
+        ModeError = mode_error_var_has_inst(Var, VarInst, Inst),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
 modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
@@ -3797,8 +4020,8 @@ modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;
         set.singleton_set(WaitingVars, Var),
-        mode_info_error(WaitingVars,
-            mode_error_var_has_inst(Var, VarInst, Inst), !ModeInfo)
+        ModeError = mode_error_var_has_inst(Var, VarInst, Inst),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3919,8 +4142,8 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
             )
         ->
             set.singleton_set(WaitingVars, Var0),
-            mode_info_error(WaitingVars,
-                mode_error_bind_var(Reason0, Var0, Inst0, Inst), !ModeInfo)
+            ModeError = mode_error_bind_var(Reason0, Var0, Inst0, Inst),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo)
         ;
             instmap_set_var(Var0, Inst, InstMap0, InstMap),
             mode_info_set_instmap(InstMap, !ModeInfo),
@@ -4010,9 +4233,8 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
             % If the type is a type variable, or isn't a solver type,
             % then give up.
             set.singleton_set(WaitingVars, Var0),
-            mode_info_error(WaitingVars,
-                mode_error_implied_mode(Var0, VarInst0, InitialInst),
-                !ModeInfo)
+            ModeError = mode_error_implied_mode(Var0, VarInst0, InitialInst),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo)
         )
     ;
         inst_is_bound(ModuleInfo0, InitialInst)
@@ -4020,8 +4242,8 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
         % This is the case we can't handle.
         Var = Var0,
         set.singleton_set(WaitingVars, Var0),
-        mode_info_error(WaitingVars,
-            mode_error_implied_mode(Var0, VarInst0, InitialInst), !ModeInfo)
+        ModeError = mode_error_implied_mode(Var0, VarInst0, InitialInst),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
         % This is the simple case of implied modes,
         % where the declared mode was free -> ...
@@ -4066,10 +4288,10 @@ construct_initialisation_call(Var, VarType, Inst, Context,
             module_info_get_name(ModuleInfo, ModuleName)
         ),
         NonLocals = set.make_singleton_set(Var),
-        InstmapDeltaAL = [Var - Inst],
-        InstmapDelta = instmap_delta_from_assoc_list(InstmapDeltaAL),
+        InstMapDeltaAL = [Var - Inst],
+        InstMapDelta = instmap_delta_from_assoc_list(InstMapDeltaAL),
         build_call(ModuleName, PredName, [Var], [VarType], NonLocals,
-            InstmapDelta, Context, MaybeCallUnifyContext,
+            InstMapDelta, Context, MaybeCallUnifyContext,
             hlds_goal(GoalExpr, GoalInfo), !ModeInfo)
     ->
         InitVarGoal = hlds_goal(GoalExpr, GoalInfo),
@@ -4099,7 +4321,7 @@ construct_initialisation_call(Var, VarType, Inst, Context,
     mode_info::in, mode_info::out) is semidet.
 
 build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
-        InstmapDelta, Context, CallUnifyContext, Goal, !ModeInfo) :-
+        InstMapDelta, Context, MaybeCallUnifyContext, Goal, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
 
     % Get the relevant information for the procedure we are transforming
@@ -4135,13 +4357,13 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo1),
     goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
-    goal_info_set_instmap_delta(InstmapDelta, GoalInfo2, GoalInfo),
+    goal_info_set_instmap_delta(InstMapDelta, GoalInfo2, GoalInfo),
 
     % Do the transformation for this call goal.
     SymName = qualified(CalleeModuleName, CalleePredName),
     polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo,
-        CalleePredId, CalleeProcId, ArgVars, not_builtin, CallUnifyContext,
-        SymName, GoalInfo, Goal, PolyInfo0, PolyInfo),
+        CalleePredId, CalleeProcId, ArgVars, not_builtin,
+        MaybeCallUnifyContext, SymName, GoalInfo, Goal, PolyInfo0, PolyInfo),
 
     % Update the information in the predicate table.
     polymorphism.poly_info_extract(PolyInfo, PredInfo0, PredInfo,

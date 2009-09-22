@@ -217,9 +217,9 @@
     unification::in, unification::out, hlds_goal_info::in, hlds_goal_info::out)
     is det.
 
-    % Add the type_info variables for a new call goal.  This predicate assumes
-    % that process_module has already been run so the called pred
-    % has already been processed.
+    % Add the type_info variables for a new call goal. This predicate assumes
+    % that process_module has already been run so the called pred has already
+    % been processed.
     %
     % XXX This predicate does not yet handle calls whose arguments include
     % existentially quantified types or type class constraints.
@@ -2136,14 +2136,11 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
 %-----------------------------------------------------------------------------%
 
-    % document me
-    %
-    % XXX This predicate does not yet handle calls whose arguments include
-    % existentially quantified types or type class constraints.
-    %
 polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
         CallArgs0, BuiltinState, MaybeCallUnifyContext, SymName,
         GoalInfo0, Goal, !Info) :-
+    % document me better
+    %
     poly_info_get_typevarset(!.Info, TVarSet0),
     poly_info_get_var_types(!.Info, VarTypes0),
     ActualArgTypes0 = map.apply_to_list(CallArgs0, VarTypes0),

@@ -105,6 +105,7 @@ ORDINARY_PROGS=	\
 	foreign_type3 \
 	frameopt_pragma_redirect \
 	free_free_mode \
+	from_ground_term_bug \
 	func_and_pred \
 	func_ctor_ambig \
 	func_test \
@@ -279,6 +280,7 @@ ORDINARY_PROGS=	\
 	uniq_duplicate_call \
 	unused_float_box_test \
 	unusual_name_mutable \
+	uo_regression1 \
 	user_compare \
 	user_defined_equality2 \
 	value_enum \

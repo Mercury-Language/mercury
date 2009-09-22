@@ -21,6 +21,7 @@ MCFLAGS-elim_local_var_char =   --eliminate-local-vars
 MCFLAGS-float_consistency =	--optimize-constant-propagation
 MCFLAGS-foreign_enum_mod1 = 	--intermodule-optimization
 MCFLAGS-foreign_enum_mod2 = 	--intermodule-optimization
+MCFLAGS-from_ground_term_bug = 	--from-ground-term-threshold=4
 MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-ho_order2	=	--optimize-higher-order
@@ -47,6 +48,7 @@ MCFLAGS-sharing_comb	    =	--ctgc --structure-sharing-widening 2
 MCFLAGS-simplify_multi_arm_switch = -O3
 MCFLAGS-uncond_reuse	    =	--ctgc
 MCFLAGS-uncond_reuse_bad    =	--ctgc
+MCFLAGS-uo_regression1      =	--from-ground-term-threshold=4
 
 # We disable intermodule-optimization here because it isn't compatible with
 # intermodule-analysis.
@@ -94,7 +96,7 @@ MCFLAGS-trans_intermod_user_equality2 = --intermodule-optimization \
 				--transitive-intermodule-optimization
 MCFLAGS-trans_intermod_user_equality3 = --intermodule-optimization \
 				--transitive-intermodule-optimization
-MCFLAGS-type_qual	= 	--infer-all
+MCFLAGS-type_qual	= 	--infer-all --from-ground-term-threshold=4
 MCFLAGS-type_spec	=	--user-guided-type-specialization
 MCFLAGS-existential_types_test = --infer-all
 MCFLAGS-existential_float = --infer-all

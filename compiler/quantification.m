@@ -620,8 +620,18 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
             GoalExpr = shorthand(ShortHand)
         ;
             ShortHand0 = bi_implication(LHS, RHS),
-            implicitly_quantify_goal_quant_info_bi_implication(LHS, RHS,
-                GoalExpr, GoalInfo0, NonLocalsToRecompute, !Info)
+            (
+                NonLocalsToRecompute = ordinary_nonlocals_maybe_lambda,
+                implicitly_quantify_goal_quant_info_bi_implication(LHS, RHS,
+                    GoalExpr, GoalInfo0, !Info)
+            ;
+                ( NonLocalsToRecompute = ordinary_nonlocals_no_lambda
+                ; NonLocalsToRecompute = code_gen_nonlocals_no_lambda
+                ),
+                % Any bi_implications should have been expanded out by now.
+                unexpected(this_file,
+                    "implicitly_quantify_goal_quant_info_2: bi_implication")
+            )
         ),
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
             PossiblyNonLocalGoalVars0)
@@ -779,17 +789,12 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
 
 :- pred implicitly_quantify_goal_quant_info_bi_implication(
     hlds_goal, hlds_goal, hlds_goal_expr, hlds_goal_info,
-    nonlocals_to_recompute, quant_info, quant_info).
+    quant_info, quant_info).
 :- mode implicitly_quantify_goal_quant_info_bi_implication(in, in, out, in,
-    in(ordinary_nonlocals_maybe_lambda), in, out) is det.
-:- mode implicitly_quantify_goal_quant_info_bi_implication(in, in, out, in,
-    in(ordinary_nonlocals_no_lambda), in, out) is det.
-:- mode implicitly_quantify_goal_quant_info_bi_implication(in, in, out, in,
-    in(code_gen_nonlocals_no_lambda), in, out) is det.
+    in, out) is det.
 
 implicitly_quantify_goal_quant_info_bi_implication(LHS0, RHS0, GoalExpr,
-        OldGoalInfo, NonLocalsToRecompute, !Info) :-
-
+        OldGoalInfo, !Info) :-
     % Get the initial values of various settings.
     get_quant_vars(!.Info, QuantVars0),
     get_outside(!.Info, OutsideVars0),
@@ -806,25 +811,15 @@ implicitly_quantify_goal_quant_info_bi_implication(LHS0, RHS0, GoalExpr,
 
     % Prepare for quantifying the LHS: add variables from the RHS to the
     % outside vars and the outside lambda vars sets.
-    (
-        NonLocalsToRecompute = ordinary_nonlocals_maybe_lambda,
-        goal_vars_both_maybe_lambda(NonLocalsToRecompute, RHS0,
-            RHS_Vars, RHS_LambdaVars)
-    ;
-        ( NonLocalsToRecompute = ordinary_nonlocals_no_lambda
-        ; NonLocalsToRecompute = code_gen_nonlocals_no_lambda
-        ),
-        goal_vars_both_no_lambda(NonLocalsToRecompute, RHS0, RHS_Vars),
-        RHS_LambdaVars = init
-    ),
+    goal_vars_both_maybe_lambda_and_bi_impl(RHS0, RHS_Vars, RHS_LambdaVars),
     union(OutsideVars1, RHS_Vars, LHS_OutsideVars),
     union(LambdaOutsideVars1, RHS_LambdaVars, LHS_LambdaOutsideVars),
 
     % Quantify the LHS.
     set_outside(LHS_OutsideVars, !Info),
     set_lambda_outside(LHS_LambdaOutsideVars, !Info),
-    implicitly_quantify_goal_quant_info(LHS0, LHS, NonLocalsToRecompute,
-        !Info),
+    implicitly_quantify_goal_quant_info(LHS0, LHS,
+        ordinary_nonlocals_maybe_lambda, !Info),
     get_nonlocals(!.Info, LHS_NonLocalVars),
 
     % Prepare for quantifying the RHS: add nonlocals from the LHS to the
@@ -837,8 +832,8 @@ implicitly_quantify_goal_quant_info_bi_implication(LHS0, RHS0, GoalExpr,
     % Quantify the RHS.
     set_outside(RHS_OutsideVars, !Info),
     set_lambda_outside(RHS_LambdaOutsideVars, !Info),
-    implicitly_quantify_goal_quant_info(RHS0, RHS, NonLocalsToRecompute,
-        !Info),
+    implicitly_quantify_goal_quant_info(RHS0, RHS,
+        ordinary_nonlocals_maybe_lambda, !Info),
     get_nonlocals(!.Info, RHS_NonLocalVars),
 
     % Compute the nonlocals for this goal.
@@ -853,7 +848,7 @@ implicitly_quantify_goal_quant_info_bi_implication(LHS0, RHS0, GoalExpr,
     set_lambda_outside(LambdaOutsideVars0, !Info),
     set_quant_vars(QuantVars0, !Info),
 
-    % We've figured out the quantification.
+    % We have figured out the quantification.
     % Now expand the bi-implication according to the usual rules:
     %   LHS <=> RHS
     % ===>
@@ -864,11 +859,11 @@ implicitly_quantify_goal_quant_info_bi_implication(LHS0, RHS0, GoalExpr,
     Context = goal_info_get_context(OldGoalInfo),
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo1),
-    set_goal_nonlocals(LHS_NonLocalVars, NonLocalsToRecompute,
+    set_goal_nonlocals(LHS_NonLocalVars, ordinary_nonlocals_maybe_lambda,
         GoalInfo1, LHS_GI, !Info),
-    set_goal_nonlocals(RHS_NonLocalVars, NonLocalsToRecompute,
+    set_goal_nonlocals(RHS_NonLocalVars, ordinary_nonlocals_maybe_lambda,
         GoalInfo1, RHS_GI, !Info),
-    set_goal_nonlocals(NonLocalVars, NonLocalsToRecompute,
+    set_goal_nonlocals(NonLocalVars, ordinary_nonlocals_maybe_lambda,
         GoalInfo1, GI, !Info),
     NotLHS = hlds_goal(negation(LHS), LHS_GI),
     NotRHS = hlds_goal(negation(RHS), RHS_GI),
@@ -880,9 +875,9 @@ implicitly_quantify_goal_quant_info_bi_implication(LHS0, RHS0, GoalExpr,
     ReverseImplicationExpr0 =
         negation(hlds_goal(conj(plain_conj, [RHS, NotLHS]), GI)),
     ReverseImplication0 = hlds_goal(ReverseImplicationExpr0, GI),
-    goal_vars_bitset(NonLocalsToRecompute, ReverseImplication0, GoalVars),
+    goal_vars_bitset_maybe_lambda_and_bi_impl(ReverseImplication0, GoalVars),
     difference(GoalVars, NonLocalVars, RenameVars),
-    rename_apart(RenameVars, _, NonLocalsToRecompute,
+    rename_apart(RenameVars, _, ordinary_nonlocals_maybe_lambda,
         ReverseImplication0, ReverseImplication, !Info),
 
     GoalExpr = conj(plain_conj, [ForwardsImplication, ReverseImplication]).
@@ -1271,6 +1266,17 @@ conj_vars_maybe_lambda(NonLocalsToRecompute, [Goal | Goals],
         !Set, !LambdaSet),
     conj_vars_maybe_lambda(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
 
+:- pred conj_vars_maybe_lambda_and_bi_impl(list(hlds_goal),
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode conj_vars_maybe_lambda_and_bi_impl(
+    in, in, out, in, out) is det.
+
+conj_vars_maybe_lambda_and_bi_impl([], !Set, !LambdaSet).
+conj_vars_maybe_lambda_and_bi_impl([Goal | Goals], !Set, !LambdaSet) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet),
+    conj_vars_maybe_lambda_and_bi_impl(Goals, !Set, !LambdaSet).
+
 :- pred conj_vars_no_lambda(nonlocals_to_recompute, list(hlds_goal),
     set_of_var, set_of_var).
 :- mode conj_vars_no_lambda(in(ordinary_nonlocals_no_lambda),
@@ -1291,6 +1297,31 @@ conj_vars_no_lambda(NonLocalsToRecompute, [Goal | Goals], !Set) :-
 
 disj_vars_maybe_lambda(NonLocalsToRecompute, Goals, !Set, !LambdaSet) :-
     compute_disj_vars_maybe_lambda(NonLocalsToRecompute, Goals,
+        [], GoalSets, [], GoalLambdaSets),
+    (
+        GoalSets = [],
+        GoalsSet = init
+    ;
+        GoalSets = [_ | _],
+        union_list(GoalSets, GoalsSet)
+    ),
+    (
+        GoalLambdaSets = [],
+        GoalsLambdaSet = init
+    ;
+        GoalLambdaSets = [_ | _],
+        union_list(GoalLambdaSets, GoalsLambdaSet)
+    ),
+    union(GoalsSet, !Set),
+    union(GoalsLambdaSet, !LambdaSet).
+
+:- pred disj_vars_maybe_lambda_and_bi_impl(list(hlds_goal),
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode disj_vars_maybe_lambda_and_bi_impl(
+    in, in, out, in, out) is det.
+
+disj_vars_maybe_lambda_and_bi_impl(Goals, !Set, !LambdaSet) :-
+    compute_disj_vars_maybe_lambda_and_bi_impl(Goals,
         [], GoalSets, [], GoalLambdaSets),
     (
         GoalSets = [],
@@ -1342,6 +1373,19 @@ compute_disj_vars_maybe_lambda(NonLocalsToRecompute, [Goal | Goals],
     compute_disj_vars_maybe_lambda(NonLocalsToRecompute, Goals,
         !Sets, !LambdaSets).
 
+:- pred compute_disj_vars_maybe_lambda_and_bi_impl(list(hlds_goal),
+    list(set_of_var), list(set_of_var), list(set_of_var), list(set_of_var)).
+:- mode compute_disj_vars_maybe_lambda_and_bi_impl(
+    in, in, out, in, out) is det.
+
+compute_disj_vars_maybe_lambda_and_bi_impl([], !Sets, !LambdaSets).
+compute_disj_vars_maybe_lambda_and_bi_impl([Goal | Goals],
+        !Sets, !LambdaSets) :-
+    goal_vars_both_maybe_lambda_and_bi_impl(Goal, GoalSet, GoalLambdaSet),
+    !:Sets = [GoalSet | !.Sets],
+    !:LambdaSets = [GoalLambdaSet | !.LambdaSets],
+    compute_disj_vars_maybe_lambda_and_bi_impl(Goals, !Sets, !LambdaSets).
+
 :- pred compute_disj_vars_no_lambda(nonlocals_to_recompute, list(hlds_goal),
     list(set_of_var), list(set_of_var)).
 :- mode compute_disj_vars_no_lambda(in(ordinary_nonlocals_no_lambda),
@@ -1362,6 +1406,31 @@ compute_disj_vars_no_lambda(NonLocalsToRecompute, [Goal | Goals], !Sets) :-
 
 case_vars_maybe_lambda(NonLocalsToRecompute, Cases, !Set, !LambdaSet) :-
     compute_case_vars_maybe_lambda(NonLocalsToRecompute, Cases,
+        [], CaseSets, [], CaseLambdaSets),
+    (
+        CaseSets = [],
+        unexpected(this_file, "case_vars: no cases (1)")
+    ;
+        CaseSets = [_ | _],
+        union_list(CaseSets, CasesSet)
+    ),
+    (
+        CaseLambdaSets = [],
+        unexpected(this_file, "case_vars: no cases (2)")
+    ;
+        CaseLambdaSets = [_ | _],
+        union_list(CaseLambdaSets, CasesLambdaSet)
+    ),
+    union(CasesSet, !Set),
+    union(CasesLambdaSet, !LambdaSet).
+
+:- pred case_vars_maybe_lambda_and_bi_impl(list(case),
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode case_vars_maybe_lambda_and_bi_impl(
+    in, in, out, in, out) is det.
+
+case_vars_maybe_lambda_and_bi_impl(Cases, !Set, !LambdaSet) :-
+    compute_case_vars_maybe_lambda_and_bi_impl(Cases,
         [], CaseSets, [], CaseLambdaSets),
     (
         CaseSets = [],
@@ -1413,6 +1482,20 @@ compute_case_vars_maybe_lambda(NonLocalsToRecompute, [Case | Cases],
     !:LambdaSets = [GoalLambdaSet | !.LambdaSets],
     compute_case_vars_maybe_lambda(NonLocalsToRecompute, Cases,
         !Sets, !LambdaSets).
+
+:- pred compute_case_vars_maybe_lambda_and_bi_impl(list(case),
+    list(set_of_var), list(set_of_var), list(set_of_var), list(set_of_var)).
+:- mode compute_case_vars_maybe_lambda_and_bi_impl(
+    in, in, out, in, out) is det.
+
+compute_case_vars_maybe_lambda_and_bi_impl([], !Sets, !LambdaSets).
+compute_case_vars_maybe_lambda_and_bi_impl([Case | Cases],
+        !Sets, !LambdaSets) :-
+    Case = case(_MainConsId, _OtherConsIds, Goal),
+    goal_vars_both_maybe_lambda_and_bi_impl(Goal, GoalSet, GoalLambdaSet),
+    !:Sets = [GoalSet | !.Sets],
+    !:LambdaSets = [GoalLambdaSet | !.LambdaSets],
+    compute_case_vars_maybe_lambda_and_bi_impl(Cases, !Sets, !LambdaSets).
 
 :- pred compute_case_vars_no_lambda(nonlocals_to_recompute, list(case),
     list(set_of_var), list(set_of_var)).
@@ -1515,6 +1598,14 @@ goal_vars_bitset_maybe_lambda(NonLocalsToRecompute, Goal, BothSet) :-
         Set, LambdaSet),
     BothSet = union(Set, LambdaSet).
 
+:- pred goal_vars_bitset_maybe_lambda_and_bi_impl(hlds_goal, set_of_var).
+:- mode goal_vars_bitset_maybe_lambda_and_bi_impl(in, out) is det.
+
+goal_vars_bitset_maybe_lambda_and_bi_impl(Goal, BothSet) :-
+    Goal = hlds_goal(GoalExpr, _),
+    goal_expr_vars_both_maybe_lambda_and_bi_impl(GoalExpr, Set, LambdaSet),
+    BothSet = union(Set, LambdaSet).
+
 :- pred goal_vars_bitset_no_lambda(nonlocals_to_recompute,
     hlds_goal, set_of_var).
 :- mode goal_vars_bitset_no_lambda(in(ordinary_nonlocals_no_lambda),
@@ -1588,6 +1679,20 @@ goal_vars_both_maybe_lambda(NonLocalsToRecompute, Goal, Set, LambdaSet) :-
     goal_expr_vars_both_maybe_lambda(NonLocalsToRecompute, GoalExpr,
         Set, LambdaSet).
 
+    % goal_vars_both_maybe_lambda_and_bi_impl(NonLocalsToRecompute, Goal,
+    %   NonLambdaSet, LambdaSet):
+    %
+    % As goal_vars_both_maybe_lambda, but include all the variables from
+    % from_groun_term scopes, not just the term variable.
+    %
+:- pred goal_vars_both_maybe_lambda_and_bi_impl(hlds_goal,
+    set_of_var, set_of_var).
+:- mode goal_vars_both_maybe_lambda_and_bi_impl(in, out, out) is det.
+
+goal_vars_both_maybe_lambda_and_bi_impl(Goal, Set, LambdaSet) :-
+    Goal = hlds_goal(GoalExpr, _),
+    goal_expr_vars_both_maybe_lambda_and_bi_impl(GoalExpr, Set, LambdaSet).
+
 :- pred goal_vars_both_no_lambda(nonlocals_to_recompute, hlds_goal,
     set_of_var).
 :- mode goal_vars_both_no_lambda(in(ordinary_nonlocals_no_lambda),
@@ -1609,6 +1714,16 @@ goal_expr_vars_both_maybe_lambda(NonLocalsToRecompute, GoalExpr,
     Set0 = init,
     LambdaSet0 = init,
     goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr, Set0, Set,
+        LambdaSet0, LambdaSet).
+
+:- pred goal_expr_vars_both_maybe_lambda_and_bi_impl(hlds_goal_expr,
+    set_of_var, set_of_var).
+:- mode goal_expr_vars_both_maybe_lambda_and_bi_impl(in, out, out) is det.
+
+goal_expr_vars_both_maybe_lambda_and_bi_impl(GoalExpr, Set, LambdaSet) :-
+    Set0 = init,
+    LambdaSet0 = init,
+    goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, Set0, Set,
         LambdaSet0, LambdaSet).
 
 :- pred goal_expr_vars_both_no_lambda(nonlocals_to_recompute, hlds_goal_expr,
@@ -1786,6 +1901,154 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
         )
     ).
 
+:- pred goal_expr_vars_maybe_lambda_and_bi_impl_2(hlds_goal_expr,
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode goal_expr_vars_maybe_lambda_and_bi_impl_2(
+    in, in, out, in, out) is det.
+
+goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
+    (
+        GoalExpr = unify(LHS, RHS, _, Unification, _),
+        insert(!.Set, LHS, !:Set),
+        (
+            Unification = construct(_, _, _, _, How, _, SubInfo),
+            (
+                How = reuse_cell(cell_to_reuse(ReuseVar, _, _)),
+                insert(!.Set, ReuseVar, !:Set)
+            ;
+                How = construct_in_region(RegionVar),
+                insert(!.Set, RegionVar, !:Set)
+            ;
+                ( How = construct_statically
+                ; How = construct_dynamically
+                )
+            ),
+            (
+                SubInfo = construct_sub_info(_, MaybeSize),
+                MaybeSize = yes(dynamic_size(SizeVar))
+            ->
+                insert(!.Set, SizeVar, !:Set)
+            ;
+                true
+            )
+        ;
+            Unification = complicated_unify(_, _, TypeInfoVars),
+            insert_list(!.Set, TypeInfoVars, !:Set)
+        ;
+            ( Unification = deconstruct(_, _, _, _, _, _)
+            ; Unification = assign(_, _)
+            ; Unification = simple_test(_, _)
+            )
+        ),
+        unify_rhs_vars_maybe_lambda_and_bi_impl(RHS, !Set, !LambdaSet)
+    ;
+        GoalExpr = plain_call(_, _, ArgVars, _, _, _),
+        insert_list(!.Set, ArgVars, !:Set)
+    ;
+        GoalExpr = generic_call(GenericCall, ArgVars1, _, _),
+        goal_util.generic_call_vars(GenericCall, ArgVars0),
+        insert_list(!.Set, ArgVars0, !:Set),
+        insert_list(!.Set, ArgVars1, !:Set)
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
+        Vars = list.map(foreign_arg_var, Args),
+        ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+        list.append(Vars, ExtraVars, AllVars),
+        insert_list(!.Set, AllVars, !:Set)
+    ;
+        GoalExpr = conj(ConjType, Goals),
+        (
+            ConjType = plain_conj
+        ;
+            ConjType = parallel_conj
+        ),
+        conj_vars_maybe_lambda_and_bi_impl(Goals, !Set, !LambdaSet)
+    ;
+        GoalExpr = disj(Goals),
+        disj_vars_maybe_lambda_and_bi_impl(Goals, !Set, !LambdaSet)
+    ;
+        GoalExpr = switch(Var, _Det, Cases),
+        insert(!.Set, Var, !:Set),
+        case_vars_maybe_lambda_and_bi_impl(Cases, !Set, !LambdaSet)
+    ;
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        % This code does the following:
+        %     !:Set = !.Set + ( (vars(Cond) + vars(Then)) \ Vars ) + vars(Else)
+        % where `+' is set union and `\' is relative complement.
+        goal_vars_both_maybe_lambda_and_bi_impl(Cond,
+            CondSet, CondLambdaSet),
+        goal_vars_both_maybe_lambda_and_bi_impl(Then,
+            ThenSet, ThenLambdaSet),
+        goal_vars_both_maybe_lambda_and_bi_impl(Else,
+            ElseSet, ElseLambdaSet),
+        union(CondSet, ThenSet, CondThenSet),
+        union(CondLambdaSet, ThenLambdaSet, CondThenLambdaSet),
+        delete_list(CondThenSet, Vars, SomeCondThenSet),
+        delete_list(CondThenLambdaSet, Vars, SomeCondThenLambdaSet),
+        union(!.Set, SomeCondThenSet, !:Set),
+        union(!.LambdaSet, SomeCondThenLambdaSet, !:LambdaSet),
+        union(!.Set, ElseSet, !:Set),
+        union(!.LambdaSet, ElseLambdaSet, !:LambdaSet)
+    ;
+        GoalExpr = negation(SubGoal),
+        SubGoal = hlds_goal(SubGoalExpr, _SubGoalInfo),
+        goal_expr_vars_maybe_lambda_and_bi_impl_2(SubGoalExpr,
+            !Set, !LambdaSet)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        Set0 = !.Set,
+        LambdaSet0 = !.LambdaSet,
+        (
+            ( Reason = promise_purity(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = trace_goal(_, _, _, _, _)
+            ),
+            goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
+                !:Set, !:LambdaSet)
+        ;
+            Reason = exist_quant(Vars),
+            goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
+                !:Set, !:LambdaSet),
+            delete_list(!.Set, Vars, !:Set),
+            delete_list(!.LambdaSet, Vars, !:LambdaSet)
+        ;
+            Reason = promise_solutions(Vars, _Kind),
+            goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
+                !:Set, !:LambdaSet),
+            insert_list(!.Set, Vars, !:Set)
+        ;
+            Reason = from_ground_term(_TermVar, _Kind),
+            goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
+                !:Set, !:LambdaSet)
+            % TermVar should have been put into the relevant sets when we
+            % processed SubGoal, since it should appear in SubGoal.
+        ),
+        union(Set0, !Set),
+        union(LambdaSet0, !LambdaSet)
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_GoalType, Outer, Inner,
+                _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
+            % XXX STM
+            Outer = atomic_interface_vars(OuterDI, OuterUO),
+            Inner = atomic_interface_vars(InnerDI, InnerUO),
+            insert_list(!.Set, [OuterDI, OuterUO, InnerDI, InnerUO], !:Set),
+            disj_vars_maybe_lambda_and_bi_impl([MainGoal | OrElseGoals],
+                !Set, !LambdaSet)
+        ;
+            ShortHand = try_goal(_MaybeIO, _ResultVar, SubGoal),
+            % IO state variables and ResultVar are already in SubGoal.
+            SubGoal = hlds_goal(SubGoalExpr, _SubGoalInfo),
+            goal_expr_vars_maybe_lambda_and_bi_impl_2(SubGoalExpr,
+                !Set, !LambdaSet)
+        ;
+            ShortHand = bi_implication(LHS, RHS),
+            conj_vars_maybe_lambda_and_bi_impl([LHS, RHS], !Set, !LambdaSet)
+        )
+    ).
+
 :- pred goal_expr_vars_no_lambda_2(nonlocals_to_recompute, hlds_goal_expr,
     set_of_var, set_of_var).
 :- mode goal_expr_vars_no_lambda_2(in(ordinary_nonlocals_no_lambda),
@@ -1942,6 +2205,27 @@ unify_rhs_vars_maybe_lambda(NonLocalsToRecompute, RHS, !Set, !LambdaSet) :-
         % Note that the NonLocals list is not counted, since all the
         % variables in that list must occur in the goal.
         goal_vars_bitset_maybe_lambda(NonLocalsToRecompute, Goal, GoalVars),
+        delete_list(GoalVars, LambdaVars, GoalVars1),
+        union(!.LambdaSet, GoalVars1, !:LambdaSet)
+    ).
+
+:- pred unify_rhs_vars_maybe_lambda_and_bi_impl(unify_rhs,
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode unify_rhs_vars_maybe_lambda_and_bi_impl(
+    in, in, out, in, out) is det.
+
+unify_rhs_vars_maybe_lambda_and_bi_impl(RHS, !Set, !LambdaSet) :-
+    (
+        RHS = rhs_var(Y), 
+        insert(!.Set, Y, !:Set)
+    ;
+        RHS = rhs_functor(_, _, ArgVars),
+        insert_list(!.Set, ArgVars, !:Set)
+    ;
+        RHS = rhs_lambda_goal(_, _, _, _, _, LambdaVars, _, _, Goal),
+        % Note that the NonLocals list is not counted, since all the
+        % variables in that list must occur in the goal.
+        goal_vars_bitset_maybe_lambda_and_bi_impl(Goal, GoalVars),
         delete_list(GoalVars, LambdaVars, GoalVars1),
         union(!.LambdaSet, GoalVars1, !:LambdaSet)
     ).

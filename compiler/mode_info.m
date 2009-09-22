@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -119,9 +119,17 @@
     --->    in_promise_purity_scope
     ;       not_in_promise_purity_scope.
 
-:- type in_from_ground_term
-    --->    in_from_ground_term
-    ;       not_in_from_ground_term.
+:- type in_from_ground_term_scope
+    --->    in_from_ground_term_scope
+    ;       not_in_from_ground_term_scope.
+
+:- type had_from_ground_term_scope
+    --->    had_from_ground_term_scope
+    ;       did_not_have_from_ground_term_scope.
+
+:- type make_ground_terms_unique
+    --->    make_ground_terms_unique
+    ;       do_not_make_ground_terms_unique.
 
 :- type in_dupl_for_switch
     --->    in_dupl_for_switch
@@ -184,7 +192,11 @@
 :- pred mode_info_get_may_init_solver_vars(mode_info::in,
     may_init_solver_vars::out) is det.
 :- pred mode_info_get_in_from_ground_term(mode_info::in,
-    in_from_ground_term::out) is det.
+    in_from_ground_term_scope::out) is det.
+:- pred mode_info_get_had_from_ground_term(mode_info::in,
+    had_from_ground_term_scope::out) is det.
+:- pred mode_info_get_make_ground_terms_unique(mode_info::in,
+    make_ground_terms_unique::out) is det.
 :- pred mode_info_get_in_dupl_for_switch(mode_info::in,
     in_dupl_for_switch::out) is det.
 
@@ -246,7 +258,11 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_may_init_solver_vars(may_init_solver_vars::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_in_from_ground_term(in_from_ground_term::in,
+:- pred mode_info_set_in_from_ground_term(in_from_ground_term_scope::in,
+    mode_info::in, mode_info::out) is det.
+:- pred mode_info_set_had_from_ground_term(had_from_ground_term_scope::in,
+    mode_info::in, mode_info::out) is det.
+:- pred mode_info_set_make_ground_terms_unique(make_ground_terms_unique::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_in_dupl_for_switch(in_dupl_for_switch::in,
     mode_info::in, mode_info::out) is det.
@@ -409,20 +425,28 @@
                 % The mode warnings found.
                 msi_warnings                :: list(mode_warning_info),
 
-                % Set to `yes' if we need to requantify the procedure body
+                % Says whether we need to requantify the procedure body
                 % after mode analysis finishes.
                 msi_need_to_requantify      :: need_to_requantify,
 
-                % Set to `yes' if we are in a promise_<purity> scope.
+                % Says whether we are in a promise_<purity> scope.
                 % This information is needed to check that potentially impure
                 % uses of inst any non-locals in negated contexts are properly
                 % acknowledged by the programmer.
                 msi_in_promise_purity_scope :: in_promise_purity_scope,
 
-                % Set to `yes' if we are in a from_ground_term scope.
+                % Says whether we are in a from_ground_term scope.
                 % This information allows us to optimize some aspects of
                 % mode analysis.
-                msi_in_from_ground_term     :: in_from_ground_term,
+                msi_in_from_ground_term     :: in_from_ground_term_scope,
+
+                % Says whether we have ever come across in a from_ground_term
+                % scope.
+                msi_had_from_ground_term    :: had_from_ground_term_scope,
+
+                % Says whether we should copy the ground terms created by
+                % from_ground_term scopes, making them unique.
+                msi_make_ground_terms_unique :: make_ground_terms_unique,
 
                 % Set to `yes' if we are inside a goal with a
                 % duplicate_for_switch feature.
@@ -435,22 +459,22 @@
     %
 :- type mode_info
     --->    mode_info(
-                mi_module_info              :: module_info,
+/*  1 */        mi_module_info              :: module_info,
 
                 % The current instantiatedness of the variables.
-                mi_instmap                  :: instmap,
+/*  2 */        mi_instmap                  :: instmap,
 
                 % Info about delayed goals.
-                mi_delay_info               :: delay_info,
+/*  3 */        mi_delay_info               :: delay_info,
 
                 % The mode errors found.
-                mi_errors                   :: list(mode_error_info),
+/*  4 */        mi_errors                   :: list(mode_error_info),
 
                 % A description of where in the goal the error occurred.
-                mi_mode_context             :: mode_context,
+/*  5 */        mi_mode_context             :: mode_context,
 
                 % The line number of the subgoal we are currently checking.
-                mi_context                  :: prog_context,
+/*  6 */        mi_context                  :: prog_context,
 
                 % The nondet-live variables, i.e. those variables which may be
                 % referenced again after deep backtracking TO THE CURRENT
@@ -461,9 +485,9 @@
                 % to a point EARLIER THAN the current execution point, since
                 % those variables will *already* have been marked as
                 % mostly_unique rather than unique.)
-                mi_nondet_live_vars         :: bag(prog_var),
+/*  7 */        mi_nondet_live_vars         :: bag(prog_var),
 
-                mi_sub_info                 :: mode_sub_info
+/*  8 */        mi_sub_info                 :: mode_sub_info
             ).
 
 %-----------------------------------------------------------------------------%
@@ -505,14 +529,17 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMap0,
     MayInitSolverVars = may_init_solver_vars,
     NeedToRequantify = do_not_need_to_requantify,
     InPromisePurityScope = not_in_promise_purity_scope,
-    InFromGroundTerm = not_in_from_ground_term,
+    InFromGroundTerm = not_in_from_ground_term_scope,
+    HadFromGroundTerm = did_not_have_from_ground_term_scope,
+    MakeGroundTermsUnique = do_not_make_ground_terms_unique,
     InDuplForSwitch = not_in_dupl_for_switch,
 
     ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes, Debug,
         LockedVars, LiveVarsBag, InstVarSet, ParallelVars, HowToCheck,
         MayChangeProc, MayInitSolverVars, LastCheckpointInstMap, Changed,
         CheckingExtraGoals, InstMap0, WarningList, NeedToRequantify,
-        InPromisePurityScope, InFromGroundTerm, InDuplForSwitch),
+        InPromisePurityScope, InFromGroundTerm, HadFromGroundTerm,
+        MakeGroundTermsUnique, InDuplForSwitch),
 
     mode_context_init(ModeContext),
     delay_info_init(DelayInfo),
@@ -558,6 +585,10 @@ mode_info_get_checking_extra_goals(MI,
     MI ^ mi_sub_info ^ msi_checking_extra_goals).
 mode_info_get_in_from_ground_term(MI,
     MI ^ mi_sub_info ^ msi_in_from_ground_term).
+mode_info_get_had_from_ground_term(MI,
+    MI ^ mi_sub_info ^ msi_had_from_ground_term).
+mode_info_get_make_ground_terms_unique(MI,
+    MI ^ mi_sub_info ^ msi_make_ground_terms_unique).
 mode_info_get_in_dupl_for_switch(MI,
     MI ^ mi_sub_info ^ msi_in_dupl_for_switch).
 
@@ -596,8 +627,12 @@ mode_info_set_may_change_called_proc(MayChange, MI,
     MI ^ mi_sub_info ^ msi_may_change_called_proc := MayChange).
 mode_info_set_may_init_solver_vars(MayInit, MI,
     MI ^ mi_sub_info ^ msi_may_init_solver_vars := MayInit).
-mode_info_set_in_from_ground_term(FGI, MI,
-    MI ^ mi_sub_info ^ msi_in_from_ground_term := FGI).
+mode_info_set_in_from_ground_term(IFGI, MI,
+    MI ^ mi_sub_info ^ msi_in_from_ground_term := IFGI).
+mode_info_set_had_from_ground_term(HFGI, MI,
+    MI ^ mi_sub_info ^ msi_had_from_ground_term := HFGI).
+mode_info_set_make_ground_terms_unique(MGTU, MI,
+    MI ^ mi_sub_info ^ msi_make_ground_terms_unique := MGTU).
 mode_info_set_in_dupl_for_switch(INFS, MI,
     MI ^ mi_sub_info ^ msi_in_dupl_for_switch := INFS).
 

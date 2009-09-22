@@ -725,7 +725,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         UnifyArgInsts = list.map(func(I) = yes(I), InstOfXArgs),
         mode_info_get_in_from_ground_term(!.ModeInfo, InFromGroundTerm),
         (
-            InFromGroundTerm = in_from_ground_term
+            InFromGroundTerm = in_from_ground_term_scope
             % In the goals that result from the transformation of a unification
             % of a variable with a ground term, the variables on the right hand
             % sides of the construct unifications are all local to the scope
@@ -738,7 +738,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             % are N intermediate variables, the complexity of updating their
             % insts would be quadratic.
         ;
-            InFromGroundTerm = not_in_from_ground_term,
+            InFromGroundTerm = not_in_from_ground_term_scope,
             bind_args(Inst, ArgVars, UnifyArgInsts, !ModeInfo)
         )
     ;
