@@ -2047,10 +2047,12 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         % Constants.
         (
             ConsTag = int_tag(Int),
-            % See the comment in ml_gen_constant.
+            % We need explicit casts for enumerations so that the Java backend
+            % knows to output an enumeration constant instead of a plain int.
+            % See also the comment in ml_gen_constant.
             IntRval = ml_const(mlconst_int(Int)),
-            ( VarType = char_type ->
-                ConstRval = ml_unop(cast(mlds_native_char_type), IntRval)
+            ( VarType \= int_type ->
+                ConstRval = ml_unop(cast(MLDS_Type), IntRval)
             ;
                 ConstRval = IntRval
             )
@@ -2129,15 +2131,16 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ExtraInitializers = []
         ;
             ConsTag = shared_remote_tag(Ptag, Stag),
-            StagRval0 = ml_const(mlconst_int(Stag)),
             (
                 HighLevelData = no,
-                StagRval = ml_unop(box(mlds_native_char_type), StagRval0)
+                StagRval0 = ml_const(mlconst_int(Stag)),
+                % XXX why is this cast here?
+                StagRval = ml_unop(box(mlds_native_char_type), StagRval0),
+                ExtraInitializers = [init_obj(StagRval)]
             ;
                 HighLevelData = yes,
-                StagRval = StagRval0
-            ),
-            ExtraInitializers = [init_obj(StagRval)]
+                ExtraInitializers = []
+            )
         ),
         ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
             VarTypes, Var, VarType, MLDS_Type,

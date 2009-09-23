@@ -2225,8 +2225,7 @@ output_initializer(ModuleInfo, ModuleName, OutputAux, Type, Initializer, !IO) :-
 
 needs_initialization(no_initializer) = no.
 needs_initialization(init_obj(_)) = yes.
-needs_initialization(init_struct(_Type, [])) = no.
-needs_initialization(init_struct(_Type, [_ | _])) = yes.
+needs_initialization(init_struct(_, _)) = yes.
 needs_initialization(init_array(_)) = yes.
 
 :- pred output_initializer_alloc_only(module_info::in, mlds_initializer::in,
@@ -4031,40 +4030,7 @@ output_rval(ModuleInfo, Rval, ModuleName, !IO) :-
 output_unop(ModuleInfo, Unop, Expr, ModuleName, !IO) :-
     (
         Unop = cast(Type),
-        % rtti_to_mlds.m generates casts from int to
-        % jmercury.runtime.PseudoTypeInfo, but for Java
-        % we need to treat these as constructions, not casts.
-        % Similarly for conversions from TypeCtorInfo to TypeInfo.
-        (
-            Type = mlds_pseudo_type_info_type,
-            Expr = ml_const(mlconst_int(N))
-        ->
-            maybe_output_comment("cast", !IO),
-            ( have_preallocated_pseudo_type_var(N) ->
-                io.write_string("jmercury.runtime.PseudoTypeInfo.K", !IO),
-                io.write_int(N, !IO)
-            ;
-                io.write_string("new jmercury.runtime.PseudoTypeInfo(", !IO),
-                output_rval(ModuleInfo, Expr, ModuleName, !IO),
-                io.write_string(")", !IO)
-            )
-        ;
-            ( Type = mercury_type(_, ctor_cat_system(cat_system_type_info), _)
-            ; Type = mlds_type_info_type
-            )
-        ->
-            % XXX We really should be able to tell if we are casting a
-            % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
-            % be rather difficult as the compiler doesn't keep track of where
-            % type_ctor_infos are acting as type_infos properly.
-            maybe_output_comment("cast", !IO),
-            io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(",
-                !IO),
-            output_rval(ModuleInfo, Expr, ModuleName, !IO),
-            io.write_string(")", !IO)
-        ;
-            output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO)
-        )
+        output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO)
     ;
         Unop = box(Type),
         output_boxed_rval(ModuleInfo, Type, Expr, ModuleName, !IO)
@@ -4076,25 +4042,66 @@ output_unop(ModuleInfo, Unop, Expr, ModuleName, !IO) :-
         output_std_unop(ModuleInfo, StdUnop, Expr, ModuleName, !IO)
     ).
 
+:- pred output_cast_rval(module_info::in, mlds_type::in, mlds_rval::in,
+    mlds_module_name::in, io::di, io::uo) is det.
+
+output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
+    % rtti_to_mlds.m generates casts from int to
+    % jmercury.runtime.PseudoTypeInfo, but for Java
+    % we need to treat these as constructions, not casts.
+    % Similarly for conversions from TypeCtorInfo to TypeInfo.
+    (
+        Type = mlds_pseudo_type_info_type,
+        Expr = ml_const(mlconst_int(N))
+    ->
+        maybe_output_comment("cast", !IO),
+        ( have_preallocated_pseudo_type_var(N) ->
+            io.write_string("jmercury.runtime.PseudoTypeInfo.K", !IO),
+            io.write_int(N, !IO)
+        ;
+            io.write_string("new jmercury.runtime.PseudoTypeInfo(", !IO),
+            output_rval(ModuleInfo, Expr, ModuleName, !IO),
+            io.write_string(")", !IO)
+        )
+    ;
+        ( Type = mercury_type(_, ctor_cat_system(cat_system_type_info), _)
+        ; Type = mlds_type_info_type
+        )
+    ->
+        % XXX We really should be able to tell if we are casting a
+        % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
+        % be rather difficult as the compiler doesn't keep track of where
+        % type_ctor_infos are acting as type_infos properly.
+        maybe_output_comment("cast", !IO),
+        io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(",
+            !IO),
+        output_rval(ModuleInfo, Expr, ModuleName, !IO),
+        io.write_string(")", !IO)
+    ;
+        type_is_object(Type),
+        Expr = ml_const(mlconst_int(N))
+    ->
+        % If it is a enumeration object make a reference to a static instance.
+        output_type(normal_style, Type, !IO),
+        io.write_string(".K", !IO),
+        io.write_int(N, !IO)
+    ;
+        io.write_string("(", !IO),
+        output_type(normal_style, Type, !IO),
+        io.write_string(") ", !IO),
+        ( java_builtin_type(Type, "int", _, _) ->
+            output_rval_maybe_with_enum(ModuleInfo, Expr, ModuleName, !IO)
+        ;
+            output_rval(ModuleInfo, Expr, ModuleName, !IO)
+        )
+    ).
+
 :- pred have_preallocated_pseudo_type_var(int::in) is semidet.
 
 have_preallocated_pseudo_type_var(N) :-
     % Corresponds to static members in class PseudoTypeInfo.
     N >= 1,
     N =< 5.
-
-:- pred output_cast_rval(module_info::in, mlds_type::in, mlds_rval::in,
-    mlds_module_name::in, io::di, io::uo) is det.
-
-output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
-    io.write_string("(", !IO),
-    output_type(normal_style, Type, !IO),
-    io.write_string(") ", !IO),
-    ( java_builtin_type(Type, "int", _, _) ->
-        output_rval_maybe_with_enum(ModuleInfo, Expr, ModuleName, !IO)
-    ;
-        output_rval(ModuleInfo, Expr, ModuleName, !IO)
-    ).
 
 :- pred output_boxed_rval(module_info::in, mlds_type::in, mlds_rval::in,
      mlds_module_name::in, io::di, io::uo) is det.

@@ -2853,6 +2853,7 @@ ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval, BoxedRval,
         % [For the .NET and Java back-ends, this code currently never gets
         % called, since currently we don't support static ground term
         % optimization for those back-ends.]
+        % XXX we now support static ground terms for Java
 
         ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
         ; Type = mlds_native_float_type
