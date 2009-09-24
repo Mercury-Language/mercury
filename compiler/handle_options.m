@@ -661,9 +661,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         XXX Previously static ground terms used to not work with
         %             --high-level-data. But this has been (mostly?) fixed now.
         %             So we should investigate re-enabling static ground terms.
+        %   - pretest-equality-cast-pointers
         %   - no library grade installation check with `mmc --make'. 
-        %   - no pretest equality check
-        %     Because it assumes pointers can be cast to integers.
         %   - cross compiling
         %     Because ints in Java are 32-bits wide which may be different to
         %     that of the host compiler.
@@ -685,8 +684,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
             globals.set_option(static_ground_cells, bool(no), !Globals),
             globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
+            globals.set_option(pretest_equality_cast_pointers, bool(yes),
+                !Globals),
             globals.set_option(libgrade_install_check, bool(no), !Globals),
-            globals.set_option(should_pretest_equality, bool(no), !Globals),
             globals.set_option(cross_compiling, bool(yes), !Globals)
         ;
             ( Target = target_c

@@ -66,6 +66,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
@@ -1047,6 +1048,13 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         (
             type_is_atomic(ModuleInfo0, Type),
             not type_has_user_defined_equality_pred(ModuleInfo0, Type, _)
+        ->
+            Unification = simple_test(X, Y)
+        ;
+            % Unification of c_pointers is a runtime error unless introduced by
+            % the compiler.
+            Type = c_pointer_type,
+            goal_info_has_feature(GoalInfo, feature_pretest_equality_condition)
         ->
             Unification = simple_test(X, Y)
         ;

@@ -459,6 +459,11 @@
             % constant, can be done by casting them both to integers and
             % comparing the integers for equality.
 
+    ;       pretest_equality_cast_pointers
+            % Should be set to yes if the test of whether two input arguments
+            % are object identical should be done by casting the arguments to a
+            % generic pointer type. Otherwise they will be cast to integers.
+
     ;       can_compare_compound_values
             % Should be set to yes if the target back end supports comparison
             % of non-atomic values with builtin operators.
@@ -1297,6 +1302,7 @@ option_defaults_2(internal_use_option, [
     trace_stack_layout                  -   bool(no),
     body_typeinfo_liveness              -   bool(no),
     can_compare_constants_as_ints       -   bool(no),
+    pretest_equality_cast_pointers      -   bool(no),
     can_compare_compound_values         -   bool(no),
     lexically_order_constructors        -   bool(no),
     mutable_always_boxed                -   bool(yes),
@@ -2147,6 +2153,7 @@ long_option("procid-stack-layout",  procid_stack_layout).
 long_option("trace-stack-layout",   trace_stack_layout).
 long_option("body-typeinfo-liveness",   body_typeinfo_liveness).
 long_option("can-compare-constants-as-ints",    can_compare_constants_as_ints).
+long_option("pretest-equality-cast-pointers",   pretest_equality_cast_pointers).
 long_option("can-compare-compound-values",      can_compare_compound_values).
 long_option("lexically-order-constructors",
                                     lexically_order_constructors).
@@ -4400,6 +4407,11 @@ options_help_compilation_model -->
 
         % This is a developer only option.
 %       "--can-compare-constants-as-ints",
+%       "(This option is not for general use.)",
+%       For documentation, see the comment in the type declaration.
+
+        % This is a developer only option.
+%       "--pretest-equality-cast-pointers",
 %       "(This option is not for general use.)",
 %       For documentation, see the comment in the type declaration.
 

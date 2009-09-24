@@ -1945,18 +1945,21 @@ maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes, Goal0, Goal,
         Goal = Goal0
     ;
         ShouldPretestEq = yes,
-        info_new_named_var(int_type, "CastX", CastX, !Info),
-        info_new_named_var(int_type, "CastY", CastY, !Info),
+        CastType = get_pretest_equality_cast_type(!.Info),
+        info_new_named_var(CastType, "CastX", CastX, !Info),
+        info_new_named_var(CastType, "CastY", CastY, !Info),
         generate_cast(unsafe_type_cast, X, CastX, Context, CastXGoal0),
         generate_cast(unsafe_type_cast, Y, CastY, Context, CastYGoal0),
         goal_add_feature(feature_keep_constant_binding, CastXGoal0, CastXGoal),
         goal_add_feature(feature_keep_constant_binding, CastYGoal0, CastYGoal),
         create_pure_atomic_complicated_unification(CastX, rhs_var(CastY),
-            Context, umc_explicit, [], EqualityGoal),
+            Context, umc_explicit, [], EqualityGoal0),
+        goal_add_feature(feature_pretest_equality_condition,
+            EqualityGoal0, EqualityGoal),
         CondGoalExpr = conj(plain_conj, [CastXGoal, CastYGoal, EqualityGoal]),
         goal_info_init(GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, ContextGoalInfo),
-        CondGoal= hlds_goal(CondGoalExpr, ContextGoalInfo),
+        CondGoal = hlds_goal(CondGoalExpr, ContextGoalInfo),
         (
             MaybeCompareRes = no,
             EqualGoal = true_goal_with_context(Context),
@@ -1985,6 +1988,20 @@ should_pretest_equality(Info) = ShouldPretestEq :-
     ModuleInfo = Info ^ upi_module_info,
     module_info_get_globals(ModuleInfo, Globals),
     lookup_bool_option(Globals, should_pretest_equality, ShouldPretestEq).
+
+:- func get_pretest_equality_cast_type(unify_proc_info) = mer_type.
+
+get_pretest_equality_cast_type(Info) = CastType :-
+    ModuleInfo = Info ^ upi_module_info,
+    module_info_get_globals(ModuleInfo, Globals),
+    lookup_bool_option(Globals, pretest_equality_cast_pointers, CastPointers),
+    (
+        CastPointers = yes,
+        CastType = c_pointer_type
+    ;
+        CastPointers = no,
+        CastType = int_type
+    ).
 
 %-----------------------------------------------------------------------------%
 
