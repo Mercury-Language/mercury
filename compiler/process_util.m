@@ -311,7 +311,9 @@ raise_signal(_::in, IO::di, IO::uo).
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     IO = IO0;
+#ifdef MR_HAVE_KILL
     kill(Pid, Signal);
+#endif
 ").
 
 :- pragma foreign_proc("C",
