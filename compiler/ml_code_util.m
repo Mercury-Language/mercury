@@ -1588,12 +1588,25 @@ ml_gen_field_name(MaybeFieldName, ArgNum) = FieldName :-
     % not word-sized, because the code for `arg' etc. in std_util.m rely
     % on all arguments being word-sized.
     % XXX Currently we box such types even for the other MLDS based back-ends
-    % that don't need it, e.g. the .NET and Java back-ends. This routine should
-    % be modified to check the target.
+    % that don't need it, e.g. the .NET back-end.
     %
 ml_must_box_field_type(ModuleInfo, Type) :-
-    classify_type(ModuleInfo, Type) = Category,
-    ml_must_box_field_type_category(Category) = yes.
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        ( Target = target_c
+        ; Target = target_il
+        ; Target = target_asm
+        ; Target = target_x86_64
+        ; Target = target_erlang
+        ),
+        classify_type(ModuleInfo, Type) = Category,
+        MustBox = ml_must_box_field_type_category(Category)
+    ;
+        Target = target_java,
+        MustBox = no
+    ),
+    MustBox = yes.
 
 :- func ml_must_box_field_type_category(type_ctor_category) = bool.
 
@@ -2849,14 +2862,14 @@ ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval, BoxedRval,
         % specially, since boxed floats normally get heap allocated, whereas
         % for other types boxing is just a cast (casts are OK in static
         % initializers, but calls to malloc() are not).
-        %
-        % [For the .NET and Java back-ends, this code currently never gets
-        % called, since currently we don't support static ground term
-        % optimization for those back-ends.]
-        % XXX we now support static ground terms for Java
-
         ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
         ; Type = mlds_native_float_type
+        ),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_target(Globals, Target),
+        ( Target = target_c
+        ; Target = target_asm
+        ; Target = target_x86_64
         )
     ->
         % Generate a local static constant for this float.

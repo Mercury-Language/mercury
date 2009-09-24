@@ -2128,10 +2128,12 @@ get_java_type_initializer(Type) = Initializer :-
         Type = mercury_type(_, CtorCat, _),
         (
             ( CtorCat = ctor_cat_builtin(cat_builtin_int)
-            ; CtorCat = ctor_cat_builtin(cat_builtin_char)
             ; CtorCat = ctor_cat_builtin(cat_builtin_float)
             ),
             Initializer = "0"
+        ;
+            CtorCat = ctor_cat_builtin(cat_builtin_char),
+            Initializer = "'\\u0000'"
         ;
             ( CtorCat = ctor_cat_builtin(cat_builtin_string)
             ; CtorCat = ctor_cat_system(_)
@@ -2148,9 +2150,11 @@ get_java_type_initializer(Type) = Initializer :-
     ;
         ( Type = mlds_native_int_type
         ; Type = mlds_native_float_type
-        ; Type = mlds_native_char_type
         ),
         Initializer = "0"
+    ;
+        Type = mlds_native_char_type,
+        Initializer = "'\\u0000'"
     ;
         Type = mlds_native_bool_type,
         Initializer = "false"

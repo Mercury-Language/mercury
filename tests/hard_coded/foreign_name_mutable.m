@@ -37,6 +37,7 @@ main(!IO) :-
 	increment_global(IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	FOO++;
+	int x = (Integer) FOO;
+	FOO = x + 1;
 	IO = IO0;
 ").

@@ -52,7 +52,7 @@ main(!IO) :-
 	check_dummy_type(X::in, Result::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	Result = (X == FOO_dummy_type) ? bool.ML_YES : bool.ML_NO;
+	Result = (X == FOO_dummy_type) ? bool.YES : bool.NO;
 	IO = IO0;
 ").
 
@@ -69,6 +69,6 @@ main(!IO) :-
 	check_poly_dummy_type(X::in, Result::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	Result = (X == BAR_poly_dummy_type) ? bool.ML_YES : bool.ML_NO;
+	Result = (X == BAR_poly_dummy_type) ? bool.YES : bool.NO;
 	IO = IO0;
 ").
