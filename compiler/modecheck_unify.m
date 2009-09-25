@@ -48,8 +48,10 @@
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_info.
-:- import_module check_hlds.modes.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.modecheck_goal.
+:- import_module check_hlds.modecheck_util.
+:- import_module check_hlds.modes.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.

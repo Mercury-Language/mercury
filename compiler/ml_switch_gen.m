@@ -66,7 +66,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module libs.globals.
-:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 

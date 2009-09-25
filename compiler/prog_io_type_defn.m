@@ -567,7 +567,7 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         ;
             MaybeNameParams = ok2(Name, Params),
             (
-                RepnType = SolverTypeDetails ^ representation_type,
+                RepnType = SolverTypeDetails ^ std_representation_type,
                 type_contains_var(RepnType, Var),
                 not list.member(Var, Params)
             ->

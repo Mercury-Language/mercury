@@ -347,7 +347,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             % types for RTTI purposes. Which may cause problems with construct,
             % similar to those for abstract types.
             TypeBody = hlds_solver_type(SolverTypeDetails, _MaybeUserEqComp),
-            RepnType = SolverTypeDetails ^ representation_type,
+            RepnType = SolverTypeDetails ^ std_representation_type,
             % There can be no existentially typed args to an equivalence.
             UnivTvars = TypeArity,
             ExistTvars = [],

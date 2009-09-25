@@ -59,6 +59,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.

@@ -38,9 +38,12 @@
 :- include_module mark_static_terms.    % annotation
 
 % Phase 5-ml: compile HLDS to MLDS
+:- include_module ml_proc_gen.
 :- include_module ml_code_gen.
    :- include_module ml_call_gen.
+   :- include_module ml_foreign_proc_gen.
    :- include_module ml_closure_gen.
+   :- include_module ml_commit_gen.
    :- include_module ml_switch_gen.
       :- include_module ml_simplify_switch.
       :- include_module ml_string_switch.
@@ -48,7 +51,9 @@
       :- include_module ml_lookup_switch.
    :- include_module ml_type_gen.
    :- include_module ml_unify_gen.
+:- include_module ml_gen_info.
 :- include_module ml_code_util.
+:- include_module ml_accurate_gc.
 :- include_module ml_global_data.
 :- include_module rtti_to_mlds.
 

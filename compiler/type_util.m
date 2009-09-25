@@ -83,6 +83,8 @@
 :- pred type_definitely_has_no_user_defined_equality_pred(module_info::in,
     mer_type::in) is semidet.
 
+:- pred is_solver_var(vartypes::in, module_info::in, prog_var::in) is semidet.
+
     % Succeed iff the principal type constructor for the given type is
     % declared a solver type, or if the type is a pred or func type.  Pred
     % and func types are considered solver types because higher-order terms
@@ -528,6 +530,10 @@ ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
     list.foldl(type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo),
         ArgTypes, !SeenTypes).
 
+is_solver_var(VarTypes, ModuleInfo, Var) :-
+    map.lookup(VarTypes, Var, VarType),
+    type_is_solver_type(ModuleInfo, VarType).
+
 type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
     type_to_type_defn_body(ModuleInfo, Type, TypeBody),
     (
@@ -548,7 +554,7 @@ type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
         TypeBody = hlds_eqv_type(ActualType)
     ),
     type_has_solver_type_details(ModuleInfo, ActualType, SolverTypeDetails),
-    SolverTypeDetails ^ init_pred = solver_init_automatic(_).
+    SolverTypeDetails ^ std_init_pred = solver_init_automatic(_).
 
 type_is_solver_type(ModuleInfo, Type) :-
     (

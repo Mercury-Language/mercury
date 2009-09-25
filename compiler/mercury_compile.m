@@ -145,7 +145,7 @@
 :- import_module ml_backend.add_heap_ops.          % HLDS -> HLDS
 :- import_module ml_backend.mark_static_terms.     % HLDS -> HLDS
 :- import_module ml_backend.mlds.                  % MLDS data structure
-:- import_module ml_backend.ml_code_gen.
+:- import_module ml_backend.ml_proc_gen.
 :- import_module ml_backend.rtti_to_mlds.          % HLDS/RTTI -> MLDS
 :- import_module ml_backend.ml_elim_nested.        % MLDS -> MLDS
 :- import_module ml_backend.ml_tailcall.           % MLDS -> MLDS

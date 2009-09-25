@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,9 +79,9 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     SolverType        = defined_type(TypeSymName, Args, kind_star),
     Arity             = length(TypeParams),
 
-    RepnType          = SolverTypeDetails ^ representation_type,
-    AnyInst           = SolverTypeDetails ^ any_inst,
-    GroundInst        = SolverTypeDetails ^ ground_inst,
+    RepnType          = SolverTypeDetails ^ std_representation_type,
+    AnyInst           = SolverTypeDetails ^ std_any_inst,
+    GroundInst        = SolverTypeDetails ^ std_ground_inst,
 
     InAnyMode         = in_mode(AnyInst),
     InGroundMode      = in_mode(GroundInst),
@@ -184,8 +184,8 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     Arity             = length(TypeParams),
 
-    AnyInst           = SolverTypeDetails ^ any_inst,
-    GroundInst        = SolverTypeDetails ^ ground_inst,
+    AnyInst           = SolverTypeDetails ^ std_any_inst,
+    GroundInst        = SolverTypeDetails ^ std_ground_inst,
 
     InAnyMode         = in_mode(AnyInst),
     InGroundMode      = in_mode(GroundInst),

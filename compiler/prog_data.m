@@ -1704,8 +1704,8 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
     %
 :- type unify_compare
     --->    unify_compare(
-                unify               :: maybe(equality_pred),
-                compare             :: maybe(comparison_pred)
+                uc_unify                :: maybe(equality_pred),
+                uc_compare              :: maybe(comparison_pred)
             )
     ;       abstract_noncanonical_type(is_solver_type).
 
@@ -1719,17 +1719,17 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
     %
 :- type solver_type_details
     --->    solver_type_details(
-                representation_type :: mer_type,
-                init_pred           :: solver_type_init,
-                ground_inst         :: mer_inst,
-                any_inst            :: mer_inst,
-                mutable_items       :: list(item)
+                std_representation_type :: mer_type,
+                std_init_pred           :: solver_type_init,
+                std_ground_inst         :: mer_inst,
+                std_any_inst            :: mer_inst,
+                std_mutable_items       :: list(item)
             ).
 
     % An init_pred specifies the name of an impure user-defined predicate
-    % used to initialise solver type values (the compiler will insert
-    % calls to this predicate to convert free solver type variables to
-    % inst any variables where necessary.)
+    % used to initialise solver type values (the compiler will insert calls
+    % to this predicate to convert free solver type variables to inst any
+    % variables where necessary.)
     %
 :- type init_pred   ==  sym_name.
 

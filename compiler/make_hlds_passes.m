@@ -375,8 +375,9 @@ add_pass_1_type_defn(ItemTypeDefnInfo, !Status, !ModuleInfo, !Specs) :-
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
         add_solver_type_decl_items(TVarSet, SymName, TypeParams,
             SolverTypeDetails, Context, !Status, !ModuleInfo, !Specs),
-        add_solver_type_mutable_items_pass_1(SolverTypeDetails ^ mutable_items,
-            !Status, !ModuleInfo, !Specs)
+        MutableItems = SolverTypeDetails ^ std_mutable_items,
+        add_solver_type_mutable_items_pass_1(MutableItems, !Status,
+            !ModuleInfo, !Specs)
     ;
         true
     ).
@@ -717,8 +718,9 @@ add_pass_2_type_defn(ItemTypeDefn, Status, !ModuleInfo, !Specs) :-
     module_add_type_defn(VarSet, Name, Args, TypeDefn, Cond, Context,
         Status, !ModuleInfo, !Specs),
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
-        add_solver_type_mutable_items_pass_2(SolverTypeDetails ^ mutable_items,
-            Status, _, !ModuleInfo, !Specs)
+        MutableItems = SolverTypeDetails ^ std_mutable_items,
+        add_solver_type_mutable_items_pass_2(MutableItems, Status, _,
+            !ModuleInfo, !Specs)
     ;
         true
     ).
@@ -1107,7 +1109,7 @@ add_pass_3_type_defn(ItemTypeDefn, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ->
         add_solver_type_clause_items(SymName, TypeParams, SolverTypeDetails,
             Context, Status, _, !ModuleInfo, !QualInfo, !Specs),
-        MutableItems = SolverTypeDetails ^ mutable_items,
+        MutableItems = SolverTypeDetails ^ std_mutable_items,
         add_solver_type_mutable_items_clauses(MutableItems, Status, _,
             !ModuleInfo, !QualInfo, !Specs)
     ;

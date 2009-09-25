@@ -262,6 +262,8 @@
     %
 :- pred flatten_conj(list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
+:- func flatten_disjs(list(hlds_goal)) = list(hlds_goal).
+
     % Create a conjunction of the specified type using the specified goals,
     % This fills in the hlds_goal_info.
     %
@@ -1476,6 +1478,17 @@ flatten_conj([Goal | Goals0], Goals) :-
         list.append(SubGoals, Goals1, Goals)
     ;
         Goals = [Goal | Goals1]
+    ).
+
+flatten_disjs(Disjs) = list.foldr(flatten_disj, Disjs, []).
+
+:- func flatten_disj(hlds_goal, list(hlds_goal)) = list(hlds_goal).
+
+flatten_disj(Disj, Disjs0) = Disjs :-
+    ( Disj = hlds_goal(disj(Disjs1), _GoalInfo) ->
+        Disjs = list.foldr(flatten_disj, Disjs1, Disjs0)
+    ;
+        Disjs = [Disj | Disjs0]
     ).
 
 %-----------------------------------------------------------------------------%

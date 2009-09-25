@@ -25,6 +25,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module map.
 
 %-----------------------------------------------------------------------------%
 
@@ -85,6 +86,12 @@
 
 :- pred modes_to_arg_modes(module_info::in, list(mer_mode)::in,
     list(mer_type)::in, list(arg_mode)::out) is det.
+
+    % Given a list of variables and their corresponding modes,
+    % return a list containing only those variables which have an output mode.
+    %
+:- func select_output_vars(module_info, list(Var), list(mer_mode),
+    map(Var, mer_type)) = list(Var).
 
 :- func mode_get_initial_inst(module_info, mer_mode) = mer_inst.
 
@@ -166,7 +173,7 @@
     % and after a branch make sure that any information added by the
     % functor test gets added to the instmap for the case.
     %
-:- pred fixup_switch_var(prog_var::in, instmap::in, instmap::in,
+:- pred fixup_instmap_switch_var(prog_var::in, instmap::in, instmap::in,
     hlds_goal::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -203,7 +210,6 @@
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
@@ -324,6 +330,37 @@ base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
         ArgMode = top_out
     ;
         ArgMode = top_unused
+    ).
+
+select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
+    (
+        HeadVars = [],
+        HeadModes = [],
+        OutputVars = []
+    ;
+        HeadVars = [Var | Vars],
+        HeadModes = [Mode | Modes],
+        map.lookup(VarTypes, Var, VarType),
+        mode_to_arg_mode(ModuleInfo, Mode, VarType, Top),
+        (
+            Top = top_out,
+            OutputVars1 = select_output_vars(ModuleInfo, Vars, Modes,
+                VarTypes),
+            OutputVars = [Var | OutputVars1]
+        ;
+            ( Top = top_in
+            ; Top = top_unused
+            ),
+            OutputVars = select_output_vars(ModuleInfo, Vars, Modes, VarTypes)
+        )
+    ;
+        HeadVars = [],
+        HeadModes = [_ | _],
+        unexpected(this_file, "select_output_vars: length mismatch")
+    ;
+        HeadVars = [_ | _],
+        HeadModes = [],
+        unexpected(this_file, "select_output_vars: length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1659,7 +1696,7 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
 
 %-----------------------------------------------------------------------------%
 
-fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
+fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     instmap_lookup_var(InstMap0, Var, Inst0),

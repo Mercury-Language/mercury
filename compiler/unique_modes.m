@@ -83,12 +83,13 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
-:- import_module check_hlds.modecheck_call.
-:- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
-:- import_module check_hlds.modes.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.modecheck_call.
+:- import_module check_hlds.modecheck_unify.
+:- import_module check_hlds.modecheck_util.
+:- import_module check_hlds.modes.
 :- import_module hlds.instmap.
 :- import_module libs.
 :- import_module libs.compiler_util.
@@ -1003,7 +1004,7 @@ unique_modes_check_case_list([Case0 | Cases0], Var, [Case | Cases],
     ),
 
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal),
+    fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal1, Goal),
     Case = case(MainConsId, OtherConsIds, Goal),
 
     mode_info_set_instmap(InstMap0, !ModeInfo),

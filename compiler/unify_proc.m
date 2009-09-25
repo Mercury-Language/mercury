@@ -603,7 +603,7 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         % (The pred_id and proc_id will be figured out by type checking
         % and mode analysis.)
 
-        HowToInit = SolverTypeDetails ^ init_pred,
+        HowToInit = SolverTypeDetails ^ std_init_pred,
         (
             HowToInit = solver_init_automatic(InitPred)
         ;

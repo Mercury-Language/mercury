@@ -19,9 +19,8 @@
 
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
@@ -74,38 +73,6 @@
 :- pred ml_gen_proc_addr_rval(pred_id::in, proc_id::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Given a source type and a destination type, and given an source rval
-    % holding a value of the source type, produce an rval that converts
-    % the source rval to the destination type.
-    %
-:- pred ml_gen_box_or_unbox_rval(module_info::in, mer_type::in, mer_type::in,
-    box_policy::in, mlds_rval::in, mlds_rval::out) is det.
-
-    % ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName,
-    %   Context, ForClosureWrapper, ArgNum,
-    %   ArgLval, ConvDecls, ConvInputStatements, ConvOutputStatements):
-    %
-    % This is like `ml_gen_box_or_unbox_rval', except that it works on lvals
-    % rather than rvals. Given a source type and a destination type,
-    % a source lval holding a value of the source type, and a name to base
-    % the name of the local temporary variable on, this procedure produces
-    % an lval of the destination type, the declaration for the local temporary
-    % used (if any), code to assign from the source lval (suitable converted)
-    % to the destination lval, and code to assign from the destination lval
-    % (suitable converted) to the source lval.
-    %
-    % If ForClosureWrapper = yes, then the type_info for type variables
-    % in CallerType may not be available in the current procedure, so the GC
-    % tracing code for the ConvDecls (if any) should obtain the type_info
-    % from the ArgNum-th entry in the `type_params' local.
-    % (If ForClosureWrapper = no, then ArgNum is unused.)
-    %
-:- pred ml_gen_box_or_unbox_lval(mer_type::in, mer_type::in, box_policy::in,
-    mlds_lval::in, mlds_var_name::in, prog_context::in, bool::in, int::in,
-    mlds_lval::out, list(mlds_defn)::out,
-    list(statement)::out, list(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
     % Generate the appropriate MLDS type for a continuation function
     % for a nondet procedure whose output arguments have the specified types.
     %
@@ -124,11 +91,14 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_module.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module ml_backend.ml_accurate_gc.
 :- import_module ml_backend.ml_closure_gen.
+:- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
@@ -739,173 +709,6 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 
 ml_gen_mem_addr(Lval) =
     (if Lval = ml_mem_ref(Rval, _) then Rval else ml_mem_addr(Lval)).
-
-ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
-        ArgRval) :-
-    % Convert VarRval, of type SourceType, to ArgRval, of type DestType.
-    (
-        BoxPolicy = always_boxed,
-        ArgRval = VarRval
-    ;
-        BoxPolicy = native_if_possible,
-        (
-            % If converting from polymorphic type to concrete type, then unbox.
-            SourceType = type_variable(_, _),
-            DestType \= type_variable(_, _)
-        ->
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(unbox(MLDS_DestType), VarRval)
-        ;
-            % If converting from concrete type to polymorphic type, then box.
-            SourceType \= type_variable(_, _),
-            DestType = type_variable(_, _)
-        ->
-            MLDS_SourceType =
-                mercury_type_to_mlds_type(ModuleInfo, SourceType),
-            ArgRval = ml_unop(box(MLDS_SourceType), VarRval)
-        ;
-            % If converting to float, cast to mlds_generic_type and then unbox.
-            DestType = builtin_type(builtin_type_float),
-            SourceType \= builtin_type(builtin_type_float)
-        ->
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(unbox(MLDS_DestType),
-                ml_unop(cast(mlds_generic_type), VarRval))
-        ;
-            % If converting from float, box and then cast the result.
-            SourceType = builtin_type(builtin_type_float),
-            DestType \= builtin_type(builtin_type_float)
-        ->
-            MLDS_SourceType =
-                mercury_type_to_mlds_type(ModuleInfo, SourceType),
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(cast(MLDS_DestType),
-                ml_unop(box(MLDS_SourceType), VarRval))
-        ;
-            % If converting from an array(T) to array(X) where X is a concrete
-            % instance, we should insert a cast to the concrete instance.
-            % Also when converting to array(T) from array(X) we should cast
-            % to array(T).
-            type_to_ctor_and_args(SourceType, SourceTypeCtor, SourceTypeArgs),
-            type_to_ctor_and_args(DestType, DestTypeCtor, DestTypeArgs),
-            (
-                type_ctor_is_array(SourceTypeCtor),
-                SourceTypeArgs = [type_variable(_, _)]
-            ;
-                type_ctor_is_array(DestTypeCtor),
-                DestTypeArgs = [type_variable(_, _)]
-            ),
-            % Don't insert redundant casts if the types are the same, since
-            % the extra assignments introduced can inhibit tail call
-            % optimisation.
-            SourceType \= DestType
-        ->
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
-        ;
-            % If converting from one concrete type to a different one, then
-            % cast. This is needed to handle construction/deconstruction
-            % unifications for no_tag types.
-            %
-            \+ type_unify(SourceType, DestType, [], map.init, _)
-        ->
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
-        ;
-            % Otherwise leave unchanged.
-            ArgRval = VarRval
-        )
-    ).
-
-ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
-        Context, ForClosureWrapper, ArgNum, ArgLval, ConvDecls,
-        ConvInputStatements, ConvOutputStatements, !Info) :-
-    % First see if we can just convert the lval as an rval;
-    % if no boxing/unboxing is required, then ml_box_or_unbox_rval
-    % will return its argument unchanged, and so we're done.
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_box_or_unbox_rval(ModuleInfo, CalleeType, CallerType, BoxPolicy,
-        ml_lval(VarLval), BoxedRval),
-    ( BoxedRval = ml_lval(VarLval) ->
-        ArgLval = VarLval,
-        ConvDecls = [],
-        ConvInputStatements = [],
-        ConvOutputStatements = []
-    ;
-        % If that didn't work, then we need to declare a fresh variable
-        % to use as the arg, and to generate statements to box/unbox
-        % that fresh arg variable and assign it to/from the output
-        % argument whose address we were passed.
-
-        % Generate a declaration for the fresh variable.
-        %
-        % Note that generating accurate GC tracing code for this
-        % variable requires some care, because CalleeType might be a
-        % type variable from the callee, not from the caller,
-        % and we can't generate type_infos for type variables
-        % from the callee.  Hence we need to call the version of
-        % ml_gen_gc_statement which takes two types:
-        % the CalleeType is used to determine the type for the
-        % temporary variable declaration, but the CallerType is
-        % used to construct the type_info.
-
-        ml_gen_info_new_conv_var(ConvVarSeq, !Info),
-        VarName = mlds_var_name(VarNameStr, MaybeNum),
-        ConvVarSeq = conv_seq(ConvVarNum),
-        string.format("conv%d_%s", [i(ConvVarNum), s(VarNameStr)],
-            ConvVarName),
-        ArgVarName = mlds_var_name(ConvVarName, MaybeNum),
-        ml_gen_type(!.Info, CalleeType, MLDS_CalleeType),
-        (
-            ForClosureWrapper = yes,
-            % For closure wrappers, the argument type_infos are
-            % stored in the `type_params' local, so we need to
-            % handle the GC tracing code specially
-            ( CallerType = type_variable(_, _) ->
-                ml_gen_local_for_output_arg(ArgVarName, CalleeType, ArgNum,
-                    Context, ArgVarDecl, !Info)
-            ;
-                unexpected(this_file, "invalid CalleeType for closure wrapper")
-            )
-        ;
-            ForClosureWrapper = no,
-            ml_gen_gc_statement_poly(ArgVarName, CalleeType, CallerType,
-                Context, GC_Statements, !Info),
-            ArgVarDecl = ml_gen_mlds_var_decl(mlds_data_var(ArgVarName),
-                MLDS_CalleeType, GC_Statements, mlds_make_context(Context))
-        ),
-        ConvDecls = [ArgVarDecl],
-
-        % Create the lval for the variable and use it for the argument lval.
-        ml_gen_var_lval(!.Info, ArgVarName, MLDS_CalleeType, ArgLval),
-
-        CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
-        (
-            CallerIsDummy = is_dummy_type,
-            % If it is a dummy argument type (e.g. io.state),
-            % then we don't need to bother assigning it.
-            ConvInputStatements = [],
-            ConvOutputStatements = []
-        ;
-            CallerIsDummy = is_not_dummy_type,
-            % Generate statements to box/unbox the fresh variable and assign it
-            % to/from the output argument whose address we were passed.
-
-            % Assign to the freshly generated arg variable.
-            ml_gen_box_or_unbox_rval(ModuleInfo, CallerType, CalleeType,
-                BoxPolicy, ml_lval(VarLval), ConvertedVarRval),
-            AssignInputStatement = ml_gen_assign(ArgLval, ConvertedVarRval,
-                Context),
-            ConvInputStatements = [AssignInputStatement],
-
-            % Assign from the freshly generated arg variable.
-            ml_gen_box_or_unbox_rval(ModuleInfo, CalleeType, CallerType,
-                BoxPolicy, ml_lval(ArgLval), ConvertedArgRval),
-            AssignOutputStatement = ml_gen_assign(VarLval, ConvertedArgRval,
-                Context),
-            ConvOutputStatements = [AssignOutputStatement]
-        )
-    ).
 
 %-----------------------------------------------------------------------------%
 %

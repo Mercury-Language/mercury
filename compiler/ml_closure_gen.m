@@ -19,7 +19,7 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
-:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
@@ -65,23 +65,12 @@
     ;       typeclass_info_closure
     ;       special_pred_closure.
 
-    % ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context,
-    %   LocalVarDefn):
-    %
-    % Generate a declaration for a local variable with the specified
-    % VarName and Type.  However, don't use the normal GC tracing code;
-    % instead, generate GC tracing code that gets the typeinfo from
-    % the ArgNum-th entry in `type_params'.
-    %
-:- pred ml_gen_local_for_output_arg(mlds_var_name::in, mer_type::in, int::in,
-    prog_context::in, mlds_defn::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+% XXX The modules from the LLDS backend should not be used here.
 :- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
@@ -91,15 +80,14 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-
-% XXX The following modules depend on the LLDS,
-% so ideally they should not be used here.
 :- import_module ll_backend.
 :- import_module ll_backend.continuation_info. % for `generate_closure_layout'
 :- import_module ll_backend.llds.              % for `layout_locn'
 :- import_module ll_backend.stack_layout.      % for `represent_locn_as_int'
 :- import_module mdbcomp.prim_data.
+:- import_module ml_backend.ml_accurate_gc.
 :- import_module ml_backend.ml_call_gen.
+:- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.rtti_to_mlds.
@@ -1181,90 +1169,6 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
     TypeParamsGCInit = statement(ml_stmt_atomic(inline_target_code(
         ml_target_c, TypeParamsGCInitFragments)), MLDS_Context),
     GC_Decls = [ClosureLayoutPtrDecl, TypeParamsDecl].
-
-ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
-        !Info) :-
-    % Generate a declaration for a corresponding local variable.
-    % However, don't use the normal GC tracing code; instead,
-    % we need to get the typeinfo from `type_params', using the following code:
-    %
-    %   MR_TypeInfo     type_info;
-    %   MR_MemoryList   allocated_memory_cells = NULL;
-    %   type_info = MR_make_type_info_maybe_existq(type_params,
-    %       closure_layout->MR_closure_arg_pseudo_type_info[<ArgNum> - 1],
-    %           NULL, NULL, &allocated_memory_cells);
-    %
-    %   private_builtin__gc_trace_1_0(type_info, &<VarName>);
-    %
-    %   MR_deallocate(allocated_memory_cells);
-    %
-    MLDS_Context = mlds_make_context(Context),
-
-    ClosureLayoutPtrName = mlds_var_name("closure_layout_ptr", no),
-    % This type is really `const MR_Closure_Layout *', but there's no easy
-    % way to represent that in the MLDS; using MR_Box instead works fine.
-    ClosureLayoutPtrType = mlds_generic_type,
-    ml_gen_var_lval(!.Info, ClosureLayoutPtrName, ClosureLayoutPtrType,
-        ClosureLayoutPtrLval),
-
-    TypeParamsName = mlds_var_name("type_params", no),
-    % This type is really MR_TypeInfoParams, but there's no easy way to
-    % represent that in the MLDS; using MR_Box instead works fine.
-    TypeParamsType = mlds_generic_type,
-    ml_gen_var_lval(!.Info, TypeParamsName, TypeParamsType,
-        TypeParamsLval),
-
-    TypeInfoName = mlds_var_name("type_info", no),
-    % The type for this should match the type of the first argument
-    % of private_builtin.gc_trace/1, i.e. `mutvar(T)', which is a no_tag type
-    % whose representation is c_pointer.
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    TypeInfoMercuryType = c_pointer_type,
-    TypeInfoType = mercury_type_to_mlds_type(ModuleInfo, TypeInfoMercuryType),
-    ml_gen_var_lval(!.Info, TypeInfoName, TypeInfoType, TypeInfoLval),
-    TypeInfoDecl = ml_gen_mlds_var_decl(mlds_data_var(TypeInfoName),
-        TypeInfoType, gc_no_stmt, MLDS_Context),
-
-    ml_gen_gc_statement_with_typeinfo(VarName, Type,
-        ml_lval(TypeInfoLval), Context, GCStatement0, !Info),
-
-    (
-        (
-            GCStatement0 = gc_trace_code(CallTraceFuncCode)
-        ;
-            GCStatement0 = gc_initialiser(CallTraceFuncCode)
-        ),
-        MakeTypeInfoCode = ml_stmt_atomic(inline_target_code(ml_target_c, [
-            raw_target_code("{\n", []),
-            raw_target_code("MR_MemoryList allocated_mem = NULL;\n", []),
-            target_code_output(TypeInfoLval),
-            raw_target_code(" = (MR_C_Pointer) " ++
-                "MR_make_type_info_maybe_existq(\n\t", []),
-            target_code_input(ml_lval(TypeParamsLval)),
-            raw_target_code(", ((MR_Closure_Layout *)\n\t", []),
-            target_code_input(ml_lval(ClosureLayoutPtrLval)),
-            raw_target_code(string.format(")->" ++
-                "MR_closure_arg_pseudo_type_info[%d - 1],\n\t" ++
-                "NULL, NULL, &allocated_mem);\n",
-                [i(ArgNum)]), [])
-        ])),
-        DeallocateCode = ml_stmt_atomic(inline_target_code(ml_target_c, [
-            raw_target_code("MR_deallocate(allocated_mem);\n", []),
-            raw_target_code("}\n", [])
-        ])),
-        GCTraceCode = ml_stmt_block([TypeInfoDecl], [
-            statement(MakeTypeInfoCode, MLDS_Context),
-            CallTraceFuncCode,
-            statement(DeallocateCode, MLDS_Context)
-        ]),
-        GCStatement = gc_trace_code(statement(GCTraceCode, MLDS_Context))
-    ;
-        GCStatement0 = gc_no_stmt,
-        GCStatement = GCStatement0
-    ),
-    LocalVarDefn = ml_gen_mlds_var_decl(mlds_data_var(VarName),
-        mercury_type_to_mlds_type(ModuleInfo, Type),
-        GCStatement, MLDS_Context).
 
 :- pred ml_gen_closure_field_lvals(mlds_lval::in, int::in, int::in, int::in,
     list(mlds_lval)::out, ml_gen_info::in, ml_gen_info::out) is det.

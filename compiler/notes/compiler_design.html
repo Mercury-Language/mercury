@@ -766,11 +766,17 @@ so that the compiler does the right thing for options such as
 
 	<dd>
 	<ul>
-	<li> modes.m is the main mode analysis module.
-	  It checks that the code is mode-correct, reordering it
-	  if necessary, and annotates each goal with a delta-instmap
+	<li> modes.m is the top analysis module.
+	  It checks that procedures are mode-correct.
+	<li> modecheck_goal.m does most of the work.
+	  It handles the tasks that are common to all kinds of goals,
+	  including annotating each goal with a delta-instmap
 	  that specifies the changes in instantiatedness of each
-	  variable over that goal.
+	  variable over that goal, and does the analysis of several
+	  kinds of goals.
+	<li> modecheck_conj.m is the sub-module which analyses conjunctions
+	  It reorders code as necessary.
+	  unification goals.
 	<li> modecheck_unify.m is the sub-module which analyses
 	  unification goals.
 	  It also module qualifies data constructors.
@@ -782,13 +788,15 @@ so that the compiler does the right thing for options such as
 		<dl>
 		<dt> mode_info.m
 			<dd>
-			(the main data structure for mode analysis)
+			The main data structure for mode analysis.
 		<dt> delay_info.m
 			<dd>
-			(a sub-component of the mode_info data
+			A sub-component of the mode_info data
 			structure used for storing the information
 			for scheduling: which goals are currently
-			delayed, what variables they are delayed on, etc.)
+			delayed, what variables they are delayed on, etc.
+		<dt> modecheck_util.m
+			<dd> Utility predicates useful during mode analysis.
 		<dt> instmap.m (XXX in the hlds.m package)
 			<dd>
 			Defines the instmap and instmap_delta ADTs
@@ -805,7 +813,7 @@ so that the compiler does the right thing for options such as
 		<dt> mode_errors.m
 			<dd>
 			This module contains all the code to
-			print error messages for mode errors
+			generate error messages for mode errors
 		</dl>
 	<li> mode_util.m contains miscellaneous useful predicates dealing
 	  with modes (many of these are used by lots of later stages
@@ -1549,26 +1557,33 @@ Thus we have a pass which transforms the HLDS to handle trailing:
 
 <h4> 4b. MLDS code generation </h4>
 <ul>
-<li> ml_code_gen.m converts HLDS code to MLDS.
-	  The following sub-modules are used to handle different constructs:
+<li> ml_proc_gen.m is the top module of the package that converts HLDS code
+     to MLDS. Its main submodule is ml_code_gen.m, which handles the tasks
+     common to all kinds of goals, as well as the tasks specific to some
+     goals (conjunctions, disjunctions, if-then-elses, negations). For other
+     kinds of goals, ml_code_gen.m invokes some other submodules:
+	<ul>
+	<li> ml_unify_gen.m
+	<li> ml_closure_gen.m
+	<li> ml_call_gen.m
+	<li> ml_foreign_proc_gen.m
+	<li> ml_commit_gen.m
+	<li> ml_switch_gen.m, which calls upon:
 		<ul>
-		<li> ml_unify_gen.m
-		<li> ml_closure_gen.m
-		<li> ml_call_gen.m
-		<li> ml_switch_gen.m, which calls upon:
-			<ul>
-			<li> ml_lookup_switch.m
-			<li> ml_string_switch.m
-			<li> ml_tag_switch.m
-			<li> ml_simplify_switch.m
-			<li> switch_util.m (in the backend_libs.m package,
-			     since it is also used by LLDS back-end)
-			</ul>
+		<li> ml_lookup_switch.m
+		<li> ml_string_switch.m
+		<li> ml_tag_switch.m
+		<li> ml_simplify_switch.m
+		<li> switch_util.m (in the backend_libs.m package,
+		     since it is also used by LLDS back-end)
 		</ul>
-	  The main data structure used by the MLDS code generator is defined
-	  in ml_code_util.m, while global data structures (those created at
-	  module scope) are handled in ml_global_data.m.
-	  The module ml_util.m provides some general utility routines.
+	</ul>
+     The main data structure used by the MLDS code generator is defined
+     in ml_gen_info.m, while global data structures (those created at
+     module scope) are handled in ml_global_data.m.
+     The module ml_accurate_gc.m handles provisions for accurate garbage
+     collection, while the modules ml_code_util.m and ml_util.m provide
+     some general utility routines.
 <li> ml_type_gen.m converts HLDS types to MLDS.
 <li> type_ctor_info.m and base_typeclass_info.m generate
      the RTTI data structures defined in rtti.m and pseudo_type_info.m
@@ -1853,6 +1868,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2009-09-21 04:09:05 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2009-09-25 05:13:23 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

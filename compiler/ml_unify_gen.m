@@ -12,6 +12,26 @@
 % This module is part of the MLDS code generator.
 % It handles MLDS code generation for unifications.
 %
+% Code for deconstruction unifications
+%
+%
+%   det (cannot_fail) deconstruction:
+%       <succeeded = (X => f(A1, A2, ...))>
+%   ===>
+%       A1 = arg(X, f, 1);                  % extract arguments
+%       A2 = arg(X, f, 2);
+%       ...
+%
+%   semidet (can_fail) deconstruction:
+%       <X => f(A1, A2, ...)>
+%   ===>
+%       <succeeded = (X => f(_, _, _, _))>  % tag test
+%       if (succeeded) {
+%           A1 = arg(X, f, 1);              % extract arguments
+%           A2 = arg(X, f, 2);
+%           ...
+%       }
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_unify_gen.
@@ -21,7 +41,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
@@ -111,9 +131,9 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_gen.
+:- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_util.

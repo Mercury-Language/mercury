@@ -26,7 +26,7 @@
 :- interface.
 
 :- import_module ml_backend.mlds.
-:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_gen_info.
 
 :- pred ml_simplify_switch(mlds_stmt::in, mlds_context::in,
     statement::out, ml_gen_info::in, ml_gen_info::out) is det.
@@ -41,6 +41,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_switch_gen.
 :- import_module parse_tree.prog_type.
 
