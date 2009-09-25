@@ -27,10 +27,11 @@ In order to try this system you will need
 	  If you're reading this file from somewhere other than the
 	  Mercury distribution, try the Mercury homepage at
 	  	<http://www.mercury.csse.unimelb.edu.au>
+
 WARNING
 
-Please note that the Java backend is still an experimental feature.  It
-is still quite buggy in places and is sometimes completely broken. 
+Please note that the Java backend is still an experimental feature.
+It works quite well now but is not as mature as the C backends.
 
 -----------------------------------------------------------------------------
 
@@ -81,6 +82,12 @@ For more information about the foreign language interface, see the Mercury
 Language Reference Manual, which you can find at:
 	
      <http://www.mercury.csse.unimelb.edu.au/information/documentation.html>
+
+Some short programs may run much more slowly in the Java grade than the C
+grades.  The runtime is probably dominated by Java class loading and running
+in interpreted mode.  A long running program should perform reasonably well
+with a Just-In-Time compiler.  It may also be possible to use an Ahead-Of-Time
+Java compiler, but we haven't tried that yet.
 
 -----------------------------------------------------------------------------
 
