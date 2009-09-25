@@ -153,6 +153,7 @@ OTHER_PROGS= \
 	lambda_switch \
 	lambda_type \
 	lazy_list \
+	lco_term \
 	liveness_nonlocals \
 	livevals_seq \
 	long_name \

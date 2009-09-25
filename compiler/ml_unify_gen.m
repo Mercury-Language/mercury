@@ -885,18 +885,32 @@ ml_gen_field_take_address_assigns([], _, _, _, _, _, []).
 ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         CellLval, CellType, MaybeTag, Context, Info, [Assign | Assigns]) :-
     TakeAddrInfo = take_addr_info(AddrVar, Offset, ConsArgType, FieldType),
-    % XXX
-    % I am not sure that the types specified here are always the right ones,
-    % particularly in cases where the field whose address we are taking has
-    % a non-du type such as int or float. However, I can't think of a test case
-    % in which a predicate fills in a field of such a type after a *recursive*
-    % call, since recursive calls tend to generate values of recursive (i.e.
-    % discriminated union) types. -zs
-    SourceRval = ml_mem_addr(ml_field(MaybeTag, ml_lval(CellLval),
-        ml_field_offset(ml_const(mlconst_int(Offset))), FieldType, CellType)),
-    ml_gen_var(Info, AddrVar, AddrLval),
-    CastSourceRval = ml_unop(cast(mlds_ptr_type(ConsArgType)), SourceRval),
-    Assign = ml_gen_assign(AddrLval, CastSourceRval, Context),
+
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    (
+        HighLevelData = no,
+        % XXX
+        % I am not sure that the types specified here are always the right ones,
+        % particularly in cases where the field whose address we are taking has
+        % a non-du type such as int or float. However, I can't think of a test case
+        % in which a predicate fills in a field of such a type after a *recursive*
+        % call, since recursive calls tend to generate values of recursive (i.e.
+        % discriminated union) types. -zs
+        SourceRval = ml_mem_addr(ml_field(MaybeTag, ml_lval(CellLval),
+            ml_field_offset(ml_const(mlconst_int(Offset))), FieldType, CellType)),
+        ml_gen_var(Info, AddrVar, AddrLval),
+        CastSourceRval = ml_unop(cast(mlds_ptr_type(ConsArgType)), SourceRval),
+        Assign = ml_gen_assign(AddrLval, CastSourceRval, Context)
+    ;
+        HighLevelData = yes,
+        % For high-level data lco.m uses a different transformation where we
+        % simply pass the base address of the cell. The transformation does not
+        % generate unifications.
+        ml_gen_var(Info, AddrVar, AddrLval),
+        Assign = ml_gen_assign(AddrLval, ml_lval(CellLval), Context)
+    ),
     ml_gen_field_take_address_assigns(TakeAddrInfos, CellLval, CellType,
         MaybeTag, Context, Info, Assigns).
 

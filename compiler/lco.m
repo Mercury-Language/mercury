@@ -8,6 +8,7 @@
 %
 % File: lco.m.
 % Author: zs.
+% Modifications by wangp.
 %
 % Transform predicates with calls that are tail recursive modulo construction
 % where (1) all recursive calls have the same args participating in the "modulo
@@ -34,8 +35,13 @@
 %       C <= [H | NT]
 %   )
 %
+%-----------------------------------------------------------------------------%
+%
+% TRANSFORMATION FOR LOW-LEVEL DATA
+%
 % Concrete example of what the original predicate and its return-via-memory
-% variant should look like for append:
+% variant should look like for append, in grades for which it is possible to
+% take the address of a field:
 %
 % app(list(T)::in, list(T)::in, list(T)::out)
 % app(A, B, C) :-
@@ -44,7 +50,7 @@
 %       C := B
 %   ;
 %       A => [H | T],
-%       C <= [H | _NT] capture &HT in AddrHT
+%       C <= [H | _HT] capture &HT in AddrHT
 %       app'(T, B, AddrHT)
 %   )
 %
@@ -56,7 +62,7 @@
 %       store_at_ref(AddrC, C)
 %   ;
 %       A => [H | T],
-%       C <= [H | _NT] capture &HT in AddrHT
+%       C <= [H | _HT] capture &HT in AddrHT
 %       store_at_ref(AddrC, C)
 %       app'(T, B, AddrHT)
 %   )
@@ -101,6 +107,49 @@
 %       p'(In1, ... InN, Addr1, Out2... OutM)
 %
 %-----------------------------------------------------------------------------%
+%
+% TRANSFORMATION FOR HIGH-LEVEL DATA
+%
+% In grades where it is impossible to take the address of a field (we assume
+% this is so when using --highlevel-data), the transformed procedures are
+% passed partially instantiated cells, whose holes need to be filled.
+% The append example looks like:
+%
+% app(list(T)::in, list(T)::in, list(T)::out)
+% app(A, B, C) :-
+%   (
+%       A == [],
+%       C := B
+%   ;
+%       A => [H | T],
+%       C <= [H | _],   % with hole
+%       app'(T, B, C)
+%   )
+%
+% app'(list(T)::in, list(T)::in, T::in(bound('[|]'(ground, free))))
+% app'(A, B, C) :-
+%   (
+%       A == [],
+%       C => [_ | []]   % fill in hole
+%   ;
+%       A => [H | T],
+%       C <= [H | _HT], % bind C to AddrC
+%       app'(T, B, AddrC)
+%   )
+%
+% The differences are:
+%
+% 1 The output arguments become partially instantiated input arguments
+%   instead of store_at_ref_type(T) arguments.
+%
+% 2 The holes in the output arguments are filled in with unifications
+%   instead of a store_at_ref builtin.
+%
+% 3 Variant procedures need to know the functor and position of the argument in
+%   the partially instantiated structures, so many more variants could be
+%   produced. The number of variants is capped.
+%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.lco.
 :- interface.
@@ -116,6 +165,7 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_code_util.
@@ -131,6 +181,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_util.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
@@ -139,6 +190,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module multi_map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
@@ -153,13 +205,31 @@
 
 :- type variant_id
     --->    variant_id(
-                list(int),      % Positions of output arguments returned in
-                                % memory.
-                pred_proc_id,   % The id of the variant.
-                string          % The name of the variant predicate.
+                list(variant_arg),  % The output arguments returned in memory.
+                pred_proc_id,       % The id of the variant.
+                string              % The name of the variant predicate.
             ).
 
-:- type variant_map == map(pred_proc_id, variant_id).
+:- type variant_arg
+    --->    variant_arg(
+                % Position of the output argument.
+                va_pos      :: int,
+
+                % For low-level data this is `no'.
+                % For high-level data this is `yes(FieldId)' where FieldId
+                % indicates the functor that the argument will be bound to, and
+                % the argument of that functor which is to be filled.
+                va_field    :: maybe(field_id)
+            ).
+
+:- type field_id
+    --->    field_id(
+                fi_type     :: mer_type,
+                fi_cons_id  :: cons_id,
+                fi_arg      :: int
+            ).
+
+:- type variant_map == multi_map(pred_proc_id, variant_id).
 
 :- type permitted
     --->    permitted
@@ -172,6 +242,7 @@
 :- type lco_info
     --->    lco_info(
                 lco_module_info         :: module_info,
+                lco_highlevel_data      :: bool,
                 lco_cur_scc_variants    :: variant_map,
                 lco_var_set             :: prog_varset,
                 lco_var_types           :: vartypes,
@@ -190,6 +261,14 @@
                 lci_cur_proc_detism     :: determinism
             ).
 
+:- type var_to_target == assoc_list(prog_var, store_target).
+
+:- type store_target
+    --->    store_target(
+                prog_var,
+                maybe(field_id)
+            ).
+
 %-----------------------------------------------------------------------------%
 
 lco_modulo_constructors(!ModuleInfo) :-
@@ -205,7 +284,7 @@ lco_scc(SCC, !VariantMap, !ModuleInfo) :-
     list.foldl4(lco_proc(!.VariantMap, SCC), SCC, !ModuleInfo,
         map.init, CurSCCVariantMap, map.init, CurSCCUpdateMap,
         permitted, Permitted),
-    map.to_assoc_list(CurSCCVariantMap, CurSCCVariants),
+    multi_map.to_flat_assoc_list(CurSCCVariantMap, CurSCCVariants),
     map.to_assoc_list(CurSCCUpdateMap, CurSCCUpdates),
     (
         Permitted = permitted,
@@ -237,14 +316,14 @@ process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
-    VariantId = variant_id(AddrOutArgPosns, VariantPredProcId, VariantName),
+    VariantId = variant_id(AddrOutArgs, VariantPredProcId, VariantName),
     VariantPredProcId = proc(VariantPredId, VariantProcId),
     PredProcId = proc(PredId, ProcId),
 
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
-    transform_variant_proc(!.ModuleInfo, AddrOutArgPosns,
-        ProcInfo, VariantProcInfo),
+    transform_variant_proc(AddrOutArgs, ProcInfo, VariantProcInfo,
+        !ModuleInfo),
 
     proc_info_get_headvars(VariantProcInfo, HeadVars),
     proc_info_get_vartypes(VariantProcInfo, VarTypes),
@@ -263,6 +342,7 @@ process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
             !VariantPredInfo),
 
         pred_info_get_origin(!.VariantPredInfo, Origin0),
+        AddrOutArgPosns = list.map(va_pos, AddrOutArgs),
         Transform = transform_return_via_ptr(ProcId, AddrOutArgPosns),
         Origin = origin_transformed(Transform, Origin0, PredId),
         pred_info_set_origin(Origin, !VariantPredInfo),
@@ -274,6 +354,8 @@ process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
         svmap.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
     ).
+
+:- func va_pos(variant_arg) = int.
 
 %-----------------------------------------------------------------------------%
 
@@ -312,12 +394,14 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
             proc_info_get_inferred_determinism(ProcInfo0, CurProcDetism),
             ConstInfo = lco_const_info(LowerSCCVariants, list_to_set(SCC),
                 CurProc, PredInfo, ProcInfo0, OutputHeadVars, CurProcDetism),
-            Info0 = lco_info(!.ModuleInfo, !.CurSCCVariants,
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+            Info0 = lco_info(!.ModuleInfo, HighLevelData, !.CurSCCVariants,
                 VarSet0, VarTypes0, permitted, not_changed),
             proc_info_get_goal(ProcInfo0, Goal0),
             lco_in_goal(Goal0, Goal, Info0, Info, ConstInfo),
-            Info = lco_info(!:ModuleInfo, !:CurSCCVariants, VarSet, VarTypes,
-                !:Permitted, Changed),
+            Info = lco_info(!:ModuleInfo, _, !:CurSCCVariants, VarSet,
+                VarTypes, !:Permitted, Changed),
             (
                 !.Permitted = permitted,
                 Changed = changed
@@ -530,10 +614,15 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         % The variants we create return each output in only one place in
         % memory.
         all_true(occurs_once(!.UnifyInputVars), MismatchedCallArgs),
-        ensure_variant_exists(PredId, ProcId, assoc_list.keys(Mismatches),
+
+        list.map_foldl2(update_construct(Subst), !.Unifies,
+            UpdatedUnifies, map.init, AddrFieldIds, !Info),
+        HighLevelData = !.Info ^ lco_highlevel_data,
+        make_variant_args(HighLevelData, AddrFieldIds, Mismatches,
+            VariantArgs),
+        ensure_variant_exists(PredId, ProcId, VariantArgs,
             VariantPredProcId, SymName, VariantSymName, !Info)
     ->
-        list.map(update_construct(Subst), !.Unifies, UpdatedUnifies),
         proc_info_get_argmodes(CalleeProcInfo, CalleeModes),
         update_call_args(ModuleInfo, VarTypes, CalleeModes, Args,
             UpdatedCallOutArgs, UpdatedArgs),
@@ -639,13 +728,22 @@ find_args_to_pass_by_addr([CallArg - HeadArg | CallHeadArgs], ArgNum,
     lco_info::in, lco_info::out) is det.
 
 make_address_var(Var, AddrVar, !Info) :-
+    HighLevelData = !.Info ^ lco_highlevel_data,
     VarSet0 = !.Info ^ lco_var_set,
     VarTypes0 = !.Info ^ lco_var_types,
     varset.lookup_name(VarSet0, Var, "SCCcallarg", Name),
     AddrName = "Addr" ++ Name,
     varset.new_named_var(VarSet0, AddrName, AddrVar, VarSet),
-    map.lookup(VarTypes0, Var, FieldType),
-    map.det_insert(VarTypes0, AddrVar, make_ref_type(FieldType), VarTypes),
+    (
+        HighLevelData = no,
+        map.lookup(VarTypes0, Var, FieldType),
+        AddrVarType = make_ref_type(FieldType),
+        map.det_insert(VarTypes0, AddrVar, AddrVarType, VarTypes)
+    ;
+        HighLevelData = yes,
+        % We set the type later when it is more convenient.
+        VarTypes = VarTypes0
+    ),
     !:Info = !.Info ^ lco_var_set := VarSet,
     !:Info = !.Info ^ lco_var_types := VarTypes.
 
@@ -658,45 +756,80 @@ make_ref_type(FieldType) = PtrType :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred ensure_variant_exists(pred_id::in, proc_id::in, list(int)::in,
+:- pred make_variant_args(bool::in, map(prog_var, field_id)::in,
+    assoc_list(int, prog_var)::in, list(variant_arg)::out) is det.
+
+make_variant_args(HighLevelData, AddrVarFieldIds, Mismatches, VariantArgs) :-
+    (
+        HighLevelData = no,
+        MakeArg = (func(Pos - _Var) = variant_arg(Pos, no))
+    ;
+        HighLevelData = yes,
+        MakeArg = (func(Pos - Var) = variant_arg(Pos, yes(FieldId)) :-
+            map.lookup(AddrVarFieldIds, Var, FieldId)
+        )
+    ),
+    VariantArgs = list.map(MakeArg, Mismatches).
+
+:- pred ensure_variant_exists(pred_id::in, proc_id::in, list(variant_arg)::in,
     pred_proc_id::out, sym_name::in, sym_name::out,
     lco_info::in, lco_info::out) is semidet.
 
 ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
         SymName, VariantSymName, !Info) :-
+    PredProcId = proc(PredId, ProcId),
     CurSCCVariants0 = !.Info ^ lco_cur_scc_variants,
-    ( map.search(CurSCCVariants0, proc(PredId, ProcId), ExistingVariant) ->
-        ExistingVariant = variant_id(ExistingAddrArgNums, VariantPredProcId,
-            VariantName),
+    (
+        multi_map.search(CurSCCVariants0, PredProcId, ExistingVariants),
+        match_existing_variant(ExistingVariants, AddrArgNums, ExistingVariant)
+    ->
+        ExistingVariant = variant_id(_, VariantPredProcId, VariantName),
         (
             SymName = unqualified(_Name),
             VariantSymName = unqualified(VariantName)
         ;
             SymName = qualified(ModuleName, _Name),
             VariantSymName = qualified(ModuleName, VariantName)
-        ),
-        AddrArgNums = ExistingAddrArgNums
+        )
     ;
         ModuleInfo0 = !.Info ^ lco_module_info,
         clone_pred_proc(PredId, ClonePredId, PredOrFunc,
             ModuleInfo0, ModuleInfo),
         VariantPredProcId = proc(ClonePredId, ProcId),
         !:Info = !.Info ^ lco_module_info := ModuleInfo,
+        ( multi_map.search(CurSCCVariants0, PredProcId, ExistingVariants) ->
+            VariantNumber = list.length(ExistingVariants) + 1
+        ;
+            VariantNumber = 1
+        ),
+        VariantNumber =< max_variants_per_proc,
         (
             SymName = unqualified(Name),
-            create_variant_name(PredOrFunc, AddrArgNums, Name, VariantName),
+            create_variant_name(PredOrFunc, VariantNumber, Name, VariantName),
             VariantSymName = unqualified(VariantName)
         ;
             SymName = qualified(ModuleName, Name),
-            create_variant_name(PredOrFunc, AddrArgNums, Name, VariantName),
+            create_variant_name(PredOrFunc, VariantNumber, Name, VariantName),
             VariantSymName = qualified(ModuleName, VariantName)
         ),
-        NewVariant = variant_id(AddrArgNums, VariantPredProcId,
-            VariantName),
-        map.det_insert(CurSCCVariants0, proc(PredId, ProcId), NewVariant,
-            CurSCCVariants),
+        NewVariant = variant_id(AddrArgNums, VariantPredProcId, VariantName),
+        multi_map.set(CurSCCVariants0, PredProcId, NewVariant, CurSCCVariants),
         !:Info = !.Info ^ lco_cur_scc_variants := CurSCCVariants
     ).
+
+:- pred match_existing_variant(list(variant_id)::in, list(variant_arg)::in,
+    variant_id::out) is semidet.
+
+match_existing_variant([Variant0 | Variants], AddrArgNums, Variant) :-
+    ( Variant0 = variant_id(AddrArgNums, _, _) ->
+        Variant = Variant0
+    ;
+        match_existing_variant(Variants, AddrArgNums, Variant)
+    ).
+
+:- func max_variants_per_proc = int.
+
+max_variants_per_proc = 4.
 
 :- pred clone_pred_proc(pred_id::in, pred_id::out, pred_or_func::out,
     module_info::in, module_info::out) is det.
@@ -708,26 +841,26 @@ clone_pred_proc(PredId, ClonePredId, PredOrFunc, !ModuleInfo) :-
     predicate_table_insert(PredInfo, ClonePredId, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
-:- pred create_variant_name(pred_or_func::in, list(int)::in, string::in,
+:- pred create_variant_name(pred_or_func::in, int::in, string::in,
     string::out) is det.
 
-create_variant_name(PredOrFunc, ArgPoss, OrigName, VariantName) :-
-    list.map(int_to_string, ArgPoss, ArgPosStrs),
-    ArgPosDesc = string.join_list("_", ArgPosStrs),
+create_variant_name(PredOrFunc, VariantNumber, OrigName, VariantName) :-
     (
         PredOrFunc = pf_function,
-        VariantName = "LCMCfn_" ++ OrigName ++ "_" ++ ArgPosDesc
+        Prefix = "LCMCfn_"
     ;
         PredOrFunc = pf_predicate,
-        VariantName = "LCMCpr_" ++ OrigName ++ "_" ++ ArgPosDesc
-    ).
+        Prefix = "LCMCpr_"
+    ),
+    VariantName = Prefix ++ OrigName ++ "_" ++ int_to_string(VariantNumber).
 
 %-----------------------------------------------------------------------------%
 
-:- pred update_construct(map(prog_var, prog_var)::in,
-    hlds_goal::in, hlds_goal::out) is det.
+:- pred update_construct(map(prog_var, prog_var)::in, hlds_goal::in,
+    hlds_goal::out, map(prog_var, field_id)::in, map(prog_var, field_id)::out,
+    lco_info::in, lco_info::out) is det.
 
-update_construct(Subst, Goal0, Goal) :-
+update_construct(Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(LHS, RHS0, Mode, Unification0, UnifyContext),
@@ -740,9 +873,19 @@ update_construct(Subst, Goal0, Goal) :-
             SubInfo0 = construct_sub_info(no, TermSizeSlot)
         )
     ->
+        % For high-level data, we should not be using the `take_address_fields'
+        % feature in `construct_sub_info', but simply assign the new cell to
+        % each of the variables that takes its address. But as support for
+        % partial instantiation is incomplete, instmaps for the assignments are
+        % likely to be recomputed incorrectly.
+        HighLevelData = !.Info ^ lco_highlevel_data,
+        VarTypes0 = !.Info ^ lco_var_types,
+        map.lookup(VarTypes0, Var, VarType),
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-        update_construct_args(Subst, 1, ArgVars, UpdatedArgVars, AddrFields,
-            InstMapDelta0, InstMapDelta),
+        update_construct_args(Subst, HighLevelData, VarType, ConsId, 1,
+            ArgVars, UpdatedArgVars, AddrFields, InstMapDelta0, InstMapDelta,
+            !AddrVarFieldIds, VarTypes0, VarTypes),
+        !Info ^ lco_var_types := VarTypes,
         (
             AddrFields = [],
             Goal = Goal0
@@ -768,6 +911,9 @@ update_construct(Subst, Goal0, Goal) :-
             ),
             GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),
 
+            % For high-level data, there is a lie in this instmap_delta: the
+            % new cell is not yet ground, although it will become ground after
+            % the call that follows the construction.
             goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo),
             Goal = hlds_goal(GoalExpr, GoalInfo)
         )
@@ -775,23 +921,48 @@ update_construct(Subst, Goal0, Goal) :-
         unexpected(this_file, "update_construct: not construct")
     ).
 
-:- pred update_construct_args(map(prog_var, prog_var)::in, int::in,
-    list(prog_var)::in, list(prog_var)::out, list(int)::out,
-    instmap_delta::in, instmap_delta::out) is det.
+:- pred update_construct_args(map(prog_var, prog_var)::in, bool::in,
+    mer_type::in, cons_id::in, int::in, list(prog_var)::in,
+    list(prog_var)::out, list(int)::out, instmap_delta::in, instmap_delta::out,
+    map(prog_var, field_id)::in, map(prog_var, field_id)::out,
+    vartypes::in, vartypes::out) is det.
 
-update_construct_args(_, _, [], [], [], !InstMapDelta).
-update_construct_args(Subst, ArgNum, [OrigVar | OrigVars],
-        [UpdatedVar | UpdatedVars], AddrArgs, !InstMapDelta) :-
-    update_construct_args(Subst, ArgNum + 1, OrigVars, UpdatedVars,
-        AddrArgsTail, !InstMapDelta),
+update_construct_args(_, _, _, _, _, [], [], [],
+        !InstMapDelta, !AddrFieldIds, !VarTypes).
+update_construct_args(Subst, HighLevelData, VarType, ConsId, ArgNum,
+        [OrigVar | OrigVars], [UpdatedVar | UpdatedVars], AddrArgs,
+        !InstMapDelta, !AddrFieldIds, !VarTypes) :-
+    update_construct_args(Subst, HighLevelData, VarType, ConsId, ArgNum + 1,
+        OrigVars, UpdatedVars, AddrArgsTail, !InstMapDelta, !AddrFieldIds,
+        !VarTypes),
     ( map.search(Subst, OrigVar, AddrVar) ->
         UpdatedVar = AddrVar,
-        instmap_delta_set_var(AddrVar, ground(shared, none), !InstMapDelta),
+        (
+            HighLevelData = no,
+            FinalInst = ground_inst
+        ;
+            HighLevelData = yes,
+            BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
+            FinalInst = bound(shared, [BoundInst]),
+            % We didn't do this when we initially created the variable.
+            svmap.det_insert(AddrVar, VarType, !VarTypes)
+        ),
+        instmap_delta_set_var(AddrVar, FinalInst, !InstMapDelta),
+        svmap.det_insert(OrigVar, field_id(VarType, ConsId, ArgNum),
+            !AddrFieldIds),
         AddrArgs = [ArgNum | AddrArgsTail]
     ;
         UpdatedVar = OrigVar,
         AddrArgs = AddrArgsTail
     ).
+
+:- func bound_inst_with_free_arg(cons_id, int) = bound_inst.
+
+bound_inst_with_free_arg(ConsId, FreeArg) = Inst :-
+    Arity = cons_id_arity(ConsId),
+    list.duplicate(Arity, ground_inst, ArgInsts0),
+    list.replace_nth_det(ArgInsts0, FreeArg, free_inst, ArgInsts),
+    Inst = bound_functor(ConsId, ArgInsts).
 
 %-----------------------------------------------------------------------------%
 
@@ -811,46 +982,59 @@ occurs_once(Bag, Var) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_variant_proc(module_info::in, list(int)::in,
-    proc_info::in, proc_info::out) is det.
+:- pred transform_variant_proc(list(variant_arg)::in,
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-transform_variant_proc(ModuleInfo, AddrOutArgPosns, ProcInfo,
-        !:VariantProcInfo) :-
+transform_variant_proc(AddrOutArgs, ProcInfo, !:VariantProcInfo,
+        !ModuleInfo) :-
     !:VariantProcInfo = ProcInfo,
     proc_info_get_varset(ProcInfo, VarSet0),
     proc_info_get_vartypes(ProcInfo, VarTypes0),
     proc_info_get_headvars(ProcInfo, HeadVars0),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
     make_addr_vars(HeadVars0, ArgModes0, HeadVars, ArgModes,
-        AddrOutArgPosns, 1, ModuleInfo, VarToAddr,
+        AddrOutArgs, 1, !.ModuleInfo, VarToAddr,
         VarSet0, VarSet, VarTypes0, VarTypes),
     proc_info_set_headvars(HeadVars, !VariantProcInfo),
     proc_info_set_argmodes(ArgModes, !VariantProcInfo),
     proc_info_set_varset(VarSet, !VariantProcInfo),
     proc_info_set_vartypes(VarTypes, !VariantProcInfo),
 
-    proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
+    proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
-    transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal, _),
+    transform_variant_goal(!.ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
+        _Changed, !VariantProcInfo),
     proc_info_set_goal(Goal, !VariantProcInfo),
     % We changed the scopes of the headvars we now return via pointers.
-    requantify_proc_general(ordinary_nonlocals_no_lambda, !VariantProcInfo).
+    requantify_proc_general(ordinary_nonlocals_no_lambda, !VariantProcInfo),
+
+    % The high-level data transformation requires instmap deltas to be
+    % recomputed.
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    (
+        HighLevelData = yes,
+        recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+            !VariantProcInfo, !ModuleInfo)
+    ;
+        HighLevelData = no
+    ).
 
 :- pred make_addr_vars(list(prog_var)::in, list(mer_mode)::in,
-    list(prog_var)::out, list(mer_mode)::out, list(int)::in,
-    int::in, module_info::in, assoc_list(prog_var)::out,
+    list(prog_var)::out, list(mer_mode)::out, list(variant_arg)::in,
+    int::in, module_info::in, var_to_target::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-make_addr_vars([], [], [], [], AddrOutArgPosns, _, _, [],
+make_addr_vars([], [], [], [], AddrOutArgs, _, _, [],
         !VarSet, !VarTypes) :-
-    expect(unify(AddrOutArgPosns, []), this_file,
-        "make_addr_vars: AddrOutArgPosns != []").
+    expect(unify(AddrOutArgs, []), this_file,
+        "make_addr_vars: AddrOutArgs != []").
 make_addr_vars([], [_ | _], _, _, _, _, _, _, !VarSet, !VarTypes) :-
     unexpected(this_file, "make_addr_vars: mismatched lists").
 make_addr_vars([_ | _], [], _, _, _, _, _, _, !VarSet, !VarTypes) :-
     unexpected(this_file, "make_addr_vars: mismatched lists").
 make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
-        [HeadVar | HeadVars], [Mode | Modes], !.AddrOutArgPosns,
+        [HeadVar | HeadVars], [Mode | Modes], !.AddrOutArgs,
         NextOutArgNum, ModuleInfo, VarToAddr, !VarSet, !VarTypes) :-
     map.lookup(!.VarTypes, HeadVar0, HeadVarType),
     mode_to_arg_mode(ModuleInfo, Mode0, HeadVarType, ArgMode),
@@ -858,27 +1042,45 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
         ArgMode = top_in,
         HeadVar = HeadVar0,
         Mode = Mode0,
-        make_addr_vars(HeadVars0, Modes0, HeadVars, Modes, !.AddrOutArgPosns,
+        make_addr_vars(HeadVars0, Modes0, HeadVars, Modes, !.AddrOutArgs,
             NextOutArgNum, ModuleInfo, VarToAddr, !VarSet, !VarTypes)
     ;
         ArgMode = top_out,
-        ( !.AddrOutArgPosns = [NextOutArgNum | !:AddrOutArgPosns] ->
+        (
+            !.AddrOutArgs = [AddrOutArg | !:AddrOutArgs],
+            AddrOutArg = variant_arg(NextOutArgNum, MaybeFieldId)
+        ->
             varset.lookup_name(!.VarSet, HeadVar0, Name),
             AddrName = "AddrOf" ++ Name,
             svvarset.new_named_var(AddrName, AddrVar, !VarSet),
-            map.lookup(!.VarTypes, HeadVar0, OldType),
-            svmap.det_insert(AddrVar, make_ref_type(OldType), !VarTypes),
             HeadVar = AddrVar,
-            Mode = in_mode,
+            map.lookup(!.VarTypes, HeadVar0, OldType),
+            (
+                MaybeFieldId = no,
+                % For low-level data we replace the output argument with a
+                % store_at_ref_type(T) input argument.
+                svmap.det_insert(AddrVar, make_ref_type(OldType), !VarTypes),
+                Mode = in_mode
+            ;
+                MaybeFieldId = yes(field_id(AddrVarType, ConsId, ArgNum)),
+                % For high-level data we replace the output argument with a
+                % partially instantiated structure. The structure has one
+                % argument left unfilled.
+                svmap.det_insert(AddrVar, AddrVarType, !VarTypes),
+                BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
+                InitialInst = bound(shared, [BoundInst]),
+                Mode = (InitialInst -> ground_inst)
+            ),
             make_addr_vars(HeadVars0, Modes0, HeadVars, Modes,
-                !.AddrOutArgPosns, NextOutArgNum + 1, ModuleInfo,
+                !.AddrOutArgs, NextOutArgNum + 1, ModuleInfo,
                 VarToAddrTail, !VarSet, !VarTypes),
-            VarToAddr = [HeadVar0 - AddrVar | VarToAddrTail]
+            VarToAddrHead = HeadVar0 - store_target(AddrVar, MaybeFieldId),
+            VarToAddr = [VarToAddrHead | VarToAddrTail]
         ;
             HeadVar = HeadVar0,
             Mode = Mode0,
             make_addr_vars(HeadVars0, Modes0, HeadVars, Modes,
-                !.AddrOutArgPosns, NextOutArgNum + 1, ModuleInfo,
+                !.AddrOutArgs, NextOutArgNum + 1, ModuleInfo,
                 VarToAddr, !VarSet, !VarTypes)
         )
     ;
@@ -886,18 +1088,19 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
         unexpected(this_file, "make_addr_vars: top_unused")
     ).
 
-:- pred transform_variant_goal(module_info::in, assoc_list(prog_var)::in,
-    instmap::in, hlds_goal::in, hlds_goal::out, bool::out) is det.
+:- pred transform_variant_goal(module_info::in, var_to_target::in,
+    instmap::in, hlds_goal::in, hlds_goal::out, bool::out,
+    proc_info::in, proc_info::out) is det.
 
 transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
-        Changed) :-
+        Changed, !ProcInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
             transform_variant_conj(ModuleInfo, VarToAddr, InstMap0,
-                Goals0, Goals, Changed),
+                Goals0, Goals, Changed, !ProcInfo),
             GoalExpr = conj(ConjType, Goals)
         ;
             ConjType = parallel_conj,
@@ -905,23 +1108,25 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
         )
     ;
         GoalExpr0 = disj(Goals0),
-        list.map2(transform_variant_goal(ModuleInfo, VarToAddr, InstMap0),
-            Goals0, Goals, DisjsChanged),
+        list.map2_foldl(
+            transform_variant_goal(ModuleInfo, VarToAddr, InstMap0),
+            Goals0, Goals, DisjsChanged, !ProcInfo),
         Changed = bool.or_list(DisjsChanged),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map2(transform_variant_case(ModuleInfo, VarToAddr, InstMap0),
-            Cases0, Cases, CasesChanged),
+        list.map2_foldl(
+            transform_variant_case(ModuleInfo, VarToAddr, InstMap0),
+            Cases0, Cases, CasesChanged, !ProcInfo),
         Changed = bool.or_list(CasesChanged),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
         update_instmap(Cond, InstMap0, InstMap1),
         transform_variant_goal(ModuleInfo, VarToAddr, InstMap1, Then0, Then,
-            ThenChanged),
+            ThenChanged, !ProcInfo),
         transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Else0, Else,
-            ElseChanged),
+            ElseChanged, !ProcInfo),
         Changed = bool.or(ThenChanged, ElseChanged),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
@@ -931,7 +1136,7 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
             Changed = no
         ;
             transform_variant_goal(ModuleInfo, VarToAddr, InstMap0,
-                SubGoal0, SubGoal, Changed),
+                SubGoal0, SubGoal, Changed, !ProcInfo),
             GoalExpr = scope(Reason, SubGoal)
         )
     ;
@@ -941,20 +1146,20 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
     ;
         GoalExpr0 = generic_call(_, _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo0, GoalExpr0, GoalExpr, Changed)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo)
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),
         % XXX We could handle recursive calls better.
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo0, GoalExpr0, GoalExpr, Changed)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo)
     ;
         GoalExpr0 = unify(_, _, _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo0, GoalExpr0, GoalExpr, Changed)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo)
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _,  _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo0, GoalExpr0, GoalExpr, Changed)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo)
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
@@ -969,17 +1174,18 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
         Goal = Goal0
     ).
 
-:- pred transform_variant_conj(module_info::in, assoc_list(prog_var)::in,
-    instmap::in, list(hlds_goal)::in, list(hlds_goal)::out, bool::out) is det.
+:- pred transform_variant_conj(module_info::in, var_to_target::in,
+    instmap::in, list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
+    proc_info::in, proc_info::out) is det.
 
-transform_variant_conj(_, _, _, [], [], no).
+transform_variant_conj(_, _, _, [], [], no, !ProcInfo).
 transform_variant_conj(ModuleInfo, VarToAddr, InstMap0, [Goal0 | Goals0],
-        Conj, Changed) :-
+        Conj, Changed, !ProcInfo) :-
     transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
-        HeadChanged),
+        HeadChanged, !ProcInfo),
     update_instmap(Goal0, InstMap0, InstMap1),
     transform_variant_conj(ModuleInfo, VarToAddr, InstMap1, Goals0, Goals,
-        TailChanged),
+        TailChanged, !ProcInfo),
     Changed = bool.or(HeadChanged, TailChanged),
     ( Goal = hlds_goal(conj(plain_conj, SubConj), _) ->
         Conj = SubConj ++ Goals
@@ -987,22 +1193,23 @@ transform_variant_conj(ModuleInfo, VarToAddr, InstMap0, [Goal0 | Goals0],
         Conj = [Goal | Goals]
     ).
 
-:- pred transform_variant_case(module_info::in, assoc_list(prog_var)::in,
-    instmap::in, case::in, case::out, bool::out) is det.
+:- pred transform_variant_case(module_info::in, var_to_target::in, instmap::in,
+    case::in, case::out, bool::out, proc_info::in, proc_info::out) is det.
 
 transform_variant_case(ModuleInfo, VarToAddr, InstMap0, Case0, Case,
-        Changed) :-
+        Changed, !ProcInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
-        Changed),
+        Changed, !ProcInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred transform_variant_atomic_goal(module_info::in,
-    assoc_list(prog_var)::in, instmap::in, hlds_goal_info::in,
-    hlds_goal_expr::in, hlds_goal_expr::out, bool::out) is det.
+    var_to_target::in, instmap::in, hlds_goal_info::in,
+    hlds_goal_expr::in, hlds_goal_expr::out, bool::out,
+    proc_info::in, proc_info::out) is det.
 
 transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
-        GoalExpr0, GoalExpr, Changed) :-
+        GoalExpr0, GoalExpr, Changed, !ProcInfo) :-
     update_instmap(hlds_goal(GoalExpr0, GoalInfo), InstMap0, InstMap1),
     list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
         GroundingVarToAddr),
@@ -1012,28 +1219,99 @@ transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
         Changed = no
     ;
         GroundingVarToAddr = [_ | _],
-        list.map(make_store_goal(ModuleInfo), GroundingVarToAddr, StoreGoals),
+        list.map_foldl(make_store_goal(ModuleInfo, InstMap1),
+            GroundingVarToAddr, StoreGoals, !ProcInfo),
         GoalExpr = conj(plain_conj,
             [hlds_goal(GoalExpr0, GoalInfo) | StoreGoals]),
         Changed = yes
     ).
 
 :- pred is_grounding(module_info::in, instmap::in, instmap::in,
-    pair(prog_var)::in) is semidet.
+    pair(prog_var, store_target)::in) is semidet.
 
-is_grounding(ModuleInfo, InstMap0, InstMap, Var - _AddrVar) :-
+is_grounding(ModuleInfo, InstMap0, InstMap, Var - _StoreTarget) :-
     instmap_lookup_var(InstMap0, Var, Inst0),
     not inst_is_ground(ModuleInfo, Inst0),
     instmap_lookup_var(InstMap, Var, Inst),
     inst_is_ground(ModuleInfo, Inst).
 
-:- pred make_store_goal(module_info::in, pair(prog_var)::in,
-    hlds_goal::out) is det.
+:- pred make_store_goal(module_info::in, instmap::in,
+    pair(prog_var, store_target)::in, hlds_goal::out,
+    proc_info::in, proc_info::out) is det.
 
-make_store_goal(ModuleInfo, Var - AddrVar, Goal) :-
-    generate_simple_call(mercury_private_builtin_module, "store_at_ref_impure",
-        pf_predicate, only_mode, detism_det, purity_impure, [AddrVar, Var],
-        [], instmap_delta_bind_vars([]), ModuleInfo, term.context_init, Goal).
+make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
+        !ProcInfo) :-
+    StoreTarget = store_target(AddrVar, MaybeFieldId),
+    (
+        % Low-level data.
+        MaybeFieldId = no,
+        generate_simple_call(mercury_private_builtin_module,
+            "store_at_ref_impure",
+            pf_predicate, only_mode, detism_det, purity_impure,
+            [AddrVar, GroundVar],
+            [], instmap_delta_bind_vars([]), ModuleInfo, term.context_init,
+            Goal)
+    ;
+        % High-level data.
+        MaybeFieldId = yes(field_id(AddrVarType, ConsId, ArgNum)),
+        get_cons_id_arg_types(ModuleInfo, AddrVarType, ConsId, ArgTypes),
+        make_unification_args(GroundVar, ArgNum, 1, ArgTypes,
+            ArgVars, ArgModes, !ProcInfo),
+
+        IsExistConstr = no,
+        RHS = rhs_functor(ConsId, IsExistConstr, ArgVars),
+
+        instmap_lookup_var(InstMap, AddrVar, AddrVarInst0),
+        inst_expand(ModuleInfo, AddrVarInst0, AddrVarInst),
+        UniMode = (AddrVarInst -> ground_inst) - (ground_inst -> ground_inst),
+
+        Unification = deconstruct(AddrVar, ConsId, ArgVars, ArgModes,
+            cannot_fail, cannot_cgc),
+        UnifyContext = unify_context(umc_implicit("lcmc"), []),
+
+        GoalExpr = unify(AddrVar, RHS, UniMode, Unification, UnifyContext),
+
+        goal_info_init(GoalInfo0),
+        goal_info_set_determinism(detism_det, GoalInfo0, GoalInfo1),
+        goal_info_set_instmap_delta(instmap_delta_bind_var(AddrVar),
+            GoalInfo1, GoalInfo),
+
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ).
+
+:- pred make_unification_args(prog_var::in, int::in, int::in,
+    list(mer_type)::in, list(prog_var)::out, list(uni_mode)::out,
+    proc_info::in, proc_info::out) is det.
+
+make_unification_args(GroundVar, TargetArgNum, CurArgNum, ArgTypes,
+        ArgVars, ArgModes, !ProcInfo) :-
+    (
+        ArgTypes = [],
+        ArgVars = [],
+        ArgModes = []
+    ;
+        ArgTypes = [ArgType | ArgTypesTail],
+        make_unification_args(GroundVar, TargetArgNum, CurArgNum + 1,
+            ArgTypesTail, ArgVarsTail, ArgModesTail, !ProcInfo),
+        make_unification_arg(GroundVar, TargetArgNum, CurArgNum,
+            ArgType, Var, UniMode, !ProcInfo),
+        ArgVars = [Var | ArgVarsTail],
+        ArgModes = [UniMode | ArgModesTail]
+    ).
+
+:- pred make_unification_arg(prog_var::in, int::in, int::in, mer_type::in,
+    prog_var::out, uni_mode::out, proc_info::in, proc_info::out) is det.
+
+make_unification_arg(GroundVar, TargetArgNum, CurArgNum, ArgType,
+        Var, UniMode, !ProcInfo) :-
+    ( CurArgNum = TargetArgNum ->
+        Var = GroundVar,
+        UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst))
+    ;
+        % Bind other arguments to fresh variables.
+        proc_info_create_var_from_type(ArgType, no, Var, !ProcInfo),
+        UniMode = ((ground_inst - free_inst) -> (ground_inst - ground_inst))
+    ).
 
 %-----------------------------------------------------------------------------%
 
