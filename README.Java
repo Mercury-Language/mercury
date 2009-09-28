@@ -54,6 +54,10 @@ Now you can run hello
 
 	./hello
 
+Problems at higher optimisation levels are still being resolved.
+For now we recommend sticking with -O2 or below and not enabling
+intermodule optimisation.
+
 -----------------------------------------------------------------------------
 
 USING JAVA
@@ -123,6 +127,8 @@ A. The following implementation features are not supported:
 
 	Mercury-level debugging
 	Mercury-level profiling
+	trailing
+	tabling
 
    In addition, the following individual procedures are incompletely
    implemented:
