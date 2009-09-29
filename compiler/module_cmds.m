@@ -662,8 +662,9 @@ use_win32 :-
 % Java command-line utilities.
 %
 
+    % XXX We should also create a ".bat" on Windows.
+    %
 create_java_shell_script(MainModuleName, Succeeded, !IO) :-
-    % XXX Extension should be ".bat" on Windows
     Extension = "",
     module_name_to_file_name(MainModuleName, Extension, do_not_create_dirs,
         FileName, !IO),
@@ -672,15 +673,16 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
     maybe_write_string(Verbose, "% Generating shell script `" ++
         FileName ++ "'...\n", !IO),
 
+    % In shell scripts always use / separators, even on Windows.
     get_class_dir_name(ClassDirName, !IO),
+    string.replace_all(ClassDirName, "\\", "/", ClassDirNameUnix),
 
-    % XXX PathSeparator should be ";" on Windows
-    PathSeparator = ":",
     globals.io_lookup_accumulating_option(java_classpath, Java_Incl_Dirs0,
         !IO),
     % We prepend the .class files' directory and the current CLASSPATH.
-    Java_Incl_Dirs = ["$DIR/" ++ ClassDirName, "$CLASSPATH" | Java_Incl_Dirs0],
-    ClassPath = string.join_list(PathSeparator, Java_Incl_Dirs),
+    Java_Incl_Dirs = ["$DIR/" ++ ClassDirNameUnix,
+        "$CLASSPATH" | Java_Incl_Dirs0],
+    ClassPath = string.join_list("${SEP}", Java_Incl_Dirs),
 
     globals.io_lookup_string_option(java_interpreter, Java, !IO),
     mangle_sym_name_for_java(MainModuleName, module_qual, ".", ClassName),
@@ -690,10 +692,13 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(ShellScript),
-        % XXX On Windows we should output a .bat file instead
         list.foldl(io.write_string(ShellScript), [
             "#!/bin/sh\n",
             "DIR=${0%/*}\n",
+            "case $WINDIR in\n",
+            "   '') SEP=':' ;;\n",
+            "   *)  SEP=';' ;;\n",
+            "esac\n",
             "CLASSPATH=", ClassPath, "\n",
             "export CLASSPATH\n",
             "JAVA=${JAVA:-", Java, "}\n",

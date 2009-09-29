@@ -895,13 +895,20 @@ compile_java_files(ErrorStream, JavaFiles, Succeeded, !IO) :-
 
     globals.io_lookup_accumulating_option(java_classpath, Java_Incl_Dirs,
         !IO),
-    % XXX PathSeparator should be ";" on Windows
-    PathSeparator = ":",
-    % We prepend the current CLASSPATH to preserve the accumulating
+    ( dir.use_windows_paths ->
+        PathSeparator = ";"
+    ;
+        PathSeparator = ":"
+    ),
+    % We prepend the current CLASSPATH (if any) to preserve the accumulating
     % nature of this variable.
     get_env_classpath(EnvClasspath, !IO),
-    join_string_list([EnvClasspath|Java_Incl_Dirs], "", "",
-        PathSeparator, ClassPath),
+    ( EnvClasspath = "" ->
+        ClassPathList = Java_Incl_Dirs
+    ;
+        ClassPathList = [EnvClasspath | Java_Incl_Dirs]
+    ),
+    ClassPath = string.join_list(PathSeparator, ClassPathList),
     ( ClassPath = "" ->
         InclOpt = ""
     ;
