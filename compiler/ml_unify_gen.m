@@ -370,9 +370,9 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         (
             Args = [],
             ml_gen_var(!.Info, Var, VarLval),
-            ml_gen_constant(Tag, Type, Rval, !Info),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+            ml_gen_constant(Tag, Type, MLDS_Type, Rval, !Info),
             GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
             ml_gen_info_set_const_var(Var, GroundTerm, !Info),
             Statement = ml_gen_assign(VarLval, Rval, Context),
@@ -392,22 +392,23 @@ ml_gen_info_lookup_const_var_rval(Info, Var, Rval) :-
 
     % Generate the rval for a given constant.
     %
-:- pred ml_gen_constant(cons_tag::in, mer_type::in, mlds_rval::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_constant(cons_tag::in, mer_type::in, mlds_type::in,
+    mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_constant(Tag, VarType, Rval, !Info) :-
+ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
     (
         Tag = int_tag(Int),
         IntRval = ml_const(mlconst_int(Int)),
-        % Add an explicit cast if this is a character constant.  Although we
-        % can usually rely on implicit casts, if the char variable that the
-        % constant is assigned to is eliminated, we can end up passing an int
-        % where a char is expected.  In Java, and probably any language with
-        % overloading, the explicit cast is required.
-        ( VarType = char_type ->
-            Rval = ml_unop(cast(mlds_native_char_type), IntRval)
-        ;
+        % Add an explicit cast if this is not an integer constant.  Although we
+        % can usually rely on implicit casts, if the char or enumeration
+        % variable that the constant is assigned to is eliminated, we can end
+        % up passing an int where a char or enumeration is expected.  In Java,
+        % and probably any language with overloading, the explicit cast is
+        % required.
+        ( VarType = int_type ->
             Rval = IntRval
+        ;
+            Rval = ml_unop(cast(MLDS_VarType), IntRval)
         )
     ;
         Tag = float_tag(Float),
@@ -421,12 +422,10 @@ ml_gen_constant(Tag, VarType, Rval, !Info) :-
             mlds_native_int_type))
     ;
         Tag = shared_local_tag(Bits1, Num1),
-        ml_gen_type(!.Info, VarType, MLDS_Type),
-        Rval = ml_unop(cast(MLDS_Type), ml_mkword(Bits1,
+        Rval = ml_unop(cast(MLDS_VarType), ml_mkword(Bits1,
             ml_unop(std_unop(mkbody), ml_const(mlconst_int(Num1)))))
     ;
         Tag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
-        ml_gen_type(!.Info, VarType, MLDS_VarType),
         ModuleName = fixup_builtin_module(ModuleName0),
         MLDS_Module = mercury_module_name_to_mlds(ModuleName),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
@@ -436,7 +435,6 @@ ml_gen_constant(Tag, VarType, Rval, !Info) :-
             ml_const(mlconst_data_addr(DataAddr)))
     ;
         Tag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
-        ml_gen_type(!.Info, VarType, MLDS_VarType),
         MLDS_Module = mercury_module_name_to_mlds(ModuleName),
         TCName = generate_class_name(ClassId),
         DataAddr = data_addr(MLDS_Module, mlds_rtti(tc_rtti_id(TCName,
@@ -445,7 +443,6 @@ ml_gen_constant(Tag, VarType, Rval, !Info) :-
             ml_const(mlconst_data_addr(DataAddr)))
     ;
         Tag = tabling_info_tag(PredId, ProcId),
-        ml_gen_type(!.Info, VarType, MLDS_VarType),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
         DataAddr = data_addr(PredModule,
@@ -463,14 +460,13 @@ ml_gen_constant(Tag, VarType, Rval, !Info) :-
     ;
         Tag = reserved_address_tag(ReservedAddr),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        ml_gen_type(!.Info, VarType, MLDS_VarType),
         Rval = ml_gen_reserved_address(ModuleInfo, ReservedAddr, MLDS_VarType)
     ;
         Tag = shared_with_reserved_addresses_tag(_, ThisTag),
         % Whether or not some other constructors in the type are represented
         % by reserved addresses makes a difference only when deconstructing
         % the term, not when constructing it.
-        ml_gen_constant(ThisTag, VarType, Rval, !Info)
+        ml_gen_constant(ThisTag, VarType, MLDS_VarType, Rval, !Info)
     ;
         % These tags, which are not (necessarily) constants, are handled
         % in ml_gen_construct, so we don't need to handle them here.
@@ -2085,10 +2081,10 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             % knows to output an enumeration constant instead of a plain int.
             % See also the comment in ml_gen_constant.
             IntRval = ml_const(mlconst_int(Int)),
-            ( VarType \= int_type ->
-                ConstRval = ml_unop(cast(MLDS_Type), IntRval)
-            ;
+            ( VarType = int_type ->
                 ConstRval = IntRval
+            ;
+                ConstRval = ml_unop(cast(MLDS_Type), IntRval)
             )
         ;
             ConsTag = float_tag(Float),
