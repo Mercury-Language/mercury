@@ -216,6 +216,14 @@ esac
 
 MERCURY_MSG("looking for an already installed Mercury compiler to bootstrap with...")
 AC_PATH_PROG(BOOTSTRAP_MC,mmc)
+# Ignore the Microsoft Management Console, which if executed will pop up with
+# an annoying error message.
+case $BOOTSTRAP_MC in
+    *Windows*|*system32*|*WINNT*)
+        BOOTSTRAP_MC=
+        MERCURY_MSG("wrong mmc ignored")
+        ;;
+esac
 if test "$BOOTSTRAP_MC" != ""; then
     AC_MSG_CHECKING(whether the above mmc works and is sufficiently recent)
     cat > conftest.m << EOF

@@ -1676,7 +1676,21 @@ link_output_filename(LinkTargetType, ModuleName, Ext, OutputFileName, !IO) :-
             OutputFileName, !IO)
     ;
         LinkTargetType = executable,
-        globals.io_lookup_string_option(executable_file_extension, Ext, !IO),
+        globals.io_get_target(Target, !IO),
+        (
+            ( Target = target_erlang
+            ; Target = target_java
+            ),
+            % These are shell scripts.
+            Ext = ""
+        ;
+            ( Target = target_c
+            ; Target = target_il
+            ; Target = target_asm
+            ; Target = target_x86_64
+            ),
+            globals.io_lookup_string_option(executable_file_extension, Ext, !IO)
+        ),
         module_name_to_file_name(ModuleName, Ext, do_create_dirs,
             OutputFileName, !IO)
     ).

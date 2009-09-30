@@ -1391,7 +1391,8 @@
     % in `AccessTypes' on `FileName'.
     % XXX When using the .NET CLI, this predicate will sometimes report
     % that a directory is writable when in fact it is not.
-    % XXX When using the Erlang backend, `execute' access is not checked.
+    % XXX On the Erlang backend, or on Windows with some compilers, `execute'
+    % access is not checked.
     %
 :- pred io.check_file_accessibility(string::in, list(access_type)::in,
     io.res::out, io::di, io::uo) is det.
@@ -3348,13 +3349,19 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
   #endif
     int access_result;
 
+  #if !defined(MR_WIN32) || defined(__CYGWIN__)
+    /*
+    ** Earlier versions of MSVCRT ignored flags it doesn't support,
+    ** later versions return an error (e.g. on Vista).
+    */
     if (ML_access_types_includes_execute(AccessTypes)) {
-  #ifdef X_OK
+      #ifdef X_OK
         mode |= X_OK;
-  #else
+      #else
         mode |= 1;
-  #endif
+      #endif
     }
+  #endif
     if (ML_access_types_includes_write(AccessTypes)) {
   #ifdef W_OK
         mode |= W_OK;

@@ -1373,7 +1373,21 @@ target_extension(_, module_target_foreign_il_asm(_)) = no.
 target_extension(_, module_target_fact_table_object(_, _)) = no.
 
 linked_target_file_name(ModuleName, executable, FileName, !IO) :-
-    globals.io_lookup_string_option(executable_file_extension, Ext, !IO),
+    globals.io_get_target(Target, !IO),
+    (
+        ( Target = target_erlang
+        ; Target = target_java
+        ),
+        % These are shell scripts.
+        Ext = ""
+    ;
+        ( Target = target_c
+        ; Target = target_il
+        ; Target = target_asm
+        ; Target = target_x86_64
+        ),
+        globals.io_lookup_string_option(executable_file_extension, Ext, !IO)
+    ),
     module_name_to_file_name(ModuleName, Ext,
         do_not_create_dirs, FileName, !IO).
 linked_target_file_name(ModuleName, static_library, FileName, !IO) :-

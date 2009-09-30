@@ -754,8 +754,9 @@ list_class_files_for_jar(MainClassFiles, ClassSubDir, ListClassFiles, !IO) :-
         ( ClassSubDir = dir.this_directory ->
             AllClassFiles = AllClassFiles0
         ;
+            ClassSubDirSep = ClassSubDir / "",
             AllClassFiles = list.map(
-                string.remove_prefix_if_present(ClassSubDir ++ "/"),
+                string.remove_prefix_if_present(ClassSubDirSep),
                 AllClassFiles0)
         ),
         list.sort(AllClassFiles, ListClassFiles)
