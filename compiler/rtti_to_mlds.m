@@ -134,8 +134,6 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
     ml_global_data_add_flat_rtti_defn(Defn, !GlobalData).
 
     % Return the declaration flags appropriate for an rtti_data.
-    % Note that this must be the same as ml_static_const_decl_flags,
-    % except for the access, so that ml_decl_is_static_const works.
     %
 :- func rtti_data_decl_flags(bool) = mlds_decl_flags.
 

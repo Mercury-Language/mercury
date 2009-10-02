@@ -295,10 +295,6 @@
     %
 :- func ml_format_reserved_object_name(string, arity) = mlds_var_name.
 
-    % Succeed iff the specified mlds_defn defines a local static constant.
-    %
-:- pred ml_decl_is_static_const(mlds_defn::in) is semidet.
-
 %-----------------------------------------------------------------------------%
 %
 % Routines for dealing with fields.
@@ -703,21 +699,14 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         % generate the `succ_func'
         % push nesting level
         DoGenRest(RestDecls, RestStatements, !Info),
-        list.filter(ml_decl_is_static_const, RestDecls,
-            RestStaticDecls, RestOtherDecls),
-        RestStatement = ml_gen_block(RestOtherDecls, RestStatements, Context),
+        RestStatement = ml_gen_block(RestDecls, RestStatements, Context),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, RestFuncLabel, Context,
             RestStatement, RestFunc),
 
-        Decls = FirstDecls ++ RestStaticDecls ++ [RestFunc],
+        Decls = FirstDecls ++ [RestFunc],
         Statements = FirstStatements
     ).
-
-ml_decl_is_static_const(Defn) :-
-    Defn = mlds_defn(Name, _Context, Flags, _DefnBody),
-    Name = entity_data(_),
-    Flags = ml_static_const_decl_flags.
 
 ml_gen_nondet_label_func(Info, FuncLabel, Context, Statement, Func) :-
     ml_gen_info_use_gcc_nested_functions(Info, UseNested),

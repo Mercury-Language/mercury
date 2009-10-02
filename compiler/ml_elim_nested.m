@@ -548,45 +548,31 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
         fixup_gc_statements(Action, ElimInfo2, ElimInfo),
         elim_info_finish(ElimInfo, NestedFuncs0, Locals),
 
-        % Split the locals that we need to process into local variables
-        % and local static constants. ZZZ
-        list.filter(ml_decl_is_static_const, Locals, LocalStatics, LocalVars),
-
-        % Fix up access flags on the statics that we're going to hoist:
-        % convert "local" to "private".
-        HoistedStatics = list.map(convert_local_to_global, LocalStatics),
         (
+            NestedFuncs0 = [],
             % When hoisting nested functions, if there were no nested
-            % functions, then we just hoist the local static constants.
-            Action = hoist_nested_funcs,
-            NestedFuncs0 = []
-        ->
-            FuncBody = FuncBody1,
-            HoistedDefns = HoistedStatics
-        ;
+            % functions, we have nothing to do.
             % Likewise, when doing accurate GC, if there were no local
             % variables (or arguments) that contained pointers, then we don't
             % need to chain a stack frame for this function.
-            Action = chain_gc_stack_frames,
-            Locals = []
-        ->
             FuncBody = FuncBody1,
-            HoistedDefns = HoistedStatics
+            HoistedDefns = []
         ;
+            NestedFuncs0 = [_ | _],
             % Create a struct to hold the local variables, and initialize
             % the environment pointers for both the containing function
             % and the nested functions. Also generate the GC tracing function,
             % if Action = chain_gc_stack_frames.
             %
-            ml_create_env(Action, EnvName, EnvTypeName, LocalVars, Context,
+            ml_create_env(Action, EnvName, EnvTypeName, Locals, Context,
                 ModuleName, Name, Globals, EnvTypeDefn, EnvDecls, InitEnv,
                 GCTraceFuncDefns),
             list.map_foldl(
                 ml_insert_init_env(Action, EnvTypeName, ModuleName, Globals),
                     NestedFuncs0, NestedFuncs, no, InsertedEnv),
 
-            % Hoist out the local statics and the nested functions.
-            HoistedDefns0 = HoistedStatics ++ GCTraceFuncDefns ++ NestedFuncs,
+            % Hoist out the nested functions.
+            HoistedDefns0 = GCTraceFuncDefns ++ NestedFuncs,
 
             % When hoisting nested functions, it is possible that none of the
             % nested functions reference the arguments or locals of the parent
@@ -598,7 +584,6 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
             % generated). This means that we don't avoid generating these
             % arguments. This is not really a big problem, since the code
             % that generates these arguments needs them.
-            %
             (
                 Action = hoist_nested_funcs,
                 InsertedEnv = no
@@ -650,8 +635,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
                     Context),
                 % Insert the environment struct type at the start of the list
                 % of hoisted definitions (preceding the previously nested
-                % functions and static constants in HoistedDefns0),
-                %
+                % functions in HoistedDefns0).
                 HoistedDefns = [EnvTypeDefn | HoistedDefns0]
             )
         ),
@@ -2121,8 +2105,7 @@ fixup_var(Action, Info, ThisVar, ThisVarType, Lval) :-
         IsLocalVar = (pred(VarType::out) is nondet :-
             list.member(Var, Locals),
             Var = mlds_defn(entity_data(mlds_data_var(ThisVarName)), _, _,
-                mlds_data(VarType, _, _)),
-            \+ ml_decl_is_static_const(Var)
+                mlds_data(VarType, _, _))
         ),
         solutions.solutions(IsLocalVar, [FieldType])
     ->
