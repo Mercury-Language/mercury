@@ -232,9 +232,9 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                 NonLocals = goal_info_get_nonlocals(GoalInfo),
                 ml_gen_lookup_switch(SwitchVar, FilteredTaggedCases,
                     NonLocals, CodeModel, Context, FirstVal, LastVal,
-                    NeedBitVecCheck, NeedRangeCheck, StatementsPrime, !Info)
+                    NeedBitVecCheck, NeedRangeCheck, LookupStatement, !Info)
             ->
-                Statements = StatementsPrime
+                Statements = [LookupStatement]
             ;
                 target_supports_computed_goto(Globals)
             ->

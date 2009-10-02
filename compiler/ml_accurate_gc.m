@@ -460,9 +460,9 @@ fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
             Statements0, Statements, !Fixup),
         Stmt = ml_stmt_block(Defns, Statements)
     ;
-        Stmt0 = ml_stmt_while(Rval, Statement0, Once),
+        Stmt0 = ml_stmt_while(Kind, Rval, Statement0),
         fixup_newobj_in_statement(Statement0, Statement, !Fixup),
-        Stmt = ml_stmt_while(Rval, Statement, Once)
+        Stmt = ml_stmt_while(Kind, Rval, Statement)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
         fixup_newobj_in_statement(Then0, Then, !Fixup),

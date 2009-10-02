@@ -19,14 +19,15 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
-:- import_module ml_backend.mlds.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
+:- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -494,6 +495,27 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Routines for dealing with lookup tables.
+%
+
+:- pred ml_generate_constants_for_arms(list(prog_var)::in, list(hlds_goal)::in,
+    list(list(mlds_rval))::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+:- pred ml_generate_constants_for_arm(list(prog_var)::in, hlds_goal::in,
+    list(mlds_rval)::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+:- pred ml_generate_field_assign(mlds_lval::in, mlds_type::in,
+    mlds_field_id::in, mlds_vector_common::in, mlds_type::in,
+    mlds_rval::in, mlds_context::in, statement::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+:- pred ml_generate_field_assigns(list(prog_var)::in, list(mlds_type)::in,
+    list(mlds_field_id)::in, mlds_vector_common::in, mlds_type::in,
+    mlds_rval::in, mlds_context::in, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
 % Miscellaneous routines.
 %
 
@@ -523,7 +545,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -2000,6 +2021,73 @@ ml_typeclass_info_arg_offset = 0.
     % Hence the offset is 4.
     %
 ml_base_typeclass_info_method_offset = 4.
+
+%-----------------------------------------------------------------------------%
+%
+% Routines for dealing with lookup tables.
+%
+
+ml_generate_constants_for_arms(_Vars, [], [], !Info).
+ml_generate_constants_for_arms(Vars, [Goal | Goals], [Soln | Solns], !Info) :-
+    ml_generate_constants_for_arm(Vars, Goal, Soln, !Info),
+    ml_generate_constants_for_arms(Vars, Goals, Solns, !Info).
+
+ml_generate_constants_for_arm(Vars, Goal, Soln, !Info) :-
+    ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
+    ml_gen_goal(model_det, Goal, _Decls, _Statements, !Info),
+    ml_gen_info_get_const_var_map(!.Info, FinalConstVarMap),
+    list.map(lookup_ground_rval(FinalConstVarMap), Vars, Soln),
+    ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
+
+:- pred lookup_ground_rval(ml_ground_term_map::in, prog_var::in,
+    mlds_rval::out) is det.
+
+lookup_ground_rval(FinalConstVarMap, Var, Rval) :-
+    % We can do a map.lookup instead of a map.search here because
+    % - we execute this code only if we have already determined that
+    %   goal_is_conj_of_unify succeeds for this arm,
+    % - we don't even start looking for lookup switches unless we know
+    %   that the mark_static_terms pass has been run, and
+    % - for every arm on which goal_is_conj_of_unify succeeds,
+    %   mark_static_terms will mark all the variables to which Var
+    %   may be bound as being constructed statically. (There can be no need
+    %   to construct them dynamically, since all the arm's nonlocals are
+    %   output, which means none of them can be input.)
+    map.lookup(FinalConstVarMap, Var, GroundTerm),
+    GroundTerm = ml_ground_term(Rval, _, _).
+
+ml_generate_field_assign(OutVarLval, FieldType, FieldId, VectorCommon,
+        StructType, IndexRval, Context, Statement, !Info) :-
+    BaseRval = ml_vector_common_row(VectorCommon, IndexRval),
+    FieldLval = ml_field(yes(0), BaseRval, FieldId, FieldType, StructType),
+    AtomicStmt = assign(OutVarLval, ml_lval(FieldLval)),
+    Stmt = ml_stmt_atomic(AtomicStmt),
+    Statement = statement(Stmt, Context).
+
+ml_generate_field_assigns(OutVars, FieldTypes, FieldIds, VectorCommon,
+        StructType, IndexRval, Context, Statements, !Info) :-
+    (
+        OutVars = [],
+        FieldTypes = [],
+        FieldIds = []
+    ->
+        Statements = []
+    ;
+        OutVars = [HeadOutVar | TailOutVars],
+        FieldTypes = [HeadFieldType | TailFieldTypes],
+        FieldIds = [HeadFieldId | TailFieldIds]
+    ->
+        ml_gen_var(!.Info, HeadOutVar, HeadOutVarLval),
+        ml_generate_field_assign(HeadOutVarLval, HeadFieldType, HeadFieldId,
+            VectorCommon, StructType, IndexRval, Context, HeadStatement,
+            !Info),
+        ml_generate_field_assigns(TailOutVars, TailFieldTypes, TailFieldIds,
+            VectorCommon, StructType, IndexRval, Context, TailStatements,
+            !Info),
+        Statements = [HeadStatement | TailStatements]
+    ;
+        unexpected(this_file, "ml_generate_offset_assigns: mismatched lists")
+    ).
 
 %-----------------------------------------------------------------------------%
 %

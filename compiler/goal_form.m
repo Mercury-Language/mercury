@@ -21,8 +21,24 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module list.
+:- import_module set.
+
+%-----------------------------------------------------------------------------%
+
+    % Is the input goal a conjunction of unifications that constructs every
+    % variable in the given set? A from_ground_term_construct scope counts
+    % as a unification.
+    %
+:- pred goal_is_conj_of_unify(set(prog_var)::in, hlds_goal::in) is semidet.
+
+    % Run goal_is_conj_of_unify on each goal in the list.
+    %
+:- pred all_disjuncts_are_conj_of_unify(set(prog_var)::in,
+    list(hlds_goal)::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -168,17 +184,51 @@
 
 :- implementation.
 
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_goal.
 :- import_module libs.compiler_util.
-:- import_module parse_tree.prog_data.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.term_constr_main.
 
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+
+%-----------------------------------------------------------------------------%
+
+goal_is_conj_of_unify(ToAssignVars0, Goal) :-
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
+    CodeModel = goal_info_get_code_model(GoalInfo),
+    CodeModel = model_det,
+    goal_to_conj_list(Goal, Conj),
+    only_constant_goals(Conj, ToAssignVars0, ToAssignVars),
+    set.empty(ToAssignVars).
+
+all_disjuncts_are_conj_of_unify(_ToAssignVars, []).
+all_disjuncts_are_conj_of_unify(ToAssignVars, [Disjunct | Disjuncts]) :-
+    goal_is_conj_of_unify(ToAssignVars, Disjunct),
+    all_disjuncts_are_conj_of_unify(ToAssignVars, Disjuncts).
+
+:- pred only_constant_goals(list(hlds_goal)::in,
+    set(prog_var)::in, set(prog_var)::out) is semidet.
+
+only_constant_goals([], !ToAssignVars).
+only_constant_goals([Goal | Goals], !ToAssignVars) :-
+    Goal = hlds_goal(GoalExpr, _),
+    % We could allow calls as well. Some procedures have an output inst
+    % that fixes the value of the output variable, which is thus a constant.
+    % However, calls to such procedures should have been inlined by now.
+    (
+        GoalExpr = unify(_, _, _, Unification, _),
+        Unification = construct(Var, _, _, _, _, _, _)
+    ;
+        GoalExpr = scope(Reason, _),
+        Reason = from_ground_term(Var, from_ground_term_construct)
+    ),
+    set.delete(!.ToAssignVars, Var, !:ToAssignVars),
+    only_constant_goals(Goals, !ToAssignVars).
 
 %-----------------------------------------------------------------------------%
 %

@@ -26,7 +26,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module maybe.
 :- import_module set.
 
     % Figure out which variables are bound in the goal.
@@ -35,15 +34,6 @@
     %
 :- pred figure_out_output_vars(code_info::in, hlds_goal_info::in,
     list(prog_var)::out) is det.
-
-    % Is the input goal a conjunction of unifications? A
-    % from_ground_term_construct scope counts as a unification.
-    %
-:- pred goal_is_conj_of_unify(hlds_goal::in) is semidet.
-
-    % Run goal_is_conj_of_unify on each goal in the list.
-    %
-:- pred all_disjuncts_are_conj_of_unify(list(hlds_goal)::in) is semidet.
 
     % To figure out if the outputs are constants, we
     %
@@ -62,10 +52,14 @@
     abs_store_map::in, list(rval)::out, branch_end::in, branch_end::out,
     set(prog_var)::out, code_info::in, code_info::out) is semidet.
 
+:- pred generate_constants_for_disjunct(hlds_goal::in,
+    list(prog_var)::in, abs_store_map::in, list(rval)::out,
+    branch_end::in, branch_end::out, set(prog_var)::out,
+    code_info::in, code_info::out) is semidet.
+
 :- pred generate_constants_for_disjuncts(list(hlds_goal)::in,
     list(prog_var)::in, abs_store_map::in, list(list(rval))::out,
-    branch_end::in, branch_end::out, maybe(set(prog_var))::out,
-    code_info::in, code_info::out) is semidet.
+    branch_end::in, branch_end::out, code_info::in, code_info::out) is semidet.
 
 :- pred set_liveness_and_end_branch(abs_store_map::in, branch_end::in,
     set(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
@@ -89,6 +83,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module maybe.
 :- import_module pair.
 
 figure_out_output_vars(CI, GoalInfo, OutVars) :-
@@ -114,34 +109,6 @@ is_output_var(ModuleInfo, CurrentInstMap, InstMapAfter, Var) :-
     instmap_lookup_var(CurrentInstMap, Var, Initial),
     instmap_lookup_var(InstMapAfter, Var, Final),
     mode_is_output(ModuleInfo, (Initial -> Final)).
-
-goal_is_conj_of_unify(Goal) :-
-    Goal = hlds_goal(_GoalExpr, GoalInfo),
-    CodeModel = goal_info_get_code_model(GoalInfo),
-    CodeModel = model_det,
-    goal_to_conj_list(Goal, Conj),
-    only_constant_goals(Conj).
-
-all_disjuncts_are_conj_of_unify([]).
-all_disjuncts_are_conj_of_unify([Disjunct | Disjuncts]) :-
-    goal_is_conj_of_unify(Disjunct),
-    all_disjuncts_are_conj_of_unify(Disjuncts).
-
-:- pred only_constant_goals(list(hlds_goal)::in) is semidet.
-
-only_constant_goals([]).
-only_constant_goals([Goal | Goals]) :-
-    Goal = hlds_goal(GoalExpr, _),
-    % We could allow calls as well. Some procedures have an output inst
-    % that fixes the value of the output variable, which is thus a constant.
-    % However, calls to such procedures should have been inlined by now.
-    (
-        GoalExpr = unify(_, _, _, _, _)
-    ;
-        GoalExpr = scope(Reason, _),
-        Reason = from_ground_term(_, from_ground_term_construct)
-    ),
-    only_constant_goals(Goals).
 
 generate_constants_for_arm(Goal, Vars, StoreMap, !MaybeEnd, CaseRvals,
         Liveness, !CI) :-
@@ -176,10 +143,8 @@ do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
     generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !CI),
     reset_to_position(BranchStart, !CI).
 
-generate_constants_for_disjuncts([], _Vars, _StoreMap, [], !MaybeEnd,
-        no, !CI).
-generate_constants_for_disjuncts([Disjunct0 | Disjuncts], Vars, StoreMap,
-        [Soln | Solns], !MaybeEnd, yes(Liveness), !CI) :-
+generate_constants_for_disjunct(Disjunct0, Vars, StoreMap, Soln,
+        !MaybeEnd, Liveness, !CI) :-
     % The pre_goal_update sanity check insists on no_resume_point, to ensure
     % that all resume points have been handled by surrounding code.
     Disjunct0 = hlds_goal(DisjunctGoalExpr, DisjunctGoalInfo0),
@@ -187,9 +152,15 @@ generate_constants_for_disjuncts([Disjunct0 | Disjuncts], Vars, StoreMap,
         DisjunctGoalInfo0, DisjunctGoalInfo),
     Disjunct = hlds_goal(DisjunctGoalExpr, DisjunctGoalInfo),
     do_generate_constants_for_arm(Disjunct, Vars, StoreMap, yes, Soln,
-        !MaybeEnd, Liveness, !CI),
-    generate_constants_for_disjuncts(Disjuncts, Vars, StoreMap, Solns,
-        !MaybeEnd, _, !CI).
+        !MaybeEnd, Liveness, !CI).
+
+generate_constants_for_disjuncts([], _Vars, _StoreMap, [], !MaybeEnd, !CI).
+generate_constants_for_disjuncts([Disjunct0 | Disjuncts0], Vars, StoreMap,
+        [Soln | Solns], !MaybeEnd, !CI) :-
+    generate_constants_for_disjunct(Disjunct0, Vars, StoreMap, Soln,
+        !MaybeEnd, _Liveness, !CI),
+    generate_constants_for_disjuncts(Disjuncts0, Vars, StoreMap, Solns,
+        !MaybeEnd, !CI).
 
 %---------------------------------------------------------------------------%
 

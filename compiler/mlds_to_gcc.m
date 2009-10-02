@@ -2746,17 +2746,16 @@ gen_stmt(DefnInfo0, ml_stmt_block(Defns, Statements), _Context) -->
     %
     % iteration
     %
-gen_stmt(DefnInfo, ml_stmt_while(Cond, Statement, AtLeastOneIteration),
-        _Context) -->
+gen_stmt(DefnInfo, ml_stmt_while(Kind, Cond, Statement), _Context) -->
     gcc__gen_start_loop(Loop),
     build_rval(Cond, DefnInfo, GCC_Cond),
     (
-        { AtLeastOneIteration = yes },
+        { Kind = loop_at_least_once },
         % generate the test at the end of the loop
         gen_statement(DefnInfo, Statement),
         gcc__gen_exit_loop_if_false(Loop, GCC_Cond)
     ;
-        { AtLeastOneIteration = no },
+        { Kind = may_loop_zero_times },
         % generate the test at the start of the loop
         gcc__gen_exit_loop_if_false(Loop, GCC_Cond),
         gen_statement(DefnInfo, Statement)

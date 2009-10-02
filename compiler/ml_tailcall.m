@@ -253,9 +253,9 @@ mark_tailcalls_in_stmt(AtTail, Locals, Stmt0, Stmt) :-
     ;
         % The statement in the body of a while loop is never in a tail
         % position.
-        Stmt0 = ml_stmt_while(Rval, Statement0, Once),
+        Stmt0 = ml_stmt_while(Kind, Rval, Statement0),
         mark_tailcalls_in_statement(no, Locals, Statement0, Statement),
-        Stmt = ml_stmt_while(Rval, Statement, Once)
+        Stmt = ml_stmt_while(Kind, Rval, Statement)
     ;
         % Both the `then' and the `else' parts of an if-then-else are in a
         % tail position iff the if-then-else is in a tail position.

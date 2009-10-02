@@ -318,89 +318,6 @@
 %
 %-----------------------------------------------------------------------------%
 %
-% Code for empty disjunctions (`fail')
-%
-%
-%   model_semi goal:
-%       <succeeded = fail>
-%   ===>
-%       succeeded = MR_FALSE;
-%
-%   model_non goal:
-%       <fail && CONT()>
-%   ===>
-%       /* fall through */
-%
-%-----------------------------------------------------------------------------%
-%
-% Code for non-empty disjunctions
-%
-%
-% model_det disj:
-%
-%   model_det Goal:
-%       <do (Goal ; Goals)>
-%   ===>
-%       <do Goal>
-%       /* <Goals> will never be reached */
-%
-%   model_semi Goal:
-%       <do (Goal ; Goals)>
-%   ===>
-%       MR_bool succeeded;
-%
-%       <succeeded = Goal>;
-%       if (!succeeded) {
-%           <do Goals>;
-%       }
-%
-% model_semi disj:
-%
-%   model_det Goal:
-%       <succeeded = (Goal ; Goals)>
-%   ===>
-%       MR_bool succeeded;
-%
-%       <do Goal>
-%       succeeded = MR_TRUE
-%       /* <Goals> will never be reached */
-%
-%   model_semi Goal:
-%       <succeeded = (Goal ; Goals)>
-%   ===>
-%       MR_bool succeeded;
-%
-%       <succeeded = Goal>;
-%       if (!succeeded) {
-%           <succeeded = Goals>;
-%       }
-%
-% model_non disj:
-%
-%   model_det Goal:
-%       <(Goal ; Goals) && SUCCEED()>
-%   ===>
-%       <Goal>
-%       SUCCEED();
-%       <Goals && SUCCEED()>
-%
-%   model_semi Goal:
-%       <(Goal ; Goals) && SUCCEED()>
-%   ===>
-%       MR_bool succeeded;
-%
-%       <succeeded = Goal>
-%       if (succeeded) SUCCEED();
-%       <Goals && SUCCEED()>
-%
-%   model_non Goal:
-%       <(Goal ; Goals) && SUCCEED()>
-%   ===>
-%       <Goal && SUCCEED()>
-%       <Goals && SUCCEED()>
-%
-%-----------------------------------------------------------------------------%
-%
 % Code for if-then-else
 %
 %
@@ -600,6 +517,7 @@
 :- import_module backend_libs.foreign. % XXX needed for pragma foreign code
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
@@ -608,6 +526,7 @@
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_commit_gen.
+:- import_module ml_backend.ml_disj_gen.
 :- import_module ml_backend.ml_foreign_proc_gen.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
@@ -771,7 +690,8 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
         ml_gen_conj(Goals, CodeModel, Context, Decls, Statements, !Info)
     ;
         GoalExpr = disj(Goals),
-        ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info)
+        ml_gen_disj(Goals, GoalInfo, CodeModel, Context, Statements, !Info),
+        Decls = []
     ;
         GoalExpr = switch(Var, CanFail, CasesList),
         ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context, GoalInfo,
@@ -963,73 +883,91 @@ cases_find_subgoal_nonlocals([Case | Cases], !SubGoalNonLocals) :-
 
 %-----------------------------------------------------------------------------%
 
-    % If the inner and outer code models are equal, we don't need to do
-    % anything.
-    %
-    % If the inner code model is less precise than the outer code model,
-    % then that is either a determinism error, or a situation in which
-    % simplify.m is supposed to wrap the goal inside a `some' to indicate that
-    % a commit is needed.
-    %
-    % If the inner code model is more precise than the outer code model,
-    % then we need to append some statements to convert the calling convention
-    % for the inner code model to that of the outer code model.
-
-ml_gen_maybe_convert_goal_code_model(model_det, model_det, _,
-        !Statements, !Info).
-ml_gen_maybe_convert_goal_code_model(model_semi, model_semi, _,
-        !Statements, !Info).
-ml_gen_maybe_convert_goal_code_model(model_non, model_non, _,
-        !Statements, !Info).
-
-ml_gen_maybe_convert_goal_code_model(model_det, model_semi, _, _, _, !Info) :-
-    unexpected(this_file,
-        "ml_gen_maybe_convert_goal_code_model: semi in det").
-ml_gen_maybe_convert_goal_code_model(model_det, model_non, _, _, _, !Info) :-
-    unexpected(this_file,
-        "ml_gen_maybe_convert_goal_code_model: nondet in det").
-ml_gen_maybe_convert_goal_code_model(model_semi, model_non, _, _, _, !Info) :-
-    unexpected(this_file,
-        "ml_gen_maybe_convert_goal_code_model: nondet in semi").
-
-ml_gen_maybe_convert_goal_code_model(model_semi, model_det, Context,
+ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
         !Statements, !Info) :-
-    % det goal in semidet context:
-    %   <succeeded = Goal>
-    % ===>
-    %   <do Goal>
-    %   succeeded = MR_TRUE
+    (
+        % If the inner and outer code models are equal, we don't need to do
+        % anything.
+        %
+        (
+            OuterCodeModel = model_det,
+            InnerCodeModel = model_det
+        ;
+            OuterCodeModel = model_semi,
+            InnerCodeModel = model_semi
+        ;
+            OuterCodeModel = model_non,
+            InnerCodeModel = model_non
+        )
+    ;
+        % If the inner code model is less precise than the outer code model,
+        % then that is either a determinism error, or a situation in which
+        % simplify.m is supposed to wrap the goal inside a `some' to indicate
+        % that a commit is needed.
+        (
+            OuterCodeModel = model_det,
+            InnerCodeModel = model_semi,
+            unexpected(this_file,
+                "ml_gen_maybe_convert_goal_code_model: semi in det")
+        ;
+            OuterCodeModel = model_det,
+            InnerCodeModel = model_non,
+            unexpected(this_file,
+                "ml_gen_maybe_convert_goal_code_model: nondet in det")
+        ;
+            OuterCodeModel = model_semi,
+            InnerCodeModel = model_non,
+            unexpected(this_file,
+                "ml_gen_maybe_convert_goal_code_model: nondet in semi")
+        )
+    ;
+        % If the inner code model is more precise than the outer code model,
+        % then we need to append some statements to convert the calling
+        % convention for the inner code model to that of the outer code model.
+        (
+            OuterCodeModel = model_semi,
+            InnerCodeModel = model_det,
 
-    ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
-        SetSuccessTrue),
-    !:Statements = !.Statements ++ [SetSuccessTrue].
+            % det goal in semidet context:
+            %   <succeeded = Goal>
+            % ===>
+            %   <do Goal>
+            %   succeeded = MR_TRUE
 
-ml_gen_maybe_convert_goal_code_model(model_non, model_det, Context,
-        !Statements, !Info) :-
-    % det goal in nondet context:
-    %   <Goal && SUCCEED()>
-    % ===>
-    %   <do Goal>
-    %   SUCCEED()
+            ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
+                SetSuccessTrue),
+            !:Statements = !.Statements ++ [SetSuccessTrue]
+        ;
+            OuterCodeModel = model_non,
+            InnerCodeModel = model_det,
 
-    ml_gen_call_current_success_cont(Context, CallCont, !Info),
-    !:Statements = !.Statements ++ [CallCont].
+            % det goal in nondet context:
+            %   <Goal && SUCCEED()>
+            % ===>
+            %   <do Goal>
+            %   SUCCEED()
 
-ml_gen_maybe_convert_goal_code_model(model_non, model_semi, Context,
-        !Statements, !Info) :-
-    % semi goal in nondet context:
-    %   <Goal && SUCCEED()>
-    % ===>
-    %   MR_bool succeeded;
-    %
-    %   <succeeded = Goal>
-    %   if (succeeded) SUCCEED()
+            ml_gen_call_current_success_cont(Context, CallCont, !Info),
+            !:Statements = !.Statements ++ [CallCont]
+        ;
+            OuterCodeModel = model_non,
+            InnerCodeModel = model_semi,
 
-    ml_gen_test_success(!.Info, Succeeded),
-    ml_gen_call_current_success_cont(Context, CallCont, !Info),
-    IfStmt = ml_stmt_if_then_else(Succeeded, CallCont, no),
-    IfStatement = statement(IfStmt, mlds_make_context(Context)),
-    !:Statements = !.Statements ++ [IfStatement].
+            % semi goal in nondet context:
+            %   <Goal && SUCCEED()>
+            % ===>
+            %   MR_bool succeeded;
+            %
+            %   <succeeded = Goal>
+            %   if (succeeded) SUCCEED()
+
+            ml_gen_test_success(!.Info, Succeeded),
+            ml_gen_call_current_success_cont(Context, CallCont, !Info),
+            IfStmt = ml_stmt_if_then_else(Succeeded, CallCont, no),
+            IfStatement = statement(IfStmt, mlds_make_context(Context)),
+            !:Statements = !.Statements ++ [IfStatement]
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1154,8 +1092,9 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         ml_gen_set_cond_var(!.Info, CondVar, ml_const(mlconst_true),
             ThenContext, SetCondTrue),
         ml_gen_goal_as_block(CodeModel, Then, ThenStatement, !Info),
-        ThenFuncBody = ml_gen_block([], [SetCondTrue, ThenStatement],
-            ThenContext),
+        ThenFuncBody = statement(
+            ml_stmt_block([], [SetCondTrue, ThenStatement]),
+            mlds_make_context(ThenContext)),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, ThenFuncLabel, ThenContext,
             ThenFuncBody, ThenFunc),
@@ -1268,110 +1207,6 @@ ml_gen_conj(Conjuncts, CodeModel, Context, Decls, Statements, !Info) :-
             DoGenRest = ml_gen_conj(Rest, CodeModel, Context),
             ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
                 Decls, Statements, !Info)
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Code for disjunctions.
-%
-
-:- pred ml_gen_disj(hlds_goals::in, code_model::in, prog_context::in,
-    list(mlds_defn)::out, list(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info) :-
-    (
-        Goals = [],
-        % Handle empty disjunctions (a.ka. `fail').
-        ml_gen_failure(CodeModel, Context, Statements, !Info),
-        Decls = []
-    ;
-        Goals = [SingleGoal],
-        % Handle singleton disjunctions.
-        % (The HLDS should not contain singleton disjunctions, but this code
-        % is needed to handle recursive calls to ml_gen_disj).
-        % Note that we place each non-first arm of a model_non disjunction
-        % into a block. This is so that we can avoid having to figure out
-        % how to merge their declarations with the declarations of the first
-        % disjunct.
-        ml_gen_goal_as_branch_block(CodeModel, SingleGoal, Statement, !Info),
-        Statements = [Statement],
-        Decls = []
-    ;
-        Goals = [FirstGoal | LaterGoals],
-        LaterGoals = [_ | _],
-        (
-            CodeModel = model_non,
-            % model_non disj:
-            %
-            %       <(Goal ; Goals) && SUCCEED()>
-            %   ===>
-            %       <Goal && SUCCEED()>
-            %       <Goals && SUCCEED()>
-
-            ml_gen_goal_as_branch_block(model_non, FirstGoal, FirstStatement,
-                !Info),
-            ml_gen_disj(LaterGoals, model_non, Context,
-                LaterDecls, LaterStatements, !Info),
-            (
-                LaterDecls = [],
-                Statements = [FirstStatement | LaterStatements],
-                Decls = []
-            ;
-                LaterDecls = [_ | _],
-                unexpected(this_file, "ml_gen_disj: LaterDecls not empty.")
-            )
-        ;
-            ( CodeModel = model_det
-            ; CodeModel = model_semi
-            ),
-            % model_det/model_semi disj:
-            %
-            %   model_det goal:
-            %       <Goal ; Goals>
-            %   ===>
-            %       <Goal>
-            %       /* <Goals> will never be reached */
-            %
-            %   model_semi goal:
-            %       <Goal ; Goals>
-            %   ===>
-            %   {
-            %       MR_bool succeeded;
-            %
-            %       <succeeded = Goal>;
-            %       if (!succeeded) {
-            %           <Goals>;
-            %       }
-            %   }
-
-            FirstGoal = hlds_goal(_, FirstGoalInfo),
-            FirstCodeModel = goal_info_get_code_model(FirstGoalInfo),
-            (
-                FirstCodeModel = model_det,
-                ml_gen_goal(model_det, FirstGoal, Decls, Statements, !Info)
-            ;
-                FirstCodeModel = model_semi,
-                ml_gen_goal_as_branch(model_semi, FirstGoal,
-                    FirstDecls, FirstStatements, !Info),
-                ml_gen_test_success(!.Info, Succeeded),
-                ml_gen_disj(LaterGoals, CodeModel, Context,
-                    LaterDecls, LaterStatements, !Info),
-                LaterStatement = ml_gen_block(LaterDecls, LaterStatements,
-                    Context),
-                IfStmt = ml_stmt_if_then_else(
-                    ml_unop(std_unop(logical_not), Succeeded),
-                    LaterStatement, no),
-                IfStatement = statement(IfStmt, mlds_make_context(Context)),
-                Decls = FirstDecls,
-                Statements = FirstStatements ++ [IfStatement]
-            ;
-                FirstCodeModel = model_non,
-                % simplify.m should get wrap commits around these.
-                unexpected(this_file,
-                    "model_non disj in model_det disjunction")
-            )
         )
     ).
 

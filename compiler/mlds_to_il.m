@@ -472,9 +472,9 @@ rename_gc_statement(gc_initialiser(Stmt))
 rename_statement(statement(ml_stmt_block(Defns, Stmts), Context))
     = statement(ml_stmt_block(list.map(rename_defn, Defns),
         list.map(rename_statement, Stmts)), Context).
-rename_statement(statement(ml_stmt_while(Rval, Loop, IterateOnce), Context))
-    = statement(ml_stmt_while(rename_rval(Rval),
-        rename_statement(Loop), IterateOnce), Context).
+rename_statement(statement(ml_stmt_while(Kind, Rval, Loop), Context))
+    = statement(ml_stmt_while(Kind, rename_rval(Rval), rename_statement(Loop)),
+        Context).
 rename_statement(statement(ml_stmt_if_then_else(Rval, Then, MaybeElse),
         Context)) =
     statement(ml_stmt_if_then_else(rename_rval(Rval),
@@ -1772,12 +1772,12 @@ statement_to_il(statement(SwitchStmt, _Context), _Instrs, !Info) :-
     unexpected(this_file, "`switch' not supported").
 
 statement_to_il(statement(WhileStmt, Context), Instrs, !Info) :-
-    WhileStmt = ml_stmt_while(Condition, Body, AtLeastOnce),
+    WhileStmt = ml_stmt_while(Kind, Condition, Body),
     generate_condition(Condition, ConditionInstrs, EndLabel, !Info),
     il_info_make_next_label(StartLabel, !Info),
     statement_to_il(Body, BodyInstrs, !Info),
     (
-        AtLeastOnce = no,
+        Kind = may_loop_zero_times,
         Instrs =
             context_node(Context) ++
             comment_node("while") ++
@@ -1787,7 +1787,7 @@ statement_to_il(statement(WhileStmt, Context), Instrs, !Info) :-
             singleton(br(label_target(StartLabel))) ++
             singleton(label(EndLabel))
     ;
-        AtLeastOnce = yes,
+        Kind = loop_at_least_once,
         % XXX This generates a branch over branch which is suboptimal.
         Instrs =
             context_node(Context) ++

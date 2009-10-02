@@ -44,6 +44,7 @@
    :- include_module ml_foreign_proc_gen.
    :- include_module ml_closure_gen.
    :- include_module ml_commit_gen.
+   :- include_module ml_disj_gen.
    :- include_module ml_switch_gen.
       :- include_module ml_simplify_switch.
       :- include_module ml_string_switch.

@@ -191,7 +191,7 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
             GotoEndStatement
         ]),
         MLDS_Context),
-    LoopBody = ml_gen_block([], [
+    LoopBody = statement(ml_stmt_block([], [
         statement(ml_stmt_atomic(comment(
             "lookup the string for this hash slot")), MLDS_Context),
         statement(
@@ -212,8 +212,8 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
                     ml_vector_common_row(VectorCommon, SlotVarRval),
                     NextSlotFieldId, MLDS_NextSlotType, StructType)))),
             MLDS_Context)
-        ],
-        Context),
+        ]),
+        MLDS_Context),
     HashLookupStatements = [
         statement(ml_stmt_atomic(comment("hashed string switch")),
             MLDS_Context),
@@ -228,11 +228,11 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         statement(ml_stmt_atomic(comment("hash chain loop")), MLDS_Context),
         statement(
             ml_stmt_while(
+                loop_at_least_once,
                 ml_binop(int_ge,
                     ml_lval(SlotVarLval),
                     ml_const(mlconst_int(0))),
-                LoopBody,
-                yes), % This is a do...while loop.
+                LoopBody),
             MLDS_Context)
         ],
     EndLabelStatement = statement(ml_stmt_label(EndLabel), MLDS_Context),

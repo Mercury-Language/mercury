@@ -1,31 +1,136 @@
-a ->
+p1 a ->
+p1_one f1 1.1
 end
 
-b ->
+p1 b ->
+p1_two f2 2.2
 end
 
-c ->
+p1 c ->
+p1_three f1 3.3
 end
 
-d ->
-four f1 4.4
+p1 d ->
+p1_four f1 4.4
 end
 
-e ->
-five f2 5.5
-five2 f3(5) 55.5
+p1 e ->
+p1_five f2 5.5
+p1_five2 f3(5) 55.5
 end
 
-f ->
-six f4("hex") 6.6
+p1 f ->
+p1_six f4("hex") 6.6
 end
 
-g ->
-seven f5(77.7) 7.7
-seven2 f1 777.7
-seven3 f2 7777.7
+p1 g ->
+p1_seven f5(77.7) 7.7
+p1_seven2 f1 777.7
+p1_seven3 f2 7777.7
 end
 
-h ->
+p1 h ->
+p1_eight f1 8.0
+end
+
+p2 a ->
+p2_one f1 1.1
+end
+
+p2 b ->
+end
+
+p2 c ->
+p2_three f1 3.3
+end
+
+p2 d ->
+p2_four f1 4.4
+end
+
+p2 e ->
+p2_five f2 5.5
+p2_five2 f3(5) 55.5
+end
+
+p2 f ->
+p2_six f4("hex") 6.6
+end
+
+p2 g ->
+p2_seven f5(77.7) 7.7
+p2_seven2 f1 777.7
+p2_seven3 f2 7777.7
+end
+
+p2 h ->
+end
+
+p3 -1 ->
+end
+
+p3 0 ->
+end
+
+p3 1 ->
+end
+
+p3 2 ->
+p3_two_a f2 6.6
+p3_two_b f2 8.8
+end
+
+p3 3 ->
+p3_three f3(5) 66.6
+end
+
+p3 4 ->
+p3_four_a f5(78.7) 7.8
+p3_four_b f1 999.7
+p3_four_c f2 9999.7
+end
+
+p3 5 ->
+p3_five f5(88.8) 9999.9
+end
+
+p3 6 ->
+end
+
+p3 7 ->
+end
+
+p4 -1 ->
+end
+
+p4 0 ->
+end
+
+p4 1 ->
+end
+
+p4 2 ->
+p4_two_a f2 6.6
+p4_two_b f2 8.8
+end
+
+p4 3 ->
+end
+
+p4 4 ->
+p4_four_a f5(78.7) 7.8
+p4_four_b f1 999.7
+p4_four_c f2 9999.7
+end
+
+p4 5 ->
+p4_five f5(88.8) 9999.9
+end
+
+p4 6 ->
+p4_six f5(66.0) 666.6
+end
+
+p4 7 ->
 end
 

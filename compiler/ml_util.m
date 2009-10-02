@@ -185,6 +185,8 @@
 :- func gen_init_reserved_address(module_info, reserved_address) =
     mlds_initializer.
 
+:- func wrap_init_obj(mlds_rval) = mlds_initializer.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -272,7 +274,7 @@ stmt_contains_statement(Stmt, SubStatement) :-
         Stmt = ml_stmt_block(_Defns, Statements),
         statements_contains_statement(Statements, SubStatement)
     ;
-        Stmt = ml_stmt_while(_Rval, Statement, _Once),
+        Stmt = ml_stmt_while(_Kind, _Rval, Statement),
         statement_contains_statement(Statement, SubStatement)
     ;
         Stmt = ml_stmt_if_then_else(_Cond, Then, MaybeElse),
@@ -359,7 +361,7 @@ stmt_contains_var(Stmt, DataName) = ContainsVar :-
             ContainsVar = statements_contains_var(Statements, DataName)
         )
     ;
-        Stmt = ml_stmt_while(Rval, Statement, _Once),
+        Stmt = ml_stmt_while(_Kind, Rval, Statement),
         ( rval_contains_var(Rval, DataName) = yes ->
             ContainsVar = yes
         ;
@@ -914,5 +916,7 @@ gen_init_reserved_address(ModuleInfo, ReservedAddress) =
     % XXX using `mlds_generic_type' here is probably wrong
     init_obj(ml_gen_reserved_address(ModuleInfo, ReservedAddress,
         mlds_generic_type)).
+
+wrap_init_obj(Rval) = init_obj(Rval).
 
 %-----------------------------------------------------------------------------%

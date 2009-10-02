@@ -991,6 +991,10 @@
                 mlds_context
             ).
 
+:- type while_loop_kind
+    --->    may_loop_zero_times
+    ;       loop_at_least_once.
+
 :- type mlds_stmt
     % Sequence.
 
@@ -998,7 +1002,7 @@
 
     % Iteration.
 
-    ;       ml_stmt_while(mlds_rval, statement, bool)
+    ;       ml_stmt_while(while_loop_kind, mlds_rval, statement)
             % The `bool' is true iff the loop is guaranteed to iterate at
             % least once -- in that case, the compiler can generate a
             % `do...while' loop rather than a `while...' loop.

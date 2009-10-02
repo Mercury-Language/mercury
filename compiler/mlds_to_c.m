@@ -1582,7 +1582,7 @@ mlds_output_scalar_cell_group_defn(Opts, Indent, MangledModuleName,
     io.write_string("[]", !IO),
     mlds_output_type_suffix(Opts, Type, InitArraySize, !IO),
     io.write_string(" = {\n", !IO),
-    list.foldl(mlds_output_cell(Opts, Indent + 1), Rows, !IO),
+    list.foldl2(mlds_output_cell(Opts, Indent + 1), Rows, 0, _, !IO),
     io.write_string("};\n", !IO).
 
 :- pred mlds_output_vector_cell_group_defns(mlds_to_c_opts::in, indent::in,
@@ -1619,13 +1619,18 @@ mlds_output_vector_cell_group_defn(Opts, Indent, MangledModuleName,
     io.write_string("[]", !IO),
     mlds_output_type_suffix(Opts, Type, no_size, !IO),
     io.write_string(" = {\n", !IO),
-    list.foldl(mlds_output_cell(Opts, Indent + 1), Rows, !IO),
+    list.foldl2(mlds_output_cell(Opts, Indent + 1), Rows, 0, _, !IO),
     io.write_string("};\n", !IO).
 
-:- pred mlds_output_cell(mlds_to_c_opts::in, indent::in,
-    mlds_initializer::in, io::di, io::uo) is det.
+:- pred mlds_output_cell(mlds_to_c_opts::in, indent::in, mlds_initializer::in,
+    int::in, int::out, io::di, io::uo) is det.
 
-mlds_output_cell(Opts, Indent, Initializer, !IO) :-
+mlds_output_cell(Opts, Indent, Initializer, !RowNum, !IO) :-
+    mlds_indent(Indent, !IO),
+    io.write_string("/* row ", !IO),
+    io.write_int(!.RowNum, !IO),
+    io.write_string(" */\n", !IO),
+    !:RowNum = !.RowNum + 1,
     mlds_output_initializer_body(Opts, Indent, Initializer, !IO),
     io.write_string(",\n", !IO).
 
@@ -3045,9 +3050,9 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
         mlds_output_context_and_indent(Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
-        Stmt = ml_stmt_while(Cond, LoopStatement, AtLeastOnce),
+        Stmt = ml_stmt_while(Kind, Cond, LoopStatement),
         (
-            AtLeastOnce = no,
+            Kind = may_loop_zero_times,
             mlds_indent(Indent, !IO),
             io.write_string("while (", !IO),
             mlds_output_rval(Opts, Cond, !IO),
@@ -3055,7 +3060,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
             mlds_output_statement(Opts, Indent + 1, FuncInfo, LoopStatement,
                 !IO)
         ;
-            AtLeastOnce = yes,
+            Kind = loop_at_least_once,
             mlds_indent(Indent, !IO),
             io.write_string("do\n", !IO),
             mlds_output_statement(Opts, Indent + 1, FuncInfo, LoopStatement,

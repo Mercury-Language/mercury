@@ -128,7 +128,8 @@
 
 :- type soln_consts(Rval)
     --->    one_soln(list(Rval))
-    ;       several_solns(list(list(Rval))).
+    ;       several_solns(list(Rval), list(list(Rval))).
+            % The first solution, and all the later solutions.
 
 :- type need_range_check
     --->    need_range_check
@@ -691,8 +692,8 @@ project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
         Soln = one_soln(Rvals),
         !:RvalsList = [Rvals | !.RvalsList]
     ;
-        Soln = several_solns(SolnRvalsList),
-        !:RvalsList = SolnRvalsList ++ !.RvalsList
+        Soln = several_solns(FirstSolnRvals, LaterSolnsRvalsList),
+        !:RvalsList = [FirstSolnRvals | LaterSolnsRvalsList] ++ !.RvalsList
     ),
     project_solns_to_rval_lists(Cases, !RvalsList).
 

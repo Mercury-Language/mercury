@@ -1560,14 +1560,15 @@ Thus we have a pass which transforms the HLDS to handle trailing:
 <li> ml_proc_gen.m is the top module of the package that converts HLDS code
      to MLDS. Its main submodule is ml_code_gen.m, which handles the tasks
      common to all kinds of goals, as well as the tasks specific to some
-     goals (conjunctions, disjunctions, if-then-elses, negations). For other
-     kinds of goals, ml_code_gen.m invokes some other submodules:
+     goals (conjunctions, if-then-elses, negations). For other kinds of goals,
+     ml_code_gen.m invokes some other submodules:
 	<ul>
 	<li> ml_unify_gen.m
 	<li> ml_closure_gen.m
 	<li> ml_call_gen.m
 	<li> ml_foreign_proc_gen.m
 	<li> ml_commit_gen.m
+	<li> ml_disj_gen.m
 	<li> ml_switch_gen.m, which calls upon:
 		<ul>
 		<li> ml_lookup_switch.m
@@ -1868,6 +1869,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2009-09-25 05:13:23 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2009-10-02 03:55:35 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

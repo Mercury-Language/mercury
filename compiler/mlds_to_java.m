@@ -628,7 +628,7 @@ method_ptrs_in_statement(statement(Stmt, _Context), !CodeAddrs) :-
 method_ptrs_in_stmt(ml_stmt_block(Defns, Statements), !CodeAddrs) :-
     method_ptrs_in_defns(Defns, !CodeAddrs),
     method_ptrs_in_statements(Statements, !CodeAddrs).
-method_ptrs_in_stmt(ml_stmt_while(Rval, Statement, _Bool), !CodeAddrs) :-
+method_ptrs_in_stmt(ml_stmt_while(_Kind, Rval, Statement), !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs),
     method_ptrs_in_statement(Statement, !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_if_then_else(Rval, StatementThen,
@@ -1326,10 +1326,10 @@ rename_class_names_stmt(Renaming, !Stmt) :-
             Statements0, Statements),
         !:Stmt = ml_stmt_block(Defns, Statements)
     ;
-        !.Stmt = ml_stmt_while(Rval0, Statement0, AtLeastOnce),
+        !.Stmt = ml_stmt_while(Kind, Rval0, Statement0),
         rename_class_names_rval(Renaming, Rval0, Rval),
         rename_class_names_statement(Renaming, Statement0, Statement),
-        !:Stmt = ml_stmt_while(Rval, Statement, AtLeastOnce)
+        !:Stmt = ml_stmt_while(Kind, Rval, Statement)
     ;
         !.Stmt = ml_stmt_if_then_else(Rval0, Statement0, MaybeElse0),
         rename_class_names_rval(Renaming, Rval0, Rval),
@@ -3120,366 +3120,344 @@ output_statement(Indent, ModuleInfo, FuncInfo,
 :- pred output_stmt(indent::in, module_info::in, func_info::in, mlds_stmt::in,
     mlds_context::in, exit_methods::out, io::di, io::uo) is det.
 
-    % sequence
-    %
-output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_block(Defns, Statements),
-        Context, ExitMethods, !IO) :-
-    indent_line(Indent, !IO),
-    io.write_string("{\n", !IO),
-    (
-        Defns = [_ | _],
-        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        output_defns(Indent + 1, ModuleInfo, ModuleName, none, Defns, !IO),
-        io.write_string("\n", !IO)
-    ;
-        Defns = []
-    ),
-    output_statements(Indent + 1, ModuleInfo, FuncInfo, Statements,
-        ExitMethods, !IO),
-    indent_line(Context, Indent, !IO),
-    io.write_string("}\n", !IO).
-
-    % iteration
-    %
-output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_while(Cond, Statement, no),
-        _, ExitMethods, !IO) :-
-    indent_line(Indent, !IO),
-    io.write_string("while (", !IO),
-    output_rval(ModuleInfo, Cond, FuncInfo ^ func_info_name ^ mod_name, !IO),
-    io.write_string(")\n", !IO),
-    % The contained statement is reachable iff the while statement is
-    % reachable and the condition expression is not a constant expression
-    % whose value is false.
-    ( Cond = ml_const(mlconst_false) ->
-        indent_line(Indent, !IO),
-        io.write_string("{  /* Unreachable code */  }\n", !IO),
-        ExitMethods = set.make_singleton_set(can_fall_through)
-    ;
-        output_statement(Indent + 1, ModuleInfo, FuncInfo, Statement,
-            StmtExitMethods, !IO),
-        ExitMethods = while_exit_methods(Cond, StmtExitMethods)
-    ).
-output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_while(Cond, Statement, yes),
-        Context, ExitMethods, !IO) :-
-    indent_line(Indent, !IO),
-    io.write_string("do\n", !IO),
-    output_statement(Indent + 1, ModuleInfo, FuncInfo, Statement,
-        StmtExitMethods, !IO),
-    indent_line(Context, Indent, !IO),
-    io.write_string("while (", !IO),
-    output_rval(ModuleInfo, Cond, FuncInfo ^ func_info_name ^ mod_name, !IO),
-    io.write_string(");\n", !IO),
-    ExitMethods = while_exit_methods(Cond, StmtExitMethods).
-
-    % selection (if-then-else)
-    %
-output_stmt(Indent, ModuleInfo, FuncInfo,
-        ml_stmt_if_then_else(Cond, Then0, MaybeElse),
-        Context, ExitMethods, !IO) :-
-    % We need to take care to avoid problems caused by the dangling else
-    % ambiguity.
-    (
-        % For examples of the form
-        %
-        %   if (...)
-        %       if (...)
-        %           ...
-        %   else
-        %       ...
-        %
-        % we need braces around the inner `if', otherwise they wouldn't parse
-        % they way we want them to: Java would match the `else' with the
-        % inner `if' rather than the outer `if'.
-
-        MaybeElse = yes(_),
-        Then0 = statement(ml_stmt_if_then_else(_, _, no), ThenContext)
-    ->
-        Then = statement(ml_stmt_block([], [Then0]), ThenContext)
-    ;
-        Then = Then0
-    ),
-
-    indent_line(Indent, !IO),
-    io.write_string("if (", !IO),
-    output_rval(ModuleInfo, Cond, FuncInfo ^ func_info_name ^ mod_name, !IO),
-    io.write_string(")\n", !IO),
-    output_statement(Indent + 1, ModuleInfo, FuncInfo, Then, ThenExitMethods,
-        !IO),
-    (
-        MaybeElse = yes(Else),
-        indent_line(Context, Indent, !IO),
-        io.write_string("else\n", !IO),
-        output_statement(Indent + 1, ModuleInfo, FuncInfo, Else,
-            ElseExitMethods, !IO),
-        % An if-then-else statement can complete normally iff the
-        % then-statement can complete normally or the else-statement
-        % can complete normally.
-        ExitMethods = ThenExitMethods `set.union` ElseExitMethods
-    ;
-        MaybeElse = no,
-        % An if-then statement can complete normally iff it is reachable.
-        ExitMethods = ThenExitMethods `set.union`
-            set.make_singleton_set(can_fall_through)
-    ).
-
-    % selection (switch)
-    %
-output_stmt(Indent, ModuleInfo, FuncInfo,
-        ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        Context, ExitMethods, !IO) :-
-    indent_line(Context, Indent, !IO),
-    io.write_string("switch (", !IO),
-    output_rval_maybe_with_enum(ModuleInfo, Val,
-        FuncInfo ^ func_info_name ^ mod_name, !IO),
-    io.write_string(") {\n", !IO),
-    output_switch_cases(Indent + 1, ModuleInfo, FuncInfo, Context, Cases,
-        Default, ExitMethods, !IO),
-    indent_line(Context, Indent, !IO),
-    io.write_string("}\n", !IO).
-
-    % transfer of control
-    %
-output_stmt(_, _, _, ml_stmt_label(_), _, _, _, _)  :-
-    unexpected(this_file, "output_stmt: labels not supported in Java.").
-output_stmt(_, _, _, ml_stmt_goto(goto_label(_)), _, _, _, _) :-
-    unexpected(this_file, "output_stmt: gotos not supported in Java.").
-output_stmt(Indent, _, _FuncInfo, ml_stmt_goto(goto_break), _Context,
-        ExitMethods, !IO) :-
-    indent_line(Indent, !IO),
-    io.write_string("break;\n", !IO),
-    ExitMethods = set.make_singleton_set(can_break).
-output_stmt(Indent, _, _FuncInfo, ml_stmt_goto(goto_continue), _Context,
-        ExitMethods, !IO) :-
-    indent_line(Indent, !IO),
-    io.write_string("continue;\n", !IO),
-    ExitMethods = set.make_singleton_set(can_continue).
-output_stmt(_, _, _, ml_stmt_computed_goto(_, _), _, _, _, _) :-
-    unexpected(this_file,
-        "output_stmt: computed gotos not supported in Java.").
-
-    % function call/return
-    %
-output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
+output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         !IO) :-
-    Call = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs, Results,
-        _IsTailCall),
-    Signature = mlds_func_signature(ArgTypes, RetTypes),
-    ModuleName = CallerFuncInfo ^ func_info_name ^ mod_name,
-    indent_line(Indent, !IO),
-    io.write_string("{\n", !IO),
-    indent_line(Context, Indent + 1, !IO),
     (
-        Results = []
-    ;
-        Results = [Lval],
-        output_lval(ModuleInfo, Lval, ModuleName, !IO),
-        io.write_string(" = ", !IO)
-    ;
-        Results = [_, _ | _],
-        % for multiple return values,
-        % we generate the following code:
-        %   { java.lang.Object [] result = <func>(<args>);
-        %     <output1> = (<type1>) result[0];
-        %     <output2> = (<type2>) result[1];
-        %     ...
-        %   }
-        %
-        io.write_string("java.lang.Object [] result = ", !IO)
-    ),
-    ( FuncRval = ml_const(mlconst_code_addr(_)) ->
-        % This is a standard method call.
+        Statement = ml_stmt_block(Defns, Statements),
+        indent_line(Indent, !IO),
+        io.write_string("{\n", !IO),
         (
-            MaybeObject = yes(Object),
-            output_bracketed_rval(ModuleInfo, Object, ModuleName, !IO),
-            io.write_string(".", !IO)
+            Defns = [_ | _],
+            ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+            output_defns(Indent + 1, ModuleInfo, ModuleName, none, Defns, !IO),
+            io.write_string("\n", !IO)
         ;
-            MaybeObject = no
+            Defns = []
         ),
-        % This is a standard function call.
-        output_call_rval(ModuleInfo, FuncRval, ModuleName, !IO),
-        io.write_string("(", !IO),
-        io.write_list(CallArgs, ", ",
-            (pred(CallArg::in, !.IO::di, !:IO::uo) is det :-
-                output_rval(ModuleInfo, CallArg, ModuleName, !IO)), !IO),
-        io.write_string(")", !IO)
+        output_statements(Indent + 1, ModuleInfo, FuncInfo, Statements,
+            ExitMethods, !IO),
+        indent_line(Context, Indent, !IO),
+        io.write_string("}\n", !IO)
     ;
-        % This is a call using a method pointer.
-        %
-        % Here we do downcasting, as a call will always return
-        % something of type java.lang.Object
-        %
-        % XXX This is a hack, I can't see any way to do this downcasting
-        % nicely, as it needs to effectively be wrapped around the method call
-        % itself, so it acts before this predicate's solution to multiple
-        % return values, see above.
-        %
+        Statement = ml_stmt_while(Kind, Cond, BodyStatement),
+        Kind = may_loop_zero_times,
+        indent_line(Indent, !IO),
+        io.write_string("while (", !IO),
+        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+        output_rval(ModuleInfo, Cond, ModuleName, !IO),
+        io.write_string(")\n", !IO),
+        % The contained statement is reachable iff the while statement is
+        % reachable and the condition expression is not a constant expression
+        % whose value is false.
+        ( Cond = ml_const(mlconst_false) ->
+            indent_line(Indent, !IO),
+            io.write_string("{  /* Unreachable code */  }\n", !IO),
+            ExitMethods = set.make_singleton_set(can_fall_through)
+        ;
+            output_statement(Indent + 1, ModuleInfo, FuncInfo, BodyStatement,
+                StmtExitMethods, !IO),
+            ExitMethods = while_exit_methods(Cond, StmtExitMethods)
+        )
+    ;
+        Statement = ml_stmt_while(Kind, Cond, BodyStatement),
+        Kind = loop_at_least_once,
+        indent_line(Indent, !IO),
+        io.write_string("do\n", !IO),
+        output_statement(Indent + 1, ModuleInfo, FuncInfo, BodyStatement,
+            StmtExitMethods, !IO),
+        indent_line(Context, Indent, !IO),
+        io.write_string("while (", !IO),
+        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+        output_rval(ModuleInfo, Cond, ModuleName, !IO),
+        io.write_string(");\n", !IO),
+        ExitMethods = while_exit_methods(Cond, StmtExitMethods)
+    ;
+        Statement = ml_stmt_if_then_else(Cond, Then0, MaybeElse),
+        % We need to take care to avoid problems caused by the dangling else
+        % ambiguity.
         (
-            RetTypes = []
+            % For examples of the form
+            %
+            %   if (...)
+            %       if (...)
+            %           ...
+            %   else
+            %       ...
+            %
+            % we need braces around the inner `if', otherwise they wouldn't
+            % parse they way we want them to: Java would match the `else'
+            % with the inner `if' rather than the outer `if'.
+
+            MaybeElse = yes(_),
+            Then0 = statement(ml_stmt_if_then_else(_, _, no), ThenContext)
+        ->
+            Then = statement(ml_stmt_block([], [Then0]), ThenContext)
         ;
-            RetTypes = [RetType],
-            ( java_builtin_type(RetType, _, JavaBoxedName, _) ->
-                io.write_string("((", !IO),
-                io.write_string(JavaBoxedName, !IO),
-                io.write_string(") ", !IO)
-            ;
-                io.write_string("((", !IO),
-                output_type(normal_style, RetType, !IO),
-                io.write_string(") ", !IO)
-            )
-        ;
-            RetTypes = [_, _ | _],
-            io.write_string("((java.lang.Object[]) ", !IO)
-        ),
-        (
-            MaybeObject = yes(Object),
-            output_bracketed_rval(ModuleInfo, Object, ModuleName, !IO),
-            io.write_string(".", !IO)
-        ;
-            MaybeObject = no
+            Then = Then0
         ),
 
-        list.length(CallArgs, Arity),
-        ( Arity =< max_specialised_method_ptr_arity ->
-            io.write_string("((jmercury.runtime.MethodPtr", !IO),
-            io.write_int(Arity, !IO),
-            io.write_string(") ", !IO),
-            output_bracketed_rval(ModuleInfo, FuncRval, ModuleName, !IO),
-            io.write_string(").call___0_0(", !IO),
-            output_boxed_args(ModuleInfo, CallArgs, ArgTypes, ModuleName, !IO)
-        ;
-            io.write_string("((jmercury.runtime.MethodPtrN) ", !IO),
-            output_bracketed_rval(ModuleInfo, FuncRval, ModuleName, !IO),
-            io.write_string(").call___0_0(", !IO),
-            output_args_as_array(ModuleInfo, CallArgs, ArgTypes, ModuleName,
-                !IO)
-        ),
-
-        % Closes brackets, and calls unbox methods for downcasting.
-        % XXX This is a hack, see the above comment.
-        io.write_string(")", !IO),
+        indent_line(Indent, !IO),
+        io.write_string("if (", !IO),
+        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+        output_rval(ModuleInfo, Cond, ModuleName, !IO),
+        io.write_string(")\n", !IO),
+        output_statement(Indent + 1, ModuleInfo, FuncInfo, Then,
+            ThenExitMethods, !IO),
         (
-            RetTypes = []
+            MaybeElse = yes(Else),
+            indent_line(Context, Indent, !IO),
+            io.write_string("else\n", !IO),
+            output_statement(Indent + 1, ModuleInfo, FuncInfo, Else,
+                ElseExitMethods, !IO),
+            % An if-then-else statement can complete normally iff the
+            % then-statement can complete normally or the else-statement
+            % can complete normally.
+            ExitMethods = ThenExitMethods `set.union` ElseExitMethods
         ;
-            RetTypes = [RetType2],
-            ( java_builtin_type(RetType2, _, _, UnboxMethod) ->
-                io.write_string(").", !IO),
-                io.write_string(UnboxMethod, !IO),
-                io.write_string("()", !IO)
+            MaybeElse = no,
+            % An if-then statement can complete normally iff it is reachable.
+            ExitMethods = ThenExitMethods `set.union`
+                set.make_singleton_set(can_fall_through)
+        )
+    ;
+        Statement = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
+        indent_line(Context, Indent, !IO),
+        io.write_string("switch (", !IO),
+        output_rval_maybe_with_enum(ModuleInfo, Val,
+            FuncInfo ^ func_info_name ^ mod_name, !IO),
+        io.write_string(") {\n", !IO),
+        output_switch_cases(Indent + 1, ModuleInfo, FuncInfo, Context, Cases,
+            Default, ExitMethods, !IO),
+        indent_line(Context, Indent, !IO),
+        io.write_string("}\n", !IO)
+    ;
+        Statement = ml_stmt_label(_),
+        unexpected(this_file, "output_stmt: labels not supported in Java.")
+    ;
+        Statement = ml_stmt_goto(goto_label(_)),
+        unexpected(this_file, "output_stmt: gotos not supported in Java.")
+    ;
+        Statement = ml_stmt_goto(goto_break),
+        indent_line(Indent, !IO),
+        io.write_string("break;\n", !IO),
+        ExitMethods = set.make_singleton_set(can_break)
+    ;
+        Statement = ml_stmt_goto(goto_continue),
+        indent_line(Indent, !IO),
+        io.write_string("continue;\n", !IO),
+        ExitMethods = set.make_singleton_set(can_continue)
+    ;
+        Statement = ml_stmt_computed_goto(_, _),
+        unexpected(this_file,
+            "output_stmt: computed gotos not supported in Java.")
+    ;
+        Statement = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
+            Results, _IsTailCall),
+        Signature = mlds_func_signature(ArgTypes, RetTypes),
+        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+        indent_line(Indent, !IO),
+        io.write_string("{\n", !IO),
+        indent_line(Context, Indent + 1, !IO),
+        (
+            Results = []
+        ;
+            Results = [Lval],
+            output_lval(ModuleInfo, Lval, ModuleName, !IO),
+            io.write_string(" = ", !IO)
+        ;
+            Results = [_, _ | _],
+            % for multiple return values,
+            % we generate the following code:
+            %   { java.lang.Object [] result = <func>(<args>);
+            %     <output1> = (<type1>) result[0];
+            %     <output2> = (<type2>) result[1];
+            %     ...
+            %   }
+            %
+            io.write_string("java.lang.Object [] result = ", !IO)
+        ),
+        ( FuncRval = ml_const(mlconst_code_addr(_)) ->
+            % This is a standard method call.
+            (
+                MaybeObject = yes(Object),
+                output_bracketed_rval(ModuleInfo, Object, ModuleName, !IO),
+                io.write_string(".", !IO)
             ;
+                MaybeObject = no
+            ),
+            % This is a standard function call.
+            output_call_rval(ModuleInfo, FuncRval, ModuleName, !IO),
+            io.write_string("(", !IO),
+            io.write_list(CallArgs, ", ",
+                (pred(CallArg::in, !.IO::di, !:IO::uo) is det :-
+                    output_rval(ModuleInfo, CallArg, ModuleName, !IO)), !IO),
+            io.write_string(")", !IO)
+        ;
+            % This is a call using a method pointer.
+            %
+            % Here we do downcasting, as a call will always return
+            % something of type java.lang.Object
+            %
+            % XXX This is a hack, I can't see any way to do this downcasting
+            % nicely, as it needs to effectively be wrapped around the method
+            % call itself, so it acts before this predicate's solution to
+            % multiple return values, see above.
+
+            (
+                RetTypes = []
+            ;
+                RetTypes = [RetType],
+                ( java_builtin_type(RetType, _, JavaBoxedName, _) ->
+                    io.write_string("((", !IO),
+                    io.write_string(JavaBoxedName, !IO),
+                    io.write_string(") ", !IO)
+                ;
+                    io.write_string("((", !IO),
+                    output_type(normal_style, RetType, !IO),
+                    io.write_string(") ", !IO)
+                )
+            ;
+                RetTypes = [_, _ | _],
+                io.write_string("((java.lang.Object[]) ", !IO)
+            ),
+            (
+                MaybeObject = yes(Object),
+                output_bracketed_rval(ModuleInfo, Object, ModuleName, !IO),
+                io.write_string(".", !IO)
+            ;
+                MaybeObject = no
+            ),
+
+            list.length(CallArgs, Arity),
+            ( Arity =< max_specialised_method_ptr_arity ->
+                io.write_string("((jmercury.runtime.MethodPtr", !IO),
+                io.write_int(Arity, !IO),
+                io.write_string(") ", !IO),
+                output_bracketed_rval(ModuleInfo, FuncRval, ModuleName, !IO),
+                io.write_string(").call___0_0(", !IO),
+                output_boxed_args(ModuleInfo, CallArgs, ArgTypes,
+                    ModuleName, !IO)
+            ;
+                io.write_string("((jmercury.runtime.MethodPtrN) ", !IO),
+                output_bracketed_rval(ModuleInfo, FuncRval, ModuleName, !IO),
+                io.write_string(").call___0_0(", !IO),
+                output_args_as_array(ModuleInfo, CallArgs, ArgTypes,
+                    ModuleName, !IO)
+            ),
+
+            % Closes brackets, and calls unbox methods for downcasting.
+            % XXX This is a hack, see the above comment.
+            io.write_string(")", !IO),
+            (
+                RetTypes = []
+            ;
+                RetTypes = [RetType2],
+                ( java_builtin_type(RetType2, _, _, UnboxMethod) ->
+                    io.write_string(").", !IO),
+                    io.write_string(UnboxMethod, !IO),
+                    io.write_string("()", !IO)
+                ;
+                    io.write_string(")", !IO)
+                )
+            ;
+                RetTypes = [_, _ | _],
                 io.write_string(")", !IO)
             )
+        ),
+        io.write_string(";\n", !IO),
+
+        ( Results = [_, _ | _] ->
+            % Copy the results from the "result" array into the Result
+            % lvals (unboxing them as we go).
+            output_assign_results(ModuleInfo, Results, RetTypes, 0, ModuleName,
+                Indent + 1, Context, !IO)
         ;
-            RetTypes = [_, _ | _],
-            io.write_string(")", !IO)
-        )
-    ),
-    io.write_string(";\n", !IO),
-
-    ( Results = [_, _ | _] ->
-        % Copy the results from the "result" array into the Result
-        % lvals (unboxing them as we go).
-        output_assign_results(ModuleInfo, Results, RetTypes, 0, ModuleName,
-            Indent + 1, Context, !IO)
-    ;
-        true
-    ),
-    % XXX Is this needed? If present, it causes compiler errors for a
-    %     couple of files in the benchmarks directory.  -mjwybrow
-    %
-    % ( IsTailCall = tail_call, Results = [] ->
-    %   indent_line(Context, Indent + 1, !IO),
-    %   io.write_string("return;\n", !IO)
-    % ;
-    %   true
-    % ),
-    %
-    indent_line(Indent, !IO),
-    io.write_string("}\n", !IO),
-    ExitMethods = set.make_singleton_set(can_fall_through).
-
-output_stmt(Indent, ModuleInfo, FuncInfo, ml_stmt_return(Results), _,
-        ExitMethods, !IO) :-
-    (
-        Results = [],
+            true
+        ),
+        % XXX Is this needed? If present, it causes compiler errors for a
+        %     couple of files in the benchmarks directory.  -mjwybrow
+        %
+        % ( IsTailCall = tail_call, Results = [] ->
+        %   indent_line(Context, Indent + 1, !IO),
+        %   io.write_string("return;\n", !IO)
+        % ;
+        %   true
+        % ),
+        %
         indent_line(Indent, !IO),
-        io.write_string("return;\n", !IO)
+        io.write_string("}\n", !IO),
+        ExitMethods = set.make_singleton_set(can_fall_through)
     ;
-        Results = [Rval],
+        Statement = ml_stmt_return(Results),
+        (
+            Results = [],
+            indent_line(Indent, !IO),
+            io.write_string("return;\n", !IO)
+        ;
+            Results = [Rval],
+            indent_line(Indent, !IO),
+            io.write_string("return ", !IO),
+            output_rval(ModuleInfo, Rval, FuncInfo ^ func_info_name ^ mod_name,
+                !IO),
+            io.write_string(";\n", !IO)
+        ;
+            Results = [_, _ | _],
+            FuncInfo = func_info(FuncName, Params),
+            Params = mlds_func_params(_Args, ReturnTypes),
+            TypesAndResults = assoc_list.from_corresponding_lists(
+                ReturnTypes, Results),
+            io.write_string("return new java.lang.Object[] {\n", !IO),
+            indent_line(Indent + 1, !IO),
+            Separator = ",\n" ++ duplicate_char(' ', (Indent + 1) * 2),
+            io.write_list(TypesAndResults, Separator,
+                (pred((Type - Result)::in, !.IO::di, !:IO::uo) is det :-
+                    output_boxed_rval(ModuleInfo, Type, Result,
+                        FuncName ^ mod_name, !IO)),
+                !IO),
+            io.write_string("\n", !IO),
+            indent_line(Indent, !IO),
+            io.write_string("};\n", !IO)
+        ),
+        ExitMethods = set.make_singleton_set(can_return)
+    ;
+        Statement = ml_stmt_do_commit(Ref),
         indent_line(Indent, !IO),
-        io.write_string("return ", !IO),
-        output_rval(ModuleInfo, Rval, FuncInfo ^ func_info_name ^ mod_name,
+        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+        output_rval(ModuleInfo, Ref, ModuleName, !IO),
+        io.write_string(" = new jmercury.runtime.Commit();\n", !IO),
+        indent_line(Indent, !IO),
+        io.write_string("throw ", !IO),
+        output_rval(ModuleInfo, Ref, ModuleName, !IO),
+        io.write_string(";\n", !IO),
+        ExitMethods = set.make_singleton_set(can_throw)
+    ;
+        Statement = ml_stmt_try_commit(_Ref, Stmt, Handler),
+        indent_line(Indent, !IO),
+        io.write_string("try\n", !IO),
+        indent_line(Indent, !IO),
+        io.write_string("{\n", !IO),
+        output_statement(Indent + 1, ModuleInfo, FuncInfo, Stmt,
+            TryExitMethods0, !IO),
+        indent_line(Indent, !IO),
+        io.write_string("}\n", !IO),
+        indent_line(Indent, !IO),
+        io.write_string("catch (jmercury.runtime.Commit commit_variable)\n",
             !IO),
-        io.write_string(";\n", !IO)
-    ;
-        Results = [_, _ | _],
-        FuncInfo = func_info(FuncName, Params),
-        Params = mlds_func_params(_Args, ReturnTypes),
-        TypesAndResults = assoc_list.from_corresponding_lists(
-            ReturnTypes, Results),
-        io.write_string("return new java.lang.Object[] {\n", !IO),
+        indent_line(Indent, !IO),
+        io.write_string("{\n", !IO),
         indent_line(Indent + 1, !IO),
-        Separator = ",\n" ++ duplicate_char(' ', (Indent + 1) * 2),
-        io.write_list(TypesAndResults, Separator,
-            (pred((Type - Result)::in, !.IO::di, !:IO::uo) is det :-
-                output_boxed_rval(ModuleInfo, Type, Result,
-                    FuncName ^ mod_name, !IO)),
-            !IO),
-        io.write_string("\n", !IO),
+        output_statement(Indent + 1, ModuleInfo, FuncInfo, Handler,
+            CatchExitMethods, !IO),
         indent_line(Indent, !IO),
-        io.write_string("};\n", !IO)
-    ),
-    ExitMethods = set.make_singleton_set(can_return).
-
-output_stmt(Indent, ModuleInfo, FuncInfo, DoCommitStmt, _, ExitMethods,
-        !IO) :-
-    DoCommitStmt = ml_stmt_do_commit(Ref),
-    indent_line(Indent, !IO),
-    output_rval(ModuleInfo, Ref, FuncInfo ^ func_info_name ^ mod_name, !IO),
-    io.write_string(" = new jmercury.runtime.Commit();\n", !IO),
-    indent_line(Indent, !IO),
-    io.write_string("throw ", !IO),
-    output_rval(ModuleInfo, Ref, FuncInfo ^ func_info_name ^ mod_name, !IO),
-    io.write_string(";\n", !IO),
-    ExitMethods = set.make_singleton_set(can_throw).
-
-output_stmt(Indent, ModuleInfo, FuncInfo, TryCommitStmt, _, ExitMethods,
-        !IO) :-
-    TryCommitStmt = ml_stmt_try_commit(_Ref, Stmt, Handler),
-    indent_line(Indent, !IO),
-    io.write_string("try\n", !IO),
-    indent_line(Indent, !IO),
-    io.write_string("{\n", !IO),
-    output_statement(Indent + 1, ModuleInfo, FuncInfo, Stmt, TryExitMethods0,
-        !IO),
-    indent_line(Indent, !IO),
-    io.write_string("}\n", !IO),
-    indent_line(Indent, !IO),
-    io.write_string("catch (jmercury.runtime.Commit commit_variable)\n", !IO),
-    indent_line(Indent, !IO),
-    io.write_string("{\n", !IO),
-    indent_line(Indent + 1, !IO),
-    output_statement(Indent + 1, ModuleInfo, FuncInfo, Handler,
-        CatchExitMethods, !IO),
-    indent_line(Indent, !IO),
-    io.write_string("}\n", !IO),
-    ExitMethods = (TryExitMethods0 `set.delete` can_throw)
-        `set.union`  CatchExitMethods.
-
-    % exception handling
-    %
-
-    % XXX not yet implemented
-
-    % atomic statements
-    %
-output_stmt(Indent, ModuleInfo, FuncInfo, AtomicStmt, Context, ExitMethods,
-        !IO) :-
-    AtomicStmt = ml_stmt_atomic(AtomicStatement),
-    output_atomic_stmt(Indent, ModuleInfo, FuncInfo, AtomicStatement, Context,
-        !IO),
-    ExitMethods = set.make_singleton_set(can_fall_through).
-    % Returns a set of exit_methods that describes whether the while
-    % statement can complete normally.
+        io.write_string("}\n", !IO),
+        ExitMethods = (TryExitMethods0 `set.delete` can_throw)
+            `set.union`  CatchExitMethods
+    ;
+        Statement = ml_stmt_atomic(AtomicStatement),
+        output_atomic_stmt(Indent, ModuleInfo, FuncInfo, AtomicStatement,
+            Context, !IO),
+        ExitMethods = set.make_singleton_set(can_fall_through)
+    ).
 
 %-----------------------------------------------------------------------------%
 %

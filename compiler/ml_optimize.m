@@ -171,9 +171,9 @@ optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
         optimize_in_statements(OptInfo, Statements3, Statements),
         Stmt = ml_stmt_block(Defns, Statements)
     ;
-        Stmt0 = ml_stmt_while(Rval, Statement0, Once),
+        Stmt0 = ml_stmt_while(Kind, Rval, Statement0),
         optimize_in_statement(OptInfo, Statement0, Statement),
-        Stmt = ml_stmt_while(Rval, Statement, Once)
+        Stmt = ml_stmt_while(Kind, Rval, Statement)
     ;
         Stmt0 = ml_stmt_if_then_else(Rval, Then0, MaybeElse0),
         optimize_in_statement(OptInfo, Then0, Then),
@@ -443,12 +443,12 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
             %   }
             % Any tail calls in the function body will have
             % been replaced with `continue' statements.
-            Stmt = ml_stmt_while(ml_const(mlconst_true),
+            Stmt = ml_stmt_while(may_loop_zero_times, ml_const(mlconst_true),
                 statement(ml_stmt_block([],
                     [CommentStmt,
                     statement(Stmt0, Context),
                     statement(ml_stmt_goto(goto_break), Context)]),
-                Context), no)
+                Context))
         ;
             % Add a loop_top label at the start of the function
             % body:
@@ -1118,10 +1118,10 @@ eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo) :-
             !VarElimInfo),
         Stmt = ml_stmt_block(Defns, Statements)
     ;
-        Stmt0 = ml_stmt_while(Rval0, Statement0, Once),
+        Stmt0 = ml_stmt_while(Kind, Rval0, Statement0),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         eliminate_var_in_statement(Statement0, Statement, !VarElimInfo),
-        Stmt = ml_stmt_while(Rval, Statement, Once)
+        Stmt = ml_stmt_while(Kind, Rval, Statement)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0),
         eliminate_var_in_rval(Cond0, Cond, !VarElimInfo),

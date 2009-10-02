@@ -37,6 +37,13 @@
 % uses a flag in the mc script with a value from configuration. This is used
 % when generating bit-vectors.
 % 
+% The implementation of lookup switches is further documented in the paper
+% Dealing with large predicates: exo-compilation in the WAM and in Mercury,
+% by Bart Demoen Phuong-Lan Nguyen, Vi'tor Santos Costa, Zoltan Somogyi.
+%
+% The module ml_lookup_switch.m implements lookup switches for the MLDS
+% backend. Any changes here may need to be reflected there as well.
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.lookup_switch.
@@ -126,18 +133,13 @@ is_lookup_switch(TaggedCases, GoalInfo, StoreMap, !MaybeEnd, LookupSwitchInfo,
     % end because we may have allocated some new static ground terms.
 
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
+    set.list_to_set(OutVars, ArmNonLocals),
     remember_position(!.CI, CurPos),
-    generate_constants_for_lookup_switch(TaggedCases, OutVars, StoreMap,
-        MaybeLiveness, map.init, CaseSolnMap, !MaybeEnd,
+    generate_constants_for_lookup_switch(TaggedCases, OutVars, ArmNonLocals,
+        StoreMap, Liveness, map.init, CaseSolnMap, !MaybeEnd,
         set.init, ResumeVars, no, GoalsMayModifyTrail, !CI),
     map.to_assoc_list(CaseSolnMap, CaseSolns),
     reset_to_position(CurPos, !CI),
-    (
-        MaybeLiveness = yes(Liveness)
-    ;
-        MaybeLiveness = no,
-        unexpected(this_file, "is_lookup_switch: no liveness!")
-    ),
     VarTypes = get_var_types(!.CI),
     list.map(map.lookup(VarTypes), OutVars, OutTypes),
     ( project_all_to_one_solution(CaseSolns, [], RevCaseValuePairs) ->
@@ -160,15 +162,17 @@ is_lookup_switch(TaggedCases, GoalInfo, StoreMap, !MaybeEnd, LookupSwitchInfo,
 %---------------------------------------------------------------------------%
 
 :- pred generate_constants_for_lookup_switch(list(tagged_case)::in,
-    list(prog_var)::in, abs_store_map::in, maybe(set(prog_var))::out,
+    list(prog_var)::in, set(prog_var)::in, abs_store_map::in,
+    set(prog_var)::out,
     map(int, soln_consts(rval))::in, map(int, soln_consts(rval))::out,
     branch_end::in, branch_end::out, set(prog_var)::in, set(prog_var)::out,
     bool::in, bool::out, code_info::in, code_info::out) is semidet.
 
-generate_constants_for_lookup_switch([], _Vars, _StoreMap, no, !IndexMap,
+generate_constants_for_lookup_switch([], _Vars, _ArmNonLocals, _StoreMap,
+        set.init, !IndexMap,
         !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
 generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
-        StoreMap, MaybeLiveness, !IndexMap, !MaybeEnd, !ResumeVars,
+        ArmNonLocals, StoreMap, Liveness, !IndexMap, !MaybeEnd, !ResumeVars,
         !GoalsMayModifyTrail, !CI) :-
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -179,14 +183,18 @@ generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
     not set.member(feature_save_deep_excp_vars, Features),
 
     ( GoalExpr = disj(Disjuncts) ->
-        bool.or(goal_may_modify_trail(GoalInfo), !GoalsMayModifyTrail),
         (
             Disjuncts = [],
             % Cases like this should have been filtered out by
             % filter_out_failing_cases.
             unexpected(this_file, "generate_constants: disj([])")
         ;
-            Disjuncts = [FirstDisjunct | _],
+            Disjuncts = [FirstDisjunct | LaterDisjuncts],
+            goal_is_conj_of_unify(ArmNonLocals, FirstDisjunct),
+            all_disjuncts_are_conj_of_unify(ArmNonLocals, LaterDisjuncts),
+
+            bool.or(goal_may_modify_trail(GoalInfo), !GoalsMayModifyTrail),
+
             FirstDisjunct = hlds_goal(_, FirstDisjunctGoalInfo),
             goal_info_get_resume_point(FirstDisjunctGoalInfo, ThisResumePoint),
             (
@@ -194,36 +202,36 @@ generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
                 set.union(ThisResumeVars, !ResumeVars)
             ;
                 ThisResumePoint = no_resume_point
-            )
-        ),
-        all_disjuncts_are_conj_of_unify(Disjuncts),
+            ),
 
-        % We execute the pre- and post-goal update for the disjunction.
-        % The pre- and post-goal updates for the disjuncts themselves are
-        % done as part of the call to generate_goal in
-        % generate_constants_for_disjuncts in lookup_util.m.
-        pre_goal_update(GoalInfo, has_subgoals, !CI),
-        get_instmap(!.CI, InstMap),
-        generate_constants_for_disjuncts(Disjuncts, Vars, StoreMap, Solns,
-            !MaybeEnd, MaybeLiveness, !CI),
-        set_instmap(InstMap, !CI),
-        post_goal_update(GoalInfo, !CI),
-        SolnConsts = several_solns(Solns)
+            % We execute the pre- and post-goal update for the disjunction.
+            % The pre- and post-goal updates for the disjuncts themselves are
+            % done as part of the call to generate_goal in
+            % generate_constants_for_disjuncts in lookup_util.m.
+            pre_goal_update(GoalInfo, has_subgoals, !CI),
+            get_instmap(!.CI, InstMap),
+            generate_constants_for_disjunct(FirstDisjunct, Vars, StoreMap,
+                FirstSoln, !MaybeEnd, Liveness, !CI),
+            generate_constants_for_disjuncts(LaterDisjuncts, Vars, StoreMap,
+                LaterSolns, !MaybeEnd, !CI),
+            set_instmap(InstMap, !CI),
+            post_goal_update(GoalInfo, !CI),
+            SolnConsts = several_solns(FirstSoln, LaterSolns)
+        )
     ;
-        goal_is_conj_of_unify(Goal),
+        goal_is_conj_of_unify(ArmNonLocals, Goal),
         % The pre- and post-goal updates for the goals themselves
         % are done as part of the call to generate_goal in
         % generate_constants_for_disjuncts in lookup_util.m.
         generate_constants_for_arm(Goal, Vars, StoreMap, Soln,
             !MaybeEnd, Liveness, !CI),
-        MaybeLiveness = yes(Liveness),
         SolnConsts = one_soln(Soln)
     ),
     record_lookup_for_tagged_cons_id(SolnConsts, TaggedMainConsId, !IndexMap),
     list.foldl(record_lookup_for_tagged_cons_id(SolnConsts),
         TaggedOtherConsIds, !IndexMap),
-    generate_constants_for_lookup_switch(TaggedCases, Vars,
-        StoreMap, _MaybeLivenessRest, !IndexMap, !MaybeEnd, !ResumeVars,
+    generate_constants_for_lookup_switch(TaggedCases, Vars, ArmNonLocals,
+        StoreMap, _LivenessRest, !IndexMap, !MaybeEnd, !ResumeVars,
         !GoalsMayModifyTrail, !CI).
 
 :- pred record_lookup_for_tagged_cons_id(soln_consts(rval)::in,
@@ -709,10 +717,7 @@ construct_several_soln_vector(CurIndex, EndVal, !.LaterNextRow, LLDSTypes,
             ControlRvals = [const(llconst_int(0)), const(llconst_int(0))],
             MainRow = ControlRvals ++ Rvals
         ;
-            Soln = several_solns([]),
-            unexpected(this_file, "construct_several_soln_vector: several = 0")
-        ;
-            Soln = several_solns([FirstSoln | LaterSolns]),
+            Soln = several_solns(FirstSoln, LaterSolns),
             !:SeveralSolnCaseCount = !.SeveralSolnCaseCount + 1,
             list.length(LaterSolns, NumLaterSolns),
             FirstRowOffset = !.LaterNextRow * NumLLDSTypes,

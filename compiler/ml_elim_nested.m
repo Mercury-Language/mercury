@@ -1448,10 +1448,10 @@ flatten_stmt(Action, Stmt0, Stmt, !Info) :-
             !Info),
         Stmt = ml_stmt_block(Defns, Statements)
     ;
-        Stmt0 = ml_stmt_while(Rval0, Statement0, Once),
+        Stmt0 = ml_stmt_while(Kind, Rval0, Statement0),
         fixup_rval(Action, !.Info, Rval0, Rval),
         flatten_statement(Action, Statement0, Statement, !Info),
-        Stmt = ml_stmt_while(Rval, Statement, Once)
+        Stmt = ml_stmt_while(Kind, Rval, Statement)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0),
         fixup_rval(Action, !.Info, Cond0, Cond),
@@ -2270,7 +2270,7 @@ stmt_contains_matching_defn(Filter, Stmt) :-
         ; statements_contains_matching_defn(Filter, Statements)
         )
     ;
-        Stmt = ml_stmt_while(_Rval, Statement, _Once),
+        Stmt = ml_stmt_while(_Kind, _Rval, Statement),
         statement_contains_matching_defn(Filter, Statement)
     ;
         Stmt = ml_stmt_if_then_else(_Cond, Then, MaybeElse),
@@ -2411,9 +2411,9 @@ add_unchain_stack_to_stmt(Action, Context, Stmt0, Stmt, !Info) :-
             !Info),
         Stmt = ml_stmt_block(Defns, Statements)
     ;
-        Stmt0 = ml_stmt_while(Rval, Statement0, Once),
+        Stmt0 = ml_stmt_while(Kind, Rval, Statement0),
         add_unchain_stack_to_statement(Action, Statement0, Statement, !Info),
-        Stmt = ml_stmt_while(Rval, Statement, Once)
+        Stmt = ml_stmt_while(Kind, Rval, Statement)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
         add_unchain_stack_to_statement(Action, Then0, Then, !Info),
