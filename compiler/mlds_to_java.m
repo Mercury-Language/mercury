@@ -3729,8 +3729,14 @@ output_atomic_stmt(_Indent, _, _FuncInfo, delete_object(_Lval), _, _, _) :-
 output_atomic_stmt(Indent, ModuleInfo, FuncInfo, NewObject, Context, !IO) :-
     NewObject = new_object(Target, _MaybeTag, HasSecTag, Type,
         _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic),
-    ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+    (
+        HasSecTag = yes,
+        unexpected(this_file, "output_atomic_stmt: has secondary tag")
+    ;
+        HasSecTag = no
+    ),
 
+    ModuleName = FuncInfo ^ func_info_name ^ mod_name,
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
     indent_line(Context, Indent + 1, !IO),
@@ -3759,15 +3765,13 @@ output_atomic_stmt(Indent, ModuleInfo, FuncInfo, NewObject, Context, !IO) :-
         % The new object will be an array, so we need to initialise it
         % using array literals syntax.
         io.write_string(" {", !IO),
-        output_init_args(ModuleInfo, Args, ArgTypes, 0, HasSecTag, ModuleName,
-            !IO),
+        output_init_args(ModuleInfo, Args, ArgTypes, ModuleName, !IO),
         io.write_string("};\n", !IO)
     ;
         IsArray = not_array,
         % Generate constructor arguments.
         io.write_string("(", !IO),
-        output_init_args(ModuleInfo, Args, ArgTypes, 0, HasSecTag, ModuleName,
-            !IO),
+        output_init_args(ModuleInfo, Args, ArgTypes, ModuleName, !IO),
         io.write_string(");\n", !IO)
     ),
     indent_line(Indent, !IO),
@@ -3851,34 +3855,23 @@ output_target_code_component(ModuleInfo, ModuleName, _Context, TargetCode,
     % object's class constructor.
     %
 :- pred output_init_args(module_info::in, list(mlds_rval)::in,
-    list(mlds_type)::in, int::in, bool::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+    list(mlds_type)::in, mlds_module_name::in, io::di, io::uo) is det.
 
-output_init_args(_, [], [], _, _, _, !IO).
-output_init_args(_, [_ | _], [], _, _, _, _, _) :-
+output_init_args(_, [], [], _, !IO).
+output_init_args(_, [_ | _], [], _, _, _) :-
     unexpected(this_file, "output_init_args: length mismatch.").
-output_init_args(_, [], [_ | _], _, _, _, _, _) :-
+output_init_args(_, [], [_ | _], _, _, _) :-
     unexpected(this_file, "output_init_args: length mismatch.").
-output_init_args(ModuleInfo, [Arg | Args], [_ArgType | ArgTypes], ArgNum,
-        HasSecTag, ModuleName, !IO) :-
+output_init_args(ModuleInfo, [Arg | Args], [_ArgType | ArgTypes], ModuleName,
+        !IO) :-
+    output_rval(ModuleInfo, Arg, ModuleName, !IO),
     (
-        ArgNum = 0,
-        HasSecTag = yes
-    ->
-        % This first argument is a `data_tag', It is set by
-        % the class constructor so this argument can be discarded.
-        true
+        Args = []
     ;
-        output_rval(ModuleInfo, Arg, ModuleName, !IO),
-        (
-            Args = []
-        ;
-            Args = [_ | _],
-            io.write_string(", ", !IO)
-        )
+        Args = [_ | _],
+        io.write_string(", ", !IO)
     ),
-    output_init_args(ModuleInfo, Args, ArgTypes, ArgNum + 1, HasSecTag,
-        ModuleName, !IO).
+    output_init_args(ModuleInfo, Args, ArgTypes, ModuleName, !IO).
 
 %-----------------------------------------------------------------------------%
 %

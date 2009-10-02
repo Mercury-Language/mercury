@@ -584,25 +584,24 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
     % If there is a secondary tag, it goes in the first field.
     (
         MaybeStag = yes(Stag),
-        HasSecTag = yes,
-        StagRval0 = ml_const(mlconst_int(Stag)),
-        StagType0 = mlds_native_int_type,
-
-        % With the low-level data representation, all fields -- even the
-        % secondary tag -- are boxed, and so we need box it here.
-
         ml_gen_info_get_high_level_data(!.Info, HighLevelData),
         (
             HighLevelData = no,
+            HasSecTag = yes,
+            StagRval0 = ml_const(mlconst_int(Stag)),
+            StagType0 = mlds_native_int_type,
+            % With the low-level data representation, all fields -- even the
+            % secondary tag -- are boxed, and so we need box it here.
             StagRval = ml_unop(box(StagType0), StagRval0),
-            StagType = mlds_generic_type
+            StagType = mlds_generic_type,
+            ExtraRvals = [StagRval],
+            ExtraArgTypes = [StagType]
         ;
             HighLevelData = yes,
-            StagRval = StagRval0,
-            StagType = StagType0
-        ),
-        ExtraRvals = [StagRval],
-        ExtraArgTypes = [StagType]
+            HasSecTag = no,
+            ExtraRvals = [],
+            ExtraArgTypes = []
+        )
     ;
         MaybeStag = no,
         HasSecTag = no,
