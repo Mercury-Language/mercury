@@ -38,6 +38,7 @@
 :- implementation.
 
 :- import_module apply_exclusion.
+:- import_module exclude.
 :- import_module html_format.       % for escape_break_html_string
 :- import_module measurements.
 :- import_module old_html_format.
@@ -111,7 +112,8 @@ old_exec(Cmd, Pref, Deep, HTML, !IO) :-
             page_footer(Cmd, Pref, Deep)
     ).
 old_exec(Cmd, Pref0, Deep, HTML, !IO) :-
-    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, Contour),
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+        _CallersPerBunch, Contour),
     Pref = Pref0 ^ pref_contour := Contour,
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         generate_proc_callers_page(Cmd, PSPtr, CallerGroups, BunchNum,
@@ -1464,35 +1466,33 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         MaybeErrorMsg = no
     ;
         PrefContour = apply_contour_exclusion,
-        MaybeMaybeExcludeFile = Deep ^ exclude_contour_file,
+        ExcludeFile = Deep ^ exclude_contour_file,
+        ExcludeFile = exclude_file(_ExcludeFileName, ExcludeContents),
         (
-            MaybeMaybeExcludeFile = no,
+            ExcludeContents = no_exclude_file,
             % There is no contour exclusion file, so do the same as for
             % do_not_apply_contour_exclusion.
             CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs),
             MaybeErrorMsg = no
         ;
-            MaybeMaybeExcludeFile = yes(MaybeExcludeFile),
-            (
-                MaybeExcludeFile = ok(ExcludeSpec),
-                CallerCSDPtrPairs = list.map(pair_contour(Deep, ExcludeSpec),
-                    CallerCSDPtrs),
-                MaybeErrorMsg = no
-            ;
-                MaybeExcludeFile = error(ErrorMsg),
-                MaybeErrorMsg = yes(ErrorMsg ++ "\n<br>"),
-                CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs)
-            )
+            ExcludeContents = unreadable_exclude_file(ErrorMsg),
+            MaybeErrorMsg = yes(ErrorMsg ++ "\n<br>"),
+            CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs)
+        ;
+            ExcludeContents = readable_exclude_file(ExcludedModules, _Warn),
+            CallerCSDPtrPairs = list.map(pair_contour(Deep, ExcludedModules),
+                CallerCSDPtrs),
+            MaybeErrorMsg = no
         )
     ),
     ProcName = proc_static_name(Deep, PSPtr),
-    CmdSite    = deep_cmd_proc_callers(PSPtr, group_by_call_site, 1,
+    CmdSite    = deep_cmd_proc_callers(PSPtr, group_by_call_site, 1, 100,
         PrefContour),
-    CmdProc    = deep_cmd_proc_callers(PSPtr, group_by_proc, 1,
+    CmdProc    = deep_cmd_proc_callers(PSPtr, group_by_proc, 1, 100,
         PrefContour),
-    CmdModule  = deep_cmd_proc_callers(PSPtr, group_by_module, 1,
+    CmdModule  = deep_cmd_proc_callers(PSPtr, group_by_module, 1, 100,
         PrefContour),
-    CmdClique  = deep_cmd_proc_callers(PSPtr, group_by_clique, 1,
+    CmdClique  = deep_cmd_proc_callers(PSPtr, group_by_clique, 1, 100,
         PrefContour),
     LinkSite   = "[Group callers by call site]",
     LinkProc   = "[Group callers by procedure]",
@@ -1590,7 +1590,8 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         DisplayedLines),
     HTML = string.append_list(DisplayedHTMLs),
     ( BunchNum > 1 ->
-        FirstCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, PrefContour),
+        FirstCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, 100,
+            PrefContour),
         FirstLink = "First group",
         FirstToggle =
             string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -1599,7 +1600,7 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         FirstToggle = ""
     ),
     ( BunchNum > 2 ->
-        PrevCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum - 1,
+        PrevCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum - 1, 100,
             PrefContour),
         PrevLink = "Previous group",
         PrevToggle =
@@ -1609,7 +1610,7 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         PrevToggle = ""
     ),
     ( NumLines > BunchNum * BunchSize ->
-        NextCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum + 1,
+        NextCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum + 1, 100,
             PrefContour),
         NextLink = "Next group",
         NextToggle =
@@ -1788,13 +1789,14 @@ proc_summary_to_html(Pref, Deep, PSPtr) = HTML :-
 proc_summary_toggles_to_html(Pref, Deep, PSPtr) = HTML :-
     PrefContour = Pref ^ pref_contour,
     Msg1 = "[Parent call sites]",
-    Cmd1 = deep_cmd_proc_callers(PSPtr, group_by_call_site, 1, PrefContour),
+    Cmd1 = deep_cmd_proc_callers(PSPtr, group_by_call_site, 1, 100,
+        PrefContour),
     Msg2 = "[Parent procedures]",
-    Cmd2 = deep_cmd_proc_callers(PSPtr, group_by_proc, 1, PrefContour),
+    Cmd2 = deep_cmd_proc_callers(PSPtr, group_by_proc, 1, 100, PrefContour),
     Msg3 = "[Parent modules]",
-    Cmd3 = deep_cmd_proc_callers(PSPtr, group_by_module, 1, PrefContour),
+    Cmd3 = deep_cmd_proc_callers(PSPtr, group_by_module, 1, 100, PrefContour),
     Msg4 = "[Parent cliques]",
-    Cmd4 = deep_cmd_proc_callers(PSPtr, group_by_clique, 1, PrefContour),
+    Cmd4 = deep_cmd_proc_callers(PSPtr, group_by_clique, 1, 100, PrefContour),
     Link1 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, Cmd1)), s(Msg1)]),
     Link2 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
@@ -1837,7 +1839,8 @@ wrap_proc_links(PSPtr, Pref0, Deep, Str0, Criteria) = Str :-
 wrap_proc_callers_links(PSPtr, CallerGroups, BunchNum, Pref0, Deep,
         Str0, Criteria) = Str :-
     PrefContour = Pref0 ^ pref_contour,
-    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, PrefContour),
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, 100,
+        PrefContour),
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",

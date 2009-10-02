@@ -60,6 +60,7 @@
 :- implementation.
 
 :- import_module apply_exclusion.
+:- import_module exclude.
 :- import_module coverage.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
@@ -147,9 +148,10 @@ create_report(Cmd, Deep, Report) :-
         create_proc_report(Deep, PSPtr, MaybeProcReport),
         Report = report_proc(MaybeProcReport)
     ;
-        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, Contour),
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+            CallersPerBunch, Contour),
         create_proc_callers_report(Deep, PSPtr, CallerGroups, BunchNum,
-            Contour, MaybeProcCallersReport),
+            CallersPerBunch, Contour, MaybeProcCallersReport),
         Report = report_proc_callers(MaybeProcCallersReport)
     ;
         Cmd = deep_cmd_dump_proc_static(PSPtr),
@@ -929,82 +931,97 @@ accumulate_call_site_callees(Deep, CalleePerf, RowData, !Own, !Desc) :-
 %
 
 :- pred create_proc_callers_report(deep::in, proc_static_ptr::in,
-    caller_groups::in, int::in, contour_exclusion::in,
+    caller_groups::in, int::in, int::in, contour_exclusion::in,
     maybe_error(proc_callers_report)::out) is det.
 
-create_proc_callers_report(Deep, PSPtr, CallerGroups, BunchNum, Contour,
-        MaybeProcCallersReport) :-
+create_proc_callers_report(Deep, PSPtr, CallerGroups, BunchNum,
+        CallersPerBunch, Contour, MaybeProcCallersReport) :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         ProcDesc = describe_proc(Deep, PSPtr),
 
-        deep_lookup_proc_callers(Deep, PSPtr, CallerCSDPtrs),
-        MaybeMaybeExcludeFile = Deep ^ exclude_contour_file,
+        deep_lookup_proc_callers(Deep, PSPtr, CallerCSDPtrs0),
         (
             Contour = do_not_apply_contour_exclusion,
-            CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs),
-            Messages = []
+            CallerCSDPtrPairs0 = list.map(pair_self, CallerCSDPtrs0),
+            MaybeCallerCSDPtrPairs = ok(CallerCSDPtrPairs0),
+            MaybeWarnMessage = no
         ;
             Contour = apply_contour_exclusion,
+            ExcludeFile = Deep ^ exclude_contour_file,
+            ExcludeFile = exclude_file(ExcludeFileName, ExcludeContents),
             (
-                MaybeMaybeExcludeFile = no,
+                ExcludeContents = no_exclude_file,
                 % There is no contour exclusion file, so do the same as for
                 % do_not_apply_contour_exclusion, but add a message to the
                 % report.
-                CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs),
-                Message = "There is no readable contour exclusion file.",
-                Messages = [Message]
+                string.format("Could not read contour exclusion file `%s'.",
+                    [s(ExcludeFileName)], ErrorMessage0),
+                MaybeCallerCSDPtrPairs = error(ErrorMessage0),
+                MaybeWarnMessage = no
             ;
-                MaybeMaybeExcludeFile = yes(MaybeExcludeFile),
+                ExcludeContents = unreadable_exclude_file(ErrorMsg),
+                string.format(
+                    "The contour exclusion file `%s' has an error: %s.",
+                    [s(ExcludeFileName), s(ErrorMsg)], ErrorMessage0),
+                MaybeCallerCSDPtrPairs = error(ErrorMessage0),
+                MaybeWarnMessage = no
+            ;
+                ExcludeContents = readable_exclude_file(ExcludeModules,
+                    MaybeWarnMsg),
+                CallerCSDPtrPairs0 = list.map(
+                    pair_contour(Deep, ExcludeModules), CallerCSDPtrs0),
+                MaybeCallerCSDPtrPairs = ok(CallerCSDPtrPairs0),
                 (
-                    MaybeExcludeFile = ok(ExcludeSpec),
-                    CallerCSDPtrPairs = list.map(
-                        pair_contour(Deep, ExcludeSpec), CallerCSDPtrs),
-                    Messages = []
+                    MaybeWarnMsg = no,
+                    MaybeWarnMessage = no
                 ;
-                    MaybeExcludeFile = error(ErrorMsg),
-                    CallerCSDPtrPairs = list.map(pair_self, CallerCSDPtrs),
-                    MessagePrefix = "The contour exclusion file has an error:",
-                    Messages = [MessagePrefix, ErrorMsg]
+                    MaybeWarnMsg = yes(WarnMessage),
+                    MaybeWarnMessage = yes(WarnMessage)
                 )
             )
         ),
         (
-            CallerGroups = group_by_call_site,
-            CallSiteCallerGroups = group_csds_by_call_site(Deep,
-                CallerCSDPtrPairs),
-            ProcCallerCallSites = list.map(
-                create_proc_caller_call_sites(Deep, PSPtr),
-                CallSiteCallerGroups),
-            Callers = proc_caller_call_sites(ProcCallerCallSites)
+            MaybeCallerCSDPtrPairs = error(ErrorMessage),
+            MaybeProcCallersReport = error(ErrorMessage)
         ;
-            CallerGroups = group_by_proc,
-            ProcCallerGroups = group_csds_by_procedure(Deep,
-                CallerCSDPtrPairs),
-            ProcCallerProcs = list.map(
-                create_proc_caller_procedures(Deep, PSPtr),
-                ProcCallerGroups),
-            Callers = proc_caller_procedures(ProcCallerProcs)
-        ;
-            CallerGroups = group_by_module,
-            ModuleCallerGroups = group_csds_by_module(Deep,
-                CallerCSDPtrPairs),
-            ProcCallerModules = list.map(
-                create_proc_caller_modules(Deep, PSPtr),
-                ModuleCallerGroups),
-            Callers = proc_caller_modules(ProcCallerModules)
-        ;
-            CallerGroups = group_by_clique,
-            CliqueCallerGroups = group_csds_by_clique(Deep,
-                CallerCSDPtrPairs),
-            ProcCallerCliques = list.map(
-                create_proc_caller_cliques(Deep, PSPtr),
-                CliqueCallerGroups),
-            Callers = proc_caller_cliques(ProcCallerCliques)
-        ),
-
-        ProcCallersReport = proc_callers_report(ProcDesc, Callers,
-            BunchNum, Contour, Messages),
-        MaybeProcCallersReport = ok(ProcCallersReport)
+            MaybeCallerCSDPtrPairs = ok(CallerCSDPtrPairs),
+            (
+                CallerGroups = group_by_call_site,
+                CallSiteCallerGroups = group_csds_by_call_site(Deep,
+                    CallerCSDPtrPairs),
+                ProcCallerCallSites = list.map(
+                    create_proc_caller_call_sites(Deep, PSPtr),
+                    CallSiteCallerGroups),
+                Callers = proc_caller_call_sites(ProcCallerCallSites)
+            ;
+                CallerGroups = group_by_proc,
+                ProcCallerGroups = group_csds_by_procedure(Deep,
+                    CallerCSDPtrPairs),
+                ProcCallerProcs = list.map(
+                    create_proc_caller_procedures(Deep, PSPtr),
+                    ProcCallerGroups),
+                Callers = proc_caller_procedures(ProcCallerProcs)
+            ;
+                CallerGroups = group_by_module,
+                ModuleCallerGroups = group_csds_by_module(Deep,
+                    CallerCSDPtrPairs),
+                ProcCallerModules = list.map(
+                    create_proc_caller_modules(Deep, PSPtr),
+                    ModuleCallerGroups),
+                Callers = proc_caller_modules(ProcCallerModules)
+            ;
+                CallerGroups = group_by_clique,
+                CliqueCallerGroups = group_csds_by_clique(Deep,
+                    CallerCSDPtrPairs),
+                ProcCallerCliques = list.map(
+                    create_proc_caller_cliques(Deep, PSPtr),
+                    CliqueCallerGroups),
+                Callers = proc_caller_cliques(ProcCallerCliques)
+            ),
+            ProcCallersReport = proc_callers_report(ProcDesc, Callers,
+                BunchNum, CallersPerBunch, Contour, MaybeWarnMessage),
+            MaybeProcCallersReport = ok(ProcCallersReport)
+        )
     ;
         MaybeProcCallersReport = error("invalid proc_static index")
     ).

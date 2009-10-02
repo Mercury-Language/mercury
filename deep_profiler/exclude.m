@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2006, 2008 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006, 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,16 +46,33 @@
 :- import_module profile.
 
 :- import_module io.
+:- import_module map.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
-:- type exclude_file.
+:- type exclude_file
+    --->    exclude_file(
+                exclude_filename        :: string,
+                exclude_file_contents   :: exclude_contents
+            ).
 
-:- pred read_exclude_file(string::in, deep::in,
-    maybe(maybe_error(exclude_file))::out, io::di, io::uo) is det.
+:- type exclude_contents
+    --->    no_exclude_file
+    ;       unreadable_exclude_file(
+                exclude_syntax_error    :: string
+            )
+    ;       readable_exclude_file(
+                exclude_specs           :: excluded_modules,
+                exclude_maybe_error     :: maybe(string)
+            ).
 
-:- func apply_contour_exclusion(deep, exclude_file, call_site_dynamic_ptr)
+:- type excluded_modules.
+
+:- pred read_exclude_file(string::in, map(string, module_data)::in,
+    exclude_file::out, io::di, io::uo) is det.
+
+:- func apply_contour_exclusion(deep, excluded_modules, call_site_dynamic_ptr)
     = call_site_dynamic_ptr.
 
 %-----------------------------------------------------------------------------%
@@ -66,13 +83,12 @@
 :- import_module bool.
 :- import_module char.
 :- import_module list.
-:- import_module map.
 :- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-:- type exclude_file == set(exclude_spec).
+:- type excluded_modules == set(exclude_spec).
 
 :- type exclude_spec
     --->    exclude_spec(
@@ -90,7 +106,7 @@
 
 %-----------------------------------------------------------------------------%
 
-read_exclude_file(FileName, Deep, MaybeMaybeExcludeFile, !IO) :-
+read_exclude_file(FileName, ModuleDataMap, ExcludeFile, !IO) :-
     io.open_input(FileName, MaybeStream, !IO),
     (
         MaybeStream = ok(InputStream),
@@ -98,18 +114,19 @@ read_exclude_file(FileName, Deep, MaybeMaybeExcludeFile, !IO) :-
         io.close_input(InputStream, !IO),
         (
             MaybeSpecs = ok(Specs),
-            validate_exclude_lines(FileName, Specs, Deep, MaybeExcludeFile),
-            MaybeMaybeExcludeFile = yes(MaybeExcludeFile)
+            validate_exclude_lines(FileName, Specs, ModuleDataMap,
+                ExcludeContents)
         ;
             MaybeSpecs = error(Msg),
-            MaybeMaybeExcludeFile = yes(error(Msg))
+            ExcludeContents = unreadable_exclude_file(Msg)
         )
     ;
         MaybeStream = error(_),
         % If we cannot open the file, simply return `no' as an indication
         % that there is no exclude file there, at least not a readable one.
-        MaybeMaybeExcludeFile = no
-    ).
+        ExcludeContents = no_exclude_file
+    ),
+    ExcludeFile = exclude_file(FileName, ExcludeContents).
 
 :- pred read_exclude_lines(string::in, io.input_stream::in,
     list(exclude_spec)::in, maybe_error(list(exclude_spec))::out,
@@ -152,28 +169,48 @@ read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
         Res = error(Msg)
     ).
 
-:- pred validate_exclude_lines(string::in, list(exclude_spec)::in, deep::in,
-    maybe_error(set(exclude_spec))::out) is det.
+:- pred validate_exclude_lines(string::in, list(exclude_spec)::in,
+    map(string, module_data)::in, exclude_contents::out) is det.
 
-validate_exclude_lines(FileName, Specs, Deep, Res) :-
-    list.filter(has_valid_module_name(Deep), Specs, ValidSpecs, InvalidSpecs),
+validate_exclude_lines(FileName, Specs, ModuleDataMap, ExcludeContents) :-
+    list.filter(has_valid_module_name(ModuleDataMap), Specs,
+        ValidSpecs, InvalidSpecs),
+    set.list_to_set(ValidSpecs, ModuleSpecs),
     (
         InvalidSpecs = [],
-        set.list_to_set(ValidSpecs, ModuleSpecSet),
-        Res = ok(ModuleSpecSet)
+        MaybeErrorMsg = no,
+        ExcludeContents = readable_exclude_file(ModuleSpecs, MaybeErrorMsg)
     ;
         InvalidSpecs = [_ | _],
-        InvalidModuleNames = list.map(spec_to_module_name, InvalidSpecs),
-        BadNames = string.join_list(", ", InvalidModuleNames),
-        Msg = string.format("file %s contains bad module names: %s",
-            [s(FileName), s(BadNames)]),
-        Res = error(Msg)
+        (
+            ValidSpecs = [_ | _],
+            InvalidModuleNames = list.map(spec_to_module_name, InvalidSpecs),
+            BadNames = string.join_list(", ", InvalidModuleNames),
+            Msg1 = string.format(
+                "Warning: %s contains unrecognized module names: %s.",
+                [s(FileName), s(BadNames)]),
+            Msg2 = "These modules either do not exist " ++
+                "or have no deep profiled procedures.",
+            Msg = Msg1 ++ Msg2,
+            MaybeErrorMsg = yes(Msg),
+            ExcludeContents = readable_exclude_file(ModuleSpecs, MaybeErrorMsg)
+        ;
+            ValidSpecs = [],
+            Msg1 = string.format(
+                "Error: file %s contains only unrecognized module names.",
+                [s(FileName)]),
+            Msg2 = "These modules either do not exist " ++
+                "or have no deep profiled procedures.",
+            Msg = Msg1 ++ Msg2,
+            ExcludeContents = unreadable_exclude_file(Msg)
+        )
     ).
 
-:- pred has_valid_module_name(deep::in, exclude_spec::in) is semidet.
+:- pred has_valid_module_name(map(string, module_data)::in, exclude_spec::in)
+    is semidet.
 
-has_valid_module_name(Deep, Spec) :-
-    map.search(Deep ^ module_data, spec_to_module_name(Spec), _).
+has_valid_module_name(ModuleDataMap, Spec) :-
+    map.search(ModuleDataMap, spec_to_module_name(Spec), _).
 
 :- func spec_to_module_name(exclude_spec) = string.
 

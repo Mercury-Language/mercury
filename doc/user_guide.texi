@@ -5977,6 +5977,7 @@ This is also true for @samp{mdprof}.
 @pindex mdprof
 @cindex Deep profiling
 
+The user interface of the deep profiler is a browser.
 To display the information contained in a deep profiling data file
 (which will be called @file{Deep.data} unless you renamed it),
 start up your browser and give it a URL of the form
@@ -5986,10 +5987,109 @@ with the following qualifications:
 it should have a web server running on it,
 and it should have the @samp{mdprof_cgi} program installed in
 the web server's CGI program directory.
+(On many Linux systems, this directory is @file{/usr/lib/cgi-bin}.)
 The @file{/full/path/name/Deep.data} part
 should be the full path name of the deep profiling data file
 whose data you wish to explore.
-The name of this file must not have percent signs in it.
+The name of this file must not have percent signs in it,
+and it must end in the suffix @file{.data}.
+
+When you start up @samp{mdprof} using the command above,
+you will see a list of the usual places
+where you may want to start looking at the profile.
+Each place is represented by a link.
+Clicking on and following that link will give you a web page
+that contains both the profile information you asked for
+and other links,
+some of which present the same information in a different form
+and some of which lead to further information.
+You explore the profile
+by clicking on links and looking at the resulting pages.
+
+The deep profiler can generate several kinds of pages.
+
+@table @asis
+
+@item The menu page
+The menu page gives summary information about the profile,
+and the usual starting points for exploration.
+
+@item Clique pages
+Clique pages are the most fundamental pages of the deep profiler.
+Each clique page presents performance information about a clique,
+which is either a single procedure or a group of mutually recursive procedures,
+in a given ancestor context,
+which in turn is a list of other cliques
+starting with the caller of the entry point of the clique
+and ending with the clique of the @samp{main} predicate.
+
+Each clique page lists the closest ancestor cliques,
+and then the procedures of the clique.
+It gives the cost of each call site in each procedure,
+as well as the cost of each procedure in total.
+These costs will be just those incurred in the given ancestor context;
+the costs incurrent by these call sites
+and procedures in other ancestor contexts
+will be shown on other clique pages.
+
+@item Procedure pages
+Procedure pages give the total cost of a procedure and its call sites
+in all ancestor contexts.
+
+@item Module pages
+Module pages give the total cost of all the procedures of a module.
+
+@item Module getters and setters pages
+These pages identifies the getter and setter procedures in a module.
+Getters and setters are simply predicates and functions
+that contain @samp{_get_} and @samp{_set_} respectively in their names;
+they are usually used to access fields of data structures.
+
+@item Program modules page
+The program modules page gives the list of the program's modules.
+
+@item Top procedure pages
+Top procedure pages identify the procedures that are
+most expensive as measured by various criteria.
+
+@item Procedure caller pages
+A procedure caller page lists the call sites, procedures, modules or cliques
+that call the given procedure.
+
+@end table
+
+When exploring a procedure's callers,
+you often want only the ancestors
+that are at or above a certain level of abstraction.
+Effectively you want to draw a line through the procedures of the program,
+such that you are interested in the procedures on or above the line
+but those below the line.
+Since we want to exclude procedures below the line
+from procedure caller pages,
+we call this line an @emph{exclusion contour}.
+
+You can tell the deep profiler where you want to draw this line
+by giving it a @samp{exclusion contour file}.
+The name of this file should be the same
+as the name of the deep profiling data file,
+but with the suffix @samp{.data} replaced with @samp{.contour}.
+This file should consist of a sequence of lines,
+and each line should contain two words.
+The first word should be either @samp{all} or @samp{internal};
+the second should the name of a module.
+If the first word is @samp{all}, then
+all procedures in the named module are below the exclusion contour;
+if the first word is @samp{internal}, then
+all internal (non-exported) procedures in the named module
+are below the exclusion contour.
+Here is an example of an exclusion contour file.
+
+@example
+all		bag
+all		list
+all		map
+internal	set
+@end example
 
 @node Profiling and shared libraries
 @section Profiling and shared libraries

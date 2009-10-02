@@ -36,6 +36,7 @@
 :- implementation.
 
 :- import_module coverage.
+:- import_module exclude.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
@@ -123,7 +124,7 @@ report_to_display(Deep, Prefs, Report) = Display :-
         Report = report_proc(MaybeProcReport),
         (
             MaybeProcReport = ok(ProcReport),
-            display_report_proc(Prefs, ProcReport, Display)
+            display_report_proc(Deep, Prefs, ProcReport, Display)
         ;
             MaybeProcReport = error(Msg),
             Display = display(no, [display_heading(Msg)])
@@ -142,7 +143,7 @@ report_to_display(Deep, Prefs, Report) = Display :-
         Report = report_proc_callers(MaybeProcCallersReport),
         (
             MaybeProcCallersReport = ok(ProcCallersReport),
-            display_report_proc_callers(Prefs, ProcCallersReport, Display)
+            display_report_proc_callers(Deep, Prefs, ProcCallersReport, Display)
         ;
             MaybeProcCallersReport = error(Msg),
             Display = display(no, [display_heading(Msg)])
@@ -469,7 +470,6 @@ display_report_clique(Prefs, CliqueReport, Display) :-
         display_paragraph_break, FieldControls,
         display_paragraph_break, FormatControls,
         display_paragraph_break, MenuRestartQuitControls]).
-
 
 :- func clique_proc_report_module_name(clique_proc_report) = string.
 
@@ -947,27 +947,30 @@ display_field_getter_setters(Prefs, ModuleName, FieldName - FieldInfo, Rows,
     display::out) is det.
 
 display_report_top_procs(Prefs, TopProcsReport, Display) :-
-    TopProcsReport = top_procs_report(Ordering, TopProcs),
+    TopProcsReport = top_procs_report(Ordering, TopProcRowDatas),
     Ordering = report_ordering(DisplayLimit, CostKind, InclDesc, Scope),
     Desc = cost_criteria_to_description(CostKind, InclDesc, Scope),
     Title = "Top procedures " ++ Desc,
 
     % Build the table of the top procedures.
-    MakeHeaderData = top_procs_order_criteria_header_data(DisplayLimit,
-        CostKind, InclDesc, Scope),
+    Cmd = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
+    MakeHeaderData = override_order_criteria_header_data(Cmd),
     maybe_ranked_proc_table_header(Prefs, ranked, MakeHeaderData,
         NumColumns, Header),
+
+    MaybeCurModuleName = no,
     ModuleQual = Prefs ^ pref_module_qual,
+    sort_proc_desc_rows_by_preferences(MaybeCurModuleName, ModuleQual,
+        Prefs, TopProcRowDatas, OrderedTopProcRowDatas),
     list.map_foldl(
         maybe_ranked_subject_perf_table_row(Prefs, ranked,
             total_columns_meaningful,
             proc_desc_to_proc_name_cell(no, ModuleQual)),
-        TopProcs, Rows, 1, _),
+        OrderedTopProcRowDatas, Rows, 1, _),
     Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
     DisplayTable = display_table(Table),
 
     % Build controls at the bottom of the page.
-    Cmd = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
     TopProcsControls = top_procs_controls(Prefs,
         DisplayLimit, CostKind, InclDesc, Scope),
     FieldControls = field_controls(Prefs, Cmd),
@@ -1025,10 +1028,10 @@ scope_to_description(overall) = "overall".
 
     % Create a display_report structure for a proc report.
     %
-:- pred display_report_proc(preferences::in, proc_report::in,
+:- pred display_report_proc(deep::in, preferences::in, proc_report::in,
     display::out) is det.
 
-display_report_proc(Prefs, ProcReport, Display) :-
+display_report_proc(Deep, Prefs, ProcReport, Display) :-
     ProcReport = proc_report(ProcSummaryRowData, CallSitePerfs0),
     ProcDesc = ProcSummaryRowData ^ perf_row_subject,
     RefinedName = ProcDesc ^ pdesc_q_refined_name,
@@ -1083,8 +1086,9 @@ display_report_proc(Prefs, ProcReport, Display) :-
     DisplayTable = display_table(Table),
 
     % Build the controls at the bottom of the page.
-    ProcCallersControls = proc_callers_group_controls(Prefs, Cmd,
-        PSPtr, group_by_call_site, Prefs ^ pref_contour),
+    ProcCallersControls = proc_callers_group_controls(Deep, Prefs, Cmd,
+        PSPtr, group_by_call_site, default_callers_per_bunch,
+        Prefs ^ pref_contour),
     SummarizeControls = summarize_controls(Prefs, Cmd),
     InactiveCallSitesControls = inactive_call_site_controls(Prefs, Cmd),
     ModuleQualControls = module_qual_controls(Prefs, Cmd),
@@ -1105,6 +1109,10 @@ display_report_proc(Prefs, ProcReport, Display) :-
         display_paragraph_break, FormatControls,
         display_paragraph_break, ProcReportControls,
         display_paragraph_break, MenuRestartQuitControls]).
+
+:- func default_callers_per_bunch = int.
+
+default_callers_per_bunch = 20.
 
 :- func report_proc_call_site(maybe(string), module_qual, preferences,
     call_site_perf) = list(table_row).
@@ -1195,12 +1203,22 @@ report_proc_call_site_callee(MaybeCurModuleName, ModuleQual,
 
     % Create a display_report structure for a proc_callers report.
     %
-:- pred display_report_proc_callers(preferences::in, proc_callers_report::in,
-    display::out) is det.
+:- pred display_report_proc_callers(deep::in, preferences::in,
+    proc_callers_report::in, display::out) is det.
 
-display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
+display_report_proc_callers(Deep, Prefs0, ProcCallersReport, Display) :-
     ProcCallersReport = proc_callers_report(ProcDesc, CallerRowDatas,
-        BunchNum, ContourExcl, _ContourErrorMessages),
+        BunchNum, BunchSize, ContourExcl, MaybeContourWarnMessage),
+
+    (
+        MaybeContourWarnMessage = no,
+        WarnItems = []
+    ;
+        MaybeContourWarnMessage = yes(ContourWarnMessage),
+        ContourWarnItem = display_text(ContourWarnMessage),
+        WarnItems = [display_paragraph_break, ContourWarnItem]
+    ),
+
     RefinedName = ProcDesc ^ pdesc_q_refined_name,
 
     MaybeCurModuleName = yes(ProcDesc ^ pdesc_module_name),
@@ -1214,12 +1232,12 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
     (
         CallerRowDatas = proc_caller_call_sites(CallSiteRowDatas),
         CallerGroups = group_by_call_site,
-        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, BunchSize,
             ContourExcl),
         Title = "The call sites calling " ++ RefinedName,
         sort_call_site_desc_rows_by_preferences(MaybeCurModuleName, ModuleQual,
             Prefs, CallSiteRowDatas, SortedCallSiteRowDatas),
-        select_displayed_rows(SortedCallSiteRowDatas, BunchNum,
+        select_displayed_rows(SortedCallSiteRowDatas, BunchNum, BunchSize,
             DisplayedCallSiteRowDatas, TotalNumRows, FirstRowNum, LastRowNum,
             DisplayedBunchNum, MaybeFirstAndLastBunchNum),
         list.map_foldl(
@@ -1241,12 +1259,12 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
     ;
         CallerRowDatas = proc_caller_procedures(ProcRowDatas),
         CallerGroups = group_by_proc,
-        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, BunchSize,
             ContourExcl),
         Title = "The procedures calling " ++ RefinedName,
         sort_proc_desc_rows_by_preferences(MaybeCurModuleName, ModuleQual,
             Prefs, ProcRowDatas, SortedProcRowDatas),
-        select_displayed_rows(SortedProcRowDatas, BunchNum,
+        select_displayed_rows(SortedProcRowDatas, BunchNum, BunchSize,
             DisplayedProcRowDatas, TotalNumRows, FirstRowNum, LastRowNum,
             DisplayedBunchNum, MaybeFirstAndLastBunchNum),
         list.map_foldl(
@@ -1268,12 +1286,12 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
     ;
         CallerRowDatas = proc_caller_modules(ModuleRowDatas),
         CallerGroups = group_by_module,
-        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, BunchSize,
             ContourExcl),
         Title = "The modules calling " ++ RefinedName,
         sort_module_name_rows_by_preferences(Prefs, ModuleRowDatas,
             SortedModuleRowDatas),
-        select_displayed_rows(SortedModuleRowDatas, BunchNum,
+        select_displayed_rows(SortedModuleRowDatas, BunchNum, BunchSize,
             DisplayedModuleRowDatas, TotalNumRows, FirstRowNum, LastRowNum,
             DisplayedBunchNum, MaybeFirstAndLastBunchNum),
         list.map_foldl(display_caller_module(Prefs),
@@ -1289,12 +1307,12 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
     ;
         CallerRowDatas = proc_caller_cliques(CliqueRowDatas),
         CallerGroups = group_by_clique,
-        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum,
+        Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, BunchSize,
             ContourExcl),
         Title = "The cliques calling " ++ RefinedName,
         sort_clique_rows_by_preferences(Prefs, CliqueRowDatas,
             SortedCliqueRowDatas),
-        select_displayed_rows(SortedCliqueRowDatas, BunchNum,
+        select_displayed_rows(SortedCliqueRowDatas, BunchNum, BunchSize,
             DisplayedCliqueRowDatas, TotalNumRows, FirstRowNum, LastRowNum,
             DisplayedBunchNum, MaybeFirstAndLastBunchNum),
         list.map_foldl(
@@ -1343,28 +1361,28 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
             ( BunchNum > FirstBunchNum ->
                 BunchControlsFirst = [make_proc_callers_link(Prefs,
                     "First group", PSPtr, CallerGroups, FirstBunchNum,
-                    ContourExcl)]
+                    BunchSize, ContourExcl)]
             ;
                 BunchControlsFirst = []
             ),
             ( BunchNum - 1 > FirstBunchNum ->
                 BunchControlsPrev = [make_proc_callers_link(Prefs,
                     "Previous group", PSPtr, CallerGroups, BunchNum - 1,
-                    ContourExcl)]
+                    BunchSize, ContourExcl)]
             ;
                 BunchControlsPrev = []
             ),
             ( BunchNum + 1 < LastBunchNum ->
                 BunchControlsNext = [make_proc_callers_link(Prefs,
                     "Next group", PSPtr, CallerGroups, BunchNum + 1,
-                    ContourExcl)]
+                    BunchSize, ContourExcl)]
             ;
                 BunchControlsNext = []
             ),
             ( BunchNum < LastBunchNum ->
                 BunchControlsLast = [make_proc_callers_link(Prefs,
                     "Last group", PSPtr, CallerGroups, LastBunchNum,
-                    ContourExcl)]
+                    BunchSize, ContourExcl)]
             ;
                 BunchControlsLast = []
             ),
@@ -1375,36 +1393,122 @@ display_report_proc_callers(Prefs0, ProcCallersReport, Display) :-
                     yes("Show other groups:"), BunchControlList)]
         ),
 
+        (
+            BunchSize > 5,
+            HalfBunchSize = BunchSize / 2,
+            HalfBunchSize \= 10,
+            HalfBunchSize \= 20,
+            HalfBunchSize \= 50,
+            HalfBunchSize \= 100
+        ->
+            BunchSizeControlPairsHalf = [(BunchSize / 2) -
+                make_proc_callers_link(Prefs,
+                    "Halve group size", PSPtr, CallerGroups, BunchNum * 2,
+                    BunchSize / 2, ContourExcl)]
+        ;
+            BunchSizeControlPairsHalf = []
+        ),
+        (
+            DoubleBunchSize = BunchSize * 2,
+            DoubleBunchSize \= 10,
+            DoubleBunchSize \= 20,
+            DoubleBunchSize \= 50,
+            DoubleBunchSize \= 100
+        ->
+            BunchSizeControlPairsDouble = [(BunchSize * 2) -
+                make_proc_callers_link(Prefs,
+                    "Double group size", PSPtr, CallerGroups, BunchNum / 2,
+                    BunchSize * 2, ContourExcl)]
+        ;
+            BunchSizeControlPairsDouble = []
+        ),
+        (
+            TotalNumRows > 10,
+            BunchSize \= 10
+        ->
+            BunchSizeControlPairs10 = [10 -
+                make_proc_callers_link(Prefs,
+                    "Set group size to 10", PSPtr, CallerGroups,
+                    (BunchNum * BunchSize) / 10, 10, ContourExcl)]
+        ;
+            BunchSizeControlPairs10 = []
+        ),
+        (
+            TotalNumRows > 20,
+            BunchSize \= 20
+        ->
+            BunchSizeControlPairs20 = [20 -
+                make_proc_callers_link(Prefs,
+                    "Set group size to 20", PSPtr, CallerGroups,
+                    (BunchNum * BunchSize) / 20, 20, ContourExcl)]
+        ;
+            BunchSizeControlPairs20 = []
+        ),
+        (
+            TotalNumRows > 50,
+            BunchSize \= 50
+        ->
+            BunchSizeControlPairs50 = [50 -
+                make_proc_callers_link(Prefs,
+                    "Set group size to 50", PSPtr, CallerGroups,
+                    (BunchNum * BunchSize) / 50, 50, ContourExcl)]
+        ;
+            BunchSizeControlPairs50 = []
+        ),
+        (
+            TotalNumRows > 100,
+            BunchSize \= 100
+        ->
+            BunchSizeControlPairs100 = [100 -
+                make_proc_callers_link(Prefs,
+                    "Set group size to 100", PSPtr, CallerGroups,
+                    (BunchNum * BunchSize) / 100, 100, ContourExcl)]
+        ;
+            BunchSizeControlPairs100 = []
+        ),
+        BunchSizeControlPairs =
+            BunchSizeControlPairsHalf ++ BunchSizeControlPairsDouble ++
+            BunchSizeControlPairs10 ++ BunchSizeControlPairs20 ++
+            BunchSizeControlPairs50 ++ BunchSizeControlPairs100,
+        list.sort(BunchSizeControlPairs, SortedBunchSizeControlPairs),
+        assoc_list.values(SortedBunchSizeControlPairs, BunchSizeControlList),
+        BunchSizeControls = [display_paragraph_break,
+            display_list(list_class_horizontal_except_title,
+            yes("Change group size:"), BunchSizeControlList)],
+
         Table = table(table_class_box_if_pref, NumColumns, yes(Header), Rows),
         DisplayTable = display_table(Table),
 
         % Build the controls at the bottom of the page.
-        FirstCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, ContourExcl),
-        CallerGroupControls = proc_callers_group_controls(Prefs, FirstCmd,
-            PSPtr, CallerGroups, ContourExcl),
+        FirstCmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, BunchSize,
+            ContourExcl),
+        CallerGroupControls = proc_callers_group_controls(Deep, Prefs,
+            FirstCmd, PSPtr, CallerGroups, BunchSize, ContourExcl),
         FieldControls = field_controls(Prefs, Cmd),
         FormatControls = format_controls(Prefs, Cmd),
         MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
 
         Display = display(yes(Title),
-            [display_text(Message),
-            display_paragraph_break, DisplayTable] ++
+            [display_text(Message)] ++
+            WarnItems ++
+            [display_paragraph_break, DisplayTable] ++
             BunchControls ++
+            BunchSizeControls ++
             [display_paragraph_break, CallerGroupControls,
             display_paragraph_break, FieldControls,
             display_paragraph_break, FormatControls,
             display_paragraph_break, MenuRestartQuitControls])
     ).
 
-:- pred select_displayed_rows(list(perf_row_data(T))::in, int::in,
+:- pred select_displayed_rows(list(perf_row_data(T))::in, int::in, int::in,
     list(perf_row_data(T))::out, int::out, int::out, int::out,
     int::out, maybe({int, int})::out) is det.
 
-select_displayed_rows(RowDatas, BunchNum, DisplayRowDatas,
+select_displayed_rows(RowDatas, BunchNum, BunchSize, DisplayRowDatas,
         TotalNumRows, FirstRowNum, LastRowNum,
         DisplayedBunchNum, MaybeFirstAndLastBunchNum) :-
     list.length(RowDatas, TotalNumRows),
-    NumRowsToDelete = (BunchNum - 1) * bunch_size,
+    NumRowsToDelete = (BunchNum - 1) * BunchSize,
     (
         list.drop(NumRowsToDelete, RowDatas, RemainingRowDatasPrime),
         RemainingRowDatasPrime = [_ | _]
@@ -1420,23 +1524,19 @@ select_displayed_rows(RowDatas, BunchNum, DisplayRowDatas,
         RemainingRowDatas = RowDatas,
         NumRemainingRows = TotalNumRows
     ),
-    ( NumRemainingRows > bunch_size ->
-        list.take_upto(bunch_size, RemainingRowDatas, DisplayRowDatas)
+    ( NumRemainingRows > BunchSize ->
+        list.take_upto(BunchSize, RemainingRowDatas, DisplayRowDatas)
     ;
         DisplayRowDatas = RemainingRowDatas
     ),
     LastRowNum = FirstRowNum - 1 + list.length(DisplayRowDatas),
     ( TotalNumRows > 0 ->
         FirstBunchNum = 1,
-        LastBunchNum = (TotalNumRows + bunch_size - 1) / bunch_size,
+        LastBunchNum = (TotalNumRows + BunchSize - 1) / BunchSize,
         MaybeFirstAndLastBunchNum = yes({FirstBunchNum, LastBunchNum})
     ;
         MaybeFirstAndLastBunchNum = no
     ).
-
-:- func bunch_size = int.
-
-bunch_size = 5.
 
 :- pred display_caller_call_site(maybe(string)::in, module_qual::in,
     preferences::in, perf_row_data(call_site_desc)::in, table_row::out,
@@ -1523,11 +1623,12 @@ display_caller_clique(MaybeCurModuleName, ModuleQual, Prefs,
     Row = table_row(Cells).
 
 :- func make_proc_callers_link(preferences, string, proc_static_ptr,
-    caller_groups, int, contour_exclusion) = display_item.
+    caller_groups, int, int, contour_exclusion) = display_item.
 
-make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum,
+make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum, BunchSize,
         ContourExcl) = Item :-
-    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, ContourExcl),
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, BunchNum, BunchSize,
+        ContourExcl),
     Link = deep_link(Cmd, yes(Prefs), attr_str([], Label), link_class_control),
     Item = display_link(Link).
 
@@ -1914,35 +2015,6 @@ override_order_criteria_header_data(Cmd, Prefs0, Criteria, Label)
         Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
             link_class_link),
         TableData = td_l(Link)
-    ).
-
-:- func top_procs_order_criteria_header_data(display_limit, cost_kind,
-    include_descendants, measurement_scope, preferences,
-    order_criteria, string) = table_data.
-
-top_procs_order_criteria_header_data(DisplayLimit0, CostKind0, InclDesc0,
-        Scope0, Prefs0, Criteria, Label) = TableData :-
-    Cmd0 = deep_cmd_top_procs(DisplayLimit0, CostKind0, InclDesc0, Scope0),
-    (
-        ( Criteria = by_context
-        ; Criteria = by_name
-        ),
-        TableData =
-            override_order_criteria_header_data(Cmd0, Prefs0, Criteria, Label)
-    ;
-        Criteria = by_cost(CostKind, InclDesc, Scope),
-        Cmd = deep_cmd_top_procs(DisplayLimit0, CostKind, InclDesc, Scope),
-        ( Cmd = Cmd0 ->
-            % Should we display a simple string to indicate that this link
-            % leads back to the same page, or would that be confusing?
-            Link = deep_link(Cmd, yes(Prefs0), attr_str([], Label),
-                link_class_link),
-            TableData = td_l(Link)
-        ;
-            Link = deep_link(Cmd, yes(Prefs0), attr_str([], Label),
-                link_class_link),
-            TableData = td_l(Link)
-        )
     ).
 
 :- func dummy_order_criteria_header_data(preferences, order_criteria, string)
@@ -2764,7 +2836,7 @@ call_site_desc_clique_proc_cell(MaybeCurModuleName, ModuleQual,
 % The basic predicates for creating the controls at the bottoms of pages.
 %
 
-:- pred make_top_procs_cmd_items(preferences::in, display_limit::in,
+:- pred make_top_procs_cmd_items(preferences::in, bool::in, display_limit::in,
     cost_kind::in, include_descendants::in, measurement_scope::in,
     maybe(string)::in,
     assoc_list(string,
@@ -2773,15 +2845,16 @@ call_site_desc_clique_proc_cell(MaybeCurModuleName, ModuleQual,
         in(list_skel(pair(ground, (pred(in, in, in, in, out) is det)))),
     display_item::out) is det.
 
-make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
-        MaybeLabel, LabelsCmdMakers, Item) :-
+make_top_procs_cmd_items(Prefs, SetPrefs, DisplayLimit, CostKind, InclDesc,
+        Scope, MaybeLabel, LabelsCmdMakers, Item) :-
     list.map(
-        make_top_procs_cmd_item(Prefs, DisplayLimit, CostKind, InclDesc, Scope),
+        make_top_procs_cmd_item(Prefs, SetPrefs, DisplayLimit, CostKind,
+            InclDesc, Scope),
         LabelsCmdMakers, ControlItemLists),
     list.condense(ControlItemLists, ControlItems),
     Item = display_list(list_class_horizontal, MaybeLabel, ControlItems).
 
-:- pred make_top_procs_cmd_item(preferences::in, display_limit::in,
+:- pred make_top_procs_cmd_item(preferences::in, bool::in, display_limit::in,
     cost_kind::in, include_descendants::in, measurement_scope::in,
     pair(string,
         (pred(display_limit, cost_kind, include_descendants, measurement_scope,
@@ -2789,8 +2862,8 @@ make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
         in(pair(ground, (pred(in, in, in, in, out) is det))),
     list(display_item)::out) is det.
 
-make_top_procs_cmd_item(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
-        Label - CmdMaker, Items) :-
+make_top_procs_cmd_item(Prefs0, SetPrefs, DisplayLimit, CostKind, InclDesc,
+        Scope, Label - CmdMaker, Items) :-
     Cmd0 = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
     CmdMaker(DisplayLimit, CostKind, InclDesc, Scope, Cmd),
     ( Cmd = Cmd0 ->
@@ -2801,6 +2874,24 @@ make_top_procs_cmd_item(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
         % Item = display_pseudo_link(PseudoLink),
         % Items = [Item]
     ;
+        (
+            SetPrefs = no,
+            Prefs = Prefs0
+        ;
+            SetPrefs = yes,
+            % By default, sort the top procedures by the same criteria
+            % by which they were selected. Users can override this choice
+            % later if they wish.
+            (
+                Cmd = deep_cmd_top_procs(_, CmdCostKind, CmdInclDesc,
+                    CmdScope)
+            ->
+                Prefs = Prefs0 ^ pref_criteria :=
+                    by_cost(CmdCostKind, CmdInclDesc, CmdScope)
+            ;
+                Prefs = Prefs0
+            )
+        ),
         Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
             link_class_control),
         Item = display_link(Link),
@@ -2808,34 +2899,34 @@ make_top_procs_cmd_item(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
     ).
 
 :- pred make_first_proc_callers_cmds_item(preferences::in, cmd::in,
-    proc_static_ptr::in, caller_groups::in, contour_exclusion::in,
+    proc_static_ptr::in, caller_groups::in, int::in, contour_exclusion::in,
     maybe(string)::in,
     assoc_list(string,
-        (pred(proc_static_ptr, caller_groups, contour_exclusion, cmd)))::
-        in(list_skel(pair(ground, (pred(in, in, in, out) is det)))),
+        (pred(proc_static_ptr, caller_groups, int, contour_exclusion, cmd)))::
+        in(list_skel(pair(ground, (pred(in, in, in, in, out) is det)))),
     display_item::out) is det.
 
-make_first_proc_callers_cmds_item(Prefs, Cmd, PSPtr, CallerGroups, ContourExcl,
-        MaybeLabel, LabelsCmdMakers, Item) :-
+make_first_proc_callers_cmds_item(Prefs, Cmd, PSPtr, CallerGroups, BunchSize,
+        ContourExcl, MaybeLabel, LabelsCmdMakers, Item) :-
     list.map(
         make_first_proc_callers_cmd_item(Prefs, Cmd, PSPtr, CallerGroups,
-            ContourExcl),
+            BunchSize, ContourExcl),
         LabelsCmdMakers, ControlItemLists),
     list.condense(ControlItemLists, ControlItems),
     Item = display_list(list_class_horizontal, MaybeLabel, ControlItems).
 
 :- pred make_first_proc_callers_cmd_item(preferences::in, cmd::in,
-    proc_static_ptr::in, caller_groups::in, contour_exclusion::in,
+    proc_static_ptr::in, caller_groups::in, int::in, contour_exclusion::in,
     pair(string,
-        (pred(proc_static_ptr, caller_groups, contour_exclusion, cmd)))::
-        in(pair(ground, (pred(in, in, in, out) is det))),
+        (pred(proc_static_ptr, caller_groups, int, contour_exclusion, cmd)))::
+        in(pair(ground, (pred(in, in, in, in, out) is det))),
     list(display_item)::out) is det.
 
-make_first_proc_callers_cmd_item(Prefs, Cmd0, PSPtr, CallerGroups, ContourExcl,
-        Label - CmdMaker, Items) :-
+make_first_proc_callers_cmd_item(Prefs, Cmd0, PSPtr, CallerGroups, BunchSize,
+        ContourExcl, Label - CmdMaker, Items) :-
     % When we just to a different kind of grouping or toggle contour exclusion,
     % we always go to the first bunch of the resulting rows.
-    CmdMaker(PSPtr, CallerGroups, ContourExcl, Cmd),
+    CmdMaker(PSPtr, CallerGroups, BunchSize, ContourExcl, Cmd),
     ( Cmd = Cmd0 ->
         Items = []
         % We could use this code instead.
@@ -2892,14 +2983,14 @@ make_prefs_control_item(Prefs0, Cmd, Label - PrefMaker, Items) :-
 
 top_procs_controls(Prefs, DisplayLimit, CostKind, InclDesc, Scope) =
         ControlsItem :-
-    make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
-        no, top_procs_limit_toggles, LimitControls),
-    make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
-        no, top_procs_sort_toggles, SortControls),
-    make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
-        no, top_procs_incl_desc_toggles, InclDescControls),
-    make_top_procs_cmd_items(Prefs, DisplayLimit, CostKind, InclDesc, Scope,
-        no, top_procs_scope_toggles, ScopeControls),
+    make_top_procs_cmd_items(Prefs, no, DisplayLimit, CostKind, InclDesc,
+        Scope, no, top_procs_limit_toggles, LimitControls),
+    make_top_procs_cmd_items(Prefs, yes, DisplayLimit, CostKind, InclDesc,
+        Scope, no, top_procs_sort_toggles, SortControls),
+    make_top_procs_cmd_items(Prefs, no, DisplayLimit, CostKind, InclDesc,
+        Scope, no, top_procs_incl_desc_toggles, InclDescControls),
+    make_top_procs_cmd_items(Prefs, no, DisplayLimit, CostKind, InclDesc,
+        Scope, no, top_procs_scope_toggles, ScopeControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Toggle sorting criteria:"),
         [LimitControls, SortControls, InclDescControls, ScopeControls]).
@@ -3012,18 +3103,32 @@ set_top_procs_scope(Scope, DisplayLimit, CostKind, InclDesc, _Scope, Cmd) :-
 % Control how the proc command displays the procedure's callers.
 %
 
-:- func proc_callers_group_controls(preferences, cmd, proc_static_ptr,
-    caller_groups, contour_exclusion) = display_item.
+:- func proc_callers_group_controls(deep, preferences, cmd, proc_static_ptr,
+    caller_groups, int, contour_exclusion) = display_item.
 
-proc_callers_group_controls(Prefs, Cmd, PSPtr, CallerGroups, ContourExcl) =
-        ControlsItem :-
+proc_callers_group_controls(Deep, Prefs, Cmd, PSPtr, CallerGroups,
+        BunchSize, ContourExcl) = ControlsItem :-
     make_first_proc_callers_cmds_item(Prefs, Cmd, PSPtr, CallerGroups,
-        ContourExcl, no, proc_callers_group_toggles, GroupControls),
-    ( Cmd = deep_cmd_proc_callers(_, _, _, _) ->
-        make_first_proc_callers_cmds_item(Prefs, Cmd, PSPtr, CallerGroups,
-            ContourExcl, no, proc_callers_contour_excl_toggles,
-            ContourExclControls),
-        List = [GroupControls, ContourExclControls]
+        BunchSize, ContourExcl, no, proc_callers_group_toggles, GroupControls),
+    ExcludeFile = Deep ^ exclude_contour_file,
+    ( Cmd = deep_cmd_proc_callers(_, _, _, _, _) ->
+        ExcludeFile = exclude_file(ExcludeFileName, ExcludeContents),
+        (
+            ExcludeContents = no_exclude_file,
+            List = [GroupControls]
+        ;
+            ExcludeContents = unreadable_exclude_file(ErrorMsg),
+            ContourExclMsg = "Cannot apply contour exclusion:\n"
+                ++ ExcludeFileName ++ ": " ++ ErrorMsg,
+            ContourExclItem = display_text(ContourExclMsg),
+            List = [GroupControls, ContourExclItem]
+        ;
+            ExcludeContents = readable_exclude_file(_, _),
+            make_first_proc_callers_cmds_item(Prefs, Cmd, PSPtr, CallerGroups,
+                BunchSize, ContourExcl, no, proc_callers_contour_excl_toggles,
+                ContourExclControls),
+            List = [GroupControls, ContourExclControls]
+        )
     ;
         List = [GroupControls]
     ),
@@ -3032,8 +3137,8 @@ proc_callers_group_controls(Prefs, Cmd, PSPtr, CallerGroups, ContourExcl) =
 
 :- func proc_callers_group_toggles =
     (assoc_list(string,
-        (pred(proc_static_ptr, caller_groups, contour_exclusion, cmd)))::
-        out(list_skel(pair(ground, (pred(in, in, in, out) is det)))))
+        (pred(proc_static_ptr, caller_groups, int, contour_exclusion, cmd)))::
+        out(list_skel(pair(ground, (pred(in, in, in, in, out) is det)))))
     is det.
 
 proc_callers_group_toggles = [
@@ -3049,8 +3154,8 @@ proc_callers_group_toggles = [
 
 :- func proc_callers_contour_excl_toggles =
     (assoc_list(string,
-        (pred(proc_static_ptr, caller_groups, contour_exclusion, cmd)))::
-        out(list_skel(pair(ground, (pred(in, in, in, out) is det)))))
+        (pred(proc_static_ptr, caller_groups, int, contour_exclusion, cmd)))::
+        out(list_skel(pair(ground, (pred(in, in, in, in, out) is det)))))
     is det.
 
 proc_callers_contour_excl_toggles = [
@@ -3061,19 +3166,21 @@ proc_callers_contour_excl_toggles = [
 ].
 
 :- pred set_proc_callers_caller_groups(caller_groups::in, proc_static_ptr::in,
-    caller_groups::in, contour_exclusion::in, cmd::out) is det.
+    caller_groups::in, int::in, contour_exclusion::in, cmd::out) is det.
 
-set_proc_callers_caller_groups(CallerGroups, PSPtr, _CallerGroups, ContourExcl,
-        Cmd) :-
-    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, ContourExcl).
+set_proc_callers_caller_groups(CallerGroups, PSPtr, _CallerGroups, BunchSize,
+        ContourExcl, Cmd) :-
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, BunchSize,
+        ContourExcl).
 
 :- pred set_proc_callers_contour_excl(contour_exclusion::in,
-    proc_static_ptr::in, caller_groups::in, contour_exclusion::in, cmd::out)
-    is det.
+    proc_static_ptr::in, caller_groups::in, int::in, contour_exclusion::in,
+    cmd::out) is det.
 
-set_proc_callers_contour_excl(ContourExcl, PSPtr, CallerGroups, _ContourExcl,
-        Cmd) :-
-    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, ContourExcl).
+set_proc_callers_contour_excl(ContourExcl, PSPtr, CallerGroups, BunchSize,
+        _ContourExcl, Cmd) :-
+    Cmd = deep_cmd_proc_callers(PSPtr, CallerGroups, 1, BunchSize,
+        ContourExcl).
 
 %-----------------------------------------------------------------------------%
 %

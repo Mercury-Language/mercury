@@ -95,6 +95,7 @@
                 cmd_pc_proc_id                  :: proc_static_ptr,
                 cmd_pc_called_groups            :: caller_groups,
                 cmd_pc_bunch_number             :: int,
+                cmd_pc_callers_per_bunch        :: int,
                 cmd_pc_contour_exclusion        :: contour_exclusion
             )
     ;       deep_cmd_program_modules
@@ -413,7 +414,7 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
         ; Cmd = deep_cmd_module(_)
         ; Cmd = deep_cmd_top_procs(_, _, _, _)
         ; Cmd = deep_cmd_proc(_)
-        ; Cmd = deep_cmd_proc_callers(_, _, _, _)
+        ; Cmd = deep_cmd_proc_callers(_, _, _, _, _)
         ; Cmd = deep_cmd_dump_proc_static(_)
         ; Cmd = deep_cmd_dump_proc_dynamic(_)
         ; Cmd = deep_cmd_dump_call_site_static(_)
@@ -573,15 +574,17 @@ cmd_to_string(Cmd) = CmdStr :-
         CmdStr = string.format("%s%c%d",
             [s(cmd_str_proc), c(cmd_separator_char), i(PSI)])
     ;
-        Cmd = deep_cmd_proc_callers(PSPtr, GroupCallers, BunchNum, Contour),
+        Cmd = deep_cmd_proc_callers(PSPtr, GroupCallers, BunchNum,
+            CallersPerBunch, Contour),
         PSPtr = proc_static_ptr(PSI),
         GroupCallersStr = caller_groups_to_string(GroupCallers),
         ContourStr = contour_exclusion_to_string(Contour),
-        CmdStr = string.format("%s%c%d%c%s%c%d%c%s",
+        CmdStr = string.format("%s%c%d%c%s%c%d%c%d%c%s",
             [s(cmd_str_proc_callers),
             c(cmd_separator_char), i(PSI),
             c(cmd_separator_char), s(GroupCallersStr),
             c(cmd_separator_char), i(BunchNum),
+            c(cmd_separator_char), i(CallersPerBunch),
             c(cmd_separator_char), s(ContourStr)])
     ;
         Cmd = deep_cmd_program_modules,
@@ -711,14 +714,16 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         MaybeCmd = yes(Cmd)
     ;
         Pieces = [cmd_str_proc_callers, PSIStr, GroupCallersStr, BunchNumStr, 
-            ContourStr],
+            CallersPerBunchStr, ContourStr],
         string.to_int(PSIStr, PSI),
         string_to_caller_groups(GroupCallersStr, GroupCallers),
         string.to_int(BunchNumStr, BunchNum),
+        string.to_int(CallersPerBunchStr, CallersPerBunch),
         string_to_contour_exclusion(ContourStr, Contour)
     ->
         PSPtr = proc_static_ptr(PSI),
-        Cmd = deep_cmd_proc_callers(PSPtr, GroupCallers, BunchNum, Contour),
+        Cmd = deep_cmd_proc_callers(PSPtr, GroupCallers, BunchNum,
+            CallersPerBunch, Contour),
         MaybeCmd = yes(Cmd)
     ;
         Pieces = [cmd_str_program_modules]

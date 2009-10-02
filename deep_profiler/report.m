@@ -320,13 +320,18 @@
                 % from the request.
                 pc_batch_number             :: int,
 
+                % How many callers per batch, also transmitted without
+                % processing from the request.
+                pc_callers_per_batch        :: int,
+
                 % Whether contour exclusion was applied in computing the
                 % pc_callers field.
                 pc_contour_exclusion        :: contour_exclusion,
 
                 % If contour exclusion was asked for, this field may contain
-                % the pieces of an error message.
-                pc_contour_error_messages   :: list(string)
+                % a warning message about nonfatal problems with the exclusion
+                % specification file.
+                pc_contour_warn_message     :: maybe(string)
             ).
 
 :- type proc_callers

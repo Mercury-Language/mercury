@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2007 The University of Melbourne.
+# Copyright (C) 1996-2007, 2009 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -75,13 +75,13 @@ endif
 .SUFFIXES: .in .texi_pp .texi .dvi_log .ps .pdf .text
 
 %.dvi_log: %.texi_pp
-	-$(TEXI2DVI) $< > $*.dvi_log
+	-$(TEXI2DVI) $< < /dev/null > $*.dvi_log
 
 %.ps: %.dvi
 	$(DVIPS) -f < $< > $@
 
 %.pdf: %.texi_pp
-	$(PDFTEX) $< > $*.pdf_log
+	$(PDFTEX) $< < /dev/null > $*.pdf_log
 
 %.text: %.texi_pp
 	$(MAKEINFO) --no-headers -o $@ $<

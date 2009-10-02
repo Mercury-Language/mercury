@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2008 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -80,36 +80,7 @@ read_and_startup(Machine, ScriptName, DataFileName, Canonical,
         DataFileResult = ok(InitDeep),
         startup(Machine, ScriptName, DataFileName,
             Canonical, MaybeOutputStream, DumpStages, DumpOptions,
-            InitDeep, Deep0, !IO),
-        ProgRepFileName = make_progrep_filename(DataFileName),
-        maybe_report_msg(MaybeOutputStream,
-            "% Reading program representation...\n", !IO),
-        read_prog_rep_file(ProgRepFileName, ProgRepResult, !IO),
-        (
-            ProgRepResult = ok(ProgRep),
-            maybe_report_msg(MaybeOutputStream,
-                "% Done.\n", !IO),
-            Deep = Deep0 ^ procrep_file := yes(ok(ProgRep))
-        ;
-            ProgRepResult = error(Error),
-            (
-                io.open_input(ProgRepFileName, OpenProgRepResult, !IO),
-                (
-                    OpenProgRepResult = ok(ProgRepStream),
-                    % The file exists, so the error message describes something
-                    % wrong with the file.
-                    io.close_input(ProgRepStream, !IO),
-                    ErrorMessage = io.error_message(Error),
-                    maybe_report_msg(MaybeOutputStream,
-                        "% Error: " ++ ErrorMessage ++ "\n", !IO),
-                    Deep = Deep0 ^ procrep_file := yes(error(ErrorMessage))
-                ;
-                    OpenProgRepResult = error(_),
-                    % The file does not exist.
-                    Deep = Deep0 ^ procrep_file := no
-                )
-            )
-        ),
+            InitDeep, Deep, !IO),
         Result = ok(Deep)
     ;
         DataFileResult = error(Error),
@@ -140,6 +111,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
         "% Mapping static call sites to containing procedures...\n", !IO),
     array_foldl2_from_1(record_css_containers_module_procs, ProcStatics0,
         u(CallSiteStatics0), CallSiteStatics, map.init, ModuleProcs),
+    ModuleDataMap0 = map.map_values_only(initialize_module_data, ModuleProcs),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
@@ -243,6 +215,71 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
 
+    ProgRepFileName = make_progrep_filename(DataFileName),
+    maybe_report_msg(MaybeOutputStream,
+        "% Reading program representation...\n", !IO),
+    read_prog_rep_file(ProgRepFileName, ProgRepResult, !IO),
+    (
+        ProgRepResult = ok(ProgRep),
+        maybe_report_msg(MaybeOutputStream,
+            "% Done.\n", !IO),
+        MaybeProcRepFile = yes(ok(ProgRep)),
+
+        ProgRep = prog_rep(ModuleMap),
+        map.keys(ModuleMap, ProgRepModules),
+        (
+            MaybeOutputStream = yes(OutputStream),
+            io.write(OutputStream, ProgRepModules, !IO),
+            io.nl(OutputStream, !IO)
+        ;
+            MaybeOutputStream = no
+        ),
+        list.foldl(ensure_module_has_module_data, ProgRepModules,
+            ModuleDataMap0, ModuleDataMap)
+    ;
+        ProgRepResult = error(Error),
+        (
+            io.open_input(ProgRepFileName, OpenProgRepResult, !IO),
+            (
+                OpenProgRepResult = ok(ProgRepStream),
+                % The file exists, so the error message describes something
+                % wrong with the file.
+                io.close_input(ProgRepStream, !IO),
+                ErrorMessage = io.error_message(Error),
+                maybe_report_msg(MaybeOutputStream,
+                    "% Error: " ++ ErrorMessage ++ "\n", !IO),
+                MaybeProcRepFile = yes(error(ErrorMessage)),
+                ModuleDataMap = ModuleDataMap0
+            ;
+                OpenProgRepResult = error(_),
+                % The file does not exist.
+                MaybeProcRepFile = no,
+                ModuleDataMap = ModuleDataMap0
+            )
+        )
+    ),
+
+    ContourFileName = contour_file_name(DataFileName),
+    string.format("%% Trying to read contour exclusion file `%s'...\n",
+        [s(ContourFileName)], TryMsg),
+    maybe_report_msg(MaybeOutputStream, TryMsg, !IO),
+    read_exclude_file(ContourFileName, ModuleDataMap, ExcludeFile, !IO),
+    ExcludeFile = exclude_file(_, ExcludeContents),
+    (
+        ExcludeContents = no_exclude_file,
+        maybe_report_msg(MaybeOutputStream,
+            "% Couldn't open file.\n", !IO)
+    ;
+        ExcludeContents = unreadable_exclude_file(ExcludeError),
+        string.format("%% File had unrecoverable errors:\n%% %s.\n",
+            [s(ExcludeError)], ExcludeErrorMsg),
+        maybe_report_msg(MaybeOutputStream, ExcludeErrorMsg, !IO)
+    ;
+        ExcludeContents = readable_exclude_file(_, _),
+        maybe_report_msg(MaybeOutputStream,
+            "% Done.\n", !IO)
+    ),
+
     maybe_report_msg(MaybeOutputStream,
         "% Propagating measurements up call graph...\n", !IO),
 
@@ -258,35 +295,21 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
     array.init(NPDs, map.init, PDCompTable0),
     array.init(NCSDs, map.init, CSDCompTable0),
 
-    ModuleData = map.map_values(initialize_module_data, ModuleProcs),
-    % The field holding DummyMaybeExcludeFile is given its proper,
-    % non-dummy value a few calls below.
-    DummyMaybeExcludeFile = no,
-    % The field holding DummyMaybeProcRepFile is given its proper,
-    % non-dummy value outside this predicate.
-    DummyMaybeProcRepFile = no,
     !:Deep = deep(InitStats, Machine, ScriptName, DataFileName, Root,
         CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics,
         CliqueIndex, Cliques, CliqueParents, CliqueMaybeChildren,
         ProcCallers, CallSiteStaticMap, CallSiteCalls,
         PDOwn, PDDesc0, CSDDesc0,
         PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
-        PDCompTable0, CSDCompTable0, ModuleData,
-        DummyMaybeExcludeFile, DummyMaybeProcRepFile),
-
-    read_exclude_file(contour_file_name(DataFileName), !.Deep,
-        MaybeMaybeExcludeFile, !IO),
-    !Deep ^ exclude_contour_file := MaybeMaybeExcludeFile,
-
-    maybe_dump(DataFileName, DumpStages, 30,
-        dump_deep(!.Deep, DumpOptions), !IO),
+        PDCompTable0, CSDCompTable0, ModuleDataMap,
+        ExcludeFile, MaybeProcRepFile),
 
     array_foldl_from_1(propagate_to_clique, Cliques, !Deep),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
 
-    maybe_dump(DataFileName, DumpStages, 40,
+    maybe_dump(DataFileName, DumpStages, 30,
         dump_deep(!.Deep, DumpOptions), !IO),
 
     maybe_report_msg(MaybeOutputStream,
@@ -298,23 +321,38 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
 
-    maybe_dump(DataFileName, DumpStages, 50,
+    maybe_dump(DataFileName, DumpStages, 40,
         dump_deep(!.Deep, DumpOptions), !IO).
 
 :- func contour_file_name(string) = string.
 
-contour_file_name(DataFileName) =
-    DataFileName ++ ".contour".
+contour_file_name(DataFileName) = ContourFileName :-
+    ( remove_suffix(DataFileName, ".data", BaseFileName) ->
+        ContourFileName = BaseFileName ++ ".contour"
+    ;
+        error("Couldn't remove suffix from deep file name: " ++ DataFileName)
+    ).
 
 :- pred count_quanta(int::in, call_site_dynamic::in, int::in, int::out) is det.
 
 count_quanta(_N, CSD, Quanta0, Quanta) :-
     Quanta = Quanta0 + quanta(CSD ^ csd_own_prof).
 
-:- func initialize_module_data(string, list(proc_static_ptr)) = module_data.
+:- func initialize_module_data(list(proc_static_ptr)) = module_data.
 
-initialize_module_data(_ModuleName, PSPtrs) =
+initialize_module_data(PSPtrs) =
     module_data(zero_own_prof_info, zero_inherit_prof_info, PSPtrs).
+
+:- pred ensure_module_has_module_data(string::in,
+    map(string, module_data)::in, map(string, module_data)::out) is det.
+
+ensure_module_has_module_data(Module, !ModuleDataMap) :-
+    ( map.search(!.ModuleDataMap, Module, _) ->
+        true
+    ;
+        Data = module_data(zero_own_prof_info, zero_inherit_prof_info, []),
+        svmap.det_insert(Module, Data, !ModuleDataMap)
+    ).
 
 :- pred maybe_dump(string::in, list(string)::in, int::in,
     pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.
@@ -744,12 +782,13 @@ summarize_call_site_dynamic(CallSiteStaticMap, CallSiteStatics,
 
 summarize_modules(Deep0, Deep) :-
     ModuleData0 = Deep0 ^ module_data,
-    ModuleData = map.map_values(summarize_module_costs(Deep0), ModuleData0),
+    ModuleData =
+        map.map_values_only(summarize_module_costs(Deep0), ModuleData0),
     Deep = Deep0 ^ module_data := ModuleData.
 
-:- func summarize_module_costs(deep, string, module_data) = module_data.
+:- func summarize_module_costs(deep, module_data) = module_data.
 
-summarize_module_costs(Deep, _ModuleName, ModuleData0) = ModuleData :-
+summarize_module_costs(Deep, ModuleData0) = ModuleData :-
     ModuleData0 = module_data(Own0, Desc0, PSPtrs),
     list.foldl2(accumulate_ps_costs(Deep), PSPtrs, Own0, Own, Desc0, Desc),
     ModuleData = module_data(Own, Desc, PSPtrs).

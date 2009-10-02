@@ -392,7 +392,7 @@ command_relevant_toggles(deep_cmd_clique(_)) =
 command_relevant_toggles(deep_cmd_proc(_)) =
     [toggle_fields, toggle_box, toggle_colour, toggle_summarize,
     toggle_order_criteria, toggle_time_format].
-command_relevant_toggles(deep_cmd_proc_callers(_, _, _, _)) =
+command_relevant_toggles(deep_cmd_proc_callers(_, _, _, _, _)) =
     [toggle_fields, toggle_box, toggle_colour, toggle_order_criteria,
     toggle_contour, toggle_time_format].
 command_relevant_toggles(deep_cmd_program_modules) =
