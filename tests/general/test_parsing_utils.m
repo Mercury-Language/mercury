@@ -21,6 +21,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module parsing_utils.
@@ -40,7 +41,14 @@ main(!IO) :-
     test_pos("123456789", 0, !IO),
     test_pos("123456789\n123456789\n\n", 19, !IO),
     test_pos("123456789\n123456789\n\n", 20, !IO),
-    test_pos("", 0, !IO).
+    test_pos("", 0, !IO),
+    test_err("12 + x-pow(x + 3; y)", expr_top, !IO),
+    test_err("abs(x ++ 3)", expr_top, !IO),
+    test_err("abs (x))", expr_top, !IO),
+    test_err("1 + 3 MoD 2 + f(3 + x)", expr_top, !IO),
+    test_err("1 + 3 mody 2 + f(3 + x)", expr_top, !IO),
+    test_err("1 + 1x", expr_top, !IO),
+    true.
 
 %-----------------------------------------------------------------------------%
 
@@ -377,4 +385,109 @@ stringify_state(P, Src, String, !PS) :-
     String = string.string(State).
 
 %-----------------------------------------------------------------------------%
+
+:- pred test_err(string::in, parser(expr)::in(parser), io::di, io::uo)
+    is cc_multi.
+
+test_err(Input, Parser, !IO) :-
+    parse(Input, Parser, Result),
+    (
+        Result = ok(Expr),
+        io.write(Expr, !IO),
+        io.nl(!IO)
+    ;
+        Result = error(MaybeMsg, LineNo, Col),
+        Lines = string.words_separator(unify('\n'), Input),
+        Line= list.det_index1(Lines, LineNo),
+        Spaces = string.from_char_list(list.duplicate(Col - 1, ' ')),
+        (
+            MaybeMsg = yes(Msg),
+            io.write_string(Msg ++ "\n", !IO)
+        ; 
+            MaybeMsg = no,
+            io.write_string("syntax error\n", !IO)
+        ),
+        io.write_string(Line ++ "\n", !IO),
+        io.write_string(Spaces ++ "^\n", !IO)
+    ).
+
+:- type expr
+    --->    op(op, expr, expr)
+    ;       function_application(string, list(expr))
+    ;       integer(int)
+    ;       variable(string).
+
+:- type op
+    --->    plus
+    ;       minus
+    ;       modulo.
+
+:- pred expr_top(src::in, expr::out, ps::in, ps::out) is semidet.
+
+expr_top(Src, Expr) -->
+    expr(Src, Expr),
+    eof(Src, _).
+
+:- pred expr(src::in, expr::out, ps::in, ps::out) is semidet.
+
+expr(Src, Expr) -->
+    term(Src, Term1),
+    ( op(Src, Op) ->
+        expr(Src, Expr2),
+        { Expr = op(Op, Term1, Expr2) }
+    ;
+        { Expr = Term1 }
+    ).
+
+:- pred term(src::in, expr::out, ps::in, ps::out) is semidet.
+
+term(Src, Term) -->
+    current_offset(Src, Start),
+    ( int_literal(Src, Int) ->
+        { Term = integer(Int) }
+    ;
+        id(Src, Id)
+    ->
+        ( punct("(", Src, _) ->
+            ( { known_function(Id) } ->
+                comma_separated_list(expr, Src, Args),
+                punct(")", Src, _),
+                { Term = function_application(Id, Args) }
+            ;
+                fail_with_message("unknown function: " ++ Id, Start, Src, Term)
+            )
+        ;
+            { Term = variable(Id) }
+        )
+    ;
+        { fail }
+    ).
+
+:- pred known_function(string::in) is semidet.
+
+known_function("abs").
+known_function("pow").
+
+:- pred op(src::in, op::out, ps::in, ps::out) is semidet.
+
+op(Src, Op) -->
+    ( punct("+", Src, _) ->
+        { Op = plus }
+    ; punct("-", Src, _) ->
+        { Op = minus }
+    ; ikeyword(id_chars, "mod", Src, _) ->
+        { Op = modulo }
+    ;
+        fail_with_message("expecting an operator", Src, Op)
+    ).
+
+:- pred id(src::in, string::out, ps::in, ps::out) is semidet.
+
+id(Src, Id) -->
+    identifier(id_chars, id_chars ++ "0123456789", Src, Id).
+
+:- func id_chars = string.
+
+id_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_".
+
 %-----------------------------------------------------------------------------%

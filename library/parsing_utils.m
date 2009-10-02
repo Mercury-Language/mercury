@@ -7,18 +7,20 @@
 %---------------------------------------------------------------------------%
 % 
 % File: parsing_utils.m
-% Author: Ralph Becket <rafe@csse.unimelb.edu.au>
+% Authors: Ralph Becket <rafe@csse.unimelb.edu.au>, maclarty
 % Stability: low
 %
 % Utilities for recursive descent parsers.  Parsers take at least three
 % arguments: a source (src) containing the input string and a parser
 % state (ps) input/output pair tracking the current offset into the input.
 %
-% A new src and ps can be constructed by calling
-% new_src_and_ps(InputString, SkipWS, Src, !:PS) where the SkipWS function
-% is used by the primitive parsers to skip over any following whitespace
-% (providing a skipping function allows users to define comments as
-% whitespace).
+% Call parse(InputString, SkipWS, Parser, Result) to parse an input string
+% and return an error context and message if parsing failed.
+% The SkipWS function is used by the primitive parsers to skip over any
+% following whitespace (providing a skipping function allows users to define
+% comments as whitespace).
+% Alternatively a new src and ps can be constructed by calling
+% new_src_and_ps(InputString, SkipWS, Src, !:PS).
 % Parsing predicates are semidet and typically take the form
 % p(...parameters..., Src, Result, !PS).  A parser matching variable
 % assignments of the form `x = 42' might be defined like this:
@@ -68,14 +70,43 @@
 :- type parser_with_state(T, S) == pred(src, T, S, S, ps, ps).
 :- inst parser_with_state == ( pred(in, out, in, out, in, out) is semidet ).
 
+    % Functions of this type are used to skip whitespace in the primitive
+    % parsers provided by this module.
+    %
+:- type skip_whitespace_func == (func(src, ps) = ps).
+
+:- type parse_result(T)
+    --->    ok(T)
+    ;       error(
+                error_message :: maybe(string),
+                error_line    :: int,
+                error_col     :: int
+            ).
+
+    % parse(Input, SkipWS, Parser, Result).
+    % Try to parse Input using Parser and SkipWS to consume whitespace.
+    % If Parser succeeds then return ok with the parsed value,
+    % otherwise return error.  If there were any calls to fail_with_message
+    % without any subsequent progress being made, then the error message
+    % passed to the last call to fail_with_message will be returned in the
+    % error result.  Otherwise no message is returned and the furthest position
+    % the parser got in the input string is returned.
+    %
+:- pred parse(string::in, skip_whitespace_func::in,
+        parser(T)::in(parser), parse_result(T)::out) is cc_multi.
+
+    % As above but using the default whitespace parser.
+    %
+:- pred parse(string::in, parser(T)::in(parser), parse_result(T)::out)
+        is cc_multi.
+
     % Construct a new parser source and state from a string, also specifying
     % a function for skipping over whitespace (several primitive parsers
     % use this function to consume whitespace after a token; this argument
     % allows the user to specify a function for, say, skipping over comments
     % as well).
     %
-:- pred new_src_and_ps(string::in,
-        (func(src, ps) = ps)::in(func(in, in) = out is det),
+:- pred new_src_and_ps(string::in, skip_whitespace_func::in,
         src::out, ps::out) is det.
 
     % Construct a new parser source and state from a string (the default
@@ -130,6 +161,12 @@
     % whitespace.
     %
 :- pred keyword(string::in, string::in, src::in, unit::out,
+        ps::in, ps::out) is semidet.
+
+    % ikeyword(IdChars, Keyword, Src, _, !PS)
+    % Case-insensitive version of keyword/6.
+    %
+:- pred ikeyword(string::in, string::in, src::in, unit::out,
         ps::in, ps::out) is semidet.
 
     % identifier(Src, InitIdChars, IdChars, Identifier, !PS) matches the next
@@ -229,6 +266,18 @@
 :- pred comma_separated_list(parser(T)::in(parser), src::in, list(T)::out,
         ps::in, ps::out) is semidet.
 
+    % Declaratively this predicate is equivalent to false.  Operationally
+    % it will record an error message that will be returned by parse/4
+    % if no further progress is made and then fail.
+    %
+:- pred fail_with_message(string::in, src::in, T::out, ps::in, ps::out)
+    is semidet.
+
+    % As above, but use the given offset for the context of the message.
+    %
+:- pred fail_with_message(string::in, int::in, src::in, T::out,
+    ps::in, ps::out) is semidet.
+
 % The following parser combinators are equivalent to the above, except that
 % a separate state argument is threaded through the computation (e.g., for
 % parsers that incrementally construct a symbol table).
@@ -281,8 +330,7 @@
 :- implementation.
 
 :- import_module array.
-
-
+:- import_module mutvar.
 
     % The parser "state" is just the offset into the input string.
     %
@@ -290,10 +338,59 @@
 
 :- type src
     --->    src(
-                input_length    ::  int,
-                input_string    ::  string,
-                skip_ws_func    ::  func(src, ps) = ps
+                input_length        ::  int,
+                input_string        ::  string,
+                skip_ws_func        ::  func(src, ps) = ps,
+
+                furthest_offset     ::  mutvar(int),
+                % This mutable records the progress of the parser
+                % through the input string.
+
+                last_fail_message   ::  mutvar(fail_message_info)
+                % This mutable is used to record messages passed to
+                % fail_with_message and their context.
             ).
+
+:- type fail_message_info
+    --->    fail_message_info(int, maybe(string)).
+
+%-----------------------------------------------------------------------------%
+
+parse(InputString, Parser, Result) :-
+    parse(InputString, skip_whitespace, Parser, Result).
+
+parse(InputString, SkipWS, Parser, Result) :-
+    % This is pure, because it will always return the same results for
+    % the same inputs (the mutable in Src cannot be accessed outside
+    % of the promise_pure scope below).
+    promise_pure (
+        new_src_and_ps(InputString, SkipWS, Src, PS0),
+        ( if Parser(Src, Val, PS0, _) then
+            Result = ok(Val)
+          else
+            impure get_mutvar(Src ^ last_fail_message, Info),
+            impure get_mutvar(Src ^ furthest_offset, FurthestOffset),
+            Info = fail_message_info(MessageOffset, LastFailMsg),
+            ( if MessageOffset < FurthestOffset then
+                Msg = no,
+                Offset = FurthestOffset
+              else
+                Msg = LastFailMsg,
+                Offset = MessageOffset
+            ),
+            offset_to_line_number_and_position(src_to_line_numbers(Src),
+                Offset, Line, Col),
+            Result0 = error(Msg, Line, Col),
+            % We make parse/4 cc_multi because declaratively 
+            % parse(Str, SkipWS, Parser, error(MaybeMsg, Line, Col)) is true
+            % for all MaybeMsg, Line and Col iff
+            %   new_src_and_ps(Str, SkipWS, Src, PS0),
+            %   Parser(Src, _, PS0, _)
+            % is false, but operationally MaybeMsg, Line and Col are
+            % restricted to one value each.
+            cc_multi_equal(Result0, Result)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -303,8 +400,13 @@ new_src_and_ps(InputString, Src, PS) :-
 %-----------------------------------------------------------------------------%
 
 new_src_and_ps(InputString, SkipWS, Src, PS) :-
-    Src = src(string.length(InputString), InputString, SkipWS),
-    PS = 0.
+    promise_pure (
+        impure new_mutvar(fail_message_info(0, no), ErrorInfoMutVar),
+        impure new_mutvar(0, FurthestOffsetMutvar),
+        Src = src(string.length(InputString), InputString, SkipWS,  
+            FurthestOffsetMutvar, ErrorInfoMutVar),
+        PS = 0
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -397,10 +499,13 @@ eof(Src, unit, !PS) :-
 %-----------------------------------------------------------------------------%
 
 next_char(Src, Char, !PS) :-
-    current_offset(Src, Offset, !PS),
-    Offset < Src ^ input_length,
-    Char = Src ^ input_string ^ unsafe_elem(Offset),
-    !:PS = !.PS + 1.
+    promise_pure (
+        current_offset(Src, Offset, !PS),
+        Offset < Src ^ input_length,
+        Char = Src ^ input_string ^ unsafe_elem(Offset),
+        impure record_progress(Src, Offset),
+        !:PS = !.PS + 1
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -411,9 +516,12 @@ char_in_class(CharClass, Src, Char, !PS) :-
 %-----------------------------------------------------------------------------%
 
 input_substring(Src, Start, EndPlusOne, Substring) :-
-    EndPlusOne =< Src ^ input_length,
-    Substring =
-        unsafe_substring(Src ^ input_string, Start, EndPlusOne - Start).
+    promise_pure (
+        EndPlusOne =< Src ^ input_length,
+        Substring =
+            unsafe_substring(Src ^ input_string, Start, EndPlusOne - Start),
+        impure record_progress(Src, Start)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -421,10 +529,12 @@ input_substring(Src, Start, EndPlusOne, Substring) :-
         ps::in, ps::out) is semidet.
 
 match_string(MatchStr, Src, PS, PS + N) :-
-    N = string.length(MatchStr),
-    PS + N =< Src ^ input_length,
-    match_string_2(N, 0, MatchStr, PS, Src ^ input_string).
-
+    promise_pure (
+        impure record_progress(Src, PS),
+        N = string.length(MatchStr),
+        PS + N =< Src ^ input_length,
+        match_string_2(N, 0, MatchStr, PS, Src ^ input_string)
+    ).
 
 :- pred match_string_2(int::in, int::in, string::in, int::in, string::in)
         is semidet.
@@ -433,6 +543,30 @@ match_string_2(N, I, MatchStr, Offset, Str) :-
     ( if I < N then
         MatchStr ^ unsafe_elem(I) = Str ^ unsafe_elem(Offset + I),
         match_string_2(N, I + 1, MatchStr, Offset, Str)
+      else
+        true
+    ).
+
+:- pred imatch_string(string::in, src::in,
+        ps::in, ps::out) is semidet.
+
+imatch_string(MatchStr, Src, PS, PS + N) :-
+    promise_pure (
+        impure record_progress(Src, PS),
+        N = string.length(MatchStr),
+        PS + N =< Src ^ input_length,
+        imatch_string_2(N, 0, MatchStr, PS, Src ^ input_string)
+    ).
+
+:- pred imatch_string_2(int::in, int::in, string::in, int::in, string::in)
+        is semidet.
+
+imatch_string_2(N, I, MatchStr, Offset, Str) :-
+    ( if I < N then
+        char.to_upper(MatchStr ^ unsafe_elem(I), Chr1),
+        char.to_upper(Str ^ unsafe_elem(Offset + I), Chr2),
+        Chr1 = Chr2,
+        imatch_string_2(N, I + 1, MatchStr, Offset, Str)
       else
         true
     ).
@@ -565,12 +699,32 @@ comma_separated_list(P, Src, Result, !S, !PS) :-
 
 %-----------------------------------------------------------------------------%
 
+fail_with_message(Msg, Src, Val, !PS) :-
+    % This is pure, because the mutable can only be accessed via
+    % the parse/4 predicate which will always return the same results
+    % for the same inputs.
+    promise_pure (
+        impure set_mutvar(Src ^ last_fail_message,
+            fail_message_info(!.PS, yes(Msg))),
+        impure set_mutvar(Src ^ furthest_offset, !.PS),
+        ( if semidet_fail then
+            dynamic_cast(0, Val) % unreachable
+          else
+            fail
+        )
+    ).
+
+fail_with_message(Msg, Offset, Src, Val, _, PS) :-
+    fail_with_message(Msg, Src, Val, Offset, PS).
+
+%-----------------------------------------------------------------------------%
+
 whitespace(Src, unit, !PS) :-
     ( if
         next_char(Src, C, !PS),
         char.is_whitespace(C)
       then
-        skip_whitespace(Src, !PS)
+        whitespace(Src, _, !PS)
       else
         semidet_true
     ).
@@ -591,6 +745,11 @@ punct(Punct, Src, unit, !PS) :-
 
 keyword(IdChars, Keyword, Src, unit, !PS) :-
     match_string(Keyword, Src, !PS),
+    not char_in_class(IdChars, Src, _, !.PS, _),
+    skip_whitespace(Src, !PS).
+
+ikeyword(IdChars, Keyword, Src, unit, !PS) :-
+    imatch_string(Keyword, Src, !PS),
     not char_in_class(IdChars, Src, _, !.PS, _),
     skip_whitespace(Src, !PS).
 
@@ -708,6 +867,21 @@ identifier(InitIdChars, IdChars, Src, Identifier, !PS) :-
 identifier_2(IdChars, Src, unit, !PS) :-
     ( if char_in_class(IdChars, Src, _, !PS) then
         identifier_2(IdChars, Src, _, !PS)
+      else
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % Update the furthest_offset field if any progress has been made.
+    %
+:- impure pred record_progress(src::in, ps::in) is det.
+
+record_progress(Src, PS) :-
+    MutVar = Src ^ furthest_offset,
+    impure get_mutvar(MutVar, OS0),
+    ( if PS > OS0 then
+        impure set_mutvar(MutVar, PS)
       else
         true
     ).
