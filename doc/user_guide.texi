@@ -6028,7 +6028,7 @@ and then the procedures of the clique.
 It gives the cost of each call site in each procedure,
 as well as the cost of each procedure in total.
 These costs will be just those incurred in the given ancestor context;
-the costs incurrent by these call sites
+the costs incurred by these call sites
 and procedures in other ancestor contexts
 will be shown on other clique pages.
 
