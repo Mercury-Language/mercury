@@ -1223,11 +1223,11 @@ eliminate_var_in_atomic_stmt(Stmt0, Stmt, !VarElimInfo) :-
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         Stmt = delete_object(Rval)
     ;
-        Stmt0 = new_object(Target0, MaybeTag, HasSecTag, Type,
+        Stmt0 = new_object(Target0, MaybeTag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
         eliminate_var_in_lval(Target0, Target, !VarElimInfo),
         eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
-        Stmt = new_object(Target, MaybeTag, HasSecTag, Type,
+        Stmt = new_object(Target, MaybeTag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic)
     ;
         Stmt0 = mark_hp(Lval0),

@@ -467,7 +467,7 @@ atomic_stmt_contains_var(AtomicStmt, DataName) = ContainsVar :-
         AtomicStmt = delete_object(Rval),
         ContainsVar = rval_contains_var(Rval, DataName)
     ;
-        AtomicStmt = new_object(Target, _MaybeTag, _HasSecTag, _Type,
+        AtomicStmt = new_object(Target, _MaybeTag, _ExplicitSecTag, _Type,
             _MaybeSize, _MaybeCtorName, Args, _ArgTypes, _MayUseAtomic),
         ( lval_contains_var(Target, DataName) = yes ->
             ContainsVar = yes

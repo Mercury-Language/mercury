@@ -1839,12 +1839,12 @@ fixup_atomic_stmt(Action, Info, Atomic0, Atomic) :-
         fixup_rval(Action, Info, Rval0, Rval),
         Atomic = delete_object(Rval)
     ;
-        Atomic0 = new_object(Target0, MaybeTag, HasSecTag, Type, MaybeSize,
-            MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
+        Atomic0 = new_object(Target0, MaybeTag, ExplicitSecTag, Type,
+            MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
         fixup_lval(Action, Info, Target0, Target),
         fixup_rvals(Action, Info, Args0, Args),
-        Atomic = new_object(Target, MaybeTag, HasSecTag, Type, MaybeSize,
-            MaybeCtorName, Args, ArgTypes, MayUseAtomic)
+        Atomic = new_object(Target, MaybeTag, ExplicitSecTag, Type,
+            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic)
     ;
         Atomic0 = mark_hp(Lval0),
         fixup_lval(Action, Info, Lval0, Lval),

@@ -33,6 +33,7 @@
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
+:- import_module bool.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -91,6 +92,10 @@
     %
 :- func ml_tag_uses_base_class(cons_tag) = tag_uses_base_class.
 
+    % Return whether this compilation target uses object constructors.
+    %
+:- func ml_target_uses_constructors(compilation_target) = bool.
+
     % Exported enumeration info in the HLDS is converted into an MLDS
     % specific representation.  The target specific code generators may
     % further transform it.
@@ -115,7 +120,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -742,7 +746,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
         % Generate a constructor function to initialize the fields, if needed
         % (not all back-ends use constructor functions).
         MaybeSecTagVal = get_secondary_tag(TagVal),
-        UsesConstructors = target_uses_constructors(Target),
+        UsesConstructors = ml_target_uses_constructors(Target),
         UsesBaseClass = ml_tag_uses_base_class(TagVal),
         (
             UsesConstructors = yes,
@@ -867,15 +871,13 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         UsesBaseClass = tag_does_not_use_base_class
     ).
 
-:- func target_uses_constructors(compilation_target) = bool.
-
-target_uses_constructors(target_c) = no.
-target_uses_constructors(target_il) = yes.
-target_uses_constructors(target_java) = yes.
-target_uses_constructors(target_asm) = no.
-target_uses_constructors(target_x86_64) =
+ml_target_uses_constructors(target_c) = no.
+ml_target_uses_constructors(target_il) = yes.
+ml_target_uses_constructors(target_java) = yes.
+ml_target_uses_constructors(target_asm) = no.
+ml_target_uses_constructors(target_x86_64) =
     unexpected(this_file, "target_x86_64 and --high-level-code").
-target_uses_constructors(target_erlang) =
+ml_target_uses_constructors(target_erlang) =
     unexpected(this_file, "target erlang").
 
 :- func target_uses_empty_base_classes(compilation_target) = bool.

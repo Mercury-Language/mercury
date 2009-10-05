@@ -1293,9 +1293,10 @@
                 % the result to the target.
                 maybe(mlds_tag),
 
-                % Indicates whether or not there is a secondary tag. If so,
-                % it will be stored as the first argument in the argument list
-                % (see below).
+                % Indicates whether or not the first argument in the list (see
+                % below) is a secondary tag. For target languages with
+                % constructors, secondary tags are implicitly initialised by
+                % the constructor, not passed in.
                 bool,
 
                 % The type of the object being allocated.

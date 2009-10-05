@@ -1045,7 +1045,7 @@ needs_update_and(does_not_need_update, does_not_need_update) =
 
 %-----------------------------------------------------------------------------%
 
-    % has_secondary_tag(Var, ConsId, HasSecTag) returns `yes' iff the
+    % has_secondary_tag(Var, ConsId, ExplicitSecTag) returns `yes' iff the
     % variable, Var, with cons_id, ConsId, requires a remote
     % secondary tag to distinguish between its various functors.
     %
@@ -1066,7 +1066,7 @@ has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
         SecondaryTag = no
     ).
 
-    % already_correct_fields(HasSecTagC, VarsC, HasSecTagR, VarsR)
+    % already_correct_fields(ExplicitSecTagC, VarsC, ExplicitSecTagR, VarsR)
     % takes a list of variables, VarsC, which are the arguments for the cell to
     % be constructed and the list of variables, VarsR, which are the arguments
     % for the cell to be reused and returns a list of 'needs_update' values.
@@ -1078,12 +1078,14 @@ has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
 :- func already_correct_fields(bool, prog_vars, bool, prog_vars) =
     list(needs_update).
 
-already_correct_fields(HasSecTagC, CurrentCellVars, HasSecTagR, ReuseCellVars)
-        = NeedsNoUpdate ++ list.duplicate(LengthC - LengthB, needs_update) :-
-    NeedsNoUpdate = already_correct_fields_2(HasSecTagC, CurrentCellVars,
-        HasSecTagR, ReuseCellVars),
+already_correct_fields(ExplicitSecTagC, CurrentCellVars, ExplicitSecTagR,
+        ReuseCellVars) = ReuseFields :-
+    NeedsNoUpdate = already_correct_fields_2(ExplicitSecTagC, CurrentCellVars,
+        ExplicitSecTagR, ReuseCellVars),
     LengthC = list.length(CurrentCellVars),
-    LengthB = list.length(NeedsNoUpdate).
+    LengthB = list.length(NeedsNoUpdate),
+    NeedsUpdate = list.duplicate(LengthC - LengthB, needs_update),
+    ReuseFields = NeedsNoUpdate ++ NeedsUpdate.
 
 :- func already_correct_fields_2(bool, prog_vars, bool, prog_vars)
     = list(needs_update).

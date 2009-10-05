@@ -546,9 +546,9 @@ rename_atomic(comment(S)) = comment(S).
 rename_atomic(assign(L, R)) = assign(rename_lval(L), rename_rval(R)).
 rename_atomic(assign_if_in_heap(L, R)) = assign(rename_lval(L), rename_rval(R)).
 rename_atomic(delete_object(O)) = delete_object(rename_rval(O)).
-rename_atomic(new_object(L, Tag, HasSecTag, Type, MaybeSize, Ctxt, Args,
+rename_atomic(new_object(L, Tag, ExplicitSecTag, Type, MaybeSize, Ctxt, Args,
         Types, MayUseAtomic))
-    = new_object(rename_lval(L), Tag, HasSecTag, Type, MaybeSize,
+    = new_object(rename_lval(L), Tag, ExplicitSecTag, Type, MaybeSize,
         Ctxt, list.map(rename_rval, Args), Types, MayUseAtomic).
 rename_atomic(gc_check) = gc_check.
 rename_atomic(mark_hp(L)) = mark_hp(rename_lval(L)).
@@ -2032,8 +2032,14 @@ atomic_statement_to_il(delete_object(_Target), Instrs, !Info) :-
     % Instrs = LoadInstrs ++ singleton(ldnull) ++ StoreInstrs.
     Instrs = empty.
 
-atomic_statement_to_il(new_object(Target0, _MaybeTag, HasSecTag, Type, Size,
-        MaybeCtorName, Args0, ArgTypes0, _MayUseAtomic), Instrs, !Info) :-
+atomic_statement_to_il(new_object(Target0, _MaybeTag, ExplicitSecTag, Type,
+        Size, MaybeCtorName, Args, ArgTypes, _MayUseAtomic), Instrs, !Info) :-
+    (
+        ExplicitSecTag = yes,
+        unexpected(this_file, "new_object has explicit secondary tag")
+    ;
+        ExplicitSecTag = no
+    ),
     DataRep = !.Info ^ il_data_rep,
     (
         (
@@ -2066,23 +2072,6 @@ atomic_statement_to_il(new_object(Target0, _MaybeTag, HasSecTag, Type, Size,
         ;
             MaybeCtorName = no,
             ClassName = ClassName0
-        ),
-        % Skip the secondary tag, if any.
-        (
-            HasSecTag = yes,
-            (
-                ArgTypes0 = [_SecondaryTag | ArgTypes1],
-                Args0 = [_SecondaryTagVal | Args1]
-            ->
-                Args = Args1,
-                ArgTypes = ArgTypes1
-            ;
-                unexpected(this_file, "newobj without secondary tag")
-            )
-        ;
-            HasSecTag = no,
-            ArgTypes = ArgTypes0,
-            Args = Args0
         ),
         ILArgTypes = list.map(mlds_type_to_ilds_type(DataRep), ArgTypes),
         list.map_foldl(load, Args, ArgsLoadInstrsTrees, !Info),
@@ -2163,7 +2152,7 @@ atomic_statement_to_il(new_object(Target0, _MaybeTag, HasSecTag, Type, Size,
                 I = I0 ++ I1 ++ I2 ++ I3,
                 Arg = (Index + 1) - S
             ),
-        list.map_foldl(LoadInArray, Args0, ArgsLoadInstrsTrees,
+        list.map_foldl(LoadInArray, Args, ArgsLoadInstrsTrees,
             0 - !.Info, _ - !:Info),
         ArgsLoadInstrs = cord_list_to_cord(ArgsLoadInstrsTrees),
 

@@ -533,9 +533,9 @@ fixup_newobj_in_default(default_case(Statement0), default_case(Statement),
 
 fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
     (
-        AtomicStatement0 = new_object(Lval, MaybeTag, _HasSecTag, PointerType,
-            _MaybeSizeInWordsRval, _MaybeCtorName, ArgRvals, _ArgTypes,
-            _MayUseAtomic)
+        AtomicStatement0 = new_object(Lval, MaybeTag, _ExplicitSecTag,
+            PointerType, _MaybeSizeInWordsRval, _MaybeCtorName,
+            ArgRvals, _ArgTypes, _MayUseAtomic)
     ->
         % Generate the declaration of the new local variable.
         %

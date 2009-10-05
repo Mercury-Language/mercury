@@ -1432,13 +1432,13 @@ rename_class_names_atomic(Renaming, !Statement) :-
         rename_class_names_rval(Renaming, Rval0, Rval),
         !:Statement = delete_object(Rval)
     ;
-        !.Statement = new_object(TargetLval0, MaybeTag, HasSecTag, Type0,
+        !.Statement = new_object(TargetLval0, MaybeTag, ExplicitSecTag, Type0,
             MaybeSize, MaybeCtorName, Args0, ArgTypes0, MayUseAtomic),
         rename_class_names_lval(Renaming, TargetLval0, TargetLval),
         rename_class_names_type(Renaming, Type0, Type),
         list.map(rename_class_names_rval(Renaming), Args0, Args),
         list.map(rename_class_names_type(Renaming), ArgTypes0, ArgTypes),
-        !:Statement = new_object(TargetLval, MaybeTag, HasSecTag, Type,
+        !:Statement = new_object(TargetLval, MaybeTag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic)
     ;
         ( !.Statement = comment(_)
@@ -3705,13 +3705,13 @@ output_atomic_stmt(_Indent, _, _FuncInfo, delete_object(_Lval), _, _, _) :-
     unexpected(this_file, "delete_object not supported in Java.").
 
 output_atomic_stmt(Indent, ModuleInfo, FuncInfo, NewObject, Context, !IO) :-
-    NewObject = new_object(Target, _MaybeTag, HasSecTag, Type,
+    NewObject = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
         _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic),
     (
-        HasSecTag = yes,
-        unexpected(this_file, "output_atomic_stmt: has secondary tag")
+        ExplicitSecTag = yes,
+        unexpected(this_file, "output_atomic_stmt: explicit secondary tag")
     ;
-        HasSecTag = no
+        ExplicitSecTag = no
     ),
 
     ModuleName = FuncInfo ^ func_info_name ^ mod_name,

@@ -3578,8 +3578,8 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
         mlds_output_rval(Opts, Rval, !IO),
         io.write_string(");\n", !IO)
     ;
-        Statement = new_object(Target, MaybeTag, _HasSecTag, Type, MaybeSize,
-            MaybeCtorName, Args, ArgTypes, MayUseAtomic),
+        Statement = new_object(Target, MaybeTag, _ExplicitSecTag, Type,
+            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic),
         mlds_indent(Indent, !IO),
         io.write_string("{\n", !IO),
 

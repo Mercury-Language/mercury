@@ -1112,6 +1112,13 @@ input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
     (
         Lang = lang_c,
         HighLevelData = yes,
+        IsForeign = foreign.is_foreign_type(ExportedType),
+        (
+            IsForeign = yes(Assertions),
+            list.member(foreign_type_can_pass_as_mercury_type, Assertions)
+        ;
+            IsForeign = no
+        ),
         % In general, the types used for the C interface are not the same
         % as the types used by --high-level-data, so we always use a cast
         % here. (Strictly speaking the cast is not needed for a few cases

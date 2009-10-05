@@ -93,7 +93,7 @@
 :- func ml_gen_reserved_address(module_info, reserved_address, mlds_type) =
     mlds_rval.
 
-    % ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, HasSecTag, Var,
+    % ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
     %   ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr, HowToConstruct,
     %   Context, Statements, !Info):
     %
@@ -570,13 +570,14 @@ ml_cons_id_to_tag(Info, ConsId, Tag) :-
 
 ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
         TakeAddr, HowToConstruct, Context, Statements, !Info) :-
+    ml_gen_info_get_target(!.Info, CompilationTarget),
+
     % Figure out which class name to construct.
     (
         UsesBaseClass = tag_uses_base_class,
         MaybeCtorName = no
     ;
         UsesBaseClass = tag_does_not_use_base_class,
-        ml_gen_info_get_target(!.Info, CompilationTarget),
         ml_cons_name(CompilationTarget, ConsId, CtorName),
         MaybeCtorName = yes(CtorName)
     ),
@@ -584,10 +585,10 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
     % If there is a secondary tag, it goes in the first field.
     (
         MaybeStag = yes(Stag),
-        ml_gen_info_get_high_level_data(!.Info, HighLevelData),
+        UsesConstructors = ml_target_uses_constructors(CompilationTarget),
         (
-            HighLevelData = no,
-            HasSecTag = yes,
+            UsesConstructors = no,
+            ExplicitSecTag = yes,
             StagRval0 = ml_const(mlconst_int(Stag)),
             StagType0 = mlds_native_int_type,
             % With the low-level data representation, all fields -- even the
@@ -597,22 +598,23 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
             ExtraRvals = [StagRval],
             ExtraArgTypes = [StagType]
         ;
-            HighLevelData = yes,
-            HasSecTag = no,
+            UsesConstructors = yes,
+            % Secondary tag is implicitly initialised by the constructor.
+            ExplicitSecTag = no,
             ExtraRvals = [],
             ExtraArgTypes = []
         )
     ;
         MaybeStag = no,
-        HasSecTag = no,
+        ExplicitSecTag = no,
         ExtraRvals = [],
         ExtraArgTypes = []
     ),
-    ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, HasSecTag,
+    ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSecTag,
         Var, ExtraRvals, ExtraArgTypes, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Statements, !Info).
 
-ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, HasSecTag, Var,
+ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
         ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         Context, Statements, !Info) :-
     % Determine the variable's type and lval, the tag to use, and the types
@@ -630,7 +632,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, HasSecTag, Var,
     (
         HowToConstruct = construct_dynamically,
         ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName,
-            MaybeTag, HasSecTag, Var, VarLval, VarType, MLDS_Type,
+            MaybeTag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
             ExtraRvals, ExtraTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
             Context, Statements, !Info)
     ;
@@ -643,7 +645,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, HasSecTag, Var,
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
-            HasSecTag, Var, VarLval, VarType, MLDS_Type,
+            ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
             ExtraRvals, ExtraTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
             CellToReuse, Context, Statements, !Info)
     ;
@@ -658,7 +660,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, HasSecTag, Var,
     list(int)::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag, HasSecTag,
+ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag, ExplicitSecTag,
         _Var, VarLval, VarType, MLDS_Type, ExtraRvals, ExtraTypes,
         ArgVars, ArgTypes, ArgModes, TakeAddr, Context, Statements, !Info) :-
     % Find out the types of the constructor arguments and generate rvals
@@ -693,7 +695,7 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag, HasSecTag,
     % Generate a `new_object' statement to dynamically allocate the memory
     % for this term from the heap. The `new_object' statement will also
     % initialize the fields of this term with the specified arguments.
-    MakeNewObject = new_object(VarLval, MaybeTag, HasSecTag, MLDS_Type,
+    MakeNewObject = new_object(VarLval, MaybeTag, ExplicitSecTag, MLDS_Type,
         yes(SizeInWordsRval), MaybeCtorName, ArgRvals, MLDS_ArgTypes,
         MayUseAtomic),
     Stmt = ml_stmt_atomic(MakeNewObject),
@@ -810,9 +812,9 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
-        HasSecTag, Var, VarLval, VarType, MLDS_Type, ExtraRvals, ExtraTypes,
-        ArgVars, ArgTypes, ArgModes, TakeAddr, CellToReuse, Context,
-        Statements, !Info) :-
+        ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
+        ExtraRvals, ExtraTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
+        CellToReuse, Context, Statements, !Info) :-
     CellToReuse = cell_to_reuse(ReuseVar, ReuseConsIds, _),
     (
         MaybeConsId = yes(ConsId0),
@@ -880,7 +882,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
 
     % If the reassignment isn't possible because the target is statically
     % allocated then fall back to dynamic allocation.
-    ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, HasSecTag, Var,
+    ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
         ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr,
         construct_dynamically, Context, DynamicStmts, !Info),
     ElseStmt = ml_stmt_block([], DynamicStmts),
@@ -2160,14 +2162,21 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ExtraInitializers = []
         ;
             ConsTag = shared_remote_tag(Ptag, Stag),
+            UsesConstructors = ml_target_uses_constructors(Target),
             (
-                HighLevelData = no,
+                UsesConstructors = no,
                 StagRval0 = ml_const(mlconst_int(Stag)),
-                % XXX why is this cast here?
-                StagRval = ml_unop(box(mlds_native_char_type), StagRval0),
+                (
+                    HighLevelData = no,
+                    % XXX why is this cast here?
+                    StagRval = ml_unop(box(mlds_native_char_type), StagRval0)
+                ;
+                    HighLevelData = yes,
+                    StagRval = StagRval0
+                ),
                 ExtraInitializers = [init_obj(StagRval)]
             ;
-                HighLevelData = yes,
+                UsesConstructors = yes,
                 ExtraInitializers = []
             )
         ),
