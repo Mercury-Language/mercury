@@ -124,12 +124,14 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
 
+:- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
@@ -151,8 +153,12 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
             LaterDisjuncts = [_ | _],
             (
                 CodeModel = model_non,
+                ml_gen_info_get_target(!.Info, Target),
                 DisjNonLocals = goal_info_get_nonlocals(GoalInfo),
-                ( all_disjuncts_are_conj_of_unify(DisjNonLocals, Disjuncts) ->
+                (
+                    allow_lookup_disj(Target) = yes,
+                    all_disjuncts_are_conj_of_unify(DisjNonLocals, Disjuncts)
+                ->
                     % Since the MLDS backend implements trailing by a
                     % HLDS-to-HLDS transform (which is in add_trail_ops.m),
                     % if we get here, then trailing is not enabled, and we do
@@ -177,6 +183,19 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
             )
         )
     ).
+
+    % Disable generation of lookup disjunctions on some backends.
+    % ml_generate_constants_for_arm expects the mark_static_terms pass to have
+    % been run, which is not true when static_ground_cells is disabled.
+    %
+:- func allow_lookup_disj(compilation_target) = bool.
+
+allow_lookup_disj(target_c) = yes.
+allow_lookup_disj(target_il) = no.
+allow_lookup_disj(target_java) = no.
+allow_lookup_disj(target_asm) = no.
+allow_lookup_disj(target_x86_64) = no.
+allow_lookup_disj(target_erlang) = no.
 
 %-----------------------------------------------------------------------------%
 
