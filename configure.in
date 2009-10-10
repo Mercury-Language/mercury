@@ -720,6 +720,17 @@ AC_DEFINE_UNQUOTED(MR_HOSTNAMECMD, "$HOSTNAMECMD")
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
 MERCURY_CHECK_CC_NEEDS_TRAD_CPP
+
+# Mercury doesn't currently work on 64 bit Darwin, so we need to pass
+# -m32 to gcc.
+case "$host" in
+    *apple*darwin*9*|*apple*darwin*10*)
+        if test "$GCC" = "yes"; then
+            CC="$CC -m32"
+        fi
+        ;;
+esac
+
 AC_SUBST(CC)
 
 # AC_PROG_CC sets GCC to yes if $CC is GNU C.
@@ -740,6 +751,19 @@ AC_SUBST(EXEEXT)
 # only the latter contains memalign().  We need to make sure that the
 # test for memalign() doesn't use `-g', since `ml' doesn't use `-g'.
 CFLAGS="-O"
+
+# We need to define _XOPEN_SOURCE when building boehm on Darwin 10
+# so that we don't get errors about the functions in ucontext.h being
+# deprecated.
+case "$host" in
+    *apple*darwin*10*)
+        ENABLE_BOEHM_XOPEN_SOURCE="-D_XOPEN_SOURCE"
+        ;;
+    *)
+        ENABLE_BOEHM_XOPEN_SOURCE=
+        ;;
+esac
+AC_SUBST(ENABLE_BOEHM_XOPEN_SOURCE)
 
 # We also need to add the appropriate `-I' options so that the test programs
 # can #include various Mercury runtime headers.
@@ -924,11 +948,11 @@ else
 
     LD_STRIP_FLAG="-s"
 
-    # Suppress a warning from the linker on Darwin 9.  `-s' is deprecated on it
-    # and has no effect other than causing the linker to emit a warning.
+    # Suppress a warning from the linker on Darwin 9+.  `-s' is deprecated on
+    # it and has no effect other than causing the linker to emit a warning.
     #
     case "$host" in
-        *apple*darwin*9*)
+        *apple*darwin*9*|*apple*darwin*10*)
             LD_STRIP_FLAG=""
             ;;
     esac

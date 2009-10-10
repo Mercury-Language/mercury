@@ -1,16 +1,18 @@
-This file documents the port of Mercury to PowerPC Macs running Mac OS X,
-i.e. the "powerpc-apple-darwin" configuration. 
+This file documents the port of Mercury to Mac OS X,
+i.e. the "*-apple-darwin" configuration. 
 
 -----------------------------
 Supported version of Mac OS X
 -----------------------------
 
-Mercury has been heavily tested on Mac OS X 10.3 and should build
-"out-of-the-box".  Mercury also works with Mac OS X 10.4 subject to the caveat
-below regarding which version of gcc to use.
+Mercury has been tested on the Intel versions of Mac OS X 10.5 and 10.6
+and should build "out-of-the-box" using Apple's gcc 4.2.
+
+Mercury may also work on Mac OS X 10.3 and 10.4, but it hasn't been tested on
+these platforms for some time.
 
 There may be problems with building Mercury on versions of Mac OS X less than
-10.3.0.  In particular there may be problems with building and using shared
+10.3.  In particular there may be problems with building and using shared
 libraries.  On these systems you will need to pass the
 `--enable-darwin-flat-namespace' option to configure.
 
@@ -32,6 +34,9 @@ of Mac OS X 10.3 and 10.4 use this version.
 
 Apple gcc 4.0 does not work with Mercury.  Users of Mac OS X 10.4 should
 note that this version of gcc is the default one on their systems.
+
+Apple gcc 4.2 works on Mac OS X 10.5 and 10.6 (although the asm_fast
+and reg grades are not available).
 
 If you are using an Apple build of gcc then you must use the gcc_select
 command to set the system's default gcc to that version of gcc.  It is not

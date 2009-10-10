@@ -456,7 +456,7 @@ CURSES= -lcurses -ltermlib
 SHELL= /bin/sh
 
 SPECIALCFLAGS = -I$(srcdir)/include -I$(AO_INSTALL_DIR)/include \
-		$(CFLAGS_FOR_PIC)
+		$(CFLAGS_FOR_PIC) $(BOEHM_CFLAGS)
 # Alternative flags to the C compiler for mach_dep.c.
 # Mach_dep.c often doesn't like optimization, and it's
 # not time-critical anyway.

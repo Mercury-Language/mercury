@@ -3,7 +3,7 @@
 ** vim: ts=4 sw=4 et
 */
 /*
-** Copyright (C) 2006-2007 The University of Melbourne.
+** Copyright (C) 2006-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -72,7 +72,12 @@ int             mercury_event_linenum = 1;
 int     mercury_event_get_lineno(void);
 FILE    *mercury_event_get_in(void);
 FILE    *mercury_event_get_out(void);
+/*
+** flex can generate different return values for the following function
+** depending on the platform, so we don't provide a declaration to avoid
+** potential compilation errors.
 int     mercury_event_get_leng(void);
+*/
 char    *mercury_event_get_text(void);
 void    mercury_event_set_lineno(int line_number);
 void    mercury_event_set_in(FILE *in_str);
