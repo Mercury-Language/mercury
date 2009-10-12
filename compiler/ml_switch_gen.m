@@ -494,7 +494,8 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail, Context,
     ml_gen_var(!.Info, Var, Lval),
     Rval = ml_lval(Lval),
     ml_switch_gen_range(!.Info, MLDS_Type, Range),
-    ml_switch_generate_mlds_cases(Cases, CodeModel, MLDS_Cases, !Info),
+    ml_switch_generate_mlds_cases(MLDS_Type, Cases, CodeModel, MLDS_Cases,
+        !Info),
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
     SwitchStmt0 = ml_stmt_switch(MLDS_Type, Rval, Range, MLDS_Cases, Default),
     MLDS_Context = mlds_make_context(Context),
@@ -517,34 +518,45 @@ ml_switch_gen_range(Info, MLDS_Type, Range) :-
         Range = mlds_switch_range_unknown
     ).
 
-:- pred ml_switch_generate_mlds_cases(list(tagged_case)::in,
+:- pred ml_switch_generate_mlds_cases(mlds_type::in, list(tagged_case)::in,
     code_model::in, list(mlds_switch_case)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_mlds_cases([], _, [], !Info).
-ml_switch_generate_mlds_cases([TaggedCase | TaggedCases], CodeModel,
+ml_switch_generate_mlds_cases(_, [], _, [], !Info).
+ml_switch_generate_mlds_cases(MLDS_Type, [TaggedCase | TaggedCases], CodeModel,
         [MLDS_Case | MLDS_Cases], !Info) :-
-    ml_switch_generate_mlds_case(TaggedCase, CodeModel, MLDS_Case, !Info),
-    ml_switch_generate_mlds_cases(TaggedCases, CodeModel, MLDS_Cases, !Info).
+    ml_switch_generate_mlds_case(MLDS_Type, TaggedCase, CodeModel,
+        MLDS_Case, !Info),
+    ml_switch_generate_mlds_cases(MLDS_Type, TaggedCases, CodeModel,
+        MLDS_Cases, !Info).
 
-:- pred ml_switch_generate_mlds_case(tagged_case::in, code_model::in,
-    mlds_switch_case::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_switch_generate_mlds_case(mlds_type::in, tagged_case::in,
+    code_model::in, mlds_switch_case::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_mlds_case(TaggedCase, CodeModel, MLDS_Case, !Info) :-
+ml_switch_generate_mlds_case(MLDS_Type, TaggedCase, CodeModel, MLDS_Case,
+        !Info) :-
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
-    ml_tagged_cons_id_to_match_cond(TaggedMainConsId, MainCond),
-    list.map(ml_tagged_cons_id_to_match_cond, TaggedOtherConsIds, OtherConds),
+    ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedMainConsId, MainCond),
+    list.map(ml_tagged_cons_id_to_match_cond(MLDS_Type), TaggedOtherConsIds,
+        OtherConds),
     ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info),
     MLDS_Case = mlds_switch_case(MainCond, OtherConds, Statement).
 
-:- pred ml_tagged_cons_id_to_match_cond(tagged_cons_id::in,
+:- pred ml_tagged_cons_id_to_match_cond(mlds_type::in, tagged_cons_id::in,
     mlds_case_match_cond::out) is det.
 
-ml_tagged_cons_id_to_match_cond(TaggedConsId, MatchCond) :-
-    TaggedConsId = tagged_cons_id(_ConsId, Tag),
+ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
+    TaggedConsId = tagged_cons_id(ConsId, Tag),
     (
         Tag = int_tag(Int),
-        Rval = ml_const(mlconst_int(Int))
+        ( ConsId = int_const(_) ->
+            Rval = ml_const(mlconst_int(Int))
+        ; ConsId = char_const(_) ->
+            Rval = ml_const(mlconst_char(Int))
+        ;
+            Rval = ml_const(mlconst_enum(Int, MLDS_Type))
+        )
     ;
         Tag = string_tag(String),
         Rval = ml_const(mlconst_string(String))

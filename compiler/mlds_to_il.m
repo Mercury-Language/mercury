@@ -577,6 +577,8 @@ rename_rval(ml_self(Type)) = ml_self(Type).
 rename_const(mlconst_true) = mlconst_true.
 rename_const(mlconst_false) = mlconst_false.
 rename_const(mlconst_int(I)) = mlconst_int(I).
+rename_const(mlconst_enum(I, T)) = mlconst_enum(I, T).
+rename_const(mlconst_char(C)) = mlconst_char(C).
 rename_const(mlconst_foreign(L, F, T)) = mlconst_foreign(L, F, T).
 rename_const(mlconst_float(F)) = mlconst_float(F).
 rename_const(mlconst_string(S)) = mlconst_string(S).
@@ -2362,7 +2364,10 @@ load(Rval, Instrs, !Info) :-
             Const = mlconst_string(Str),
             Instrs = singleton(ldstr(Str))
         ;
-            Const = mlconst_int(Int),
+            ( Const = mlconst_int(Int)
+            ; Const = mlconst_enum(Int, _)
+            ; Const = mlconst_char(Int)
+            ),
             Instrs = singleton(ldc(int32, i(Int)))
         ;
             Const = mlconst_foreign(_Lang, _F, _T),
@@ -3730,10 +3735,9 @@ rval_to_type(ml_const(Const), Type) :-
 rval_const_to_type(mlconst_data_addr(_)) = mlds_array_type(mlds_generic_type).
 rval_const_to_type(mlconst_code_addr(_))
         = mlds_func_type(mlds_func_params([], [])).
-rval_const_to_type(mlconst_int(_)) = MLDSType :-
-    IntType = builtin_type(builtin_type_int),
-    MLDSType = mercury_type(IntType, ctor_cat_builtin(cat_builtin_int),
-        non_foreign_type(IntType)).
+rval_const_to_type(mlconst_int(_)) = ml_int_type.
+rval_const_to_type(mlconst_enum(_, MLDS_Type)) = MLDS_Type.
+rval_const_to_type(mlconst_char(_)) = ml_char_type.
 rval_const_to_type(mlconst_foreign(_, _, _))
         = sorry(this_file, "IL backend and foreign tag.").
 rval_const_to_type(mlconst_float(_)) = MLDSType :-
@@ -3742,14 +3746,8 @@ rval_const_to_type(mlconst_float(_)) = MLDSType :-
         non_foreign_type(FloatType)).
 rval_const_to_type(mlconst_false) = mlds_native_bool_type.
 rval_const_to_type(mlconst_true) = mlds_native_bool_type.
-rval_const_to_type(mlconst_string(_)) = MLDSType :-
-    StrType = builtin_type(builtin_type_string),
-    MLDSType = mercury_type(StrType, ctor_cat_builtin(cat_builtin_string),
-        non_foreign_type(StrType)).
-rval_const_to_type(mlconst_multi_string(_)) = MLDSType :-
-    StrType = builtin_type(builtin_type_string),
-    MLDSType = mercury_type(StrType, ctor_cat_builtin(cat_builtin_string),
-        non_foreign_type(StrType)).
+rval_const_to_type(mlconst_string(_)) = ml_string_type.
+rval_const_to_type(mlconst_multi_string(_)) = ml_string_type.
 rval_const_to_type(mlconst_named_const(_))
         = sorry(this_file, "IL backend and named const.").
 rval_const_to_type(mlconst_null(MldsType)) = MldsType.

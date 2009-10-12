@@ -246,8 +246,10 @@ ml_gen_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
 
     % Generate the class members.
     ValueMember = ml_gen_enum_value_member(Context),
+    MLDS_Type = mlds_class_type(QualifiedClassName, MLDS_ClassArity,
+        mlds_enum),
     EnumConstMembers = list.map(
-        ml_gen_enum_constant(Context, TypeCtor, TagValues),
+        ml_gen_enum_constant(Context, TypeCtor, TagValues, MLDS_Type),
         Ctors),
     Members = MaybeEqualityMembers ++
         [ValueMember | EnumConstMembers],
@@ -297,16 +299,17 @@ ml_gen_enum_value_member(Context) =
         mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)).
 
 :- func ml_gen_enum_constant(prog_context, type_ctor, cons_tag_values,
-    constructor) = mlds_defn.
+    mlds_type, constructor) = mlds_defn.
 
-ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defn :-
+ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
+        = Defn :-
     % Figure out the value of this enumeration constant.
     Ctor = ctor(_ExistQTVars, _Constraints, Name, Args, _Ctxt),
     list.length(Args, Arity),
     map.lookup(ConsTagValues, cons(Name, Arity, TypeCtor), TagVal),
     (
         TagVal = int_tag(Int),
-        ConstValue = ml_const(mlconst_int(Int))
+        ConstValue = ml_const(mlconst_enum(Int, MLDS_Type))
     ;
         TagVal = foreign_tag(ForeignLang, ForeignTagValue),
         ConstValue = ml_const(mlconst_foreign(ForeignLang, ForeignTagValue,
@@ -1202,26 +1205,31 @@ ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
         TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
             _IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
             _IsForeignType),
+        ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
+        MLDS_Type = mlds_class_type(QualifiedClassName, MLDS_ClassArity,
+            mlds_enum),
         list.foldl(
-            generate_foreign_enum_constant(TypeCtor, Mapping, TagValues),
+            generate_foreign_enum_constant(TypeCtor, Mapping, TagValues,
+                MLDS_Type),
             Ctors, [], ExportConstants),
         MLDS_ExportedEnum = mlds_exported_enum(Lang, Context, TypeCtor,
             ExportConstants)
     ).
 
 :- pred generate_foreign_enum_constant(type_ctor::in,
-    map(sym_name, string)::in, cons_tag_values::in, constructor::in,
+    map(sym_name, string)::in, cons_tag_values::in, mlds_type::in,
+    constructor::in,
     list(mlds_exported_enum_constant)::in,
     list(mlds_exported_enum_constant)::out) is det.
 
-generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, Ctor,
+generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
         !ExportConstants) :-
     Ctor = ctor(_, _, QualName, Args, _),
     list.length(Args, Arity),
     map.lookup(TagValues, cons(QualName, Arity, TypeCtor), TagVal),
     (
         TagVal = int_tag(Int),
-        ConstValue = ml_const(mlconst_int(Int))
+        ConstValue = ml_const(mlconst_enum(Int, MLDS_Type))
     ;
         TagVal = foreign_tag(Lang, String),
         ConstValue = ml_const(mlconst_foreign(Lang, String,

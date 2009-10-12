@@ -1369,7 +1369,7 @@ mlds_output_exported_enum_constant(ExportedConstant, !IO) :-
     io.write_string(Name, !IO),
     io.write_string(" ", !IO),
     (
-        Initializer = init_obj(ml_const(mlconst_int(Value)))
+        Initializer = init_obj(ml_const(mlconst_enum(Value, _)))
     ->
         io.write_int(Value, !IO)
     ;
@@ -1381,7 +1381,7 @@ mlds_output_exported_enum_constant(ExportedConstant, !IO) :-
         io.write_string(Value, !IO)
     ;
         unexpected(this_file,
-            "tag for export enumeration is not integer or foreign")
+            "tag for export enumeration is not enum or foreign")
     ),
     io.nl(!IO).
 
@@ -4363,11 +4363,17 @@ mlds_output_rval_const(Opts, Const, !IO) :-
         Const = mlconst_false,
         io.write_string("MR_FALSE", !IO)
     ;
-        Const = mlconst_int(N),
+        ( Const = mlconst_int(N)
+        ; Const = mlconst_enum(N, _)
+        ),
         % We need to cast to (MR_Integer) to ensure things like 1 << 32 work
         % when `Integer' is 64 bits but `int' is 32 bits.
         io.write_string("(MR_Integer) ", !IO),
         io.write_int(N, !IO)
+    ;
+        Const = mlconst_char(C),
+        io.write_string("(MR_Char) ", !IO),
+        io.write_int(C, !IO)
     ;
         Const = mlconst_foreign(Lang, Value, Type),
         expect(unify(Lang, lang_c), this_file,

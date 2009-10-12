@@ -3663,6 +3663,10 @@ build_rval_const(mlconst_false, _, Expr) -->
     gcc__build_int(0, Expr).
 build_rval_const(mlconst_int(N), _, Expr) -->
     gcc__build_int(N, Expr).
+build_rval_const(mlconst_enum(N, _), _, Expr) -->
+    gcc__build_int(N, Expr).
+build_rval_const(mlconst_char(N), _, Expr) -->
+    gcc__build_int(N, Expr).
 build_rval_const(mlconst_foreign(_Lang, _Value, _Type), _, _) -->
     { sorry(this_file,
         "foreign tags not yet supported with `--target asm'") }.

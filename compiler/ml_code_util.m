@@ -129,6 +129,10 @@
     %
 :- func ml_int_type = mlds_type.
 
+    % Return the MLDS type corresponding to a Mercury char type.
+    %
+:- func ml_char_type = mlds_type.
+
     % Allocate some fresh type variables, with kind `star',  to use as
     % the Mercury types of boxed objects (e.g. to get the argument types
     % for tuple constructors or closure constructors).  Note that this
@@ -799,6 +803,10 @@ ml_string_type =
 ml_int_type =
     mercury_type(int_type, ctor_cat_builtin(cat_builtin_int),
         non_foreign_type(int_type)).
+
+ml_char_type =
+    mercury_type(char_type, ctor_cat_builtin(cat_builtin_char),
+        non_foreign_type(char_type)).
 
 ml_make_boxed_types(Arity) = BoxedTypes :-
     varset.init(TypeVarSet0),

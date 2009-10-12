@@ -1666,6 +1666,8 @@
     --->    mlconst_true
     ;       mlconst_false
     ;       mlconst_int(int)
+    ;       mlconst_enum(int, mlds_type)
+    ;       mlconst_char(int)
     ;       mlconst_float(float)
     ;       mlconst_string(string)
     ;       mlconst_multi_string(list(string))

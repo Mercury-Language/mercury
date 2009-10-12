@@ -470,7 +470,11 @@ write_rval_const(mlconst_true, !IO) :-
     io.write_string("1", !IO).
 write_rval_const(mlconst_false, !IO) :-
     io.write_string("0", !IO).
-write_rval_const(mlconst_int(I), !IO) :-
+write_rval_const(Const, !IO) :-
+    ( Const = mlconst_int(I)
+    ; Const = mlconst_enum(I, _)
+    ; Const = mlconst_char(I)
+    ),
     io.write_int(I, !IO).
 write_rval_const(mlconst_foreign(_Lang, _Value, _Type), !IO) :-
     sorry(this_file, "mlconst_foreign for managed languages").

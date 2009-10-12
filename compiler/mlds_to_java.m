@@ -203,13 +203,6 @@ mlds_lval_type(ml_mem_ref(_, PtrType)) =
 mlds_lval_type(ml_global_var_ref(_)) = _ :-
     sorry(this_file, "mlds_lval_type: global_var_ref NYI").
 
-    % Succeeds iff the Rval represents an integer constant.
-    %
-:- pred rval_is_int_const(mlds_rval::in) is semidet.
-
-rval_is_int_const(Rval) :-
-    Rval = ml_const(mlconst_int(_)).
-
     % Succeeds iff the Rval represents an enumeration object in the Java
     % backend. We need to check both Rvals that are variables and Rvals
     % that are casts. We need to know this in order to append the field name
@@ -566,9 +559,6 @@ output_exported_enum_constant(Indent, ModuleInfo, MLDS_ModuleName, MLDS_Type,
     io.write_string(" ", !IO),
     io.write_string(Name, !IO),
     io.write_string(" = ", !IO),
-    output_type(normal_style, MLDS_Type, !IO),
-    io.write_string(".K", !IO),
-    % XXX this will break with `:- pragma foreign_enum'
     output_initializer_body(ModuleInfo, Initializer, no, MLDS_ModuleName, !IO),
     io.write_string(";\n", !IO).
 
@@ -764,6 +754,8 @@ method_ptrs_in_rval(ml_const(RvalConst), !CodeAddrs) :-
         ( RvalConst = mlconst_true
         ; RvalConst = mlconst_false
         ; RvalConst = mlconst_int(_)
+        ; RvalConst = mlconst_enum(_, _)
+        ; RvalConst = mlconst_char(_)
         ; RvalConst = mlconst_foreign(_, _, _)
         ; RvalConst = mlconst_float(_)
         ; RvalConst = mlconst_string(_)
@@ -1547,6 +1539,8 @@ rename_class_names_rval_const(Renaming, !Const) :-
         ( !.Const = mlconst_true
         ; !.Const = mlconst_false
         ; !.Const = mlconst_int(_)
+        ; !.Const = mlconst_enum(_, _)
+        ; !.Const = mlconst_char(_)
         ; !.Const = mlconst_float(_)
         ; !.Const = mlconst_string(_)
         ; !.Const = mlconst_multi_string(_)
@@ -2010,11 +2004,10 @@ output_class_body(Indent, ModuleInfo, mlds_interface, _, AllMembers,
 output_class_body(_Indent, _, mlds_struct, _, _AllMembers, _, _, _) :-
     unexpected(this_file, "output_class_body: structs not supported in Java.").
 
-output_class_body(Indent, ModuleInfo, mlds_enum, Name, AllMembers, _, !IO) :-
+output_class_body(Indent, _ModuleInfo, mlds_enum, Name, AllMembers, _, !IO) :-
     list.filter(defn_is_const, AllMembers, EnumConsts),
-    Name = qual(ModuleName, _QualKind, UnqualName),
-    output_enum_constants(Indent + 1, ModuleInfo, ModuleName, UnqualName,
-        EnumConsts, !IO),
+    Name = qual(_ModuleName, _QualKind, UnqualName),
+    output_enum_constants(Indent + 1, UnqualName, EnumConsts, !IO),
     io.nl(!IO),
     output_enum_ctor(Indent + 1, UnqualName, !IO).
 
@@ -2049,47 +2042,49 @@ output_enum_ctor(Indent, UnqualName, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred output_enum_constants(indent::in, module_info::in,
-    mlds_module_name::in, mlds_entity_name::in, list(mlds_defn)::in,
-    io::di, io::uo) is det.
+:- pred output_enum_constants(indent::in, mlds_entity_name::in,
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_enum_constants(Indent, ModuleInfo, EnumModuleName, EnumName,
-        EnumConsts, !IO) :-
-    io.write_list(EnumConsts, "\n",
-        output_enum_constant(Indent, ModuleInfo, EnumModuleName, EnumName),
+output_enum_constants(Indent, EnumName, EnumConsts, !IO) :-
+    io.write_list(EnumConsts, "\n", output_enum_constant(Indent, EnumName),
         !IO),
     io.nl(!IO).
 
-:- pred output_enum_constant(indent::in, module_info::in,
-    mlds_module_name::in, mlds_entity_name::in, mlds_defn::in,
+:- pred output_enum_constant(indent::in, mlds_entity_name::in, mlds_defn::in,
     io::di, io::uo) is det.
 
-output_enum_constant(Indent, ModuleInfo, EnumModuleName, EnumName, Defn,
-        !IO) :-
+output_enum_constant(Indent, EnumName, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
         DefnBody = mlds_data(_Type, Initializer, _GCStatement)
     ->
         % Make a static instance of the constant.  The MLDS doesn't retain enum
-        % constructor names so it's easier to derive the name of the constant
-        % later by naming them after the integer values.
-        % XXX this will break with `:- pragma foreign_enum'
-        indent_line(Indent, !IO),
-        io.write_string("public static final ", !IO),
-        output_name(EnumName, !IO),
-        io.write_string(" K", !IO),
-        output_initializer_body(ModuleInfo, Initializer, no, EnumModuleName,
-            !IO),
-        io.write_string(" = new ", !IO),
-        output_name(EnumName, !IO),
-        io.write_string("(", !IO),
-        output_initializer_body(ModuleInfo, Initializer, no, EnumModuleName,
-            !IO),
-        io.write_string(");", !IO),
+        % constructor names (that shouldn't be hard to change now) so it's
+        % easier to derive the name of the constant later by naming them after
+        % the integer values.
+        (
+            Initializer = init_obj(Rval),
+            ( Rval = ml_const(mlconst_enum(N, _)) ->
+                indent_line(Indent, !IO),
+                io.write_string("public static final ", !IO),
+                output_name(EnumName, !IO),
+                io.format(" K%d = new ", [i(N)], !IO),
+                output_name(EnumName, !IO),
+                io.format("(%d); ", [i(N)], !IO),
 
-        io.write_string(" /* ", !IO),
-        output_name(Name, !IO),
-        io.write_string(" */", !IO)
+                io.write_string(" /* ", !IO),
+                output_name(Name, !IO),
+                io.write_string(" */", !IO)
+            ;
+                unexpected(this_file, "output_enum_constant: not mlconst_enum")
+            )
+        ;
+            ( Initializer = no_initializer
+            ; Initializer = init_struct(_, _)
+            ; Initializer = init_array(_)
+            ),
+            unexpected(this_file, "output_enum_constant: not mlconst_enum")
+        )
     ;
         unexpected(this_file,
             "output_enum_constant: definition body was not data.")
@@ -2268,30 +2263,9 @@ output_initializer_alloc_only(_ModuleInfo, Initializer, MaybeType, _ModuleName,
 
 output_initializer_body(_ModuleInfo, no_initializer, _, _, _, _) :-
     unexpected(this_file, "output_initializer_body: no_initializer").
-output_initializer_body(ModuleInfo, init_obj(Rval), MaybeType, ModuleName,
+output_initializer_body(ModuleInfo, init_obj(Rval), _MaybeType, ModuleName,
         !IO) :-
-    (
-        MaybeType = yes(Type),
-        type_is_object(Type),
-        rval_is_int_const(Rval)
-    ->
-        % If it is a enumeration object make a reference to a static instance.
-        output_type(normal_style, Type, !IO),
-        io.write_string(".K", !IO),
-        output_rval_maybe_with_enum(ModuleInfo, Rval, ModuleName, !IO)
-    ;
-        MaybeType = yes(Type)
-    ->
-        % If it is an non-enumeration object, insert appropriate cast.
-        % XXX The logic of this is a bit wrong. Fixing it would eliminate
-        % some of the unecessary casting that happens.
-        io.write_string("(", !IO),
-        output_type(normal_style, Type, !IO),
-        io.write_string(") ", !IO),
-        output_rval(ModuleInfo, Rval, ModuleName, !IO)
-    ;
-        output_rval_maybe_with_enum(ModuleInfo, Rval, ModuleName, !IO)
-    ).
+    output_rval(ModuleInfo, Rval, ModuleName, !IO).
 
 output_initializer_body(ModuleInfo, init_struct(StructType, FieldInits),
         _MaybeType, ModuleName, !IO) :-
@@ -3678,22 +3652,7 @@ output_atomic_stmt(Indent, ModuleInfo, FuncInfo, assign(Lval, Rval), _, !IO) :-
     indent_line(Indent, !IO),
     output_lval(ModuleInfo, Lval, ModuleName, !IO),
     io.write_string(" = ", !IO),
-    (
-        LvalType = mlds_lval_type(Lval),
-        type_is_object(LvalType)
-    ->
-        ( rval_is_int_const(Rval) ->
-            % If it is a enumeration object make a reference to a static
-            % instance.
-            output_type(normal_style, LvalType, !IO),
-            io.write_string(".K", !IO),
-            output_rval(ModuleInfo, Rval, ModuleName, !IO)
-        ;
-            output_rval(ModuleInfo, Rval, ModuleName, !IO)
-        )
-    ;
-        output_rval_maybe_with_enum(ModuleInfo, Rval, ModuleName, !IO)
-    ),
+    output_rval(ModuleInfo, Rval, ModuleName, !IO),
     io.write_string(";\n", !IO).
 
 output_atomic_stmt(_, _, _, assign_if_in_heap(_, _), _, !IO) :-
@@ -4052,23 +4011,14 @@ output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
             !IO),
         output_rval(ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(")", !IO)
-    ;
-        type_is_object(Type),
-        Expr = ml_const(mlconst_int(N))
-    ->
-        % If it is a enumeration object make a reference to a static instance.
-        output_type(normal_style, Type, !IO),
-        io.write_string(".K", !IO),
-        io.write_int(N, !IO)
+    ; java_builtin_type(Type, "int", _, _) ->
+        io.write_string("(int) ", !IO),
+        output_rval_maybe_with_enum(ModuleInfo, Expr, ModuleName, !IO)
     ;
         io.write_string("(", !IO),
         output_type(normal_style, Type, !IO),
         io.write_string(") ", !IO),
-        ( java_builtin_type(Type, "int", _, _) ->
-            output_rval_maybe_with_enum(ModuleInfo, Expr, ModuleName, !IO)
-        ;
-            output_rval(ModuleInfo, Expr, ModuleName, !IO)
-        )
+        output_rval(ModuleInfo, Expr, ModuleName, !IO)
     ).
 
 :- pred have_preallocated_pseudo_type_var(int::in) is semidet.
@@ -4185,29 +4135,21 @@ output_binop(ModuleInfo, Op, X, Y, ModuleName, !IO) :-
         io.write_string(") ", !IO),
         io.write_string(OpStr, !IO),
         io.write_string(" 0)", !IO)
-    ;
-        ( java_float_compare_op(Op, OpStr1) ->
-            OpStr = OpStr1
-        ; java_float_op(Op, OpStr2) ->
-            OpStr = OpStr2
-        ;
-            fail
-        )
-    ->
+    ; rval_is_enum_object(X) ->
         io.write_string("(", !IO),
-        output_rval_maybe_with_enum(ModuleInfo, X, ModuleName, !IO),
+        output_rval(ModuleInfo, X, ModuleName, !IO),
+        io.write_string(".MR_value ", !IO),
+        output_binary_op(Op, !IO),
         io.write_string(" ", !IO),
-        io.write_string(OpStr, !IO),
-        io.write_string(" ", !IO),
-        output_rval_maybe_with_enum(ModuleInfo, Y, ModuleName, !IO),
-        io.write_string(")", !IO)
+        output_rval(ModuleInfo, Y, ModuleName, !IO),
+        io.write_string(".MR_value)", !IO)
     ;
         io.write_string("(", !IO),
-        output_rval_maybe_with_enum(ModuleInfo, X, ModuleName, !IO),
+        output_rval(ModuleInfo, X, ModuleName, !IO),
         io.write_string(" ", !IO),
         output_binary_op(Op, !IO),
         io.write_string(" ", !IO),
-        output_rval_maybe_with_enum(ModuleInfo, Y, ModuleName, !IO),
+        output_rval(ModuleInfo, Y, ModuleName, !IO),
         io.write_string(")", !IO)
     ).
 
@@ -4236,11 +4178,15 @@ output_rval_maybe_with_enum(ModuleInfo, Rval, ModuleName, !IO) :-
 :- pred output_binary_op(binary_op::in, io::di, io::uo) is det.
 
 output_binary_op(Op, !IO) :-
+    % XXX why are these separated into three predicates?
     ( java_binary_infix_op(Op, OpStr) ->
         io.write_string(OpStr, !IO)
+    ; java_float_compare_op(Op, OpStr) ->
+        io.write_string(OpStr, !IO)
+    ; java_float_op(Op, OpStr) ->
+        io.write_string(OpStr, !IO)
     ;
-        unexpected(this_file,
-            "output_binary_op: invalid binary operator")
+        unexpected(this_file, "output_binary_op: invalid binary operator")
     ).
 
 :- pred output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
@@ -4255,6 +4201,16 @@ output_rval_const(Const, !IO) :-
     ;
         Const = mlconst_int(N),
         output_int_const(N, !IO)
+    ;
+        Const = mlconst_enum(N, EnumType),
+        output_type(normal_style, EnumType, !IO),
+        io.write_string(".K", !IO),
+        io.write_int(N, !IO)
+    ;
+        Const = mlconst_char(N),
+        io.write_string("((char) ", !IO),
+        io.write_int(N, !IO),
+        io.write_string(")", !IO)
     ;
         Const = mlconst_foreign(Lang, Value, _Type),
         expect(unify(Lang, lang_java), this_file,

@@ -398,17 +398,12 @@ ml_gen_info_lookup_const_var_rval(Info, Var, Rval) :-
 ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
     (
         Tag = int_tag(Int),
-        IntRval = ml_const(mlconst_int(Int)),
-        % Add an explicit cast if this is not an integer constant.  Although we
-        % can usually rely on implicit casts, if the char or enumeration
-        % variable that the constant is assigned to is eliminated, we can end
-        % up passing an int where a char or enumeration is expected.  In Java,
-        % and probably any language with overloading, the explicit cast is
-        % required.
         ( VarType = int_type ->
-            Rval = IntRval
+            Rval = ml_const(mlconst_int(Int))
+        ; VarType = char_type ->
+            Rval = ml_const(mlconst_char(Int))
         ;
-            Rval = ml_unop(cast(MLDS_VarType), IntRval)
+            Rval = ml_const(mlconst_enum(Int, MLDS_VarType))
         )
     ;
         Tag = float_tag(Float),
@@ -1788,7 +1783,15 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         TagTestRval = ml_binop(float_eq, Rval, ml_const(mlconst_float(Float)))
     ;
         Tag = int_tag(Int),
-        TagTestRval = ml_binop(eq, Rval, ml_const(mlconst_int(Int)))
+        ( Type = int_type ->
+            ConstRval = ml_const(mlconst_int(Int))
+        ; Type = char_type ->
+            ConstRval = ml_const(mlconst_char(Int))
+        ;
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+            ConstRval = ml_const(mlconst_enum(Int, MLDS_Type))
+        ),
+        TagTestRval = ml_binop(eq, Rval, ConstRval)
     ;
         Tag = foreign_tag(ForeignLang, ForeignVal),
         Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal,
@@ -2078,14 +2081,12 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         % Constants.
         (
             ConsTag = int_tag(Int),
-            % We need explicit casts for enumerations so that the Java backend
-            % knows to output an enumeration constant instead of a plain int.
-            % See also the comment in ml_gen_constant.
-            IntRval = ml_const(mlconst_int(Int)),
             ( VarType = int_type ->
-                ConstRval = IntRval
+                ConstRval = ml_const(mlconst_int(Int))
+            ; VarType = char_type ->
+                ConstRval = ml_const(mlconst_char(Int))
             ;
-                ConstRval = ml_unop(cast(MLDS_Type), IntRval)
+                ConstRval = ml_const(mlconst_enum(Int, MLDS_Type))
             )
         ;
             ConsTag = float_tag(Float),

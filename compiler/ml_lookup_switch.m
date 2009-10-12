@@ -616,14 +616,16 @@ ml_default_value_for_type(MLDS_Type) = DefaultRval :-
         MLDS_Type = mlds_native_int_type,
         DefaultRval = ml_const(mlconst_int(0))
     ;
+        MLDS_Type = mlds_native_char_type,
+        DefaultRval = ml_const(mlconst_char(0))
+    ;
         MLDS_Type = mlds_native_bool_type,
         DefaultRval = ml_const(mlconst_false)
     ;
         MLDS_Type = mlds_native_float_type,
         DefaultRval = ml_const(mlconst_float(0.0))
     ;
-        ( MLDS_Type = mlds_native_char_type
-        ; MLDS_Type = mercury_type(_, _, _)
+        ( MLDS_Type = mercury_type(_, _, _)
         ; MLDS_Type = mlds_mercury_array_type(_)
         ; MLDS_Type = mlds_foreign_type(_)
         ; MLDS_Type = mlds_class_type(_, _, _)
