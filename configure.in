@@ -3242,6 +3242,11 @@ AC_ARG_ENABLE(stseg-grades,
         [install stack segments versions of the library]),
     [enable_stseg_grades="$enableval"],[enable_stseg_grades="no"])
 
+AC_ARG_ENABLE(minimal-hlc-trail-install,
+    AC_HELP_STRING([--enable-minimal-hlc-trail-install],
+        [install the minimal system that supports trailing in a high level C grade]),
+    [enable_min_hlc_trail="$enableval"],[enable_min_hlc_trail="no"])
+
 # We don't enable the .NET grades by default because that may lead to
 # installation process breaking on Linux systems that have DotGNU or Mono
 # installed.
@@ -3506,16 +3511,23 @@ then
     LIBGRADES="$LIBGRADES il"
 fi
 
-# add Java back-end grade, if Java is installed
+# Add Java back-end grade, if Java is installed.
 if test $mercury_cv_java = yes -a "$enable_java_grade" = yes
 then
     LIBGRADES="$LIBGRADES java"
 fi
 
-# add Erlang back-end grade, if Erlang is installed
+# Add Erlang back-end grade, if Erlang is installed.
 if test $mercury_cv_erlang = yes -a "$enable_erlang_grade" = yes
 then
     LIBGRADES="$LIBGRADES erlang"
+fi
+
+# If this option is enabled then install a minimal system that supports
+# trailing in a high-level C grade.
+if test "$enable_min_hlc_trail" = yes
+then
+    LIBGRADES="$DEFAULT_BASE_GRADE.gc hlc.gc.trseg"
 fi
 
 # Allow the user to override the default list of library grades
